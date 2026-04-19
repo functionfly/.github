@@ -29,6 +29,9 @@ type CacheConfiguration struct {
 	SDKBasePath      string `json:"sdk_base_path"`
 	DocsBasePath     string `json:"docs_base_path"`
 	StaticBasePath   string `json:"static_base_path"`
+	// Cloudflare cache purge
+	CloudflareZoneID string `json:"cloudflare_zone_id"`
+	CloudflareToken  string `json:"cloudflare_token"`
 
 	// Edge caching settings
 	EdgeCacheEnabled         bool          `json:"edge_cache_enabled"`
@@ -62,13 +65,15 @@ func LoadCacheConfiguration() *CacheConfiguration {
 		RedisRegistryTTL: getEnvInt("CACHE_REDIS_REGISTRY_TTL", 600), // 10 minutes
 
 		// CDN defaults
-		CDNEnabled:     getEnvBool("CACHE_CDN_ENABLED", false),
-		CDNProvider:    getEnvString("CACHE_CDN_PROVIDER", "cloudflare"),
-		CDNBaseURL:     getEnvString("CACHE_CDN_BASE_URL", "https://cdn.functionfly.com"),
-		CDNMaxAge:      getEnvInt("CACHE_CDN_MAX_AGE", 86400), // 24 hours
-		SDKBasePath:    getEnvString("CACHE_SDK_BASE_PATH", "/sdk"),
-		DocsBasePath:   getEnvString("CACHE_DOCS_BASE_PATH", "/docs"),
-		StaticBasePath: getEnvString("CACHE_STATIC_BASE_PATH", "/static"),
+		CDNEnabled:       getEnvBool("CACHE_CDN_ENABLED", false),
+		CDNProvider:     getEnvString("CACHE_CDN_PROVIDER", "cloudflare"),
+		CDNBaseURL:      getEnvString("CACHE_CDN_BASE_URL", "https://cdn.functionfly.com"),
+		CDNMaxAge:       getEnvInt("CACHE_CDN_MAX_AGE", 86400), // 24 hours
+		SDKBasePath:     getEnvString("CACHE_SDK_BASE_PATH", "/sdk"),
+		DocsBasePath:     getEnvString("CACHE_DOCS_BASE_PATH", "/docs"),
+		StaticBasePath:  getEnvString("CACHE_STATIC_BASE_PATH", "/static"),
+		CloudflareZoneID: getEnvString("CLOUDFLARE_ZONE_ID", ""),
+		CloudflareToken:  getEnvString("CLOUDFLARE_API_TOKEN", ""),
 
 		// Edge caching defaults
 		EdgeCacheEnabled:       getEnvBool("CACHE_EDGE_ENABLED", false),
@@ -106,6 +111,8 @@ func (c *CacheConfiguration) ToCDNConfig() *CDNConfig {
 		EnableCDNCaching: c.CDNEnabled,
 		CDNBaseURL:       c.CDNBaseURL,
 		CDNMaxAge:        c.CDNMaxAge,
+		CloudflareZoneID: c.CloudflareZoneID,
+		CloudflareToken:  c.CloudflareToken,
 	}
 }
 

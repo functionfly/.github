@@ -842,3 +842,55 @@ func (r *ContentRepository) DeleteBlogAuthor(ctx context.Context, id uuid.UUID) 
 	}
 	return nil
 }
+
+// GetBlogSettings retrieves the single blog settings row
+func (r *ContentRepository) GetBlogSettings(ctx context.Context) (*BlogSettings, error) {
+	query := `SELECT id, blog_title, posts_per_page, meta_description, created_at, updated_at FROM blog_settings LIMIT 1`
+	s := &BlogSettings{}
+	var title, desc string
+	var postsPerPage int
+	err := r.db.QueryRowContext(ctx, query).Scan(&s.ID, &title, &postsPerPage, &desc, &s.CreatedAt, &s.UpdatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get blog settings: %w", err)
+	}
+	s.BlogTitle = title
+	s.PostsPerPage = postsPerPage
+	s.MetaDescription = desc
+	return s, nil
+}
+
+// UpdateBlogSettings updates the blog settings row
+func (r *ContentRepository) UpdateBlogSettings(ctx context.Context, updates map[string]interface{}) (*BlogSettings, error) {
+	if len(updates) == 0 {
+		return r.GetBlogSettings(ctx)
+	}
+	set := []string{}
+	args := []interface{}{}
+	pos := 1
+	for k, v := range updates {
+		switch k {
+		case "blog_title", "blogTitle":
+			set = append(set, fmt.Sprintf("blog_title = $%d", pos))
+			args = append(args, v)
+			pos++
+		case "posts_per_page", "postsPerPage":
+			set = append(set, fmt.Sprintf("posts_per_page = $%d", pos))
+			args = append(args, v)
+			pos++
+		case "meta_description", "metaDescription":
+			set = append(set, fmt.Sprintf("meta_description = $%d", pos))
+			args = append(args, v)
+			pos++
+		}
+	}
+	if len(set) == 0 {
+		return r.GetBlogSettings(ctx)
+	}
+	args = append(args, time.Now())
+	query := fmt.Sprintf("UPDATE blog_settings SET %s, updated_at = $%d", strings.Join(set, ", "), pos)
+	_, err := r.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update blog settings: %w", err)
+	}
+	return r.GetBlogSettings(ctx)
+}

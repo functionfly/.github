@@ -79,6 +79,16 @@ type BlogAuthor struct {
 	UpdatedAt   time.Time              `json:"updatedAt"`
 }
 
+// BlogSettings represents platform-wide blog configuration
+type BlogSettings struct {
+	ID              uuid.UUID `json:"id"`
+	BlogTitle       string    `json:"blog_title"`
+	PostsPerPage    int       `json:"posts_per_page"`
+	MetaDescription string    `json:"meta_description"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
 // Feedback represents a user feedback submission
 type Feedback struct {
 	ID           uuid.UUID            `json:"id"`

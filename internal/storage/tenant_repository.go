@@ -87,6 +87,51 @@ func (r *TenantRepository) GetTenantByStripeCustomerID(stripeCustomerID string) 
 	return tenant, nil
 }
 
+// ListTenantsWithStripeCustomerID retrieves all tenants that have a Stripe customer ID
+// This is used for syncing payment methods from Stripe
+func (r *TenantRepository) ListTenantsWithStripeCustomerID() ([]*Tenant, error) {
+	query := `
+		SELECT id, name, plan, status, stripe_customer_id, created_at, updated_at
+		FROM tenants
+		WHERE stripe_customer_id IS NOT NULL AND stripe_customer_id != ''
+		ORDER BY created_at DESC`
+
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list tenants with stripe customer id: %w", err)
+	}
+	defer rows.Close()
+
+	var tenants []*Tenant
+	for rows.Next() {
+		tenant := &Tenant{}
+		var plan sql.NullString
+		var stripeCID sql.NullString
+
+		err := rows.Scan(
+			&tenant.ID, &tenant.Name, &plan, &tenant.Status,
+			&stripeCID, &tenant.CreatedAt, &tenant.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan tenant: %w", err)
+		}
+
+		if plan.Valid {
+			tenant.Plan = plan.String
+		}
+		if stripeCID.Valid && stripeCID.String != "" {
+			tenant.StripeCustomerID = &stripeCID.String
+		}
+		if tenant.Status == "" {
+			tenant.Status = "active"
+		}
+
+		tenants = append(tenants, tenant)
+	}
+
+	return tenants, nil
+}
+
 // CountRoutingEventsForTenantSince counts routing events for a tenant since a given time
 func (r *TenantRepository) CountRoutingEventsForTenantSince(tenantID uuid.UUID, since time.Time) (int, error) {
 	var count int
@@ -282,4 +327,138 @@ func (r *TenantRepository) CountUsersByTenant(ctx context.Context, tenantID uuid
 		return 0, fmt.Errorf("failed to count tenant users: %w", err)
 	}
 	return count, nil
+}
+
+// IsUserInTenant checks if a user has access to a specific tenant (either as primary tenant or via membership)
+func (r *TenantRepository) IsUserInTenant(ctx context.Context, userID, tenantID uuid.UUID) (bool, error) {
+	// First check if this is the user's primary tenant
+	var primaryTenantID uuid.UUID
+	err := r.db.QueryRowContext(ctx, "SELECT tenant_id FROM users WHERE id = $1", userID).Scan(&primaryTenantID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to get user primary tenant: %w", err)
+	}
+	if primaryTenantID == tenantID {
+		return true, nil
+	}
+
+	// Check if user has a tenant membership (and has accepted the invitation)
+	var exists bool
+	err = r.db.QueryRowContext(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM tenant_memberships 
+			WHERE user_id = $1 
+			AND tenant_id = $2 
+			AND accepted_at IS NOT NULL
+		)`, userID, tenantID).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("failed to check tenant membership: %w", err)
+	}
+	return exists, nil
+}
+
+// GetUserTenants returns all tenant IDs that a user has access to (primary + memberships)
+func (r *TenantRepository) GetUserTenants(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+	var primaryTenantID uuid.UUID
+	err := r.db.QueryRowContext(ctx, "SELECT tenant_id FROM users WHERE id = $1", userID).Scan(&primaryTenantID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get user primary tenant: %w", err)
+	}
+
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT tenant_id FROM tenant_memberships 
+		WHERE user_id = $1 AND accepted_at IS NOT NULL`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tenant memberships: %w", err)
+	}
+	defer rows.Close()
+
+	// Use a map to deduplicate (shouldn't happen but defensive)
+	tenantMap := make(map[uuid.UUID]bool)
+	tenantMap[primaryTenantID] = true
+
+	for rows.Next() {
+		var tid uuid.UUID
+		if err := rows.Scan(&tid); err != nil {
+			return nil, fmt.Errorf("failed to scan tenant membership: %w", err)
+		}
+		tenantMap[tid] = true
+	}
+
+	tenants := make([]uuid.UUID, 0, len(tenantMap))
+	for tid := range tenantMap {
+		tenants = append(tenants, tid)
+	}
+	return tenants, nil
+}
+
+// AddTenantMember adds a user as a member to a tenant
+func (r *TenantRepository) AddTenantMember(ctx context.Context, userID, tenantID, invitedBy uuid.UUID, role string) error {
+	if role == "" {
+		role = "member"
+	}
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO tenant_memberships (user_id, tenant_id, role, invited_by, invited_at)
+		VALUES ($1, $2, $3, $4, NOW())
+		ON CONFLICT (user_id, tenant_id) DO UPDATE SET
+			role = EXCLUDED.role,
+			updated_at = NOW()
+	`, userID, tenantID, role, invitedBy)
+	if err != nil {
+		return fmt.Errorf("failed to add tenant member: %w", err)
+	}
+	return nil
+}
+
+// AcceptTenantMembership marks a tenant membership as accepted
+func (r *TenantRepository) AcceptTenantMembership(ctx context.Context, userID, tenantID uuid.UUID) error {
+	result, err := r.db.ExecContext(ctx, `
+		UPDATE tenant_memberships 
+		SET accepted_at = NOW(), updated_at = NOW()
+		WHERE user_id = $1 AND tenant_id = $2 AND accepted_at IS NULL
+	`, userID, tenantID)
+	if err != nil {
+		return fmt.Errorf("failed to accept tenant membership: %w", err)
+	}
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("no pending membership found")
+	}
+	return nil
+}
+
+// RemoveTenantMember removes a user's membership from a tenant
+func (r *TenantRepository) RemoveTenantMember(ctx context.Context, userID, tenantID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `
+		DELETE FROM tenant_memberships 
+		WHERE user_id = $1 AND tenant_id = $2
+	`, userID, tenantID)
+	if err != nil {
+		return fmt.Errorf("failed to remove tenant member: %w", err)
+	}
+	return nil
+}
+
+// UpdateTenantStatus updates a tenant's status (e.g., active, suspended)
+// Used by billing suspension workflows to restrict/restore service
+func (r *TenantRepository) UpdateTenantStatus(ctx context.Context, tenantID uuid.UUID, status string) error {
+	validStatuses := map[string]bool{"active": true, "suspended": true, "inactive": true}
+	if !validStatuses[status] {
+		return fmt.Errorf("invalid tenant status: %s", status)
+	}
+
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE tenants 
+		SET status = $1, updated_at = NOW()
+		WHERE id = $2
+	`, status, tenantID)
+	if err != nil {
+		return fmt.Errorf("failed to update tenant status: %w", err)
+	}
+	return nil
 }

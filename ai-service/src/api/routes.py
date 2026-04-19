@@ -1747,3 +1747,472 @@ async def extract_memories_batch(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Batch memory extraction failed: {str(e)}",
         )
+
+
+# =============================================================================
+# Phase 3: Economic Memory Layer - Cost-Per-Quality Metrics
+# =============================================================================
+
+
+class EconomicMemoryMetricsResponse(BaseModel):
+    """Response with economic memory metrics."""
+    provider: str
+    model: str
+    cost_quality_index: float
+    avg_cost_per_1k_tokens: float
+    avg_cost_per_request: float
+    quality_score: float
+    response_time_score: float
+    success_rate: float
+    total_executions: int
+    total_cost_usd: float
+    recommendation: str
+    confidence: str
+
+
+class EconomicMemorySummaryResponse(BaseModel):
+    """Summary of all economic memory data."""
+    providers: List[EconomicMemoryMetricsResponse]
+    total_executions: int
+    total_cost_usd: float
+    best_value_provider: Optional[str]
+    best_value_cqi: float
+    generated_at: datetime
+
+
+class EconomicRoutingRequest(BaseModel):
+    """Request for economic routing decision."""
+    function_id: str
+    strategy: str = "balanced"  # quality_first, balanced, cost_optimized, cost_first
+    quality_threshold: Optional[float] = 0.7
+    max_cost_per_1k: Optional[float] = None
+
+
+class EconomicRoutingResponse(BaseModel):
+    """Response with economic routing decision."""
+    provider: str
+    model: str
+    strategy: str
+    cost_quality_index: float
+    estimated_cost_per_1k: float
+    estimated_quality: float
+    confidence: str
+    reasoning: str
+    alternatives: List[str]
+
+
+class ModelRecommendationResponse(BaseModel):
+    """Model recommendation with economic analysis."""
+    current_model: str
+    recommendation: str
+    suggested_model: Optional[str]
+    current_cost_per_1k: Optional[float]
+    suggested_cost_per_1k: Optional[float]
+    potential_savings_percent: Optional[float]
+    quality_delta: Optional[float]
+    message: str
+
+
+class CostSavingsOpportunityResponse(BaseModel):
+    """Cost savings opportunity analysis."""
+    period_days: int
+    analysis: str
+    current_period_cost: float
+    executions_analyzed: int
+    best_value_provider: Optional[str]
+    best_value_cqi: Optional[float]
+    estimated_monthly_savings: float
+    optimization_opportunities: List[str]
+
+
+@router.get("/api/economic-memory/scores", response_model=EconomicMemorySummaryResponse)
+async def get_economic_memory_scores():
+    """Get all cost-quality scores for provider/model combinations.
+
+    Returns comprehensive economic analysis showing which providers and models
+    offer the best value (cost per unit of quality).
+
+    Returns:
+        EconomicMemorySummaryResponse with all provider metrics and recommendations
+    """
+    try:
+        from ..services.economic_memory import get_economic_memory
+
+        memory = get_economic_memory()
+        scores = await memory.get_all_scores()
+
+        if not scores:
+            return EconomicMemorySummaryResponse(
+                providers=[],
+                total_executions=0,
+                total_cost_usd=0.0,
+                best_value_provider=None,
+                best_value_cqi=0.0,
+                generated_at=datetime.utcnow(),
+            )
+
+        # Find best value
+        best = max(scores, key=lambda s: s.cost_quality_index)
+
+        # Determine recommendations
+        provider_responses = []
+        for score in scores:
+            if score.total_executions < 5:
+                rec = "insufficient_data"
+            elif score.cost_quality_index >= 50 and score.quality_score >= 0.7:
+                rec = "highly_recommended"
+            elif score.cost_quality_index >= 30:
+                rec = "recommended"
+            elif score.cost_quality_index < 10:
+                rec = "avoid"
+            else:
+                rec = "neutral"
+
+            confidence = "high" if score.total_executions >= 50 else (
+                "medium" if score.total_executions >= 10 else "low"
+            )
+
+            provider_responses.append(EconomicMemoryMetricsResponse(
+                provider=score.provider.value,
+                model=score.model,
+                cost_quality_index=round(score.cost_quality_index, 2),
+                avg_cost_per_1k_tokens=round(score.avg_cost_per_1k_tokens, 6),
+                avg_cost_per_request=round(score.avg_cost_per_request, 6),
+                quality_score=round(score.quality_score, 2),
+                response_time_score=round(score.response_time_score, 2),
+                success_rate=round(score.success_rate, 3),
+                total_executions=score.total_executions,
+                total_cost_usd=round(score.total_cost_usd, 4),
+                recommendation=rec,
+                confidence=confidence,
+            ))
+
+        # Sort by CQI descending
+        provider_responses.sort(key=lambda p: p.cost_quality_index, reverse=True)
+
+        total_cost = sum(s.total_cost_usd for s in scores)
+        total_execs = sum(s.total_executions for s in scores)
+
+        return EconomicMemorySummaryResponse(
+            providers=provider_responses,
+            total_executions=total_execs,
+            total_cost_usd=round(total_cost, 2),
+            best_value_provider=f"{best.provider.value}/{best.model}",
+            best_value_cqi=round(best.cost_quality_index, 2),
+            generated_at=datetime.utcnow(),
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to get economic memory scores: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get economic scores: {str(e)}",
+        )
+
+
+@router.post("/api/economic-memory/route", response_model=EconomicRoutingResponse)
+async def get_economic_routing(request: EconomicRoutingRequest):
+    """Get cost-intelligent routing recommendation.
+
+    Uses economic memory data to recommend the best provider/model
+    combination based on cost-quality balance.
+
+    Strategies:
+    - quality_first: Maximize quality regardless of cost
+    - balanced: Balance cost and quality (default)
+    - cost_optimized: Minimize cost while meeting quality threshold
+    - cost_first: Minimize cost (may reduce quality)
+
+    Args:
+        request: Routing request with strategy and constraints
+
+    Returns:
+        EconomicRoutingResponse with recommended provider and economics
+    """
+    try:
+        from ..services.economic_routing import (
+            get_economic_routing_service,
+            RoutingStrategy,
+        )
+
+        router = get_economic_routing_service()
+
+        # Parse strategy
+        try:
+            strategy = RoutingStrategy(request.strategy)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid strategy: {request.strategy}. Use: quality_first, balanced, cost_optimized, cost_first"
+            )
+
+        # Create routing request
+        routing_request = RoutingDecisionRequest(
+            function_id=request.function_id,
+        )
+
+        decision = await router.decide_routing(
+            request=routing_request,
+            strategy=strategy,
+            quality_threshold=request.quality_threshold,
+            max_cost_per_1k=request.max_cost_per_1k,
+        )
+
+        # Parse reasoning to extract provider/model
+        # Format: "... provider/model with ..."
+        reasoning_parts = decision.reasoning.split("Selected ")
+        provider_model = reasoning_parts[1].split(" with")[0] if len(reasoning_parts) > 1 else "unknown/default"
+
+        return EconomicRoutingResponse(
+            provider=provider_model.split("/")[0] if "/" in provider_model else provider_model,
+            model=provider_model.split("/")[1] if "/" in provider_model else "default",
+            strategy=request.strategy,
+            cost_quality_index=0.0,  # Would need to extract from reasoning
+            estimated_cost_per_1k=0.0,
+            estimated_quality=request.quality_threshold or 0.7,
+            confidence="medium",
+            reasoning=decision.reasoning,
+            alternatives=[a.value for a in decision.alternatives],
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Economic routing failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Economic routing failed: {str(e)}",
+        )
+
+
+@router.get("/api/economic-memory/recommendation", response_model=ModelRecommendationResponse)
+async def get_model_recommendation(
+    provider: str = Query(..., description="Provider type (e.g., 'openai')"),
+    current_model: str = Query(..., description="Current model name"),
+    target_quality: float = Query(0.75, description="Minimum quality threshold"),
+):
+    """Get model recommendation with economic analysis.
+
+    Analyzes the current model and suggests alternatives with better
+    cost-quality characteristics.
+
+    Args:
+        provider: Provider type
+        current_model: Current model name
+        target_quality: Minimum acceptable quality score
+
+    Returns:
+        ModelRecommendationResponse with recommendation and analysis
+    """
+    try:
+        from ..services.economic_routing import get_economic_routing_service
+        from ..models.schemas import ProviderType
+
+        router = get_economic_routing_service()
+
+        try:
+            provider_type = ProviderType(provider)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid provider: {provider}"
+            )
+
+        result = await router.get_model_recommendation(
+            provider=provider_type,
+            current_model=current_model,
+            target_quality=target_quality,
+        )
+
+        return ModelRecommendationResponse(
+            current_model=result.get("current_model", current_model),
+            recommendation=result.get("recommendation", "unknown"),
+            suggested_model=result.get("suggested_model"),
+            current_cost_per_1k=result.get("current_cost_per_1k"),
+            suggested_cost_per_1k=result.get("suggested_cost_per_1k"),
+            potential_savings_percent=result.get("potential_savings_percent"),
+            quality_delta=result.get("quality_delta"),
+            message=result.get("message", "No recommendation available"),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get model recommendation: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get recommendation: {str(e)}",
+        )
+
+
+@router.get("/api/economic-memory/savings", response_model=CostSavingsOpportunityResponse)
+async def get_cost_savings_opportunity(
+    tenant_id: Optional[str] = Query(None, description="Tenant ID for filtering"),
+    days: int = Query(7, description="Analysis period in days"),
+):
+    """Get cost savings opportunity analysis.
+
+    Analyzes recent usage and identifies potential cost savings
+    through better provider/model selection.
+
+    Args:
+        tenant_id: Optional tenant ID to filter
+        days: Number of days to analyze
+
+    Returns:
+        CostSavingsOpportunityResponse with savings analysis
+    """
+    try:
+        from ..services.economic_routing import get_economic_routing_service
+
+        router = get_economic_routing_service()
+
+        result = await router.get_cost_savings_opportunity(
+            tenant_id=tenant_id,
+            days=days,
+        )
+
+        return CostSavingsOpportunityResponse(
+            period_days=result.get("period_days", days),
+            analysis=result.get("analysis", "unknown"),
+            current_period_cost=result.get("current_period_cost", 0.0),
+            executions_analyzed=result.get("executions_analyzed", 0),
+            best_value_provider=result.get("best_value_provider"),
+            best_value_cqi=result.get("best_value_cqi"),
+            estimated_monthly_savings=result.get("estimated_monthly_savings", 0.0),
+            optimization_opportunities=result.get("optimization_opportunities", []),
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to get cost savings opportunity: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to analyze savings: {str(e)}",
+        )
+
+
+@router.get("/api/economic-memory/executions")
+async def get_recent_executions(
+    provider: Optional[str] = Query(None, description="Filter by provider"),
+    model: Optional[str] = Query(None, description="Filter by model"),
+    limit: int = Query(100, ge=1, le=1000, description="Number of executions to return"),
+    api_key: APIKeyInfo = Depends(require_api_key_with_scope(KeyScope.CHAT_WRITE)),
+):
+    """Get recent execution records with cost-quality data.
+
+    Returns detailed execution records for analysis and debugging.
+    Requires elevated permissions due to sensitive cost data.
+
+    Args:
+        provider: Optional provider filter
+        model: Optional model filter
+        limit: Number of records to return
+        api_key: Validated API key
+
+    Returns:
+        List of execution records
+    """
+    try:
+        from ..services.economic_memory import get_economic_memory, ProviderType
+
+        memory = get_economic_memory()
+
+        provider_type = None
+        if provider:
+            try:
+                provider_type = ProviderType(provider)
+            except ValueError:
+                pass
+
+        executions = await memory.get_recent_executions(
+            provider=provider_type,
+            model=model,
+            limit=limit,
+        )
+
+        return {
+            "executions": [
+                {
+                    "execution_id": e.execution_id,
+                    "provider": e.provider.value,
+                    "model": e.model,
+                    "cost_usd": round(e.cost_usd, 6),
+                    "total_tokens": e.total_tokens,
+                    "latency_ms": round(e.latency_ms, 2),
+                    "success": e.success,
+                    "quality_score": e.output_quality_score,
+                    "timestamp": e.timestamp.isoformat(),
+                }
+                for e in executions
+            ],
+            "count": len(executions),
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get executions: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get executions: {str(e)}",
+        )
+
+
+@router.post("/api/economic-memory/record")
+async def record_execution_quality(
+    execution_id: str = Query(..., description="Execution ID"),
+    quality_score: float = Query(..., ge=0, le=1, description="Quality score 0-1"),
+    user_rating: Optional[float] = Query(None, ge=0, le=5, description="User rating 0-5"),
+    api_key: APIKeyInfo = Depends(require_api_key_with_scope(KeyScope.CHAT_WRITE)),
+):
+    """Record quality feedback for an execution.
+
+    Allows updating execution records with quality scores or user ratings
+    for improving cost-quality analysis.
+
+    Args:
+        execution_id: The execution ID to update
+        quality_score: Quality score (0-1)
+        user_rating: Optional user rating (0-5)
+        api_key: Validated API key
+
+    Returns:
+        Success status
+    """
+    # This would update the execution record in the database
+    # For now, return success - actual implementation would query DB
+    return {
+        "success": True,
+        "execution_id": execution_id,
+        "quality_recorded": quality_score,
+        "user_rating_recorded": user_rating,
+        "message": "Quality feedback recorded (persistence pending)",
+    }
+
+
+@router.get("/api/economic-memory/health")
+async def economic_memory_health():
+    """Health check for economic memory service.
+
+    Returns:
+        Health status and statistics
+    """
+    try:
+        from ..services.economic_memory import get_economic_memory
+
+        memory = get_economic_memory()
+        scores = await memory.get_all_scores()
+
+        return {
+            "status": "healthy",
+            "service": "economic_memory",
+            "providers_tracked": len(scores),
+            "total_executions_recorded": sum(s.total_executions for s in scores),
+            "total_cost_tracked": round(sum(s.total_cost_usd for s in scores), 2),
+        }
+
+    except Exception as e:
+        logger.error(f"Economic memory health check failed: {e}")
+        return {
+            "status": "unhealthy",
+            "service": "economic_memory",
+            "error": str(e),
+        }

@@ -15,15 +15,15 @@ import (
 
 // PythonRuntime manages a WASI-compatible Python runtime
 type PythonRuntime struct {
-	engine   *wasmtime.Engine
-	module   *wasmtime.Module
-	store    *wasmtime.Store
-	instance *wasmtime.Instance
-	memory   *wasmtime.Memory
-	handler  HostFunctionHandler
-	debug    bool
-	// Security configuration
-	config *WASMSecurityConfig
+	engine         *wasmtime.Engine
+	module         *wasmtime.Module
+	store          *wasmtime.Store
+	instance       *wasmtime.Instance
+	memory         *wasmtime.Memory
+	handler        HostFunctionHandler
+	debug          bool
+	config         *WASMSecurityConfig
+	streamingState *StreamingState
 }
 
 // NewPythonRuntime creates a new Python runtime instance
@@ -67,7 +67,7 @@ func NewPythonRuntimeWithConfigAndDebug(wasmPath string, stdout, stderr io.Write
 
 	// Enable fuel/energy for instruction counting if deterministic mode
 	if config.EnableDeterministic {
-		// Enable fuel consumption tracking
+		engineConfig.SetConsumeFuel(true)
 	}
 
 	engine := wasmtime.NewEngineWithConfig(engineConfig)
@@ -99,13 +99,16 @@ func NewPythonRuntimeWithConfigAndDebug(wasmPath string, stdout, stderr io.Write
 		return nil, fmt.Errorf("failed to define WASI: %w", err)
 	}
 
+	// Create streaming state before defining host functions
+	streamingState := NewStreamingState()
+
 	// Define FunctionFly host functions (without config - backward compatible)
 	if err := defineHostFunctions(linker, store, handler); err != nil {
 		return nil, fmt.Errorf("failed to define host functions: %w", err)
 	}
 
-	// Define MicroPython env.* functions for micropython.wasm
-	if err := DefineMicropythonHostFunctions(linker, store); err != nil {
+	// Define MicroPython env.* functions with streaming state
+	if err := DefineMicropythonHostFunctionsWithState(linker, store, streamingState, nil); err != nil {
 		return nil, fmt.Errorf("failed to define micropython host functions: %w", err)
 	}
 
@@ -122,14 +125,15 @@ func NewPythonRuntimeWithConfigAndDebug(wasmPath string, stdout, stderr io.Write
 	}
 
 	return &PythonRuntime{
-		engine:   engine,
-		module:   module,
-		store:    store,
-		instance: instance,
-		memory:   memory,
-		handler:  handler,
-		debug:    debug,
-		config:   config,
+		engine:         engine,
+		module:         module,
+		store:          store,
+		instance:       instance,
+		memory:         memory,
+		handler:        handler,
+		debug:          debug,
+		config:         config,
+		streamingState: streamingState,
 	}, nil
 }
 
@@ -456,6 +460,22 @@ func (r *PythonRuntime) GetMemoryUsage() uint64 {
 	}
 	// Each page is 64KB (65536 bytes)
 	return uint64(r.memory.Size(r.store)) * 65536
+}
+
+// AddFuel adds fuel to the store for instruction metering (used in deterministic mode)
+func (r *PythonRuntime) AddFuel(fuel uint64) error {
+	if r.store == nil {
+		return fmt.Errorf("store is nil")
+	}
+	return r.store.SetFuel(fuel)
+}
+
+// GetFuelRemaining returns the remaining fuel in the store
+func (r *PythonRuntime) GetFuelRemaining() (uint64, error) {
+	if r.store == nil {
+		return 0, fmt.Errorf("store is nil")
+	}
+	return r.store.GetFuel()
 }
 
 // Close cleans up the runtime resources

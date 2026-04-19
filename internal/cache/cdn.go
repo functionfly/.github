@@ -56,6 +56,9 @@ type CDNConfig struct {
 	SDKBasePath      string // Base path for SDK assets
 	DocsBasePath     string // Base path for documentation assets
 	StaticBasePath   string // Base path for other static assets
+	// Cloudflare cache purge
+	CloudflareZoneID string // Cloudflare Zone ID for cache purge API
+	CloudflareToken  string // Cloudflare API token for cache purge
 }
 
 // NewCDNConfig creates a default CDN configuration
@@ -67,5 +70,7 @@ func NewCDNConfig() *CDNConfig {
 		SDKBasePath:      "/sdk",
 		DocsBasePath:     "/docs",
 		StaticBasePath:   "/static",
+		CloudflareZoneID: getEnvString("CLOUDFLARE_ZONE_ID", ""),
+		CloudflareToken:  getEnvString("CLOUDFLARE_API_TOKEN", ""),
 	}
 }

@@ -83,7 +83,7 @@ func TestDebugParentApproval(t *testing.T) {
 		)
 	`).Error)
 
-	svc := NewService(db)
+	svc := NewService(db, nil, nil)
 	tenantID := uuid.New()
 	agentID := "agent-debug"
 	now := time.Now()

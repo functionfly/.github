@@ -587,7 +587,7 @@ func (r *RevocationRepository) InvalidateCacheForFunction(functionID uuid.UUID) 
 }
 
 // CleanExpiredEvaluations removes old cached evaluations
-func (r *RevocationRepository) CleanExpiredEvalocations(olderThan time.Time) error {
+func (r *RevocationRepository) CleanExpiredEvaluations(olderThan time.Time) error {
 	return r.db.Where("evaluated_at < ? AND is_cached = ?", olderThan, true).
 		Delete(&TrustPolicyEvaluation{}).Error
 }

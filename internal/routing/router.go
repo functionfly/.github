@@ -186,7 +186,7 @@ func (r *Router) selectBestBackend(backends []*BackendScore, method string, plan
 	}
 
 	// Sort backends based on plan
-	if plan == "pro" {
+	if plan == "professional" {
 		// For Pro plan: sort by priority (asc, nulls last) then by score (lower is better)
 		sort.Slice(backends, func(i, j int) bool {
 			// Handle null priorities (nulls last)

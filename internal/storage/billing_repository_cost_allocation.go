@@ -3,9 +3,11 @@ package storage
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 // RecordCostAllocationEntry records a detailed cost allocation entry for an execution
@@ -421,11 +423,11 @@ func (r *BillingRepository) GetCostAllocationReport(
 	}
 
 	report := &CostAllocationReport{
-		ReportID:       uuid.New(),
-		GeneratedAt:    time.Now().UTC(),
-		PeriodStart:    start,
-		PeriodEnd:      end,
-		TenantCount:    len(summaries),
+		ReportID:        uuid.New(),
+		GeneratedAt:     time.Now().UTC(),
+		PeriodStart:     start,
+		PeriodEnd:       end,
+		TenantCount:     len(summaries),
 		TenantSummaries: tenantSummaries,
 	}
 
@@ -533,4 +535,606 @@ func (r *BillingRepository) DeleteOldCostAllocationEntries(ctx context.Context, 
 
 	rowsAffected, _ := result.RowsAffected()
 	return rowsAffected, nil
+}
+
+// ==================== Data Retention Policy (Compliance) ====================
+
+// Default retention periods per compliance requirements
+const (
+	// FinancialDataRetentionPeriod is 7 years for SOX/PCI compliance
+	FinancialDataRetentionPeriod = 7 * 365 * 24 * time.Hour
+	// DetailedExecutionLogRetention is 90 days for execution-level detail
+	DetailedExecutionLogRetention = 90 * 24 * time.Hour
+	// BatchSize for cleanup operations to avoid long locks
+	RetentionCleanupBatchSize = 10000
+)
+
+// CleanupCostAllocationByRetention performs compliance-based data retention cleanup.
+// It removes detailed execution logs beyond 90 days while keeping financial
+// aggregates for 7 years (audit requirement).
+//
+// This implements a tiered retention strategy:
+//   - 0-90 days: Full execution detail retained
+//   - 90 days-7 years: Financial aggregates only (detailed rows deleted)
+//   - 7+ years: All data purged (unless jurisdiction requires longer)
+func (r *BillingRepository) CleanupCostAllocationByRetention(ctx context.Context) (map[string]int64, error) {
+	results := make(map[string]int64)
+	now := time.Now().UTC()
+
+	// Step 1: Delete detailed execution logs older than 90 days
+	// These are high-volume, low-value for audit after the invoice is settled
+	detailedCutoff := now.Add(-DetailedExecutionLogRetention)
+	deleted, err := r.cleanupOldEntriesInBatches(ctx, detailedCutoff)
+	if err != nil {
+		return results, fmt.Errorf("failed to cleanup detailed execution logs: %w", err)
+	}
+	results["detailed_execution_logs_deleted"] = deleted
+
+	// Note: Financial aggregates (invoice-level, monthly rollups) are NOT deleted here
+	// as they must be retained for 7 years. Those are handled separately by
+	// CleanupFinancialAggregatesAfterRetention()
+
+	return results, nil
+}
+
+// cleanupOldEntriesInBatches deletes old entries in batches to avoid table locks
+func (r *BillingRepository) cleanupOldEntriesInBatches(ctx context.Context, before time.Time) (int64, error) {
+	var totalDeleted int64
+
+	for {
+		// Use a subquery with LIMIT to delete in batches
+		// This prevents long-running transactions and table locks
+		result, err := r.db.ExecContext(ctx, `
+			DELETE FROM cost_allocation_entries 
+			WHERE id IN (
+				SELECT id FROM cost_allocation_entries 
+				WHERE timestamp < $1 
+				ORDER BY timestamp 
+				LIMIT $2
+			)`,
+			before, RetentionCleanupBatchSize,
+		)
+		if err != nil {
+			return totalDeleted, fmt.Errorf("batch delete failed: %w", err)
+		}
+
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return totalDeleted, fmt.Errorf("failed to get rows affected: %w", err)
+		}
+
+		totalDeleted += rowsAffected
+
+		// If we deleted fewer rows than the batch size, we're done
+		if rowsAffected < RetentionCleanupBatchSize {
+			break
+		}
+
+		// Check for context cancellation between batches
+		select {
+		case <-ctx.Done():
+			return totalDeleted, ctx.Err()
+		default:
+		}
+	}
+
+	return totalDeleted, nil
+}
+
+// CleanupFinancialAggregatesAfterRetention deletes invoice-level aggregates
+// that have passed the 7-year financial retention period.
+// WARNING: This should only be called after legal review and confirmation
+// that no disputes or audits are pending for the period being purged.
+func (r *BillingRepository) CleanupFinancialAggregatesAfterRetention(ctx context.Context, jurisdictionRetention time.Duration) (int64, error) {
+	// Default to 7 years if not specified
+	retentionPeriod := jurisdictionRetention
+	if retentionPeriod == 0 {
+		retentionPeriod = FinancialDataRetentionPeriod
+	}
+
+	cutoff := time.Now().UTC().Add(-retentionPeriod)
+
+	// First, archive/summarize what we're about to delete for audit purposes
+	// (optional - depends on compliance requirements)
+	_, err := r.createRetentionAuditLog(ctx, cutoff)
+	if err != nil {
+		// Log but continue - don't fail cleanup due to audit logging issues
+		// In production, you might want to alert on this
+		_ = err
+	}
+
+	// Delete entries older than the retention period
+	return r.cleanupOldEntriesInBatches(ctx, cutoff)
+}
+
+// createRetentionAuditLog records what data was purged for compliance auditing
+func (r *BillingRepository) createRetentionAuditLog(ctx context.Context, cutoff time.Time) (int64, error) {
+	// Aggregate what will be deleted for audit purposes
+	query := `
+		SELECT 
+			COUNT(*) as entry_count,
+			COUNT(DISTINCT tenant_id) as tenant_count,
+			MIN(timestamp) as oldest_entry,
+			MAX(timestamp) as newest_entry,
+			SUM(total_cost_cents) as total_cost_cents
+		FROM cost_allocation_entries 
+		WHERE timestamp < $1
+	`
+
+	var summary struct {
+		EntryCount     int64
+		TenantCount    int64
+		OldestEntry    *time.Time
+		NewestEntry    *time.Time
+		TotalCostCents int64
+	}
+
+	err := r.db.QueryRowContext(ctx, query, cutoff).Scan(
+		&summary.EntryCount,
+		&summary.TenantCount,
+		&summary.OldestEntry,
+		&summary.NewestEntry,
+		&summary.TotalCostCents,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create retention audit summary: %w", err)
+	}
+
+	// Insert into retention_audit_log table (if it exists)
+	// This is idempotent - safe to run multiple times
+	_, _ = r.db.ExecContext(ctx, `
+		INSERT INTO retention_audit_log (
+			id, table_name, retention_policy, cutoff_date,
+			records_affected, tenant_count, financial_impact_cents,
+			oldest_record, newest_record, created_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		ON CONFLICT DO NOTHING`,
+		uuid.New(), "cost_allocation_entries", "financial_7_year", cutoff,
+		summary.EntryCount, summary.TenantCount, summary.TotalCostCents,
+		summary.OldestEntry, summary.NewestEntry, time.Now().UTC(),
+	)
+
+	return summary.EntryCount, nil
+}
+
+// GetCostAllocationRetentionSummary returns statistics for retention planning
+// Shows how much data would be affected by cleanup policies
+func (r *BillingRepository) GetCostAllocationRetentionSummary(ctx context.Context) (*CostAllocationRetentionSummary, error) {
+	now := time.Now().UTC()
+	detailedCutoff := now.Add(-DetailedExecutionLogRetention)
+	financialCutoff := now.Add(-FinancialDataRetentionPeriod)
+
+	summary := &CostAllocationRetentionSummary{
+		CurrentTime:            now,
+		DetailedRetentionDays:  90,
+		FinancialRetentionDays: 2555, // 7 years
+	}
+
+	// Count entries older than 90 days (would be cleaned up)
+	queryDetailed := `
+		SELECT COUNT(*), COALESCE(SUM(total_cost_cents), 0)
+		FROM cost_allocation_entries 
+		WHERE timestamp < $1
+	`
+	err := r.db.QueryRowContext(ctx, queryDetailed, detailedCutoff).Scan(
+		&summary.DetailedEntriesEligibleForDeletion,
+		&summary.DetailedFinancialValueCents,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get detailed retention summary: %w", err)
+	}
+
+	// Count entries older than 7 years (financial data)
+	queryFinancial := `
+		SELECT COUNT(*), COALESCE(SUM(total_cost_cents), 0)
+		FROM cost_allocation_entries 
+		WHERE timestamp < $1
+	`
+	err = r.db.QueryRowContext(ctx, queryFinancial, financialCutoff).Scan(
+		&summary.FinancialEntriesEligibleForDeletion,
+		&summary.FinancialDataValueCents,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get financial retention summary: %w", err)
+	}
+
+	// Get date range of all data
+	err = r.db.QueryRowContext(ctx, `
+		SELECT MIN(timestamp), MAX(timestamp), COUNT(*) 
+		FROM cost_allocation_entries
+	`).Scan(&summary.OldestEntryDate, &summary.NewestEntryDate, &summary.TotalEntryCount)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get date range: %w", err)
+	}
+
+	return summary, nil
+}
+
+// CostAllocationRetentionSummary provides statistics for retention planning
+type CostAllocationRetentionSummary struct {
+	CurrentTime                         time.Time  `json:"current_time"`
+	OldestEntryDate                     *time.Time `json:"oldest_entry_date,omitempty"`
+	NewestEntryDate                     *time.Time `json:"newest_entry_date,omitempty"`
+	TotalEntryCount                     int64      `json:"total_entry_count"`
+	DetailedRetentionDays               int        `json:"detailed_retention_days"`
+	DetailedEntriesEligibleForDeletion  int64      `json:"detailed_entries_eligible_for_deletion"`
+	DetailedFinancialValueCents         int64      `json:"detailed_financial_value_cents"`
+	FinancialRetentionDays              int        `json:"financial_retention_days"`
+	FinancialEntriesEligibleForDeletion int64      `json:"financial_entries_eligible_for_deletion"`
+	FinancialDataValueCents             int64      `json:"financial_data_value_cents"`
+}
+
+// ==================== Per-Team Cost Allocation ====================
+
+// GetTeamCostAllocation returns aggregated cost for a team over a period.
+// Uses the tags column (JSONB) to filter by team_id tag.
+func (r *BillingRepository) GetTeamCostAllocation(
+	ctx context.Context,
+	teamID uuid.UUID,
+	start, end time.Time,
+) (*TeamCostAllocation, error) {
+	query := `
+		SELECT
+			COALESCE(SUM(total_cost_cents), 0),
+			COALESCE(SUM(execution_cost_cents), 0),
+			COALESCE(SUM(compute_cost_cents), 0),
+			COALESCE(SUM(platform_fee_cents), 0),
+			COALESCE(SUM(data_transfer_cents), 0),
+			COUNT(*),
+			COUNT(DISTINCT function_id)
+		FROM cost_allocation_entries
+		WHERE tags->>'team_id' = $1
+		  AND timestamp >= $2
+		  AND timestamp <= $3
+	`
+
+	var alloc TeamCostAllocation
+	alloc.TeamID = teamID
+	alloc.PeriodStart = start
+	alloc.PeriodEnd = end
+
+	err := r.db.QueryRowContext(ctx, query, teamID.String(), start, end).Scan(
+		&alloc.TotalCostCents,
+		&alloc.ExecutionCostCents,
+		&alloc.ComputeCostCents,
+		&alloc.PlatformFeeCents,
+		&alloc.DataTransferCents,
+		&alloc.TotalExecutions,
+		&alloc.UniqueFunctions,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get team cost allocation: %w", err)
+	}
+
+	return &alloc, nil
+}
+
+// GetTeamCostByFunction returns per-function cost breakdown for a team.
+func (r *BillingRepository) GetTeamCostByFunction(
+	ctx context.Context,
+	teamID uuid.UUID,
+	start, end time.Time,
+) ([]*TeamCostBreakdown, error) {
+	query := `
+		SELECT
+			function_id,
+			function_name,
+			function_author,
+			SUM(total_cost_cents),
+			COUNT(*),
+			AVG(total_cost_cents),
+			SUM(CASE WHEN execution_outcome = 'success' THEN 1.0 ELSE 0.0 END) / NULLIF(COUNT(*), 0) * 100
+		FROM cost_allocation_entries
+		WHERE tags->>'team_id' = $1
+		  AND timestamp >= $2
+		  AND timestamp <= $3
+		GROUP BY function_id, function_name, function_author
+		ORDER BY SUM(total_cost_cents) DESC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, teamID.String(), start, end)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get team cost by function: %w", err)
+	}
+	defer rows.Close()
+
+	var results []*TeamCostBreakdown
+	for rows.Next() {
+		b := &TeamCostBreakdown{TeamID: teamID}
+		err := rows.Scan(
+			&b.FunctionID, &b.FunctionName, &b.FunctionAuthor,
+			&b.TotalCostCents, &b.TotalExecutions, &b.AvgCostCents, &b.SuccessRate,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan team cost breakdown: %w", err)
+		}
+		results = append(results, b)
+	}
+	return results, rows.Err()
+}
+
+// GetAllTeamsCostSummary returns cost allocation for all teams in a tenant.
+func (r *BillingRepository) GetAllTeamsCostSummary(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	start, end time.Time,
+) ([]*TeamCostAllocation, error) {
+	query := `
+		SELECT DISTINCT tags->>'team_id' as team_id
+		FROM cost_allocation_entries
+		WHERE tenant_id = $1 AND timestamp >= $2 AND timestamp <= $3
+		  AND tags->>'team_id' IS NOT NULL
+	`
+	rows, err := r.db.QueryContext(ctx, query, tenantID, start, end)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list teams: %w", err)
+	}
+	defer rows.Close()
+
+	var summaries []*TeamCostAllocation
+	for rows.Next() {
+		var teamIDStr string
+		if err := rows.Scan(&teamIDStr); err != nil {
+			continue
+		}
+		teamID, err := uuid.Parse(teamIDStr)
+		if err != nil {
+			continue
+		}
+		alloc, err := r.GetTeamCostAllocation(ctx, teamID, start, end)
+		if err != nil {
+			continue
+		}
+		alloc.TenantID = tenantID
+		// Resolve team name
+		var teamName string
+		_ = r.db.QueryRowContext(ctx, `SELECT name FROM teams WHERE id = $1`, teamID).Scan(&teamName)
+		alloc.TeamName = teamName
+		summaries = append(summaries, alloc)
+	}
+	return summaries, rows.Err()
+}
+
+// ==================== Department Budgets ====================
+
+// UpsertDepartmentBudget creates or updates a department budget.
+func (r *BillingRepository) UpsertDepartmentBudget(ctx context.Context, budget *DepartmentBudget) error {
+	query := `
+		INSERT INTO department_budgets (
+			id, tenant_id, name, description, budget_cents,
+			warning_threshold_pct, critical_threshold_pct,
+			period_start, period_end, team_ids, tag_filters,
+			alert_email, is_active, created_by, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+		ON CONFLICT (id) DO UPDATE SET
+			name = EXCLUDED.name, description = EXCLUDED.description,
+			budget_cents = EXCLUDED.budget_cents,
+			warning_threshold_pct = EXCLUDED.warning_threshold_pct,
+			critical_threshold_pct = EXCLUDED.critical_threshold_pct,
+			period_start = EXCLUDED.period_start, period_end = EXCLUDED.period_end,
+			team_ids = EXCLUDED.team_ids, tag_filters = EXCLUDED.tag_filters,
+			alert_email = EXCLUDED.alert_email, is_active = EXCLUDED.is_active,
+			updated_at = EXCLUDED.updated_at
+	`
+	budget.UpdatedAt = time.Now().UTC()
+	teamIDs := make([]string, len(budget.TeamIDs))
+	for i, t := range budget.TeamIDs {
+		teamIDs[i] = t.String()
+	}
+	_, err := r.db.ExecContext(ctx, query,
+		budget.ID, budget.TenantID, budget.Name, budget.Description,
+		budget.BudgetCents, budget.WarningThresholdPct, budget.CriticalThresholdPct,
+		budget.PeriodStart, budget.PeriodEnd, pq.Array(teamIDs), budget.TagFilters,
+		budget.AlertEmail, budget.IsActive, budget.CreatedBy,
+		budget.CreatedAt, budget.UpdatedAt,
+	)
+	return err
+}
+
+// GetDepartmentBudget retrieves a budget by ID.
+func (r *BillingRepository) GetDepartmentBudget(ctx context.Context, id uuid.UUID) (*DepartmentBudget, error) {
+	query := `
+		SELECT id, tenant_id, name, description, budget_cents,
+			warning_threshold_pct, critical_threshold_pct,
+			period_start, period_end, team_ids, tag_filters,
+			alert_email, is_active, created_by, created_at, updated_at
+		FROM department_budgets WHERE id = $1
+	`
+	var b DepartmentBudget
+	var teamIDs []string
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
+		&b.ID, &b.TenantID, &b.Name, &b.Description, &b.BudgetCents,
+		&b.WarningThresholdPct, &b.CriticalThresholdPct,
+		&b.PeriodStart, &b.PeriodEnd, pq.Array(&teamIDs), &b.TagFilters,
+		&b.AlertEmail, &b.IsActive, &b.CreatedBy, &b.CreatedAt, &b.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	b.TeamIDs = make([]uuid.UUID, len(teamIDs))
+	for i, s := range teamIDs {
+		b.TeamIDs[i], _ = uuid.Parse(s)
+	}
+	return &b, nil
+}
+
+// ListDepartmentBudgets lists all budgets for a tenant.
+func (r *BillingRepository) ListDepartmentBudgets(ctx context.Context, tenantID uuid.UUID) ([]*DepartmentBudget, error) {
+	query := `
+		SELECT id, tenant_id, name, description, budget_cents,
+			warning_threshold_pct, critical_threshold_pct,
+			period_start, period_end, team_ids, tag_filters,
+			alert_email, is_active, created_by, created_at, updated_at
+		FROM department_budgets WHERE tenant_id = $1 ORDER BY created_at DESC
+	`
+	rows, err := r.db.QueryContext(ctx, query, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var budgets []*DepartmentBudget
+	for rows.Next() {
+		var b DepartmentBudget
+		var teamIDs []string
+		err := rows.Scan(
+			&b.ID, &b.TenantID, &b.Name, &b.Description, &b.BudgetCents,
+			&b.WarningThresholdPct, &b.CriticalThresholdPct,
+			&b.PeriodStart, &b.PeriodEnd, pq.Array(&teamIDs), &b.TagFilters,
+			&b.AlertEmail, &b.IsActive, &b.CreatedBy, &b.CreatedAt, &b.UpdatedAt,
+		)
+		if err != nil {
+			continue
+		}
+		b.TeamIDs = make([]uuid.UUID, len(teamIDs))
+		for i, s := range teamIDs {
+			b.TeamIDs[i], _ = uuid.Parse(s)
+		}
+		budgets = append(budgets, &b)
+	}
+	return budgets, rows.Err()
+}
+
+// GetDepartmentBudgetSpend calculates current spend against a budget.
+// It sums cost_allocation_entries filtered by the budget's team_ids and tag_filters.
+func (r *BillingRepository) GetDepartmentBudgetSpend(ctx context.Context, budgetID uuid.UUID) (*DepartmentBudget, error) {
+	budget, err := r.GetDepartmentBudget(ctx, budgetID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build spend query based on team_ids or tag_filters
+	var totalSpent int64
+	if len(budget.TeamIDs) > 0 {
+		// Sum by team_id tags
+		placeholders := make([]string, len(budget.TeamIDs))
+		args := make([]interface{}, len(budget.TeamIDs)+2)
+		args[0] = budget.PeriodStart
+		args[1] = budget.PeriodEnd
+		for i, t := range budget.TeamIDs {
+			placeholders[i] = fmt.Sprintf("$%d", i+3)
+			args[i+2] = t.String()
+		}
+		query := fmt.Sprintf(`
+			SELECT COALESCE(SUM(total_cost_cents), 0)
+			FROM cost_allocation_entries
+			WHERE timestamp >= $1 AND timestamp <= $2
+			  AND tags->>'team_id' IN (%s)
+		`, strings.Join(placeholders, ","))
+		_ = r.db.QueryRowContext(ctx, query, args...).Scan(&totalSpent)
+	} else if len(budget.TagFilters) > 0 {
+		// Build dynamic tag filters
+		where := "timestamp >= $1 AND timestamp <= $2"
+		args := []interface{}{budget.PeriodStart, budget.PeriodEnd}
+		idx := 3
+		for k, v := range budget.TagFilters {
+			where += fmt.Sprintf(" AND tags->>$%d = $%d", idx, idx+1)
+			args = append(args, k, v)
+			idx += 2
+		}
+		query := fmt.Sprintf(`
+			SELECT COALESCE(SUM(total_cost_cents), 0)
+			FROM cost_allocation_entries WHERE %s
+		`, where)
+		_ = r.db.QueryRowContext(ctx, query, args...).Scan(&totalSpent)
+	}
+
+	budget.SpentCents = totalSpent
+	budget.RemainingCents = budget.BudgetCents - totalSpent
+	if budget.BudgetCents > 0 {
+		budget.SpentPercent = float64(totalSpent) / float64(budget.BudgetCents) * 100
+	}
+	return budget, nil
+}
+
+// UpsertBudgetAlert records a budget alert.
+func (r *BillingRepository) UpsertBudgetAlert(ctx context.Context, alert *BudgetAlert) error {
+	alert.ID = uuid.New()
+	alert.CreatedAt = time.Now().UTC()
+	query := `
+		INSERT INTO budget_alerts (id, budget_id, tenant_id, level, spent_pct, spent_cents, budget_cents, alert_sent_to, alert_message, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	`
+	_, err := r.db.ExecContext(ctx, query,
+		alert.ID, alert.BudgetID, alert.TenantID,
+		alert.Level, alert.SpentPct, alert.SpentCents, alert.BudgetCents,
+		alert.AlertSentTo, alert.AlertMessage, alert.CreatedAt,
+	)
+	return err
+}
+
+// ListBudgetAlerts returns recent alerts for a tenant.
+func (r *BillingRepository) ListBudgetAlerts(ctx context.Context, tenantID uuid.UUID, limit int) ([]*BudgetAlert, error) {
+	query := `
+		SELECT id, budget_id, tenant_id, level, spent_pct, spent_cents, budget_cents, alert_sent_to, alert_message, created_at
+		FROM budget_alerts WHERE tenant_id = $1
+		ORDER BY created_at DESC LIMIT $2
+	`
+	rows, err := r.db.QueryContext(ctx, query, tenantID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var alerts []*BudgetAlert
+	for rows.Next() {
+		a := &BudgetAlert{}
+		err := rows.Scan(&a.ID, &a.BudgetID, &a.TenantID, &a.Level, &a.SpentPct, &a.SpentCents, &a.BudgetCents, &a.AlertSentTo, &a.AlertMessage, &a.CreatedAt)
+		if err != nil {
+			continue
+		}
+		alerts = append(alerts, a)
+	}
+	return alerts, rows.Err()
+}
+
+// ==================== Cost Anomaly Detection ====================
+
+// UpsertCostAnomaly records a detected anomaly.
+func (r *BillingRepository) UpsertCostAnomaly(ctx context.Context, anomaly *CostAnomaly) error {
+	anomaly.ID = uuid.New()
+	anomaly.CreatedAt = time.Now().UTC()
+	query := `
+		INSERT INTO cost_anomalies (id, tenant_id, anomaly_type, severity, team_id, function_id, region,
+			expected_cost_cents, actual_cost_cents, delta_cents, delta_percent, description, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+	`
+	_, err := r.db.ExecContext(ctx, query,
+		anomaly.ID, anomaly.TenantID, anomaly.AnomalyType, anomaly.Severity,
+		anomaly.TeamID, anomaly.FunctionID, anomaly.Region,
+		anomaly.ExpectedCostCents, anomaly.ActualCostCents, anomaly.DeltaCents,
+		anomaly.DeltaPercent, anomaly.Description, anomaly.CreatedAt,
+	)
+	return err
+}
+
+// ListCostAnomalies returns recent anomalies for a tenant.
+func (r *BillingRepository) ListCostAnomalies(ctx context.Context, tenantID uuid.UUID, limit int) ([]*CostAnomaly, error) {
+	query := `
+		SELECT id, tenant_id, anomaly_type, severity, team_id, function_id, region,
+			expected_cost_cents, actual_cost_cents, delta_cents, delta_percent, description, created_at
+		FROM cost_anomalies WHERE tenant_id = $1
+		ORDER BY created_at DESC LIMIT $2
+	`
+	rows, err := r.db.QueryContext(ctx, query, tenantID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var anomalies []*CostAnomaly
+	for rows.Next() {
+		a := &CostAnomaly{}
+		err := rows.Scan(
+			&a.ID, &a.TenantID, &a.AnomalyType, &a.Severity,
+			&a.TeamID, &a.FunctionID, &a.Region,
+			&a.ExpectedCostCents, &a.ActualCostCents, &a.DeltaCents, &a.DeltaPercent,
+			&a.Description, &a.CreatedAt,
+		)
+		if err != nil {
+			continue
+		}
+		anomalies = append(anomalies, a)
+	}
+	return anomalies, rows.Err()
 }

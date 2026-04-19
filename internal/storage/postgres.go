@@ -469,8 +469,7 @@ func (db *PostgresDB) ListBillingIntegrationSyncs(ctx context.Context, tenantID 
 }
 
 func (db *PostgresDB) CreateUsageExportTemplate(ctx context.Context, template *UsageExportTemplate) error {
-	// TODO: Implement CreateUsageExportTemplate
-	return nil
+	return db.exportRepository.CreateUsageExportTemplate(ctx, template)
 }
 
 func (db *PostgresDB) GetUsageExportTemplate(ctx context.Context, id uuid.UUID) (*UsageExportTemplate, error) {

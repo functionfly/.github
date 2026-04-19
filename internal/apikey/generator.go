@@ -147,6 +147,8 @@ func GetKeyTypeFromPrefix(prefix string) (KeyType, error) {
 		return KeyTypeEnvironment, nil
 	case PrefixOAuth:
 		return KeyTypeOAuth, nil
+	case PrefixTrust:
+		return KeyTypeTrust, nil
 	default:
 		return "", fmt.Errorf("unknown key prefix: %s", prefix)
 	}

@@ -3,9 +3,12 @@ package wallet
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -49,6 +52,7 @@ type AdminAdjustmentLimit struct {
 var (
 	adminAdjustmentLimits AdminAdjustmentLimit
 	walletEncryption      *WalletEncryption
+	auditHMACKey          = getEnvString("WALLET_AUDIT_HMAC_KEY", "default-audit-key-change-in-production")
 )
 
 func init() {
@@ -313,9 +317,9 @@ func SecureCompare(a, b string) bool {
 // HashForAudit creates a hash suitable for audit logging
 // This is a one-way hash for integrity verification
 func HashForAudit(data string) string {
-	// Simple hash for audit purposes - in production, use a proper HMAC
-	// This is just for detecting tampering in audit logs
-	return fmt.Sprintf("%x", data) // Placeholder - replace with proper hash
+	h := hmac.New(sha256.New, []byte(auditHMACKey))
+	h.Write([]byte(data))
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 // WalletSecurityConfig holds all wallet security configuration

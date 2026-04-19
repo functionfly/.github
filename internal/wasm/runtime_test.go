@@ -288,6 +288,10 @@ def handler(event):
 }
 
 func TestPythonRuntime_StdlibIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping WASM stdlib integration test in short mode")
+	}
+
 	// Set test environment variables
 	os.Setenv("TEST_VAR", "hello_world")
 	os.Setenv("API_KEY", "secret123")

@@ -13,6 +13,7 @@ import (
 
 // CreateOrGetStripeCustomer ensures the tenant has a Stripe customer; creates one if missing.
 // It returns the Stripe customer ID and updates the tenant's stripe_customer_id if a new customer was created.
+// If the tenant has billing address/tax information, this is synced to Stripe for automatic tax calculation.
 func CreateOrGetStripeCustomer(
 	ctx context.Context,
 	repo storage.Repository,
@@ -42,6 +43,32 @@ func CreateOrGetStripeCustomer(
 		},
 	}
 
+	// If tenant has billing address, include it for tax calculation
+	if t.BillingCountry != nil && *t.BillingCountry != "" {
+		params.Address = &stripe.AddressParams{
+			Country: stripe.String(*t.BillingCountry),
+		}
+		if t.BillingState != nil && *t.BillingState != "" {
+			params.Address.State = stripe.String(*t.BillingState)
+		}
+		if t.BillingPostalCode != nil && *t.BillingPostalCode != "" {
+			params.Address.PostalCode = stripe.String(*t.BillingPostalCode)
+		}
+	}
+
+	// If tenant has a tax ID, add it to the customer
+	if t.TaxID != nil && *t.TaxID != "" && t.TaxIDType != nil {
+		stripeTaxType := convertTaxIDTypeToStripe(*t.TaxIDType)
+		if stripeTaxType != "" {
+			params.TaxIDData = []*stripe.CustomerTaxIDDataParams{
+				{
+					Type:  stripe.String(stripeTaxType),
+					Value: stripe.String(*t.TaxID),
+				},
+			}
+		}
+	}
+
 	c, err := customer.New(params)
 	if err != nil {
 		return "", fmt.Errorf("create stripe customer: %w", err)
@@ -51,7 +78,37 @@ func CreateOrGetStripeCustomer(
 	return c.ID, nil
 }
 
+// convertTaxIDTypeToStripe converts our tax ID types to Stripe's format
+func convertTaxIDTypeToStripe(taxIDType string) string {
+	stripeTypes := map[string]string{
+		"eu_vat": "eu_vat",
+		"uk_vat": "gb_vat",
+		"us_ein": "us_ein",
+		"ca_gst": "ca_bn",
+		"au_abn": "au_abn",
+		"nz_gst": "nz_gst",
+		"sg_gst": "sg_gst",
+		"ch_vat": "ch_vat",
+		"no_vat": "no_vat",
+		"jp_cn":  "jp_cn",
+		"kr_brn": "kr_brn",
+		"tw_vat": "tw_vat",
+		"in_gst": "in_gst",
+	}
+
+	if stripeType, ok := stripeTypes[taxIDType]; ok {
+		return stripeType
+	}
+	return ""
+}
+
 // CreateBillingPortalSession creates a Stripe Customer Billing Portal session and returns the URL to redirect the user.
+// NOTE: The billing portal configuration (including tax ID collection) must be configured in the Stripe Dashboard:
+// https://dashboard.stripe.com/settings/billing/portal
+// Enable these features in the portal configuration:
+// - Tax ID collection (for VAT/GST numbers)
+// - Customer address updates (required for tax calculation)
+// - Invoice history with tax breakdowns
 func CreateBillingPortalSession(ctx context.Context, customerID, returnURL string) (string, error) {
 	if stripeKey() == "" {
 		return "", fmt.Errorf("STRIPE_SECRET_KEY is not set")

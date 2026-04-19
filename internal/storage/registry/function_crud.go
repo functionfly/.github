@@ -22,15 +22,10 @@ func (r *RegistryRepository) CreateFunction(fn *RegistryFunction) error {
 	// Invalidate list and search caches so new function appears in registry list
 	if r.cache != nil {
 		go func() {
-			if err := r.cache.InvalidateFunction(context.Background(), fn.ID.String()); err != nil {
-				fmt.Printf("Failed to invalidate cache after function creation: %v\n", err)
-			}
-			if err := r.cache.InvalidateSearchResults(context.Background()); err != nil {
-				fmt.Printf("Failed to invalidate search cache after function creation: %v\n", err)
-			}
-			if err := r.cache.InvalidateListResults(context.Background()); err != nil {
-				fmt.Printf("Failed to invalidate list cache after function creation: %v\n", err)
-			}
+			// Cache invalidation is best-effort; failures are logged but don't fail the operation
+			_ = r.cache.InvalidateFunction(context.Background(), fn.ID.String())
+			_ = r.cache.InvalidateSearchResults(context.Background())
+			_ = r.cache.InvalidateListResults(context.Background())
 		}()
 	}
 
@@ -64,14 +59,11 @@ func (r *RegistryRepository) GetFunctionByAuthorName(author, name string) (*Regi
 		return nil, fmt.Errorf("failed to get function by author/name: %w", err)
 	}
 
-	// Cache the result if cache is available
+	// Cache the result if cache is available (best-effort, async)
 	if r.cache != nil && r.keyGen != nil {
 		cacheKey := r.keyGen.FunctionInfo(author, name)
 		go func() {
-			if err := r.cache.SetJSON(context.Background(), cacheKey, fn); err != nil {
-				// Log error but don't fail the operation
-				fmt.Printf("Failed to cache function info: %v\n", err)
-			}
+			_ = r.cache.SetJSON(context.Background(), cacheKey, fn)
 		}()
 	}
 
@@ -146,15 +138,11 @@ func (r *RegistryRepository) DeleteFunction(author, name string) error {
 		return fmt.Errorf("failed to delete function: %w", err)
 	}
 
-	// Invalidate cache
+	// Invalidate cache (best-effort, async)
 	if r.cache != nil {
 		go func() {
-			if err := r.cache.InvalidateFunction(context.Background(), fn.ID.String()); err != nil {
-				fmt.Printf("Failed to invalidate function cache after deletion: %v\n", err)
-			}
-			if err := r.cache.InvalidateSearchResults(context.Background()); err != nil {
-				fmt.Printf("Failed to invalidate search cache after deletion: %v\n", err)
-			}
+			_ = r.cache.InvalidateFunction(context.Background(), fn.ID.String())
+			_ = r.cache.InvalidateSearchResults(context.Background())
 		}()
 	}
 
@@ -163,25 +151,28 @@ func (r *RegistryRepository) DeleteFunction(author, name string) error {
 
 // DeleteAllFunctions deletes all functions from the registry (for testing/reset purposes)
 func (r *RegistryRepository) DeleteAllFunctions() error {
+	// Get table names from GORM to avoid hardcoding
+	versionTable := (&RegistryFunctionVersion{}).TableName()
+	ratingTable := (&RegistryFunctionRating{}).TableName()
+	functionTable := (&RegistryFunction{}).TableName()
+
 	// Use raw SQL to delete all records from related tables first (to avoid FK issues)
-	if err := r.db.Exec("DELETE FROM registry_function_versions").Error; err != nil {
+	if err := r.db.Exec(fmt.Sprintf("DELETE FROM %s", versionTable)).Error; err != nil {
 		return fmt.Errorf("failed to delete all function versions: %w", err)
 	}
 
-	if err := r.db.Exec("DELETE FROM registry_function_ratings").Error; err != nil {
+	if err := r.db.Exec(fmt.Sprintf("DELETE FROM %s", ratingTable)).Error; err != nil {
 		return fmt.Errorf("failed to delete all function ratings: %w", err)
 	}
 
-	if err := r.db.Exec("DELETE FROM registry_functions").Error; err != nil {
+	if err := r.db.Exec(fmt.Sprintf("DELETE FROM %s", functionTable)).Error; err != nil {
 		return fmt.Errorf("failed to delete all functions: %w", err)
 	}
 
-	// Invalidate all caches
+	// Invalidate all caches (best-effort, async)
 	if r.cache != nil {
 		go func() {
-			if err := r.cache.InvalidateSearchResults(context.Background()); err != nil {
-				fmt.Printf("Failed to invalidate search cache: %v\n", err)
-			}
+			_ = r.cache.InvalidateSearchResults(context.Background())
 		}()
 	}
 

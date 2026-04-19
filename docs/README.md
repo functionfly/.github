@@ -2,6 +2,8 @@
 
 This folder contains guides and reference docs. Start with the root [README.md](../README.md) and [CONTRIBUTING.md](../CONTRIBUTING.md).
 
+> **🔒 Internal Use Only**: Documentation in this folder (`docs/`) is for **internal team use**. It may contain architecture details, operational runbooks, and infrastructure specifics not intended for public release. For user-facing documentation, see `web/docs/`.
+
 ## Guides (root → docs)
 
 | Topic | File |

@@ -1,5 +1,7 @@
 # Source code confidentiality and secret safety
 
+> **🔒 Internal Use Only**: This document contains security policies and operational procedures for internal team use. Not intended for public distribution.
+
 This document supports **defense in depth**: fewer people with access, automated detection of mistakes, and secrets kept out of git. It does not replace GitHub org settings or legal agreements.
 
 **Related:** [FLY_SECRETS_FROM_ENV.md](FLY_SECRETS_FROM_ENV.md), [INFISICAL_SETUP.md](INFISICAL_SETUP.md), [AGENTS.md](../AGENTS.md) (vault model).

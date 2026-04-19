@@ -2,8 +2,10 @@ package security
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 	"time"
@@ -342,11 +344,368 @@ func (sas *SecurityAuditService) scanContainerRuntime(ctx context.Context) ([]Vu
 	return vulnerabilities, nil
 }
 
+// VulnerabilityScanner defines the interface for external vulnerability scanners
+type VulnerabilityScanner interface {
+	ScanImage(ctx context.Context, imageName string) ([]Vulnerability, error)
+	ScanFilesystem(ctx context.Context, path string) ([]Vulnerability, error)
+	IsAvailable() bool
+	GetName() string
+}
+
+// ScannerType represents the type of vulnerability scanner
+type ScannerType string
+
+const (
+	ScannerTrivy ScannerType = "trivy"
+	ScannerClair ScannerType = "clair"
+	ScannerGrype ScannerType = "grype"
+)
+
+// TrivyScanner implements Trivy integration
+type TrivyScanner struct {
+	binaryPath string
+}
+
+// NewTrivyScanner creates a new Trivy scanner instance
+func NewTrivyScanner() *TrivyScanner {
+	binary := "trivy"
+	if path := os.Getenv("TRIVY_PATH"); path != "" {
+		binary = path
+	}
+	return &TrivyScanner{binaryPath: binary}
+}
+
+// IsAvailable checks if Trivy is installed and accessible
+func (t *TrivyScanner) IsAvailable() bool {
+	cmd := exec.Command(t.binaryPath, "version")
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+	return true
+}
+
+// GetName returns the scanner name
+func (t *TrivyScanner) GetName() string {
+	return "Trivy"
+}
+
+// ScanImage scans a container image for vulnerabilities
+func (t *TrivyScanner) ScanImage(ctx context.Context, imageName string) ([]Vulnerability, error) {
+	if !t.IsAvailable() {
+		return nil, fmt.Errorf("trivy not available")
+	}
+
+	cmd := exec.CommandContext(ctx, t.binaryPath, "image", "-f", "json", "-q", imageName)
+	output, err := cmd.Output()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			return nil, fmt.Errorf("trivy scan failed: %s", string(exitErr.Stderr))
+		}
+		return nil, fmt.Errorf("failed to run trivy: %w", err)
+	}
+
+	return t.parseTrivyOutput(output)
+}
+
+// ScanFilesystem scans a filesystem for vulnerabilities
+func (t *TrivyScanner) ScanFilesystem(ctx context.Context, path string) ([]Vulnerability, error) {
+	if !t.IsAvailable() {
+		return nil, fmt.Errorf("trivy not available")
+	}
+
+	cmd := exec.CommandContext(ctx, t.binaryPath, "filesystem", "-f", "json", "-q", path)
+	output, err := cmd.Output()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			return nil, fmt.Errorf("trivy scan failed: %s", string(exitErr.Stderr))
+		}
+		return nil, fmt.Errorf("failed to run trivy: %w", err)
+	}
+
+	return t.parseTrivyOutput(output)
+}
+
+// parseTrivyOutput parses Trivy JSON output into Vulnerability structs
+func (t *TrivyScanner) parseTrivyOutput(data []byte) ([]Vulnerability, error) {
+	var result struct {
+		Results []struct {
+			Vulnerabilities []struct {
+				VulnerabilityID  string `json:"VulnerabilityID"`
+				PkgName          string `json:"PkgName"`
+				InstalledVersion string `json:"InstalledVersion"`
+				FixedVersion     string `json:"FixedVersion"`
+				Severity         string `json:"Severity"`
+				Description      string `json:"Description"`
+				PrimaryURL       string `json:"PrimaryURL"`
+				Title            string `json:"Title"`
+			} `json:"Vulnerabilities"`
+		} `json:"Results"`
+	}
+
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse trivy output: %w", err)
+	}
+
+	var vulnerabilities []Vulnerability
+	for _, r := range result.Results {
+		for _, v := range r.Vulnerabilities {
+			vulnerabilities = append(vulnerabilities, Vulnerability{
+				ID:            generateVulnID(),
+				Title:         v.Title,
+				Description:   fmt.Sprintf("%s in package %s", v.Description, v.PkgName),
+				Severity:      strings.ToLower(v.Severity),
+				CVE:           v.VulnerabilityID,
+				Category:      "container",
+				Component:     v.PkgName,
+				Status:        "open",
+				Remediation:   fmt.Sprintf("Update %s to version %s", v.PkgName, v.FixedVersion),
+				ReferenceUrls: []string{v.PrimaryURL},
+				Discovered:    time.Now(),
+				Updated:       time.Now(),
+			})
+		}
+	}
+
+	return vulnerabilities, nil
+}
+
+// ClairScanner implements Clair integration via local scanner or API
+type ClairScanner struct {
+	endpoint string
+	useLocal bool
+}
+
+// NewClairScanner creates a new Clair scanner instance
+func NewClairScanner() *ClairScanner {
+	endpoint := os.Getenv("CLAIR_ENDPOINT")
+	if endpoint == "" {
+		endpoint = "http://localhost:6060"
+	}
+	return &ClairScanner{
+		endpoint: endpoint,
+		useLocal: os.Getenv("CLAIR_USE_LOCAL") == "true",
+	}
+}
+
+// IsAvailable checks if Clair is available
+func (c *ClairScanner) IsAvailable() bool {
+	if c.useLocal {
+		_, err := exec.LookPath("clairctl")
+		return err == nil
+	}
+	// Try to ping the Clair API
+	return false // Would require HTTP client check
+}
+
+// GetName returns the scanner name
+func (c *ClairScanner) GetName() string {
+	return "Clair"
+}
+
+// ScanImage scans a container image using Clair
+func (c *ClairScanner) ScanImage(ctx context.Context, imageName string) ([]Vulnerability, error) {
+	if !c.IsAvailable() {
+		return nil, fmt.Errorf("clair not available")
+	}
+
+	if c.useLocal {
+		cmd := exec.CommandContext(ctx, "clairctl", "report", imageName)
+		output, err := cmd.Output()
+		if err != nil {
+			return nil, fmt.Errorf("clair scan failed: %w", err)
+		}
+		return c.parseClairOutput(output)
+	}
+
+	return nil, fmt.Errorf("clair API mode not yet implemented")
+}
+
+// ScanFilesystem scans a filesystem using Clair
+func (c *ClairScanner) ScanFilesystem(ctx context.Context, path string) ([]Vulnerability, error) {
+	return nil, fmt.Errorf("clair filesystem scanning not supported")
+}
+
+// parseClairOutput parses Clair output
+func (c *ClairScanner) parseClairOutput(data []byte) ([]Vulnerability, error) {
+	var vulnerabilities []Vulnerability
+	return vulnerabilities, nil
+}
+
+// GrypeScanner implements Grype/Syft integration
+type GrypeScanner struct {
+	binaryPath string
+}
+
+// NewGrypeScanner creates a new Grype scanner instance
+func NewGrypeScanner() *GrypeScanner {
+	binary := "grype"
+	if path := os.Getenv("GRYPE_PATH"); path != "" {
+		binary = path
+	}
+	return &GrypeScanner{binaryPath: binary}
+}
+
+// IsAvailable checks if Grype is installed
+func (g *GrypeScanner) IsAvailable() bool {
+	cmd := exec.Command(g.binaryPath, "version")
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+	return true
+}
+
+// GetName returns the scanner name
+func (g *GrypeScanner) GetName() string {
+	return "Grype"
+}
+
+// ScanImage scans a container image using Grype
+func (g *GrypeScanner) ScanImage(ctx context.Context, imageName string) ([]Vulnerability, error) {
+	if !g.IsAvailable() {
+		return nil, fmt.Errorf("grype not available")
+	}
+
+	cmd := exec.CommandContext(ctx, g.binaryPath, "-o", "json", imageName)
+	output, err := cmd.Output()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			return nil, fmt.Errorf("grype scan failed: %s", string(exitErr.Stderr))
+		}
+		return nil, fmt.Errorf("failed to run grype: %w", err)
+	}
+
+	return g.parseGrypeOutput(output)
+}
+
+// ScanFilesystem scans a filesystem using Grype
+func (g *GrypeScanner) ScanFilesystem(ctx context.Context, path string) ([]Vulnerability, error) {
+	if !g.IsAvailable() {
+		return nil, fmt.Errorf("grype not available")
+	}
+
+	cmd := exec.CommandContext(ctx, g.binaryPath, "-o", "json", "dir:"+path)
+	output, err := cmd.Output()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			return nil, fmt.Errorf("grype scan failed: %s", string(exitErr.Stderr))
+		}
+		return nil, fmt.Errorf("failed to run grype: %w", err)
+	}
+
+	return g.parseGrypeOutput(output)
+}
+
+// parseGrypeOutput parses Grype JSON output
+func (g *GrypeScanner) parseGrypeOutput(data []byte) ([]Vulnerability, error) {
+	var result struct {
+		Matches []struct {
+			Vulnerability struct {
+				ID          string   `json:"id"`
+				Severity    string   `json:"severity"`
+				Description string   `json:"description"`
+				URLs        []string `json:"urls"`
+			} `json:"vulnerability"`
+			Artifact struct {
+				Name    string `json:"name"`
+				Version string `json:"version"`
+				Type    string `json:"type"`
+			} `json:"artifact"`
+			RelatedVulnerabilities []struct {
+				ID string `json:"id"`
+			} `json:"relatedVulnerabilities"`
+		} `json:"matches"`
+	}
+
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse grype output: %w", err)
+	}
+
+	var vulnerabilities []Vulnerability
+	for _, m := range result.Matches {
+		v := m.Vulnerability
+		cve := v.ID
+		// Prefer CVE ID from related vulnerabilities if available
+		for _, rv := range m.RelatedVulnerabilities {
+			if strings.HasPrefix(rv.ID, "CVE-") {
+				cve = rv.ID
+				break
+			}
+		}
+
+		vulnerabilities = append(vulnerabilities, Vulnerability{
+			ID:            generateVulnID(),
+			Title:         v.ID,
+			Description:   fmt.Sprintf("%s in %s (%s)", v.Description, m.Artifact.Name, m.Artifact.Type),
+			Severity:      strings.ToLower(v.Severity),
+			CVE:           cve,
+			Category:      "container",
+			Component:     m.Artifact.Name,
+			Status:        "open",
+			Remediation:   fmt.Sprintf("Update %s to a fixed version", m.Artifact.Name),
+			ReferenceUrls: v.URLs,
+			Discovered:    time.Now(),
+			Updated:       time.Now(),
+		})
+	}
+
+	return vulnerabilities, nil
+}
+
+// getAvailableScanners returns a list of available vulnerability scanners
+func (sas *SecurityAuditService) getAvailableScanners() []VulnerabilityScanner {
+	scanners := []VulnerabilityScanner{
+		NewTrivyScanner(),
+		NewClairScanner(),
+		NewGrypeScanner(),
+	}
+
+	var available []VulnerabilityScanner
+	for _, scanner := range scanners {
+		if scanner.IsAvailable() {
+			available = append(available, scanner)
+		}
+	}
+	return available
+}
+
+// scanWithExternalScanner runs a scanner against configured container images
+func (sas *SecurityAuditService) scanWithExternalScanner(ctx context.Context, scanner VulnerabilityScanner) ([]Vulnerability, error) {
+	var allVulns []Vulnerability
+
+	// Images to scan (these would typically come from config or discovered Dockerfiles)
+	imagesToScan := []string{
+		"postgres:15",
+		"redis:7-alpine",
+	}
+
+	for _, image := range imagesToScan {
+		vulns, err := scanner.ScanImage(ctx, image)
+		if err == nil {
+			allVulns = append(allVulns, vulns...)
+		}
+	}
+
+	return allVulns, nil
+}
+
 // scanContainerImages scans for vulnerable container images
 func (sas *SecurityAuditService) scanContainerImages(ctx context.Context) ([]Vulnerability, error) {
 	vulnerabilities := []Vulnerability{}
 
-	// Check for known vulnerable base images
+	// Check for available external vulnerability scanners
+	availableScanners := sas.getAvailableScanners()
+	if len(availableScanners) > 0 {
+		for _, scanner := range availableScanners {
+			scannerVulns, err := sas.scanWithExternalScanner(ctx, scanner)
+			if err == nil {
+				vulnerabilities = append(vulnerabilities, scannerVulns...)
+			}
+		}
+	}
+
+	// Always perform baseline security checks
+	// These represent recommended security practices, not actual CVEs
+	// These checks run in addition to external scanner results
 	vulnerableImages := map[string]struct {
 		cve          string
 		severity     string
@@ -354,22 +713,22 @@ func (sas *SecurityAuditService) scanContainerImages(ctx context.Context) ([]Vul
 		fixedVersion string
 	}{
 		"golang:1.24-alpine": {
-			cve:          "CVE-2024-XXXX",
+			cve:          "SECURITY-BASELINE-001",
 			severity:     "medium",
-			description:  "Alpine Linux vulnerabilities in golang base image",
+			description:  "Use specific alpine version and update packages regularly",
 			fixedVersion: "golang:1.24-alpine (latest patch)",
 		},
 		"postgres:15": {
-			cve:          "CVE-2024-XXXX",
+			cve:          "SECURITY-BASELINE-002",
 			severity:     "high",
-			description:  "PostgreSQL authentication bypass vulnerability",
+			description:  "Use patched PostgreSQL version with latest security updates",
 			fixedVersion: "postgres:15.1+",
 		},
 		"alpine:latest": {
-			cve:          "CVE-2024-XXXX",
+			cve:          "SECURITY-BASELINE-003",
 			severity:     "low",
-			description:  "Alpine Linux package vulnerabilities",
-			fixedVersion: "alpine:latest (with updates)",
+			description:  "Avoid 'latest' tag, use specific version for reproducibility",
+			fixedVersion: "alpine:3.19+ (with updates)",
 		},
 	}
 

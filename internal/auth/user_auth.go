@@ -184,10 +184,10 @@ func (a *AuthService) recordFailedLoginAttempt(userID uuid.UUID, email, ipAddres
 		}
 
 		logrus.WithFields(logrus.Fields{
-			"user_id":        userID,
-			"email":          email,
+			"user_id":         userID,
+			"email":           email,
 			"failed_attempts": recentFailures,
-			"lockout_until":  lockoutUntil,
+			"lockout_until":   lockoutUntil,
 		}).Warn("Account locked due to too many failed login attempts")
 	}
 
@@ -200,8 +200,9 @@ func (a *AuthService) recordFailedLoginAttempt(userID uuid.UUID, email, ipAddres
 	}).Info("Failed login attempt recorded")
 }
 
-// Login authenticates a user and returns a JWT token
-func (a *AuthService) Login(email, password, ipAddress, userAgent string) (res *LoginResponse, err error) {
+// Login authenticates a user and returns a JWT token.
+// The identifier can be either an email address or a username.
+func (a *AuthService) Login(identifier, password, ipAddress, userAgent string) (res *LoginResponse, err error) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			logrus.WithField("panic", rec).WithField("stack", string(debug.Stack())).Error("Login panic")
@@ -214,10 +215,17 @@ func (a *AuthService) Login(email, password, ipAddress, userAgent string) (res *
 		return nil, fmt.Errorf("internal error: auth not configured")
 	}
 
-	// Get user by email
-	user, err := a.repo.GetUserByEmail(email)
+	// Try to get user by email first, then by username
+	user, err := a.repo.GetUserByEmail(identifier)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+	// If not found by email, try username (case-insensitive)
+	if user == nil {
+		user, err = a.repo.GetUserByUsername(identifier)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get user: %w", err)
+		}
 	}
 	if user == nil {
 		return nil, fmt.Errorf("invalid credentials")
@@ -244,14 +252,14 @@ func (a *AuthService) Login(email, password, ipAddress, userAgent string) (res *
 	// Verify password (treat any verify error as invalid credentials to avoid 500 on bad hash format)
 	valid, err := a.VerifyPassword(password, user.PasswordHash)
 	if err != nil {
-		logrus.WithError(err).WithField("email", email).Debug("Password verification error")
+		logrus.WithError(err).WithField("identifier", identifier).Debug("Password verification error")
 		// SECURITY FIX: Record failed login attempt
-		a.recordFailedLoginAttempt(user.ID, email, ipAddress, userAgent)
+		a.recordFailedLoginAttempt(user.ID, user.Email, ipAddress, userAgent)
 		return nil, fmt.Errorf("invalid credentials")
 	}
 	if !valid {
 		// SECURITY FIX: Record failed login attempt
-		a.recordFailedLoginAttempt(user.ID, email, ipAddress, userAgent)
+		a.recordFailedLoginAttempt(user.ID, user.Email, ipAddress, userAgent)
 		return nil, fmt.Errorf("invalid credentials")
 	}
 
@@ -564,16 +572,14 @@ func (a *AuthService) CheckUsernameAvailability(username string) (bool, error) {
 		return false, fmt.Errorf("username is required")
 	}
 
-	// Check if username matches validation pattern
-	if !strings.Contains(username, "") { // This will be checked by the regex
-		// Use the same validation as in the schema
-		matched, err := regexp.MatchString("^[a-zA-Z0-9_-]*$", username)
-		if err != nil {
-			return false, fmt.Errorf("failed to validate username format: %w", err)
-		}
-		if !matched {
-			return false, fmt.Errorf("username contains invalid characters")
-		}
+	// Check if username matches validation pattern (alphanumeric, underscore, hyphen)
+	// Pattern: starts with letter/number, contains only alphanumeric, underscore, or hyphen
+	matched, err := regexp.MatchString("^[a-zA-Z0-9][a-zA-Z0-9_-]*$", username)
+	if err != nil {
+		return false, fmt.Errorf("failed to validate username format: %w", err)
+	}
+	if !matched {
+		return false, fmt.Errorf("username must start with a letter or number and contain only letters, numbers, underscores, or hyphens")
 	}
 
 	// Check length constraints
@@ -594,6 +600,224 @@ func (a *AuthService) CheckUsernameAvailability(username string) (bool, error) {
 
 	// Username is available
 	return true, nil
+}
+
+// UsernameChangeEligibility contains information about a user's ability to change their username
+type UsernameChangeEligibility struct {
+	CanChangeFreely     bool       `json:"canChangeFreely"`              // True if within free changes (2 per year)
+	CanChangeWithFee    bool       `json:"canChangeWithFee"`             // True if can pay fee for early change
+	NextFreeChangeDate  *time.Time `json:"nextFreeChangeDate,omitempty"` // When they can change for free
+	ChangesUsedThisYear int        `json:"changesUsedThisYear"`          // How many changes used (0-2)
+	ChangesRemaining    int        `json:"changesRemaining"`             // How many free changes left
+	EarlyChangeFeeCents int        `json:"earlyChangeFeeCents"`          // Fee for early change (in cents)
+	Message             string     `json:"message"`                      // Human-readable message
+}
+
+// CheckUsernameChangeEligibility checks if a user can change their username
+// Returns eligibility information including fee requirements
+func (a *AuthService) CheckUsernameChangeEligibility(ctx context.Context, userID uuid.UUID) (*UsernameChangeEligibility, error) {
+	// Get user's username change history
+	history, err := a.repo.GetUsernameChangeHistory(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get username change history: %w", err)
+	}
+
+	// Calculate year window (last 365 days)
+	yearAgo := time.Now().AddDate(0, 0, -365)
+
+	// Count changes in the last year
+	changesThisYear := 0
+	var lastChangeDate *time.Time
+	for _, h := range history {
+		if h.ChangedAt.After(yearAgo) {
+			changesThisYear++
+		}
+		if lastChangeDate == nil || h.ChangedAt.After(*lastChangeDate) {
+			lastChangeDate = &h.ChangedAt
+		}
+	}
+
+	// Default fee for early change (e.g., $5.00 = 500 cents)
+	earlyChangeFeeCents := 500
+
+	eligibility := &UsernameChangeEligibility{
+		ChangesUsedThisYear: changesThisYear,
+		EarlyChangeFeeCents: earlyChangeFeeCents,
+	}
+
+	// Check if user has free changes remaining (2 per year)
+	if changesThisYear < 2 {
+		eligibility.CanChangeFreely = true
+		eligibility.ChangesRemaining = 2 - changesThisYear
+		eligibility.CanChangeWithFee = true
+		eligibility.Message = fmt.Sprintf("You have %d free username change(s) remaining this year", eligibility.ChangesRemaining)
+	} else {
+		eligibility.CanChangeFreely = false
+		eligibility.ChangesRemaining = 0
+		// Check if 6 months have passed since last change
+		if lastChangeDate != nil {
+			sixMonthsAgo := time.Now().AddDate(0, -6, 0)
+			if lastChangeDate.Before(sixMonthsAgo) {
+				// It's been 6+ months since last change, they can use a new year's quota
+				eligibility.CanChangeFreely = true
+				eligibility.ChangesRemaining = 2
+				eligibility.Message = "New year window started. You have 2 free username changes available."
+			} else {
+				// Must pay fee for early change
+				eligibility.CanChangeWithFee = true
+				nextFreeDate := lastChangeDate.AddDate(0, 6, 0)
+				eligibility.NextFreeChangeDate = &nextFreeDate
+				eligibility.Message = fmt.Sprintf("You have used your 2 free changes. Pay $%.2f to change now, or wait until %s for a free change",
+					float64(earlyChangeFeeCents)/100, nextFreeDate.Format("Jan 2, 2006"))
+			}
+		} else {
+			// No previous changes, should have free changes
+			eligibility.CanChangeFreely = true
+			eligibility.ChangesRemaining = 2
+			eligibility.Message = "You have 2 free username changes available"
+		}
+	}
+
+	return eligibility, nil
+}
+
+// ChangeUsernameRequest represents a username change request
+type ChangeUsernameRequest struct {
+	NewUsername     string `json:"new_username"`
+	PayEarlyFee     bool   `json:"pay_early_fee"`               // Set true to pay fee and bypass 6-month window
+	StripePaymentID string `json:"stripe_payment_id,omitempty"` // Payment intent ID if paying fee
+}
+
+// ChangeUsernameResponse represents the result of a username change
+type ChangeUsernameResponse struct {
+	Success      bool   `json:"success"`
+	OldUsername  string `json:"old_username,omitempty"`
+	NewUsername  string `json:"new_username,omitempty"`
+	FeePaidCents int    `json:"fee_paid_cents,omitempty"`
+	Message      string `json:"message"`
+}
+
+// ChangeUsername changes a user's username with 2-per-year limit and optional early-change fee
+func (a *AuthService) ChangeUsername(ctx context.Context, userID uuid.UUID, req ChangeUsernameRequest, ipAddress, userAgent string) (*ChangeUsernameResponse, error) {
+	// Validate new username format
+	if req.NewUsername == "" {
+		return nil, fmt.Errorf("new username is required")
+	}
+
+	// Check username format (same as signup validation)
+	clean := req.NewUsername
+	matched, err := regexp.MatchString("^[a-zA-Z0-9][a-zA-Z0-9_-]*$", clean)
+	if err != nil || !matched {
+		return nil, fmt.Errorf("username must start with a letter or number and contain only letters, numbers, underscores, or hyphens")
+	}
+	if len(clean) < 3 {
+		return nil, fmt.Errorf("username must be at least 3 characters")
+	}
+	if len(clean) > 30 {
+		return nil, fmt.Errorf("username must be 30 characters or fewer")
+	}
+
+	// Get current user
+	user, err := a.repo.GetUserByID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+	if user == nil {
+		return nil, fmt.Errorf("user not found")
+	}
+
+	// Get old username
+	oldUsername := ""
+	if user.Username != nil {
+		oldUsername = *user.Username
+	}
+
+	// If username hasn't changed, return early
+	if oldUsername == clean {
+		return &ChangeUsernameResponse{
+			Success:     true,
+			OldUsername: oldUsername,
+			NewUsername: clean,
+			Message:     "Username is already set to this value",
+		}, nil
+	}
+
+	// Check if username is available
+	existingUser, err := a.repo.GetUserByUsername(clean)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check username availability: %w", err)
+	}
+	if existingUser != nil && existingUser.ID != userID {
+		return nil, fmt.Errorf("username is already taken")
+	}
+
+	// Check eligibility
+	eligibility, err := a.CheckUsernameChangeEligibility(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check eligibility: %w", err)
+	}
+
+	// Determine if this is a free change or paid change
+	var feePaidCents int
+	var wasEarlyChange bool
+
+	if eligibility.CanChangeFreely && eligibility.ChangesRemaining > 0 {
+		// Free change
+		feePaidCents = 0
+		wasEarlyChange = false
+	} else if eligibility.CanChangeWithFee && req.PayEarlyFee {
+		// Paid early change
+		feePaidCents = eligibility.EarlyChangeFeeCents
+		wasEarlyChange = true
+		// Note: In production, verify the Stripe payment here
+		// For now, we assume the payment is valid if provided
+	} else {
+		// Not eligible
+		if eligibility.NextFreeChangeDate != nil {
+			return nil, fmt.Errorf("you cannot change your username until %s, or pay the early-change fee",
+				eligibility.NextFreeChangeDate.Format("Jan 2, 2006"))
+		}
+		return nil, fmt.Errorf("you have exceeded your username change limit for this year")
+	}
+
+	// Record the username change in history before updating user
+	history := &storage.UsernameChangeHistory{
+		ID:             uuid.New(),
+		UserID:         userID,
+		OldUsername:    oldUsername,
+		NewUsername:    clean,
+		ChangedAt:      time.Now(),
+		ChangedBy:      userID,
+		WasEarlyChange: wasEarlyChange,
+		FeePaidCents:   feePaidCents,
+		FeeCurrency:    "USD",
+		IPAddress:      ipAddress,
+		UserAgent:      userAgent,
+	}
+	if req.StripePaymentID != "" {
+		history.StripePaymentID = &req.StripePaymentID
+	}
+
+	if err := a.repo.CreateUsernameChangeHistory(ctx, history); err != nil {
+		return nil, fmt.Errorf("failed to record username change: %w", err)
+	}
+
+	// Update user's username
+	updates := map[string]interface{}{
+		"username": clean,
+	}
+	_, err = a.repo.UpdateUser(ctx, userID, updates)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update username: %w", err)
+	}
+
+	return &ChangeUsernameResponse{
+		Success:      true,
+		OldUsername:  oldUsername,
+		NewUsername:  clean,
+		FeePaidCents: feePaidCents,
+		Message:      "Username changed successfully",
+	}, nil
 }
 
 // sendWelcomeNotification sends an in-app welcome notification if a notifier is configured.

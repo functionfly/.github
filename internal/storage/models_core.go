@@ -129,11 +129,21 @@ type Tenant struct {
 	// Seat management fields
 	SeatGracePeriodEnd *time.Time `json:"seat_grace_period_end,omitempty"` // Grace period end after downgrade
 	SeatWarningSentAt  *time.Time `json:"seat_warning_sent_at,omitempty"`  // Last seat warning notification
-	Users              []User     `json:"users,omitempty" gorm:"foreignKey:TenantID"`
-	Apps               []App      `json:"apps,omitempty" gorm:"foreignKey:TenantID"`
-	Teams              []Team     `json:"teams,omitempty" gorm:"foreignKey:TenantID"`
-	CreatedAt          time.Time  `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt          time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+	// Tax/VAT compliance fields
+	BillingCountry      *string   `json:"billing_country,omitempty" gorm:"column:billing_country;size:2"`          // ISO 3166-1 alpha-2
+	BillingState        *string   `json:"billing_state,omitempty" gorm:"column:billing_state;size:50"`             // State/Province
+	BillingPostalCode   *string   `json:"billing_postal_code,omitempty" gorm:"column:billing_postal_code;size:20"` // Postal/ZIP code
+	TaxID               *string   `json:"tax_id,omitempty" gorm:"column:tax_id;size:50"`                           // Tax ID (VAT, EIN, etc.)
+	TaxIDType           *string   `json:"tax_id_type,omitempty" gorm:"column:tax_id_type;size:20"`                 // Type: eu_vat, us_ein, ca_gst, etc.
+	TaxStatus           string    `json:"tax_status" gorm:"column:tax_status;default:'pending';size:20"`           // pending, valid, invalid, exempt
+	TaxExempt           bool      `json:"tax_exempt" gorm:"column:tax_exempt;default:false"`                       // Tax exempt flag
+	StripeTaxLocationID *string   `json:"stripe_tax_location_id,omitempty" gorm:"column:stripe_tax_location_id;size:255"`
+	StripeCustomerTaxID *string   `json:"stripe_customer_tax_id,omitempty" gorm:"column:stripe_customer_tax_id;size:255"`
+	Users               []User    `json:"users,omitempty" gorm:"foreignKey:TenantID"`
+	Apps                []App     `json:"apps,omitempty" gorm:"foreignKey:TenantID"`
+	Teams               []Team    `json:"teams,omitempty" gorm:"foreignKey:TenantID"`
+	CreatedAt           time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt           time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // Team represents a team within a tenant
@@ -377,6 +387,29 @@ func (NewsletterCampaignEmail) TableName() string {
 	return "newsletter_campaign_emails"
 }
 
+// UsernameChangeHistory tracks all username changes for a user
+// Used to enforce the 2-per-year limit with optional early-change fee
+type UsernameChangeHistory struct {
+	ID          uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	UserID      uuid.UUID `json:"user_id" gorm:"type:uuid;not null;index"`
+	OldUsername string    `json:"old_username" gorm:"size:255;not null"`
+	NewUsername string    `json:"new_username" gorm:"size:255;not null"`
+	ChangedAt   time.Time `json:"changed_at" gorm:"not null;index"`
+	ChangedBy   uuid.UUID `json:"changed_by" gorm:"type:uuid"` // User who made the change (for admin changes)
+	// Fee-related fields for early changes
+	WasEarlyChange  bool    `json:"was_early_change" gorm:"default:false"` // True if changed before 6-month window
+	FeePaidCents    int     `json:"fee_paid_cents" gorm:"default:0"`       // Fee paid in cents (if any)
+	FeeCurrency     string  `json:"fee_currency" gorm:"size:3;default:'USD'"`
+	StripePaymentID *string `json:"stripe_payment_id,omitempty" gorm:"size:255"`
+	// Metadata
+	IPAddress string `json:"ip_address,omitempty" gorm:"size:45"`
+	UserAgent string `json:"user_agent,omitempty" gorm:"size:500"`
+}
+
+func (UsernameChangeHistory) TableName() string {
+	return "username_change_history"
+}
+
 // ExecutionRetentionSettings represents the database model for retention configuration
 type ExecutionRetentionSettings struct {
 	ID                           uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
@@ -411,4 +444,65 @@ type ExecutionRetentionSettingsUpdate struct {
 	BatchSize                    *int       `json:"batch_size,omitempty"`
 	VerboseLogging               *bool      `json:"verbose_logging,omitempty"`
 	UpdatedBy                    *uuid.UUID `json:"updated_by,omitempty"`
+}
+
+// MagicLink represents a magic link token for passwordless authentication
+type MagicLink struct {
+	ID           uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	Token        string     `json:"token" gorm:"uniqueIndex;not null;size:255"`
+	Email        string     `json:"email" gorm:"not null;index;size:255"`
+	UserID       *uuid.UUID `json:"user_id,omitempty" gorm:"type:uuid;index"`
+	User         *User      `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	Used         bool       `json:"used" gorm:"default:false;not null"`
+	UsedAt       *time.Time `json:"used_at,omitempty"`
+	ExpiresAt    time.Time  `json:"expires_at" gorm:"not null;index"`
+	CreatedAt    time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	IPCreated    string     `json:"ip_created,omitempty" gorm:"size:45"`
+	UserAgent    string     `json:"user_agent,omitempty" gorm:"size:500"`
+	RedirectPath string     `json:"redirect_path,omitempty" gorm:"size:255"`
+}
+
+func (MagicLink) TableName() string {
+	return "magic_links"
+}
+
+// IsExpired checks if the magic link has expired
+func (m *MagicLink) IsExpired() bool {
+	return time.Now().After(m.ExpiresAt)
+}
+
+// CanUse checks if the magic link can be used (not used and not expired)
+func (m *MagicLink) CanUse() bool {
+	return !m.Used && !m.IsExpired()
+}
+
+// PendingUsernameChange represents a username change waiting for payment completion
+type PendingUsernameChange struct {
+	ID                uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	UserID            uuid.UUID  `json:"user_id" gorm:"type:uuid;not null;index"`
+	OldUsername       string     `json:"old_username" gorm:"size:255;not null"`
+	NewUsername       string     `json:"new_username" gorm:"size:255;not null"`
+	Status            string     `json:"status" gorm:"size:20;default:'pending'"` // 'pending', 'completed', 'failed', 'expired'
+	CheckoutSessionID string     `json:"checkout_session_id,omitempty" gorm:"size:255;index"`
+	FeeCents          int        `json:"fee_cents" gorm:"default:0"`
+	FeeCurrency       string     `json:"fee_currency" gorm:"size:3;default:'USD'"`
+	CreatedAt         time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt         time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+	CompletedAt       *time.Time `json:"completed_at,omitempty"`
+	IPAddress         string     `json:"ip_address,omitempty" gorm:"size:45"`
+	UserAgent         string     `json:"user_agent,omitempty" gorm:"size:500"`
+}
+
+func (PendingUsernameChange) TableName() string {
+	return "pending_username_changes"
+}
+
+// IsExpired checks if the pending change has expired (valid for 24 hours)
+func (p *PendingUsernameChange) IsExpired() bool {
+	return time.Since(p.CreatedAt) > 24*time.Hour
+}
+
+// CanComplete checks if the pending change can be completed
+func (p *PendingUsernameChange) CanComplete() bool {
+	return p.Status == "pending" && !p.IsExpired()
 }

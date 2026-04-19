@@ -129,9 +129,6 @@ func (e *EdgeCacheService) GetEdgeCacheCandidates(ctx context.Context) ([]*EdgeC
 	cacheKey := "edge_cache:candidates"
 	var candidates []*EdgeCacheCandidate
 	if err := e.registryCache.GetJSON(ctx, cacheKey, &candidates); err == nil {
-		// Check if cache is still fresh (within 5 minutes)
-		// For now, just return cached results. In a real implementation,
-		// you'd check timestamps or use cache TTL
 		return candidates, nil
 	}
 
@@ -156,10 +153,10 @@ func (e *EdgeCacheService) GetEdgeCacheCandidates(ctx context.Context) ([]*EdgeC
 		return nil, fmt.Errorf("failed to query edge cache candidates: %w", err)
 	}
 
-	// Filter and validate candidates
+	// Filter, score, and validate candidates
 	var validCandidates []*EdgeCacheCandidate
 	for _, candidate := range candidates {
-		// Double-check eligibility
+		candidate.CachePriority = e.CalculateCachePriority(candidate)
 		if e.IsEligibleForEdgeCaching(
 			candidate.FunctionID,
 			candidate.PopularityScore,
@@ -316,14 +313,53 @@ func (e *EdgeCacheService) PurgeFunctionFromEdge(ctx context.Context, functionID
 	return nil
 }
 
-// UpdateFunctionPopularity updates popularity and potentially triggers edge cache refresh
+// UpdateFunctionPopularity persists a popularity change and triggers cache invalidation
+// when the function crosses an edge-cache eligibility boundary.
 func (e *EdgeCacheService) UpdateFunctionPopularity(ctx context.Context, functionID uuid.UUID, newPopularity int) error {
-	// Check if this function should now be eligible for edge caching
-	// This would trigger a refresh of the edge cache candidates
-	// For now, just log the change
 	logrus.Debugf("Function %s popularity updated to %d", functionID.String(), newPopularity)
 
-	// In a real implementation, you might want to trigger a refresh
-	// if the popularity crosses certain thresholds
+	// Persist the new score so the next candidate recomputation uses it
+	if e.repository != nil {
+		if err := e.repository.UpdateFunctionPopularityScore(ctx, functionID, newPopularity); err != nil {
+			logrus.Warnf("Failed to persist popularity score for %s: %v", functionID.String(), err)
+		}
+	}
+
+	// Invalidate the cached candidates list so the next GetEdgeCacheCandidates
+	// call recomputes with the updated score.
+	if err := e.registryCache.Delete(ctx, "edge_cache:candidates"); err != nil && err != ErrNotFound {
+		logrus.Warnf("Failed to invalidate edge cache candidates for %s: %v", functionID.String(), err)
+	}
+
+	// Only trigger an immediate full refresh when crossing an eligibility boundary.
+	// Small drift within the same eligibility state is picked up by the next
+	// periodic RefreshEdgeCacheCandidates (startEdgeCacheRefresh, every 10 min).
+	if e.repository != nil {
+		candidate, err := e.repository.GetFunctionEdgeCacheMetrics(ctx, functionID, time.Hour)
+		if err == nil && candidate != nil {
+			wasEligible := e.IsEligibleForEdgeCaching(
+				functionID,
+				candidate.PopularityScore,
+				candidate.ExecutionCount,
+				candidate.TrustScore,
+				candidate.SuccessRate,
+				candidate.AvgLatency,
+			)
+			isNowEligible := newPopularity >= e.minPopularity
+
+			if wasEligible != isNowEligible {
+				logrus.Infof("Function %s eligibility changed (was %v, now %v); triggering edge cache refresh",
+					functionID.String(), wasEligible, isNowEligible)
+				go func() {
+					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+					defer cancel()
+					if err := e.RefreshEdgeCacheCandidates(ctx); err != nil {
+						logrus.Errorf("Failed to refresh edge cache after eligibility change: %v", err)
+					}
+				}()
+			}
+		}
+	}
+
 	return nil
 }

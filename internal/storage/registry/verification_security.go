@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -268,4 +269,82 @@ func (r *RegistryRepository) UnblockFunction(functionVersionID uuid.UUID) error 
 	}
 
 	return nil // Not blocked, nothing to do
+}
+
+// CreateVerificationJob creates a new verification job record.
+func (r *RegistryRepository) CreateVerificationJob(job *VerificationJob) error {
+	if job.ID == uuid.Nil {
+		job.ID = uuid.New()
+	}
+	job.RequestedAt = time.Now()
+	job.CreatedAt = time.Now()
+	job.UpdatedAt = time.Now()
+	if err := r.db.Create(job).Error; err != nil {
+		return fmt.Errorf("failed to create verification job: %w", err)
+	}
+	return nil
+}
+
+// GetVerificationJob retrieves a verification job by ID.
+func (r *RegistryRepository) GetVerificationJob(jobID uuid.UUID) (*VerificationJob, error) {
+	var job VerificationJob
+	if err := r.db.First(&job, jobID).Error; err != nil {
+		return nil, fmt.Errorf("failed to get verification job: %w", err)
+	}
+	return &job, nil
+}
+
+// GetVerificationJobsByFunction returns all verification jobs for a function.
+func (r *RegistryRepository) GetVerificationJobsByFunction(functionID uuid.UUID, limit, offset int) ([]VerificationJob, int64, error) {
+	var jobs []VerificationJob
+	var total int64
+	query := r.db.Model(&VerificationJob{}).Where("function_id = ?", functionID)
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to count verification jobs: %w", err)
+	}
+	if err := query.Order("created_at DESC").Limit(limit).Offset(offset).Find(&jobs).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to list verification jobs: %w", err)
+	}
+	return jobs, total, nil
+}
+
+// UpdateVerificationJobStatus updates the status of a verification job.
+func (r *RegistryRepository) UpdateVerificationJobStatus(jobID uuid.UUID, status, resultStatus string, resultData json.RawMessage, errMsg string) error {
+	updates := map[string]interface{}{
+		"status":        status,
+		"result_status": resultStatus,
+		"result_data":   resultData,
+		"error":         errMsg,
+		"updated_at":    time.Now(),
+	}
+	if status == "running" {
+		now := time.Now()
+		updates["started_at"] = &now
+	}
+	if status == "completed" || status == "passed" || status == "failed" {
+		now := time.Now()
+		updates["completed_at"] = &now
+	}
+	if err := r.db.Model(&VerificationJob{}).Where("id = ?", jobID).Updates(updates).Error; err != nil {
+		return fmt.Errorf("failed to update verification job: %w", err)
+	}
+	return nil
+}
+
+// CancelVerificationJob marks a verification job as cancelled if it is still pending.
+func (r *RegistryRepository) CancelVerificationJob(jobID uuid.UUID) error {
+	result := r.db.Model(&VerificationJob{}).
+		Where("id = ? AND status IN ?", jobID, []string{"pending", "queued", "running"}).
+		Updates(map[string]interface{}{
+			"status":      "cancelled",
+			"result_status": "cancelled",
+			"updated_at":  time.Now(),
+		})
+	if result.Error != nil {
+		return fmt.Errorf("failed to cancel verification job: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("job not found or already finished")
+	}
+	return nil
 }

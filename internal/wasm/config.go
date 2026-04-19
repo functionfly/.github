@@ -111,6 +111,11 @@ func NewDefaultSecurityConfig() *WASMSecurityConfig {
 	}
 }
 
+// ValidateOutputSize checks if the output size is within configured limits
+func (c *WASMSecurityConfig) ValidateOutputSize(size uint32) bool {
+	return size <= c.MaxOutputSize
+}
+
 // NewSecurityConfigFromEnv creates a security config from environment variables
 func NewSecurityConfigFromEnv() *WASMSecurityConfig {
 	config := NewDefaultSecurityConfig()
@@ -193,9 +198,20 @@ func (c *WASMSecurityConfig) ValidateInputSize(size uint32) bool {
 	return size <= c.MaxInputSize
 }
 
-// ValidateOutputSize checks if the output size is within limits
-func (c *WASMSecurityConfig) ValidateOutputSize(size uint32) bool {
-	return size <= c.MaxOutputSize
+// GetChunkBufferSize returns the recommended chunk buffer size for streaming
+// This is based on the MaxInputSize but ensures at least a reasonable chunk size
+func (c *WASMSecurityConfig) GetChunkBufferSize() int {
+	const minChunkSize = 64 * 1024 // 64KB minimum
+	maxInput := int(c.MaxInputSize)
+	if maxInput <= 0 {
+		return minChunkSize
+	}
+	// Use 1/10th of max input, but at least the minimum
+	chunkSize := maxInput / 10
+	if chunkSize < minChunkSize {
+		return minChunkSize
+	}
+	return chunkSize
 }
 
 // Clone creates a copy of the security config

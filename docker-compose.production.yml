@@ -80,7 +80,6 @@ services:
       - SMTP_PASSWORD=${SMTP_PASSWORD}
       - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL}
       - SMTP_FROM_NAME=${SMTP_FROM_NAME}
-      - FLYWHEEL_ENABLED=${FLYWHEEL_ENABLED:-true}
       - LOG_LEVEL=${APP_LOG_LEVEL:-info}
       - LOG_FORMAT=${LOG_FORMAT:-json}
     ports:

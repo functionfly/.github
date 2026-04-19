@@ -43,27 +43,16 @@ func bundlePythonForWasmRuntime(manifest *manifest.Manifest) ([]byte, error) {
 
 // createPythonWasmWithRuntime creates a WASM module using production MicroPython runtime
 func createPythonWasmWithRuntime(sourceCode string, manifest *manifest.Manifest) ([]byte, error) {
-	// Production approach: Use MicropythonLinker to create a wrapper module
-	// that links with the real MicroPython runtime at execution time
+	// Production approach: Use the proper linker that returns micropython.wasm directly
+	// User code is loaded at runtime via mp_js_do_exec (micropython's JS interop)
 	fmt.Printf("Using production MicroPython runtime for %s\n", manifest.Name)
 
-	// Load the precompiled MicroPython runtime directly
-	wasmBytes, err := loadMicropythonRuntime()
+	wasmBytes, err := CompileWithMicropython(sourceCode, manifest)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load MicroPython runtime: %v", err)
+		return nil, fmt.Errorf("failed to compile with MicroPython: %v", err)
 	}
 
-	// Basic validation only - check magic bytes and minimum size
-	// Skip full validation as the precompiled runtime is known-good
-	if len(wasmBytes) < 8 {
-		return nil, fmt.Errorf("MicroPython runtime too small: %d bytes", len(wasmBytes))
-	}
-	if wasmBytes[0] != 0x00 || wasmBytes[1] != 0x61 || wasmBytes[2] != 0x73 || wasmBytes[3] != 0x6D {
-		return nil, fmt.Errorf("MicroPython runtime has invalid magic bytes")
-	}
-
-	fmt.Printf("Production: Loaded MicroPython runtime (%d bytes)\n", len(wasmBytes))
-
+	fmt.Printf("Production: Loaded MicroPython runtime with user code hook (%d bytes)\n", len(wasmBytes))
 	return wasmBytes, nil
 }
 
@@ -181,6 +170,7 @@ func createRuntimeWithEmbeddedCode(runtimeBytes []byte, sourceCode string, manif
 }
 
 // createPythonWasmModule creates a WASM module for Python execution
+// This generates WebAssembly Text (WAT) that can be compiled to WASM bytecode
 func createPythonWasmModule(sourceCode string, manifest *manifest.Manifest) ([]byte, error) {
 	// Create a WASM module following the standardized FunctionModule interface
 	// This generates WebAssembly Text (WAT) that can be compiled to WASM bytecode
@@ -188,21 +178,30 @@ func createPythonWasmModule(sourceCode string, manifest *manifest.Manifest) ([]b
 	// Escape the source code for WAT data section
 	escapedSource := escapeForWAT(sourceCode)
 
-	// Create metadata JSON
+	// Create metadata JSON with fallback indicator
 	metadata := fmt.Sprintf(`{
 		"name": "%s",
 		"runtime": "python",
-		"runtime_version": "micropython-1.20",
-		"version": "%s",
+		"runtime_version": "fallback-stub",
+			"version": "%s",
 		"entry_point": "handler",
 		"dependencies": [],
 		"memory_mb": 128,
 		"timeout_ms": 5000,
 		"uses_network": false,
-		"uses_filesystem": false
+		"uses_filesystem": false,
+		"fallback": true,
+		"fallback_reason": "micropython_runtime_unavailable"
 	}`, manifest.Name, manifest.Version)
 
 	escapedMetadata := escapeForWAT(metadata)
+
+	// Generate fallback error response JSON
+	fallbackError := fmt.Sprintf(
+		`{"success":false,"error":"Python execution unavailable - micropython.wasm not found","fallback":true,"source_hint":"%s"}`,
+		escapeJsonString(truncateString(sourceCode, 100)),
+	)
+	escapedError := escapeForWAT(fallbackError)
 
 	watTemplate := `
 (module
@@ -219,17 +218,14 @@ func createPythonWasmModule(sourceCode string, manifest *manifest.Manifest) ([]b
   (data (i32.const 1024) "%s")
   ;; Function metadata
   (data (i32.const 4096) "%s")
-  ;; Result buffer
-  (data (i32.const 2048) "")
+  ;; Result buffer with fallback error
+  (data (i32.const 2048) "%s")
 
   ;; Initialize function - called once on cold start
   (func $init (export "init")
     ;; Mark as initialized
     i32.const 1
     global.set $initialized
-
-    ;; Initialize Micropython runtime (stub - would call actual Micropython init)
-    ;; For now, just return success
   )
 
   ;; Execute function - main entry point for function execution
@@ -246,14 +242,9 @@ func createPythonWasmModule(sourceCode string, manifest *manifest.Manifest) ([]b
       call $init
     end
 
-    ;; Execute Python function (stub implementation)
-    ;; In a real implementation, this would:
-    ;; 1. Pass input to Micropython interpreter
-    ;; 2. Execute the embedded Python code
-    ;; 3. Return result via memory
-
-    ;; For now, return a simple success message
-    call $stub_execute
+    ;; Return fallback error JSON indicating Python runtime unavailable
+    ;; The result is a pointer to the embedded error JSON
+    i32.const 2048
   )
 
   ;; Get metadata function
@@ -262,115 +253,29 @@ func createPythonWasmModule(sourceCode string, manifest *manifest.Manifest) ([]b
     i32.const 4096
   )
 
-  ;; Stub execution function (simplified implementation)
-  (func $stub_execute (result i32)
-    ;; Write a simple result to memory
-    ;; In real implementation, this would execute actual Python code
+  ;; Load code function - required by PythonRuntime interface
+  (func $load_code (export "load_code") (param $ptr i32) (param $len i32) (result i32)
+    ;; This fallback stub doesn't actually load code
+    ;; Return 0 to indicate "not implemented"
+    i32.const 0
+  )
 
-    ;; Write "Hello from Python WASM!" to output buffer
-    i32.const 2048  ;; output_ptr
-    i32.const 72   ;; 'H'
-    i32.store8
+  ;; Alloc function
+  (func $alloc (export "alloc") (param $size i32) (result i32)
+    ;; Simple linear allocation from top of initial memory
+    i32.const 16384
+    local.get $size
+    i32.add
+  )
 
-    i32.const 2049
-    i32.const 101  ;; 'e'
-    i32.store8
-
-    i32.const 2050
-    i32.const 108  ;; 'l'
-    i32.store8
-
-    i32.const 2051
-    i32.const 108  ;; 'l'
-    i32.store8
-
-    i32.const 2052
-    i32.const 111  ;; 'o'
-    i32.store8
-
-    i32.const 2053
-    i32.const 32   ;; ' '
-    i32.store8
-
-    i32.const 2054
-    i32.const 102  ;; 'f'
-    i32.store8
-
-    i32.const 2055
-    i32.const 114  ;; 'r'
-    i32.store8
-
-    i32.const 2056
-    i32.const 111  ;; 'o'
-    i32.store8
-
-    i32.const 2057
-    i32.const 109  ;; 'm'
-    i32.store8
-
-    i32.const 2058
-    i32.const 32   ;; ' '
-    i32.store8
-
-    i32.const 2059
-    i32.const 80   ;; 'P'
-    i32.store8
-
-    i32.const 2060
-    i32.const 121  ;; 'y'
-    i32.store8
-
-    i32.const 2061
-    i32.const 116  ;; 't'
-    i32.store8
-
-    i32.const 2062
-    i32.const 104  ;; 'h'
-    i32.store8
-
-    i32.const 2063
-    i32.const 111  ;; 'o'
-    i32.store8
-
-    i32.const 2064
-    i32.const 110  ;; 'n'
-    i32.store8
-
-    i32.const 2065
-    i32.const 32   ;; ' '
-    i32.store8
-
-    i32.const 2066
-    i32.const 87   ;; 'W'
-    i32.store8
-
-    i32.const 2067
-    i32.const 65   ;; 'A'
-    i32.store8
-
-    i32.const 2068
-    i32.const 83   ;; 'S'
-    i32.store8
-
-    i32.const 2069
-    i32.const 77   ;; 'M'
-    i32.store8
-
-    i32.const 2070
-    i32.const 33   ;; '!'
-    i32.store8
-
-    i32.const 2071
-    i32.const 0    ;; null terminator
-    i32.store8
-
-    ;; Return output pointer
-    global.get $output_ptr
+  ;; Dealloc function
+  (func $dealloc (export "dealloc") (param $ptr i32)
+    ;; No-op in this simple implementation
   )
 )`
 
 	// Generate the WAT content
-	watContent := fmt.Sprintf(watTemplate, escapedSource, escapedMetadata)
+	watContent := fmt.Sprintf(watTemplate, escapedSource, escapedMetadata, escapedError)
 
 	// Compile WAT to WASM bytecode using wat2wasm
 	wasmBytes, err := compileWATToWasm(watContent)
@@ -414,4 +319,41 @@ func detectCompilationMode(sourceCode string) string {
 
 	// Default to deterministic mode for simple functions
 	return "deterministic"
+}
+
+// truncateString truncates a string to maxLen characters, adding ellipsis if truncated
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	if maxLen <= 3 {
+		return s[:maxLen]
+	}
+	return s[:maxLen-3] + "..."
+}
+
+// escapeJsonString escapes a string for safe inclusion in JSON
+func escapeJsonString(s string) string {
+	var result strings.Builder
+	for _, c := range s {
+		switch c {
+		case '"':
+			result.WriteString("\\\"")
+		case '\\':
+			result.WriteString("\\\\")
+		case '\n':
+			result.WriteString("\\n")
+		case '\r':
+			result.WriteString("\\r")
+		case '\t':
+			result.WriteString("\\t")
+		default:
+			if c < 32 {
+				result.WriteString(fmt.Sprintf("\\u%04x", c))
+			} else {
+				result.WriteRune(c)
+			}
+		}
+	}
+	return result.String()
 }

@@ -83,6 +83,14 @@ const (
 	TypeBillingForecastExceeded     = "billing.forecast_exceeded"
 	TypeBillingUsageSpike           = "billing.usage_spike"
 
+	// Chargeback and refund notifications
+	TypeBillingDisputeCreated           = "billing.dispute_created"
+	TypeBillingDisputeUpdated           = "billing.dispute_updated"
+	TypeBillingDisputeResolved          = "billing.dispute_resolved"
+	TypeBillingDisputeEvidenceDue       = "billing.dispute_evidence_due"
+	TypeBillingRefundProcessed          = "billing.refund_processed"
+	TypeBillingChargebackFundsWithdrawn = "billing.chargeback_funds_withdrawn"
+
 	// Founder Mode (Backend-in-a-Box) notifications
 	TypeFounderModeThresholdWarning  = "founder_mode.threshold_warning"
 	TypeFounderModeThresholdReached  = "founder_mode.threshold_reached"
@@ -94,6 +102,7 @@ const (
 	TypeSecurityMFAEnabled         = "security.mfa_enabled"
 	TypeSecurityNewDeviceLogin     = "security.new_device_login"
 	TypeSecuritySuspiciousActivity = "security.suspicious_activity"
+	TypeSecurityUsernameChanged    = "security.username_changed"
 
 	// Team notifications
 	TypeTeamInvitation     = "team.invitation"

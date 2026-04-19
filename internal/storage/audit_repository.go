@@ -157,3 +157,41 @@ func (r *AuditRepository) ListAuditEventsFiltered(limit, offset int, filters map
 
 	return events, nil
 }
+
+// GetAuditEventByID retrieves a single audit event by its ID
+func (r *AuditRepository) GetAuditEventByID(id uuid.UUID) (*AuditEvent, error) {
+	query := `
+		SELECT id, actor_user_id, actor_email, tenant_id, action, resource_type, resource_id,
+			   request_id, before_state, after_state, COALESCE(ip_address::text, ''), user_agent, timestamp, success
+		FROM audit_events WHERE id = $1`
+
+	event := &AuditEvent{}
+	var beforeState, afterState []byte
+	var ipAddr, userAgent sql.NullString
+
+	err := r.db.QueryRow(query, id).Scan(
+		&event.ID, &event.ActorUserID, &event.ActorEmail, &event.TenantID,
+		&event.Action, &event.ResourceType, &event.ResourceID, &event.RequestID,
+		&beforeState, &afterState, &ipAddr, &userAgent,
+		&event.Timestamp, &event.Success)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get audit event: %w", err)
+	}
+	if ipAddr.Valid {
+		event.IPAddress = ipAddr.String
+	}
+	if userAgent.Valid {
+		event.UserAgent = userAgent.String
+	}
+	if len(beforeState) > 0 {
+		json.Unmarshal(beforeState, &event.BeforeState)
+	}
+	if len(afterState) > 0 {
+		json.Unmarshal(afterState, &event.AfterState)
+	}
+
+	return event, nil
+}

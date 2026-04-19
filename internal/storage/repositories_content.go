@@ -116,3 +116,11 @@ func (db *PostgresDB) UpdateBlogAuthor(ctx context.Context, id uuid.UUID, update
 func (db *PostgresDB) DeleteBlogAuthor(ctx context.Context, id uuid.UUID) error {
 	return db.contentRepository.DeleteBlogAuthor(ctx, id)
 }
+
+func (db *PostgresDB) GetBlogSettings(ctx context.Context) (*BlogSettings, error) {
+	return db.contentRepository.GetBlogSettings(ctx)
+}
+
+func (db *PostgresDB) UpdateBlogSettings(ctx context.Context, updates map[string]interface{}) (*BlogSettings, error) {
+	return db.contentRepository.UpdateBlogSettings(ctx, updates)
+}

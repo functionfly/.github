@@ -53,7 +53,7 @@ dev = [
 # Native SDKs for optimal provider performance (recommended)
 # Install with: pip install .[providers] or uv sync --extra providers
 providers = [
-    "fireworks-ai>=0.21.0",  # Fireworks native SDK (better concurrency, exclusive features)
+    "fireworks-ai>=0.9.0",  # Fireworks native SDK (better concurrency, exclusive features)
 ]
 moderation = [
     "detoxify>=0.5.2",
@@ -85,7 +85,7 @@ prod = [
     "structlog>=25.5.0",
     "tenacity>=9.1.4",
     "sentry-sdk[fastapi]>=2.57.0",
-    "fireworks-ai>=0.21.0",  # Fireworks native SDK for optimal performance
+    "fireworks-ai>=0.9.0",  # Fireworks native SDK for optimal performance
 ]
 
 [dependency-groups]

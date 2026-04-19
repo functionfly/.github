@@ -68,8 +68,16 @@ type AgentIdentity struct {
 	EvolutionEnabled  bool      `json:"evolution_enabled" gorm:"not null;default:false"`
 	TrustScore        float64   `json:"trust_score" gorm:"type:decimal(5,2);default:0"`
 	EconomicScore     float64   `json:"economic_score" gorm:"type:decimal(5,2);default:0"`
-	CreatedAt         time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt         time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+
+	// Daemon mode configuration (Phase 2: Always-On Agents)
+	DaemonConfig         JSONBMap   `json:"daemon_config,omitempty" gorm:"type:jsonb;default:'{}'"`
+	IsDaemonRunning      bool       `json:"is_daemon_running" gorm:"not null;default:false"`
+	DaemonStartedAt      *time.Time `json:"daemon_started_at,omitempty"`
+	AlwaysOnCount        int        `json:"always_on_count" gorm:"not null;default:0"`
+	DaemonExecutionCount int64      `json:"daemon_execution_count" gorm:"not null;default:0"`
+
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // TableName returns the GORM table name

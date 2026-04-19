@@ -1,5 +1,7 @@
 # API test commands
 
+> **⚠️ DEVELOPMENT ONLY**: This document contains example credentials for local development (`admin@functionfly.local` / `admin123`). These are **NOT** for production use. Production deployments must use strong passwords created via `go run ./cmd/create-admin -production`.
+
 Quick copy-paste commands to test the orchestrator API. Default base: `http://localhost:8080`. Use the same admin email/password you set with `create-admin`.
 
 ## One-liners
@@ -15,6 +17,7 @@ curl -s -X POST http://localhost:8080/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@functionfly.local","password":"admin123"}'
 ```
+> **Note**: The email `admin@functionfly.local` and password `admin123` are for **local development only**. In production, use a strong password and real email domain.
 
 **Get session** (paste the token from login response)
 ```bash

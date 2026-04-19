@@ -164,6 +164,39 @@ func (r *BillingRepository) GetPricingBundleByID(ctx context.Context, id uuid.UU
 	return bundle, nil
 }
 
+// GetPricingBundleByStripePriceID retrieves a pricing bundle by its Stripe Price ID
+// This is used when processing plan changes from Stripe webhooks
+func (r *BillingRepository) GetPricingBundleByStripePriceID(ctx context.Context, stripePriceID string) (*PricingBundle, error) {
+	query := `SELECT id, slug, name, display_name, description, short_description,
+		display_price_cents, billing_interval, stripe_price_id, icon, color,
+		features_included, feature_limits, provisioning_templates,
+		sort_order, is_active, is_popular, created_at, updated_at
+		FROM pricing_bundles WHERE stripe_price_id = $1 AND is_active = true`
+
+	bundle := &PricingBundle{}
+	var features, limits, provisioning []byte
+
+	err := r.db.QueryRowContext(ctx, query, stripePriceID).Scan(
+		&bundle.ID, &bundle.Slug, &bundle.Name, &bundle.DisplayName, &bundle.Description, &bundle.ShortDescription,
+		&bundle.DisplayPriceCents, &bundle.BillingInterval, &bundle.StripePriceID, &bundle.Icon, &bundle.Color,
+		&features, &limits, &provisioning,
+		&bundle.SortOrder, &bundle.IsActive, &bundle.IsPopular, &bundle.CreatedAt, &bundle.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pricing bundle by stripe price id: %w", err)
+	}
+
+	json.Unmarshal(features, &bundle.FeaturesIncluded)
+	json.Unmarshal(limits, &bundle.FeatureLimits)
+	json.Unmarshal(provisioning, &bundle.ProvisioningTemplates)
+
+	return bundle, nil
+}
+
 // CreateFounderModeRegistration creates a new founder mode registration
 func (r *BillingRepository) CreateFounderModeRegistration(ctx context.Context, reg *FounderModeRegistration) error {
 	query := `
@@ -419,6 +452,42 @@ func (r *BillingRepository) GetBundleSubscriptionByTenant(ctx context.Context, t
 	}
 
 	return sub, nil
+}
+
+// UpdateBundleSubscription updates an existing bundle subscription
+func (r *BillingRepository) UpdateBundleSubscription(ctx context.Context, sub *BundleSubscription) error {
+	query := `
+		UPDATE bundle_subscriptions SET
+			bundle_id = $2,
+			founder_mode_id = $3,
+			converted_from_founder_mode = $4,
+			status = $5,
+			stripe_subscription_id = $6,
+			current_period_start = $7,
+			current_period_end = $8,
+			cancel_at_period_end = $9,
+			canceled_at = $10,
+			updated_at = $11
+		WHERE id = $1`
+
+	result, err := r.db.Exec(query,
+		sub.ID, sub.BundleID, sub.FounderModeID, sub.ConvertedFromFounderMode,
+		sub.Status, sub.StripeSubscriptionID, sub.CurrentPeriodStart, sub.CurrentPeriodEnd,
+		sub.CancelAtPeriodEnd, sub.CanceledAt, sub.UpdatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update bundle subscription: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("bundle subscription not found")
+	}
+
+	return nil
 }
 
 // ListBundleSubscriptionsByTenant retrieves all bundle subscriptions for a tenant

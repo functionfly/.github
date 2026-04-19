@@ -23,13 +23,13 @@ type State struct {
 	TenantID   uuid.UUID  `json:"tenant_id" gorm:"type:uuid;not null;index"`
 	Name       string     `json:"name" gorm:"not null;size:255"`
 	FullPath   string     `json:"full_path" gorm:"uniqueIndex;not null;size:500"` // "acme/cart"
-	FunctionID *uuid.UUID `json:"function_id,omitempty" gorm:"type:uuid;index"`     // Optional bound function
+	FunctionID *uuid.UUID `json:"function_id,omitempty" gorm:"type:uuid;index"`   // Optional bound function
 
 	// State Configuration
 	StorageType string `json:"storage_type" gorm:"not null;default:'keyvalue';size:50"` // "keyvalue" | "document" | "timeseries" | "graph"
 
 	// Retention
-	TTLDays   int `json:"ttl_days" gorm:"not null;default:0"`     // 0 = forever
+	TTLDays   int `json:"ttl_days" gorm:"not null;default:0"` // 0 = forever
 	MaxSizeMB int `json:"max_size_mb" gorm:"not null;default:100"`
 
 	// Versioning
@@ -94,7 +94,7 @@ type StateValue struct {
 	Value JSONMap `json:"value" gorm:"type:jsonb;not null"`
 
 	// Encryption support
-	IsEncrypted bool   `json:"is_encrypted" gorm:"not null;default:false"`
+	IsEncrypted  bool   `json:"is_encrypted" gorm:"not null;default:false"`
 	EncryptedVal []byte `json:"-" gorm:"type:bytea"` // Encrypted value (never serialized to JSON)
 
 	// Versioning
@@ -175,6 +175,13 @@ type StateEvent struct {
 	SequenceNum int64 `json:"sequence_num" gorm:"not null;uniqueIndex"`
 
 	Timestamp time.Time `json:"timestamp" gorm:"autoCreateTime;not null;index"`
+
+	// R2 Storage Reference (for archived event batch storage)
+	R2ObjectKey *string    `json:"r2_object_key,omitempty" gorm:"column:r2_object_key;type:text;index"`
+	R2Bucket    *string    `json:"r2_bucket,omitempty" gorm:"column:r2_bucket;type:varchar(255)"`
+	BatchID     *string    `json:"batch_id,omitempty" gorm:"column:batch_id;type:varchar(255);index"`
+	IsArchived  bool       `json:"is_archived" gorm:"column:is_archived;not null;default:false"`
+	ArchivedAt  *time.Time `json:"archived_at,omitempty" gorm:"column:archived_at"`
 }
 
 func (StateEvent) TableName() string {
@@ -223,6 +230,11 @@ type StateSnapshot struct {
 	IsCompressed    bool   `json:"is_compressed" gorm:"default:false"`
 	CompressionAlgo string `json:"compression_algo"` // "lz4", "zstd", ""
 
+	// R2 Storage Reference (for large snapshot offloading)
+	R2ObjectKey   *string `json:"r2_object_key,omitempty" gorm:"column:r2_object_key;type:text;index"`
+	R2Bucket      *string `json:"r2_bucket,omitempty" gorm:"column:r2_bucket;type:varchar(255)"`
+	R2ContentHash *string `json:"r2_content_hash,omitempty" gorm:"column:r2_content_hash;type:varchar(64)"`
+
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
 }
 
@@ -269,7 +281,7 @@ type StateTrigger struct {
 
 	// Trigger Configuration
 	TriggerType string  `json:"trigger_type" gorm:"not null"` // "on_write" | "on_read" | "on_delete" | "on_condition"
-	KeyPattern  *string `json:"key_pattern,omitempty"`         // Glob pattern for keys
+	KeyPattern  *string `json:"key_pattern,omitempty"`        // Glob pattern for keys
 
 	// Condition (for advanced triggers)
 	Condition JSONMap `json:"condition" gorm:"type:jsonb"`
@@ -343,11 +355,18 @@ type AgentMemory struct {
 	LastAccessedAt  *time.Time `json:"last_accessed_at,omitempty"`
 
 	// Retention
-	TTLDays   int        `json:"ttl_days" gorm:"default:30"`    // Auto-expire after N days
+	TTLDays   int        `json:"ttl_days" gorm:"default:30"` // Auto-expire after N days
 	ExpiresAt *time.Time `json:"expires_at,omitempty" gorm:"index"`
 
 	// Provenance
 	SourceEventID *uuid.UUID `json:"source_event_id,omitempty" gorm:"type:uuid"`
+
+	// R2 Storage Reference (for large memory blob offloading)
+	R2ObjectKey   *string    `json:"r2_object_key,omitempty" gorm:"column:r2_object_key;type:text;index"`
+	R2Bucket      *string    `json:"r2_bucket,omitempty" gorm:"column:r2_bucket;type:varchar(255)"`
+	R2ContentHash *string    `json:"r2_content_hash,omitempty" gorm:"column:r2_content_hash;type:varchar(64)"`
+	IsOffloaded   bool       `json:"is_offloaded" gorm:"column:is_offloaded;not null;default:false"`
+	OffloadedAt   *time.Time `json:"offloaded_at,omitempty" gorm:"column:offloaded_at"`
 
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`

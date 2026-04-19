@@ -42,6 +42,21 @@ type UserRepository interface {
 	UpdateUserMFABackupCodes(userID uuid.UUID, backupCodes []string) error
 	UpdateUserMFALastUsed(userID uuid.UUID, lastUsed *time.Time) error
 	VerifyPassword(userID uuid.UUID, password string) (bool, error)
+
+	// Username change operations (2-per-year limit with early-change fee)
+	CreateUsernameChangeHistory(ctx context.Context, history *storage.UsernameChangeHistory) error
+	GetUsernameChangeHistory(ctx context.Context, userID uuid.UUID) ([]*storage.UsernameChangeHistory, error)
+	CountUsernameChangesInWindow(ctx context.Context, userID uuid.UUID, windowStart time.Time) (int, error)
+	GetLastUsernameChange(ctx context.Context, userID uuid.UUID) (*storage.UsernameChangeHistory, error)
+	HasUsernameChangedInWindow(ctx context.Context, userID uuid.UUID, windowStart time.Time) (bool, error)
+
+	// Pending username change operations (for payment flow)
+	CreatePendingUsernameChange(ctx context.Context, pending *storage.PendingUsernameChange) error
+	GetPendingUsernameChangeByID(ctx context.Context, id uuid.UUID) (*storage.PendingUsernameChange, error)
+	GetPendingUsernameChangeByCheckoutSession(ctx context.Context, sessionID string) (*storage.PendingUsernameChange, error)
+	UpdatePendingUsernameChangeStatus(ctx context.Context, id uuid.UUID, status string) error
+	DeleteExpiredPendingUsernameChanges(ctx context.Context) (int64, error)
+	ListPendingUsernameChangesForUser(ctx context.Context, userID uuid.UUID) ([]*storage.PendingUsernameChange, error)
 }
 
 // SessionRepository handles session and token operations
@@ -89,6 +104,7 @@ type TenantRepository interface {
 	GetTenantByID(tenantID uuid.UUID) (*storage.Tenant, error)
 	GetTenantByStripeCustomerID(stripeCustomerID string) (*storage.Tenant, error)
 	ListTenants() ([]*storage.Tenant, error)
+	ListTenantsWithStripeCustomerID() ([]*storage.Tenant, error)
 	UpdateTenant(ctx context.Context, tenantID uuid.UUID, updates map[string]interface{}) (*storage.Tenant, error)
 	DeleteTenant(ctx context.Context, tenantID uuid.UUID) error
 	CountUsersByTenant(ctx context.Context, tenantID uuid.UUID) (int, error)
@@ -163,6 +179,17 @@ type BillingRepository interface {
 	// Extended tiers
 	ListPricingTiersExtended() ([]*storage.PricingTierExtended, error)
 	GetPricingTierExtendedByID(id uuid.UUID) (*storage.PricingTierExtended, error)
+
+	// Stripe Two-Way Sync
+	CreateStripeSyncEvent(ctx context.Context, event *storage.StripeSyncEvent) (*storage.StripeSyncEvent, error)
+	GetStripeSyncEventByEventID(ctx context.Context, stripeEventID string) (*storage.StripeSyncEvent, error)
+	UpdateStripeSyncEventStatus(ctx context.Context, id uuid.UUID, status string, errorMsg *string) error
+	IncrementStripeSyncEventRetryCount(ctx context.Context, id uuid.UUID) error
+	ListPendingStripeSyncEvents(ctx context.Context, limit int) ([]*storage.StripeSyncEvent, error)
+	UpdateSubscriptionFromStripe(ctx context.Context, stripeSubscriptionID string, stripeData map[string]interface{}) (*storage.Subscription, error)
+	GetTenantByStripeCustomerID(ctx context.Context, stripeCustomerID string) (*storage.Tenant, error)
+	UpdateTenantPaymentMethod(ctx context.Context, tenantID uuid.UUID, paymentMethod *storage.PaymentMethodInfoExtended) error
+	GetPaymentMethodByStripeID(ctx context.Context, stripePaymentMethodID string) (*storage.PaymentMethodInfoExtended, error)
 }
 
 // RevenueRepository handles revenue-related operations (trust layer monetization)
@@ -176,6 +203,7 @@ type RevenueRepository interface {
 	GetFunctionVerificationPaymentByID(id uuid.UUID) (*storage.FunctionVerificationPayment, error)
 	GetFunctionVerificationPaymentByCheckoutSessionID(ctx context.Context, sessionID string) (*storage.FunctionVerificationPayment, error)
 	UpdateFunctionVerificationPaymentStatus(ctx context.Context, id uuid.UUID, status string, stripePIID, stripeCheckoutSessionID *string) error
+	UpdateFunctionVerificationPaymentJobID(ctx context.Context, id uuid.UUID, jobID uuid.UUID) error
 	GetFunctionVerificationPaymentsByTenant(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*storage.FunctionVerificationPayment, error)
 
 	// Publisher earnings
@@ -198,12 +226,23 @@ type RevenueRepository interface {
 	CreatePlatformFee(ctx context.Context, fee *storage.PlatformFee) error
 	GetPlatformFeesByPeriod(ctx context.Context, year, month int) ([]*storage.PlatformFee, error)
 	GetPlatformFeesSummary(ctx context.Context) (totalCollected, totalRefunded, totalPaidOut int, err error)
+
+	// Database-Driven Agent Tier Pricing (replaces hardcoded constants)
+	GetAgentTierPricingBySlug(ctx context.Context, slug string) (*storage.AgentTierPricing, error)
+	ListAgentTierPricing(ctx context.Context, activeOnly bool) ([]*storage.AgentTierPricing, error)
+	GetAgentTierPricingForRegion(ctx context.Context, slug string, currencyCode string) (*storage.AgentTierPricing, error)
+
+	// Multi-Currency Support
+	GetCurrencyExchangeRate(ctx context.Context, baseCurrency, quoteCurrency string, date *time.Time) (*storage.CurrencyExchangeRate, error)
+	ConvertCurrency(ctx context.Context, amountCents int, fromCurrency, toCurrency string) (int, error)
+	GetSupportedCurrency(ctx context.Context, code string) (*storage.SupportedCurrency, error)
+	ListSupportedCurrencies(ctx context.Context) ([]*storage.SupportedCurrency, error)
 }
 
 // OAuthRepository handles OAuth state and invite codes
 type OAuthRepository interface {
-	StoreOAuthState(ctx context.Context, state string, expiresAt time.Time, redirectURI, inviteCode string) error
-	ValidateAndConsumeOAuthState(ctx context.Context, state string) (valid bool, redirectURI, inviteCode string, err error)
+	StoreOAuthState(ctx context.Context, state string, expiresAt time.Time, redirectURI, inviteCode, codeVerifier, loginHint, deviceFingerprint string) error
+	ValidateAndConsumeOAuthState(ctx context.Context, state string) (valid bool, redirectURI, inviteCode, codeVerifier, loginHint, deviceFingerprint string, err error)
 	DeleteExpiredOAuthStates() (int64, error)
 
 	// Signup invite codes

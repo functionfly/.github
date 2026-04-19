@@ -1,8 +1,13 @@
 package support
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -11,12 +16,16 @@ import (
 
 // AIConfig holds configuration for the AI support service
 type AIConfig struct {
-	Enabled          bool
-	AIProvider       string // "openai", "anthropic", "ollama"
-	Model            string
-	MaxTokens        int
-	Temperature      float64
+	Enabled           bool
+	AIProvider        string // "openai", "anthropic", "ollama"
+	Model             string
+	MaxTokens         int
+	Temperature       float64
 	AllowedCategories []string // Categories AI can help with
+	OpenAIAPIKey      string
+	AnthropicAPIKey   string
+	OpenAIBaseURL     string
+	AnthropicBaseURL  string
 }
 
 // DefaultAIConfig returns default AI configuration
@@ -38,39 +47,219 @@ func DefaultAIConfig() *AIConfig {
 			"billing",
 			"general",
 		},
+		OpenAIBaseURL:    "https://api.openai.com/v1",
+		AnthropicBaseURL: "https://api.anthropic.com/v1",
 	}
+}
+
+// LoadAIConfigFromEnv loads AI configuration from environment variables
+func LoadAIConfigFromEnv() *AIConfig {
+	cfg := DefaultAIConfig()
+	if v := os.Getenv("AI_SUPPORT_PROVIDER"); v != "" {
+		cfg.AIProvider = v
+	}
+	if v := os.Getenv("AI_SUPPORT_MODEL"); v != "" {
+		cfg.Model = v
+	}
+	if v := os.Getenv("OPENAI_API_KEY"); v != "" {
+		cfg.OpenAIAPIKey = v
+	}
+	if v := os.Getenv("ANTHROPIC_API_KEY"); v != "" {
+		cfg.AnthropicAPIKey = v
+	}
+	if v := os.Getenv("OPENAI_BASE_URL"); v != "" {
+		cfg.OpenAIBaseURL = v
+	}
+	if v := os.Getenv("ANTHROPIC_BASE_URL"); v != "" {
+		cfg.AnthropicBaseURL = v
+	}
+	return cfg
 }
 
 // AIReplyRequest represents a request for AI-generated support reply
 type AIReplyRequest struct {
-	ConversationID uuid.UUID
-	UserID         uuid.UUID
-	UserMessage    string
-	Context        *SupportContext
-	Category       string
+	ConversationID     uuid.UUID
+	UserID             uuid.UUID
+	UserMessage        string
+	Context            *SupportContext
+	Category           string
 	ConversationHistory []SupportMessage
 }
 
 // AIReplyResponse represents AI-generated response
 type AIReplyResponse struct {
-	Message        string
-	Category       string
-	Confidence     float64
-	ShouldEscalate bool
+	Message          string
+	Category         string
+	Confidence       float64
+	ShouldEscalate   bool
 	SuggestedActions []string
 }
 
-// GenerateAIReply generates an AI reply for a support conversation
-// This is a placeholder implementation that should be connected to the actual AI gateway
-func GenerateAIReply(ctx context.Context, req *AIReplyRequest) (*AIReplyResponse, error) {
+// GenerateAIReply generates an AI reply for a support conversation.
+// When AI API keys are configured, it calls OpenAI/Anthropic directly.
+// Otherwise, it uses rule-based pattern matching as a lightweight fallback.
+// This is the final fallback called by AIGatewayClient when ai-service is unavailable.
+func GenerateAIReply(ctx context.Context, req *AIReplyRequest, cfg *AIConfig) (*AIReplyResponse, error) {
+	if cfg == nil {
+		cfg = DefaultAIConfig()
+	}
+
+	// Try OpenAI first
+	if cfg.Enabled && cfg.OpenAIAPIKey != "" {
+		resp, err := generateOpenAIReply(ctx, req, cfg)
+		if err == nil {
+			return resp, nil
+		}
+		fmt.Printf("OpenAI fallback failed: %v\n", err)
+	}
+
+	// Try Anthropic second
+	if cfg.Enabled && cfg.AnthropicAPIKey != "" {
+		resp, err := generateAnthropicReply(ctx, req, cfg)
+		if err == nil {
+			return resp, nil
+		}
+		fmt.Printf("Anthropic fallback failed: %v\n", err)
+	}
+
+	// Rule-based fallback when no AI keys configured or AI calls fail
+	return generateRuleBasedReply(req), nil
+}
+
+// generateOpenAIReply calls OpenAI API for support response
+func generateOpenAIReply(ctx context.Context, req *AIReplyRequest, cfg *AIConfig) (*AIReplyResponse, error) {
+	systemPrompt := `You are FunctionFly Support Assistant, helping developers with their serverless function platform. Be helpful, concise, and technical. Provide specific solutions when possible. Suggest escalating to human agent if issue is complex. Focus on actionable advice.`
+
+	payload := map[string]interface{}{
+		"model": cfg.Model,
+		"messages": []map[string]string{
+			{"role": "system", "content": systemPrompt},
+			{"role": "user", "content": BuildSupportPrompt(req)},
+		},
+		"max_tokens": cfg.MaxTokens,
+		"temperature": cfg.Temperature,
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", cfg.OpenAIBaseURL+"/chat/completions", bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+cfg.OpenAIAPIKey)
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return nil, fmt.Errorf("OpenAI returned %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var openAIResp struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&openAIResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if len(openAIResp.Choices) == 0 {
+		return nil, fmt.Errorf("no response from OpenAI")
+	}
+
+	return &AIReplyResponse{
+		Message:   openAIResp.Choices[0].Message.Content,
+		Confidence: 0.9,
+		Category: req.Category,
+		SuggestedActions: []string{
+			"View documentation",
+			"Contact support",
+		},
+	}, nil
+}
+
+// generateAnthropicReply calls Anthropic API for support response
+func generateAnthropicReply(ctx context.Context, req *AIReplyRequest, cfg *AIConfig) (*AIReplyResponse, error) {
+	payload := map[string]interface{}{
+		"model": cfg.Model,
+		"messages": []map[string]string{
+			{"role": "user", "content": BuildSupportPrompt(req)},
+		},
+		"max_tokens": cfg.MaxTokens,
+		"temperature": cfg.Temperature,
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", cfg.AnthropicBaseURL+"/messages", bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("x-api-key", cfg.AnthropicAPIKey)
+	httpReq.Header.Set("anthropic-version", "2023-06-01")
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return nil, fmt.Errorf("Anthropic returned %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var anthropicResp struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&anthropicResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if len(anthropicResp.Content) == 0 {
+		return nil, fmt.Errorf("no response from Anthropic")
+	}
+
+	return &AIReplyResponse{
+		Message:   anthropicResp.Content[0].Text,
+		Confidence: 0.9,
+		Category: req.Category,
+		SuggestedActions: []string{
+			"View documentation",
+			"Contact support",
+		},
+	}, nil
+}
+
+// generateRuleBasedReply provides contextual responses using rule-based pattern matching.
+// This is used when no AI API keys are configured or when AI calls fail.
+func generateRuleBasedReply(req *AIReplyRequest) *AIReplyResponse {
 	response := &AIReplyResponse{
-		Category:       req.Category,
-		Confidence:     0.85,
-		ShouldEscalate: false,
+		Category:         req.Category,
+		Confidence:       0.85,
+		ShouldEscalate:   false,
 		SuggestedActions: []string{},
 	}
 
-	// Analyze the user's message to provide contextual help
 	message := strings.ToLower(req.UserMessage)
 
 	if containsAny(message, "deploy", "deployment", "failed", "fail") {
@@ -151,7 +340,7 @@ func GenerateAIReply(ctx context.Context, req *AIReplyRequest) (*AIReplyResponse
 		}
 	}
 
-	return response, nil
+	return response
 }
 
 // BuildSupportPrompt builds a prompt for the AI model

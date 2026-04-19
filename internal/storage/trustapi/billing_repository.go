@@ -387,6 +387,15 @@ func (r *BillingRepository) GetPartnerByID(id uuid.UUID) (*TrustAPIPartner, erro
 	return &partner, nil
 }
 
+// GetPartnerByStripeCustomerID retrieves a partner by Stripe customer ID
+func (r *BillingRepository) GetPartnerByStripeCustomerID(ctx context.Context, customerID string) (*TrustAPIPartner, error) {
+	var partner TrustAPIPartner
+	if err := r.db.WithContext(ctx).Where("stripe_customer_id = ?", customerID).First(&partner).Error; err != nil {
+		return nil, err
+	}
+	return &partner, nil
+}
+
 // ListPartnersWithFilters lists partners with optional filters
 func (r *BillingRepository) ListPartnersWithFilters(status, tier string, limit, offset int) ([]TrustAPIPartner, int64, error) {
 	var partners []TrustAPIPartner

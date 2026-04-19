@@ -46,28 +46,63 @@ type SAMLServiceConfig struct {
 }
 
 // NewSAMLService creates a new SAML service
+// SP key pair is loaded from: 1) environment config, 2) database, or 3) generated and persisted
 func NewSAMLService(config SAMLServiceConfig) (*SAMLService, error) {
 	var privateKey *rsa.PrivateKey
 	var cert *x509.Certificate
+	var keySource string
 
-	// Try to load persisted key pair from config
+	// 1. Try to load from environment config (highest priority)
 	if config.PrivateKey != "" && config.Certificate != "" {
 		block, _ := pem.Decode([]byte(config.PrivateKey))
 		if block != nil {
 			if pk, err := x509.ParsePKCS1PrivateKey(block.Bytes); err == nil {
 				privateKey = pk
+				keySource = "environment"
+				logrus.Info("Loaded SAML SP key pair from environment configuration")
 			}
 		}
-		certBlock, _ := pem.Decode([]byte(config.Certificate))
-		if certBlock != nil {
-			if c, err := x509.ParseCertificate(certBlock.Bytes); err == nil {
-				cert = c
+		if privateKey != nil {
+			certBlock, _ := pem.Decode([]byte(config.Certificate))
+			if certBlock != nil {
+				if c, err := x509.ParseCertificate(certBlock.Bytes); err == nil {
+					cert = c
+				}
 			}
 		}
 	}
 
-	// Generate a new key pair if none was loaded
+	// 2. Try to load from database (if not found in environment)
+	if privateKey == nil && config.ConfigRepo != nil {
+		// Use a nil/empty tenant ID to look for platform-wide keys
+		// Try to get any config that has SP keys stored
+		dbPrivateKey, dbCertificate, err := config.ConfigRepo.GetSPKeyPair(uuid.Nil)
+		if err != nil {
+			logrus.WithError(err).Warn("Failed to load SAML SP key pair from database")
+		}
+		if dbPrivateKey != nil && dbCertificate != nil {
+			block, _ := pem.Decode([]byte(*dbPrivateKey))
+			if block != nil {
+				if pk, err := x509.ParsePKCS1PrivateKey(block.Bytes); err == nil {
+					privateKey = pk
+					keySource = "database"
+					logrus.Info("Loaded SAML SP key pair from database")
+				}
+			}
+			if privateKey != nil {
+				certBlock, _ := pem.Decode([]byte(*dbCertificate))
+				if certBlock != nil {
+					if c, err := x509.ParseCertificate(certBlock.Bytes); err == nil {
+						cert = c
+					}
+				}
+			}
+		}
+	}
+
+	// 3. Generate a new key pair if none was loaded
 	if privateKey == nil {
+		logrus.Info("Generating new SAML SP key pair (not found in environment or database)")
 		var err error
 		privateKey, err = rsa.GenerateKey(rand.Reader, 2048)
 		if err != nil {
@@ -96,7 +131,28 @@ func NewSAMLService(config SAMLServiceConfig) (*SAMLService, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse certificate: %w", err)
 		}
+		keySource = "generated"
+
+		// Persist the generated keys to database for future restarts
+		if config.ConfigRepo != nil {
+			privateKeyPEM := pem.EncodeToMemory(&pem.Block{
+				Type:  "RSA PRIVATE KEY",
+				Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+			})
+			certPEM := pem.EncodeToMemory(&pem.Block{
+				Type:  "CERTIFICATE",
+				Bytes: certDER,
+			})
+
+			if err := config.ConfigRepo.SaveSPKeyPair(uuid.Nil, string(privateKeyPEM), string(certPEM)); err != nil {
+				logrus.WithError(err).Warn("Failed to persist generated SAML SP key pair to database")
+			} else {
+				logrus.Info("Persisted generated SAML SP key pair to database")
+			}
+		}
 	}
+
+	logrus.WithField("key_source", keySource).Info("SAML service initialized with SP key pair")
 
 	return &SAMLService{
 		configRepo:  config.ConfigRepo,
@@ -567,6 +623,24 @@ type SAMLLoginResponse struct {
 	Token       string
 	NameID      string
 	SAMLSession *storage.SAMLSession
+}
+
+// Repo returns the repository for auth event logging
+func (s *SAMLService) Repo() storage.Repository {
+	return s.repo
+}
+
+// AuthService returns the auth service for token generation
+func (s *SAMLService) AuthService() *AuthService {
+	return s.authService
+}
+
+// GenerateRefreshToken generates a refresh token for SAML login
+func (s *SAMLService) GenerateRefreshToken() (token, hash string, err error) {
+	if s.authService == nil {
+		return "", "", fmt.Errorf("auth service not configured")
+	}
+	return s.authService.GenerateRefreshToken()
 }
 
 // urlEncode performs simple URL encoding

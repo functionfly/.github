@@ -21,39 +21,43 @@
     "clean-install": "bun pm cache rm && rm -rf node_modules bun.lockb && mv .env .env.tmp 2>/dev/null; mv .env.production .env.production.tmp 2>/dev/null; bun install && mv .env.tmp .env 2>/dev/null; mv .env.production.tmp .env.production 2>/dev/null; true"
   },
   "devDependencies": {
-    "nx": "^22.5.4",
-    "@nx/js": "^22.5.4",
-    "@nx/vite": "^22.5.4",
-    "@nx/eslint": "^22.5.4",
-    "@nx/jest": "^22.5.4"
+    "nx": "^22.6.5",
+    "@nx/js": "^22.6.5",
+    "@nx/vite": "^22.6.5",
+    "@nx/eslint": "^22.6.5",
+    "@nx/jest": "^22.6.5"
   },
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=10.0.0"
   },
   "dependencies": {
+    "@astrojs/partytown": "^2.1.7",
     "ajv": "^8.18.0",
-    "astro": "^6.0.5",
-    "devalue": "^5.6.4",
+    "astro": "^5.5.0",
+    "astro-compress": "^2.4.1",
+    "astro-critters": "^2.2.1",
+    "devalue": "^5.7.1",
     "dompurify": "^3.3.3",
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.28.0",
     "fastify": "^5.8.4",
-    "file-type": "^21.3.3",
+    "file-type": "^22.0.1",
     "flatted": "^3.4.2",
     "jspdf": "^4.2.1",
-    "minimatch": "^9.0.7",
-    "next": "^16.1.7",
+    "minimatch": "^10.2.5",
+    "next": "^16.2.3",
     "react-router-dom": "^7.14.0",
-    "undici": "^7.24.0",
-    "vercel": "^50.38.2"
+    "undici": "^8.0.3",
+    "vercel": "^50.44.0",
+    "zod": "^4.3.6"
   },
   "overrides": {
     "dompurify": "^3.3.3",
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.28.0",
     "flatted": "^3.4.2",
     "h3": "^1.15.9",
     "kysely": "0.28.14",
-    "minimatch": "^9.0.7",
+    "minimatch": "^10.2.5",
     "path-to-regexp": "8.4.0",
     "picomatch": "^2.3.2",
     "smol-toml": "^1.6.1",
@@ -61,6 +65,7 @@
     "brace-expansion": "^5.0.5",
     "fastify": "^5.8.4",
     "@types/react": "^19.1.0",
-    "@types/react-dom": "^19.1.2"
+    "@types/react-dom": "^19.1.2",
+    "scheduler": "^0.27.0"
   }
 }

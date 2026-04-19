@@ -56,6 +56,7 @@ const (
 	KeyTypeAgent       KeyType = "agent"
 	KeyTypeEnvironment KeyType = "environment"
 	KeyTypeOAuth       KeyType = "oauth"
+	KeyTypeTrust       KeyType = "trust" // Trust API partner keys
 )
 
 // Key prefixes by type
@@ -65,6 +66,7 @@ const (
 	PrefixAgent       = "aep_"
 	PrefixEnvironment = "ffe_"
 	PrefixOAuth       = "ffo_"
+	PrefixTrust       = "fft_" // Trust API key prefix
 )
 
 // Default rate limits
@@ -143,6 +145,7 @@ type APIKey struct {
 	Name                  string     `json:"name" gorm:"size:255;not null"`
 	Description           string     `json:"description" gorm:"type:text"`
 	KeyType               KeyType    `json:"key_type" gorm:"type:varchar(50);not null;index:idx_api_keys_type"`
+	KeyID                string     `json:"key_id" gorm:"size:64;uniqueIndex"` // Public key identifier (e.g., fft_v1_xxx)
 	KeyPrefix             string     `json:"key_prefix" gorm:"size:10;not null;index:idx_api_keys_prefix"`
 	KeyHash               string     `json:"-" gorm:"type:text;not null;index:idx_api_keys_hash"`
 	KeyVersion            int        `json:"key_version" gorm:"not null;default:1"`
@@ -157,6 +160,21 @@ type APIKey struct {
 	CreatedAt             time.Time  `json:"created_at" gorm:"not null;autoCreateTime"`
 	UpdatedAt             time.Time  `json:"updated_at" gorm:"not null;autoUpdateTime"`
 	LastUsedAt            *time.Time `json:"last_used_at" gorm:"index"`
+	CreatedBy             string     `json:"created_by" gorm:"size:255;not null;default:''"`
+
+	// Per-key billing (high-value key attribution)
+	BillingBudgetCents    int64  `json:"billing_budget_cents,omitempty" gorm:"column:billing_budget_cents;default:0"` // Optional per-key budget
+	IsHighValue           bool  `json:"is_high_value" gorm:"default:false"`                                          // Mark as high-value key for separate billing
+	CostCenter            string `json:"cost_center,omitempty" gorm:"size:100"`                                         // For chargeback
+
+	// Trust API fields (coexist with platform fields)
+	PartnerID    uuid.UUID  `json:"partner_id" gorm:"type:uuid;index:idx_api_keys_partner"` // Trust partner (for Trust API keys)
+	Scopes       JSONBMap   `json:"scopes" gorm:"type:jsonb"`
+	IsRevoked    bool       `json:"is_revoked" gorm:"default:false;index:idx_api_keys_revoked"`
+	RevokedAt    *time.Time `json:"revoked_at"`
+	RevokedReason string    `json:"revoked_reason" gorm:"type:text"`
+	UseCount     int        `json:"use_count" gorm:"default:0"`
+	AllowedIPs   JSONBMap   `json:"allowed_ips" gorm:"type:jsonb"`
 
 	// Associations
 	Permissions  []APIKeyPermission  `json:"permissions,omitempty" gorm:"foreignKey:APIKeyID"`
@@ -296,6 +314,8 @@ func GetPrefixForKeyType(keyType KeyType) string {
 		return PrefixEnvironment
 	case KeyTypeOAuth:
 		return PrefixOAuth
+	case KeyTypeTrust:
+		return PrefixTrust
 	default:
 		return PrefixPlatform
 	}
@@ -341,9 +361,33 @@ func (k *APIKey) ToResponse() *APIKeyResponse {
 // IsValidKeyType checks if the given string is a valid key type
 func IsValidKeyType(s string) bool {
 	switch KeyType(s) {
-	case KeyTypePlatform, KeyTypeFunction, KeyTypeAgent, KeyTypeEnvironment, KeyTypeOAuth:
+	case KeyTypePlatform, KeyTypeFunction, KeyTypeAgent, KeyTypeEnvironment, KeyTypeOAuth, KeyTypeTrust:
 		return true
 	default:
 		return false
 	}
+}
+
+// HasScope checks if the API key has a specific scope (used by Trust API keys)
+func (k *APIKey) HasScope(scope string) bool {
+	if k.Scopes == nil {
+		return false
+	}
+	for kScope := range k.Scopes {
+		if kScope == scope || kScope == "*" {
+			return true
+		}
+	}
+	return false
+}
+
+// CreateTrustAPIKeyRequest is used for creating Trust API keys
+type CreateTrustAPIKeyRequest struct {
+	PartnerID   uuid.UUID
+	Name        string
+	Description string
+	Scopes      []string
+	AllowedIPs  []string
+	ExpiresAt   *time.Time
+	CreatedBy   string
 }

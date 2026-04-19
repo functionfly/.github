@@ -101,6 +101,10 @@ func CreateAgentCreditsCheckoutSession(
 				},
 			},
 		},
+		// Enable automatic tax calculation via Stripe Tax
+		AutomaticTax: &stripe.CheckoutSessionAutomaticTaxParams{
+			Enabled: stripe.Bool(true),
+		},
 		Metadata: md,
 		PaymentIntentData: &stripe.CheckoutSessionPaymentIntentDataParams{
 			Metadata: md,

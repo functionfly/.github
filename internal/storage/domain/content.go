@@ -44,6 +44,10 @@ type ContentRepository interface {
 	GetBlogAuthorBySlug(ctx context.Context, slug string) (*storage.BlogAuthor, error)
 	UpdateBlogAuthor(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*storage.BlogAuthor, error)
 	DeleteBlogAuthor(ctx context.Context, id uuid.UUID) error
+
+	// Blog settings
+	GetBlogSettings(ctx context.Context) (*storage.BlogSettings, error)
+	UpdateBlogSettings(ctx context.Context, updates map[string]interface{}) (*storage.BlogSettings, error)
 }
 
 // FeedbackRepository handles user feedback and support tickets

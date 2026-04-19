@@ -55,6 +55,11 @@ type RegistryFunction struct {
 	Rating   *RegistryFunctionRating   `json:"rating,omitempty" gorm:"foreignKey:FunctionID;references:ID"`
 }
 
+// TableName returns the database table name for RegistryFunction.
+func (RegistryFunction) TableName() string {
+	return "registry_functions"
+}
+
 // PlatformFee - audit trail for all platform fees
 type PlatformFee struct {
 	ID              uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
@@ -122,6 +127,7 @@ type RegistryFunctionVersion struct {
 	WasmCompiled []byte         `json:"wasm_compiled,omitempty" gorm:"type:bytea"` // AOT-compiled module bytes (.cwasm)
 	PublishedAt  time.Time      `json:"published_at" gorm:"autoCreateTime"`
 	UpdatedAt    time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
+	IsActive     bool           `json:"is_active" gorm:"default:true;index"`
 
 	// Relationships
 	Function           *RegistryFunction                   `json:"function,omitempty" gorm:"foreignKey:FunctionID;references:ID"`
@@ -129,6 +135,11 @@ type RegistryFunctionVersion struct {
 	MalwareScans       []RegistryFunctionMalwareScan       `json:"malware_scans,omitempty" gorm:"foreignKey:FunctionVersionID;references:ID"`
 	Approvals          []RegistryFunctionApproval          `json:"approvals,omitempty" gorm:"foreignKey:FunctionVersionID;references:ID"`
 	VerificationStatus *RegistryFunctionVerificationStatus `json:"verification_status,omitempty" gorm:"foreignKey:FunctionVersionID;references:ID"`
+}
+
+// TableName returns the database table name for RegistryFunctionVersion.
+func (RegistryFunctionVersion) TableName() string {
+	return "registry_function_versions"
 }
 
 // RegistryFunctionExecution represents an execution record
@@ -229,6 +240,11 @@ type RegistryFunctionRating struct {
 
 	// Relationships
 	Function *RegistryFunction `json:"function,omitempty" gorm:"foreignKey:FunctionID;references:ID"`
+}
+
+// TableName returns the database table name for RegistryFunctionRating.
+func (RegistryFunctionRating) TableName() string {
+	return "registry_function_ratings"
 }
 
 // RegistryFunctionSignature represents a digital signature for function content verification

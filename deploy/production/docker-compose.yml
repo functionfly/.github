@@ -171,7 +171,6 @@ services:
       - REQUEST_TRACING_ENABLED=true
       - STRUCTURED_LOGGING_ENABLED=true
       - HEALTH_CHECKS_ENABLED=true
-      - FLYWHEEL_ENABLED=true
       - REALTIME_UPDATES_ENABLED=true
       - WEBSOCKET_ENABLED=true
     ports:

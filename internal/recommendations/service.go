@@ -52,6 +52,11 @@ func (s *Service) WithFlyEmbedAPIKey(apiKey string) *Service {
 	return s
 }
 
+// GetRegistryRepository returns the underlying registry repository for cross-handler lookups.
+func (s *Service) GetRegistryRepository() *registry.RegistryRepository {
+	return s.registry
+}
+
 // GetRecommendations gets recommendations based on various strategies
 func (s *Service) GetRecommendations(ctx context.Context, req *RecommendationRequest) (*RecommendationResponse, error) {
 	if req.Limit == 0 {

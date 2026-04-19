@@ -79,8 +79,17 @@ func (c *InAppChannel) pgNotify(channel, payload string) error {
 	// Use the underlying sql.DB to send NOTIFY
 	// This requires direct SQL execution
 	query := "SELECT pg_notify($1, $2)"
-	_, err := c.db.Exec(query, channel, payload)
-	return err
+	if _, err := c.db.Exec(query, channel, payload); err != nil {
+		return err
+	}
+	// Also fire the global broadcast channel so the WebSocket notification
+	// listener (which subscribes to "notification_broadcast") receives the event.
+	// The payload's "user_id" field is used by the listener to route to the
+	// correct WebSocket client(s).
+	if _, err := c.db.Exec(query, "notification_broadcast", payload); err != nil {
+		c.logger.WithError(err).Warn("Failed to send notification_broadcast pg_notify")
+	}
+	return nil
 }
 
 // InAppMessage represents a message sent via the in-app channel

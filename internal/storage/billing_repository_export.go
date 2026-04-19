@@ -261,6 +261,8 @@ func (r *ExportRepository) UpdateDeliveryStatus(ctx context.Context, id uuid.UUI
 
 // GetPendingScheduledConfigs gets configurations that are due for scheduled execution
 func (r *ExportRepository) GetPendingScheduledConfigs(ctx context.Context, now time.Time) ([]*UsageExportConfiguration, error) {
+	nowUTC := now.UTC()
+	currentHour := nowUTC.Hour()
 	query := `
 		SELECT id, tenant_id, name, description, format, data_types, granularity,
 			include_metadata, include_breakdown, date_range_type, function_filter,
@@ -281,11 +283,11 @@ func (r *ExportRepository) GetPendingScheduledConfigs(ctx context.Context, now t
 		)
 		AND (
 			schedule_hour IS NULL
-			OR EXTRACT(HOUR FROM $1) >= schedule_hour
+			OR $2 >= schedule_hour
 		)
 	`
 
-	rows, err := r.db.QueryContext(ctx, query, now)
+	rows, err := r.db.QueryContext(ctx, query, nowUTC, currentHour)
 	if err != nil {
 		return nil, err
 	}
@@ -481,7 +483,7 @@ func (r *ExportRepository) CreateBillingIntegrationSync(ctx context.Context, syn
 		sync.Direction, sync.Status, sync.StartedAt, sync.CompletedAt,
 		sync.RecordsProcessed, sync.RecordsCreated, sync.RecordsUpdated,
 		sync.RecordsFailed, sync.RecordsSkipped, sync.ErrorMessage,
-		sync.ErrorDetails, sync.ExternalBatchID, sync.ExternalReferences,
+		sync.ErrorDetails, sync.ExternalBatchID, sync.ExternalRefs,
 		sync.CreatedAt, sync.TriggeredBy,
 	)
 
@@ -582,7 +584,61 @@ func (r *ExportRepository) UpdateBillingIntegrationSyncStats(ctx context.Context
 	return err
 }
 
+// GetPendingSyncs retrieves billing syncs that are pending or need retry
+func (r *ExportRepository) GetPendingSyncs(ctx context.Context, limit int) ([]*BillingIntegrationSync, error) {
+	query := `
+		SELECT id, external_system_id, tenant_id, sync_type, direction, status,
+		       started_at, completed_at, records_processed, records_created,
+		       records_updated, records_failed, records_skipped, error_message,
+		       external_batch_id, external_refs, created_at, triggered_by
+		FROM billing_integration_syncs
+		WHERE status IN ('pending', 'failed')
+		  AND (started_at IS NULL OR started_at < NOW() - INTERVAL '5 minutes')
+		ORDER BY created_at ASC
+		LIMIT $1
+	`
+	rows, err := r.db.QueryContext(ctx, query, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query pending syncs: %w", err)
+	}
+	defer rows.Close()
+
+	return r.scanBillingSyncRows(rows)
+}
+
 // ==================== Export Templates ====================
+
+// CreateUsageExportTemplate creates a new export template
+func (r *ExportRepository) CreateUsageExportTemplate(ctx context.Context, template *UsageExportTemplate) error {
+	query := `
+		INSERT INTO usage_export_templates (
+			id, name, description, category, format, data_types, granularity,
+			include_metadata, include_breakdown, default_fields, field_order,
+			column_headers, data_transforms, is_active, is_system, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+	`
+
+	// Marshal DataTransforms to JSON
+	var dataTransformsJSON []byte
+	if len(template.DataTransforms) > 0 {
+		var err error
+		dataTransformsJSON, err = json.Marshal(template.DataTransforms)
+		if err != nil {
+			return fmt.Errorf("failed to marshal data transforms: %w", err)
+		}
+	}
+
+	_, err := r.db.ExecContext(ctx, query,
+		template.ID, template.Name, template.Description, template.Category,
+		template.Format, pq.Array(template.DataTypes), template.Granularity,
+		template.IncludeMetadata, template.IncludeBreakdown,
+		pq.Array(template.DefaultFields), pq.Array(template.FieldOrder),
+		template.ColumnHeaders, dataTransformsJSON,
+		template.IsActive, template.IsSystem, template.CreatedAt, template.UpdatedAt,
+	)
+
+	return err
+}
 
 // GetUsageExportTemplate retrieves an export template by ID
 func (r *ExportRepository) GetUsageExportTemplate(ctx context.Context, id uuid.UUID) (*UsageExportTemplate, error) {
@@ -904,7 +960,7 @@ func (r *ExportRepository) scanBillingSync(row *sql.Row) (*BillingIntegrationSyn
 		&s.ID, &s.ExternalSystemID, &s.TenantID, &s.SyncType, &s.Direction, &s.Status,
 		&startedAt, &completedAt, &s.RecordsProcessed, &s.RecordsCreated,
 		&s.RecordsUpdated, &s.RecordsFailed, &s.RecordsSkipped,
-		&s.ErrorMessage, &errorDetailsJSON, &s.ExternalBatchID, &s.ExternalReferences,
+		&s.ErrorMessage, &errorDetailsJSON, &s.ExternalBatchID, &s.ExternalRefs,
 		&s.CreatedAt, &s.TriggeredBy,
 	)
 	if err != nil {
@@ -935,7 +991,7 @@ func (r *ExportRepository) scanBillingSyncRows(rows *sql.Rows) ([]*BillingIntegr
 			&s.ID, &s.ExternalSystemID, &s.TenantID, &s.SyncType, &s.Direction, &s.Status,
 			&startedAt, &completedAt, &s.RecordsProcessed, &s.RecordsCreated,
 			&s.RecordsUpdated, &s.RecordsFailed, &s.RecordsSkipped,
-			&s.ErrorMessage, &errorDetailsJSON, &s.ExternalBatchID, &s.ExternalReferences,
+			&s.ErrorMessage, &errorDetailsJSON, &s.ExternalBatchID, &s.ExternalRefs,
 			&s.CreatedAt, &s.TriggeredBy,
 		)
 		if err != nil {
@@ -1006,6 +1062,51 @@ func (r *ExportRepository) scanExportTemplateRows(rows *sql.Rows) ([]*UsageExpor
 // EnsureTables creates the necessary tables if they don't exist
 func (r *ExportRepository) EnsureTables(ctx context.Context) error {
 	tables := []string{
+		`CREATE TABLE IF NOT EXISTS department_budgets (
+			id UUID PRIMARY KEY,
+			tenant_id UUID NOT NULL REFERENCES tenants(id),
+			name VARCHAR(255) NOT NULL,
+			description TEXT,
+			budget_cents BIGINT NOT NULL,
+			warning_threshold_pct INTEGER DEFAULT 75,
+			critical_threshold_pct INTEGER DEFAULT 90,
+			period_start TIMESTAMP NOT NULL,
+			period_end TIMESTAMP NOT NULL,
+			team_ids UUID[],
+			tag_filters JSONB DEFAULT '{}',
+			alert_email TEXT,
+			is_active BOOLEAN DEFAULT true,
+			created_by UUID NOT NULL,
+			created_at TIMESTAMP NOT NULL,
+			updated_at TIMESTAMP NOT NULL
+		)`,
+		`CREATE TABLE IF NOT EXISTS budget_alerts (
+			id UUID PRIMARY KEY,
+			budget_id UUID NOT NULL REFERENCES department_budgets(id),
+			tenant_id UUID NOT NULL REFERENCES tenants(id),
+			level VARCHAR(20) NOT NULL,
+			spent_pct FLOAT NOT NULL,
+			spent_cents BIGINT NOT NULL,
+			budget_cents BIGINT NOT NULL,
+			alert_sent_to TEXT,
+			alert_message TEXT,
+			created_at TIMESTAMP NOT NULL
+		)`,
+		`CREATE TABLE IF NOT EXISTS cost_anomalies (
+			id UUID PRIMARY KEY,
+			tenant_id UUID NOT NULL REFERENCES tenants(id),
+			anomaly_type VARCHAR(30) NOT NULL,
+			severity VARCHAR(20) NOT NULL,
+			team_id UUID,
+			function_id UUID,
+			region VARCHAR(50),
+			expected_cost_cents BIGINT NOT NULL,
+			actual_cost_cents BIGINT NOT NULL,
+			delta_cents BIGINT NOT NULL,
+			delta_percent FLOAT NOT NULL,
+			description TEXT,
+			created_at TIMESTAMP NOT NULL
+		)`,
 		`CREATE TABLE IF NOT EXISTS usage_export_configurations (
 			id UUID PRIMARY KEY,
 			tenant_id UUID NOT NULL REFERENCES tenants(id),
@@ -1144,6 +1245,10 @@ func (r *ExportRepository) EnsureTables(ctx context.Context) error {
 		`CREATE INDEX IF NOT EXISTS idx_export_jobs_status ON usage_export_jobs(status)`,
 		`CREATE INDEX IF NOT EXISTS idx_external_billing_tenant ON external_billing_systems(tenant_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_billing_syncs_system ON billing_integration_syncs(external_system_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_budget_alerts_tenant ON budget_alerts(tenant_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_budget_alerts_budget ON budget_alerts(budget_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_cost_anomalies_tenant ON cost_anomalies(tenant_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_cost_anomalies_created ON cost_anomalies(created_at DESC)`,
 	}
 
 	for _, table := range tables {

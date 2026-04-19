@@ -170,6 +170,7 @@ type FunctionDeployment struct {
 	Region       string    `json:"region" db:"region"`
 	DeployedURL  *string   `json:"deployed_url,omitempty" db:"deployed_url"`
 	ErrorMessage *string   `json:"error_message,omitempty" db:"error_message"`
+	DurationMs   *int      `json:"duration_ms,omitempty" db:"duration_ms"`
 	CreatedAt    time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"`
 }

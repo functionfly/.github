@@ -280,16 +280,17 @@ type Executor interface {
 // ExecutionService handles running graph executions
 type ExecutionService struct {
 	db       *gorm.DB
-	graph    *Service
 	executor Executor
+}
+
+// getGraph returns the graph service, created lazily to avoid circular construction.
+func (s *ExecutionService) getGraph() *Service {
+	return NewService(s.db)
 }
 
 // NewExecutionService creates a new execution service
 func NewExecutionService(db *gorm.DB) *ExecutionService {
-	return &ExecutionService{
-		db:    db,
-		graph: NewService(db),
-	}
+	return &ExecutionService{db: db}
 }
 
 // SetExecutor sets the function executor for graph node execution
@@ -348,7 +349,7 @@ func (s *ExecutionService) Run(ctx context.Context, executionID uuid.UUID) {
 }
 
 func (s *ExecutionService) getExecutionOrder(graphID uuid.UUID) ([]Node, error) {
-	return s.graph.GetExecutionOrder(context.Background(), graphID)
+	return s.getGraph().GetExecutionOrder(context.Background(), graphID)
 }
 
 func (s *ExecutionService) executeNode(ctx context.Context, node *Node, execution *Execution, input map[string]any) (map[string]any, error) {

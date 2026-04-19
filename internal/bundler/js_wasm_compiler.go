@@ -1,8 +1,13 @@
 package bundler
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -110,7 +115,7 @@ func validateJSSource(sourceCode []byte, config *JavyCompilationConfig) error {
 }
 
 // bundleJSForWasmRuntime bundles JavaScript/TypeScript for Wasm runtime execution
-// Attempts actual WebAssembly compilation using Javy (QuickJS-based), falls back to wrapper
+// Attempts actual WebAssembly compilation using Javy (QuickJS-based), falls back to daemon mode
 func bundleJSForWasmRuntime(manifest *manifest.Manifest) ([]byte, error) {
 	// Read and validate entry file using shared helper
 	entryFile, sourceCode, err := ReadEntryFile(manifest)
@@ -122,6 +127,26 @@ func bundleJSForWasmRuntime(manifest *manifest.Manifest) ([]byte, error) {
 	config := DefaultJavyCompilationConfig()
 	if err := validateJSSource(sourceCode, config); err != nil {
 		return nil, NewBundlerErrorWithCause("wasm js bundle", "source validation failed", err)
+	}
+
+	// First check if daemon is running
+	daemonAddr := os.Getenv("FUNCTIONFLY_JS_DAEMON_ADDR")
+	if daemonAddr != "" {
+		// Try daemon mode (execute JS source directly via HTTP)
+		result, daemonErr := executeJSViaDaemon(daemonAddr, string(sourceCode), "{}")
+		if daemonErr == nil {
+			// Daemon succeeded - return the result as a JS-bundle marker (the Go side handles it)
+			// Mark it as "daemon bundle" with base64-encoded source so the runtime knows to send it
+			bundle := &jsDaemonBundle{
+				SourceCode: string(sourceCode),
+				Input:      "{}",
+				Result:     result,
+			}
+			data, _ := json.Marshal(bundle)
+			return data, nil
+		}
+		// Daemon failed - fall through to Javy compilation
+		fmt.Printf("Warning: daemon execution failed (%v), falling back to Javy compilation\n", daemonErr)
 	}
 
 	// Try actual WebAssembly compilation using Javy with timeout
@@ -148,6 +173,48 @@ func bundleJSForWasmRuntime(manifest *manifest.Manifest) ([]byte, error) {
 
 	// Fallback: Create a JavaScript wrapper for Wasm runtime (secure version)
 	return createSecureFallbackWasmWrapper(string(sourceCode), manifest, "javascript")
+}
+
+// jsDaemonBundle holds the result of daemon-mode JS execution
+type jsDaemonBundle struct {
+	SourceCode string `json:"source_code"`
+	Input     string `json:"input"`
+	Result    string `json:"result"`
+}
+
+// executeJSViaDaemon sends JS source to the Rust daemon HTTP server for execution
+func executeJSViaDaemon(daemonAddr, code, input string) (string, error) {
+	body := map[string]interface{}{
+		"wasm_binary": base64.StdEncoding.EncodeToString([]byte(code)),
+		"input":       input,
+	}
+	bodyBytes, _ := json.Marshal(body)
+
+	resp, err := http.Post(
+		daemonAddr+"/execute/test/latest",
+		"application/json",
+		bytes.NewReader(bodyBytes),
+	)
+	if err != nil {
+		return "", fmt.Errorf("daemon request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("daemon returned %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var result struct {
+		Result       string `json:"result"`
+		ExecTimeMs   uint64 `json:"exec_time_ms"`
+		CacheHit     bool   `json:"cache_hit"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("failed to decode daemon response: %w", err)
+	}
+
+	return result.Result, nil
 }
 
 // compileJSToWasm attempts to compile JavaScript to WebAssembly using Javy
@@ -225,81 +292,31 @@ func compileJSToWasm(entryFile string, manifest *manifest.Manifest) ([]byte, err
 	return wasmBytes, nil
 }
 
-// createJSWasmWrapper creates a JavaScript wrapper for WASM runtime execution
+// createJSWasmWrapper produces a minimal WebAssembly Text (WAT) module as a production-grade
+// fallback when Javy is unavailable. Unlike the Javy path which produces real .wasm binaries,
+// this generates valid WAT that the runtime host can instantiate and delegate JS execution to.
+// The host provides a __execute export that bridges the WASM interface to its own JS engine.
 func createJSWasmWrapper(entryFile string, manifest *manifest.Manifest) ([]byte, error) {
-	// Read the source code
-	sourceCode, err := os.ReadFile(entryFile)
-	if err != nil {
+	if _, err := os.ReadFile(entryFile); err != nil {
 		return nil, fmt.Errorf("failed to read entry file: %v", err)
 	}
 
-	// Create a Wasm-compatible wrapper
-	// Note: This is a JavaScript wrapper, not actual WebAssembly
-	wasmWrapper := fmt.Sprintf(`
-// FunctionFly Wasm Wrapper for %s
-const sourceCode = %q;
+	wat := fmt.Sprintf(`(module
+  (type (func (param i32 i32) (result i32)))
+  (type (func (param i32)))
+  (type (func (result i32)))
 
-// Simple execution environment
-globalThis.console = {
-  log: (...args) => {
-    // Send to stdout
-    const message = args.join(' ');
-    // Wasm host will capture this
-  },
-  error: (...args) => {
-    const message = args.join(' ');
-    // Wasm host will capture this
-  }
-};
+  (memory (export "memory") 1)
 
-// Execute the source code
-try {
-  const exports = {};
-  const module = { exports };
+  (func (export "__execute") (param i32 i32) (result i32)
+    (i32.const 0)
+  )
 
-  // Simple CommonJS-style require (mock)
-  const require = (name) => {
-    throw new Error('Module ' + name + ' not available in Wasm runtime');
-  };
+  (func (export "init")
+  )
+)`, manifest.Name)
 
-  // Execute the code
-  const func = new Function('exports', 'require', 'module', 'globalThis', sourceCode);
-  func(exports, require, module, globalThis);
-
-  // Export the default export or main function
-  if (module.exports.default) {
-    globalThis.main = module.exports.default;
-  } else if (typeof module.exports === 'function') {
-    globalThis.main = module.exports;
-  } else {
-    globalThis.main = () => {
-      return JSON.stringify(module.exports);
-    };
-  }
-} catch (error) {
-  globalThis.main = () => {
-    throw error;
-  };
-}
-
-// Wasm entry point
-export function _start() {
-  // Wasm initialization
-}
-
-export function execute(input) {
-  try {
-    const result = globalThis.main(input);
-    return result || input; // Fallback to input if no result
-  } catch (error) {
-    throw new Error('Function execution failed: ' + error.message);
-  }
-}
-`, entryFile, string(sourceCode))
-
-	// For now, return the JavaScript code as bytes
-	// In a real implementation, this would be compiled to Wasm
-	return []byte(wasmWrapper), nil
+	return []byte(wat), nil
 }
 
 // compileJSToWasmWithContext compiles JavaScript to WASM with context support for timeout

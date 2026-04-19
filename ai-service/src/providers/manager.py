@@ -18,6 +18,7 @@ from .together import TogetherProvider
 from .router import ProviderRouter, init_provider_router
 from ..config import settings
 from ..models.schemas import ProviderType, ProviderInfo
+from ..services.economic_memory.tracking import wrap_provider_with_tracking, TrackedProvider
 
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ class ProviderManager:
     """Manages all LLM providers and provides a unified interface."""
 
     def __init__(self):
-        self._providers: Dict[str, BaseProvider] = {}
+        self._providers: Dict[str, TrackedProvider] = {}
         self._default_provider: str = settings.default_provider
         self._default_embedding_provider: str = settings.default_embedding_provider
 
@@ -35,68 +36,88 @@ class ProviderManager:
         self._init_providers()
 
     def _init_providers(self) -> None:
-        """Initialize all available providers."""
-        # Initialize OpenAI
+        """Initialize all available providers with economic tracking."""
+        # Provider type mapping
+        provider_types = {
+            "openai": ProviderType.OPENAI,
+            "anthropic": ProviderType.ANTHROPIC,
+            "ollama": ProviderType.OLLAMA,
+            "openrouter": ProviderType.OPENROUTER,
+            "fireworks": ProviderType.FIREWORKS,
+            "groq": ProviderType.GROQ,
+            "deepinfra": ProviderType.DEEPINFRA,
+            "together": ProviderType.TOGETHER,
+        }
+
+        # Initialize OpenAI with tracking
         try:
             openai = OpenAIProvider()
-            self._providers[ProviderType.OPENAI.value] = openai
-            logger.info(f"Initialized OpenAI provider (available: {openai.available})")
+            tracked_openai = wrap_provider_with_tracking(openai, ProviderType.OPENAI)
+            self._providers[ProviderType.OPENAI.value] = tracked_openai
+            logger.info(f"Initialized OpenAI provider with tracking (available: {openai.available})")
         except Exception as e:
             logger.warning(f"Failed to initialize OpenAI provider: {e}")
 
-        # Initialize Anthropic
+        # Initialize Anthropic with tracking
         try:
             anthropic = AnthropicProvider()
-            self._providers[ProviderType.ANTHROPIC.value] = anthropic
-            logger.info(f"Initialized Anthropic provider (available: {anthropic.available})")
+            tracked_anthropic = wrap_provider_with_tracking(anthropic, ProviderType.ANTHROPIC)
+            self._providers[ProviderType.ANTHROPIC.value] = tracked_anthropic
+            logger.info(f"Initialized Anthropic provider with tracking (available: {anthropic.available})")
         except Exception as e:
             logger.warning(f"Failed to initialize Anthropic provider: {e}")
 
-        # Initialize Ollama
+        # Initialize Ollama with tracking
         try:
             ollama = OllamaProvider()
-            self._providers[ProviderType.OLLAMA.value] = ollama
-            logger.info(f"Initialized Ollama provider (available: {ollama.available})")
+            tracked_ollama = wrap_provider_with_tracking(ollama, ProviderType.OLLAMA)
+            self._providers[ProviderType.OLLAMA.value] = tracked_ollama
+            logger.info(f"Initialized Ollama provider with tracking (available: {ollama.available})")
         except Exception as e:
             logger.warning(f"Failed to initialize Ollama provider: {e}")
 
-        # Initialize OpenRouter
+        # Initialize OpenRouter with tracking
         try:
             openrouter = OpenRouterProvider()
-            self._providers[ProviderType.OPENROUTER.value] = openrouter
-            logger.info(f"Initialized OpenRouter provider (available: {openrouter.available})")
+            tracked_openrouter = wrap_provider_with_tracking(openrouter, ProviderType.OPENROUTER)
+            self._providers[ProviderType.OPENROUTER.value] = tracked_openrouter
+            logger.info(f"Initialized OpenRouter provider with tracking (available: {openrouter.available})")
         except Exception as e:
             logger.warning(f"Failed to initialize OpenRouter provider: {e}")
 
-        # Initialize Fireworks AI (primary for function calling)
+        # Initialize Fireworks AI with tracking
         try:
             fireworks = FireworksProvider()
-            self._providers[ProviderType.FIREWORKS.value] = fireworks
-            logger.info(f"Initialized Fireworks AI provider (available: {fireworks.available})")
+            tracked_fireworks = wrap_provider_with_tracking(fireworks, ProviderType.FIREWORKS)
+            self._providers[ProviderType.FIREWORKS.value] = tracked_fireworks
+            logger.info(f"Initialized Fireworks AI provider with tracking (available: {fireworks.available})")
         except Exception as e:
             logger.warning(f"Failed to initialize Fireworks AI provider: {e}")
 
-        # Initialize Groq (low-latency real-time)
+        # Initialize Groq with tracking
         try:
             groq = GroqProvider()
-            self._providers[ProviderType.GROQ.value] = groq
-            logger.info(f"Initialized Groq provider (available: {groq.available})")
+            tracked_groq = wrap_provider_with_tracking(groq, ProviderType.GROQ)
+            self._providers[ProviderType.GROQ.value] = tracked_groq
+            logger.info(f"Initialized Groq provider with tracking (available: {groq.available})")
         except Exception as e:
             logger.warning(f"Failed to initialize Groq provider: {e}")
 
-        # Initialize DeepInfra (cost-effective background/batch)
+        # Initialize DeepInfra with tracking
         try:
             deepinfra = DeepInfraProvider()
-            self._providers[ProviderType.DEEPINFRA.value] = deepinfra
-            logger.info(f"Initialized DeepInfra provider (available: {deepinfra.available})")
+            tracked_deepinfra = wrap_provider_with_tracking(deepinfra, ProviderType.DEEPINFRA)
+            self._providers[ProviderType.DEEPINFRA.value] = tracked_deepinfra
+            logger.info(f"Initialized DeepInfra provider with tracking (available: {deepinfra.available})")
         except Exception as e:
             logger.warning(f"Failed to initialize DeepInfra provider: {e}")
 
-        # Initialize Together AI (alternative/batch)
+        # Initialize Together AI with tracking
         try:
             together = TogetherProvider()
-            self._providers[ProviderType.TOGETHER.value] = together
-            logger.info(f"Initialized Together AI provider (available: {together.available})")
+            tracked_together = wrap_provider_with_tracking(together, ProviderType.TOGETHER)
+            self._providers[ProviderType.TOGETHER.value] = tracked_together
+            logger.info(f"Initialized Together AI provider with tracking (available: {together.available})")
         except Exception as e:
             logger.warning(f"Failed to initialize Together AI provider: {e}")
 
@@ -108,7 +129,7 @@ class ProviderManager:
             except Exception as e:
                 logger.warning(f"Failed to initialize provider router: {e}")
 
-    def get_provider(self, name: Optional[str] = None) -> BaseProvider:
+    def get_provider(self, name: Optional[str] = None) -> TrackedProvider:
         """Get a provider by name.
 
         Args:
@@ -133,7 +154,7 @@ class ProviderManager:
 
         return provider
 
-    def get_provider_for_chat(self, name: Optional[str] = None) -> BaseProvider:
+    def get_provider_for_chat(self, name: Optional[str] = None) -> TrackedProvider:
         """Resolve an LLM provider for chat/completions.
 
         Tries *name* (if given), then :attr:`default_provider`, then common fallbacks
@@ -164,7 +185,7 @@ class ProviderManager:
                 return provider
         raise ValueError("No LLM provider available")
 
-    def get_embedding_provider(self, name: Optional[str] = None) -> BaseProvider:
+    def get_embedding_provider(self, name: Optional[str] = None) -> TrackedProvider:
         """Get a provider that supports embeddings.
 
         Args:
@@ -275,6 +296,90 @@ class ProviderManager:
             {"use_case": "Background/batch work", "provider": "deepinfra", "reason": "Cost-effective"},
             {"use_case": "Multi-model routing", "provider": "openrouter", "reason": "Agnostic routing"},
         ]
+
+    def get_provider_by_type(self, provider_type: ProviderType) -> Optional[TrackedProvider]:
+        """Get a provider by its ProviderType enum value.
+
+        Args:
+            provider_type: ProviderType enum value
+
+        Returns:
+            TrackedProvider instance or None if not available
+        """
+        return self._providers.get(provider_type.value)
+
+    def list_available_providers(self) -> Dict[ProviderType, TrackedProvider]:
+        """Get all available providers by their types.
+
+        Returns:
+            Dictionary mapping ProviderType to TrackedProvider
+        """
+        result = {}
+        for type_value, provider in self._providers.items():
+            try:
+                ptype = ProviderType(type_value)
+                if provider.available:
+                    result[ptype] = provider
+            except ValueError:
+                continue
+        return result
+
+    async def get_economic_routing_recommendation(
+        self,
+        strategy: str = "balanced",
+        quality_threshold: Optional[float] = 0.7,
+    ) -> Dict:
+        """Get provider recommendation based on cost-quality analysis.
+
+        Args:
+            strategy: Routing strategy (quality_first, balanced, cost_optimized, cost_first)
+            quality_threshold: Minimum quality score required
+
+        Returns:
+            Dictionary with recommendation details
+        """
+        try:
+            from ..services.economic_routing import (
+                get_economic_routing_service,
+                RoutingStrategy,
+            )
+
+            router = get_economic_routing_service()
+
+            # Get available providers
+            available_providers = self.list_available_providers()
+            if not available_providers:
+                return {"error": "No providers available"}
+
+            # Use default routing request
+            from ..models.schemas import RoutingDecisionRequest
+            request = RoutingDecisionRequest(
+                function_id="economic_analysis",
+            )
+
+            try:
+                routing_strategy = RoutingStrategy(strategy)
+            except ValueError:
+                routing_strategy = RoutingStrategy.BALANCED
+
+            # Get economic decision
+            decision = await router.decide_routing(
+                request=request,
+                strategy=routing_strategy,
+                quality_threshold=quality_threshold,
+            )
+
+            return {
+                "recommended_provider": decision.reasoning.split("Selected ")[1].split("/")[0]
+                if "Selected " in decision.reasoning else None,
+                "confidence": decision.confidence,
+                "reasoning": decision.reasoning,
+                "strategy": strategy,
+            }
+
+        except Exception as e:
+            logger.warning(f"Failed to get economic routing recommendation: {e}")
+            return {"error": str(e)}
 
 
 # Global provider manager instance

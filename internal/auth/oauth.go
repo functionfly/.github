@@ -2,6 +2,9 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,20 +15,87 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/github"
 	"golang.org/x/oauth2/google"
 )
 
-// isAllowedRedirectURI restricts redirect_uri to localhost/127.0.0.1 for CLI callback security.
-func isAllowedRedirectURI(raw string) bool {
+// allowedCallbackHosts defines the allowlist for valid redirect URIs.
+// Includes localhost for CLI flows and production domains for production.
+var allowedCallbackHosts = []string{
+	"localhost",
+	"127.0.0.1",
+	"app.functionfly.com",     // production dashboard
+	"staging.functionfly.com", // staging dashboard
+}
+
+// IsAllowedRedirectURI validates redirect_uri against an allowlist.
+// For production, validates against known hosts. For CLI flows, allows localhost/127.0.0.1.
+func IsAllowedRedirectURI(raw string) bool {
 	u, err := url.Parse(raw)
-	if err != nil || u.Scheme != "http" || u.Host == "" {
+	if err != nil || u.Host == "" {
 		return false
 	}
+	// Allow HTTPS for production domains, HTTP only for localhost
+	isHTTPS := u.Scheme == "https"
+	isHTTP := u.Scheme == "http"
+	if !isHTTPS && !isHTTP {
+		return false
+	}
+
 	host := strings.ToLower(u.Hostname())
-	return host == "127.0.0.1" || host == "localhost"
+
+	for _, allowed := range allowedCallbackHosts {
+		// Exact match for localhost/127.0.0.1 (any port allowed)
+		if host == allowed {
+			// Require HTTPS for production domains, allow HTTP for localhost
+			if (allowed == "app.functionfly.com" || allowed == "staging.functionfly.com") && !isHTTPS {
+				return false
+			}
+			return true
+		}
+		// Subdomain match for production domains (e.g., *.app.functionfly.com)
+		if strings.HasSuffix(host, "."+allowed) {
+			// Subdomains must use HTTPS
+			if !isHTTPS {
+				return false
+			}
+			return true
+		}
+	}
+	return false
+}
+
+// isAllowedRedirectURI is an alias for IsAllowedRedirectURI for internal use.
+// Kept for backward compatibility within the auth package.
+func isAllowedRedirectURI(raw string) bool {
+	return IsAllowedRedirectURI(raw)
+}
+
+// PKCE (Proof Key for Code Exchange) helpers
+// PKCE is required/recommended for public clients to prevent authorization code interception attacks.
+
+// generateCodeVerifier generates a cryptographically secure PKCE code verifier.
+// The code verifier is a high-entropy random string using unreserved URL characters.
+// PKCE spec (RFC 7636) requires 43-128 characters of unreserved URL-safe chars.
+// We use 32 bytes (256 bits) of entropy which encodes to ~43 base64url chars.
+func generateCodeVerifier() (string, error) {
+	// PKCE spec requires minimum 43 chars, we use 256 bits of entropy
+	b := make([]byte, 32) // 32 bytes = 256 bits of entropy
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("failed to generate code verifier: %w", err)
+	}
+	// Base64URL encode without padding (PKCE spec requirement)
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+// generateCodeChallenge generates the S256 code challenge from a code verifier.
+func generateCodeChallenge(verifier string) string {
+	hash := sha256.Sum256([]byte(verifier))
+	return base64.RawURLEncoding.EncodeToString(hash[:])
 }
 
 // SetBaseURL sets the base URL for OAuth redirects
@@ -84,7 +154,9 @@ func (a *AuthService) getEnvVar(key string) string {
 // redirectURI is optional; when set (e.g. CLI callback URL), the callback will redirect there with the token.
 // Only http://127.0.0.1 and http://localhost (any port) are allowed for redirectURI.
 // inviteCode is optional unless SignupInviteRequired(); then it must be valid (read-only check) and is stored in OAuth state for callback redemption.
-func (a *AuthService) GetOAuthURL(provider, redirectURI, inviteCode string) (string, error) {
+// loginHint is optional; preserves tenant subdomain or email context through the OAuth flow for better UX (redirect back to origin post-auth).
+// deviceFingerprint is optional; stores a hash of device characteristics for session binding validation on callback (prevents session fixation attacks).
+func (a *AuthService) GetOAuthURL(provider, redirectURI, inviteCode, loginHint, deviceFingerprint string) (string, error) {
 	p, exists := a.oauthProviders[provider]
 	if !exists {
 		return "", fmt.Errorf("OAuth provider '%s' not configured", provider)
@@ -116,18 +188,38 @@ func (a *AuthService) GetOAuthURL(provider, redirectURI, inviteCode string) (str
 		return "", fmt.Errorf("failed to generate OAuth state: %w", err)
 	}
 
+	// Generate PKCE code verifier and challenge (S256 method)
+	// PKCE is required/recommended for public clients to prevent authorization code interception attacks
+	codeVerifier, err := generateCodeVerifier()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate PKCE code verifier: %w", err)
+	}
+	codeChallenge := generateCodeChallenge(codeVerifier)
+
 	// Store state server-side (persisted for multi-instance) so we can validate it on callback
+	// Store code_verifier for PKCE validation on callback
+	// Store login_hint for redirecting back to tenant subdomain post-auth
+	// Store device_fingerprint for session binding validation (prevents session fixation attacks)
 	expiresAt := time.Now().Add(10 * time.Minute)
-	if err := a.repo.StoreOAuthState(context.Background(), state, expiresAt, redirectURI, ic); err != nil {
+	if err := a.repo.StoreOAuthState(context.Background(), state, expiresAt, redirectURI, ic, codeVerifier, loginHint, deviceFingerprint); err != nil {
 		return "", fmt.Errorf("failed to store OAuth state: %w", err)
 	}
 
-	return p.Config.AuthCodeURL(state, oauth2.AccessTypeOffline), nil
+	// Build auth URL with PKCE parameters
+	authOpts := []oauth2.AuthCodeOption{
+		oauth2.AccessTypeOffline,
+		oauth2.SetAuthURLParam("code_challenge", codeChallenge),
+		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
+	}
+
+	return p.Config.AuthCodeURL(state, authOpts...), nil
 }
 
 // HandleOAuthCallback processes OAuth callback and returns user authentication.
 // The returned RedirectURI (if set) should be used to redirect the user with the token (e.g. CLI callback).
-func (a *AuthService) HandleOAuthCallback(provider, code, state string) (*OAuthCallbackResponse, error) {
+// The returned LoginHint can be used to redirect back to tenant subdomain post-auth.
+// deviceFingerprint must match the fingerprint stored when the OAuth flow was initiated.
+func (a *AuthService) HandleOAuthCallback(provider, code, state, deviceFingerprint string) (*OAuthCallbackResponse, error) {
 	// Validate CSRF state token — must match one issued by GetOAuthURL (persisted, one-time use)
 	if state == "" {
 		return nil, &OAuthError{
@@ -136,7 +228,7 @@ func (a *AuthService) HandleOAuthCallback(provider, code, state string) (*OAuthC
 			Description: "The OAuth state parameter is invalid or has expired. Please try signing in again.",
 		}
 	}
-	valid, redirectURI, storedInvite, err := a.repo.ValidateAndConsumeOAuthState(context.Background(), state)
+	valid, redirectURI, storedInvite, codeVerifier, loginHint, storedDeviceFingerprint, err := a.repo.ValidateAndConsumeOAuthState(context.Background(), state)
 	if err != nil {
 		return nil, &OAuthError{
 			Type:        "invalid_state",
@@ -152,6 +244,30 @@ func (a *AuthService) HandleOAuthCallback(provider, code, state string) (*OAuthC
 		}
 	}
 
+	// Validate device fingerprint if stored (session binding - prevents session fixation attacks)
+	// If device fingerprint was stored in state, the callback must come from the same device
+	if storedDeviceFingerprint != "" {
+		if deviceFingerprint == "" {
+			return nil, &OAuthError{
+				Type:        "device_verification_required",
+				Message:     "Device verification required",
+				Description: "This authentication requires device fingerprint verification. Please initiate the login from the same device.",
+			}
+		}
+		if deviceFingerprint != storedDeviceFingerprint {
+			logrus.WithFields(logrus.Fields{
+				"stored_fp":   storedDeviceFingerprint[:8] + "...",
+				"received_fp": deviceFingerprint[:8] + "...",
+			}).Warn("OAuth device fingerprint mismatch - possible session fixation attack")
+			return nil, &OAuthError{
+				Type:        "device_verification_failed",
+				Message:     "Device verification failed",
+				Description: "The device fingerprint does not match the initial request. This could indicate a session fixation attack.",
+			}
+		}
+		logrus.Debug("OAuth device fingerprint validated successfully")
+	}
+
 	// Validate provider
 	p, exists := a.oauthProviders[provider]
 	if !exists {
@@ -162,8 +278,13 @@ func (a *AuthService) HandleOAuthCallback(provider, code, state string) (*OAuthC
 		}
 	}
 
-	// Exchange code for token
-	token, err := p.Config.Exchange(context.Background(), code)
+	// Exchange code for token with PKCE code_verifier
+	// PKCE code_verifier is required for public clients to prevent authorization code interception attacks
+	exchangeOpts := []oauth2.AuthCodeOption{}
+	if codeVerifier != "" {
+		exchangeOpts = append(exchangeOpts, oauth2.SetAuthURLParam("code_verifier", codeVerifier))
+	}
+	token, err := p.Config.Exchange(context.Background(), code, exchangeOpts...)
 	if err != nil {
 		return nil, &OAuthError{
 			Type:        "token_exchange_failed",
@@ -232,7 +353,30 @@ func (a *AuthService) HandleOAuthCallback(provider, code, state string) (*OAuthC
 		}
 
 		if existingUserByEmail != nil {
-			// Link social account to existing user
+			// Check if the existing user was created with a different provider
+			// If so, require explicit confirmation before linking (security measure)
+			if existingUserByEmail.Provider != nil && *existingUserByEmail.Provider != "" && *existingUserByEmail.Provider != provider {
+				// User exists with a different provider - require explicit confirmation
+				// Generate a temporary link token for confirmation
+				linkToken, err := a.generateLinkToken(existingUserByEmail.ID, provider, userInfo.ID, userInfo)
+				if err != nil {
+					return nil, &OAuthError{
+						Type:        "link_token_failed",
+						Message:     "Failed to generate link token",
+						Description: "Could not generate account linking token. Please try again.",
+					}
+				}
+
+				return &OAuthCallbackResponse{
+					User:         existingUserByEmail,
+					LinkToken:    linkToken,
+					LinkRequired: true,
+					RedirectURI:  redirectURI,
+					LoginHint:    loginHint,
+				}, nil
+			}
+
+			// Link social account to existing user (same provider or no prior provider)
 			user = existingUserByEmail
 			newUser = false
 
@@ -357,6 +501,7 @@ func (a *AuthService) HandleOAuthCallback(provider, code, state string) (*OAuthC
 		User:         user,
 		NewUser:      newUser,
 		RedirectURI:  redirectURI,
+		LoginHint:    loginHint,
 	}, nil
 }
 
@@ -466,4 +611,186 @@ func (a *AuthService) GetConfiguredOAuthProviders() []string {
 		providers = append(providers, provider)
 	}
 	return providers
+}
+
+// LinkTokenClaims represents the JWT claims for account linking tokens
+type LinkTokenClaims struct {
+	UserID       uuid.UUID `json:"user_id"`
+	Provider     string    `json:"provider"`
+	ProviderID   string    `json:"provider_id"`
+	Email        string    `json:"email"`
+	LinkType     string    `json:"link_type"` // "account_linking"
+	jwt.RegisteredClaims
+}
+
+// generateLinkToken creates a temporary token for account linking confirmation.
+// This token is short-lived and can only be used to confirm linking a specific
+// social account to an existing user account.
+func (a *AuthService) generateLinkToken(userID uuid.UUID, provider, providerID string, userInfo *OAuthUserInfo) (string, error) {
+	if len(a.jwtSecret) == 0 {
+		return "", fmt.Errorf("JWT secret not configured")
+	}
+
+	now := time.Now()
+	claims := LinkTokenClaims{
+		UserID:     userID,
+		Provider:   provider,
+		ProviderID: providerID,
+		Email:      userInfo.Email,
+		LinkType:   "account_linking",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    Issuer,
+			Subject:   userID.String(),
+			ExpiresAt: jwt.NewNumericDate(now.Add(15 * time.Minute)), // Short-lived: 15 minutes
+			IssuedAt:  jwt.NewNumericDate(now),
+			NotBefore: jwt.NewNumericDate(now),
+			ID:        fmt.Sprintf("%s-%s-%s", provider, providerID, userInfo.Email), // Unique ID for this link attempt
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(a.jwtSecret)
+}
+
+// ConfirmAccountLinking confirms linking a social account to an existing user.
+// This should be called after the user has explicitly confirmed they want to link accounts.
+func (a *AuthService) ConfirmAccountLinking(linkToken, provider, providerID string, userInfo *OAuthUserInfo) (*OAuthAccountLinkResponse, error) {
+	// Validate the link token
+	if linkToken == "" {
+		return nil, &OAuthError{
+			Type:        "invalid_link_token",
+			Message:     "Invalid link token",
+			Description: "The account linking token is missing. Please try signing in again.",
+		}
+	}
+
+	// Parse and validate the JWT link token
+	parser := jwt.NewParser(
+		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}),
+		jwt.WithExpirationRequired(),
+		jwt.WithIssuer(Issuer),
+	)
+
+	token, err := parser.ParseWithClaims(linkToken, &LinkTokenClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return a.jwtSecret, nil
+	})
+	if err != nil {
+		return nil, &OAuthError{
+			Type:        "invalid_link_token",
+			Message:     "Invalid link token",
+			Description: "The account linking token is invalid or has expired. Please sign in again.",
+		}
+	}
+
+	claims, ok := token.Claims.(*LinkTokenClaims)
+	if !ok || !token.Valid {
+		return nil, &OAuthError{
+			Type:        "invalid_link_token",
+			Message:     "Invalid link token claims",
+			Description: "The account linking token has invalid claims. Please sign in again.",
+		}
+	}
+
+	// Verify the token is for account linking
+	if claims.LinkType != "account_linking" {
+		return nil, &OAuthError{
+			Type:        "invalid_link_token",
+			Message:     "Invalid link token type",
+			Description: "The token is not an account linking token. Please sign in again.",
+		}
+	}
+
+	// Verify the provider and providerID match
+	if claims.Provider != provider || claims.ProviderID != providerID {
+		return nil, &OAuthError{
+			Type:        "invalid_link_token",
+			Message:     "Link token provider mismatch",
+			Description: "The account linking token does not match the provider. Please sign in again.",
+		}
+	}
+
+	// Verify the email matches
+	if claims.Email != userInfo.Email {
+		return nil, &OAuthError{
+			Type:        "invalid_link_token",
+			Message:     "Link token email mismatch",
+			Description: "The account linking token does not match your email. Please sign in again.",
+		}
+	}
+
+	// Look up the user by email to get their ID
+	existingUser, err := a.repo.GetUserByEmail(userInfo.Email)
+	if err != nil {
+		return nil, &OAuthError{
+			Type:        "database_error",
+			Message:     "Database error occurred",
+			Description: "A database error occurred while checking your account. Please try again.",
+		}
+	}
+	if existingUser == nil {
+		return nil, &OAuthError{
+			Type:        "user_not_found",
+			Message:     "User not found",
+			Description: "The user account could not be found. Please try signing in again.",
+		}
+	}
+
+	// Verify the user ID in the token matches the existing user
+	if claims.UserID != existingUser.ID {
+		return nil, &OAuthError{
+			Type:        "invalid_link_token",
+			Message:     "Link token user mismatch",
+			Description: "The account linking token does not match your user account. Please sign in again.",
+		}
+	}
+
+	// Link the social account
+	err = a.linkSocialAccountToUser(existingUser.ID, provider, providerID, map[string]interface{}{
+		"name":           userInfo.Name,
+		"avatar_url":     userInfo.AvatarURL,
+		"verified_email": userInfo.VerifiedEmail,
+		"linked_at":      time.Now(),
+		"link_token":     linkToken,
+	})
+	if err != nil {
+		return nil, &OAuthError{
+			Type:        "account_link_failed",
+			Message:     "Failed to link social account",
+			Description: "Your social account could not be linked. Please contact support.",
+		}
+	}
+
+	// Generate tokens
+	accessToken, err := a.generateToken(existingUser)
+	if err != nil {
+		return nil, &OAuthError{
+			Type:        "token_generation_failed",
+			Message:     "Token generation failed",
+			Description: "Could not generate authentication token. Please try again.",
+		}
+	}
+
+	refreshToken, refreshTokenHash, err := a.generateRefreshToken()
+	if err != nil {
+		return nil, &OAuthError{
+			Type:        "token_generation_failed",
+			Message:     "Refresh token generation failed",
+			Description: "Could not generate refresh token. Please try again.",
+		}
+	}
+
+	// Store refresh token
+	refreshExpiresAt := time.Now().Add(30 * 24 * time.Hour)
+	_, err = a.repo.CreateRefreshToken(existingUser.ID, refreshTokenHash, "oauth_link", "link-confirmation", refreshExpiresAt)
+	if err != nil {
+		// Log but don't fail - access token is still valid
+		fmt.Printf("Warning: failed to store refresh token: %v\n", err)
+		refreshToken = ""
+	}
+
+	return &OAuthAccountLinkResponse{
+		Token:        accessToken,
+		RefreshToken: refreshToken,
+		User:         existingUser,
+	}, nil
 }

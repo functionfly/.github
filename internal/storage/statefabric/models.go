@@ -72,12 +72,16 @@ type StateFabricStore struct {
 	Status     string    `gorm:"not null;size:50;default:active"`
 	Size       int64     `gorm:"not null;default:0"`
 	MaxSize    int64     `gorm:"not null;default:0"`
-	Region     string    `gorm:"not null;size:100;default:default"`
+	Region     string    `gorm:"not null;size:100;default:local"`
 	Provider   string    `gorm:"not null;size:100;default:local"`
 	Throughput int64     `gorm:"not null;default:0"`
 	LatencyMs  int64     `gorm:"not null;default:0"`
 	CreatedAt  time.Time `gorm:"autoCreateTime"`
 	UpdatedAt  time.Time `gorm:"autoUpdateTime"`
+
+	// R2 Storage Configuration for memory blobs
+	R2MemoryBucket  *string `gorm:"column:r2_memory_bucket;type:varchar(255)"`       // R2 bucket for memory storage
+	R2MemoryEnabled bool    `gorm:"column:r2_memory_enabled;not null;default:false"` // Whether R2 memory storage is enabled
 }
 
 func (StateFabricStore) TableName() string { return "state_fabric_stores" }
@@ -111,6 +115,13 @@ type StateFabricEvent struct {
 	SequenceNumber int64      `gorm:"not null"`
 	CorrelationID  string     `gorm:"size:255"`
 	Timestamp      time.Time  `gorm:"default:now()"`
+
+	// R2 Storage Reference (for archived event batch storage)
+	R2ObjectKey *string    `gorm:"column:r2_object_key;type:text;index"`      // R2 key for archived event batch
+	R2Bucket    *string    `gorm:"column:r2_bucket;type:varchar(255)"`        // R2 bucket name
+	BatchID     *string    `gorm:"column:batch_id;type:varchar(255);index"`   // Batch ID for grouped events in R2
+	IsArchived  bool       `gorm:"column:is_archived;not null;default:false"` // Whether event is archived to R2
+	ArchivedAt  *time.Time `gorm:"column:archived_at"`                        // When event was archived
 }
 
 func (StateFabricEvent) TableName() string { return "state_fabric_events" }
@@ -127,6 +138,11 @@ type StateFabricSnapshot struct {
 	SizeBytes   int64      `gorm:"not null;default:0"`
 	CreatedAt   time.Time  `gorm:"autoCreateTime"`
 	ExpiresAt   *time.Time `gorm:"column:expires_at"`
+
+	// R2 Storage Reference (optional - for large snapshot offloading)
+	R2ObjectKey   *string `gorm:"column:r2_object_key;type:text;index"`    // R2 key for offloaded snapshot data
+	R2Bucket      *string `gorm:"column:r2_bucket;type:varchar(255)"`      // R2 bucket name
+	R2ContentHash *string `gorm:"column:r2_content_hash;type:varchar(64)"` // SHA256 hash of R2 content
 }
 
 func (StateFabricSnapshot) TableName() string { return "state_fabric_snapshots" }
@@ -144,6 +160,11 @@ type StateFabricReplay struct {
 	StartedAt      time.Time  `gorm:"autoCreateTime"`
 	CompletedAt    *time.Time `gorm:"column:completed_at"`
 	ErrorMessage   *string    `gorm:"column:error_message;type:text"`
+
+	// R2 Storage Reference (for replay data storage)
+	R2ObjectKey   *string `gorm:"column:r2_object_key;type:text;index"`    // R2 key for replay session data
+	R2Bucket      *string `gorm:"column:r2_bucket;type:varchar(255)"`      // R2 bucket name
+	R2ContentHash *string `gorm:"column:r2_content_hash;type:varchar(64)"` // SHA256 hash of R2 content
 }
 
 func (StateFabricReplay) TableName() string { return "state_fabric_replays" }

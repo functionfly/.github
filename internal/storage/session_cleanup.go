@@ -1,8 +1,10 @@
 package storage
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -68,8 +70,22 @@ func (s *SessionCleanupService) StartCleanupRoutine(interval time.Duration) {
 
 // CleanupUserSessions removes all sessions for a specific user (useful when user logs out or is deactivated)
 func (s *SessionCleanupService) CleanupUserSessions(userID string) error {
-	// Note: This would need to be added to the repository interface and implementation
-	// For now, this is a placeholder for future implementation
-	s.logger.WithField("user_id", userID).Info("User session cleanup requested (not yet implemented)")
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	start := time.Now()
+	if err := s.repo.DeleteUserSessions(uid); err != nil {
+		s.logger.WithError(err).Error("Failed to cleanup user sessions")
+		return err
+	}
+
+	duration := time.Since(start)
+	s.logger.WithFields(logrus.Fields{
+		"user_id":     userID,
+		"duration_ms": duration.Milliseconds(),
+	}).Info("Cleaned up user sessions")
+
 	return nil
 }

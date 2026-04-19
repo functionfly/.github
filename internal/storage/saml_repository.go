@@ -22,6 +22,8 @@ type SAMLConfig struct {
 	SPEntityID     string    `json:"sp_entity_id" gorm:"size:500;default:'functionfly'"`
 	SPACSURL       *string   `json:"sp_acs_url" gorm:"column:sp_acs_url;size:500"`
 	SPMetadataURL  *string   `json:"sp_metadata_url" gorm:"column:sp_metadata_url;size:500"`
+	SPPrivateKey   *string   `json:"sp_private_key,omitempty" gorm:"type:text"` // PEM-encoded RSA private key
+	SPCertificate  *string   `json:"sp_certificate,omitempty" gorm:"type:text"` // PEM-encoded X.509 certificate
 	NameIDFormat   string    `json:"name_id_format" gorm:"size:100;default:'emailAddress'"`
 	AuthnContexts  []string  `json:"authn_contexts" gorm:"type:text[]"`
 	CreatedAt      time.Time `json:"created_at" gorm:"autoCreateTime"`
@@ -118,6 +120,52 @@ func (r *SAMLConfigRepository) Delete(tenantID uuid.UUID) error {
 	_, err := r.db.Exec(`DELETE FROM saml_configs WHERE tenant_id = $1`, tenantID)
 	if err != nil {
 		return fmt.Errorf("failed to delete SAML config: %w", err)
+	}
+	return nil
+}
+
+// GetSPKeyPair retrieves the stored SP private key and certificate for a tenant
+func (r *SAMLConfigRepository) GetSPKeyPair(tenantID uuid.UUID) (privateKey, certificate *string, err error) {
+	var config SAMLConfig
+	err = r.db.QueryRow(`
+		SELECT sp_private_key, sp_certificate FROM saml_configs
+		WHERE tenant_id = $1`, tenantID).Scan(&config.SPPrivateKey, &config.SPCertificate)
+	if err == sql.ErrNoRows {
+		return nil, nil, nil
+	}
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get SAML SP key pair: %w", err)
+	}
+	return config.SPPrivateKey, config.SPCertificate, nil
+}
+
+// SaveSPKeyPair stores the SP private key and certificate for a tenant
+func (r *SAMLConfigRepository) SaveSPKeyPair(tenantID uuid.UUID, privateKey, certificate string) error {
+	// Check if config exists
+	var exists bool
+	err := r.db.QueryRow(`SELECT EXISTS(SELECT 1 FROM saml_configs WHERE tenant_id = $1)`, tenantID).Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("failed to check SAML config existence: %w", err)
+	}
+
+	if exists {
+		// Update existing config
+		_, err = r.db.Exec(`
+			UPDATE saml_configs SET sp_private_key = $1, sp_certificate = $2, updated_at = $3
+			WHERE tenant_id = $4`,
+			privateKey, certificate, time.Now(), tenantID)
+		if err != nil {
+			return fmt.Errorf("failed to save SAML SP key pair: %w", err)
+		}
+	} else {
+		// Create minimal config with just the keys
+		_, err = r.db.Exec(`
+			INSERT INTO saml_configs (tenant_id, sp_private_key, sp_certificate, sp_entity_id)
+			VALUES ($1, $2, $3, 'functionfly')`,
+			tenantID, privateKey, certificate)
+		if err != nil {
+			return fmt.Errorf("failed to create SAML config with SP key pair: %w", err)
+		}
 	}
 	return nil
 }

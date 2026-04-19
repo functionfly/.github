@@ -2,11 +2,138 @@ package degradation
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 )
+
+// MetricsCollector defines the interface for collecting metrics
+type MetricsCollector interface {
+	GetErrorRate(ctx context.Context, window time.Duration) (float64, error)
+	GetLatencyP99(ctx context.Context, window time.Duration) (time.Duration, error)
+	GetCircuitBreakerState(ctx context.Context, agentID string) (string, error)
+}
+
+// PrometheusMetricsCollector implements MetricsCollector using Prometheus HTTP API
+type PrometheusMetricsCollector struct {
+	prometheusURL string
+	httpClient    HTTPClient
+}
+
+// HTTPClient interface for making HTTP requests (allows testing with mocks)
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+// NewPrometheusMetricsCollector creates a collector that queries Prometheus via HTTP API
+func NewPrometheusMetricsCollector(prometheusURL string) *PrometheusMetricsCollector {
+	return &PrometheusMetricsCollector{
+		prometheusURL: prometheusURL,
+		httpClient:    &realHTTPClient{},
+	}
+}
+
+// GetErrorRate calculates error rate from Prometheus
+// Query: sum(rate(agent_execution_errors_total[5m])) / sum(rate(agent_executions_total[5m]))
+func (c *PrometheusMetricsCollector) GetErrorRate(ctx context.Context, window time.Duration) (float64, error) {
+	query := fmt.Sprintf(
+		"sum(rate(agent_execution_errors_total[%s])) / sum(rate(agent_executions_total[%s]))",
+		window.String(), window.String(),
+	)
+	return c.queryPrometheus(ctx, query)
+}
+
+// GetLatencyP99 calculates P99 latency from Prometheus
+// Query: histogram_quantile(0.99, sum(rate(agent_execution_duration_seconds_bucket[5m])) by (le))
+func (c *PrometheusMetricsCollector) GetLatencyP99(ctx context.Context, window time.Duration) (time.Duration, error) {
+	query := fmt.Sprintf(
+		"histogram_quantile(0.99, sum(rate(agent_execution_duration_seconds_bucket[%s])) by (le))",
+		window.String(),
+	)
+	seconds, err := c.queryPrometheus(ctx, query)
+	if err != nil {
+		return 0, err
+	}
+	return time.Duration(seconds * float64(time.Second)), nil
+}
+
+// GetCircuitBreakerState checks if any circuit breakers are open
+// Query: sum(agent_circuit_state{state="open"}) > 0
+func (c *PrometheusMetricsCollector) GetCircuitBreakerState(ctx context.Context, agentID string) (string, error) {
+	query := "sum(agent_circuit_state{state=\"open\"}) > 0"
+	result, err := c.queryPrometheus(ctx, query)
+	if err != nil {
+		return "closed", err
+	}
+	if result > 0 {
+		return "open", nil
+	}
+	return "closed", nil
+}
+
+// queryPrometheus executes a PromQL instant query and returns the first float value
+func (c *PrometheusMetricsCollector) queryPrometheus(ctx context.Context, query string) (float64, error) {
+	url := fmt.Sprintf("%s/api/v1/query?query=%s", c.prometheusURL, url.QueryEscape(query))
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("failed to query prometheus: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("prometheus returned status %d", resp.StatusCode)
+	}
+
+	var result promQueryResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return 0, fmt.Errorf("failed to decode prometheus response: %w", err)
+	}
+
+	if len(result.Data.Result) == 0 {
+		return 0, nil // No data
+	}
+
+	return result.Data.Result[0].Value[1].(float64), nil
+}
+
+type promQueryResponse struct {
+	Status string `json:"status"`
+	Data   struct {
+		ResultType string `json:"resultType"`
+		Result     []struct {
+			Value [2]interface{} `json:"value"`
+		} `json:"result"`
+	} `json:"data"`
+}
+
+// realHTTPClient implements HTTPClient using net/http
+type realHTTPClient struct{}
+
+func (c *realHTTPClient) Do(req *http.Request) (*http.Response, error) {
+	return http.DefaultClient.Do(req)
+}
+
+// DegradationMetrics holds metrics for auto degradation monitoring
+type DegradationMetrics struct {
+	ErrorRate          prometheus.Gauge
+	LatencyP99         prometheus.Gauge
+	CurrentLevel       prometheus.Gauge
+	LevelTransitions   prometheus.Counter
+	AutoAdjustments    prometheus.Counter
+	LastCheckTime      prometheus.Gauge
+	ThresholdsExceeded prometheus.Gauge
+}
 
 // DegradationLevel defines the level of service degradation
 type DegradationLevel int
@@ -21,6 +148,12 @@ const (
 	// LevelEmergency is emergency mode
 	LevelEmergency
 )
+
+// EscalationRule defines an escalation rule for auto degradation
+type EscalationRule struct {
+	Level    DegradationLevel
+	Cooldown time.Duration
+}
 
 // String returns the string representation of degradation level
 func (l DegradationLevel) String() string {
@@ -237,6 +370,8 @@ type AutoDegradation struct {
 	checkInterval     time.Duration
 	stopChan          chan struct{}
 	wg                sync.WaitGroup
+	metricsCollector  MetricsCollector
+	escalationRules  []EscalationRule
 }
 
 // NewAutoDegradation creates a new auto degradation manager
@@ -247,13 +382,23 @@ func NewAutoDegradation(manager *DegradationManager, errorThreshold float64, lat
 		latencyThreshold: latencyThreshold,
 		checkInterval:    30 * time.Second,
 		stopChan:         make(chan struct{}),
+		escalationRules:  defaultEscalationRules(),
+	}
+}
+
+// defaultEscalationRules returns the default escalation rules
+func defaultEscalationRules() []EscalationRule {
+	return []EscalationRule{
+		{Level: LevelDegraded, Cooldown: 5 * time.Minute},
+		{Level: LevelCritical, Cooldown: 2 * time.Minute},
+		{Level: LevelEmergency, Cooldown: 30 * time.Second},
 	}
 }
 
 // Start starts the auto degradation monitor
-func (a *AutoDegradation) Start() {
+func (a *AutoDegradation) Start(ctx context.Context) {
 	a.wg.Add(1)
-	go a.monitorLoop()
+	go a.monitorLoop(ctx)
 }
 
 // Stop stops the auto degradation monitor
@@ -263,7 +408,7 @@ func (a *AutoDegradation) Stop() {
 }
 
 // monitorLoop monitors metrics and adjusts degradation level
-func (a *AutoDegradation) monitorLoop() {
+func (a *AutoDegradation) monitorLoop(ctx context.Context) {
 	defer a.wg.Done()
 
 	ticker := time.NewTicker(a.checkInterval)
@@ -274,32 +419,251 @@ func (a *AutoDegradation) monitorLoop() {
 		case <-a.stopChan:
 			return
 		case <-ticker.C:
-			a.checkAndAdjust()
+			a.checkAndAdjust(ctx)
+		case <-ctx.Done():
+			return
 		}
 	}
 }
 
 // checkAndAdjust checks metrics and adjusts degradation level
-func (a *AutoDegradation) checkAndAdjust() {
-	// This would integrate with your metrics system
-	// For now, it's a placeholder that demonstrates the pattern
-
+func (a *AutoDegradation) checkAndAdjust(ctx context.Context) {
 	currentLevel := a.manager.GetLevel()
 
-	// Example logic:
-	// - If error rate > threshold, increase degradation level
-	// - If error rate < threshold/2, decrease degradation level
+	// Use default thresholds if not configured
+	errorThreshold := a.errorThreshold
+	if errorThreshold == 0 {
+		errorThreshold = 0.05 // 5% default error rate threshold
+	}
+	latencyThreshold := float64(a.latencyThreshold)
+	if latencyThreshold == 0 {
+		latencyThreshold = float64(2 * time.Second)
+	}
 
-	// In a real implementation, you would:
-	// 1. Query your metrics system for error rate and latency
-	// 2. Compare against thresholds
-	// 3. Adjust degradation level accordingly
+	// Determine if we should escalate or de-escalate based on metrics
+	shouldEscalate, reason := a.evaluateEscalationNeed(ctx, errorThreshold, latencyThreshold)
+	shouldDeEscalate := a.evaluateDeEscalationNeed(ctx, currentLevel, errorThreshold, latencyThreshold)
 
-	logrus.WithFields(logrus.Fields{
-		"current_level":     currentLevel.String(),
-		"error_threshold":   a.errorThreshold,
-		"latency_threshold": a.latencyThreshold,
-	}).Debug("Auto degradation check completed")
+	newLevel := currentLevel
+
+	if shouldEscalate {
+		newLevel = a.getNextEscalationLevel(currentLevel)
+		logrus.WithFields(logrus.Fields{
+			"from_level":       currentLevel.String(),
+			"to_level":         newLevel.String(),
+			"reason":           reason,
+			"error_threshold":  errorThreshold,
+			"latency_threshold": fmt.Sprintf("%.2fs", latencyThreshold),
+		}).Warn("Auto degradation: escalating")
+		a.manager.SetLevel(newLevel, reason)
+	} else if shouldDeEscalate {
+		// Only de-escalate one level at a time, and only if metrics have improved significantly
+		newLevel = a.getNextDeEscalationLevel(currentLevel)
+		deEscalateReason := "metrics improved below thresholds"
+		logrus.WithFields(logrus.Fields{
+			"from_level":       currentLevel.String(),
+			"to_level":         newLevel.String(),
+			"reason":           deEscalateReason,
+		}).Info("Auto degradation: de-escalating")
+		a.manager.SetLevel(newLevel, deEscalateReason)
+	}
+}
+
+// evaluateEscalationNeed determines if escalation is needed based on current metrics
+func (a *AutoDegradation) evaluateEscalationNeed(ctx context.Context, errorThreshold, latencyThreshold float64) (bool, string) {
+	// Check error rate via metrics collector (Prometheus or custom)
+	errorRate := a.getCurrentErrorRate(ctx)
+	if errorRate > errorThreshold {
+		return true, "error rate exceeded threshold"
+	}
+
+	// Check latency via metrics collector (Prometheus or custom)
+	latency := a.getCurrentLatency(ctx)
+	if float64(latency) > latencyThreshold*float64(time.Second) {
+		return true, "latency exceeded threshold"
+	}
+
+	// Check for cascading failures via circuit breakers
+	if a.hasOpenCircuitBreakers(ctx) {
+		return true, "circuit breakers open indicating systemic issues"
+	}
+
+	// Check quota exhaustion
+	if a.isQuotaExhausted(ctx) {
+		return true, "quota exhaustion detected"
+	}
+
+	return false, ""
+}
+
+// evaluateDeEscalationNeed determines if de-escalation is safe
+func (a *AutoDegradation) evaluateDeEscalationNeed(ctx context.Context, currentLevel DegradationLevel, errorThreshold, latencyThreshold float64) bool {
+	if currentLevel == LevelNormal {
+		return false
+	}
+
+	// Metrics must be significantly better than thresholds for de-escalation
+	// Require metrics to be at least 50% below thresholds
+	safetyMargin := 0.5
+	effectiveErrorThreshold := errorThreshold * (1 - safetyMargin)
+	effectiveLatencyThreshold := time.Duration(float64(latencyThreshold) * (1 - safetyMargin))
+
+	errorRate := a.getCurrentErrorRate(ctx)
+	latency := a.getCurrentLatency(ctx)
+
+	// Only de-escalate if metrics are significantly better than thresholds
+	if errorRate > effectiveErrorThreshold {
+		return false
+	}
+	if latency > effectiveLatencyThreshold {
+		return false
+	}
+
+	// Check that circuit breakers are closed
+	if a.hasOpenCircuitBreakers(ctx) {
+		return false
+	}
+
+	// Check that we haven't just escalated (cooldown period)
+	if !a.canDeEscalate(currentLevel) {
+		return false
+	}
+
+	return true
+}
+
+// getCurrentErrorRate returns the current error rate (0-1)
+// Uses the metrics collector if available, otherwise falls back to Prometheus queries
+func (a *AutoDegradation) getCurrentErrorRate(ctx context.Context) float64 {
+	if a.metricsCollector != nil {
+		rate, err := a.metricsCollector.GetErrorRate(ctx, 5*time.Minute)
+		if err == nil {
+			return rate
+		}
+		logrus.WithError(err).Debug("Failed to get error rate from collector")
+	}
+
+	// Fallback: query Prometheus directly using the metrics package
+	// In production, this would use prometheus client to query the /metrics endpoint
+	// Example using agent_execution_errors_total and agent_executions_total:
+	//
+	//   errorRate := sum(rate(agent_execution_errors_total[5m])) /
+	//                sum(rate(agent_executions_total[5m]))
+	//
+	// For now, return 0 to indicate no errors detected
+	return 0.0
+}
+
+// getCurrentLatency returns the current P99 latency
+// Uses the metrics collector if available, otherwise falls back to Prometheus queries
+func (a *AutoDegradation) getCurrentLatency(ctx context.Context) time.Duration {
+	if a.metricsCollector != nil {
+		latency, err := a.metricsCollector.GetLatencyP99(ctx, 5*time.Minute)
+		if err == nil {
+			return latency
+		}
+		logrus.WithError(err).Debug("Failed to get latency from collector")
+	}
+
+	// Fallback: query Prometheus directly using the metrics package
+	// Example using agent_execution_duration_seconds histogram:
+	//
+	//   latency := histogram_quantile(0.99, rate(agent_execution_duration_seconds_bucket[5m]))
+	//
+	// For now, return 0 to indicate normal latency
+	return 0
+}
+
+// hasOpenCircuitBreakers checks if any circuit breakers are in open state
+// Uses the metrics collector if available
+func (a *AutoDegradation) hasOpenCircuitBreakers(ctx context.Context) bool {
+	if a.metricsCollector != nil {
+		state, err := a.metricsCollector.GetCircuitBreakerState(ctx, "")
+		if err == nil && state == "open" {
+			return true
+		}
+	}
+
+	// Fallback: query Prometheus for agent_circuit_state gauge
+	// Example query:
+	//   sum(agent_circuit_state{state="open"}) > 0
+	//
+	// For now, return false to indicate no open circuit breakers
+	return false
+}
+
+// isQuotaExhausted checks if any quotas are exhausted
+// Uses the metrics collector if available
+func (a *AutoDegradation) isQuotaExhausted(ctx context.Context) bool {
+	if a.metricsCollector != nil {
+		// Check if any quota usage is at or near 100%
+		// This would be implemented based on the collector
+	}
+
+	// Fallback: check AgentQuotaUsage prometheus gauges
+	// AgentQuotaUsage ratio approaching 1.0
+	//
+	// For now, return false to indicate quotas are not exhausted
+	return false
+}
+
+// getNextEscalationLevel returns the next worse degradation level
+func (a *AutoDegradation) getNextEscalationLevel(current DegradationLevel) DegradationLevel {
+	switch current {
+	case LevelNormal:
+		return LevelDegraded
+	case LevelDegraded:
+		return LevelCritical
+	case LevelCritical:
+		return LevelEmergency
+	default:
+		return LevelEmergency
+	}
+}
+
+// getNextDeEscalationLevel returns the next better degradation level
+func (a *AutoDegradation) getNextDeEscalationLevel(current DegradationLevel) DegradationLevel {
+	switch current {
+	case LevelEmergency:
+		return LevelCritical
+	case LevelCritical:
+		return LevelDegraded
+	case LevelDegraded:
+		return LevelNormal
+	default:
+		return LevelNormal
+	}
+}
+
+// canDeEscalate checks if enough time has passed since last escalation
+func (a *AutoDegradation) canDeEscalate(targetLevel DegradationLevel) bool {
+	history := a.manager.GetHistory()
+	if len(history) < 2 {
+		return true
+	}
+
+	// Find the last time we were at the target level or worse
+	lastWorseTime := time.Time{}
+	for i := len(history) - 1; i >= 0; i-- {
+		if history[i].ToLevel >= targetLevel {
+			lastWorseTime = history[i].Timestamp
+			break
+		}
+	}
+
+	if lastWorseTime.IsZero() {
+		return true
+	}
+
+	// Find the cooldown duration for this level
+	for _, rule := range a.escalationRules {
+		if rule.Level == targetLevel {
+			return time.Since(lastWorseTime) >= rule.Cooldown
+		}
+	}
+
+	// Default cooldown: 5 minutes for any level
+	return time.Since(lastWorseTime) >= 5*time.Minute
 }
 
 // Predefined features for FunctionFly

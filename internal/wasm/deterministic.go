@@ -143,6 +143,11 @@ func (r *WASMRuntimeWithDeterminism) ExecuteDeterministic(ctx context.Context, i
 func (r *WASMRuntimeWithDeterminism) executeWithInstructionLimit(ctx context.Context, input []byte, maxInstructions uint64) ([]byte, error) {
 	r.instructionCounter = 0
 
+	// Add fuel to the store for instruction metering
+	if err := r.runtime.AddFuel(maxInstructions); err != nil {
+		return nil, fmt.Errorf("failed to add fuel: %w", err)
+	}
+
 	// Create execution context with cancellation
 	execCtx, cancel := context.WithTimeout(ctx, r.config.FixedTimeWindow)
 	defer cancel()
@@ -162,14 +167,22 @@ func (r *WASMRuntimeWithDeterminism) executeWithInstructionLimit(ctx context.Con
 
 	select {
 	case <-execCtx.Done():
-		r.instructionCounter = maxInstructions
+		// Get fuel consumed before timeout
+		fuel, _ := r.runtime.GetFuelRemaining()
+		r.instructionCounter = maxInstructions - fuel
 		return nil, fmt.Errorf("execution exceeded instruction limit or timeout")
 	case result := <-resultChan:
 		if result.err != nil {
 			return nil, result.err
 		}
-		// Estimate instructions used based on execution time
-		r.instructionCounter = estimateInstructions(result.output)
+		// Get actual fuel consumed
+		fuelConsumed, err := r.runtime.GetFuelRemaining()
+		if err == nil {
+			r.instructionCounter = maxInstructions - fuelConsumed
+		} else {
+			// Fall back to estimation
+			r.instructionCounter = estimateInstructions(result.output)
+		}
 		return result.output, nil
 	}
 }
@@ -217,15 +230,6 @@ func (r *WASMRuntimeWithDeterminism) Close() error {
 		return r.runtime.Close()
 	}
 	return nil
-}
-
-// estimateInstructions provides a rough estimate of instructions used
-// In a real implementation, this would be integrated with wasmtime's fuel API
-func estimateInstructions(output []byte) uint64 {
-	// Rough estimate: base cost + per-byte cost
-	baseCost := uint64(10000)
-	perByteCost := uint64(100)
-	return baseCost + perByteCost*uint64(len(output))
 }
 
 // DeterministicExecutor provides a higher-level interface for deterministic execution
@@ -337,4 +341,13 @@ func (e *DeterministicExecutor) getSeedForFunction(functionID string) uint64 {
 // IsDeterministicMode checks if deterministic mode is enabled
 func IsDeterministicMode(config *WASMSecurityConfig) bool {
 	return config != nil && config.EnableDeterministic
+}
+
+// estimateInstructions estimates instruction count from output when fuel tracking is unavailable
+func estimateInstructions(output []byte) uint64 {
+	if len(output) == 0 {
+		return 0
+	}
+	// Heuristic: estimate ~10 instructions per output byte as fallback
+	return uint64(len(output)) * 10
 }

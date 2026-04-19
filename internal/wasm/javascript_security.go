@@ -172,7 +172,7 @@ func NewJavyRuntimeWithConfig(wasmBinary []byte, stdout, stderr io.Writer, handl
 
 	// Enable fuel/energy for instruction counting if deterministic mode
 	if config.EnableDeterministic {
-		// Fuel consumption tracking for deterministic execution
+		engineConfig.SetConsumeFuel(true)
 	}
 
 	engine := wasmtime.NewEngineWithConfig(engineConfig)

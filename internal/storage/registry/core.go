@@ -2,12 +2,19 @@ package registry
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+)
+
+// Common repository errors
+var (
+	ErrRecordNotFound = errors.New("record not found")
+	ErrReviewNotFound = errors.New("manual review not found")
 )
 
 // RegistryRepository handles function registry database operations

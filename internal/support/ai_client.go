@@ -326,29 +326,37 @@ func (c *AIGatewayClient) GenerateWithFallback(ctx context.Context, req *AIReque
 		// Use rule-based fallback from ai.go
 		fallbackReq := &AIReplyRequest{
 			ConversationID: req.ConversationID,
-			UserID:          req.UserID,
+			UserID:         req.UserID,
 			UserMessage:    req.UserMessage,
 			Context: &SupportContext{
-				FunctionCode:      req.Context.FunctionCode,
-				FunctionLogs:       req.Context.FunctionLogs,
-				DeploymentError:    req.Context.DeploymentError,
-				EnvironmentVars:    req.Context.EnvironmentVars,
-				ExecutionHistory:   req.Context.ExecutionHistory,
-				UserInfo:           req.Context.UserInfo,
+				FunctionCode:     req.Context.FunctionCode,
+				FunctionLogs:     req.Context.FunctionLogs,
+				DeploymentError:  req.Context.DeploymentError,
+				EnvironmentVars:  req.Context.EnvironmentVars,
+				ExecutionHistory: req.Context.ExecutionHistory,
+				UserInfo:         req.Context.UserInfo,
 			},
 			Category:            "general",
 			ConversationHistory: convertHistory(req.History),
 		}
 
-		fallbackResp, fallbackErr := GenerateAIReply(ctx, fallbackReq)
+		cfg := LoadAIConfigFromEnv()
+		fallbackResp, fallbackErr := GenerateAIReply(ctx, fallbackReq, cfg)
 		if fallbackErr != nil {
 			return nil, fmt.Errorf("both AI service and fallback failed: AI error: %w, fallback error: %v", err, fallbackErr)
+		}
+
+		model := "rule-based"
+		if cfg.OpenAIAPIKey != "" {
+			model = cfg.Model + " (OpenAI)"
+		} else if cfg.AnthropicAPIKey != "" {
+			model = cfg.Model + " (Anthropic)"
 		}
 
 		return &AIResponse{
 			Message:    fallbackResp.Message,
 			Confidence: fallbackResp.Confidence,
-			Model:      "rule-based",
+			Model:      model,
 			Actions:    fallbackResp.SuggestedActions,
 		}, nil
 	}

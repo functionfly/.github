@@ -1,6 +1,8 @@
 package verification
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
@@ -37,7 +39,7 @@ func (v *VerificationService) VerifyFunction(functionVersionID uuid.UUID, source
 	}
 
 	// 1. Content hash verification
-	contentHashVerified := v.verifyContentHash(functionVersionID)
+	contentHashVerified := v.verifyContentHash(functionVersionID, sourceCode, wasmBinary)
 	status.ContentHashVerified = contentHashVerified
 
 	// 2. Malware scanning
@@ -177,16 +179,43 @@ func (v *VerificationService) GetVerificationStatus(functionVersionID uuid.UUID)
 
 // Helper methods
 
-func (v *VerificationService) verifyContentHash(functionVersionID uuid.UUID) bool {
+func (v *VerificationService) verifyContentHash(functionVersionID uuid.UUID, sourceCode string, wasmBinary []byte) bool {
 	// Get function version
 	version, err := v.repo.GetFunctionVersion(functionVersionID, "")
 	if err != nil {
 		return false
 	}
 
-	// For now, just check if we have a source hash
-	// In a real implementation, we'd verify against a known good hash
-	return version.SourceHash.Valid && version.SourceHash.String != ""
+	// Compute expected content hash from provided source code
+	// This matches the hashing scheme used by SignatureService.calculateContentHash
+	hasher := sha256.New()
+	if version.Manifest != nil && len(version.Manifest) > 0 {
+		hasher.Write(version.Manifest)
+	}
+	if len(sourceCode) > 0 {
+		hasher.Write([]byte(sourceCode))
+	}
+	if len(wasmBinary) > 0 {
+		hasher.Write(wasmBinary)
+	}
+	// Also incorporate stored source hash if available for secondary verification
+	if version.SourceHash.Valid && version.SourceHash.String != "" {
+		hasher.Write([]byte(version.SourceHash.String))
+	}
+	computedHash := hex.EncodeToString(hasher.Sum(nil))
+
+	// If ContentHash is stored, compare against it
+	if version.ContentHash.Valid && version.ContentHash.String != "" {
+		return version.ContentHash.String == computedHash
+	}
+
+	// Fall back to comparing against SourceHash if ContentHash not set
+	if version.SourceHash.Valid && version.SourceHash.String != "" {
+		return version.SourceHash.String == computedHash
+	}
+
+	// No stored hash to compare against - verification fails
+	return false
 }
 
 func (v *VerificationService) isApprovalRequired(trustLevel string) bool {

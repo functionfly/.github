@@ -165,6 +165,18 @@ func (r *RevenueRepository) UpdateFunctionVerificationPaymentStatus(ctx context.
 	return err
 }
 
+// UpdateFunctionVerificationPaymentJobID updates the verification job ID for a payment
+func (r *RevenueRepository) UpdateFunctionVerificationPaymentJobID(ctx context.Context, id uuid.UUID, jobID uuid.UUID) error {
+	query := `
+		UPDATE function_verification_payments
+		SET verification_job_id = $2,
+		    updated_at = NOW()
+		WHERE id = $1`
+
+	_, err := r.db.ExecContext(ctx, query, id, jobID)
+	return err
+}
+
 // GetFunctionVerificationPaymentsByTenant retrieves all verification payments for a tenant
 func (r *RevenueRepository) GetFunctionVerificationPaymentsByTenant(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*FunctionVerificationPayment, error) {
 	query := `
@@ -760,7 +772,7 @@ func VerifyFunctionCost(fee *VerificationFee, tenantPlan *string) (int, error) {
 
 	// Check if tenant plan meets minimum requirement
 	if fee.MinPlan != nil && tenantPlan != nil {
-		planHierarchy := map[string]int{"free": 0, "starter": 1, "pro": 2, "scale": 3, "enterprise": 4}
+		planHierarchy := map[string]int{"free": 0, "starter": 1, "professional": 2, "scale": 3, "enterprise": 4}
 		requiredPlan := *fee.MinPlan
 		tenantPlanRank, tenantOk := planHierarchy[*tenantPlan]
 		requiredRank, requiredOk := planHierarchy[requiredPlan]
@@ -770,4 +782,337 @@ func VerifyFunctionCost(fee *VerificationFee, tenantPlan *string) (int, error) {
 	}
 
 	return fee.PriceCents, nil
+}
+
+// =============================================================================
+// Database-Driven Agent Tier Pricing (replaces hardcoded constants)
+// =============================================================================
+
+// GetAgentTierPricingBySlug retrieves an agent tier pricing configuration by slug
+func (r *RevenueRepository) GetAgentTierPricingBySlug(ctx context.Context, slug string) (*AgentTierPricing, error) {
+	query := `
+		SELECT id, tier_slug, display_name, description, monthly_price_cents, annual_price_cents,
+		       base_currency, region_pricing, max_agents, included_ai_calls, included_executions,
+		       included_storage_gb, overage_price_per_1000_cents, stripe_price_id_monthly,
+		       stripe_price_id_annual, features_included, is_active, sort_order, pricing_variant,
+		       valid_from, valid_until, created_at, updated_at
+		FROM agent_tier_pricing
+		WHERE tier_slug = $1 AND is_active = true
+		ORDER BY valid_from DESC
+		LIMIT 1`
+
+	var tier AgentTierPricing
+	var regionPricingJSON []byte
+	var featuresJSON []byte
+	var annualPriceCents *int
+	var stripePriceMonthly, stripePriceAnnual *string
+	var validUntil *time.Time
+
+	err := r.db.QueryRowContext(ctx, query, slug).Scan(
+		&tier.ID, &tier.TierSlug, &tier.DisplayName, &tier.Description,
+		&tier.MonthlyPriceCents, &annualPriceCents, &tier.BaseCurrency, &regionPricingJSON,
+		&tier.MaxAgents, &tier.IncludedAICalls, &tier.IncludedExecutions, &tier.IncludedStorageGB,
+		&tier.OveragePricePer1000Cents, &stripePriceMonthly, &stripePriceAnnual, &featuresJSON,
+		&tier.IsActive, &tier.SortOrder, &tier.PricingVariant, &tier.ValidFrom, &validUntil,
+		&tier.CreatedAt, &tier.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	tier.AnnualPriceCents = annualPriceCents
+	tier.StripePriceIDMonthly = stripePriceMonthly
+	tier.StripePriceIDAnnual = stripePriceAnnual
+	tier.ValidUntil = validUntil
+
+	if regionPricingJSON != nil {
+		if err := json.Unmarshal(regionPricingJSON, &tier.RegionPricing); err != nil {
+			tier.RegionPricing = nil
+		}
+	}
+	if featuresJSON != nil {
+		if err := json.Unmarshal(featuresJSON, &tier.FeaturesIncluded); err != nil {
+			tier.FeaturesIncluded = nil
+		}
+	}
+
+	return &tier, nil
+}
+
+// ListAgentTierPricing retrieves all active agent tier pricing configurations
+func (r *RevenueRepository) ListAgentTierPricing(ctx context.Context, activeOnly bool) ([]*AgentTierPricing, error) {
+	query := `
+		SELECT id, tier_slug, display_name, description, monthly_price_cents, annual_price_cents,
+		       base_currency, region_pricing, max_agents, included_ai_calls, included_executions,
+		       included_storage_gb, overage_price_per_1000_cents, stripe_price_id_monthly,
+		       stripe_price_id_annual, features_included, is_active, sort_order, pricing_variant,
+		       valid_from, valid_until, created_at, updated_at
+		FROM agent_tier_pricing`
+
+	if activeOnly {
+		query += ` WHERE is_active = true AND (valid_until IS NULL OR valid_until > NOW())`
+	}
+	query += ` ORDER BY sort_order, monthly_price_cents`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tiers []*AgentTierPricing
+	for rows.Next() {
+		var tier AgentTierPricing
+		var regionPricingJSON []byte
+		var featuresJSON []byte
+		var annualPriceCents *int
+		var stripePriceMonthly, stripePriceAnnual *string
+		var validUntil *time.Time
+
+		err := rows.Scan(
+			&tier.ID, &tier.TierSlug, &tier.DisplayName, &tier.Description,
+			&tier.MonthlyPriceCents, &annualPriceCents, &tier.BaseCurrency, &regionPricingJSON,
+			&tier.MaxAgents, &tier.IncludedAICalls, &tier.IncludedExecutions, &tier.IncludedStorageGB,
+			&tier.OveragePricePer1000Cents, &stripePriceMonthly, &stripePriceAnnual, &featuresJSON,
+			&tier.IsActive, &tier.SortOrder, &tier.PricingVariant, &tier.ValidFrom, &validUntil,
+			&tier.CreatedAt, &tier.UpdatedAt,
+		)
+		if err != nil {
+			continue
+		}
+
+		tier.AnnualPriceCents = annualPriceCents
+		tier.StripePriceIDMonthly = stripePriceMonthly
+		tier.StripePriceIDAnnual = stripePriceAnnual
+		tier.ValidUntil = validUntil
+
+		if regionPricingJSON != nil {
+			if err := json.Unmarshal(regionPricingJSON, &tier.RegionPricing); err != nil {
+				tier.RegionPricing = nil
+			}
+		}
+		if featuresJSON != nil {
+			if err := json.Unmarshal(featuresJSON, &tier.FeaturesIncluded); err != nil {
+				tier.FeaturesIncluded = nil
+			}
+		}
+		tiers = append(tiers, &tier)
+	}
+
+	return tiers, rows.Err()
+}
+
+// GetAgentTierPricingForRegion retrieves pricing for a specific region/currency
+func (r *RevenueRepository) GetAgentTierPricingForRegion(ctx context.Context, slug string, currencyCode string) (*AgentTierPricing, error) {
+	// First get the base tier
+	tier, err := r.GetAgentTierPricingBySlug(ctx, slug)
+	if err != nil || tier == nil {
+		return tier, err
+	}
+
+	// If requesting base currency, return as-is
+	if currencyCode == tier.BaseCurrency {
+		return tier, nil
+	}
+
+	// Check if there's region-specific pricing
+	if tier.RegionPricing != nil {
+		if regionPrice, ok := tier.RegionPricing[currencyCode]; ok {
+			if priceMap, ok := regionPrice.(map[string]interface{}); ok {
+				// Create a copy of the tier with region-specific prices
+				regionTier := *tier
+				if monthly, ok := priceMap["monthly"].(float64); ok {
+					regionTier.MonthlyPriceCents = int(monthly)
+					regionTier.BaseCurrency = currencyCode
+				}
+				if annual, ok := priceMap["annual"].(float64); ok {
+					annualInt := int(annual)
+					regionTier.AnnualPriceCents = &annualInt
+				}
+				return &regionTier, nil
+			}
+		}
+	}
+
+	// Return base tier (caller should convert using currency service)
+	return tier, nil
+}
+
+// =============================================================================
+// Multi-Currency Support
+// =============================================================================
+
+// GetCurrencyExchangeRate retrieves the exchange rate for a currency pair
+func (r *RevenueRepository) GetCurrencyExchangeRate(ctx context.Context, baseCurrency, quoteCurrency string, date *time.Time) (*CurrencyExchangeRate, error) {
+	query := `
+		SELECT id, base_currency, quote_currency, rate, source, source_url,
+		       effective_date, fetched_at, is_manual_override, override_reason,
+		       is_stripe_rate, stripe_precision, created_at, updated_at
+		FROM currency_exchange_rates
+		WHERE base_currency = $1 AND quote_currency = $2 AND is_stripe_rate = false`
+
+	if date != nil {
+		query += ` AND effective_date = $3`
+	} else {
+		query += ` AND effective_date = CURRENT_DATE`
+	}
+
+	query += ` ORDER BY fetched_at DESC NULLS LAST, created_at DESC LIMIT 1`
+
+	var rate CurrencyExchangeRate
+	var sourceURL, overrideReason *string
+	var fetchedAt *time.Time
+	var effectiveDate string
+
+	var err error
+	if date != nil {
+		err = r.db.QueryRowContext(ctx, query, baseCurrency, quoteCurrency, date.Format("2006-01-02")).Scan(
+			&rate.ID, &rate.BaseCurrency, &rate.QuoteCurrency, &rate.Rate, &rate.Source, &sourceURL,
+			&effectiveDate, &fetchedAt, &rate.IsManualOverride, &overrideReason,
+			&rate.IsStripeRate, &rate.StripePrecision, &rate.CreatedAt, &rate.UpdatedAt,
+		)
+	} else {
+		err = r.db.QueryRowContext(ctx, query, baseCurrency, quoteCurrency).Scan(
+			&rate.ID, &rate.BaseCurrency, &rate.QuoteCurrency, &rate.Rate, &rate.Source, &sourceURL,
+			&effectiveDate, &fetchedAt, &rate.IsManualOverride, &overrideReason,
+			&rate.IsStripeRate, &rate.StripePrecision, &rate.CreatedAt, &rate.UpdatedAt,
+		)
+	}
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	rate.SourceURL = sourceURL
+	rate.OverrideReason = overrideReason
+	rate.FetchedAt = fetchedAt
+	rate.EffectiveDate = effectiveDate
+
+	return &rate, nil
+}
+
+// GetSupportedCurrency retrieves a supported currency by code
+func (r *RevenueRepository) GetSupportedCurrency(ctx context.Context, code string) (*SupportedCurrency, error) {
+	query := `
+		SELECT code, name, symbol, symbol_position, decimal_places, thousands_separator,
+		       decimal_separator, is_active, is_stablecoin, contract_address, chain_id,
+		       default_country, supported_countries, rounding_mode, minimum_charge_cents,
+		       created_at, updated_at
+		FROM supported_currencies
+		WHERE code = $1 AND is_active = true`
+
+	var currency SupportedCurrency
+	var contractAddr *string
+	var chainID *int
+	var defaultCountry *string
+	var supportedCountries []byte
+
+	err := r.db.QueryRowContext(ctx, query, code).Scan(
+		&currency.Code, &currency.Name, &currency.Symbol, &currency.SymbolPosition,
+		&currency.DecimalPlaces, &currency.ThousandsSeparator, &currency.DecimalSeparator,
+		&currency.IsActive, &currency.IsStablecoin, &contractAddr, &chainID,
+		&defaultCountry, &supportedCountries, &currency.RoundingMode, &currency.MinimumChargeCents,
+		&currency.CreatedAt, &currency.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	currency.ContractAddress = contractAddr
+	currency.ChainID = chainID
+	currency.DefaultCountry = defaultCountry
+	if supportedCountries != nil {
+		if err := json.Unmarshal(supportedCountries, &currency.SupportedCountries); err != nil {
+			currency.SupportedCountries = nil
+		}
+	}
+
+	return &currency, nil
+}
+
+// ListSupportedCurrencies retrieves all active supported currencies
+func (r *RevenueRepository) ListSupportedCurrencies(ctx context.Context) ([]*SupportedCurrency, error) {
+	query := `
+		SELECT code, name, symbol, symbol_position, decimal_places, thousands_separator,
+		       decimal_separator, is_active, is_stablecoin, contract_address, chain_id,
+		       default_country, supported_countries, rounding_mode, minimum_charge_cents,
+		       created_at, updated_at
+		FROM supported_currencies
+		WHERE is_active = true
+		ORDER BY code`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var currencies []*SupportedCurrency
+	for rows.Next() {
+		var currency SupportedCurrency
+		var contractAddr *string
+		var chainID *int
+		var defaultCountry *string
+		var supportedCountries []byte
+
+		err := rows.Scan(
+			&currency.Code, &currency.Name, &currency.Symbol, &currency.SymbolPosition,
+			&currency.DecimalPlaces, &currency.ThousandsSeparator, &currency.DecimalSeparator,
+			&currency.IsActive, &currency.IsStablecoin, &contractAddr, &chainID,
+			&defaultCountry, &supportedCountries, &currency.RoundingMode, &currency.MinimumChargeCents,
+			&currency.CreatedAt, &currency.UpdatedAt,
+		)
+		if err != nil {
+			continue
+		}
+
+		currency.ContractAddress = contractAddr
+		currency.ChainID = chainID
+		currency.DefaultCountry = defaultCountry
+		if supportedCountries != nil {
+			if err := json.Unmarshal(supportedCountries, &currency.SupportedCountries); err != nil {
+				currency.SupportedCountries = nil
+			}
+		}
+		currencies = append(currencies, &currency)
+	}
+
+	return currencies, rows.Err()
+}
+
+// ConvertCurrency converts an amount from one currency to another
+func (r *RevenueRepository) ConvertCurrency(ctx context.Context, amountCents int, fromCurrency, toCurrency string) (int, error) {
+	if fromCurrency == toCurrency {
+		return amountCents, nil
+	}
+
+	// Get exchange rate
+	rate, err := r.GetCurrencyExchangeRate(ctx, fromCurrency, toCurrency, nil)
+	if err != nil {
+		return 0, err
+	}
+	if rate == nil {
+		// Try inverse rate
+		rate, err = r.GetCurrencyExchangeRate(ctx, toCurrency, fromCurrency, nil)
+		if err != nil {
+			return 0, err
+		}
+		if rate == nil {
+			return 0, fmt.Errorf("no exchange rate found for %s to %s", fromCurrency, toCurrency)
+		}
+		// Use inverse rate
+		converted := float64(amountCents) / rate.Rate
+		return int(converted + 0.5), nil
+	}
+
+	return rate.Convert(amountCents), nil
 }

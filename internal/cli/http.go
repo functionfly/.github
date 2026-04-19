@@ -32,6 +32,25 @@ func (c *Client) SetToken(token string) {
 	c.token = token
 }
 
+// Get performs a GET request and unmarshals the response into out
+func (c *Client) Get(path string, out interface{}) error {
+	resp, err := c.doRequest("GET", path, nil)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("GET %s failed (%d): %s", path, resp.StatusCode, string(body))
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+		return fmt.Errorf("failed to decode response: %w", err)
+	}
+	return nil
+}
+
 // doRequest performs an HTTP request with authentication
 func (c *Client) doRequest(method, path string, body interface{}) (*http.Response, error) {
 	var reqBody io.Reader

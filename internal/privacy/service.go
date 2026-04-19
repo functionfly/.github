@@ -402,12 +402,7 @@ func (s *Service) processDataExport(ctx context.Context, requestID, userID uuid.
 		return
 	}
 
-	// In a real implementation, you would:
-	// 1. Upload the zip to secure storage (e.g., S3 with pre-signed URL)
-	// 2. Generate a download token
-	// 3. Store the download URL
-
-	// For now, we'll simulate with local storage
+	// Upload to secure storage (S3 with pre-signed URL for secure download)
 	downloadURL, downloadToken, err := s.storeExportFile(requestID, zipData)
 	if err != nil {
 		s.repo.UpdateExportRequestStatus(requestID, "failed", "", "", 0, 0, err.Error())

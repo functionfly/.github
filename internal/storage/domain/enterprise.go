@@ -67,6 +67,7 @@ type FounderModeRepository interface {
 // BundleSubscriptionRepository handles bundle subscriptions
 type BundleSubscriptionRepository interface {
 	CreateBundleSubscription(ctx context.Context, sub *storage.BundleSubscription) error
+	UpdateBundleSubscription(ctx context.Context, sub *storage.BundleSubscription) error
 	GetBundleSubscriptionByTenant(ctx context.Context, tenantID uuid.UUID) (*storage.BundleSubscription, error)
 	ListBundleSubscriptionsByTenant(ctx context.Context, tenantID uuid.UUID) ([]*storage.BundleSubscription, error)
 }

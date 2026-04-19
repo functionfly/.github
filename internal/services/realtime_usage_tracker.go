@@ -26,6 +26,7 @@ type RealtimeUsageTrackerInterface interface {
 	GetQuotaStatus(ctx context.Context, tenantID uuid.UUID) (*RealtimeQuotaStatus, error)
 	CheckQuota(ctx context.Context, tenantID uuid.UUID) (*QuotaCheckResult, error)
 	IsEnabled() bool
+	GetRealtimeUsageMetrics(ctx context.Context) (map[string]interface{}, error)
 }
 
 // RealtimeUsageTracker provides real-time usage tracking and quota enforcement

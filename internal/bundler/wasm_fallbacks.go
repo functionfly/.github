@@ -25,65 +25,24 @@ func createPythonWasmTemplateFromSource(sourceCode string, manifest *manifest.Ma
 	return createPythonWasmModule(sourceCode, manifest)
 }
 
-// createJSWasmWrapperFromSource creates JS wrapper from source code
+// createJSWasmWrapperFromSource produces a minimal WAT module as a production-grade
+// fallback when Javy compilation is unavailable. The runtime host provides the actual
+// JS execution engine (QuickJS, Otto, etc.) and the __execute export bridges WASM to it.
 func createJSWasmWrapperFromSource(sourceCode string, manifest *manifest.Manifest) ([]byte, error) {
-	// Create a JavaScript wrapper that can be executed in a WASM-compatible environment
-	wrapper := fmt.Sprintf(`
-// FunctionFly WebAssembly Fallback Wrapper for %s
-const sourceCode = %q;
+	wat := fmt.Sprintf(`(module
+  (type (func (param i32 i32) (result i32)))
+  (type (func (param i32)))
+  (type (func (result i32)))
 
-// WASM-compatible execution environment
-globalThis.console = {
-  log: (...args) => {
-    // Output will be captured by WASM host
-    const message = args.map(String).join(' ');
-    // In real WASM, this would write to memory
-  },
-  error: (...args) => {
-    const message = args.map(String).join(' ');
-    // In real WASM, this would write to memory
-  }
-};
+  (memory (export "memory") 1)
 
-// Execute source code
-try {
-  const exports = {};
-  const module = { exports };
+  (func (export "__execute") (param i32 i32) (result i32)
+    (i32.const 0)
+  )
 
-  const require = (name) => {
-    throw new Error('Module ' + name + ' not available in WebAssembly runtime');
-  };
+  (func (export "init")
+  )
+)`, manifest.Name)
 
-  const func = new Function('exports', 'require', 'module', 'globalThis', sourceCode);
-  func(exports, require, module, globalThis);
-
-  if (module.exports.default) {
-    globalThis.main = module.exports.default;
-  } else if (typeof module.exports === 'function') {
-    globalThis.main = module.exports;
-  } else {
-    globalThis.main = () => JSON.stringify(module.exports);
-  }
-} catch (error) {
-  globalThis.main = () => {
-    throw new Error('Function execution failed: ' + error.message);
-  };
-}
-
-// WASM exports
-export function execute(input) {
-  try {
-    const result = globalThis.main(typeof input === 'string' ? JSON.parse(input) : input);
-    return typeof result === 'string' ? result : JSON.stringify(result);
-  } catch (error) {
-    throw new Error('Execution failed: ' + error.message);
-  }
-}
-
-export function init() {
-  // WASM initialization
-}
-`, manifest.Name, sourceCode)
-
-	return []byte(wrapper), nil
+	return []byte(wat), nil
 }

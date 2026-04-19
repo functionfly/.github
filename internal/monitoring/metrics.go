@@ -540,6 +540,55 @@ var (
 		},
 	)
 
+	// Billing operational readiness alerts
+	billingWebhookLatencyExceeded = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_billing_webhook_latency_exceeded_total",
+			Help: "Total number of times webhook processing exceeded threshold (5s)",
+		},
+		[]string{"event_type"},
+	)
+
+	billingWebhookSignatureFailures = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_billing_webhook_signature_failures_total",
+			Help: "Total number of webhook signature verification failures",
+		},
+		[]string{"reason"},
+	)
+
+	billingDunningRetriesStuck = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "functionfly_billing_dunning_retries_stuck",
+			Help: "Number of dunning retries stuck (not processing on schedule)",
+		},
+		[]string{"retry_status"},
+	)
+
+	billingInvoiceGenerationFailures = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_billing_invoice_generation_failures_total",
+			Help: "Total number of invoice generation failures",
+		},
+		[]string{"failure_reason"},
+	)
+
+	billingStripeAPIErrors = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_billing_stripe_api_errors_total",
+			Help: "Total number of Stripe API errors",
+		},
+		[]string{"operation", "error_code"},
+	)
+
+	billingAlertTriggered = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_billing_alert_triggered_total",
+			Help: "Total number of billing alerts triggered",
+		},
+		[]string{"alert_type", "severity"},
+	)
+
 	// Execution log retention metrics
 	executionLogCleanupRecordsDeleted = promauto.NewCounterVec(
 		prometheus.CounterOpts{
@@ -1139,4 +1188,36 @@ func RecordTeamMemoryCacheHit(teamID string) {
 // RecordTeamMemoryCacheMiss records a cache miss for team memory context
 func RecordTeamMemoryCacheMiss(teamID string) {
 	teamMemoryCacheMissesTotal.WithLabelValues(teamID).Inc()
+}
+
+// Billing Alert Recording Functions
+
+// RecordBillingWebhookLatencyExceeded records when webhook processing exceeds threshold (5s)
+func RecordBillingWebhookLatencyExceeded(eventType string) {
+	billingWebhookLatencyExceeded.WithLabelValues(eventType).Inc()
+}
+
+// RecordBillingWebhookSignatureFailure records a webhook signature verification failure
+func RecordBillingWebhookSignatureFailure(reason string) {
+	billingWebhookSignatureFailures.WithLabelValues(reason).Inc()
+}
+
+// UpdateBillingDunningRetriesStuck updates the gauge for stuck dunning retries
+func UpdateBillingDunningRetriesStuck(retryStatus string, count int) {
+	billingDunningRetriesStuck.WithLabelValues(retryStatus).Set(float64(count))
+}
+
+// RecordBillingInvoiceGenerationFailure records an invoice generation failure
+func RecordBillingInvoiceGenerationFailure(failureReason string) {
+	billingInvoiceGenerationFailures.WithLabelValues(failureReason).Inc()
+}
+
+// RecordBillingStripeAPIError records a Stripe API error
+func RecordBillingStripeAPIError(operation, errorCode string) {
+	billingStripeAPIErrors.WithLabelValues(operation, errorCode).Inc()
+}
+
+// RecordBillingAlertTriggered records when a billing alert is triggered
+func RecordBillingAlertTriggered(alertType, severity string) {
+	billingAlertTriggered.WithLabelValues(alertType, severity).Inc()
 }

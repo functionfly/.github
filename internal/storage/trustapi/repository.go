@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"strings"
 	"time"
 
@@ -168,14 +169,14 @@ func (r *Repository) GenerateAPIKey(partnerID uuid.UUID, req *APIKeyCreateReques
 	if _, err := rand.Read(keyBytes); err != nil {
 		return nil, "", fmt.Errorf("failed to generate key: %w", err)
 	}
-	rawKey := "tak_" + hex.EncodeToString(keyBytes)
+	rawKey := "fft_" + hex.EncodeToString(keyBytes)
 
 	// Hash the key for storage
 	hash := sha256.Sum256([]byte(rawKey))
 	keyHash := hex.EncodeToString(hash[:])
 
 	// Create key ID and prefix
-	keyID := "tak_" + hex.EncodeToString(keyBytes)[:24]
+	keyID := "fft_" + hex.EncodeToString(keyBytes)[:24]
 	keyPrefix := keyID[:9]
 
 	// Marshal scopes
@@ -296,8 +297,8 @@ func (r *Repository) IncrementKeyUsage(keyID uuid.UUID) error {
 	return r.db.Model(&TrustAPIKey{}).
 		Where("id = ?", keyID).
 		Updates(map[string]interface{}{
-			"use_count":     gorm.Expr("use_count + 1"),
-			"last_used_at":  time.Now(),
+			"use_count":    gorm.Expr("use_count + 1"),
+			"last_used_at": time.Now(),
 		}).Error
 }
 
@@ -315,15 +316,45 @@ func (r *Repository) CheckIPAllowed(apiKey *TrustAPIKey, ipAddress string) bool 
 		return true
 	}
 
-	// Check if the IP matches any allowed pattern
+	// Check if the IP matches any allowed pattern (supports both single IPs and CIDR ranges)
 	for _, allowed := range allowedIPs {
-		if strings.TrimSpace(allowed) == ipAddress {
+		allowed = strings.TrimSpace(allowed)
+		if allowed == "" {
+			continue
+		}
+
+		// Check for exact match
+		if allowed == ipAddress {
 			return true
 		}
-		// TODO: Add CIDR support
+
+		// Check for CIDR match (e.g., "192.168.1.0/24" or "2001:db8::/32")
+		if strings.Contains(allowed, "/") {
+			if ipInCIDR(ipAddress, allowed) {
+				return true
+			}
+		}
 	}
 
 	return false
+}
+
+// ipInCIDR checks if an IP address is within a CIDR range
+func ipInCIDR(ipAddress, cidrRange string) bool {
+	_, ipNet, err := net.ParseCIDR(cidrRange)
+	if err != nil {
+		// Invalid CIDR format - log and skip
+		log.Printf("WARN: Invalid CIDR format '%s': %v", cidrRange, err)
+		return false
+	}
+
+	ip := net.ParseIP(ipAddress)
+	if ip == nil {
+		// Invalid IP address
+		return false
+	}
+
+	return ipNet.Contains(ip)
 }
 
 // ============================================
@@ -614,12 +645,12 @@ func (r *Repository) UpdateVerificationResult(verificationID uuid.UUID, trustSco
 	return r.db.Model(&TrustAPIVerification{}).
 		Where("id = ?", verificationID).
 		Updates(map[string]interface{}{
-			"status":                  string(VerificationStatusCompleted),
-			"trust_score":             trustScore,
-			"trust_tier":              trustTier,
+			"status":                 string(VerificationStatusCompleted),
+			"trust_score":            trustScore,
+			"trust_tier":             trustTier,
 			"verification_badge_url": badgeURL,
-			"completion_notes":        notes,
-			"completed_by":            completedBy,
-			"completed_at":            &now,
+			"completion_notes":       notes,
+			"completed_by":           completedBy,
+			"completed_at":           &now,
 		}).Error
 }

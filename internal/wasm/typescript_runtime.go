@@ -81,7 +81,7 @@ func NewTypeScriptRuntimeWithConfigAndDebug(wasmBinary []byte, stdout, stderr io
 
 	// Enable fuel/energy for instruction counting if deterministic mode
 	if config.EnableDeterministic {
-		// Enable fuel consumption tracking
+		engineConfig.SetConsumeFuel(true)
 	}
 
 	engine := wasmtime.NewEngineWithConfig(engineConfig)

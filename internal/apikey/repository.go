@@ -2,7 +2,11 @@ package apikey
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"net"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -54,6 +58,7 @@ func (r *Repository) Create(ctx context.Context, tenantID, userID uuid.UUID, req
 		Name:                  req.Name,
 		Description:           req.Description,
 		KeyType:               req.KeyType,
+		KeyID:                 plaintext, // Plaintext is the public key identifier
 		KeyPrefix:             prefix,
 		KeyHash:               keyHash,
 		KeyVersion:            DefaultKeyVersion,
@@ -148,7 +153,7 @@ func (r *Repository) GetByIDWithAssociations(ctx context.Context, id uuid.UUID) 
 func (r *Repository) GetByHash(ctx context.Context, keyHash string) (*APIKey, error) {
 	var apiKey APIKey
 	err := r.db.WithContext(ctx).
-		Where("key_hash = ? AND is_active = true", keyHash).
+		Where("key_hash = ?", keyHash).
 		First(&apiKey).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -468,4 +473,220 @@ func (r *Repository) GetKeysNeedingRotation(ctx context.Context) ([]*APIKey, err
 		return nil, fmt.Errorf("failed to get keys needing rotation: %w", err)
 	}
 	return keys, nil
+}
+
+// CreateTrustAPIKey creates a new Trust API key for a partner.
+// It uses the fft_ prefix and the platform v1 key format (prefix_v1_random_checksum).
+func (r *Repository) CreateTrustAPIKey(ctx context.Context, req *CreateTrustAPIKeyRequest) (*APIKey, string, error) {
+	// Generate the API key using the Trust type (fft_v1_...)
+	generator := NewGenerator()
+	plaintext, err := generator.Generate(KeyTypeTrust)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to generate Trust API key: %w", err)
+	}
+
+	// Hash the key for storage
+	hasher := NewHasher()
+	keyHash := hasher.Hash(plaintext)
+
+	now := time.Now()
+	apiKey := &APIKey{
+		ID:                    uuid.New(),
+		TenantID:              req.PartnerID, // PartnerID used as TenantID for Trust keys
+		UserID:                req.PartnerID,
+		Name:                  req.Name,
+		Description:           req.Description,
+		KeyType:               KeyTypeTrust,
+		KeyID:                 plaintext, // Trust API keys use plaintext as the public identifier
+		KeyPrefix:             PrefixTrust,
+		KeyHash:               keyHash,
+		KeyVersion:            DefaultKeyVersion,
+		ExpiresAt:             req.ExpiresAt,
+		LastRotatedAt:         now,
+		RotationFrequencyDays: DefaultRotationDays,
+		RateLimitRPM:          DefaultRateLimitRPM,
+		RateLimitRPH:          DefaultRateLimitRPH,
+		RateLimitRPD:          DefaultRateLimitRPD,
+		IsActive:              true,
+		IsRevoked:             false,
+		UseCount:              0,
+		PartnerID:             req.PartnerID,
+		Scopes:                JSONBMap{"trust:read": true},
+		AllowedIPs:            JSONBMap{},
+		Metadata:              JSONBMap{},
+		CreatedBy:             req.CreatedBy,
+		CreatedAt:             now,
+		UpdatedAt:             now,
+	}
+
+	// Set scopes
+	if len(req.Scopes) > 0 {
+		scopesMap := JSONBMap{}
+		for _, s := range req.Scopes {
+			scopesMap[s] = true
+		}
+		apiKey.Scopes = scopesMap
+	}
+
+	// Set allowed IPs
+	if len(req.AllowedIPs) > 0 {
+		allowedIPsMap := JSONBMap{}
+		for _, ip := range req.AllowedIPs {
+			allowedIPsMap[ip] = true
+		}
+		apiKey.AllowedIPs = allowedIPsMap
+	}
+
+	if err := r.db.WithContext(ctx).Create(apiKey).Error; err != nil {
+		return nil, "", fmt.Errorf("failed to create Trust API key: %w", err)
+	}
+
+	return apiKey, plaintext, nil
+}
+
+// ValidateAPIKey validates a Trust API key (fft_ prefixed) and returns the key + partner info.
+// It supports both the new platform format (fft_v1_xxx_crc8) and legacy format (fft_xxx).
+func (r *Repository) ValidateAPIKey(rawKey string) (*APIKey, error) {
+	var keyHash string
+
+	// Determine format and compute hash
+	if strings.HasPrefix(rawKey, PrefixTrust+"v1_") {
+		// New platform format: fft_v1_random_crc8
+		hasher := NewHasher()
+		keyHash = hasher.Hash(rawKey)
+	} else if strings.HasPrefix(rawKey, PrefixTrust) {
+		// Legacy Trust format: fft_xxx (no version/checksum)
+		hash := sha256.Sum256([]byte(rawKey))
+		keyHash = hex.EncodeToString(hash[:])
+	} else {
+		return nil, fmt.Errorf("invalid API key prefix")
+	}
+
+	var apiKey APIKey
+	err := r.db.Where("key_hash = ?", keyHash).First(&apiKey).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("invalid API key")
+		}
+		return nil, fmt.Errorf("failed to validate API key: %w", err)
+	}
+
+	// Check if revoked
+	if apiKey.IsRevoked {
+		return nil, fmt.Errorf("API key has been revoked")
+	}
+
+	// Check if expired
+	if apiKey.ExpiresAt != nil && apiKey.ExpiresAt.Before(time.Now()) {
+		return nil, fmt.Errorf("API key has expired")
+	}
+
+	// Check if active
+	if !apiKey.IsActive {
+		return nil, fmt.Errorf("API key is not active")
+	}
+
+	return &apiKey, nil
+}
+
+// CheckIPAllowed checks if a client IP is in the key's allowed IPs list.
+// If the key has no allowed IPs configured, all IPs are allowed.
+// Supports both individual IP addresses and CIDR ranges (e.g., "192.168.1.0/24").
+func (r *Repository) CheckIPAllowed(apiKey *APIKey, clientIP string) bool {
+	if apiKey.AllowedIPs == nil || len(apiKey.AllowedIPs) == 0 {
+		return true
+	}
+
+	// Check each allowed IP/CIDR (stored as map keys)
+	for allowedIP := range apiKey.AllowedIPs {
+		// Check for exact match
+		if allowedIP == clientIP {
+			return true
+		}
+
+		// Check for CIDR match
+		if strings.Contains(allowedIP, "/") {
+			if ipInCIDR(clientIP, allowedIP) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// ipInCIDR checks if an IP address is within a CIDR range
+func ipInCIDR(ipAddress, cidrRange string) bool {
+	_, ipNet, err := net.ParseCIDR(cidrRange)
+	if err != nil {
+		// Invalid CIDR format
+		return false
+	}
+
+	ip := net.ParseIP(ipAddress)
+	if ip == nil {
+		// Invalid IP address
+		return false
+	}
+
+	return ipNet.Contains(ip)
+}
+
+// IncrementKeyUsage increments the use count for a Trust API key.
+func (r *Repository) IncrementKeyUsage(keyID uuid.UUID) error {
+	result := r.db.Model(&APIKey{}).
+		Where("id = ?", keyID).
+		UpdateColumn("use_count", gorm.Expr("use_count + 1"))
+	if result.Error != nil {
+		return fmt.Errorf("failed to increment key usage: %w", result.Error)
+	}
+	return nil
+}
+
+// RevokeAPIKey revokes a Trust API key.
+func (r *Repository) RevokeAPIKey(keyID uuid.UUID, reason string) error {
+	now := time.Now()
+	updates := map[string]interface{}{
+		"is_revoked":     true,
+		"revoked_at":     now,
+		"revoked_reason": reason,
+		"is_active":      false,
+		"updated_at":     now,
+	}
+	result := r.db.Model(&APIKey{}).Where("id = ?", keyID).Updates(updates)
+	if result.Error != nil {
+		return fmt.Errorf("failed to revoke API key: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("API key not found: %s", keyID)
+	}
+	return nil
+}
+
+// ListAPIKeysForPartner lists all API keys for a Trust partner.
+func (r *Repository) ListAPIKeysForPartner(ctx context.Context, partnerID uuid.UUID, includeRevoked bool) ([]*APIKey, error) {
+	var keys []*APIKey
+	query := r.db.WithContext(ctx).Where("partner_id = ?", partnerID)
+	if !includeRevoked {
+		query = query.Where("is_revoked = ?", false)
+	}
+	if err := query.Order("created_at DESC").Find(&keys).Error; err != nil {
+		return nil, fmt.Errorf("failed to list API keys for partner: %w", err)
+	}
+	return keys, nil
+}
+
+// GetAPIKeyByKeyID retrieves a Trust API key by its public key ID (key_id column).
+func (r *Repository) GetAPIKeyByKeyID(ctx context.Context, keyID string) (*APIKey, error) {
+	var apiKey APIKey
+	// For new format keys, key_id is the full key (fft_v1_xxx_xx)
+	// For legacy keys, key_id is fft_xxx (just the raw key without hash)
+	err := r.db.WithContext(ctx).Where("key_id = ?", keyID).First(&apiKey).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("API key not found")
+		}
+		return nil, fmt.Errorf("failed to get API key: %w", err)
+	}
+	return &apiKey, nil
 }

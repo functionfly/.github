@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/manifest"
+	"github.com/sirupsen/logrus"
 )
 
 // RuntimeResult represents the result of a runtime execution
@@ -41,23 +42,40 @@ func GetRuntime(name string) Runtime {
 	return runtime
 }
 
-// GenericRuntime provides a basic runtime implementation
-type GenericRuntime struct{}
+// GenericRuntime provides a basic runtime implementation for testing
+type GenericRuntime struct {
+	manifest *manifest.Manifest
+	bundle   []byte
+}
 
 func (r *GenericRuntime) Initialize(ctx context.Context, bundle []byte, manifest *manifest.Manifest) error {
-	// Basic initialization - in a real implementation this would set up
-	// the runtime environment (Node.js, Python, etc.)
+	r.bundle = bundle
+	r.manifest = manifest
+	if manifest != nil {
+		logrus.WithFields(logrus.Fields{
+			"runtime": manifest.Runtime,
+			"version": manifest.Version,
+		}).Debug("GenericRuntime initialized")
+	}
 	return nil
 }
 
 func (r *GenericRuntime) Execute(ctx context.Context, input string) (*RuntimeResult, error) {
 	start := time.Now()
 
+	runtime := "generic"
+	if r.manifest != nil {
+		runtime = r.manifest.Runtime
+	}
+
 	// Simulate function execution
-	// In a real implementation, this would invoke the actual function
 	output := fmt.Sprintf("Processed: %s", input)
 
 	latency := time.Since(start)
+	logrus.WithFields(logrus.Fields{
+		"runtime":    runtime,
+		"latency_ms": latency.Milliseconds(),
+	}).Debug("GenericRuntime execution completed")
 
 	return &RuntimeResult{
 		Status:    200,
@@ -67,7 +85,11 @@ func (r *GenericRuntime) Execute(ctx context.Context, input string) (*RuntimeRes
 }
 
 func (r *GenericRuntime) Cleanup() error {
-	// Clean up runtime resources
+	if r.manifest != nil {
+		logrus.WithField("runtime", r.manifest.Runtime).Debug("GenericRuntime cleaned up")
+	}
+	r.bundle = nil
+	r.manifest = nil
 	return nil
 }
 

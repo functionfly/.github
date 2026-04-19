@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"sync"
@@ -12,6 +13,8 @@ import (
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
 	stripe "github.com/stripe/stripe-go/v83"
+	"github.com/stripe/stripe-go/v83/customer"
+	"github.com/stripe/stripe-go/v83/paymentmethod"
 	"github.com/stripe/stripe-go/v83/subscription"
 )
 
@@ -22,13 +25,13 @@ type SubscriptionSyncScheduleConfig struct {
 
 // SubscriptionSyncScheduler periodically syncs subscription status from Stripe to ensure consistency
 type SubscriptionSyncScheduler struct {
-	cron       *cron.Cron
-	repo       storage.Repository
-	logger     *logrus.Logger
-	stopOnce   sync.Once
-	cancel     context.CancelFunc
-	notifySvc  *notification.Service
-	stripeKey  string
+	cron      *cron.Cron
+	repo      storage.Repository
+	logger    *logrus.Logger
+	stopOnce  sync.Once
+	cancel    context.CancelFunc
+	notifySvc *notification.Service
+	stripeKey string
 }
 
 // NewSubscriptionSyncScheduler creates a new subscription sync scheduler
@@ -109,9 +112,9 @@ func (s *SubscriptionSyncScheduler) runSync(ctx context.Context) {
 	}
 
 	s.logger.WithFields(logrus.Fields{
-		"total":      len(subs),
-		"updated":    updatedCount,
-		"errors":     syncErrors,
+		"total":   len(subs),
+		"updated": updatedCount,
+		"errors":  syncErrors,
 	}).Info("Subscription sync completed")
 }
 
@@ -236,5 +239,108 @@ func (s *SubscriptionSyncScheduler) sendStatusChangeNotification(ctx context.Con
 	})
 	if err != nil {
 		s.logger.WithError(err).Warn("Failed to send subscription status change notification")
+	}
+}
+
+// SyncPaymentMethods syncs payment methods for all tenants with Stripe customer IDs
+// This is called as part of the periodic sync to ensure consistency
+func (s *SubscriptionSyncScheduler) SyncPaymentMethods(ctx context.Context) {
+	s.logger.Info("Starting payment method sync with Stripe")
+
+	// Get all tenants with Stripe customer IDs
+	tenants, err := s.repo.ListTenantsWithStripeCustomerID()
+	if err != nil {
+		s.logger.WithError(err).Error("Failed to list tenants with Stripe customer IDs")
+		return
+	}
+
+	s.logger.Infof("Found %d tenants to sync payment methods", len(tenants))
+
+	for _, tenant := range tenants {
+		if err := s.syncTenantPaymentMethod(ctx, tenant); err != nil {
+			s.logger.WithError(err).WithField("tenant_id", tenant.ID).Error("Failed to sync payment method")
+		}
+	}
+
+	s.logger.Info("Payment method sync completed")
+}
+
+// syncTenantPaymentMethod syncs a single tenant's default payment method from Stripe
+func (s *SubscriptionSyncScheduler) syncTenantPaymentMethod(ctx context.Context, tenant *storage.Tenant) error {
+	if tenant.StripeCustomerID == nil || *tenant.StripeCustomerID == "" {
+		return nil
+	}
+
+	// Fetch customer from Stripe to get default payment method
+	params := &stripe.CustomerParams{}
+	params.AddExpand("default_payment_method")
+	c, err := customer.Get(*tenant.StripeCustomerID, params)
+	if err != nil {
+		return fmt.Errorf("failed to fetch customer from Stripe: %w", err)
+	}
+
+	// Check for default payment method
+	if c.DefaultPaymentMethod != nil && c.DefaultPaymentMethod.ID != "" {
+		pm, err := paymentmethod.Get(c.DefaultPaymentMethod.ID, nil)
+		if err != nil {
+			s.logger.WithError(err).WithField("payment_method_id", c.DefaultPaymentMethod.ID).Warn("Failed to fetch payment method details")
+			return nil // Don't fail the sync for this
+		}
+
+		// Only sync card payment methods
+		if pm.Card == nil {
+			return nil
+		}
+
+		// Build billing details
+		billingDetails := map[string]interface{}{}
+		if pm.BillingDetails.Name != "" {
+			billingDetails["name"] = pm.BillingDetails.Name
+		}
+		if pm.BillingDetails.Email != "" {
+			billingDetails["email"] = pm.BillingDetails.Email
+		}
+		if pm.BillingDetails.Address != nil {
+			billingDetails["address"] = map[string]interface{}{
+				"line1":       pm.BillingDetails.Address.Line1,
+				"line2":       pm.BillingDetails.Address.Line2,
+				"city":        pm.BillingDetails.Address.City,
+				"state":       pm.BillingDetails.Address.State,
+				"postal_code": pm.BillingDetails.Address.PostalCode,
+				"country":     pm.BillingDetails.Address.Country,
+			}
+		}
+		billingDetailsJSON, _ := json.Marshal(billingDetails)
+
+		// Update tenant payment method
+		paymentMethod := &storage.PaymentMethodInfoExtended{
+			StripePaymentMethodID: pm.ID,
+			Brand:                 string(pm.Card.Brand),
+			Last4:                 pm.Card.Last4,
+			ExpMonth:              int(pm.Card.ExpMonth),
+			ExpYear:               int(pm.Card.ExpYear),
+			BillingDetails:        billingDetailsJSON,
+		}
+
+		if err := s.repo.UpdateTenantPaymentMethod(ctx, tenant.ID, paymentMethod); err != nil {
+			return fmt.Errorf("failed to update tenant payment method: %w", err)
+		}
+
+		s.logger.WithFields(logrus.Fields{
+			"tenant_id":         tenant.ID,
+			"payment_method_id": pm.ID,
+			"brand":             pm.Card.Brand,
+			"last4":             pm.Card.Last4,
+		}).Info("Payment method synced from Stripe")
+	}
+
+	return nil
+}
+
+// Helper imports for the scheduler - need to add to imports
+func init() {
+	// Ensure stripe.Key is set before making API calls
+	if stripe.Key == "" && os.Getenv("STRIPE_SECRET_KEY") != "" {
+		stripe.Key = os.Getenv("STRIPE_SECRET_KEY")
 	}
 }

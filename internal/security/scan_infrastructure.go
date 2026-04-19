@@ -263,7 +263,7 @@ func (sas *SecurityAuditService) checkServerSoftwareVersions(target string) ([]V
 			[]string{`go (\d+\.\d+)`, `go (\d+\.\d+\.\d+)`},
 			"1.21",
 			"medium",
-			"CVE-2023-XXX",
+			"SECURITY-VERSION-001",
 		},
 		{
 			"package.json",
@@ -271,7 +271,7 @@ func (sas *SecurityAuditService) checkServerSoftwareVersions(target string) ([]V
 			[]string{`"node":\s*"([<>~^]?\d+\.\d+)`},
 			"18.0",
 			"medium",
-			"CVE-2023-XXX",
+			"SECURITY-VERSION-002",
 		},
 	}
 
@@ -290,8 +290,8 @@ func (sas *SecurityAuditService) checkServerSoftwareVersions(target string) ([]V
 					version := matches[1]
 					if compareVersions("v"+version, "v"+check.minVersion) < 0 {
 						vulnerabilities = append(vulnerabilities, Vulnerability{
-							ID:          generateVulnID(),
-							Title:       fmt.Sprintf("Outdated %s Version", check.software),
+							ID:    generateVulnID(),
+							Title: fmt.Sprintf("Outdated %s Version", check.software),
 							Description: fmt.Sprintf("%s version %s is outdated (minimum recommended: %s)",
 								check.software, version, check.minVersion),
 							Severity:    check.severity,

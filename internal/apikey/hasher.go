@@ -1,15 +1,20 @@
 package apikey
 
 import (
-	"crypto/sha256"
-	"crypto/subtle"
-	"encoding/hex"
 	"fmt"
+
+	"golang.org/x/crypto/bcrypt"
+)
+
+const (
+	// bcryptCost is the computational cost factor for bcrypt hashing
+	// Cost 12 is the current industry recommendation (OWASP, 2025)
+	bcryptCost = 12
 )
 
 // Hasher handles API key hashing and verification
 type Hasher struct {
-	// salt can be used to add additional security (optional)
+	// salt is retained for backward compatibility but unused (bcrypt handles salting internally)
 	salt string
 }
 
@@ -19,35 +24,29 @@ func NewHasher() *Hasher {
 }
 
 // NewHasherWithSalt creates a new key hasher with a salt
+// Note: Salt is kept for API compatibility but bcrypt handles salting internally
 func NewHasherWithSalt(salt string) *Hasher {
 	return &Hasher{salt: salt}
 }
 
-// Hash returns the SHA-256 hash of the key
-// The hash is used for secure storage in the database
+// Hash returns a bcrypt hash of the key using cost 12
+// Each call generates a new random salt for per-key security
 func (h *Hasher) Hash(key string) string {
-	data := key
-	if h.salt != "" {
-		data = h.salt + key
-	}
-	hash := sha256.Sum256([]byte(data))
-	return hex.EncodeToString(hash[:])
+	hash, _ := bcrypt.GenerateFromPassword([]byte(key), bcryptCost)
+	return string(hash)
 }
 
-// HashBytes returns the SHA-256 hash of the given bytes
+// HashBytes returns a bcrypt hash of the given bytes
 func (h *Hasher) HashBytes(data []byte) string {
-	if h.salt != "" {
-		data = append([]byte(h.salt), data...)
-	}
-	hash := sha256.Sum256(data)
-	return hex.EncodeToString(hash[:])
+	hash, _ := bcrypt.GenerateFromPassword(data, bcryptCost)
+	return string(hash)
 }
 
-// Verify compares a plaintext key with its hash in constant time
-// This prevents timing attacks by using subtle.ConstantTimeCompare
+// Verify compares a plaintext key with its bcrypt hash in constant time
+// bcrypt.CompareHashAndPassword handles constant-time comparison internally
 func (h *Hasher) Verify(plaintext, hash string) bool {
-	computedHash := h.Hash(plaintext)
-	return subtle.ConstantTimeCompare([]byte(computedHash), []byte(hash)) == 1
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(plaintext))
+	return err == nil
 }
 
 // VerifyPrefix verifies that the key has the correct prefix
@@ -90,12 +89,12 @@ func MaskKey(key string) string {
 	return prefix + "_xxxx_xxxx_" + suffix
 }
 
-// HashKey is a convenience function that hashes a key using the default hasher
+// HashKey is a convenience function that hashes a key using bcrypt with cost 12
 func HashKey(key string) string {
 	return NewHasher().Hash(key)
 }
 
-// VerifyKey is a convenience function that verifies a key against a hash
+// VerifyKey is a convenience function that verifies a key against a bcrypt hash
 func VerifyKey(plaintext, hash string) bool {
 	return NewHasher().Verify(plaintext, hash)
 }

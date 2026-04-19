@@ -1,9 +1,13 @@
 package runpod
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/agent/generation"
@@ -205,9 +209,86 @@ func (cg *ClusterGenerator) GenerateCode(ctx context.Context, req *generation.Ge
 
 // generateWithInstance generates code using a specific instance
 func (cg *ClusterGenerator) generateWithInstance(ctx context.Context, instance *GPUInstance, req *generation.GenerationRequest) (string, error) {
-	// TODO: Implement actual inference call to the instance endpoint
-	// This is a placeholder that returns an error indicating implementation needed
-	return "", fmt.Errorf("inference call to instance %s not implemented: endpoint %s", instance.ID, instance.Endpoint)
+	// Build the inference request
+	payload := map[string]interface{}{
+		"prompt":      req.Prompt,
+		"runtime":     req.Runtime,
+		"max_tokens":  2048,
+		"temperature": 0.7,
+		"top_p":       0.95,
+	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	// Build the endpoint URL
+	endpoint := instance.Endpoint
+	if endpoint == "" {
+		return "", fmt.Errorf("instance %s has no endpoint configured", instance.ID)
+	}
+
+	// Ensure the endpoint has a scheme
+	if !bytes.HasPrefix([]byte(endpoint), []byte("http")) {
+		endpoint = "http://" + endpoint
+	}
+
+	// Create HTTP client with timeout
+	client := &http.Client{
+		Timeout: 120 * time.Second,
+	}
+
+	// Create the request
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewReader(jsonPayload))
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Accept", "application/json")
+
+	// Make the request
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return "", fmt.Errorf("inference request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("inference request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	// Parse the response
+	var result struct {
+		GeneratedCode string `json:"generated_code"`
+		Code          string `json:"code"`
+		Output        string `json:"output"`
+		Text          string `json:"text"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	// Extract the generated code from various possible response formats
+	code := result.GeneratedCode
+	if code == "" {
+		code = result.Code
+	}
+	if code == "" {
+		code = result.Output
+	}
+	if code == "" {
+		code = result.Text
+	}
+
+	if code == "" {
+		return "", fmt.Errorf("no code generated in response")
+	}
+
+	return code, nil
 }
 
 // Terminate terminates all clusters and releases resources

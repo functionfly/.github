@@ -4,7 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
+	"strings"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -247,22 +251,181 @@ func (e *ExecutionEngine) handleNodeCompleteEvent(ctx context.Context, runtime *
 
 // handleNodeErrorEvent processes node errors (retry/fallback logic)
 func (e *ExecutionEngine) handleNodeErrorEvent(ctx context.Context, runtime *GraphRuntime, event *GraphEvent) {
-	// TODO: Implement retry/fallback logic
 	if event.NodeID == nil {
 		return
 	}
 	nodeID := *event.NodeID
-	logrus.WithFields(logrus.Fields{
+
+	logger := logrus.WithFields(logrus.Fields{
 		"instance_id": runtime.Instance.ID,
 		"node_id":     nodeID,
-		"payload":     string(event.Payload),
-	}).Warn("Node error event received (retry/fallback not yet implemented)")
+	})
+
+	// Get the node runtime
+	node := runtime.Nodes[nodeID]
+	if node == nil {
+		logger.Error("Node not found in runtime")
+		return
+	}
+
+	// Parse error from event payload
+	var errorPayload map[string]interface{}
+	if err := json.Unmarshal(event.Payload, &errorPayload); err != nil {
+		logger.WithError(err).Warn("Failed to parse error payload")
+		errorPayload = map[string]interface{}{"error": string(event.Payload)}
+	}
+
+	errorMsg := ""
+	if err, ok := errorPayload["error"].(string); ok {
+		errorMsg = err
+	}
+
+	// Get current node state
+	if node.State == nil {
+		node.State = &NodeState{
+			Status:       "failed",
+			Error:        &errorMsg,
+			AttemptCount: 1,
+		}
+	} else {
+		node.State.AttemptCount++
+		node.State.Error = &errorMsg
+	}
+
+	currentAttempt := node.State.AttemptCount
+
+	// Find retry policy from incoming edges
+	retryPolicy := e.findRetryPolicy(runtime, nodeID)
+	fallbackNodeID := e.findFallbackNodeID(runtime, nodeID)
+
+	logger = logger.WithFields(logrus.Fields{
+		"attempt":       currentAttempt,
+		"max_attempts":  retryPolicy.MaxAttempts,
+		"retryable":     retryPolicy.MaxAttempts > 1,
+		"fallback_node": fallbackNodeID,
+	})
+
+	// Check if error is retryable
+	isRetryable := e.isErrorRetryable(errorMsg, retryPolicy)
+	shouldRetry := isRetryable && currentAttempt < retryPolicy.MaxAttempts
+
+	if shouldRetry {
+		// Calculate backoff delay
+		backoff := e.calculateBackoff(currentAttempt, retryPolicy)
+		logger.WithField("backoff_ms", backoff.Milliseconds()).Info("Scheduling node retry")
+
+		// Update node state
+		node.State.Status = "retrying"
+
+		// Schedule retry with backoff
+		go func() {
+			time.Sleep(backoff)
+
+			retryEvent := &GraphEvent{
+				InstanceID: runtime.Instance.ID,
+				EventType:  "retry",
+				NodeID:     &nodeID,
+				Payload:    []byte(fmt.Sprintf(`{"retry_attempt":%d,"previous_error":"%s"}`, currentAttempt, errorMsg)),
+			}
+
+			select {
+			case runtime.InputChannel <- retryEvent:
+				logger.WithField("retry_attempt", currentAttempt+1).Info("Retry event queued")
+			case <-ctx.Done():
+				logger.Warn("Context cancelled, retry event not queued")
+			}
+		}()
+
+		return
+	}
+
+	// Max retries exceeded or not retryable - try fallback
+	if fallbackNodeID != "" {
+		logger.Info("Triggering fallback node")
+
+		fallbackNode := runtime.Nodes[fallbackNodeID]
+		if fallbackNode == nil {
+			logger.Error("Fallback node not found, marking as failed")
+			node.State.Status = "failed"
+			return
+		}
+
+		// Mark original node as failed with fallback triggered
+		node.State.Status = "failed_with_fallback"
+		fallbackTriggered := true
+		node.State.FallbackTriggered = &fallbackTriggered
+		node.State.FallbackNodeID = &fallbackNodeID
+
+		// Trigger fallback node with error context
+		fallbackInput := map[string]interface{}{
+			"original_node_id": nodeID,
+			"original_error":   errorMsg,
+			"fallback_input":   errorPayload,
+		}
+		fallbackInputJSON, _ := json.Marshal(fallbackInput)
+
+		triggerEvent := &GraphEvent{
+			InstanceID: runtime.Instance.ID,
+			EventType:  "trigger",
+			NodeID:     &fallbackNodeID,
+			Payload:    fallbackInputJSON,
+		}
+
+		select {
+		case runtime.InputChannel <- triggerEvent:
+			logger.Info("Fallback node triggered")
+		case <-ctx.Done():
+			logger.Warn("Context cancelled, fallback trigger not queued")
+		}
+
+		return
+	}
+
+	// No retry, no fallback - node is failed
+	logger.Info("Node failed permanently (no retry or fallback available)")
+	node.State.Status = "failed"
 }
 
 // handleCheckpointEvent processes state snapshot checkpoints
 func (e *ExecutionEngine) handleCheckpointEvent(ctx context.Context, runtime *GraphRuntime, event *GraphEvent) {
-	// TODO: Save state snapshot
-	logrus.WithField("instance_id", runtime.Instance.ID).Info("Checkpoint event received (state snapshot not yet implemented)")
+	logger := logrus.WithField("instance_id", runtime.Instance.ID)
+
+	// Get or create state manager for this instance
+	// Use TenantID from definition (pointer) and graph name from definition
+	tenantID := uuid.Nil
+	if runtime.Definition != nil && runtime.Definition.TenantID != nil {
+		tenantID = *runtime.Definition.TenantID
+	}
+	graphName := ""
+	if runtime.Definition != nil {
+		graphName = runtime.Definition.Name
+	}
+	stateManager, err := e.GetStateManager(ctx, runtime.Instance.ID, tenantID, graphName)
+	if err != nil {
+		logger.WithError(err).Error("Failed to get state manager for checkpoint")
+		return
+	}
+
+	// Collect current node states for the checkpoint
+	nodeStates := make(map[string]interface{}, len(runtime.Nodes))
+	for nodeID, node := range runtime.Nodes {
+		if node.State != nil {
+			nodeStates[nodeID] = node.State
+		}
+	}
+
+	// Create the checkpoint/snapshot
+	snapshot, err := stateManager.CreateCheckpoint(ctx, runtime.Instance.ID, nodeStates)
+	if err != nil {
+		logger.WithError(err).Error("Failed to create state checkpoint")
+		return
+	}
+
+	logger.WithFields(logrus.Fields{
+		"snapshot_id": snapshot.SnapshotID,
+		"node_count":  len(nodeStates),
+		"state_keys":  len(snapshot.State),
+	}).Info("Created state checkpoint")
 }
 
 // isNodeReadyToExecute checks if a node has received input from all required upstream nodes
@@ -290,4 +453,123 @@ func (e *ExecutionEngine) isNodeReadyToExecute(runtime *GraphRuntime, node *Runt
 
 	// Node is ready when all dependencies are completed
 	return completedDependencies >= dependencyCount
+}
+
+// findRetryPolicy finds the retry policy from edges targeting this node
+// Returns the most restrictive (highest max attempts) policy found
+func (e *ExecutionEngine) findRetryPolicy(runtime *GraphRuntime, nodeID string) *RetryPolicy {
+	var policy *RetryPolicy
+	maxAttempts := 1 // Default: no retries
+
+	for _, edge := range runtime.Edges {
+		if edge.Definition.TargetNodeID != nodeID {
+			continue
+		}
+
+		if edge.Definition.RetryPolicy != nil {
+			if policy == nil || edge.Definition.RetryPolicy.MaxAttempts > maxAttempts {
+				policy = edge.Definition.RetryPolicy
+				maxAttempts = edge.Definition.RetryPolicy.MaxAttempts
+			}
+		}
+	}
+
+	if policy == nil {
+		// Return default retry policy (no retries)
+		return &RetryPolicy{
+			MaxAttempts:    1,
+			InitialBackoff: 100 * time.Millisecond,
+			MaxBackoff:     30 * time.Second,
+			BackoffFactor:  2.0,
+		}
+	}
+
+	return policy
+}
+
+// findFallbackNodeID finds the fallback node ID from edges targeting this node
+func (e *ExecutionEngine) findFallbackNodeID(runtime *GraphRuntime, nodeID string) string {
+	for _, edge := range runtime.Edges {
+		if edge.Definition.TargetNodeID != nodeID {
+			continue
+		}
+
+		if edge.Definition.FallbackNodeID != nil && *edge.Definition.FallbackNodeID != "" {
+			return *edge.Definition.FallbackNodeID
+		}
+	}
+
+	return ""
+}
+
+// isErrorRetryable checks if an error message indicates a retryable error
+func (e *ExecutionEngine) isErrorRetryable(errorMsg string, policy *RetryPolicy) bool {
+	if policy == nil || policy.MaxAttempts <= 1 {
+		return false
+	}
+
+	// If specific retryable errors are configured, check them
+	if len(policy.RetryableErrors) > 0 {
+		errorLower := strings.ToLower(errorMsg)
+		for _, code := range policy.RetryableErrors {
+			if strings.Contains(errorLower, strings.ToLower(code)) {
+				return true
+			}
+		}
+		// Error not in retryable list
+		return false
+	}
+
+	// Default: retry on common transient errors
+	retryablePatterns := []string{
+		"timeout",
+		"connection refused",
+		"connection reset",
+		"no such host",
+		"temporary",
+		"transient",
+		"rate limit",
+		"too many requests",
+		"service unavailable",
+		"503",
+		"502",
+		"504",
+		"429",
+	}
+
+	errorLower := strings.ToLower(errorMsg)
+	for _, pattern := range retryablePatterns {
+		if strings.Contains(errorLower, pattern) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// calculateBackoff calculates the backoff duration for a retry attempt
+// Uses exponential backoff with jitter
+func (e *ExecutionEngine) calculateBackoff(attempt int, policy *RetryPolicy) time.Duration {
+	if policy == nil {
+		return 100 * time.Millisecond
+	}
+
+	// Calculate exponential backoff
+	backoff := float64(policy.InitialBackoff)
+	if attempt > 1 {
+		backoff = backoff * math.Pow(policy.BackoffFactor, float64(attempt-1))
+	}
+
+	// Cap at max backoff
+	if backoff > float64(policy.MaxBackoff) {
+		backoff = float64(policy.MaxBackoff)
+	}
+
+	// Add jitter (±20%) to prevent thundering herd
+	// Simple pseudo-random based on attempt number
+	pseudoRand := float64((attempt*6364136223846793005+1442695040888963407)%1000) / 1000.0
+	jitter := backoff * 0.2 * (2*pseudoRand - 1)
+	backoff = backoff + jitter
+
+	return time.Duration(backoff)
 }

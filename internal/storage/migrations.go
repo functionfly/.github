@@ -560,7 +560,10 @@ func testMigrationRollback(db *PostgresDB, migrationPath string, migrationsRun [
 	if err != nil {
 		return fmt.Errorf("failed to create temp database for rollback testing: %w", err)
 	}
-	defer tempDB.Close()
+	defer func() {
+		tempDB.Close()
+		cleanupTempDatabase(tempDBNameForCleanup)
+	}()
 
 	// Apply the migration to temp database
 	tempMigrate, err := createMigrateInstance(tempDB, migrationPath)
@@ -583,12 +586,82 @@ func testMigrationRollback(db *PostgresDB, migrationPath string, migrationsRun [
 	return nil
 }
 
-// createTempDatabaseForTesting creates a temporary database for testing (simplified)
+// tempDBNameForCleanup holds the temp database name from createTempDatabaseForTesting
+// so testMigrationRollback can schedule cleanup after deferred Close()
+var tempDBNameForCleanup string
+
+// createTempDatabaseForTesting creates a temporary database for testing migration rollbacks.
+// It creates a new database with a unique name, runs the target migration, tests rollback,
+// and then drops the temporary database.
 func createTempDatabaseForTesting(originalDB *PostgresDB) (*sql.DB, error) {
-	// In a real implementation, you'd create a temporary database
-	// For now, we'll just return the original DB with a warning
-	logrus.Warn("Using original database for rollback testing - implement temp DB creation for production")
-	return originalDB.DB, nil
+	cfg, err := loadDatabaseConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load database config: %w", err)
+	}
+
+	// Connect to the default 'postgres' database to create a temp DB
+	adminConfig := *cfg
+	adminConfig.Database = "postgres" // Default admin database for creating new DBs
+	adminConnStr := buildConnectionString(&adminConfig)
+
+	adminDB, err := sql.Open("postgres", adminConnStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to postgres admin DB: %w", err)
+	}
+
+	// Generate unique temp database name
+	tempDBName := fmt.Sprintf("migrate_test_%d", time.Now().UnixNano())
+
+	// Create the temporary database
+	_, err = adminDB.Exec(fmt.Sprintf("CREATE DATABASE %s", tempDBName))
+	if err != nil {
+		adminDB.Close()
+		return nil, fmt.Errorf("failed to create temp database %s: %w", tempDBName, err)
+	}
+	adminDB.Close()
+
+	// Store the name for later cleanup
+	tempDBNameForCleanup = tempDBName
+
+	// Connect to the newly created temp database
+	tempConfig := *cfg
+	tempConfig.Database = tempDBName
+	tempConnStr := buildConnectionString(&tempConfig)
+
+	tempDB, err := sql.Open("postgres", tempConnStr)
+	if err != nil {
+		cleanupTempDatabase(tempDBName)
+		return nil, fmt.Errorf("failed to connect to temp database: %w", err)
+	}
+
+	return tempDB, nil
+}
+
+// cleanupTempDatabase drops a temporary database if it exists
+func cleanupTempDatabase(tempDBName string) {
+	cfg, err := loadDatabaseConfig()
+	if err != nil {
+		logrus.WithError(err).Warn("cleanupTempDatabase: failed to load config")
+		return
+	}
+
+	adminConfig := *cfg
+	adminConfig.Database = "postgres"
+	adminConnStr := buildConnectionString(&adminConfig)
+
+	adminDB, err := sql.Open("postgres", adminConnStr)
+	if err != nil {
+		logrus.WithError(err).Warnf("cleanupTempDatabase: failed to connect for %s", tempDBName)
+		return
+	}
+	defer adminDB.Close()
+
+	_, err = adminDB.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s", tempDBName))
+	if err != nil {
+		logrus.WithError(err).Warnf("cleanupTempDatabase: failed to drop %s", tempDBName)
+	}
+
+	logrus.WithField("database", tempDBName).Info("Cleaned up temporary database")
 }
 
 // shouldTestRollback determines if rollback testing should be performed

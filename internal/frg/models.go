@@ -196,12 +196,14 @@ const (
 
 // NodeState tracks the execution state of a node within an instance
 type NodeState struct {
-	Status       string          `json:"status"` // "pending", "executing", "waiting", "completed", "failed", "retrying"
-	Output       json.RawMessage `json:"output,omitempty"`
-	Error        *string         `json:"error,omitempty"`
-	AttemptCount int             `json:"attempt_count"`
-	ExecCertID   *uuid.UUID      `json:"exec_cert_id,omitempty"`
-	DurationMs   int             `json:"duration_ms"`
+	Status            string          `json:"status"` // "pending", "executing", "waiting", "completed", "failed", "retrying", "failed_with_fallback"
+	Output            json.RawMessage `json:"output,omitempty"`
+	Error             *string         `json:"error,omitempty"`
+	AttemptCount      int             `json:"attempt_count"`
+	ExecCertID        *uuid.UUID      `json:"exec_cert_id,omitempty"`
+	DurationMs        int             `json:"duration_ms"`
+	FallbackTriggered *bool           `json:"fallback_triggered,omitempty"`
+	FallbackNodeID    *string         `json:"fallback_node_id,omitempty"`
 }
 
 // GraphNodeExecution tracks individual node runs

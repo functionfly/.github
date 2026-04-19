@@ -7,6 +7,10 @@ import (
 )
 
 func TestPythonRuntime_BundlerIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping WASM integration test in short mode")
+	}
+
 	// Create test Python code
 	testCode := `
 def handler(event):
@@ -57,6 +61,10 @@ def handler(event):
 }
 
 func TestPythonRuntime_EndToEndFlow(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping WASM end-to-end test in short mode")
+	}
+
 	// Test the complete flow: create runtime -> init -> load code -> execute multiple times
 	handler := NewDefaultHostHandler(nil)
 	runtime, err := NewPythonRuntime("../bundler/python/minimal-python.wasm", os.Stdout, os.Stderr, handler)

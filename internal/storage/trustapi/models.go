@@ -11,10 +11,11 @@ import (
 type PartnerTier string
 
 const (
-	PartnerTierDeveloper  PartnerTier = "developer"
-	PartnerTierStartup    PartnerTier = "startup"
-	PartnerTierBusiness   PartnerTier = "business"
-	PartnerTierEnterprise PartnerTier = "enterprise"
+	PartnerTierDeveloper     PartnerTier = "developer"
+	PartnerTierStartup       PartnerTier = "startup"
+	PartnerTierBusiness      PartnerTier = "business"
+	PartnerTierEnterprise    PartnerTier = "enterprise"
+	PartnerTierPayAsYouGo   PartnerTier = "payg" // New: Pay-as-you-go tier
 )
 
 // PartnerStatus represents the partner account status
@@ -41,29 +42,73 @@ const (
 // TierPricing defines pricing for each tier
 var TierPricing = map[PartnerTier]TierPriceConfig{
 	PartnerTierDeveloper: {
-		MonthlyPriceCents:   0,     // Free tier
-		IncludedRequests:    50000, // 50K requests/month
-		OveragePricePer1000: 0,     // Hard stop at limit
+		MonthlyPriceCents:   0,       // Free tier
+		IncludedRequests:    50000,    // 50K requests/month
+		OveragePricePer1000: 0,        // Hard stop at limit
 		HasOverageBilling:   false,
 	},
-	PartnerTierStartup: {
-		MonthlyPriceCents:   4900,   // $49/month
-		IncludedRequests:    500000, // 500K requests/month
-		OveragePricePer1000: 5,      // $0.005 per request overage
+	PartnerTierPayAsYouGo: {
+		MonthlyPriceCents:   0,        // No monthly commitment
+		IncludedRequests:    0,        // All usage is billed as overage
+		OveragePricePer1000: 8,        // $0.008 per request (higher than startup)
 		HasOverageBilling:   true,
+		HasCommitment:       false,
+	},
+	PartnerTierStartup: {
+		MonthlyPriceCents:   4900,     // $49/month
+		IncludedRequests:    500000,  // 500K requests/month
+		OveragePricePer1000: 5,        // $0.005 per request overage
+		HasOverageBilling:   true,
+		HasCommitment:       true,
 	},
 	PartnerTierBusiness: {
-		MonthlyPriceCents:   19900,   // $199/month
-		IncludedRequests:    2000000, // 2M requests/month
-		OveragePricePer1000: 3,       // $0.003 per request overage
+		MonthlyPriceCents:   19900,    // $199/month
+		IncludedRequests:    2000000,  // 2M requests/month
+		OveragePricePer1000: 3,        // $0.003 per request overage
 		HasOverageBilling:   true,
+		HasCommitment:       true,
 	},
 	PartnerTierEnterprise: {
-		MonthlyPriceCents:   0, // Custom pricing
-		IncludedRequests:    0, // Unlimited/custom
+		MonthlyPriceCents:   0,        // Custom pricing
+		IncludedRequests:    0,        // Unlimited/custom
 		OveragePricePer1000: 0,
-		HasOverageBilling:   false, // Custom contracts
+		HasOverageBilling:   false,   // Custom contracts
+		HasCommitment:       true,
 	},
+}
+
+// VolumeDiscountTiers defines negotiated volume discounts for high-volume partners
+// These override the standard tier pricing for qualifying partners
+var VolumeDiscountTiers = map[string]VolumeDiscountConfig{
+	"10m_monthly": {
+		Slug:             "10m_monthly",
+		Name:             "10M+ Monthly",
+		MinMonthlyRequests: 10_000_000,
+		MonthlyPriceCents:   99000,  // $990/month
+		IncludedRequests:    10_000_000,
+		OveragePricePer1000: 1,      // $0.001 per request overage
+		Description:        "10M+ requests/month with deep volume discount",
+	},
+	"50m_monthly": {
+		Slug:             "50m_monthly",
+		Name:             "50M+ Monthly",
+		MinMonthlyRequests: 50_000_000,
+		MonthlyPriceCents:   39900,  // $399/month (very aggressive)
+		IncludedRequests:    50_000_000,
+		OveragePricePer1000: 0,      // All included, no overage
+		Description:        "50M+ requests/month with maximum discount",
+	},
+}
+
+// VolumeDiscountConfig defines pricing for high-volume negotiated rates
+type VolumeDiscountConfig struct {
+	Slug              string `json:"slug"`
+	Name              string `json:"name"`
+	MinMonthlyRequests int    `json:"min_monthly_requests"`
+	MonthlyPriceCents int    `json:"monthly_price_cents"`
+	IncludedRequests  int    `json:"included_requests"`
+	OveragePricePer1000 int  `json:"overage_price_per_1000"`
+	Description       string `json:"description"`
 }
 
 // TierPriceConfig holds pricing configuration for a tier
@@ -72,6 +117,7 @@ type TierPriceConfig struct {
 	IncludedRequests    int  // Requests included in base price
 	OveragePricePer1000 int  // Price per 1000 overage requests (in cents)
 	HasOverageBilling   bool // Whether overage billing is enabled
+	HasCommitment       bool // Whether the tier requires monthly commitment
 }
 
 // RateLimitTier defines rate limits per partner tier (requests per minute)
@@ -80,6 +126,11 @@ var RateLimitsPerTier = map[PartnerTier]RateLimitConfig{
 		PerMinute:           60,
 		PerDay:              10000,
 		MonthlyRequestLimit: 50000,
+	},
+	PartnerTierPayAsYouGo: {
+		PerMinute:           120,  // Moderate rate limit
+		PerDay:              50000,
+		MonthlyRequestLimit: 0,     // No fixed limit - pay per use
 	},
 	PartnerTierStartup: {
 		PerMinute:           300,
@@ -144,6 +195,11 @@ type TrustAPIPartner struct {
 	FounderModeEndsAt    *time.Time `json:"founder_mode_ends_at"`
 	UsageThreshold       int        `json:"usage_threshold" gorm:"default:100000"` // Requests threshold for founder mode
 
+	// Founder Mode progress tracking (for graduation messaging)
+	FounderModeProgressPct float64   `json:"founder_mode_progress_pct,omitempty"` // 0.0-100.0+
+	GraduationMessage      string    `json:"graduation_message,omitempty"`          // "You're at 75% of your founder benefits!"
+	GraduationURL          string    `json:"graduation_url,omitempty"`              // URL to upgrade when threshold reached
+
 	// Overage tracking (for metered billing)
 	CurrentOverageUsage int `json:"current_overage_usage" gorm:"default:0"` // Requests beyond included amount
 	TotalBilledOverage  int `json:"total_billed_overage" gorm:"default:0"`  // Cumulative overage for billing
@@ -180,7 +236,7 @@ type TrustAPIKey struct {
 	PartnerID uuid.UUID `json:"partner_id" gorm:"type:uuid;not null"`
 
 	// Key identification
-	KeyID     string `json:"key_id" gorm:"size:32;not null;uniqueIndex"` // Public key ID (e.g., "tak_abc123...")
+	KeyID     string `json:"key_id" gorm:"size:32;not null;uniqueIndex"` // Public key ID (e.g., "fft_abc123...")
 	KeyPrefix string `json:"key_prefix" gorm:"size:10;not null"`         // First 8 chars for display
 	KeyHash   string `json:"-" gorm:"size:255;not null;uniqueIndex"`     // SHA-256 hash, never expose
 
@@ -502,7 +558,7 @@ type APIKeyCreateRequest struct {
 // APIKeyResponse represents an API key in responses (without the actual key)
 type APIKeyResponse struct {
 	ID          uuid.UUID  `json:"id"`
-	KeyID       string     `json:"key_id"`     // Public key ID (e.g., "tak_abc123...")
+	KeyID       string     `json:"key_id"`     // Public key ID (e.g., "fft_abc123...")
 	KeyPrefix   string     `json:"key_prefix"` // First 8 chars for display
 	Name        string     `json:"name"`
 	Description string     `json:"description,omitempty"`
@@ -793,11 +849,17 @@ type PartnerBillingResponse struct {
 	MonthlyPriceUSD        float64 `json:"monthly_price_usd"`
 	IncludedRequests       int     `json:"included_requests"`
 	OveragePricePer1000USD float64 `json:"overage_price_per_1000_usd,omitempty"`
+	HasCommitment         bool     `json:"has_commitment"` // Whether tier requires commitment
 
 	// Current usage
 	CurrentUsage  int `json:"current_usage"`
 	IncludedUsage int `json:"included_usage"`
 	OverageUsage  int `json:"overage_usage"`
+
+	// Founder mode graduation messaging
+	FounderModeProgressPct float64 `json:"founder_mode_progress_pct,omitempty"` // 0.0-100.0+
+	GraduationMessage      string  `json:"graduation_message,omitempty"`
+	GraduationURL          string  `json:"graduation_url,omitempty"`
 
 	// Stripe info
 	StripeSubscriptionStatus string `json:"stripe_subscription_status,omitempty"`

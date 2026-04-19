@@ -24,7 +24,7 @@ func TestProposeEvolutionCreatesSpawnSpecialistForLowSuccess(t *testing.T) {
 
 	db := newEvolutionTestDB(t)
 	ctx := context.Background()
-	svc := NewService(db)
+	svc := NewService(db, nil, nil)
 
 	tenantID := uuid.New()
 	agentID := "agent-low-success"
@@ -107,7 +107,7 @@ func TestRejectProposalUpdatesStatus(t *testing.T) {
 
 	db := newEvolutionTestDB(t)
 	ctx := context.Background()
-	svc := NewService(db)
+	svc := NewService(db, nil, nil)
 
 	proposal := identity.EvolutionProposal{
 		ID:           uuid.New(),
@@ -131,7 +131,7 @@ func TestImplementProposalModifyPolicyAppliesPolicyChanges(t *testing.T) {
 
 	db := newEvolutionTestDB(t)
 	ctx := context.Background()
-	svc := NewService(db)
+	svc := NewService(db, nil, nil)
 
 	agentID := "agent-policy"
 	policyChanges := map[string]any{
@@ -173,7 +173,7 @@ func TestImplementProposalSpawnSpecialistCreatesChildAndRelationship(t *testing.
 
 	db := newEvolutionTestDB(t)
 	ctx := context.Background()
-	svc := NewService(db)
+	svc := NewService(db, nil, nil)
 
 	parentTenant := uuid.New()
 	parentAgentID := "agent-parent"

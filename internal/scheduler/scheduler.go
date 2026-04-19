@@ -30,6 +30,7 @@ type FunctionScheduler struct {
 	functionCache map[uuid.UUID]*ScheduleConfig
 	mu            sync.RWMutex
 	executors     map[uuid.UUID]FunctionExecutor
+	defaultExec   FunctionExecutor // used when no function-specific executor is registered
 }
 
 // FunctionExecutor defines the interface for executing scheduled functions
@@ -137,21 +138,23 @@ func (s *FunctionScheduler) ListSchedules() []*ScheduleConfig {
 func (s *FunctionScheduler) executeScheduledFunction(ctx context.Context, functionID uuid.UUID) {
 	logrus.Infof("Executing scheduled function %s", functionID)
 
-	_, ok := s.functionCache[functionID]
+	s.mu.RLock()
+	config, ok := s.functionCache[functionID]
+	s.mu.RUnlock()
+
 	if !ok {
 		logrus.Warnf("No schedule found for function %s", functionID)
 		return
 	}
 
-	// Get function from storage (verify it exists)
-	_, err := s.storage.GetFunctionByID(ctx, functionID)
-	if err != nil {
+	// Verify function exists in storage
+	if _, err := s.storage.GetFunctionByID(ctx, functionID); err != nil {
 		logrus.WithError(err).Errorf("Failed to get function %s", functionID)
 		return
 	}
 
 	// Execute the function
-	input := []byte(fmt.Sprintf(`{"trigger": "scheduled", "timestamp": "%s"}`, time.Now().UTC().Format(time.RFC3339)))
+	input := []byte(fmt.Sprintf(`{"trigger": "scheduled", "timestamp": "%s", "function_id": "%s"}`, time.Now().UTC().Format(time.RFC3339), functionID))
 
 	// Get the actual executor from the map
 	s.mu.RLock()
@@ -162,22 +165,33 @@ func (s *FunctionScheduler) executeScheduledFunction(ctx context.Context, functi
 		_, err := fnExecutor.ExecuteFunction(ctx, functionID, input)
 		if err != nil {
 			logrus.WithError(err).Errorf("Failed to execute scheduled function %s", functionID)
+			// Update last run time even on error to avoid repeated failures
+			s.updateLastRun(functionID, config)
 			return
 		}
+	} else {
+		logrus.Warnf("No executor registered for scheduled function %s", functionID)
+		return
 	}
 
 	// Update last run time
-	s.mu.Lock()
-	if config, ok := s.functionCache[functionID]; ok {
-		config.LastRun = time.Now()
-		schedule, err := cron.ParseStandard(config.Cron)
-		if err == nil {
-			config.NextRun = schedule.Next(time.Now())
-		}
-	}
-	s.mu.Unlock()
+	s.updateLastRun(functionID, config)
 
 	logrus.Infof("Successfully executed scheduled function %s", functionID)
+}
+
+// updateLastRun updates the last run time for a schedule
+func (s *FunctionScheduler) updateLastRun(functionID uuid.UUID, config *ScheduleConfig) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if cfg, ok := s.functionCache[functionID]; ok {
+		cfg.LastRun = time.Now()
+		schedule, err := cron.ParseStandard(cfg.Cron)
+		if err == nil {
+			cfg.NextRun = schedule.Next(time.Now())
+		}
+	}
 }
 
 // RegisterExecutor registers an executor for a function

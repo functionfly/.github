@@ -84,10 +84,15 @@ const (
 )
 
 // AEP Tool call limits per month
+// These are now set based on market research to ensure profitability:
+// - Starter: 100K calls at $29 = $0.00029/call base (covers ~$5-10 AI inference cost)
+// - Scale: 1M calls at $149 = $0.000149/call base (covers ~$30-50 AI inference cost)
+// - Pro: 10M calls at $399 = $0.00004/call base (covers ~$100-200 AI inference cost)
+// Key principle: Don't profit on AI inference - profit on orchestration & reliability
 const (
-	AgentStarterMaxCallsPerMonth    = 500_000
-	AgentScaleMaxCallsPerMonth      = 5_000_000
-	AgentProMaxCallsPerMonth        = 25_000_000
+	AgentStarterMaxCallsPerMonth    = 100_000
+	AgentScaleMaxCallsPerMonth      = 1_000_000
+	AgentProMaxCallsPerMonth        = 10_000_000
 	AgentEnterpriseMaxCallsPerMonth = -1 // Custom
 )
 
@@ -99,11 +104,11 @@ const (
 	AgentEnterpriseMaxCallsPerMinute = -1 // Custom
 )
 
-// AEP Calls per day limits
+// AEP Calls per day limits (derived from monthly limits: ~3.3% of monthly)
 const (
-	AgentStarterMaxCallsPerDay    = 16_667
-	AgentScaleMaxCallsPerDay      = 166_667
-	AgentProMaxCallsPerDay        = 833_333
+	AgentStarterMaxCallsPerDay    = 3_333
+	AgentScaleMaxCallsPerDay      = 33_333
+	AgentProMaxCallsPerDay        = 333_333
 	AgentEnterpriseMaxCallsPerDay = -1 // Custom
 )
 
@@ -139,12 +144,15 @@ const (
 	AgentEnterpriseLogRetentionDays = -1 // Custom
 )
 
-// AEP Monthly pricing (cents)
+// AEP Monthly pricing (cents) - revised based on market research
+// Pricing philosophy: Offer generous limits at lower price points to build market share
+// while ensuring we're not losing money on AI inference costs.
+// The actual AI cost per call is ~$0.0001-0.0003 depending on model used.
 const (
-	AgentStarterPriceCents    = 4900   // $49/month
-	AgentScalePriceCents      = 29900  // $299/month
-	AgentProPriceCents        = 99900  // $999/month
-	AgentEnterprisePriceCents = 250000 // $2500+/month base
+	AgentStarterPriceCents    = 2900   // $29/month - competitive entry point
+	AgentScalePriceCents      = 14900  // $149/month - mid-tier with good margins
+	AgentProPriceCents        = 39900  // $399/month - professional tier
+	AgentEnterprisePriceCents = 99000  // $990+/month base - custom enterprise
 )
 
 // User seat limits per plan
@@ -520,4 +528,99 @@ func CalculateMicroVMBilling(plan string, requests int, computeSeconds float64, 
 		MemoryCharges:  memoryCharges,
 		TotalCents:     total,
 	}
+}
+
+// ==================== Usage-Based Billing Tiers ====================
+
+// UsagePricingTier defines usage-based pricing structure
+type UsagePricingTier struct {
+	Name                    string  // Tier name
+	IncludedRequestsMonthly int     // Monthly request allowance
+	MonthlyPriceCents       int     // Base monthly price
+	OveragePricePer1000     int     // Overage price per 1000 requests (cents)
+	AnnualDiscountPercent   float64 // Discount for annual commitment (0.0-1.0)
+	MaxRequestsPerMonth     int     // -1 for unlimited
+}
+
+// Usage-based pricing tiers for the main platform
+var UsagePricingTiers = map[string]UsagePricingTier{
+	"free": {
+		Name:                    "Free",
+		IncludedRequestsMonthly: 100_000,
+		MonthlyPriceCents:       0,
+		OveragePricePer1000:     0, // Hard stop
+		AnnualDiscountPercent:   0,
+		MaxRequestsPerMonth:     100_000,
+	},
+	"starter": {
+		Name:                    "Starter",
+		IncludedRequestsMonthly: 1_000_000,
+		MonthlyPriceCents:       2900, // $29/month
+		OveragePricePer1000:     3,    // $0.003 per request
+		AnnualDiscountPercent:   0.20, // 20% off annual
+		MaxRequestsPerMonth:     -1,
+	},
+	"professional": {
+		Name:                    "Professional",
+		IncludedRequestsMonthly: 10_000_000,
+		MonthlyPriceCents:       9900, // $99/month
+		OveragePricePer1000:     2,    // $0.002 per request
+		AnnualDiscountPercent:   0.20, // 20% off annual
+		MaxRequestsPerMonth:     -1,
+	},
+	"enterprise": {
+		Name:                    "Enterprise",
+		IncludedRequestsMonthly: 100_000_000,
+		MonthlyPriceCents:       49900, // $499/month
+		OveragePricePer1000:     1,     // $0.001 per request
+		AnnualDiscountPercent:   0.30, // 30% off annual
+		MaxRequestsPerMonth:     -1,
+	},
+}
+
+// GetUsagePricingTier returns the usage pricing for a plan
+func GetUsagePricingTier(plan string) UsagePricingTier {
+	if tier, ok := UsagePricingTiers[plan]; ok {
+		return tier
+	}
+	// Default to starter if not found
+	return UsagePricingTiers["starter"]
+}
+
+// CalculateUsageOverage calculates the overage charge for exceeding the included requests
+func CalculateUsageOverage(plan string, requests int) int {
+	tier := GetUsagePricingTier(plan)
+	if tier.OveragePricePer1000 == 0 {
+		return 0 // No overage billing
+	}
+
+	if requests <= tier.IncludedRequestsMonthly {
+		return 0
+	}
+
+	overage := requests - tier.IncludedRequestsMonthly
+	// Round up to nearest 1000
+	units := (overage + 999) / 1000
+	return units * tier.OveragePricePer1000
+}
+
+// GetAnnualPrice returns the price with annual commitment discount
+func (t *UsagePricingTier) GetAnnualPrice() int {
+	if t.AnnualDiscountPercent <= 0 {
+		return t.MonthlyPriceCents * 12
+	}
+	return int(float64(t.MonthlyPriceCents)*(1-t.AnnualDiscountPercent)) * 12
+}
+
+// GetMonthlyWithAnnual returns monthly price when paying annually
+func (t *UsagePricingTier) GetMonthlyWithAnnual() int {
+	return t.GetAnnualPrice() / 12
+}
+
+// GetOverageRateDisplay returns a human-readable overage rate
+func (t *UsagePricingTier) GetOverageRateDisplay() string {
+	if t.OveragePricePer1000 == 0 {
+		return "Hard stop"
+	}
+	return fmt.Sprintf("$%.4f/request", float64(t.OveragePricePer1000)/1000)
 }

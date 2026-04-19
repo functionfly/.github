@@ -42,6 +42,10 @@ func (db *PostgresDB) CreateSubscription(ctx context.Context, sub *Subscription)
 	return db.billingRepository.CreateSubscription(ctx, sub)
 }
 
+func (db *PostgresDB) GetSubscriptionByID(ctx context.Context, id uuid.UUID) (*Subscription, error) {
+	return db.billingRepository.GetSubscriptionByID(ctx, id)
+}
+
 func (db *PostgresDB) GetSubscriptionByTenantID(tenantID uuid.UUID) (*Subscription, error) {
 	return db.billingRepository.GetSubscriptionByTenantID(tenantID)
 }
@@ -132,6 +136,10 @@ func (db *PostgresDB) GetFunctionVerificationPaymentByCheckoutSessionID(ctx cont
 
 func (db *PostgresDB) UpdateFunctionVerificationPaymentStatus(ctx context.Context, id uuid.UUID, status string, stripePIID, stripeCheckoutSessionID *string) error {
 	return db.revenueRepository.UpdateFunctionVerificationPaymentStatus(ctx, id, status, stripePIID, stripeCheckoutSessionID)
+}
+
+func (db *PostgresDB) UpdateFunctionVerificationPaymentJobID(ctx context.Context, id uuid.UUID, jobID uuid.UUID) error {
+	return db.revenueRepository.UpdateFunctionVerificationPaymentJobID(ctx, id, jobID)
 }
 
 func (db *PostgresDB) GetFunctionVerificationPaymentsByTenant(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*FunctionVerificationPayment, error) {
@@ -345,6 +353,39 @@ func (db *PostgresDB) CreatePricingBundle(ctx context.Context, bundle *PricingBu
 	return db.billingRepository.CreatePricingBundle(ctx, bundle)
 }
 
+// Stripe Two-Way Sync Operations - delegated to BillingRepository
+func (db *PostgresDB) CreateStripeSyncEvent(ctx context.Context, event *StripeSyncEvent) (*StripeSyncEvent, error) {
+	return db.billingRepository.CreateStripeSyncEvent(ctx, event)
+}
+
+func (db *PostgresDB) GetStripeSyncEventByEventID(ctx context.Context, stripeEventID string) (*StripeSyncEvent, error) {
+	return db.billingRepository.GetStripeSyncEventByEventID(ctx, stripeEventID)
+}
+
+func (db *PostgresDB) UpdateStripeSyncEventStatus(ctx context.Context, id uuid.UUID, status string, errorMsg *string) error {
+	return db.billingRepository.UpdateStripeSyncEventStatus(ctx, id, status, errorMsg)
+}
+
+func (db *PostgresDB) IncrementStripeSyncEventRetryCount(ctx context.Context, id uuid.UUID) error {
+	return db.billingRepository.IncrementStripeSyncEventRetryCount(ctx, id)
+}
+
+func (db *PostgresDB) ListPendingStripeSyncEvents(ctx context.Context, limit int) ([]*StripeSyncEvent, error) {
+	return db.billingRepository.ListPendingStripeSyncEvents(ctx, limit)
+}
+
+func (db *PostgresDB) UpdateSubscriptionFromStripe(ctx context.Context, stripeSubscriptionID string, stripeData map[string]interface{}) (*Subscription, error) {
+	return db.billingRepository.UpdateSubscriptionFromStripe(ctx, stripeSubscriptionID, stripeData)
+}
+
+func (db *PostgresDB) UpdateTenantPaymentMethod(ctx context.Context, tenantID uuid.UUID, paymentMethod *PaymentMethodInfoExtended) error {
+	return db.billingRepository.UpdateTenantPaymentMethod(ctx, tenantID, paymentMethod)
+}
+
+func (db *PostgresDB) GetPaymentMethodByStripeID(ctx context.Context, stripePaymentMethodID string) (*PaymentMethodInfoExtended, error) {
+	return db.billingRepository.GetPaymentMethodByStripeID(ctx, stripePaymentMethodID)
+}
+
 func (db *PostgresDB) ListPricingBundles(ctx context.Context, activeOnly bool) ([]*PricingBundle, error) {
 	return db.billingRepository.ListPricingBundles(ctx, activeOnly)
 }
@@ -355,6 +396,10 @@ func (db *PostgresDB) GetPricingBundleBySlug(ctx context.Context, slug string) (
 
 func (db *PostgresDB) GetPricingBundleByID(ctx context.Context, id uuid.UUID) (*PricingBundle, error) {
 	return db.billingRepository.GetPricingBundleByID(ctx, id)
+}
+
+func (db *PostgresDB) GetPricingBundleByStripePriceID(ctx context.Context, stripePriceID string) (*PricingBundle, error) {
+	return db.billingRepository.GetPricingBundleByStripePriceID(ctx, stripePriceID)
 }
 
 // Founder Mode (viral pricing - deferred billing) - delegated to BillingRepository
@@ -405,4 +450,91 @@ func (db *PostgresDB) GetBundleSubscriptionByTenant(ctx context.Context, tenantI
 
 func (db *PostgresDB) ListBundleSubscriptionsByTenant(ctx context.Context, tenantID uuid.UUID) ([]*BundleSubscription, error) {
 	return db.billingRepository.ListBundleSubscriptionsByTenant(ctx, tenantID)
+}
+
+func (db *PostgresDB) UpdateBundleSubscription(ctx context.Context, sub *BundleSubscription) error {
+	return db.billingRepository.UpdateBundleSubscription(ctx, sub)
+}
+
+// ==================== Analytics Repository Delegation ====================
+
+// CalculateMRR delegates to analytics repository
+func (db *PostgresDB) CalculateMRR(ctx context.Context, year, month int) (*MRRMetrics, error) {
+	return db.analyticsRepository.CalculateMRR(ctx, year, month)
+}
+
+// CalculateARR delegates to analytics repository
+func (db *PostgresDB) CalculateARR(ctx context.Context, year, month int) (*ARRMetrics, error) {
+	return db.analyticsRepository.CalculateARR(ctx, year, month)
+}
+
+// GetMRRTimeseries delegates to analytics repository
+func (db *PostgresDB) GetMRRTimeseries(ctx context.Context, months int) ([]MRRMetrics, error) {
+	return db.analyticsRepository.GetMRRTimeseries(ctx, months)
+}
+
+// CalculateChurnMetrics delegates to analytics repository
+func (db *PostgresDB) CalculateChurnMetrics(ctx context.Context, year, month int) (*ChurnMetrics, error) {
+	return db.analyticsRepository.CalculateChurnMetrics(ctx, year, month)
+}
+
+// RecordSubscriptionChurnEvent delegates to analytics repository
+func (db *PostgresDB) RecordSubscriptionChurnEvent(ctx context.Context, event *SubscriptionChurnEvent) error {
+	return db.analyticsRepository.RecordSubscriptionChurnEvent(ctx, event)
+}
+
+// GetChurnMetricsTimeseries delegates to analytics repository
+func (db *PostgresDB) GetChurnMetricsTimeseries(ctx context.Context, months int) ([]ChurnMetrics, error) {
+	return db.analyticsRepository.GetChurnMetricsTimeseries(ctx, months)
+}
+
+// GenerateFinancialReport delegates to analytics repository
+func (db *PostgresDB) GenerateFinancialReport(ctx context.Context, reportType string, periodStart, periodEnd time.Time) (*FinancialReport, error) {
+	return db.analyticsRepository.GenerateFinancialReport(ctx, reportType, periodStart, periodEnd)
+}
+
+// GetTaxJurisdictionReport delegates to analytics repository
+func (db *PostgresDB) GetTaxJurisdictionReport(ctx context.Context, periodMonth string) ([]TaxJurisdictionReport, error) {
+	return db.analyticsRepository.GetTaxJurisdictionReport(ctx, periodMonth)
+}
+
+// GetLTVMetrics delegates to analytics repository
+func (db *PostgresDB) GetLTVMetrics(ctx context.Context) (*LTVMetrics, error) {
+	return db.analyticsRepository.GetLTVMetrics(ctx)
+}
+
+// =============================================================================
+// Database-Driven Agent Tier Pricing (replaces hardcoded constants)
+// =============================================================================
+
+func (db *PostgresDB) GetAgentTierPricingBySlug(ctx context.Context, slug string) (*AgentTierPricing, error) {
+	return db.revenueRepository.GetAgentTierPricingBySlug(ctx, slug)
+}
+
+func (db *PostgresDB) ListAgentTierPricing(ctx context.Context, activeOnly bool) ([]*AgentTierPricing, error) {
+	return db.revenueRepository.ListAgentTierPricing(ctx, activeOnly)
+}
+
+func (db *PostgresDB) GetAgentTierPricingForRegion(ctx context.Context, slug string, currencyCode string) (*AgentTierPricing, error) {
+	return db.revenueRepository.GetAgentTierPricingForRegion(ctx, slug, currencyCode)
+}
+
+// =============================================================================
+// Multi-Currency Support
+// =============================================================================
+
+func (db *PostgresDB) GetCurrencyExchangeRate(ctx context.Context, baseCurrency, quoteCurrency string, date *time.Time) (*CurrencyExchangeRate, error) {
+	return db.revenueRepository.GetCurrencyExchangeRate(ctx, baseCurrency, quoteCurrency, date)
+}
+
+func (db *PostgresDB) ConvertCurrency(ctx context.Context, amountCents int, fromCurrency, toCurrency string) (int, error) {
+	return db.revenueRepository.ConvertCurrency(ctx, amountCents, fromCurrency, toCurrency)
+}
+
+func (db *PostgresDB) GetSupportedCurrency(ctx context.Context, code string) (*SupportedCurrency, error) {
+	return db.revenueRepository.GetSupportedCurrency(ctx, code)
+}
+
+func (db *PostgresDB) ListSupportedCurrencies(ctx context.Context) ([]*SupportedCurrency, error) {
+	return db.revenueRepository.ListSupportedCurrencies(ctx)
 }

@@ -17,10 +17,34 @@ import (
 type Repository struct {
 	db        *gorm.DB
 	stateRepo *statestore.StateRepository
+	r2Backend *R2StorageBackend // Optional R2 backend for large data (events, snapshots, memory, replays)
 }
 
 func NewRepository(db *gorm.DB) *Repository {
-	return &Repository{db: db, stateRepo: statestore.NewStateRepository(db)}
+	repo := &Repository{db: db, stateRepo: statestore.NewStateRepository(db)}
+
+	// Initialize R2 backend if configured
+	if IsR2StorageConfigured() {
+		if r2Backend, err := NewR2StorageBackend(); err == nil {
+			repo.r2Backend = r2Backend
+		}
+	}
+
+	return repo
+}
+
+// NewRepositoryWithR2 creates a repository with an explicit R2 backend (for testing or custom config)
+func NewRepositoryWithR2(db *gorm.DB, r2Backend *R2StorageBackend) *Repository {
+	return &Repository{
+		db:        db,
+		stateRepo: statestore.NewStateRepository(db),
+		r2Backend: r2Backend,
+	}
+}
+
+// R2Backend returns the R2 storage backend if configured
+func (r *Repository) R2Backend() *R2StorageBackend {
+	return r.r2Backend
 }
 
 type Fabric struct {
@@ -762,14 +786,42 @@ func (r *Repository) CreateSnapshot(ctx context.Context, tenantID, fabricID uuid
 	if state.TenantID != tenantID {
 		return nil, fmt.Errorf("state fabric not found")
 	}
+
+	// Create snapshot in PostgreSQL
 	created, err := r.stateRepo.CreateSnapshot(ctx, fabricID, name)
 	if err != nil {
 		return nil, err
 	}
+
 	snapshotName := name
 	if snapshotName == "" {
 		snapshotName = fmt.Sprintf("snapshot-v%d", created.SnapshotVersion)
 	}
+
+	// If R2 backend is configured and snapshot data is large, offload to R2
+	if r.r2Backend != nil && len(created.StateData) > 0 {
+		// Calculate size threshold (100KB) for R2 offloading
+		stateDataSize := estimateJSONSize(created.StateData)
+		if stateDataSize > 100*1024 { // 100KB threshold
+			snapshotData := JSONMap(created.StateData)
+			metadata := JSONMap{
+				"snapshot_version": created.SnapshotVersion,
+				"key_count":        created.KeyCount,
+				"original_size":    stateDataSize,
+			}
+
+			r2Object, err := r.r2Backend.StoreSnapshotData(ctx, tenantID, fabricID, created.ID, snapshotData, metadata)
+			if err == nil && r2Object != nil {
+				// Update the snapshot record with R2 reference (stored in state_fabric_snapshots table)
+				r.db.WithContext(ctx).Model(&StateFabricSnapshot{}).Where("id = ?", created.ID).Updates(map[string]interface{}{
+					"r2_object_key":   r2Object.Key,
+					"r2_bucket":       r2Object.Bucket,
+					"r2_content_hash": r2Object.ContentHash,
+				})
+			}
+		}
+	}
+
 	return &Snapshot{
 		ID:         created.ID.String(),
 		FabricID:   fabricID.String(),
@@ -779,6 +831,15 @@ func (r *Repository) CreateSnapshot(ctx context.Context, tenantID, fabricID uuid
 		SizeBytes:  created.StateSizeBytes,
 		CreatedAt:  created.CreatedAt,
 	}, nil
+}
+
+// estimateJSONSize estimates the size of JSON data in bytes
+func estimateJSONSize(data statestore.JSONMap) int {
+	if data == nil {
+		return 0
+	}
+	jsonBytes, _ := json.Marshal(data)
+	return len(jsonBytes)
 }
 
 func (r *Repository) DeleteSnapshot(ctx context.Context, tenantID, fabricID, snapshotID uuid.UUID) error {
@@ -1068,4 +1129,140 @@ func stringPtr(value string) *string {
 	}
 	v := value
 	return &v
+}
+
+// ArchiveEventsToR2 archives a batch of events to R2 storage for long-term retention.
+// This is typically called by a background job or when events exceed local retention limits.
+func (r *Repository) ArchiveEventsToR2(ctx context.Context, tenantID, fabricID uuid.UUID, batchID string, events []statestore.StateEvent) error {
+	if r.r2Backend == nil {
+		return fmt.Errorf("R2 backend not configured")
+	}
+	if len(events) == 0 {
+		return nil
+	}
+
+	// Store events in R2
+	r2Object, err := r.r2Backend.StoreEventLogs(ctx, tenantID, fabricID, events)
+	if err != nil {
+		return fmt.Errorf("failed to store events in R2: %w", err)
+	}
+	if r2Object == nil {
+		return nil
+	}
+
+	// Mark events as archived in PostgreSQL
+	now := time.Now()
+	for _, event := range events {
+		r.db.WithContext(ctx).Model(&statestore.StateEvent{}).Where("id = ?", event.ID).Updates(map[string]interface{}{
+			"is_archived":   true,
+			"archived_at":   now,
+			"r2_object_key": r2Object.Key,
+			"r2_bucket":     r2Object.Bucket,
+			"batch_id":      batchID,
+		})
+	}
+
+	return nil
+}
+
+// RestoreSnapshotFromR2 retrieves snapshot data from R2 if it's been offloaded.
+// This is used when the snapshot data in PostgreSQL is empty but R2 reference exists.
+func (r *Repository) RestoreSnapshotFromR2(ctx context.Context, tenantID, snapshotID uuid.UUID) (JSONMap, error) {
+	if r.r2Backend == nil {
+		return nil, fmt.Errorf("R2 backend not configured")
+	}
+
+	// Find the R2 object key for this snapshot
+	var snapshot StateFabricSnapshot
+	if err := r.db.WithContext(ctx).Where("id = ? AND fabric_id = ?", snapshotID, tenantID).First(&snapshot).Error; err != nil {
+		return nil, err
+	}
+
+	if snapshot.R2ObjectKey == nil || *snapshot.R2ObjectKey == "" {
+		return nil, fmt.Errorf("snapshot not found in R2")
+	}
+
+	return r.r2Backend.GetSnapshotData(ctx, *snapshot.R2ObjectKey)
+}
+
+// StoreMemoryBlobToR2 stores a memory blob to R2 for large memory content.
+func (r *Repository) StoreMemoryBlobToR2(ctx context.Context, tenantID, memoryID uuid.UUID, content []byte, memoryType string, metadata JSONMap) (*R2StorageObject, error) {
+	if r.r2Backend == nil {
+		return nil, fmt.Errorf("R2 backend not configured")
+	}
+
+	r2Object, err := r.r2Backend.StoreMemoryBlob(ctx, tenantID, memoryID, content, memoryType, metadata)
+	if err != nil {
+		return nil, fmt.Errorf("failed to store memory blob in R2: %w", err)
+	}
+
+	// Update the agent memory record with R2 reference
+	r.db.WithContext(ctx).Model(&statestore.AgentMemory{}).Where("id = ?", memoryID).Updates(map[string]interface{}{
+		"r2_object_key":   r2Object.Key,
+		"r2_bucket":       r2Object.Bucket,
+		"r2_content_hash": r2Object.ContentHash,
+		"is_offloaded":    true,
+		"offloaded_at":    time.Now(),
+	})
+
+	return r2Object, nil
+}
+
+// GetMemoryBlobFromR2 retrieves a memory blob from R2.
+func (r *Repository) GetMemoryBlobFromR2(ctx context.Context, memoryID uuid.UUID) ([]byte, error) {
+	if r.r2Backend == nil {
+		return nil, fmt.Errorf("R2 backend not configured")
+	}
+
+	// Find the R2 object key for this memory
+	var memory statestore.AgentMemory
+	if err := r.db.WithContext(ctx).Where("id = ?", memoryID).First(&memory).Error; err != nil {
+		return nil, err
+	}
+
+	if memory.R2ObjectKey == nil || *memory.R2ObjectKey == "" {
+		return nil, fmt.Errorf("memory blob not found in R2")
+	}
+
+	return r.r2Backend.GetMemoryBlob(ctx, *memory.R2ObjectKey)
+}
+
+// StoreReplayDataToR2 stores replay session data to R2.
+func (r *Repository) StoreReplayDataToR2(ctx context.Context, tenantID, replayID uuid.UUID, events []statestore.StateEvent, metadata JSONMap) (*R2StorageObject, error) {
+	if r.r2Backend == nil {
+		return nil, fmt.Errorf("R2 backend not configured")
+	}
+
+	r2Object, err := r.r2Backend.StoreReplayData(ctx, tenantID, replayID, events, metadata)
+	if err != nil {
+		return nil, fmt.Errorf("failed to store replay data in R2: %w", err)
+	}
+
+	// Update the replay record with R2 reference
+	r.db.WithContext(ctx).Model(&StateFabricReplay{}).Where("id = ?", replayID).Updates(map[string]interface{}{
+		"r2_object_key":   r2Object.Key,
+		"r2_bucket":       r2Object.Bucket,
+		"r2_content_hash": r2Object.ContentHash,
+	})
+
+	return r2Object, nil
+}
+
+// GetReplayDataFromR2 retrieves replay session data from R2.
+func (r *Repository) GetReplayDataFromR2(ctx context.Context, replayID uuid.UUID) (*ReplayData, error) {
+	if r.r2Backend == nil {
+		return nil, fmt.Errorf("R2 backend not configured")
+	}
+
+	// Find the R2 object key for this replay
+	var replay StateFabricReplay
+	if err := r.db.WithContext(ctx).Where("id = ?", replayID).First(&replay).Error; err != nil {
+		return nil, err
+	}
+
+	if replay.R2ObjectKey == nil || *replay.R2ObjectKey == "" {
+		return nil, fmt.Errorf("replay data not found in R2")
+	}
+
+	return r.r2Backend.GetReplayData(ctx, *replay.R2ObjectKey)
 }

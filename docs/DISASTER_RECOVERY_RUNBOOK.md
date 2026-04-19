@@ -1,5 +1,7 @@
 # Disaster Recovery Runbook
 
+> **🔒 Internal Use Only**: This document contains operational procedures and infrastructure details for internal team use. Not intended for public distribution.
+
 ## Overview
 
 This runbook documents the procedures for handling various disaster scenarios in the FunctionFly multi-region deployment.
@@ -297,11 +299,11 @@ This runbook documents the procedures for handling various disaster scenarios in
 1. **Check network status**
    ```bash
    # Test connectivity
-   ping iad.functionfly.internal
-   ping lax.functionfly.internal
+   ping <PRIMARY_REGION_HOST>
+   ping <SECONDARY_REGION_HOST>
    
    # Check DNS
-   dig +short functionfly-control.iad.internal
+   dig +short <CONTROL_PLANE_HOST>
    ```
 
 2. **Enable fallback mode**

@@ -70,6 +70,16 @@ type CreateCheckoutSessionResponse struct {
 	URL       string `json:"url"`
 }
 
+// CreateBundleCheckoutSessionRequest contains parameters for creating a bundle checkout session.
+type CreateBundleCheckoutSessionRequest struct {
+	PriceID       string
+	SuccessURL    string
+	CancelURL     string
+	TenantID      uuid.UUID
+	BundleSlug    string
+	FounderModeID string
+}
+
 // IsValidReturnURL validates that a return URL is safe to use.
 func IsValidReturnURL(returnURL string) bool {
 	if returnURL == "" {
@@ -154,6 +164,11 @@ func CreateCheckoutSession(
 			},
 		},
 		AllowPromotionCodes: stripe.Bool(true),
+		// Enable automatic tax calculation via Stripe Tax
+		// This handles EU VAT, US sales tax, and global tax compliance
+		AutomaticTax: &stripe.CheckoutSessionAutomaticTaxParams{
+			Enabled: stripe.Bool(true),
+		},
 		SubscriptionData: &stripe.CheckoutSessionSubscriptionDataParams{
 			Metadata: map[string]string{
 				"tenant_id": tenantID.String(),
@@ -229,6 +244,10 @@ func CreateStateFabricAddonCheckoutSession(
 			},
 		},
 		AllowPromotionCodes: stripe.Bool(true),
+		// Enable automatic tax calculation via Stripe Tax
+		AutomaticTax: &stripe.CheckoutSessionAutomaticTaxParams{
+			Enabled: stripe.Bool(true),
+		},
 		Metadata: map[string]string{
 			"purpose":   "state_fabric_addon",
 			"tenant_id": req.TenantID.String(),
@@ -251,4 +270,192 @@ func CreateStateFabricAddonCheckoutSession(
 		return nil, fmt.Errorf("checkout session has no URL")
 	}
 	return &CreateCheckoutSessionResponse{SessionID: sess.ID, URL: sess.URL}, nil
+}
+
+// CreateBundleCheckoutSession creates a Stripe Checkout session for a bundle subscription.
+// It includes bundle metadata in both session and subscription metadata for proper webhook processing.
+func CreateBundleCheckoutSession(
+	ctx context.Context,
+	repo storage.Repository,
+	tenantID uuid.UUID,
+	email, name string,
+	req CreateBundleCheckoutSessionRequest,
+) (*CreateCheckoutSessionResponse, error) {
+	if stripeKey() == "" {
+		return nil, fmt.Errorf("STRIPE_SECRET_KEY is not set")
+	}
+
+	if err := ValidatePriceID(req.PriceID); err != nil {
+		return nil, err
+	}
+
+	customerID, err := CreateOrGetStripeCustomer(ctx, repo, tenantID, email, name)
+	if err != nil {
+		return nil, fmt.Errorf("create or get stripe customer: %w", err)
+	}
+
+	appURL := os.Getenv("APP_URL")
+	if appURL == "" {
+		appURL = "http://localhost:3000"
+	}
+
+	successURL := req.SuccessURL
+	cancelURL := req.CancelURL
+	if successURL == "" {
+		successURL = appURL + "/dashboard?bundle=" + req.BundleSlug + "&success=true"
+	}
+	if cancelURL == "" {
+		cancelURL = appURL + "/pricing/bundles"
+	}
+
+	successURL = SanitizeReturnURL(successURL, appURL+"/dashboard?bundle="+req.BundleSlug+"&success=true")
+	cancelURL = SanitizeReturnURL(cancelURL, appURL+"/pricing/bundles")
+
+	// Build metadata map
+	metadata := map[string]string{
+		"purpose":     "bundle_subscription",
+		"tenant_id":   tenantID.String(),
+		"bundle_slug": req.BundleSlug,
+	}
+	if req.FounderModeID != "" {
+		metadata["founder_mode_id"] = req.FounderModeID
+	}
+
+	params := &stripe.CheckoutSessionParams{
+		Customer:   stripe.String(customerID),
+		Mode:       stripe.String(string(stripe.CheckoutSessionModeSubscription)),
+		SuccessURL: stripe.String(successURL),
+		CancelURL:  stripe.String(cancelURL),
+		LineItems: []*stripe.CheckoutSessionLineItemParams{
+			{
+				Price:    stripe.String(req.PriceID),
+				Quantity: stripe.Int64(1),
+			},
+		},
+		AllowPromotionCodes: stripe.Bool(true),
+		// Enable automatic tax calculation via Stripe Tax
+		AutomaticTax: &stripe.CheckoutSessionAutomaticTaxParams{
+			Enabled: stripe.Bool(true),
+		},
+		Metadata: metadata,
+		SubscriptionData: &stripe.CheckoutSessionSubscriptionDataParams{
+			Metadata: metadata,
+		},
+	}
+
+	sess, err := session.New(params)
+	if err != nil {
+		return nil, fmt.Errorf("create bundle checkout session: %w", err)
+	}
+	if sess.URL == "" {
+		return nil, fmt.Errorf("checkout session has no URL")
+	}
+
+	return &CreateCheckoutSessionResponse{
+		SessionID: sess.ID,
+		URL:       sess.URL,
+	}, nil
+}
+
+// CreateUsernameChangeCheckoutSessionRequest contains parameters for username change fee checkout.
+type CreateUsernameChangeCheckoutSessionRequest struct {
+	SuccessURL      string
+	CancelURL       string
+	TenantID        uuid.UUID
+	UserID          uuid.UUID
+	PendingChangeID uuid.UUID
+	NewUsername     string
+	FeeCents        int
+}
+
+// CreateUsernameChangeCheckoutSession creates a Stripe Checkout session for username change fee.
+// This is a one-time payment (not a subscription) for users who want to change their username
+// before the 6-month free window expires.
+func CreateUsernameChangeCheckoutSession(
+	ctx context.Context,
+	repo storage.Repository,
+	email, name string,
+	req CreateUsernameChangeCheckoutSessionRequest,
+) (*CreateCheckoutSessionResponse, error) {
+	if stripeKey() == "" {
+		return nil, fmt.Errorf("STRIPE_SECRET_KEY is not set")
+	}
+
+	if req.FeeCents <= 0 {
+		return nil, fmt.Errorf("fee must be greater than 0")
+	}
+
+	if req.PendingChangeID == uuid.Nil {
+		return nil, fmt.Errorf("pending_change_id is required")
+	}
+
+	customerID, err := CreateOrGetStripeCustomer(ctx, repo, req.TenantID, email, name)
+	if err != nil {
+		return nil, fmt.Errorf("create or get stripe customer: %w", err)
+	}
+
+	appURL := os.Getenv("APP_URL")
+	if appURL == "" {
+		appURL = "http://localhost:3000"
+	}
+
+	successURL := req.SuccessURL
+	cancelURL := req.CancelURL
+	if successURL == "" {
+		successURL = appURL + "/settings?usernameChange=success"
+	}
+	if cancelURL == "" {
+		cancelURL = appURL + "/settings?usernameChange=cancel"
+	}
+
+	successURL = SanitizeReturnURL(successURL, appURL+"/settings?usernameChange=success")
+	cancelURL = SanitizeReturnURL(cancelURL, appURL+"/settings?usernameChange=cancel")
+
+	// Build metadata for webhook processing
+	metadata := map[string]string{
+		"purpose":           "username_change",
+		"tenant_id":         req.TenantID.String(),
+		"user_id":           req.UserID.String(),
+		"pending_change_id": req.PendingChangeID.String(),
+		"new_username":      req.NewUsername,
+		"fee_cents":         fmt.Sprintf("%d", req.FeeCents),
+	}
+
+	params := &stripe.CheckoutSessionParams{
+		Customer:   stripe.String(customerID),
+		Mode:       stripe.String(string(stripe.CheckoutSessionModePayment)), // One-time payment, not subscription
+		SuccessURL: stripe.String(successURL),
+		CancelURL:  stripe.String(cancelURL),
+		LineItems: []*stripe.CheckoutSessionLineItemParams{
+			{
+				PriceData: &stripe.CheckoutSessionLineItemPriceDataParams{
+					Currency:   stripe.String("usd"),
+					UnitAmount: stripe.Int64(int64(req.FeeCents)),
+					ProductData: &stripe.CheckoutSessionLineItemPriceDataProductDataParams{
+						Name:        stripe.String("Username Change Fee"),
+						Description: stripe.String(fmt.Sprintf("Early username change to @%s", req.NewUsername)),
+					},
+				},
+				Quantity: stripe.Int64(1),
+			},
+		},
+		// Enable automatic tax calculation via Stripe Tax
+		AutomaticTax: &stripe.CheckoutSessionAutomaticTaxParams{
+			Enabled: stripe.Bool(true),
+		},
+		Metadata: metadata,
+	}
+
+	sess, err := session.New(params)
+	if err != nil {
+		return nil, fmt.Errorf("create username change checkout session: %w", err)
+	}
+	if sess.URL == "" {
+		return nil, fmt.Errorf("checkout session has no URL")
+	}
+
+	return &CreateCheckoutSessionResponse{
+		SessionID: sess.ID,
+		URL:       sess.URL,
+	}, nil
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestHasher_Hash tests SHA-256 hashing
+// TestHasher_Hash tests bcrypt hashing
 func TestHasher_Hash(t *testing.T) {
 	hasher := NewHasher()
 
@@ -15,10 +15,15 @@ func TestHasher_Hash(t *testing.T) {
 	hash := hasher.Hash(key)
 
 	assert.NotEmpty(t, hash)
-	assert.Equal(t, 64, len(hash), "SHA-256 hash should be 64 hex characters")
+	// bcrypt hashes are ~60 characters and include cost factor, salt, and hash
+	assert.True(t, len(hash) >= 50 && len(hash) <= 70, "bcrypt hash should be 50-70 characters")
+	// bcrypt hashes start with $2a$, $2b$, or $2y$ followed by cost factor
+	assert.True(t, len(hash) > 4 && hash[:4] == "$2a$" || hash[:4] == "$2b$" || hash[:4] == "$2y$",
+		"bcrypt hash should start with $2a/2b/2y$")
 }
 
-// TestHasher_Hash_Deterministic tests that hashing is deterministic
+// TestHasher_Hash_Deterministic tests that verification works for same key
+// Note: bcrypt generates a new salt per call, so hashes won't be equal
 func TestHasher_Hash_Deterministic(t *testing.T) {
 	hasher := NewHasher()
 
@@ -26,7 +31,10 @@ func TestHasher_Hash_Deterministic(t *testing.T) {
 	hash1 := hasher.Hash(key)
 	hash2 := hasher.Hash(key)
 
-	assert.Equal(t, hash1, hash2, "same key should produce same hash")
+	// Hashes differ due to random salt, but both should verify
+	assert.NotEqual(t, hash1, hash2, "bcrypt generates random salt per call")
+	assert.True(t, hasher.Verify(key, hash1), "same key should verify against hash1")
+	assert.True(t, hasher.Verify(key, hash2), "same key should verify against hash2")
 }
 
 // TestHasher_Hash_UniqueKeys tests that different keys produce different hashes
@@ -40,6 +48,9 @@ func TestHasher_Hash_UniqueKeys(t *testing.T) {
 	hash2 := hasher.Hash(key2)
 
 	assert.NotEqual(t, hash1, hash2, "different keys should produce different hashes")
+	// Cross-verification should fail
+	assert.False(t, hasher.Verify(key1, hash2), "key1 should not verify against hash2")
+	assert.False(t, hasher.Verify(key2, hash1), "key2 should not verify against hash1")
 }
 
 // TestHasher_HashBytes tests hashing byte slices
@@ -50,10 +61,11 @@ func TestHasher_HashBytes(t *testing.T) {
 	hash := hasher.HashBytes(data)
 
 	assert.NotEmpty(t, hash)
-	assert.Equal(t, 64, len(hash), "SHA-256 hash should be 64 hex characters")
+	assert.True(t, len(hash) >= 50 && len(hash) <= 70, "bcrypt hash should be 50-70 characters")
 }
 
-// TestHasher_Hash_WithSalt tests hashing with a salt
+// TestHasher_Hash_WithSalt tests that bcrypt salting is per-key
+// bcrypt handles salting internally with a random salt per hash
 func TestHasher_Hash_WithSalt(t *testing.T) {
 	hasher := NewHasherWithSalt("mysalt")
 
@@ -62,11 +74,16 @@ func TestHasher_Hash_WithSalt(t *testing.T) {
 
 	assert.NotEmpty(t, hash)
 
-	// Same key with different salt should produce different hash
+	// bcrypt always generates a random salt per call, regardless of the salt field
 	hasher2 := NewHasherWithSalt("differentsalt")
 	hash2 := hasher2.Hash(key)
 
-	assert.NotEqual(t, hash, hash2, "different salt should produce different hash")
+	// bcrypt generates random salt, so even same hasher with same key produces different hashes
+	assert.NotEqual(t, hash, hash2, "bcrypt generates random salt per hash")
+
+	// Both should still verify correctly
+	assert.True(t, hasher.Verify(key, hash), "key should verify against hash")
+	assert.True(t, hasher2.Verify(key, hash2), "key should verify against hash2")
 }
 
 // TestHasher_Verify tests constant-time comparison
@@ -147,7 +164,7 @@ func TestHashKey(t *testing.T) {
 	hash := HashKey(key)
 
 	assert.NotEmpty(t, hash)
-	assert.Equal(t, 64, len(hash))
+	assert.True(t, len(hash) >= 50 && len(hash) <= 70, "bcrypt hash should be 50-70 characters")
 }
 
 // TestVerifyKey tests the convenience verification function

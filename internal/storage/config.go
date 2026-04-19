@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 // ReadReplicaConfig holds configuration for a read replica
@@ -148,16 +150,23 @@ func loadDatabaseConfig() (*DatabaseConfig, error) {
 		CircuitBreakerTimeout: circuitBreakerTimeout,
 	}
 
-	// DATABASE_URL takes precedence (e.g. Neon connection string from Console)
-	if raw := os.Getenv("DATABASE_URL"); raw != "" {
-		cfg.ConnectionString = raw
-		if u, err := parsePostgresURL(raw); err == nil {
-			cfg.Host = u.Host
-			cfg.Port = u.Port
-			cfg.User = u.User
-			cfg.Database = u.Database
-			if u.SSLMode != "" {
-				cfg.SSLMode = u.SSLMode
+	// DATABASE_URL takes precedence in production (e.g. Neon connection string from Console)
+	// In development, if DB_HOST is explicitly set, prefer individual vars over DATABASE_URL
+	raw := os.Getenv("DATABASE_URL")
+	if raw != "" {
+		if isDevelopment && os.Getenv("DB_HOST") != "" {
+			// Development mode with explicit DB_HOST: ignore DATABASE_URL and use local Postgres
+			logrus.Info("DEVELOPMENT=true with DB_HOST set: ignoring DATABASE_URL, using local Postgres")
+		} else {
+			cfg.ConnectionString = raw
+			if u, err := parsePostgresURL(raw); err == nil {
+				cfg.Host = u.Host
+				cfg.Port = u.Port
+				cfg.User = u.User
+				cfg.Database = u.Database
+				if u.SSLMode != "" {
+					cfg.SSLMode = u.SSLMode
+				}
 			}
 		}
 	}
@@ -240,6 +249,19 @@ func configureConnectionPool(db *sql.DB, config *DatabaseConfig) error {
 	// db.SetConnMaxWaitTime(30 * time.Second) // Uncomment if needed
 
 	return nil
+}
+
+// GetConnectionString returns a PostgreSQL connection string from environment variables.
+// This is a package-level helper that wraps loadDatabaseConfig + buildConnectionString
+// so callers (e.g. the notification WebSocket LISTEN pool) can obtain a connection string
+// without duplicating the env-var logic.
+func GetConnectionString() string {
+	cfg, err := loadDatabaseConfig()
+	if err != nil {
+		logrus.WithError(err).Error("GetConnectionString: failed to load config, returning empty string")
+		return ""
+	}
+	return buildConnectionString(cfg)
 }
 
 // getEnvOrDefault returns the value of an environment variable or a default value

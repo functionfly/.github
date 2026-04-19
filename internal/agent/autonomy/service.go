@@ -5,7 +5,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/agent/actuator"
+	"github.com/functionfly/functionfly/internal/agent/analyzer"
+	"github.com/functionfly/functionfly/internal/agent/globalpatternlibrary"
+	"github.com/functionfly/functionfly/internal/agent/governor"
+	"github.com/functionfly/functionfly/internal/agent/graph"
 	"github.com/functionfly/functionfly/internal/agent/identity"
+	"github.com/functionfly/functionfly/internal/agent/strategist"
 	"github.com/google/uuid"
 	"github.com/robfig/cron/v3"
 	"gorm.io/gorm"
@@ -202,13 +208,110 @@ func (s *Service) updateStateAction(ctx context.Context, schedule identity.Auton
 }
 
 func (s *Service) evolveAction(ctx context.Context, schedule identity.AutonomySchedule) map[string]any {
-	return map[string]any{
-		"status":       "simulated",
-		"action":       "evolve",
-		"payload":      schedule.ActionPayload,
-		"agent_id":     schedule.AgentID,
-		"executed_at":  time.Now().Unix(),
+	result := map[string]any{
+		"status":      "completed",
+		"action":      "evolve",
+		"agent_id":    schedule.AgentID,
+		"executed_at": time.Now().Unix(),
+		"steps":       []map[string]any{},
 	}
+
+	steps := []map[string]any{}
+
+	tenantID, err := uuid.Parse(schedule.AgentID)
+	if err != nil {
+		result["status"] = "failed"
+		result["error"] = "invalid agent ID"
+		return result
+	}
+
+	// Step 1: Observe — done by the graph service via observers
+	// Step 2: Analyze — detect patterns across all tenant graphs in the last 24h
+	analyzerSvc := NewAnalyzerService(s.db)
+	analyses, err := analyzerSvc.AnalyzeByTenant(ctx, analyzer.AnalyzeByTenantParams{
+		TenantID:   tenantID,
+		TimeWindow: 24 * time.Hour,
+	})
+	if err != nil || analyses == nil {
+		steps = append(steps, map[string]any{"step": "analyze", "status": "completed", "note": "no data"})
+		result["steps"] = steps
+		return result
+	}
+
+	var totalImprovements int
+	for _, a := range analyses {
+		totalImprovements += len(a.ImprovementTargets)
+	}
+	steps = append(steps, map[string]any{
+		"step":            "analyze",
+		"status":          "completed",
+		"graphs_analyzed": len(analyses),
+		"total_improvements": totalImprovements,
+	})
+
+	// Step 3: Strategize + Governor review + Act — per graph
+	strategistSvc := NewStrategistService(s.db)
+	governorSvc := NewGovernorService(s.db)
+	actuatorSvc := NewActuatorService(s.db)
+
+	var totalApplied, totalPending int
+	for _, analysis := range analyses {
+		proposals, err := strategistSvc.GenerateProposals(ctx, &analysis)
+		if err != nil || len(proposals) == 0 {
+			continue
+		}
+
+		for _, p := range proposals {
+			decision, err := governorSvc.ReviewProposal(ctx, p.ID)
+			if err != nil {
+				continue
+			}
+			if decision.AutoApproved {
+				if err := actuatorSvc.ApplyProposal(ctx, p.ID); err == nil {
+					totalApplied++
+					continue
+				}
+			}
+			totalPending++
+		}
+	}
+
+	steps = append(steps, map[string]any{
+		"step":     "govern",
+		"status":   "completed",
+		"applied":  totalApplied,
+		"pending":   totalPending,
+	})
+
+	result["steps"] = steps
+	result["applied"] = totalApplied
+	result["pending"] = totalPending
+	return result
+}
+
+// AnalyzerService returns a real analyzer service wired to the database.
+func NewAnalyzerService(db *gorm.DB) *analyzer.Service {
+	traceRepo := graph.NewTraceRepository(db)
+	return analyzer.NewService(traceRepo)
+}
+
+// StrategistService returns a real strategist service.
+func NewStrategistService(db *gorm.DB) *strategist.Service {
+	patternLib := globalpatternlibrary.NewService(db)
+	return strategist.NewService(db, patternLib)
+}
+
+// GovernorService returns a real governor service.
+func NewGovernorService(db *gorm.DB) *governor.Service {
+	patternLib := globalpatternlibrary.NewService(db)
+	strategistSvc := strategist.NewService(db, patternLib)
+	return governor.NewService(db, patternLib, strategistSvc)
+}
+
+// ActuatorService returns a real actuator service.
+func NewActuatorService(db *gorm.DB) *actuator.Service {
+	graphSvc := graph.NewService(db)
+	return actuator.NewService(db, graphSvc)
 }
 
 // calculateNextRun returns the next run time for a cron expression using robfig/cron.

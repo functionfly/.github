@@ -50,8 +50,11 @@ type Repository interface {
 	// OAuth state (CSRF) — persisted for multi-instance OAuth flows
 	// redirectURI is optional; when set, callback redirects there with token (e.g. CLI local server).
 	// inviteCode is optional; stored for invite-only signup validation on callback (short TTL).
-	StoreOAuthState(ctx context.Context, state string, expiresAt time.Time, redirectURI, inviteCode string) error
-	ValidateAndConsumeOAuthState(ctx context.Context, state string) (valid bool, redirectURI, inviteCode string, err error)
+	// codeVerifier is for PKCE (Proof Key for Code Exchange) - required for public clients.
+	// loginHint preserves tenant subdomain or email context through the OAuth flow.
+	// deviceFingerprint stores a hash of device characteristics for session binding validation.
+	StoreOAuthState(ctx context.Context, state string, expiresAt time.Time, redirectURI, inviteCode, codeVerifier, loginHint, deviceFingerprint string) error
+	ValidateAndConsumeOAuthState(ctx context.Context, state string) (valid bool, redirectURI, inviteCode, codeVerifier, loginHint, deviceFingerprint string, err error)
 	DeleteExpiredOAuthStates() (int64, error)
 
 	// Signup invite codes (platform invite-only launch)
@@ -67,10 +70,19 @@ type Repository interface {
 	GetTenantByID(tenantID uuid.UUID) (*Tenant, error)
 	GetTenantByStripeCustomerID(stripeCustomerID string) (*Tenant, error)
 	ListTenants() ([]*Tenant, error)
+	ListTenantsWithStripeCustomerID() ([]*Tenant, error)
 	UpdateTenant(ctx context.Context, tenantID uuid.UUID, updates map[string]interface{}) (*Tenant, error)
+	UpdateTenantStatus(ctx context.Context, tenantID uuid.UUID, status string) error
 	DeleteTenant(ctx context.Context, tenantID uuid.UUID) error
 	CountUsersByTenant(ctx context.Context, tenantID uuid.UUID) (int, error)
 	CountRoutingEventsForTenantSince(tenantID uuid.UUID, since time.Time) (int, error)
+
+	// Tenant membership operations (multi-tenant support)
+	IsUserInTenant(ctx context.Context, userID, tenantID uuid.UUID) (bool, error)
+	GetUserTenants(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
+	AddTenantMember(ctx context.Context, userID, tenantID, invitedBy uuid.UUID, role string) error
+	AcceptTenantMembership(ctx context.Context, userID, tenantID uuid.UUID) error
+	RemoveTenantMember(ctx context.Context, userID, tenantID uuid.UUID) error
 
 	// Team operations
 	CreateTeam(team *Team) error
@@ -96,6 +108,7 @@ type Repository interface {
 	ListAuditEvents(limit, offset int) ([]*AuditEvent, error)
 	LogAuditEvent(ctx context.Context, event *AuditEvent) error
 	ListAuditEventsFiltered(limit, offset int, filters map[string]interface{}) ([]*AuditEvent, error)
+	GetAuditEventByID(id uuid.UUID) (*AuditEvent, error)
 
 	// Billing operations
 	CreatePricingTier(ctx context.Context, tier *PricingTier) (*PricingTier, error)
@@ -105,11 +118,22 @@ type Repository interface {
 	DeletePricingTier(ctx context.Context, id uuid.UUID) error
 
 	CreateSubscription(ctx context.Context, sub *Subscription) (*Subscription, error)
+	GetSubscriptionByID(ctx context.Context, id uuid.UUID) (*Subscription, error)
 	GetSubscriptionByTenantID(tenantID uuid.UUID) (*Subscription, error)
 	GetSubscriptionByStripeID(ctx context.Context, stripeSubscriptionID string) (*Subscription, error)
 	ListAllSubscriptions(limit, offset int) ([]*Subscription, error)
 	UpdateSubscription(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*Subscription, error)
 	CancelSubscription(ctx context.Context, id uuid.UUID) error
+
+	// Stripe Two-Way Sync (Real-time updates from Stripe dashboard)
+	CreateStripeSyncEvent(ctx context.Context, event *StripeSyncEvent) (*StripeSyncEvent, error)
+	GetStripeSyncEventByEventID(ctx context.Context, stripeEventID string) (*StripeSyncEvent, error)
+	UpdateStripeSyncEventStatus(ctx context.Context, id uuid.UUID, status string, errorMsg *string) error
+	IncrementStripeSyncEventRetryCount(ctx context.Context, id uuid.UUID) error
+	ListPendingStripeSyncEvents(ctx context.Context, limit int) ([]*StripeSyncEvent, error)
+	UpdateSubscriptionFromStripe(ctx context.Context, stripeSubscriptionID string, stripeData map[string]interface{}) (*Subscription, error)
+	UpdateTenantPaymentMethod(ctx context.Context, tenantID uuid.UUID, paymentMethod *PaymentMethodInfoExtended) error
+	GetPaymentMethodByStripeID(ctx context.Context, stripePaymentMethodID string) (*PaymentMethodInfoExtended, error)
 
 	CreateInvoice(ctx context.Context, invoice *Invoice) (*Invoice, error)
 	// CreatePaidInvoiceForStripeCheckoutSession records a paid one-time Checkout payment (registry wallet, agent credits, etc.). Idempotent on checkoutSessionID (external_reference).
@@ -138,6 +162,7 @@ type Repository interface {
 	GetFunctionVerificationPaymentByID(id uuid.UUID) (*FunctionVerificationPayment, error)
 	GetFunctionVerificationPaymentByCheckoutSessionID(ctx context.Context, sessionID string) (*FunctionVerificationPayment, error)
 	UpdateFunctionVerificationPaymentStatus(ctx context.Context, id uuid.UUID, status string, stripePIID, stripeCheckoutSessionID *string) error
+	UpdateFunctionVerificationPaymentJobID(ctx context.Context, id uuid.UUID, jobID uuid.UUID) error
 	GetFunctionVerificationPaymentsByTenant(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*FunctionVerificationPayment, error)
 
 	// Publisher Earnings
@@ -180,6 +205,18 @@ type Repository interface {
 	ListPricingBundles(ctx context.Context, activeOnly bool) ([]*PricingBundle, error)
 	GetPricingBundleBySlug(ctx context.Context, slug string) (*PricingBundle, error)
 	GetPricingBundleByID(ctx context.Context, id uuid.UUID) (*PricingBundle, error)
+	GetPricingBundleByStripePriceID(ctx context.Context, stripePriceID string) (*PricingBundle, error)
+
+	// Database-Driven Agent Tier Pricing (replaces hardcoded constants)
+	GetAgentTierPricingBySlug(ctx context.Context, slug string) (*AgentTierPricing, error)
+	ListAgentTierPricing(ctx context.Context, activeOnly bool) ([]*AgentTierPricing, error)
+	GetAgentTierPricingForRegion(ctx context.Context, slug string, currencyCode string) (*AgentTierPricing, error)
+
+	// Multi-Currency Support
+	GetCurrencyExchangeRate(ctx context.Context, baseCurrency, quoteCurrency string, date *time.Time) (*CurrencyExchangeRate, error)
+	ConvertCurrency(ctx context.Context, amountCents int, fromCurrency, toCurrency string) (int, error)
+	GetSupportedCurrency(ctx context.Context, code string) (*SupportedCurrency, error)
+	ListSupportedCurrencies(ctx context.Context) ([]*SupportedCurrency, error)
 
 	// Founder Mode (viral pricing - deferred billing)
 	CreateFounderModeRegistration(ctx context.Context, reg *FounderModeRegistration) error
@@ -194,6 +231,7 @@ type Repository interface {
 
 	// Bundle Subscriptions
 	CreateBundleSubscription(ctx context.Context, sub *BundleSubscription) error
+	UpdateBundleSubscription(ctx context.Context, sub *BundleSubscription) error
 	GetBundleSubscriptionByTenant(ctx context.Context, tenantID uuid.UUID) (*BundleSubscription, error)
 	ListBundleSubscriptionsByTenant(ctx context.Context, tenantID uuid.UUID) ([]*BundleSubscription, error)
 
@@ -280,6 +318,10 @@ type Repository interface {
 	UpdateBlogAuthor(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*BlogAuthor, error)
 	DeleteBlogAuthor(ctx context.Context, id uuid.UUID) error
 
+	// Blog settings
+	GetBlogSettings(ctx context.Context) (*BlogSettings, error)
+	UpdateBlogSettings(ctx context.Context, updates map[string]interface{}) (*BlogSettings, error)
+
 	// Feedback operations
 	CreateFeedback(feedback *Feedback) (*Feedback, error)
 	GetFeedbackByID(id uuid.UUID) (*Feedback, error)
@@ -355,6 +397,13 @@ type Repository interface {
 	GetAuthEventsByType(eventType string, limit, offset int) ([]*AuthEvent, error)
 	GetRecentAuthEvents(since time.Time, limit int) ([]*AuthEvent, error)
 	DeleteOldAuthEvents(before time.Time) (int64, error)
+
+	// Magic link operations (passwordless authentication)
+	CreateMagicLink(ctx context.Context, email string, token string, userID *uuid.UUID, ipAddress, userAgent, redirectPath string, expiresAt time.Time) (*MagicLink, error)
+	GetMagicLinkByToken(ctx context.Context, token string) (*MagicLink, error)
+	MarkMagicLinkUsed(ctx context.Context, id uuid.UUID) error
+	GetRecentMagicLinksByEmail(ctx context.Context, email string, since time.Time) ([]*MagicLink, error)
+	DeleteExpiredMagicLinks(ctx context.Context) (int64, error)
 
 	// Dashboard configuration operations
 	CreateDashboardConfig(ctx context.Context, config *DashboardConfig) (*DashboardConfig, error)
@@ -462,6 +511,21 @@ type Repository interface {
 	GetFunctionFollowers(ctx context.Context, functionID uuid.UUID, limit, offset int) ([]*FunctionFollow, int, error)
 	GetUserFunctionFollows(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*FunctionFollow, int, error)
 	GetFunctionFollowerCount(ctx context.Context, functionID uuid.UUID) (int, error)
+
+	// Username change operations (2-per-year limit with early-change fee)
+	CreateUsernameChangeHistory(ctx context.Context, history *UsernameChangeHistory) error
+	GetUsernameChangeHistory(ctx context.Context, userID uuid.UUID) ([]*UsernameChangeHistory, error)
+	CountUsernameChangesInWindow(ctx context.Context, userID uuid.UUID, windowStart time.Time) (int, error)
+	GetLastUsernameChange(ctx context.Context, userID uuid.UUID) (*UsernameChangeHistory, error)
+	HasUsernameChangedInWindow(ctx context.Context, userID uuid.UUID, windowStart time.Time) (bool, error)
+
+	// Pending username change operations (for payment flow)
+	CreatePendingUsernameChange(ctx context.Context, pending *PendingUsernameChange) error
+	GetPendingUsernameChangeByID(ctx context.Context, id uuid.UUID) (*PendingUsernameChange, error)
+	GetPendingUsernameChangeByCheckoutSession(ctx context.Context, sessionID string) (*PendingUsernameChange, error)
+	UpdatePendingUsernameChangeStatus(ctx context.Context, id uuid.UUID, status string) error
+	DeleteExpiredPendingUsernameChanges(ctx context.Context) (int64, error)
+	ListPendingUsernameChangesForUser(ctx context.Context, userID uuid.UUID) ([]*PendingUsernameChange, error)
 
 	// User profile operations
 	GetUserSkills(userID uuid.UUID) ([]*UserSkill, error)

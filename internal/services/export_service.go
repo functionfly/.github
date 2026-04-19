@@ -7,27 +7,35 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/email"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"github.com/xitongsys/parquet-go-source/local"
+	"github.com/xitongsys/parquet-go/writer"
+	"github.com/xuri/excelize/v2"
 )
 
 // ExportService handles the business logic for executing export jobs
 type ExportService struct {
 	exportRepo     *storage.ExportRepository
 	billingRepo    storage.Repository
+	emailSvc       email.Service
 	baseURL        string
 	exportBasePath string
 	logger         *logrus.Logger
 }
 
 // NewExportService creates a new export service
-func NewExportService(exportRepo *storage.ExportRepository, billingRepo storage.Repository, baseURL string) *ExportService {
+func NewExportService(exportRepo *storage.ExportRepository, billingRepo storage.Repository, emailSvc email.Service, baseURL string) *ExportService {
 	return &ExportService{
 		exportRepo:     exportRepo,
 		billingRepo:    billingRepo,
+		emailSvc:       emailSvc,
 		baseURL:        baseURL,
 		exportBasePath: "./exports",
 		logger:         logrus.New(),
@@ -156,11 +164,11 @@ func (s *ExportService) fetchCostData(ctx context.Context, tenantID uuid.UUID, s
 	// This would use the billing repository to get cost data
 	return []map[string]interface{}{
 		{
-			"date":       startDate.Format("2006-01-02"),
-			"tenant_id":  tenantID.String(),
-			"cost_type":  "compute",
-			"amount":     1.23,
-			"currency":   "USD",
+			"date":        startDate.Format("2006-01-02"),
+			"tenant_id":   tenantID.String(),
+			"cost_type":   "compute",
+			"amount":      1.23,
+			"currency":    "USD",
 			"description": "Compute costs",
 		},
 	}, nil
@@ -171,15 +179,15 @@ func (s *ExportService) fetchExecutionData(ctx context.Context, tenantID uuid.UU
 	// This would use the execution repository to get execution data
 	return []map[string]interface{}{
 		{
-			"execution_id": "exec-123",
-			"function_id":  "func-123",
+			"execution_id":  "exec-123",
+			"function_id":   "func-123",
 			"function_name": "Example Function",
-			"started_at":   startDate.Format(time.RFC3339),
-			"ended_at":     endDate.Format(time.RFC3339),
-			"status":       "success",
-			"runtime_ms":   500,
-			"memory_mb":    128,
-			"result":       "Success",
+			"started_at":    startDate.Format(time.RFC3339),
+			"ended_at":      endDate.Format(time.RFC3339),
+			"status":        "success",
+			"runtime_ms":    500,
+			"memory_mb":     128,
+			"result":        "Success",
 		},
 	}, nil
 }
@@ -198,19 +206,19 @@ func (s *ExportService) fetchForecastData(ctx context.Context, tenantID uuid.UUI
 
 	return []map[string]interface{}{
 		{
-			"forecast_id":         forecasts.ID.String(),
-			"tenant_id":           forecasts.TenantID.String(),
-			"forecast_type":       forecasts.ForecastType,
-			"period_start":        forecasts.PeriodStart.Format("2006-01-02"),
-			"period_end":          forecasts.PeriodEnd.Format("2006-01-02"),
-			"method_used":         forecasts.MethodUsed,
-			"predicted_value":     forecasts.PredictedValue,
-			"lower_bound":         forecasts.LowerBound,
-			"upper_bound":         forecasts.UpperBound,
-			"confidence":          forecasts.Confidence,
-			"growth_rate":         forecasts.GrowthRate,
-			"days_of_history":     forecasts.DaysOfHistory,
-			"created_at":          forecasts.CreatedAt.Format(time.RFC3339),
+			"forecast_id":     forecasts.ID.String(),
+			"tenant_id":       forecasts.TenantID.String(),
+			"forecast_type":   forecasts.ForecastType,
+			"period_start":    forecasts.PeriodStart.Format("2006-01-02"),
+			"period_end":      forecasts.PeriodEnd.Format("2006-01-02"),
+			"method_used":     forecasts.MethodUsed,
+			"predicted_value": forecasts.PredictedValue,
+			"lower_bound":     forecasts.LowerBound,
+			"upper_bound":     forecasts.UpperBound,
+			"confidence":      forecasts.Confidence,
+			"growth_rate":     forecasts.GrowthRate,
+			"days_of_history": forecasts.DaysOfHistory,
+			"created_at":      forecasts.CreatedAt.Format(time.RFC3339),
 		},
 	}, nil
 }
@@ -369,20 +377,283 @@ func (s *ExportService) generateJSONFile(jobID uuid.UUID, data map[string][]map[
 	return filePath, nil
 }
 
-// generateExcelFile generates an Excel export file (placeholder)
+// generateExcelFile generates an Excel export file with multiple sheets using excelize
 func (s *ExportService) generateExcelFile(jobID uuid.UUID, data map[string][]map[string]interface{}, config *storage.UsageExportConfiguration) (string, error) {
-	// TODO: Implement Excel generation using a library like excelize
-	// For now, fall back to CSV
-	s.logger.Warn("Excel generation not yet implemented, falling back to CSV")
-	return s.generateCSVFile(jobID, data, config)
+	timestamp := time.Now().Format("20060102_150405")
+	fileName := fmt.Sprintf("export_%s_%s.xlsx", jobID.String(), timestamp)
+	filePath := filepath.Join(s.exportBasePath, fileName)
+
+	// Ensure directory exists
+	if err := os.MkdirAll(s.exportBasePath, 0755); err != nil {
+		return "", fmt.Errorf("failed to create export directory: %w", err)
+	}
+
+	// Create new Excel file
+	f := excelize.NewFile()
+	defer f.Close()
+
+	// Track if we add any sheets (to delete default sheet later)
+	sheetCount := 0
+
+	// Create a sheet for each data type
+	for dataType, records := range data {
+		if len(records) == 0 {
+			continue
+		}
+
+		// Sanitize sheet name (max 31 chars, no special chars)
+		sheetName := sanitizeSheetName(dataType)
+
+		// Create new sheet
+		var sheetIndex int
+		if sheetCount == 0 {
+			// First sheet: rename the default "Sheet1"
+			f.SetSheetName("Sheet1", sheetName)
+			sheetIndex = 0
+		} else {
+			// Additional sheets
+			index, err := f.NewSheet(sheetName)
+			if err != nil {
+				s.logger.Warnf("Failed to create sheet %s: %v", sheetName, err)
+				continue
+			}
+			sheetIndex = index
+		}
+		sheetCount++
+
+		// Get headers from first record
+		var headers []string
+		for key := range records[0] {
+			headers = append(headers, key)
+		}
+		sort.Strings(headers) // Consistent ordering
+
+		// Write headers
+		for colIdx, header := range headers {
+			cell, _ := excelize.CoordinatesToCellName(colIdx+1, 1)
+			f.SetCellValue(sheetName, cell, header)
+		}
+
+		// Style header row
+		style, _ := f.NewStyle(&excelize.Style{
+			Font: &excelize.Font{Bold: true},
+			Fill: excelize.Fill{Type: "pattern", Color: []string{"#E0E0E0"}, Pattern: 1},
+		})
+		f.SetRowStyle(sheetName, 1, 1, style)
+
+		// Write data rows
+		for rowIdx, record := range records {
+			for colIdx, header := range headers {
+				cell, _ := excelize.CoordinatesToCellName(colIdx+1, rowIdx+2)
+				value := record[header]
+				// Handle nil values
+				if value == nil {
+					f.SetCellValue(sheetName, cell, "")
+				} else {
+					f.SetCellValue(sheetName, cell, value)
+				}
+			}
+		}
+
+		// Auto-fit columns (set a reasonable width based on content)
+		for colIdx := range headers {
+			col, _ := excelize.ColumnNumberToName(colIdx + 1)
+			f.SetColWidth(sheetName, col, col, 18) // Default 18 char width
+		}
+
+		// Set column width for specific known wide columns
+		for colIdx, header := range headers {
+			if header == "description" || header == "function_name" || header == "result" {
+				col, _ := excelize.ColumnNumberToName(colIdx + 1)
+				f.SetColWidth(sheetName, col, col, 40)
+			}
+		}
+
+		// Freeze header row
+		f.SetPanes(sheetName, &excelize.Panes{
+			Freeze:      true,
+			Split:       false,
+			TopLeftCell: "A2",
+			XSplit:      0,
+			YSplit:      1,
+		})
+
+		_ = sheetIndex // avoid unused variable
+	}
+
+	// If no data was added, add an empty "Data" sheet
+	if sheetCount == 0 {
+		f.SetSheetName("Sheet1", "Data")
+		f.SetCellValue("Data", "A1", "No data available")
+	}
+
+	// Save file
+	if err := f.SaveAs(filePath); err != nil {
+		return "", fmt.Errorf("failed to save Excel file: %w", err)
+	}
+
+	return filePath, nil
 }
 
-// generateParquetFile generates a Parquet export file (placeholder)
+// sanitizeSheetName ensures sheet name is valid for Excel (max 31 chars, no special chars)
+func sanitizeSheetName(name string) string {
+	// Replace invalid characters
+	replacer := strings.NewReplacer(
+		":", "_",
+		"\\", "_",
+		"/", "_",
+		"?", "_",
+		"*", "_",
+		"[", "_",
+		"]", "_",
+	)
+	name = replacer.Replace(name)
+
+	// Truncate to 31 characters (Excel limit)
+	if len(name) > 31 {
+		name = name[:31]
+	}
+
+	// Ensure not empty
+	if name == "" {
+		name = "Data"
+	}
+
+	return name
+}
+
+// generateParquetFile generates a Parquet export file with multiple data types as separate row groups
 func (s *ExportService) generateParquetFile(jobID uuid.UUID, data map[string][]map[string]interface{}, config *storage.UsageExportConfiguration) (string, error) {
-	// TODO: Implement Parquet generation using a library like parquet-go
-	// For now, fall back to JSON
-	s.logger.Warn("Parquet generation not yet implemented, falling back to JSON")
-	return s.generateJSONFile(jobID, data, config)
+	timestamp := time.Now().Format("20060102_150405")
+	fileName := fmt.Sprintf("export_%s_%s.parquet", jobID.String(), timestamp)
+	filePath := filepath.Join(s.exportBasePath, fileName)
+
+	// Ensure directory exists
+	if err := os.MkdirAll(s.exportBasePath, 0755); err != nil {
+		return "", fmt.Errorf("failed to create export directory: %w", err)
+	}
+
+	// Flatten all data into a single table with a "_data_type" column
+	// This allows multiple datasets in a single Parquet file
+	var allHeaders []string
+	allHeaders = append(allHeaders, "_data_type") // First column indicates the data type
+
+	// Collect all unique headers across all data types
+	headerSet := make(map[string]bool)
+	for _, records := range data {
+		if len(records) > 0 {
+			for key := range records[0] {
+				headerSet[key] = true
+			}
+		}
+	}
+
+	// Convert to sorted slice for consistent ordering
+	for key := range headerSet {
+		allHeaders = append(allHeaders, key)
+	}
+	sort.Strings(allHeaders[1:]) // Sort all except "_data_type"
+
+	// Create metadata for CSV writer (format: "name=Name, type=BYTE_ARRAY, convertedtype=UTF8")
+	md := buildParquetMetadata(allHeaders)
+
+	// Create local file writer using parquet-go's local package
+	fw, err := local.NewLocalFileWriter(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create parquet file: %w", err)
+	}
+	defer fw.Close()
+
+	// Create CSV writer (writes Parquet with CSV-like interface)
+	pw, err := writer.NewCSVWriter(md, fw, 4)
+	if err != nil {
+		return "", fmt.Errorf("failed to create parquet writer: %w", err)
+	}
+
+	// Write records
+	recordCount := 0
+	for dataType, records := range data {
+		for _, record := range records {
+			// Build row as []*string for WriteString method
+			row := make([]*string, len(allHeaders))
+			row[0] = strPtr(dataType) // First column is the data type
+
+			for i, header := range allHeaders[1:] {
+				if value, exists := record[header]; exists && value != nil {
+					strValue := fmt.Sprintf("%v", value)
+					row[i+1] = &strValue
+				} // nil values stay nil (NULL in parquet)
+			}
+
+			if err := pw.WriteString(row); err != nil {
+				s.logger.Warnf("Failed to write parquet row: %v", err)
+				continue
+			}
+			recordCount++
+		}
+	}
+
+	// Flush writer
+	if err := pw.WriteStop(); err != nil {
+		return "", fmt.Errorf("failed to finalize parquet file: %w", err)
+	}
+
+	s.logger.Infof("Generated Parquet file with %d records", recordCount)
+	return filePath, nil
+}
+
+// buildParquetMetadata creates metadata definitions for CSV writer
+// Format: "name=Name, type=BYTE_ARRAY, convertedtype=UTF8, encoding=PLAIN_DICTIONARY"
+func buildParquetMetadata(headers []string) []string {
+	md := make([]string, len(headers))
+	for i, header := range headers {
+		// Sanitize field name (remove special chars)
+		fieldName := sanitizeParquetFieldName(header)
+		// Use BYTE_ARRAY with UTF8 for all string columns
+		md[i] = fmt.Sprintf("name=%s, type=BYTE_ARRAY, convertedtype=UTF8, encoding=PLAIN_DICTIONARY", fieldName)
+	}
+	return md
+}
+
+// sanitizeParquetFieldName ensures field name is valid for Parquet schema
+func sanitizeParquetFieldName(name string) string {
+	// Parquet field names must start with letter or underscore, contain only alphanumeric and underscore
+	result := strings.Builder{}
+	firstChar := true
+	for _, ch := range name {
+		if firstChar {
+			// First character: must be letter or underscore
+			if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_' {
+				result.WriteRune(ch)
+				firstChar = false
+			} else if ch >= '0' && ch <= '9' {
+				// Starts with digit: prefix with underscore
+				result.WriteRune('_')
+				result.WriteRune(ch)
+				firstChar = false
+			} else {
+				// Invalid first char: use underscore
+				result.WriteRune('_')
+				firstChar = false
+				// Write valid char if possible
+				if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') {
+					result.WriteRune(ch)
+				}
+			}
+		} else {
+			// Subsequent characters: alphanumeric or underscore
+			if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' {
+				result.WriteRune(ch)
+			} else {
+				result.WriteRune('_')
+			}
+		}
+	}
+	// Ensure not empty
+	if result.Len() == 0 {
+		return "field"
+	}
+	return result.String()
 }
 
 // handleDelivery handles the delivery of the export file
@@ -404,11 +675,49 @@ func (s *ExportService) handleDelivery(ctx context.Context, job *storage.UsageEx
 	return nil
 }
 
-// deliverViaEmail delivers the export via email
+// deliverViaEmail delivers the export via email using Resend email service
 func (s *ExportService) deliverViaEmail(ctx context.Context, job *storage.UsageExportJob, filePath, fileName string) error {
-	// TODO: Implement email delivery using email service
-	// This would attach the file and send to configured recipients
-	s.logger.Infof("Email delivery not yet implemented for job %s", job.ID.String())
+	// Get the configuration to find email recipients
+	config, err := s.exportRepo.GetUsageExportConfiguration(ctx, job.ConfigurationID)
+	if err != nil {
+		return fmt.Errorf("failed to get export configuration for email delivery: %w", err)
+	}
+
+	// Determine recipient email addresses
+	var recipients []string
+	if len(config.EmailRecipients) > 0 {
+		recipients = config.EmailRecipients
+	} else {
+		// Fallback: get the user who created the configuration
+		user, err := s.billingRepo.GetUserByID(config.CreatedBy)
+		if err != nil {
+			return fmt.Errorf("failed to get user for email delivery: %w", err)
+		}
+		if user == nil {
+			return fmt.Errorf("configuration creator user not found")
+		}
+		recipients = []string{user.Email}
+	}
+
+	if len(recipients) == 0 {
+		return fmt.Errorf("no email recipients configured for export job")
+	}
+
+	// Determine expiration time (default to 7 days from now if not set)
+	expiresAt := time.Now().Add(7 * 24 * time.Hour)
+	if job.ExpiresAt != nil {
+		expiresAt = *job.ExpiresAt
+	}
+
+	// Send email to each recipient
+	for _, email := range recipients {
+		if err := s.emailSvc.SendUsageExportReady(email, job.ID.String(), job.StorageURL, expiresAt, job.FileSizeBytes); err != nil {
+			s.logger.WithError(err).Warnf("Failed to send export ready email to %s", email)
+			// Continue to try other recipients even if one fails
+		}
+	}
+
+	s.logger.Infof("Email delivery completed for job %s to %d recipients", job.ID.String(), len(recipients))
 	return nil
 }
 
@@ -429,11 +738,11 @@ func (s *ExportService) deliverViaS3(ctx context.Context, job *storage.UsageExpo
 
 // ExportScheduler handles scheduled export job execution
 type ExportScheduler struct {
-	exportRepo  *storage.ExportRepository
-	exportSvc   *ExportService
-	running     bool
-	ticker      *time.Ticker
-	stopChan    chan bool
+	exportRepo *storage.ExportRepository
+	exportSvc  *ExportService
+	running    bool
+	ticker     *time.Ticker
+	stopChan   chan bool
 }
 
 // NewExportScheduler creates a new export scheduler
@@ -533,12 +842,12 @@ func strPtr(s string) *string {
 
 // ExecuteExportResult contains the result of an export execution
 type ExecuteExportResult struct {
-	JobID          uuid.UUID
-	DownloadURL    string
-	RecordCount    int64
-	FileSizeBytes  int64
-	Checksum       string
-	Format         storage.UsageExportFormat
+	JobID         uuid.UUID
+	DownloadURL   string
+	RecordCount   int64
+	FileSizeBytes int64
+	Checksum      string
+	Format        storage.UsageExportFormat
 }
 
 // ExecuteExport executes a usage export and returns the result

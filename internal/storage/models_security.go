@@ -60,11 +60,17 @@ type FeatureMeasure struct {
 
 // OAuthState stores OAuth CSRF state tokens for validation on callback (persisted for multi-instance).
 // RedirectURI is optional; when set (e.g. by CLI), the callback redirects there with token instead of FRONTEND_URL.
+// CodeVerifier is for PKCE (Proof Key for Code Exchange) support - required for public clients.
+// LoginHint preserves the tenant subdomain or email context through the OAuth flow.
+// DeviceFingerprint stores a hash of device characteristics for session binding validation.
 type OAuthState struct {
-	State       string    `gorm:"column:state;primaryKey;size:512"`
-	ExpiresAt   time.Time `gorm:"column:expires_at;not null"`
-	RedirectURI string    `gorm:"column:redirect_uri;type:text"`
-	InviteCode  string    `gorm:"column:invite_code;type:text"`
+	State             string    `gorm:"column:state;primaryKey;size:512"`
+	ExpiresAt         time.Time `gorm:"column:expires_at;not null"`
+	RedirectURI       string    `gorm:"column:redirect_uri;type:text"`
+	InviteCode        string    `gorm:"column:invite_code;type:text"`
+	CodeVerifier      string    `gorm:"column:code_verifier;type:text"`      // PKCE code verifier (S256)
+	LoginHint         string    `gorm:"column:login_hint;type:text"`         // Preserved tenant/email context
+	DeviceFingerprint string    `gorm:"column:device_fingerprint;type:text"` // Device fingerprint for session binding
 }
 
 // TableName overrides the default table name for GORM.
@@ -89,16 +95,16 @@ type Session struct {
 
 // RefreshToken represents a refresh token stored in the database
 type RefreshToken struct {
-	ID        uuid.UUID `json:"id" db:"id"`
-	UserID    uuid.UUID `json:"user_id" db:"user_id"`
-	TokenHash string    `json:"token_hash" db:"token_hash"` // SHA-256 hash of the refresh token
-	IPAddress string    `json:"ip_address" db:"ip_address"`
-	UserAgent string    `json:"user_agent" db:"user_agent"`
-	ExpiresAt time.Time `json:"expires_at" db:"expires_at"`
-	Revoked   bool      `json:"revoked" db:"revoked"`     // Whether this token has been revoked
+	ID        uuid.UUID  `json:"id" db:"id"`
+	UserID    uuid.UUID  `json:"user_id" db:"user_id"`
+	TokenHash string     `json:"token_hash" db:"token_hash"` // SHA-256 hash of the refresh token
+	IPAddress string     `json:"ip_address" db:"ip_address"`
+	UserAgent string     `json:"user_agent" db:"user_agent"`
+	ExpiresAt time.Time  `json:"expires_at" db:"expires_at"`
+	Revoked   bool       `json:"revoked" db:"revoked"` // Whether this token has been revoked
 	RevokedAt *time.Time `json:"revoked_at,omitempty" db:"revoked_at"`
-	CreatedAt time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
+	CreatedAt time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at" db:"updated_at"`
 }
 
 // LoginAttempt represents a login attempt (successful or failed) for account lockout protection

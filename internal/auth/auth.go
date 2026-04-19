@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"time"
 
@@ -31,7 +32,13 @@ type AuthService struct {
 }
 
 // NewAuthService creates a new auth service
+// JWT secret must be at least 32 bytes (256 bits) for HS256 security
 func NewAuthService(repo storage.Repository, jwtSecret string) *AuthService {
+	// Validate JWT secret minimum length (32 bytes = 256 bits for HS256)
+	if len(jwtSecret) < 32 {
+		panic(fmt.Sprintf("JWT_SECRET must be at least 32 bytes (256 bits) for HS256 security, got %d bytes. Generate a secure secret with: openssl rand -hex 32", len(jwtSecret)))
+	}
+
 	// Default email config for testing/development
 	emailConfig := email.Config{
 		SMTPHost:     "localhost",
