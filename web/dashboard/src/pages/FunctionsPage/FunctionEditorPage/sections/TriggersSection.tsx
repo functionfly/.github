@@ -86,7 +86,7 @@ export function TriggersSection({ editor }: Props) {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Globe className="w-4 h-4 text-text-muted" />
+            <Globe className={`w-4 h-4 ${httpTrigger.enabled ? 'text-[#FF6B35]' : 'text-text-muted'}`} />
             <span className="text-sm font-medium text-text-primary">HTTP Trigger</span>
           </div>
           <Switch
@@ -109,7 +109,7 @@ export function TriggersSection({ editor }: Props) {
                   markDirty();
                 }}
               >
-                <SelectTrigger className="select">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -147,7 +147,7 @@ export function TriggersSection({ editor }: Props) {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-text-muted" />
+            <Clock className={`w-4 h-4 ${scheduleTrigger.enabled ? 'text-[#FF6B35]' : 'text-text-muted'}`} />
             <span className="text-sm font-medium text-text-primary">Schedule (Cron)</span>
           </div>
           <Switch
@@ -189,7 +189,7 @@ export function TriggersSection({ editor }: Props) {
                     markDirty();
                   }}
                 >
-                  <SelectTrigger id="tz" className="select">
+                  <SelectTrigger id="tz">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -203,7 +203,7 @@ export function TriggersSection({ editor }: Props) {
               </div>
             </div>
             {cronHuman && (
-              <p className="text-xs text-indigo-400 flex items-center gap-1.5">
+              <p className="text-xs text-[#FF6B35] flex items-center gap-1.5">
                 <Clock className="w-3 h-3 shrink-0" />
                 {cronHuman}
               </p>

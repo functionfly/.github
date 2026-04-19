@@ -223,6 +223,45 @@ export interface ReportProfileRequest {
   acknowledged_accuracy: boolean;
 }
 
+// ============================================================================
+// Username Change Types
+// ============================================================================
+
+export interface UsernameChangeEligibility {
+  canChangeFreely: boolean;
+  canChangeWithFee: boolean;
+  nextFreeChangeDate?: string;
+  changesUsedThisYear: number;
+  changesRemaining: number;
+  earlyChangeFeeCents: number;
+  message: string;
+}
+
+export interface UsernameChangeRequest {
+  new_username: string;
+  pay_early_fee?: boolean;
+  stripe_payment_id?: string;
+}
+
+export interface UsernameChangeResponse {
+  success: boolean;
+  old_username?: string;
+  new_username?: string;
+  fee_paid_cents?: number;
+  message: string;
+}
+
+export interface UsernameChangeHistoryItem {
+  id: string;
+  user_id: string;
+  old_username: string;
+  new_username: string;
+  changed_at: string;
+  was_early_change: boolean;
+  fee_paid_cents: number;
+  fee_currency: string;
+}
+
 export const usersApi = {
   /**
    * Get the public profile for a user by username.
@@ -463,5 +502,43 @@ export const usersApi = {
   searchUsersByUsername: (q: string, limit = 8) =>
     apiClient.get<{ users: UserLookupEntry[] }>(
       `/v1/users/search?q=${encodeURIComponent(q)}&limit=${limit}`
+    ),
+
+  // ============================================================================
+  // Username Change (2-per-year limit with early-change fee)
+  // ============================================================================
+
+  /**
+   * Check username change eligibility for current user.
+   * Returns information about free changes remaining, fees, and next available date.
+   */
+  getUsernameChangeEligibility: () =>
+    apiClient.get<UsernameChangeEligibility>('/v1/users/me/username/eligibility'),
+
+  /**
+   * Change username with optional early-change fee.
+   * Users get 2 free changes per year; additional changes require waiting 6 months or paying a fee.
+   */
+  changeUsername: (data: UsernameChangeRequest) =>
+    apiClient.post<UsernameChangeResponse>('/v1/users/me/username/change', data),
+
+  /**
+   * Get username change history for current user.
+   */
+  getUsernameChangeHistory: () =>
+    apiClient.get<{ history: UsernameChangeHistoryItem[] }>('/v1/users/me/username/history'),
+
+  /**
+   * Create a Stripe checkout session for paid username changes.
+   * Used when user has used their 2 free changes and wants to pay the early-change fee.
+   */
+  createUsernameChangeCheckout: (data: {
+    new_username: string;
+    success_url?: string;
+    cancel_url?: string;
+  }) =>
+    apiClient.post<{ session_id: string; url: string; pending_id: string; message: string }>(
+      '/v1/users/me/username/checkout',
+      data
     ),
 };

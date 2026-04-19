@@ -2,13 +2,17 @@ import { cn } from "@/lib/utils";
 import { APP_NAME } from "@/lib/constants";
 
 interface LogoProps {
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
   showText?: boolean;
   className?: string;
   variant?: "default" | "white";
 }
 
 const sizeConfig = {
+  xs: {
+    icon: 16,
+    text: "text-sm",
+  },
   sm: {
     icon: 20,
     text: "text-lg",

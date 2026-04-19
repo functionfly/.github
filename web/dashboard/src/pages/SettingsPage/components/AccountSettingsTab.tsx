@@ -1,5 +1,6 @@
 import { usersApi } from '@/api/users';
 import { MyFollowStats } from '@/components/follow';
+import { UsernameChangeField } from '@/components/UsernameChangeField';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -50,7 +51,7 @@ export function AccountSettingsTab() {
     try {
       const payload = {
         name: `${firstName} ${lastName}`.trim() || undefined,
-        username: username.trim() || undefined,
+        // Note: username is now handled separately via UsernameChangeField
         ...(isDobLocked ? {} : { dateOfBirth: dateOfBirth || null }),
       };
 
@@ -106,9 +107,9 @@ export function AccountSettingsTab() {
   return (
     <div className="space-y-6">
       {showOnboardingResume && (
-        <Card className="border-brand-500/30">
+        <Card className="ff-card-velocity border-brand-500/30">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="font-display flex items-center gap-2">
               <Play className="w-5 h-5 text-brand-500" />
               Onboarding
             </CardTitle>
@@ -119,7 +120,7 @@ export function AccountSettingsTab() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={handleResumeOnboarding} className="gap-2">
+            <Button onClick={handleResumeOnboarding} className="ff-btn-velocity gap-2">
               <Play className="w-4 h-4" />
               {completedSteps.length > 0 ? 'Resume Setup' : 'Start Setup'}
             </Button>
@@ -127,9 +128,9 @@ export function AccountSettingsTab() {
         </Card>
       )}
 
-      <Card>
+      <Card className="ff-card-velocity">
         <CardHeader>
-          <CardTitle>Profile Information</CardTitle>
+          <CardTitle className="font-display">Profile Information</CardTitle>
           <CardDescription className="text-text-secondary">
             Update your account details
           </CardDescription>
@@ -149,22 +150,10 @@ export function AccountSettingsTab() {
               <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} />
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
-            <Input
-              id="username"
-              type="text"
-              placeholder="yourhandle"
-              value={username}
-              onChange={(e) =>
-                setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))
-              }
-            />
-            <p className="text-xs text-text-muted">
-              Lowercase letters, numbers, hyphens and underscores only.
-              {username && <span className="ml-1 text-brand-400">Public URL: /u/{username}</span>}
-            </p>
-          </div>
+          <UsernameChangeField
+            value={username}
+            onChange={(val) => setUsername(val)}
+          />
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -198,15 +187,15 @@ export function AccountSettingsTab() {
               </p>
             )}
           </div>
-          <Button onClick={handleSaveProfile} disabled={isSavingProfile}>
+          <Button onClick={handleSaveProfile} disabled={isSavingProfile} className="ff-btn-velocity">
             {isSavingProfile ? 'Saving...' : 'Save Changes'}
           </Button>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="ff-card-velocity">
         <CardHeader>
-          <CardTitle>Password</CardTitle>
+          <CardTitle className="font-display">Password</CardTitle>
           <CardDescription className="text-text-secondary">Update your password</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -237,15 +226,15 @@ export function AccountSettingsTab() {
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
           </div>
-          <Button onClick={handleUpdatePassword} disabled={isUpdatingPassword}>
+          <Button onClick={handleUpdatePassword} disabled={isUpdatingPassword} className="ff-btn-velocity">
             {isUpdatingPassword ? 'Updating...' : 'Update Password'}
           </Button>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="ff-card-velocity">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="font-display flex items-center gap-2">
             <Users className="w-5 h-5 text-brand-500" />
             Follow Stats
           </CardTitle>

@@ -11,10 +11,27 @@
   color: var(--text-primary);
   font-weight: 700;
   letter-spacing: -0.025em;
+  position: relative;
+  display: inline-block;
+}
+
+.page-title::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 0;
+  width: 50px;
+  height: 3px;
+  background: linear-gradient(90deg, #FF6B35, #FF4F5E, transparent);
+  border-radius: 2px;
 }
 
 [data-theme="light"] .page-title {
-  color: var(--color-text-primary-light, #0f0f1a);
+  color: var(--color-text-primary-light, #111827);
+}
+
+[data-theme="light"] .page-title::after {
+  background: linear-gradient(90deg, #E85A2A, #D14A20, transparent);
 }
 
 .page-title-subtle {
@@ -22,14 +39,14 @@
 }
 
 [data-theme="light"] .page-title-subtle {
-  color: var(--color-text-secondary-light, #3a3a45);
+  color: var(--color-text-secondary-light, #374151);
 }
 
 /* ==========================================================================
    Buttons
    ========================================================================== */
 
-/* Primary Button - Gradient with Glow */
+/* Primary Button - Velocity Brand Gradient (Flame Orange) */
 .btn-primary {
   position: relative;
   display: inline-flex;
@@ -39,27 +56,27 @@
   padding: 0.75rem 1.5rem;
   font-weight: 600;
   color: white;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+  background: linear-gradient(135deg, #FF6B35 0%, #FF4F5E 50%, #FF8C42 100%);
   border: none;
   border-radius: 0.75rem;
   cursor: pointer;
   overflow: hidden;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
 }
 
 .btn-primary::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, #818cf8 0%, #a78bfa 50%, #e879f9 100%);
+  background: linear-gradient(135deg, #FF8C42 0%, #FF6B7A 50%, #FFB347 100%);
   opacity: 0;
   transition: opacity 0.3s ease;
 }
 
 .btn-primary:hover {
   transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5);
+  box-shadow: 0 8px 25px rgba(255, 107, 53, 0.5), 0 0 30px rgba(255, 107, 53, 0.3);
 }
 
 .btn-primary:hover::before {
@@ -73,6 +90,16 @@
 .btn-primary > * {
   position: relative;
   z-index: 1;
+}
+
+/* Light mode adjustments for primary button */
+[data-theme="light"] .btn-primary {
+  background: linear-gradient(135deg, #E85A2A 0%, #D14A20 50%, #E84553 100%);
+  box-shadow: 0 4px 15px rgba(232, 90, 42, 0.35);
+}
+
+[data-theme="light"] .btn-primary:hover {
+  box-shadow: 0 8px 25px rgba(232, 90, 42, 0.45), 0 0 30px rgba(232, 90, 42, 0.25);
 }
 
 /* Secondary Button */
@@ -148,7 +175,7 @@
   border-color: var(--border-strong);
 }
 
-/* Destructive Button */
+/* Destructive Button - Velocity Emergency Red */
 .btn-destructive {
   display: inline-flex;
   align-items: center;
@@ -157,21 +184,31 @@
   padding: 0.75rem 1.5rem;
   font-weight: 600;
   color: white;
-  background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+  background: linear-gradient(135deg, #FF2D55 0%, #FF4F5E 100%);
   border: none;
   border-radius: 0.75rem;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+  box-shadow: 0 4px 15px rgba(255, 45, 85, 0.4);
 }
 
 .btn-destructive:hover {
   transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
+  box-shadow: 0 8px 25px rgba(255, 45, 85, 0.5);
 }
 
 .btn-destructive:active {
   transform: translateY(0) scale(0.98);
+}
+
+/* Light mode destructive button */
+[data-theme="light"] .btn-destructive {
+  background: linear-gradient(135deg, #DC2626 0%, #EF4444 100%);
+  box-shadow: 0 4px 15px rgba(220, 38, 38, 0.35);
+}
+
+[data-theme="light"] .btn-destructive:hover {
+  box-shadow: 0 8px 25px rgba(220, 38, 38, 0.45);
 }
 
 /* Button Sizes */
@@ -206,8 +243,8 @@
 }
 
 .card:hover {
-  border-color: var(--border-default);
-  box-shadow: var(--shadow-lg);
+  border-color: rgba(255, 107, 53, 0.3);
+  box-shadow: 0 8px 24px rgba(255, 107, 53, 0.1), var(--shadow-lg);
   transform: translateY(-2px);
 }
 
@@ -217,7 +254,39 @@
 }
 
 [data-theme="light"] .card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border-color: rgba(232, 90, 42, 0.25);
+  box-shadow: 0 8px 24px rgba(232, 90, 42, 0.08), 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Card with Brand Top Border */
+.card-brand-accent {
+  position: relative;
+}
+
+.card-brand-accent::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #FF6B35, #FF4F5E, #00D4FF, transparent);
+  border-radius: 1rem 1rem 0 0;
+}
+
+[data-theme="light"] .card-brand-accent::before {
+  background: linear-gradient(90deg, #E85A2A, #D14A20, #00B8E0, transparent);
+}
+
+/* Card with Brand Glow */
+.card-brand-glow:hover {
+  box-shadow: 0 0 30px rgba(255, 107, 53, 0.2), 0 8px 24px rgba(255, 107, 53, 0.1);
+  border-color: rgba(255, 107, 53, 0.4);
+}
+
+[data-theme="light"] .card-brand-glow:hover {
+  box-shadow: 0 0 30px rgba(232, 90, 42, 0.15), 0 8px 24px rgba(0, 0, 0, 0.1);
+  border-color: rgba(232, 90, 42, 0.35);
 }
 
 /* Glass Card */
@@ -238,7 +307,7 @@
   transform: translateY(-2px);
 }
 
-/* Gradient Border Card */
+/* Gradient Border Card - Velocity Brand */
 .card-gradient-border {
   position: relative;
   background: var(--bg-secondary);
@@ -251,7 +320,7 @@
   position: absolute;
   inset: -2px;
   border-radius: calc(1rem + 2px);
-  background: linear-gradient(135deg, #6366f1, #8b5cf6, #d946ef);
+  background: linear-gradient(135deg, #FF6B35, #FF4F5E, #00D4FF);
   z-index: -1;
   opacity: 0;
   transition: opacity 0.3s ease;
@@ -261,6 +330,11 @@
   opacity: 1;
 }
 
+/* Light mode gradient border */
+[data-theme="light"] .card-gradient-border::before {
+  background: linear-gradient(135deg, #E85A2A, #D14A20, #00B8E0);
+}
+
 /* Feature Card */
 .card-feature {
   background: var(--card);
@@ -268,12 +342,30 @@
   border-radius: 1.25rem;
   padding: 2rem;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.card-feature::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #FF6B35, #FF4F5E, transparent);
+  border-radius: 1.25rem 1.25rem 0 0;
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
 }
 
 .card-feature:hover {
-  border-color: var(--border-default);
-  box-shadow: var(--shadow-glow-sm);
+  border-color: rgba(255, 107, 53, 0.4);
+  box-shadow: 0 0 30px rgba(255, 107, 53, 0.15), 0 12px 32px rgba(0, 0, 0, 0.15);
   transform: translateY(-4px);
+}
+
+.card-feature:hover::before {
+  opacity: 1;
 }
 
 [data-theme="light"] .card-feature {
@@ -281,8 +373,13 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
+[data-theme="light"] .card-feature::before {
+  background: linear-gradient(90deg, #E85A2A, #D14A20, transparent);
+}
+
 [data-theme="light"] .card-feature:hover {
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  border-color: rgba(232, 90, 42, 0.35);
+  box-shadow: 0 0 30px rgba(232, 90, 42, 0.1), 0 12px 32px rgba(0, 0, 0, 0.1);
 }
 
 /* Stat Card */
@@ -292,16 +389,60 @@
   border-radius: 1rem;
   padding: 1.5rem;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-stat::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 3px;
+  background: linear-gradient(90deg, #FF6B35, #FF4F5E);
+  border-radius: 0 2px 2px 0;
+  transition: width 0.3s ease;
 }
 
 .card-stat:hover {
-  border-color: var(--border-default);
-  box-shadow: var(--shadow-glow-sm);
+  border-color: rgba(255, 107, 53, 0.3);
+  box-shadow: 0 0 20px rgba(255, 107, 53, 0.1);
+}
+
+.card-stat:hover::before {
+  width: 60px;
 }
 
 [data-theme="light"] .card-stat {
   background: white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .card-stat::before {
+  background: linear-gradient(90deg, #E85A2A, #D14A20);
+}
+
+[data-theme="light"] .card-stat:hover {
+  border-color: rgba(232, 90, 42, 0.25);
+  box-shadow: 0 0 20px rgba(232, 90, 42, 0.08);
+}
+
+/* Stat Value - Brand Gradient */
+.stat-value-brand {
+  font-size: 1.875rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #FF6B35 0%, #FF4F5E 50%, #FF8C42 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+[data-theme="light"] .stat-value-brand {
+  background: linear-gradient(135deg, #E85A2A 0%, #D14A20 50%, #C43E1A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 /* Card Header */
@@ -362,7 +503,7 @@
 }
 
 [data-theme="light"] .input:focus {
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15), inset 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.15), inset 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 /* Input with Icon */
@@ -481,7 +622,7 @@
   transition: all 0.2s ease;
 }
 
-/* Badge Variants */
+/* Badge Variants - Velocity Brand Colors */
 .badge-default {
   background: var(--bg-tertiary);
   color: var(--text-secondary);
@@ -489,53 +630,64 @@
 }
 
 .badge-primary {
-  background: rgba(99, 102, 241, 0.15);
-  color: #6366f1;
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: rgba(255, 107, 53, 0.15);
+  color: #FF6B35;
+  border: 1px solid rgba(255, 107, 53, 0.3);
 }
 
 .badge-success {
-  background: rgba(16, 185, 129, 0.15);
+  background: rgba(0, 255, 157, 0.15);
   color: var(--color-success);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  border: 1px solid rgba(0, 255, 157, 0.3);
 }
 
 .badge-warning {
-  background: rgba(245, 158, 11, 0.15);
+  background: rgba(255, 184, 0, 0.15);
   color: var(--color-warning);
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  border: 1px solid rgba(255, 184, 0, 0.3);
 }
 
 .badge-error {
-  background: rgba(239, 68, 68, 0.15);
+  background: rgba(255, 45, 85, 0.15);
   color: var(--color-error);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  border: 1px solid rgba(255, 45, 85, 0.3);
 }
 
 .badge-info {
-  background: rgba(59, 130, 246, 0.15);
+  background: rgba(0, 212, 255, 0.15);
   color: var(--color-info);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  border: 1px solid rgba(0, 212, 255, 0.3);
 }
 
+/* Light mode badge adjustments */
 [data-theme="light"] .badge-primary {
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(232, 90, 42, 0.12);
+  color: #E85A2A;
+  border-color: rgba(232, 90, 42, 0.25);
 }
 
 [data-theme="light"] .badge-success {
-  background: rgba(16, 185, 129, 0.1);
+  background: rgba(5, 150, 105, 0.12);
+  color: #059669;
+  border-color: rgba(5, 150, 105, 0.25);
 }
 
 [data-theme="light"] .badge-warning {
-  background: rgba(245, 158, 11, 0.1);
+  background: rgba(217, 119, 6, 0.12);
+  color: #D97706;
+  border-color: rgba(217, 119, 6, 0.25);
 }
 
 [data-theme="light"] .badge-error {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(220, 38, 38, 0.12);
+  color: #DC2626;
+  border-color: rgba(220, 38, 38, 0.25);
 }
 
 [data-theme="light"] .badge-info {
-  background: rgba(59, 130, 246, 0.1);
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563EB;
+  border-color: rgba(37, 99, 235, 0.25);
 }
 
 /* Status Badge with Dot */
@@ -579,7 +731,7 @@
    Navigation
    ========================================================================== */
 
-/* Nav Item */
+/* Nav Item - Velocity Brand */
 .nav-item {
   display: flex;
   align-items: center;
@@ -612,8 +764,13 @@
   transform: translateY(-50%);
   width: 3px;
   height: 20px;
-  background: linear-gradient(180deg, #6366f1, #8b5cf6);
+  background: linear-gradient(180deg, #FF6B35, #FF4F5E);
   border-radius: 0 2px 2px 0;
+}
+
+/* Light mode nav adjustments */
+[data-theme="light"] .nav-item.active::before {
+  background: linear-gradient(180deg, #E85A2A, #D14A20);
 }
 
 /* Nav Icon */

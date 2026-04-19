@@ -14,12 +14,13 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { RustIcon } from '@/components/icons/RustIcon';
 
 const RUNTIMES = [
   { value: 'python', label: 'Python 3.11', icon: '🐍' },
   { value: 'nodejs', label: 'Node.js 20', icon: '🟢' },
   { value: 'go', label: 'Go 1.21', icon: '🐹' },
-  { value: 'rust', label: 'Rust', icon: '🦀' },
+  { value: 'rust', label: 'Rust', icon: <RustIcon className="w-8 h-8" /> },
   { value: 'deno', label: 'Deno', icon: '🦕' },
   { value: 'bun', label: 'Bun', icon: '🥯' },
 ];

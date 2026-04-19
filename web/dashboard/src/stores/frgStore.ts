@@ -32,8 +32,35 @@ export type SidebarPanel =
   | 'inspector' 
   | 'ai' 
   | 'test' 
-  | 'versions' 
+  | 'versions'
+  | 'evolution'
   | null;
+
+// Evolution suggestion status
+export type EvolutionSuggestionStatus = 'pending' | 'approved' | 'rejected' | 'implemented';
+
+// Evolution suggestion interface
+export interface EvolutionSuggestion {
+  id: string;
+  type: string;
+  status: EvolutionSuggestionStatus;
+  data: Record<string, unknown>;
+  description: string;
+  expectedImpact: number;
+  confidence: 'low' | 'medium' | 'high';
+  createdAt: string;
+  implementedAt?: string;
+  approvedBy?: string;
+}
+
+// Evolution status interface
+export interface EvolutionStatus {
+  agentId: string;
+  evolutionEnabled: boolean;
+  pendingCount: number;
+  implementedCount: number;
+  canEvolve: boolean;
+}
 
 interface FRGState {
   // Graph definition
@@ -168,6 +195,25 @@ interface FRGState {
   addDataFlowParticle: (edgeId: string, data: unknown) => void;
   removeDataFlowParticle: (id: string) => void;
   updateParticleProgress: (id: string, progress: number) => void;
+  
+  // Evolution state (Phase 1: Agent Evolution Mode)
+  evolutionStatus: EvolutionStatus | null;
+  evolutionSuggestions: EvolutionSuggestion[];
+  evolutionHistory: EvolutionSuggestion[];
+  isEvolutionLoading: boolean;
+  evolutionError: string | null;
+  
+  // Evolution actions
+  setEvolutionStatus: (status: EvolutionStatus | null) => void;
+  setEvolutionSuggestions: (suggestions: EvolutionSuggestion[]) => void;
+  setEvolutionHistory: (history: EvolutionSuggestion[]) => void;
+  approveEvolutionSuggestion: (id: string) => void;
+  rejectEvolutionSuggestion: (id: string) => void;
+  toggleEvolutionMode: (enabled: boolean) => Promise<void>;
+  fetchEvolutionStatus: () => Promise<void>;
+  fetchEvolutionSuggestions: () => Promise<void>;
+  fetchEvolutionHistory: () => Promise<void>;
+  triggerEvolutionAnalysis: () => Promise<void>;
 }
 
 export const useFRGStore = create<FRGState>()(
@@ -211,6 +257,13 @@ export const useFRGStore = create<FRGState>()(
         isLoading: false,
         error: null,
         dataFlowParticles: [],
+        
+        // Evolution initial state
+        evolutionStatus: null,
+        evolutionSuggestions: [],
+        evolutionHistory: [],
+        isEvolutionLoading: false,
+        evolutionError: null,
         
         // Definition actions
         setDefinition: (definition) => set({ definition }),
@@ -483,6 +536,139 @@ export const useFRGStore = create<FRGState>()(
             p.id === id ? { ...p, progress } : p
           ),
         })),
+        
+        // Evolution actions (Phase 1: Agent Evolution Mode)
+        setEvolutionStatus: (status) => set({ evolutionStatus: status }),
+        setEvolutionSuggestions: (suggestions) => set({ evolutionSuggestions: suggestions }),
+        setEvolutionHistory: (history) => set({ evolutionHistory: history }),
+        
+        approveEvolutionSuggestion: (id) => {
+          set((state) => ({
+            evolutionSuggestions: state.evolutionSuggestions.map(s =>
+              s.id === id ? { ...s, status: 'approved' as const } : s
+            ),
+          }));
+        },
+        
+        rejectEvolutionSuggestion: (id) => {
+          set((state) => ({
+            evolutionSuggestions: state.evolutionSuggestions.map(s =>
+              s.id === id ? { ...s, status: 'rejected' as const } : s
+            ),
+          }));
+        },
+        
+        toggleEvolutionMode: async (enabled) => {
+          set({ isEvolutionLoading: true, evolutionError: null });
+          try {
+            const definition = get().definition;
+            if (!definition?.id) throw new Error('No graph loaded');
+            
+            const response = await fetch(`/api/agents/${definition.id}/evolution/auto-enable`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ enabled }),
+            });
+            
+            if (!response.ok) throw new Error('Failed to toggle evolution mode');
+            
+            // Update local state
+            set((state) => ({
+              evolutionStatus: state.evolutionStatus 
+                ? { ...state.evolutionStatus, evolutionEnabled: enabled }
+                : { 
+                    agentId: definition.id!, 
+                    evolutionEnabled: enabled, 
+                    pendingCount: 0, 
+                    implementedCount: 0,
+                    canEvolve: enabled
+                  },
+            }));
+          } catch (err) {
+            set({ evolutionError: err instanceof Error ? err.message : 'Unknown error' });
+          } finally {
+            set({ isEvolutionLoading: false });
+          }
+        },
+        
+        fetchEvolutionStatus: async () => {
+          const definition = get().definition;
+          if (!definition?.id) return;
+          
+          try {
+            const response = await fetch(`/api/agents/${definition.id}/evolution/status`);
+            if (!response.ok) throw new Error('Failed to fetch evolution status');
+            
+            const data = await response.json();
+            if (data.ok) {
+              set({ evolutionStatus: data.status });
+            }
+          } catch (err) {
+            console.error('Failed to fetch evolution status:', err);
+          }
+        },
+        
+        fetchEvolutionSuggestions: async () => {
+          const definition = get().definition;
+          if (!definition?.id) return;
+          
+          set({ isEvolutionLoading: true });
+          try {
+            const response = await fetch(`/api/agents/${definition.id}/evolution/suggestions`);
+            if (!response.ok) throw new Error('Failed to fetch suggestions');
+            
+            const data = await response.json();
+            if (data.ok) {
+              set({ evolutionSuggestions: data.suggestions });
+            }
+          } catch (err) {
+            set({ evolutionError: err instanceof Error ? err.message : 'Unknown error' });
+          } finally {
+            set({ isEvolutionLoading: false });
+          }
+        },
+        
+        fetchEvolutionHistory: async () => {
+          const definition = get().definition;
+          if (!definition?.id) return;
+          
+          try {
+            const response = await fetch(`/api/agents/${definition.id}/evolution/history`);
+            if (!response.ok) throw new Error('Failed to fetch history');
+            
+            const data = await response.json();
+            if (data.ok) {
+              set({ evolutionHistory: data.history });
+            }
+          } catch (err) {
+            console.error('Failed to fetch evolution history:', err);
+          }
+        },
+        
+        triggerEvolutionAnalysis: async () => {
+          const definition = get().definition;
+          if (!definition?.id) return;
+          
+          set({ isEvolutionLoading: true, evolutionError: null });
+          try {
+            const response = await fetch(`/api/agents/${definition.id}/evolution/analyze`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+            });
+            
+            if (!response.ok) throw new Error('Failed to trigger analysis');
+            
+            const data = await response.json();
+            if (data.ok && data.proposal_created) {
+              // Refresh suggestions
+              await get().fetchEvolutionSuggestions();
+            }
+          } catch (err) {
+            set({ evolutionError: err instanceof Error ? err.message : 'Unknown error' });
+          } finally {
+            set({ isEvolutionLoading: false });
+          }
+        },
       }),
       {
         name: 'frg-editor-storage',

@@ -1,4 +1,5 @@
 import { Logo } from '@/components/common/Logo';
+import { useNewsletter } from '@/hooks/useNewsletter';
 import { BLOG_SITE_URL, DOCS_SITE_URL, getMarketingPageUrl } from '@/lib/constants';
 import {
   GitHubIcon,
@@ -7,10 +8,9 @@ import {
   XIcon,
 } from '@/pages/LandingPage/components/icons';
 import { useAuthStore } from '@/stores/authStore';
-import { useNewsletter } from '@/hooks/useNewsletter';
 import { motion } from 'framer-motion';
-import { ArrowUp, Heart, Mail, MessageCircle, Check, AlertCircle } from 'lucide-react';
-import { useState, FormEvent } from 'react';
+import { AlertCircle, ArrowUp, Check, Heart, Mail } from 'lucide-react';
+import { FormEvent, useState } from 'react';
 
 interface FooterProps {
   /** Set to false when another fixed bottom-right element (e.g. fly guide) is shown to avoid overlap. Default true. */
@@ -102,15 +102,6 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                   aria-label="FunctionFly on LinkedIn"
                 >
                   <LinkedInIcon className="w-5 h-5" />
-                </motion.a>
-                <motion.a
-                  href="/flywheel"
-                  className="w-10 h-10 rounded-xl bg-bg-hover border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-hover hover:border-brand-500/30 transition-all duration-200 shine-effect"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  aria-label="Flywheel community"
-                >
-                  <MessageCircle className="w-5 h-5" aria-hidden />
                 </motion.a>
               </div>
             </div>
@@ -234,14 +225,6 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                     className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
                   >
                     FAQ
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/flywheel"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
-                  >
-                    Community
                   </a>
                 </li>
               </ul>

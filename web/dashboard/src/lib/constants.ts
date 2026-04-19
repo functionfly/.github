@@ -38,12 +38,14 @@ export const ROUTES = {
   BILLING: '/settings', // Billing tab lives on Settings page
   TEAMS: '/teams',
   TEAM_MEMORY: '/teams/:teamId/memory',
+  TEAM_DECISIONS: '/teams/:teamId/decisions',
+  DECISIONS: '/decisions',
   APPS: '/apps',
-  APP_DETAIL: '/apps/:appId',
+  APP_DETAIL: '/apps/:slug',
   FUNCTION_DETAIL: '/functions/:id',
   // Agent routes
   AGENTS: '/agents',
-  AGENT_DETAIL: '/agents/:agentId',
+  AGENT_DETAIL: '/agents/:slug',
   SDK_INTEGRATIONS: '/sdk-integrations',
   MARKETPLACE_AGENTS: '/marketplace/agents',
   MARKETPLACE_FUNCTIONS: '/marketplace/functions',
@@ -64,10 +66,6 @@ export const ROUTES = {
   AGENT_MEMORIES: '/agent-memories',
   CONVERSATIONS: '/conversations',
   STATE: '/state',
-  ENTERPRISE: '/enterprise',
-  ENTERPRISE_SLA: '/enterprise/sla',
-  ENTERPRISE_AUDIT: '/enterprise/audit',
-  ENTERPRISE_SUPPORT: '/enterprise/support',
 } as const;
 
 /**
@@ -224,7 +222,7 @@ export const ROUTE_BUILDERS = {
   userSettings: (username: string) => `/u/${username}/settings`,
 
   // Agent dynamic routes
-  agent: (agentId: string) => `/agents/${agentId}`,
+  agent: (slug: string) => `/agents/${slug}`,
 } as const;
 
 // Type for route builder function
@@ -288,6 +286,8 @@ export const PLANS = {
     priceId: '',
     description: 'Perfect for getting started with FunctionFly',
     features: ['1 function', '2 providers', '100,000 requests/month', 'Community support'],
+    overageRate: null, // Hard stop at limit
+    annualDiscount: 0,
     limits: {
       functions: 1,
       providers: 2,
@@ -297,6 +297,8 @@ export const PLANS = {
       agents: 0,
       secrets: 0,
       tokensPerSecret: 0,
+      apiKeyBudgets: false,
+      perKeyCostAttribution: false,
     },
   },
   STARTER: {
@@ -310,10 +312,13 @@ export const PLANS = {
       '5 functions',
       '3 providers',
       '1M requests/month',
+      '$0.003 per overage request',
       '1 custom domain',
       'Email support',
       'Basic analytics',
     ],
+    overageRate: 3, // $0.003 per request
+    annualDiscount: 0.2, // 20% off
     limits: {
       functions: 5,
       providers: 3,
@@ -323,6 +328,8 @@ export const PLANS = {
       agents: 2,
       secrets: 10,
       tokensPerSecret: 5,
+      apiKeyBudgets: false,
+      perKeyCostAttribution: false,
     },
   },
   PROFESSIONAL: {
@@ -336,13 +343,17 @@ export const PLANS = {
       '25 functions',
       '5 providers',
       '10M requests/month',
+      '$0.002 per overage request',
       '5 custom domains',
       '99.9% SLA',
       'Priority support',
       'Advanced analytics',
       'Team collaboration',
+      'Per-API-key cost tracking',
       'Custom routing rules',
     ],
+    overageRate: 2, // $0.002 per request
+    annualDiscount: 0.2, // 20% off
     limits: {
       functions: 25,
       providers: 5,
@@ -353,6 +364,8 @@ export const PLANS = {
       agents: 10,
       secrets: 50,
       tokensPerSecret: 20,
+      apiKeyBudgets: false,
+      perKeyCostAttribution: true, // Can track costs per API key
     },
   },
   ENTERPRISE: {
@@ -365,14 +378,18 @@ export const PLANS = {
     features: [
       'Unlimited functions',
       'All providers',
-      'Unlimited requests',
+      '100M+ requests/month',
+      '$0.001 per overage request',
       'Unlimited custom domains',
       '99.99% SLA',
       'Dedicated support',
       'Custom integrations',
-      'SLA guarantees',
+      'Per-API-key budgets & alerts',
+      'Volume discounts',
       'On-premise deployment',
     ],
+    overageRate: 1, // $0.001 per request
+    annualDiscount: 0.3, // 30% off
     limits: {
       functions: Infinity,
       providers: Infinity,
@@ -383,6 +400,9 @@ export const PLANS = {
       agents: Infinity,
       secrets: 10000,
       tokensPerSecret: 100,
+      apiKeyBudgets: true, // Full API key budget controls
+      perKeyCostAttribution: true,
+      highValueKeySeparation: true,
     },
   },
 } as const;
@@ -395,15 +415,14 @@ export const AGENT_PLANS = {
   STARTER: {
     id: 'agent_starter',
     name: 'Agent Starter',
-    price: 49,
-    priceCents: 4900,
+    price: 29,
+    priceCents: 2900,
     priceId: import.meta.env.VITE_STRIPE_PRICE_AGENT_STARTER || 'price_agent_starter_placeholder',
     description: 'For small AI agent projects and prototyping',
     features: [
-      '500K tool calls/month',
+      '100K tool calls/month',
       '10 concurrent agents',
       '50 calls/second burst',
-      '$5 daily spend cap',
       '1K state writes/hour',
       '10GB memory storage',
       '30-day log retention',
@@ -411,7 +430,7 @@ export const AGENT_PLANS = {
       'Email support',
     ],
     limits: {
-      callsPerMonth: 500000,
+      callsPerMonth: 100000,
       concurrency: 10,
       burst: 50,
       dailySpendCap: 5,
@@ -423,15 +442,14 @@ export const AGENT_PLANS = {
   SCALE: {
     id: 'agent_scale',
     name: 'Agent Scale',
-    price: 299,
-    priceCents: 29900,
+    price: 149,
+    priceCents: 14900,
     priceId: import.meta.env.VITE_STRIPE_PRICE_AGENT_SCALE || 'price_agent_scale_placeholder',
     description: 'For growing AI agent applications',
     features: [
-      '5M tool calls/month',
+      '1M tool calls/month',
       '100 concurrent agents',
       '500 calls/second burst',
-      '$30 daily spend cap',
       '10K state writes/hour',
       '100GB memory storage',
       '90-day log retention',
@@ -440,7 +458,7 @@ export const AGENT_PLANS = {
       'Priority support',
     ],
     limits: {
-      callsPerMonth: 5000000,
+      callsPerMonth: 1000000,
       concurrency: 100,
       burst: 500,
       dailySpendCap: 30,
@@ -452,15 +470,14 @@ export const AGENT_PLANS = {
   PRO: {
     id: 'agent_pro',
     name: 'Agent Pro',
-    price: 999,
-    priceCents: 99900,
+    price: 399,
+    priceCents: 39900,
     priceId: import.meta.env.VITE_STRIPE_PRICE_AGENT_PRO || 'price_agent_pro_placeholder',
     description: 'For production AI agent systems',
     features: [
-      '25M tool calls/month',
+      '10M tool calls/month',
       '500 concurrent agents',
       '2000 calls/second burst',
-      '$100 daily spend cap',
       '50K state writes/hour',
       '500GB memory storage',
       '1-year log retention',
@@ -470,7 +487,7 @@ export const AGENT_PLANS = {
       'Dedicated support',
     ],
     limits: {
-      callsPerMonth: 25000000,
+      callsPerMonth: 10000000,
       concurrency: 500,
       burst: 2000,
       dailySpendCap: 100,
@@ -483,7 +500,7 @@ export const AGENT_PLANS = {
     id: 'agent_enterprise',
     name: 'Agent Enterprise',
     price: 'Custom',
-    priceCents: 250000,
+    priceCents: 99000,
     priceId: '',
     description: 'For large-scale AI agent deployments',
     features: [
@@ -616,9 +633,9 @@ export function getApiBaseUrl(): string {
     }
     return base;
   }
-  // Production: Use configured URL or default to localhost:3000/flywheel
+  // Production: Use configured URL or default to localhost:3000
   if (env) return env.replace(/\/$/, '');
-  return 'http://localhost:3000/flywheel';
+  return 'http://localhost:3000';
 }
 
 export const API_BASE_URL = getApiBaseUrl();

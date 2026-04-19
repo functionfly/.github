@@ -92,8 +92,8 @@ export function ErrorRateWidget({ data, className }: ErrorRateWidgetProps) {
           </span>
         </div>
 
-        <div className="h-[120px]">
-          <ResponsiveContainer width="100%" height="100%" minHeight={100}>
+        <div className="h-[120px] min-h-[120px]">
+          <ResponsiveContainer width="100%" height={120} minWidth={200}>
             <BarChart data={data} barGap={1} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
               <CartesianGrid
                 strokeDasharray="3 3"

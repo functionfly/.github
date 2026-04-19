@@ -168,9 +168,9 @@ export function ApiKeysSettingsTab() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="ff-card-velocity">
         <CardHeader>
-          <CardTitle>API Keys</CardTitle>
+          <CardTitle className="font-display">API Keys</CardTitle>
           <CardDescription className="text-text-secondary">
             Manage your API keys for programmatic access. Treat keys like passwords—do not share them, and rotate if
             compromised.
@@ -186,7 +186,7 @@ export function ApiKeysSettingsTab() {
                 <p className="mt-1 text-sm text-text-secondary">
                   Generate your first API key to get started with programmatic access.
                 </p>
-                <Button className="mt-4 gap-2" onClick={handleOpenCreateKeyModal} disabled={generatingKey}>
+                <Button className="ff-btn-velocity mt-4 gap-2" onClick={handleOpenCreateKeyModal} disabled={generatingKey}>
                   <Key className="h-4 w-4" />
                   {generatingKey ? "Generating…" : "Generate your first API key"}
                 </Button>
@@ -213,7 +213,7 @@ export function ApiKeysSettingsTab() {
                         <Badge
                           variant={key.is_active ? "default" : "secondary"}
                           className={
-                            key.is_active ? "bg-green-600/20 text-green-400 border-green-500/30" : ""
+                            key.is_active ? "ff-badge-success" : ""
                           }
                         >
                           {key.is_active ? "Active" : "Inactive"}
@@ -246,7 +246,7 @@ export function ApiKeysSettingsTab() {
                     </div>
                   );
                 })}
-                <Button className="gap-2" onClick={handleOpenCreateKeyModal} disabled={generatingKey}>
+                <Button className="ff-btn-velocity gap-2" onClick={handleOpenCreateKeyModal} disabled={generatingKey}>
                   <Key className="h-4 w-4" />
                   {generatingKey ? "Generating…" : "Generate New Key"}
                 </Button>

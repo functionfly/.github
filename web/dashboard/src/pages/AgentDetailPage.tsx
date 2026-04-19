@@ -34,7 +34,7 @@ function sanitizeAgentIdParam(raw: string | undefined): string | null {
 }
 
 export function AgentDetailPage() {
-  const { agentId: pathAgentId } = useParams<{ agentId: string }>();
+  const { slug: pathAgentId } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const agentId = sanitizeAgentIdParam(pathAgentId);
 

@@ -35,7 +35,7 @@ export function SearchButton({ className }: SearchButtonProps) {
         variant="ghost"
         size="icon"
         className={cn(
-          "text-text-secondary hover:text-white hover:bg-white/5",
+          "text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors",
           className
         )}
         onClick={() => setIsSearchOpen(true)}

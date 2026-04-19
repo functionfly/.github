@@ -13,6 +13,7 @@ export interface User {
   updatedAt?: string;
   profileNumber?: number; // Sequential number assigned based on registration order (e.g., Member #123)
   language?: string; // User's preferred language code (e.g., 'en', 'es')
+  isOnline?: boolean; // Online status from presence system
 }
 
 export interface Session {
@@ -147,6 +148,7 @@ export interface RoutingDecision {
 }
 
 export interface LoginRequest {
+  /** Can be either an email address or a username */
   email: string;
   password: string;
   recaptchaToken?: string;

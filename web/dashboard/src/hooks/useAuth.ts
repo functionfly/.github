@@ -3,7 +3,11 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { auth, FunctionFlyAuth } from '../lib/auth';
+import { authApi } from '@/api/auth';
+import type { LoginRequest, SignupRequest } from '@/types';
 
 interface User {
   id: string;
@@ -234,4 +238,243 @@ export function useAdminAPI() {
     isLoading,
     error,
   };
+}
+
+// ============================================================================
+// TanStack Query-based Auth Hooks
+// ============================================================================
+
+// Query keys
+export const authKeys = {
+  all: ['auth'] as const,
+  user: () => [...authKeys.all, 'user'] as const,
+  mfaStatus: () => [...authKeys.all, 'mfa-status'] as const,
+  oauthProviders: () => [...authKeys.all, 'oauth-providers'] as const,
+};
+
+/** Hook for user login with TanStack Query */
+export function useSignIn() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: LoginRequest) => authApi.login(data),
+    onSuccess: (data) => {
+      // Store token if returned
+      if (data.token) {
+        // Token is handled by apiClient
+      }
+      queryClient.invalidateQueries({ queryKey: authKeys.user() });
+      toast.success('Signed in successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Sign in failed: ${error.message}`);
+    },
+  });
+}
+
+/** Hook for user signup with TanStack Query */
+export function useSignUp() {
+  return useMutation({
+    mutationFn: (data: SignupRequest) => authApi.signup(data),
+    onSuccess: () => {
+      toast.success('Account created successfully. Please verify your email.');
+    },
+    onError: (error: Error) => {
+      toast.error(`Sign up failed: ${error.message}`);
+    },
+  });
+}
+
+/** Hook for user logout with TanStack Query */
+export function useSignOut() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      authApi.logout();
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.clear();
+      toast.success('Signed out successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Sign out failed: ${error.message}`);
+    },
+  });
+}
+
+/** Hook for magic link login request */
+export function useMagicLink() {
+  return useMutation({
+    mutationFn: (email: string) =>
+      // Uses usersApi but accessed through the auth flow
+      import('@/api/users').then((m) => m.usersApi.requestPasswordReset(email)),
+    onSuccess: () => {
+      toast.success('Magic link sent to your email');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to send magic link: ${error.message}`);
+    },
+  });
+}
+
+/** Hook for verifying magic link token */
+export function useVerifyMagicLink() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ token, newPassword }: { token: string; newPassword?: string }) =>
+      // This is actually password reset confirmation
+      import('@/api/users').then((m) =>
+        m.usersApi.confirmPasswordReset(token, newPassword || '')
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: authKeys.user() });
+      toast.success('Magic link verified successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Magic link verification failed: ${error.message}`);
+    },
+  });
+}
+
+/** Hook for fetching OAuth providers */
+export function useOAuthProviders() {
+  return useQuery({
+    queryKey: authKeys.oauthProviders(),
+    queryFn: () =>
+      fetch(`${import.meta.env.VITE_API_URL || ''}/v1/auth/oauth/providers`).then((r) => r.json()),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+/** Hook for getting OAuth URL */
+export function useOAuthUrl() {
+  return useMutation({
+    mutationFn: (provider: string) =>
+      fetch(
+        `${import.meta.env.VITE_API_URL || ''}/v1/auth/oauth/url?provider=${encodeURIComponent(provider)}`
+      ).then((r) => r.json() as Promise<{ url: string }>),
+  });
+}
+
+/** Hook for password reset request */
+export function usePasswordResetRequest() {
+  return useMutation({
+    mutationFn: (email: string) =>
+      import('@/api/users').then((m) => m.usersApi.requestPasswordReset(email)),
+    onSuccess: () => {
+      toast.success('Password reset link sent to your email');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to send reset link: ${error.message}`);
+    },
+  });
+}
+
+/** Hook for password reset confirmation */
+export function usePasswordResetConfirm() {
+  return useMutation({
+    mutationFn: ({ token, newPassword }: { token: string; newPassword: string }) =>
+      import('@/api/users').then((m) => m.usersApi.confirmPasswordReset(token, newPassword)),
+    onSuccess: () => {
+      toast.success('Password reset successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Password reset failed: ${error.message}`);
+    },
+  });
+}
+
+/** Hook for checking username availability */
+export function useCheckUsernameAvailability(username: string) {
+  return useQuery({
+    queryKey: [...authKeys.all, 'username-check', username],
+    queryFn: () => authApi.checkUsernameAvailability(username),
+    enabled: !!username && username.length >= 3,
+    staleTime: 1000 * 60,
+  });
+}
+
+/** Hook for resending verification email */
+export function useResendVerification() {
+  return useMutation({
+    mutationFn: (email: string) => authApi.resendVerification(email),
+    onSuccess: () => {
+      toast.success('Verification email sent');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to resend verification: ${error.message}`);
+    },
+  });
+}
+
+/** Hook for MFA status */
+export function useMFAStatus() {
+  return useQuery({
+    queryKey: authKeys.mfaStatus(),
+    queryFn: () => authApi.getMFAStatus(),
+    staleTime: 1000 * 60,
+  });
+}
+
+/** Hook for setting up MFA */
+export function useSetupMFA() {
+  return useMutation({
+    mutationFn: () => authApi.setupMFA(),
+    onSuccess: (data) => {
+      toast.success('MFA setup initiated');
+      return data;
+    },
+    onError: (error: Error) => {
+      toast.error(`MFA setup failed: ${error.message}`);
+    },
+  });
+}
+
+/** Hook for verifying MFA setup code */
+export function useVerifyMFASetup() {
+  return useMutation({
+    mutationFn: (code: string) => authApi.verifyMFASetupCode(code),
+    onSuccess: () => {
+      toast.success('MFA verified successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`MFA verification failed: ${error.message}`);
+    },
+  });
+}
+
+/** Hook for enabling MFA */
+export function useEnableMFA() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => authApi.enableMFA(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: authKeys.mfaStatus() });
+      toast.success('MFA enabled successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to enable MFA: ${error.message}`);
+    },
+  });
+}
+
+/** Hook for disabling MFA */
+export function useDisableMFA() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ password, code }: { password: string; code: string }) =>
+      authApi.disableMFA(password, code),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: authKeys.mfaStatus() });
+      toast.success('MFA disabled successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to disable MFA: ${error.message}`);
+    },
+  });
 }

@@ -2,7 +2,6 @@ import { Logo } from '@/components/common/Logo';
 import { MarketplaceDropdown } from '@/components/common/MarketplaceDropdown';
 import { ProductsDropdown } from '@/components/common/ProductsDropdown';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
-import { SearchButton } from '@/components/layout/SearchButton';
 import { UserMenu } from '@/components/layout/UserMenu';
 import { NotificationBell } from '@/components/notifications';
 import { Button } from '@/components/ui/button';
@@ -13,9 +12,9 @@ import { useAuthStore } from '@/stores/authStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Command, Menu, MessageCircle, Sparkles, X, Zap } from 'lucide-react';
+import { BarChart3, Bot, Cloud, Command, FunctionSquare, Home, Menu, MessageCircle, Sparkles, X, Zap } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 interface NavbarProps {
   variant?: 'landing' | 'dashboard';
@@ -23,22 +22,59 @@ interface NavbarProps {
   onMenuClick?: () => void;
 }
 
-// Quick action shortcuts
-const QUICK_ACTIONS = [
-  { key: 'g', label: 'Go to...', icon: Command },
-  { key: 'n', label: 'New Function', icon: Sparkles },
-  { key: 'a', label: 'Agents', icon: Zap },
+// Quick action shortcuts with actions
+interface QuickAction {
+  key: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  action: (navigate: ReturnType<typeof useNavigate>, setShowCommandPalette: (show: boolean) => void) => void;
+}
+
+const QUICK_ACTIONS: QuickAction[] = [
+  { 
+    key: 'g', 
+    label: 'Go to...', 
+    icon: Command,
+    action: (_, setShow) => setShow(true)
+  },
+  { 
+    key: 'n', 
+    label: 'New Function', 
+    icon: Sparkles,
+    action: (navigate, setShow) => {
+      setShow(false);
+      navigate('/functions/new');
+    }
+  },
+  { 
+    key: 'a', 
+    label: 'Agents', 
+    icon: Zap,
+    action: (navigate, setShow) => {
+      setShow(false);
+      navigate('/marketplace/agents');
+    }
+  },
 ];
 
 export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
   const theme = useThemeStore((state) => state.theme);
   const messagesUnread = useNotificationStore((state) => state.unreadCounts.messages);
   const marketingHomeUrl = getMarketingRedirectOrigin();
+
+  // Scroll-aware background
+  useEffect(() => {
+    const handler = () => setScrolled(window.scrollY > 10);
+    window.addEventListener('scroll', handler);
+    return () => window.removeEventListener('scroll', handler);
+  }, []);
 
   const settingsPath = user?.username ? `/u/${user.username}/settings` : '/settings';
   const navigationItems = isAuthenticated
@@ -90,10 +126,13 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
       <>
         <nav
           className={cn(
-            'fixed top-0 left-0 right-0 z-50',
+            'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
             variant === 'dashboard'
-              ? 'bg-aviation-bg-primary/95 backdrop-blur-xl border-b border-aviation-border-panel'
-              : 'glass-navbar',
+              ? 'bg-bg-primary/95 backdrop-blur-xl border-b border-border-default'
+              : cn(
+                  'bg-glass backdrop-blur-md border-b border-subtle',
+                  scrolled && 'bg-bg-primary/80 backdrop-blur-md border-b border-border-subtle'
+                ),
             className
           )}
         >
@@ -107,15 +146,15 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="lg:hidden text-aviation-text-secondary hover:text-aviation-text-primary hover:bg-aviation-bg-instrument mr-2"
+                      className="lg:hidden text-text-secondary hover:text-text-primary hover:bg-bg-secondary mr-2"
                       onClick={onMenuClick}
                       aria-label="Open navigation menu"
                     >
                       <Menu className="w-5 h-5" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    <p>Open sidebar</p>
+                  <TooltipContent side="bottom" className="bg-bg-secondary border border-border-subtle shadow-lg">
+                    <p className="text-text-primary">Open sidebar</p>
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -138,6 +177,24 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                   <Logo />
                 </a>
               )}
+
+              {/* Breadcrumbs - shown on nested pages */}
+              {variant === 'dashboard' && location.pathname.split('/').filter(Boolean).length > 1 && (
+                <nav className="hidden lg:flex items-center gap-2 text-sm text-text-muted ml-2">
+                  <Link to="/" className="hover:text-text-primary transition-colors">Home</Link>
+                  {location.pathname.split('/').filter(Boolean).slice(0, -1).map((segment, i) => {
+                    const path = '/' + location.pathname.split('/').filter(Boolean).slice(0, i + 1).join('/');
+                    return (
+                      <span key={i} className="flex items-center gap-2">
+                        <span className="text-text-muted">/</span>
+                        <Link to={path} className="hover:text-text-primary transition-colors capitalize">
+                          {segment}
+                        </Link>
+                      </span>
+                    );
+                  })}
+                </nav>
+              )}
             </div>
 
             {/* Desktop Navigation */}
@@ -150,51 +207,130 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                       <MarketplaceDropdown />
                     </>
                   )}
+                  {variant === 'dashboard' && (
+                    <>
+                      <Link
+                        to="/dashboard"
+                        className={cn(
+                          'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
+                          location.pathname === '/dashboard' && 'text-text-primary'
+                        )}
+                      >
+                        Marketplace
+                        {location.pathname === '/dashboard' && (
+                          <span className="absolute left-0 -bottom-0.5 w-full h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
+                        )}
+                      </Link>
+                      <Link
+                        to="/overview"
+                        className={cn(
+                          'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
+                          location.pathname === '/overview' && 'text-text-primary'
+                        )}
+                      >
+                        Overview
+                        {location.pathname === '/overview' && (
+                          <span className="absolute left-0 -bottom-0.5 w-full h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
+                        )}
+                      </Link>
+                      <Link
+                        to="/functions"
+                        className={cn(
+                          'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
+                          (location.pathname === '/functions' || location.pathname.startsWith('/functions/')) && 'text-text-primary'
+                        )}
+                      >
+                        Functions
+                        {(location.pathname === '/functions' || location.pathname.startsWith('/functions/')) && (
+                          <span className="absolute left-0 -bottom-0.5 w-full h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
+                        )}
+                      </Link>
+                      <Link
+                        to="/providers"
+                        className={cn(
+                          'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
+                          location.pathname === '/providers' && 'text-text-primary'
+                        )}
+                      >
+                        Providers
+                        {location.pathname === '/providers' && (
+                          <span className="absolute left-0 -bottom-0.5 w-full h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
+                        )}
+                      </Link>
+                      <Link
+                        to="/analytics"
+                        className={cn(
+                          'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
+                          location.pathname === '/analytics' && 'text-text-primary'
+                        )}
+                      >
+                        Analytics
+                        {location.pathname === '/analytics' && (
+                          <span className="absolute left-0 -bottom-0.5 w-full h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
+                        )}
+                      </Link>
+                    </>
+                  )}
                   <Link
                     to={settingsPath}
                     className={cn(
-                      'text-aviation-text-secondary hover:text-aviation-text-primary transition-colors font-medium',
+                      'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
                       (location.pathname === '/settings' ||
                         location.pathname.match(/^\/u\/[^/]+\/settings$/)) &&
-                        'text-aviation-text-primary'
+                        'text-text-primary'
                     )}
                   >
                     Settings
+                    {(location.pathname === '/settings' || location.pathname.match(/^\/u\/[^/]+\/settings$/)) && (
+                      <span className="absolute left-0 -bottom-0.5 w-full h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
+                    )}
                   </Link>
                 </>
               ) : (
                 <>
-                  <a
-                    href={marketingHomeUrl}
-                    className="text-aviation-text-secondary hover:text-aviation-text-primary transition-colors font-medium"
+                  <Link
+                    to="/"
+                    className={cn(
+                      'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
+                      location.pathname === '/' && 'text-text-primary'
+                    )}
                   >
                     Home
-                  </a>
+                    {location.pathname === '/' && (
+                      <span className="absolute left-0 -bottom-0.5 w-full h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
+                    )}
+                  </Link>
                   <ProductsDropdown />
                   <Link
                     to="/registry"
                     className={cn(
-                      'text-aviation-text-secondary hover:text-aviation-text-primary transition-colors font-medium',
-                      location.pathname === '/registry' && 'text-aviation-text-primary'
+                      'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
+                      location.pathname === '/registry' && 'text-text-primary'
                     )}
                   >
                     Functions
+                    {location.pathname === '/registry' && (
+                      <span className="absolute left-0 -bottom-0.5 w-full h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
+                    )}
                   </Link>
                   <MarketplaceDropdown />
                   <Link
                     to="/pricing"
                     className={cn(
-                      'text-aviation-text-secondary hover:text-aviation-text-primary transition-colors font-medium',
-                      location.pathname === '/pricing' && 'text-aviation-text-primary'
+                      'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
+                      location.pathname === '/pricing' && 'text-text-primary'
                     )}
                   >
                     Pricing
+                    {location.pathname === '/pricing' && (
+                      <span className="absolute left-0 -bottom-0.5 w-full h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
+                    )}
                   </Link>
                   <a
                     href={DOCS_SITE_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-aviation-text-secondary hover:text-aviation-text-primary transition-colors font-medium"
+                    className="text-text-secondary hover:text-text-primary transition-colors font-medium"
                   >
                     Docs
                   </a>
@@ -204,34 +340,43 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
 
             {/* Right Section */}
             <div className="flex items-center gap-2 shrink-0">
+              {/* Provider Health Status - Authenticated Dashboard only */}
+              {isAuthenticated && variant === 'dashboard' && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-full bg-bg-secondary/30 border border-border-subtle cursor-pointer hover:bg-bg-secondary/50 transition-colors">
+                      <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                      <span className="text-xs text-text-secondary">3/3 Providers</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="bg-bg-secondary border border-border-subtle shadow-lg">
+                    <p className="text-text-primary">All providers operational</p>
+                    <p className="text-xs text-text-muted">Cloudflare, Vercel, Fly.io</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+
               {/* Command Palette Trigger - Desktop */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => setShowCommandPalette(true)}
-                    className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-aviation-text-muted bg-aviation-bg-instrument/50 border border-aviation-border-instrument rounded-lg hover:text-aviation-text-primary hover:border-aviation-amber/30 transition-all"
+                    className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-text-muted bg-bg-secondary/50 border border-border-subtle rounded-lg hover:text-text-primary hover:border-warning/30 transition-all"
                   >
                     <Command className="w-3.5 h-3.5" />
                     <span className="hidden lg:inline">Search</span>
-                    <kbd className="hidden xl:inline text-[10px] font-mono text-aviation-text-dim bg-aviation-bg-instrument px-1.5 py-0.5 rounded">
+                    <kbd className="hidden xl:inline text-[10px] font-mono text-text-muted bg-bg-secondary px-1.5 py-0.5 rounded">
                       ⌘K
                     </kbd>
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p>Command Palette</p>
-                </TooltipContent>
+                  <TooltipContent side="bottom" className="bg-bg-secondary border border-border-subtle shadow-lg">
+                    <p className="text-text-primary">Command Palette</p>
+                  </TooltipContent>
               </Tooltip>
 
               {isAuthenticated ? (
                 <>
-                  {/* Search (Dashboard only) */}
-                  {variant === 'dashboard' && (
-                    <div className="hidden sm:block">
-                      <SearchButton />
-                    </div>
-                  )}
-
                   {/* Theme Toggle */}
                   <ThemeToggle />
 
@@ -244,20 +389,20 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                           aria-label={
                             messagesUnread > 0 ? `Messages (${messagesUnread} unread)` : 'Messages'
                           }
-                          className="relative flex items-center justify-center rounded-lg p-2 text-aviation-text-secondary hover:text-aviation-text-primary hover:bg-aviation-bg-instrument transition-colors"
+                          className="relative flex items-center justify-center rounded-lg p-2 text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors"
                         >
                           <MessageCircle className="w-5 h-5" />
                           {messagesUnread > 0 && (
-                            <span className="absolute -top-0.5 -right-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-aviation-red px-1 text-[10px] font-bold leading-none text-white">
+                            <span className="absolute -top-0.5 -right-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold leading-none text-white">
                               {messagesUnread > 99 ? '99+' : messagesUnread}
                             </span>
                           )}
                         </Link>
                       </TooltipTrigger>
-                      <TooltipContent side="bottom">
-                        <p>Messages</p>
+                      <TooltipContent side="bottom" className="bg-bg-secondary border border-border-subtle shadow-lg">
+                        <p className="text-text-primary">Messages</p>
                         {messagesUnread > 0 && (
-                          <p className="text-xs text-aviation-text-muted">
+                          <p className="text-xs text-text-muted">
                             {messagesUnread} unread
                           </p>
                         )}
@@ -270,7 +415,7 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                     <NotificationBell
                       variant="ghost"
                       size="md"
-                      className="relative text-aviation-text-secondary hover:text-aviation-text-primary hover:bg-aviation-bg-instrument"
+                      className="relative text-text-secondary hover:text-text-primary hover:bg-bg-secondary"
                     />
                   )}
 
@@ -286,13 +431,13 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                   <Link to="/login">
                     <Button
                       variant="ghost"
-                      className="text-aviation-text-secondary hover:text-aviation-text-primary hidden sm:inline-flex"
+                      className="text-text-secondary hover:text-text-primary hidden sm:inline-flex"
                     >
                       Sign In
                     </Button>
                   </Link>
                   <Link to="/signup">
-                    <Button className="aviation-button-primary">Get Started</Button>
+                    <Button className="button-primary">Get Started</Button>
                   </Link>
                 </>
               )}
@@ -301,7 +446,7 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
               <Button
                 variant="ghost"
                 size="icon"
-                className="md:hidden text-aviation-text-secondary hover:text-aviation-text-primary hover:bg-aviation-bg-instrument"
+                className="md:hidden text-text-secondary hover:text-text-primary hover:bg-bg-secondary"
                 onClick={toggleMobileMenu}
                 aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
                 aria-expanded={isMobileMenuOpen}
@@ -332,16 +477,16 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="fixed top-16 left-0 right-0 bg-aviation-bg-primary border-b border-aviation-border-panel shadow-xl"
+                className="fixed top-16 left-0 right-0 bg-bg-primary border-b border-border-default shadow-xl"
               >
                 <div className="px-4 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
                   {/* Search for mobile */}
                   <div className="relative">
-                    <Command className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-aviation-text-muted" />
+                    <Command className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
                     <input
                       type="text"
                       placeholder="Search..."
-                      className="w-full pl-9 pr-4 py-2 bg-aviation-bg-instrument border border-aviation-border-instrument rounded-lg text-aviation-text-primary placeholder:text-aviation-text-dim focus:outline-none focus:border-aviation-amber"
+                      className="w-full pl-9 pr-4 py-2 bg-bg-secondary border border-border-subtle rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:border-warning"
                       onClick={() => {
                         setIsMobileMenuOpen(false);
                         setShowCommandPalette(true);
@@ -356,71 +501,71 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                         <>
                           {/* Products Section */}
                           <div className="space-y-2">
-                            <div className="text-sm font-semibold text-aviation-text-primary px-2">
+                            <div className="text-sm font-semibold text-text-primary px-2">
                               Products
                             </div>
                             <Link
                               to="/functions"
                               onClick={() => setIsMobileMenuOpen(false)}
                               className={cn(
-                                'block py-2 pl-4 text-aviation-text-secondary hover:text-aviation-text-primary transition-colors font-medium rounded-lg hover:bg-aviation-bg-instrument/50',
+                                'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
                                 location.pathname === '/functions' &&
-                                  'text-aviation-text-primary bg-aviation-bg-instrument'
+                                  'text-text-primary bg-bg-secondary'
                               )}
                             >
-                              <span className="mr-2">⚡</span> Functions
+                              <FunctionSquare className="w-4 h-4" /> Functions
                             </Link>
                             <Link
                               to="/providers"
                               onClick={() => setIsMobileMenuOpen(false)}
                               className={cn(
-                                'block py-2 pl-4 text-aviation-text-secondary hover:text-aviation-text-primary transition-colors font-medium rounded-lg hover:bg-aviation-bg-instrument/50',
+                                'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
                                 location.pathname === '/providers' &&
-                                  'text-aviation-text-primary bg-aviation-bg-instrument'
+                                  'text-text-primary bg-bg-secondary'
                               )}
                             >
-                              <span className="mr-2">☁️</span> Providers
+                              <Cloud className="w-4 h-4" /> Providers
                             </Link>
                             <Link
                               to="/analytics"
                               onClick={() => setIsMobileMenuOpen(false)}
                               className={cn(
-                                'block py-2 pl-4 text-aviation-text-secondary hover:text-aviation-text-primary transition-colors font-medium rounded-lg hover:bg-aviation-bg-instrument/50',
+                                'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
                                 location.pathname === '/analytics' &&
-                                  'text-aviation-text-primary bg-aviation-bg-instrument'
+                                  'text-text-primary bg-bg-secondary'
                               )}
                             >
-                              <span className="mr-2">📊</span> Analytics
+                              <BarChart3 className="w-4 h-4" /> Analytics
                             </Link>
                           </div>
 
                           {/* Marketplace Section */}
                           <div className="space-y-2">
-                            <div className="text-sm font-semibold text-aviation-text-primary px-2">
+                            <div className="text-sm font-semibold text-text-primary px-2">
                               Marketplace
                             </div>
                             <Link
                               to="/dashboard"
                               onClick={() => setIsMobileMenuOpen(false)}
                               className={cn(
-                                'block py-2 pl-4 text-aviation-text-secondary hover:text-aviation-text-primary transition-colors font-medium rounded-lg hover:bg-aviation-bg-instrument/50',
+                                'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
                                 (location.pathname === '/dashboard' ||
                                   location.pathname.startsWith('/marketplace')) &&
-                                  'text-aviation-text-primary bg-aviation-bg-instrument'
+                                  'text-text-primary bg-bg-secondary'
                               )}
                             >
-                              <span className="mr-2">⚡</span> Function Marketplace
+                              <Home className="w-4 h-4" /> Function Marketplace
                             </Link>
                             <Link
                               to="/marketplace/agents"
                               onClick={() => setIsMobileMenuOpen(false)}
                               className={cn(
-                                'block py-2 pl-4 text-aviation-text-secondary hover:text-aviation-text-primary transition-colors font-medium rounded-lg hover:bg-aviation-bg-instrument/50',
+                                'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
                                 location.pathname === '/marketplace/agents' &&
-                                  'text-aviation-text-primary bg-aviation-bg-instrument'
+                                  'text-text-primary bg-bg-secondary'
                               )}
                             >
-                              <span className="mr-2">🤖</span> Agent Marketplace
+                              <Bot className="w-4 h-4" /> Agent Marketplace
                             </Link>
                           </div>
                         </>
@@ -430,10 +575,10 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                         to={settingsPath}
                         onClick={() => setIsMobileMenuOpen(false)}
                         className={cn(
-                          'block py-2 text-aviation-text-secondary hover:text-aviation-text-primary transition-colors font-medium rounded-lg hover:bg-aviation-bg-instrument/50',
+                          'block py-2 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
                           (location.pathname === '/settings' ||
                             location.pathname.match(/^\/u\/[^/]+\/settings$/)) &&
-                            'text-aviation-text-primary bg-aviation-bg-instrument'
+                            'text-text-primary bg-bg-secondary'
                         )}
                       >
                         Settings
@@ -444,7 +589,7 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                       <a
                         href={marketingHomeUrl}
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className="block py-2 text-aviation-text-secondary hover:text-aviation-text-primary transition-colors font-medium rounded-lg hover:bg-aviation-bg-instrument/50"
+                        className="block py-2 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50"
                       >
                         Home
                       </a>
@@ -452,40 +597,40 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                         to="/registry"
                         onClick={() => setIsMobileMenuOpen(false)}
                         className={cn(
-                          'block py-2 text-aviation-text-secondary hover:text-aviation-text-primary transition-colors font-medium rounded-lg hover:bg-aviation-bg-instrument/50',
+                          'flex items-center gap-2 py-2 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
                           location.pathname === '/registry' &&
-                            'text-aviation-text-primary bg-aviation-bg-instrument'
+                            'text-text-primary bg-bg-secondary'
                         )}
                       >
-                        <span className="mr-2">⚡</span> Browse Functions
+                        <FunctionSquare className="w-4 h-4" /> Browse Functions
                       </Link>
                       {/* Marketplace Section */}
                       <div className="space-y-2">
-                        <div className="text-sm font-semibold text-aviation-text-primary px-2">
+                        <div className="text-sm font-semibold text-text-primary px-2">
                           Marketplace
                         </div>
                         <Link
                           to="/dashboard"
                           onClick={() => setIsMobileMenuOpen(false)}
                           className={cn(
-                            'block py-2 pl-4 text-aviation-text-secondary hover:text-aviation-text-primary transition-colors font-medium rounded-lg hover:bg-aviation-bg-instrument/50',
+                            'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
                             (location.pathname === '/dashboard' ||
                               location.pathname.startsWith('/marketplace')) &&
-                              'text-aviation-text-primary bg-aviation-bg-instrument'
+                              'text-text-primary bg-bg-secondary'
                           )}
                         >
-                          <span className="mr-2">⚡</span> Function Marketplace
+                          <Home className="w-4 h-4" /> Function Marketplace
                         </Link>
                         <Link
                           to="/marketplace/agents"
                           onClick={() => setIsMobileMenuOpen(false)}
                           className={cn(
-                            'block py-2 pl-4 text-aviation-text-secondary hover:text-aviation-text-primary transition-colors font-medium rounded-lg hover:bg-aviation-bg-instrument/50',
+                            'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
                             location.pathname === '/marketplace/agents' &&
-                              'text-aviation-text-primary bg-aviation-bg-instrument'
+                              'text-text-primary bg-bg-secondary'
                           )}
                         >
-                          <span className="mr-2">🤖</span> Agent Marketplace
+                          <Bot className="w-4 h-4" /> Agent Marketplace
                         </Link>
                       </div>
 
@@ -493,9 +638,9 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                         to="/pricing"
                         onClick={() => setIsMobileMenuOpen(false)}
                         className={cn(
-                          'block py-2 text-aviation-text-secondary hover:text-aviation-text-primary transition-colors font-medium rounded-lg hover:bg-aviation-bg-instrument/50',
+                          'block py-2 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
                           location.pathname === '/pricing' &&
-                            'text-aviation-text-primary bg-aviation-bg-instrument'
+                            'text-text-primary bg-bg-secondary'
                         )}
                       >
                         Pricing
@@ -505,7 +650,7 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className="block py-2 text-aviation-text-secondary hover:text-aviation-text-primary transition-colors font-medium rounded-lg hover:bg-aviation-bg-instrument/50"
+                        className="block py-2 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50"
                       >
                         Docs
                       </a>
@@ -513,19 +658,19 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                   )}
 
                   {/* Theme Toggle */}
-                  <div className="py-2 border-t border-aviation-border-panel">
+                  <div className="py-2 border-t border-border-default">
                     <ThemeToggle />
                   </div>
 
                   {!isAuthenticated && (
-                    <div className="pt-4 border-t border-aviation-border-panel space-y-2">
+                    <div className="pt-4 border-t border-border-default space-y-2">
                       <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
                         <Button variant="ghost" className="w-full justify-start">
                           Sign In
                         </Button>
                       </Link>
                       <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)}>
-                        <Button className="w-full aviation-button-primary">Get Started</Button>
+                        <Button className="w-full button-primary">Get Started</Button>
                       </Link>
                     </div>
                   )}
@@ -550,39 +695,40 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -20, scale: 0.95 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                className="w-full max-w-2xl mx-4 bg-aviation-bg-primary border border-aviation-border-panel rounded-xl shadow-2xl overflow-hidden"
+                className="w-full max-w-2xl mx-4 bg-bg-primary border border-border-default rounded-xl shadow-2xl overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* Search Input */}
-                <div className="flex items-center gap-3 px-4 py-4 border-b border-aviation-border-panel">
-                  <Command className="w-5 h-5 text-aviation-text-muted" />
+                <div className="flex items-center gap-3 px-4 py-4 bg-bg-secondary border-b border-border-default">
+                  <Command className="w-5 h-5 text-text-muted shrink-0" />
                   <input
                     type="text"
                     placeholder="Search functions, agents, providers..."
-                    className="flex-1 text-base text-aviation-text-primary placeholder:text-aviation-text-dim bg-transparent focus:outline-none"
+                    className="flex-1 text-base text-text-primary placeholder:text-text-muted bg-bg-secondary focus:outline-none min-w-0"
                     autoFocus
                   />
-                  <kbd className="text-[10px] font-mono text-aviation-text-dim bg-aviation-bg-instrument px-2 py-1 rounded">
+                  <kbd className="hidden sm:block text-[10px] font-mono text-text-secondary bg-bg-primary px-2 py-1 rounded border border-border-subtle shrink-0">
                     ESC
                   </kbd>
                 </div>
 
                 {/* Quick Actions */}
                 <div className="p-2">
-                  <p className="px-3 py-2 text-xs font-semibold text-aviation-text-muted uppercase tracking-wider">
+                  <p className="px-3 py-2 text-xs font-semibold text-text-muted uppercase tracking-wider">
                     Quick Actions
                   </p>
                   <div className="space-y-1">
                     {QUICK_ACTIONS.map((action) => (
                       <button
                         key={action.key}
-                        className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-aviation-text-secondary hover:text-aviation-text-primary hover:bg-aviation-bg-instrument transition-colors"
+                        onClick={() => action.action(navigate, setShowCommandPalette)}
+                        className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors"
                       >
                         <div className="flex items-center gap-3">
                           <action.icon className="w-4 h-4" />
                           <span>{action.label}</span>
                         </div>
-                        <kbd className="text-[10px] font-mono text-aviation-text-dim bg-aviation-bg-instrument px-1.5 py-0.5 rounded">
+                        <kbd className="text-[10px] font-mono text-text-muted bg-bg-secondary px-1.5 py-0.5 rounded">
                           ⌘{action.key.toUpperCase()}
                         </kbd>
                       </button>
@@ -591,13 +737,13 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                 </div>
 
                 {/* Footer */}
-                <div className="px-4 py-3 bg-aviation-bg-secondary border-t border-aviation-border-panel text-xs text-aviation-text-muted">
+                <div className="px-4 py-3 bg-bg-secondary border-t border-border-default text-xs text-text-muted">
                   <p className="flex items-center gap-2">
                     <span>Use</span>
-                    <kbd className="font-mono bg-aviation-bg-instrument px-1 py-0.5 rounded">↑</kbd>
-                    <kbd className="font-mono bg-aviation-bg-instrument px-1 py-0.5 rounded">↓</kbd>
+                    <kbd className="font-mono bg-bg-secondary px-1 py-0.5 rounded">↑</kbd>
+                    <kbd className="font-mono bg-bg-secondary px-1 py-0.5 rounded">↓</kbd>
                     <span>to navigate,</span>
-                    <kbd className="font-mono bg-aviation-bg-instrument px-1 py-0.5 rounded">↵</kbd>
+                    <kbd className="font-mono bg-bg-secondary px-1 py-0.5 rounded">↵</kbd>
                     <span>to select</span>
                   </p>
                 </div>

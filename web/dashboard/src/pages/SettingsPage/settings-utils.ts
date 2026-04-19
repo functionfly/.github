@@ -49,3 +49,60 @@ export const VALID_TABS = [
   'privacy',
 ] as const;
 export type SettingsTabValue = (typeof VALID_TABS)[number];
+
+/**
+ * Generate a shareable settings URL with hash-based tab routing.
+ * Long-term URL structure for maximum compatibility and shareability.
+ *
+ * @example
+ *   getSettingsUrl('traseputallaz', 'billing') // "/u/traseputallaz/settings#billing"
+ *   getSettingsUrl('traseputallaz')            // "/u/traseputallaz/settings#account"
+ */
+export function getSettingsUrl(
+  username: string,
+  tab?: SettingsTabValue
+): string {
+  const base = `/u/${username}/settings`;
+  return tab && tab !== 'account' ? `${base}#${tab}` : base;
+}
+
+/**
+ * Generate legacy path-based settings URL for backwards compatibility.
+ * Use only when you need the old-style /u/:username/settings/billing paths.
+ *
+ * @deprecated Prefer getSettingsUrl() for new code
+ */
+export function getSettingsUrlLegacy(
+  username: string,
+  tab?: SettingsTabValue
+): string {
+  if (tab && tab !== 'account') {
+    return `/u/${username}/settings/${tab}`;
+  }
+  return `/u/${username}/settings`;
+}
+
+/**
+ * Parse tab from full URL (handles both hash and legacy path formats).
+ * Priority: hash > path > query param > default
+ */
+export function parseTabFromUrl(url: string): SettingsTabValue {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    const hashTab = parsed.hash.replace('#', '');
+    if (hashTab && VALID_TABS.includes(hashTab as SettingsTabValue)) {
+      return hashTab as SettingsTabValue;
+    }
+    const pathMatch = parsed.pathname.match(/\/settings\/(\w+)$/);
+    if (pathMatch && VALID_TABS.includes(pathMatch[1] as SettingsTabValue)) {
+      return pathMatch[1] as SettingsTabValue;
+    }
+    const queryTab = parsed.searchParams.get('subtab');
+    if (queryTab && VALID_TABS.includes(queryTab as SettingsTabValue)) {
+      return queryTab as SettingsTabValue;
+    }
+  } catch {
+    // Invalid URL, return default
+  }
+  return 'account';
+}

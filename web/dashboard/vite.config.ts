@@ -13,12 +13,13 @@ function spaFallbackPlugin() {
     configureServer(server: any) {
       server.middlewares.use((req: any, res: any, next: () => void) => {
         const url = req.url?.split('?')[0] ?? '';
-        // Skip SPA fallback for real API proxy paths (/api, /api/, /v1) but not client routes like /api-keys
+        // Skip SPA fallback for real API proxy paths (/api, /api/, /v1, /docs) but not client routes like /api-keys
         if (
           req.method !== 'GET' ||
           url === '/api' ||
           url.startsWith('/api/') ||
           url.startsWith('/v1') ||
+          url.startsWith('/docs') ||
           url.startsWith('/src') ||
           url.startsWith('/@') ||
           url.startsWith('/node_modules') ||
@@ -29,6 +30,46 @@ function spaFallbackPlugin() {
         const index = path.join(server.config.root, 'index.html');
         if (!fs.existsSync(index)) return next();
         req.url = '/index.html';
+        next();
+      });
+    },
+  };
+}
+
+/** Serve docs static files from web/docs/dist during development */
+function docsStaticPlugin() {
+  return {
+    name: 'docs-static',
+    configureServer(server: any) {
+      const docsDistPath = path.resolve(__dirname, '../docs/dist');
+      server.middlewares.use('/docs', (req: any, res: any, next: () => void) => {
+        if (req.method !== 'GET') return next();
+        
+        let filePath = req.url.replace(/^\/docs/, '');
+        if (!filePath || filePath === '/') filePath = '/index.html';
+        
+        const fullPath = path.join(docsDistPath, filePath);
+        if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+          const content = fs.readFileSync(fullPath);
+          const ext = path.extname(fullPath);
+          const contentType = {
+            '.html': 'text/html',
+            '.css': 'text/css',
+            '.js': 'application/javascript',
+            '.json': 'application/json',
+            '.svg': 'image/svg+xml',
+          }[ext] || 'application/octet-stream';
+          res.setHeader('Content-Type', contentType);
+          res.end(content);
+          return;
+        }
+        // For non-file paths (SPA routes), serve index.html
+        const indexPath = path.join(docsDistPath, 'index.html');
+        if (fs.existsSync(indexPath)) {
+          res.setHeader('Content-Type', 'text/html');
+          res.end(fs.readFileSync(indexPath));
+          return;
+        }
         next();
       });
     },
@@ -109,9 +150,9 @@ console.log('[Vite] API proxy target:', apiProxyTarget);
 const DEV_CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnfonts.com https://www.cdnfonts.com",
   "img-src 'self' data: https: blob:",
-  "font-src 'self' https://fonts.gstatic.com",
+  "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnfonts.com https://www.cdnfonts.com",
   "connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://va.vercel-scripts.com http://localhost:8080 http://localhost:8081 ws://localhost:8081 wss://localhost:8081 https: ws: wss:",
   "worker-src 'self' blob:",
   "frame-ancestors 'none'",
@@ -124,6 +165,7 @@ export default defineConfig({
   base: '/',
   plugins: [
     spaFallbackPlugin(),
+    docsStaticPlugin(),
     cloudflarePagesPlugin(),
     sitemapPlugin(),
     react(),
@@ -140,6 +182,16 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+
+    },
+    // Prefer ESM builds to avoid CJS/scheduler issues
+    conditions: ['import', 'module', 'es2020', 'es2015', 'require'],
+    mainFields: ['module', 'browser', 'main'],
+  },
+  optimizeDeps: {
+    include: ['three', '@react-three/fiber', '@react-three/drei', '@react-three/postprocessing'],
+    esbuildOptions: {
+      target: 'es2020',
     },
   },
   build: {

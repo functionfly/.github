@@ -1005,4 +1005,107 @@ export const agentApi = {
         created_at: string;
       };
     }>('/v1/marketplace/purchase', data),
+
+  // ---------------------------------------------------------------------------
+  // SEBG — Self-Evolving Backend Graph
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Get SEBG tenant configuration.
+   * GET /v1/agent/{agent_id}/sebg/config
+   */
+  getSEBGConfig: (agentId: string) =>
+    apiClient.get<{
+      ok: boolean;
+      config: {
+        id: string;
+        tenant_id: string;
+        autonomy_tier: 'manual' | 'assisted' | 'fully_autonomous';
+        revenue_share_fee_pct: number;
+        max_risk_score_auto_apply: number;
+        is_active: boolean;
+        created_at: string;
+        updated_at: string;
+      };
+    }>(`/v1/agent/${agentId}/sebg/config`),
+
+  /**
+   * Update SEBG autonomy tier.
+   * PUT /v1/agent/{agent_id}/sebg/tier
+   */
+  updateSEBGTier: (
+    agentId: string,
+    tier: 'manual' | 'assisted' | 'fully_autonomous'
+  ) =>
+    apiClient.put<{
+      ok: boolean;
+      config: {
+        autonomy_tier: string;
+        max_risk_score_auto_apply: number;
+      };
+    }>(`/v1/agent/${agentId}/sebg/tier`, { tier }),
+
+  /**
+   * List SEBG modification proposals for an agent.
+   * GET /v1/agent/{agent_id}/sebg/proposals
+   */
+  listSEBGProposals: (
+    agentId: string,
+    params?: { status?: string; limit?: number; offset?: number }
+  ) =>
+    apiClient.get<{
+      ok: boolean;
+      proposals: SEBGModificationProposal[];
+      total: number;
+      limit: number;
+      offset: number;
+    }>(`/v1/agent/${agentId}/sebg/proposals`, { params }),
+
+  /**
+   * Approve or reject a SEBG modification proposal.
+   * POST /v1/agent/{agent_id}/sebg/proposals/{proposal_id}/decide
+   */
+  decideSEBGProposal: (
+    agentId: string,
+    proposalId: string,
+    decision: 'approved' | 'rejected'
+  ) =>
+    apiClient.post<{
+      ok: boolean;
+      proposal_id: string;
+      decision: string;
+    }>(`/v1/agent/${agentId}/sebg/proposals/${proposalId}/decide`, {
+      decision,
+    }),
+
+  /**
+   * Trigger the full SEBG evolve pipeline.
+   * POST /v1/agent/{agent_id}/sebg/evolve
+   */
+  triggerSEBGEvolve: (agentId: string) =>
+    apiClient.post<{
+      ok: boolean;
+      result: {
+        status: string;
+        agent_id: string;
+        graphs_analyzed: number;
+        applied: number;
+        pending: number;
+      };
+    }>(`/v1/agent/${agentId}/sebg/evolve`),
+
+  /**
+   * Get SEBG ROI summary.
+   * GET /v1/agent/{agent_id}/sebg/roi
+   */
+  getSEBGROI: (agentId: string) =>
+    apiClient.get<{
+      ok: boolean;
+      roi: {
+        tenant_id: string;
+        applied_count: number;
+        pending_count: number;
+        revenue_lift_cents: number;
+      };
+    }>(`/v1/agent/${agentId}/sebg/roi`),
 };

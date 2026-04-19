@@ -85,9 +85,9 @@ export function NotificationsSettingsTab() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="ff-card-velocity">
         <CardHeader>
-          <CardTitle>Notification Preferences</CardTitle>
+          <CardTitle className="font-display">Notification Preferences</CardTitle>
           <CardDescription className="text-text-secondary">
             Choose what notifications you want to receive
           </CardDescription>
@@ -98,7 +98,7 @@ export function NotificationsSettingsTab() {
             {NOTIFICATION_OPTIONS.map((item) => (
               <div key={item.key} className="flex items-center justify-between gap-4">
                 <div className="min-w-0 flex-1">
-                  <h4 className="font-medium text-white">{item.label}</h4>
+                  <h4 className="font-medium text-text-primary">{item.label}</h4>
                   <p className="text-sm text-text-muted">{item.description}</p>
                 </div>
                 <div className="shrink-0">

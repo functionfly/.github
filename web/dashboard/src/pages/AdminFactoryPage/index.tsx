@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
   Play,
@@ -40,13 +39,14 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
-  factoryApi,
-  type FactoryStatus,
-  type PendingReview,
-  type FactoryRun,
-} from "@/api/factory";
+  useFactoryStatus,
+  usePendingReviews,
+  useTriggerPipelineRun,
+  useApproveOpportunity,
+  useRejectOpportunity,
+} from "@/hooks";
+import type { PendingReview, FactoryRun } from "@/api/factory";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 
 /**
  * AdminFactoryPage - Factory status monitoring and review queue management
@@ -59,98 +59,38 @@ import { toast } from "sonner";
  * - Review queue management UI
  */
 export function AdminFactoryPage() {
-  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("status");
   const [selectedReview, setSelectedReview] = useState<PendingReview | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectDialog, setShowRejectDialog] = useState(false);
 
-  // Fetch factory status (queryFn must not return undefined for React Query v5)
+  // Use hooks instead of raw queries/mutations
   const {
     data: factoryStatus,
     isLoading: statusLoading,
     error: statusError,
     refetch: refetchStatus,
-  } = useQuery({
-    queryKey: ["factory-status"],
-    queryFn: async () => {
-      const data = await factoryApi.getStatus();
-      return data ?? null;
-    },
-    refetchInterval: 30000, // Refresh every 30 seconds
-  });
+  } = useFactoryStatus({ refetchInterval: 30000 });
 
-  // Fetch pending reviews (queryFn must not return undefined for React Query v5)
   const {
     data: pendingReviews,
     isLoading: reviewsLoading,
-    refetch: refetchReviews,
-  } = useQuery({
-    queryKey: ["factory-pending-reviews"],
-    queryFn: async () => {
-      const data = await factoryApi.listPendingReviews({ limit: 50 });
-      return data ?? { reviews: [], total: 0, limit: 50, offset: 0 };
-    },
-    refetchInterval: 15000, // Refresh every 15 seconds
-  });
+  } = usePendingReviews({ limit: 50 }, { refetchInterval: 15000 });
 
-  // Pipeline run mutation
-  const runPipelineMutation = useMutation({
-    mutationFn: factoryApi.triggerPipelineRun,
-    onSuccess: (data) => {
-      toast.success("Pipeline run initiated", {
-        description: data.run?.id ? `Run ID: ${data.run.id}` : "Pipeline started successfully",
-      });
-      refetchStatus();
-    },
-    onError: (error: Error) => {
-      toast.error("Failed to start pipeline", {
-        description: error.message || "An error occurred",
-      });
-    },
-  });
-
-  // Approve opportunity mutation
-  const approveMutation = useMutation({
-    mutationFn: ({ id }: { id: string }) => factoryApi.approveOpportunity(id),
-    onSuccess: () => {
-      toast.success("Opportunity approved");
-      queryClient.invalidateQueries({ queryKey: ["factory-pending-reviews"] });
-      queryClient.invalidateQueries({ queryKey: ["factory-status"] });
-      setSelectedReview(null);
-    },
-    onError: (error: Error) => {
-      toast.error("Failed to approve opportunity", {
-        description: error.message,
-      });
-    },
-  });
-
-  // Reject opportunity mutation
-  const rejectMutation = useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
-      factoryApi.rejectOpportunity(id, reason),
-    onSuccess: () => {
-      toast.success("Opportunity rejected");
-      queryClient.invalidateQueries({ queryKey: ["factory-pending-reviews"] });
-      queryClient.invalidateQueries({ queryKey: ["factory-status"] });
-      setShowRejectDialog(false);
-      setSelectedReview(null);
-      setRejectReason("");
-    },
-    onError: (error: Error) => {
-      toast.error("Failed to reject opportunity", {
-        description: error.message,
-      });
-    },
-  });
+  const runPipelineMutation = useTriggerPipelineRun();
+  const approveMutation = useApproveOpportunity();
+  const rejectMutation = useRejectOpportunity();
 
   const handleRunPipeline = () => {
     runPipelineMutation.mutate();
   };
 
   const handleApprove = (review: PendingReview) => {
-    approveMutation.mutate({ id: review.id });
+    approveMutation.mutate(review.id, {
+      onSuccess: () => {
+        setSelectedReview(null);
+      },
+    });
   };
 
   const handleRejectClick = (review: PendingReview) => {
@@ -160,7 +100,16 @@ export function AdminFactoryPage() {
 
   const handleConfirmReject = () => {
     if (!selectedReview || !rejectReason.trim()) return;
-    rejectMutation.mutate({ id: selectedReview.id, reason: rejectReason });
+    rejectMutation.mutate(
+      { id: selectedReview.id, reason: rejectReason },
+      {
+        onSuccess: () => {
+          setShowRejectDialog(false);
+          setSelectedReview(null);
+          setRejectReason("");
+        },
+      }
+    );
   };
 
   const getStatusColor = (status?: string) => {

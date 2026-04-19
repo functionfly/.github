@@ -22,7 +22,7 @@ export function FunctionEditorActionBar({ editor }: Props) {
   } = editor;
 
   return (
-    <div className="sticky top-0 z-40 border-b border-border-subtle bg-bg-secondary/95 backdrop-blur-xl dark:border-white/10 dark:bg-[rgba(10,10,15,0.9)]">
+    <div className="sticky top-0 z-40 border-b border-border-subtle bg-bg-secondary/95 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
         <div className="flex items-center gap-2 min-w-0">
           <Button
@@ -35,22 +35,22 @@ export function FunctionEditorActionBar({ editor }: Props) {
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <nav className="flex items-center gap-1 text-sm min-w-0" aria-label="Breadcrumb">
-            <Link
-              to="/functions"
-              className="text-text-muted hover:text-text-primary transition-colors truncate"
-            >
-              Functions
-            </Link>
-            <ChevronRight className="w-3.5 h-3.5 text-text-muted shrink-0" />
-            <span className="text-text-primary font-medium truncate">
-              {isEditing ? functionName || 'Edit Function' : functionName || 'New Function'}
-            </span>
+          <Link
+            to="/functions"
+            className="text-text-muted hover:text-[#FF6B35] transition-colors truncate"
+          >
+            Functions
+          </Link>
+          <ChevronRight className="w-3.5 h-3.5 text-text-muted shrink-0" />
+          <span className="text-[#FF6B35] font-medium truncate">
+            {isEditing ? functionName || 'Edit Function' : functionName || 'New Function'}
+          </span>
           </nav>
         </div>
 
         <div className="hidden sm:flex items-center gap-2 text-xs text-text-muted">
-          {isLoading ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+            {isLoading ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#FF6B35]" />
           ) : isDirty ? (
             <span className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
@@ -107,7 +107,7 @@ export function FunctionEditorActionBar({ editor }: Props) {
             disabled={isLoading}
             className="gap-1.5 font-semibold"
             style={{
-              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              background: 'linear-gradient(135deg, #FF6B35 0%, #FF4F5E 100%)',
               color: '#fff',
               border: 'none',
             }}

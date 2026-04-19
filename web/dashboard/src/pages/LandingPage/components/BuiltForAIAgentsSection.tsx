@@ -106,7 +106,7 @@ export function BuiltForAIAgentsSection() {
             <Bot className="w-4 h-4" />
           </Link>
           <p className="text-text-secondary text-sm mt-4">
-            Starting at $49/month • 14-day free trial • No credit card required
+            Starting at $29/month • 14-day free trial • No credit card required
           </p>
         </div>
       </div>

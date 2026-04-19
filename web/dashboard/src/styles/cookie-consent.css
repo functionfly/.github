@@ -1,5 +1,5 @@
 /* Custom Cookie Consent Styling */
-/* Note: Inter is already loaded via index.html preload — no duplicate import needed */
+/* Note: Instrument Sans is loaded via index.html preload — no duplicate import needed */
 
 /* Base Cookie Consent Overrides */
 :root {
@@ -13,47 +13,32 @@
   --cc-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
-/* Consent Modal Container */
-.cc-banner {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+/* Consent Modal (banner) - using #cc-main prefix */
+#cc-main .cm {
   background: var(--cc-bg-color) !important;
   border: 1px solid var(--cc-border-color) !important;
   border-radius: var(--cc-border-radius) !important;
   box-shadow: var(--cc-shadow) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
-  overflow: hidden;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
 }
 
-/* Consent Modal Content */
-.cc-banner .cm {
-  padding: 24px !important;
-  color: var(--cc-text-color) !important;
-}
-
-.cc-banner .cm__title {
+#cc-main .cm__title {
   font-size: 18px !important;
   font-weight: 600 !important;
   color: var(--cc-text-color) !important;
-  margin-bottom: 8px !important;
   line-height: 1.4 !important;
 }
 
-.cc-banner .cm__desc {
+#cc-main .cm__desc {
   font-size: 14px !important;
   line-height: 1.6 !important;
   color: var(--cc-muted-text) !important;
-  margin-bottom: 20px !important;
 }
 
 /* Consent Modal Buttons */
-.cc-banner .cm__btns {
-  display: flex !important;
-  gap: 12px !important;
-  flex-wrap: wrap !important;
-}
-
-.cc-banner .cm__btn {
+#cc-main .cm__btn {
   background: linear-gradient(135deg, var(--cc-primary-color), var(--cc-secondary-color)) !important;
   border: none !important;
   border-radius: 8px !important;
@@ -64,153 +49,144 @@
   cursor: pointer !important;
   transition: all 0.2s ease !important;
   box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.3) !important;
-  text-decoration: none !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  min-height: 40px !important;
 }
 
-.cc-banner .cm__btn:hover {
+#cc-main .cm__btn:hover {
   transform: translateY(-1px) !important;
   box-shadow: 0 6px 20px 0 rgba(99, 102, 241, 0.4) !important;
 }
 
-.cc-banner .cm__btn:focus {
-  outline: 2px solid var(--cc-primary-color) !important;
-  outline-offset: 2px !important;
-}
-
 /* Secondary buttons */
-.cc-banner .cm__btn[data-role="secondary"] {
+#cc-main .cm__btn--secondary {
   background: rgba(255, 255, 255, 0.1) !important;
   border: 1px solid rgba(255, 255, 255, 0.2) !important;
   color: var(--cc-text-color) !important;
 }
 
-.cc-banner .cm__btn[data-role="secondary"]:hover {
+#cc-main .cm__btn--secondary:hover {
   background: rgba(255, 255, 255, 0.15) !important;
   border-color: rgba(255, 255, 255, 0.3) !important;
 }
 
-/* Preferences Modal */
-.cc-modal {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-}
-
-.cc-modal .pm {
+/* Preferences Modal - use #cc-main prefix to match library */
+#cc-main .pm {
   background: var(--cc-bg-color) !important;
   border: 1px solid var(--cc-border-color) !important;
   border-radius: var(--cc-border-radius) !important;
   box-shadow: var(--cc-shadow) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
-  max-width: 480px !important;
+  max-width: 600px !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
 }
 
 /* Preferences Modal Header */
-.cc-modal .pm__header {
-  padding: 24px 24px 0 24px !important;
+#cc-main .pm__header {
+  padding: 24px 32px 16px 32px !important;
   border-bottom: 1px solid var(--cc-border-color) !important;
 }
 
-.cc-modal .pm__title {
+#cc-main .pm__title {
   font-size: 20px !important;
   font-weight: 600 !important;
   color: var(--cc-text-color) !important;
-  margin-bottom: 8px !important;
 }
 
 /* Preferences Modal Content */
-.cc-modal .pm__body {
-  padding: 24px !important;
+#cc-main .pm__body {
+  padding: 24px 32px !important;
   color: var(--cc-text-color) !important;
 }
 
-.cc-modal .pm__section {
-  margin-bottom: 24px !important;
+/* Section blocks - more padding and breathing room */
+#cc-main .pm__section {
+  margin-bottom: 16px !important;
+  padding: 20px 24px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--cc-border-color) !important;
 }
 
-.cc-modal .pm__section-title {
+/* First section (intro text) - no background */
+#cc-main .pm__section:first-child {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 0 16px 0 !important;
+}
+
+/* Toggle sections (cookie categories) */
+#cc-main .pm__section--toggle {
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Section titles inside toggles - use flexbox for proper spacing */
+#cc-main .pm__section--toggle .pm__section-title {
+  padding: 16px 80px 16px 20px !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: var(--cc-text-color) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: none !important;
+  min-height: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+}
+
+/* Badge inside toggle titles - custom styling with proper spacing */
+#cc-main .pm__section--toggle .pm__section-title .pm__badge {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(139, 92, 246, 0.3)) !important;
+  color: #e0e7ff !important;
+  border: 1px solid rgba(139, 92, 246, 0.4) !important;
+  border-radius: 6px !important;
+  padding: 4px 10px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.5px !important;
+  text-transform: uppercase !important;
+  order: -1 !important;
+  margin: 0 !important;
+  flex-shrink: 0 !important;
+}
+
+/* Section descriptions inside toggles */
+#cc-main .pm__section--toggle .pm__section-desc {
+  padding: 16px 20px !important;
+  font-size: 14px !important;
+  line-height: 1.6 !important;
+  color: var(--cc-muted-text) !important;
+}
+
+/* Regular section titles (non-toggle) */
+#cc-main .pm__section-title {
   font-size: 16px !important;
   font-weight: 600 !important;
   color: var(--cc-text-color) !important;
   margin-bottom: 8px !important;
 }
 
-.cc-modal .pm__section-desc {
+/* Regular section descriptions */
+#cc-main .pm__section-desc {
   font-size: 14px !important;
   line-height: 1.6 !important;
   color: var(--cc-muted-text) !important;
-  margin-bottom: 16px !important;
-}
-
-/* Category Toggles */
-.cc-modal .pm__toggle {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  padding: 12px 0 !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
-}
-
-.cc-modal .pm__toggle:last-child {
-  border-bottom: none !important;
-}
-
-.cc-modal .pm__toggle-title {
-  font-size: 14px !important;
-  font-weight: 500 !important;
-  color: var(--cc-text-color) !important;
-  margin-bottom: 2px !important;
-}
-
-.cc-modal .pm__toggle-desc {
-  font-size: 12px !important;
-  color: var(--cc-muted-text) !important;
-}
-
-/* Custom Toggle Switch */
-.cc-modal .pm__toggle input[type="checkbox"] {
-  appearance: none !important;
-  width: 44px !important;
-  height: 24px !important;
-  background: rgba(255, 255, 255, 0.1) !important;
-  border-radius: 12px !important;
-  position: relative !important;
-  cursor: pointer !important;
-  transition: all 0.2s ease !important;
-}
-
-.cc-modal .pm__toggle input[type="checkbox"]:checked {
-  background: linear-gradient(135deg, var(--cc-primary-color), var(--cc-secondary-color)) !important;
-}
-
-.cc-modal .pm__toggle input[type="checkbox"]:after {
-  content: '' !important;
-  position: absolute !important;
-  top: 2px !important;
-  left: 2px !important;
-  width: 20px !important;
-  height: 20px !important;
-  background: white !important;
-  border-radius: 50% !important;
-  transition: all 0.2s ease !important;
-}
-
-.cc-modal .pm__toggle input[type="checkbox"]:checked:after {
-  transform: translateX(20px) !important;
 }
 
 /* Preferences Modal Footer */
-.cc-modal .pm__btns {
-  padding: 0 24px 24px 24px !important;
+#cc-main .pm__footer {
+  padding: 16px 32px 24px 32px !important;
+  border-top: 1px solid var(--cc-border-color) !important;
+}
+
+#cc-main .pm__btns {
   display: flex !important;
   gap: 12px !important;
   flex-wrap: wrap !important;
 }
 
-.cc-modal .pm__btn {
+#cc-main .pm__btn {
   flex: 1 !important;
   background: linear-gradient(135deg, var(--cc-primary-color), var(--cc-secondary-color)) !important;
   border: none !important;
@@ -218,7 +194,7 @@
   color: white !important;
   font-weight: 500 !important;
   font-size: 14px !important;
-  padding: 12px 16px !important;
+  padding: 12px 20px !important;
   cursor: pointer !important;
   transition: all 0.2s ease !important;
   box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.3) !important;
@@ -229,64 +205,59 @@
   min-height: 44px !important;
 }
 
-.cc-modal .pm__btn:hover {
+#cc-main .pm__btn:hover {
   transform: translateY(-1px) !important;
   box-shadow: 0 6px 20px 0 rgba(99, 102, 241, 0.4) !important;
 }
 
-.cc-modal .pm__btn[data-role="secondary"] {
+#cc-main .pm__btn--secondary {
   background: rgba(255, 255, 255, 0.1) !important;
   border: 1px solid rgba(255, 255, 255, 0.2) !important;
   color: var(--cc-text-color) !important;
 }
 
-.cc-modal .pm__btn[data-role="secondary"]:hover {
+#cc-main .pm__btn--secondary:hover {
   background: rgba(255, 255, 255, 0.15) !important;
   border-color: rgba(255, 255, 255, 0.3) !important;
 }
 
 /* Close Button */
-.cc-modal .pm__close-btn,
-.cc-banner .cm__close-btn {
-  position: absolute !important;
-  top: 16px !important;
-  right: 16px !important;
+#cc-main .pm__close-btn {
   background: rgba(255, 255, 255, 0.1) !important;
-  border: none !important;
-  border-radius: 6px !important;
-  width: 32px !important;
-  height: 32px !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 8px !important;
+  width: 36px !important;
+  height: 36px !important;
   cursor: pointer !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   transition: all 0.2s ease !important;
-  color: var(--cc-muted-text) !important;
 }
 
-.cc-modal .pm__close-btn:hover,
-.cc-banner .cm__close-btn:hover {
+#cc-main .pm__close-btn:hover {
   background: rgba(255, 255, 255, 0.2) !important;
-  color: var(--cc-text-color) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
 }
 
 /* Cookie Table Styling */
-.cc-modal .pm__table {
+#cc-main .pm__table {
   background: rgba(255, 255, 255, 0.05) !important;
   border: 1px solid var(--cc-border-color) !important;
   border-radius: 8px !important;
   overflow: hidden !important;
   margin-top: 16px !important;
+  width: 100% !important;
 }
 
-.cc-modal .pm__table th,
-.cc-modal .pm__table td {
+#cc-main .pm__table th,
+#cc-main .pm__table td {
   padding: 12px 16px !important;
   border-bottom: 1px solid var(--cc-border-color) !important;
   color: var(--cc-text-color) !important;
 }
 
-.cc-modal .pm__table th {
+#cc-main .pm__table th {
   background: rgba(255, 255, 255, 0.05) !important;
   font-weight: 600 !important;
   font-size: 12px !important;
@@ -294,39 +265,41 @@
   letter-spacing: 0.05em !important;
 }
 
-.cc-modal .pm__table td {
+#cc-main .pm__table td {
   font-size: 13px !important;
   color: var(--cc-muted-text) !important;
 }
 
-.cc-modal .pm__table tr:last-child td {
+#cc-main .pm__table tr:last-child td {
   border-bottom: none !important;
 }
 
+
+
 /* Responsive Design */
 @media (max-width: 768px) {
-  .cc-banner .cm {
+  #cc-main .cm {
     padding: 20px !important;
   }
 
-  .cc-banner .cm__btns {
+  #cc-main .cm__btns {
     flex-direction: column !important;
   }
 
-  .cc-banner .cm__btn {
+  #cc-main .cm__btn {
     width: 100% !important;
   }
 
-  .cc-modal .pm {
+  #cc-main .pm {
     max-width: 95vw !important;
     margin: 20px !important;
   }
 
-  .cc-modal .pm__btns {
+  #cc-main .pm__btns {
     flex-direction: column !important;
   }
 
-  .cc-modal .pm__btn {
+  #cc-main .pm__btn {
     width: 100% !important;
   }
 }
@@ -380,16 +353,33 @@
   }
 }
 
-.cc-banner {
-  animation: slideInUp 0.5s ease-out;
-}
-
-.cc-modal {
-  animation: fadeIn 0.3s ease-out;
-}
-
 /* Enhanced button hover effects */
-.cc-banner .cm__btn:hover,
-.cc-modal .pm__btn:hover {
+#cc-main .cm__btn:hover,
+#cc-main .pm__btn:hover {
   animation: pulse-glow 2s infinite;
+}
+
+/* ===== OVERRIDE BADGE STYLING IN TOGGLE TITLES ===== */
+/* Target the badge specifically inside cookie category toggle headers */
+#cc-main .pm__section--toggle .pm__section-title-wrapper .pm__section-title .pm__badge,
+#cc-main .pm__section--toggle .pm__section-title > .pm__badge,
+#cc-main .pm__section-title[data-role="toggle"] .pm__badge {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(139, 92, 246, 0.25)) !important;
+  color: #e0e7ff !important;
+  border: 1px solid rgba(139, 92, 246, 0.5) !important;
+  border-radius: 4px !important;
+  padding: 2px 8px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.5px !important;
+  text-transform: uppercase !important;
+  margin-left: 0 !important;
+  margin-right: 12px !important;
+  position: static !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  height: auto !important;
+  min-width: auto !important;
+  flex-shrink: 0 !important;
 }

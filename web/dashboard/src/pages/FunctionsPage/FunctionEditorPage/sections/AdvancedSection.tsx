@@ -97,14 +97,14 @@ export function AdvancedSection({ editor }: Props) {
                       }}
                       className={`relative flex flex-col gap-0.5 rounded-lg border-2 p-2.5 text-left transition-all duration-200 ${
                         selected
-                          ? 'border-indigo-600 bg-indigo-50 shadow-sm dark:border-indigo-400/90 dark:bg-indigo-500/25 dark:shadow-[0_0_0_1px_rgba(129,140,248,0.35)]'
+                          ? 'border-[#FF6B35] bg-[#FFF1EB] shadow-sm dark:border-[#FF8C42]/90 dark:bg-[#FF6B35]/25 dark:shadow-[0_0_0_1px_rgba(255,140,66,0.35)]'
                           : 'border-transparent bg-bg-tertiary hover:border-border-default hover:bg-bg-hover'
                       }`}
                       aria-pressed={selected}
                     >
                       {selected ? (
                         <span
-                          className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white shadow-sm dark:bg-indigo-500"
+                          className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#FF6B35] text-white shadow-sm dark:bg-[#FF8C42]"
                           aria-hidden
                         >
                           <Check className="h-3 w-3" strokeWidth={2.5} />

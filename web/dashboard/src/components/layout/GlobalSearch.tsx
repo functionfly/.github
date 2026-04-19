@@ -195,28 +195,29 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl bg-bg-secondary border-border-subtle p-0 gap-0">
-        <DialogHeader className="px-6 py-4 border-b border-border-subtle">
+      <DialogContent className="max-w-2xl bg-bg-primary border border-border-default shadow-2xl p-0 gap-0 [&>button]:hidden">
+        <DialogHeader className="px-6 py-4 bg-bg-secondary border-b border-border-subtle">
           <DialogTitle className="sr-only">Global Search</DialogTitle>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
-            <Input
+          <div className="relative flex items-center">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted pointer-events-none" />
+            <input
+              type="text"
               placeholder="Search functions, providers, pages..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="pl-10 pr-12 bg-transparent border-none text-text-primary placeholder:text-text-muted focus:ring-0"
+              className="w-full pl-10 pr-12 py-3 bg-bg-primary border border-border-subtle rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
               autoFocus
             />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
-              <kbd className="px-2 py-1 text-xs bg-bg-tertiary/60 rounded border border-border-subtle">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
+              <kbd className="px-2 py-1 text-xs text-text-muted bg-bg-secondary rounded border border-border-subtle">
                 <Command className="w-3 h-3 inline mr-1" />K
               </kbd>
             </div>
           </div>
         </DialogHeader>
 
-        <div className="max-h-96 overflow-y-auto">
+        <div className="max-h-96 overflow-y-auto bg-bg-primary">
           {filteredResults.length === 0 ? (
             <div className="px-6 py-8 text-center text-text-muted">
               <Search className="w-12 h-12 mx-auto mb-4 opacity-50" />

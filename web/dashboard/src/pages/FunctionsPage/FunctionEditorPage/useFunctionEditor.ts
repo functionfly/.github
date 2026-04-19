@@ -22,6 +22,7 @@ import type {
   Visibility,
 } from './types';
 import { slugify } from './utils';
+import { validateCode, type ValidationIssue } from './utils/codeValidation';
 
 export function useFunctionEditor() {
   const navigate = useNavigate();
@@ -105,6 +106,7 @@ export function useFunctionEditor() {
   const [isTesting, setIsTesting] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [draftTimestamp, setDraftTimestamp] = useState<Date | null>(null);
   const [currentDeploymentId, setCurrentDeploymentId] = useState<string | null>(null);
   const [deploymentStatus, setDeploymentStatus] = useState<string | null>(null);
   const [logs, setLogs] = useState<DeploymentLog[]>([
@@ -126,6 +128,22 @@ export function useFunctionEditor() {
   const [revealGateOpen, setRevealGateOpen] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Code validation state
+  const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
+  const [showValidationPanel, setShowValidationPanel] = useState(false);
+
+  // Test panel states
+  const [testInput, setTestInput] = useState<string>('{}');
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    output?: unknown;
+    error?: string;
+    executionTimeMs?: number;
+    coldStartMs?: number;
+    logs?: { level: string; message: string }[];
+  } | null>(null);
+  const [testTab, setTestTab] = useState<'input' | 'output'>('input');
 
   const slugManuallyEdited = useRef(false);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -164,6 +182,9 @@ export function useFunctionEditor() {
         // Show restore prompt if there's a meaningful draft
         if (d.functionName || d.code) {
           setShowDraftRestorePrompt(true);
+          if (d.savedAt) {
+            setDraftTimestamp(new Date(d.savedAt));
+          }
         }
       }
     } catch {
@@ -357,14 +378,44 @@ export function useFunctionEditor() {
     [markDirty]
   );
 
+  // Smart defaults based on runtime characteristics
+  const getRuntimeDefaults = useCallback((r: Runtime) => {
+    switch (r) {
+      case 'python':
+        return { memoryMb: 256, timeoutMs: 30000 }; // Python needs more memory for imports
+      case 'python-wasm':
+        return { memoryMb: 128, timeoutMs: 15000 }; // MicroPython is lighter
+      case 'rust-wasm':
+      case 'browser-wasm':
+        return { memoryMb: 64, timeoutMs: 5000 }; // WASM is efficient
+      case 'go':
+        return { memoryMb: 128, timeoutMs: 10000 }; // Go is fast
+      case 'deno':
+      case 'bun':
+        return { memoryMb: 128, timeoutMs: 10000 }; // Modern JS runtimes
+      case 'typescript':
+      case 'javascript':
+      default:
+        return { memoryMb: 128, timeoutMs: 30000 }; // Default
+    }
+  }, []);
+
   const handleRuntimeChange = useCallback(
     (r: Runtime) => {
       setRuntime(r);
       setRuntimeVersion(RUNTIME_VERSIONS[r][0]);
       setCode(CODE_TEMPLATES[r]);
+      // Apply smart defaults for new functions only
+      if (!isEditing) {
+        const defaults = getRuntimeDefaults(r);
+        setResources((prev) => ({
+          ...prev,
+          ...defaults,
+        }));
+      }
       markDirty();
     },
-    [markDirty]
+    [markDirty, isEditing, getRuntimeDefaults]
   );
 
   const handleProviderToggle = useCallback(
@@ -482,12 +533,21 @@ export function useFunctionEditor() {
         errs.deployBackend = 'Select a deploy backend.';
       }
     }
+
+    // Add code validation errors
+    const validation = validateCode(code, runtime);
+    const codeErrors = validation.issues.filter((i) => i.type === 'error');
+    if (codeErrors.length > 0) {
+      errs.code = `Code validation: ${codeErrors[0].message}`;
+    }
+
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }, [
     functionName,
     slug,
     code,
+    runtime,
     httpTrigger,
     isEditing,
     deployBackendsLoading,
@@ -600,13 +660,22 @@ export function useFunctionEditor() {
     setIsTesting(true);
     addLog('info', 'Running test…');
     try {
+      let parsedInput: Record<string, unknown> = {};
+      try {
+        parsedInput = JSON.parse(testInput);
+      } catch {
+        addLog('warn', 'Invalid JSON input, using empty object');
+      }
+
       const testData: TestFunctionRequest = {
         functionId: isEditing ? id : undefined,
         code: isEditing ? undefined : code,
         envVars: envVars.map(({ key, value, isSecret }) => ({ key, value, isSecret })),
-        testInput: {},
+        testInput: parsedInput,
       };
       const result = await functionsApi.test(testData);
+      setTestResult(result);
+      setTestTab('output');
       if (result.success) {
         addLog('success', `Test passed in ${result.executionTimeMs}ms`);
         if (result.output) addLog('info', `Output: ${JSON.stringify(result.output)}`);
@@ -616,21 +685,54 @@ export function useFunctionEditor() {
       result.logs.forEach((l) => addLog(l.level as DeploymentLog['level'], l.message));
     } catch (err) {
       addLog('error', `Test error: ${err}`);
+      setTestResult({ success: false, error: String(err) });
     } finally {
       setIsTesting(false);
     }
-  }, [isEditing, id, code, envVars, addLog]);
+  }, [isEditing, id, code, envVars, testInput, addLog]);
+
+  // Keyboard shortcuts
+  const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // Save shortcut
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         void handleSaveDraft();
       }
+
+      // Test shortcut: Ctrl/Cmd + Enter
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        void handleTest();
+      }
+
+      // Deploy shortcut: Ctrl/Cmd + Shift + Enter
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Enter') {
+        e.preventDefault();
+        void handleDeploy();
+      }
+
+      // Help shortcut: ? (when not in an input)
+      if (e.key === '?' && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) {
+        e.preventDefault();
+        setKeyboardShortcutsOpen(true);
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [handleSaveDraft]);
+  }, [handleSaveDraft, handleTest, handleDeploy]);
+
+  // Code validation effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const result = validateCode(code, runtime);
+      setValidationIssues(result.issues);
+    }, 1000); // Debounce validation
+
+    return () => clearTimeout(timer);
+  }, [code, runtime]);
 
   const isLoading = isSaving || isDeploying || isTesting;
 
@@ -687,6 +789,7 @@ export function useFunctionEditor() {
     isLoading,
     isDirty,
     lastSaved,
+    draftTimestamp,
     logs,
     vaultPickerOpen,
     setVaultPickerOpen,
@@ -700,6 +803,11 @@ export function useFunctionEditor() {
     revealGateOpen,
     setRevealGateOpen,
     errors,
+    validationIssues,
+    showValidationPanel,
+    setShowValidationPanel,
+    keyboardShortcutsOpen,
+    setKeyboardShortcutsOpen,
     tagInputRef,
     showDraftRestorePrompt,
     handleRestoreDraft,
@@ -719,6 +827,11 @@ export function useFunctionEditor() {
     handleSaveDraft,
     handleDeploy,
     handleTest,
+    testInput,
+    setTestInput,
+    testResult,
+    testTab,
+    setTestTab,
     linkedAppId,
     deployBackendsLoading,
     filteredDeployBackends,

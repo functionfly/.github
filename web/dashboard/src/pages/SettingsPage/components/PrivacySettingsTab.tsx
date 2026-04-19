@@ -304,7 +304,9 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
         {/* Header with save button */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-text-primary">Profile Settings</h2>
+            <h2 className="font-display text-xl font-semibold bg-gradient-to-r from-brand-500 via-ff-afterburner to-brand-400 bg-clip-text text-transparent">
+              Profile Settings
+            </h2>
             <p className="text-sm text-text-muted">
               Manage your profile visibility, notifications, and privacy preferences
             </p>
@@ -312,7 +314,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
           <Button
             onClick={handleSaveAll}
             disabled={isSaving}
-            className="min-w-[120px]"
+            className="ff-btn-velocity min-w-[120px]"
           >
             {isSaving ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -324,9 +326,9 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
         </div>
 
         {/* Profile Visibility Section */}
-        <Card className="border-border-subtle">
+        <Card className="ff-card-velocity border-border-subtle">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="font-display text-lg flex items-center gap-2">
               <Eye className="w-5 h-5 text-brand-500" />
               Profile Visibility
             </CardTitle>
@@ -378,7 +380,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
               </div>
             </div>
 
-            <Separator className="bg-border-subtle" />
+            <div className="ff-divider-flame" />
 
             {/* Field Visibility Toggles */}
             <div className="space-y-4">
@@ -469,7 +471,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
               <Button
                 onClick={handleSaveVisibility}
                 disabled={updateVisibilityMutation.isPending}
-                variant="outline"
+                className="ff-btn-velocity"
               >
                 {updateVisibilityMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Save Visibility
@@ -479,9 +481,9 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
         </Card>
 
         {/* Social Links Section */}
-        <Card className="border-border-subtle">
+        <Card className="ff-card-velocity border-border-subtle">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="font-display text-lg flex items-center gap-2">
               <LinkIcon className="w-5 h-5 text-brand-500" />
               Social Links
             </CardTitle>
@@ -550,7 +552,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
               <Button
                 onClick={handleSaveSocialLinks}
                 disabled={updateSocialLinksMutation.isPending}
-                variant="outline"
+                className="ff-btn-velocity"
               >
                 {updateSocialLinksMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Save Links
@@ -560,9 +562,9 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
         </Card>
 
         {/* Notification Settings */}
-        <Card className="border-border-subtle">
+        <Card className="ff-card-velocity border-border-subtle">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="font-display text-lg flex items-center gap-2">
               <Bell className="w-5 h-5 text-brand-500" />
               Notification Preferences
             </CardTitle>
@@ -593,7 +595,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
               </div>
             </div>
 
-            <Separator className="bg-border-subtle" />
+            <div className="ff-divider-flame" />
 
             {/* Notification Types */}
             <div className="space-y-4">
@@ -664,7 +666,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
               <Button
                 onClick={handleSaveNotifications}
                 disabled={updateNotificationsMutation.isPending}
-                variant="outline"
+                className="ff-btn-velocity"
               >
                 {updateNotificationsMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Save Notifications
@@ -674,9 +676,9 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
         </Card>
 
         {/* Privacy Settings */}
-        <Card className="border-border-subtle">
+        <Card className="ff-card-velocity border-border-subtle">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="font-display text-lg flex items-center gap-2">
               <Shield className="w-5 h-5 text-brand-500" />
               Privacy & Security
             </CardTitle>
@@ -737,7 +739,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
               <Button
                 onClick={handleSavePrivacy}
                 disabled={updatePrivacyMutation.isPending}
-                variant="outline"
+                className="ff-btn-velocity"
               >
                 {updatePrivacyMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Save Privacy
@@ -752,7 +754,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
             onClick={handleSaveAll}
             disabled={isSaving}
             size="lg"
-            className="min-w-[160px]"
+            className="ff-btn-velocity min-w-[160px]"
           >
             {isSaving ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />

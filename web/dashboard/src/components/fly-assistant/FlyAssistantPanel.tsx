@@ -254,8 +254,17 @@ export function FlyAssistantPanel({
             )}
             style={
               useCustomDimensions
-                ? { width: dimensions.width, height: dimensions.height }
-                : undefined
+                ? {
+                    width: dimensions.width,
+                    height: dimensions.height,
+                    // CSS variables automatically adapt to dark/light mode
+                    backgroundColor: "var(--bg-secondary)",
+                    borderColor: "var(--border-default)",
+                  }
+                : {
+                    backgroundColor: "var(--bg-secondary)",
+                    borderColor: "var(--border-default)",
+                  }
             }
             variants={panelVariants}
             initial="minimized"
@@ -271,6 +280,12 @@ export function FlyAssistantPanel({
                 "bg-bg-tertiary/50",
                 size === "minimized" && "border-b-0"
               )}
+              style={{
+                // CSS variable adapts to dark/light mode automatically
+                backgroundColor: "var(--bg-tertiary)",
+                opacity: 0.95,
+                borderColor: "var(--border-default)",
+              }}
             >
               {/* Left: Title and drag handle */}
               <div className="flex items-center gap-2">
@@ -286,7 +301,7 @@ export function FlyAssistantPanel({
                   </div>
                 )}
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-gradient-to-r from-brand-500 to-purple-500 flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-lg bg-gradient-to-r from-[#FF6B35] to-[#00D4FF] flex items-center justify-center">
                     <span className="text-white text-xs font-bold">F</span>
                   </div>
                   <h2 className="text-sm font-semibold text-text-primary">

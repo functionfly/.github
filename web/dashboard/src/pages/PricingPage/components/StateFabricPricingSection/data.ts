@@ -118,7 +118,7 @@ export const STATE_FABRIC_PLANS: StateFabricPlan[] = [
     name: "Enterprise",
     tagline: "StateFabric Enterprise",
     price: "Custom",
-    priceValue: 1999,
+    priceValue: 0,
     period: "month+",
     description: "Large enterprises & regulated industries.",
     features: [

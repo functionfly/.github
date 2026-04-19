@@ -28,6 +28,7 @@ import { FunctionLibrary } from '@/components/frg/panels/FunctionLibrary';
 import { AIAssistantPanel } from '@/components/frg/panels/AIAssistantPanel';
 import { TestRunnerPanel } from '@/components/frg/test/TestRunnerPanel';
 import { VersionSelector } from '@/components/frg/panels/VersionSelector';
+import { EvolutionPanel } from '@/components/frg/panels/EvolutionPanel';
 import { ExecutionBar } from '@/components/frg/execution/ExecutionBar';
 import { ExecutionOverlay } from '@/components/frg/execution/ExecutionOverlay';
 import { CollapsibleExecutionPanel } from '@/components/frg/execution/CollapsibleExecutionPanel';
@@ -75,6 +76,7 @@ import {
   Keyboard,
   Users,
   MessageSquare,
+  Wand2,
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 
@@ -443,7 +445,7 @@ function FRGEditorInner() {
         {!presentationMode && leftPanel && (
           <aside className="w-72 border-r border-[var(--border-subtle)] bg-[var(--bg-secondary)] flex flex-col shrink-0">
             <Tabs value={leftPanel} className="w-full">
-              <TabsList className="w-full grid grid-cols-3 h-10">
+              <TabsList className="w-full grid grid-cols-4 h-10">
                 <TabsTrigger 
                   value="library" 
                   onClick={() => toggleLeftPanel('library')}
@@ -468,6 +470,14 @@ function FRGEditorInner() {
                   <GitBranch className="w-3 h-3 mr-1" />
                   Versions
                 </TabsTrigger>
+                <TabsTrigger 
+                  value="evolution" 
+                  onClick={() => toggleLeftPanel('evolution')}
+                  className="text-xs"
+                >
+                  <Wand2 className="w-3 h-3 mr-1" />
+                  Evolve
+                </TabsTrigger>
               </TabsList>
               
               <TabsContent value="library" className="m-0 flex-1">
@@ -478,6 +488,9 @@ function FRGEditorInner() {
               </TabsContent>
               <TabsContent value="versions" className="m-0 flex-1">
                 <VersionSelector />
+              </TabsContent>
+              <TabsContent value="evolution" className="m-0 flex-1 overflow-hidden">
+                <EvolutionPanel />
               </TabsContent>
             </Tabs>
           </aside>

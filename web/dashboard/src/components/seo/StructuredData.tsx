@@ -16,7 +16,7 @@ export function LandingPageStructuredData() {
               '@type': 'Offer',
               'price': '0',
               'priceCurrency': 'USD',
-              'description': 'Free tier available, paid plans start from $9/month'
+              'description': 'Free tier available, paid plans start from $29/month'
             },
             'author': {
               '@type': 'Organization',

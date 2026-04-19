@@ -113,33 +113,53 @@
   }
 }
 
-/* Glow Pulse - Glowing Elements */
+/* Glow Pulse - Velocity Flame Orange */
 @keyframes glow-pulse {
   0%, 100% {
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+    box-shadow: 0 0 20px rgba(255, 107, 53, 0.4);
   }
   50% {
-    box-shadow: 0 0 40px rgba(99, 102, 241, 0.6), 0 0 60px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 0 40px rgba(255, 107, 53, 0.6), 0 0 60px rgba(255, 107, 53, 0.3);
   }
 }
 
-/* Glow Pulse Success */
+/* Glow Pulse Success - Velocity Taxiway Green */
 @keyframes glow-pulse-success {
   0%, 100% {
-    box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+    box-shadow: 0 0 20px rgba(0, 255, 157, 0.4);
   }
   50% {
-    box-shadow: 0 0 40px rgba(16, 185, 129, 0.6), 0 0 60px rgba(16, 185, 129, 0.3);
+    box-shadow: 0 0 40px rgba(0, 255, 157, 0.6), 0 0 60px rgba(0, 255, 157, 0.3);
   }
 }
 
-/* Glow Pulse Error */
+/* Glow Pulse Error - Velocity Emergency Red */
 @keyframes glow-pulse-error {
   0%, 100% {
-    box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 20px rgba(255, 45, 85, 0.4);
   }
   50% {
-    box-shadow: 0 0 40px rgba(239, 68, 68, 0.6), 0 0 60px rgba(239, 68, 68, 0.3);
+    box-shadow: 0 0 40px rgba(255, 45, 85, 0.6), 0 0 60px rgba(255, 45, 85, 0.3);
+  }
+}
+
+/* Glow Pulse Cyan - Velocity Altitude Cyan */
+@keyframes glow-pulse-cyan {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(0, 212, 255, 0.6), 0 0 60px rgba(0, 212, 255, 0.3);
+  }
+}
+
+/* Glow Pulse Warning - Velocity Beacon Amber */
+@keyframes glow-pulse-warning {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 184, 0, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(255, 184, 0, 0.6), 0 0 60px rgba(255, 184, 0, 0.3);
   }
 }
 
@@ -370,6 +390,14 @@
 
 .animate-glow-pulse-error {
   animation: glow-pulse-error 2s ease-in-out infinite;
+}
+
+.animate-glow-pulse-cyan {
+  animation: glow-pulse-cyan 2s ease-in-out infinite;
+}
+
+.animate-glow-pulse-warning {
+  animation: glow-pulse-warning 2s ease-in-out infinite;
 }
 
 .animate-fade-in-up {
@@ -641,7 +669,7 @@
    Mesh Gradient Background
    ========================================================================== */
 
-/* Enhanced hero section styling for better visibility */
+/* Enhanced hero section styling - Velocity Brand */
 .hero-section-enhanced {
   position: relative;
 }
@@ -651,9 +679,9 @@
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(135deg, rgba(99, 102, 241, 0.03) 0%, rgba(139, 92, 246, 0.02) 25%, rgba(217, 70, 239, 0.02) 50%, rgba(99, 102, 241, 0.03) 75%, rgba(139, 92, 246, 0.02) 100%),
-    radial-gradient(circle at 20% 80%, rgba(99, 102, 241, 0.04) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.03) 0%, transparent 50%);
+    linear-gradient(135deg, rgba(255, 107, 53, 0.03) 0%, rgba(0, 212, 255, 0.02) 25%, rgba(0, 255, 157, 0.02) 50%, rgba(255, 107, 53, 0.03) 75%, rgba(0, 212, 255, 0.02) 100%),
+    radial-gradient(circle at 20% 80%, rgba(255, 107, 53, 0.04) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(0, 212, 255, 0.03) 0%, transparent 50%);
   pointer-events: none;
   z-index: 0;
 }
@@ -663,42 +691,57 @@
   z-index: 1;
 }
 
+/* Mesh Gradient Background - Velocity Brand Colors */
 .mesh-gradient-bg {
   background:
-    radial-gradient(at 40% 20%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
-    radial-gradient(at 80% 0%, rgba(139, 92, 246, 0.1) 0px, transparent 50%),
-    radial-gradient(at 0% 50%, rgba(217, 70, 239, 0.1) 0px, transparent 50%),
-    radial-gradient(at 80% 50%, rgba(99, 102, 241, 0.1) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, rgba(139, 92, 246, 0.15) 0px, transparent 50%),
-    #0f0f1a; /* Dark background fallback - deep space */
+    radial-gradient(at 40% 20%, rgba(255, 107, 53, 0.15) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, rgba(0, 212, 255, 0.1) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, rgba(0, 255, 157, 0.1) 0px, transparent 50%),
+    radial-gradient(at 80% 50%, rgba(91, 124, 245, 0.1) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(255, 107, 53, 0.15) 0px, transparent 50%),
+    #0D1117; /* Dark background fallback - Tarmac */
   background-size: 100% 100%;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-/* Light mode mesh gradient - increased specificity */
+/* Light mode mesh gradient - Velocity Brand */
 [data-theme="light"] .mesh-gradient-bg {
   background:
-    radial-gradient(at 40% 20%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
-    radial-gradient(at 80% 0%, rgba(139, 92, 246, 0.08) 0px, transparent 50%),
-    radial-gradient(at 0% 50%, rgba(217, 70, 239, 0.08) 0px, transparent 50%),
-    radial-gradient(at 80% 50%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, rgba(139, 92, 246, 0.12) 0px, transparent 50%),
+    radial-gradient(at 40% 20%, rgba(255, 107, 53, 0.1) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, rgba(0, 212, 255, 0.06) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, rgba(0, 255, 157, 0.06) 0px, transparent 50%),
+    radial-gradient(at 80% 50%, rgba(91, 124, 245, 0.06) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(255, 107, 53, 0.1) 0px, transparent 50%),
     #ffffff !important; /* Pure white background for maximum contrast */
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 /* Additional specificity for light mode */
 html[data-theme="light"] .mesh-gradient-bg {
   background:
-    radial-gradient(at 40% 20%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
-    radial-gradient(at 80% 0%, rgba(139, 92, 246, 0.08) 0px, transparent 50%),
-    radial-gradient(at 0% 50%, rgba(217, 70, 239, 0.08) 0px, transparent 50%),
-    radial-gradient(at 80% 50%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, rgba(139, 92, 246, 0.12) 0px, transparent 50%),
-    #ffffff !important; /* Pure white background for maximum contrast */
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+    radial-gradient(at 40% 20%, rgba(255, 107, 53, 0.1) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, rgba(0, 212, 255, 0.06) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, rgba(0, 255, 157, 0.06) 0px, transparent 50%),
+    radial-gradient(at 80% 50%, rgba(91, 124, 245, 0.06) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(255, 107, 53, 0.1) 0px, transparent 50%),
+    #ffffff !important;
+}
+
+/* Dashboard Main Content Background - Matches aviation sidebar colors */
+.dashboard-main-bg {
+  background: linear-gradient(
+    180deg,
+    var(--color-aviation-bg-primary, #08080c) 0%,
+    var(--color-aviation-bg-secondary, #0d0d14) 100%
+  );
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+[data-theme="light"] .dashboard-main-bg {
+  background: linear-gradient(
+    180deg,
+    var(--color-aviation-bg-primary-light, #f1f5f9) 0%,
+    var(--color-aviation-bg-secondary-light, #f8fafc) 100%
+  );
+  color: var(--color-aviation-text-primary-light, #111827);
 }
 
 /* Enhanced background effects for light mode */
@@ -727,11 +770,8 @@ html[data-theme="light"] .mesh-gradient-bg {
 }
 
 [data-theme="light"] .hero-title-main {
-  color: #0f0f1a !important;
-  text-shadow:
-    0 0 30px rgba(0, 0, 0, 0.4),
-    0 2px 8px rgba(0, 0, 0, 0.15),
-    0 4px 16px rgba(0, 0, 0, 0.1);
+  color: #030712 !important;
+  text-shadow: none;
 }
 
 /* Hero subtitle enhancements for better readability */
@@ -741,21 +781,19 @@ html[data-theme="light"] .mesh-gradient-bg {
 }
 
 [data-theme="light"] .hero-subtitle {
-  color: #2d2d3a !important;
-  text-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.2),
-    0 2px 6px rgba(0, 0, 0, 0.1);
+  color: #1f2937 !important;
+  text-shadow: none;
 }
 
-/* Enhanced outline button for hero section */
+/* Enhanced outline button for hero section - Velocity */
 .hero-outline-button {
   font-weight: 600;
 }
 
 [data-theme="light"] .hero-outline-button {
   background-color: rgba(255, 255, 255, 0.95) !important;
-  border: 2px solid rgba(99, 102, 241, 0.45) !important;
-  color: #1e293b !important;
+  border: 2px solid rgba(255, 107, 53, 0.45) !important;
+  color: #111827 !important;
   box-shadow:
     0 2px 8px rgba(0, 0, 0, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.8);
@@ -763,10 +801,10 @@ html[data-theme="light"] .mesh-gradient-bg {
 
 [data-theme="light"] .hero-outline-button:hover {
   background-color: rgba(255, 255, 255, 1) !important;
-  border-color: rgba(99, 102, 241, 0.65) !important;
+  border-color: rgba(255, 107, 53, 0.65) !important;
   color: #0f172a !important;
   box-shadow:
-    0 4px 16px rgba(99, 102, 241, 0.2),
+    0 4px 16px rgba(255, 107, 53, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 1);
 }
 
@@ -793,36 +831,36 @@ html[data-theme="light"] .mesh-gradient-bg {
   opacity: 1;
 }
 
-/* Light mode primary button enhancements */
+/* Light mode primary button enhancements - Velocity */
 [data-theme="light"] .hero-primary-button {
-  background: linear-gradient(135deg, #6366f1 0%, #7c3aed 50%, #db2777 100%) !important;
+  background: linear-gradient(135deg, #E85A2A 0%, #FF4F5E 50%, #00B8E0 100%) !important;
   box-shadow:
-    0 4px 16px rgba(99, 102, 241, 0.3),
-    0 8px 32px rgba(99, 102, 241, 0.2);
+    0 4px 16px rgba(232, 90, 42, 0.3),
+    0 8px 32px rgba(232, 90, 42, 0.2);
 }
 
 [data-theme="light"] .hero-primary-button:hover {
-  background: linear-gradient(135deg, #4f46e5 0%, #6d28d9 50%, #be185d 100%) !important;
+  background: linear-gradient(135deg, #D14A20 0%, #E84553 50%, #00A0C8 100%) !important;
   transform: translateY(-2px) scale(1.02);
   box-shadow:
-    0 8px 24px rgba(99, 102, 241, 0.4),
-    0 16px 48px rgba(99, 102, 241, 0.3);
+    0 8px 24px rgba(232, 90, 42, 0.4),
+    0 16px 48px rgba(232, 90, 42, 0.3);
 }
 
-/* Dark mode primary button enhancements */
+/* Dark mode primary button enhancements - Velocity */
 [data-theme="dark"] .hero-primary-button {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%) !important;
+  background: linear-gradient(135deg, #FF6B35 0%, #FF4F5E 50%, #00D4FF 100%) !important;
   box-shadow:
-    0 4px 16px rgba(99, 102, 241, 0.5),
-    0 8px 32px rgba(139, 92, 246, 0.3);
+    0 4px 16px rgba(255, 107, 53, 0.5),
+    0 8px 32px rgba(0, 212, 255, 0.3);
 }
 
 [data-theme="dark"] .hero-primary-button:hover {
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #c026d3 100%) !important;
+  background: linear-gradient(135deg, #FF8C42 0%, #FF6B7A 50%, #33DDFF 100%) !important;
   transform: translateY(-2px) scale(1.02);
   box-shadow:
-    0 8px 24px rgba(99, 102, 241, 0.6),
-    0 16px 48px rgba(139, 92, 246, 0.4);
+    0 8px 24px rgba(255, 107, 53, 0.6),
+    0 16px 48px rgba(0, 212, 255, 0.4);
 }
 
 /* Enhanced outline button hover transitions */
@@ -837,9 +875,9 @@ html[data-theme="light"] .mesh-gradient-bg {
   position: absolute;
   inset: 0;
   background: linear-gradient(135deg,
-    rgba(99, 102, 241, 0.05) 0%,
-    rgba(139, 92, 246, 0.03) 50%,
-    rgba(217, 70, 239, 0.05) 100%);
+    rgba(255, 107, 53, 0.05) 0%,
+    rgba(0, 212, 255, 0.03) 50%,
+    rgba(0, 255, 157, 0.05) 100%);
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -857,13 +895,13 @@ html[data-theme="light"] .mesh-gradient-bg {
   transform: translateX(2px);
 }
 
-/* Enhanced focus states */
+/* Enhanced focus states - Velocity */
 .hero-primary-button:focus-visible,
 .hero-outline-button:focus-visible {
   outline: none;
   box-shadow:
-    0 0 0 2px rgba(99, 102, 241, 0.5),
-    0 0 0 4px rgba(99, 102, 241, 0.1);
+    0 0 0 2px rgba(255, 107, 53, 0.5),
+    0 0 0 4px rgba(255, 107, 53, 0.1);
 }
 
 /* Active state animations */
@@ -923,30 +961,30 @@ html[data-theme="light"] .mesh-gradient-bg {
 }
 
 [data-theme="light"] .target-users-enhanced .text-text-secondary {
-  color: #5a5a6a !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  color: #374151 !important;
+  text-shadow: none;
 }
 
 [data-theme="light"] .target-users-enhanced .text-text-primary {
-  color: #3a3a4a !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  color: #111827 !important;
+  text-shadow: none;
 }
 
-/* Enhanced icon containers */
+/* Enhanced icon containers - Velocity */
 [data-theme="light"] .target-users-enhanced .bg-linear-to-br {
   background: linear-gradient(135deg,
-    rgba(99, 102, 241, 0.15) 0%,
-    rgba(139, 92, 246, 0.1) 100%) !important;
-  border-color: rgba(99, 102, 241, 0.3) !important;
+    rgba(255, 107, 53, 0.15) 0%,
+    rgba(0, 212, 255, 0.1) 100%) !important;
+  border-color: rgba(255, 107, 53, 0.3) !important;
 }
 
-/* Enhanced check marks and icons */
+/* Enhanced check marks and icons - Velocity */
 [data-theme="light"] .target-users-enhanced .text-emerald-400 {
   color: #059669 !important;
 }
 
-[data-theme="light"] .target-users-enhanced .text-\[#6366f1\] {
-  color: #4f46e5 !important;
+[data-theme="light"] .target-users-enhanced .text-\[#FF6B35\] {
+  color: #E85A2A !important;
 }
 
 [data-theme="light"] .target-users-enhanced .border-white\/8 {
@@ -959,16 +997,16 @@ html[data-theme="light"] .mesh-gradient-bg {
 
 /* Enhanced section headings */
 [data-theme="light"] .target-users-enhanced .text-white {
-  color: #0f0f1a !important;
+  color: #030712 !important;
 }
 
 /* Target users subtitle */
 [data-theme="light"] .target-users-subtitle {
-  color: #4a4a5a !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  color: #4b5563 !important;
+  text-shadow: none;
 }
 
-/* Hero section separator line for light mode */
+/* Hero section separator line for light mode - Velocity */
 [data-theme="light"] .hero-section-enhanced::after {
   content: '';
   position: absolute;
@@ -977,7 +1015,7 @@ html[data-theme="light"] .mesh-gradient-bg {
   transform: translateX(-50%);
   width: 60%;
   height: 1px;
-  background: linear-gradient(90deg, transparent 0%, rgba(99, 102, 241, 0.2) 20%, rgba(99, 102, 241, 0.4) 50%, rgba(99, 102, 241, 0.2) 80%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 107, 53, 0.2) 20%, rgba(255, 107, 53, 0.4) 50%, rgba(255, 107, 53, 0.2) 80%, transparent 100%);
   opacity: 0.6;
 }
 
@@ -996,7 +1034,7 @@ html[data-theme="light"] .mesh-gradient-bg {
   height: 200%;
   background: radial-gradient(
     circle at center,
-    rgba(99, 102, 241, 0.15) 0%,
+    rgba(255, 107, 53, 0.15) 0%,
     transparent 50%
   );
   pointer-events: none;
@@ -1006,7 +1044,7 @@ html[data-theme="light"] .mesh-gradient-bg {
 [data-theme="light"] .spotlight {
   background: radial-gradient(
     circle at center,
-    rgba(99, 102, 241, 0.08) 0%,
+    rgba(255, 107, 53, 0.08) 0%,
     transparent 50%
   );
 }
@@ -1016,7 +1054,13 @@ html[data-theme="light"] .mesh-gradient-bg {
    ========================================================================== */
 
 .gradient-shift-bg {
-  background: linear-gradient(-45deg, #6366f1, #8b5cf6, #d946ef, #6366f1);
+  background: linear-gradient(-45deg, #FF6B35, #FF4F5E, #00D4FF, #FF6B35);
   background-size: 400% 400%;
   animation: gradient-shift 8s ease infinite;
+}
+
+/* Light mode gradient shift */
+[data-theme="light"] .gradient-shift-bg {
+  background: linear-gradient(-45deg, #E85A2A, #D14A20, #00B8E0, #E85A2A);
+  background-size: 400% 400%;
 }

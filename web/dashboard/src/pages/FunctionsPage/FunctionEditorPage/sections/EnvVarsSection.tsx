@@ -3,9 +3,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Eye, EyeOff, Key, Plus, Shield, Upload, X } from 'lucide-react';
+import { Layers, Eye, EyeOff, Key, Plus, Shield, Upload, X } from 'lucide-react';
 import { useRef } from 'react';
 import { toast } from 'sonner';
+import { EnvPresetsPicker, type EnvPreset } from '../components/EnvPresetsPicker';
 import { SectionCard } from '../components/editor-ui';
 import type { FunctionEditorModel } from '../useFunctionEditor';
 
@@ -55,6 +56,34 @@ export function EnvVarsSection({ editor }: Props) {
 
   const handleImportEnv = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleApplyPreset = (preset: EnvPreset) => {
+    const newVars = preset.variables.map((v, i) => ({
+      id: `env-preset-${preset.id}-${Date.now()}-${i}`,
+      key: v.key,
+      value: v.value,
+      isSecret: v.isSecret,
+    }));
+
+    setEnvVars((prev) => {
+      const existingKeys = new Set(prev.map((v) => v.key));
+      const toAdd = newVars.filter((v) => !existingKeys.has(v.key));
+      const updated = [...prev];
+      for (const v of newVars) {
+        if (existingKeys.has(v.key)) {
+          const idx = updated.findIndex((u) => u.key === v.key);
+          if (idx !== -1) updated[idx] = { ...updated[idx], value: v.value, isSecret: v.isSecret };
+        } else {
+          updated.push(v);
+        }
+      }
+      return updated;
+    });
+    markDirty();
+    toast.success(
+      `Added ${preset.name} preset (${newVars.length} variables)`
+    );
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,7 +140,7 @@ export function EnvVarsSection({ editor }: Props) {
             <div
               key={envVar.id}
               className="flex items-center gap-3 p-3 rounded-lg border border-border-subtle/30"
-              style={{ background: 'var(--bg-tertiary, #1a1a25)' }}
+               style={{ background: 'var(--bg-tertiary)' }}
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -215,7 +244,18 @@ export function EnvVarsSection({ editor }: Props) {
               Mark as secret
             </Label>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <EnvPresetsPicker onSelect={handleApplyPreset}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs gap-1.5"
+                type="button"
+              >
+                <Layers className="w-3 h-3" />
+                Presets
+              </Button>
+            </EnvPresetsPicker>
             <Button
               variant="outline"
               size="sm"
@@ -229,7 +269,7 @@ export function EnvVarsSection({ editor }: Props) {
             <Button
               variant="outline"
               size="sm"
-              className="text-xs gap-1.5"
+              className="text-xs gap-1.5 hidden sm:flex"
               onClick={handleImportEnv}
               type="button"
             >

@@ -52,3 +52,6 @@ export type { PerformanceLeaderboardProps, FunctionPerformance } from "./Perform
 
 export { LiveIndicator, LiveDot } from "./LiveIndicator";
 export type { LiveIndicatorProps, LiveStatus } from "./LiveIndicator";
+
+export { DraggableDashboardGrid } from "./DraggableDashboardGrid";
+export type { DraggableDashboardGridProps, DraggableSection } from "./DraggableDashboardGrid";

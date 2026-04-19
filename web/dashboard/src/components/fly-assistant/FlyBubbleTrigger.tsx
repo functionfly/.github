@@ -89,7 +89,7 @@ const glowVariants: Record<TrustTier, TargetAndTransition> = {
     boxShadow: "0 0 20px rgba(245, 158, 11, 0.5), 0 0 40px rgba(245, 158, 11, 0.3)",
   },
   high: {
-    boxShadow: "0 0 20px rgba(99, 102, 241, 0.6), 0 0 40px rgba(99, 102, 241, 0.4)",
+    boxShadow: "0 0 20px rgba(255, 107, 53, 0.6), 0 0 40px rgba(0, 212, 255, 0.4)",
   },
   critical: {
     boxShadow: "0 0 30px rgba(16, 185, 129, 0.7), 0 0 60px rgba(16, 185, 129, 0.5)",
@@ -226,7 +226,7 @@ export function FlyBubbleTrigger({
         "fixed bottom-6 right-6 z-50",
         "w-14 h-14 rounded-full",
         "flex items-center justify-center",
-        "bg-gradient-to-r from-brand-500 via-purple-500 to-pink-500",
+        "bg-gradient-to-r from-[#FF6B35] via-[#FF4F5E] to-[#00D4FF]",
         "text-white shadow-lg",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2",
         "disabled:opacity-50 disabled:cursor-not-allowed",

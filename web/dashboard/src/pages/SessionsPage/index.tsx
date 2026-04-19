@@ -1,49 +1,29 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Zap, Monitor, Smartphone, Globe, Trash2, RefreshCw, ShieldCheck, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useAuthStore } from "@/stores/authStore";
-import { usersApi, type SessionItem } from "@/api/users";
+import { useUserSessions, useRevokeSession, useRevokeOtherSessions } from "@/hooks";
+import type { SessionItem } from "@/api/users";
 
 export function SessionsPage() {
   const { user, logout } = useAuthStore();
-  const queryClient = useQueryClient();
   const [isRevoking, setIsRevoking] = useState<string | null>(null);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["sessions"],
-    queryFn: async () => {
-      const res = await usersApi.listSessions();
-      return res.sessions;
-    },
-  });
+  // Use hooks instead of raw queries/mutations
+  const { data, isLoading, error } = useUserSessions();
+  const revokeMutation = useRevokeSession();
+  const revokeOthersMutation = useRevokeOtherSessions();
 
-  const sessions: SessionItem[] = data ?? [];
-
-  const revokeMutation = useMutation({
-    mutationFn: (sessionId: string) => usersApi.revokeSession(sessionId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sessions"] });
-      setIsRevoking(null);
-    },
-    onError: () => setIsRevoking(null),
-  });
-
-  const revokeOthersMutation = useMutation({
-    mutationFn: () => usersApi.revokeOtherSessions(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sessions"] });
-      setIsRevoking(null);
-    },
-    onError: () => setIsRevoking(null),
-  });
+  const sessions: SessionItem[] = data?.sessions ?? [];
 
   const handleRevokeSession = (sessionId: string) => {
     setIsRevoking(sessionId);
-    revokeMutation.mutate(sessionId);
+    revokeMutation.mutate(sessionId, {
+      onSettled: () => setIsRevoking(null),
+    });
   };
 
   const handleRevokeAllOthers = () => {
@@ -51,7 +31,9 @@ export function SessionsPage() {
       return;
     }
     setIsRevoking("all");
-    revokeOthersMutation.mutate();
+    revokeOthersMutation.mutate(undefined, {
+      onSettled: () => setIsRevoking(null),
+    });
   };
 
   const getDeviceIcon = (device: string) => {

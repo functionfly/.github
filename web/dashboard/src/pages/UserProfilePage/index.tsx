@@ -1,6 +1,7 @@
 import { usersApi } from '@/api/users';
 import { Navbar } from '@/components/common/Navbar';
 import { FollowStats, FollowUserButton } from '@/components/follow';
+import { EarlyAdopterBadge } from '@/components/profile';
 import { ReportProfileDialog } from '@/components/profile/ReportProfileDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -157,7 +158,16 @@ export function UserProfilePage() {
                     <h1 className="text-2xl font-bold text-text-primary">
                       {profile.name || profile.username}
                     </h1>
-                    <p className="text-brand-400 font-medium">@{profile.username}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-brand-400 font-medium">@{profile.username}</p>
+                      {profile.profileNumber && profile.profileNumber <= 500 && (
+                        <EarlyAdopterBadge
+                          profileNumber={profile.profileNumber}
+                          size="sm"
+                          showParticles={false}
+                        />
+                      )}
+                    </div>
                   </div>
                   <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
                     {!isOwnProfile && currentUser && (
@@ -179,6 +189,11 @@ export function UserProfilePage() {
                 </div>
                 {profile.bio && <p className="text-text-secondary mt-2 text-sm">{profile.bio}</p>}
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-xs text-text-muted">
+                  {profile.profileNumber && (
+                    <span className="flex items-center gap-1 text-amber-500 font-medium">
+                      Member #{profile.profileNumber.toLocaleString()}
+                    </span>
+                  )}
                   {joinedDate && (
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5" />

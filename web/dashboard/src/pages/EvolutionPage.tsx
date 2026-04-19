@@ -1,12 +1,24 @@
-import { useState } from "react";
-import { useParams } from "react-router-dom";
-import { EvolutionDashboard } from "@/components/swarm/EvolutionDashboard";
+import { EvolutionDashboard } from '@/components/swarm/EvolutionDashboard';
+import { useState } from 'react';
+import { Helmet } from 'react-helmet-async';
+import { useParams } from 'react-router-dom';
 
 export function EvolutionPage() {
-  const { agentId } = useParams<{ agentId: string }>();
-  const [selectedAgentId] = useState(agentId || "default-agent");
+  const { slug } = useParams<{ slug: string }>();
+  const [selectedAgentId] = useState(slug || 'default-agent');
 
-  return <EvolutionDashboard agentId={selectedAgentId} />;
+  return (
+    <>
+      <Helmet>
+        <title>Autonomous Operations — FunctionFly</title>
+        <meta
+          name="description"
+          content="Self-evolving backend graph — AI-optimized checkout and payments"
+        />
+      </Helmet>
+      <EvolutionDashboard agentId={selectedAgentId} />
+    </>
+  );
 }
 
 export default EvolutionPage;

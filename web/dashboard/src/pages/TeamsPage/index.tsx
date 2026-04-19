@@ -1,16 +1,7 @@
-import "./styles.css";
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { 
-  Users, Plus, Settings, Trash2, Mail, MoreVertical, 
-  Crown, Shield, User, Eye, Loader2, AlertCircle, CheckCircle 
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -19,25 +10,55 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { useAuthStore } from "@/stores/authStore";
-import { teamsApi, type Team, type TeamMember, type TeamInvite } from "@/api/teams";
-import { toast } from "sonner";
-import { format } from "date-fns";
+} from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+  AlertCircle,
+  ChevronRight,
+  Clock,
+  Crown,
+  Edit3,
+  Eye,
+  LayoutGrid,
+  List,
+  Loader2,
+  Mail,
+  MoreVertical,
+  Plus,
+  Search,
+  Settings,
+  Shield,
+  Trash2,
+  User,
+  UserPlus,
+  Users,
+  X,
+} from 'lucide-react';
+import { useState } from 'react';
+// import { ToggleButtonGroup } from "@/components/ui";
+import { teamsApi, type Team, type TeamMember } from '@/api/teams';
+import { useAuthStore } from '@/stores/authStore';
+import { format, formatDistanceToNow } from 'date-fns';
+import { toast } from 'sonner';
 
 const roleIcons = {
   owner: Crown,
@@ -47,10 +68,17 @@ const roleIcons = {
 };
 
 const roleColors = {
-  owner: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-  admin: "bg-purple-500/20 text-purple-400 border-purple-500/30",
-  member: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  viewer: "bg-gray-500/20 text-gray-400 border-gray-500/30",
+  owner: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+  admin: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  member: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  viewer: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+};
+
+const roleLabels = {
+  owner: 'Owner',
+  admin: 'Admin',
+  member: 'Member',
+  viewer: 'Viewer',
 };
 
 export function TeamsPage() {
@@ -59,28 +87,36 @@ export function TeamsPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
-  const [newTeamName, setNewTeamName] = useState("");
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<"admin" | "member" | "viewer">("member");
+  const [newTeamName, setNewTeamName] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'admin' | 'member' | 'viewer'>('member');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [activeTab, setActiveTab] = useState('members');
 
   // Fetch teams
   const { data: teamsData, isLoading } = useQuery({
-    queryKey: ["teams"],
+    queryKey: ['teams'],
     queryFn: () => teamsApi.list(),
   });
 
   const teams = teamsData?.teams ?? [];
 
+  // Filter teams by search
+  const filteredTeams = teams.filter((team) =>
+    team.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   // Fetch members for selected team
   const { data: membersData, isLoading: membersLoading } = useQuery({
-    queryKey: ["team-members", selectedTeam?.id],
+    queryKey: ['team-members', selectedTeam?.id],
     queryFn: () => teamsApi.listMembers(selectedTeam!.id),
     enabled: !!selectedTeam,
   });
 
   // Fetch invites for selected team
-  const { data: invitesData } = useQuery({
-    queryKey: ["team-invites", selectedTeam?.id],
+  const { data: invitesData, isLoading: invitesLoading } = useQuery({
+    queryKey: ['team-invites', selectedTeam?.id],
     queryFn: () => teamsApi.listInvites(selectedTeam!.id),
     enabled: !!selectedTeam,
   });
@@ -92,13 +128,13 @@ export function TeamsPage() {
   const createTeamMutation = useMutation({
     mutationFn: (name: string) => teamsApi.create({ name }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["teams"] });
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
       setIsCreateDialogOpen(false);
-      setNewTeamName("");
-      toast.success("Team created successfully");
+      setNewTeamName('');
+      toast.success('Team created successfully');
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to create team");
+      toast.error(error.message || 'Failed to create team');
     },
   });
 
@@ -106,42 +142,42 @@ export function TeamsPage() {
   const deleteTeamMutation = useMutation({
     mutationFn: (teamId: string) => teamsApi.delete(teamId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["teams"] });
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
       if (selectedTeam) setSelectedTeam(null);
-      toast.success("Team deleted successfully");
+      toast.success('Team deleted successfully');
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to delete team");
+      toast.error(error.message || 'Failed to delete team');
     },
   });
 
   // Invite member mutation
   const inviteMemberMutation = useMutation({
     mutationFn: ({ teamId, email, role }: { teamId: string; email: string; role: string }) =>
-      teamsApi.addMember(teamId, { email, role: role as "admin" | "member" | "viewer" }),
+      teamsApi.addMember(teamId, { email, role: role as 'admin' | 'member' | 'viewer' }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["team-members", selectedTeam?.id] });
-      queryClient.invalidateQueries({ queryKey: ["team-invites", selectedTeam?.id] });
+      queryClient.invalidateQueries({ queryKey: ['team-members', selectedTeam?.id] });
+      queryClient.invalidateQueries({ queryKey: ['team-invites', selectedTeam?.id] });
       setIsInviteDialogOpen(false);
-      setInviteEmail("");
-      setInviteRole("member");
-      toast.success("Invitation sent successfully");
+      setInviteEmail('');
+      setInviteRole('member');
+      toast.success('Invitation sent successfully');
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to send invitation");
+      toast.error(error.message || 'Failed to send invitation');
     },
   });
 
   // Update member role mutation
   const updateMemberMutation = useMutation({
     mutationFn: ({ teamId, memberId, role }: { teamId: string; memberId: string; role: string }) =>
-      teamsApi.updateMember(teamId, memberId, { role: role as "admin" | "member" | "viewer" }),
+      teamsApi.updateMember(teamId, memberId, { role: role as 'admin' | 'member' | 'viewer' }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["team-members", selectedTeam?.id] });
-      toast.success("Member role updated");
+      queryClient.invalidateQueries({ queryKey: ['team-members', selectedTeam?.id] });
+      toast.success('Member role updated');
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to update role");
+      toast.error(error.message || 'Failed to update role');
     },
   });
 
@@ -150,11 +186,11 @@ export function TeamsPage() {
     mutationFn: ({ teamId, memberId }: { teamId: string; memberId: string }) =>
       teamsApi.removeMember(teamId, memberId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["team-members", selectedTeam?.id] });
-      toast.success("Member removed from team");
+      queryClient.invalidateQueries({ queryKey: ['team-members', selectedTeam?.id] });
+      toast.success('Member removed from team');
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to remove member");
+      toast.error(error.message || 'Failed to remove member');
     },
   });
 
@@ -163,17 +199,17 @@ export function TeamsPage() {
     mutationFn: ({ teamId, inviteId }: { teamId: string; inviteId: string }) =>
       teamsApi.cancelInvite(teamId, inviteId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["team-invites", selectedTeam?.id] });
-      toast.success("Invitation cancelled");
+      queryClient.invalidateQueries({ queryKey: ['team-invites', selectedTeam?.id] });
+      toast.success('Invitation cancelled');
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to cancel invitation");
+      toast.error(error.message || 'Failed to cancel invitation');
     },
   });
 
   const handleCreateTeam = () => {
     if (!newTeamName.trim()) {
-      toast.error("Team name is required");
+      toast.error('Team name is required');
       return;
     }
     createTeamMutation.mutate(newTeamName);
@@ -181,60 +217,79 @@ export function TeamsPage() {
 
   const handleInvite = () => {
     if (!inviteEmail.trim() || !selectedTeam) {
-      toast.error("Email is required");
+      toast.error('Email is required');
       return;
     }
     inviteMemberMutation.mutate({ teamId: selectedTeam.id, email: inviteEmail, role: inviteRole });
   };
 
   const getInitials = (name?: string, email?: string) => {
-    if (name) return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+    if (name)
+      return name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
     if (email) return email[0].toUpperCase();
-    return "?";
+    return '?';
   };
 
-  const isCurrentUserOwner = (member: TeamMember) => 
-    member.user_id === user?.id && member.role === "owner";
+  const isCurrentUserOwner = (member: TeamMember) =>
+    member.user_id === user?.id && member.role === 'owner';
+
+  const getUserRoleInTeam = (team: Team) => {
+    if (team.owner_id === user?.id) return 'owner';
+    const member = team.members?.find((m) => m.user_id === user?.id);
+    return member?.role || 'member';
+  };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="team-header">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="team-title">Teams</h1>
-          <p className="team-subtitle">Manage your team members and permissions</p>
+          <h1 className="text-2xl font-bold text-white">Teams</h1>
+          <p className="text-gray-400 mt-1">Manage your teams, members, and permissions</p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="btn-primary">
+            <Button className="bg-[#6366f1] hover:bg-[#5558e0]">
               <Plus className="w-4 h-4 mr-2" />
               Create Team
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="bg-[#161b22] border-[#30363d]">
             <DialogHeader>
-              <DialogTitle>Create New Team</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-white">Create New Team</DialogTitle>
+              <DialogDescription className="text-gray-400">
                 Create a new team to organize members and manage permissions.
               </DialogDescription>
             </DialogHeader>
             <div className="py-4">
-              <Label htmlFor="team-name">Team Name</Label>
+              <Label htmlFor="team-name" className="text-gray-300">
+                Team Name
+              </Label>
               <Input
                 id="team-name"
                 placeholder="e.g., Engineering, Marketing"
                 value={newTeamName}
                 onChange={(e) => setNewTeamName(e.target.value)}
-                className="mt-2"
+                className="mt-2 bg-[#0d1117] border-[#30363d] text-white placeholder:text-gray-500"
               />
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setIsCreateDialogOpen(false)}
+                className="border-[#30363d] text-gray-300 hover:bg-[#21262d]"
+              >
                 Cancel
               </Button>
-              <Button 
-                onClick={handleCreateTeam} 
+              <Button
+                onClick={handleCreateTeam}
                 disabled={createTeamMutation.isPending || !newTeamName.trim()}
+                className="bg-[#6366f1] hover:bg-[#5558e0]"
               >
                 {createTeamMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Create Team
@@ -244,308 +299,749 @@ export function TeamsPage() {
         </Dialog>
       </div>
 
-      {/* Teams Grid */}
+      {/* Search and Filters */}
+      {teams.length > 0 && (
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Input
+              placeholder="Search teams..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 bg-[#161b22] border-[#30363d] text-white placeholder:text-gray-500"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2 ml-auto bg-[#161b22] border border-[#30363d] rounded-lg p-1">
+            <Button
+              variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+              size="icon"
+              className={`h-8 w-8 ${viewMode === 'grid' ? 'bg-[#21262d] text-white' : 'text-gray-400 hover:text-white'}`}
+              onClick={() => setViewMode('grid')}
+              aria-label="Grid view"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+              size="icon"
+              className={`h-8 w-8 ${viewMode === 'list' ? 'bg-[#21262d] text-white' : 'text-gray-400 hover:text-white'}`}
+              onClick={() => setViewMode('list')}
+              aria-label="List view"
+            >
+              <List className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Teams Grid/List */}
       {isLoading ? (
-        <div className="team-loading-container">
-          <Loader2 className="team-loading-spinner" />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="w-8 h-8 animate-spin text-[#6366f1]" />
         </div>
       ) : teams.length === 0 ? (
-        <Card className="team-card">
-          <CardContent className="team-empty-state">
-            <Users className="team-empty-icon" />
-            <h3 className="team-empty-title">No teams yet</h3>
-            <p className="team-empty-description">Create your first team to start collaborating.</p>
-            <Button onClick={() => setIsCreateDialogOpen(true)} className="btn-team-primary">
+        <Card className="bg-[#161b22] border-[#30363d]">
+          <CardContent className="py-12 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#6366f1]/20 to-[#8b5cf6]/20 flex items-center justify-center mx-auto mb-4">
+              <Users className="w-8 h-8 text-[#6366f1]" />
+            </div>
+            <h3 className="text-lg font-semibold text-white mb-2">No teams yet</h3>
+            <p className="text-gray-400 mb-6 max-w-sm mx-auto">
+              Create your first team to start collaborating with your colleagues.
+            </p>
+            <Button
+              onClick={() => setIsCreateDialogOpen(true)}
+              className="bg-[#6366f1] hover:bg-[#5558e0]"
+            >
               <Plus className="w-4 h-4 mr-2" />
               Create Team
             </Button>
           </CardContent>
         </Card>
       ) : (
-        <div className="team-grid team-grid-cols-1 team-grid-md-2 team-grid-lg-3">
-          {teams.map((team) => (
-            <Card
-              key={team.id}
-              className={`team-card team-card-hoverable ${
-                selectedTeam?.id === team.id ? "ring-2 ring-[#6366f1]" : ""
-              }`}
-              onClick={() => setSelectedTeam(team)}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="team-avatar team-avatar-sm">
-                      <Users className="team-avatar-icon w-5 h-5" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base text-white">{team.name}</CardTitle>
-                      <CardDescription>
-                        {team.members?.length ?? 0} members
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label="Team options">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={(e) => {
-                        e.stopPropagation();
-                        // Edit team settings
-                      }}>
-                        <Settings className="w-4 h-4 mr-2" />
-                        Settings
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        className="text-error"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (confirm(`Are you sure you want to delete "${team.name}"?`)) {
-                            deleteTeamMutation.mutate(team.id);
-                          }
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete Team
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-xs text-text-muted">
-                  Created {format(new Date(team.created_at), "MMM d, yyyy")}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
+        <div
+          className={
+            viewMode === 'grid'
+              ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
+              : 'space-y-3'
+          }
+        >
+          <AnimatePresence mode="popLayout">
+            {filteredTeams.map((team, index) => {
+              const userRole = getUserRoleInTeam(team);
+              const RoleIcon = roleIcons[userRole as keyof typeof roleIcons] || User;
+              const isSelected = selectedTeam?.id === team.id;
+
+              return (
+                <motion.div
+                  key={team.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                >
+                  <Card
+                    className={`bg-[#161b22] border-[#30363d] transition-all duration-200 cursor-pointer group ${
+                      viewMode === 'list'
+                        ? 'hover:border-[#6366f1]/30'
+                        : 'hover:border-[#6366f1]/50 hover:-translate-y-0.5'
+                    } ${isSelected ? 'ring-2 ring-[#6366f1] border-[#6366f1]' : ''}`}
+                    onClick={() => setSelectedTeam(team)}
+                  >
+                    <CardHeader className={viewMode === 'list' ? 'pb-3' : 'pb-3'}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`rounded-xl bg-gradient-to-br from-[#6366f1]/20 to-[#8b5cf6]/20 border border-[#6366f1]/20 flex items-center justify-center ${
+                              viewMode === 'list' ? 'w-10 h-10' : 'w-12 h-12'
+                            }`}
+                          >
+                            <Users
+                              className={`text-[#6366f1] ${viewMode === 'list' ? 'w-5 h-5' : 'w-6 h-6'}`}
+                            />
+                          </div>
+                          <div>
+                            <CardTitle className="text-white text-base">{team.name}</CardTitle>
+                            <CardDescription className="text-gray-400 text-sm">
+                              {team.members?.length ?? 0} members
+                            </CardDescription>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant="outline"
+                            className={`${roleColors[userRole as keyof typeof roleColors]} text-xs`}
+                          >
+                            <RoleIcon className="w-3 h-3 mr-1" />
+                            {roleLabels[userRole as keyof typeof roleLabels]}
+                          </Badge>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-gray-400 hover:text-white hover:bg-[#21262d]"
+                                aria-label="Team options"
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="end"
+                              className="bg-[#21262d] border-[#30363d]"
+                            >
+                              <DropdownMenuItem
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-gray-300 focus:bg-[#30363d] focus:text-white"
+                              >
+                                <Settings className="w-4 h-4 mr-2" />
+                                Settings
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator className="bg-[#30363d]" />
+                              <DropdownMenuItem
+                                className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (confirm(`Are you sure you want to delete "${team.name}"?`)) {
+                                    deleteTeamMutation.mutate(team.id);
+                                  }
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete Team
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    {viewMode === 'grid' && (
+                      <CardContent className="pt-0">
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <span>
+                            Created{' '}
+                            {formatDistanceToNow(new Date(team.created_at), { addSuffix: true })}
+                          </span>
+                          <ChevronRight
+                            className={`w-4 h-4 transition-transform ${isSelected ? 'text-[#6366f1]' : ''}`}
+                          />
+                        </div>
+                      </CardContent>
+                    )}
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
       )}
 
-      {/* Team Detail / Members */}
-      {selectedTeam && (
-        <div className="mt-8">
-          <Card className="team-card">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-white">{selectedTeam.name}</CardTitle>
-                  <CardDescription>Manage team members and their roles</CardDescription>
-                </div>
-                <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button>
-                      <Mail className="w-4 h-4 mr-2" />
-                      Invite Member
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Invite Team Member</DialogTitle>
-                      <DialogDescription>
-                        Send an invitation to join this team.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4 space-y-4">
-                      <div>
-                        <Label htmlFor="invite-email">Email Address</Label>
-                        <Input
-                          id="invite-email"
-                          type="email"
-                          placeholder="colleague@company.com"
-                          value={inviteEmail}
-                          onChange={(e) => setInviteEmail(e.target.value)}
-                          className="mt-2"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="invite-role">Role</Label>
-                        <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as "admin" | "member" | "viewer")}>
-                          <SelectTrigger className="mt-2">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="admin">Admin - Full access</SelectItem>
-                            <SelectItem value="member">Member - Can manage resources</SelectItem>
-                            <SelectItem value="viewer">Viewer - Read-only access</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+      {/* Team Detail Panel */}
+      <AnimatePresence mode="wait">
+        {selectedTeam && (
+          <motion.div
+            key={selectedTeam.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2 }}
+            className="mt-8"
+          >
+            <Card className="bg-[#161b22] border-[#30363d]">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#6366f1]/20 to-[#8b5cf6]/20 border border-[#6366f1]/20 flex items-center justify-center">
+                      <Users className="w-7 h-7 text-[#6366f1]" />
                     </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setIsInviteDialogOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button 
-                        onClick={handleInvite} 
-                        disabled={inviteMemberMutation.isPending || !inviteEmail.trim()}
-                      >
-                        {inviteMemberMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        Send Invitation
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {membersLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-6 h-6 animate-spin text-text-muted" />
+                    <div>
+                      <CardTitle className="text-white text-xl">{selectedTeam.name}</CardTitle>
+                      <CardDescription className="text-gray-400">
+                        Manage team members, invites, and settings
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedTeam(null)}
+                      className="border-[#30363d] text-gray-300 hover:bg-[#21262d]"
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Close
+                    </Button>
+                    <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button size="sm" className="bg-[#6366f1] hover:bg-[#5558e0]">
+                          <UserPlus className="w-4 h-4 mr-2" />
+                          Invite
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="bg-[#161b22] border-[#30363d]">
+                        <DialogHeader>
+                          <DialogTitle className="text-white">Invite Team Member</DialogTitle>
+                          <DialogDescription className="text-gray-400">
+                            Send an invitation to join {selectedTeam.name}.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4 space-y-4">
+                          <div>
+                            <Label htmlFor="invite-email" className="text-gray-300">
+                              Email Address
+                            </Label>
+                            <Input
+                              id="invite-email"
+                              type="email"
+                              placeholder="colleague@company.com"
+                              value={inviteEmail}
+                              onChange={(e) => setInviteEmail(e.target.value)}
+                              className="mt-2 bg-[#0d1117] border-[#30363d] text-white placeholder:text-gray-500"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="invite-role" className="text-gray-300">
+                              Role
+                            </Label>
+                            <Select
+                              value={inviteRole}
+                              onValueChange={(v) =>
+                                setInviteRole(v as 'admin' | 'member' | 'viewer')
+                              }
+                            >
+                              <SelectTrigger className="mt-2 bg-[#0d1117] border-[#30363d] text-white">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="bg-[#21262d] border-[#30363d]">
+                                <SelectItem value="admin" className="text-white focus:bg-[#30363d]">
+                                  <div className="flex items-center gap-2">
+                                    <Shield className="w-4 h-4 text-purple-400" />
+                                    Admin - Full access
+                                  </div>
+                                </SelectItem>
+                                <SelectItem
+                                  value="member"
+                                  className="text-white focus:bg-[#30363d]"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <User className="w-4 h-4 text-blue-400" />
+                                    Member - Can manage resources
+                                  </div>
+                                </SelectItem>
+                                <SelectItem
+                                  value="viewer"
+                                  className="text-white focus:bg-[#30363d]"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <Eye className="w-4 h-4 text-gray-400" />
+                                    Viewer - Read-only access
+                                  </div>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button
+                            variant="outline"
+                            onClick={() => setIsInviteDialogOpen(false)}
+                            className="border-[#30363d] text-gray-300 hover:bg-[#21262d]"
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            onClick={handleInvite}
+                            disabled={inviteMemberMutation.isPending || !inviteEmail.trim()}
+                            className="bg-[#6366f1] hover:bg-[#5558e0]"
+                          >
+                            {inviteMemberMutation.isPending && (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            )}
+                            Send Invitation
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {/* Pending Invites */}
-                  {invites.length > 0 && (
-                    <div className="mb-6">
-                      <h4 className="text-sm font-medium text-gray-400 mb-3">Pending Invitations</h4>
+              </CardHeader>
+
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList
+                  style={
+                    {
+                      backgroundColor: 'var(--bg-secondary)',
+                      borderColor: 'var(--border-default)',
+                    } as React.CSSProperties
+                  }
+                  className="mx-6"
+                >
+                  <TabsTrigger
+                    value="members"
+                    style={
+                      {
+                        color: 'var(--text-secondary)',
+                      } as React.CSSProperties
+                    }
+                    className="data-[state=active]:shadow-sm"
+                  >
+                    <Users className="w-4 h-4 mr-2" />
+                    Members ({members.length})
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="invites"
+                    style={
+                      {
+                        color: 'var(--text-secondary)',
+                      } as React.CSSProperties
+                    }
+                    className="data-[state=active]:shadow-sm"
+                  >
+                    <Mail className="w-4 h-4 mr-2" />
+                    Invites ({invites.length})
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="settings"
+                    style={
+                      {
+                        color: 'var(--text-secondary)',
+                      } as React.CSSProperties
+                    }
+                    className="data-[state=active]:shadow-sm"
+                  >
+                    <Settings className="w-4 h-4 mr-2" />
+                    Settings
+                  </TabsTrigger>
+                </TabsList>
+
+                <CardContent className="pt-6">
+                  {/* Members Tab */}
+                  <TabsContent value="members" className="mt-0">
+                    {membersLoading ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="w-6 h-6 animate-spin text-[#6366f1]" />
+                      </div>
+                    ) : members.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Users className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-white mb-2">No members yet</h3>
+                        <p className="text-gray-400 mb-4">
+                          Invite your first team member to start collaborating.
+                        </p>
+                        <Button
+                          onClick={() => setIsInviteDialogOpen(true)}
+                          className="bg-[#6366f1] hover:bg-[#5558e0]"
+                        >
+                          <UserPlus className="w-4 h-4 mr-2" />
+                          Invite Member
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {members.map((member) => {
+                          const RoleIcon = roleIcons[member.role];
+                          return (
+                            <div
+                              key={member.id}
+                              className="flex items-center justify-between p-4 rounded-lg bg-[#0d1117] border border-[#30363d] hover:border-[#6366f1]/30 transition-colors"
+                            >
+                              <div className="flex items-center gap-4">
+                                <Avatar className="w-10 h-10 border border-[#30363d]">
+                                  <AvatarFallback className="bg-[#21262d] text-white text-sm font-medium">
+                                    {getInitials(member.user?.name, member.user?.email)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <div className="font-medium text-white flex items-center gap-2">
+                                    {member.user?.name ||
+                                      member.user?.username ||
+                                      member.user?.email}
+                                    {isCurrentUserOwner(member) && (
+                                      <Badge
+                                        variant="outline"
+                                        className="bg-[#6366f1]/10 text-[#6366f1] text-xs"
+                                      >
+                                        You
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="text-sm text-gray-400">{member.user?.email}</div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <Badge
+                                  variant="outline"
+                                  className={`${roleColors[member.role as keyof typeof roleColors]} text-xs`}
+                                >
+                                  <RoleIcon className="w-3 h-3 mr-1" />
+                                  {roleLabels[member.role as keyof typeof roleLabels]}
+                                </Badge>
+                                {!isCurrentUserOwner(member) && (
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-gray-400 hover:text-white hover:bg-[#21262d]"
+                                      >
+                                        <MoreVertical className="w-4 h-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent
+                                      align="end"
+                                      className="bg-[#21262d] border-[#30363d]"
+                                    >
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          updateMemberMutation.mutate({
+                                            teamId: selectedTeam.id,
+                                            memberId: member.id,
+                                            role: 'admin',
+                                          })
+                                        }
+                                        className="text-gray-300 focus:bg-[#30363d] focus:text-white"
+                                      >
+                                        <Shield className="w-4 h-4 mr-2 text-purple-400" />
+                                        Make Admin
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          updateMemberMutation.mutate({
+                                            teamId: selectedTeam.id,
+                                            memberId: member.id,
+                                            role: 'member',
+                                          })
+                                        }
+                                        className="text-gray-300 focus:bg-[#30363d] focus:text-white"
+                                      >
+                                        <User className="w-4 h-4 mr-2 text-blue-400" />
+                                        Make Member
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          updateMemberMutation.mutate({
+                                            teamId: selectedTeam.id,
+                                            memberId: member.id,
+                                            role: 'viewer',
+                                          })
+                                        }
+                                        className="text-gray-300 focus:bg-[#30363d] focus:text-white"
+                                      >
+                                        <Eye className="w-4 h-4 mr-2 text-gray-400" />
+                                        Make Viewer
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator className="bg-[#30363d]" />
+                                      <DropdownMenuItem
+                                        className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
+                                        onClick={() => {
+                                          if (
+                                            confirm(`Remove ${member.user?.email} from this team?`)
+                                          ) {
+                                            removeMemberMutation.mutate({
+                                              teamId: selectedTeam.id,
+                                              memberId: member.id,
+                                            });
+                                          }
+                                        }}
+                                      >
+                                        <Trash2 className="w-4 h-4 mr-2" />
+                                        Remove
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  {/* Invites Tab */}
+                  <TabsContent value="invites" className="mt-0">
+                    {invitesLoading ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="w-6 h-6 animate-spin text-[#6366f1]" />
+                      </div>
+                    ) : invites.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Mail className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-white mb-2">No pending invites</h3>
+                        <p className="text-gray-400 mb-4">
+                          Invite team members to see pending invitations here.
+                        </p>
+                        <Button
+                          onClick={() => setIsInviteDialogOpen(true)}
+                          className="bg-[#6366f1] hover:bg-[#5558e0]"
+                        >
+                          <UserPlus className="w-4 h-4 mr-2" />
+                          Invite Member
+                        </Button>
+                      </div>
+                    ) : (
                       <div className="space-y-2">
                         {invites.map((invite) => (
                           <div
                             key={invite.id}
-                            className="member-list-item"
+                            className="flex items-center justify-between p-4 rounded-lg bg-[#0d1117] border border-[#30363d]"
                           >
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
-                                <Mail className="w-4 h-4 text-amber-400" />
+                            <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                                <Mail className="w-5 h-5 text-amber-400" />
                               </div>
                               <div>
-                                <p className="member-name">{invite.email}</p>
-                                <p className="member-email">
-                                  Invited as {invite.role} • Expires {format(new Date(invite.expires_at), "MMM d")}
-                                </p>
+                                <div className="font-medium text-white">{invite.email}</div>
+                                <div className="text-sm text-gray-400 flex items-center gap-2">
+                                  <Clock className="w-3 h-3" />
+                                  Invited{' '}
+                                  {formatDistanceToNow(new Date(invite.created_at), {
+                                    addSuffix: true,
+                                  })}
+                                  • Expires {format(new Date(invite.expires_at), 'MMM d')}
+                                </div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="bg-amber-500/10 text-amber-400">
+                            <div className="flex items-center gap-3">
+                              <Badge
+                                variant="outline"
+                                className="bg-amber-500/10 text-amber-400 border-amber-500/30"
+                              >
+                                <Clock className="w-3 h-3 mr-1" />
                                 Pending
                               </Badge>
-                              <Button 
-                                variant="ghost" 
+                              <Button
+                                variant="ghost"
                                 size="sm"
-                                onClick={() => cancelInviteMutation.mutate({ 
-                                  teamId: selectedTeam.id, 
-                                  inviteId: invite.id 
-                                })}
+                                onClick={() =>
+                                  cancelInviteMutation.mutate({
+                                    teamId: selectedTeam.id,
+                                    inviteId: invite.id,
+                                  })
+                                }
+                                disabled={cancelInviteMutation.isPending}
+                                className="text-gray-400 hover:text-red-400 hover:bg-red-500/10"
                               >
-                                Cancel
+                                {cancelInviteMutation.isPending ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <X className="w-4 h-4" />
+                                )}
                               </Button>
                             </div>
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </TabsContent>
 
-                  {/* Team Members */}
-                  <h4 className="text-sm font-medium text-gray-400 mb-3">Team Members</h4>
-                  {members.length === 0 ? (
-                    <div className="team-empty-state py-8">
-                      <Users className="w-8 h-8 mx-auto text-gray-500 mb-2" />
-                      <p className="text-gray-400">No members yet</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {members.map((member) => {
-                        const RoleIcon = roleIcons[member.role];
-                        const roleColorClass = roleColors[member.role as keyof typeof roleColors] || roleColors.member;
-                        return (
-                          <div
-                            key={member.id}
-                            className="member-list-item"
-                          >
-                            <div className="flex items-center gap-3">
-                              <Avatar className="member-avatar">
-                                <AvatarFallback className="member-avatar-fallback">
-                                  {getInitials(member.user?.name, member.user?.email)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="member-info">
-                                <p className="member-name">
-                                  {member.user?.name || member.user?.username || member.user?.email}
-                                  {isCurrentUserOwner(member) && (
-                                    <span className="ml-2 text-xs text-gray-500">(You)</span>
-                                  )}
-                                </p>
-                                <p className="member-email">{member.user?.email}</p>
+                  {/* Settings Tab */}
+                  <TabsContent value="settings" className="mt-0">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <Card className="bg-[#0d1117] border-[#30363d]">
+                        <CardHeader>
+                          <CardTitle className="text-white flex items-center gap-2 text-base">
+                            <Shield className="w-5 h-5 text-[#6366f1]" />
+                            Team Permissions
+                          </CardTitle>
+                          <CardDescription className="text-gray-400">
+                            Understanding roles and access levels
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          {[
+                            {
+                              role: 'owner',
+                              desc: 'Full control - manage members, settings, billing, and delete team',
+                            },
+                            {
+                              role: 'admin',
+                              desc: 'Can manage members and resources, but cannot delete team',
+                            },
+                            {
+                              role: 'member',
+                              desc: 'Can create and manage functions and resources',
+                            },
+                            {
+                              role: 'viewer',
+                              desc: 'Read-only access to view team resources and activity',
+                            },
+                          ].map(({ role, desc }) => {
+                            const RoleIcon = roleIcons[role as keyof typeof roleIcons];
+                            return (
+                              <div key={role} className="flex items-start gap-3">
+                                <div
+                                  className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                                    role === 'owner'
+                                      ? 'bg-yellow-500/10'
+                                      : role === 'admin'
+                                        ? 'bg-purple-500/10'
+                                        : role === 'member'
+                                          ? 'bg-blue-500/10'
+                                          : 'bg-gray-500/10'
+                                  }`}
+                                >
+                                  <RoleIcon
+                                    className={`w-4 h-4 ${
+                                      role === 'owner'
+                                        ? 'text-yellow-400'
+                                        : role === 'admin'
+                                          ? 'text-purple-400'
+                                          : role === 'member'
+                                            ? 'text-blue-400'
+                                            : 'text-gray-400'
+                                    }`}
+                                  />
+                                </div>
+                                <div>
+                                  <div className="font-medium text-white text-sm capitalize">
+                                    {role}
+                                  </div>
+                                  <div className="text-sm text-gray-400">{desc}</div>
+                                </div>
                               </div>
+                            );
+                          })}
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-[#0d1117] border-[#30363d]">
+                        <CardHeader>
+                          <CardTitle className="text-white flex items-center gap-2 text-base">
+                            <Settings className="w-5 h-5 text-[#6366f1]" />
+                            Team Settings
+                          </CardTitle>
+                          <CardDescription className="text-gray-400">
+                            Manage your team configuration
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="p-4 rounded-lg bg-[#161b22] border border-[#30363d]">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-medium text-white">Team Name</span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 text-[#6366f1] hover:text-[#5558e0] hover:bg-[#6366f1]/10"
+                              >
+                                <Edit3 className="w-4 h-4 mr-2" />
+                                Edit
+                              </Button>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Badge className={`role-badge role-badge-${member.role}`}>
-                                <RoleIcon className="w-3 h-3 mr-1" />
-                                {member.role}
-                              </Badge>
-                              {!isCurrentUserOwner(member) && (
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" aria-label="Member options">
-                                      <MoreVertical className="w-4 h-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem 
-                                      onClick={() => updateMemberMutation.mutate({
-                                        teamId: selectedTeam.id,
-                                        memberId: member.id,
-                                        role: "admin"
-                                      })}
-                                    >
-                                      <Shield className="w-4 h-4 mr-2" />
-                                      Make Admin
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                      onClick={() => updateMemberMutation.mutate({
-                                        teamId: selectedTeam.id,
-                                        memberId: member.id,
-                                        role: "member"
-                                      })}
-                                    >
-                                      <User className="w-4 h-4 mr-2" />
-                                      Make Member
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                      onClick={() => updateMemberMutation.mutate({
-                                        teamId: selectedTeam.id,
-                                        memberId: member.id,
-                                        role: "viewer"
-                                      })}
-                                    >
-                                      <Eye className="w-4 h-4 mr-2" />
-                                      Make Viewer
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem 
-                                      className="text-error"
-                                      onClick={() => {
-                                        if (confirm(`Remove ${member.user?.email} from this team?`)) {
-                                          removeMemberMutation.mutate({
-                                            teamId: selectedTeam.id,
-                                            memberId: member.id
-                                          });
-                                        }
-                                      }}
-                                    >
-                                      <Trash2 className="w-4 h-4 mr-2" />
-                                      Remove
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              )}
-                            </div>
+                            <p className="text-sm text-gray-400">{selectedTeam.name}</p>
                           </div>
-                        );
-                      })}
+                          <div className="p-4 rounded-lg bg-[#161b22] border border-[#30363d]">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-medium text-white">Team ID</span>
+                              <Badge
+                                variant="outline"
+                                className="text-gray-400 border-[#30363d] font-mono text-xs"
+                              >
+                                {selectedTeam.id.slice(0, 8)}...
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-gray-400">
+                              Unique identifier for API access
+                            </p>
+                          </div>
+                          <div className="p-4 rounded-lg bg-[#161b22] border border-[#30363d]">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-medium text-white">Created</span>
+                            </div>
+                            <p className="text-sm text-gray-400">
+                              {format(new Date(selectedTeam.created_at), 'MMMM d, yyyy')}
+                            </p>
+                          </div>
+                          <Separator className="bg-[#30363d]" />
+                          <div className="p-4 rounded-lg bg-red-500/5 border border-red-500/20">
+                            <div className="flex items-center gap-2 mb-2">
+                              <AlertCircle className="w-5 h-5 text-red-400" />
+                              <span className="font-medium text-red-400">Danger Zone</span>
+                            </div>
+                            <p className="text-sm text-gray-400 mb-3">
+                              Deleting a team will remove all members and data. This cannot be
+                              undone.
+                            </p>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => {
+                                if (
+                                  confirm(
+                                    `Are you sure you want to delete "${selectedTeam.name}"? This cannot be undone.`
+                                  )
+                                ) {
+                                  deleteTeamMutation.mutate(selectedTeam.id);
+                                }
+                              }}
+                              disabled={deleteTeamMutation.isPending}
+                              className="bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 hover:text-red-400"
+                            >
+                              {deleteTeamMutation.isPending ? (
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-4 h-4 mr-2" />
+                              )}
+                              Delete Team
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
                     </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
+                  </TabsContent>
+                </CardContent>
+              </Tabs>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

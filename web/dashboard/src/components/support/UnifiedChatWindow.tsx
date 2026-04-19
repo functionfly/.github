@@ -226,15 +226,22 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
           : 'h-[min(680px,calc(100vh-6rem))] w-[min(440px,calc(100vw-2rem))]',
         className
       )}
+      style={{
+        // Use CSS variables - values automatically adapt based on data-theme
+        backgroundColor: 'var(--bg-secondary)',
+        borderColor: 'var(--border-default)',
+        // Ensure solid background by resetting any potential transparency
+        '--bg-secondary': 'var(--bg-secondary)',
+      } as React.CSSProperties}
       role="dialog"
       aria-label="FunctionFly support chat"
       aria-modal="true"
       tabIndex={-1}
     >
-      {/* Header - Enhanced with glass effect */}
+      {/* Header - Velocity Brand: Flame Orange → Altitude Cyan */}
       <div className="relative flex h-14 shrink-0 items-center justify-between overflow-hidden px-4">
-        {/* Animated gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600" />
+        {/* Animated gradient background - Velocity Brand */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#FF6B35] via-[#FF4F5E] to-[#00D4FF]" />
         <div className="absolute inset-0 bg-[linear-gradient(to_bottom_right,rgba(255,255,255,0.1),transparent,rgba(0,0,0,0.1))]" />
         
         {/* Animated shine effect */}
@@ -287,8 +294,8 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
               {isLoading && (
                 <div className="flex flex-col items-center justify-center gap-3 py-12 text-sm text-[var(--text-muted)]">
                   <div className="relative flex h-10 w-10 items-center justify-center">
-                    <div className="absolute h-full w-full animate-pulse rounded-full bg-indigo-500/20" />
-                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+                    <div className="absolute h-full w-full animate-pulse rounded-full bg-[#FF6B35]/20" />
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#FF6B35] border-t-transparent" />
                   </div>
                   <span>Loading conversation…</span>
                 </div>
@@ -310,7 +317,7 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
                 <div className="space-y-6">
                   {/* Welcome Message */}
                   <div className="flex gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(to_bottom_right,#6366f1,#8b5cf6,#9333ea)] shadow-lg shadow-indigo-500/20">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(to_bottom_right,#FF6B35,#FF4F5E,#00D4FF)] shadow-lg shadow-[#FF6B35]/20">
                       <Bot className="h-5 w-5 text-white" />
                     </div>
                     <div className="space-y-3 flex-1">
@@ -331,7 +338,7 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
                             key={text}
                             type="button"
                             onClick={() => insertPrompt(text)}
-                            className="group flex items-center gap-2 rounded-full border border-[var(--border-default)] bg-[var(--bg-primary)] px-3.5 py-2 text-xs font-medium text-[var(--text-secondary)] transition-all duration-200 hover:border-indigo-500/50 hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400"
+                            className="group flex items-center gap-2 rounded-full border border-[var(--border-default)] bg-[var(--bg-primary)] px-3.5 py-2 text-xs font-medium text-[var(--text-secondary)] transition-all duration-200 hover:border-[#FF6B35]/50 hover:bg-[#FF6B35]/10 hover:text-[#FF6B35] dark:hover:text-[#FF8C42]"
                           >
                             <Icon className="h-3.5 w-3.5 transition-colors" />
                             <span>{text}</span>
@@ -348,10 +355,10 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
                         key={label}
                         type="button"
                         onClick={() => insertPrompt(prompt)}
-                        className="group flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)]/50 p-3 text-left transition-all duration-200 hover:border-indigo-500/30 hover:bg-indigo-500/5"
+                        className="group flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)]/50 p-3 text-left transition-all duration-200 hover:border-[#FF6B35]/30 hover:bg-[#FF6B35]/5"
                       >
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[linear-gradient(to_bottom_right,rgba(99,102,241,0.2),rgba(139,92,246,0.2))] transition-colors group-hover:bg-[linear-gradient(to_bottom_right,rgba(99,102,241,0.3),rgba(139,92,246,0.3))]">
-                          <Icon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[linear-gradient(to_bottom_right,rgba(255,107,53,0.2),rgba(0,212,255,0.2))] transition-colors group-hover:bg-[linear-gradient(to_bottom_right,rgba(255,107,53,0.3),rgba(0,212,255,0.3))]">
+                          <Icon className="h-4 w-4 text-[#FF6B35] dark:text-[#FF8C42]" />
                         </div>
                         <span className="text-xs font-medium text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">
                           {label}
@@ -395,7 +402,7 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
                           ? 'bg-[var(--bg-hover)]'
                           : isStaff
                             ? 'bg-[linear-gradient(to_bottom_right,#10b981,#0d9488)] shadow-lg shadow-emerald-500/20'
-                            : 'bg-[linear-gradient(to_bottom_right,#6366f1,#8b5cf6,#9333ea)] shadow-lg shadow-indigo-500/20'
+                            : 'bg-[linear-gradient(to_bottom_right,#FF6B35,#FF4F5E,#00D4FF)] shadow-lg shadow-[#FF6B35]/20'
                       )}>
                         {isUser ? (
                           <User className="h-4 w-4 text-[var(--text-secondary)]" />
@@ -420,7 +427,7 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
                           className={cn(
                             'inline-block rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm transition-all',
                             isUser
-                              ? 'rounded-tr-sm bg-[linear-gradient(to_bottom_right,#4f46e5,#7c3aed)] text-white'
+                              ? 'rounded-tr-sm bg-[linear-gradient(to_bottom_right,#00D4FF,#5B7CF5)] text-white'
                               : isStaff
                                 ? 'rounded-tl-sm bg-[linear-gradient(to_bottom_right,#059669,#0d9488)] text-white'
                                 : 'rounded-tl-sm bg-[var(--bg-tertiary)] border border-[var(--border-subtle)] text-[var(--text-primary)]'
@@ -451,7 +458,7 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
               {/* Typing Indicator */}
               {isSending && (
                 <div className="flex gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[linear-gradient(to_bottom_right,#6366f1,#8b5cf6,#9333ea)] shadow-lg shadow-indigo-500/20">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[linear-gradient(to_bottom_right,#FF6B35,#FF4F5E,#00D4FF)] shadow-lg shadow-[#FF6B35]/20">
                     <Bot className="h-4 w-4 text-white" />
                   </div>
                   <div className="flex items-center gap-1 rounded-2xl rounded-tl-sm bg-[var(--bg-tertiary)] border border-[var(--border-subtle)] px-4 py-3 shadow-sm">
@@ -514,7 +521,7 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
                   onKeyDown={handleKeyDown}
                   placeholder="Ask anything..."
                   disabled={!conversation || isSending}
-                  className="h-11 flex-1 rounded-xl border-[var(--border-default)] bg-[var(--bg-secondary)] pr-12 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:border-indigo-500/50 transition-all"
+                  className="h-11 flex-1 rounded-xl border-[var(--border-default)] bg-[var(--bg-secondary)] pr-12 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus-visible:ring-2 focus-visible:ring-[#FF6B35]/50 focus-visible:border-[#FF6B35]/50 transition-all"
                 />
                 {inputValue.length > 0 && (
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-[var(--text-muted)]">
@@ -527,7 +534,7 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
                 onClick={handleSend}
                 disabled={!canSend}
                 size="icon"
-                className="h-11 w-11 shrink-0 rounded-xl bg-[linear-gradient(to_bottom_right,#4f46e5,#7c3aed)] hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20 transition-all duration-200 hover:scale-105 active:scale-95"
+                className="h-11 w-11 shrink-0 rounded-xl bg-[linear-gradient(to_bottom_right,#FF6B35,#E85A2A)] hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-[#FF6B35]/30 transition-all duration-200 hover:scale-105 active:scale-95"
               >
                 <Send className="h-4 w-4 text-white" />
               </Button>
@@ -585,7 +592,7 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
                 onChange={(e) => setEmergencyReason(e.target.value)}
                 placeholder="What happened, expected behavior, and any relevant logs..."
                 disabled={isRequestingEmergency}
-                className="w-full min-h-[96px] resize-y rounded-xl border border-border-default bg-[var(--bg-secondary)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:border-indigo-500/50"
+                className="w-full min-h-[96px] resize-y rounded-xl border border-border-default bg-[var(--bg-secondary)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus-visible:ring-2 focus-visible:ring-[#FF6B35]/50 focus-visible:border-[#FF6B35]/50"
               />
             </div>
           </div>

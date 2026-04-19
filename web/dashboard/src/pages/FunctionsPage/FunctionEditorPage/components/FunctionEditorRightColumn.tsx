@@ -62,8 +62,8 @@ export function FunctionEditorRightColumn({ editor }: Props) {
         <CardHeader className="pb-0 pt-4 px-5 shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Code2 className="w-4 h-4 text-indigo-400" />
-              <CardTitle className="text-sm font-semibold text-text-primary">Code Editor</CardTitle>
+              <Code2 className="w-4 h-4 text-[#FF6B35]" />
+              <CardTitle className="text-sm font-semibold text-text-primary font-display">Code Editor</CardTitle>
               <Badge
                 variant="outline"
                 className="text-xs font-mono"
@@ -141,7 +141,7 @@ export function FunctionEditorRightColumn({ editor }: Props) {
                       <div
                         className="flex h-full w-full items-center justify-center text-text-secondary"
                         style={{
-                          backgroundColor: theme === 'light' ? 'var(--bg-tertiary)' : '#1e1e1e',
+                          backgroundColor: 'var(--bg-tertiary)',
                         }}
                       >
                         <Loader2 className="h-6 w-6 animate-spin" />
@@ -217,8 +217,8 @@ export function FunctionEditorRightColumn({ editor }: Props) {
       >
         <CardHeader className="pb-3 pt-4 px-5">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-indigo-400" />
-            <CardTitle className="text-sm font-semibold text-text-primary">
+              <Sparkles className="w-4 h-4 text-[#FF6B35]" />
+            <CardTitle className="text-sm font-semibold text-text-primary font-display">
               Configuration Summary
             </CardTitle>
           </div>

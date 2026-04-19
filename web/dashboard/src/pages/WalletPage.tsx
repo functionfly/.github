@@ -31,7 +31,7 @@ function sanitizeWalletAgentIdParam(raw: string | null | undefined): string | nu
  * The sidebar uses /wallet; we resolve a real agent id instead of the invalid placeholder "default-agent".
  */
 export function WalletPage() {
-  const { agentId: pathAgentId } = useParams<{ agentId: string }>();
+  const { slug: pathAgentId } = useParams<{ slug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryAgent = searchParams.get('agent')?.trim() || undefined;

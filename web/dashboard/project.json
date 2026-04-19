@@ -4,6 +4,7 @@
   "sourceRoot": "web/dashboard/src",
   "projectType": "application",
   "tags": ["type:app", "platform:web"],
+  "implicitDependencies": ["docs"],
   "targets": {
     "build": {
       "executor": "@nx/vite:build",

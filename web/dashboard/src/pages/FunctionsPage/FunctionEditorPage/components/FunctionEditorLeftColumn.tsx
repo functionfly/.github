@@ -169,14 +169,19 @@ export function FunctionEditorLeftColumn({ editor }: Props) {
                   onClick={() => handleRuntimeChange(key)}
                   className={`relative flex flex-col gap-1.5 rounded-lg border-2 p-3 text-left transition-all duration-200 ${
                     runtime === key
-                      ? 'border-indigo-600 bg-indigo-50 shadow-sm dark:border-indigo-400/90 dark:bg-indigo-500/25 dark:shadow-[0_0_0_1px_rgba(129,140,248,0.35)]'
+                      ? 'border-[#FF6B35] bg-[#FFF1EB] shadow-sm dark:border-[#FF8C42]/90 dark:bg-[#FF6B35]/25 dark:shadow-[0_0_0_1px_rgba(255,140,66,0.35)]'
                       : 'border-transparent bg-bg-tertiary hover:border-border-default hover:bg-bg-hover'
                   }`}
-                  aria-pressed={runtime === key}
+                  aria-pressed={retryPolicy === key}
                 >
+                  {retryPolicy === key ? (
+                    <span
+                      className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#FF6B35] text-white shadow-sm dark:bg-[#FF8C42]"
+                      aria-hidden
+                    >
                   {runtime === key ? (
                     <span
-                      className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-white shadow-sm dark:bg-indigo-500"
+                      className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#FF6B35] text-white shadow-sm dark:bg-[#FF8C42]"
                       aria-hidden
                     >
                       <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
@@ -211,7 +216,7 @@ export function FunctionEditorLeftColumn({ editor }: Props) {
               markDirty();
             }}
           >
-            <SelectTrigger id="runtime-version" className="select">
+            <SelectTrigger id="runtime-version">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -252,7 +257,7 @@ export function FunctionEditorLeftColumn({ editor }: Props) {
                 onClick={() => handleProviderToggle(provider.id)}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
                   selectedProviders.includes(provider.id)
-                    ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400'
+                    ? 'bg-[#FF6B35]/10 border-[#FF6B35]/30 text-[#FF6B35]'
                     : 'bg-bg-tertiary border-border-subtle text-text-secondary hover:border-border-default'
                 }`}
               >
@@ -277,7 +282,7 @@ export function FunctionEditorLeftColumn({ editor }: Props) {
                 markDirty();
               }}
             >
-              <SelectTrigger id="region" className="select">
+              <SelectTrigger id="region">
                 <SelectValue placeholder="Select region" />
               </SelectTrigger>
               <SelectContent>
@@ -308,7 +313,7 @@ export function FunctionEditorLeftColumn({ editor }: Props) {
               <div
                 key={envVar.id}
                 className="flex items-center gap-3 p-3 rounded-lg"
-                style={{ background: 'var(--bg-tertiary, #1a1a25)' }}
+                style={{ background: 'var(--bg-tertiary)' }}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -441,7 +446,7 @@ export function FunctionEditorLeftColumn({ editor }: Props) {
                 markDirty();
               }}
             >
-              <SelectTrigger className="select">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -465,7 +470,7 @@ export function FunctionEditorLeftColumn({ editor }: Props) {
                 markDirty();
               }}
             >
-              <SelectTrigger className="select">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -530,7 +535,7 @@ export function FunctionEditorLeftColumn({ editor }: Props) {
                     markDirty();
                   }}
                 >
-                  <SelectTrigger className="select">
+                  <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

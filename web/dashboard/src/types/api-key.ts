@@ -1,6 +1,6 @@
 // API Key types matching backend Go types
 
-export type APIKeyType = 'platform' | 'function' | 'agent' | 'environment' | 'oauth';
+export type APIKeyType = 'platform' | 'function' | 'agent' | 'environment' | 'oauth' | 'trust';
 
 export type Permission = 'read' | 'write' | 'execute' | 'admin';
 
@@ -53,6 +53,7 @@ export interface APIKey {
   name: string;
   description?: string;
   key_type: APIKeyType;
+  key_id?: string; // Public key identifier (used by Trust API keys)
   key_prefix: string;
   // Alias for backwards compatibility
   prefix?: string;
@@ -71,6 +72,15 @@ export interface APIKey {
   last_used_at?: string;
   permissions?: APIKeyPermission[];
   environments?: APIKeyEnvironment[];
+  // Trust API specific fields
+  partner_id?: string;
+  scopes?: Record<string, boolean>;
+  is_revoked?: boolean;
+  revoked_at?: string;
+  revoked_reason?: string;
+  use_count?: number;
+  allowed_ips?: string[];
+  created_by?: string;
 }
 
 export interface APIKeyCreateResponse extends APIKey {
@@ -153,6 +163,7 @@ export const API_KEY_TYPE_LABELS: Record<APIKeyType, string> = {
   agent: 'Agent',
   environment: 'Environment',
   oauth: 'OAuth',
+  trust: 'Trust API',
 };
 
 export const API_KEY_TYPE_DESCRIPTIONS: Record<APIKeyType, string> = {
@@ -161,6 +172,7 @@ export const API_KEY_TYPE_DESCRIPTIONS: Record<APIKeyType, string> = {
   agent: 'Access for AI agents',
   environment: 'Environment-specific access',
   oauth: 'OAuth-based access',
+  trust: 'Trust API partner access for trust scores, verification, and reports',
 };
 
 export const PERMISSION_LABELS: Record<Permission, string> = {

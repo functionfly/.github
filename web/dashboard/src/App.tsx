@@ -26,11 +26,14 @@ import { APIKeyDetailPage, APIKeysPage } from '@/pages/api-keys';
 import { AppDetailPage } from '@/pages/AppDetailPage';
 import { AppsPage, CreateAppPage } from '@/pages/AppsPage';
 import { AuthCallbackPage } from '@/pages/AuthCallbackPage';
+import { MagicLinkVerifyPage } from '@/pages/AuthPage/MagicLinkVerifyPage';
 import { BrowseFunctionsPage } from '@/pages/BrowseFunctionsPage';
+import { BundlePricingPage } from '@/pages/BundlePricingPage';
 import ChangelogPage from '@/pages/ChangelogPage';
 import { ContactPage } from '@/pages/ContactPage';
 import ConversationsPage from '@/pages/ConversationsPage';
 import { DashboardPage } from '@/pages/DashboardPage';
+import DecisionsPage from '@/pages/DecisionsPage';
 import EnterpriseSLAPage from '@/pages/EnterpriseSLAPage';
 import EvolutionPage from '@/pages/EvolutionPage';
 import ExecutionExplorerPage from '@/pages/ExecutionExplorerPage';
@@ -38,19 +41,23 @@ import { FAQPage } from '@/pages/FAQPage';
 import { FeaturesPage } from '@/pages/FeaturesPage';
 import { FeedbackPage } from '@/pages/FeedbackPage';
 import { ForbiddenPage } from '@/pages/ForbiddenPage';
+import FRGEditorPage from '@/pages/FRGEditorPage';
+import FRGGraphsPage from '@/pages/FRGGraphsPage';
+import FRGShowcasePage from '@/pages/FRGShowcasePage';
 import FunctionMarketplacePage from '@/pages/FunctionMarketplacePage';
 import FunctionPage from '@/pages/FunctionPage';
 import { FunctionsDiscoveryPage } from '@/pages/FunctionsDiscoveryPage';
 import { FunctionsPage } from '@/pages/FunctionsPage';
-import { HelpCenterPage } from '@/pages/HelpCenterPage';
 import { FunctionDetailPage } from '@/pages/FunctionsPage/FunctionDetailPage';
 import { FunctionEditorPage } from '@/pages/FunctionsPage/FunctionEditorPage';
 import { FunctionLogsPage } from '@/pages/FunctionsPage/FunctionLogsPage';
 import { FunctionSettingsPage } from '@/pages/FunctionsPage/FunctionSettingsPage';
+import GalleryPage from '@/pages/GalleryPage';
+import { HelpCenterPage } from '@/pages/HelpCenterPage';
 import { IntegrationsPage } from '@/pages/IntegrationsPage';
 import { LaunchPage } from '@/pages/LaunchPage';
-import { BundlePricingPage } from '@/pages/BundlePricingPage';
 import { MyProfilePage } from '@/pages/MyProfilePage';
+import { MyTeamPage } from '@/pages/MyTeamPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { OnboardingPage } from '@/pages/OnboardingPage';
 import { PlaygroundPage } from '@/pages/PlaygroundPage';
@@ -69,16 +76,12 @@ import { StateFabricPage } from '@/pages/StateFabricPage';
 import { StateFabricDetailPage } from '@/pages/StateFabricPage/StateFabricDetailPage';
 import { StatePage } from '@/pages/StatePage';
 import { StateDetailPage } from '@/pages/StatePage/StateDetailPage';
-import { TeamsPage } from '@/pages/TeamsPage';
-import { MyTeamPage } from '@/pages/MyTeamPage';
+import TeamDecisionsPage from '@/pages/TeamDecisionsPage';
 import TeamMemoryPage from '@/pages/TeamMemoryPage';
+import { TeamsPage } from '@/pages/TeamsPage';
 import { UserDashboardFunctionsPage } from '@/pages/UserDashboardFunctionsPage';
 import { UserDashboardSettingsPage } from '@/pages/UserDashboardSettingsPage';
 import WalletPage from '@/pages/WalletPage';
-import FRGEditorPage from '@/pages/FRGEditorPage';
-import FRGShowcasePage from '@/pages/FRGShowcasePage';
-import FRGGraphsPage from '@/pages/FRGGraphsPage';
-import GalleryPage from '@/pages/GalleryPage';
 import { useAuthStore } from '@/stores/authStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useOnboardingStore } from '@/stores/onboardingStore';
@@ -86,6 +89,7 @@ import type { Notification, NotificationCategory } from '@/types/notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AlertTriangle, Bell, DollarSign, Loader2, MessageSquare, Shield } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { HelmetProvider } from 'react-helmet-async';
 import {
   BrowserRouter,
   Navigate,
@@ -97,14 +101,8 @@ import {
 } from 'react-router-dom';
 import { Toaster, toast } from 'sonner';
 
-// Flywheel Network imports
-import { FlywheelLayout } from '@/components/flywheel/layout/FlywheelLayout';
 import { EnterpriseAuditPage } from '@/pages/EnterpriseAuditPage';
 import { EnterpriseSupportPage } from '@/pages/EnterpriseSupportPage';
-import ChallengePage from '@/pages/flywheel/ChallengePage';
-import FlywheelHubPage from '@/pages/flywheel/FlywheelHubPage';
-import LeaderboardPage from '@/pages/flywheel/LeaderboardPage';
-import ThreadListPage from '@/pages/flywheel/ThreadListPage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
 import StatusPage from '@/pages/StatusPage';
 import { UsagePage } from '@/pages/UsagePage';
@@ -453,7 +451,7 @@ function AppContent() {
         <Route path="/pricing/bundles" element={<BundlePricingPage />} />
         <Route path="/features" element={<FeaturesPage />} />
         <Route path="/integrations" element={<IntegrationsPage />} />
-        <Route path="/teams" element={<TeamsPage />} />
+        {/* /teams is the dashboard-protected route inside DashboardLayout */}
         <Route path="/privacy" element={<MarketingLegalRedirect page="privacy" />} />
         <Route path="/security" element={<SecurityPage />} />
         <Route path="/terms" element={<MarketingLegalRedirect page="terms" />} />
@@ -493,6 +491,8 @@ function AppContent() {
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/auth/oauth/callback" element={<AuthCallbackPage />} />
         <Route path="/auth/reset-password" element={<RedirectToAuth />} />
+        <Route path="/auth/magic-link" element={<RedirectToAuth />} />
+        <Route path="/auth/magic-link/verify" element={<MagicLinkVerifyPage />} />
 
         {/* Onboarding Route */}
         <Route
@@ -504,25 +504,6 @@ function AppContent() {
           }
         />
 
-        {/* Flywheel Network – must be before path="/" so /flywheel doesn't match dashboard layout */}
-        <Route
-          path="/flywheel"
-          element={
-            <ProtectedRoute>
-              <FlywheelLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<FlywheelHubPage />} />
-          <Route path="threads" element={<ThreadListPage />} />
-          <Route path="threads/new" element={<div>New Thread Page (Coming Soon)</div>} />
-          <Route path="threads/:id" element={<div>Thread Detail Page (Coming Soon)</div>} />
-          <Route path="challenges" element={<ChallengePage />} />
-          <Route path="challenges/:id" element={<div>Challenge Detail Page (Coming Soon)</div>} />
-          <Route path="leaderboards" element={<LeaderboardPage />} />
-          <Route path="reputation/:userId" element={<div>Reputation Page (Coming Soon)</div>} />
-        </Route>
-
         {/* Protected Dashboard Routes */}
         <Route
           path="/"
@@ -532,12 +513,13 @@ function AppContent() {
             </ProtectedRoute>
           }
         >
+          <Route index element={<Navigate to="/overview" replace />} />
           <Route path="dashboard" element={<FunctionMarketplacePage />} />
           <Route path="overview" element={<DashboardPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="apps" element={<AppsPage />} />
           <Route path="apps/new" element={<CreateAppPage />} />
-          <Route path="apps/:appId" element={<AppDetailPage />} />
+          <Route path="apps/:slug" element={<AppDetailPage />} />
           <Route path="functions" element={<FunctionsPage />} />
           <Route path="functions/hot" element={<FunctionsDiscoveryPage />} />
           <Route path="functions/trending" element={<FunctionsDiscoveryPage />} />
@@ -582,6 +564,8 @@ function AppContent() {
           <Route path="teams" element={<TeamsPage />} />
           <Route path="my-team" element={<MyTeamPage />} />
           <Route path="teams/:teamId/memory" element={<TeamMemoryPage />} />
+          <Route path="decisions" element={<DecisionsPage />} />
+          <Route path="teams/:teamId/decisions" element={<TeamDecisionsPage />} />
           {/* Enterprise Routes */}
           <Route path="enterprise/sla" element={<EnterpriseSLAPage />} />
           <Route path="enterprise/audit" element={<EnterpriseAuditPage />} />
@@ -597,14 +581,14 @@ function AppContent() {
 
           {/* Agent Routes */}
           <Route path="agents" element={<AgentsPage />} />
-          <Route path="agents/:agentId" element={<AgentsPage />} />
+          <Route path="agents/:slug" element={<AgentsPage />} />
           <Route path="sdk-integrations" element={<AgentSDKIntegrationsPage />} />
           <Route path="marketplace/agents" element={<AgentMarketplacePage />} />
           <Route path="marketplace/functions" element={<Navigate to="/dashboard" replace />} />
           <Route path="evolution" element={<EvolutionPage />} />
-          <Route path="evolution/:agentId" element={<EvolutionPage />} />
+          <Route path="evolution/:slug" element={<EvolutionPage />} />
           <Route path="wallet" element={<WalletPage />} />
-          <Route path="wallet/:agentId" element={<WalletPage />} />
+          <Route path="wallet/:slug" element={<WalletPage />} />
 
           <Route path="conversations" element={<ConversationsPage />} />
           <Route path="conversations/:id" element={<ConversationsPage />} />
@@ -630,9 +614,11 @@ function App() {
         <ThemeProvider>
           <CookieConsentProvider>
             <BrowserRouter>
-              <Analytics />
-              <GlobalKeyboardShortcuts />
-              <AppContent />
+              <HelmetProvider>
+                <Analytics />
+                <GlobalKeyboardShortcuts />
+                <AppContent />
+              </HelmetProvider>
             </BrowserRouter>
             <Toaster
               position="bottom-right"

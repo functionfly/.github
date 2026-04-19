@@ -292,7 +292,7 @@ export function UpgradeBanner({
           isFree={isFree}
           nextTier={nextTier}
           onSelectPlan={handleDirectCheckout}
-          isLoading={isCheckoutLoading}
+          isCheckoutLoading={isCheckoutLoading}
         />
       </motion.div>
     );
@@ -445,7 +445,7 @@ export function UpgradeBanner({
           isFree={isFree}
           nextTier={nextTier}
           onSelectPlan={handleDirectCheckout}
-          isLoading={isCheckoutLoading}
+          isCheckoutLoading={isCheckoutLoading}
         />
       </motion.div>
     );
@@ -530,7 +530,7 @@ export function UpgradeBanner({
         isFree={isFree}
         nextTier={nextTier}
         onSelectPlan={handleDirectCheckout}
-        isLoading={isCheckoutLoading}
+        isCheckoutLoading={isCheckoutLoading}
       />
     </motion.div>
   );
@@ -545,7 +545,7 @@ export interface PlanSelectionModalProps {
   isFree: boolean;
   nextTier: string;
   onSelectPlan: (planId: string, priceId?: string) => void;
-  isLoading: boolean;
+  isCheckoutLoading: boolean;
   featureName?: string;
 }
 
@@ -555,7 +555,7 @@ export function PlanSelectionModal({
   isFree,
   nextTier,
   onSelectPlan,
-  isLoading,
+  isCheckoutLoading,
   featureName,
 }: PlanSelectionModalProps) {
   const { plan } = usePlan();
@@ -577,16 +577,24 @@ export function PlanSelectionModal({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">
-        <div className="bg-linear-to-br from-indigo-500/10 via-purple-500/10 to-fuchsia-500/10 p-6 pb-4">
+        <div className="bg-gradient-to-br from-[#FF6B35]/15 via-[#FF8C42]/10 to-[#FF4F5E]/5 p-6 pb-4 border-b border-[#FF6B35]/20">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-text-primary">
-              {isFree
-                ? featureName
-                  ? `Upgrade to Use ${featureName}`
-                  : 'Choose Your Plan'
-                : `Upgrade to ${nextTier}`}
-            </DialogTitle>
-            <DialogDescription className="text-text-secondary">
+            <div className="flex items-center gap-3 mb-2">
+              <div 
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ background: 'linear-gradient(135deg, #FF6B35, #FF8C42)' }}
+              >
+                <Crown className="w-5 h-5 text-white" />
+              </div>
+              <DialogTitle className="text-2xl font-bold" style={{ color: 'inherit' }}>
+                {isFree
+                  ? featureName
+                    ? `Upgrade to Use ${featureName}`
+                    : 'Choose Your Plan'
+                  : `Upgrade to ${nextTier}`}
+              </DialogTitle>
+            </div>
+            <DialogDescription style={{ color: 'inherit', opacity: 0.8 }}>
               {isFree
                 ? featureName
                   ? `Upgrade to Starter or higher to create and deploy ${featureName.toLowerCase()}. Select a plan that fits your needs.`
@@ -603,15 +611,19 @@ export function PlanSelectionModal({
               id={id}
               plan={planData}
               isRecommended={recommended}
-              isLoading={isLoading}
+              isLoading={isCheckoutLoading}
               onSelect={() => onSelectPlan(id, planData.priceId)}
             />
           ))}
 
-          <p className="text-xs text-text-muted text-center pt-2">
+          <p className="text-xs text-center pt-2" style={{ opacity: 0.6 }}>
             All plans include core features. Cancel anytime.
           </p>
         </div>
+        <div 
+          className="h-1 w-full"
+          style={{ background: 'linear-gradient(to right, #FF6B35, #FF8C42, #FF4F5E)' }}
+        />
       </DialogContent>
     </Dialog>
   );
@@ -659,15 +671,18 @@ function PlanCard({
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.99 }}
       className={cn(
-        'relative rounded-xl border transition-all cursor-pointer overflow-hidden',
+        'relative rounded-xl border transition-all duration-200 cursor-pointer overflow-hidden group',
         isRecommended
-          ? 'border-indigo-500/50 bg-indigo-500/5 ring-1 ring-indigo-500/20'
-          : 'border-border-subtle hover:border-border-strong hover:bg-surface-elevated/50'
+          ? 'border-[#FF6B35]/50 bg-[#FF6B35]/5 ring-1 ring-[#FF6B35]/20 shadow-[0_2px_8px_rgba(255,107,53,0.1)]'
+          : 'border-border-subtle hover:border-[#FF6B35]/40 hover:bg-[#FF6B35]/8 hover:shadow-[0_4px_12px_rgba(255,107,53,0.15)]'
       )}
       onClick={onSelect}
     >
       {isRecommended && (
-        <div className="absolute top-0 right-0 bg-indigo-500 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-bl-lg">
+        <div 
+          className="absolute top-0 right-0 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-bl-lg"
+          style={{ background: 'linear-gradient(135deg, #FF6B35, #FF8C42)' }}
+        >
           Recommended
         </div>
       )}
@@ -675,12 +690,12 @@ function PlanCard({
       <div className="p-4 flex items-center gap-4">
         <div
           className={cn(
-            'w-12 h-12 rounded-xl flex items-center justify-center shrink-0',
+            'w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200',
             isEnterprise
-              ? 'bg-linear-to-br from-amber-500 to-orange-500'
+              ? 'bg-gradient-to-br from-[#FF6B35] to-[#FF4F5E]'
               : isRecommended
-                ? 'bg-linear-to-br from-indigo-500 to-purple-600'
-                : 'bg-surface-elevated'
+                ? 'bg-gradient-to-br from-[#FF6B35] to-[#FF8C42]'
+                : 'bg-surface-elevated border-2 border-[#FF6B35]/20 group-hover:border-[#FF6B35]/40 group-hover:bg-[#FF6B35]/10'
           )}
         >
           {isEnterprise ? (
@@ -688,15 +703,18 @@ function PlanCard({
           ) : isRecommended ? (
             <Rocket className="w-6 h-6 text-white" />
           ) : (
-            <Zap className="w-5 h-5 text-text-muted" />
+            <Zap className="w-5 h-5 text-[#FF6B35]" />
           )}
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h4 className="font-semibold text-text-primary">{plan.name}</h4>
+            <h4 className="font-semibold text-text-primary group-hover:text-[#FF6B35] transition-colors duration-200">{plan.name}</h4>
             {isEnterprise && (
-              <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full font-medium">
+              <span 
+                className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                style={{ backgroundColor: 'rgba(255, 107, 53, 0.2)', color: '#FF6B35' }}
+              >
                 Custom
               </span>
             )}
@@ -704,18 +722,18 @@ function PlanCard({
           <p className="text-sm text-text-secondary truncate">{plan.description}</p>
           <div className="flex items-center gap-3 mt-1.5 text-xs text-text-muted">
             <span className="flex items-center gap-1">
-              <Check className="w-3 h-3 text-green-400" />
+              <Check className="w-3 h-3 text-[#FF6B35]" />
               {plan.limits.functions === Infinity ? 'Unlimited' : plan.limits.functions} functions
             </span>
             <span className="flex items-center gap-1">
-              <Check className="w-3 h-3 text-green-400" />
+              <Check className="w-3 h-3 text-[#FF6B35]" />
               {plan.limits.providers === Infinity ? 'Unlimited' : plan.limits.providers} providers
             </span>
           </div>
         </div>
 
         <div className="text-right shrink-0">
-          <p className="text-2xl font-bold text-text-primary">
+          <p className="text-2xl font-bold" style={{ color: '#FF6B35' }}>
             {typeof plan.price === 'number' ? `$${plan.price}` : plan.price}
           </p>
           <p className="text-xs text-text-muted">{isEnterprise ? 'Contact us' : '/month'}</p>
@@ -725,13 +743,20 @@ function PlanCard({
       <div className="px-4 pb-4">
         <Button
           className={cn(
-            'w-full',
-            isEnterprise
-              ? 'bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white'
-              : isRecommended
-                ? 'bg-linear-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white'
-                : 'bg-surface-elevated hover:bg-surface-elevated/80 text-text-primary border border-border-subtle'
+            'w-full transition-all duration-200 group text-white border-0 hover:shadow-xl hover:scale-[1.02]'
           )}
+          style={{
+            background: 'linear-gradient(135deg, #FF6B35 0%, #FF8C42 100%)',
+            boxShadow: '0 4px 14px rgba(255, 107, 53, 0.25)'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'linear-gradient(135deg, #FF8C42 0%, #FF6B35 100%)';
+            e.currentTarget.style.boxShadow = '0 6px 20px rgba(255, 107, 53, 0.4)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'linear-gradient(135deg, #FF6B35 0%, #FF8C42 100%)';
+            e.currentTarget.style.boxShadow = '0 4px 14px rgba(255, 107, 53, 0.25)';
+          }}
           disabled={isLoading}
           onClick={(e) => {
             e.stopPropagation();
@@ -748,7 +773,7 @@ function PlanCard({
           ) : (
             <>
               Select {plan.name}
-              <ArrowRight className="w-4 h-4 ml-1" />
+              <ArrowRight className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1" />
             </>
           )}
         </Button>

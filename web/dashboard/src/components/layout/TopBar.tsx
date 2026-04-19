@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Breadcrumb } from "./Breadcrumb";
 import { UserMenu } from "./UserMenu";
-import { SearchButton } from "./SearchButton";
 import { EnterpriseBadge } from "@/components/enterprise";
 import { useNavigationStatus } from "@/hooks/useNavigationStatus";
 import { useContextualActions } from "@/hooks/useContextualActions";
@@ -149,11 +148,6 @@ export function TopBar({ onMenuClick, className }: TopBarProps) {
                   <p>Command Palette</p>
                 </TooltipContent>
               </Tooltip>
-
-              {/* Global Search - Mobile/Tablet */}
-              <div className="md:hidden">
-                <SearchButton />
-              </div>
 
               {/* Notifications */}
               <Tooltip>

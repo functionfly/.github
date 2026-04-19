@@ -1,13 +1,63 @@
 /* ==========================================================================
-   FunctionFly Aviation Theme - Theme-Aware Industrial Instrumentation
+   FunctionFly Aviation Theme - Unified Velocity Brand System
    Aircraft cockpit aesthetic with full light/dark mode support
+   Jet Stream brand palette: Flame (#FF6B35), Cyan (#00D4FF), Afterburner (#FF4F5E)
+
+   This is the PRIMARY theme file - all brand colors and utilities live here
    ========================================================================== */
 
 /* ==========================================================================
-   Aviation Dark Mode - Default ( Cockpit Aesthetic)
+   VELOCITY BRAND COLORS - Core Palette
+   Jet exhaust flames at sunset altitude
    ========================================================================== */
 
 :root {
+  /* --------------------------------------------------------------------------
+     Brand Core - Velocity Palette (Static, don't change with theme)
+     -------------------------------------------------------------------------- */
+  --ff-flame: #ff6b35;
+  --ff-flame-rgb: 255, 107, 53;
+  --ff-flame-dark: #e85a2a;
+  --ff-flame-light: #ff8c42;
+  --ff-afterburner: #ff4f5e;
+  --ff-afterburner-rgb: 255, 79, 94;
+  --ff-cyan: #00d4ff;
+  --ff-cyan-rgb: 0, 212, 255;
+  --ff-cyan-dark: #00b8e0;
+  --ff-stratosphere: #5b7cf5;
+  --ff-taxiway: #00ff9d;
+  --ff-beacon: #ffb800;
+
+  /* Brand gradient */
+  --gradient-primary: linear-gradient(135deg, #ff6b35 0%, #ff4f5e 50%, #ff8c42 100%);
+  --gradient-velocity: linear-gradient(
+    135deg,
+    #ff6b35 0%,
+    #ff4f5e 25%,
+    #ff8c42 50%,
+    #00d4ff 75%,
+    #5b7cf5 100%
+  );
+  --gradient-success: linear-gradient(135deg, #00ff9d 0%, #00d4ff 100%);
+  --gradient-warning: linear-gradient(135deg, #ffb800 0%, #ff8c42 100%);
+  --gradient-danger: linear-gradient(135deg, #ff2d55 0%, #ff4f5e 100%);
+  --gradient-info: linear-gradient(135deg, #00d4ff 0%, #5b7cf5 100%);
+
+  /* Brand color scales */
+  --color-brand-50: rgba(255, 107, 53, 0.1);
+  --color-brand-100: rgba(255, 107, 53, 0.15);
+  --color-brand-200: rgba(255, 107, 53, 0.2);
+  --color-brand-300: rgba(255, 107, 53, 0.3);
+  --color-brand-400: rgba(255, 107, 53, 0.4);
+  --color-brand-500: #ff6b35;
+  --color-brand-600: #e85a2a;
+  --color-brand-700: #d14a20;
+  --color-brand-800: #b83d18;
+  --color-brand-900: #9f3212;
+
+  /* --------------------------------------------------------------------------
+     Aviation Dark Mode - Cockpit Aesthetic
+     -------------------------------------------------------------------------- */
   /* Dark Mode */
   --color-aviation-bg-primary: #08080c;
   --color-aviation-bg-secondary: #0d0d14;
@@ -67,6 +117,32 @@
   --color-aviation-border-instrument-light: rgba(0, 0, 0, 0.15);
   --color-aviation-border-glow-light: rgba(217, 119, 6, 0.35);
   --color-aviation-border-cyan-light: rgba(8, 145, 178, 0.35);
+
+  /* --------------------------------------------------------------------------
+     Shadow System - Dark Mode (Glow Effects)
+     -------------------------------------------------------------------------- */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-default: 0 1px 3px 0 rgba(0, 0, 0, 0.5), 0 1px 2px -1px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.6), 0 2px 4px -2px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.7), 0 4px 6px -4px rgba(0, 0, 0, 0.7);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.7);
+  --shadow-glow-sm: 0 0 10px rgba(255, 107, 53, 0.3);
+  --shadow-glow: 0 0 20px rgba(255, 107, 53, 0.4);
+  --shadow-glow-lg: 0 0 40px rgba(255, 107, 53, 0.5);
+  --shadow-glow-success: 0 0 20px rgba(0, 255, 157, 0.4);
+  --shadow-glow-error: 0 0 20px rgba(255, 45, 85, 0.4);
+  --shadow-glow-warning: 0 0 20px rgba(255, 184, 0, 0.4);
+  --shadow-glow-cyan: 0 0 20px rgba(0, 212, 255, 0.4);
+
+  /* --------------------------------------------------------------------------
+     Gradient Mesh - Dark Mode
+     -------------------------------------------------------------------------- */
+  --gradient-mesh-1:
+    radial-gradient(at 40% 20%, rgba(255, 107, 53, 0.15) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, rgba(0, 212, 255, 0.1) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, rgba(0, 255, 157, 0.08) 0px, transparent 50%),
+    radial-gradient(at 80% 50%, rgba(91, 124, 245, 0.08) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(255, 107, 53, 0.12) 0px, transparent 50%);
 }
 
 /* ==========================================================================
@@ -103,6 +179,46 @@
   --color-aviation-border-instrument: rgba(0, 0, 0, 0.15) !important;
   --color-aviation-border-glow: rgba(217, 119, 6, 0.35) !important;
   --color-aviation-border-cyan: rgba(8, 145, 178, 0.35) !important;
+
+  /* Semantic colors - Light Mode */
+  --color-success: #059669 !important;
+  --color-success-glow: rgba(5, 150, 105, 0.25) !important;
+  --color-error: #dc2626 !important;
+  --color-error-glow: rgba(220, 38, 38, 0.25) !important;
+  --color-warning: #d97706 !important;
+  --color-warning-glow: rgba(217, 119, 6, 0.25) !important;
+  --color-info: #2563eb !important;
+  --color-info-glow: rgba(37, 99, 235, 0.25) !important;
+
+  /* Brand colors - Light Mode */
+  --ff-flame: #e85a2a !important;
+  --ff-flame-rgb: 232, 90, 42 !important;
+  --ff-afterburner: #d14a20 !important;
+  --ff-cyan: #00a8cc !important;
+  --ff-cyan-rgb: 0, 168, 204 !important;
+  --gradient-primary: linear-gradient(135deg, #e85a2a 0%, #d14a20 50%, #c43e1a 100%) !important;
+  --gradient-velocity: linear-gradient(
+    135deg,
+    #e85a2a 0%,
+    #d14a20 25%,
+    #c43e1a 50%,
+    #00a8cc 75%,
+    #4a6ae0 100%
+  ) !important;
+
+  /* Shadow System - Light Mode (Soft Elevated Shadows) */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+  --shadow-default: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.08) !important;
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1) !important;
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.12), 0 4px 6px -4px rgba(0, 0, 0, 0.12) !important;
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.14), 0 8px 10px -6px rgba(0, 0, 0, 0.14) !important;
+  --shadow-glow-sm: 0 0 15px rgba(232, 90, 42, 0.2) !important;
+  --shadow-glow: 0 0 30px rgba(232, 90, 42, 0.25) !important;
+  --shadow-glow-lg: 0 0 50px rgba(232, 90, 42, 0.3) !important;
+  --shadow-glow-success: 0 0 20px rgba(5, 150, 105, 0.25) !important;
+  --shadow-glow-error: 0 0 20px rgba(220, 38, 38, 0.25) !important;
+  --shadow-glow-warning: 0 0 20px rgba(217, 119, 6, 0.25) !important;
+  --shadow-glow-cyan: 0 0 20px rgba(0, 168, 204, 0.25) !important;
 }
 
 /* ==========================================================================
@@ -863,9 +979,9 @@
 /* Sidebar Section Headers */
 .aviation-sidebar-section {
   position: relative;
-  color: var(--color-aviation-text-muted);
+  color: var(--color-aviation-cyan);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.15em;
   text-transform: uppercase;
@@ -938,11 +1054,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    135deg,
-    var(--color-aviation-amber-subtle) 0%,
-    transparent 50%
-  );
+  background: linear-gradient(135deg, var(--color-aviation-amber-subtle) 0%, transparent 50%);
   opacity: 0;
   transition: opacity 0.2s ease;
   border-radius: 8px;
@@ -1190,11 +1302,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(239, 68, 68, 0.1) 0%,
-    transparent 60%
-  );
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, transparent 60%);
   opacity: 0;
   transition: opacity 0.25s ease;
   border-radius: 8px;
@@ -1431,8 +1539,12 @@
 }
 
 @keyframes aviation-avatar-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Status Indicator Dot */
@@ -1661,7 +1773,8 @@
 }
 
 @keyframes aviation-scan-slow {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateX(-100%);
     opacity: 0;
   }
@@ -1696,11 +1809,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.2) 0%,
-    transparent 50%
-  );
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.2) 0%, transparent 50%);
 }
 
 .aviation-upgrade-banner:hover .aviation-upgrade-icon {
@@ -2194,9 +2303,10 @@
 /* Collapsible Content */
 .aviation-upgrade-content {
   overflow: hidden;
-  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              padding 0.3s ease;
+  transition:
+    max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    padding 0.3s ease;
   max-height: 500px;
   opacity: 1;
   padding: 1rem;
@@ -2302,6 +2412,48 @@
 }
 
 /* ==========================================================================
+   Aviation Tooltip - Theme Aware
+   ========================================================================== */
+
+.aviation-tooltip {
+  background: var(--color-aviation-bg-instrument) !important;
+  border: 1px solid var(--color-aviation-border-instrument) !important;
+  border-radius: 6px !important;
+  padding: 0.5rem 0.75rem !important;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    0 0 0 1px var(--color-aviation-border-panel) !important;
+}
+
+.aviation-tooltip p {
+  color: var(--color-aviation-text-primary) !important;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  margin: 0;
+}
+
+.aviation-tooltip p.text-xs {
+  color: var(--color-aviation-text-muted) !important;
+  font-size: 0.65rem;
+}
+
+[data-theme='light'] .aviation-tooltip {
+  background: var(--color-aviation-bg-panel) !important;
+  border-color: var(--color-aviation-border-instrument-light) !important;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.1),
+    0 0 0 1px var(--color-aviation-border-panel-light) !important;
+}
+
+[data-theme='light'] .aviation-tooltip p {
+  color: var(--color-aviation-text-primary-light) !important;
+}
+
+[data-theme='light'] .aviation-tooltip p.text-xs {
+  color: var(--color-aviation-text-muted-light) !important;
+}
+
+/* ==========================================================================
    Aviation Dialog/Modal - Theme Aware
    ========================================================================== */
 
@@ -2314,4 +2466,1262 @@
 [data-theme='light'] .aviation-dialog {
   background: var(--color-aviation-bg-secondary-light);
   border-color: var(--color-aviation-border-panel-light);
+}
+
+/* ==========================================================================
+   VELOCITY UTILITY CLASSES - Added from velocity-theme.css
+   These provide a comprehensive set of utility classes for rapid UI development
+   ========================================================================== */
+
+/* ==========================================================================
+   VELOCITY BACKGROUND UTILITIES
+   ========================================================================== */
+
+.v-bg-primary {
+  background-color: var(--color-aviation-bg-primary);
+}
+.v-bg-secondary {
+  background-color: var(--color-aviation-bg-secondary);
+}
+.v-bg-tertiary {
+  background-color: var(--color-aviation-bg-tertiary);
+}
+.v-bg-elevated {
+  background-color: var(--color-aviation-bg-panel);
+}
+.v-bg-hover:hover {
+  background-color: var(--color-aviation-bg-instrument);
+}
+
+.v-bg-gradient-brand {
+  background: var(--gradient-primary);
+}
+
+.v-bg-gradient-sunset {
+  background: linear-gradient(
+    135deg,
+    var(--ff-flame) 0%,
+    var(--ff-afterburner) 40%,
+    var(--ff-cyan) 100%
+  );
+}
+
+.v-bg-gradient-mesh {
+  background:
+    radial-gradient(at 40% 20%, var(--color-brand-100) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, rgba(0, 212, 255, 0.1) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, rgba(0, 255, 157, 0.08) 0px, transparent 50%),
+    radial-gradient(at 80% 50%, rgba(91, 124, 245, 0.08) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, var(--color-brand-100) 0px, transparent 50%),
+    var(--color-aviation-bg-primary);
+}
+
+/* ==========================================================================
+   VELOCITY TEXT UTILITIES
+   ========================================================================== */
+
+.v-text-primary {
+  color: var(--color-aviation-text-primary);
+}
+.v-text-secondary {
+  color: var(--color-aviation-text-secondary);
+}
+.v-text-muted {
+  color: var(--color-aviation-text-muted);
+}
+.v-text-brand {
+  color: var(--ff-flame);
+}
+.v-text-cyan {
+  color: var(--ff-cyan);
+}
+.v-text-success {
+  color: var(--color-success);
+}
+.v-text-warning {
+  color: var(--color-warning);
+}
+.v-text-error {
+  color: var(--color-error);
+}
+
+.v-text-gradient {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.v-text-gradient-flame {
+  background: linear-gradient(135deg, var(--ff-flame) 0%, var(--ff-flame-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ==========================================================================
+   VELOCITY BORDER UTILITIES
+   ========================================================================== */
+
+.v-border-subtle {
+  border: 1px solid var(--color-aviation-border-panel);
+}
+.v-border-default {
+  border: 1px solid var(--color-aviation-border-instrument);
+}
+.v-border-brand {
+  border: 1px solid rgba(255, 107, 53, 0.3);
+}
+
+.v-border-focus:focus {
+  outline: none;
+  border-color: var(--ff-flame);
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.2);
+}
+
+/* ==========================================================================
+   VELOCITY SHADOW UTILITIES
+   ========================================================================== */
+
+.v-shadow-sm {
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.4));
+}
+.v-shadow-md {
+  box-shadow: var(--shadow-md, 0 4px 6px rgba(0, 0, 0, 0.5));
+}
+.v-shadow-lg {
+  box-shadow: var(--shadow-lg, 0 10px 15px rgba(0, 0, 0, 0.6));
+}
+
+.v-glow-brand {
+  box-shadow: 0 0 20px rgba(255, 107, 53, 0.4);
+}
+.v-glow-cyan {
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+}
+.v-glow-success {
+  box-shadow: 0 0 20px rgba(0, 255, 157, 0.4);
+}
+
+.v-hover-glow:hover {
+  box-shadow: 0 0 20px rgba(255, 107, 53, 0.4);
+}
+
+/* ==========================================================================
+   VELOCITY BUTTON COMPONENTS
+   ========================================================================== */
+
+.v-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  color: white;
+  background: var(--gradient-primary);
+  border: none;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+}
+
+.v-btn-primary:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow:
+    0 0 20px rgba(255, 107, 53, 0.4),
+    0 8px 25px rgba(255, 107, 53, 0.3);
+}
+
+.v-btn-primary:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.v-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  color: var(--color-aviation-text-primary);
+  background: var(--color-aviation-bg-secondary);
+  border: 1px solid var(--color-aviation-border-instrument);
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.v-btn-secondary:hover {
+  background: var(--color-aviation-bg-instrument);
+  border-color: var(--ff-flame);
+}
+
+.v-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  color: var(--color-aviation-text-primary);
+  background: transparent;
+  border: 1px solid var(--ff-flame);
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.v-btn-outline:hover {
+  background: rgba(255, 107, 53, 0.1);
+}
+
+.v-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  color: var(--color-aviation-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.v-btn-ghost:hover {
+  color: var(--color-aviation-text-primary);
+  background: var(--color-aviation-bg-instrument);
+}
+
+/* ==========================================================================
+   VELOCITY CARD COMPONENTS
+   ========================================================================== */
+
+.v-card {
+  background: var(--color-aviation-bg-secondary);
+  border: 1px solid var(--color-aviation-border-panel);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.v-card:hover {
+  border-color: var(--color-aviation-border-instrument);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+  transform: translateY(-2px);
+}
+
+.v-card-glass {
+  background: rgba(22, 27, 34, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--color-aviation-border-instrument);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.v-card-glass:hover {
+  border-color: rgba(255, 107, 53, 0.3);
+  box-shadow: 0 0 20px rgba(255, 107, 53, 0.4);
+}
+
+.v-card-gradient {
+  position: relative;
+  background: var(--color-aviation-bg-secondary);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  overflow: hidden;
+}
+
+.v-card-gradient::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--ff-flame), var(--ff-cyan));
+}
+
+/* ==========================================================================
+   VELOCITY INPUT COMPONENTS
+   ========================================================================== */
+
+.v-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: var(--color-aviation-text-primary);
+  background: var(--color-aviation-bg-tertiary);
+  border: 1px solid var(--color-aviation-border-panel);
+  border-radius: 0.75rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+}
+
+.v-input::placeholder {
+  color: var(--color-aviation-text-muted);
+}
+
+.v-input:hover {
+  border-color: var(--color-aviation-border-instrument);
+}
+
+.v-input:focus {
+  border-color: var(--ff-flame);
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.2);
+}
+
+/* ==========================================================================
+   VELOCITY BADGE COMPONENTS
+   ========================================================================== */
+
+.v-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.v-badge-brand {
+  background: var(--color-brand-100);
+  color: var(--ff-flame);
+  border: 1px solid rgba(255, 107, 53, 0.3);
+}
+
+.v-badge-success {
+  background: rgba(0, 255, 157, 0.15);
+  color: var(--color-success);
+  border: 1px solid rgba(0, 255, 157, 0.3);
+}
+
+.v-badge-warning {
+  background: rgba(255, 184, 0, 0.15);
+  color: var(--color-warning);
+  border: 1px solid rgba(255, 184, 0, 0.3);
+}
+
+.v-badge-error {
+  background: rgba(255, 45, 85, 0.15);
+  color: var(--color-error);
+  border: 1px solid rgba(255, 45, 85, 0.3);
+}
+
+/* ==========================================================================
+   VELOCITY STATUS INDICATORS
+   ========================================================================== */
+
+.v-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.v-status::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.v-status-online::before {
+  background: var(--color-success);
+  box-shadow: 0 0 12px rgba(0, 255, 157, 0.8);
+}
+
+.v-status-deploying::before {
+  background: var(--ff-flame);
+  animation: v-pulse-flame 2s ease-in-out infinite;
+}
+
+.v-status-warning::before {
+  background: var(--color-warning);
+  animation: v-pulse-beacon 1.5s ease-in-out infinite;
+}
+
+.v-status-error::before {
+  background: var(--color-error);
+  box-shadow: 0 0 12px rgba(255, 45, 85, 0.7);
+}
+
+@keyframes v-pulse-flame {
+  0%,
+  100% {
+    box-shadow: 0 0 8px rgba(255, 107, 53, 0.6);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow:
+      0 0 20px rgba(255, 107, 53, 1),
+      0 0 40px rgba(255, 107, 53, 0.6);
+    transform: scale(1.1);
+  }
+}
+
+@keyframes v-pulse-beacon {
+  0%,
+  100% {
+    box-shadow: 0 0 8px rgba(255, 184, 0, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(255, 184, 0, 1);
+  }
+}
+
+/* ==========================================================================
+   VELOCITY DIVIDERS
+   ========================================================================== */
+
+.v-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-aviation-border-instrument),
+    transparent
+  );
+  margin: 1.5rem 0;
+}
+
+.v-divider-brand {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 107, 53, 0.5), transparent);
+  margin: 1.5rem 0;
+}
+
+/* ==========================================================================
+   VELOCITY ANIMATION UTILITIES
+   ========================================================================== */
+
+.v-animate-fade {
+  animation: v-fade-in 0.3s ease-out;
+}
+
+.v-animate-slide-up {
+  animation: v-slide-up 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.v-animate-glow {
+  animation: v-glow-pulse 2s ease-in-out infinite;
+}
+
+@keyframes v-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes v-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes v-glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(255, 107, 53, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 0 40px rgba(255, 107, 53, 0.6),
+      0 0 60px rgba(255, 107, 53, 0.3);
+  }
+}
+
+/* ==========================================================================
+   VELOCITY SCROLLBAR STYLING
+   ========================================================================== */
+
+.v-scrollbar ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.v-scrollbar ::-webkit-scrollbar-track {
+  background: var(--color-aviation-bg-primary);
+}
+
+.v-scrollbar ::-webkit-scrollbar-thumb {
+  background: var(--color-aviation-bg-instrument);
+  border-radius: 4px;
+}
+
+.v-scrollbar ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 107, 53, 0.5);
+}
+
+/* ==========================================================================
+   VELOCITY BRAND ACCENT STYLES
+   ========================================================================== */
+
+.v-brand-border-left {
+  position: relative;
+}
+
+.v-brand-border-left::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--ff-flame), var(--ff-afterburner));
+  border-radius: 0 2px 2px 0;
+}
+
+.v-icon-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  background: var(--color-brand-100);
+  border: 1px solid rgba(255, 107, 53, 0.3);
+  color: var(--ff-flame);
+}
+
+.v-section-header {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.v-section-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--ff-flame), var(--ff-afterburner), transparent);
+  border-radius: 2px;
+}
+
+.v-card-brand-border {
+  position: relative;
+  background: var(--color-aviation-bg-secondary);
+  border-radius: 1rem;
+  padding: 1.5rem;
+}
+
+.v-card-brand-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 107, 53, 0.6),
+    rgba(0, 212, 255, 0.3),
+    rgba(255, 107, 53, 0.2)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.v-bg-brand-subtle {
+  background: var(--color-brand-50);
+}
+
+.v-stat-brand {
+  font-size: 2rem;
+  font-weight: 700;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.v-pill-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 1rem;
+  background: rgba(255, 107, 53, 0.2);
+  border: 1px solid rgba(255, 107, 53, 0.4);
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ff-flame);
+}
+
+.v-hover-brand {
+  transition: all 0.2s ease;
+}
+
+.v-hover-brand:hover {
+  border-color: rgba(255, 107, 53, 0.5);
+  box-shadow: 0 0 20px rgba(255, 107, 53, 0.15);
+}
+
+.v-active-brand {
+  border-left: 3px solid var(--ff-flame);
+  background: linear-gradient(90deg, rgba(255, 107, 53, 0.1) 0%, transparent 100%);
+}
+
+.v-dot-brand {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ff-flame);
+  box-shadow: 0 0 12px rgba(255, 107, 53, 0.8);
+}
+
+.v-link-brand {
+  position: relative;
+  color: var(--color-aviation-text-secondary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.v-link-brand::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--ff-flame), var(--ff-afterburner));
+  transition: width 0.3s ease;
+}
+
+.v-link-brand:hover {
+  color: var(--ff-flame);
+}
+
+.v-link-brand:hover::after {
+  width: 100%;
+}
+
+.v-top-border-brand {
+  position: relative;
+}
+
+.v-top-border-brand::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--ff-flame),
+    var(--ff-afterburner),
+    var(--ff-cyan),
+    transparent
+  );
+  border-radius: 2px 2px 0 0;
+}
+
+.v-btn-brand-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  color: var(--ff-flame);
+  background: transparent;
+  border: 1.5px solid rgba(255, 107, 53, 0.5);
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.v-btn-brand-secondary:hover {
+  background: rgba(255, 107, 53, 0.1);
+  border-color: rgba(255, 107, 53, 0.8);
+  box-shadow: 0 0 20px rgba(255, 107, 53, 0.2);
+}
+
+.v-chart-brand {
+  stroke: var(--ff-flame);
+  filter: drop-shadow(0 0 4px rgba(255, 107, 53, 0.5));
+}
+
+/* ==========================================================================
+   REDUCED MOTION
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .v-animate-fade,
+  .v-animate-slide-up,
+  .v-animate-glow,
+  .v-status-deploying::before,
+  .v-status-warning::before {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .v-card:hover,
+  .v-card-glass:hover,
+  .v-btn-primary:hover,
+  .v-btn-secondary:hover {
+    transform: none !important;
+  }
+}
+
+/* ==========================================================================
+   SUMMARY: Available Classes in Unified Aviation Theme
+   ==========================================================================
+
+   Brand Colors (CSS Variables):
+   - --ff-flame, --ff-flame-dark, --ff-flame-light
+   - --ff-afterburner, --ff-cyan, --ff-cyan-dark
+   - --ff-stratosphere, --ff-taxiway, --ff-beacon
+   - --gradient-primary, --gradient-velocity
+
+   Text Utilities:
+   - .v-text-primary, .v-text-secondary, .v-text-muted
+   - .v-text-brand, .v-text-cyan, .v-text-success, .v-text-warning, .v-text-error
+   - .v-text-gradient, .v-text-gradient-flame
+
+   Background Utilities:
+   - .v-bg-primary, .v-bg-secondary, .v-bg-tertiary, .v-bg-elevated
+   - .v-bg-gradient-brand, .v-bg-gradient-sunset, .v-bg-gradient-mesh
+
+   Border Utilities:
+   - .v-border-subtle, .v-border-default, .v-border-brand, .v-border-focus
+
+   Shadow/Glow Utilities:
+   - .v-shadow-sm, .v-shadow-md, .v-shadow-lg
+   - .v-glow-brand, .v-glow-cyan, .v-glow-success, .v-hover-glow
+
+   Button Components:
+   - .v-btn-primary, .v-btn-secondary, .v-btn-outline, .v-btn-ghost
+   - .v-btn-brand-secondary
+
+   Card Components:
+   - .v-card, .v-card-glass, .v-card-gradient, .v-card-brand-border
+
+   Input Components:
+   - .v-input
+
+   Badge Components:
+   - .v-badge, .v-badge-brand, .v-badge-success, .v-badge-warning, .v-badge-error
+
+   Status Indicators:
+   - .v-status, .v-status-online, .v-status-deploying, .v-status-warning, .v-status-error
+
+   Animation Utilities:
+   - .v-animate-fade, .v-animate-slide-up, .v-animate-glow
+
+   Brand Accent Styles:
+   - .v-brand-border-left, .v-icon-brand, .v-section-header
+   - .v-bg-brand-subtle, .v-stat-brand, .v-pill-brand
+   - .v-hover-brand, .v-active-brand, .v-dot-brand
+    - .v-link-brand, .v-top-border-brand, .v-chart-brand
+
+    ========================================================================== */
+
+/* ==========================================================================
+   Sidebar Enhanced Features - Collapsed Mode, Drag & Drop, Favorites
+   ========================================================================== */
+
+/* Collapsed Sidebar Mode */
+.aviation-sidebar-collapsed {
+  width: 64px;
+  min-width: 64px;
+}
+
+.aviation-sidebar-collapsed .aviation-sidebar-section-title,
+.aviation-sidebar-collapsed .aviation-sidebar-item-label,
+.aviation-sidebar-collapsed .aviation-sidebar-badge-text,
+.aviation-sidebar-collapsed .aviation-sidebar-kbd,
+.aviation-sidebar-collapsed .aviation-sidebar-toggle,
+.aviation-sidebar-collapsed .aviation-profile-info,
+.aviation-sidebar-collapsed .aviation-signout-text {
+  display: none;
+}
+
+.aviation-sidebar-collapsed .aviation-sidebar-item {
+  justify-content: center;
+  padding: 0.5rem;
+}
+
+.aviation-sidebar-collapsed .aviation-sidebar-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.aviation-sidebar-collapsed .aviation-sidebar-section {
+  justify-content: center;
+  padding: 0.5rem;
+}
+
+/* Collapsed section icon-only button */
+.aviation-sidebar-section-collapsed {
+  justify-content: center;
+  padding: 0.75rem 0.5rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-aviation-text-secondary);
+  transition: all 0.2s ease;
+}
+
+.aviation-sidebar-section-collapsed:hover {
+  background: var(--color-aviation-bg-instrument);
+  color: var(--color-aviation-text-primary);
+}
+
+.aviation-sidebar-section-collapsed.aviation-sidebar-section-active {
+  color: var(--color-aviation-amber);
+  background: rgba(251, 191, 36, 0.1);
+}
+
+.aviation-sidebar-collapsed .aviation-profile {
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  width: 100%;
+}
+
+.aviation-sidebar-collapsed .aviation-profile::before,
+.aviation-sidebar-collapsed .aviation-profile::after {
+  display: none;
+}
+
+.aviation-sidebar-collapsed .aviation-profile-avatar {
+  width: 32px;
+  height: 32px;
+}
+
+.aviation-sidebar-collapsed .aviation-profile:hover {
+  background: var(--color-aviation-bg-instrument);
+  border-radius: 8px;
+}
+
+.aviation-sidebar-collapsed .aviation-signout {
+  justify-content: center;
+  padding: 0.5rem 0.25rem;
+  width: auto;
+  margin: 0 auto;
+}
+
+/* Collapse Toggle Button */
+.aviation-collapse-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-aviation-bg-instrument);
+  border: 1px solid var(--color-aviation-border-subtle);
+  border-radius: 8px;
+  color: var(--color-aviation-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.aviation-collapse-btn {
+  opacity: 0.6;
+}
+
+.aviation-sidebar:hover .aviation-collapse-btn {
+  opacity: 1;
+}
+
+.aviation-collapse-btn:hover {
+  background: var(--color-aviation-amber);
+  color: var(--color-aviation-bg-primary);
+  border-color: var(--color-aviation-amber);
+  box-shadow: 0 0 12px var(--color-aviation-amber-glow);
+}
+
+/* Drag & Drop Styles */
+.aviation-sidebar-section-dragging {
+  opacity: 0.5;
+  transform: scale(0.98);
+}
+
+.aviation-sidebar-section-drag-over {
+  border-top: 2px solid var(--color-aviation-amber);
+}
+
+.aviation-sidebar-drag-handle {
+  cursor: grab;
+  opacity: 0.3;
+  transition: opacity 0.2s ease;
+}
+
+.aviation-sidebar-drag-handle:hover {
+  opacity: 1;
+  color: var(--color-aviation-amber);
+}
+
+.aviation-sidebar-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Favorites Section */
+.aviation-sidebar-favorites {
+  border-bottom: 1px solid var(--color-aviation-border-subtle);
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.aviation-sidebar-favorites-title {
+  color: var(--color-aviation-amber);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 0.5rem 0.75rem;
+}
+
+/* Recent Section Title */
+.aviation-sidebar-recent-title {
+  color: var(--color-aviation-cyan);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 0.5rem 0.75rem;
+}
+
+/* Favorite Action Button */
+.aviation-favorite-btn {
+  opacity: 0;
+  transition: all 0.2s ease;
+  color: var(--color-aviation-text-muted);
+}
+
+.aviation-sidebar-item:hover .aviation-favorite-btn {
+  opacity: 1;
+}
+
+.aviation-favorite-btn:hover,
+.aviation-favorite-btn.is-favorite {
+  opacity: 1;
+  color: var(--color-aviation-amber);
+}
+
+.aviation-favorite-btn.is-favorite {
+  filter: drop-shadow(0 0 4px var(--color-aviation-amber-glow));
+}
+
+/* Workspace/Environment Switcher */
+.aviation-workspace-switcher {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--color-aviation-border-subtle);
+}
+
+.aviation-environment-tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: var(--color-aviation-bg-instrument);
+  border-radius: 6px;
+}
+
+.aviation-environment-tab {
+  flex: 1;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 4px;
+  color: var(--color-aviation-text-muted);
+  transition: all 0.2s ease;
+}
+
+.aviation-environment-tab:hover {
+  color: var(--color-aviation-text-secondary);
+}
+
+.aviation-environment-tab.active {
+  background: var(--color-aviation-amber);
+  color: var(--color-aviation-bg-primary);
+}
+
+.aviation-environment-tab.active[data-env="staging"] {
+  background: var(--color-aviation-cyan);
+}
+
+.aviation-environment-tab.active[data-env="development"] {
+  background: var(--color-aviation-green);
+}
+
+/* Onboarding Progress Indicator */
+.aviation-onboarding-progress {
+  padding: 0.75rem;
+  background: linear-gradient(
+    135deg,
+    rgba(6, 182, 212, 0.2) 0%,
+    rgba(245, 158, 11, 0.2) 100%
+  );
+  border: 1px solid var(--color-aviation-cyan);
+  border-radius: 8px;
+  margin: 0.5rem;
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.2), 0 2px 8px rgba(0, 0, 0, 0.3);
+  color: #fff;
+}
+
+.aviation-onboarding-progress span:first-child {
+  color: #22d3ee;
+  text-shadow: 0 0 4px rgba(6, 182, 212, 0.5);
+}
+
+.aviation-onboarding-progress span:last-child {
+  color: #fbbf24;
+  text-shadow: 0 0 4px rgba(245, 158, 11, 0.5);
+}
+
+.aviation-onboarding-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.aviation-onboarding-progress-bar {
+  height: 6px;
+  background: var(--color-aviation-bg-instrument);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 0.5rem;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.aviation-onboarding-progress-fill {
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    var(--color-aviation-amber) 0%,
+    var(--color-aviation-cyan) 100%
+  );
+  box-shadow: 0 0 8px var(--color-aviation-amber-glow);
+  transition: width 0.3s ease;
+}
+
+.aviation-onboarding-hint {
+  position: relative;
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--color-aviation-amber);
+  background: rgba(245, 158, 11, 0.05);
+  margin: 0.25rem 0;
+}
+
+.aviation-onboarding-hint::before {
+  content: '';
+  position: absolute;
+  left: -2px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(
+    180deg,
+    var(--color-aviation-amber) 0%,
+    transparent 100%
+  );
+}
+
+/* Enhanced Status Badges */
+.aviation-status-badge-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: 9999px;
+  background: var(--color-aviation-bg-instrument);
+  color: var(--color-aviation-text-secondary);
+  border: 1px solid var(--color-aviation-border-instrument);
+}
+
+.aviation-status-badge-count[data-type="warning"] {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--color-aviation-amber);
+  border-color: var(--color-aviation-amber-dim);
+}
+
+.aviation-status-badge-count[data-type="error"] {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--color-aviation-red);
+  border-color: var(--color-aviation-red-dim);
+}
+
+.aviation-status-badge-count[data-type="success"] {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--color-aviation-green);
+  border-color: var(--color-aviation-green-dim);
+}
+
+.aviation-status-badge-count[data-type="info"] {
+  background: var(--color-aviation-cyan-dim);
+  color: var(--color-aviation-cyan);
+  border-color: var(--color-aviation-cyan-dim);
+}
+
+/* Sidebar Divider */
+.aviation-sidebar-divider {
+  height: 1px;
+  margin: 0.5rem 0.75rem;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-aviation-border-subtle) 20%,
+    var(--color-aviation-border-subtle) 80%,
+    transparent 100%
+  );
+}
+
+/* Keyboard Shortcuts Helper */
+.aviation-shortcut-hint {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem 1rem;
+  background: var(--color-aviation-bg-panel);
+  border: 1px solid var(--color-aviation-border-subtle);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  color: var(--color-aviation-text-secondary);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.aviation-shortcut-hint.visible {
+  opacity: 1;
+}
+
+/* Mobile Bottom Sheet */
+@media (max-width: 1024px) {
+  .aviation-sidebar-mobile-sheet {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 85vh;
+    border-radius: 20px 20px 0 0;
+    border-right: none;
+    border-top: 1px solid var(--color-aviation-border-subtle);
+  }
+
+  .aviation-sidebar-mobile-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--color-aviation-border-subtle);
+    border-radius: 2px;
+    margin: 0.75rem auto;
+  }
+}
+
+/* Swipe Indicator */
+.aviation-swipe-indicator {
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 60px;
+  background: linear-gradient(
+    180deg,
+    var(--color-aviation-amber-dim) 0%,
+    var(--color-aviation-amber) 50%,
+    var(--color-aviation-amber-dim) 100%
+  );
+  border-radius: 0 4px 4px 0;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 30;
+}
+
+.aviation-swipe-indicator.visible {
+  opacity: 0.5;
+}
+
+/* Light Mode Enhancements */
+[data-theme='light'] .aviation-sidebar-collapsed {
+  background: linear-gradient(
+    180deg,
+    var(--color-aviation-bg-primary-light) 0%,
+    var(--color-aviation-bg-secondary-light) 100%
+  );
+}
+
+[data-theme='light'] .aviation-collapse-btn {
+  background: var(--color-aviation-bg-panel-light);
+  border-color: var(--color-aviation-border-subtle-light);
+  color: var(--color-aviation-text-muted-light);
+}
+
+[data-theme='light'] .aviation-collapse-btn:hover {
+  background: var(--color-aviation-bg-instrument-light);
+  color: var(--color-aviation-amber-light);
+}
+
+[data-theme='light'] .aviation-sidebar-divider {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-aviation-border-subtle-light) 20%,
+    var(--color-aviation-border-subtle-light) 80%,
+    transparent 100%
+  );
+}
+
+[data-theme='light'] .aviation-favorite-btn.is-favorite {
+  color: var(--color-aviation-amber-light);
+}
+
+[data-theme='light'] .aviation-environment-tab.active {
+  background: var(--color-aviation-amber-light);
+}
+
+[data-theme='light'] .aviation-environment-tab.active[data-env="staging"] {
+  background: var(--color-aviation-cyan-light);
+}
+
+[data-theme='light'] .aviation-environment-tab.active[data-env="development"] {
+  background: var(--color-aviation-green-light);
 }

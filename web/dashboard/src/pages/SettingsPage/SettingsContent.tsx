@@ -1,6 +1,20 @@
 /**
  * Shared settings content: Account, Billing, API Keys, Notifications, Security, Privacy.
  * Used on the standalone /settings page and on /u/{username} (profile Settings tab).
+ *
+ * URL STRUCTURE (Hash-based routing - long term):
+ *   /u/:username/settings#account      → Account tab (default)
+ *   /u/:username/settings#billing      → Billing tab
+ *   /u/:username/settings#api          → API Keys tab
+ *   /u/:username/settings#notifications → Notifications tab
+ *   /u/:username/settings#security      → Security tab
+ *   /u/:username/settings#privacy       → Privacy tab
+ *
+ * BACKWARDS COMPATIBILITY:
+ *   /u/:username/settings/billing      → Redirects to #billing (path-based, deprecated)
+ *   ?subtab=billing                    → Redirects to #billing (query param, deprecated)
+ *
+ * Use getSettingsUrl(username, tab) from settings-utils.ts for generating URLs.
  */
 
 import { usersApi } from '@/api/users';
@@ -32,6 +46,25 @@ export interface SettingsContentProps {
   initialTab?: string;
 }
 
+/** Get tab from hash, path, or query param - priority: hash > path > query > default */
+function getInitialTab(
+  hash: string,
+  initialTabProp: string | undefined,
+  subtabFromUrl: string | null
+): SettingsTabValue {
+  const hashTab = hash.replace('#', '');
+  if (hashTab && VALID_TABS.includes(hashTab as SettingsTabValue)) {
+    return hashTab as SettingsTabValue;
+  }
+  if (initialTabProp && VALID_TABS.includes(initialTabProp as SettingsTabValue)) {
+    return initialTabProp as SettingsTabValue;
+  }
+  if (subtabFromUrl && VALID_TABS.includes(subtabFromUrl as SettingsTabValue)) {
+    return subtabFromUrl as SettingsTabValue;
+  }
+  return 'account';
+}
+
 export function SettingsContent({
   showHeader = true,
   profile,
@@ -40,13 +73,9 @@ export function SettingsContent({
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const subtabFromUrl = searchParams.get('subtab');
-  const [activeTab, setActiveTab] = useState<SettingsTabValue>(() => {
-    if (initialTabProp && VALID_TABS.includes(initialTabProp as SettingsTabValue))
-      return initialTabProp as SettingsTabValue;
-    if (subtabFromUrl && VALID_TABS.includes(subtabFromUrl as SettingsTabValue))
-      return subtabFromUrl as SettingsTabValue;
-    return 'account';
-  });
+  const [activeTab, setActiveTab] = useState<SettingsTabValue>(() =>
+    getInitialTab(location.hash, initialTabProp, subtabFromUrl)
+  );
 
   const apiReachable = useApiReachableStore((s) => s.apiReachable);
   const user = useAuthStore((s) => s.user);
@@ -72,13 +101,41 @@ export function SettingsContent({
   }, [meData?.plan, setUserPlan]);
   const displayPlan = meData?.plan ?? user?.plan ?? 'Starter';
 
-  // Sync active tab from URL or initialTab prop (e.g. /u/username/settings/billing)
+  // Update URL hash when tab changes (enables shareable links and browser history)
+  useEffect(() => {
+    const newHash = `#${activeTab}`;
+    if (location.hash !== newHash) {
+      // Use replaceState for initial load, pushState for user-initiated changes
+      window.history.replaceState({}, document.title, `${location.pathname}${newHash}${location.search}`);
+    }
+  }, [activeTab, location.pathname, location.search, location.hash]);
+
+  // Listen for hash changes (browser back/forward, external links)
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hashTab = location.hash.replace('#', '');
+      if (hashTab && VALID_TABS.includes(hashTab as SettingsTabValue)) {
+        setActiveTab(hashTab as SettingsTabValue);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  // Sync from path-based initialTab or query param on first load (backwards compat)
   useEffect(() => {
     const next = initialTabProp || subtabFromUrl;
     if (next && VALID_TABS.includes(next as SettingsTabValue)) {
       setActiveTab(next as SettingsTabValue);
+      // Also update hash to match
+      window.history.replaceState(
+        {},
+        document.title,
+        `${location.pathname}#${next}${location.search}`
+      );
     }
-  }, [initialTabProp, subtabFromUrl]);
+  }, [initialTabProp, subtabFromUrl, location.pathname, location.search]);
 
   // Billing portal return: show success toast and clean URL
   useEffect(() => {
@@ -98,7 +155,9 @@ export function SettingsContent({
     <div className="space-y-6">
       {showHeader && (
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Settings</h1>
+          <h1 className="font-display text-2xl font-bold bg-gradient-to-r from-brand-500 via-ff-afterburner to-brand-400 bg-clip-text text-transparent">
+            Settings
+          </h1>
           <p className="text-text-secondary">Manage your account and preferences</p>
         </div>
       )}
@@ -111,42 +170,42 @@ export function SettingsContent({
         <TabsList className="settings-page-tabs inline-flex h-auto flex-wrap gap-1 rounded-xl border border-border-default bg-bg-secondary/80 p-1.5 text-text-secondary backdrop-blur-sm">
           <TabsTrigger
             value="account"
-            className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200"
+            className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500 data-[state=active]:shadow-glow-sm"
           >
             <User className="h-4 w-4 shrink-0" />
             Account
           </TabsTrigger>
           <TabsTrigger
             value="billing"
-            className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200"
+            className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500 data-[state=active]:shadow-glow-sm"
           >
             <CreditCard className="h-4 w-4 shrink-0" />
             Billing
           </TabsTrigger>
           <TabsTrigger
             value="api"
-            className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200"
+            className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500 data-[state=active]:shadow-glow-sm"
           >
             <Key className="h-4 w-4 shrink-0" />
             API Keys
           </TabsTrigger>
           <TabsTrigger
             value="notifications"
-            className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200"
+            className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500 data-[state=active]:shadow-glow-sm"
           >
             <Bell className="h-4 w-4 shrink-0" />
             Notifications
           </TabsTrigger>
           <TabsTrigger
             value="security"
-            className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200"
+            className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500 data-[state=active]:shadow-glow-sm"
           >
             <ShieldCheck className="h-4 w-4 shrink-0" />
             Security
           </TabsTrigger>
           <TabsTrigger
             value="privacy"
-            className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200"
+            className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500 data-[state=active]:shadow-glow-sm"
           >
             <Shield className="h-4 w-4 shrink-0" />
             Privacy

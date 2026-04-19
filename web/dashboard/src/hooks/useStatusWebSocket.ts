@@ -3,9 +3,10 @@ import {
   type MaintenanceWindow,
   type PlatformStatus,
   type StatusWebSocketMessage,
+  statusApi,
 } from '@/api/status';
 import { getApiBaseUrl } from '@/lib/constants';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { statusKeys } from './useStatus';
@@ -159,7 +160,11 @@ export function useStatusWebSocket(options: UseStatusWebSocketOptions = {}) {
 
   // Connect to WebSocket
   const connect = useCallback(() => {
-    if (!enabled || wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
+    if (
+      !enabled ||
+      wsRef.current?.readyState === WebSocket.OPEN ||
+      wsRef.current?.readyState === WebSocket.CONNECTING
+    ) {
       return;
     }
 
@@ -179,10 +184,12 @@ export function useStatusWebSocket(options: UseStatusWebSocketOptions = {}) {
         });
 
         // Subscribe to all channels
-        ws.send(JSON.stringify({
-          type: 'subscribe',
-          channels: ['platform', 'providers', 'incidents', 'maintenance']
-        }));
+        ws.send(
+          JSON.stringify({
+            type: 'subscribe',
+            channels: ['platform', 'providers', 'incidents', 'maintenance'],
+          })
+        );
       };
 
       ws.onmessage = handleMessage;
@@ -316,4 +323,57 @@ export function useRealtimeStatus(options: UseStatusWebSocketOptions = {}) {
     reconnect: ws.reconnect,
     disconnect: ws.disconnect,
   };
+}
+
+/**
+ * Lightweight polling hook for simple status checks
+ * Does not maintain a WebSocket connection
+ */
+export function useStatusCheck(options?: { enabled?: boolean; refetchInterval?: number }) {
+  const { enabled = true, refetchInterval = 30000 } = options ?? {};
+
+  const queryClient = useQueryClient();
+
+  const {
+    data: platformStatus,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery<PlatformStatus>({
+    queryKey: statusKeys.platform(),
+    queryFn: statusApi.getPlatformStatus,
+    staleTime: 10000,
+    refetchInterval: enabled ? refetchInterval : false,
+    retry: 2,
+    enabled,
+  });
+
+  const invalidate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: statusKeys.platform() });
+  }, [queryClient]);
+
+  return {
+    status: platformStatus,
+    isLoading,
+    error,
+    refetch,
+    invalidate,
+  };
+}
+
+/**
+ * One-shot health check — does not poll
+ * Useful for lightweight component-level checks
+ */
+export function useStatusHealthCheck(options?: { enabled?: boolean }) {
+  const { enabled = true } = options ?? {};
+
+  return useQuery<PlatformStatus>({
+    queryKey: [...statusKeys.platform(), 'health-check'] as const,
+    queryFn: statusApi.getPlatformStatus,
+    staleTime: 0,
+    refetchInterval: false,
+    retry: 1,
+    enabled,
+  });
 }

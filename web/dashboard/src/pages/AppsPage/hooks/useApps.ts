@@ -1,6 +1,5 @@
-import { appsApi } from '@/api/apps';
 import type { App, CreateAppRequest } from '@/types';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useApps as useAppsQuery, useCreateApp } from '@/hooks';
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -12,42 +11,12 @@ export interface UseAppsOptions {
 }
 
 export function useApps({ initialSearch = '', initialSort = 'created-desc' }: UseAppsOptions = {}) {
-  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [sortOption, setSortOption] = useState<SortOption>(initialSort);
 
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['apps'],
-    queryFn: async () => {
-      const response = await appsApi.list();
-      return response.apps;
-    },
-  });
-
-  const createMutation = useMutation({
-    mutationFn: (data: CreateAppRequest) => appsApi.create(data),
-    onSuccess: (app: App) => {
-      queryClient.invalidateQueries({ queryKey: ['apps'] });
-      toast.success(`App "${app.name}" created successfully`);
-    },
-    onError: (err: Error) => {
-      toast.error(err.message || 'Failed to create app');
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (_appId: string) => {
-      // Note: delete endpoint not yet implemented in the API
-      throw new Error('Delete not yet implemented');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['apps'] });
-      toast.success('App deleted successfully');
-    },
-    onError: (err: Error) => {
-      toast.error(err.message || 'Failed to delete app');
-    },
-  });
+  // Use the main hooks instead of raw queries
+  const { data, isLoading, error, refetch } = useAppsQuery();
+  const createMutation = useCreateApp();
 
   const sortApps = useCallback(
     (apps: App[]): App[] => {
@@ -69,9 +38,11 @@ export function useApps({ initialSearch = '', initialSort = 'created-desc' }: Us
     [sortOption]
   );
 
-  const filteredApps = data
+  const apps = data?.apps ?? [];
+
+  const filteredApps = apps.length > 0
     ? sortApps(
-        data.filter(
+        apps.filter(
           (app) =>
             app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             app.slug.toLowerCase().includes(searchQuery.toLowerCase())
@@ -79,9 +50,20 @@ export function useApps({ initialSearch = '', initialSort = 'created-desc' }: Us
       )
     : [];
 
+  const createApp = useCallback(
+    (data: CreateAppRequest) => {
+      createMutation.mutate(data, {
+        onError: (err: Error) => {
+          toast.error(err.message || 'Failed to create app');
+        },
+      });
+    },
+    [createMutation]
+  );
+
   return {
     apps: filteredApps,
-    allApps: data ?? [],
+    allApps: apps,
     isLoading,
     error,
     refetch,
@@ -89,10 +71,14 @@ export function useApps({ initialSearch = '', initialSort = 'created-desc' }: Us
     setSearchQuery,
     sortOption,
     setSortOption,
-    createApp: createMutation.mutate,
+    createApp,
     createAppAsync: createMutation.mutateAsync,
     isCreating: createMutation.isPending,
-    deleteApp: deleteMutation.mutate,
-    isDeleting: deleteMutation.isPending,
+    // Note: delete endpoint not yet implemented in the API
+    deleteApp: (_appId: string) => {
+      toast.error('Delete not yet implemented');
+      throw new Error('Delete not yet implemented');
+    },
+    isDeleting: false,
   };
 }

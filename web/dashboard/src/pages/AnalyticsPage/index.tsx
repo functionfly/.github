@@ -1,12 +1,10 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/common/StatCard";
 import { Globe, Clock, AlertTriangle, TrendingUp, Loader2, Rocket } from "lucide-react";
 import { EmptyState } from "@/components/ui";
-import { functionsApi } from "@/api/functions";
-import { dashboardApi } from "@/api/dashboard";
+import { useFunctions, useDashboardUsage, useDashboardExecutionRate, useDashboardMetrics } from "@/hooks";
 import { UsageGraph } from "@/components/dashboard";
 import { LineChart } from "@/components/common/LineChart";
 
@@ -17,35 +15,14 @@ export function AnalyticsPage() {
   const days = timeRange === "24h" ? 1 : timeRange === "7d" ? 7 : 30;
   const hours = timeRange === "24h" ? 24 : timeRange === "7d" ? 168 : 720;
 
-  // Fetch functions
-  const { data: functionsData, isLoading: functionsLoading } = useQuery({
-    queryKey: ["functions"],
-    queryFn: () => functionsApi.list(),
-  });
+  // Use hooks instead of raw queries
+  const { data: functionsData, isLoading: functionsLoading } = useFunctions();
+  const { data: usageData, isLoading: usageLoading } = useDashboardUsage(days);
+  const { data: executionRateData, isLoading: executionRateLoading } = useDashboardExecutionRate(hours);
+  const { data: metricsData, isLoading: metricsLoading } = useDashboardMetrics();
 
   const functions = functionsData?.functions ?? [];
   const activeFunctions = functions.filter((f) => f.status === "deployed").length;
-
-  // Fetch usage data
-  const { data: usageData, isLoading: usageLoading } = useQuery({
-    queryKey: ["analytics", "usage", days],
-    queryFn: () => dashboardApi.getUsage(days),
-    enabled: functions.length > 0,
-  });
-
-  // Fetch execution rate data
-  const { data: executionRateData, isLoading: executionRateLoading } = useQuery({
-    queryKey: ["analytics", "execution-rate", hours],
-    queryFn: () => dashboardApi.getExecutionRate(hours),
-    enabled: functions.length > 0,
-  });
-
-  // Fetch dashboard metrics (latency, success/error rate)
-  const { data: metricsData, isLoading: metricsLoading } = useQuery({
-    queryKey: ["analytics", "dashboard-metrics"],
-    queryFn: () => dashboardApi.getMetrics(),
-    enabled: functions.length > 0,
-  });
 
   // Process usage data for chart
   const usageChartData = useMemo(() => {

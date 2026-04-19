@@ -32,7 +32,7 @@ const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
           )}
           style={
             {
-              backgroundColor: checked ? 'var(--brand-500, #8b5cf6)' : 'var(--text-muted, #6b7280)',
+              backgroundColor: checked ? 'var(--brand-500, #FF6B35)' : 'var(--text-muted, #6b7280)',
             } as React.CSSProperties
           }
         >

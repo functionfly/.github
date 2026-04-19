@@ -1,4 +1,3 @@
-import { appsApi } from '@/api/apps';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ROUTES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import type { AppStatus, BackendStatus } from '@/types';
-import { useQuery } from '@tanstack/react-query';
+import { useAppStatus } from '@/hooks';
 import {
   Activity,
   AlertCircle,
@@ -406,26 +405,20 @@ function SettingsTab({ data }: { data: AppStatus }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function AppDetailPage() {
-  const { appId } = useParams<{ appId: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
 
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['app-status', appId],
-    queryFn: async () => {
-      if (!appId) throw new Error('App ID is required');
-      return appsApi.getStatus(appId);
-    },
-    enabled: !!appId,
-  });
+  // Use hook instead of raw query
+  const { data, isLoading, error, refetch } = useAppStatus(slug || '');
 
   useEffect(() => {
-    if (!data?.app?.slug || !appId) return;
-    const segment = decodeURIComponent(appId);
+    if (!data?.app?.slug || !slug) return;
+    const segment = decodeURIComponent(slug);
     if (APP_PATH_UUID_RE.test(segment)) {
       navigate(`/apps/${encodeURIComponent(data.app.slug)}`, { replace: true });
     }
-  }, [data?.app?.slug, appId, navigate]);
+  }, [data?.app?.slug, slug, navigate]);
 
   if (isLoading) return <LoadingState />;
 

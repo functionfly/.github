@@ -359,7 +359,7 @@ function GridCard({
               <span
                 key={i}
                 className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[0.62rem] font-medium
-                           bg-bg-tertiary/60 border border-border-subtle text-text-muted"
+                           bg-bg-tertiary/60 border border-border-subtle text-text-secondary"
               >
                 {tag}
               </span>
@@ -367,7 +367,7 @@ function GridCard({
             {fn.tags.length > 3 && (
               <span
                 className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[0.62rem] font-medium
-                           bg-bg-tertiary/60 border border-border-subtle text-text-muted"
+                           bg-bg-tertiary/60 border border-border-subtle text-text-secondary"
               >
                 +{fn.tags.length - 3}
               </span>

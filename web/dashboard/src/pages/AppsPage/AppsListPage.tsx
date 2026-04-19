@@ -21,7 +21,6 @@ import {
   X,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { AppCard, AppCardSkeleton } from './components/AppCard';
 import { AppsEmptyState } from './components/AppsEmptyState';
 import { CreateAppModal } from './components/CreateAppModal';
@@ -37,7 +36,6 @@ const SORT_LABELS: Record<SortOption, string> = {
 type ViewMode = 'grid' | 'list';
 
 export function AppsListPage() {
-  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -80,10 +78,6 @@ export function AppsListPage() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" className="gap-2" onClick={() => navigate('/apps/new')}>
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">New App</span>
-          </Button>
           <CreateAppModal
             onSuccess={() => refetch()}
             trigger={

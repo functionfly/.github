@@ -9,6 +9,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { AuthHeroAnimation } from './AuthHeroAnimation';
 import { LoginForm } from './LoginForm';
+import { MagicLinkForm } from './MagicLinkForm';
 import { SignupForm } from './SignupForm';
 
 // OAuth Provider type
@@ -110,8 +111,9 @@ function OAuthButton({ provider }: { provider: OAuthProvider }) {
 export function AuthPage() {
   const location = useLocation();
   const isLogin = location.pathname === '/login' || location.pathname === '/auth/login';
+  const isMagicLink = location.pathname === '/auth/magic-link';
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>(isLogin ? 'login' : 'signup');
-  const [authMode, setAuthMode] = useState<'email' | 'social'>('email');
+  const [authMode, setAuthMode] = useState<'email' | 'social' | 'magic'>(isMagicLink ? 'magic' : 'email');
   const [oauthProviders, setOauthProviders] = useState<OAuthProvider[]>([]);
   const [isLoadingProviders, setIsLoadingProviders] = useState(true);
 
@@ -149,16 +151,22 @@ export function AuthPage() {
               transition={{ duration: 0.5 }}
             >
               <h1 className="text-2xl font-bold text-text-primary mb-2">
-                {activeTab === 'login' ? 'Welcome back' : 'Create your account'}
+                {activeTab === 'login'
+                  ? authMode === 'magic'
+                    ? 'Magic Link Sign In'
+                    : 'Welcome back'
+                  : 'Create your account'}
               </h1>
               <p className="text-text-secondary mb-6">
                 {activeTab === 'login'
-                  ? 'Sign in with your email or use GitHub / Google'
+                  ? authMode === 'magic'
+                    ? 'No password needed. We\'ll send you a secure sign-in link.'
+                    : 'Sign in with your email, magic link, or use GitHub / Google'
                   : 'Start your journey with FunctionFly'}
               </p>
             </motion.div>
 
-            {/* Email / Social login tabs (gradient buttons) - shown on login */}
+            {/* Email / Social / Magic Link tabs (gradient buttons) - shown on login */}
             {activeTab === 'login' && (
               <div className="flex gap-2 mb-6">
                 <Button
@@ -171,7 +179,19 @@ export function AuthPage() {
                       : 'auth-mode-btn-inactive hover:bg-bg-hover'
                   }`}
                 >
-                  Email Login
+                  Email
+                </Button>
+                <Button
+                  type="button"
+                  size="default"
+                  onClick={() => setAuthMode('magic')}
+                  className={`auth-mode-btn flex-1 transition-all duration-300 ${
+                    authMode === 'magic'
+                      ? 'auth-mode-btn-active'
+                      : 'auth-mode-btn-inactive hover:bg-bg-hover'
+                  }`}
+                >
+                  Magic Link
                 </Button>
                 <Button
                   type="button"
@@ -183,21 +203,25 @@ export function AuthPage() {
                       : 'auth-mode-btn-inactive hover:bg-bg-hover'
                   }`}
                 >
-                  Social Login
+                  Social
                 </Button>
               </div>
             )}
 
             {/* Form */}
             <motion.div
-              key={activeTab}
+              key={activeTab + authMode}
               initial={{ opacity: 0, x: activeTab === 'login' ? -20 : 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3 }}
               className="mb-4"
             >
               {activeTab === 'login' ? (
-                <LoginForm authMode={authMode} setAuthMode={setAuthMode} />
+                authMode === 'magic' ? (
+                  <MagicLinkForm onBack={() => setAuthMode('email')} />
+                ) : (
+                  <LoginForm authMode={authMode === 'social' ? 'social' : 'email'} setAuthMode={setAuthMode} />
+                )
               ) : (
                 <SignupForm />
               )}

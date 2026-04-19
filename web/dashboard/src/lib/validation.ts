@@ -1,29 +1,69 @@
 import { z } from 'zod';
 
+// Password requirements (shared between schema and strength evaluator)
+const PASSWORD_REQUIREMENTS = {
+  minLength: 8,
+  maxLength: 128,
+  patterns: {
+    uppercase: /[A-Z]/,
+    lowercase: /[a-z]/,
+    number: /[0-9]/,
+    special: /[^A-Za-z0-9]/,
+    noSpaces: /^[^\s]*$/,
+  },
+  messages: {
+    minLength: 'Password must be at least 8 characters',
+    maxLength: 'Password must be less than 128 characters',
+    uppercase: 'Password must contain at least one uppercase letter',
+    lowercase: 'Password must contain at least one lowercase letter',
+    number: 'Password must contain at least one number',
+    special: 'Password must contain at least one special character',
+    noSpaces: 'Password cannot contain spaces',
+  },
+} as const;
+
 // Password strength validation
 const passwordSchema = z
   .string()
-  .min(8, 'Password must be at least 8 characters')
-  .max(128, 'Password must be less than 128 characters')
-  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-  .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-  .regex(/[0-9]/, 'Password must contain at least one number')
-  .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character')
-  .refine((password) => !/\s/.test(password), 'Password cannot contain spaces');
+  .min(PASSWORD_REQUIREMENTS.minLength, PASSWORD_REQUIREMENTS.messages.minLength)
+  .max(PASSWORD_REQUIREMENTS.maxLength, PASSWORD_REQUIREMENTS.messages.maxLength)
+  .regex(PASSWORD_REQUIREMENTS.patterns.uppercase, PASSWORD_REQUIREMENTS.messages.uppercase)
+  .regex(PASSWORD_REQUIREMENTS.patterns.lowercase, PASSWORD_REQUIREMENTS.messages.lowercase)
+  .regex(PASSWORD_REQUIREMENTS.patterns.number, PASSWORD_REQUIREMENTS.messages.number)
+  .regex(PASSWORD_REQUIREMENTS.patterns.special, PASSWORD_REQUIREMENTS.messages.special)
+  .refine((password) => PASSWORD_REQUIREMENTS.patterns.noSpaces.test(password), PASSWORD_REQUIREMENTS.messages.noSpaces);
 
-// Login form schema
+// Login form schema - accepts either email or username
 export const loginSchema = z.object({
-  email: z.string().min(1, 'Email is required').email('Please enter a valid email address'),
+  email: z
+    .string()
+    .min(1, 'Username or email is required')
+    .refine(
+      (val) => {
+        // Allow valid emails OR valid usernames (alphanumeric, underscores, hyphens)
+        const isEmail = z.string().email().safeParse(val).success;
+        const isUsername = /^[a-zA-Z0-9_-]+$/.test(val);
+        return isEmail || isUsername;
+      },
+      { message: 'Please enter a valid email address or username' }
+    ),
   password: z.string().min(1, 'Password is required'),
   rememberMe: z.boolean().optional(),
 });
 
+/** Parse ISO date (YYYY-MM-DD) to Date object using local timezone (noon to avoid DST issues). */
+function parseISODate(isoDate: string): Date | null {
+  const parts = isoDate.split('-').map(Number);
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return null;
+  const [y, m, d] = parts;
+  // Use noon to avoid timezone/DST issues at day boundaries
+  return new Date(y, m - 1, d, 12, 0, 0);
+}
+
 /** Age in years from a calendar date (YYYY-MM-DD), local timezone. */
 function ageFromISODate(isoDate: string): number {
-  const parts = isoDate.split('-').map(Number);
-  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return -1;
-  const [y, m, d] = parts;
-  const birth = new Date(y, m - 1, d);
+  const birth = parseISODate(isoDate);
+  if (!birth) return -1;
   const today = new Date();
   let age = today.getFullYear() - birth.getFullYear();
   const md = today.getMonth() - birth.getMonth();
@@ -50,9 +90,10 @@ export function createSignupSchema(inviteRequired: boolean) {
         .string()
         .min(1, 'Date of birth is required')
         .regex(/^\d{4}-\d{2}-\d{2}$/, 'Enter a valid date')
-        .refine((s) => !Number.isNaN(Date.parse(`${s}T12:00:00`)), 'Invalid date')
+        .refine((s) => parseISODate(s) !== null, 'Invalid date')
         .refine((s) => {
-          const t = new Date(`${s}T12:00:00`);
+          const t = parseISODate(s);
+          if (!t) return false;
           const startOfToday = new Date();
           startOfToday.setHours(0, 0, 0, 0);
           return t <= startOfToday;
@@ -124,11 +165,11 @@ export const redirectSchema = z.object({
 export const evaluatePasswordStrength = (password: string) => {
   let score = 0;
   const checks = {
-    length: password.length >= 8,
-    uppercase: /[A-Z]/.test(password),
-    lowercase: /[a-z]/.test(password),
-    number: /[0-9]/.test(password),
-    special: /[^A-Za-z0-9]/.test(password),
+    length: password.length >= PASSWORD_REQUIREMENTS.minLength,
+    uppercase: PASSWORD_REQUIREMENTS.patterns.uppercase.test(password),
+    lowercase: PASSWORD_REQUIREMENTS.patterns.lowercase.test(password),
+    number: PASSWORD_REQUIREMENTS.patterns.number.test(password),
+    special: PASSWORD_REQUIREMENTS.patterns.special.test(password),
   };
 
   score = Object.values(checks).filter(Boolean).length;

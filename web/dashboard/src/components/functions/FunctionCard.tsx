@@ -172,12 +172,12 @@ function DeterministicBadge({
       </Badge>
     );
   }
-  return (
-    <Badge
-      variant="outline"
-      className={cn("gap-1 px-1.5 py-0.5 text-xs text-text-muted", className)}
-      aria-label="Non-deterministic function"
-    >
+   return (
+     <Badge
+       variant="outline"
+       className={cn("gap-1 px-1.5 py-0.5 text-xs text-text-secondary", className)}
+       aria-label="Non-deterministic function"
+     >
       <Zap className="h-3 w-3" />
       <span>Non-deterministic</span>
     </Badge>
@@ -597,12 +597,12 @@ const FunctionCard = React.forwardRef<HTMLDivElement, FunctionCardProps>(
                     <div className="flex items-center gap-2">
                       <h3 className="text-lg font-semibold text-text-primary">{data.name}</h3>
                       {data.isVerified && <VerifiedBadge />}
-                      {data.isFeatured && (
-                        <Badge variant="default" className="gap-1">
-                          <Star className="h-3 w-3" />
-                          Featured
-                        </Badge>
-                      )}
+                       {data.isFeatured && (
+                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border border-transparent bg-brand-700 text-white">
+                           <Star className="w-3 h-3" />
+                           Featured
+                         </span>
+                       )}
                     </div>
                     <AuthorInfo author={data.author} />
                   </div>
@@ -931,7 +931,7 @@ const FunctionCard = React.forwardRef<HTMLDivElement, FunctionCardProps>(
                       Yes
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="text-xs gap-1 text-text-muted">
+                    <Badge variant="outline" className="text-xs gap-1 text-text-secondary">
                       <X className="h-3 w-3" />
                       No
                     </Badge>

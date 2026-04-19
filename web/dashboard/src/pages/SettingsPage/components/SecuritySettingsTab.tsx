@@ -316,9 +316,9 @@ export function SecuritySettingsTab() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="ff-card-velocity">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="font-display flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-brand-500" />
             Multi-Factor Authentication
           </CardTitle>
@@ -331,7 +331,7 @@ export function SecuritySettingsTab() {
             <p className="text-sm text-text-muted">Loading security status...</p>
           ) : (
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={status?.enabled ? 'default' : 'secondary'}>
+              <Badge variant={status?.enabled ? 'default' : 'secondary'} className={status?.enabled ? 'ff-badge-primary' : ''}>
                 {status?.enabled ? 'MFA enabled' : 'MFA disabled'}
               </Badge>
               {status?.required ? (
@@ -354,7 +354,7 @@ export function SecuritySettingsTab() {
                 Enable MFA to require a one-time code from your authenticator app at login.
               </p>
               {!setupData ? (
-                <Button onClick={handleStartSetup} disabled={working || loadingStatus}>
+                <Button onClick={handleStartSetup} disabled={working || loadingStatus} className="ff-btn-velocity">
                   {working ? 'Starting...' : 'Set Up Authenticator App'}
                 </Button>
               ) : (
@@ -415,7 +415,7 @@ export function SecuritySettingsTab() {
                     />
                   </div>
                   <div className="flex gap-2">
-                    <Button onClick={handleEnableMFA} disabled={working}>
+                    <Button onClick={handleEnableMFA} disabled={working} className="ff-btn-velocity">
                       {working ? 'Enabling...' : 'Enable MFA'}
                     </Button>
                     <Button
@@ -476,9 +476,9 @@ export function SecuritySettingsTab() {
       </Card>
 
       {recoveryCodes.length > 0 ? (
-        <Card>
+        <Card className="ff-card-velocity">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="font-display flex items-center gap-2">
               <KeyRound className="h-5 w-5 text-brand-500" />
               Recovery Codes
             </CardTitle>
@@ -510,9 +510,9 @@ export function SecuritySettingsTab() {
         </Card>
       ) : null}
 
-      <Card>
+      <Card className="ff-card-velocity">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="font-display flex items-center gap-2">
             <Smartphone className="h-5 w-5 text-brand-500" />
             Session Security
           </CardTitle>
@@ -571,7 +571,7 @@ export function SecuritySettingsTab() {
                       {session.currentSession ? (
                         <Badge
                           variant="outline"
-                          className="text-green-600 dark:text-green-400 border-green-500/40"
+                          className="ff-status-active border-green-500/40"
                         >
                           Current
                         </Badge>
@@ -607,9 +607,9 @@ export function SecuritySettingsTab() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="ff-card-velocity">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="font-display flex items-center gap-2">
             <Download className="h-5 w-5 text-brand-500" />
             Data Export
           </CardTitle>
@@ -622,15 +622,15 @@ export function SecuritySettingsTab() {
             This export includes your account metadata and preferences for backup and compliance
             requests.
           </p>
-          <Button onClick={handleExportData} disabled={exportingData}>
+          <Button onClick={handleExportData} disabled={exportingData} className="ff-btn-velocity">
             {exportingData ? 'Preparing export...' : 'Export My Data'}
           </Button>
         </CardContent>
       </Card>
 
-      <Card className="border-red-500/30">
+      <Card className="ff-card-velocity border-red-500/30">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+          <CardTitle className="font-display flex items-center gap-2 text-red-600 dark:text-red-400">
             <ShieldAlert className="h-5 w-5" />
             Danger Zone
           </CardTitle>

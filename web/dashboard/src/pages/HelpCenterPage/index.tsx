@@ -5,7 +5,6 @@ import { MetaTags } from '@/components/seo/MetaTags';
 import { reportWebVitalsBatch, useWebVitals } from '@/hooks/useWebVitals';
 import { DOCS_SITE_URL } from '@/lib/constants';
 import { Footer } from '@/pages/LandingPage/components/Footer';
-import './HelpCenter.css';
 import {
   BookOpen,
   Bug,
@@ -25,10 +24,10 @@ import {
   Server,
   Shield,
   Users,
-  Zap,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import './HelpCenter.css';
 
 interface HelpCardProps {
   icon: React.ReactNode;
@@ -121,7 +120,11 @@ export function HelpCenterPage() {
       links: [
         { label: 'Quick Start Guide', href: `${DOCS_SITE_URL}/quickstart`, external: true },
         { label: 'Platform Overview', href: '/features' },
-        { label: 'Deploy Your First Function', href: `${DOCS_SITE_URL}/deploy/first-function`, external: true },
+        {
+          label: 'Deploy Your First Function',
+          href: `${DOCS_SITE_URL}/deploy/first-function`,
+          external: true,
+        },
         { label: 'Onboarding Walkthrough', href: '/onboarding' },
       ],
     },
@@ -145,17 +148,6 @@ export function HelpCenterPage() {
         { label: 'State Fabric Guide', href: `${DOCS_SITE_URL}/state-fabric`, external: true },
         { label: 'Secrets Vault', href: `${DOCS_SITE_URL}/secrets`, external: true },
         { label: 'Version Control', href: `${DOCS_SITE_URL}/functions/versions`, external: true },
-      ],
-    },
-    {
-      icon: <Zap className="h-6 w-6" />,
-      title: 'AI Agents & Flywheel',
-      description: 'Build AI agents and participate in the community.',
-      links: [
-        { label: 'Creating AI Agents', href: `${DOCS_SITE_URL}/agents`, external: true },
-        { label: 'Agent Memory', href: '/agents' },
-        { label: 'Flywheel Network', href: '/flywheel' },
-        { label: 'Function Registry', href: '/registry' },
       ],
     },
     {
@@ -208,7 +200,7 @@ export function HelpCenterPage() {
       description: 'Get help from our team and community.',
       links: [
         { label: 'Contact Support', href: '/contact' },
-        { label: 'Community Forum', href: '/flywheel' },
+        { label: 'Community Forum', href: '/community' },
         { label: 'Enterprise Support', href: '/enterprise/support' },
         { label: 'Feature Requests', href: '/feedback' },
       ],
@@ -216,9 +208,19 @@ export function HelpCenterPage() {
   ];
 
   const quickLinks: QuickLinkProps[] = [
-    { icon: <Play className="h-5 w-5" />, title: 'Video Tutorials', href: `${DOCS_SITE_URL}/tutorials`, external: true },
+    {
+      icon: <Play className="h-5 w-5" />,
+      title: 'Video Tutorials',
+      href: `${DOCS_SITE_URL}/tutorials`,
+      external: true,
+    },
     { icon: <FileText className="h-5 w-5" />, title: 'Changelog', href: '/changelog' },
-    { icon: <Server className="h-5 w-5" />, title: 'System Status', href: 'https://status.functionfly.com', external: true },
+    {
+      icon: <Server className="h-5 w-5" />,
+      title: 'System Status',
+      href: 'https://status.functionfly.com',
+      external: true,
+    },
     { icon: <Shield className="h-5 w-5" />, title: 'Security', href: '/security' },
     { icon: <Search className="h-5 w-5" />, title: 'FAQ', href: '/faq' },
     { icon: <Mail className="h-5 w-5" />, title: 'Contact Us', href: '/contact' },
@@ -235,7 +237,10 @@ export function HelpCenterPage() {
 
   return (
     <div className="min-h-screen bg-bg-primary" style={{ backgroundColor: 'var(--bg-primary)' }}>
-      <MetaTags title="Help Center | FunctionFly" description="Get help with FunctionFly. Browse documentation, guides, FAQs, and support resources." />
+      <MetaTags
+        title="Help Center | FunctionFly"
+        description="Get help with FunctionFly. Browse documentation, guides, FAQs, and support resources."
+      />
 
       <Navbar />
 
@@ -321,7 +326,8 @@ export function HelpCenterPage() {
               <div className="help-support-text">
                 <h3 className="help-support-title">Still need help?</h3>
                 <p className="help-support-description">
-                  Can&apos;t find what you&apos;re looking for? Our support team is ready to assist you.
+                  Can&apos;t find what you&apos;re looking for? Our support team is ready to assist
+                  you.
                 </p>
               </div>
               <div className="help-support-actions">

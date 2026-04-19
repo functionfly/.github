@@ -248,3 +248,68 @@ export const formatPlanName = (plan?: string): string => {
   if (!plan) return 'Unknown';
   return plan.charAt(0).toUpperCase() + plan.slice(1).toLowerCase();
 };
+
+/**
+ * Get overage rate for a plan (cents per 1000 requests)
+ * Returns null if the plan has a hard stop (no overage)
+ */
+export const getOverageRate = (plan?: string): number | null => {
+  const planKey = plan?.toUpperCase() as keyof typeof PLANS;
+  return PLANS[planKey]?.overageRate ?? null;
+};
+
+/**
+ * Get annual discount for a plan (0.0 - 1.0)
+ */
+export const getAnnualDiscount = (plan?: string): number => {
+  const planKey = plan?.toUpperCase() as keyof typeof PLANS;
+  return PLANS[planKey]?.annualDiscount ?? 0;
+};
+
+/**
+ * Get annual price for a plan
+ */
+export const getAnnualPrice = (plan?: string): number | null => {
+  const planKey = plan?.toUpperCase() as keyof typeof PLANS;
+  const planData = PLANS[planKey];
+  if (!planData || !planData.price || planData.price === 'Custom') return null;
+  const monthly = planData.price * (1 - (planData.annualDiscount || 0));
+  return Math.round(monthly * 12);
+};
+
+/**
+ * Check if a plan supports per-API-key cost attribution
+ */
+export const hasPerKeyCostAttribution = (plan?: string): boolean => {
+  const limits = getPlanLimits(plan);
+  if (!limits) return false;
+  return (limits as { perKeyCostAttribution?: boolean }).perKeyCostAttribution === true;
+};
+
+/**
+ * Check if a plan supports API key budgets and alerts
+ */
+export const hasAPIKeyBudgets = (plan?: string): boolean => {
+  const limits = getPlanLimits(plan);
+  if (!limits) return false;
+  return (limits as { apiKeyBudgets?: boolean }).apiKeyBudgets === true;
+};
+
+/**
+ * Check if a plan supports high-value key separation
+ */
+export const hasHighValueKeySeparation = (plan?: string): boolean => {
+  const limits = getPlanLimits(plan);
+  if (!limits) return false;
+  return (limits as { highValueKeySeparation?: boolean }).highValueKeySeparation === true;
+};
+
+/**
+ * Format overage rate for display
+ */
+export const formatOverageRate = (plan?: string): string => {
+  const rate = getOverageRate(plan);
+  if (rate === null) return 'Hard stop';
+  if (rate === 0) return 'Included';
+  return `$${(rate / 1000).toFixed(4)}/req`;
+};

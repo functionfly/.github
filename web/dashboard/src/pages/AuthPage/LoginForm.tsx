@@ -9,7 +9,7 @@ import { ADMIN_DASHBOARD_URL, getApiBaseUrl } from '@/lib/constants';
 import { isPlatformAdminRole, notifyAdminPanelAfterLogin } from '@/lib/platform-admin';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
-import { AlertCircle, Eye, EyeOff, Shield } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, Info, LockKeyhole, Shield, User } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -64,8 +64,8 @@ function getSafeRedirect(redirect: string | null): string | null {
 }
 
 interface LoginFormProps {
-  authMode?: 'email' | 'social';
-  setAuthMode?: (mode: 'email' | 'social') => void;
+  authMode?: 'email' | 'social' | 'magic';
+  setAuthMode?: (mode: 'email' | 'social' | 'magic') => void;
 }
 
 export function LoginForm({
@@ -238,7 +238,7 @@ export function LoginForm({
                 : 'auth-mode-btn-inactive hover:bg-bg-hover'
             }`}
           >
-            Email Login
+            Login
           </Button>
           <Button
             type="button"
@@ -296,28 +296,39 @@ export function LoginForm({
                   !errors.email && watch('email') && 'text-success'
                 )}
               >
-                Email <span className="text-error">*</span>
+                Username or Email <span className="text-error">*</span>
               </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                className={cn(
-                  'focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 transition-all duration-200',
-                  errors.email && 'auth-input-error',
-                  !errors.email && watch('email') && 'border-success focus:border-success'
-                )}
-                {...register('email')}
-                onInput={handleClearErrorOnChange}
-                aria-invalid={errors.email ? 'true' : 'false'}
-                aria-describedby={errors.email ? 'email-error' : undefined}
-              />
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">
+                  <User className="w-4 h-4" />
+                </div>
+                <Input
+                  id="email"
+                  type="text"
+                  placeholder="username or you@example.com"
+                  className={cn(
+                    'pl-10 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 transition-all duration-200',
+                    errors.email && 'auth-input-error',
+                    !errors.email && watch('email') && 'border-success focus:border-success'
+                  )}
+                  {...register('email')}
+                  onInput={handleClearErrorOnChange}
+                  aria-invalid={errors.email ? 'true' : 'false'}
+                  aria-describedby={errors.email ? 'email-error' : 'email-help'}
+                />
+              </div>
+              {!errors.email && (
+                <p id="email-help" className="text-xs text-text-muted flex items-center gap-1.5">
+                  <Info className="w-3 h-3" />
+                  Sign in with your username or email address
+                </p>
+              )}
               {errors.email && (
                 <div id="email-error" className="auth-error-text">
                   <AlertCircle className="w-3 h-3" />
                   {typeof errors.email.message === 'string'
                     ? errors.email.message
-                    : 'Invalid email'}
+                    : 'Invalid username or email'}
                 </div>
               )}
             </div>
@@ -334,12 +345,15 @@ export function LoginForm({
                 Password <span className="text-error">*</span>
               </Label>
               <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">
+                  <LockKeyhole className="w-4 h-4" />
+                </div>
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
                   className={cn(
-                    'pr-10 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 transition-all duration-200',
+                    'pl-10 pr-10 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 transition-all duration-200',
                     errors.password && 'auth-input-error',
                     !errors.password && watch('password') && 'border-success focus:border-success'
                   )}
@@ -391,6 +405,18 @@ export function LoginForm({
                 className="text-sm text-brand-500 hover:text-brand-400 hover:underline transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 rounded-sm"
               >
                 Forgot password?
+              </Link>
+            </div>
+
+            {/* Magic Link Option */}
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <span className="text-sm text-text-muted">Or</span>
+              <Link
+                to="/auth/magic-link"
+                className="text-sm text-brand-500 hover:text-brand-400 hover:underline transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 rounded-sm flex items-center gap-1"
+              >
+                <span className="inline-block">✨</span>
+                Sign in with Magic Link
               </Link>
             </div>
 

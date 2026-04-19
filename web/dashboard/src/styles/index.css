@@ -1,13 +1,26 @@
 /* ==========================================================================
    FunctionFly Styles - Main Entry Point
    Premium Dark & Light Mode UI System
+
+   Brand Palette: "Velocity" - Jet exhaust flames at sunset altitude
+   Primary: Flame Orange (#FF6B35) | Altitude Cyan (#00D4FF)
    ========================================================================== */
 
 @import 'tailwindcss';
 @plugin "@tailwindcss/typography";
 
-/* Import all style modules (use @/ so Vite resolves from src/ and Tailwind plugin can resolve) */
+/* Brand Velocity Palette (Import First) */
+@import '@/styles/brand-velocity.css';
+
+/* Import all style modules */
+/* Aviation Theme - PRIMARY (Unified Velocity Brand + Aviation Components) */
+@import '@/styles/aviation-theme.css';
+
+/* Velocity Theme - Secondary (legacy utility classes, kept for migration) */
+@import '@/styles/velocity-theme.css';
 @import '@/styles/themes.css';
+
+/* Other style modules */
 @import '@/styles/animations.css';
 @import '@/styles/effects.css';
 @import '@/styles/components.css';
@@ -20,18 +33,29 @@
 @import '@/styles/function-marketplace-light-mode.css';
 @import '@/styles/agent-sdk-integrations-light-mode.css';
 @import '@/styles/enterprise-sla.css';
-@import '@/styles/flywheel.css';
-@import '@/styles/aviation-theme.css';
 @import '@/styles/functions-discovery.css';
 @import '@/styles/discovery-new.css';
+@import '@/styles/provider-theme.css';
 
 /* ==========================================================================
    Additional Utility Classes
    ========================================================================== */
 
-/* Text Utilities */
+/* Legacy Text Gradient (kept for compatibility, use .v-text-gradient for new) */
 .text-gradient {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+  background: linear-gradient(
+    135deg,
+    var(--ff-flame) 0%,
+    var(--ff-cyan) 50%,
+    var(--ff-stratosphere) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+[data-theme='light'] .text-gradient {
+  background: linear-gradient(135deg, #e85a2a 0%, #00b8e0 50%, #4a6ae0 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -41,14 +65,74 @@
   text-wrap: balance;
 }
 
-/* Background Utilities */
+/* Background Utilities - Velocity Brand */
 .bg-gradient-radial {
-  background: radial-gradient(ellipse at center, var(--bg-secondary) 0%, var(--bg-primary) 70%);
+  background: radial-gradient(
+    ellipse at center,
+    var(--ff-bg-secondary) 0%,
+    var(--ff-bg-primary) 70%
+  );
 }
 
-/* Border Utilities */
+/* Border Utilities - Velocity Brand */
 .border-gradient {
-  border-image: linear-gradient(135deg, #6366f1, #8b5cf6, #d946ef) 1;
+  border-image: linear-gradient(135deg, var(--ff-flame), var(--ff-cyan), var(--ff-stratosphere)) 1;
+}
+
+/* ==========================================================================
+   VELOCITY QUICK UTILITIES (use with Tailwind classes)
+   ========================================================================== */
+
+/* Brand color application */
+.brand-flame {
+  color: #ff6b35 !important;
+}
+.brand-cyan {
+  color: #00d4ff !important;
+}
+.brand-taxiway {
+  color: #00ff9d !important;
+}
+.brand-beacon {
+  color: #ffb800 !important;
+}
+
+[data-theme='light'] .brand-flame {
+  color: #e85a2a !important;
+}
+[data-theme='light'] .brand-cyan {
+  color: #00b8e0 !important;
+}
+[data-theme='light'] .brand-taxiway {
+  color: #059669 !important;
+}
+[data-theme='light'] .brand-beacon {
+  color: #d97706 !important;
+}
+
+/* Quick glow utilities */
+.glow-flame {
+  box-shadow:
+    0 0 20px rgba(255, 107, 53, 0.4),
+    0 0 60px rgba(255, 107, 53, 0.2);
+}
+
+[data-theme='light'] .glow-flame {
+  box-shadow:
+    0 0 20px rgba(232, 90, 42, 0.25),
+    0 0 40px rgba(232, 90, 42, 0.15);
+}
+
+.glow-cyan {
+  box-shadow:
+    0 0 20px rgba(0, 212, 255, 0.4),
+    0 0 60px rgba(0, 212, 255, 0.2);
+}
+
+[data-theme='light'] .glow-cyan {
+  box-shadow:
+    0 0 20px rgba(0, 184, 224, 0.25),
+    0 0 40px rgba(0, 184, 224, 0.15);
 }
 
 /* ==========================================================================
@@ -102,8 +186,363 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: var(--bg-primary);
+  background: var(--ff-bg-primary);
   opacity: 0.5;
+}
+
+/* ==========================================================================
+   Brand Accent Highlights - More Flame Orange throughout UI
+   ========================================================================== */
+
+/* Active navigation items get brand accent */
+.nav-item.active,
+[aria-current='page'] {
+  position: relative;
+}
+
+.nav-item.active::before,
+[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  background: linear-gradient(180deg, #ff6b35, #ff4f5e);
+  border-radius: 0 2px 2px 0;
+}
+
+[data-theme='light'] .nav-item.active::before,
+[data-theme='light'] [aria-current='page']::before {
+  background: linear-gradient(180deg, #e85a2a, #d14a20);
+}
+
+/* Brand accent on focused inputs */
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: rgba(255, 107, 53, 0.6) !important;
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.15) !important;
+}
+
+[data-theme='light'] input:focus,
+[data-theme='light'] textarea:focus,
+[data-theme='light'] select:focus {
+  border-color: rgba(232, 90, 42, 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(232, 90, 42, 0.1) !important;
+}
+
+/* Brand colored links */
+a:not(.btn):not(.v-btn-primary):not(.v-btn-secondary):not(.v-btn-ghost):not(.v-btn-outline):not(
+    .v-btn-brand-secondary
+  ) {
+  color: #ff6b35;
+  transition: color 0.2s ease;
+}
+
+a:not(.btn):not(.v-btn-primary):not(.v-btn-secondary):not(.v-btn-ghost):not(.v-btn-outline):not(
+    .v-btn-brand-secondary
+  ):hover {
+  color: #ff8c42;
+}
+
+[data-theme='light']
+  a:not(.btn):not(.v-btn-primary):not(.v-btn-secondary):not(.v-btn-ghost):not(.v-btn-outline):not(
+    .v-btn-brand-secondary
+  ) {
+  color: #e85a2a;
+}
+
+[data-theme='light']
+  a:not(.btn):not(.v-btn-primary):not(.v-btn-secondary):not(.v-btn-ghost):not(.v-btn-outline):not(
+    .v-btn-brand-secondary
+  ):hover {
+  color: #c43e1a;
+}
+
+/* Selection highlighting with brand color */
+::selection {
+  background: rgba(255, 107, 53, 0.4);
+  color: white;
+}
+
+[data-theme='light'] ::selection {
+  background: rgba(232, 90, 42, 0.3);
+  color: #111827;
+}
+
+/* Focus visible with brand accent */
+:focus-visible {
+  outline: 2px solid #ff6b35;
+  outline-offset: 2px;
+}
+
+[data-theme='light'] :focus-visible {
+  outline-color: #e85a2a;
+}
+
+/* Cards with subtle brand glow on hover */
+.card:hover,
+.v-card:hover {
+  border-color: rgba(255, 107, 53, 0.2);
+}
+
+[data-theme='light'] .card:hover,
+[data-theme='light'] .v-card:hover {
+  border-color: rgba(232, 90, 42, 0.15);
+}
+
+/* Brand accent for primary actions */
+button[type='submit'],
+.btn-primary,
+.v-btn-primary {
+  background: linear-gradient(135deg, #ff6b35 0%, #ff4f5e 100%);
+}
+
+[data-theme='light'] button[type='submit'],
+[data-theme='light'] .btn-primary,
+[data-theme='light'] .v-btn-primary {
+  background: linear-gradient(135deg, #e85a2a 0%, #d14a20 100%);
+}
+
+/* Brand underline for section headers */
+h1,
+h2,
+h3 {
+  position: relative;
+}
+
+h1::after,
+h2::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 40px;
+  height: 3px;
+  background: linear-gradient(90deg, #ff6b35, transparent);
+  border-radius: 2px;
+}
+
+[data-theme='light'] h1::after,
+[data-theme='light'] h2::after {
+  background: linear-gradient(90deg, #e85a2a, transparent);
+}
+
+/* Scrollbar thumb with brand color */
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 107, 53, 0.6);
+}
+
+[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(232, 90, 42, 0.5);
+}
+
+/* ==========================================================================
+   Brand Color Utilities for Tailwind Classes
+   ========================================================================== */
+
+/* Text colors */
+.text-ff-flame {
+  color: #ff6b35 !important;
+}
+.text-ff-afterburner {
+  color: #ff4f5e !important;
+}
+.text-ff-cyan {
+  color: #00d4ff !important;
+}
+.text-text-brand {
+  color: var(--text-accent) !important;
+}
+
+[data-theme='light'] .text-ff-flame {
+  color: #e85a2a !important;
+}
+[data-theme='light'] .text-text-brand {
+  color: #e85a2a !important;
+}
+
+/* Background colors */
+.bg-ff-flame {
+  background-color: #ff6b35 !important;
+}
+.bg-ff-afterburner {
+  background-color: #ff4f5e !important;
+}
+
+[data-theme='light'] .bg-ff-flame {
+  background-color: #e85a2a !important;
+}
+
+/* Shadow utilities */
+.shadow-glow-sm {
+  box-shadow: 0 0 10px rgba(255, 107, 53, 0.3) !important;
+}
+.shadow-glow {
+  box-shadow: 0 0 20px rgba(255, 107, 53, 0.4) !important;
+}
+
+[data-theme='light'] .shadow-glow-sm {
+  box-shadow: 0 0 10px rgba(232, 90, 42, 0.25) !important;
+}
+[data-theme='light'] .shadow-glow {
+  box-shadow: 0 0 20px rgba(232, 90, 42, 0.3) !important;
+}
+
+/* Gradient backgrounds */
+.bg-gradient-to-r {
+  background-image: linear-gradient(to right, var(--tw-gradient-stops)) !important;
+}
+.from-ff-flame {
+  --tw-gradient-from: #ff6b35;
+  --tw-gradient-stops:
+    var(--tw-gradient-from), var(--tw-gradient-to, rgba(255, 107, 53, 0)) !important;
+}
+.to-ff-afterburner {
+  --tw-gradient-to: #ff4f5e !important;
+}
+
+[data-theme='light'] .from-ff-flame {
+  --tw-gradient-from: #e85a2a;
+  --tw-gradient-stops:
+    var(--tw-gradient-from), var(--tw-gradient-to, rgba(232, 90, 42, 0)) !important;
+}
+[data-theme='light'] .to-ff-afterburner {
+  --tw-gradient-to: #d14a20 !important;
+}
+
+/* ==========================================================================
+   FlyAssistant Portal Styles
+   ========================================================================== */
+
+/* Ensure fly-assistant portal inherits theme variables */
+#fly-assistant-portal {
+  /* Inherit CSS variables from root */
+  --bg-primary: var(--bg-primary);
+  --bg-secondary: var(--bg-secondary);
+  --bg-tertiary: var(--bg-tertiary);
+  --text-primary: var(--text-primary);
+  --text-secondary: var(--text-secondary);
+  --text-muted: var(--text-muted);
+  --border-default: var(--border-default);
+  --border-subtle: var(--border-subtle);
+}
+
+/* Ensure portal content is visible */
+.fly-assistant-portal-content {
+  pointer-events: none;
+}
+
+.fly-assistant-portal-content > * {
+  pointer-events: auto;
+}
+
+/* Ensure fly-assistant panel has solid background */
+[data-testid='fly-assistant-panel'] {
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--border-default) !important;
+}
+
+/* ==========================================================================
+   Support Chat / FlyMind Bot Styles
+   Velocity Brand: Flame Orange (#FF6B35) + Altitude Cyan (#00D4FF)
+   Font Stack: 'Instrument Sans', 'Ranade', 'Commit Mono'
+   ========================================================================== */
+
+/* Support Bubble - Velocity Brand Gradient (Flame Orange → Afterburner Red) */
+.support-bubble {
+  background: linear-gradient(135deg, #ff6b35 0%, #ff4f5e 100%) !important;
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+}
+
+/* Support Bubble Hover - Altitude Cyan glow */
+.support-bubble:hover {
+  box-shadow:
+    0 6px 25px rgba(255, 107, 53, 0.5),
+    0 0 20px rgba(0, 212, 255, 0.3) !important;
+}
+
+/* Unified Chat Window - ensure solid background - DARK MODE (Tarmac/Cockpit) */
+[role='dialog'][aria-label*='support chat'],
+[role='dialog'][aria-label*='FunctionFly support'] {
+  background-color: var(--bg-secondary, #161b22) !important;
+  border-color: var(--border-default, rgba(255, 107, 53, 0.2)) !important;
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+}
+
+/* LIGHT MODE - Chat Window */
+[data-theme='light'] [role='dialog'][aria-label*='support chat'],
+[data-theme='light'] [role='dialog'][aria-label*='FunctionFly support'] {
+  background-color: var(--bg-secondary, #f8f9fa) !important;
+  border-color: var(--border-default, rgba(255, 107, 53, 0.3)) !important;
+}
+
+/* Chat window header - Velocity Brand Gradient (Flame → Stratosphere) */
+[role='dialog'][aria-label*='support chat'] > div:first-child,
+[role='dialog'][aria-label*='FunctionFly support'] > div:first-child {
+  background: linear-gradient(to right, #ff6b35, #5b7cf5) !important;
+  font-family: 'Ranade', 'Instrument Sans', sans-serif;
+}
+
+/* Chat messages area */
+[role='dialog'][aria-label*='support chat'] [role='log'],
+[role='dialog'][aria-label*='FunctionFly support'] [role='log'] {
+  background-color: transparent;
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+}
+
+/* User messages - Altitude Cyan accent */
+[role='dialog'][aria-label*='support chat'] .rounded-tr-sm,
+[role='dialog'][aria-label*='FunctionFly support'] .rounded-tr-sm {
+  background: linear-gradient(to bottom right, #00d4ff, #5b7cf5) !important;
+}
+
+/* AI/Bot messages - subtle orange tint */
+[role='dialog'][aria-label*='support chat'] .rounded-tl-sm,
+[role='dialog'][aria-label*='FunctionFly support'] .rounded-tl-sm {
+  border-color: rgba(255, 107, 53, 0.3) !important;
+}
+
+/* Ensure chat input area has background - DARK MODE (Tarmac) */
+[role='dialog'][aria-label*='support chat'] .border-t,
+[role='dialog'][aria-label*='FunctionFly support'] .border-t {
+  background-color: var(--bg-primary, #0d1117) !important;
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+}
+
+/* LIGHT MODE - Chat Input Area */
+[data-theme='light'] [role='dialog'][aria-label*='support chat'] .border-t,
+[data-theme='light'] [role='dialog'][aria-label*='FunctionFly support'] .border-t {
+  background-color: var(--bg-primary, #ffffff) !important;
+}
+
+/* Send button - Velocity Flame Orange */
+[role='dialog'][aria-label*='support chat'] button[type='submit'],
+[role='dialog'][aria-label*='FunctionFly support'] button[type='submit'],
+[role='dialog'][aria-label*='support chat'] .bg-gradient-to-br,
+[role='dialog'][aria-label*='FunctionFly support'] .bg-gradient-to-br {
+  background: linear-gradient(to bottom right, #ff6b35, #e85a2a) !important;
+}
+
+/* FlyAssistant Panel - ensure solid background - DARK MODE */
+[data-testid='fly-assistant-panel'] {
+  background-color: var(--bg-secondary, #161b22) !important;
+  border-color: var(--border-default, rgba(255, 107, 53, 0.2)) !important;
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+}
+
+/* LIGHT MODE - FlyAssistant Panel */
+[data-theme='light'] [data-testid='fly-assistant-panel'] {
+  background-color: var(--bg-secondary, #f8f9fa) !important;
+  border-color: var(--border-default, rgba(255, 107, 53, 0.3)) !important;
+}
+
+/* FlyAssistant Header - Velocity Gradient */
+[data-testid='fly-assistant-panel'] header {
+  background: linear-gradient(to right, #ff6b35, #5b7cf5) !important;
+  font-family: 'Ranade', 'Instrument Sans', sans-serif;
 }
 
 /* ==========================================================================

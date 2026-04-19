@@ -77,6 +77,58 @@ export class FunctionFlyAuth {
   }
 
   /**
+   * Request a magic link to be sent to the user's email
+   */
+  async requestMagicLink(email: string, redirectPath?: string): Promise<{ message: string; email_sent: boolean }> {
+    const response = await fetch(`${this.baseURL}/v1/auth/magic-link`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, redirect_path: redirectPath }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Magic link request failed: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Verify a magic link token and authenticate
+   */
+  async verifyMagicLink(token: string): Promise<AuthTokens & { user: any; new_user?: boolean }> {
+    const response = await fetch(`${this.baseURL}/v1/auth/magic-link/verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ token }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Magic link verification failed: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    this.jwtToken = data.token;
+    this.refreshTokenValue = data.refresh_token;
+
+    // Store tokens (in production, use secure storage)
+    this.storeTokens();
+
+    return {
+      jwt: data.token,
+      refreshToken: data.refresh_token,
+      user: data.user,
+      new_user: data.new_user,
+    };
+  }
+
+  /**
    * Refresh JWT token (public method)
    */
   async refreshAuthToken(): Promise<string> {

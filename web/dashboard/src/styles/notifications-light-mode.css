@@ -93,7 +93,7 @@
 
 /* Warning/Connection status banner in light mode */
 [data-theme="light"] .text-warning.bg-warning-glow\/20 {
-  background-color: rgba(217, 119, 6, 0.12) !important;
+  background-color: #fef3c7 !important; /* amber-100 */
   color: #b45309 !important;
   border: 1px solid rgba(217, 119, 6, 0.2) !important;
 }
@@ -106,17 +106,17 @@
 
 /* Error icon color in light mode */
 [data-theme="light"] .text-error {
-  color: #dc2626 !important;
+  color: #b91c1c !important; /* red-700 */
 }
 
 /* Warning icon color in light mode */
 [data-theme="light"] .text-warning {
-  color: #d97706 !important;
+  color: #9a3412 !important; /* amber-800 */
 }
 
 /* Success icon color in light mode */
 [data-theme="light"] .text-success {
-  color: #059669 !important;
+  color: #047857 !important; /* emerald-700 */
 }
 
 /* Info icon color in light mode */
@@ -327,41 +327,37 @@
 /* Fix for warning glow background in light mode */
 [data-theme="light"] .bg-warning\/10,
 [data-theme="light"] .bg-warning-glow {
-  background-color: rgba(217, 119, 6, 0.1) !important;
+  background-color: #fef3c7 !important; /* amber-100 */
 }
-
 [data-theme="light"] .bg-warning-glow\/20 {
-  background-color: rgba(217, 119, 6, 0.12) !important;
+  background-color: #fef3c7 !important;
 }
 
 /* Fix for error glow background in light mode */
 [data-theme="light"] .bg-error\/10,
 [data-theme="light"] .bg-error-glow {
-  background-color: rgba(220, 38, 38, 0.08) !important;
+  background-color: #fee2e2 !important; /* red-100 */
 }
-
 [data-theme="light"] .bg-error-glow\/20 {
-  background-color: rgba(220, 38, 38, 0.1) !important;
+  background-color: #fee2e2 !important;
 }
 
 /* Success glow background in light mode */
 [data-theme="light"] .bg-success\/10,
 [data-theme="light"] .bg-success-glow {
-  background-color: rgba(5, 150, 105, 0.08) !important;
+  background-color: #d1fae5 !important; /* emerald-100 */
 }
-
 [data-theme="light"] .bg-success-glow\/20 {
-  background-color: rgba(5, 150, 105, 0.1) !important;
+  background-color: #d1fae5 !important;
 }
 
 /* Info glow background in light mode */
 [data-theme="light"] .bg-info\/10,
 [data-theme="light"] .bg-info-glow {
-  background-color: rgba(37, 99, 235, 0.08) !important;
+  background-color: #dbeafe !important; /* blue-100 */
 }
-
 [data-theme="light"] .bg-info-glow\/20 {
-  background-color: rgba(37, 99, 235, 0.1) !important;
+  background-color: #dbeafe !important;
 }
 
 /* ==========================================================================
@@ -462,4 +458,14 @@
 /* Enterprise card background gradient in light mode */
 [data-theme="light"] .from-amber-500\/5.via-transparent.to-yellow-500\/5 {
   background: linear-gradient(to bottom right, rgba(245, 158, 11, 0.08), transparent, rgba(234, 179, 8, 0.08)) !important;
+}
+
+/* Neutral badges (secondary variant) contrast fix in light mode */
+[data-theme="light"] .bg-bg-tertiary.text-text-muted {
+  color: #374151 !important; /* gray-700 */
+}
+
+/* Tags with opacity variant in light mode */
+[data-theme="light"] .bg-bg-tertiary\/60.text-text-muted {
+  color: #374151 !important;
 }
