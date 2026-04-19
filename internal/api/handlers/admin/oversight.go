@@ -454,13 +454,13 @@ func (h *OversightHandler) HandleGetExecutionAudit(w http.ResponseWriter, r *htt
 		// Derive execution root hash from function ID + timestamp if no certificate exists
 		rootHash := row.ExecutionRootHash.String
 		if rootHash == "" {
-			rootHash = fmt.Sprintf("0x%s-%d", row.FunctionID.String()[:8], row.Timestamp.Unix())
+			rootHash = fmt.Sprintf("uncertified-%s-%d", row.FunctionID.String()[:8], row.Timestamp.Unix())
 		}
 
-		// Use placeholder node signature
+		// Use node signature from certificate, or indicate uncertified if none
 		nodeSig := row.NodeSignature.String
 		if nodeSig == "" {
-			nodeSig = fmt.Sprintf("0x%s-node-%d", row.FunctionID.String()[:8], row.Timestamp.Unix()%1000)
+			nodeSig = "uncertified"
 		}
 
 		// Map error message from error_code
@@ -478,8 +478,8 @@ func (h *OversightHandler) HandleGetExecutionAudit(w http.ResponseWriter, r *htt
 			NodeSignature:     nodeSig,
 			Status:            row.Outcome,
 			Duration:          row.DurationMs,
-			InputSize:         row.InputSize,
-			OutputSize:        row.OutputSize,
+			InputSize:         int(row.InputSize.Int64),
+			OutputSize:        int(row.OutputSize.Int64),
 			ErrorMessage:      errorMsg,
 		})
 	}
@@ -565,22 +565,17 @@ func (h *OversightHandler) HandleGetFraudDetection(w http.ResponseWriter, r *htt
 		})
 	}
 
-	// Generate fake diversity alerts (placeholder - would need more complex analysis)
-	fakeAlerts := []FakeDiversityAlert{}
-	if len(fraudResult.IPClusters) > 0 {
-		// Create alerts based on IP clusters
-		for i, cluster := range fraudResult.IPClusters {
-			if len(cluster.AssociatedTenants) > 3 {
-				fakeAlerts = append(fakeAlerts, FakeDiversityAlert{
-					ID:             fmt.Sprintf("fake-%03d", i+1),
-					TenantGroup:    cluster.AssociatedTenants,
-					Indicators:     []string{"Shared IP ranges", "Similar execution patterns"},
-					RiskLevel:      cluster.RiskLevel,
-					DetectedAt:     cluster.FirstSeen.Format(time.RFC3339),
-					CommonPatterns: cluster.CommonPatterns,
-				})
-			}
-		}
+	// Map fake diversity alerts from the repo
+	fakeAlerts := make([]FakeDiversityAlert, 0, len(fraudResult.FakeDiversityAlerts))
+	for i, alert := range fraudResult.FakeDiversityAlerts {
+		fakeAlerts = append(fakeAlerts, FakeDiversityAlert{
+			ID:             fmt.Sprintf("fake-%03d", i+1),
+			TenantGroup:    alert.TenantGroup,
+			Indicators:     alert.Indicators,
+			RiskLevel:      alert.RiskLevel,
+			DetectedAt:     alert.FirstSeen.Format(time.RFC3339),
+			CommonPatterns: alert.Indicators,
+		})
 	}
 
 	data := FraudDetectionData{

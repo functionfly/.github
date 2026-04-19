@@ -11,7 +11,6 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/conversations"
-	"github.com/functionfly/functionfly/internal/flywheel"
 	"github.com/functionfly/functionfly/internal/notification"
 	"github.com/functionfly/functionfly/internal/security"
 	"github.com/functionfly/functionfly/internal/storage"
@@ -24,7 +23,6 @@ import (
 // Handler handles conversation (DM) and message API requests.
 type Handler struct {
 	repo         *storage.ConversationRepository
-	flywheelSvc  *flywheel.Service
 	registryRepo *registry.RegistryRepository
 	notify       *notification.Service
 	users        userByIDGetter
@@ -43,11 +41,10 @@ type userByIDGetter interface {
 	GetUserByID(userID uuid.UUID) (*storage.User, error)
 }
 
-// NewHandler creates a new conversations handler. flywheelSvc and registryRepo may be nil for stub behaviour.
-// notify and users may be nil; when nil, DM recipients do not receive in-app notifications.
+// NewHandler creates a new conversations handler. notify and users may be nil.
+// registryRepo may be nil for stub behaviour.
 func NewHandler(
 	repo *storage.ConversationRepository,
-	flywheelSvc *flywheel.Service,
 	registryRepo *registry.RegistryRepository,
 	notify *notification.Service,
 	users userByIDGetter,
@@ -58,7 +55,6 @@ func NewHandler(
 	}
 	return &Handler{
 		repo:         repo,
-		flywheelSvc:  flywheelSvc,
 		registryRepo: registryRepo,
 		notify:       notify,
 		users:        users,
@@ -86,42 +82,17 @@ func (h *Handler) GetCollaborationProfile(w http.ResponseWriter, r *http.Request
 		http.Error(w, `{"error":"user_id required"}`, http.StatusBadRequest)
 		return
 	}
-	profileUserID, err := uuid.Parse(userIDStr)
+	_, err := uuid.Parse(userIDStr)
 	if err != nil {
 		http.Error(w, `{"error":"Invalid user_id"}`, http.StatusBadRequest)
 		return
 	}
 
-	var profile map[string]interface{}
-	if h.flywheelSvc != nil {
-		scores, err := h.flywheelSvc.GetUserReputation(r.Context(), profileUserID)
-		if err != nil {
-			h.logger.WithError(err).WithField("user_id", profileUserID).Warn("Get collaboration profile: reputation lookup failed")
-		}
-		rep := map[string]int{"builder": 0, "mentor": 0}
-		if scores != nil {
-			rep["builder"] = scores.BuilderScore
-			rep["mentor"] = scores.MentorScore
-		}
-		sharedThreads := int64(0)
-		if shared, err := h.flywheelSvc.CountSharedThreads(r.Context(), user.UserID, profileUserID); err == nil {
-			sharedThreads = shared
-		} else {
-			h.logger.WithError(err).WithField("user_id", profileUserID).Debug("Count shared threads failed")
-		}
-		profile = map[string]interface{}{
-			"user_id":           profileUserID.String(),
-			"reputation":        rep,
-			"shared_threads":    sharedThreads,
-			"functions_overlap": []string{},
-		}
-	} else {
-		profile = map[string]interface{}{
-			"user_id":           userIDStr,
-			"reputation":        map[string]int{"builder": 0, "mentor": 0},
-			"shared_threads":    0,
-			"functions_overlap": []string{},
-		}
+	profile := map[string]interface{}{
+		"user_id":           userIDStr,
+		"reputation":        map[string]int{"builder": 0, "mentor": 0},
+		"shared_threads":    0,
+		"functions_overlap": []string{},
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(profile)

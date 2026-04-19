@@ -3,6 +3,7 @@ package trustapi
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -49,20 +50,16 @@ func (h *StripeWebhookHandler) HandleStripeWebhook(w http.ResponseWriter, r *htt
 
 	// Verify and construct event
 	var event stripe.Event
-	if webhookSecret != "" {
-		event, err = webhook.ConstructEvent(payload, r.Header.Get("Stripe-Signature"), webhookSecret)
-		if err != nil {
-			logrus.WithError(err).Error("Failed to verify webhook signature")
-			http.Error(w, "Invalid signature", http.StatusBadRequest)
-			return
-		}
-	} else {
-		// Parse without verification (dev only)
-		if err := json.Unmarshal(payload, &event); err != nil {
-			logrus.WithError(err).Error("Failed to parse webhook event")
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
-			return
-		}
+	if webhookSecret == "" {
+		logrus.Error("STRIPE_WEBHOOK_SECRET not set - rejecting webhook")
+		http.Error(w, "Webhook authentication not configured", http.StatusInternalServerError)
+		return
+	}
+	event, err = webhook.ConstructEvent(payload, r.Header.Get("Stripe-Signature"), webhookSecret)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to verify webhook signature")
+		http.Error(w, "Invalid signature", http.StatusBadRequest)
+		return
 	}
 
 	// Process the event
@@ -71,12 +68,18 @@ func (h *StripeWebhookHandler) HandleStripeWebhook(w http.ResponseWriter, r *htt
 		h.handleCheckoutSessionCompleted(w, r, event)
 	case "invoice.paid":
 		h.handleInvoicePaid(w, r, event)
+	case "invoice.finalized":
+		h.handleInvoiceFinalized(w, r, event)
 	case "invoice.payment_failed":
 		h.handleInvoicePaymentFailed(w, r, event)
+	case "payment_intent.succeeded":
+		h.handlePaymentIntentSucceeded(w, r, event)
 	case "customer.subscription.updated":
 		h.handleSubscriptionUpdated(w, r, event)
 	case "customer.subscription.deleted":
 		h.handleSubscriptionDeleted(w, r, event)
+	case "customer.tax_id.updated":
+		h.handleCustomerTaxIdUpdated(w, r, event)
 	default:
 		// Acknowledge unhandled events
 		w.WriteHeader(http.StatusOK)
@@ -145,6 +148,185 @@ func (h *StripeWebhookHandler) handleInvoicePaid(w http.ResponseWriter, r *http.
 	json.NewEncoder(w).Encode(map[string]string{
 		"status": "processed",
 		"type":   "invoice.paid",
+	})
+}
+
+// handleInvoiceFinalized processes finalized invoices (preview before charging)
+// This allows partners to preview charges before they're actually billed
+func (h *StripeWebhookHandler) handleInvoiceFinalized(w http.ResponseWriter, r *http.Request, event stripe.Event) {
+	var invoice struct {
+		ID              string     `json:"id"`
+		Subscription    *string    `json:"subscription"`
+		AmountDue       int64      `json:"amount_due"`
+		Currency        string     `json:"currency"`
+		PeriodStart     int64      `json:"period_start"`
+		PeriodEnd       int64      `json:"period_end"`
+		HostedInvoiceURL string    `json:"hosted_invoice_url"`
+	}
+	if err := json.Unmarshal(event.Data.Raw, &invoice); err != nil {
+		logrus.WithError(err).Error("Failed to parse invoice")
+		http.Error(w, "Failed to parse invoice", http.StatusBadRequest)
+		return
+	}
+
+	// Skip finalized events for subscriptions (they're handled by subscription events)
+	// Only process one-time charges or usage-based billing that needs preview
+	if invoice.Subscription != nil && *invoice.Subscription != "" {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{
+			"status": "skipped",
+			"type":   "invoice.finalized",
+			"reason": "subscription_invoice",
+		})
+		return
+	}
+
+	// Update billing record status to "finalized" for preview
+	ctx := context.Background()
+	records, err := h.repo.GetBillingRecordsByStripeInvoice(ctx, invoice.ID)
+	if err != nil {
+		logrus.WithError(err).WithField("invoice_id", invoice.ID).Error("Failed to find billing records")
+		// Don't fail - finalized invoices might not have records yet
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{
+			"status": "processed",
+			"type":   "invoice.finalized",
+			"note":   "no_billing_records_found",
+		})
+		return
+	}
+
+	for _, record := range records {
+		if err := h.repo.UpdateBillingRecordStatus(ctx, record.ID, "finalized"); err != nil {
+			logrus.WithError(err).WithField("record_id", record.ID).Warn("Failed to update billing record status")
+		}
+
+		// Log finalized invoice details for partner notification
+		logrus.WithFields(logrus.Fields{
+			"invoice_id":          invoice.ID,
+			"record_id":           record.ID,
+			"amount_due":          invoice.AmountDue,
+			"currency":            invoice.Currency,
+			"period_start":        invoice.PeriodStart,
+			"period_end":          invoice.PeriodEnd,
+			"hosted_invoice_url":  invoice.HostedInvoiceURL,
+		}).Info("Invoice finalized - ready for partner preview")
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"status": "processed",
+		"type":   "invoice.finalized",
+	})
+}
+
+// handlePaymentIntentSucceeded processes successful payments for immediate confirmation
+// This provides real-time payment success notifications beyond invoice events
+func (h *StripeWebhookHandler) handlePaymentIntentSucceeded(w http.ResponseWriter, r *http.Request, event stripe.Event) {
+	var paymentIntent struct {
+		ID            string            `json:"id"`
+		Amount        int64             `json:"amount"`
+		Currency      string            `json:"currency"`
+		PaymentMethod string            `json:"payment_method"`
+		Invoice       *string           `json:"invoice"`
+		Metadata      map[string]string `json:"metadata"`
+	}
+	if err := json.Unmarshal(event.Data.Raw, &paymentIntent); err != nil {
+		logrus.WithError(err).Error("Failed to parse payment intent")
+		http.Error(w, "Failed to parse payment intent", http.StatusBadRequest)
+		return
+	}
+
+	// Extract partner info from metadata
+	partnerIDStr := paymentIntent.Metadata["partner_id"]
+	if partnerIDStr == "" {
+		// Not a Trust API payment intent
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{
+			"status": "skipped",
+			"type":   "payment_intent.succeeded",
+			"reason": "not_trust_api",
+		})
+		return
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"payment_intent_id": paymentIntent.ID,
+		"partner_id":       partnerIDStr,
+		"amount":          paymentIntent.Amount,
+		"currency":       paymentIntent.Currency,
+		"payment_method":  paymentIntent.PaymentMethod,
+	}).Info("Payment intent succeeded - immediate confirmation")
+
+	// If this payment is associated with an invoice, update billing status
+	if paymentIntent.Invoice != nil && *paymentIntent.Invoice != "" {
+		ctx := context.Background()
+		records, err := h.repo.GetBillingRecordsByStripeInvoice(ctx, *paymentIntent.Invoice)
+		if err == nil {
+			for _, record := range records {
+				if err := h.repo.UpdateBillingRecordStatus(ctx, record.ID, "paid"); err != nil {
+					logrus.WithError(err).WithField("record_id", record.ID).Warn("Failed to update billing record status")
+				}
+			}
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"status": "processed",
+		"type":   "payment_intent.succeeded",
+	})
+}
+
+// handleCustomerTaxIdUpdated processes tax ID updates for VAT handling
+// This ensures proper VAT/tax compliance for EU and international partners
+func (h *StripeWebhookHandler) handleCustomerTaxIdUpdated(w http.ResponseWriter, r *http.Request, event stripe.Event) {
+	var customer struct {
+		ID      string `json:"id"`
+		TaxIDs  []struct {
+			Type  string `json:"type"`
+			Value string `json:"value"`
+		} `json:"tax_ids"`
+	}
+	if err := json.Unmarshal(event.Data.Raw, &customer); err != nil {
+		logrus.WithError(err).Error("Failed to parse customer")
+		http.Error(w, "Failed to parse customer", http.StatusBadRequest)
+		return
+	}
+
+	// Find partner by Stripe customer ID
+	ctx := context.Background()
+	partner, err := h.repo.GetPartnerByStripeCustomerID(ctx, customer.ID)
+	if err != nil {
+		logrus.WithError(err).WithField("customer_id", customer.ID).Error("Failed to find partner by Stripe customer ID")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{
+			"status": "skipped",
+			"type":   "customer.tax_id.updated",
+			"reason": "partner_not_found",
+		})
+		return
+	}
+
+	// Extract tax IDs from the event
+	var taxIDStrings []string
+	for _, taxID := range customer.TaxIDs {
+		taxIDStrings = append(taxIDStrings, fmt.Sprintf("%s:%s", taxID.Type, taxID.Value))
+	}
+
+	// Update partner with tax information if they have a VAT ID
+	// EU VAT IDs are stored for proper tax handling
+	taxIDJSON, _ := json.Marshal(taxIDStrings)
+	logrus.WithFields(logrus.Fields{
+		"partner_id": partner.ID,
+		"customer_id": customer.ID,
+		"tax_ids":    string(taxIDJSON),
+	}).Info("Customer tax ID updated - VAT handling")
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"status": "processed",
+		"type":   "customer.tax_id.updated",
 	})
 }
 

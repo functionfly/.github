@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/apikey"
 	"github.com/functionfly/functionfly/internal/storage/trustapi"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -39,14 +40,14 @@ func (h *Handler) HandleCreatePartner(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if slug is already taken
-	existingPartner, _ := h.repo.GetPartnerBySlug(req.Slug)
+	existingPartner, _ := h.trustRepo.GetPartnerBySlug(req.Slug)
 	if existingPartner != nil {
 		h.writeError(w, http.StatusConflict, "Slug already in use", "slug_conflict")
 		return
 	}
 
 	// Check if email is already registered
-	existingPartner, _ = h.repo.GetPartnerByContactEmail(req.ContactEmail)
+	existingPartner, _ = h.trustRepo.GetPartnerByContactEmail(req.ContactEmail)
 	if existingPartner != nil {
 		h.writeError(w, http.StatusConflict, "Email already registered", "email_conflict")
 		return
@@ -74,7 +75,7 @@ func (h *Handler) HandleCreatePartner(w http.ResponseWriter, r *http.Request) {
 		Status:             string(trustapi.PartnerStatusPending),
 	}
 
-	if err := h.repo.CreatePartner(partner); err != nil {
+	if err := h.trustRepo.CreatePartner(partner); err != nil {
 		h.logger.WithError(err).Error("Failed to create partner")
 		h.writeError(w, http.StatusInternalServerError, "Failed to create partner", "internal_error")
 		return
@@ -116,7 +117,7 @@ func (h *Handler) HandleListPartners(w http.ResponseWriter, r *http.Request) {
 	}
 	offset := (page - 1) * pageSize
 
-	partners, total, err := h.repo.ListPartners(status, tier, pageSize, offset)
+	partners, total, err := h.trustRepo.ListPartners(status, tier, pageSize, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to list partners")
 		h.writeError(w, http.StatusInternalServerError, "Failed to list partners", "internal_error")
@@ -165,7 +166,7 @@ func (h *Handler) HandleGetPartner(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	partner, err := h.repo.GetPartnerByID(partnerID)
+	partner, err := h.trustRepo.GetPartnerByID(partnerID)
 	if err != nil {
 		h.writeError(w, http.StatusNotFound, "Partner not found", "partner_not_found")
 		return
@@ -204,7 +205,7 @@ func (h *Handler) HandleUpdatePartner(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	partner, err := h.repo.GetPartnerByID(partnerID)
+	partner, err := h.trustRepo.GetPartnerByID(partnerID)
 	if err != nil {
 		h.writeError(w, http.StatusNotFound, "Partner not found", "partner_not_found")
 		return
@@ -242,7 +243,7 @@ func (h *Handler) HandleUpdatePartner(w http.ResponseWriter, r *http.Request) {
 		partner.WebhookURL = webhookURL
 	}
 	if status, ok := updates["status"].(string); ok {
-		if err := h.repo.UpdatePartnerStatus(partnerID, status); err != nil {
+		if err := h.trustRepo.UpdatePartnerStatus(partnerID, status); err != nil {
 			h.logger.WithError(err).Error("Failed to update partner status")
 			h.writeError(w, http.StatusInternalServerError, "Failed to update partner status", "internal_error")
 			return
@@ -250,7 +251,7 @@ func (h *Handler) HandleUpdatePartner(w http.ResponseWriter, r *http.Request) {
 		partner.Status = status
 	}
 
-	if err := h.repo.UpdatePartner(partner); err != nil {
+	if err := h.trustRepo.UpdatePartner(partner); err != nil {
 		h.logger.WithError(err).Error("Failed to update partner")
 		h.writeError(w, http.StatusInternalServerError, "Failed to update partner", "internal_error")
 		return
@@ -314,7 +315,7 @@ func (h *Handler) HandleGetPartnerUsage(w http.ResponseWriter, r *http.Request) 
 		endDate = time.Now()
 	}
 
-	usage, err := h.repo.GetUsageForPartner(partnerID, startDate, endDate)
+	usage, err := h.trustRepo.GetUsageForPartner(partnerID, startDate, endDate)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get partner usage")
 		h.writeError(w, http.StatusInternalServerError, "Failed to get partner usage", "internal_error")
@@ -336,8 +337,8 @@ func (h *Handler) HandleCreateAPIKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify partner exists
-	partner, err := h.repo.GetPartnerByID(partnerID)
+	// Verify partner exists using trustRepo
+	partner, err := h.trustRepo.GetPartnerByID(partnerID)
 	if err != nil {
 		h.writeError(w, http.StatusNotFound, "Partner not found", "partner_not_found")
 		return
@@ -369,9 +370,18 @@ func (h *Handler) HandleCreateAPIKey(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Generate API key
+	// Generate API key using apikeyRepo
 	createdBy := "partner:" + partner.ID.String()
-	apiKey, rawKey, err := h.repo.GenerateAPIKey(partnerID, &req, createdBy)
+	apiKeyCreateReq := &apikey.CreateTrustAPIKeyRequest{
+		PartnerID:   partnerID,
+		Name:        req.Name,
+		Description: req.Description,
+		Scopes:      req.Scopes,
+		AllowedIPs:  req.AllowedIPs,
+		ExpiresAt:   req.ExpiresAt,
+		CreatedBy:   createdBy,
+	}
+	apiKey, rawKey, err := h.apikeyRepo.CreateTrustAPIKey(r.Context(), apiKeyCreateReq)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to generate API key")
 		h.writeError(w, http.StatusInternalServerError, "Failed to generate API key", "internal_error")
@@ -380,9 +390,13 @@ func (h *Handler) HandleCreateAPIKey(w http.ResponseWriter, r *http.Request) {
 
 	// Parse scopes for response
 	var scopes []string
-	json.Unmarshal(apiKey.Scopes, &scopes)
+	for k := range apiKey.Scopes {
+		scopes = append(scopes, k)
+	}
 	var allowedIPs []string
-	json.Unmarshal(apiKey.AllowedIPs, &allowedIPs)
+	for k := range apiKey.AllowedIPs {
+		allowedIPs = append(allowedIPs, k)
+	}
 
 	// Return response with the actual key (only shown once)
 	response := trustapi.APIKeyCreatedResponse{
@@ -395,10 +409,10 @@ func (h *Handler) HandleCreateAPIKey(w http.ResponseWriter, r *http.Request) {
 			Scopes:      scopes,
 			AllowedIPs:  allowedIPs,
 			ExpiresAt:  apiKey.ExpiresAt,
-			IsRevoked:  apiKey.IsRevoked,
-			UseCount:   apiKey.UseCount,
-			CreatedAt:  apiKey.CreatedAt,
-			CreatedBy:  apiKey.CreatedBy,
+			IsRevoked:   apiKey.IsRevoked,
+			UseCount:    apiKey.UseCount,
+			CreatedAt:   apiKey.CreatedAt,
+			CreatedBy:   apiKey.CreatedBy,
 		},
 		Key:       rawKey,
 		ExpiresAt: apiKey.ExpiresAt,
@@ -435,7 +449,7 @@ func (h *Handler) HandleListAPIKeys(w http.ResponseWriter, r *http.Request) {
 
 	includeRevoked := r.URL.Query().Get("include_revoked") == "true"
 
-	keys, err := h.repo.ListAPIKeysForPartner(partnerID, includeRevoked)
+	keys, err := h.apikeyRepo.ListAPIKeysForPartner(r.Context(), partnerID, includeRevoked)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to list API keys")
 		h.writeError(w, http.StatusInternalServerError, "Failed to list API keys", "internal_error")
@@ -446,9 +460,13 @@ func (h *Handler) HandleListAPIKeys(w http.ResponseWriter, r *http.Request) {
 	responses := make([]trustapi.APIKeyResponse, len(keys))
 	for i, k := range keys {
 		var scopes []string
-		json.Unmarshal(k.Scopes, &scopes)
+		for scope := range k.Scopes {
+			scopes = append(scopes, scope)
+		}
 		var allowedIPs []string
-		json.Unmarshal(k.AllowedIPs, &allowedIPs)
+		for ip := range k.AllowedIPs {
+			allowedIPs = append(allowedIPs, ip)
+		}
 
 		responses[i] = trustapi.APIKeyResponse{
 			ID:          k.ID,
@@ -463,7 +481,7 @@ func (h *Handler) HandleListAPIKeys(w http.ResponseWriter, r *http.Request) {
 			LastUsedAt:  k.LastUsedAt,
 			UseCount:    k.UseCount,
 			CreatedAt:   k.CreatedAt,
-			CreatedBy:   k.CreatedBy,
+			CreatedBy:    k.CreatedBy,
 		}
 	}
 
@@ -493,7 +511,7 @@ func (h *Handler) HandleRevokeAPIKey(w http.ResponseWriter, r *http.Request) {
 		reason = reqBody["reason"]
 	}
 
-	if err := h.repo.RevokeAPIKey(keyID, reason); err != nil {
+	if err := h.apikeyRepo.RevokeAPIKey(keyID, reason); err != nil {
 		h.logger.WithError(err).Error("Failed to revoke API key")
 		h.writeError(w, http.StatusInternalServerError, "Failed to revoke API key", "internal_error")
 		return

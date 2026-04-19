@@ -96,8 +96,11 @@ func (h *AdminAuditHandler) HandleListAuditLogs(w http.ResponseWriter, r *http.R
 		}
 	}
 
-	// For now, return empty list (repository integration can be added later)
-	events = []*storage.AuditEvent{}
+	events, err := h.repo.ListAuditEventsFiltered(limit, offset, filters)
+	if err != nil {
+		logrus.WithError(err).Warn("HandleListAuditLogs: failed to query audit events")
+		events = []*storage.AuditEvent{}
+	}
 }
 
 // HandleGetAuditLog gets a single audit log by ID
@@ -111,9 +114,20 @@ func (h *AdminAuditHandler) HandleGetAuditLog(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// For now, return not found (repository integration can be added later)
-	logrus.WithField("id", id).Debug("GetAuditLog requested")
-	http.Error(w, `{"error": "audit log not found"}`, http.StatusNotFound)
+	event, err := h.repo.GetAuditEventByID(id)
+	if err != nil {
+		logrus.WithError(err).WithField("id", id).Error("HandleGetAuditLog: failed to get audit event")
+		http.Error(w, `{"error": "failed to retrieve audit log"}`, http.StatusInternalServerError)
+		return
+	}
+	if event == nil {
+		http.Error(w, `{"error": "audit log not found"}`, http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(event)
 }
 
 func writeAuditLogsResponse(w http.ResponseWriter, events []*storage.AuditEvent, limit, offset int, filters map[string]interface{}) {

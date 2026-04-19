@@ -2,11 +2,14 @@ package trustapi
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/binary"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/apikey"
 	"github.com/functionfly/functionfly/internal/storage/trustapi"
 	"github.com/sirupsen/logrus"
 )
@@ -22,15 +25,18 @@ const (
 
 // APIKeyAuthMiddleware provides API key authentication for partner requests
 type APIKeyAuthMiddleware struct {
-	repo  *trustapi.Repository
-	logger *logrus.Logger
+	apikeyRepo *apikey.Repository // unified platform API key repository
+	trustRepo  *trustapi.Repository // Trust API-specific repository (partners, rate limits, usage)
+	logger     *logrus.Logger
 }
 
 // NewAPIKeyAuthMiddleware creates a new API key auth middleware
-func NewAPIKeyAuthMiddleware(repo *trustapi.Repository) *APIKeyAuthMiddleware {
+// apikeyRepo is the unified platform API key repository, trustRepo is for Trust-specific data
+func NewAPIKeyAuthMiddleware(apikeyRepo *apikey.Repository, trustRepo *trustapi.Repository) *APIKeyAuthMiddleware {
 	return &APIKeyAuthMiddleware{
-		repo:  repo,
-		logger: logrus.New(),
+		apikeyRepo: apikeyRepo,
+		trustRepo:  trustRepo,
+		logger:     logrus.New(),
 	}
 }
 
@@ -49,7 +55,7 @@ func (m *APIKeyAuthMiddleware) Authenticate() func(http.Handler) http.Handler {
 			var rawKey string
 			if strings.HasPrefix(authHeader, "Bearer ") {
 				rawKey = strings.TrimPrefix(authHeader, "Bearer ")
-			} else if strings.HasPrefix(authHeader, "tak_") {
+			} else if strings.HasPrefix(authHeader, apikey.PrefixTrust) {
 				rawKey = authHeader
 			} else {
 				m.writeAuthError(w, http.StatusUnauthorized, "Invalid Authorization header format", "invalid_auth")
@@ -61,11 +67,19 @@ func (m *APIKeyAuthMiddleware) Authenticate() func(http.Handler) http.Handler {
 				return
 			}
 
-			// Validate the API key
-			apiKey, partner, err := m.repo.ValidateAPIKey(rawKey)
+			// Validate the API key using the unified apikey repository
+			apiKey, err := m.apikeyRepo.ValidateAPIKey(rawKey)
 			if err != nil {
 				m.logger.WithError(err).Warn("API key validation failed")
 				m.writeAuthError(w, http.StatusUnauthorized, "Invalid API key", "invalid_api_key")
+				return
+			}
+
+			// Get partner from Trust repository
+			partner, err := m.trustRepo.GetPartnerByID(apiKey.PartnerID)
+			if err != nil {
+				m.logger.WithError(err).Warn("Partner not found for API key")
+				m.writeAuthError(w, http.StatusForbidden, "Partner not found", "partner_not_found")
 				return
 			}
 
@@ -77,7 +91,7 @@ func (m *APIKeyAuthMiddleware) Authenticate() func(http.Handler) http.Handler {
 
 			// Check IP allowlist if configured
 			clientIP := getClientIP(r)
-			if !m.repo.CheckIPAllowed(apiKey, clientIP) {
+			if !m.apikeyRepo.CheckIPAllowed(apiKey, clientIP) {
 				m.logger.WithFields(logrus.Fields{
 					"partner_id": partner.ID,
 					"key_id":     apiKey.KeyID,
@@ -92,11 +106,9 @@ func (m *APIKeyAuthMiddleware) Authenticate() func(http.Handler) http.Handler {
 			ctx = context.WithValue(ctx, apiKeyContextKey, apiKey)
 
 			// Increment key usage
-			go func() {
-				if err := m.repo.IncrementKeyUsage(apiKey.ID); err != nil {
-					m.logger.WithError(err).Warn("Failed to increment key usage")
-				}
-			}()
+			if err := m.apikeyRepo.IncrementKeyUsage(apiKey.ID); err != nil {
+				m.logger.WithError(err).Warn("Failed to increment key usage")
+			}
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
@@ -171,12 +183,10 @@ func (m *RateLimitMiddleware) RateLimit() func(http.Handler) http.Handler {
 				return
 			}
 
-			// Increment rate limit counter
-			go func() {
-				if err := m.repo.IncrementRateLimit(partner.ID, "minute"); err != nil {
-					m.logger.WithError(err).Warn("Failed to increment rate limit counter")
-				}
-			}()
+		// Increment rate limit counter synchronously so failures are visible
+		if err := m.repo.IncrementRateLimit(partner.ID, "minute"); err != nil {
+			m.logger.WithError(err).Warn("Failed to increment rate limit counter")
+		}
 
 			// Add rate limit headers
 			w.Header().Set("X-RateLimit-Limit", fmt.Sprintf("%d", tierConfig.PerMinute))
@@ -194,12 +204,10 @@ func (m *RateLimitMiddleware) RateLimit() func(http.Handler) http.Handler {
 				return
 			}
 
-			// Increment usage counter
-			go func() {
-				if err := m.repo.IncrementUsage(partner.ID, 1); err != nil {
-					m.logger.WithError(err).Warn("Failed to increment usage counter")
-				}
-			}()
+		// Increment usage counter synchronously so failures are visible
+		if err := m.repo.IncrementUsage(partner.ID, 1); err != nil {
+			m.logger.WithError(err).Warn("Failed to increment usage counter")
+		}
 
 			next.ServeHTTP(w, r)
 		})
@@ -256,12 +264,10 @@ func (m *UsageTrackingMiddleware) Track() func(http.Handler) http.Handler {
 				usage.APIKeyID = &apiKey.ID
 			}
 
-			// Record usage asynchronously
-			go func() {
-				if err := m.repo.RecordUsage(usage); err != nil {
-					m.logger.WithError(err).Warn("Failed to record usage")
-				}
-			}()
+		// Record usage synchronously so failures are visible
+		if err := m.repo.RecordUsage(usage); err != nil {
+			m.logger.WithError(err).Warn("Failed to record usage")
+		}
 		})
 	}
 }
@@ -288,8 +294,8 @@ func getPartnerFromContext(r *http.Request) *trustapi.TrustAPIPartner {
 }
 
 // getAPIKeyFromContext retrieves the authenticated API key from the request context
-func getAPIKeyFromContext(r *http.Request) *trustapi.TrustAPIKey {
-	if apiKey, ok := r.Context().Value(apiKeyContextKey).(*trustapi.TrustAPIKey); ok {
+func getAPIKeyFromContext(r *http.Request) *apikey.APIKey {
+	if apiKey, ok := r.Context().Value(apiKeyContextKey).(*apikey.APIKey); ok {
 		return apiKey
 	}
 	return nil
@@ -317,12 +323,17 @@ func generateRequestID() string {
 	return fmt.Sprintf("req_%d_%s", time.Now().UnixNano(), randomString(8))
 }
 
-// randomString generates a random string of given length
+// randomString generates a cryptographically random string of given length
 func randomString(n int) string {
 	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = letters[time.Now().UnixNano()%int64(len(letters))]
+		var randByte byte
+		if err := binary.Read(rand.Reader, binary.BigEndian, &randByte); err != nil {
+			// Fallback to nanoseconds if crypto/rand fails (should never happen)
+			randByte = byte(time.Now().UnixNano() & 0xFF)
+		}
+		b[i] = letters[int(randByte)%len(letters)]
 	}
 	return string(b)
 }

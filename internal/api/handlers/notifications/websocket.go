@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/notification"
 	"github.com/gorilla/websocket"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sirupsen/logrus"
 )
 
@@ -183,6 +186,25 @@ func NewWebSocketHandler(hub *WebSocketHub, logger *logrus.Logger) *WebSocketHan
 	}
 }
 
+// RunHub starts the WebSocket hub's event loop in a background goroutine.
+// Call this once during server startup.
+func (h *WebSocketHandler) RunHub() {
+	if h.hub == nil {
+		return
+	}
+	go h.hub.Run()
+}
+
+// RunNotificationSubscription starts the PostgreSQL LISTEN loop that pushes
+// notifications to connected WebSocket clients. Call this after RunHub.
+func (h *WebSocketHandler) RunNotificationSubscription(ctx context.Context, pool *pgxpool.Pool) {
+	if pool == nil {
+		return
+	}
+	poolFactory := func() (*pgxpool.Pool, error) { return pool, nil }
+	go h.SubscribeToNotifications(ctx, poolFactory)
+}
+
 // HandleWebSocket upgrades the HTTP connection to WebSocket and handles real-time notifications
 func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
@@ -226,18 +248,151 @@ func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Reques
 	h.logger.WithField("user_id", user.UserID).Info("WebSocket connection established")
 }
 
-// SubscribeToNotifications listens to PostgreSQL notifications and broadcasts to WebSocket clients
-func (h *WebSocketHandler) SubscribeToNotifications(ctx context.Context, db notification.Repository) {
-	// This would typically listen to PostgreSQL NOTIFY events
-	// For now, we'll leave this as a placeholder for the implementation
+// pgListenerKey is the PostgreSQL LISTEN channel used for broadcasting to all connected WebSocket clients.
+const pgListenerKey = "notification_broadcast"
+
+// SubscribeToNotifications listens to PostgreSQL NOTIFY events and pushes them to WebSocket clients.
+//
+// It acquires a dedicated connection from the pool so LISTEN state is isolated from regular queries
+// and is cleared automatically when the connection is closed. The caller passes a factory that
+// returns a fresh pgx.Pool on each invocation so the listener connection can be replaced after
+// transient errors without poisoning the main pool.
+func (h *WebSocketHandler) SubscribeToNotifications(ctx context.Context, poolFactory func() (*pgxpool.Pool, error)) {
 	h.logger.Info("Starting PostgreSQL notification subscription")
 
-	// In a real implementation, you would:
-	// 1. Listen to the PostgreSQL NOTIFY channel
-	// 2. When a notification is received, broadcast it to the WebSocket clients
-	// 3. Handle context cancellation for graceful shutdown
+	// Track all active subscriptions so they can be unregistered on shutdown.
+	var wg sync.WaitGroup
+	var subMu sync.Mutex
+	subs := make(map[string]context.CancelFunc)
 
-	<-ctx.Done()
+	// Helper to (re)connect a LISTEN loop for a given channel.
+	connect := func(ctx context.Context, channel string) {
+		defer wg.Done()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
+			pool, err := poolFactory()
+			if err != nil {
+				h.logger.WithError(err).Error("Failed to get connection pool for notification subscription")
+				time.Sleep(5 * time.Second)
+				continue
+			}
+
+			conn, err := pool.Acquire(ctx)
+			if err != nil {
+				h.logger.WithError(err).Error("Failed to acquire connection for notification subscription")
+				time.Sleep(5 * time.Second)
+				continue
+			}
+
+			// Every session starts with LISTEN so pg_notify payloads are received
+			// as Notifications; Exec here creates the persistent subscription.
+			if _, err := conn.Conn().Exec(ctx, "LISTEN "+channel); err != nil {
+				conn.Release()
+				h.logger.WithError(err).Errorf("Failed to execute LISTEN %s", channel)
+				time.Sleep(5 * time.Second)
+				continue
+			}
+
+			h.logger.WithField("channel", channel).Info("LISTEN subscription active")
+
+			// Receive loop – exits only on context cancellation or connection error.
+			for {
+				notification, err := conn.Conn().WaitForNotification(ctx)
+				if err != nil {
+					if ctx.Err() != nil {
+						break
+					}
+					h.logger.WithError(err).Warn("Notification subscription connection dropped, reconnecting")
+					break
+				}
+				// Payload is JSON: {"type":"notification","user_id":"...","notification_id":"..."}
+				var payload struct {
+					Type            string `json:"type"`
+					UserID          string `json:"user_id"`
+					NotificationID string `json:"notification_id"`
+					Title           string `json:"title"`
+					Body            string `json:"body"`
+					Category        string `json:"category"`
+					Priority        string `json:"priority"`
+					CreatedAt       string `json:"created_at"`
+				}
+				if err := json.Unmarshal([]byte(notification.Payload), &payload); err != nil {
+					h.logger.WithError(err).Warn("Failed to parse notification payload")
+					return
+				}
+
+				// Only broadcast "notification" type messages.
+				if payload.Type != "notification" || payload.UserID == "" {
+					continue
+				}
+
+				wsPayload := NotificationPayload{
+					ID:        payload.NotificationID,
+					Type:      "notification",
+					Category:  payload.Category,
+					Title:     payload.Title,
+					Body:      payload.Body,
+					Priority:  payload.Priority,
+					CreatedAt: time.Now(),
+					Data: map[string]interface{}{
+						"user_id": payload.UserID,
+					},
+				}
+
+				h.hub.Broadcast(payload.UserID, "notification", wsPayload)
+			}
+
+			conn.Release()
+
+			if ctx.Err() != nil {
+				return
+			}
+
+			// Connection dropped or errored – back off and retry.
+			if err != nil && !strings.Contains(err.Error(), "context canceled") {
+				h.logger.WithError(err).Warn("Notification subscription connection dropped, reconnecting")
+			}
+			time.Sleep(2 * time.Second)
+		}
+	}
+
+	// Subscribe to the global broadcast channel and to each user's personal channel.
+	channels := []string{pgListenerKey}
+	for {
+		// Re-check context before creating subscriptions.
+		if ctx.Err() != nil {
+			break
+		}
+
+		subCtx, cancel := context.WithCancel(ctx)
+		subMu.Lock()
+		for _, ch := range channels {
+			wg.Add(1)
+			go connect(subCtx, ch)
+			subs[ch] = cancel
+		}
+		subMu.Unlock()
+
+		// Wait until context is cancelled to exit.
+		<-ctx.Done()
+
+		// Clean up all subscription contexts.
+		subMu.Lock()
+		for _, cancel := range subs {
+			cancel()
+		}
+		subMu.Unlock()
+
+		wg.Wait()
+		break
+	}
+
 	h.logger.Info("PostgreSQL notification subscription stopped")
 }
 

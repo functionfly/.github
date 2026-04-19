@@ -33,7 +33,11 @@ type APIKeyAuthHandler struct {
 }
 
 // NewAPIKeyAuthHandler creates a new API key auth handler
+// JWT secret must be at least 32 bytes (256 bits) for HS256 security
 func NewAPIKeyAuthHandler(repo *apikey.Repository, jwtSecret string) *APIKeyAuthHandler {
+	if len(jwtSecret) < 32 {
+		panic(fmt.Sprintf("JWT_SECRET must be at least 32 bytes (256 bits) for HS256 security, got %d bytes", len(jwtSecret)))
+	}
 	return &APIKeyAuthHandler{
 		repo:      repo,
 		hasher:    apikey.NewHasher(),

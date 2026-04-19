@@ -331,12 +331,13 @@ func (h *UsageHandler) AdminGetTenantUsage(w http.ResponseWriter, r *http.Reques
 //
 // GET /api/v1/admin/usage/metrics
 func (h *UsageHandler) GetUsageMetrics(w http.ResponseWriter, r *http.Request) {
-	// This endpoint returns metrics about the usage tracking system itself
-	// For now, return basic info about whether the tracker is enabled
-	metrics := map[string]interface{}{
-		"realtime_tracking_enabled": h.tracker.IsEnabled(),
-		"timestamp": time.Now().UTC(),
+	metrics, err := h.tracker.GetRealtimeUsageMetrics(r.Context())
+	if err != nil {
+		logrus.WithError(err).Warn("billing: failed to get realtime usage metrics")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve usage metrics")
+		return
 	}
+	metrics["timestamp"] = time.Now().UTC()
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(metrics)

@@ -12,16 +12,17 @@ import (
 
 // Handler contains admin handlers
 type Handler struct {
-	repo                  storage.Repository
-	loginAttemptRepo      *storage.LoginAttemptRepository
-	analyticsRepo         *storage.AnalyticsRepository
-	authSvc               *auth.AuthService
-	unifiedAnalytics      *unified.Service
-	sfAddons              *statefabricaddons.Repository
-	membershipSvc         *membership.Service
-	walletService         *wallet.Service
-	payoutApprovalService *wallet.PayoutApprovalService
-	reconciliationService *wallet.ReconciliationService
+	repo                   storage.Repository
+	loginAttemptRepo       *storage.LoginAttemptRepository
+	analyticsRepo          *storage.AnalyticsRepository
+	authSvc                *auth.AuthService
+	unifiedAnalytics       *unified.Service
+	sfAddons               *statefabricaddons.Repository
+	membershipSvc          *membership.Service
+	walletService          *wallet.Service
+	payoutApprovalService  *wallet.PayoutApprovalService
+	reconciliationService  *wallet.ReconciliationService
+	billingOperationalRepo *storage.BillingOperationalRepository
 }
 
 // NewHandler creates a new admin handler. unifiedAnalytics may be nil (tenant metrics will be placeholders).
@@ -57,6 +58,11 @@ func (h *Handler) SetPayoutApprovalService(svc *wallet.PayoutApprovalService) {
 // SetReconciliationService sets the reconciliation service for admin wallet operations
 func (h *Handler) SetReconciliationService(svc *wallet.ReconciliationService) {
 	h.reconciliationService = svc
+}
+
+// SetBillingOperationalRepository sets the billing operational repository
+func (h *Handler) SetBillingOperationalRepository(repo *storage.BillingOperationalRepository) {
+	h.billingOperationalRepo = repo
 }
 
 // getWalletHandler returns a WalletHandler with all services

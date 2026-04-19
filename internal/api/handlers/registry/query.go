@@ -15,6 +15,19 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Trust score constants for functionfly trusted author backfill
+const (
+	TrustedAuthorTrustScore    = 0.9
+	TrustedAuthorTrustScorePct = 90.0
+	TrustedAuthorDriftScore    = 1.0
+)
+
+// Pagination defaults
+const (
+	DefaultLimit = 20
+	MaxLimit     = 100
+)
+
 // HandleGetFunction handles getting function info
 func (h *Handler) HandleGetFunction(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -45,62 +58,70 @@ func (h *Handler) HandleGetFunction(w http.ResponseWriter, r *http.Request) {
 	info := fn.ToInfoWithRating(fnVersion, rating)
 
 	// Backfill high trust for functionfly when rating is missing or still at default 0 (e.g. published before we set defaults)
+	// This runs async to not block the response
 	if strings.EqualFold(fn.Author, "functionfly") {
-		if rating == nil {
-			rating, _ = h.repo.GetOrCreateRating(fn.ID)
-		}
-		if rating != nil && rating.TrustScore == 0 {
-			rating.TrustScore = 0.9 // DB stores 0-1; API response will send 90 for frontend
-			rating.ReliabilityScore = 0.9
-			rating.SuccessRate = 0.9
-			if err := h.repo.UpdateTrustScore(rating); err != nil {
-				logrus.WithError(err).WithField("function_id", fn.ID).Debug("Failed to backfill rating trust score")
-			} else {
-				dreScores := &storageregistry.DREScores{
-					DeterminismScore:          0.9,
-					ReplayIntegrityScore:      0.9,
-					PerformanceStabilityScore: 0.9,
-					DriftScore:                1.0,
-				}
-				_ = h.repo.UpdateTrustScoreV2(fn.ID, dreScores, 0.9)
+		go func() {
+			localRating := rating
+			if localRating == nil {
+				localRating, _ = h.repo.GetOrCreateRating(fn.ID)
 			}
-			info["trust_score"] = 90 // 0-100 scale for frontend
-			info["trust_level"] = "high"
-			info["success_rate"] = 0.9
-			info["reliability"] = 90
-		}
-		// Ensure function-level scores are high for display (reliability_score, deterministic_score)
-		if fn.ReliabilityScore == 0 && fn.DeterministicScore == 0 {
-			_, _ = h.repo.UpdateRegistryFunction(fn.ID, map[string]interface{}{
-				"reliability_score":   90.0,
-				"deterministic_score": 90.0,
-			})
-			info["reliability"] = 90
-		}
+			if localRating != nil && localRating.TrustScore == 0 {
+				localRating.TrustScore = TrustedAuthorTrustScore // DB stores 0-1; API response will send 90 for frontend
+				localRating.ReliabilityScore = TrustedAuthorTrustScore
+				localRating.SuccessRate = TrustedAuthorTrustScore
+				if err := h.repo.UpdateTrustScore(localRating); err != nil {
+					logrus.WithError(err).WithField("function_id", fn.ID).Debug("Failed to backfill rating trust score")
+				} else {
+					dreScores := &storageregistry.DREScores{
+						DeterminismScore:          TrustedAuthorTrustScore,
+						ReplayIntegrityScore:      TrustedAuthorTrustScore,
+						PerformanceStabilityScore: TrustedAuthorTrustScore,
+						DriftScore:                TrustedAuthorDriftScore,
+					}
+					_ = h.repo.UpdateTrustScoreV2(fn.ID, dreScores, TrustedAuthorTrustScore)
+				}
+			}
+			// Ensure function-level scores are high for display (reliability_score, deterministic_score)
+			if fn.ReliabilityScore == 0 && fn.DeterministicScore == 0 {
+				_, _ = h.repo.UpdateRegistryFunction(fn.ID, map[string]interface{}{
+					"reliability_score":   TrustedAuthorTrustScorePct,
+					"deterministic_score": TrustedAuthorTrustScorePct,
+				})
+			}
+		}()
+
+		// Set response values immediately (optimistic)
+		info["trust_score"] = int(TrustedAuthorTrustScorePct) // 0-100 scale for frontend
+		info["trust_level"] = "high"
+		info["success_rate"] = TrustedAuthorTrustScore
+		info["reliability"] = int(TrustedAuthorTrustScorePct)
 	}
 
 	// Include verification status so UI can show Verified for functionfly / approved functions
 	verStatus, errVer := h.repo.GetVerificationStatus(fnVersion.ID)
 	verified := verStatus != nil && verStatus.OverallStatus == "verified"
 	if !verified && strings.EqualFold(fn.Author, "functionfly") {
-		// Backfill verification row for trusted author so future requests don't hit "record not found"
-		now := time.Now()
-		status := &storageregistry.RegistryFunctionVerificationStatus{
-			ID:                  uuid.New(),
-			FunctionVersionID:   fnVersion.ID,
-			ContentHashVerified: true,
-			SignatureVerified:   true,
-			MalwareScanned:      true,
-			MalwareStatus:       "clean",
-			OverallStatus:       "verified",
-			LastVerifiedAt:      &now,
-			CreatedAt:           now,
-			UpdatedAt:           now,
-		}
-		if err := h.repo.CreateOrUpdateVerificationStatus(status); err != nil {
-			logrus.WithError(err).WithField("function_version_id", fnVersion.ID).Debug("Failed to backfill verification status")
-		}
+		// Optimistically mark as verified in response
 		verified = true
+		// Backfill verification row async so future requests don't hit "record not found"
+		go func() {
+			now := time.Now()
+			status := &storageregistry.RegistryFunctionVerificationStatus{
+				ID:                  uuid.New(),
+				FunctionVersionID:   fnVersion.ID,
+				ContentHashVerified: true,
+				SignatureVerified:   true,
+				MalwareScanned:      true,
+				MalwareStatus:       "clean",
+				OverallStatus:       "verified",
+				LastVerifiedAt:      &now,
+				CreatedAt:           now,
+				UpdatedAt:           now,
+			}
+			if err := h.repo.CreateOrUpdateVerificationStatus(status); err != nil {
+				logrus.WithError(err).WithField("function_version_id", fnVersion.ID).Debug("Failed to backfill verification status")
+			}
+		}()
 	}
 	info["verified"] = verified
 	_ = errVer
@@ -153,7 +174,10 @@ func (h *Handler) HandleListFunctions(w http.ResponseWriter, r *http.Request) {
 
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	if limit == 0 {
-		limit = 20
+		limit = DefaultLimit
+	}
+	if limit > MaxLimit {
+		limit = MaxLimit
 	}
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	category := r.URL.Query().Get("category")
@@ -194,7 +218,10 @@ func (h *Handler) HandleSearchFunctions(w http.ResponseWriter, r *http.Request) 
 
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	if limit == 0 {
-		limit = 20
+		limit = DefaultLimit
+	}
+	if limit > MaxLimit {
+		limit = MaxLimit
 	}
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	category := r.URL.Query().Get("category")
@@ -329,6 +356,49 @@ func (h *Handler) HandleDeleteAllFunctions(w http.ResponseWriter, r *http.Reques
 	json.NewEncoder(w).Encode(response)
 }
 
+// buildSimilarFunctionInfos efficiently loads function infos using batch queries
+func (h *Handler) buildSimilarFunctionInfos(functions []storageregistry.RegistryFunction, excludeAuthor, excludeName string, maxResults int) []map[string]interface{} {
+	if len(functions) == 0 {
+		return nil
+	}
+
+	// Collect function IDs for batch lookup
+	ids := make([]uuid.UUID, 0, len(functions))
+	for _, f := range functions {
+		// Skip the original function
+		if f.Author == excludeAuthor && f.Name == excludeName {
+			continue
+		}
+		ids = append(ids, f.ID)
+	}
+
+	if len(ids) == 0 {
+		return nil
+	}
+
+	// Batch fetch latest versions
+	versions, err := h.repo.ListLatestVersionsForFunctions(ids)
+	if err != nil {
+		logrus.WithError(err).Debug("Failed to batch load latest versions for similar functions")
+		return nil
+	}
+
+	// Build result list
+	out := make([]map[string]interface{}, 0, maxResults)
+	for _, f := range functions {
+		if f.Author == excludeAuthor && f.Name == excludeName {
+			continue
+		}
+		v := versions[f.ID]
+		out = append(out, f.ToInfo(v))
+		if len(out) >= maxResults {
+			break
+		}
+	}
+
+	return out
+}
+
 // HandleGetSimilarFunctions handles getting similar functions
 func (h *Handler) HandleGetSimilarFunctions(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -346,14 +416,7 @@ func (h *Handler) HandleGetSimilarFunctions(w http.ResponseWriter, r *http.Reque
 	if fn.Category.Valid && fn.Category.String != "" {
 		functions, _, err := h.repo.SearchFunctions("", fn.Category.String, "", 0, 5, 0)
 		if err == nil {
-			for _, f := range functions {
-				// Skip the original function
-				if f.Author == author && f.Name == name {
-					continue
-				}
-				fnVersion, _ := h.repo.GetLatestFunctionVersion(f.ID)
-				similar = append(similar, f.ToInfo(fnVersion))
-			}
+			similar = h.buildSimilarFunctionInfos(functions, author, name, 5)
 		}
 	}
 
@@ -361,16 +424,7 @@ func (h *Handler) HandleGetSimilarFunctions(w http.ResponseWriter, r *http.Reque
 	if len(similar) == 0 {
 		functions, _, err := h.repo.SearchFunctions("", "", "", 50, 5, 0)
 		if err == nil {
-			for _, f := range functions {
-				if f.Author == author && f.Name == name {
-					continue
-				}
-				fnVersion, _ := h.repo.GetLatestFunctionVersion(f.ID)
-				similar = append(similar, f.ToInfo(fnVersion))
-				if len(similar) >= 5 {
-					break
-				}
-			}
+			similar = h.buildSimilarFunctionInfos(functions, author, name, 5)
 		}
 	}
 

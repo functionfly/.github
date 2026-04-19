@@ -153,9 +153,14 @@ func (h *Handler) HandleRemix(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify user has access to target tenant
-	if targetTenantID != user.TenantID {
-		// TODO: Check if user is a member of target tenant
+	// Verify user has access to target tenant (primary tenant or via membership)
+	hasAccess, err := h.backendRepo.IsUserInTenant(r.Context(), user.UserID, targetTenantID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to check tenant access")
+		http.Error(w, "Failed to verify tenant access", http.StatusInternalServerError)
+		return
+	}
+	if !hasAccess {
 		http.Error(w, "Cannot remix to tenant you don't have access to", http.StatusForbidden)
 		return
 	}

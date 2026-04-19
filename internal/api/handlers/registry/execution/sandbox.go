@@ -524,6 +524,151 @@ func getAvailablePort() (int, error) {
 	return addr.Port, nil
 }
 
+// ---------------------------------------------------------------------------
+// Chunked WASM Execution
+//
+// Protocol:
+//  1. Client sends N POST requests to /execute/chunked with ChunkedExecuteRequest
+//  2. Server accumulates chunks in memory and responds after each with ChunkedExecuteResponse
+//  3. After is_last=true, server executes accumulated WASM and returns ChunkedCompleteResponse
+// ---------------------------------------------------------------------------
+
+// ChunkedExecuteRequest is sent for each WASM chunk.
+type ChunkedExecuteRequest struct {
+	TotalChunks uint32 `json:"total_chunks"`
+	ChunkIndex  uint32 `json:"chunk_index"`
+	ChunkData   string `json:"chunk_data"` // base64-encoded
+	IsLast      bool   `json:"is_last"`
+	Input       string `json:"input"`
+	TimeoutMs   *int   `json:"timeout_ms,omitempty"`
+	MemoryMB    *int   `json:"memory_mb,omitempty"`
+	Function    string `json:"function,omitempty"`
+	Version     string `json:"version,omitempty"`
+	TenantID    string `json:"tenant_id,omitempty"`
+}
+
+// ChunkedExecuteResponse is returned after each chunk is received.
+type ChunkedExecuteResponse struct {
+	ChunkIndex    uint32 `json:"chunk_index"`
+	IsLast        bool   `json:"is_last"`
+	PartialOutput string `json:"partial_output"`
+	ExecTimeMs    uint64 `json:"exec_time_ms"`
+	Done          bool   `json:"done"`
+}
+
+// ChunkedCompleteResponse is returned after the final chunk is processed.
+type ChunkedCompleteResponse struct {
+	Result            string `json:"result"`
+	TotalExecTimeMs   uint64 `json:"total_exec_time_ms"`
+	ChunksProcessed   uint32 `json:"chunks_processed"`
+	CacheHit          bool   `json:"cache_hit"`
+}
+
+// ExecuteChunked executes a function via streamed WASM chunks.
+// For each chunk, it sends a ChunkedExecuteRequest and returns ChunkedExecuteResponse.
+// After the last chunk, it returns ChunkedCompleteResponse.
+func (se *SandboxExecutor) ExecuteChunked(
+	fnVersion *storage.RegistryFunctionVersion,
+	chunks [][]byte,
+	input []byte,
+	timeoutMs int,
+) ([]byte, error) {
+	totalChunks := uint32(len(chunks))
+
+	se.runtimeMu.Lock()
+	port := se.runtimePort
+	se.runtimeMu.Unlock()
+
+	url := fmt.Sprintf("http://127.0.0.1:%d/execute/chunked", port)
+
+	for i, chunk := range chunks {
+		isLast := i == len(chunks)-1
+
+		// Build per-chunk request
+		reqBody := ChunkedExecuteRequest{
+			TotalChunks: totalChunks,
+			ChunkIndex:  uint32(i),
+			ChunkData:   base64.StdEncoding.EncodeToString(chunk),
+			IsLast:      isLast,
+			Input:       string(input),
+		}
+		if timeoutMs > 0 {
+			reqBody.TimeoutMs = &timeoutMs
+		}
+		if fnVersion.MemoryMB > 0 {
+			reqBody.MemoryMB = &fnVersion.MemoryMB
+		}
+		if fnVersion.FunctionID.String() != "" {
+			reqBody.Function = fnVersion.FunctionID.String()
+		}
+		if fnVersion.Version != "" {
+			reqBody.Version = fnVersion.Version
+		}
+		if se.tenantID != "" {
+			reqBody.TenantID = se.tenantID
+		}
+
+		jsonBody, err := json.Marshal(reqBody)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal chunked request: %w", err)
+		}
+
+		logrus.WithFields(logrus.Fields{
+			"url":         url,
+			"chunk_index": i,
+			"total":       totalChunks,
+			"is_last":     isLast,
+		}).Debug("Sending chunked request to runtime")
+
+		// Create context with timeout
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutMs)*time.Millisecond)
+		req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonBody))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Connection", "close")
+		if err != nil {
+			cancel()
+			return nil, fmt.Errorf("failed to create request: %w", err)
+		}
+
+		resp, err := se.httpClient.Do(req)
+		cancel()
+		if err != nil {
+			if ctx.Err() == context.DeadlineExceeded {
+				return nil, fmt.Errorf("chunked execution timeout after %dms", timeoutMs)
+			}
+			return nil, fmt.Errorf("chunked request failed: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			var errResp struct {
+				Error string `json:"error"`
+			}
+			if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+				return nil, fmt.Errorf("runtime error (status %d): %s", resp.StatusCode, errResp.Error)
+			}
+			return nil, fmt.Errorf("runtime returned status %d", resp.StatusCode)
+		}
+
+		// If this was the last chunk, read the final response
+		if isLast {
+			var completeResp ChunkedCompleteResponse
+			if err := json.NewDecoder(resp.Body).Decode(&completeResp); err != nil {
+				return nil, fmt.Errorf("failed to decode chunked complete response: %w", err)
+			}
+			return []byte(completeResp.Result), nil
+		}
+
+		// Otherwise, read the per-chunk acknowledgment
+		var chunkResp ChunkedExecuteResponse
+		if err := json.NewDecoder(resp.Body).Decode(&chunkResp); err != nil {
+			return nil, fmt.Errorf("failed to decode chunk response: %w", err)
+		}
+	}
+
+	return nil, fmt.Errorf("no chunks provided")
+}
+
 // findLocalRuntime finds the local runtime binary
 func findLocalRuntime() (string, error) {
 	// Check current directory first
@@ -622,7 +767,12 @@ func executeLocallyWithLimits(fnVersion *storage.RegistryFunctionVersion, input 
 				TerminatedBy: "error",
 			}
 		}
-		output, err := client.Execute(fnVersion, inputBytes, fnVersion.TimeoutMs)
+		// Extract tenant ID for KV namespace isolation in daemon mode.
+		tenantID := ""
+		if fn != nil && fn.TenantID != nil {
+			tenantID = fn.TenantID.String()
+		}
+		output, err := client.Execute(fnVersion, inputBytes, fnVersion.TimeoutMs, tenantID)
 		if err != nil {
 			// If the daemon is down, fall back to per-request executor
 			if !client.IsRunning() {
@@ -1071,7 +1221,8 @@ func (sc *SandboxClient) IsRunning() bool {
 // Execute sends a function execution request to the persistent daemon.
 // The daemon looks up the function in its internal pool and executes it,
 // returning the result without spawning a new process.
-func (sc *SandboxClient) Execute(fnVersion *storage.RegistryFunctionVersion, input []byte, timeoutMs int) ([]byte, error) {
+// tenantID is used for KV namespace isolation in the daemon's per-tenant store.
+func (sc *SandboxClient) Execute(fnVersion *storage.RegistryFunctionVersion, input []byte, timeoutMs int, tenantID string) ([]byte, error) {
 	if len(fnVersion.WasmBinary) == 0 {
 		return nil, fmt.Errorf("function version has no WASM binary")
 	}
@@ -1086,12 +1237,14 @@ func (sc *SandboxClient) Execute(fnVersion *storage.RegistryFunctionVersion, inp
 	)
 
 	// Request body: wasm_binary (base64) + wasm_compiled (base64, optional) + input
+	// + tenant_id for KV namespace isolation.
 	type execRequest struct {
-		WasmBinary   string `json:"wasm_binary"`             // base64-encoded
-		WasmCompiled string `json:"wasm_compiled,omitempty"` // base64-encoded AOT .cwasm
+		WasmBinary   string `json:"wasm_binary"`                 // base64-encoded
+		WasmCompiled string `json:"wasm_compiled,omitempty"`      // base64-encoded AOT .cwasm
 		Input        string `json:"input"`
 		TimeoutMs    int    `json:"timeout_ms"`
 		MemoryMB     int    `json:"memory_mb"`
+		TenantID     string `json:"tenant_id,omitempty"`          // KV namespace isolation
 	}
 
 	reqBody := execRequest{
@@ -1099,6 +1252,7 @@ func (sc *SandboxClient) Execute(fnVersion *storage.RegistryFunctionVersion, inp
 		Input:      string(input),
 		TimeoutMs:  timeoutMs,
 		MemoryMB:   fnVersion.MemoryMB,
+		TenantID:   tenantID,
 	}
 
 	// Include precompiled module bytes if available (avoids JIT compilation)

@@ -492,6 +492,10 @@ func TestStatusUpgrader(t *testing.T) {
 
 // Integration test for full WebSocket flow
 func TestWebSocketIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping WebSocket integration test in short mode")
+	}
+
 	// Create test components
 	handler := &Handler{}
 	logger := logrus.New()

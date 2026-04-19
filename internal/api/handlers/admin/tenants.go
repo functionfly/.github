@@ -411,18 +411,63 @@ func (h *Handler) HandleTenantMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Placeholder: tenant metrics can be integrated with metrics service
-	metrics := map[string]interface{}{
-		"tenant_id": tenantID,
-		"functions": map[string]interface{}{
-			"total":     0,
-			"executions_24h": 0,
-		},
-		"generated_at": time.Now().UTC(),
+	tenant, err := h.repo.GetTenantByID(tenantID)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to get tenant for metrics")
+		http.Error(w, "Failed to get tenant", http.StatusInternalServerError)
+		return
+	}
+	if tenant == nil {
+		http.Error(w, "Tenant not found", http.StatusNotFound)
+		return
+	}
+
+	// Fetch aggregated dashboard metrics for this tenant
+	dashboardMetrics, err := h.repo.GetDashboardMetrics(r.Context(), tenantID)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to get dashboard metrics")
+		dashboardMetrics = nil
+	}
+
+	// Fetch per-function invocation/error counts from recent logs
+	execRate24h, err := h.repo.GetExecutionRateByHour(r.Context(), tenantID, 24)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", tenantID).Warn("Failed to get execution rate for tenant metrics")
+	}
+
+	executions24h := int64(0)
+	for _, h := range execRate24h {
+		executions24h += h.Rate
+	}
+
+	// Get total function count for this tenant
+	functions, _, err := h.repo.ListAllFunctions(r.Context(), 1000, 0, &tenantID, nil)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", tenantID).Warn("Failed to list functions for tenant metrics")
+	}
+
+	var latencyP50, latencyP99 float64
+	if dashboardMetrics != nil && dashboardMetrics.AvgLatencyMs != nil {
+		latencyP50 = *dashboardMetrics.AvgLatencyMs
+		latencyP99 = latencyP50 * 2
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(metrics)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"tenant_id":          tenantID,
+		"tenant_name":        tenant.Name,
+		"plan":               tenant.Plan,
+		"functions": map[string]interface{}{
+			"total":          len(functions),
+			"executions_24h":  executions24h,
+			"requests_month":  dashboardMetrics.RequestsThisMonth,
+			"requests_prev":   dashboardMetrics.RequestsPrevMonth,
+		},
+		"latency_p50_ms": latencyP50,
+		"latency_p99_ms": latencyP99,
+		"uptime_pct":     dashboardMetrics.UptimePct,
+		"generated_at":    time.Now().UTC(),
+	})
 }
 
 // HandleTenantHealth returns health status for a specific tenant (admin view)

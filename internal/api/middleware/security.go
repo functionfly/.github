@@ -291,18 +291,6 @@ func BodySizeLimitMiddleware(maxBytes int64) func(http.HandlerFunc) http.Handler
 	}
 }
 
-// FlywheelBodySizeLimits provides sensible defaults for Flywheel endpoints.
-const (
-	// FlywheelMaxThreadBodySize limits thread creation (1MB - generous for problem descriptions)
-	FlywheelMaxThreadBodySize = 1 << 20
-	// FlywheelMaxReplyBodySize limits reply creation (512KB)
-	FlywheelMaxReplyBodySize = 512 << 10
-	// FlywheelMaxChallengeBodySize limits challenge submissions (256KB)
-	FlywheelMaxChallengeBodySize = 256 << 10
-	// FlywheelMaxCollaborationBodySize limits agent collaboration payloads (128KB)
-	FlywheelMaxCollaborationBodySize = 128 << 10
-)
-
 // SecurityHeaders middleware adds security headers to responses
 func (sm *SecurityMiddleware) SecurityHeaders(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -595,6 +583,64 @@ func (a *AuthRateLimiter) Limit(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// MFARateLimiter applies rate limiting to MFA verification endpoints to prevent brute force attacks
+// on TOTP codes and backup codes.
+type MFARateLimiter struct {
+	limiter *RateLimiter
+}
+
+// NewMFARateLimiter creates an MFA rate limiter with stricter limits than auth endpoints.
+// Defaults to 5 attempts per minute per user to prevent brute forcing 6-digit TOTP codes.
+func NewMFARateLimiter() *MFARateLimiter {
+	limit := 5
+	window := 60 // seconds
+
+	if v := os.Getenv("MFA_RATE_LIMIT_REQUESTS"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	if v := os.Getenv("MFA_RATE_LIMIT_WINDOW_SECONDS"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+			window = parsed
+		}
+	}
+
+	return &MFARateLimiter{
+		limiter: NewRateLimiter(time.Duration(window)*time.Second, limit),
+	}
+}
+
+// LimitVerify wraps an MFA verification handler with rate limiting.
+// Uses user ID from context (set by auth middleware) as the rate limit key.
+func (m *MFARateLimiter) LimitVerify(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Get user ID from context (set by auth middleware)
+		claims := GetUserFromContext(r)
+		if claims == nil {
+			// No auth context, allow through (auth middleware will reject)
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Use user ID as rate limit key to prevent per-user brute force
+		key := claims.UserID.String()
+
+		if !m.limiter.Allow(key) {
+			logrus.WithFields(logrus.Fields{
+				"user_id": claims.UserID.String(),
+				"path":    r.URL.Path,
+			}).Warn("MFA verification rate limit exceeded")
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(m.limiter.window.Seconds())))
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusTooManyRequests)
+			_, _ = fmt.Fprintf(w, `{"message":"Too many MFA verification attempts. Please wait before trying again."}`)
+			return
+		}
+		next.ServeHTTP(w, r)
+	}
+}
+
 // VaultRateLimiter applies per-tenant rate limits for vault write operations.
 // Use after RequireAuth so tenant ID is available from context.
 type VaultRateLimiter struct {
@@ -638,58 +684,6 @@ func (v *VaultRateLimiter) limitByTenant(prefix string, limiter *RateLimiter, ne
 		}
 		next.ServeHTTP(w, r)
 	}
-}
-
-// FlywheelRateLimiter applies per-tenant rate limits for Flywheel Network (community) write operations.
-// Use after RequireAuth so tenant ID is available from context.
-type FlywheelRateLimiter struct {
-	createThreadLimiter       *RateLimiter // e.g. 10/minute per tenant
-	createReplyLimiter        *RateLimiter // e.g. 20/minute per tenant
-	submitChallengeLimiter    *RateLimiter // e.g. 5/minute per tenant
-	executeReplyLimiter       *RateLimiter // e.g. 30/minute per tenant
-	agentCollaborationLimiter *RateLimiter // e.g. 15/minute per tenant
-}
-
-// NewFlywheelRateLimiter creates a limiter for Flywheel operations:
-// - Create thread: 10/minute per tenant
-// - Create reply: 20/minute per tenant
-// - Submit challenge: 5/minute per tenant
-// - Execute reply: 30/minute per tenant
-// - Agent collaboration: 15/minute per tenant
-func NewFlywheelRateLimiter() *FlywheelRateLimiter {
-	return &FlywheelRateLimiter{
-		createThreadLimiter:       NewRateLimiter(time.Minute, 10),
-		createReplyLimiter:        NewRateLimiter(time.Minute, 20),
-		submitChallengeLimiter:    NewRateLimiter(time.Minute, 5),
-		executeReplyLimiter:       NewRateLimiter(time.Minute, 30),
-		agentCollaborationLimiter: NewRateLimiter(time.Minute, 15),
-	}
-}
-
-// LimitCreateThread wraps a handler with per-tenant rate limiting for creating threads.
-// Requires auth context (use after RequireAuth). Key is tenant ID.
-func (f *FlywheelRateLimiter) LimitCreateThread(next http.HandlerFunc) http.HandlerFunc {
-	return f.limitByTenant("flywheel_thread", f.createThreadLimiter, next)
-}
-
-// LimitCreateReply wraps a handler with per-tenant rate limiting for creating replies.
-func (f *FlywheelRateLimiter) LimitCreateReply(next http.HandlerFunc) http.HandlerFunc {
-	return f.limitByTenant("flywheel_reply", f.createReplyLimiter, next)
-}
-
-// LimitSubmitChallenge wraps a handler with per-tenant rate limiting for submitting challenges.
-func (f *FlywheelRateLimiter) LimitSubmitChallenge(next http.HandlerFunc) http.HandlerFunc {
-	return f.limitByTenant("flywheel_challenge", f.submitChallengeLimiter, next)
-}
-
-// LimitExecuteReply wraps a handler with per-tenant rate limiting for executing replies.
-func (f *FlywheelRateLimiter) LimitExecuteReply(next http.HandlerFunc) http.HandlerFunc {
-	return f.limitByTenant("flywheel_execute", f.executeReplyLimiter, next)
-}
-
-// LimitAgentCollaboration wraps a handler with per-tenant rate limiting for agent collaboration operations.
-func (f *FlywheelRateLimiter) LimitAgentCollaboration(next http.HandlerFunc) http.HandlerFunc {
-	return f.limitByTenant("flywheel_agent_collab", f.agentCollaborationLimiter, next)
 }
 
 // ProviderRateLimiter limits provider connect/disconnect/test operations per tenant.
@@ -749,25 +743,6 @@ func (p *ProviderRateLimiter) limitByTenant(prefix string, limiter *RateLimiter,
 			return
 		}
 
-		next.ServeHTTP(w, r)
-	}
-}
-
-func (f *FlywheelRateLimiter) limitByTenant(prefix string, limiter *RateLimiter, next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		claims := GetUserFromContext(r)
-		key := prefix + ":unknown"
-		if claims != nil {
-			key = prefix + ":" + claims.TenantID.String()
-		}
-		if !limiter.Allow(key) {
-			logrus.WithFields(logrus.Fields{"key": key, "path": r.URL.Path}).Warn("Flywheel rate limit exceeded")
-			w.Header().Set("Retry-After", "60")
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusTooManyRequests)
-			_, _ = fmt.Fprintf(w, `{"error":"Too Many Requests","code":"FLYWHEEL_RATE_LIMIT","message":"Flywheel operation rate limit exceeded. Try again later."}`)
-			return
-		}
 		next.ServeHTTP(w, r)
 	}
 }

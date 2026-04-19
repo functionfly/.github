@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/auth"
@@ -267,8 +268,14 @@ func (h *WebAuthnHandler) HandleWebAuthnLoginBegin(w http.ResponseWriter, r *htt
 // HandleWebAuthnLoginComplete completes the WebAuthn login ceremony
 // POST /auth/webauthn/login/complete
 func (h *WebAuthnHandler) HandleWebAuthnLoginComplete(w http.ResponseWriter, r *http.Request) {
+	startTime := time.Now()
+	clientIP := getClientIP(r)
+	userAgent := r.Header.Get("User-Agent")
+
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		failureReason := "Method not allowed"
+		h.logWebAuthnAuthEvent(nil, nil, false, "webauthn_login", clientIP, userAgent, &failureReason, time.Since(startTime), map[string]interface{}{"error_phase": "validation"})
+		http.Error(w, failureReason, http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -280,12 +287,16 @@ func (h *WebAuthnHandler) HandleWebAuthnLoginComplete(w http.ResponseWriter, r *
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.logger.WithError(err).Error("Failed to parse request body")
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		failureReason := "Invalid request body"
+		h.logWebAuthnAuthEvent(nil, nil, false, "webauthn_login", clientIP, userAgent, &failureReason, time.Since(startTime), map[string]interface{}{"error_phase": "validation"})
+		http.Error(w, failureReason, http.StatusBadRequest)
 		return
 	}
 
 	if req.SessionID == "" {
-		http.Error(w, "Session ID required", http.StatusBadRequest)
+		failureReason := "Session ID required"
+		h.logWebAuthnAuthEvent(nil, nil, false, "webauthn_login", clientIP, userAgent, &failureReason, time.Since(startTime), map[string]interface{}{"error_phase": "validation"})
+		http.Error(w, failureReason, http.StatusBadRequest)
 		return
 	}
 
@@ -294,18 +305,24 @@ func (h *WebAuthnHandler) HandleWebAuthnLoginComplete(w http.ResponseWriter, r *
 	session, err := h.sessionStore.Get(ctx, req.SessionID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to retrieve WebAuthn session")
-		http.Error(w, "Failed to retrieve session", http.StatusInternalServerError)
+		failureReason := "Failed to retrieve session"
+		h.logWebAuthnAuthEvent(nil, nil, false, "webauthn_login", clientIP, userAgent, &failureReason, time.Since(startTime), map[string]interface{}{"error_phase": "session_retrieval"})
+		http.Error(w, failureReason, http.StatusInternalServerError)
 		return
 	}
 
 	if session == nil {
-		http.Error(w, "Session not found or expired", http.StatusBadRequest)
+		failureReason := "Session not found or expired"
+		h.logWebAuthnAuthEvent(nil, nil, false, "webauthn_login", clientIP, userAgent, &failureReason, time.Since(startTime), map[string]interface{}{"error_phase": "session_validation"})
+		http.Error(w, failureReason, http.StatusBadRequest)
 		return
 	}
 
 	// Verify this is a login session
 	if session.Operation != "authentication" {
-		http.Error(w, "Invalid session operation", http.StatusBadRequest)
+		failureReason := "Invalid session operation"
+		h.logWebAuthnAuthEvent(nil, nil, false, "webauthn_login", clientIP, userAgent, &failureReason, time.Since(startTime), map[string]interface{}{"error_phase": "session_validation"})
+		http.Error(w, failureReason, http.StatusBadRequest)
 		return
 	}
 
@@ -313,7 +330,9 @@ func (h *WebAuthnHandler) HandleWebAuthnLoginComplete(w http.ResponseWriter, r *
 	userID, err := uuid.Parse(session.UserID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to parse user ID from session")
-		http.Error(w, "Invalid session", http.StatusBadRequest)
+		failureReason := "Invalid session"
+		h.logWebAuthnAuthEvent(nil, nil, false, "webauthn_login", clientIP, userAgent, &failureReason, time.Since(startTime), map[string]interface{}{"error_phase": "session_validation"})
+		http.Error(w, failureReason, http.StatusBadRequest)
 		return
 	}
 
@@ -323,14 +342,18 @@ func (h *WebAuthnHandler) HandleWebAuthnLoginComplete(w http.ResponseWriter, r *
 		h.logger.WithError(err).Error("Failed to complete WebAuthn login")
 		// Delete the session
 		h.sessionStore.Delete(ctx, req.SessionID)
-		http.Error(w, "Failed to complete login: "+err.Error(), http.StatusBadRequest)
+		failureReason := "Failed to complete login: " + err.Error()
+		h.logWebAuthnAuthEvent(&userID, nil, false, "webauthn_login", clientIP, userAgent, &failureReason, time.Since(startTime), map[string]interface{}{"error_phase": "authentication"})
+		http.Error(w, failureReason, http.StatusBadRequest)
 		return
 	}
 
 	if !success {
 		h.logger.Warn("WebAuthn login failed verification")
 		h.sessionStore.Delete(ctx, req.SessionID)
-		http.Error(w, "Login verification failed", http.StatusBadRequest)
+		failureReason := "Login verification failed"
+		h.logWebAuthnAuthEvent(&userID, nil, false, "webauthn_login", clientIP, userAgent, &failureReason, time.Since(startTime), map[string]interface{}{"error_phase": "verification"})
+		http.Error(w, failureReason, http.StatusBadRequest)
 		return
 	}
 
@@ -341,19 +364,25 @@ func (h *WebAuthnHandler) HandleWebAuthnLoginComplete(w http.ResponseWriter, r *
 	user, err := h.repo.GetUserByID(userID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get user after WebAuthn login")
-		http.Error(w, "Failed to get user information", http.StatusInternalServerError)
+		failureReason := "Failed to get user information"
+		h.logWebAuthnAuthEvent(&userID, nil, false, "webauthn_login", clientIP, userAgent, &failureReason, time.Since(startTime), map[string]interface{}{"error_phase": "user_retrieval"})
+		http.Error(w, failureReason, http.StatusInternalServerError)
 		return
 	}
 
 	if user == nil {
 		h.logger.Error("User not found after WebAuthn login")
-		http.Error(w, "User not found", http.StatusInternalServerError)
+		failureReason := "User not found"
+		h.logWebAuthnAuthEvent(&userID, nil, false, "webauthn_login", clientIP, userAgent, &failureReason, time.Since(startTime), map[string]interface{}{"error_phase": "user_retrieval"})
+		http.Error(w, failureReason, http.StatusInternalServerError)
 		return
 	}
 
 	// Check if email is verified
 	if !user.EmailVerified {
-		http.Error(w, "Email not verified", http.StatusBadRequest)
+		failureReason := "Email not verified"
+		h.logWebAuthnAuthEvent(&userID, &user.TenantID, false, "webauthn_login", clientIP, userAgent, &failureReason, time.Since(startTime), map[string]interface{}{"error_phase": "verification"})
+		http.Error(w, failureReason, http.StatusBadRequest)
 		return
 	}
 
@@ -361,17 +390,35 @@ func (h *WebAuthnHandler) HandleWebAuthnLoginComplete(w http.ResponseWriter, r *
 	token, err := h.authSvc.GenerateToken(user)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to generate token after WebAuthn login")
-		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+		failureReason := "Failed to generate token"
+		h.logWebAuthnAuthEvent(&userID, &user.TenantID, false, "webauthn_login", clientIP, userAgent, &failureReason, time.Since(startTime), map[string]interface{}{"error_phase": "token_generation"})
+		http.Error(w, failureReason, http.StatusInternalServerError)
 		return
 	}
 
 	// Generate refresh token
-	refreshToken, _, err := h.authSvc.GenerateRefreshToken()
+	refreshToken, refreshTokenHash, err := h.authSvc.GenerateRefreshToken()
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to generate refresh token after WebAuthn login")
-		http.Error(w, "Failed to generate refresh token", http.StatusInternalServerError)
+		failureReason := "Failed to generate refresh token"
+		h.logWebAuthnAuthEvent(&userID, &user.TenantID, false, "webauthn_login", clientIP, userAgent, &failureReason, time.Since(startTime), map[string]interface{}{"error_phase": "token_generation"})
+		http.Error(w, failureReason, http.StatusInternalServerError)
 		return
 	}
+
+	// Store refresh token in database (expires in 30 days)
+	refreshExpiresAt := time.Now().Add(30 * 24 * time.Hour)
+	_, err = h.repo.CreateRefreshToken(user.ID, refreshTokenHash, "webauthn", "webauthn-callback", refreshExpiresAt)
+	if err != nil {
+		h.logger.WithError(err).WithField("userID", user.ID).Warn("Failed to store WebAuthn refresh token")
+		// Continue without refresh token - access token is still valid
+		refreshToken = ""
+	}
+
+	// Log successful WebAuthn login with comprehensive metadata
+	h.logWebAuthnAuthEvent(&user.ID, &user.TenantID, true, "webauthn_login", clientIP, userAgent, nil, time.Since(startTime), map[string]interface{}{
+		"refresh_issued": refreshToken != "",
+	})
 
 	// Build login user response (handling pointer fields from storage.User)
 	loginUser := &auth.LoginUser{
@@ -521,4 +568,47 @@ func (h *WebAuthnHandler) HandleDeleteWebAuthnCredential(w http.ResponseWriter, 
 	json.NewEncoder(w).Encode(map[string]string{
 		"status": "Credential deleted successfully",
 	})
+}
+
+// logWebAuthnAuthEvent logs a WebAuthn authentication event for security auditing.
+// Records success/failure, IP + user agent, user ID (on success),
+// failure reason (on failure), and time taken (for latency monitoring).
+func (h *WebAuthnHandler) logWebAuthnAuthEvent(userID, tenantID *uuid.UUID, success bool, eventType, clientIP, userAgent string, failureReason *string, duration time.Duration, metadata map[string]interface{}) {
+	// Add latency information to metadata
+	if metadata == nil {
+		metadata = make(map[string]interface{})
+	}
+	metadata["duration_ms"] = duration.Milliseconds()
+
+	provider := "webauthn"
+	authEvent := &storage.AuthEvent{
+		UserID:    userID,
+		TenantID:  tenantID,
+		EventType: eventType,
+		Success:   success,
+		IPAddress: clientIP,
+		UserAgent: userAgent,
+		Provider:  &provider,
+		Metadata:  metadata,
+	}
+
+	if failureReason != nil {
+		authEvent.FailureReason = failureReason
+	}
+
+	if logErr := h.repo.LogAuthEvent(authEvent); logErr != nil {
+		fields := logrus.Fields{
+			"event_type":  eventType,
+			"success":     success,
+			"duration_ms": duration.Milliseconds(),
+			"provider":    provider,
+		}
+		if userID != nil {
+			fields["user_id"] = userID.String()
+		}
+		if failureReason != nil {
+			fields["failure_reason"] = *failureReason
+		}
+		h.logger.WithError(logErr).WithFields(fields).Warn("Failed to log WebAuthn auth event")
+	}
 }

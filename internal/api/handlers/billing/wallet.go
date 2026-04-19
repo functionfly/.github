@@ -1,7 +1,9 @@
 package billing
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -10,6 +12,7 @@ import (
 	"github.com/functionfly/functionfly/internal/payment"
 	storageregistry "github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 )
 
@@ -115,13 +118,14 @@ func platformFeeDescription(feeType string) string {
 }
 
 type walletTopUpRequest struct {
-	AmountUSD   float64 `json:"amount_usd"`
-	SuccessURL  string  `json:"success_url"`
-	CancelURL   string  `json:"cancel_url"`
+	AmountUSD  float64 `json:"amount_usd"`
+	SuccessURL string  `json:"success_url"`
+	CancelURL  string  `json:"cancel_url"`
 }
 
 // HandleWalletTopUp creates a Stripe Checkout session to add funds to the registry wallet.
 // POST /v1/billing/wallet/top-up
+// Rate limited: Max 5 top-up attempts per hour per user
 func (h *Handler) HandleWalletTopUp(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil || claims.TenantID == uuid.Nil {
@@ -135,6 +139,51 @@ func (h *Handler) HandleWalletTopUp(w http.ResponseWriter, r *http.Request) {
 	if !payment.IsConfigured() {
 		writeJSONError(w, http.StatusServiceUnavailable, "Billing is not configured")
 		return
+	}
+
+	// REDIS RATE LIMITING: Check if user has exceeded top-up limits
+	// Max 5 attempts per hour per user with exponential backoff on failures
+	if h.redisClient != nil {
+		ctx := r.Context()
+		userKey := fmt.Sprintf("wallet_topup:user:%s", claims.UserID.String())
+		tenantUserKey := fmt.Sprintf("wallet_topup:tenant:%s:user:%s", claims.TenantID.String(), claims.UserID.String())
+
+		// Check hourly limit (5 attempts per hour)
+		allowed, retryAfter, err := h.checkRateLimit(ctx, userKey, 5, time.Hour)
+		if err != nil {
+			logrus.WithError(err).WithField("user_id", claims.UserID).Warn("wallet top-up rate limit check failed")
+			// Continue anyway - don't block on Redis errors
+		} else if !allowed {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(retryAfter.Seconds())))
+			w.WriteHeader(http.StatusTooManyRequests)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":   "rate_limit_exceeded",
+				"code":    "WALLET_TOPUP_RATE_LIMIT",
+				"message": "Too many wallet top-up attempts. Maximum 5 attempts per hour allowed. Please try again later.",
+			})
+			logrus.WithFields(logrus.Fields{
+				"user_id":     claims.UserID,
+				"retry_after": retryAfter.Seconds(),
+			}).Warn("Wallet top-up rate limit exceeded")
+			return
+		}
+
+		// Check for exponential backoff on failed attempts
+		backoffAllowed, backoffWait, err := h.checkExponentialBackoff(ctx, tenantUserKey)
+		if err != nil {
+			logrus.WithError(err).WithField("user_id", claims.UserID).Warn("wallet top-up backoff check failed")
+		} else if !backoffAllowed {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(backoffWait.Seconds())))
+			w.WriteHeader(http.StatusTooManyRequests)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":   "backoff_required",
+				"code":    "WALLET_TOPUP_BACKOFF",
+				"message": "Too many failed top-up attempts. Please wait before trying again.",
+			})
+			return
+		}
 	}
 
 	var req walletTopUpRequest
@@ -189,4 +238,110 @@ func (h *Handler) HandleWalletTopUp(w http.ResponseWriter, r *http.Request) {
 		"checkout_url": result.URL,
 		"session_id":   result.SessionID,
 	})
+}
+
+// checkRateLimit checks if the user has exceeded the rate limit for wallet top-ups
+// Returns (allowed bool, retryAfter duration, error)
+func (h *Handler) checkRateLimit(ctx context.Context, key string, limit int, window time.Duration) (bool, time.Duration, error) {
+	pipe := h.redisClient.Pipeline()
+	now := time.Now().Unix()
+	windowStart := now - int64(window.Seconds())
+
+	// Remove old entries outside the window
+	pipe.ZRemRangeByScore(ctx, key, "0", fmt.Sprintf("%d", windowStart))
+
+	// Count entries in current window
+	countCmd := pipe.ZCard(ctx, key)
+
+	// Add current attempt
+	pipe.ZAdd(ctx, key, redis.Z{Score: float64(now), Member: now})
+
+	// Set expiration on the key
+	pipe.Expire(ctx, key, window)
+
+	_, err := pipe.Exec(ctx)
+	if err != nil {
+		return true, 0, err // Allow on error
+	}
+
+	count := countCmd.Val()
+	if count >= int64(limit) {
+		// Get the oldest entry to calculate retry after
+		oldestCmd := h.redisClient.ZRangeWithScores(ctx, key, 0, 0)
+		if len(oldestCmd.Val()) > 0 {
+			oldest := oldestCmd.Val()[0].Score
+			retryAfter := time.Duration(int64(oldest)+int64(window.Seconds())-now) * time.Second
+			if retryAfter < 0 {
+				retryAfter = window
+			}
+			return false, retryAfter, nil
+		}
+		return false, window, nil
+	}
+
+	return true, 0, nil
+}
+
+// checkExponentialBackoff checks if the user should wait due to failed attempts
+// Returns (allowed bool, wait duration, error)
+func (h *Handler) checkExponentialBackoff(ctx context.Context, key string) (bool, time.Duration, error) {
+	// Key for tracking failed attempts
+	failureKey := key + ":failures"
+
+	// Get recent failure count
+	failures, err := h.redisClient.Get(ctx, failureKey).Int()
+	if err == redis.Nil {
+		return true, 0, nil // No failures, allowed
+	}
+	if err != nil {
+		return true, 0, err // Allow on error
+	}
+
+	if failures == 0 {
+		return true, 0, nil
+	}
+
+	// Calculate backoff: 2^n minutes (2, 4, 8, 16, 32... minutes)
+	backoffMinutes := 1 << uint(failures)
+	if backoffMinutes > 60 {
+		backoffMinutes = 60 // Max 1 hour
+	}
+
+	// Check last failure timestamp
+	lastFailureKey := key + ":last_failure"
+	lastFailureStr, err := h.redisClient.Get(ctx, lastFailureKey).Result()
+	if err == redis.Nil {
+		return true, 0, nil // No last failure recorded
+	}
+	if err != nil {
+		return true, 0, err
+	}
+
+	lastFailure, err := strconv.ParseInt(lastFailureStr, 10, 64)
+	if err != nil {
+		return true, 0, err
+	}
+
+	elapsed := time.Since(time.Unix(lastFailure, 0))
+	requiredWait := time.Duration(backoffMinutes) * time.Minute
+
+	if elapsed < requiredWait {
+		return false, requiredWait - elapsed, nil
+	}
+
+	return true, 0, nil
+}
+
+// recordFailedAttempt records a failed top-up attempt for exponential backoff
+func (h *Handler) recordFailedAttempt(ctx context.Context, key string) error {
+	failureKey := key + ":failures"
+	lastFailureKey := key + ":last_failure"
+
+	pipe := h.redisClient.Pipeline()
+	pipe.Incr(ctx, failureKey)
+	pipe.Set(ctx, lastFailureKey, fmt.Sprintf("%d", time.Now().Unix()), 24*time.Hour)
+	pipe.Expire(ctx, failureKey, 24*time.Hour)
+
+	_, err := pipe.Exec(ctx)
+	return err
 }

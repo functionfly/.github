@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apikey"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/functionfly/functionfly/internal/storage/trustapi"
@@ -24,9 +25,9 @@ type ExtendedHandler struct {
 }
 
 // NewExtendedHandler creates a new extended handler
-func NewExtendedHandler(repo *trustapi.Repository, registryRepo *registry.RegistryRepository, revocationRepo *trustapi.RevocationRepository, webhookService *trustapi.WebhookService) *ExtendedHandler {
+func NewExtendedHandler(apikeyRepo *apikey.Repository, repo *trustapi.Repository, registryRepo *registry.RegistryRepository, revocationRepo *trustapi.RevocationRepository, webhookService *trustapi.WebhookService) *ExtendedHandler {
 	return &ExtendedHandler{
-		Handler:        NewHandler(repo, registryRepo),
+		Handler:        NewHandler(apikeyRepo, repo, registryRepo),
 		revocationRepo: revocationRepo,
 		webhookService: webhookService,
 	}
@@ -1270,8 +1271,12 @@ func (h *ExtendedHandler) evaluateRule(
 		if !ok {
 			return false, "deny", "Invalid rule value"
 		}
-		// Would need to get success rate from metrics
-		successRate := 100.0 // Placeholder
+		successRate, err := h.getFunctionSuccessRate(fn.ID)
+		if err != nil {
+			h.logger.WithError(err).WithField("function_id", fn.ID).Warn("Failed to get function success rate for rule evaluation")
+			// Fail closed: if we can't get metrics, deny the request
+			return false, "deny", "Unable to verify success rate metric"
+		}
 		if successRate >= minRate {
 			return true, "", ""
 		}
@@ -1296,4 +1301,17 @@ func getRuleActualValue(ruleType string, trustState *registry.TrustHistory, isRe
 	default:
 		return nil
 	}
+}
+
+// getFunctionSuccessRate fetches the actual success rate for a function from recent metrics
+func (h *ExtendedHandler) getFunctionSuccessRate(functionID uuid.UUID) (float64, error) {
+	totalCalls, successRate, _, _, err := h.registryRepo.GetFunctionStats(functionID, time.Now().Add(-30*24*time.Hour))
+	if err != nil {
+		return 0, err
+	}
+	if totalCalls == 0 {
+		// No calls recorded — treat as neutral rather than failing
+		return 100.0, nil
+	}
+	return successRate, nil
 }

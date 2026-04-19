@@ -50,6 +50,7 @@ func registerAdminRoutes(
 	usageHandler *billing.UsageHandler,
 	costAllocationHandler *billing.CostAllocationHandler,
 	retentionHandler *admin.RetentionHandler,
+	disputesHandler *admin.DisputesHandler,
 ) {
 	adminRoutes := api.PathPrefix("/admin").Subrouter()
 
@@ -203,6 +204,22 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/analytics/platform/summary", authMiddleware.RequirePermission(auth.PermSystemRead)(adminHandler.HandlePlatformAnalyticsSummary)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/analytics/tenants/{tenantId}/summary", authMiddleware.RequirePermission(auth.PermTenantsRead)(adminHandler.HandleTenantAnalyticsSummary)).Methods("GET", "OPTIONS")
 
+	// Revenue analytics - MRR/ARR metrics
+	adminRoutes.HandleFunc("/analytics/mrr", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleAnalyticsMRR)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/analytics/mrr-series", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleAnalyticsMRRSeries)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/analytics/arr", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleAnalyticsARR)).Methods("GET", "OPTIONS")
+
+	// Churn metrics
+	adminRoutes.HandleFunc("/analytics/churn", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleAnalyticsChurn)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/analytics/churn-series", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleAnalyticsChurnSeries)).Methods("GET", "OPTIONS")
+
+	// LTV metrics
+	adminRoutes.HandleFunc("/analytics/ltv", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleAnalyticsLTV)).Methods("GET", "OPTIONS")
+
+	// Financial reporting
+	adminRoutes.HandleFunc("/analytics/financial-report", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleFinancialReport)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/analytics/tax-jurisdiction", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleTaxJurisdictionReport)).Methods("GET", "OPTIONS")
+
 	// Billing management
 	adminRoutes.HandleFunc("/billing/summary", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleBillingSummary)).Methods("GET", "OPTIONS")
 
@@ -247,6 +264,33 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/billing/state-fabric-add-ons/entitlements/{tenantId}/{addonId}", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleUpsertStateFabricTenantEntitlement))).Methods("PATCH", "OPTIONS")
 
 	adminRoutes.HandleFunc("/billing/coupons", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleListCoupons)).Methods("GET", "OPTIONS")
+
+	// Dispute and refund management
+	adminRoutes.HandleFunc("/billing/disputes", authMiddleware.RequirePermission(auth.PermBillingRead)(disputesHandler.HandleListDisputes)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/disputes/open", authMiddleware.RequirePermission(auth.PermBillingRead)(disputesHandler.HandleGetOpenDisputes)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/disputes/stats", authMiddleware.RequirePermission(auth.PermBillingRead)(disputesHandler.HandleGetDisputeStats)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/disputes/{disputeId}", authMiddleware.RequirePermission(auth.PermBillingRead)(disputesHandler.HandleGetDispute)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/disputes/{disputeId}/status", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(disputesHandler.HandleUpdateDisputeStatus))).Methods("PATCH", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/disputes/{disputeId}/evidence", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(disputesHandler.HandleUpdateDisputeEvidence))).Methods("POST", "OPTIONS")
+
+	// Refund management
+	adminRoutes.HandleFunc("/billing/refunds", authMiddleware.RequirePermission(auth.PermBillingRead)(disputesHandler.HandleListRefunds)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/refunds/stats", authMiddleware.RequirePermission(auth.PermBillingRead)(disputesHandler.HandleGetRefundStats)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/refunds/{refundId}", authMiddleware.RequirePermission(auth.PermBillingRead)(disputesHandler.HandleGetRefund)).Methods("GET", "OPTIONS")
+
+	// Chargeback reconciliation
+	adminRoutes.HandleFunc("/billing/chargebacks/reconciliation", authMiddleware.RequirePermission(auth.PermBillingRead)(disputesHandler.HandleGetChargebackReconciliation)).Methods("GET", "OPTIONS")
+
+	// Billing operational readiness - webhook replay and monitoring
+	adminRoutes.HandleFunc("/billing/webhooks", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleListStoredWebhooks)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/webhooks/{webhookId}", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleGetStoredWebhook)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/webhooks/{webhookId}/replay", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleReplayWebhook))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/webhooks/replay-requests", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleListWebhookReplayRequests)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/webhooks/cleanup", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleCleanupExpiredWebhooks))).Methods("POST", "OPTIONS")
+
+	// Tax exemption certificate management
+	adminRoutes.HandleFunc("/billing/tax-exemptions/pending", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleListPendingTaxCertificates)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/tax-exemptions/{certificateId}/review", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleReviewTaxCertificate))).Methods("POST", "OPTIONS")
 
 	// Feedback management (admin only)
 	adminRoutes.HandleFunc("/feedback", authMiddleware.RequirePermission(auth.PermSystemRead)(feedbackHandler.ListFeedback)).Methods("GET")
@@ -383,6 +427,10 @@ func registerAdminRoutes(
 	contentRoutes.HandleFunc("/categories/{id}", authMiddleware.RequirePermission(auth.PermSystemRead)(contentHandler.HandleGetAdminCategory)).Methods("GET")
 	contentRoutes.HandleFunc("/categories/{id}", authMiddleware.RequirePermission(auth.PermSystemWrite)(contentHandler.HandleUpdateAdminCategory)).Methods("PATCH")
 	contentRoutes.HandleFunc("/categories/{id}", authMiddleware.RequirePermission(auth.PermSystemWrite)(contentHandler.HandleDeleteAdminCategory)).Methods("DELETE")
+
+	// Blog settings
+	contentRoutes.HandleFunc("/blog/settings", authMiddleware.RequirePermission(auth.PermSystemRead)(contentHandler.HandleGetBlogSettings)).Methods("GET")
+	contentRoutes.HandleFunc("/blog/settings", authMiddleware.RequirePermission(auth.PermSystemWrite)(contentHandler.HandleUpdateBlogSettings)).Methods("PATCH")
 
 	// Blog authors (admin CRUD)
 	contentRoutes.HandleFunc("/authors", authMiddleware.RequirePermission(auth.PermSystemRead)(contentHandler.HandleListAdminAuthors)).Methods("GET")

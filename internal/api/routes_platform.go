@@ -9,6 +9,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/backends"
 	categorizationhandler "github.com/functionfly/functionfly/internal/api/handlers/categorization"
 	"github.com/functionfly/functionfly/internal/api/handlers/dashboard"
+	"github.com/functionfly/functionfly/internal/api/handlers/decisions"
 	"github.com/functionfly/functionfly/internal/api/handlers/deployments"
 	"github.com/functionfly/functionfly/internal/api/handlers/enterprise"
 	factoryhandler "github.com/functionfly/functionfly/internal/api/handlers/factory"
@@ -65,6 +66,7 @@ func registerPlatformRoutes(
 	supportHdlr *support.Handler,
 	supportAdminHdlr *support.AdminHandler,
 	supportWSHub *support.WebSocketHub,
+	decisionsHandler *decisions.Handler,
 ) {
 	// ── Metrics (public) ─────────────────────────────────────────────────────
 	api.HandleFunc("/metrics/global", s.handleGlobalMetrics).Methods("GET", "OPTIONS")
@@ -199,6 +201,9 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/teams/{teamId}/memories/extractions/{extractionId}/approve", authMiddleware.RequireAuth(teamMemoryHandler.HandleApproveExtraction)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/teams/{teamId}/memories/extractions/{extractionId}/reject", authMiddleware.RequireAuth(teamMemoryHandler.HandleRejectExtraction)).Methods("POST", "OPTIONS")
 
+	// ── Team Decisions (protected) ───────────────────────────────────────────
+	decisionsHandler.RegisterRoutes(protected)
+
 	// ── Providers (protected) ─────────────────────────────────────────────────
 	// Provider operations are rate-limited per tenant to prevent abuse
 	protected.HandleFunc("/providers", authMiddleware.RequireAuth(providersHandler.HandleListProviders)).Methods("GET", "OPTIONS")
@@ -224,6 +229,7 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/functions/{id}", authMiddleware.RequireAuth(functionsHandler.HandleDeleteFunction)).Methods("DELETE", "OPTIONS")
 	protected.HandleFunc("/functions/{id}/logs", authMiddleware.RequireAuth(functionsHandler.HandleGetFunctionLogs)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/functions/{id}/deployments", authMiddleware.RequireAuth(functionsHandler.HandleGetFunctionDeployments)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/functions/{id}/metrics", authMiddleware.RequireAuth(functionsHandler.HandleGetFunctionMetrics)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/functions/deployments/{deploymentId}", authMiddleware.RequireAuth(functionsHandler.HandleGetFunctionDeployment)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/functions/deploy", authMiddleware.RequireAuth(functionsHandler.HandleDeployFunction)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/functions/test", authMiddleware.RequireAuth(functionsHandler.HandleTestFunction)).Methods("POST", "OPTIONS")

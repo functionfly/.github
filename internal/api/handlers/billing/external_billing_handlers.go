@@ -1,11 +1,16 @@
 package billing
 
 import (
+	"context"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/billing"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -17,14 +22,16 @@ type ExternalBillingHandler struct {
 	exportRepo *storage.ExportRepository
 	repo       storage.Repository
 	logger     *logrus.Logger
+	syncJob    *billing.BillingSyncJob
 }
 
 // NewExternalBillingHandler creates a new external billing handler
-func NewExternalBillingHandler(exportRepo *storage.ExportRepository, repo storage.Repository) *ExternalBillingHandler {
+func NewExternalBillingHandler(exportRepo *storage.ExportRepository, repo storage.Repository, syncJob *billing.BillingSyncJob) *ExternalBillingHandler {
 	return &ExternalBillingHandler{
 		exportRepo: exportRepo,
 		repo:       repo,
 		logger:     logrus.New(),
+		syncJob:    syncJob,
 	}
 }
 
@@ -54,19 +61,19 @@ func (h *ExternalBillingHandler) CreateExternalBillingSystem(w http.ResponseWrit
 	}
 
 	var req struct {
-		Name           string                 `json:"name"`
-		Description    string                 `json:"description"`
-		SystemType     string                 `json:"system_type"`
-		AuthType       string                 `json:"auth_type"`
-		APIKey         string                 `json:"api_key"`
-		APIEndpoint    string                 `json:"api_endpoint"`
-		SyncEnabled    bool                   `json:"sync_enabled"`
-		SyncFrequency  string                 `json:"sync_frequency"`
-		SyncDirection  string                 `json:"sync_direction"`
-		FieldMappings  map[string]string      `json:"field_mappings"`
+		Name           string                  `json:"name"`
+		Description    string                  `json:"description"`
+		SystemType     string                  `json:"system_type"`
+		AuthType       string                  `json:"auth_type"`
+		APIKey         string                  `json:"api_key"`
+		APIEndpoint    string                  `json:"api_endpoint"`
+		SyncEnabled    bool                    `json:"sync_enabled"`
+		SyncFrequency  string                  `json:"sync_frequency"`
+		SyncDirection  string                  `json:"sync_direction"`
+		FieldMappings  map[string]string       `json:"field_mappings"`
 		TransformRules []storage.TransformRule `json:"transform_rules"`
-		IsActive       *bool                  `json:"is_active"`
-		WebhookURL     string                 `json:"webhook_url"`
+		IsActive       *bool                   `json:"is_active"`
+		WebhookURL     string                  `json:"webhook_url"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -247,18 +254,18 @@ func (h *ExternalBillingHandler) UpdateExternalBillingSystem(w http.ResponseWrit
 	}
 
 	var updates struct {
-		Name           string                 `json:"name"`
-		Description    string                 `json:"description"`
-		AuthType       string                 `json:"auth_type"`
-		APIKey         string                 `json:"api_key"`
-		APIEndpoint    string                 `json:"api_endpoint"`
-		SyncEnabled    bool                   `json:"sync_enabled"`
-		SyncFrequency  string                 `json:"sync_frequency"`
-		SyncDirection  string                 `json:"sync_direction"`
-		FieldMappings  map[string]string      `json:"field_mappings"`
+		Name           string                  `json:"name"`
+		Description    string                  `json:"description"`
+		AuthType       string                  `json:"auth_type"`
+		APIKey         string                  `json:"api_key"`
+		APIEndpoint    string                  `json:"api_endpoint"`
+		SyncEnabled    bool                    `json:"sync_enabled"`
+		SyncFrequency  string                  `json:"sync_frequency"`
+		SyncDirection  string                  `json:"sync_direction"`
+		FieldMappings  map[string]string       `json:"field_mappings"`
 		TransformRules []storage.TransformRule `json:"transform_rules"`
-		IsActive       *bool                  `json:"is_active"`
-		WebhookURL     string                 `json:"webhook_url"`
+		IsActive       *bool                   `json:"is_active"`
+		WebhookURL     string                  `json:"webhook_url"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
@@ -525,15 +532,15 @@ func (h *ExternalBillingHandler) TriggerBillingSync(w http.ResponseWriter, r *ht
 	}
 
 	sync := &storage.BillingIntegrationSync{
-		ID:              uuid.New(),
-		TenantID:        tenantID,
+		ID:               uuid.New(),
+		TenantID:         tenantID,
 		ExternalSystemID: systemID,
-		SyncType:        req.SyncType,
-		Direction:       req.Direction,
-		Status:          "pending",
-		StartedAt:       &now,
-		TriggeredBy:     triggeredBy,
-		CreatedAt:       time.Now(),
+		SyncType:         req.SyncType,
+		Direction:        req.Direction,
+		Status:           "pending",
+		StartedAt:        &now,
+		TriggeredBy:      triggeredBy,
+		CreatedAt:        time.Now(),
 	}
 
 	if err := h.exportRepo.CreateBillingIntegrationSync(r.Context(), sync); err != nil {
@@ -542,7 +549,14 @@ func (h *ExternalBillingHandler) TriggerBillingSync(w http.ResponseWriter, r *ht
 		return
 	}
 
-	// TODO: Trigger the actual sync job asynchronously
+	// Trigger the actual sync job asynchronously
+	if h.syncJob != nil {
+		if err := h.syncJob.TriggerSync(r.Context(), sync.ID, tenantID, systemID); err != nil {
+			h.logger.WithError(err).Warn("Failed to trigger sync job, sync will be processed by background worker")
+		}
+	} else {
+		h.logger.Debug("Billing sync job not initialized, sync will be processed by background worker")
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
@@ -653,45 +667,318 @@ type ConnectionTestResult struct {
 }
 
 func (h *ExternalBillingHandler) testConnection(system *storage.ExternalBillingSystem) ConnectionTestResult {
-	// TODO: Implement actual connection testing for each billing system type
-	// This would make a test API call to verify credentials
-
 	// Decrypt credentials for validation (if encrypted)
 	apiKey := system.APICredentialKey
+	oauthToken := system.OAuthToken
 	if apiKey != "" {
 		decrypted, err := h.repo.DecryptField(apiKey)
 		if err == nil && decrypted != apiKey {
-			// Successfully decrypted
 			apiKey = decrypted
 		}
-		// If decryption fails, continue with original value (might be plaintext legacy)
 	}
+	if system.OAuthToken != "" {
+		decrypted, err := h.repo.DecryptField(system.OAuthToken)
+		if err == nil && decrypted != system.OAuthToken {
+			oauthToken = decrypted
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	switch system.SystemType {
 	case "stripe":
-		if apiKey == "" {
-			return ConnectionTestResult{Success: false, Message: "API key is required for Stripe"}
-		}
-		if len(apiKey) < 10 {
-			return ConnectionTestResult{Success: false, Message: "API key appears to be invalid"}
-		}
-		return ConnectionTestResult{Success: true, Message: "Connection test passed (placeholder)"}
-
+		return h.testStripeConnection(ctx, apiKey)
 	case "chargebee":
-		if apiKey == "" {
-			return ConnectionTestResult{Success: false, Message: "API key is required for Chargebee"}
-		}
-		return ConnectionTestResult{Success: true, Message: "Connection test passed (placeholder)"}
-
+		return h.testChargebeeConnection(ctx, system.APIEndpoint, apiKey)
+	case "recurly":
+		return h.testRecurlyConnection(ctx, system.APIEndpoint, apiKey)
+	case "zuora":
+		return h.testZuoraConnection(ctx, system.APIEndpoint, apiKey, oauthToken)
+	case "netsuite":
+		return h.testNetSuiteConnection(ctx, system.APIEndpoint, apiKey, system.APICredentialSecret)
+	case "salesforce":
+		return h.testSalesforceConnection(ctx, system.APIEndpoint, oauthToken)
+	case "quickbooks":
+		return h.testQuickBooksConnection(ctx, system, oauthToken)
+	case "xero":
+		return h.testXeroConnection(ctx, system, oauthToken)
 	case "custom":
-		if system.APIEndpoint == "" {
-			return ConnectionTestResult{Success: false, Message: "API endpoint is required for custom integrations"}
-		}
-		return ConnectionTestResult{Success: true, Message: "Connection test passed (placeholder)"}
-
+		return h.testCustomConnection(ctx, system.APIEndpoint, apiKey, oauthToken)
 	default:
-		return ConnectionTestResult{Success: true, Message: "Connection test not implemented for this system type"}
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Connection test not implemented for system type: %s", system.SystemType)}
 	}
+}
+
+// testStripeConnection tests Stripe API connectivity using the balance endpoint
+func (h *ExternalBillingHandler) testStripeConnection(ctx context.Context, apiKey string) ConnectionTestResult {
+	if apiKey == "" {
+		return ConnectionTestResult{Success: false, Message: "API key is required for Stripe"}
+	}
+	if len(apiKey) < 10 {
+		return ConnectionTestResult{Success: false, Message: "API key appears to be invalid (too short)"}
+	}
+
+	endpoint := "https://api.stripe.com/v1/balance"
+	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
+	if err != nil {
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Failed to create request: %v", err)}
+	}
+
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Connection failed: %v", err)}
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+
+	switch resp.StatusCode {
+	case 200:
+		return ConnectionTestResult{Success: true, Message: "Successfully connected to Stripe API"}
+	case 401:
+		return ConnectionTestResult{Success: false, Message: "Authentication failed: Invalid API key"}
+	default:
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Stripe API returned %d: %s", resp.StatusCode, string(body))}
+	}
+}
+
+// testChargebeeConnection tests Chargebee API connectivity
+func (h *ExternalBillingHandler) testChargebeeConnection(ctx context.Context, endpoint, apiKey string) ConnectionTestResult {
+	if apiKey == "" {
+		return ConnectionTestResult{Success: false, Message: "API key is required for Chargebee"}
+	}
+	if endpoint == "" {
+		return ConnectionTestResult{Success: false, Message: "API endpoint is required for Chargebee (e.g., https://your-site.chargebee.com)"}
+	}
+
+	testURL := endpoint + "/api/v2/customers?limit=1"
+	req, err := http.NewRequestWithContext(ctx, "GET", testURL, nil)
+	if err != nil {
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Failed to create request: %v", err)}
+	}
+
+	// Chargebee uses basic auth with API key as username, empty password
+	req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(apiKey+":")))
+	req.Header.Set("Accept", "application/json")
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Connection failed: %v", err)}
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+
+	switch resp.StatusCode {
+	case 200:
+		return ConnectionTestResult{Success: true, Message: "Successfully connected to Chargebee API"}
+	case 401:
+		return ConnectionTestResult{Success: false, Message: "Authentication failed: Invalid API key"}
+	default:
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Chargebee API returned %d: %s", resp.StatusCode, string(body))}
+	}
+}
+
+// testRecurlyConnection tests Recurly API connectivity
+func (h *ExternalBillingHandler) testRecurlyConnection(ctx context.Context, endpoint, apiKey string) ConnectionTestResult {
+	if apiKey == "" {
+		return ConnectionTestResult{Success: false, Message: "API key is required for Recurly"}
+	}
+	if endpoint == "" {
+		return ConnectionTestResult{Success: false, Message: "API endpoint is required for Recurly (e.g., https://your-subdomain.recurly.com)"}
+	}
+
+	testURL := endpoint + "/v2/accounts"
+	req, err := http.NewRequestWithContext(ctx, "HEAD", testURL, nil)
+	if err != nil {
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Failed to create request: %v", err)}
+	}
+
+	// Recurly uses basic auth with API key
+	req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(apiKey+":")))
+	req.Header.Set("Accept", "application/xml")
+	req.Header.Set("X-Api-Version", "2.29")
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Connection failed: %v", err)}
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case 200:
+		return ConnectionTestResult{Success: true, Message: "Successfully connected to Recurly API"}
+	case 401:
+		return ConnectionTestResult{Success: false, Message: "Authentication failed: Invalid API key"}
+	default:
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Recurly API returned HTTP %d", resp.StatusCode)}
+	}
+}
+
+// testZuoraConnection tests Zuora API connectivity
+func (h *ExternalBillingHandler) testZuoraConnection(ctx context.Context, endpoint, apiKey, oauthToken string) ConnectionTestResult {
+	if oauthToken == "" && apiKey == "" {
+		return ConnectionTestResult{Success: false, Message: "Either OAuth token or API key is required for Zuora"}
+	}
+	if endpoint == "" {
+		return ConnectionTestResult{Success: false, Message: "API endpoint is required for Zuora (e.g., https://rest.zuora.com)"}
+	}
+
+	testURL := endpoint + "/v1/accounts"
+	req, err := http.NewRequestWithContext(ctx, "GET", testURL, nil)
+	if err != nil {
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Failed to create request: %v", err)}
+	}
+
+	if oauthToken != "" {
+		req.Header.Set("Authorization", "Bearer "+oauthToken)
+	} else {
+		req.Header.Set("apiKey", apiKey)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Connection failed: %v", err)}
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case 200:
+		return ConnectionTestResult{Success: true, Message: "Successfully connected to Zuora API"}
+	case 401:
+		return ConnectionTestResult{Success: false, Message: "Authentication failed: Invalid credentials"}
+	default:
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Zuora API returned HTTP %d", resp.StatusCode)}
+	}
+}
+
+// testNetSuiteConnection tests NetSuite connectivity via RESTlet or SOAP
+func (h *ExternalBillingHandler) testNetSuiteConnection(ctx context.Context, endpoint, token, tokenSecret string) ConnectionTestResult {
+	if token == "" {
+		return ConnectionTestResult{Success: false, Message: "Token is required for NetSuite"}
+	}
+	if endpoint == "" {
+		return ConnectionTestResult{Success: false, Message: "Account ID is required for NetSuite"}
+	}
+
+	// NetSuite REST API requires OAuth1 or Token-based authentication
+	// This is a simplified check - full implementation would require OAuth1 signature
+	return ConnectionTestResult{Success: true, Message: "NetSuite configuration validated (full connection test requires OAuth1 implementation)"}
+}
+
+// testSalesforceConnection tests Salesforce Billing API connectivity
+func (h *ExternalBillingHandler) testSalesforceConnection(ctx context.Context, endpoint, oauthToken string) ConnectionTestResult {
+	if oauthToken == "" {
+		return ConnectionTestResult{Success: false, Message: "OAuth token is required for Salesforce"}
+	}
+
+	testURL := "https://yourInstance.salesforce.com/services/data/v58.0/"
+	if endpoint != "" {
+		testURL = endpoint + "/services/data/v58.0/"
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", testURL, nil)
+	if err != nil {
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Failed to create request: %v", err)}
+	}
+
+	req.Header.Set("Authorization", "Bearer "+oauthToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Connection failed: %v", err)}
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case 200:
+		return ConnectionTestResult{Success: true, Message: "Successfully connected to Salesforce API"}
+	case 401:
+		return ConnectionTestResult{Success: false, Message: "Authentication failed: Invalid or expired OAuth token"}
+	default:
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Salesforce API returned HTTP %d", resp.StatusCode)}
+	}
+}
+
+// testQuickBooksConnection tests QuickBooks Online API using the existing exporter
+func (h *ExternalBillingHandler) testQuickBooksConnection(ctx context.Context, system *storage.ExternalBillingSystem, oauthToken string) ConnectionTestResult {
+	if oauthToken == "" {
+		return ConnectionTestResult{Success: false, Message: "OAuth token is required for QuickBooks"}
+	}
+	if system.APIEndpoint == "" {
+		return ConnectionTestResult{Success: false, Message: "API endpoint is required for QuickBooks (realm ID in URL)"}
+	}
+
+	// Use the existing exporter's TestConnection method
+	exporter := billing.NewQuickBooksExporter()
+	system.OAuthToken = oauthToken
+	err := exporter.TestConnection(ctx, system)
+	if err != nil {
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("QuickBooks connection failed: %v", err)}
+	}
+	return ConnectionTestResult{Success: true, Message: "Successfully connected to QuickBooks API"}
+}
+
+// testXeroConnection tests Xero API using the existing exporter
+func (h *ExternalBillingHandler) testXeroConnection(ctx context.Context, system *storage.ExternalBillingSystem, oauthToken string) ConnectionTestResult {
+	if oauthToken == "" {
+		return ConnectionTestResult{Success: false, Message: "OAuth token is required for Xero"}
+	}
+	if system.APIEndpoint == "" {
+		return ConnectionTestResult{Success: false, Message: "API endpoint is required for Xero"}
+	}
+
+	// Use the existing exporter's TestConnection method
+	exporter := billing.NewXeroExporter()
+	system.OAuthToken = oauthToken
+	err := exporter.TestConnection(ctx, system)
+	if err != nil {
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Xero connection failed: %v", err)}
+	}
+	return ConnectionTestResult{Success: true, Message: "Successfully connected to Xero API"}
+}
+
+// testCustomConnection tests a custom API endpoint
+func (h *ExternalBillingHandler) testCustomConnection(ctx context.Context, endpoint, apiKey, oauthToken string) ConnectionTestResult {
+	if endpoint == "" {
+		return ConnectionTestResult{Success: false, Message: "API endpoint is required for custom integrations"}
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "HEAD", endpoint, nil)
+	if err != nil {
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Failed to create request: %v", err)}
+	}
+
+	if apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+	} else if oauthToken != "" {
+		req.Header.Set("Authorization", "Bearer "+oauthToken)
+	}
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Connection failed: %v", err)}
+	}
+	defer resp.Body.Close()
+
+	// For custom endpoints, accept 2xx status codes
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return ConnectionTestResult{Success: true, Message: fmt.Sprintf("Successfully connected to custom endpoint (HTTP %d)", resp.StatusCode)}
+	}
+
+	return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Custom endpoint returned HTTP %d", resp.StatusCode)}
 }
 
 func (h *ExternalBillingHandler) extractTenantID(r *http.Request) uuid.UUID {
@@ -713,25 +1000,25 @@ func (h *ExternalBillingHandler) extractUserID(r *http.Request) uuid.UUID {
 
 func (h *ExternalBillingHandler) formatExternalBillingSystem(system *storage.ExternalBillingSystem, includeSecrets bool) map[string]interface{} {
 	result := map[string]interface{}{
-		"id":                system.ID.String(),
-		"tenant_id":         system.TenantID.String(),
-		"name":              system.Name,
-		"description":       system.Description,
-		"system_type":       system.SystemType,
-		"auth_type":         system.AuthType,
-		"api_endpoint":      system.APIEndpoint,
-		"is_active":         system.IsActive,
-		"sync_enabled":      system.SyncEnabled,
-		"sync_frequency":    system.SyncFrequency,
-		"sync_direction":    system.SyncDirection,
-		"field_mappings":    system.FieldMappings,
-		"transform_rules":   system.TransformRules,
-		"webhook_url":       system.WebhookURL,
-		"last_sync_at":      system.LastSyncAt,
-		"last_sync_status":  system.LastSyncStatus,
-		"created_by":        system.CreatedBy.String(),
-		"created_at":        system.CreatedAt.Format(time.RFC3339),
-		"updated_at":        system.UpdatedAt.Format(time.RFC3339),
+		"id":               system.ID.String(),
+		"tenant_id":        system.TenantID.String(),
+		"name":             system.Name,
+		"description":      system.Description,
+		"system_type":      system.SystemType,
+		"auth_type":        system.AuthType,
+		"api_endpoint":     system.APIEndpoint,
+		"is_active":        system.IsActive,
+		"sync_enabled":     system.SyncEnabled,
+		"sync_frequency":   system.SyncFrequency,
+		"sync_direction":   system.SyncDirection,
+		"field_mappings":   system.FieldMappings,
+		"transform_rules":  system.TransformRules,
+		"webhook_url":      system.WebhookURL,
+		"last_sync_at":     system.LastSyncAt,
+		"last_sync_status": system.LastSyncStatus,
+		"created_by":       system.CreatedBy.String(),
+		"created_at":       system.CreatedAt.Format(time.RFC3339),
+		"updated_at":       system.UpdatedAt.Format(time.RFC3339),
 	}
 
 	// Only include secrets in detailed view (not in list views)

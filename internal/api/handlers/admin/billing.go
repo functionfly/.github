@@ -193,14 +193,30 @@ func (h *Handler) HandleDeletePricingTier(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// HandleListSubscriptions lists all subscriptions
+// HandleListSubscriptions lists all subscriptions with pagination.
 func (h *Handler) HandleListSubscriptions(w http.ResponseWriter, r *http.Request) {
-	// For now, return empty list - in a real implementation you'd have a ListSubscriptions method
-	subscriptions := []*storage.Subscription{}
+	limit, offset := 100, 0
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n > 0 && n <= 500 {
+			limit = n
+		}
+	}
+	if o := r.URL.Query().Get("offset"); o != "" {
+		if n, err := strconv.Atoi(o); err == nil && n >= 0 {
+			offset = n
+		}
+	}
+
+	subs, err := h.repo.ListAllSubscriptions(limit, offset)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list subscriptions")
+		http.Error(w, "Failed to list subscriptions", http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"subscriptions": subscriptions,
+		"subscriptions": subs,
 	})
 }
 
@@ -250,7 +266,7 @@ func (h *Handler) HandleCreateSubscription(w http.ResponseWriter, r *http.Reques
 	json.NewEncoder(w).Encode(createdSub)
 }
 
-// HandleGetSubscription gets a subscription by tenant ID
+// HandleGetSubscription gets a subscription by its ID.
 func (h *Handler) HandleGetSubscription(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	subIDStr := vars["subscriptionId"]
@@ -260,11 +276,15 @@ func (h *Handler) HandleGetSubscription(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// For now, we need to get subscription by tenant ID, not by subscription ID
-	// This is a simplified implementation
-	subscription := &storage.Subscription{
-		ID: subID,
-		// This would need a proper GetSubscriptionByID method in the repository
+	subscription, err := h.repo.GetSubscriptionByID(r.Context(), subID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get subscription")
+		http.Error(w, "Failed to get subscription", http.StatusInternalServerError)
+		return
+	}
+	if subscription == nil {
+		http.Error(w, "Subscription not found", http.StatusNotFound)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")

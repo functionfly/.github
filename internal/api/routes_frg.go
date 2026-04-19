@@ -34,6 +34,12 @@ func registerFRGRoutes(
 	}
 	frgRepo := frg.NewRepository(s.postgresDB.GORM, frgCache)
 
+	// Run FRG migrations before accessing the database
+	if err := frgRepo.AutoMigrate(context.Background()); err != nil {
+		logrus.WithError(err).Error("FRG: failed to run migrations; graph tables may be missing")
+		// Continue anyway - tables may already exist
+	}
+
 	// Get graph service from existing agent package
 	graphService := graph.NewService(s.postgresDB.GORM)
 
@@ -85,6 +91,7 @@ func registerFRGRoutes(
 		graphService,
 		nil, // Cache service
 		frghandler.NewAICompositionClient(),
+		frghandler.NewEmbeddingServiceClient(),
 	)
 
 	// ── Graph Definitions (CRUD) ───────────────────────────────────────────

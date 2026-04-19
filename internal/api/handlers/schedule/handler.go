@@ -1,7 +1,9 @@
 package schedule
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -17,6 +19,13 @@ import (
 type Handler struct {
 	scheduler *scheduler.FunctionScheduler
 	repo      storage.Repository
+	executor  ScheduleExecutor
+}
+
+// ScheduleExecutor defines the interface for triggering function executions
+type ScheduleExecutor interface {
+	// ExecuteFunction triggers a function execution and returns the result
+	ExecuteFunction(ctx context.Context, functionID uuid.UUID, input []byte) ([]byte, error)
 }
 
 // NewHandler creates a new schedule handler
@@ -25,6 +34,11 @@ func NewHandler(sched *scheduler.FunctionScheduler, repo storage.Repository) *Ha
 		scheduler: sched,
 		repo:      repo,
 	}
+}
+
+// RegisterExecutor registers an executor for the scheduler
+func (h *Handler) RegisterExecutor(executor ScheduleExecutor) {
+	h.executor = executor
 }
 
 // HandleCreateSchedule handles POST /v1/functions/{id}/schedule
@@ -403,14 +417,50 @@ func (h *Handler) HandleTriggerManual(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Execute the function directly (would use context.WithTimeout(r.Context(), 30*time.Second) when calling execution service)
-	// This would trigger the function execution
-	// In a real implementation, this would call the execution service
-	
+	// Validate that we have an executor registered
+	if h.executor == nil {
+		logrus.Error("No executor registered for manual trigger")
+		http.Error(w, "Execution service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Parse optional input from request body
+	var triggerReq TriggerRequest
+	if r.ContentLength > 0 {
+		if err := json.NewDecoder(r.Body).Decode(&triggerReq); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+	}
+
+	// Build execution input with trigger metadata
+	input := map[string]interface{}{
+		"trigger":     "manual",
+		"timestamp":    time.Now().UTC().Format(time.RFC3339),
+		"request_id":   r.Header.Get("X-Request-ID"),
+	}
+	if triggerReq.Input != nil {
+		input["data"] = triggerReq.Input
+	}
+	inputJSON, _ := json.Marshal(input)
+
+	// Set timeout for execution
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	// Execute the function
+	result, err := h.executor.ExecuteFunction(ctx, functionID, inputJSON)
+	if err != nil {
+		logrus.WithError(err).WithField("function_id", functionID).Error("Manual trigger execution failed")
+		http.Error(w, fmt.Sprintf("Execution failed: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+
 	response := TriggerResponse{
 		FunctionID: functionID,
 		Status:     "triggered",
 		Timestamp:  time.Now().UTC(),
+		Result:     string(result),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -482,4 +532,9 @@ type TriggerResponse struct {
 	FunctionID uuid.UUID `json:"function_id"`
 	Status     string    `json:"status"`
 	Timestamp  time.Time `json:"timestamp"`
+	Result     string    `json:"result,omitempty"`
+}
+
+type TriggerRequest struct {
+	Input interface{} `json:"input,omitempty"`
 }

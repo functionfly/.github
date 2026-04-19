@@ -1217,3 +1217,33 @@ func (h *Handler) HandleGenerateCategoryContent(w http.ResponseWriter, r *http.R
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"description": strings.TrimSpace(out)})
 }
+
+// HandleGetBlogSettings returns GET /v1/admin/content/blog/settings
+func (h *Handler) HandleGetBlogSettings(w http.ResponseWriter, r *http.Request) {
+	settings, err := h.repo.GetBlogSettings(r.Context())
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get blog settings")
+		http.Error(w, "Failed to get blog settings", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(settings)
+}
+
+// HandleUpdateBlogSettings returns PATCH /v1/admin/content/blog/settings
+func (h *Handler) HandleUpdateBlogSettings(w http.ResponseWriter, r *http.Request) {
+	var updates map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	settings, err := h.repo.UpdateBlogSettings(r.Context(), updates)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to update blog settings")
+		http.Error(w, "Failed to update blog settings", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(settings)
+}

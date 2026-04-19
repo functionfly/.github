@@ -178,12 +178,11 @@ func (h *Handler) CreateFeedback(w http.ResponseWriter, r *http.Request) {
 						}
 					}
 
-					if !isAllowed {
-						continue // Skip unsupported files
-					}
+				if !isAllowed {
+					continue // Skip unsupported files
+				}
 
-					// Upload file to S3 (placeholder - replace with actual S3 upload)
-					file, err := fileHeader.Open()
+				file, err := fileHeader.Open()
 					if err != nil {
 						continue
 					}

@@ -20,9 +20,6 @@ type MiddlewareChain struct {
 	VaultRateLimiter interface {
 		RequireVaultRateLimit(http.HandlerFunc) http.HandlerFunc
 	}
-	FlywheelRateLimiter interface {
-		RequireFlywheelRateLimit(http.HandlerFunc) http.HandlerFunc
-	}
 	ProviderRateLimiter interface {
 		RequireProviderRateLimit(http.HandlerFunc) http.HandlerFunc
 	}

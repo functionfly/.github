@@ -123,18 +123,37 @@ func (h *Handler) HandleGetRelatedFunctions(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Get function by author/name
-	// Note: We need to look up the function ID from the registry
-	// For now, we'll return a placeholder - this would be integrated with the registry handler
-
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	if limit == 0 {
+	if limit <= 0 {
 		limit = 10
 	}
+	if limit > 20 {
+		limit = 20
+	}
 
-	// This would need the function ID - for now return empty
-	// The actual integration would happen in the registry handler
-	http.Error(w, "Use /v1/recommendations?function_id={id} instead", http.StatusNotFound)
+	fn, err := h.service.GetRegistryRepository().GetFunctionByAuthorName(author, name)
+	if err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{"author": author, "name": name}).Warn("Function not found for related functions lookup")
+		http.Error(w, "Function not found", http.StatusNotFound)
+		return
+	}
+
+	results, err := h.service.GetRelatedFunctions(r.Context(), fn.ID, limit)
+	if err != nil {
+		logrus.WithError(err).WithField("function_id", fn.ID).Error("Failed to get related functions")
+		http.Error(w, "Failed to get related functions", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"recommendations": results,
+		"total":           len(results),
+		"function": map[string]string{
+			"author": author,
+			"name":   name,
+		},
+	})
 }
 
 // HandleRecordInteraction records a user interaction

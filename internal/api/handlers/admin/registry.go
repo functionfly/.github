@@ -7,9 +7,10 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/functionfly/functionfly/internal/cache"
-	"github.com/functionfly/functionfly/internal/storage/registry"
+	registryrepo "github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -18,12 +19,12 @@ import (
 // RegistryHandler handles admin registry API (stats, list, get, update, delete, visibility, pricing).
 // Uses the same registry repo as the public registry handler.
 type RegistryHandler struct {
-	registryRepo *registry.RegistryRepository
+	registryRepo *registryrepo.RegistryRepository
 	cacheService *cache.CacheService
 }
 
 // NewRegistryHandler creates a new admin registry handler.
-func NewRegistryHandler(registryRepo *registry.RegistryRepository, cacheService *cache.CacheService) *RegistryHandler {
+func NewRegistryHandler(registryRepo *registryrepo.RegistryRepository, cacheService *cache.CacheService) *RegistryHandler {
 	return &RegistryHandler{
 		registryRepo: registryRepo,
 		cacheService: cacheService,
@@ -32,25 +33,22 @@ func NewRegistryHandler(registryRepo *registry.RegistryRepository, cacheService 
 
 // HandleGetRegistryStats returns GET /v1/admin/registry/stats
 func (h *RegistryHandler) HandleGetRegistryStats(w http.ResponseWriter, r *http.Request) {
-	total, byVisibility, err := h.registryRepo.GetRegistryStats()
+	stats, err := h.registryRepo.GetAdminRegistryStats()
 	if err != nil {
-		logrus.WithError(err).Error("Failed to get registry stats")
+		logrus.WithError(err).Error("Failed to get admin registry stats")
 		http.Error(w, "Failed to get registry stats", http.StatusInternalServerError)
 		return
 	}
-	publicCount := byVisibility["public"]
-	privateCount := byVisibility["private"]
-	unlistedCount := byVisibility["unlisted"]
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"total_functions":    total,
-		"public_functions":   publicCount,
-		"private_functions":  privateCount,
-		"unlisted_functions": unlistedCount,
-		"flagged_functions":  0,
-		"total_calls":        0,
-		"total_revenue":      0,
-		"avg_rating":         0,
+		"total_functions":    stats.TotalFunctions,
+		"public_functions":   stats.PublicFunctions,
+		"private_functions":  stats.PrivateFunctions,
+		"unlisted_functions": stats.UnlistedFunctions,
+		"flagged_functions":  stats.FlaggedFunctions,
+		"total_calls":        stats.TotalCalls,
+		"total_revenue":      stats.TotalRevenueUSD,
+		"avg_rating":         stats.AvgRating,
 	})
 }
 
@@ -469,7 +467,7 @@ func (h *RegistryHandler) HandleUpdateRegistryPricing(w http.ResponseWriter, r *
 	})
 }
 
-// HandleFlagRegistryFunction returns POST /v1/admin/registry/functions/{functionId}/flag (stub: no flagged column yet)
+// HandleFlagRegistryFunction returns POST /v1/admin/registry/functions/{functionId}/flag
 func (h *RegistryHandler) HandleFlagRegistryFunction(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["functionId"])
@@ -484,7 +482,32 @@ func (h *RegistryHandler) HandleFlagRegistryFunction(w http.ResponseWriter, r *h
 		return
 	}
 
-	// Stub: flag storage not implemented yet; return current function
+	var body struct {
+		Reason  string `json:"reason"`
+		Notes   string `json:"notes"`
+		AdminID string `json:"admin_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	if body.Reason == "" {
+		http.Error(w, "reason is required (spam, malware, ip_infringement, abuse, policy_violation)", http.StatusBadRequest)
+		return
+	}
+
+	flagReason := registryrepo.FlagFunctionFlags(body.Reason)
+	var reviewerID uuid.UUID
+	if body.AdminID != "" {
+		reviewerID, _ = uuid.Parse(body.AdminID)
+	}
+
+	if err := h.registryRepo.FlagFunction(r.Context(), functionID, flagReason, reviewerID, body.Notes); err != nil {
+		logrus.WithError(err).WithField("function_id", functionID).Error("Failed to flag registry function")
+		http.Error(w, "Failed to flag function", http.StatusInternalServerError)
+		return
+	}
+
 	latestVersion := ""
 	if fn.LatestVersion.Valid {
 		latestVersion = fn.LatestVersion.String
@@ -514,7 +537,8 @@ func (h *RegistryHandler) HandleFlagRegistryFunction(w http.ResponseWriter, r *h
 		"latest_version": latestVersion,
 		"created_at":     fn.CreatedAt,
 		"updated_at":     fn.UpdatedAt,
-		"is_flagged":     false,
+		"is_flagged":     true,
+		"flag_reason":    body.Reason,
 	})
 }
 
@@ -554,34 +578,84 @@ func (h *RegistryHandler) HandleListRegistryFunctionVersions(w http.ResponseWrit
 	json.NewEncoder(w).Encode(map[string]interface{}{"versions": out})
 }
 
-// HandleDeactivateRegistryVersion returns POST /v1/admin/registry/functions/{functionId}/versions/{versionId}/deactivate (stub)
+// HandleDeactivateRegistryVersion returns POST /v1/admin/registry/functions/{functionId}/versions/{versionId}/deactivate
 func (h *RegistryHandler) HandleDeactivateRegistryVersion(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	_, _ = uuid.Parse(vars["functionId"])
+	functionID, err := uuid.Parse(vars["functionId"])
+	if err != nil {
+		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		return
+	}
 	versionID, err := uuid.Parse(vars["versionId"])
 	if err != nil {
 		http.Error(w, "Invalid version ID", http.StatusBadRequest)
 		return
 	}
 
-	// Stub: no is_active on versions in schema; return 200 with placeholder
+	// Verify the version belongs to the function
+	version, err := h.registryRepo.GetVersionByID(versionID)
+	if err != nil {
+		http.Error(w, "Version not found", http.StatusNotFound)
+		return
+	}
+	if version.FunctionID != functionID {
+		http.Error(w, "Version does not belong to the specified function", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.registryRepo.DeactivateFunctionVersion(versionID); err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"function_id": functionID,
+			"version_id":  versionID,
+		}).Error("Failed to deactivate registry version (admin)")
+		http.Error(w, "Failed to deactivate version", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"id":           versionID.String(),
+		"function_id":  functionID.String(),
+		"version":      version.Version,
 		"is_active":    false,
-		"version":      "",
-		"published_at": nil,
+		"published_at": version.PublishedAt,
 	})
 }
 
-// HandleGetRegistryFunctionMetrics returns GET /v1/admin/registry/functions/{functionId}/metrics (stub)
+// HandleGetRegistryFunctionMetrics returns GET /v1/admin/registry/functions/{functionId}/metrics
 func (h *RegistryHandler) HandleGetRegistryFunctionMetrics(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	functionIDStr := vars["functionId"]
+	functionID, err := uuid.Parse(functionIDStr)
+	if err != nil {
+		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		return
+	}
+
+	// Default to last 30 days of metrics
+	since := time.Now().AddDate(0, 0, -30)
+	if s := r.URL.Query().Get("since"); s != "" {
+		if t, err := time.Parse(time.RFC3339, s); err == nil {
+			since = t
+		}
+	}
+
+	totalCalls, successRate, avgLatency, p95Latency, err := h.registryRepo.GetFunctionStats(functionID, since)
+	if err != nil {
+		logrus.WithError(err).WithField("function_id", functionID).Warn("HandleGetRegistryFunctionMetrics: failed to get function stats")
+		// Return zeros rather than error to avoid breaking dashboards
+		totalCalls, successRate, avgLatency, p95Latency = 0, 0, 0, 0
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"invocations":    0,
-		"errors":         0,
-		"latency_p50_ms": 0,
-		"latency_p99_ms": 0,
+		"function_id":    functionIDStr,
+		"invocations":    totalCalls,
+		"success_rate":  successRate,
+		"errors":        int(float64(totalCalls) * (100 - successRate) / 100),
+		"latency_p50_ms": avgLatency,
+		"latency_p99_ms": p95Latency,
+		"since":          since.Format(time.RFC3339),
 	})
 }
 

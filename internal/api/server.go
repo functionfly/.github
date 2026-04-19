@@ -20,8 +20,11 @@ import (
 	"github.com/functionfly/functionfly/internal/adapters/vercel"
 	"github.com/functionfly/functionfly/internal/analytics/unified"
 	"github.com/functionfly/functionfly/internal/api/handlers/billing"
+	"github.com/functionfly/functionfly/internal/api/handlers/notifications"
 	regexec "github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
+	"github.com/functionfly/functionfly/internal/api/handlers/trustapi"
 	"github.com/functionfly/functionfly/internal/auth"
+	billingpkg "github.com/functionfly/functionfly/internal/billing"
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/deployment"
 	"github.com/functionfly/functionfly/internal/email"
@@ -33,8 +36,10 @@ import (
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/storage"
 	staterepo "github.com/functionfly/functionfly/internal/storage/state"
+	trustapirepo "github.com/functionfly/functionfly/internal/storage/trustapi"
 	vaultstorage "github.com/functionfly/functionfly/internal/storage/vault"
 	"github.com/gorilla/mux"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 )
@@ -64,8 +69,10 @@ type Server struct {
 	shutdownTimeout     time.Duration
 
 	// Notification service
-	notificationSvc  *notification.Service
-	notificationRepo notification.Repository
+	notificationSvc       *notification.Service
+	notificationRepo      notification.Repository
+	notificationPool      *pgxpool.Pool // dedicated pool for LISTEN connections
+	notificationWSHandler *notifications.WebSocketHandler
 
 	// Trigger engine for state changes
 	triggerEngine *staterepo.TriggerEngine
@@ -93,6 +100,14 @@ type Server struct {
 
 	// Deferred billing checker for Backend-in-a-Box founder mode
 	deferredBillingChecker *billing.DeferredBillingChecker
+
+	// Dunning management repository and service for automated payment retry
+	dunningRepo        *storage.DunningRepository
+	usageReportingRepo *storage.UsageReportingRepository
+	dunningManager     *billingpkg.DunningManager
+
+	// Trust API billing service (with usage reporting)
+	trustBillingService *trustapi.BillingService
 }
 
 func NewServer(db *storage.PostgresDB) *Server {
@@ -182,6 +197,13 @@ func NewServer(db *storage.PostgresDB) *Server {
 	var emailSvc email.Service = email.NewMockService(emailConfig) // Default to mock service with config
 	if svc, ok := email.NewServiceFromEnv(); ok {
 		emailSvc = svc
+	}
+
+	// Validate email service configuration at startup
+	if err := emailSvc.ValidateConfiguration(); err != nil {
+		logrus.WithError(err).Warn("Email service validation failed - magic links and other emails may not send")
+	} else {
+		logrus.Info("Email service configuration validated successfully")
 	}
 
 	authSvc := auth.NewAuthService(repo, jwtSecret)
@@ -285,6 +307,20 @@ func NewServer(db *storage.PostgresDB) *Server {
 	}
 	deferredBillingChecker := billing.NewDeferredBillingChecker(repo, notificationSvc, deferredBillingCheckInterval)
 
+	// Initialize dunning management and usage reporting repositories
+	dunningRepo := storage.NewDunningRepository(db)
+	usageReportingRepo := storage.NewUsageReportingRepository(db)
+
+	// Initialize dunning manager for automated payment retry
+	dunningManager := billingpkg.NewDunningManager(dunningRepo, repo, notificationSvc)
+
+	// Initialize Trust API billing service with usage reporting
+	trustBillingRepo := trustapirepo.NewBillingRepository(db.GORM)
+	trustBillingService := trustapi.NewBillingService(trustBillingRepo, usageReportingRepo)
+
+	// Start dunning background processors
+	startDunningProcessors(dunningManager)
+
 	s := &Server{
 		postgresDB:             db,
 		repo:                   repo,
@@ -307,10 +343,16 @@ func NewServer(db *storage.PostgresDB) *Server {
 		shutdownTimeout:        shutdownTimeout,
 		notificationSvc:        notificationSvc,
 		notificationRepo:       notificationRepo,
+		notificationPool:       nil,
+		notificationWSHandler:  nil,
 		recommendationSvc:      recommendationSvc,
 		usageMetricsAgg:        usageMetricsAgg,
 		emailSvc:               emailSvc,
 		deferredBillingChecker: deferredBillingChecker,
+		dunningRepo:            dunningRepo,
+		usageReportingRepo:     usageReportingRepo,
+		dunningManager:         dunningManager,
+		trustBillingService:    trustBillingService,
 		httpServer: &http.Server{
 			Handler:      router,
 			ReadTimeout:  15 * time.Second,
@@ -509,6 +551,17 @@ func (s *Server) ListenAndServe(addr string) error {
 	s.notificationSvc.Start(ctx)
 	logrus.Info("Notification service started")
 
+	// Start notification WebSocket hub and PostgreSQL LISTEN subscription
+	if s.notificationWSHandler != nil {
+		s.notificationWSHandler.RunHub()
+		if s.notificationPool != nil {
+			s.notificationWSHandler.RunNotificationSubscription(ctx, s.notificationPool)
+		}
+		logrus.Info("Notification WebSocket hub and LISTEN subscription started")
+	} else {
+		logrus.Warn("Notification WebSocket handler not initialized – skipping hub start")
+	}
+
 	// Start deferred billing checker for Backend-in-a-Box founder mode
 	if s.deferredBillingChecker != nil {
 		s.deferredBillingChecker.Start()
@@ -607,6 +660,12 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	if s.notificationSvc != nil {
 		s.notificationSvc.Stop()
 		logrus.Info("Notification service stopped")
+	}
+
+	// Close the notification LISTEN pool
+	if s.notificationPool != nil {
+		s.notificationPool.Close()
+		logrus.Info("Notification LISTEN pool closed")
 	}
 
 	// Stop usage metrics aggregation service
@@ -794,4 +853,42 @@ func (s *Server) serveSPAIndex(w http.ResponseWriter, r *http.Request) {
 
 	// Serve the file
 	http.ServeFile(w, r, indexPath)
+}
+
+// startDunningProcessors starts background goroutines for dunning management
+// These processors handle scheduled payment retries and grace period expirations
+func startDunningProcessors(dunningManager *billingpkg.DunningManager) {
+	// Retry processor - runs every hour to process scheduled retries
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			ctx := context.Background()
+			if err := dunningManager.ProcessScheduledRetries(ctx); err != nil {
+				logrus.WithError(err).Error("Failed to process scheduled payment retries")
+			}
+		}
+	}()
+
+	// Grace period expiration processor - runs daily to check for expired grace periods
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+
+		// Run immediately on startup
+		ctx := context.Background()
+		if err := dunningManager.ProcessGracePeriodExpirations(ctx); err != nil {
+			logrus.WithError(err).Error("Failed to process grace period expirations")
+		}
+
+		for range ticker.C {
+			ctx := context.Background()
+			if err := dunningManager.ProcessGracePeriodExpirations(ctx); err != nil {
+				logrus.WithError(err).Error("Failed to process grace period expirations")
+			}
+		}
+	}()
+
+	logrus.Info("Dunning processors started (retry: 1h, grace expiration: 24h)")
 }

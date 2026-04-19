@@ -16,6 +16,7 @@ import (
 	"github.com/functionfly/functionfly/internal/storage"
 	storageregistry "github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 )
 
@@ -68,11 +69,13 @@ type Handler struct {
 	platformFees *storageregistry.PlatformFeeRepository
 	// State Fabric add-on entitlements (optional; nil returns empty entitlements).
 	sfAddons *statefabricaddons.Repository
+	// Redis client for rate limiting
+	redisClient *redis.Client
 }
 
 // NewHandler creates a new billing handler.
-func NewHandler(repo storage.Repository, platformFees *storageregistry.PlatformFeeRepository, sfAddons *statefabricaddons.Repository) *Handler {
-	return &Handler{repo: repo, platformFees: platformFees, sfAddons: sfAddons}
+func NewHandler(repo storage.Repository, platformFees *storageregistry.PlatformFeeRepository, sfAddons *statefabricaddons.Repository, redisClient *redis.Client) *Handler {
+	return &Handler{repo: repo, platformFees: platformFees, sfAddons: sfAddons, redisClient: redisClient}
 }
 
 // CreatePortalSessionRequest is the request body for creating a billing portal session.

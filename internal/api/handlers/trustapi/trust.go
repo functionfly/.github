@@ -237,6 +237,11 @@ func (h *Handler) HandleSubmitVerification(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Create verification request
+	metadataJSON, err := mustMarshalJSON(req.Metadata)
+	if err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid metadata format", "invalid_metadata")
+		return
+	}
 	verification := &trustapi.TrustAPIVerification{
 		PartnerID:          partner.ID,
 		FunctionID:         req.FunctionID,
@@ -244,11 +249,11 @@ func (h *Handler) HandleSubmitVerification(w http.ResponseWriter, r *http.Reques
 		FunctionName:       fn.Name,
 		FunctionVersion:    req.FunctionVersion,
 		VerificationLevel:  string(req.VerificationLevel),
-		Metadata:           mustMarshalJSON(req.Metadata),
+		Metadata:           metadataJSON,
 		Status:            string(trustapi.VerificationStatusPending),
 	}
 
-	if err := h.repo.CreateVerification(verification); err != nil {
+	if err := h.trustRepo.CreateVerification(verification); err != nil {
 		h.logger.WithError(err).Error("Failed to create verification request")
 		h.writeError(w, http.StatusInternalServerError, "Failed to create verification request", "internal_error")
 		return
@@ -275,7 +280,7 @@ func (h *Handler) HandleGetVerification(w http.ResponseWriter, r *http.Request) 
 	vars := mux.Vars(r)
 	verificationID := vars["verification_id"]
 
-	verification, err := h.repo.GetVerificationByVerificationID(verificationID)
+	verification, err := h.trustRepo.GetVerificationByVerificationID(verificationID)
 	if err != nil {
 		h.writeError(w, http.StatusNotFound, "Verification not found", "verification_not_found")
 		return
@@ -328,6 +333,11 @@ func (h *Handler) HandleSubmitReport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create report
+	evidenceJSON, err := mustMarshalJSON(req.Evidence)
+	if err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid evidence format", "invalid_evidence")
+		return
+	}
 	report := &trustapi.TrustAPIReport{
 		PartnerID:     partner.ID,
 		FunctionID:    req.FunctionID,
@@ -337,11 +347,11 @@ func (h *Handler) HandleSubmitReport(w http.ResponseWriter, r *http.Request) {
 		Severity:     req.Severity,
 		Title:        req.Title,
 		Description:  req.Description,
-		Evidence:     mustMarshalJSON(req.Evidence),
+		Evidence:     evidenceJSON,
 		Status:       string(trustapi.ReportStatusPending),
 	}
 
-	if err := h.repo.CreateReport(report); err != nil {
+	if err := h.trustRepo.CreateReport(report); err != nil {
 		h.logger.WithError(err).Error("Failed to create trust report")
 		h.writeError(w, http.StatusInternalServerError, "Failed to create report", "internal_error")
 		return
@@ -370,7 +380,7 @@ func (h *Handler) HandleGetReport(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	reportID := vars["report_id"]
 
-	report, err := h.repo.GetReportByReportID(reportID)
+	report, err := h.trustRepo.GetReportByReportID(reportID)
 	if err != nil {
 		h.writeError(w, http.StatusNotFound, "Report not found", "report_not_found")
 		return
@@ -394,10 +404,10 @@ func (h *Handler) HandleGetReport(w http.ResponseWriter, r *http.Request) {
 }
 
 // mustMarshalJSON marshals data to JSON, panics on error
-func mustMarshalJSON(v interface{}) json.RawMessage {
+func mustMarshalJSON(v interface{}) (json.RawMessage, error) {
 	data, err := json.Marshal(v)
 	if err != nil {
-		return json.RawMessage("{}")
+		return nil, err
 	}
-	return data
+	return data, nil
 }

@@ -34,6 +34,7 @@ func registerAuthRoutes(
 	api *mux.Router,
 	authRateLimiter *middleware.AuthRateLimiter,
 	walletRateLimiter *middleware.WalletRateLimiter,
+	mfaRateLimiter *middleware.MFARateLimiter,
 	authMiddleware *middleware.AuthMiddleware,
 	csrfMiddleware *middleware.CSRFMiddleware,
 	authHandler *authHandlerPkg.Handler,
@@ -77,9 +78,11 @@ func registerAuthRoutes(
 	router.HandleFunc("/auth/oauth/providers", authHandler.HandleGetOAuthProviders).Methods("GET", "OPTIONS")
 	router.HandleFunc("/auth/oauth/url", authRateLimiter.Limit(authHandler.HandleGetOAuthURL)).Methods("GET", "OPTIONS")
 	router.HandleFunc("/auth/oauth/{provider}/callback", authHandler.HandleOAuthCallback).Methods("GET", "OPTIONS")
+	router.HandleFunc("/auth/oauth/link", authRateLimiter.Limit(authHandler.HandleConfirmAccountLinking)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/oauth/providers", authHandler.HandleGetOAuthProviders).Methods("GET", "OPTIONS")
 	api.HandleFunc("/auth/oauth/url", authRateLimiter.Limit(authHandler.HandleGetOAuthURL)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/auth/oauth/{provider}/callback", authHandler.HandleOAuthCallback).Methods("GET", "OPTIONS")
+	api.HandleFunc("/auth/oauth/link", authRateLimiter.Limit(authHandler.HandleConfirmAccountLinking)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/validate", authMiddleware.RequireAuth(authHandler.HandleValidateToken)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/auth/logout", authMiddleware.RequireAuth(authHandler.HandleLogout)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/verify-password", authMiddleware.RequireAuth(authHandler.HandleVerifyPassword)).Methods("POST", "OPTIONS")
@@ -89,9 +92,17 @@ func registerAuthRoutes(
 	api.HandleFunc("/auth/password-reset/confirm", authRateLimiter.Limit(authHandler.HandlePasswordResetConfirm)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/api-key", apiKeyAuthHandler.HandleAuthenticate).Methods("POST", "OPTIONS")
 
+	// Magic link authentication (public, rate-limited)
+	// Registered on both the bare router and /v1 for compatibility
+	router.HandleFunc("/auth/magic-link", authRateLimiter.Limit(authHandler.HandleMagicLinkRequest)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/auth/magic-link", authRateLimiter.Limit(authHandler.HandleMagicLinkRequest)).Methods("POST", "OPTIONS")
+	router.HandleFunc("/auth/magic-link/verify", authRateLimiter.Limit(authHandler.HandleMagicLinkVerify)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/auth/magic-link/verify", authRateLimiter.Limit(authHandler.HandleMagicLinkVerify)).Methods("POST", "OPTIONS")
+
 	// MFA (protected)
 	api.HandleFunc("/auth/mfa/setup", authMiddleware.RequireAuth(mfaHandler.SetupMFA)).Methods("POST", "OPTIONS")
-	api.HandleFunc("/auth/mfa/verify", authMiddleware.RequireAuth(mfaHandler.VerifyMFA)).Methods("POST", "OPTIONS")
+	// MFA verify has additional rate limiting to prevent brute force attacks on TOTP codes
+	api.HandleFunc("/auth/mfa/verify", authMiddleware.RequireAuth(mfaRateLimiter.LimitVerify(mfaHandler.VerifyMFA))).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/mfa/enable", authMiddleware.RequireAuth(mfaHandler.EnableMFA)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/mfa/disable", authMiddleware.RequireAuth(mfaHandler.DisableMFA)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/mfa/status", authMiddleware.RequireAuth(mfaHandler.GetMFAStatus)).Methods("GET", "OPTIONS")
@@ -110,6 +121,11 @@ func registerAuthRoutes(
 	api.HandleFunc("/users/me/settings/privacy", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsPrivacyMe)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/me/settings/visibility", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsVisibilityMe)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/me/activity", authMiddleware.RequireAuth(usersHandler.HandleCreateUserActivity)).Methods("POST", "OPTIONS")
+	// Username change endpoints (2-per-year limit with early-change fee)
+	api.HandleFunc("/users/me/username/eligibility", authMiddleware.RequireAuth(usersHandler.HandleGetUsernameChangeEligibility)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/users/me/username/change", authMiddleware.RequireAuth(usersHandler.HandleChangeUsernameMe)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/users/me/username/history", authMiddleware.RequireAuth(usersHandler.HandleGetUsernameChangeHistoryMe)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/users/me/username/checkout", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(usersHandler.HandleCreateUsernameChangeCheckout))).Methods("POST", "OPTIONS")
 	api.HandleFunc("/users/me/skills", authMiddleware.RequireAuth(usersHandler.HandleAddUserSkill)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/users/me/skills/{id}", authMiddleware.RequireAuth(usersHandler.HandleRemoveUserSkill)).Methods("DELETE", "OPTIONS")
 	api.HandleFunc("/users/me/notification-preferences", authMiddleware.RequireAuth(notificationHandler.HandleGetPreferences)).Methods("GET", "OPTIONS")
@@ -130,6 +146,9 @@ func registerAuthRoutes(
 	api.HandleFunc("/users/{username}/contributions", usersHandler.HandleGetUserContributions).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/{username}/skills", usersHandler.HandleGetUserSkills).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/{username}/report", authMiddleware.RequireAuth(usersHandler.HandleReportProfile)).Methods("POST", "OPTIONS")
+	// Username change endpoints (by username path)
+	api.HandleFunc("/users/{username}/username/eligibility", authMiddleware.RequireAuth(usersHandler.HandleGetUsernameChangeEligibilityByUsername)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/users/{username}/username/change", authMiddleware.RequireAuth(usersHandler.HandleChangeUsernameByUsername)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/@/{username}", usersHandler.HandleGetPublicProfileByAt).Methods("GET", "OPTIONS")
 
 	// ── Follow ─────────────────────────────────────────────────────────────

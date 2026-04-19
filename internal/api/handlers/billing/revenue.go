@@ -331,11 +331,6 @@ func (h *Handler) HandleVerifyFunction(w http.ResponseWriter, r *http.Request) {
 		cancelURL = "http://localhost:3000/functions/" + req.FunctionID.String() + "/verification?canceled=true"
 	}
 
-	// Create Stripe checkout session for verification payment
-	// Note: In a real implementation, you'd create a separate product/price for verification
-	// For now, we use a direct checkout session with the amount
-	// This would typically be implemented with Stripe Payment Links or Products
-
 	// Create a pending payment record first
 	paymentRecord := &storage.FunctionVerificationPayment{
 		FunctionID:        req.FunctionID,

@@ -81,6 +81,13 @@ func (r *RouteRegistrar) Register(router *mux.Router, api *mux.Router, protected
 	billingRouter.HandleFunc("/agent-usage", r.handler.HandleGetAgentUsage).Methods("GET", "OPTIONS")
 	billingRouter.HandleFunc("/subscribe", r.handler.HandleSubscribe).Methods("POST", "OPTIONS")
 
+	// Tax/VAT compliance endpoints
+	billingRouter.HandleFunc("/tax/settings", r.handler.HandleGetTaxSettings).Methods("GET", "OPTIONS")
+	billingRouter.HandleFunc("/tax/settings", r.handler.HandleUpdateTaxSettings).Methods("POST", "OPTIONS")
+	billingRouter.HandleFunc("/tax/types", r.handler.HandleGetTaxTypes).Methods("GET", "OPTIONS")
+	billingRouter.HandleFunc("/tax/calculate", r.handler.HandleCalculateTax).Methods("POST", "OPTIONS")
+	billingRouter.HandleFunc("/tax/validate", r.handler.HandleValidateTaxID).Methods("POST", "OPTIONS")
+
 	// Wallet
 	billingRouter.HandleFunc("/wallet", r.handler.HandleGetWallet).Methods("GET", "OPTIONS")
 	billingRouter.HandleFunc("/wallet/fees", r.handler.HandleListPlatformFees).Methods("GET", "OPTIONS")

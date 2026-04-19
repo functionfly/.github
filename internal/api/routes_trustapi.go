@@ -5,11 +5,22 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/handlers/trustapi"
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apikey"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	trustapirepo "github.com/functionfly/functionfly/internal/storage/trustapi"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
+
+// trustAPIServerInterface defines the methods needed from Server for Trust API routes
+type trustAPIServerInterface interface {
+	GetTrustBillingService() *trustapi.BillingService
+}
+
+// GetTrustBillingService returns the Trust API billing service (implements interface)
+func (s *Server) GetTrustBillingService() *trustapi.BillingService {
+	return s.trustBillingService
+}
 
 // registerTrustAPIRoutes wires all Trust API routes for external platform partners
 func registerTrustAPIRoutes(
@@ -20,6 +31,9 @@ func registerTrustAPIRoutes(
 	// Initialize Trust API repository
 	trustRepo := trustapirepo.NewRepository(s.postgresDB.GORM)
 
+	// Initialize platform API key repository (unified system)
+	apikeyRepo := apikey.NewRepository(s.postgresDB.GORM)
+
 	// Initialize revocation repository for extended functionality
 	revocationRepo := trustapirepo.NewRevocationRepository(s.postgresDB.GORM)
 
@@ -29,19 +43,19 @@ func registerTrustAPIRoutes(
 	webhookService.SetLogger(logrus.New())
 
 	// Initialize handlers
-	trustHandler := trustapi.NewHandler(trustRepo, registryRepo)
+	trustHandler := trustapi.NewHandler(apikeyRepo, trustRepo, registryRepo)
 	webhookHandler := trustapi.NewWebhookHandler(webhookRepo)
 	webhookHandler.SetLogger(logrus.New())
 
 	// Initialize extended handler with revocation and webhook capabilities
-	extendedHandler := trustapi.NewExtendedHandler(trustRepo, registryRepo, revocationRepo, webhookService)
+	extendedHandler := trustapi.NewExtendedHandler(apikeyRepo, trustRepo, registryRepo, revocationRepo, webhookService)
 
 	// Initialize streaming handler
 	trustStreamer := trustapi.NewTrustScoreStreamer(registryRepo, logrus.New())
 	go trustStreamer.Run()
 
-	// Initialize middleware
-	authMiddleware := trustapi.NewAPIKeyAuthMiddleware(trustRepo)
+	// Initialize middleware with both repos (apikey for auth, trust for partner/rate-limit data)
+	authMiddleware := trustapi.NewAPIKeyAuthMiddleware(apikeyRepo, trustRepo)
 	rateLimitMiddleware := trustapi.NewRateLimitMiddleware(trustRepo)
 	usageTrackingMiddleware := trustapi.NewUsageTrackingMiddleware(trustRepo)
 
@@ -56,12 +70,16 @@ func registerTrustAPIRoutes(
 	trustAPI.Use(usageTrackingMiddleware.Track())
 	trustAPI.Use(rateLimitMiddleware.RateLimit())
 
-	// Partner registration and management (public - no auth required for create/list)
+	// Partner registration and management (create is public, read/update require JWT auth)
 	trustAPI.HandleFunc("/partners", trustHandler.HandleCreatePartner).Methods("POST")
-	trustAPI.HandleFunc("/partners", trustHandler.HandleListPartners).Methods("GET")
-	trustAPI.HandleFunc("/partners/{partner_id}", trustHandler.HandleGetPartner).Methods("GET")
-	trustAPI.HandleFunc("/partners/{partner_id}", trustHandler.HandleUpdatePartner).Methods("PATCH")
-	trustAPI.HandleFunc("/partners/{partner_id}/usage", trustHandler.HandleGetPartnerUsage).Methods("GET")
+	trustAPI.Handle("/partners",
+		internalAuthMiddleware.RequireAuth(trustHandler.HandleListPartners)).Methods("GET")
+	trustAPI.Handle("/partners/{partner_id}",
+		internalAuthMiddleware.RequireAuth(trustHandler.HandleGetPartner)).Methods("GET")
+	trustAPI.Handle("/partners/{partner_id}",
+		internalAuthMiddleware.RequireAuth(trustHandler.HandleUpdatePartner)).Methods("PATCH")
+	trustAPI.Handle("/partners/{partner_id}/usage",
+		internalAuthMiddleware.RequireAuth(trustHandler.HandleGetPartnerUsage)).Methods("GET")
 
 	// API Key management (requires partner auth)
 	apiKeyAuthRouter := trustAPI.PathPrefix("/partners/{partner_id}/api-keys").Subrouter()
@@ -100,7 +118,8 @@ func registerTrustAPIRoutes(
 	trustAuthRouter.HandleFunc("/attestations/chain/{function_id}", extendedHandler.HandleGetAttestationChain).Methods("GET")
 
 	// Policy endpoints (public read/evaluate, JWT for write)
-	trustAuthRouter.HandleFunc("/policies", extendedHandler.HandleListPolicies).Methods("GET")
+	trustAuthRouter.Handle("/policies",
+		internalAuthMiddleware.RequireAuth(extendedHandler.HandleListPolicies)).Methods("GET")
 	trustAuthRouter.HandleFunc("/policies/{policy_id}", extendedHandler.HandleGetPolicy).Methods("GET")
 	trustAuthRouter.HandleFunc("/policies/evaluate", extendedHandler.HandleEvaluatePolicy).Methods("POST")
 	trustAuthRouter.HandleFunc("/policies/evaluate/batch", extendedHandler.HandleBatchEvaluatePolicy).Methods("POST")
@@ -161,4 +180,29 @@ func registerTrustAPIRoutes(
 	// SSE endpoint for a specific function
 	api.HandleFunc("/v1/trust/stream/functions/{function_id}/sse",
 		internalAuthMiddleware.RequireAuth(trustStreamer.HandleSSEFunction)).Methods("GET")
+
+	// ============================================
+	// Trust API Billing Routes
+	// ============================================
+	// Partner billing endpoints (requires JWT auth)
+	if s.GetTrustBillingService() != nil {
+		// Initialize billing repository for the handler
+		trustBillingRepo := trustapirepo.NewBillingRepository(s.postgresDB.GORM)
+		billingHandler := trustapi.NewBillingHandler(s.GetTrustBillingService(), trustBillingRepo)
+
+		// Tier pricing (public)
+		trustAPI.HandleFunc("/partners/tiers", billingHandler.HandleGetTierPricing).Methods("GET")
+
+		// Partner billing status and endpoints (requires JWT auth)
+		trustAPI.Handle("/partners/{partner_id}/billing",
+			internalAuthMiddleware.RequireAuth(billingHandler.HandleGetBillingStatus)).Methods("GET")
+		trustAPI.Handle("/partners/{partner_id}/billing/checkout",
+			internalAuthMiddleware.RequireAuth(billingHandler.HandleCreateCheckout)).Methods("POST")
+		trustAPI.Handle("/partners/{partner_id}/billing/usage",
+			internalAuthMiddleware.RequireAuth(billingHandler.HandleGetUsageReport)).Methods("GET")
+		trustAPI.Handle("/partners/{partner_id}/billing/invoices",
+			internalAuthMiddleware.RequireAuth(billingHandler.HandleGetInvoices)).Methods("GET")
+		trustAPI.Handle("/partners/{partner_id}/founder",
+			internalAuthMiddleware.RequireAuth(billingHandler.HandleEnrollFounderMode)).Methods("POST")
+	}
 }

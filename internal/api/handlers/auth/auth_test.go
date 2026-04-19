@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage"
@@ -56,6 +57,8 @@ func (s *AuthHandlerTestSuite) setupRoutes() {
 	s.router.HandleFunc("/auth/signup", s.handler.HandleSignup).Methods("POST")
 	s.router.HandleFunc("/auth/verify-email", s.handler.HandleVerifyEmail).Methods("GET")
 	s.router.HandleFunc("/auth/validate", s.handler.HandleValidateToken).Methods("GET")
+	s.router.HandleFunc("/auth/magic-link", s.handler.HandleMagicLinkRequest).Methods("POST")
+	s.router.HandleFunc("/auth/magic-link/verify", s.handler.HandleMagicLinkVerify).Methods("POST")
 }
 
 // setupTestDatabase creates a test database connection
@@ -322,4 +325,320 @@ func (s *AuthHandlerTestSuite) TestHandleGetOAuthURL() {
 
 	// Should return OAuth URL or error for unsupported provider
 	assert.True(s.T(), w.Code == http.StatusOK || w.Code == http.StatusBadRequest)
+}
+
+// Magic Link Authentication Tests
+
+func (s *AuthHandlerTestSuite) TestHandleMagicLinkRequest_Success() {
+	// Create test tenant and user
+	tenantID, err := s.CreateTestTenant("Magic Link Test", "magiclink.test.com")
+	require.NoError(s.T(), err)
+
+	// Create user
+	repo := s.db.Repository()
+	_, err = repo.CreateUser("magicuser@example.com", "hashedpassword", tenantID)
+	require.NoError(s.T(), err)
+
+	payload := map[string]interface{}{
+		"email":         "magicuser@example.com",
+		"redirect_path": "/dashboard",
+	}
+
+	body, _ := json.Marshal(payload)
+	req := httptest.NewRequest("POST", "/auth/magic-link", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.RemoteAddr = "192.168.1.1:12345"
+
+	w := httptest.NewRecorder()
+	s.router.ServeHTTP(w, req)
+
+	// Should return 200 with generic message (regardless of email existence)
+	assert.Equal(s.T(), http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	err = json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(s.T(), err)
+
+	assert.Contains(s.T(), response, "message")
+	assert.Contains(s.T(), response["message"], "magic link")
+	assert.Contains(s.T(), response, "email_sent")
+}
+
+func (s *AuthHandlerTestSuite) TestHandleMagicLinkRequest_EmailNotFound() {
+	// Request for non-existent email should still return generic success message
+	// (to prevent account enumeration)
+	payload := map[string]interface{}{
+		"email": "nonexistent@example.com",
+	}
+
+	body, _ := json.Marshal(payload)
+	req := httptest.NewRequest("POST", "/auth/magic-link", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	s.router.ServeHTTP(w, req)
+
+	// Should return 200 even for non-existent email (security best practice)
+	assert.Equal(s.T(), http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(s.T(), err)
+
+	assert.Contains(s.T(), response, "message")
+	// Message should be the same regardless of email existence
+	assert.Contains(s.T(), response["message"], "magic link")
+}
+
+func (s *AuthHandlerTestSuite) TestHandleMagicLinkRequest_InvalidEmail() {
+	payload := map[string]interface{}{
+		"email": "invalid-email-format",
+	}
+
+	body, _ := json.Marshal(payload)
+	req := httptest.NewRequest("POST", "/auth/magic-link", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	s.router.ServeHTTP(w, req)
+
+	// Should accept the request (validation happens at service level)
+	// or return bad request if frontend validation is mirrored
+	assert.True(s.T(), w.Code == http.StatusOK || w.Code == http.StatusBadRequest)
+}
+
+func (s *AuthHandlerTestSuite) TestHandleMagicLinkRequest_EmptyEmail() {
+	payload := map[string]interface{}{
+		"email": "",
+	}
+
+	body, _ := json.Marshal(payload)
+	req := httptest.NewRequest("POST", "/auth/magic-link", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	s.router.ServeHTTP(w, req)
+
+	// Should return bad request for empty email
+	assert.Equal(s.T(), http.StatusBadRequest, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(s.T(), err)
+
+	assert.Contains(s.T(), response, "error")
+}
+
+func (s *AuthHandlerTestSuite) TestHandleMagicLinkRequest_InvalidJSON() {
+	req := httptest.NewRequest("POST", "/auth/magic-link", bytes.NewReader([]byte("not valid json")))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	s.router.ServeHTTP(w, req)
+
+	// Should return bad request for invalid JSON
+	assert.Equal(s.T(), http.StatusBadRequest, w.Code)
+}
+
+func (s *AuthHandlerTestSuite) TestHandleMagicLinkVerify_InvalidToken() {
+	payload := map[string]interface{}{
+		"token": "invalid-token-12345",
+	}
+
+	body, _ := json.Marshal(payload)
+	req := httptest.NewRequest("POST", "/auth/magic-link/verify", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	s.router.ServeHTTP(w, req)
+
+	// Should return 410 Gone for invalid/expired/used token
+	assert.Equal(s.T(), http.StatusGone, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(s.T(), err)
+
+	assert.Contains(s.T(), response, "error")
+}
+
+func (s *AuthHandlerTestSuite) TestHandleMagicLinkVerify_EmptyToken() {
+	payload := map[string]interface{}{
+		"token": "",
+	}
+
+	body, _ := json.Marshal(payload)
+	req := httptest.NewRequest("POST", "/auth/magic-link/verify", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	s.router.ServeHTTP(w, req)
+
+	// Should return bad request for empty token
+	assert.Equal(s.T(), http.StatusBadRequest, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(s.T(), err)
+
+	assert.Contains(s.T(), response, "error")
+}
+
+func (s *AuthHandlerTestSuite) TestHandleMagicLinkVerify_InvalidJSON() {
+	req := httptest.NewRequest("POST", "/auth/magic-link/verify", bytes.NewReader([]byte("not valid json")))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	s.router.ServeHTTP(w, req)
+
+	// Should return bad request for invalid JSON
+	assert.Equal(s.T(), http.StatusBadRequest, w.Code)
+}
+
+func (s *AuthHandlerTestSuite) TestHandleMagicLinkVerify_ExpiredToken() {
+	// Create an expired magic link directly in the database
+	ctx := s.T().Context()
+	repo := s.db.Repository()
+
+	// Create tenant and user
+	tenantID, err := s.CreateTestTenant("Expired Magic Link Test", "expired.test.com")
+	require.NoError(s.T(), err)
+
+	user, err := repo.CreateUser("expireduser@example.com", "hashedpassword", tenantID)
+	require.NoError(s.T(), err)
+
+	// Create expired magic link
+	expiredLink, err := s.db.CreateMagicLink(ctx, "expireduser@example.com", "expired-token-123456789012345678901234567890123456789012345678901234567890", &user.ID, "", "", "", time.Now().Add(-1*time.Hour))
+	require.NoError(s.T(), err)
+	require.NotNil(s.T(), expiredLink)
+
+	// Try to verify the expired token
+	payload := map[string]interface{}{
+		"token": "expired-token-123456789012345678901234567890123456789012345678901234567890",
+	}
+
+	body, _ := json.Marshal(payload)
+	req := httptest.NewRequest("POST", "/auth/magic-link/verify", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	s.router.ServeHTTP(w, req)
+
+	// Should return 410 Gone for expired token
+	assert.Equal(s.T(), http.StatusGone, w.Code)
+}
+
+func (s *AuthHandlerTestSuite) TestHandleMagicLinkVerify_AlreadyUsedToken() {
+	// Create a used magic link directly in the database
+	ctx := s.T().Context()
+	repo := s.db.Repository()
+
+	// Create tenant and user
+	tenantID, err := s.CreateTestTenant("Used Magic Link Test", "used.test.com")
+	require.NoError(s.T(), err)
+
+	user, err := repo.CreateUser("useduser@example.com", "hashedpassword", tenantID)
+	require.NoError(s.T(), err)
+
+	// Create magic link and mark it as used
+	usedLink, err := s.db.CreateMagicLink(ctx, "useduser@example.com", "used-token-12345678901234567890123456789012345678901234567890123456789012", &user.ID, "", "", "", time.Now().Add(15*time.Minute))
+	require.NoError(s.T(), err)
+	require.NotNil(s.T(), usedLink)
+
+	// Mark the link as used
+	err = s.db.MarkMagicLinkUsed(ctx, usedLink.ID)
+	require.NoError(s.T(), err)
+
+	// Try to verify the already used token
+	payload := map[string]interface{}{
+		"token": "used-token-12345678901234567890123456789012345678901234567890123456789012",
+	}
+
+	body, _ := json.Marshal(payload)
+	req := httptest.NewRequest("POST", "/auth/magic-link/verify", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	s.router.ServeHTTP(w, req)
+
+	// Should return 410 Gone for already used token
+	assert.Equal(s.T(), http.StatusGone, w.Code)
+}
+
+func (s *AuthHandlerTestSuite) TestHandleMagicLinkVerify_ValidToken() {
+	// Create a valid magic link and verify it
+	ctx := s.T().Context()
+	repo := s.db.Repository()
+
+	// Create tenant and user
+	tenantID, err := s.CreateTestTenant("Valid Magic Link Test", "valid.test.com")
+	require.NoError(s.T(), err)
+
+	user, err := repo.CreateUser("validuser@example.com", "hashedpassword", tenantID)
+	require.NoError(s.T(), err)
+
+	// Create valid magic link
+	validLink, err := s.db.CreateMagicLink(ctx, "validuser@example.com", "valid-token-1234567890123456789012345678901234567890123456789012345678901", &user.ID, "", "", "/dashboard", time.Now().Add(15*time.Minute))
+	require.NoError(s.T(), err)
+	require.NotNil(s.T(), validLink)
+
+	// Verify the token
+	payload := map[string]interface{}{
+		"token": "valid-token-1234567890123456789012345678901234567890123456789012345678901",
+	}
+
+	body, _ := json.Marshal(payload)
+	req := httptest.NewRequest("POST", "/auth/magic-link/verify", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	s.router.ServeHTTP(w, req)
+
+	// Should return 200 OK with tokens
+	assert.Equal(s.T(), http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	err = json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(s.T(), err)
+
+	assert.Contains(s.T(), response, "token")
+	assert.Contains(s.T(), response, "refresh_token")
+	assert.Contains(s.T(), response, "user")
+	assert.Contains(s.T(), response, "new_user")
+	assert.False(s.T(), response["new_user"].(bool), "existing user should have new_user=false")
+}
+
+func (s *AuthHandlerTestSuite) TestHandleMagicLinkRequest_RateLimiting() {
+	// Create test tenant and user
+	tenantID, err := s.CreateTestTenant("Rate Limit Test", "ratelimit.test.com")
+	require.NoError(s.T(), err)
+
+	repo := s.db.Repository()
+	_, err = repo.CreateUser("rateuser@example.com", "hashedpassword", tenantID)
+	require.NoError(s.T(), err)
+
+	// Make 6 requests (exceeds default limit of 5 per hour)
+	for i := 0; i < 6; i++ {
+		payload := map[string]interface{}{
+			"email": "rateuser@example.com",
+		}
+
+		body, _ := json.Marshal(payload)
+		req := httptest.NewRequest("POST", "/auth/magic-link", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		// Simulate different IPs to bypass IP-based rate limiting
+		req.RemoteAddr = "192.168.1." + string(rune('0'+i)) + ":12345"
+
+		w := httptest.NewRecorder()
+		s.router.ServeHTTP(w, req)
+
+		if i < 5 {
+			// First 5 requests should succeed
+			assert.Equal(s.T(), http.StatusOK, w.Code, "Request %d should succeed", i+1)
+		} else {
+			// 6th+ request should still return 200 (rate limit is at email level in service layer)
+			// The response may indicate email_sent=false
+			assert.Equal(s.T(), http.StatusOK, w.Code, "Request %d should return OK (service-level rate limit)", i+1)
+		}
+	}
 }

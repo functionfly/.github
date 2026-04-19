@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/agent/graph"
@@ -42,6 +43,85 @@ func NewAICompositionClient() *AICompositionClient {
 			Timeout: 60 * time.Second,
 		},
 	}
+}
+
+// EmbeddingServiceClient calls the AI service for generating embeddings
+type EmbeddingServiceClient struct {
+	baseURL    string
+	apiKey     string
+	httpClient *http.Client
+}
+
+// NewEmbeddingServiceClient creates a new embedding service client
+func NewEmbeddingServiceClient() *EmbeddingServiceClient {
+	baseURL := os.Getenv("AI_SERVICE_URL")
+	if baseURL == "" {
+		baseURL = "http://localhost:8081"
+	}
+
+	return &EmbeddingServiceClient{
+		baseURL: baseURL,
+		apiKey:  os.Getenv("AI_SERVICE_API_KEY"),
+		httpClient: &http.Client{
+			Timeout: 30 * time.Second,
+		},
+	}
+}
+
+// embeddingRequest is the request to generate an embedding
+type embeddingRequest struct {
+	Text string `json:"text"`
+}
+
+// embeddingResponse is the response with the generated embedding
+type embeddingResponse struct {
+	Embedding  []float64 `json:"embedding"`
+	Model      string    `json:"model"`
+	Dimensions int       `json:"dimensions"`
+}
+
+// GenerateEmbedding generates an embedding for the given text
+func (c *EmbeddingServiceClient) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
+	url := fmt.Sprintf("%s/api/embed", c.baseURL)
+
+	reqBody := embeddingRequest{Text: text}
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	if c.apiKey != "" {
+		httpReq.Header.Set("X-API-Key", c.apiKey)
+	}
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to call embedding service: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("embedding service returned status %d", resp.StatusCode)
+	}
+
+	var embedResp embeddingResponse
+	if err := json.NewDecoder(resp.Body).Decode(&embedResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	// Convert []float64 to []float32
+	embedding := make([]float32, len(embedResp.Embedding))
+	for i, v := range embedResp.Embedding {
+		embedding[i] = float32(v)
+	}
+
+	return embedding, nil
 }
 
 // CompositionRequest is the request to AI service for graph composition
@@ -169,6 +249,9 @@ type Handler struct {
 
 	// AI Service
 	aiClient *AICompositionClient
+
+	// Embedding Service for semantic search
+	embedClient *EmbeddingServiceClient
 }
 
 // NewHandler creates a new FRG handler
@@ -180,9 +263,13 @@ func NewHandler(
 	graphService *graph.Service,
 	cacheService *cache.CacheService,
 	aiClient *AICompositionClient,
+	embedClient *EmbeddingServiceClient,
 ) *Handler {
 	if aiClient == nil {
 		aiClient = NewAICompositionClient()
+	}
+	if embedClient == nil {
+		embedClient = NewEmbeddingServiceClient()
 	}
 	return &Handler{
 		frgRepo:      frgRepo,
@@ -192,6 +279,7 @@ func NewHandler(
 		graphService: graphService,
 		cacheService: cacheService,
 		aiClient:     aiClient,
+		embedClient:  embedClient,
 	}
 }
 
@@ -847,9 +935,36 @@ func (h *Handler) SemanticSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Integrate with embedding service for semantic search
-	// For now, use text search
-	results, err := h.frgRepo.SearchByText(ctx, query, 10)
+	var results []*frg.GraphDefinition
+	var err error
+
+	// Try semantic search with embedding service if available
+	if h.embedClient != nil {
+		// Generate embedding for the query
+		embedding, embedErr := h.embedClient.GenerateEmbedding(ctx, query)
+		if embedErr != nil {
+			// Log the error but fall back to text search
+			// (In production, you might want to log this properly)
+			_ = embedErr
+		}
+
+		if embedding != nil && len(embedding) > 0 {
+			// Convert []float32 to []byte for pgvector
+			embeddingBytes := embeddingToBytes(embedding)
+			results, err = h.frgRepo.SearchByEmbedding(ctx, embeddingBytes, 10)
+			if err != nil {
+				// Fall back to text search on error
+				results, err = h.frgRepo.SearchByText(ctx, query, 10)
+			}
+		} else {
+			// No embedding generated, fall back to text search
+			results, err = h.frgRepo.SearchByText(ctx, query, 10)
+		}
+	} else {
+		// No embedding client configured, use text search
+		results, err = h.frgRepo.SearchByText(ctx, query, 10)
+	}
+
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -864,6 +979,23 @@ func (h *Handler) SemanticSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, responses)
+}
+
+// embeddingToBytes converts a float32 slice to bytes for pgvector
+func embeddingToBytes(embedding []float32) []byte {
+	// pgvector expects the embedding as a string representation of the array
+	// e.g., "[0.1,0.2,0.3]"
+	if len(embedding) == 0 {
+		return nil
+	}
+
+	// Convert to pgvector string format
+	var parts []string
+	for _, v := range embedding {
+		parts = append(parts, fmt.Sprintf("%.6f", v))
+	}
+	vectorStr := "[" + strings.Join(parts, ",") + "]"
+	return []byte(vectorStr)
 }
 
 // ==================== Optimization Handlers ====================

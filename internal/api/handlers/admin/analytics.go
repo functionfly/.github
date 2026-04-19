@@ -3,6 +3,7 @@ package admin
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/utils"
@@ -103,21 +104,51 @@ func (h *Handler) HandleUpdateAnalyticsSettings(w http.ResponseWriter, r *http.R
 
 // HandlePlatformAnalyticsSummary returns platform-wide analytics summary
 func (h *Handler) HandlePlatformAnalyticsSummary(w http.ResponseWriter, r *http.Request) {
+	// Default to last 30 days
+	end := time.Now().UTC()
+	start := end.AddDate(0, 0, -30)
+
 	summary := map[string]interface{}{
 		"platform": map[string]interface{}{
 			"total_functions":       0,
 			"total_executions":      0,
 			"active_tenants":        0,
 			"total_users":           0,
+			"total_state_read_ops":  0,
+			"total_state_write_ops": 0,
+			"total_agent_calls":     0,
+			"total_registry_execs":  0,
 			"period":                "last_30_days",
+			"period_start":          start,
+			"period_end":            end,
 			"generated_at":          time.Now().UTC(),
 		},
 	}
 
-	// Use unified analytics if available
+	// Use unified analytics if available for real data
 	if h.unifiedAnalytics != nil {
-		// TODO: integrate with unified analytics for real platform summary
-		logrus.Debug("Unified analytics available for platform summary")
+		ctx := r.Context()
+		platformSummary, err := h.unifiedAnalytics.PlatformSummary(ctx, start, end)
+		if err == nil && platformSummary != nil {
+			summary["platform"] = map[string]interface{}{
+				"active_tenants":        platformSummary.TotalTenantsActive,
+				"total_executions":      platformSummary.TotalFunctionExecs,
+				"total_state_read_ops":  platformSummary.TotalStateReadOps,
+				"total_state_write_ops": platformSummary.TotalStateWriteOps,
+				"total_agent_calls":     platformSummary.TotalAgentCalls,
+				"total_registry_execs":  platformSummary.TotalRegistryExecs,
+				"period":                "last_30_days",
+				"period_start":          platformSummary.Start,
+				"period_end":            platformSummary.End,
+				"generated_at":          platformSummary.GeneratedAt,
+			}
+			logrus.WithFields(logrus.Fields{
+				"active_tenants":   platformSummary.TotalTenantsActive,
+				"total_executions": platformSummary.TotalFunctionExecs,
+			}).Debug("Platform analytics summary generated from unified analytics")
+		} else if err != nil {
+			logrus.WithError(err).Warn("Failed to get platform summary from unified analytics, returning defaults")
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -151,16 +182,16 @@ func (h *Handler) HandleTenantAnalyticsSummary(w http.ResponseWriter, r *http.Re
 		},
 		"state": map[string]interface{}{
 			"storage_bytes": 0,
-			"read_ops":    0,
-			"write_ops":   0,
+			"read_ops":      0,
+			"write_ops":     0,
 		},
 		"billing": map[string]interface{}{
 			"quantity": 0,
 			"cost_usd": 0,
 		},
 		"agent": map[string]interface{}{
-			"calls":        0,
-			"cost_usd":     0,
+			"calls":         0,
+			"cost_usd":      0,
 			"success_count": 0,
 			"error_count":   0,
 		},
@@ -173,14 +204,14 @@ func (h *Handler) HandleTenantAnalyticsSummary(w http.ResponseWriter, r *http.Re
 		tenantSummary, err := h.unifiedAnalytics.TenantSummary(ctx, tenantID, start, end)
 		if err == nil && tenantSummary != nil {
 			summary["functions"] = map[string]interface{}{
-				"executions": tenantSummary.FunctionExecutions,
+				"executions":          tenantSummary.FunctionExecutions,
 				"registry_executions": tenantSummary.RegistryExecutions,
 			}
 			summary["state"] = map[string]interface{}{
-				"storage_bytes":   tenantSummary.StateStorageBytes,
-				"read_ops":        tenantSummary.StateReadOps,
-				"write_ops":       tenantSummary.StateWriteOps,
-				"active_states":   tenantSummary.StateActiveStates,
+				"storage_bytes": tenantSummary.StateStorageBytes,
+				"read_ops":      tenantSummary.StateReadOps,
+				"write_ops":     tenantSummary.StateWriteOps,
+				"active_states": tenantSummary.StateActiveStates,
 			}
 			summary["billing"] = map[string]interface{}{
 				"quantity": tenantSummary.BillingQuantity,
@@ -196,4 +227,240 @@ func (h *Handler) HandleTenantAnalyticsSummary(w http.ResponseWriter, r *http.Re
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(summary)
+}
+
+// HandleAnalyticsMRR returns MRR (Monthly Recurring Revenue) metrics
+// GET /v1/admin/analytics/mrr?year=2024&month=4
+func (h *Handler) HandleAnalyticsMRR(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Parse year and month from query params, default to current month
+	year := time.Now().Year()
+	month := int(time.Now().Month())
+
+	if y := r.URL.Query().Get("year"); y != "" {
+		if parsed, err := strconv.Atoi(y); err == nil {
+			year = parsed
+		}
+	}
+	if m := r.URL.Query().Get("month"); m != "" {
+		if parsed, err := strconv.Atoi(m); err == nil && parsed >= 1 && parsed <= 12 {
+			month = parsed
+		}
+	}
+
+	mrr, err := h.analyticsRepo.CalculateMRR(ctx, year, month)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to calculate MRR")
+		http.Error(w, "Failed to calculate MRR", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"data":    mrr,
+		"success": true,
+	})
+}
+
+// HandleAnalyticsMRRSeries returns MRR timeseries data for charts
+// GET /v1/admin/analytics/mrr-series?months=12
+func (h *Handler) HandleAnalyticsMRRSeries(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	months := 12
+	if m := r.URL.Query().Get("months"); m != "" {
+		if parsed, err := strconv.Atoi(m); err == nil && parsed > 0 && parsed <= 24 {
+			months = parsed
+		}
+	}
+
+	series, err := h.analyticsRepo.GetMRRTimeseries(ctx, months)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get MRR series")
+		http.Error(w, "Failed to get MRR series", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"data":    series,
+		"success": true,
+	})
+}
+
+// HandleAnalyticsARR returns ARR (Annual Recurring Revenue) metrics
+// GET /v1/admin/analytics/arr?year=2024&month=4
+func (h *Handler) HandleAnalyticsARR(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	year := time.Now().Year()
+	month := int(time.Now().Month())
+
+	if y := r.URL.Query().Get("year"); y != "" {
+		if parsed, err := strconv.Atoi(y); err == nil {
+			year = parsed
+		}
+	}
+	if m := r.URL.Query().Get("month"); m != "" {
+		if parsed, err := strconv.Atoi(m); err == nil && parsed >= 1 && parsed <= 12 {
+			month = parsed
+		}
+	}
+
+	arr, err := h.analyticsRepo.CalculateARR(ctx, year, month)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to calculate ARR")
+		http.Error(w, "Failed to calculate ARR", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"data":    arr,
+		"success": true,
+	})
+}
+
+// HandleAnalyticsChurn returns churn metrics for a specific period
+// GET /v1/admin/analytics/churn?year=2024&month=4
+func (h *Handler) HandleAnalyticsChurn(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	year := time.Now().Year()
+	month := int(time.Now().Month())
+
+	if y := r.URL.Query().Get("year"); y != "" {
+		if parsed, err := strconv.Atoi(y); err == nil {
+			year = parsed
+		}
+	}
+	if m := r.URL.Query().Get("month"); m != "" {
+		if parsed, err := strconv.Atoi(m); err == nil && parsed >= 1 && parsed <= 12 {
+			month = parsed
+		}
+	}
+
+	churn, err := h.analyticsRepo.CalculateChurnMetrics(ctx, year, month)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to calculate churn metrics")
+		http.Error(w, "Failed to calculate churn metrics", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"data":    churn,
+		"success": true,
+	})
+}
+
+// HandleAnalyticsChurnSeries returns churn metrics timeseries
+// GET /v1/admin/analytics/churn-series?months=12
+func (h *Handler) HandleAnalyticsChurnSeries(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	months := 12
+	if m := r.URL.Query().Get("months"); m != "" {
+		if parsed, err := strconv.Atoi(m); err == nil && parsed > 0 && parsed <= 24 {
+			months = parsed
+		}
+	}
+
+	series, err := h.analyticsRepo.GetChurnMetricsTimeseries(ctx, months)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get churn series")
+		http.Error(w, "Failed to get churn series", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"data":    series,
+		"success": true,
+	})
+}
+
+// HandleAnalyticsLTV returns Lifetime Value metrics
+// GET /v1/admin/analytics/ltv
+func (h *Handler) HandleAnalyticsLTV(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	ltv, err := h.analyticsRepo.GetLTVMetrics(ctx)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to calculate LTV")
+		http.Error(w, "Failed to calculate LTV", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"data":    ltv,
+		"success": true,
+	})
+}
+
+// HandleFinancialReport generates a comprehensive financial report
+// GET /v1/admin/analytics/financial-report?type=cash&start=2024-01-01&end=2024-12-31
+func (h *Handler) HandleFinancialReport(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	reportType := r.URL.Query().Get("type")
+	if reportType == "" {
+		reportType = "cash" // Default to cash basis
+	}
+
+	// Parse date range, default to current month
+	now := time.Now()
+	start := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	end := start.AddDate(0, 1, 0)
+
+	if s := r.URL.Query().Get("start"); s != "" {
+		if parsed, err := time.Parse("2006-01-02", s); err == nil {
+			start = parsed
+		}
+	}
+	if e := r.URL.Query().Get("end"); e != "" {
+		if parsed, err := time.Parse("2006-01-02", e); err == nil {
+			end = parsed
+		}
+	}
+
+	report, err := h.analyticsRepo.GenerateFinancialReport(ctx, reportType, start, end)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to generate financial report")
+		http.Error(w, "Failed to generate financial report", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"data":    report,
+		"success": true,
+	})
+}
+
+// HandleTaxJurisdictionReport returns tax collection by jurisdiction
+// GET /v1/admin/analytics/tax-jurisdiction?month=2024-04
+func (h *Handler) HandleTaxJurisdictionReport(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Default to current month
+	month := time.Now().Format("2006-01")
+	if m := r.URL.Query().Get("month"); m != "" {
+		month = m
+	}
+
+	report, err := h.analyticsRepo.GetTaxJurisdictionReport(ctx, month)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get tax jurisdiction report")
+		http.Error(w, "Failed to get tax jurisdiction report", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"data":    report,
+		"success": true,
+	})
 }

@@ -57,6 +57,15 @@ func (h *Handler) HandleGetBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate slug format to prevent enumeration and injection attacks
+	// Only allow known bundle slugs
+	validSlugs := map[string]bool{"saas-starter": true, "marketplace": true, "ai-app": true}
+	if !validSlugs[slug] {
+		// Return 404 for unknown slugs to prevent enumeration
+		writeJSONError(w, http.StatusNotFound, "Bundle not found")
+		return
+	}
+
 	bundle, err := h.repo.GetPricingBundleBySlug(r.Context(), slug)
 	if err != nil {
 		logrus.WithError(err).WithField("slug", slug).Error("billing bundles: failed to get bundle")
@@ -89,9 +98,33 @@ func (h *Handler) HandleRegisterFounderMode(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// Validate slug format to prevent injection and enumeration
+	validSlugs := map[string]bool{"saas-starter": true, "marketplace": true, "ai-app": true}
+	if !validSlugs[slug] {
+		writeJSONError(w, http.StatusBadRequest, "Invalid bundle slug")
+		return
+	}
+
 	var req RegisterFounderModeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	// Validate request fields
+	if req.ModeType != "" {
+		validModes := map[string]bool{"time_based": true, "revenue_based": true, "hybrid": true}
+		if !validModes[req.ModeType] {
+			writeJSONError(w, http.StatusBadRequest, "Invalid mode_type")
+			return
+		}
+	}
+	if req.FreeDays < 0 || req.FreeDays > 365 {
+		writeJSONError(w, http.StatusBadRequest, "free_days must be between 0 and 365")
+		return
+	}
+	if req.MRRThreshold < 0 || req.MRRThreshold > 100000000 { // Max $1M MRR
+		writeJSONError(w, http.StatusBadRequest, "mrr_threshold is out of valid range")
 		return
 	}
 
@@ -204,6 +237,13 @@ func (h *Handler) HandleCreateBundleCheckout(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Validate slug format to prevent injection and enumeration
+	validSlugs := map[string]bool{"saas-starter": true, "marketplace": true, "ai-app": true}
+	if !validSlugs[slug] {
+		writeJSONError(w, http.StatusBadRequest, "Invalid bundle slug")
+		return
+	}
+
 	// Get the bundle
 	bundle, err := h.repo.GetPricingBundleBySlug(r.Context(), slug)
 	if err != nil {
@@ -244,17 +284,18 @@ func (h *Handler) HandleCreateBundleCheckout(w http.ResponseWriter, r *http.Requ
 		name = user.Email
 	}
 
-	// Create checkout session with bundle metadata
-	resp, err := payment.CreateCheckoutSession(
+	// Create checkout session with bundle metadata for proper webhook processing
+	resp, err := payment.CreateBundleCheckoutSession(
 		r.Context(),
 		h.repo,
 		claims.TenantID,
 		user.Email,
 		name,
-		payment.CreateCheckoutSessionRequest{
+		payment.CreateBundleCheckoutSessionRequest{
 			PriceID:    bundle.StripePriceID,
 			SuccessURL: req.SuccessURL,
 			CancelURL:  req.CancelURL,
+			BundleSlug: bundle.Slug,
 		},
 	)
 	if err != nil {

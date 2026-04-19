@@ -166,12 +166,11 @@ func (h *StripeWebhookHandlerV2) handleAgentExecutionCreditsCheckoutUnified(w ht
 			}
 		} else {
 			logrus.WithFields(logrus.Fields{
-				"agent_id":        agentID,
-				"tenant_id":       tenantID,
-				"amount_usd":      amountUSD,
-				"session_id":      session.ID,
-				"new_balance":     update.CurrentBalance,
-				"transaction_id":  update.TransactionID,
+				"agent_id":       agentID,
+				"amount_usd":     amountUSD,
+				"session_id":     session.ID,
+				"new_balance":    update.CurrentBalance,
+				"transaction_id": update.TransactionID,
 			}).Info("credits added to unified wallet via Stripe checkout")
 
 			// Send notification via unified wallet service
@@ -211,7 +210,6 @@ func (h *StripeWebhookHandlerV2) handleAgentExecutionCreditsCheckoutUnified(w ht
 
 		logrus.WithFields(logrus.Fields{
 			"agent_id":   agentID,
-			"tenant_id":  tenantID,
 			"amount_usd": amountUSD,
 			"session_id": session.ID,
 		}).Info("credits added to agent via legacy billing controller")
@@ -253,12 +251,12 @@ func (h *StripeWebhookHandlerV2) handleRegistryWalletCreditCheckoutUnified(w htt
 	if h.userRepo != nil {
 		user, err := h.userRepo.GetUserByID(userID)
 		if err != nil || user == nil {
-			logrus.WithError(err).WithField("user_id", userIDStr).Warn("registry wallet webhook: user not found")
+			logrus.WithError(err).WithField("session_id", session.ID).Warn("registry wallet webhook: user not found")
 			http.Error(w, "User not found", http.StatusBadRequest)
 			return
 		}
 		if user.TenantID != tenantID {
-			logrus.WithFields(logrus.Fields{"user_id": userID, "tenant_id": tenantID}).Warn("registry wallet webhook: tenant mismatch")
+			logrus.WithFields(logrus.Fields{"session_id": session.ID}).Warn("registry wallet webhook: tenant mismatch")
 			http.Error(w, "Invalid checkout metadata", http.StatusBadRequest)
 			return
 		}
