@@ -12,6 +12,7 @@
   font-size: 2rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
+  color: var(--text-primary);
 }
 
 .function-author {
@@ -35,6 +36,7 @@
   font-size: 1.25rem;
   font-weight: 600;
   margin-bottom: 1rem;
+  color: var(--text-primary);
 }
 
 .no-schema {
@@ -54,7 +56,8 @@
   padding: 0.25rem 0.75rem;
   border-radius: 4px;
   font-size: 0.875rem;
-  font-family: monospace;
+  font-family: var(--font-mono);
+  color: var(--color-ff-cyan);
 }
 
 .examples {

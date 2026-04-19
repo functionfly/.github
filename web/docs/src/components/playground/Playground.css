@@ -35,7 +35,7 @@
 
 .playground-error {
   padding: 1rem;
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(255, 45, 85, 0.1);
   border-bottom: 1px solid var(--color-error);
 }
 
@@ -58,6 +58,7 @@
   font-size: 0.875rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
+  color: var(--color-ff-taxiway);
 }
 
 .output-editor {

@@ -151,6 +151,22 @@ const Icons = {
       <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
     </svg>
   ),
+  Terminal: () => (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="4 17 10 11 4 5" />
+      <line x1="12" x2="20" y1="19" y2="19" />
+    </svg>
+  ),
 };
 
 // Quick action shortcuts
@@ -158,6 +174,7 @@ const QUICK_ACTIONS = [
   { key: "s", label: "Search Docs", icon: Icons.Search },
   { key: "g", label: "GitHub", icon: Icons.Github },
   { key: "f", label: "Functions", icon: Icons.Code },
+  { key: "a", label: "API Reference", icon: Icons.Terminal },
 ];
 
 export default function Layout() {
@@ -247,6 +264,13 @@ export default function Layout() {
               <Icons.Zap />
               Home
             </a>
+            <Link
+              to="/api-reference"
+              className="nav-link text-aviation-text-secondary hover:text-aviation-text-primary transition-colors flex items-center gap-2"
+            >
+              <Icons.Terminal />
+              API Reference
+            </Link>
 
             {/* Command Palette Trigger */}
             <button
@@ -300,6 +324,14 @@ export default function Layout() {
             <Icons.Zap />
             Home
           </a>
+          <Link
+            to="/api-reference"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center gap-2 px-3 py-2 text-aviation-text-secondary hover:text-aviation-text-primary hover:bg-aviation-bg-instrument rounded-lg transition-colors"
+          >
+            <Icons.Terminal />
+            API Reference
+          </Link>
           <hr className="border-aviation-border-panel" />
           <a
             href="https://github.com/functionfly/functionfly"
@@ -398,6 +430,9 @@ export default function Layout() {
                       if (action.key === "f") {
                         window.location.href =
                           "https://functionfly.com/registry";
+                      }
+                      if (action.key === "a") {
+                        window.location.href = "/api-reference";
                       }
                     }}
                     className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-aviation-text-secondary hover:text-aviation-text-primary hover:bg-aviation-bg-instrument transition-colors"

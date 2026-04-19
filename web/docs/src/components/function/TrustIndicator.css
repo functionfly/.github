@@ -12,7 +12,8 @@
   justify-content: center;
   padding: 1rem;
   border-radius: 8px;
-  color: white;
+  color: var(--text-primary);
+  background: linear-gradient(135deg, var(--color-ff-flame), var(--color-ff-afterburner));
 }
 
 .score-value {
@@ -44,4 +45,5 @@
 .metric-value {
   font-size: 1rem;
   font-weight: 600;
+  color: var(--color-ff-cyan);
 }

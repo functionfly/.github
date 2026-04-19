@@ -22,6 +22,7 @@ const HAND_WRITTEN_SLUGS = new Set([
   "deployment",
   "functions",
   "getting-started",
+  "index",
 ]);
 
 // Public docs site only: integrator / trust / high-level security & onboarding.

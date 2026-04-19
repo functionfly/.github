@@ -27,9 +27,10 @@
 
 .cached-badge {
   background: var(--color-info);
-  color: white;
+  color: var(--color-ff-tarmac);
   padding: 0.125rem 0.375rem;
   border-radius: 4px;
+  font-weight: 500;
 }
 
 .duration {

@@ -47,7 +47,7 @@
 }
 
 .nav-link:hover {
-  color: var(--text-primary);
+  color: var(--color-brand-400);
 }
 
 .main {

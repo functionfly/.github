@@ -1,11 +1,26 @@
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
 import path from 'path'
 import { fileURLToPath, URL } from 'url'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [],
+  esbuild: {
+    target: 'es2022',
+    exclude: ['@astrojs/react', '@astrojs/starlight'],
+  },
+  build: {
+    target: 'es2022',
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      target: 'esnext',
+    },
+    exclude: ['@astrojs/react'],
+  },
+  ssr: {
+    noExternal: ['@astrojs/react'],
+  },
   resolve: {
     alias: {
       '@': path.resolve(path.dirname(fileURLToPath(import.meta.url)), './src'),

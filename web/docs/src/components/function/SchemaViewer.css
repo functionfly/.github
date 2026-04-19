@@ -23,19 +23,21 @@
 
 .type-badge {
   background: var(--color-brand-500);
-  color: white;
+  color: var(--color-ff-tarmac);
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
   font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .required-badge {
   background: var(--color-error);
-  color: white;
+  color: var(--color-ff-tarmac);
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
   font-size: 0.75rem;
   margin-left: 0.5rem;
+  font-weight: 500;
 }
 
 .code-block {

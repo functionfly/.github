@@ -4,8 +4,8 @@ title: "TRUST API"
 
 # Trust API Documentation
 
-**Version**: 1.0  
-**Status**: Active  
+**Version**: 1.1
+**Status**: Active
 **Base URL**: `https://api.functionfly.com/v1`
 
 The Trust API allows external platform partners to access FunctionFly's verification and trust infrastructure. Other platforms can pay to integrate FunctionFly's trust scoring system into their own applications.
@@ -20,6 +20,11 @@ The Trust API is a B2B2B revenue stream that allows other platforms to:
 - Submit functions for verification
 - Report trust issues with functions
 - Track API usage
+- Manage function attestations and trust policies
+- Configure webhooks for real-time notifications
+- Stream trust score updates via SSE
+
+---
 
 ## Authentication
 
@@ -27,11 +32,19 @@ All Trust API endpoints (except partner registration) require API key authentica
 
 ### API Key Format
 
-API keys are prefixed with `tak_` (Trust API Key):
+API keys are prefixed with `fft_` (Trust API Key) and use a versioned format:
 
 ```
-tak_abc123def456...
+fft_v1_<32_hex_characters>_<2_hex_checksum>
 ```
+
+Example:
+
+```
+fft_v1_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6_a1b2
+```
+
+The checksum is a CRC8 of the prefix + version + random hex for quick validation.
 
 ### Authentication Methods
 
@@ -40,14 +53,18 @@ Include your API key in one of the following:
 1. **Authorization Header (Recommended)**
 
    ```
-   Authorization: Bearer tak_abc123def456...
+   Authorization: Bearer fft_abc123def456...
    ```
 
 2. **Direct API Key**
 
    ```
-   Authorization: tak_abc123def456...
+   Authorization: fft_abc123def456...
    ```
+
+### Internal Endpoints
+
+Some endpoints (partner management, webhook management, revocation management) require JWT authentication. These endpoints are protected by the internal auth middleware and are not accessible via API key alone.
 
 ---
 
@@ -67,6 +84,21 @@ Rate limit headers are included in all responses:
 - `X-RateLimit-Limit`: Your rate limit
 - `X-RateLimit-Remaining`: Remaining requests in current window
 - `X-RateLimit-Reset`: Unix timestamp when the limit resets
+
+---
+
+## Pricing
+
+The Trust API uses a tiered pricing model with optional overage billing:
+
+| Tier | Monthly Price | Included Requests | Overage |
+|------|--------------|-------------------|---------|
+| Developer | Free | 50,000/month | Hard stop at limit |
+| Startup | $49/month | 500,000/month | $0.005/request |
+| Business | $199/month | 2,000,000/month | $0.003/request |
+| Enterprise | Custom | Custom | Custom contracts |
+
+**Founder Mode**: New partners can enroll in Founder Mode for free access with 100,000 requests/month for 90 days.
 
 ---
 
@@ -160,8 +192,8 @@ Content-Type: application/json
 {
   "api_key": {
     "id": "550e8400-e29b-41d4-a716-446655440001",
-    "key_id": "tak_abc123...",
-    "key_prefix": "tak_abc1",
+    "key_id": "fft_abc123...",
+    "key_prefix": "fft_abc1",
     "name": "Production Key",
     "description": "Key for production environment",
     "scopes": ["trust:read", "trust:write", "verification:request"],
@@ -438,6 +470,512 @@ Authorization: Bearer {api_key}
 
 ---
 
+### Trust Revocation Endpoints
+
+Revocation endpoints allow partners to check if functions have been revoked. Creating revocations requires admin/internal authentication.
+
+#### List Revocations
+
+```http
+GET /v1/trust/revoke/revoked?status=active&page=1&page_size=20
+Authorization: Bearer {internal_jwt}
+```
+
+**Response (200 OK)**:
+
+```json
+{
+  "revocations": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440010",
+      "revocation_id": "rvk_abc123...",
+      "function_id": "550e8400-e29b-41d4-a716-446655440002",
+      "function_author": "alice",
+      "function_name": "data-processor",
+      "reason": "security",
+      "reason_details": "Critical vulnerability found in dependencies",
+      "severity": "critical",
+      "status": "active",
+      "revocation_type": "full",
+      "revoked_at": "2026-03-21T10:00:00Z",
+      "revoked_by": "admin-user-id",
+      "revoked_by_type": "admin",
+      "original_trust_score": 87.5,
+      "original_trust_tier": "verified"
+    }
+  ],
+  "total_count": 1,
+  "page": 1,
+  "page_size": 20
+}
+```
+
+#### Check Function Revocation Status
+
+```http
+GET /v1/trust/revoke/revoked/{function_id}
+Authorization: Bearer {api_key}
+```
+
+**Response (200 OK)** - Function is revoked:
+
+```json
+{
+  "function_id": "550e8400-e29b-41d4-a716-446655440002",
+  "is_revoked": true,
+  "revocation_id": "rvk_abc123...",
+  "reason": "security",
+  "severity": "critical",
+  "revoked_at": "2026-03-21T10:00:00Z",
+  "revocation_type": "full",
+  "impact_description": "Function trust score has been reset to 0"
+}
+```
+
+**Response (200 OK)** - Function is NOT revoked:
+
+```json
+{
+  "function_id": "550e8400-e29b-41d4-a716-446655440002",
+  "is_revoked": false
+}
+```
+
+#### Get Revocation Details
+
+```http
+GET /v1/trust/revoke/{revocation_id}
+Authorization: Bearer {internal_jwt}
+```
+
+---
+
+### Attestation Endpoints
+
+Attestations provide cryptographic proof of function properties verified by FunctionFly or trusted partners.
+
+#### List Attestations for Function
+
+```http
+GET /v1/trust/attestations?function_id={function_id}&type=verification&status=valid&page=1&page_size=20
+Authorization: Bearer {api_key}
+```
+
+**Response (200 OK)**:
+
+```json
+{
+  "attestations": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440020",
+      "attestation_id": "att_abc123...",
+      "function_id": "550e8400-e29b-41d4-a716-446655440002",
+      "function_version": "1.2.0",
+      "function_author": "alice",
+      "function_name": "data-processor",
+      "type": "verification",
+      "status": "valid",
+      "title": "Standard Security Verification",
+      "description": "Function passed standard security scanning",
+      "attester_id": "system",
+      "attester_type": "system",
+      "attester_name": "FunctionFly Security",
+      "verification_level": "standard",
+      "proof_hash": "sha256:abc123...",
+      "attested_at": "2026-03-21T10:00:00Z",
+      "valid_until": "2027-03-21T10:00:00Z"
+    }
+  ],
+  "total_count": 1,
+  "page": 1,
+  "page_size": 20
+}
+```
+
+#### Get Attestation
+
+```http
+GET /v1/trust/attestations/{attestation_id}
+Authorization: Bearer {api_key}
+```
+
+#### Verify Attestation Integrity
+
+```http
+GET /v1/trust/attestations/{attestation_id}/verify
+Authorization: Bearer {api_key}
+```
+
+**Response (200 OK)**:
+
+```json
+{
+  "attestation_id": "att_abc123...",
+  "integrity_verified": true,
+  "verified_at": "2026-03-21T10:00:00Z"
+}
+```
+
+#### Get Attestation Chain
+
+```http
+GET /v1/trust/attestations/{function_id}/chain
+Authorization: Bearer {api_key}
+```
+
+**Response (200 OK)**:
+
+```json
+{
+  "function_id": "550e8400-e29b-41d4-a716-446655440002",
+  "chain_length": 3,
+  "attestations": [
+    {
+      "attestation_id": "att_abc123...",
+      "type": "security_scan",
+      "title": "Security Scan Passed",
+      "status": "valid",
+      "attester_type": "system",
+      "attested_at": "2026-03-21T10:00:00Z",
+      "proof_hash": "sha256:abc123...",
+      "previous_hash": "sha256:def456...",
+      "integrity_verified": true
+    }
+  ]
+}
+```
+
+---
+
+### Trust Policy Endpoints
+
+Trust policies define rules for evaluating function trust. Partners can create custom policies and evaluate functions against them.
+
+#### Create Policy
+
+```http
+POST /v1/trust/policies
+Authorization: Bearer {internal_jwt}
+Content-Type: application/json
+
+{
+  "name": "High Security Policy",
+  "description": "Require high trust scores and verification for sensitive operations",
+  "default_action": "deny",
+  "rules": [
+    {
+      "id": "min_score",
+      "type": "min_trust_score",
+      "value": 80.0,
+      "description": "Minimum trust score of 80"
+    },
+    {
+      "id": "require_verification",
+      "type": "verification_required",
+      "value": true,
+      "description": "Function must be verified"
+    },
+    {
+      "id": "min_tier",
+      "type": "tier_minimum",
+      "value": "verified",
+      "description": "Minimum tier must be verified"
+    },
+    {
+      "id": "no_revocation",
+      "type": "no_revocation",
+      "value": true,
+      "description": "Function must not be revoked"
+    }
+  ],
+  "valid_until": "2027-12-31T23:59:59Z"
+}
+```
+
+#### List Policies
+
+```http
+GET /v1/trust/policies?status=active&page=1&page_size=20
+Authorization: Bearer {internal_jwt}
+```
+
+#### Get Policy
+
+```http
+GET /v1/trust/policies/{policy_id}
+Authorization: Bearer {api_key}
+```
+
+#### Update Policy
+
+```http
+PUT /v1/trust/policies/{policy_id}
+Authorization: Bearer {internal_jwt}
+Content-Type: application/json
+
+{
+  "name": "Updated High Security Policy",
+  "rules": [
+    {
+      "id": "min_score",
+      "type": "min_trust_score",
+      "value": 85.0
+    }
+  ]
+}
+```
+
+#### Delete Policy
+
+```http
+DELETE /v1/trust/policies/{policy_id}
+Authorization: Bearer {internal_jwt}
+```
+
+#### Evaluate Policy Against Function
+
+```http
+POST /v1/trust/policies/evaluate
+Authorization: Bearer {internal_jwt}
+Content-Type: application/json
+
+{
+  "function_id": "550e8400-e29b-41d4-a716-446655440002",
+  "policy_id": "pol_abc123..."
+}
+```
+
+**Response (200 OK)**:
+
+```json
+{
+  "result": {
+    "evaluation_id": "eval_abc123...",
+    "policy_id": "pol_abc123...",
+    "function_id": "550e8400-e29b-41d4-a716-446655440002",
+    "function_author": "alice",
+    "function_name": "data-processor",
+    "result": "allowed",
+    "decision": "policy_rule_passed",
+    "reason": "Rule 'min_score' passed",
+    "trust_score": 87.5,
+    "trust_tier": "verified",
+    "is_verified": true,
+    "is_revoked": false,
+    "rule_results": [
+      {
+        "rule_id": "min_score",
+        "type": "min_trust_score",
+        "passed": true,
+        "reason": "",
+        "actual_value": 87.5,
+        "expected_value": 80.0
+      },
+      {
+        "rule_id": "require_verification",
+        "type": "verification_required",
+        "passed": true,
+        "actual_value": true,
+        "expected_value": true
+      }
+    ],
+    "evaluated_at": "2026-03-21T10:00:00Z",
+    "cache_valid_until": "2026-03-21T10:05:00Z"
+  },
+  "cached": false
+}
+```
+
+#### Batch Evaluate Policy
+
+```http
+POST /v1/trust/policies/evaluate/batch
+Authorization: Bearer {internal_jwt}
+Content-Type: application/json
+
+{
+  "function_ids": [
+    "550e8400-e29b-41d4-a716-446655440002",
+    "550e8400-e29b-41d4-a716-446655440003"
+  ],
+  "policy_id": "pol_abc123..."
+}
+```
+
+**Response (200 OK)**:
+
+```json
+{
+  "results": [
+    {
+      "function_id": "550e8400-e29b-41d4-a716-446655440002",
+      "function_author": "alice",
+      "function_name": "data-processor",
+      "policy_id": "pol_abc123...",
+      "result": "allowed",
+      "decision": "batch_quick_eval",
+      "trust_score": 87.5,
+      "trust_tier": "verified",
+      "is_verified": true,
+      "is_revoked": false,
+      "evaluated_at": "2026-03-21T10:00:00Z"
+    }
+  ],
+  "errors": [
+    {
+      "function_id": "550e8400-e29b-41d4-a716-446655440003",
+      "error": "Function not found"
+    }
+  ],
+  "evaluated_at": "2026-03-21T10:00:00Z"
+}
+```
+
+---
+
+### Webhook Management Endpoints
+
+Partners can configure webhooks to receive real-time notifications about trust events.
+
+#### Create Webhook
+
+```http
+POST /v1/webhooks
+Authorization: Bearer {internal_jwt}
+Content-Type: application/json
+
+{
+  "name": "Trust Notifications",
+  "description": "Receive notifications for trust score changes",
+  "url": "https://partner.example.com/webhooks/trust",
+  "events": [
+    "trust.score.updated",
+    "trust.revocation.created",
+    "trust.verification.completed"
+  ],
+  "function_filter": {
+    "authors": ["alice", "bob"],
+    "tags": ["production"]
+  },
+  "max_retries": 3,
+  "secret": "whsec_your_secret_here"
+}
+```
+
+**Response (201 Created)**:
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440030",
+  "webhook_id": "wh_abc123...",
+  "name": "Trust Notifications",
+  "description": "Receive notifications for trust score changes",
+  "url": "https://partner.example.com/webhooks/trust",
+  "method": "POST",
+  "events": ["trust.score.updated", "trust.revocation.created", "trust.verification.completed"],
+  "status": "active",
+  "max_retries": 3,
+  "created_at": "2026-03-21T10:00:00Z",
+  "updated_at": "2026-03-21T10:00:00Z"
+}
+```
+
+#### List Webhooks
+
+```http
+GET /v1/webhooks?status=active&page=1&page_size=20
+Authorization: Bearer {internal_jwt}
+```
+
+#### Get Webhook
+
+```http
+GET /v1/webhooks/{webhook_id}
+Authorization: Bearer {internal_jwt}
+```
+
+#### Update Webhook
+
+```http
+PUT /v1/webhooks/{webhook_id}
+Authorization: Bearer {internal_jwt}
+Content-Type: application/json
+
+{
+  "name": "Updated Trust Notifications",
+  "events": ["trust.score.updated", "trust.revocation.created"],
+  "status": "active"
+}
+```
+
+#### Delete Webhook
+
+```http
+DELETE /v1/webhooks/{webhook_id}
+Authorization: Bearer {internal_jwt}
+```
+
+#### Test Webhook
+
+```http
+POST /v1/webhooks/{webhook_id}/test
+Authorization: Bearer {internal_jwt}
+Content-Type: application/json
+
+{
+  "event_type": "trust.score.updated",
+  "test_data": {
+    "message": "This is a test webhook"
+  }
+}
+```
+
+#### List Webhook Deliveries
+
+```http
+GET /v1/webhooks/{webhook_id}/deliveries?status=success&page=1&page_size=20
+Authorization: Bearer {internal_jwt}
+```
+
+#### Get Webhook Delivery Stats
+
+```http
+GET /v1/webhooks/{webhook_id}/stats
+Authorization: Bearer {internal_jwt}
+```
+
+---
+
+### Real-time Streaming Endpoints (SSE)
+
+Partners can stream trust score updates in real-time using Server-Sent Events (SSE).
+
+#### Stream All Watched Function Updates
+
+```http
+GET /v1/trust/stream/sse
+Authorization: Bearer {internal_jwt}
+```
+
+#### Stream Specific Function Updates
+
+```http
+GET /v1/trust/stream/functions/{function_id}/sse
+Authorization: Bearer {internal_jwt}
+```
+
+**SSE Event Format**:
+
+```
+event: trust_score_update
+data: {"function_id":"550e8400-e29b-41d4-a716-446655440002","trust_score":87.5,"trust_tier":"verified","is_verified":true,"updated_at":"2026-03-21T10:00:00Z"}
+
+event: revocation_created
+data: {"function_id":"550e8400-e29b-41d4-a716-446655440002","revocation_id":"rvk_abc123...","reason":"security","severity":"critical"}
+```
+
+---
+
 ### Usage Endpoints
 
 #### Get Partner Usage
@@ -481,6 +1019,90 @@ Authorization: Bearer {api_key}
 
 ---
 
+## Webhook Events
+
+Partners can subscribe to the following webhook events:
+
+| Event | Description |
+|-------|-------------|
+| `trust.score.updated` | Trust score changed for a function |
+| `trust.revocation.created` | New trust revocation created |
+| `trust.revocation.lifted` | Trust revocation was lifted |
+| `trust.verification.completed` | Verification request completed |
+| `trust.report.submitted` | New trust report submitted |
+| `policy.evaluation.created` | Policy evaluation was performed |
+
+### Webhook Payload Format
+
+```json
+{
+  "event": "trust.revocation.created",
+  "timestamp": "2026-03-21T10:00:00Z",
+  "webhook_id": "wh_abc123...",
+  "data": {
+    "revocation_id": "rvk_abc123...",
+    "function_id": "550e8400-e29b-41d4-a716-446655440002",
+    "function_author": "alice",
+    "function_name": "data-processor",
+    "reason": "security",
+    "severity": "critical",
+    "revoked_by": "admin-user-id"
+  }
+}
+```
+
+---
+
+## Trust Tiers
+
+| Tier | Description |
+|------|-------------|
+| `untrusted` | Function has no trust score or has been explicitly untrusted |
+| `trusted` | Function has a basic trust score |
+| `verified` | Function has passed verification |
+| `highly_trusted` | Function has an excellent trust score and multiple attestations |
+
+---
+
+## Policy Rule Types
+
+| Rule Type | Description | Value Type |
+|-----------|-------------|------------|
+| `min_trust_score` | Minimum trust score required | float64 (0-100) |
+| `verification_required` | Function must be verified | bool |
+| `tier_minimum` | Minimum trust tier required | string (untrusted/trusted/verified/highly_trusted) |
+| `no_revocation` | Function must not be revoked | bool |
+| `min_success_rate` | Minimum success rate required | float64 (0-1) |
+
+---
+
+## Attestation Types
+
+| Type | Description |
+|------|-------------|
+| `verification` | Function passed FunctionFly verification |
+| `security_scan` | Function passed security scanning |
+| `code_review` | Function code was reviewed |
+| `execution` | Function was tested in execution environment |
+| `compliance` | Function meets compliance requirements |
+| `signature` | Function has cryptographic signature from author |
+
+---
+
+## Revocation Reasons
+
+| Reason | Description |
+|--------|-------------|
+| `security` | Security vulnerability discovered |
+| `malware` | Function contains malware |
+| `abuse` | Function is being abused |
+| `policy_violation` | Function violates FunctionFly policies |
+| `reported` | Function was reported by a partner |
+| `deprecated` | Function has been deprecated |
+| `other` | Other reason |
+
+---
+
 ## Error Responses
 
 All errors follow a consistent format:
@@ -498,34 +1120,25 @@ All errors follow a consistent format:
 |-------------|------|-------------|
 | 400 | `invalid_request` | Malformed request |
 | 400 | `invalid_function_id` | Invalid function ID format |
+| 400 | `invalid_partner_id` | Invalid partner ID format |
 | 401 | `missing_auth` | No Authorization header |
 | 401 | `invalid_api_key` | API key is invalid or revoked |
 | 403 | `partner_inactive` | Partner account not active |
 | 403 | `ip_not_allowed` | IP not in allowlist |
 | 403 | `insufficient_scope` | Missing required scope |
+| 403 | `forbidden` | Not authorized to access resource |
 | 404 | `partner_not_found` | Partner doesn't exist |
 | 404 | `trust_not_found` | Trust score not found |
+| 404 | `policy_not_found` | Policy not found |
+| 404 | `revocation_not_found` | Revocation not found |
+| 404 | `attestation_not_found` | Attestation not found |
+| 404 | `webhook_not_found` | Webhook not found |
+| 409 | `already_revoked` | Function already has active revocation |
+| 409 | `slug_conflict` | Partner slug already in use |
+| 409 | `email_conflict` | Email already registered |
 | 429 | `rate_limit_exceeded` | Rate limit exceeded |
 | 429 | `quota_exceeded` | Monthly quota exceeded |
-
----
-
-## Webhooks
-
-Partners can configure a webhook URL to receive notifications about:
-
-- Usage threshold alerts (80%, 90%, 100% of quota)
-- Rate limit exceedances
-- Verification request completions
-
-Configure webhook URL in partner settings:
-
-```json
-{
-  "webhook_url": "https://partner.example.com/trust-api-webhook",
-  "webhook_secret": "whsec_..."
-}
-```
+| 500 | `internal_error` | Internal server error |
 
 ---
 

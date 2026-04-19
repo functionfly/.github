@@ -6,6 +6,7 @@
   font-size: 2rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
+  color: var(--text-primary);
 }
 
 .page-header p {
@@ -29,6 +30,7 @@
 
 .empty-state h2 {
   margin-bottom: 0.5rem;
+  color: var(--text-primary);
 }
 
 .empty-state p {
@@ -45,6 +47,7 @@
   margin-bottom: 1rem;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
 }
 
 .functions-grid {
@@ -66,6 +69,7 @@
 
 .function-card:hover {
   border-color: var(--color-brand-500);
+  box-shadow: var(--shadow-glow-sm);
   transform: translateY(-2px);
 }
 
@@ -79,6 +83,7 @@
 .function-title {
   font-size: 1.125rem;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .trust-badge {
@@ -86,7 +91,8 @@
   font-weight: 600;
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
-  color: white;
+  color: var(--color-ff-tarmac);
+  background: var(--color-brand-500);
 }
 
 .function-description {

@@ -11,20 +11,36 @@
 }
 
 :root {
-  /* Use dark mode as default */
+  /* Map velocity brand colors to docs aliases */
   --bg-primary: var(--color-bg-primary);
   --bg-secondary: var(--color-bg-secondary);
   --bg-tertiary: var(--color-bg-tertiary);
   --bg-elevated: var(--color-bg-elevated);
+  --bg-hover: var(--color-bg-hover);
   --text-primary: var(--color-text-primary);
   --text-secondary: var(--color-text-secondary);
   --text-muted: var(--color-text-muted);
+  --text-accent: var(--color-text-accent);
   --border-subtle: var(--color-border-subtle);
   --border-default: var(--color-border-default);
+  --border-strong: var(--color-border-strong);
+  
+  /* Velocity Brand Aliases */
+  --ff-flame: var(--color-ff-flame);
+  --ff-flame-dark: var(--color-ff-flame-dark);
+  --ff-flame-light: var(--color-ff-flame-light);
+  --ff-cyan: var(--color-ff-cyan);
+  --ff-cyan-dark: var(--color-ff-cyan-dark);
+  --ff-afterburner: var(--color-ff-afterburner);
+  --ff-taxiway: var(--color-ff-taxiway);
+  --ff-beacon: var(--color-ff-beacon);
+  --ff-stratosphere: var(--color-ff-stratosphere);
+  --ff-tarmac: var(--color-ff-tarmac);
+  --ff-cockpit: var(--color-ff-cockpit);
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  font-family: var(--font-sans);
   background-color: var(--bg-primary);
   color: var(--text-primary);
   line-height: 1.6;
@@ -38,15 +54,21 @@ body {
 }
 
 /* Light mode support */
+[data-theme='light'],
 @media (prefers-color-scheme: light) {
   :root {
     --bg-primary: var(--color-bg-primary-light);
     --bg-secondary: var(--color-bg-secondary-light);
     --bg-tertiary: var(--color-bg-tertiary-light);
     --bg-elevated: var(--color-bg-elevated-light);
+    --bg-hover: var(--color-bg-hover-light);
     --text-primary: var(--color-text-primary-light);
     --text-secondary: var(--color-text-secondary-light);
     --text-muted: var(--color-text-muted-light);
+    --text-accent: var(--color-text-accent-light);
+    --border-subtle: var(--color-border-subtle-light);
+    --border-default: var(--color-border-default-light);
+    --border-strong: var(--color-border-strong-light);
   }
 }
 
