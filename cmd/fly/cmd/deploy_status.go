@@ -87,16 +87,10 @@ func checkDeploymentStatus(client *cli.Client, author, name, deploymentID string
 
 // checkSpecificDeployment checks a specific deployment
 func checkSpecificDeployment(client *cli.Client, deploymentID string, jsonOutput bool) {
-	// In a real implementation, this would call a specific deployment status API
-	status := &DeploymentStatus{
-		DeploymentID: deploymentID,
-		Status:       "completed",
-		CreatedAt:    time.Now().Add(-5 * time.Minute),
-		UpdatedAt:    time.Now(),
-		Message:      "Deployment completed successfully",
-		HealthStatus: "healthy",
-		Region:       "us-east-1",
-		URL:          fmt.Sprintf("https://api.functionfly.com/deployments/%s", deploymentID),
+	status, err := client.GetDeploymentStatus(deploymentID)
+	if err != nil {
+		fmt.Printf("Error: Failed to get deployment status: %v\n", err)
+		return
 	}
 
 	if jsonOutput {
@@ -179,20 +173,8 @@ func createMockDeployments(author, name string) *cli.ListDeploymentsResponse {
 	}
 }
 
-// DeploymentStatus represents detailed deployment status
-type DeploymentStatus struct {
-	DeploymentID string    `json:"deployment_id"`
-	Status       string    `json:"status"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
-	Message      string    `json:"message"`
-	HealthStatus string    `json:"health_status"`
-	Region       string    `json:"region"`
-	URL          string    `json:"url"`
-}
-
 // outputDeploymentStatusHuman prints deployment status in human-readable format
-func outputDeploymentStatusHuman(status *DeploymentStatus) {
+func outputDeploymentStatusHuman(status *cli.DeploymentStatus) {
 	fmt.Printf("\nDeployment Status:\n")
 	fmt.Printf("=================\n")
 	fmt.Printf("ID: %s\n", status.DeploymentID)
@@ -210,7 +192,7 @@ func outputDeploymentStatusHuman(status *DeploymentStatus) {
 }
 
 // outputDeploymentStatusJSON prints deployment status in JSON format
-func outputDeploymentStatusJSON(status *DeploymentStatus) {
+func outputDeploymentStatusJSON(status *cli.DeploymentStatus) {
 	fmt.Printf(`{
   "deployment_id": %q,
   "status": %q,

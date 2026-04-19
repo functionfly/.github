@@ -1,7 +1,23 @@
 SHELL := /bin/bash
 .SHELLFLAGS := -eu -o pipefail -c
 
-.PHONY: help build build-local-runtime build-microvm-orchestrator test clean docker-up docker-down dev dev-neon api api-local health-monitor migrate migrate-local migrate-down migrate-status migrate-version wasm-bundle staging-up staging-down staging-logs staging-migrate staging-api staging-health-monitor test-db-setup test-db-up test-db-migrate test-db-status test-api-cmds load-test-init load-test-tpcb load-test-mixed load-test-custom load-test-stress bench bench-db bench-db-profile db-maintenance venv build-fly build-fly-release release-dry-run release release-snapshot install-locally dist build-coming-soon deploy-coming-soon deploy-admin-dashboard
+# Go build cache configuration (override via env)
+GOCACHE ?= $(shell go env GOCACHE)
+GOMODCACHE ?= $(shell go env GOMODCACHE)
+
+# Build optimization flags
+BUILD_FLAGS := -trimpath
+GC_FLAGS := -gcflags="-e"
+LD_FLAGS := -ldflags "-s -w"
+
+# Test configuration
+TEST_PARALLEL := -parallel=8
+TEST_COUNT := -count=1
+
+# Detect available CPUs for parallel builds
+NCPU := $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+
+.PHONY: help build build-fast build-ci build-local-runtime build-microvm-orchestrator test test-short test-parallel test-fast test-changed test-watch clean docker-up docker-down dev dev-neon api api-local health-monitor migrate migrate-local migrate-down migrate-status migrate-version wasm-bundle staging-up staging-down staging-logs staging-migrate staging-api staging-health-monitor test-db-setup test-db-up test-db-migrate test-db-status test-api-cmds load-test-init load-test-tpcb load-test-mixed load-test-custom load-test-stress bench bench-db bench-db-profile db-maintenance venv build-fly build-fly-release release-dry-run release release-snapshot install-locally dist build-coming-soon deploy-coming-soon deploy-admin-dashboard
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -9,10 +25,20 @@ help: ## Show this help message
 	@echo 'Targets:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-build: ## Build all services
-	go build -o bin/orchestrator-api ./cmd/orchestrator-api
-	go build -o bin/health-monitor ./cmd/health-monitor
-	go build -o bin/ffly ./cmd/ffly
+build: ## Build all services (optimized with trimpath)
+	go build $(BUILD_FLAGS) -o bin/orchestrator-api ./cmd/orchestrator-api
+	go build $(BUILD_FLAGS) -o bin/health-monitor ./cmd/health-monitor
+	go build $(BUILD_FLAGS) -o bin/ffly ./cmd/ffly
+
+build-fast: ## Fast build for development (allows multiple errors, smaller binaries)
+	go build $(BUILD_FLAGS) $(GC_FLAGS) -o bin/orchestrator-api ./cmd/orchestrator-api
+	go build $(BUILD_FLAGS) $(GC_FLAGS) -o bin/health-monitor ./cmd/health-monitor
+	go build $(BUILD_FLAGS) $(GC_FLAGS) -o bin/ffly ./cmd/ffly
+
+build-ci: ## CI-optimized build (cached, parallel, no cgo)
+	CGO_ENABLED=0 go build $(BUILD_FLAGS) $(LD_FLAGS) -o bin/orchestrator-api ./cmd/orchestrator-api
+	CGO_ENABLED=0 go build $(BUILD_FLAGS) $(LD_FLAGS) -o bin/health-monitor ./cmd/health-monitor
+	CGO_ENABLED=0 go build $(BUILD_FLAGS) $(LD_FLAGS) -o bin/ffly ./cmd/ffly
 
 build-local-runtime: ## Build the local Rust runtime
 	cd runtimes/local && cargo build --release
@@ -48,13 +74,16 @@ run-microvm: build-microvm-orchestrator ## Run MicroVM orchestrator in productio
 		--max-vms "$${MICROVM_MAX_VMS:-20}"
 
 build-fly: ## Build the fly CLI (bin/fly)
-	go build -o bin/fly ./cmd/fly
+	go build $(BUILD_FLAGS) -o bin/fly ./cmd/fly
+
+build-fly-fast: ## Fast build of fly CLI for development
+	go build $(BUILD_FLAGS) $(GC_FLAGS) -o bin/fly ./cmd/fly
 
 build-fly-release: ## Build the fly CLI with version ldflags (for release-like local binary)
 	@v=$$(git describe --tags --always --dirty 2>/dev/null || echo "dev"); \
 	c=$$(git rev-parse --short HEAD 2>/dev/null || echo ""); \
 	d=$$(date -u +%Y-%m-%dT%H:%M:%SZ); \
-	go build -o bin/fly -ldflags "-s -w -X github.com/functionfly/functionfly/internal/version.Version=$$v -X github.com/functionfly/functionfly/internal/version.Commit=$$c -X github.com/functionfly/functionfly/internal/version.Date=$$d" ./cmd/fly
+	go build $(BUILD_FLAGS) -ldflags "-s -w -X github.com/functionfly/functionfly/internal/version.Version=$$v -X github.com/functionfly/functionfly/internal/version.Commit=$$c -X github.com/functionfly/functionfly/internal/version.Date=$$d" ./cmd/fly
 
 release-dry-run: ## Run GoReleaser in dry-run mode (no publish)
 	goreleaser release --clean --dry-run
@@ -65,11 +94,15 @@ release: ## Create and publish a CLI release (requires GITHUB_TOKEN, tag e.g. v1
 release-snapshot: ## Create a snapshot release (no tag required)
 	goreleaser release --clean --snapshot
 
-install-locally: ## Install fly CLI to GOPATH/bin
-	go install ./cmd/fly
+install-locally: ## Install fly CLI to GOPATH/bin (optimized)
+	go install $(BUILD_FLAGS) ./cmd/fly
 
 dist: ## Build distribution packages for current platform only (no publish)
 	goreleaser build --clean --single-target
+
+build-all-modules: ## Build all workspace modules
+	go build $(BUILD_FLAGS) ./cmd/...
+	go build $(BUILD_FLAGS) ./internal/...
 
 build-coming-soon: ## Build static coming-soon page for deploy (output: web/dashboard/dist). Uses web/coming-soon/index.html. Set API_URL to override feedback API (default https://api.functionfly.com).
 	@rm -rf web/dashboard/dist && mkdir -p web/dashboard/dist && cp -r web/coming-soon/* web/dashboard/dist/ && \
@@ -112,11 +145,37 @@ publish-stdlib: build-fly ## Dev login then publish all functions in functions/f
 wasm-bundle: ## Bundle function to Wasm for testing
 	go run ./cmd/ffly bundle --wasm
 
-test: ## Run tests
-	go test ./...
+test: ## Run tests (cached, parallel)
+	go test $(TEST_PARALLEL) ./...
 
-test-coverage: ## Run tests with coverage
-	go test -v -race -coverprofile=coverage.out ./...
+test-short: ## Run tests in short mode (skip heavy integration tests)
+	go test -short $(TEST_PARALLEL) ./...
+
+test-parallel: ## Run tests with high parallelism
+	go test -parallel=$(NCPU) ./...
+
+test-fast: ## Fast test for local dev (cached, parallel, short)
+	go test -short $(TEST_PARALLEL) -count=1 ./...
+
+test-changed: ## Run tests only for changed packages (requires gotestsum)
+	@which gotestsum > /dev/null || (echo "Installing gotestsum..." && go install gotest.tools/gotestsum@latest)
+	gotestsum --format=dots -- -short $(TEST_PARALLEL) ./...
+
+test-watch: ## Run tests in watch mode (requires gotestsum)
+	@which gotestsum > /dev/null || (echo "Installing gotestsum..." && go install gotest.tools/gotestsum@latest)
+	gotestsum --watch --format=dots -- -short $(TEST_PARALLEL) ./...
+
+test-ci: ## CI-optimized tests (rerun fails, dots format, parallel)
+	@which gotestsum > /dev/null || (echo "Installing gotestsum..." && go install gotest.tools/gotestsum@latest)
+	gotestsum --rerun-fails=3 --format=dots -- -race $(TEST_PARALLEL) -count=1 ./...
+
+check-deps: ## Verify and tidy dependencies
+	go mod verify
+	go mod tidy
+	git diff --exit-code go.mod go.sum || (echo "Error: go.mod or go.sum changed. Run 'go mod tidy' and commit." && exit 1)
+
+test-coverage: ## Run tests with coverage (parallel)
+	go test -v -race $(TEST_PARALLEL) -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out -o coverage.html
 	go tool cover -func=coverage.out
 
@@ -146,20 +205,23 @@ test-all: ## Run all tests (unit + integration) with coverage
 	go tool cover -func=coverage-integration.out | grep total | tee coverage-integration.txt
 	@echo "Coverage reports generated"
 
-test-integration: ## Run integration tests
-	go test -v -race -tags=integration ./...
+test-integration: ## Run integration tests (parallel)
+	go test -v -race $(TEST_PARALLEL) -tags=integration ./...
+
+test-integration-short: ## Run integration tests in short mode (faster)
+	go test -short -v -race $(TEST_PARALLEL) -tags=integration ./...
 
 test-api-cmds: ## Run API smoke tests (health + login). Set API_URL for base (default http://localhost:8080)
 	./scripts/test-cmds.sh
 
 bench: ## Run all benchmarks
-	go test -bench=. -benchmem ./...
+	go test -bench=. -benchmem $(TEST_PARALLEL) ./...
 
 bench-db: ## Run database benchmarks only
-	go test -bench=. -benchmem ./internal/storage/... -benchtime=5s
+	go test -bench=. -benchmem $(TEST_PARALLEL) ./internal/storage/... -benchtime=5s
 
 bench-db-profile: ## Run database benchmarks with CPU profiling
-	go test -bench=. -benchmem -cpuprofile=cpu.prof -memprofile=mem.prof ./internal/storage/...
+	go test -bench=. -benchmem $(TEST_PARALLEL) -cpuprofile=cpu.prof -memprofile=mem.prof ./internal/storage/...
 	go tool pprof -web cpu.prof
 
 lint: ## Run linter
@@ -309,9 +371,27 @@ update-blog-from-md-docker: ## Same as update-blog-from-md but for Docker Postgr
 fmt: ## Format Go code
 	go fmt ./...
 
-deps: ## Download dependencies
+deps: ## Download and verify dependencies
 	go mod download
+	go mod verify
 	go mod tidy
+
+deps-vendor: ## Vendor dependencies for offline/air-gapped builds
+	go mod vendor
+
+cache-info: ## Show Go build cache information
+	@echo "Build cache: $(GOCACHE)"
+	@echo "Module cache: $(GOMODCACHE)"
+	@go env GOCACHE GOMODCACHE
+
+cache-clean: ## Clean Go build cache
+	go clean -cache
+
+cache-stats: ## Show build cache disk usage
+	@echo "Build cache size:"
+	@du -sh $(GOCACHE) 2>/dev/null || echo "Cache not found at $(GOCACHE)"
+	@echo "Module cache size:"
+	@du -sh $(GOMODCACHE) 2>/dev/null || echo "Module cache not found at $(GOMODCACHE)"
 
 monitoring-up: ## Start monitoring stack
 	docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d prometheus grafana node-exporter postgres-exporter redis-exporter

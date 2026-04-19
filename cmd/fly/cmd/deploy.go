@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/functionfly/functionfly/internal/bundler"
 	"github.com/functionfly/functionfly/internal/cli"
@@ -159,8 +160,38 @@ func performDeployment(m *manifest.Manifest, creds *credentials.Credentials, env
 	// 8. Wait for completion if requested
 	if wait {
 		fmt.Println("✓ Waiting for deployment to complete...")
-		// In a real implementation, this would poll for deployment status
-		fmt.Printf("✓ Deployment %s completed\n", result.DeploymentID)
+
+		ticker := time.NewTicker(2 * time.Second)
+		defer ticker.Stop()
+		timeout := time.After(5 * time.Minute)
+
+		for {
+			select {
+			case <-timeout:
+				return fmt.Errorf("deployment timed out after 5 minutes")
+
+			case <-ticker.C:
+				status, err := client.GetDeploymentStatus(result.DeploymentID)
+				if err != nil {
+					continue
+				}
+
+				switch status.Status {
+				case "completed", "success", "healthy":
+					fmt.Printf("✓ Deployment %s completed\n", result.DeploymentID)
+				case "failed", "error":
+					return fmt.Errorf("deployment failed: %s", status.Message)
+				case "pending", "building", "deploying":
+					fmt.Printf("  • Status: %s...\n", status.Status)
+				default:
+					fmt.Printf("  • Status: %s\n", status.Status)
+				}
+
+				if status.Status == "completed" || status.Status == "success" || status.Status == "failed" || status.Status == "error" {
+					return nil
+				}
+			}
+		}
 	}
 
 	// 9. Print success

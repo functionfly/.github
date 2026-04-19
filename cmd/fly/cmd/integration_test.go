@@ -14,6 +14,10 @@ import (
 )
 
 func TestInitCommandCreatesJSONCFile(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping file system integration test in short mode")
+	}
+
 	// Create a temporary directory for testing
 	tempDir, err := os.MkdirTemp("", "functionfly-test-*")
 	require.NoError(t, err)
@@ -45,6 +49,10 @@ func TestInitCommandCreatesJSONCFile(t *testing.T) {
 }
 
 func TestManifestAutoDetection(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping file system integration test in short mode")
+	}
+
 	tests := []struct {
 		name        string
 		createFile  string
@@ -111,6 +119,10 @@ func TestManifestAutoDetection(t *testing.T) {
 }
 
 func TestJSONCCommentsSupport(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping file system integration test in short mode")
+	}
+
 	// Create a temporary directory for testing
 	tempDir, err := os.MkdirTemp("", "functionfly-jsonc-test-*")
 	require.NoError(t, err)

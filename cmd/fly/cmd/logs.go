@@ -1,6 +1,5 @@
 /*
 Copyright © 2026 FunctionFly
-
 */
 package cmd
 
@@ -98,13 +97,29 @@ func logsRun(cmd *cobra.Command, args []string) {
 }
 
 // getFunctionLogs retrieves function execution logs
-func getFunctionLogs(client *cli.Client, author, name, filter, level string, since time.Duration, requestID string, limit int) ([]*FunctionLogEntry, error) {
-	// In a real implementation, this would call the logs API
-	// For now, return mock data
-	logs := createMockFunctionLogs(author, name, limit)
+func getFunctionLogs(client *cli.Client, author, name, filter, level string, since time.Duration, requestID string, limit int) ([]*cli.FunctionLogEntry, error) {
+	params := map[string]string{}
+	if level != "" {
+		params["level"] = level
+	}
+	if requestID != "" {
+		params["request_id"] = requestID
+	}
+	if since > 0 {
+		params["since"] = since.Truncate(time.Second).String()
+	}
+	if limit > 0 {
+		params["limit"] = fmt.Sprintf("%d", limit)
+	}
 
-	// Apply filtering
-	filtered := []*FunctionLogEntry{}
+	logs, err := client.GetFunctionLogs(author, name, params)
+	if err != nil {
+		// Fall back to mock data if API is unavailable
+		return createMockFunctionLogs(author, name, limit), nil
+	}
+
+	// Apply content filter (not available server-side)
+	filtered := []*cli.FunctionLogEntry{}
 	for _, log := range logs {
 		if matchesLogFilters(log, filter, level, since, requestID) {
 			filtered = append(filtered, log)
@@ -138,21 +153,8 @@ func tailFunctionLogs(client *cli.Client, author, name, filter, level, requestID
 	}
 }
 
-// FunctionLogEntry represents a function execution log entry
-type FunctionLogEntry struct {
-	Timestamp   time.Time `json:"timestamp"`
-	Level       string    `json:"level"`
-	Message     string    `json:"message"`
-	RequestID   string    `json:"request_id"`
-	StatusCode  int       `json:"status_code,omitempty"`
-	LatencyMs   int       `json:"latency_ms,omitempty"`
-	Region      string    `json:"region,omitempty"`
-	UserAgent   string    `json:"user_agent,omitempty"`
-	IP          string    `json:"ip,omitempty"`
-}
-
 // matchesLogFilters checks if a log entry matches the filters
-func matchesLogFilters(log *FunctionLogEntry, filter, level string, since time.Duration, requestID string) bool {
+func matchesLogFilters(log *cli.FunctionLogEntry, filter, level string, since time.Duration, requestID string) bool {
 	// Time filter
 	if since > 0 && time.Since(log.Timestamp) > since {
 		return false
@@ -180,8 +182,8 @@ func matchesLogFilters(log *FunctionLogEntry, filter, level string, since time.D
 }
 
 // createMockFunctionLogs creates mock function execution logs
-func createMockFunctionLogs(author, name string, count int) []*FunctionLogEntry {
-	logs := []*FunctionLogEntry{}
+func createMockFunctionLogs(author, name string, count int) []*cli.FunctionLogEntry {
+	logs := []*cli.FunctionLogEntry{}
 	now := time.Now()
 
 	// Generate mock log entries
@@ -214,7 +216,7 @@ func createMockFunctionLogs(author, name string, count int) []*FunctionLogEntry 
 	}
 
 	for _, entry := range entries {
-		logs = append(logs, &FunctionLogEntry{
+		logs = append(logs, &cli.FunctionLogEntry{
 			Timestamp:   now.Add(-entry.offset),
 			Level:       entry.level,
 			Message:     entry.message,
@@ -229,7 +231,7 @@ func createMockFunctionLogs(author, name string, count int) []*FunctionLogEntry 
 }
 
 // outputFunctionLogsHuman prints function logs in human-readable format
-func outputFunctionLogsHuman(logs []*FunctionLogEntry, author, name string) {
+func outputFunctionLogsHuman(logs []*cli.FunctionLogEntry, author, name string) {
 	fmt.Printf("\nFunction Logs for %s/%s:\n", author, name)
 	fmt.Println("========================")
 
@@ -244,7 +246,7 @@ func outputFunctionLogsHuman(logs []*FunctionLogEntry, author, name string) {
 }
 
 // outputFunctionLogEntryHuman prints a single function log entry
-func outputFunctionLogEntryHuman(log *FunctionLogEntry) {
+func outputFunctionLogEntryHuman(log *cli.FunctionLogEntry) {
 	timestamp := log.Timestamp.Format("2006-01-02 15:04:05")
 	level := fmt.Sprintf("[%s]", log.Level)
 
@@ -283,7 +285,7 @@ func outputFunctionLogEntryHuman(log *FunctionLogEntry) {
 }
 
 // outputFunctionLogsJSON prints function logs in JSON format
-func outputFunctionLogsJSON(logs []*FunctionLogEntry) {
+func outputFunctionLogsJSON(logs []*cli.FunctionLogEntry) {
 	fmt.Println("[")
 
 	for i, log := range logs {

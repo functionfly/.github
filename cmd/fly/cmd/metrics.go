@@ -1,6 +1,5 @@
 /*
 Copyright © 2026 FunctionFly
-
 */
 package cmd
 
@@ -90,9 +89,70 @@ func metricsRun(cmd *cobra.Command, args []string) {
 
 // getDetailedMetrics retrieves detailed performance metrics
 func getDetailedMetrics(client *cli.Client, author, name, period string) (*DetailedMetrics, error) {
-	// In a real implementation, this would call the metrics API
-	// For now, return mock data
-	return createMockDetailedMetrics(author, name, period), nil
+	// First, look up the function by author/name to get its ID
+	var fn struct {
+		ID string `json:"id"`
+	}
+	if err := client.Get(fmt.Sprintf("/v1/registry/functions/%s/%s", author, name), &fn); err != nil {
+		return nil, fmt.Errorf("failed to find function %s/%s: %w", author, name, err)
+	}
+
+	// Now fetch real metrics from the function metrics endpoint
+	type metricsResp struct {
+		FunctionID  string `json:"function_id"`
+		Status      string `json:"status"`
+		Deployments struct {
+			Total          int     `json:"total"`
+			Successful     int     `json:"successful"`
+			Failed         int     `json:"failed"`
+			SuccessRatePct float64 `json:"success_rate_pct"`
+			LastDeployedAt *string `json:"last_deployed_at,omitempty"`
+		} `json:"deployments"`
+		Logs struct {
+			Total int `json:"total"`
+			Error int `json:"error"`
+			Warn  int `json:"warn"`
+			Info  int `json:"info"`
+			Debug int `json:"debug"`
+		} `json:"logs"`
+	}
+
+	var m metricsResp
+	if err := client.Get(fmt.Sprintf("/v1/functions/%s/metrics?period=%s", fn.ID, period), &m); err != nil {
+		return nil, fmt.Errorf("failed to get metrics for function %s: %w", fn.ID, err)
+	}
+
+	// Build DetailedMetrics from the API response
+	totalReqs := int64(m.Deployments.Total)
+	successReqs := int64(m.Deployments.Successful)
+	failedReqs := int64(m.Deployments.Failed)
+	errorRate := 0.0
+	if totalReqs > 0 {
+		errorRate = float64(failedReqs) / float64(totalReqs) * 100
+	}
+
+	return &DetailedMetrics{
+		FunctionID:     fn.ID,
+		Name:           name,
+		Author:         author,
+		Period:         period,
+		TotalRequests:  totalReqs,
+		SuccessfulReqs: successReqs,
+		FailedReqs:     failedReqs,
+		ErrorRate:      errorRate,
+		AvgLatencyMs:   0, // Not provided by function metrics endpoint
+		P50LatencyMs:   0,
+		P95LatencyMs:   0,
+		P99LatencyMs:   0,
+		MinLatencyMs:   0,
+		MaxLatencyMs:   0,
+		RequestsPerSec: 0,
+		DataTransferred: 0,
+		TopErrors:       nil,
+		StatusCodes:      nil,
+		RegionalStats:    nil,
+		TimeSeries:       nil,
+	}, nil
 }
 
 // DetailedMetrics represents comprehensive performance metrics
