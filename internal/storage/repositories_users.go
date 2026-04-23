@@ -129,6 +129,10 @@ func (db *PostgresDB) CreateUsernameChangeHistory(ctx context.Context, history *
 	return db.userRepository.CreateUsernameChangeHistory(ctx, history)
 }
 
+func (db *PostgresDB) ChangeUsernameWithHistory(ctx context.Context, userID uuid.UUID, newUsername string, history *UsernameChangeHistory) error {
+	return db.userRepository.ChangeUsernameWithHistory(ctx, userID, newUsername, history)
+}
+
 func (db *PostgresDB) GetUsernameChangeHistory(ctx context.Context, userID uuid.UUID) ([]*UsernameChangeHistory, error) {
 	return db.userRepository.GetUsernameChangeHistory(ctx, userID)
 }

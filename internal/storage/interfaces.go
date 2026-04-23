@@ -514,6 +514,7 @@ type Repository interface {
 
 	// Username change operations (2-per-year limit with early-change fee)
 	CreateUsernameChangeHistory(ctx context.Context, history *UsernameChangeHistory) error
+	ChangeUsernameWithHistory(ctx context.Context, userID uuid.UUID, newUsername string, history *UsernameChangeHistory) error
 	GetUsernameChangeHistory(ctx context.Context, userID uuid.UUID) ([]*UsernameChangeHistory, error)
 	CountUsernameChangesInWindow(ctx context.Context, userID uuid.UUID, windowStart time.Time) (int, error)
 	GetLastUsernameChange(ctx context.Context, userID uuid.UUID) (*UsernameChangeHistory, error)

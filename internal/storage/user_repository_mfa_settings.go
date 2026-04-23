@@ -87,21 +87,24 @@ func (r *UserRepository) UpdateUserSettings(userID uuid.UUID, settings map[strin
 	return nil
 }
 
-// GetUserSettings retrieves the settings JSONB field for a user
+// GetUserSettings retrieves the settings JSONB field for a user directly.
 func (r *UserRepository) GetUserSettings(userID uuid.UUID) (map[string]interface{}, error) {
-	user, err := r.GetUserByID(userID)
+	var settingsBytes []byte
+	err := r.db.QueryRow(`SELECT settings FROM users WHERE id = $1`, userID).Scan(&settingsBytes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user: %w", err)
+		if err == sql.ErrNoRows {
+			return make(map[string]interface{}), nil
+		}
+		return nil, fmt.Errorf("failed to get user settings: %w", err)
 	}
-	if user == nil {
-		return nil, fmt.Errorf("user not found")
-	}
-
-	if user.Settings == nil {
+	if settingsBytes == nil || len(settingsBytes) == 0 {
 		return make(map[string]interface{}), nil
 	}
-
-	return user.Settings, nil
+	var settings map[string]interface{}
+	if err := json.Unmarshal(settingsBytes, &settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal user settings: %w", err)
+	}
+	return settings, nil
 }
 
 // HashPassword securely hashes a password using bcrypt

@@ -12,6 +12,7 @@ import (
 type SessionCleanupService struct {
 	repo   Repository
 	logger *logrus.Logger
+	stop   chan struct{}
 }
 
 // NewSessionCleanupService creates a new session cleanup service
@@ -19,6 +20,7 @@ func NewSessionCleanupService(repo Repository) *SessionCleanupService {
 	return &SessionCleanupService{
 		repo:   repo,
 		logger: logrus.New(),
+		stop:   make(chan struct{}),
 	}
 }
 
@@ -60,12 +62,23 @@ func (s *SessionCleanupService) StartCleanupRoutine(interval time.Duration) {
 			s.logger.WithError(err).Error("Initial session cleanup failed")
 		}
 
-		for range ticker.C {
-			if err := s.CleanupExpiredSessions(); err != nil {
-				s.logger.WithError(err).Error("Periodic session cleanup failed")
+		for {
+			select {
+			case <-ticker.C:
+				if err := s.CleanupExpiredSessions(); err != nil {
+					s.logger.WithError(err).Error("Periodic session cleanup failed")
+				}
+			case <-s.stop:
+				s.logger.Info("Session cleanup routine stopping")
+				return
 			}
 		}
 	}()
+}
+
+// Stop stops the cleanup routine for graceful shutdown
+func (s *SessionCleanupService) Stop() {
+	close(s.stop)
 }
 
 // CleanupUserSessions removes all sessions for a specific user (useful when user logs out or is deactivated)

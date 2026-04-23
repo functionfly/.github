@@ -101,7 +101,11 @@ func (r *ConversationRepository) unreadCountsForConversations(ctx context.Contex
 			ON r.conversation_id = m.conversation_id AND r.user_id = ?
 		WHERE m.conversation_id IN ?
 			AND m.author_id <> ?
-			AND m.created_at > COALESCE(r.last_read_at, '-infinity'::timestamptz)
+			AND m.deleted_at IS NULL
+			AND (
+				r.last_read_message_id IS NULL
+				OR m.id > r.last_read_message_id
+			)
 		GROUP BY m.conversation_id
 	`, userID, ids, userID).Scan(&rows).Error
 	if err != nil {
@@ -114,23 +118,33 @@ func (r *ConversationRepository) unreadCountsForConversations(ctx context.Contex
 	return m, nil
 }
 
-// MarkConversationRead sets the user's read cursor to the latest message time in the conversation (or now if empty).
+// MarkConversationRead sets the user's read cursor to the latest message in the conversation (or now if empty).
 func (r *ConversationRepository) MarkConversationRead(ctx context.Context, conversationID, userID uuid.UUID) error {
+	var msgID *uuid.UUID
 	var ts time.Time
+	var latest struct {
+		ID        uuid.UUID `gorm:"column:id"`
+		CreatedAt time.Time `gorm:"column:created_at"`
+	}
 	if err := r.db.WithContext(ctx).Raw(
-		`SELECT COALESCE((SELECT MAX(created_at) FROM conversation_messages WHERE conversation_id = ?), NOW())`,
+		`SELECT id, created_at FROM conversation_messages WHERE conversation_id = ? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1`,
 		conversationID,
-	).Scan(&ts).Error; err != nil {
-		return fmt.Errorf("mark read timestamp: %w", err)
+	).Scan(&latest).Error; err == nil && latest.ID != uuid.Nil {
+		msgID = &latest.ID
+		ts = latest.CreatedAt
+	}
+	if ts.IsZero() {
+		ts = time.Now()
 	}
 	row := conversations.ConversationParticipantRead{
-		ConversationID: conversationID,
-		UserID:         userID,
-		LastReadAt:     ts,
+		ConversationID:    conversationID,
+		UserID:            userID,
+		LastReadAt:        ts,
+		LastReadMessageID: msgID,
 	}
 	if err := r.db.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "conversation_id"}, {Name: "user_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"last_read_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"last_read_at", "last_read_message_id"}),
 	}).Create(&row).Error; err != nil {
 		return fmt.Errorf("mark conversation read: %w", err)
 	}
@@ -172,6 +186,7 @@ func (r *ConversationRepository) CreateMessage(ctx context.Context, m *conversat
 }
 
 // ListMessages returns messages for a conversation, paginated by created_at desc (newest first).
+// Soft-deleted messages are excluded.
 func (r *ConversationRepository) ListMessages(ctx context.Context, conversationID uuid.UUID, limit, offset int) ([]*conversations.ConversationMessage, error) {
 	if limit <= 0 {
 		limit = 50
@@ -181,7 +196,8 @@ func (r *ConversationRepository) ListMessages(ctx context.Context, conversationI
 	}
 	var list []*conversations.ConversationMessage
 	err := r.db.WithContext(ctx).
-		Where("conversation_id = ?", conversationID).
+		Preload("Attachments").
+		Where("conversation_id = ? AND deleted_at IS NULL", conversationID).
 		Order("created_at ASC").
 		Limit(limit).
 		Offset(offset).
@@ -259,4 +275,102 @@ func (r *ConversationRepository) ClaimBounty(ctx context.Context, bountyID, clai
 		return fmt.Errorf("claim bounty: %w", err)
 	}
 	return nil
+}
+
+// EditMessage updates the content of a message and sets edited_at.
+func (r *ConversationRepository) EditMessage(ctx context.Context, messageID uuid.UUID, newContent string) (*conversations.ConversationMessage, error) {
+	now := time.Now()
+	if err := r.db.WithContext(ctx).Model(&conversations.ConversationMessage{}).
+		Where("id = ? AND deleted_at IS NULL", messageID).
+		Updates(map[string]interface{}{
+			"content":   newContent,
+			"edited_at": now,
+		}).Error; err != nil {
+		return nil, fmt.Errorf("edit message: %w", err)
+	}
+	return r.GetMessageByID(ctx, messageID)
+}
+
+// SoftDeleteMessage marks a message as deleted (soft delete).
+func (r *ConversationRepository) SoftDeleteMessage(ctx context.Context, messageID uuid.UUID) error {
+	now := time.Now()
+	if err := r.db.WithContext(ctx).Model(&conversations.ConversationMessage{}).
+		Where("id = ? AND deleted_at IS NULL", messageID).
+		Update("deleted_at", now).Error; err != nil {
+		return fmt.Errorf("soft delete message: %w", err)
+	}
+	return nil
+}
+
+// SearchMessages performs full-text search across conversation messages.
+// If conversationID is non-nil, restricts to that conversation.
+func (r *ConversationRepository) SearchMessages(ctx context.Context, userID uuid.UUID, query string, conversationID *uuid.UUID, limit, offset int) ([]*conversations.ConversationMessage, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	q := r.db.WithContext(ctx).
+		Preload("Attachments").
+		Where("deleted_at IS NULL").
+		Where("content_search @@ websearch_to_tsquery('english', ?)", query)
+
+	if conversationID != nil {
+		q = q.Where("conversation_id = ?", *conversationID)
+	} else {
+		// Only search messages in conversations the user participates in
+		payload, _ := json.Marshal([]string{userID.String()})
+		q = q.Where("conversation_id IN (SELECT id FROM conversations WHERE participant_ids @> ?::jsonb)", string(payload))
+	}
+
+	var list []*conversations.ConversationMessage
+	err := q.
+		Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&list).Error
+	if err != nil {
+		return nil, fmt.Errorf("search messages: %w", err)
+	}
+	return list, nil
+}
+
+// CreateAttachment creates a message attachment record.
+func (r *ConversationRepository) CreateAttachment(ctx context.Context, a *conversations.MessageAttachment) error {
+	if err := r.db.WithContext(ctx).Create(a).Error; err != nil {
+		return fmt.Errorf("create attachment: %w", err)
+	}
+	return nil
+}
+
+// ListAttachmentsForMessage returns all attachments for a given message.
+func (r *ConversationRepository) ListAttachmentsForMessage(ctx context.Context, messageID uuid.UUID) ([]*conversations.MessageAttachment, error) {
+	var list []*conversations.MessageAttachment
+	if err := r.db.WithContext(ctx).Where("message_id = ?", messageID).Find(&list).Error; err != nil {
+		return nil, fmt.Errorf("list attachments: %w", err)
+	}
+	return list, nil
+}
+
+// DeleteAttachment removes an attachment record.
+func (r *ConversationRepository) DeleteAttachment(ctx context.Context, attachmentID, userID uuid.UUID) error {
+	if err := r.db.WithContext(ctx).
+		Where("id = ? AND uploaded_by = ?", attachmentID, userID).
+		Delete(&conversations.MessageAttachment{}).Error; err != nil {
+		return fmt.Errorf("delete attachment: %w", err)
+	}
+	return nil
+}
+
+// GetAttachmentByID returns a single attachment by ID.
+func (r *ConversationRepository) GetAttachmentByID(ctx context.Context, id uuid.UUID) (*conversations.MessageAttachment, error) {
+	var a conversations.MessageAttachment
+	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&a).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get attachment: %w", err)
+	}
+	return &a, nil
 }

@@ -10,6 +10,7 @@ import (
 type AuthEventCleanupService struct {
 	repo   Repository
 	logger *logrus.Logger
+	stop   chan struct{}
 }
 
 // NewAuthEventCleanupService creates a new auth event cleanup service
@@ -17,6 +18,7 @@ func NewAuthEventCleanupService(repo Repository) *AuthEventCleanupService {
 	return &AuthEventCleanupService{
 		repo:   repo,
 		logger: logrus.New(),
+		stop:   make(chan struct{}),
 	}
 }
 
@@ -34,9 +36,9 @@ func (s *AuthEventCleanupService) CleanupOldAuthEvents(retentionPeriod time.Dura
 	duration := time.Since(start)
 	if deletedCount > 0 {
 		s.logger.WithFields(logrus.Fields{
-			"deleted_count": deletedCount,
+			"deleted_count":    deletedCount,
 			"retention_period": retentionPeriod.String(),
-			"duration_ms":   duration.Milliseconds(),
+			"duration_ms":      duration.Milliseconds(),
 		}).Info("Cleaned up old auth events")
 	} else {
 		s.logger.WithField("duration_ms", duration.Milliseconds()).Debug("Auth event cleanup completed (no old events to clean)")
@@ -55,7 +57,7 @@ func (s *AuthEventCleanupService) StartCleanupRoutine(interval time.Duration, re
 	}
 
 	s.logger.WithFields(logrus.Fields{
-		"interval": interval.String(),
+		"interval":         interval.String(),
 		"retention_period": retentionPeriod.String(),
 	}).Info("Starting auth event cleanup routine")
 
@@ -68,15 +70,21 @@ func (s *AuthEventCleanupService) StartCleanupRoutine(interval time.Duration, re
 			s.logger.WithError(err).Error("Initial auth event cleanup failed")
 		}
 
-		for range ticker.C {
-			if err := s.CleanupOldAuthEvents(retentionPeriod); err != nil {
-				s.logger.WithError(err).Error("Periodic auth event cleanup failed")
+		for {
+			select {
+			case <-ticker.C:
+				if err := s.CleanupOldAuthEvents(retentionPeriod); err != nil {
+					s.logger.WithError(err).Error("Periodic auth event cleanup failed")
+				}
+			case <-s.stop:
+				s.logger.Info("Auth event cleanup routine stopping")
+				return
 			}
 		}
 	}()
 }
 
-// StopCleanupRoutine stops the cleanup routine (for testing or graceful shutdown)
-func (s *AuthEventCleanupService) StopCleanupRoutine() {
-	s.logger.Info("Auth event cleanup routine stopped")
+// Stop stops the cleanup routine for graceful shutdown
+func (s *AuthEventCleanupService) Stop() {
+	close(s.stop)
 }

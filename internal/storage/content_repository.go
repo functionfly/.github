@@ -194,7 +194,7 @@ func (r *ContentRepository) UpdateChangelogEntry(ctx context.Context, id uuid.UU
 
 	for field, value := range updates {
 		argCount++
-		setParts = append(setParts, fmt.Sprintf("%s = $%d", field, argCount))
+		setParts = append(setParts, fmt.Sprintf("%s = $%d", pq.QuoteIdentifier(field), argCount))
 		args = append(args, value)
 	}
 
@@ -264,7 +264,7 @@ func (r *ContentRepository) UpdateChangelogChange(ctx context.Context, id uuid.U
 
 	for field, value := range updates {
 		argCount++
-		setParts = append(setParts, fmt.Sprintf("%s = $%d", field, argCount))
+		setParts = append(setParts, fmt.Sprintf("%s = $%d", pq.QuoteIdentifier(field), argCount))
 		args = append(args, value)
 	}
 
@@ -507,7 +507,7 @@ func (r *ContentRepository) UpdateBlogPost(ctx context.Context, id uuid.UUID, up
 
 	for field, value := range updates {
 		argCount++
-		setParts = append(setParts, fmt.Sprintf("%s = $%d", field, argCount))
+		setParts = append(setParts, fmt.Sprintf("%s = $%d", pq.QuoteIdentifier(field), argCount))
 		args = append(args, value)
 	}
 

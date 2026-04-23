@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 // IncidentRepository handles incident-related database operations
@@ -116,7 +117,7 @@ func (r *IncidentRepository) UpdateIncident(ctx context.Context, incidentID uuid
 	argIndex := 1
 
 	for key, value := range updates {
-		setParts = append(setParts, fmt.Sprintf("%s = $%d", key, argIndex))
+		setParts = append(setParts, fmt.Sprintf("%s = $%d", pq.QuoteIdentifier(key), argIndex))
 		args = append(args, value)
 		argIndex++
 	}

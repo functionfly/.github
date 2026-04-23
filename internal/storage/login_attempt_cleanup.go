@@ -10,6 +10,7 @@ import (
 type LoginAttemptCleanupService struct {
 	repo   Repository
 	logger *logrus.Logger
+	stop   chan struct{}
 }
 
 // NewLoginAttemptCleanupService creates a new login attempt cleanup service
@@ -17,6 +18,7 @@ func NewLoginAttemptCleanupService(repo Repository) *LoginAttemptCleanupService 
 	return &LoginAttemptCleanupService{
 		repo:   repo,
 		logger: logrus.New(),
+		stop:   make(chan struct{}),
 	}
 }
 
@@ -68,15 +70,21 @@ func (s *LoginAttemptCleanupService) StartCleanupRoutine(interval time.Duration,
 			s.logger.WithError(err).Error("Initial login attempt cleanup failed")
 		}
 
-		for range ticker.C {
-			if err := s.CleanupOldLoginAttempts(retentionPeriod); err != nil {
-				s.logger.WithError(err).Error("Periodic login attempt cleanup failed")
+		for {
+			select {
+			case <-ticker.C:
+				if err := s.CleanupOldLoginAttempts(retentionPeriod); err != nil {
+					s.logger.WithError(err).Error("Periodic login attempt cleanup failed")
+				}
+			case <-s.stop:
+				s.logger.Info("Login attempt cleanup routine stopping")
+				return
 			}
 		}
 	}()
 }
 
-// StopCleanupRoutine stops the cleanup routine (for testing or graceful shutdown)
-func (s *LoginAttemptCleanupService) StopCleanupRoutine() {
-	s.logger.Info("Login attempt cleanup routine stopped")
+// Stop stops the cleanup routine for graceful shutdown
+func (s *LoginAttemptCleanupService) Stop() {
+	close(s.stop)
 }

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // ==================== MRR/ARR Calculation Methods ====================
@@ -29,7 +31,7 @@ func (r *BillingRepository) CalculateMRR(ctx context.Context, year, month int) (
 		AND bs.current_period_end >= $2
 	`
 
-	err := r.db.Raw(query, endDate, startDate).Scan(&metrics.MRR_Cents).Error
+	err := r.db.GORM.Raw(query, endDate, startDate).Scan(&metrics.MRR_Cents).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate MRR: %w", err)
 	}
@@ -52,7 +54,7 @@ func (r *BillingRepository) CalculateMRR(ctx context.Context, year, month int) (
 	`
 
 	var newMRRCents int
-	err = r.db.Raw(newMRRQuery, startDate, endDate).Scan(&newMRRCents).Error
+	err = r.db.GORM.Raw(newMRRQuery, startDate, endDate).Scan(&newMRRCents).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate new MRR: %w", err)
 	}
@@ -67,7 +69,7 @@ func (r *BillingRepository) CalculateMRR(ctx context.Context, year, month int) (
 	`
 
 	var expansionMRRCents int
-	err = r.db.Raw(expansionQuery, startDate, endDate).Scan(&expansionMRRCents).Error
+	err = r.db.GORM.Raw(expansionQuery, startDate, endDate).Scan(&expansionMRRCents).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate expansion MRR: %w", err)
 	}
@@ -82,7 +84,7 @@ func (r *BillingRepository) CalculateMRR(ctx context.Context, year, month int) (
 	`
 
 	var contractionMRRCents int
-	err = r.db.Raw(contractionQuery, startDate, endDate).Scan(&contractionMRRCents).Error
+	err = r.db.GORM.Raw(contractionQuery, startDate, endDate).Scan(&contractionMRRCents).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate contraction MRR: %w", err)
 	}
@@ -97,7 +99,7 @@ func (r *BillingRepository) CalculateMRR(ctx context.Context, year, month int) (
 	`
 
 	var churnedMRRCents int
-	err = r.db.Raw(churnedQuery, startDate, endDate).Scan(&churnedMRRCents).Error
+	err = r.db.GORM.Raw(churnedQuery, startDate, endDate).Scan(&churnedMRRCents).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate churned MRR: %w", err)
 	}
@@ -120,7 +122,7 @@ func (r *BillingRepository) CalculateMRR(ctx context.Context, year, month int) (
 	`
 
 	var reactivationMRRCents int
-	err = r.db.Raw(reactivationQuery, startDate, endDate).Scan(&reactivationMRRCents).Error
+	err = r.db.GORM.Raw(reactivationQuery, startDate, endDate).Scan(&reactivationMRRCents).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate reactivation MRR: %w", err)
 	}
@@ -203,7 +205,7 @@ func (r *BillingRepository) CalculateChurnMetrics(ctx context.Context, year, mon
 		AND (canceled_at IS NULL OR canceled_at >= $1)
 	`
 
-	err := r.db.Raw(customersAtStartQuery, startDate).Scan(&metrics.CustomersAtStart).Error
+	err := r.db.GORM.Raw(customersAtStartQuery, startDate).Scan(&metrics.CustomersAtStart).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to count customers at start: %w", err)
 	}
@@ -217,7 +219,7 @@ func (r *BillingRepository) CalculateChurnMetrics(ctx context.Context, year, mon
 		AND is_recovered = false
 	`
 
-	err = r.db.Raw(churnedQuery, startDate, endDate).Scan(&metrics.CustomersChurned).Error
+	err = r.db.GORM.Raw(churnedQuery, startDate, endDate).Scan(&metrics.CustomersChurned).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to count churned customers: %w", err)
 	}
@@ -237,7 +239,7 @@ func (r *BillingRepository) CalculateChurnMetrics(ctx context.Context, year, mon
 		AND (bs.canceled_at IS NULL OR bs.canceled_at >= $1)
 	`
 
-	err = r.db.Raw(mrrAtStartQuery, startDate).Scan(&metrics.MRRAtStart_Cents).Error
+	err = r.db.GORM.Raw(mrrAtStartQuery, startDate).Scan(&metrics.MRRAtStart_Cents).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate MRR at start: %w", err)
 	}
@@ -251,7 +253,7 @@ func (r *BillingRepository) CalculateChurnMetrics(ctx context.Context, year, mon
 		AND is_recovered = false
 	`
 
-	err = r.db.Raw(mrrChurnedQuery, startDate, endDate).Scan(&metrics.MRRChurned_Cents).Error
+	err = r.db.GORM.Raw(mrrChurnedQuery, startDate, endDate).Scan(&metrics.MRRChurned_Cents).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate churned MRR: %w", err)
 	}
@@ -270,7 +272,7 @@ func (r *BillingRepository) CalculateChurnMetrics(ctx context.Context, year, mon
 	`
 
 	var grossChurnCents int
-	err = r.db.Raw(grossChurnQuery, startDate, endDate).Scan(&grossChurnCents).Error
+	err = r.db.GORM.Raw(grossChurnQuery, startDate, endDate).Scan(&grossChurnCents).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate gross churn: %w", err)
 	}
@@ -280,8 +282,21 @@ func (r *BillingRepository) CalculateChurnMetrics(ctx context.Context, year, mon
 		metrics.GrossRevenueRetention = 100.0 - metrics.GrossChurnRate
 	}
 
+	// Calculate expansion MRR for net churn calculation
+	expansionQuery := `
+		SELECT COALESCE(SUM(sce.new_mrr_cents - sce.previous_mrr_cents), 0)
+		FROM subscription_churn_events sce
+		WHERE sce.event_type = 'upgrade'
+		AND sce.event_date >= $1 AND sce.event_date < $2
+	`
+	var expansionMRRCents int
+	err = r.db.GORM.Raw(expansionQuery, startDate, endDate).Scan(&expansionMRRCents).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate expansion MRR: %w", err)
+	}
+
 	// Net churn (including expansion)
-	netChurnCents := grossChurnCents - metrics.ExpansionMRR_Cents
+	netChurnCents := grossChurnCents - expansionMRRCents
 	if metrics.MRRAtStart_Cents > 0 {
 		metrics.NetChurnRate = float64(netChurnCents) / float64(metrics.MRRAtStart_Cents) * 100.0
 		metrics.NetRevenueRetention = 100.0 - metrics.NetChurnRate
@@ -298,7 +313,7 @@ func (r *BillingRepository) CalculateChurnMetrics(ctx context.Context, year, mon
 		AND cancel_reason NOT LIKE '%failed%'
 	`
 
-	err = r.db.Raw(voluntaryQuery, startDate, endDate).Scan(&metrics.VoluntaryChurn).Error
+	err = r.db.GORM.Raw(voluntaryQuery, startDate, endDate).Scan(&metrics.VoluntaryChurn).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to count voluntary churn: %w", err)
 	}
@@ -311,7 +326,7 @@ func (r *BillingRepository) CalculateChurnMetrics(ctx context.Context, year, mon
 		AND event_date >= $1 AND event_date < $2
 	`
 
-	err = r.db.Raw(involuntaryQuery, startDate, endDate).Scan(&metrics.InvoluntaryChurn).Error
+	err = r.db.GORM.Raw(involuntaryQuery, startDate, endDate).Scan(&metrics.InvoluntaryChurn).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to count involuntary churn: %w", err)
 	}
@@ -324,7 +339,7 @@ func (r *BillingRepository) CalculateChurnMetrics(ctx context.Context, year, mon
 		AND event_date >= $1 AND event_date < $2
 	`
 
-	err = r.db.Raw(downgradeQuery, startDate, endDate).Scan(&metrics.DowngradeChurn).Error
+	err = r.db.GORM.Raw(downgradeQuery, startDate, endDate).Scan(&metrics.DowngradeChurn).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to count downgrades: %w", err)
 	}
@@ -337,7 +352,7 @@ func (r *BillingRepository) CalculateChurnMetrics(ctx context.Context, year, mon
 		AND event_date >= $1 AND event_date < $2
 	`
 
-	err = r.db.Raw(failedRenewalQuery, startDate, endDate).Scan(&metrics.FailedRenewalChurn).Error
+	err = r.db.GORM.Raw(failedRenewalQuery, startDate, endDate).Scan(&metrics.FailedRenewalChurn).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to count failed renewals: %w", err)
 	}
@@ -347,7 +362,7 @@ func (r *BillingRepository) CalculateChurnMetrics(ctx context.Context, year, mon
 
 // RecordSubscriptionChurnEvent records a churn event for tracking
 func (r *BillingRepository) RecordSubscriptionChurnEvent(ctx context.Context, event *SubscriptionChurnEvent) error {
-	return r.db.WithContext(ctx).Create(event).Error
+	return r.db.GORM.WithContext(ctx).Create(event).Error
 }
 
 // GetChurnMetricsTimeseries returns churn metrics over time
@@ -415,7 +430,7 @@ func (r *BillingRepository) GetLTVMetrics(ctx context.Context) (*LTVMetrics, err
 		) as customer_totals
 	`
 
-	err := r.db.Raw(avgLTVQuery).Scan(&ltv.AverageLTV_Cents).Error
+	err := r.db.GORM.Raw(avgLTVQuery).Scan(&ltv.AverageLTV_Cents).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate average LTV: %w", err)
 	}
@@ -431,7 +446,7 @@ func (r *BillingRepository) GetLTVMetrics(ctx context.Context) (*LTVMetrics, err
 		) as customer_totals
 	`
 
-	err = r.db.Raw(medianLTVQuery).Scan(&ltv.MedianLTV_Cents).Error
+	err = r.db.GORM.Raw(medianLTVQuery).Scan(&ltv.MedianLTV_Cents).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate median LTV: %w", err)
 	}
@@ -444,7 +459,7 @@ func (r *BillingRepository) GetLTVMetrics(ctx context.Context) (*LTVMetrics, err
 // GenerateFinancialReport generates a comprehensive financial report
 func (r *BillingRepository) GenerateFinancialReport(ctx context.Context, reportType string, periodStart, periodEnd time.Time) (*FinancialReport, error) {
 	report := &FinancialReport{
-		ReportID:    MustGenerateUUID(),
+		ReportID:    uuid.New(),
 		GeneratedAt: time.Now(),
 		ReportType:  reportType,
 		PeriodStart: periodStart,
@@ -459,7 +474,7 @@ func (r *BillingRepository) GenerateFinancialReport(ctx context.Context, reportT
 		AND status = 'paid'
 	`
 
-	err := r.db.Raw(revenueQuery, periodStart, periodEnd).Scan(&report.TotalRevenue_Cents).Error
+	err := r.db.GORM.Raw(revenueQuery, periodStart, periodEnd).Scan(&report.TotalRevenue_Cents).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate total revenue: %w", err)
 	}
@@ -473,7 +488,7 @@ func (r *BillingRepository) GenerateFinancialReport(ctx context.Context, reportT
 		AND subscription_id IS NOT NULL
 	`
 
-	err = r.db.Raw(subRevenueQuery, periodStart, periodEnd).Scan(&report.SubscriptionRevenue_Cents).Error
+	err = r.db.GORM.Raw(subRevenueQuery, periodStart, periodEnd).Scan(&report.SubscriptionRevenue_Cents).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate subscription revenue: %w", err)
 	}
@@ -489,7 +504,7 @@ func (r *BillingRepository) GenerateFinancialReport(ctx context.Context, reportT
 		AND status = 'succeeded'
 	`
 
-	err = r.db.Raw(refundsQuery, periodStart, periodEnd).Scan(&report.Refunds_Cents).Error
+	err = r.db.GORM.Raw(refundsQuery, periodStart, periodEnd).Scan(&report.Refunds_Cents).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate refunds: %w", err)
 	}
@@ -502,7 +517,7 @@ func (r *BillingRepository) GenerateFinancialReport(ctx context.Context, reportT
 		AND status = 'lost'
 	`
 
-	err = r.db.Raw(disputesQuery, periodStart, periodEnd).Scan(&report.Disputes_Cents).Error
+	err = r.db.GORM.Raw(disputesQuery, periodStart, periodEnd).Scan(&report.Disputes_Cents).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate disputes: %w", err)
 	}
@@ -517,7 +532,7 @@ func (r *BillingRepository) GenerateFinancialReport(ctx context.Context, reportT
 	`
 
 	var outstanding, overdue int
-	err = r.db.Raw(outstandingQuery, periodStart, periodEnd).Scan(&[]interface{}{&outstanding, &overdue}).Error
+	err = r.db.GORM.Raw(outstandingQuery, periodStart, periodEnd).Scan(&[]interface{}{&outstanding, &overdue}).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate outstanding: %w", err)
 	}
@@ -533,7 +548,7 @@ func (r *BillingRepository) GenerateFinancialReport(ctx context.Context, reportT
 		WHERE i.paid_at >= $1 AND i.paid_at < $2
 	`
 
-	err = r.db.Raw(taxQuery, periodStart, periodEnd).Scan(&report.TaxCollected_Cents).Error
+	err = r.db.GORM.Raw(taxQuery, periodStart, periodEnd).Scan(&report.TaxCollected_Cents).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate tax: %w", err)
 	}
@@ -562,7 +577,7 @@ func (r *BillingRepository) GetTaxJurisdictionReport(ctx context.Context, period
 	`
 
 	results := []TaxJurisdictionReport{}
-	err := r.db.Raw(query, periodMonth).Scan(&results).Error
+	err := r.db.GORM.Raw(query, periodMonth).Scan(&results).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tax jurisdiction report: %w", err)
 	}
@@ -588,7 +603,7 @@ func (r *BillingRepository) GetSubscriptionLifecycleMetrics(ctx context.Context,
 		AND created_at >= $1 AND created_at < $2
 	`
 
-	err := r.db.Raw(trialsQuery, startDate, endDate).Scan(&metrics.TrialsStarted).Error
+	err := r.db.GORM.Raw(trialsQuery, startDate, endDate).Scan(&metrics.TrialsStarted).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to count trials: %w", err)
 	}
@@ -603,7 +618,7 @@ func (r *BillingRepository) GetSubscriptionLifecycleMetrics(ctx context.Context,
 		AND i.paid_at >= $1 AND i.paid_at < $2
 	`
 
-	err = r.db.Raw(conversionsQuery, startDate, endDate).Scan(&metrics.TrialsConverted).Error
+	err = r.db.GORM.Raw(conversionsQuery, startDate, endDate).Scan(&metrics.TrialsConverted).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to count conversions: %w", err)
 	}

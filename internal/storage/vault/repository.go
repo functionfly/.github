@@ -94,7 +94,7 @@ func (r *Repository) GetSecretsByTenantPaginated(ctx context.Context, tenantID u
 func (r *Repository) UpdateSecret(ctx context.Context, secret *Secret) error {
 	secret.UpdatedAt = time.Now()
 	return r.db.WithContext(ctx).Model(secret).Updates(map[string]interface{}{
-		"name":             secret.Name,
+		"name":            secret.Name,
 		"description":     secret.Description,
 		"encrypted_value": secret.EncryptedValue,
 		"encryption_salt": secret.EncryptionSalt,
@@ -327,6 +327,214 @@ func (r *Repository) CountAuditLogsBySecret(ctx context.Context, secretID uuid.U
 		Where("secret_id = ? AND tenant_id = ?", secretID, tenantID).
 		Count(&count).Error
 	return count, err
+}
+
+// --- Secret Versions ---
+
+// CreateSecretVersion creates a new version snapshot of a secret
+// This automatically increments the version number and updates the secret's current_version
+func (r *Repository) CreateSecretVersion(ctx context.Context, version *SecretVersion) error {
+	if version.ID == uuid.Nil {
+		version.ID = uuid.New()
+	}
+	if version.Scopes == nil {
+		version.Scopes = JSONMap{}
+	}
+	if version.Metadata == nil {
+		version.Metadata = JSONMap{}
+	}
+
+	// Use a transaction to ensure version creation and secret update are atomic
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Get the next version number for this secret
+		var maxVersion int
+		if err := tx.Model(&SecretVersion{}).
+			Where("secret_id = ?", version.SecretID).
+			Select("COALESCE(MAX(version_number), 0)").
+			Scan(&maxVersion).Error; err != nil {
+			return err
+		}
+		version.VersionNumber = maxVersion + 1
+
+		// Create the version record
+		if err := tx.Create(version).Error; err != nil {
+			return err
+		}
+
+		// Update the secret's current_version and last_modified timestamps
+		now := time.Now()
+		if err := tx.Model(&Secret{}).
+			Where("id = ? AND tenant_id = ?", version.SecretID, version.TenantID).
+			Updates(map[string]interface{}{
+				"current_version":  version.VersionNumber,
+				"last_modified_by": version.ActorID,
+				"last_modified_at": now,
+				"updated_at":       now,
+			}).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
+// GetSecretVersions retrieves all versions for a secret in descending order (newest first)
+func (r *Repository) GetSecretVersions(ctx context.Context, secretID uuid.UUID, tenantID uuid.UUID, limit, offset int) ([]SecretVersion, error) {
+	var versions []SecretVersion
+	query := r.db.WithContext(ctx).
+		Where("secret_id = ? AND tenant_id = ?", secretID, tenantID).
+		Order("version_number DESC")
+
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	if offset > 0 {
+		query = query.Offset(offset)
+	}
+
+	err := query.Find(&versions).Error
+	return versions, err
+}
+
+// CountSecretVersions returns the total number of versions for a secret
+func (r *Repository) CountSecretVersions(ctx context.Context, secretID uuid.UUID, tenantID uuid.UUID) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&SecretVersion{}).
+		Where("secret_id = ? AND tenant_id = ?", secretID, tenantID).
+		Count(&count).Error
+	return count, err
+}
+
+// GetSecretVersionByNumber retrieves a specific version by its version number
+func (r *Repository) GetSecretVersionByNumber(ctx context.Context, secretID uuid.UUID, tenantID uuid.UUID, versionNumber int) (*SecretVersion, error) {
+	var version SecretVersion
+	err := r.db.WithContext(ctx).
+		Where("secret_id = ? AND tenant_id = ? AND version_number = ?", secretID, tenantID, versionNumber).
+		First(&version).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &version, nil
+}
+
+// GetSecretVersionByID retrieves a version by its ID
+func (r *Repository) GetSecretVersionByID(ctx context.Context, versionID uuid.UUID, tenantID uuid.UUID) (*SecretVersion, error) {
+	var version SecretVersion
+	err := r.db.WithContext(ctx).
+		Where("id = ? AND tenant_id = ?", versionID, tenantID).
+		First(&version).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &version, nil
+}
+
+// RollbackSecret restores a secret to a previous version by creating a new version with the old data
+// This creates a new version rather than overwriting, preserving the complete history
+func (r *Repository) RollbackSecret(ctx context.Context, secretID uuid.UUID, tenantID uuid.UUID, targetVersionNumber int, actorID uuid.UUID, actorType ActorType) (*SecretVersion, error) {
+	// Get the target version
+	targetVersion, err := r.GetSecretVersionByNumber(ctx, secretID, tenantID, targetVersionNumber)
+	if err != nil {
+		return nil, err
+	}
+	if targetVersion == nil {
+		return nil, fmt.Errorf("target version %d not found", targetVersionNumber)
+	}
+
+	// Get the current secret
+	secret, err := r.GetSecretByID(ctx, secretID, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	if secret == nil {
+		return nil, fmt.Errorf("secret not found")
+	}
+
+	// Create a rollback version that restores the target version's data
+	rollbackVersion := &SecretVersion{
+		SecretID:          secretID,
+		TenantID:          tenantID,
+		Name:              targetVersion.Name,
+		Description:       targetVersion.Description,
+		SecretType:        targetVersion.SecretType,
+		EncryptedValue:    targetVersion.EncryptedValue,
+		EncryptionSalt:    targetVersion.EncryptionSalt,
+		IV:                targetVersion.IV,
+		EncryptionAuthTag: targetVersion.EncryptionAuthTag,
+		KeyVersion:        targetVersion.KeyVersion,
+		Scopes:            targetVersion.Scopes,
+		Metadata:          targetVersion.Metadata,
+		ChangeType:        "rollback",
+		ChangeSummary:     fmt.Sprintf("Rolled back to version %d", targetVersionNumber),
+		ActorID:           actorID,
+		ActorType:         actorType,
+	}
+
+	// Use transaction to ensure atomicity
+	var result *SecretVersion
+	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Get the next version number
+		var maxVersion int
+		if err := tx.Model(&SecretVersion{}).
+			Where("secret_id = ?", secretID).
+			Select("COALESCE(MAX(version_number), 0)").
+			Scan(&maxVersion).Error; err != nil {
+			return err
+		}
+		rollbackVersion.VersionNumber = maxVersion + 1
+
+		// Create the rollback version record
+		if err := tx.Create(rollbackVersion).Error; err != nil {
+			return err
+		}
+
+		// Update the secret to match the rolled-back version
+		now := time.Now()
+		if err := tx.Model(&Secret{}).
+			Where("id = ? AND tenant_id = ?", secretID, tenantID).
+			Updates(map[string]interface{}{
+				"name":                targetVersion.Name,
+				"description":         targetVersion.Description,
+				"secret_type":         targetVersion.SecretType,
+				"encrypted_value":     targetVersion.EncryptedValue,
+				"encryption_salt":     targetVersion.EncryptionSalt,
+				"encryption_iv":       targetVersion.IV,
+				"encryption_auth_tag": targetVersion.EncryptionAuthTag,
+				"key_version":         targetVersion.KeyVersion,
+				"scopes":              targetVersion.Scopes,
+				"metadata":            targetVersion.Metadata,
+				"current_version":     rollbackVersion.VersionNumber,
+				"last_modified_by":    actorID,
+				"last_modified_at":    now,
+				"updated_at":          now,
+			}).Error; err != nil {
+			return err
+		}
+
+		result = rollbackVersion
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// GetSecretVersionCount returns the count of versions for a secret
+func (r *Repository) GetSecretVersionCount(ctx context.Context, secretID uuid.UUID, tenantID uuid.UUID) (int, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&SecretVersion{}).
+		Where("secret_id = ? AND tenant_id = ?", secretID, tenantID).
+		Count(&count).Error
+	return int(count), err
 }
 
 // --- Utility Methods ---

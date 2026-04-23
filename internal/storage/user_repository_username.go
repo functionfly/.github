@@ -7,7 +7,41 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
+
+// ChangeUsernameWithHistory atomically changes a user's username and records the change in history.
+// This should be used instead of separate CreateUsernameChangeHistory + UpdateUser calls to ensure
+// atomicity and avoid orphaned history records on update failure.
+func (r *UserRepository) ChangeUsernameWithHistory(ctx context.Context, userID uuid.UUID, newUsername string, history *UsernameChangeHistory) error {
+	return r.db.GORM.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Update the user's username
+		result := tx.Exec("UPDATE users SET username = $1, updated_at = NOW() WHERE id = $2", newUsername, userID)
+		if result.Error != nil {
+			return fmt.Errorf("failed to update username: %w", result.Error)
+		}
+		if result.RowsAffected == 0 {
+			return fmt.Errorf("user not found")
+		}
+
+		// Record the history
+		err := tx.Exec(`
+			INSERT INTO username_change_history (
+				id, user_id, old_username, new_username, changed_at, changed_by,
+				was_early_change, fee_paid_cents, fee_currency, stripe_payment_id,
+				ip_address, user_agent
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+			history.ID, history.UserID, history.OldUsername, history.NewUsername,
+			history.ChangedAt, history.ChangedBy, history.WasEarlyChange,
+			history.FeePaidCents, history.FeeCurrency, history.StripePaymentID,
+			history.IPAddress, history.UserAgent,
+		).Error
+		if err != nil {
+			return fmt.Errorf("failed to create username change history: %w", err)
+		}
+		return nil
+	})
+}
 
 // CreateUsernameChangeHistory records a username change in the history
 func (r *UserRepository) CreateUsernameChangeHistory(ctx context.Context, history *UsernameChangeHistory) error {

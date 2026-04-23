@@ -141,9 +141,27 @@ func (db *PostgresDB) UpdateProvider(ctx context.Context, providerID string, upd
 		provider.TeamID = &teamID
 	}
 
+	// Encrypt token if provided
+	if token, ok := updates["token"].(string); ok && token != "" {
+		encryptedToken, err := db.EncryptField(token)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encrypt provider token: %w", err)
+		}
+		provider.Token = encryptedToken
+	}
+
 	// Update in database
 	if err := db.GORM.WithContext(ctx).Save(&provider).Error; err != nil {
 		return nil, err
+	}
+
+	// Decrypt for return value so callers can use it
+	if provider.Token != "" {
+		decryptedToken, err := db.DecryptField(provider.Token)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt provider token: %w", err)
+		}
+		provider.Token = decryptedToken
 	}
 
 	return &provider, nil

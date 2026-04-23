@@ -114,7 +114,7 @@ func (r *RegistryRepository) GetEdgeCacheCandidates(ctx context.Context, minPopu
 			COUNT(re.id) as execution_count,
 			AVG(re.duration_ms) as avg_latency,
 			(SUM(CASE WHEN re.outcome = 'success' THEN 1 ELSE 0 END) * 100.0 / COUNT(re.id)) as success_rate,
-			MAX(re.created_at) as last_executed
+			MAX(re.timestamp) as last_executed
 		`).
 		Joins("LEFT JOIN registry_function_executions re ON rf.id = re.function_id").
 		Where("rf.visibility = ?", "public").
@@ -186,7 +186,7 @@ func (r *RegistryRepository) GetFunctionEdgeCacheMetrics(ctx context.Context, fu
 			COUNT(re.id) as execution_count,
 			AVG(re.duration_ms) as avg_latency,
 			(SUM(CASE WHEN re.outcome = 'success' THEN 1 ELSE 0 END) * 100.0 / COUNT(re.id)) as success_rate,
-			MAX(re.created_at) as last_executed
+			MAX(re.timestamp) as last_executed
 		`).
 		Joins("LEFT JOIN registry_function_executions re ON rf.id = re.function_id AND re.created_at >= ?", windowStart).
 		Where("rf.id = ?", functionID).
@@ -257,7 +257,7 @@ func (r *RegistryRepository) GetPopularFunctionsByCategory(ctx context.Context, 
 			COUNT(re.id) as execution_count,
 			AVG(re.duration_ms) as avg_latency,
 			(SUM(CASE WHEN re.outcome = 'success' THEN 1 ELSE 0 END) * 100.0 / COUNT(re.id)) as success_rate,
-			MAX(re.created_at) as last_executed
+			MAX(re.timestamp) as last_executed
 		`).
 		Joins("LEFT JOIN registry_function_executions re ON rf.id = re.function_id").
 		Where("rf.category = ?", category).
@@ -310,6 +310,11 @@ func (r *RegistryRepository) GetPopularFunctionsByCategory(ctx context.Context, 
 
 // SearchFunctions searches functions by text query (with caching)
 func (r *RegistryRepository) SearchFunctions(query string, category, runtime string, minRating float64, limit, offset int) ([]RegistryFunction, int, error) {
+	return r.SearchFunctionsWithSort(query, category, runtime, minRating, limit, offset, "")
+}
+
+// SearchFunctionsWithSort searches functions with optional sorting (relevance, popular, recent, rating, name)
+func (r *RegistryRepository) SearchFunctionsWithSort(query string, category, runtime string, minRating float64, limit, offset int, sortBy string) ([]RegistryFunction, int, error) {
 	// Try cache first if available
 	if r.cache != nil {
 		cacheKey := r.keyGen.SearchFunctions(query, category, runtime, minRating, limit, offset)
@@ -323,8 +328,12 @@ func (r *RegistryRepository) SearchFunctions(query string, category, runtime str
 	}
 
 	dbQuery := r.db.Model(&RegistryFunction{}).
-		Where("visibility = ?", "public").
-		Where("name ILIKE ? OR title ILIKE ? OR description ILIKE ?", "%"+query+"%", "%"+query+"%", "%"+query+"%")
+		Where("visibility = ?", "public")
+
+	// Only apply text search if query is provided
+	if query != "" {
+		dbQuery = dbQuery.Where("name ILIKE ? OR title ILIKE ? OR description ILIKE ?", "%"+query+"%", "%"+query+"%", "%"+query+"%")
+	}
 
 	if category != "" {
 		dbQuery = dbQuery.Where("category = ?", category)
@@ -340,10 +349,13 @@ func (r *RegistryRepository) SearchFunctions(query string, category, runtime str
 		return nil, 0, fmt.Errorf("failed to count search results: %w", err)
 	}
 
-	// Add ordering and pagination - sort by trust_score first, then popularity
+	// Apply ordering based on sort_by parameter
+	orderClause := r.buildOrderClause(sortBy, query != "")
+
+	// Add ordering and pagination
 	var functions []RegistryFunction
 	if err := dbQuery.
-		Order("trust_score DESC, popularity_score DESC, reliability_score DESC").
+		Order(orderClause).
 		Limit(limit).Offset(offset).Find(&functions).Error; err != nil {
 		return nil, 0, fmt.Errorf("failed to search functions: %w", err)
 	}
@@ -364,4 +376,25 @@ func (r *RegistryRepository) SearchFunctions(query string, category, runtime str
 	}
 
 	return functions, int(total), nil
+}
+
+// buildOrderClause builds the ORDER BY clause based on sort preferences
+func (r *RegistryRepository) buildOrderClause(sortBy string, hasQuery bool) string {
+	switch sortBy {
+	case "popular":
+		return "popularity_score DESC, trust_score DESC, created_at DESC"
+	case "recent":
+		return "created_at DESC, popularity_score DESC"
+	case "rating":
+		return "trust_score DESC, reliability_score DESC, popularity_score DESC"
+	case "name":
+		return "name ASC, popularity_score DESC"
+	default:
+		// Default: if searching with query, prioritize relevance (trust first)
+		// if browsing (no query), prioritize popularity
+		if hasQuery {
+			return "trust_score DESC, popularity_score DESC, reliability_score DESC"
+		}
+		return "popularity_score DESC, trust_score DESC, created_at DESC"
+	}
 }

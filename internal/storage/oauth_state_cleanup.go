@@ -10,6 +10,7 @@ import (
 type OAuthStateCleanupService struct {
 	repo   Repository
 	logger *logrus.Logger
+	stop   chan struct{}
 }
 
 // NewOAuthStateCleanupService creates a new OAuth state cleanup service
@@ -17,6 +18,7 @@ func NewOAuthStateCleanupService(repo Repository) *OAuthStateCleanupService {
 	return &OAuthStateCleanupService{
 		repo:   repo,
 		logger: logrus.New(),
+		stop:   make(chan struct{}),
 	}
 }
 
@@ -59,15 +61,21 @@ func (s *OAuthStateCleanupService) StartCleanupRoutine(interval time.Duration) {
 			s.logger.WithError(err).Error("Initial OAuth state cleanup failed")
 		}
 
-		for range ticker.C {
-			if err := s.CleanupExpiredOAuthStates(); err != nil {
-				s.logger.WithError(err).Error("Periodic OAuth state cleanup failed")
+		for {
+			select {
+			case <-ticker.C:
+				if err := s.CleanupExpiredOAuthStates(); err != nil {
+					s.logger.WithError(err).Error("Periodic OAuth state cleanup failed")
+				}
+			case <-s.stop:
+				s.logger.Info("OAuth state cleanup routine stopping")
+				return
 			}
 		}
 	}()
 }
 
-// StopCleanupRoutine stops the cleanup routine (for testing or graceful shutdown)
-func (s *OAuthStateCleanupService) StopCleanupRoutine() {
-	s.logger.Info("OAuth state cleanup routine stopped")
+// Stop stops the cleanup routine for graceful shutdown
+func (s *OAuthStateCleanupService) Stop() {
+	close(s.stop)
 }

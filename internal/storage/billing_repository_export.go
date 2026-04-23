@@ -276,9 +276,9 @@ func (r *ExportRepository) GetPendingScheduledConfigs(ctx context.Context, now t
 		AND (
 			last_executed_at IS NULL
 			OR (
-				(schedule_frequency = 'daily' AND last_executed_at < $1 - INTERVAL '1 day')
-				OR (schedule_frequency = 'weekly' AND last_executed_at < $1 - INTERVAL '7 days')
-				OR (schedule_frequency = 'monthly' AND last_executed_at < $1 - INTERVAL '1 month')
+				(schedule_frequency = 'daily' AND last_executed_at < $1::timestamp - INTERVAL '1 day')
+				OR (schedule_frequency = 'weekly' AND last_executed_at < $1::timestamp - INTERVAL '7 days')
+				OR (schedule_frequency = 'monthly' AND last_executed_at < $1::timestamp - INTERVAL '1 month')
 			)
 		)
 		AND (

@@ -50,12 +50,16 @@ const (
 	AuditActionUse AuditAction = "use"
 	// AuditActionRevoke for token revocation
 	AuditActionRevoke AuditAction = "revoke"
+	// AuditActionVersion for secret versioning (snapshot created)
+	AuditActionVersion AuditAction = "version"
+	// AuditActionRollback for secret rollback to a previous version
+	AuditActionRollback AuditAction = "rollback"
 )
 
 // Valid checks if the AuditAction is valid
 func (a AuditAction) Valid() bool {
 	switch a {
-	case AuditActionCreate, AuditActionRead, AuditActionUpdate, AuditActionDelete, AuditActionUse, AuditActionRevoke:
+	case AuditActionCreate, AuditActionRead, AuditActionUpdate, AuditActionDelete, AuditActionUse, AuditActionRevoke, AuditActionVersion, AuditActionRollback:
 		return true
 	}
 	return false

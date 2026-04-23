@@ -50,6 +50,11 @@ type Secret struct {
 	// Timestamps
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
+
+	// Version tracking
+	CurrentVersion *int       `gorm:"column:current_version"`
+	LastModifiedBy *uuid.UUID `gorm:"column:last_modified_by"`
+	LastModifiedAt *time.Time `gorm:"column:last_modified_at"`
 }
 
 // TableName specifies the table name for Secret
@@ -60,6 +65,62 @@ func (Secret) TableName() string {
 // IsDeleted returns true if the secret has been soft-deleted
 func (s *Secret) IsDeleted() bool {
 	return s.DeletedAt != nil
+}
+
+// SecretVersion represents a historical snapshot of a secret at a specific version
+// This enables versioning, rollback, and audit trails while maintaining zero-knowledge encryption
+type SecretVersion struct {
+	// Primary key using UUID
+	ID uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+
+	// Foreign key to the parent secret
+	SecretID uuid.UUID `gorm:"type:uuid;not null;index"`
+
+	// Tenant ownership for multi-tenancy
+	TenantID uuid.UUID `gorm:"type:uuid;not null;index"`
+
+	// Version number (sequential, starting at 1)
+	VersionNumber int `gorm:"not null"`
+
+	// Snapshot of secret metadata at this version
+	Name        string     `gorm:"not null;size:255"`
+	Description string     `gorm:"type:text"`
+	SecretType  SecretType `gorm:"not null;size:50"`
+
+	// Encrypted data snapshot (zero-knowledge: server never sees plaintext)
+	EncryptedValue    []byte `gorm:"type:bytea;not null"`
+	EncryptionSalt    []byte `gorm:"column:encryption_salt;type:bytea;not null"`
+	IV                []byte `gorm:"column:encryption_iv;type:bytea;not null"`
+	EncryptionAuthTag []byte `gorm:"column:encryption_auth_tag;type:bytea;not null"`
+	KeyVersion        int    `gorm:"not null;default:1"`
+
+	// Scopes and metadata at this version
+	Scopes   JSONMap `gorm:"type:jsonb;not null;default:'[]'::jsonb"`
+	Metadata JSONMap `gorm:"type:jsonb;not null;default:'{}'::jsonb"`
+
+	// Change tracking
+	ChangeType    string `gorm:"not null;size:20"` // 'create', 'update', 'rollback'
+	ChangeSummary string `gorm:"type:text"`
+
+	// Actor who created this version
+	ActorID   uuid.UUID `gorm:"type:uuid;not null"`
+	ActorType ActorType `gorm:"not null;size:50;default:'user'"`
+
+	// Timestamp when this version was created
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+}
+
+// TableName specifies the table name for SecretVersion
+func (SecretVersion) TableName() string {
+	return "secret_versions"
+}
+
+// BeforeCreate hook to ensure UUID is set if not provided
+func (v *SecretVersion) BeforeCreate(tx *gorm.DB) error {
+	if v.ID == uuid.Nil {
+		v.ID = uuid.New()
+	}
+	return nil
 }
 
 // AccessToken represents a scoped, time-limited access token for secrets
