@@ -14,6 +14,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/functionregistry"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
@@ -94,13 +95,13 @@ func (h *Handler) HandleWellKnown(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 
 	if r.Method == http.MethodOptions {
-		setCORSHeaders(w)
+		setCORSHeaders(w, r)
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", "GET, OPTIONS")
-		writeErrorJSON(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "only GET and OPTIONS are allowed")
+		writeErrorJSON(w, r, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "only GET and OPTIONS are allowed")
 		return
 	}
 
@@ -132,7 +133,7 @@ func (h *Handler) HandleWellKnown(w http.ResponseWriter, r *http.Request) {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"query": searchQuery, "category": category, "limit": limit, "offset": offset,
 		}).Error("wellknown: search functions failed")
-		writeErrorJSON(w, http.StatusInternalServerError, "SEARCH_FAILED", "failed to search functions")
+		writeErrorJSON(w, r, http.StatusInternalServerError, "SEARCH_FAILED", "failed to search functions")
 		return
 	}
 
@@ -223,7 +224,7 @@ func (h *Handler) HandleWellKnown(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Cache-Control", "public, max-age="+strconv.Itoa(cacheMaxAgeSeconds))
-	setCORSHeaders(w)
+	setCORSHeaders(w, r)
 
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
@@ -238,15 +239,15 @@ func (h *Handler) HandleWellKnown(w http.ResponseWriter, r *http.Request) {
 	}).Debug("wellknown: request completed")
 }
 
-func setCORSHeaders(w http.ResponseWriter) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+func setCORSHeaders(w http.ResponseWriter, r *http.Request) {
+	middleware.SetCORSHeaders(w, r)
 	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 	w.Header().Set("Access-Control-Max-Age", "86400")
 }
 
-func writeErrorJSON(w http.ResponseWriter, status int, code, message string) {
+func writeErrorJSON(w http.ResponseWriter, r *http.Request, status int, code, message string) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	setCORSHeaders(w)
+	setCORSHeaders(w, r)
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"ok": false,

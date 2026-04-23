@@ -88,6 +88,7 @@ func getDefaultSettings() map[string]interface{} {
 		"deploymentFailure":     true,
 		"failoverEvents":        true,
 		"providerIssues":        true,
+		"active_environment":    "production",
 	}
 }
 
@@ -557,4 +558,138 @@ func (h *Handler) HandlePatchUserSettingsVisibilityMe(w http.ResponseWriter, r *
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Visibility settings updated"})
+}
+
+// ValidEnvironmentValues represents the allowed environment values
+type ValidEnvironmentValues struct {
+	Environment string `json:"environment"`
+}
+
+// HandleGetActiveEnvironment returns GET /v1/users/me/environment — returns the user's currently selected active environment
+func (h *Handler) HandleGetActiveEnvironment(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	// Get user settings from database
+	settings, err := h.repo.GetUserSettings(claims.UserID)
+	if err != nil {
+		logrus.WithError(err).WithField("userID", claims.UserID).Warn("Failed to get user settings, using defaults")
+		settings = getDefaultSettings()
+	}
+
+	// Get active environment with fallback to production
+	activeEnv := "production"
+	if env, ok := settings["active_environment"].(string); ok && env != "" {
+		activeEnv = env
+	}
+
+	// Validate it's one of the allowed values
+	validEnvs := map[string]bool{"production": true, "staging": true, "development": true}
+	if !validEnvs[activeEnv] {
+		activeEnv = "production"
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"environment": activeEnv,
+		"available":   []string{"production", "staging", "development"},
+	})
+}
+
+// HandleSetActiveEnvironment handles PATCH /v1/users/me/environment — updates the user's active environment
+func (h *Handler) HandleSetActiveEnvironment(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var req struct {
+		Environment string `json:"environment"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	// Validate environment value
+	validEnvs := map[string]bool{"production": true, "staging": true, "development": true}
+	if !validEnvs[req.Environment] {
+		writeJSONError(w, http.StatusBadRequest, "Invalid environment. Must be: production, staging, or development")
+		return
+	}
+
+	// Get current settings
+	currentSettings, err := h.repo.GetUserSettings(claims.UserID)
+	if err != nil {
+		currentSettings = getDefaultSettings()
+	}
+
+	// Update active environment
+	currentSettings["active_environment"] = req.Environment
+
+	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
+		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update active environment")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to update environment preference")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"message":     "Environment preference updated",
+		"environment": req.Environment,
+	})
+}
+
+// SessionSecuritySettingsRequest is the body for PATCH /v1/users/me/settings/security
+type SessionSecuritySettingsRequest struct {
+	SessionTimeout  *string `json:"sessionTimeout"`  // "1h", "24h", "7d", "30d", "never"
+	RememberDevices *bool   `json:"rememberDevices"` // allow sessions on recognized devices for 30 days
+}
+
+// HandlePatchUserSettingsSecurityMe handles PATCH /v1/users/me/settings/security
+func (h *Handler) HandlePatchUserSettingsSecurityMe(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var req SessionSecuritySettingsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	// Validate session timeout value
+	if req.SessionTimeout != nil {
+		validTimeouts := map[string]bool{"1h": true, "24h": true, "7d": true, "30d": true, "never": true}
+		if !validTimeouts[*req.SessionTimeout] {
+			writeJSONError(w, http.StatusBadRequest, "Invalid session timeout value. Must be: 1h, 24h, 7d, 30d, or never")
+			return
+		}
+	}
+
+	// Get current settings
+	currentSettings, err := h.repo.GetUserSettings(claims.UserID)
+	if err != nil {
+		currentSettings = getDefaultSettings()
+	}
+
+	// Update security-related fields
+	if req.SessionTimeout != nil {
+		currentSettings["sessionTimeout"] = *req.SessionTimeout
+	}
+	if req.RememberDevices != nil {
+		currentSettings["rememberDevices"] = *req.RememberDevices
+	}
+
+	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
+		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update security settings")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to update security settings")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Security settings updated"})
 }

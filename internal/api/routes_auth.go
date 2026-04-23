@@ -86,6 +86,7 @@ func registerAuthRoutes(
 	api.HandleFunc("/auth/validate", authMiddleware.RequireAuth(authHandler.HandleValidateToken)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/auth/logout", authMiddleware.RequireAuth(authHandler.HandleLogout)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/verify-password", authMiddleware.RequireAuth(authHandler.HandleVerifyPassword)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/auth/trusted-device", authMiddleware.RequireAuth(authHandler.HandleTrustedDeviceRequest)).Methods("POST", "OPTIONS")
 
 	// Password reset (public, rate-limited)
 	api.HandleFunc("/auth/password-reset", authRateLimiter.Limit(authHandler.HandlePasswordResetRequest)).Methods("POST", "OPTIONS")
@@ -120,6 +121,9 @@ func registerAuthRoutes(
 	api.HandleFunc("/users/me/settings/notifications", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsNotificationsMe)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/me/settings/privacy", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsPrivacyMe)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/me/settings/visibility", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsVisibilityMe)).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/users/me/settings/security", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsSecurityMe)).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/users/me/environment", authMiddleware.RequireAuth(usersHandler.HandleGetActiveEnvironment)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/users/me/environment", authMiddleware.RequireAuth(usersHandler.HandleSetActiveEnvironment)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/me/activity", authMiddleware.RequireAuth(usersHandler.HandleCreateUserActivity)).Methods("POST", "OPTIONS")
 	// Username change endpoints (2-per-year limit with early-change fee)
 	api.HandleFunc("/users/me/username/eligibility", authMiddleware.RequireAuth(usersHandler.HandleGetUsernameChangeEligibility)).Methods("GET", "OPTIONS")

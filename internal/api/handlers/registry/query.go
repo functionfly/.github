@@ -211,10 +211,6 @@ func (h *Handler) HandleListFunctions(w http.ResponseWriter, r *http.Request) {
 // HandleSearchFunctions handles searching functions
 func (h *Handler) HandleSearchFunctions(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
-	if query == "" {
-		http.Error(w, "Query parameter 'q' is required", http.StatusBadRequest)
-		return
-	}
 
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	if limit == 0 {
@@ -227,8 +223,9 @@ func (h *Handler) HandleSearchFunctions(w http.ResponseWriter, r *http.Request) 
 	category := r.URL.Query().Get("category")
 	runtime := r.URL.Query().Get("runtime")
 	minRating, _ := strconv.ParseFloat(r.URL.Query().Get("min_rating"), 64)
+	sortBy := r.URL.Query().Get("sort_by")
 
-	functions, total, err := h.repo.SearchFunctions(query, category, runtime, minRating, limit, offset)
+	functions, total, err := h.repo.SearchFunctionsWithSort(query, category, runtime, minRating, limit, offset, sortBy)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to search functions")
 		http.Error(w, "Failed to search functions", http.StatusInternalServerError)

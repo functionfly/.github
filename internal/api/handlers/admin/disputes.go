@@ -140,10 +140,13 @@ func (h *DisputesHandler) HandleGetDispute(w http.ResponseWriter, r *http.Reques
 		dispute.TenantName = tenantName
 	}
 	if dispute.UserID != nil {
-		var userEmail, userName string
-		h.disputeRepo.DB().Raw("SELECT email, username FROM users WHERE id = ?", *dispute.UserID).Scan(&userEmail, &userName)
-		dispute.UserEmail = userEmail
-		dispute.UserName = userName
+		var userInfo struct {
+			Email    string
+			Username string
+		}
+		h.disputeRepo.DB().Raw("SELECT email, username FROM users WHERE id = ?", *dispute.UserID).Scan(&userInfo)
+		dispute.UserEmail = userInfo.Email
+		dispute.UserName = userInfo.Username
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -324,10 +327,13 @@ func (h *DisputesHandler) HandleGetRefund(w http.ResponseWriter, r *http.Request
 		refund.TenantName = tenantName
 	}
 	if refund.UserID != nil {
-		var userEmail, userName string
-		h.refundRepo.DB().Raw("SELECT email, username FROM users WHERE id = ?", *refund.UserID).Scan(&userEmail, &userName)
-		refund.UserEmail = userEmail
-		refund.UserName = userName
+		var userInfo struct {
+			Email    string
+			Username string
+		}
+		h.refundRepo.DB().Raw("SELECT email, username FROM users WHERE id = ?", *refund.UserID).Scan(&userInfo)
+		refund.UserEmail = userInfo.Email
+		refund.UserName = userInfo.Username
 	}
 
 	w.Header().Set("Content-Type", "application/json")

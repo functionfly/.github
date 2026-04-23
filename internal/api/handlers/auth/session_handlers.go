@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -359,4 +361,54 @@ func (h *Handler) HandleRefreshToken(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(response)
+}
+
+// HandleTrustedDeviceRequest generates a trusted device token for the authenticated user.
+// POST /auth/trusted-device
+// Client stores this token and sends it on future logins via X-Trusted-Device-Token header
+// to get a 30-day session instead of the default session duration.
+func (h *Handler) HandleTrustedDeviceRequest(w http.ResponseWriter, r *http.Request) {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		writeJSONError(w, http.StatusUnauthorized, "Authorization required")
+		return
+	}
+
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) != 2 || parts[0] != "Bearer" {
+		writeJSONError(w, http.StatusUnauthorized, "Invalid authorization header format")
+		return
+	}
+
+	claims, err := h.authSvc.ValidateToken(parts[1])
+	if err != nil {
+		writeJSONError(w, http.StatusUnauthorized, "Invalid token")
+		return
+	}
+
+	// Verify rememberDevices is enabled for this user
+	settings, err := h.authSvc.Repo().GetUserSettings(claims.UserID)
+	if err == nil && settings != nil {
+		if val, ok := settings["rememberDevices"]; ok {
+			if b, ok := val.(bool); ok && !b {
+				writeJSONError(w, http.StatusForbidden, "Remember devices is disabled")
+				return
+			}
+		}
+	}
+
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		logrus.WithError(err).Error("Failed to generate trusted device token")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to generate token")
+		return
+	}
+
+	trustedToken := base64.URLEncoding.EncodeToString(tokenBytes)
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"trustedToken": trustedToken,
+		"expiresIn":    "30d",
+	})
 }

@@ -7,12 +7,15 @@ import (
 	analyticshandler "github.com/functionfly/functionfly/internal/api/handlers/analytics"
 	"github.com/functionfly/functionfly/internal/api/handlers/apps"
 	"github.com/functionfly/functionfly/internal/api/handlers/backends"
+	billinghandler "github.com/functionfly/functionfly/internal/api/handlers/billing"
 	categorizationhandler "github.com/functionfly/functionfly/internal/api/handlers/categorization"
 	"github.com/functionfly/functionfly/internal/api/handlers/dashboard"
 	"github.com/functionfly/functionfly/internal/api/handlers/decisions"
+	"github.com/functionfly/functionfly/internal/api/handlers/deploykeys"
 	"github.com/functionfly/functionfly/internal/api/handlers/deployments"
 	"github.com/functionfly/functionfly/internal/api/handlers/enterprise"
 	factoryhandler "github.com/functionfly/functionfly/internal/api/handlers/factory"
+	"github.com/functionfly/functionfly/internal/api/handlers/function_webhooks"
 	"github.com/functionfly/functionfly/internal/api/handlers/functions"
 	"github.com/functionfly/functionfly/internal/api/handlers/monitoring"
 	"github.com/functionfly/functionfly/internal/api/handlers/providers"
@@ -67,6 +70,9 @@ func registerPlatformRoutes(
 	supportAdminHdlr *support.AdminHandler,
 	supportWSHub *support.WebSocketHub,
 	decisionsHandler *decisions.Handler,
+	stateUsageHandler *billinghandler.StateUsageHandler,
+	deployKeysHandler *deploykeys.Handler,
+	functionWebhooksHandler *function_webhooks.Handler,
 ) {
 	// ── Metrics (public) ─────────────────────────────────────────────────────
 	api.HandleFunc("/metrics/global", s.handleGlobalMetrics).Methods("GET", "OPTIONS")
@@ -207,11 +213,13 @@ func registerPlatformRoutes(
 	// ── Providers (protected) ─────────────────────────────────────────────────
 	// Provider operations are rate-limited per tenant to prevent abuse
 	protected.HandleFunc("/providers", authMiddleware.RequireAuth(providersHandler.HandleListProviders)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/providers/credentials", authMiddleware.RequireAuth(providersHandler.HandleGetProviderCredentials)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/providers/connect", authMiddleware.RequireAuth(providerRateLimiter.LimitConnect(providersHandler.HandleConnectProvider))).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/providers/validate", authMiddleware.RequireAuth(providersHandler.HandleValidateProvider)).Methods("POST")
 	protected.HandleFunc("/providers/cost-estimate", authMiddleware.RequireAuth(providersHandler.HandleEstimateCost)).Methods("POST")
 	protected.HandleFunc("/providers/{providerId}", authMiddleware.RequireAuth(providerRateLimiter.LimitDisconnect(providersHandler.HandleDisconnectProvider))).Methods("DELETE", "OPTIONS")
 	protected.HandleFunc("/providers/{providerId}/test", authMiddleware.RequireAuth(providerRateLimiter.LimitTest(providersHandler.HandleTestConnection))).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/providers/{providerId}/rotate", authMiddleware.RequireAuth(providerRateLimiter.LimitConnect(providersHandler.HandleRotateProvider))).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/providers/{providerId}/share", authMiddleware.RequireAuth(providersHandler.HandleShareProvider)).Methods("POST")
 	protected.HandleFunc("/teams/invites", authMiddleware.RequireAuth(providersHandler.HandleCreateTeamInvite)).Methods("POST")
 
@@ -240,6 +248,11 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/dashboard/activity", authMiddleware.RequireAuth(dashboardHandler.HandleGetActivity)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/dashboard/metrics", authMiddleware.RequireAuth(dashboardHandler.HandleGetMetrics)).Methods("GET", "OPTIONS")
 
+	// ── State Usage (billing/quota integration) ─────────────────────────────
+	protected.HandleFunc("/usage/state", authMiddleware.RequireAuth(stateUsageHandler.GetCurrentStateUsage)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/usage/state/history", authMiddleware.RequireAuth(stateUsageHandler.GetStateUsageHistory)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/usage/state/quota", authMiddleware.RequireAuth(stateUsageHandler.GetStateQuotaStatus)).Methods("GET", "OPTIONS")
+
 	// ── Enterprise SLA (protected) ────────────────────────────────────────────
 	protected.HandleFunc("/enterprise/sla/overview", authMiddleware.RequireAuth(enterpriseSLAHandler.HandleGetSLAOverview)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/enterprise/sla/uptime-history", authMiddleware.RequireAuth(enterpriseSLAHandler.HandleGetUptimeHistory)).Methods("GET", "OPTIONS")
@@ -266,6 +279,12 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/triggers", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleCreateTrigger))).Methods("POST")
 	protected.HandleFunc("/triggers/{id}", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleDeleteTrigger))).Methods("DELETE")
 
+	// ── State Encryption (protected, admin only) ─────────────────────────────
+	protected.HandleFunc("/state/encrypt", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleMigrateEncryption))).Methods("POST")
+	protected.HandleFunc("/state/encryption-stats", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleGetEncryptionStats))).Methods("GET")
+	protected.HandleFunc("/state/{path}/enable-encryption", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleEnableEncryption))).Methods("POST")
+	protected.HandleFunc("/state/rotate-key", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleRotateEncryptionKey))).Methods("POST")
+
 	// ── Agent Memory (protected) ──────────────────────────────────────────────
 	protected.HandleFunc("/memories", authMiddleware.RequireAuth(memoryHandler.HandleListMemories)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/memories", authMiddleware.RequireAuth(memoryHandler.HandleCreateMemory)).Methods("POST", "OPTIONS")
@@ -278,7 +297,9 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/agent-memories/search", authMiddleware.RequireAuth(agentMemoryHandler.HandleSearchMemories)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/agent-memories/index", authMiddleware.RequireAuth(agentMemoryHandler.HandleRebuildIndex)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/agent-memories/{id}", authMiddleware.RequireAuth(agentMemoryHandler.HandleGetMemory)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/agent-memories/{id}", authMiddleware.RequireAuth(agentMemoryHandler.HandleUpdateMemory)).Methods("PATCH", "OPTIONS")
 	protected.HandleFunc("/agent-memories/{id}", authMiddleware.RequireAuth(agentMemoryHandler.HandleDeleteMemory)).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/agent-memories/{id}/accessed", authMiddleware.RequireAuth(agentMemoryHandler.HandleMarkAccessed)).Methods("POST", "OPTIONS")
 
 	// ── State Fabric (protected, rate-limited per-tenant) ─────────────────────
 	protected.HandleFunc("/state-fabrics", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleList))).Methods("GET", "OPTIONS")
@@ -314,6 +335,12 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/vault/tokens/{id}", authMiddleware.RequireAuth(vaultHandler.HandleRevokeToken)).Methods("DELETE", "OPTIONS")
 	protected.HandleFunc("/vault/audit", authMiddleware.RequireAuth(vaultHandler.HandleGetAuditLog)).Methods("GET", "OPTIONS")
 
+	// ── Secret Versions (protected) ─────────────────────────────────────────
+	protected.HandleFunc("/vault/secrets/{id}/versions", authMiddleware.RequireAuth(vaultHandler.HandleListSecretVersions)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/vault/secrets/{id}/versions/{version}", authMiddleware.RequireAuth(vaultHandler.HandleGetSecretVersion)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/vault/secrets/{id}/versions/diff", authMiddleware.RequireAuth(vaultHandler.HandleDiffSecretVersions)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/vault/secrets/{id}/rollback", authMiddleware.RequireAuth(vaultHandler.HandleRollbackSecret)).Methods("POST", "OPTIONS")
+
 	// ── Backends (protected) ──────────────────────────────────────────────────
 	protected.HandleFunc("/apps/{appId}/backends", authMiddleware.RequireAuth(backendsHandler.HandleCreateBackend)).Methods("POST")
 	protected.HandleFunc("/apps/{appId}/backends", authMiddleware.RequireAuth(backendsHandler.HandleListBackends)).Methods("GET")
@@ -328,6 +355,22 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/apps/{appId}/deployments", authMiddleware.RequireAuth(deploymentsHandler.HandleListDeployments)).Methods("GET")
 	protected.HandleFunc("/deployments/{deploymentId}", authMiddleware.RequireAuth(deploymentsHandler.HandleGetDeployment)).Methods("GET")
 	protected.HandleFunc("/deployments/{deploymentId}/rollback", authMiddleware.RequireAuth(advancedSecurityMiddleware.RequireHMACSignature(deploymentsHandler.HandleRollback))).Methods("POST")
+
+	// ── Deploy Keys (protected) ─────────────────────────────────────────────
+	protected.HandleFunc("/deploy-keys", authMiddleware.RequireAuth(deployKeysHandler.HandleCreate)).Methods("POST")
+	protected.HandleFunc("/deploy-keys", authMiddleware.RequireAuth(deployKeysHandler.HandleList)).Methods("GET")
+	protected.HandleFunc("/deploy-keys/{id}", authMiddleware.RequireAuth(deployKeysHandler.HandleGet)).Methods("GET")
+	protected.HandleFunc("/deploy-keys/{id}", authMiddleware.RequireAuth(deployKeysHandler.HandleDelete)).Methods("DELETE")
+	protected.HandleFunc("/deploy-keys/{id}/verify", authMiddleware.RequireAuth(deployKeysHandler.HandleVerify)).Methods("POST")
+
+	// ── Function Webhooks (protected) ───────────────────────────────────────
+	protected.HandleFunc("/function-webhooks", authMiddleware.RequireAuth(functionWebhooksHandler.HandleCreate)).Methods("POST")
+	protected.HandleFunc("/function-webhooks", authMiddleware.RequireAuth(functionWebhooksHandler.HandleList)).Methods("GET")
+	protected.HandleFunc("/function-webhooks/{id}", authMiddleware.RequireAuth(functionWebhooksHandler.HandleGet)).Methods("GET")
+	protected.HandleFunc("/function-webhooks/{id}", authMiddleware.RequireAuth(functionWebhooksHandler.HandleUpdate)).Methods("PUT")
+	protected.HandleFunc("/function-webhooks/{id}", authMiddleware.RequireAuth(functionWebhooksHandler.HandleDelete)).Methods("DELETE")
+	protected.HandleFunc("/function-webhooks/{id}/deliveries", authMiddleware.RequireAuth(functionWebhooksHandler.HandleListDeliveries)).Methods("GET")
+	protected.HandleFunc("/function-webhooks/{id}/test", authMiddleware.RequireAuth(functionWebhooksHandler.HandleTest)).Methods("POST")
 
 	// ── Support (protected; register on api so /v1/support/... is matched) ─────────
 	supportHdlr.RegisterRoutes(api, authMiddleware)

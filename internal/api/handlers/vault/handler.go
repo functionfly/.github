@@ -123,7 +123,7 @@ func jsonMapToScopes(m vault.JSONMap) []string {
 
 // secretToResponse converts a vault.Secret to SecretResponse
 func secretToResponse(s *vault.Secret) SecretResponse {
-	return SecretResponse{
+	resp := SecretResponse{
 		ID:          s.ID,
 		TenantID:    s.TenantID,
 		Name:        s.Name,
@@ -143,11 +143,21 @@ func secretToResponse(s *vault.Secret) SecretResponse {
 		CreatedAt:      s.CreatedAt,
 		UpdatedAt:      s.UpdatedAt,
 	}
+
+	// Include version info if available
+	if s.CurrentVersion != nil {
+		resp.CurrentVersion = *s.CurrentVersion
+	}
+	if s.LastModifiedAt != nil {
+		resp.LastModifiedAt = s.LastModifiedAt
+	}
+
+	return resp
 }
 
 // secretToMetadataResponse converts a vault.Secret to SecretMetadataResponse (no encrypted data)
 func secretToMetadataResponse(s *vault.Secret) SecretMetadataResponse {
-	return SecretMetadataResponse{
+	resp := SecretMetadataResponse{
 		ID:             s.ID,
 		Name:           s.Name,
 		Description:    s.Description,
@@ -159,6 +169,16 @@ func secretToMetadataResponse(s *vault.Secret) SecretMetadataResponse {
 		CreatedAt:      s.CreatedAt,
 		UpdatedAt:      s.UpdatedAt,
 	}
+
+	// Include version info if available
+	if s.CurrentVersion != nil {
+		resp.CurrentVersion = *s.CurrentVersion
+	}
+	if s.LastModifiedAt != nil {
+		resp.LastModifiedAt = s.LastModifiedAt
+	}
+
+	return resp
 }
 
 // tokenToResponse converts a vault.AccessToken to TokenResponse
@@ -197,6 +217,54 @@ func auditLogToResponse(l *vault.AuditLog) AuditLogEntryResponse {
 		resp.SecretID = l.SecretID
 	}
 	return resp
+}
+
+// secretVersionToResponse converts a vault.SecretVersion to SecretVersionResponse
+func secretVersionToResponse(v *vault.SecretVersion, includeEncrypted bool) SecretVersionResponse {
+	resp := SecretVersionResponse{
+		ID:            v.ID,
+		SecretID:      v.SecretID,
+		VersionNumber: v.VersionNumber,
+		Name:          v.Name,
+		Description:   v.Description,
+		SecretType:    v.SecretType,
+		Scopes:        jsonMapToScopes(v.Scopes),
+		Metadata:      v.Metadata,
+		ChangeType:    v.ChangeType,
+		ChangeSummary: v.ChangeSummary,
+		ActorID:       v.ActorID,
+		ActorType:     v.ActorType,
+		CreatedAt:     v.CreatedAt,
+	}
+	if includeEncrypted {
+		resp.EncryptedData = EncryptedDataPayload{
+			Ciphertext: base64.StdEncoding.EncodeToString(v.EncryptedValue),
+			Salt:       base64.StdEncoding.EncodeToString(v.EncryptionSalt),
+			IV:         base64.StdEncoding.EncodeToString(v.IV),
+			Tag:        base64.StdEncoding.EncodeToString(v.EncryptionAuthTag),
+			KeyVersion: v.KeyVersion,
+		}
+	}
+	return resp
+}
+
+// secretVersionToMetadataResponse converts a vault.SecretVersion to SecretVersionMetadataResponse
+func secretVersionToMetadataResponse(v *vault.SecretVersion) SecretVersionMetadataResponse {
+	return SecretVersionMetadataResponse{
+		ID:            v.ID,
+		SecretID:      v.SecretID,
+		VersionNumber: v.VersionNumber,
+		Name:          v.Name,
+		Description:   v.Description,
+		SecretType:    v.SecretType,
+		Scopes:        jsonMapToScopes(v.Scopes),
+		Metadata:      v.Metadata,
+		ChangeType:    v.ChangeType,
+		ChangeSummary: v.ChangeSummary,
+		ActorID:       v.ActorID,
+		ActorType:     v.ActorType,
+		CreatedAt:     v.CreatedAt,
+	}
 }
 
 // getClientIP extracts the client IP from the request

@@ -26,6 +26,7 @@ import (
 	"github.com/functionfly/functionfly/internal/auth"
 	billingpkg "github.com/functionfly/functionfly/internal/billing"
 	"github.com/functionfly/functionfly/internal/cache"
+	"github.com/functionfly/functionfly/internal/config"
 	"github.com/functionfly/functionfly/internal/deployment"
 	"github.com/functionfly/functionfly/internal/email"
 	"github.com/functionfly/functionfly/internal/health"
@@ -36,6 +37,7 @@ import (
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/storage"
 	staterepo "github.com/functionfly/functionfly/internal/storage/state"
+	statefabricrepo "github.com/functionfly/functionfly/internal/storage/statefabric"
 	trustapirepo "github.com/functionfly/functionfly/internal/storage/trustapi"
 	vaultstorage "github.com/functionfly/functionfly/internal/storage/vault"
 	"github.com/gorilla/mux"
@@ -83,11 +85,17 @@ type Server struct {
 	// State cleanup service for TTL-based cleanup
 	stateCleanup *staterepo.CleanupService
 
+	// State fabric cleanup service for TTL-based cleanup
+	stateFabricCleanup *statefabricrepo.CleanupService
+
 	// Recommendations service
 	recommendationSvc *recommendations.Service
 
 	// Usage metrics aggregation service
 	usageMetricsAgg *services.AggregationService
+
+	// State usage aggregator for billing/quota integration
+	stateUsageAggregator *services.StateUsageAggregator
 
 	// Email service for sending emails
 	emailSvc email.Service
@@ -108,9 +116,20 @@ type Server struct {
 
 	// Trust API billing service (with usage reporting)
 	trustBillingService *trustapi.BillingService
+
+	// Billing sync job for external billing integrations
+	billingSyncJob *billingpkg.BillingSyncJob
+
+	// Export scheduler for automated exports
+	exportScheduler *services.ExportScheduler
 }
 
 func NewServer(db *storage.PostgresDB) *Server {
+	// Centralized environment validation — catches missing required vars early
+	if err := config.ValidateEnv(); err != nil {
+		logrus.Fatal(err)
+	}
+
 	// SECURITY: Block DEVELOPMENT=true on machines whose hostname looks like a deployed server.
 	// Many dev laptops/WSL hosts use a real hostname (not "localhost"), so allow an explicit opt-in.
 	if os.Getenv("DEVELOPMENT") == "true" {
@@ -265,6 +284,11 @@ func NewServer(db *storage.PostgresDB) *Server {
 	stateCleanupConfig.Interval = 1 * time.Hour
 	stateCleanup := staterepo.NewCleanupService(db.GORM, stateCleanupConfig)
 
+	// Initialize state fabric cleanup service for TTL-based cleanup
+	stateFabricCleanupConfig := statefabricrepo.DefaultCleanupConfig()
+	stateFabricCleanupConfig.Interval = 1 * time.Hour
+	stateFabricCleanup := statefabricrepo.NewCleanupService(db.GORM, stateFabricCleanupConfig)
+
 	// Initialize verification service
 	clamAVURL := os.Getenv("CLAMAV_URL")
 	if clamAVURL == "" {
@@ -297,6 +321,10 @@ func NewServer(db *storage.PostgresDB) *Server {
 	// Initialize usage metrics aggregation service
 	usageMetricsConfig := services.LoadAggregationConfig()
 	usageMetricsAgg := services.NewAggregationService(db.GORM, usageMetricsConfig)
+
+	// Initialize state usage aggregator for billing/quota integration
+	stateUsageAggregatorConfig := services.LoadStateUsageAggregatorConfig()
+	stateUsageAggregator := services.NewStateUsageAggregator(db.GORM, stateUsageAggregatorConfig)
 
 	// Initialize deferred billing checker for Backend-in-a-Box founder mode
 	deferredBillingCheckInterval := 24 * time.Hour
@@ -337,6 +365,7 @@ func NewServer(db *storage.PostgresDB) *Server {
 		authEventCleanup:       authEventCleanup,
 		executionLogCleanup:    executionLogCleanup,
 		stateCleanup:           stateCleanup,
+		stateFabricCleanup:     stateFabricCleanup,
 		healthMonitor:          healthMonitor,
 		redisClient:            redisClient,
 		upstashRedis:           upstashRedis,
@@ -347,6 +376,7 @@ func NewServer(db *storage.PostgresDB) *Server {
 		notificationWSHandler:  nil,
 		recommendationSvc:      recommendationSvc,
 		usageMetricsAgg:        usageMetricsAgg,
+		stateUsageAggregator:   stateUsageAggregator,
 		emailSvc:               emailSvc,
 		deferredBillingChecker: deferredBillingChecker,
 		dunningRepo:            dunningRepo,
@@ -401,7 +431,7 @@ func (w *corsResponseWriter) WriteHeader(code int) {
 	if w.origin != "" {
 		w.Header().Set("Access-Control-Allow-Origin", w.origin)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, x-device-fingerprint")
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, x-device-fingerprint, X-Environment")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 	}
 	w.ResponseWriter.WriteHeader(code)
@@ -427,20 +457,21 @@ func localhostCORSWrapper(next http.Handler) http.Handler {
 			if origin != "" {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-				w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, x-device-fingerprint")
+				w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, x-device-fingerprint, X-Environment")
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 				w.Header().Set("Access-Control-Max-Age", "86400")
 			}
 			w.WriteHeader(http.StatusOK)
 			return
 		}
+		// Note: X-Environment header added to allow environment selection in dashboard requests
 
 		// For WebSocket upgrades, use the original response writer to preserve Hijacker interface
 		if r.Header.Get("Upgrade") == "websocket" {
 			if isLocalhost {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-				w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, x-device-fingerprint")
+				w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, x-device-fingerprint, X-Environment")
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 			}
 			next.ServeHTTP(w, r)
@@ -580,6 +611,12 @@ func (s *Server) ListenAndServe(addr string) error {
 		logrus.Info("State cleanup routine started")
 	}
 
+	// Start state fabric TTL cleanup routine for expired snapshots (runs every hour)
+	if s.stateFabricCleanup != nil {
+		go s.stateFabricCleanup.StartCleanupRoutine(ctx)
+		logrus.Info("State fabric TTL cleanup routine started")
+	}
+
 	// Start vault expired-token cleanup (runs daily; prunes tokens expired/revoked > 30 days ago)
 	if s.vaultRepo != nil {
 		go runVaultTokenCleanup(ctx, s.vaultRepo, 24*time.Hour, 30*24*time.Hour)
@@ -613,6 +650,12 @@ func (s *Server) ListenAndServe(addr string) error {
 	if s.usageMetricsAgg != nil && s.usageMetricsAgg.IsEnabled() {
 		s.usageMetricsAgg.StartAggregationRoutine(ctx)
 		logrus.Info("Usage metrics aggregation service started")
+	}
+
+	// Start state usage aggregator for billing/quota integration
+	if s.stateUsageAggregator != nil && s.stateUsageAggregator.IsEnabled() {
+		s.stateUsageAggregator.Start(ctx)
+		logrus.Info("State usage aggregator started")
 	}
 
 	// Start unified analytics sync job (Phase 3: rollups from source tables)
@@ -662,6 +705,12 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		logrus.Info("Notification service stopped")
 	}
 
+	// Stop WebSocket hub (must be before pool close to unblock LISTEN subscription)
+	if s.notificationWSHandler != nil {
+		s.notificationWSHandler.StopHub()
+		logrus.Info("WebSocket hub stopped")
+	}
+
 	// Close the notification LISTEN pool
 	if s.notificationPool != nil {
 		s.notificationPool.Close()
@@ -674,10 +723,46 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		logrus.Info("Usage metrics aggregation service stopped")
 	}
 
+	// Stop state usage aggregator
+	if s.stateUsageAggregator != nil {
+		s.stateUsageAggregator.Stop()
+		logrus.Info("State usage aggregator stopped")
+	}
+
 	// Stop unified analytics sync job
 	if s.unifiedSyncJob != nil {
 		s.unifiedSyncJob.Stop()
 		logrus.Info("Unified analytics sync job stopped")
+	}
+
+	// Stop cleanup services
+	if s.sessionCleanup != nil {
+		s.sessionCleanup.Stop()
+		logrus.Info("Session cleanup service stopped")
+	}
+	if s.oauthStateCleanup != nil {
+		s.oauthStateCleanup.Stop()
+		logrus.Info("OAuth state cleanup service stopped")
+	}
+	if s.loginAttemptCleanup != nil {
+		s.loginAttemptCleanup.Stop()
+		logrus.Info("Login attempt cleanup service stopped")
+	}
+	if s.authEventCleanup != nil {
+		s.authEventCleanup.Stop()
+		logrus.Info("Auth event cleanup service stopped")
+	}
+	if s.dunningManager != nil {
+		s.dunningManager.Stop()
+		logrus.Info("Dunning manager stopped")
+	}
+	if s.billingSyncJob != nil {
+		s.billingSyncJob.Stop()
+		logrus.Info("Billing sync job stopped")
+	}
+	if s.exportScheduler != nil {
+		s.exportScheduler.Stop()
+		logrus.Info("Export scheduler stopped")
 	}
 
 	// Shutdown the HTTP server gracefully
@@ -863,10 +948,16 @@ func startDunningProcessors(dunningManager *billingpkg.DunningManager) {
 		ticker := time.NewTicker(1 * time.Hour)
 		defer ticker.Stop()
 
-		for range ticker.C {
-			ctx := context.Background()
-			if err := dunningManager.ProcessScheduledRetries(ctx); err != nil {
-				logrus.WithError(err).Error("Failed to process scheduled payment retries")
+		for {
+			select {
+			case <-ticker.C:
+				ctx := context.Background()
+				if err := dunningManager.ProcessScheduledRetries(ctx); err != nil {
+					logrus.WithError(err).Error("Failed to process scheduled payment retries")
+				}
+			case <-dunningManager.StopChan():
+				logrus.Info("Dunning retry processor stopping")
+				return
 			}
 		}
 	}()
@@ -882,10 +973,16 @@ func startDunningProcessors(dunningManager *billingpkg.DunningManager) {
 			logrus.WithError(err).Error("Failed to process grace period expirations")
 		}
 
-		for range ticker.C {
-			ctx := context.Background()
-			if err := dunningManager.ProcessGracePeriodExpirations(ctx); err != nil {
-				logrus.WithError(err).Error("Failed to process grace period expirations")
+		for {
+			select {
+			case <-ticker.C:
+				ctx := context.Background()
+				if err := dunningManager.ProcessGracePeriodExpirations(ctx); err != nil {
+					logrus.WithError(err).Error("Failed to process grace period expirations")
+				}
+			case <-dunningManager.StopChan():
+				logrus.Info("Dunning grace period processor stopping")
+				return
 			}
 		}
 	}()

@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"

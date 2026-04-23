@@ -35,6 +35,13 @@ func (h *Handler) HandleCreateState(w http.ResponseWriter, r *http.Request) {
 	// Get tenant ID from user context
 	tenantID := claims.TenantID
 
+	// Security by default: encryption is enabled unless explicitly opted out
+	// This ensures state values are encrypted at rest
+	isEncrypted := true
+	if req.IsEncryptedSet {
+		isEncrypted = req.IsEncrypted
+	}
+
 	state := &staterepo.State{
 		TenantID:    tenantID,
 		Name:        req.Name,
@@ -43,7 +50,7 @@ func (h *Handler) HandleCreateState(w http.ResponseWriter, r *http.Request) {
 		TTLDays:     req.TTLDays,
 		MaxSizeMB:   req.MaxSizeMB,
 		IsVersioned: req.IsVersioned,
-		IsEncrypted: req.IsEncrypted,
+		IsEncrypted: isEncrypted,
 		IsPublic:    req.IsPublic,
 		Description: strPtr(req.Description),
 		Tags:        req.Tags,

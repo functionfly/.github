@@ -16,12 +16,17 @@ import (
 )
 
 type Handler struct {
-	repo     *repo.Repository
-	sfAddons *statefabricaddons.Repository
+	repo       *repo.Repository
+	sfAddons   *statefabricaddons.Repository
+	cleanupSvc *repo.CleanupService
 }
 
 func NewHandler(r *repo.Repository, sfAddons *statefabricaddons.Repository) *Handler {
 	return &Handler{repo: r, sfAddons: sfAddons}
+}
+
+func NewHandlerWithCleanup(r *repo.Repository, sfAddons *statefabricaddons.Repository, cleanupSvc *repo.CleanupService) *Handler {
+	return &Handler{repo: r, sfAddons: sfAddons, cleanupSvc: cleanupSvc}
 }
 
 type createFabricRequest struct {

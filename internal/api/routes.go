@@ -40,10 +40,13 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/content"
 	"github.com/functionfly/functionfly/internal/api/handlers/dashboard"
 	"github.com/functionfly/functionfly/internal/api/handlers/decisions"
+	"github.com/functionfly/functionfly/internal/api/handlers/deploykeys"
+	"github.com/functionfly/functionfly/internal/api/handlers/deployments"
 	enterprisePkg "github.com/functionfly/functionfly/internal/api/handlers/enterprise"
 	factoryhandler "github.com/functionfly/functionfly/internal/api/handlers/factory"
 	feedbackHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/feedback"
 	followHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/follow"
+	"github.com/functionfly/functionfly/internal/api/handlers/function_webhooks"
 	"github.com/functionfly/functionfly/internal/api/handlers/functions"
 	mfaHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/mfa"
 	"github.com/functionfly/functionfly/internal/api/handlers/monitoring"
@@ -137,7 +140,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	apiKeysHandler := apikeys.NewHandler(apikeyRepo)
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
-		jwtSecret = "functionfly-jwt-secret-key-2026"
+		logrus.Fatal("FATAL: JWT_SECRET environment variable is required. Refusing to start with empty secret.")
 	}
 	apiKeyAuthHandler := apikeys.NewAPIKeyAuthHandler(apikeyRepo, jwtSecret)
 
@@ -163,6 +166,12 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	newsletterHandler := newsletter.NewHandler(s.repo, s.emailSvc)
 
+	deployKeysRepo := storage.NewDeployKeysRepository(s.postgresDB.GORM)
+	deployKeysHandler := deploykeys.NewHandler(deployKeysRepo)
+	functionWebhookRepo := storage.NewFunctionWebhookRepository(s.postgresDB.GORM)
+	functionWebhookService := storage.NewFunctionWebhookService(functionWebhookRepo)
+	functionWebhooksHandler := function_webhooks.NewHandler(functionWebhookRepo, functionWebhookService)
+
 	// ── Real-time Usage Tracking ─────────────────────────────────────────────
 	// Initialize the real-time usage tracker with Redis counters for quota enforcement
 	realtimeUsageTracker := services.NewRealtimeUsageTracker(
@@ -186,6 +195,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Initialize usage handler for real-time usage API endpoints
 	usageHandler := billinghandler.NewUsageHandler(realtimeUsageTracker, s.repo)
 
+	// Initialize state usage handler for state fabric billing/quota integration
+	stateUsageHandler := billinghandler.NewStateUsageHandler(s.stateUsageAggregator, s.repo)
+
 	// Initialize cost allocation handler for detailed cost tracking
 	costAllocationHandler := billinghandler.NewCostAllocationHandler(s.repo)
 
@@ -195,15 +207,15 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	exportHandler := billinghandler.NewExportHandler(exportRepo, exportService, s.repo)
 
 	// Initialize billing sync job for external billing integrations
-	billingSyncJob := billing.NewBillingSyncJob(exportRepo)
-	billingSyncJob.Start(context.Background())
+	s.billingSyncJob = billing.NewBillingSyncJob(exportRepo)
+	s.billingSyncJob.Start(context.Background())
 	logrus.Info("Billing sync job initialized")
 
-	externalBillingHandler := billinghandler.NewExternalBillingHandler(exportRepo, s.repo, billingSyncJob)
+	externalBillingHandler := billinghandler.NewExternalBillingHandler(exportRepo, s.repo, s.billingSyncJob)
 
 	// Initialize export scheduler for automated exports
-	exportScheduler := services.NewExportScheduler(exportRepo, exportService)
-	exportScheduler.Start()
+	s.exportScheduler = services.NewExportScheduler(exportRepo, exportService)
+	s.exportScheduler.Start()
 	logrus.Info("Export scheduler initialized")
 
 	// Initialize usage alert repository and forecast/alerter services
@@ -287,8 +299,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	privacyRepo := privacy.NewRepository(s.postgresDB)
 	privacySalt := os.Getenv("PRIVACY_SALT")
 	if privacySalt == "" {
-		privacySalt = "functionfly-default-salt-change-in-production"
-		logrus.Warn("PRIVACY_SALT not set, using default salt - CHANGE THIS IN PRODUCTION!")
+		logrus.Fatal("FATAL: PRIVACY_SALT environment variable is required. Refusing to start with predictable salt.")
 	}
 	privacyService := privacy.NewService(privacyRepo, privacySalt)
 	registryHandler.SetPrivacyService(privacyService)
@@ -310,14 +321,33 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	decisionsHandler := decisions.NewHandler(decisionsRepo)
 
 	stateRepo := staterepo.NewStateRepository(s.postgresDB.GORM)
-	triggerExecutor := staterepo.NewHTTPTriggerExecutor(
+
+	// Create function executor for internal function triggers
+	functionExecutor := staterepo.NewFunctionTriggerExecutor(
 		os.Getenv("FUNCTION_EXECUTION_URL"),
 		os.Getenv("FUNCTION_API_KEY"),
 		logrus.New(),
 	)
+
+	// Create webhook executor for external HTTP triggers
+	webhookExecutor := staterepo.NewWebhookTriggerExecutor(logrus.New())
+
+	// Combine into multi-executor that handles both types
+	triggerExecutor := staterepo.NewMultiExecutor(functionExecutor, webhookExecutor, logrus.New())
+
 	triggerEngineConfig := staterepo.DefaultTriggerEngineConfig()
 	if envEnabled := os.Getenv("TRIGGER_ENGINE_ENABLED"); envEnabled != "" {
 		triggerEngineConfig.Enabled = envEnabled == "true"
+	}
+	if envMaxRetries := os.Getenv("TRIGGER_ENGINE_MAX_RETRIES"); envMaxRetries != "" {
+		if n, err := strconv.Atoi(envMaxRetries); err == nil && n > 0 {
+			triggerEngineConfig.MaxRetries = n
+		}
+	}
+	if envRateLimit := os.Getenv("TRIGGER_ENGINE_TENANT_RATE_LIMIT"); envRateLimit != "" {
+		if n, err := strconv.Atoi(envRateLimit); err == nil && n > 0 {
+			triggerEngineConfig.TenantRateLimit = n
+		}
 	}
 	triggerEngine := staterepo.NewTriggerEngine(
 		s.postgresDB.GORM,
@@ -335,7 +365,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	agentMemoryHandler := agentmemoryhandler.NewHandler(s.postgresDB.GORM)
 
 	stateFabricRepo := statefabricrepo.NewRepository(s.postgresDB.GORM)
-	stateFabricHandler := statefabric.NewHandler(stateFabricRepo, sfAddonRepo)
+	stateFabricHandler := statefabric.NewHandlerWithCleanup(stateFabricRepo, sfAddonRepo, s.stateFabricCleanup)
 
 	vaultRepo := vaultstorage.NewRepository(s.postgresDB.GORM)
 	s.vaultRepo = vaultRepo
@@ -586,8 +616,10 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	}
 
 	// ── Global middleware wiring ──────────────────────────────────────────────
+	s.router.Use(middleware.RecoveryMiddleware)
 	s.router.Use(middleware.TracingMiddleware)
 	s.router.Use(maintenanceMiddleware.CheckMaintenanceMode)
+	s.router.Use(middleware.EnvironmentMiddleware)
 
 	s.router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(advancedSecurityMiddleware.CORSMiddleware(http.HandlerFunc(next.ServeHTTP)))
@@ -700,6 +732,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		versionHandler, maintenanceHandler,
 		supportHdlr, supportAdminHdlr, supportWSHub,
 		decisionsHandler,
+		stateUsageHandler,
+		deployKeysHandler,
+		functionWebhooksHandler,
 	)
 
 	registerAgentRoutes(
@@ -735,6 +770,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		ipAllowlistMiddleware, adminIPAllowlistHandler, adminAuditHandler, securityEventHandler, alertHandler,
 		adminNewsletterHandler, usageHandler, costAllocationHandler,
 		retentionHandler, disputesHandler,
+		stateUsageHandler,
 	)
 
 	// Trust API for external platform partners
@@ -752,7 +788,10 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// AI Composer routes - paths are relative to /v1 subrouter
 	protected.HandleFunc("/ai/composer/generate", authMiddleware.RequireAuth(aiProxyHandler.HandleGenerateFunction)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/ai/composer/generate/stream", authMiddleware.RequireAuth(aiProxyHandler.HandleGenerateFunctionStream)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/ai/composer/refine", authMiddleware.RequireAuth(aiProxyHandler.HandleRefineFunction)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/ai/composer/refine/stream", authMiddleware.RequireAuth(aiProxyHandler.HandleRefineFunctionStream)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/ai/health", aiProxyHandler.HandleHealth).Methods("GET", "OPTIONS")
+	api.HandleFunc("/ai/status", aiProxyHandler.HandleAIStatus).Methods("GET", "OPTIONS")
 
 	// ── Infrastructure endpoints ──────────────────────────────────────────────
 	wellknownHandler := wellknown.NewHandler(registryRepo)
@@ -762,18 +801,18 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	s.router.HandleFunc("/healthz", s.handleHealth).Methods("GET", "OPTIONS")
 	s.router.HandleFunc("/health/detailed", s.handleDetailedHealth).Methods("GET", "OPTIONS")
 	s.router.HandleFunc("/health/check", s.handleHealthCheck).Methods("GET", "OPTIONS")
-	s.router.Handle("/metrics", promhttp.Handler()).Methods("GET")
+	s.router.Handle("/metrics", middleware.RequireAuthInProduction(authMiddleware)(promhttp.Handler())).Methods("GET")
 	s.router.HandleFunc("/ws/v1/status", statusHandlerInst.HandleWebSocketStatus).Methods("GET")
 
 	// ── API Documentation (Swagger/OpenAPI) ────────────────────────────────────
 	// OpenAPI spec - JSON endpoint (for OpenAI compatibility and Swagger UI)
-	s.router.HandleFunc("/swagger/doc.json", docs.ServeJSONSpec).Methods("GET", "OPTIONS")
-	s.router.HandleFunc("/swagger/doc.yaml", docs.ServeYAMLSpec).Methods("GET", "OPTIONS")
+	s.router.Handle("/swagger/doc.json", middleware.RequireAuthInProduction(authMiddleware)(http.HandlerFunc(docs.ServeJSONSpec))).Methods("GET", "OPTIONS")
+	s.router.Handle("/swagger/doc.yaml", middleware.RequireAuthInProduction(authMiddleware)(http.HandlerFunc(docs.ServeYAMLSpec))).Methods("GET", "OPTIONS")
 
 	// Swagger UI - interactive API documentation
-	s.router.HandleFunc("/swagger", docs.ServeSwaggerUI).Methods("GET", "OPTIONS")
-	s.router.HandleFunc("/swagger/", docs.ServeSwaggerUI).Methods("GET", "OPTIONS")
-	s.router.HandleFunc("/swagger/index.html", docs.ServeSwaggerUI).Methods("GET", "OPTIONS")
+	s.router.Handle("/swagger", middleware.RequireAuthInProduction(authMiddleware)(http.HandlerFunc(docs.ServeSwaggerUI))).Methods("GET", "OPTIONS")
+	s.router.Handle("/swagger/", middleware.RequireAuthInProduction(authMiddleware)(http.HandlerFunc(docs.ServeSwaggerUI))).Methods("GET", "OPTIONS")
+	s.router.Handle("/swagger/index.html", middleware.RequireAuthInProduction(authMiddleware)(http.HandlerFunc(docs.ServeSwaggerUI))).Methods("GET", "OPTIONS")
 
 	// ── SPA catch-all routes ──────────────────────────────────────────────────
 	// Serve index.html for /fx/*, /run/*, /replay/* (playground SPA paths)

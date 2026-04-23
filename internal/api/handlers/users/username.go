@@ -2,7 +2,9 @@ package users
 
 import (
 	"encoding/json"
+	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
@@ -13,6 +15,25 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
+
+func extractIP(addr string) string {
+	if addr == "" {
+		return ""
+	}
+	// Handle X-Forwarded-For which can have multiple IPs (client, proxy1, proxy2)
+	// Take the first one (client IP)
+	if strings.Contains(addr, ",") {
+		addr = strings.Split(addr, ",")[0]
+	}
+	// Remove port from address like "[::1]:56498" or "192.168.1.1:12345"
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		// If SplitHostPort fails, addr might not have a port or might be malformed
+		// Return as-is (will be invalid for inet type but won't crash)
+		return addr
+	}
+	return host
+}
 
 // HandleGetUsernameChangeEligibility returns GET /v1/users/me/username/eligibility
 // Returns information about the user's ability to change their username
@@ -71,6 +92,7 @@ func (h *Handler) HandleChangeUsernameMe(w http.ResponseWriter, r *http.Request)
 	if ipAddress == "" {
 		ipAddress = r.RemoteAddr
 	}
+	ipAddress = extractIP(ipAddress)
 	userAgent := r.UserAgent()
 
 	resp, err := h.authSvc.ChangeUsername(r.Context(), claims.UserID, req, ipAddress, userAgent)
@@ -104,6 +126,7 @@ func (h *Handler) HandleChangeUsernameByUsername(w http.ResponseWriter, r *http.
 	if ipAddress == "" {
 		ipAddress = r.RemoteAddr
 	}
+	ipAddress = extractIP(ipAddress)
 	userAgent := r.UserAgent()
 
 	resp, err := h.authSvc.ChangeUsername(r.Context(), claims.UserID, req, ipAddress, userAgent)

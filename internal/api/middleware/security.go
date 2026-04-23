@@ -194,6 +194,19 @@ func getCORSAllowedOrigins() []string {
 	return parts
 }
 
+// SetCORSHeaders sets Access-Control-Allow-Origin on the response based on the
+// configured allowlist. Handlers that set CORS headers outside the global
+// middleware should call this instead of hardcoding "*".
+func SetCORSHeaders(w http.ResponseWriter, r *http.Request) {
+	origin := r.Header.Get("Origin")
+	allowed := getCORSAllowedOrigins()
+	if origin != "" && IsOriginAllowedForRequest(r) {
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+	} else if len(allowed) == 1 && allowed[0] == "*" {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+	}
+}
+
 // IsOriginAllowedForRequest returns true if the request's Origin is allowed (for CORS/WebSocket).
 // Empty origin (same-origin or non-browser) is allowed. In production, empty allowlist denies all.
 func IsOriginAllowedForRequest(r *http.Request) bool {
@@ -251,7 +264,7 @@ func (sm *SecurityMiddleware) CORSMiddleware(next http.HandlerFunc) http.Handler
 
 		// Get allowed headers from environment
 		allowedHeadersStr := os.Getenv("CORS_ALLOWED_HEADERS")
-		allowedHeaders := "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint"
+		allowedHeaders := "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, X-Environment"
 		if allowedHeadersStr != "" {
 			allowedHeaders = allowedHeadersStr
 		}

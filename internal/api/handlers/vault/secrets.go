@@ -324,6 +324,47 @@ func (h *Handler) HandleUpdateSecret(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Build change summary
+	var changeSummary string
+	var updatedFields []string
+	if req.Name != nil {
+		updatedFields = append(updatedFields, "name")
+	}
+	if req.Description != nil {
+		updatedFields = append(updatedFields, "description")
+	}
+	if req.Scopes != nil {
+		updatedFields = append(updatedFields, "scopes")
+	}
+	if len(updatedFields) > 0 {
+		changeSummary = "Updated: " + strings.Join(updatedFields, ", ")
+	}
+
+	// Create version snapshot before updating (for history tracking)
+	version := &vault.SecretVersion{
+		SecretID:          secret.ID,
+		TenantID:          secret.TenantID,
+		Name:              secret.Name,
+		Description:       secret.Description,
+		SecretType:        secret.SecretType,
+		EncryptedValue:    secret.EncryptedValue,
+		EncryptionSalt:    secret.EncryptionSalt,
+		IV:                secret.IV,
+		EncryptionAuthTag: secret.EncryptionAuthTag,
+		KeyVersion:        secret.KeyVersion,
+		Scopes:            secret.Scopes,
+		Metadata:          secret.Metadata,
+		ChangeType:        "update",
+		ChangeSummary:     changeSummary,
+		ActorID:           claims.UserID,
+		ActorType:         vault.ActorTypeUser,
+	}
+
+	if err := h.repo.CreateSecretVersion(r.Context(), version); err != nil {
+		h.logger.WithError(err).Error("Failed to create version snapshot")
+		// Continue with update even if versioning fails - don't block the operation
+	}
+
 	// Update secret
 	if err := h.repo.UpdateSecret(r.Context(), secret); err != nil {
 		h.logger.WithError(err).Error("Failed to update secret")
@@ -342,25 +383,37 @@ func (h *Handler) HandleUpdateSecret(w http.ResponseWriter, r *http.Request) {
 		IPAddress: getClientIP(r),
 		UserAgent: r.UserAgent(),
 		Metadata: vault.JSONMap{
-			"secret_name": secret.Name,
-			"updated_fields": func() []string {
-				fields := []string{}
-				if req.Name != nil {
-					fields = append(fields, "name")
-				}
-				if req.Description != nil {
-					fields = append(fields, "description")
-				}
-				if req.Scopes != nil {
-					fields = append(fields, "scopes")
-				}
-				return fields
-			}(),
+			"secret_name":    secret.Name,
+			"updated_fields": updatedFields,
+			"new_version":    version.VersionNumber,
 		},
 		Success: true,
 	}
 	if err := h.repo.CreateAuditLog(r.Context(), auditLog); err != nil {
 		h.logger.WithError(err).Warn("Failed to create audit log")
+	}
+
+	// Log version creation audit event
+	if version.VersionNumber > 0 {
+		versionAuditLog := &vault.AuditLog{
+			SecretID:  secretID,
+			TenantID:  claims.TenantID,
+			Action:    vault.AuditActionVersion,
+			ActorID:   claims.UserID.String(),
+			ActorType: vault.ActorTypeUser,
+			RequestID: r.Header.Get("X-Request-ID"),
+			IPAddress: getClientIP(r),
+			UserAgent: r.UserAgent(),
+			Metadata: vault.JSONMap{
+				"secret_name":    secret.Name,
+				"version_number": version.VersionNumber,
+				"change_type":    "update",
+			},
+			Success: true,
+		}
+		if err := h.repo.CreateAuditLog(r.Context(), versionAuditLog); err != nil {
+			h.logger.WithError(err).Warn("Failed to create version audit log")
+		}
 	}
 
 	h.respondJSON(w, http.StatusOK, secretToResponse(secret))

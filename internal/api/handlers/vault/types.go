@@ -49,6 +49,8 @@ type SecretResponse struct {
 	AccessCount    int                    `json:"access_count"`
 	CreatedAt      time.Time              `json:"created_at"`
 	UpdatedAt      time.Time              `json:"updated_at"`
+	CurrentVersion int                    `json:"current_version,omitempty"`
+	LastModifiedAt *time.Time             `json:"last_modified_at,omitempty"`
 }
 
 // SecretMetadataResponse represents a secret without encrypted data (for list views)
@@ -63,6 +65,8 @@ type SecretMetadataResponse struct {
 	AccessCount    int                    `json:"access_count"`
 	CreatedAt      time.Time              `json:"created_at"`
 	UpdatedAt      time.Time              `json:"updated_at"`
+	CurrentVersion int                    `json:"current_version,omitempty"`
+	LastModifiedAt *time.Time             `json:"last_modified_at,omitempty"`
 }
 
 // ListSecretsResponse represents the response for listing secrets
@@ -143,4 +147,82 @@ type ErrorResponse struct {
 	Error   string `json:"error"`
 	Code    string `json:"code,omitempty"`
 	Message string `json:"message,omitempty"`
+}
+
+// SecretVersionResponse represents a secret version in API responses
+type SecretVersionResponse struct {
+	ID            uuid.UUID              `json:"id"`
+	SecretID      uuid.UUID              `json:"secret_id"`
+	VersionNumber int                    `json:"version_number"`
+	Name          string                 `json:"name"`
+	Description   string                 `json:"description,omitempty"`
+	SecretType    vault.SecretType       `json:"secret_type"`
+	EncryptedData EncryptedDataPayload   `json:"encrypted_data,omitempty"` // Only included when explicitly requested
+	Scopes        []string               `json:"scopes,omitempty"`
+	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+	ChangeType    string                 `json:"change_type"`
+	ChangeSummary string                 `json:"change_summary,omitempty"`
+	ActorID       uuid.UUID              `json:"actor_id"`
+	ActorType     vault.ActorType        `json:"actor_type"`
+	CreatedAt     time.Time              `json:"created_at"`
+}
+
+// SecretVersionMetadataResponse represents a version without encrypted data (for list views)
+type SecretVersionMetadataResponse struct {
+	ID            uuid.UUID              `json:"id"`
+	SecretID      uuid.UUID              `json:"secret_id"`
+	VersionNumber int                    `json:"version_number"`
+	Name          string                 `json:"name"`
+	Description   string                 `json:"description,omitempty"`
+	SecretType    vault.SecretType       `json:"secret_type"`
+	Scopes        []string               `json:"scopes,omitempty"`
+	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+	ChangeType    string                 `json:"change_type"`
+	ChangeSummary string                 `json:"change_summary,omitempty"`
+	ActorID       uuid.UUID              `json:"actor_id"`
+	ActorType     vault.ActorType        `json:"actor_type"`
+	CreatedAt     time.Time              `json:"created_at"`
+}
+
+// ListSecretVersionsResponse represents the response for listing secret versions
+type ListSecretVersionsResponse struct {
+	Versions []SecretVersionMetadataResponse `json:"versions"`
+	Total    int64                           `json:"total"`
+	Limit    int                             `json:"limit"`
+	Offset   int                             `json:"offset"`
+}
+
+// SecretVersionDiffResponse represents a diff between two versions
+type SecretVersionDiffResponse struct {
+	FromVersion      int             `json:"from_version"`
+	ToVersion        int             `json:"to_version"`
+	HasChanges       bool            `json:"has_changes"`
+	NameChanged      bool            `json:"name_changed"`
+	NameFrom         string          `json:"name_from,omitempty"`
+	NameTo           string          `json:"name_to,omitempty"`
+	DescChanged      bool            `json:"description_changed"`
+	DescFrom         string          `json:"description_from,omitempty"`
+	DescTo           string          `json:"description_to,omitempty"`
+	ScopesChanged    bool            `json:"scopes_changed"`
+	ScopesFrom       []string        `json:"scopes_from,omitempty"`
+	ScopesTo         []string        `json:"scopes_to,omitempty"`
+	EncryptedChanged bool            `json:"encrypted_value_changed"`
+	ChangeSummary    string          `json:"change_summary,omitempty"`
+	ActorID          uuid.UUID       `json:"actor_id"`
+	ActorType        vault.ActorType `json:"actor_type"`
+	CreatedAt        time.Time       `json:"created_at"`
+}
+
+// RollbackSecretRequest represents a request to rollback a secret to a previous version
+type RollbackSecretRequest struct {
+	TargetVersion int    `json:"target_version" validate:"required,min=1"`
+	Reason        string `json:"reason,omitempty"`
+}
+
+// RollbackSecretResponse represents the response after a successful rollback
+type RollbackSecretResponse struct {
+	Secret       SecretResponse        `json:"secret"`
+	NewVersion   SecretVersionResponse `json:"new_version"`
+	RolledBackTo int                   `json:"rolled_back_to"`
+	Message      string                `json:"message"`
 }

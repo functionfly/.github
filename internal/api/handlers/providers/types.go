@@ -79,10 +79,12 @@ type HTTPHandler interface {
 	HandleDisconnectProvider(w http.ResponseWriter, r *http.Request)
 	HandleTestConnection(w http.ResponseWriter, r *http.Request)
 	HandleListProviders(w http.ResponseWriter, r *http.Request)
+	HandleGetProviderCredentials(w http.ResponseWriter, r *http.Request)
 	HandleValidateProvider(w http.ResponseWriter, r *http.Request)
 	HandleEstimateCost(w http.ResponseWriter, r *http.Request)
 	HandleCreateTeamInvite(w http.ResponseWriter, r *http.Request)
 	HandleShareProvider(w http.ResponseWriter, r *http.Request)
+	HandleRotateProvider(w http.ResponseWriter, r *http.Request)
 }
 
 // Ensure Handler implements HTTPHandler

@@ -1,7 +1,11 @@
 package api
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/functionfly/functionfly/internal/api/handlers/admin"
 	"github.com/functionfly/functionfly/internal/api/handlers/billing"
@@ -16,6 +20,8 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	advancedsecurity "github.com/functionfly/functionfly/internal/api/middleware/advanced_security"
 	"github.com/functionfly/functionfly/internal/auth"
+	staterepo "github.com/functionfly/functionfly/internal/storage/state"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
@@ -51,6 +57,7 @@ func registerAdminRoutes(
 	costAllocationHandler *billing.CostAllocationHandler,
 	retentionHandler *admin.RetentionHandler,
 	disputesHandler *admin.DisputesHandler,
+	stateUsageHandler *billing.StateUsageHandler,
 ) {
 	adminRoutes := api.PathPrefix("/admin").Subrouter()
 
@@ -65,7 +72,7 @@ func registerAdminRoutes(
 				if origin != "" && middleware.IsOriginAllowedForRequest(r) {
 					w.Header().Set("Access-Control-Allow-Origin", origin)
 					w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-					w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, x-device-fingerprint")
+					w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, x-device-fingerprint, X-Environment")
 					w.Header().Set("Access-Control-Allow-Credentials", "true")
 					w.Header().Set("Access-Control-Max-Age", "86400")
 				}
@@ -305,6 +312,10 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/usage/tenants/{tenantId}", authMiddleware.RequirePermission(auth.PermBillingRead)(usageHandler.AdminGetTenantUsage)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/usage/metrics", authMiddleware.RequirePermission(auth.PermSystemRead)(usageHandler.GetUsageMetrics)).Methods("GET", "OPTIONS")
 
+	// Admin state usage management (state fabric billing/quota)
+	adminRoutes.HandleFunc("/usage/state/{tenant_id}", authMiddleware.RequirePermission(auth.PermBillingRead)(stateUsageHandler.AdminGetTenantStateUsage)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/usage/state", authMiddleware.RequirePermission(auth.PermSystemRead)(stateUsageHandler.AdminListAllStateUsage)).Methods("GET", "OPTIONS")
+
 	// Admin cost allocation (detailed cost tracking and chargebacks)
 	adminRoutes.HandleFunc("/costs/tenants/{tenant_id}/summary", authMiddleware.RequirePermission(auth.PermBillingRead)(costAllocationHandler.AdminGetTenantCostSummary)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/costs/chargeback", authMiddleware.RequirePermission(auth.PermBillingRead)(costAllocationHandler.GetChargebackReport)).Methods("GET", "OPTIONS")
@@ -398,6 +409,121 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/state-fabrics", authMiddleware.RequirePermission(auth.PermTenantsRead)(stateFabricHandler.HandleListAll)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/state-fabrics/{id}/suspend", authMiddleware.RequirePermission(auth.PermTenantsWrite)(stateFabricHandler.HandleSuspendFabric)).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/state-fabrics/{id}/resume", authMiddleware.RequirePermission(auth.PermTenantsWrite)(stateFabricHandler.HandleResumeFabric)).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/state-fabrics/cleanup", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(stateFabricHandler.HandleRunTTLCleanup))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/state-fabrics/cleanup/stats", authMiddleware.RequirePermission(auth.PermSystemRead)(stateFabricHandler.HandleGetTTLCleanupStats)).Methods("GET", "OPTIONS")
+
+	// Trigger Engine Admin Endpoints
+	// GET /admin/triggers/stats - Get trigger engine statistics
+	adminRoutes.HandleFunc("/triggers/stats", authMiddleware.RequirePermission(auth.PermSystemRead)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.triggerEngine == nil {
+			http.Error(w, `{"error":"trigger engine not initialized"}`, http.StatusServiceUnavailable)
+			return
+		}
+		stats := s.triggerEngine.GetStats()
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(stats)
+	}))).Methods("GET", "OPTIONS")
+
+	// GET /admin/triggers/queue-stats - Get detailed queue statistics
+	adminRoutes.HandleFunc("/triggers/queue-stats", authMiddleware.RequirePermission(auth.PermSystemRead)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.triggerEngine == nil {
+			http.Error(w, `{"error":"trigger engine not initialized"}`, http.StatusServiceUnavailable)
+			return
+		}
+		stats, err := s.triggerEngine.GetQueueStats(r.Context())
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(stats)
+	}))).Methods("GET", "OPTIONS")
+
+	// GET /admin/triggers/dead-letter - List dead letter queue entries
+	adminRoutes.HandleFunc("/triggers/dead-letter", authMiddleware.RequirePermission(auth.PermSystemRead)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.triggerEngine == nil {
+			http.Error(w, `{"error":"trigger engine not initialized"}`, http.StatusServiceUnavailable)
+			return
+		}
+		// Parse pagination params
+		limit := 100
+		if l := r.URL.Query().Get("limit"); l != "" {
+			if n, err := strconv.Atoi(l); err == nil && n > 0 && n <= 1000 {
+				limit = n
+			}
+		}
+		offset := 0
+		if o := r.URL.Query().Get("offset"); o != "" {
+			if n, err := strconv.Atoi(o); err == nil && n >= 0 {
+				offset = n
+			}
+		}
+
+		var entries []staterepo.TriggerDeadLetter
+		var total int64
+		db := s.postgresDB.GORM.WithContext(r.Context()).Model(&staterepo.TriggerDeadLetter{})
+		if tenantID := r.URL.Query().Get("tenant_id"); tenantID != "" {
+			db = db.Where("tenant_id = ?", tenantID)
+		}
+		if canRetry := r.URL.Query().Get("can_retry"); canRetry != "" {
+			db = db.Where("can_retry = ?", canRetry == "true")
+		}
+		db.Count(&total)
+		db.Order("created_at DESC").Limit(limit).Offset(offset).Find(&entries)
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"entries": entries,
+			"total":   total,
+			"limit":   limit,
+			"offset":  offset,
+		})
+	}))).Methods("GET", "OPTIONS")
+
+	// POST /admin/triggers/dead-letter/{id}/retry - Retry a dead letter entry
+	adminRoutes.HandleFunc("/triggers/dead-letter/{id}/retry", authMiddleware.RequirePermission(auth.PermSystemWrite)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.triggerEngine == nil {
+			http.Error(w, `{"error":"trigger engine not initialized"}`, http.StatusServiceUnavailable)
+			return
+		}
+		vars := mux.Vars(r)
+		dlqID, err := uuid.Parse(vars["id"])
+		if err != nil {
+			http.Error(w, `{"error":"invalid dead letter id"}`, http.StatusBadRequest)
+			return
+		}
+		if err := s.triggerEngine.RetryDeadLetterEvent(r.Context(), dlqID); err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "retry queued"})
+	}))).Methods("POST", "OPTIONS")
+
+	// POST /admin/triggers/purge-completed - Purge old completed events
+	adminRoutes.HandleFunc("/triggers/purge-completed", authMiddleware.RequirePermission(auth.PermSystemWrite)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.triggerEngine == nil {
+			http.Error(w, `{"error":"trigger engine not initialized"}`, http.StatusServiceUnavailable)
+			return
+		}
+		// Default to 30 days retention
+		retentionDays := 30
+		if d := r.URL.Query().Get("days"); d != "" {
+			if n, err := strconv.Atoi(d); err == nil && n > 0 {
+				retentionDays = n
+			}
+		}
+		deleted, err := s.triggerEngine.PurgeCompletedEvents(r.Context(), time.Duration(retentionDays)*24*time.Hour)
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"deleted":        deleted,
+			"retention_days": retentionDays,
+		})
+	}))).Methods("POST", "OPTIONS")
 
 	// Content management (admin only)
 	contentRoutes := adminRoutes.PathPrefix("/content").Subrouter()

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -33,10 +34,10 @@ type TrustScoreStreamer struct {
 
 // SSEClient represents a connected SSE client
 type SSEClient struct {
-	FunctionIDs []string            // Functions being watched (empty = all)
-	FilterTier  registry.TrustTier  // Filter by minimum tier
-	Send        chan string         // Channel for sending SSE data
-	Done        <-chan struct{}     // Client disconnect signal (read-only)
+	FunctionIDs []string           // Functions being watched (empty = all)
+	FilterTier  registry.TrustTier // Filter by minimum tier
+	Send        chan string        // Channel for sending SSE data
+	Done        <-chan struct{}    // Client disconnect signal (read-only)
 }
 
 // NewTrustScoreStreamer creates a new trust score streaming handler
@@ -216,7 +217,7 @@ func (s *TrustScoreStreamer) HandleSSE(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	middleware.SetCORSHeaders(w, r)
 
 	// Parse query parameters
 	functionIDs := r.URL.Query()["function_id"]

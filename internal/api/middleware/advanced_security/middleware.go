@@ -50,6 +50,7 @@ type AdvancedSecurityMiddleware struct {
 	allowedIPs map[string]bool
 
 	logger *logrus.Logger
+	stop   chan struct{} // Stop signal for background goroutines
 }
 
 // NewAdvancedSecurityMiddleware creates a new advanced security middleware
@@ -87,6 +88,7 @@ func NewAdvancedSecurityMiddleware(securityMiddleware SecurityMiddlewareInterfac
 		config:             config,
 		allowedIPs:         allowedIPs,
 		logger:             logrus.New(),
+		stop:               make(chan struct{}),
 	}
 
 	// Initialize rate limiters
@@ -123,6 +125,7 @@ func NewAdvancedSecurityMiddleware(securityMiddleware SecurityMiddlewareInterfac
 		trafficStats:     make(map[string]*TrafficStats),
 		window:           time.Minute * 5,
 		anomalyThreshold: 3.0,
+		stop:             asm.stop,
 	}
 
 	// Initialize traffic management
@@ -175,13 +178,24 @@ func NewAdvancedSecurityMiddleware(securityMiddleware SecurityMiddlewareInterfac
 	return asm
 }
 
+// Stop stops all background goroutines in the advanced security middleware
+func (asm *AdvancedSecurityMiddleware) Stop() {
+	close(asm.stop)
+	close(asm.requestQueue.queue)
+}
+
 // botDetectionCleanupRoutine periodically cleans up stale bot detection data
 func (asm *AdvancedSecurityMiddleware) botDetectionCleanupRoutine() {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		asm.botDetection.CleanupOldData()
+	for {
+		select {
+		case <-ticker.C:
+			asm.botDetection.CleanupOldData()
+		case <-asm.stop:
+			return
+		}
 	}
 }
 
@@ -609,8 +623,13 @@ func (asm *AdvancedSecurityMiddleware) cleanupRoutine() {
 	ticker := time.NewTicker(time.Minute * 5)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		asm.cleanup()
+	for {
+		select {
+		case <-ticker.C:
+			asm.cleanup()
+		case <-asm.stop:
+			return
+		}
 	}
 }
 

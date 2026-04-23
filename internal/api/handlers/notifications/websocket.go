@@ -37,6 +37,7 @@ type WebSocketHub struct {
 	unregister chan *WebSocketClient
 	broadcast  chan *WebSocketMessage
 	logger     *logrus.Logger
+	stop       chan struct{} // Stop signal for graceful shutdown
 }
 
 // WebSocketMessage represents a message sent via WebSocket
@@ -54,6 +55,7 @@ func NewWebSocketHub(logger *logrus.Logger) *WebSocketHub {
 		unregister: make(chan *WebSocketClient),
 		broadcast:  make(chan *WebSocketMessage, 100),
 		logger:     logger,
+		stop:       make(chan struct{}),
 	}
 }
 
@@ -99,7 +101,28 @@ func (h *WebSocketHub) Run() {
 					}
 				}
 			}
+
+		case <-h.stop:
+			h.logger.Info("WebSocket hub stopping")
+			return
 		}
+	}
+}
+
+// Stop signals the WebSocket hub to stop
+func (h *WebSocketHub) Stop() {
+	close(h.stop)
+}
+
+// StopHub stops the underlying WebSocket hub and the PostgreSQL LISTEN subscription
+func (h *WebSocketHandler) StopHub() {
+	// Cancel the PostgreSQL LISTEN subscription context first
+	if h.cancelSub != nil {
+		h.cancelSub()
+	}
+	// Then stop the WebSocket hub
+	if h.hub != nil {
+		h.hub.Stop()
 	}
 }
 
@@ -174,8 +197,9 @@ func (c *WebSocketClient) writePump() {
 
 // WebSocketHandler handles WebSocket connections for real-time notifications
 type WebSocketHandler struct {
-	hub    *WebSocketHub
-	logger *logrus.Logger
+	hub       *WebSocketHub
+	logger    *logrus.Logger
+	cancelSub context.CancelFunc // Cancels the PostgreSQL LISTEN subscription
 }
 
 // NewWebSocketHandler creates a new WebSocket handler
@@ -201,8 +225,11 @@ func (h *WebSocketHandler) RunNotificationSubscription(ctx context.Context, pool
 	if pool == nil {
 		return
 	}
+	// Create a cancellable context so we can stop the subscription during shutdown
+	subCtx, cancel := context.WithCancel(ctx)
+	h.cancelSub = cancel
 	poolFactory := func() (*pgxpool.Pool, error) { return pool, nil }
-	go h.SubscribeToNotifications(ctx, poolFactory)
+	go h.SubscribeToNotifications(subCtx, poolFactory)
 }
 
 // HandleWebSocket upgrades the HTTP connection to WebSocket and handles real-time notifications
@@ -313,14 +340,14 @@ func (h *WebSocketHandler) SubscribeToNotifications(ctx context.Context, poolFac
 				}
 				// Payload is JSON: {"type":"notification","user_id":"...","notification_id":"..."}
 				var payload struct {
-					Type            string `json:"type"`
-					UserID          string `json:"user_id"`
+					Type           string `json:"type"`
+					UserID         string `json:"user_id"`
 					NotificationID string `json:"notification_id"`
-					Title           string `json:"title"`
-					Body            string `json:"body"`
-					Category        string `json:"category"`
-					Priority        string `json:"priority"`
-					CreatedAt       string `json:"created_at"`
+					Title          string `json:"title"`
+					Body           string `json:"body"`
+					Category       string `json:"category"`
+					Priority       string `json:"priority"`
+					CreatedAt      string `json:"created_at"`
 				}
 				if err := json.Unmarshal([]byte(notification.Payload), &payload); err != nil {
 					h.logger.WithError(err).Warn("Failed to parse notification payload")

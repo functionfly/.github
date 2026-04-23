@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/auth"
@@ -200,4 +201,84 @@ func hasAdminPermission(claims *auth.Claims, permission string) bool {
 		}
 	}
 	return false
+}
+
+// HandleRunTTLCleanup (admin) POST /v1/admin/state-fabrics/cleanup
+func (h *Handler) HandleRunTTLCleanup(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeErr(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	if !hasAdminPermission(claims, auth.PermSystemWrite) {
+		writeErr(w, http.StatusForbidden, "forbidden")
+		return
+	}
+
+	if h.cleanupSvc == nil {
+		writeErr(w, http.StatusServiceUnavailable, "cleanup service not available")
+		return
+	}
+
+	start := time.Now()
+	result, err := h.cleanupSvc.RunManualCleanup(r.Context())
+	duration := time.Since(start)
+
+	if err != nil {
+		logrus.WithError(err).Error("state fabric TTL cleanup failed")
+		writeJSON(w, http.StatusInternalServerError, map[string]interface{}{
+			"success":    false,
+			"message":    "Cleanup failed",
+			"error":      err.Error(),
+			"durationMs": duration.Milliseconds(),
+		})
+		return
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"durationMs":              duration.Milliseconds(),
+		"expiredSnapshotsDeleted": result.ExpiredSnapshotsDeleted,
+	}).Info("State fabric TTL cleanup completed")
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success":                 true,
+		"message":                 "Cleanup completed successfully",
+		"expiredSnapshotsDeleted": result.ExpiredSnapshotsDeleted,
+		"snapshotsBefore":         result.SnapshotsBefore,
+		"snapshotsAfter":          result.SnapshotsAfter,
+		"durationMs":              duration.Milliseconds(),
+		"startedAt":               result.StartedAt,
+		"completedAt":             result.CompletedAt,
+	})
+}
+
+// HandleGetTTLCleanupStats (admin) GET /v1/admin/state-fabrics/cleanup/stats
+func (h *Handler) HandleGetTTLCleanupStats(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeErr(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	if !hasAdminPermission(claims, auth.PermSystemRead) {
+		writeErr(w, http.StatusForbidden, "forbidden")
+		return
+	}
+
+	if h.cleanupSvc == nil {
+		writeErr(w, http.StatusServiceUnavailable, "cleanup service not available")
+		return
+	}
+
+	stats, err := h.cleanupSvc.GetStats(r.Context())
+	if err != nil {
+		logrus.WithError(err).Error("failed to get state fabric cleanup stats")
+		writeErr(w, http.StatusInternalServerError, "failed to get cleanup stats")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"expiredSnapshotsPending": stats["expiredSnapshotsPending"],
+		"totalSnapshots":          stats["totalSnapshots"],
+		"snapshotsWithExpiration": stats["snapshotsWithExpiration"],
+	})
 }

@@ -220,6 +220,61 @@ func (h *AgentMemoryHandler) HandleGetMemory(w http.ResponseWriter, r *http.Requ
 	json.NewEncoder(w).Encode(memory)
 }
 
+// HandleUpdateMemory handles PATCH /agent-memories/{id} - Update an existing memory
+func (h *AgentMemoryHandler) HandleUpdateMemory(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	vars := mux.Vars(r)
+	memoryID := vars["id"]
+
+	memoryUUID, err := uuid.Parse(memoryID)
+	if err != nil {
+		http.Error(w, "invalid memory ID", http.StatusBadRequest)
+		return
+	}
+
+	var req UpdateMemoryRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Get existing memory
+	memory, err := h.getMemory(r.Context(), claims.TenantID, memoryUUID)
+	if err != nil {
+		http.Error(w, "memory not found", http.StatusNotFound)
+		return
+	}
+
+	// Update fields if provided
+	if req.Content != "" {
+		memory.Content = &req.Content
+	}
+	if req.StructuredData != nil {
+		memory.StructuredData = req.StructuredData
+	}
+	if req.Embedding != nil {
+		memory.Embedding = req.Embedding
+	}
+	if req.ImportanceScore > 0 {
+		memory.ImportanceScore = req.ImportanceScore
+	}
+
+	updated, err := h.updateMemory(r.Context(), memory)
+	if err != nil {
+		logrus.Errorf("failed to update memory: %v", err)
+		http.Error(w, "failed to update memory", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(updated)
+}
+
 // HandleDeleteMemory handles DELETE /agent-memories/{id} - Delete a memory
 func (h *AgentMemoryHandler) HandleDeleteMemory(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
@@ -245,6 +300,46 @@ func (h *AgentMemoryHandler) HandleDeleteMemory(w http.ResponseWriter, r *http.R
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// HandleMarkAccessed handles POST /agent-memories/{id}/accessed - Mark memory as accessed
+func (h *AgentMemoryHandler) HandleMarkAccessed(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	vars := mux.Vars(r)
+	memoryID := vars["id"]
+
+	memoryUUID, err := uuid.Parse(memoryID)
+	if err != nil {
+		http.Error(w, "invalid memory ID", http.StatusBadRequest)
+		return
+	}
+
+	// Verify memory exists and belongs to tenant
+	_, err = h.getMemory(r.Context(), claims.TenantID, memoryUUID)
+	if err != nil {
+		http.Error(w, "memory not found", http.StatusNotFound)
+		return
+	}
+
+	// Update access count
+	err = h.markMemoryAccessed(r.Context(), memoryUUID)
+	if err != nil {
+		logrus.Errorf("failed to mark memory accessed: %v", err)
+		http.Error(w, "failed to update access count", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"memory_id": memoryID,
+		"accessed":  true,
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
+	})
 }
 
 // HandleSearchMemories handles POST /agent-memories/search - Search memories using vector similarity
@@ -365,6 +460,29 @@ func (h *AgentMemoryHandler) deleteMemory(ctx context.Context, tenantID, memoryI
 	}
 	if result.RowsAffected == 0 {
 		return fmt.Errorf("memory not found")
+	}
+	return nil
+}
+
+func (h *AgentMemoryHandler) updateMemory(ctx context.Context, memory *statestorage.AgentMemory) (*statestorage.AgentMemory, error) {
+	memory.UpdatedAt = time.Now()
+	err := h.db.WithContext(ctx).Save(memory).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to update memory: %w", err)
+	}
+	return memory, nil
+}
+
+func (h *AgentMemoryHandler) markMemoryAccessed(ctx context.Context, memoryID uuid.UUID) error {
+	err := h.db.WithContext(ctx).Model(&statestorage.AgentMemory{}).
+		Where("id = ?", memoryID).
+		Updates(map[string]interface{}{
+			"access_count":     gorm.Expr("access_count + 1"),
+			"last_accessed_at": time.Now(),
+			"updated_at":       time.Now(),
+		}).Error
+	if err != nil {
+		return fmt.Errorf("failed to mark memory accessed: %w", err)
 	}
 	return nil
 }

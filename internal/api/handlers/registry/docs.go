@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/functionregistry"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/gorilla/mux"
@@ -90,7 +91,7 @@ func (h *DocumentationHandler) HandleOpenAPISpec(w http.ResponseWriter, r *http.
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	middleware.SetCORSHeaders(w, r)
 	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 

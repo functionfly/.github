@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/sirupsen/logrus"
 )
@@ -180,7 +181,7 @@ func (s *Server) handleMetricsStream(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	middleware.SetCORSHeaders(w, r)
 	w.Header().Set("Access-Control-Allow-Headers", "Cache-Control")
 
 	// Create a channel to send data

@@ -33,6 +33,7 @@ type TrafficAnalyzer struct {
 	trafficStats     map[string]*TrafficStats
 	window           time.Duration
 	anomalyThreshold float64
+	stop             chan struct{} // Stop signal for background goroutines
 }
 
 // RequestFingerprinting implementation
@@ -235,8 +236,13 @@ func (ta *TrafficAnalyzer) monitorTraffic() {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		ta.analyzeTrafficPatterns()
+	for {
+		select {
+		case <-ticker.C:
+			ta.analyzeTrafficPatterns()
+		case <-ta.stop:
+			return
+		}
 	}
 }
 

@@ -355,6 +355,91 @@ func (h *Handler) HandleTestConnection(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// HandleRotateProvider rotates an API key for an existing provider.
+func (h *Handler) HandleRotateProvider(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	ctx := r.Context()
+	ipAddress := middleware.ExtractClientIP(r)
+	userAgent := r.UserAgent()
+	requestID := ""
+	if id := ctx.Value("request_id"); id != nil {
+		requestID = id.(string)
+	}
+
+	vars := mux.Vars(r)
+	providerID := vars["providerId"]
+	if providerID == "" {
+		http.Error(w, "providerId is required", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		APIKey string `json:"apiKey"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	if req.APIKey == "" {
+		http.Error(w, "apiKey is required", http.StatusBadRequest)
+		return
+	}
+
+	// Map frontend provider IDs to backend provider names used in validation.
+	providerName := providerID
+	if providerID == "workers" {
+		providerName = "cloudflare"
+	}
+
+	// Validate the new token against the external provider's API.
+	validation := h.validateProviderToken(providerName, req.APIKey)
+	if !validation.IsValid {
+		http.Error(w, validation.Message, http.StatusUnprocessableEntity)
+		return
+	}
+
+	// Get the existing provider
+	existing, err := h.repo.GetProviderByUserAndType(claims.UserID, providerID)
+	if err != nil || existing == nil {
+		http.Error(w, "Provider not found", http.StatusNotFound)
+		return
+	}
+
+	// Update with new encrypted token
+	updated, err := h.repo.UpdateProvider(ctx, existing.ID, map[string]interface{}{
+		"token":  req.APIKey,
+		"status": "active",
+	})
+	if err != nil {
+		logrus.WithError(err).Error("Failed to rotate provider API key")
+		http.Error(w, "Failed to rotate API key", http.StatusInternalServerError)
+		return
+	}
+
+	// Audit log
+	providerUUID, _ := uuid.Parse(existing.ID)
+	utils.LogAuditEvent(ctx, h.repo, r, "provider.rotate", "provider", &providerUUID, map[string]interface{}{
+		"provider_id":   existing.ID,
+		"provider_type": providerID,
+	}, map[string]interface{}{
+		"provider_id":   existing.ID,
+		"provider_type": providerID,
+		"ip_address":    ipAddress,
+		"user_agent":    userAgent,
+		"request_id":    requestID,
+	}, true)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"provider": connectedProviderResponse(updated),
+	})
+}
+
 // HandleListProviders returns the current user's connected providers (no tokens).
 func (h *Handler) HandleListProviders(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
@@ -383,6 +468,57 @@ func (h *Handler) HandleListProviders(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(out)
+}
+
+// HandleGetProviderCredentials returns the user's connected providers with masked API keys.
+// This is used for settings pages to show which providers are connected without exposing secrets.
+func (h *Handler) HandleGetProviderCredentials(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	providers, err := h.repo.GetProvidersByUser(claims.UserID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list providers")
+		http.Error(w, "Failed to list providers", http.StatusInternalServerError)
+		return
+	}
+	// One logical connection per provider slug; prefer newest row if duplicates exist (legacy bug).
+	sort.SliceStable(providers, func(i, j int) bool {
+		return providers[i].CreatedAt.After(providers[j].CreatedAt)
+	})
+	seen := make(map[string]struct{}, len(providers))
+	out := make([]map[string]interface{}, 0, len(providers))
+	for _, p := range providers {
+		if _, dup := seen[p.Provider]; dup {
+			continue
+		}
+		seen[p.Provider] = struct{}{}
+		maskedKey := maskAPIKey(p.Token)
+		entry := map[string]interface{}{
+			"id":           p.ID,
+			"name":         p.Provider,
+			"status":       p.Status,
+			"connectedAt":  p.CreatedAt.Format(time.RFC3339),
+			"maskedApiKey": maskedKey,
+			"isStale":      isProviderStale(p),
+		}
+		if p.LastUsedAt != nil {
+			entry["lastUsedAt"] = p.LastUsedAt.Format(time.RFC3339)
+		}
+		out = append(out, entry)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(out)
+}
+
+// maskAPIKey returns a masked version of an API key showing first 4 and last 4 characters
+func maskAPIKey(key string) string {
+	if len(key) <= 12 {
+		return "***"
+	}
+	return key[:4] + "..." + key[len(key)-4:]
 }
 
 // HandleValidateProvider validates a provider API token

@@ -7,7 +7,6 @@ import (
 
 	"github.com/functionfly/functionfly/internal/agent/identity"
 	"github.com/functionfly/functionfly/internal/api/middleware"
-	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	"gorm.io/datatypes"
@@ -130,12 +129,14 @@ func (h *DaemonHandler) GetDaemonConfig(w http.ResponseWriter, r *http.Request) 
 
 	var config DaemonConfig
 	if agent.DaemonConfig != nil {
-		if err := json.Unmarshal(agent.DaemonConfig, &config); err != nil {
+		// Convert JSONBMap to JSON bytes then unmarshal to struct
+		configBytes, err := json.Marshal(agent.DaemonConfig)
+		if err != nil {
+			logrus.WithError(err).Warn("Failed to marshal daemon config")
+			config = DaemonConfig{IsEnabled: false, Mode: "on_demand"}
+		} else if err := json.Unmarshal(configBytes, &config); err != nil {
 			logrus.WithError(err).Warn("Failed to parse daemon config")
-			config = DaemonConfig{
-				IsEnabled: false,
-				Mode:      "on_demand",
-			}
+			config = DaemonConfig{IsEnabled: false, Mode: "on_demand"}
 		}
 	}
 

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/gorilla/mux"
 )
@@ -114,7 +115,7 @@ func (h *Handler) HandleServeEmbed(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
 	w.Header().Set("Cache-Control", cacheControl)
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	middleware.SetCORSHeaders(w, r)
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 
 	w.WriteHeader(http.StatusOK)
@@ -275,12 +276,12 @@ func (h *Handler) HandleGetEmbedSnippet(w http.ResponseWriter, r *http.Request) 
 </script>`, scriptURL, opts.Namespace, fn.Title.String)
 
 	response := map[string]interface{}{
-		"author":        author,
-		"name":          name,
-		"version":       latestVersion.Version,
-		"script_url":    scriptURL,
-		"pinned_url":    pinnedURL,
-		"namespace":     opts.Namespace,
+		"author":     author,
+		"name":       name,
+		"version":    latestVersion.Version,
+		"script_url": scriptURL,
+		"pinned_url": pinnedURL,
+		"namespace":  opts.Namespace,
 		"snippets": map[string]string{
 			"basic":  basicSnippet,
 			"form":   formSnippet,
@@ -348,10 +349,10 @@ func (h *Handler) HandleGetEmbedAnalytics(w http.ResponseWriter, r *http.Request
 	}
 
 	type enrichedStat struct {
-		Origin    string  `json:"origin"`
-		Count     int64   `json:"count"`
-		Pct       float64 `json:"pct"`
-		Suspicious bool   `json:"suspicious"`
+		Origin     string  `json:"origin"`
+		Count      int64   `json:"count"`
+		Pct        float64 `json:"pct"`
+		Suspicious bool    `json:"suspicious"`
 	}
 
 	enriched := make([]enrichedStat, len(stats))
@@ -404,4 +405,3 @@ func getEmbedBaseURL() string {
 	base = strings.TrimSuffix(base, "/v1/fx")
 	return base
 }
-
