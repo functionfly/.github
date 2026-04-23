@@ -10,8 +10,8 @@ import uuid
 from typing import Optional, Callable, Any
 from functools import wraps
 
-from ..models.schemas import ChatMessage, CompletionResponse, ProviderType, CostTracking
-from ..services.economic_memory import ExecutionRecord, get_economic_memory
+from ...models.schemas import ChatMessage, CompletionResponse, ProviderType, CostTracking
+from . import ExecutionRecord, get_economic_memory
 
 logger = logging.getLogger(__name__)
 
@@ -59,28 +59,30 @@ def estimate_cost(
     output_tokens: int,
 ) -> float:
     """Estimate cost for a completion based on provider and model.
-    
+
     Args:
         provider: Provider type
         model: Model name
         input_tokens: Number of input tokens
         output_tokens: Number of output tokens
-        
+
     Returns:
         Estimated cost in USD
     """
     provider_rates = PROVIDER_COST_RATES.get(provider, {})
-    model_rates = provider_rates.get(model, provider_rates.get("default", {"input": 0.0, "output": 0.0}))
-    
+    model_rates = provider_rates.get(
+        model, provider_rates.get("default", {"input": 0.0, "output": 0.0})
+    )
+
     input_cost = (input_tokens / 1000) * model_rates["input"]
     output_cost = (output_tokens / 1000) * model_rates["output"]
-    
+
     return round(input_cost + output_cost, 6)
 
 
 class EconomicTracker:
     """Tracks completions for economic memory recording."""
-    
+
     def __init__(
         self,
         provider: ProviderType,
@@ -95,16 +97,16 @@ class EconomicTracker:
         self.execution_id = str(uuid.uuid4())
         self.start_time: Optional[float] = None
         self.end_time: Optional[float] = None
-        
+
     def __enter__(self) -> "EconomicTracker":
         """Start tracking."""
         self.start_time = time.time()
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """End tracking - record to economic memory."""
         self.end_time = time.time()
-        
+
     async def record_completion(
         self,
         response: CompletionResponse,
@@ -112,7 +114,7 @@ class EconomicTracker:
         error: Optional[str] = None,
     ) -> None:
         """Record a completion response to economic memory.
-        
+
         Args:
             response: The completion response
             success: Whether the request succeeded
@@ -122,12 +124,12 @@ class EconomicTracker:
             self.start_time = time.time()
         if self.end_time is None:
             self.end_time = time.time()
-        
+
         latency_ms = (self.end_time - self.start_time) * 1000
-        
+
         # Estimate cost if not in response
         cost_usd = 0.0
-        if hasattr(response, 'cost_usd') and response.cost_usd is not None:
+        if hasattr(response, "cost_usd") and response.cost_usd is not None:
             cost_usd = response.cost_usd
         else:
             cost_usd = estimate_cost(
@@ -136,7 +138,7 @@ class EconomicTracker:
                 response.usage.get("prompt_tokens", 0),
                 response.usage.get("completion_tokens", 0),
             )
-        
+
         # Create execution record
         record = ExecutionRecord(
             execution_id=self.execution_id,
@@ -152,7 +154,7 @@ class EconomicTracker:
             tenant_id=self.tenant_id,
             function_id=self.function_id,
         )
-        
+
         # Record to economic memory
         try:
             memory = get_economic_memory()
@@ -164,14 +166,14 @@ class EconomicTracker:
         except Exception as e:
             # Don't fail the request if recording fails
             logger.warning(f"Failed to record to economic memory: {e}")
-    
+
     async def record_failure(
         self,
         error: Exception,
         input_tokens: int = 0,
     ) -> None:
         """Record a failed completion to economic memory.
-        
+
         Args:
             error: The exception that occurred
             input_tokens: Tokens consumed before failure
@@ -180,14 +182,14 @@ class EconomicTracker:
             self.start_time = time.time()
         if self.end_time is None:
             self.end_time = time.time()
-        
+
         latency_ms = (self.end_time - self.start_time) * 1000
-        
+
         # Failed requests still have cost (usually)
         cost_usd = estimate_cost(self.provider, self.model, input_tokens, 0)
-        
+
         error_type = type(error).__name__
-        
+
         record = ExecutionRecord(
             execution_id=self.execution_id,
             provider=self.provider,
@@ -202,7 +204,7 @@ class EconomicTracker:
             tenant_id=self.tenant_id,
             function_id=self.function_id,
         )
-        
+
         try:
             memory = get_economic_memory()
             await memory.record_execution(record)
@@ -217,18 +219,18 @@ def track_completion(
     function_id: Optional[str] = None,
 ) -> EconomicTracker:
     """Create an economic tracker for a completion.
-    
+
     Usage:
         with track_completion(ProviderType.OPENAI, "gpt-4o-mini") as tracker:
             response = await provider.complete(...)
             await tracker.record_completion(response)
-    
+
     Args:
         provider: Provider type
         model: Model name
         tenant_id: Optional tenant ID
         function_id: Optional function ID
-        
+
     Returns:
         EconomicTracker context manager
     """
@@ -242,11 +244,11 @@ def track_completion(
 
 class TrackedProvider:
     """Wrapper that adds economic tracking to a base provider.
-    
+
     This wraps a BaseProvider and automatically records all completions
     to the economic memory system.
     """
-    
+
     def __init__(
         self,
         provider: Any,  # BaseProvider
@@ -256,23 +258,23 @@ class TrackedProvider:
         self._provider_type = provider_type
         self._name = provider.name
         self._display_name = provider.display_name
-        
+
     @property
     def name(self) -> str:
         return self._name
-    
+
     @property
     def display_name(self) -> str:
         return self._display_name
-    
+
     @property
     def available(self) -> bool:
         return self._provider.available
-    
+
     @property
     def models(self) -> list[str]:
         return self._provider.models
-    
+
     async def complete(
         self,
         messages: list[ChatMessage],
@@ -290,7 +292,7 @@ class TrackedProvider:
             model=model or "default",
             tenant_id=tenant_id,
         )
-        
+
         with tracker:
             try:
                 response = await self._provider.complete(
@@ -308,7 +310,7 @@ class TrackedProvider:
                 input_tokens = sum(len(m.content.split()) for m in messages) * 1.5  # Rough estimate
                 await tracker.record_failure(e, int(input_tokens))
                 raise
-    
+
     async def stream(
         self,
         messages: list[ChatMessage],
@@ -324,7 +326,7 @@ class TrackedProvider:
             provider=self._provider_type,
             model=model or "default",
         )
-        
+
         with tracker:
             try:
                 async for chunk in self._provider.stream(
@@ -336,14 +338,14 @@ class TrackedProvider:
                     stop=stop,
                 ):
                     yield chunk
-                    
+
                 # Stream completed successfully
                 # Note: We don't have full usage stats for streams
                 # so this is a partial record
-                
+
             except Exception as e:
                 raise
-    
+
     async def embed(
         self,
         text: str,
@@ -359,11 +361,11 @@ def wrap_provider_with_tracking(
     provider_type: ProviderType,
 ) -> TrackedProvider:
     """Wrap a provider with economic tracking.
-    
+
     Args:
         provider: Base provider to wrap
         provider_type: Provider type enum value
-        
+
     Returns:
         TrackedProvider wrapper
     """

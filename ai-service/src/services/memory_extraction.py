@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from ..providers.manager import ProviderManager, get_provider_manager
-from ..providers.base import AIProvider
+from ..providers.base import BaseProvider
 
 
 logger = logging.getLogger(__name__)
@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MemoryExtraction:
     """A single extracted memory from a conversation."""
+
     type: str  # decision, preference, process, client_context
     category: Optional[str]
     summary: str
@@ -31,6 +32,7 @@ class MemoryExtraction:
 @dataclass
 class ExtractionResult:
     """Result of analyzing a conversation for memories."""
+
     memories: List[MemoryExtraction]
     confidence: float
     tokens_used: int
@@ -82,11 +84,11 @@ class MemoryExtractionService:
 
     def __init__(self, provider_manager: Optional[ProviderManager] = None):
         self.provider_manager = provider_manager or get_provider_manager()
-        self._provider: Optional[AIProvider] = None
+        self._provider: Optional[BaseProvider] = None
 
-    async def _get_provider(self) -> AIProvider:
+    async def _get_provider(self) -> BaseProvider:
         """Get the best available provider for extraction.
-        
+
         Uses gpt-4o-mini for optimal cost/quality balance (2026 pricing).
         Estimated cost: ~$0.00015 per 1K input tokens, ~$0.0006 per 1K output tokens.
         Typical extraction: ~2000 input + ~500 output tokens = ~$0.0006 per conversation.
@@ -123,8 +125,8 @@ class MemoryExtractionService:
             {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": f"Analyze the following team conversation and extract structured memories:\n\nCONVERSATION:\n{transcript}\n\nExtract memories in the specified JSON format."
-            }
+                "content": f"Analyze the following team conversation and extract structured memories:\n\nCONVERSATION:\n{transcript}\n\nExtract memories in the specified JSON format.",
+            },
         ]
 
         try:
@@ -181,7 +183,9 @@ class MemoryExtractionService:
                     continue
 
             # Calculate overall confidence
-            avg_confidence = sum(m.confidence for m in memories) / len(memories) if memories else 0.0
+            avg_confidence = (
+                sum(m.confidence for m in memories) / len(memories) if memories else 0.0
+            )
 
             return ExtractionResult(
                 memories=memories,

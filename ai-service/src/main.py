@@ -37,7 +37,8 @@ async def lifespan(app: FastAPI):
     # Initialize providers
     try:
         provider_manager = get_provider_manager()
-        logger.info(f"Initialized providers: {list(provider_manager._providers.keys())}")
+        all_providers = provider_manager.get_all_providers()
+        logger.info(f"Initialized providers: {list(all_providers.keys())}")
 
         # Update model router with provider availability
         try:
@@ -46,14 +47,16 @@ async def lifespan(app: FastAPI):
 
             router = get_model_router()
             availability = {}
-            for name, provider in provider_manager._providers.items():
+            for name, provider in all_providers.items():
                 try:
                     provider_type = ProviderType(name)
-                    availability[provider_type] = getattr(provider, 'available', False)
+                    availability[provider_type] = getattr(provider, "available", False)
                 except ValueError:
                     pass
             router.update_provider_availability(availability)
-            logger.info(f"Model router initialized with provider availability: {[f'{k.value}: {v}' for k, v in availability.items()]}")
+            logger.info(
+                f"Model router initialized with provider availability: {[f'{k.value}: {v}' for k, v in availability.items()]}"
+            )
         except Exception as e:
             logger.warning(f"Could not initialize model router: {e}")
 
@@ -110,12 +113,14 @@ app.include_router(router)
 @app.get("/")
 async def root():
     """Root endpoint."""
-    return JSONResponse({
-        "service": settings.service_name,
-        "version": settings.service_version,
-        "status": "running",
-        "docs": "/docs",
-    })
+    return JSONResponse(
+        {
+            "service": settings.service_name,
+            "version": settings.service_version,
+            "status": "running",
+            "docs": "/docs",
+        }
+    )
 
 
 @app.get("/metrics")

@@ -21,22 +21,29 @@ logger = logging.getLogger(__name__)
 
 class DeterminismLevel(str, Enum):
     """Level of determinism in function outputs."""
+
     DETERMINISTIC = "deterministic"  # Same input = same output
     PARTIALLY_DETERMINISTIC = "partially_deterministic"  # Sometimes same output
     NON_DETERMINISTIC = "non_deterministic"  # Different output each time
+    UNKNOWN = "unknown"  # Not enough data to determine
 
 
 @dataclass
 class CachePrediction:
     """A prediction for cache warming."""
+
     key: str
     function_id: str
     predicted_accesses: int
-    confidence: float = field(ge=0.0, le=1.0)
+    confidence: float = 0.0
     suggested_ttl: int = 3600  # seconds
     suggested_tags: List[str] = field(default_factory=list)
     predicted_at: datetime = field(default_factory=datetime.utcnow)
     valid_until: datetime = field(default_factory=lambda: datetime.utcnow() + timedelta(minutes=10))
+
+    def __post_init__(self):
+        if not 0.0 <= self.confidence <= 1.0:
+            raise ValueError(f"confidence must be between 0.0 and 1.0, got {self.confidence}")
 
     def is_valid(self) -> bool:
         """Check if prediction is still valid."""
@@ -46,6 +53,7 @@ class CachePrediction:
 @dataclass
 class AccessPattern:
     """Historical access pattern for a key."""
+
     key: str
     function_id: str
     access_count: int = 0
@@ -61,7 +69,12 @@ class AccessPattern:
         now = timestamp or time.time()
 
         if self.last_access is not None:
-            interval = now - self.last_access
+            last_ts = (
+                self.last_access.timestamp()
+                if hasattr(self.last_access, "timestamp")
+                else self.last_access
+            )
+            interval = now - last_ts
             if interval > 0:
                 self.access_intervals.append(interval)
                 # Keep only last 100 intervals
@@ -172,7 +185,7 @@ class CachePredictor:
             return
 
         # Count unique outputs
-        if not hasattr(pattern, '_output_hashes'):
+        if not hasattr(pattern, "_output_hashes"):
             pattern._output_hashes = []
 
         pattern._output_hashes.append(output_hash)
@@ -199,7 +212,8 @@ class CachePredictor:
         cutoff = now - self._history_window
 
         old_keys = [
-            key for key, pattern in self._patterns.items()
+            key
+            for key, pattern in self._patterns.items()
             if pattern.last_access and pattern.last_access.timestamp() < cutoff
         ]
 
@@ -238,10 +252,7 @@ class CachePredictor:
                 predictions.append(prediction)
 
         # Sort by confidence and access rate
-        predictions.sort(
-            key=lambda p: (p.confidence, p.predicted_accesses),
-            reverse=True
-        )
+        predictions.sort(key=lambda p: (p.confidence, p.predicted_accesses), reverse=True)
 
         # Limit results
         return predictions[:limit]

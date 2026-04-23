@@ -1,6 +1,6 @@
 # FlyMind AI Service Dockerfile
 
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Set working directory
 WORKDIR /app
@@ -21,7 +21,7 @@ COPY pyproject.toml README.md ./
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -e .
+    pip install --no-cache-dir -e ".[providers,moderation,observability,resilience]"
 
 # Copy source code
 COPY src/ ./src/

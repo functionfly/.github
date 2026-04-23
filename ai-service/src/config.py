@@ -13,10 +13,7 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-        extra="ignore"
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore"
     )
 
     # Service_name: str = configuration
@@ -33,10 +30,18 @@ class Settings(BaseSettings):
     openrouter_api_key: Optional[str] = Field(default=None, description="OpenRouter API key")
 
     # New providers for FunctionFly multi-provider architecture
-    fireworks_api_key: Optional[str] = Field(default=None, description="Fireworks AI API key (best for function calling)")
-    groq_api_key: Optional[str] = Field(default=None, description="Groq API key (best for low-latency)")
-    deepinfra_api_key: Optional[str] = Field(default=None, description="DeepInfra API key (best for background/batch)")
-    together_api_key: Optional[str] = Field(default=None, description="Together AI API key (alternative provider)")
+    fireworks_api_key: Optional[str] = Field(
+        default=None, description="Fireworks AI API key (best for function calling)"
+    )
+    groq_api_key: Optional[str] = Field(
+        default=None, description="Groq API key (best for low-latency)"
+    )
+    deepinfra_api_key: Optional[str] = Field(
+        default=None, description="DeepInfra API key (best for background/batch)"
+    )
+    together_api_key: Optional[str] = Field(
+        default=None, description="Together AI API key (alternative provider)"
+    )
 
     # Ollama configuration (local/development)
     ollama_base_url: str = "http://localhost:11434"
@@ -120,7 +125,9 @@ class Settings(BaseSettings):
     # RAG (retrieval-augmented generation) for chat
     enable_rag: bool = True
     rag_docs_dir: str = Field(
-        default=str((Path(__file__).resolve().parents[2] / "web" / "docs" / "src" / "content" / "docs")),
+        default=str(
+            (Path(__file__).resolve().parents[2] / "web" / "docs" / "src" / "content" / "docs")
+        ),
         description="Directory containing markdown docs to use for RAG",
     )
     rag_top_k: int = 4
@@ -138,13 +145,13 @@ class Settings(BaseSettings):
     # Cost per 1K tokens (2026 model pricing - estimated continued cost reductions)
     # GPT-4o class models (high performance)
     openai_input_cost: float = 0.0015  # $1.50 per 1M tokens (2026 estimate)
-    openai_output_cost: float = 0.006   # $6 per 1M tokens (2026 estimate)
+    openai_output_cost: float = 0.006  # $6 per 1M tokens (2026 estimate)
     # GPT-4o-mini (cost-optimized, used for memory extraction)
-    openai_mini_input_cost: float = 0.00015   # $0.15 per 1M tokens (2026 estimate)
-    openai_mini_output_cost: float = 0.0006   # $0.60 per 1M tokens (2026 estimate)
+    openai_mini_input_cost: float = 0.00015  # $0.15 per 1M tokens (2026 estimate)
+    openai_mini_output_cost: float = 0.0006  # $0.60 per 1M tokens (2026 estimate)
     # Anthropic Claude (Sonnet 4-6 era)
-    anthropic_input_cost: float = 0.002   # $2 per 1M tokens (2026 estimate)
-    anthropic_output_cost: float = 0.008   # $8 per 1M tokens (2026 estimate)
+    anthropic_input_cost: float = 0.002  # $2 per 1M tokens (2026 estimate)
+    anthropic_output_cost: float = 0.008  # $8 per 1M tokens (2026 estimate)
     # Embedding costs (text-embedding-3-small)
     embedding_cost_per_1k: float = 0.00002  # $0.02 per 1K tokens (2026 estimate)
 
@@ -181,12 +188,10 @@ class Settings(BaseSettings):
     # Orchestrator integration
     # In Fly.io production, use internal DNS: http://functionfly-api.internal:8080
     orchestrator_url: str = Field(
-        default="http://localhost:8080",
-        description="URL for the Go orchestrator API"
+        default="http://localhost:8080", description="URL for the Go orchestrator API"
     )
     orchestrator_api_key: Optional[str] = Field(
-        default=None,
-        description="API key for orchestrator authentication"
+        default=None, description="API key for orchestrator authentication"
     )
 
     # Content moderation (2026: OpenAI Moderation API recommended when key is set)
@@ -222,7 +227,6 @@ class Settings(BaseSettings):
         default=None, description="Fernet key for cache encryption (base64-encoded)"
     )
     redis_cache_namespace: str = "flyembed"
-    redis_cache_ttl: int = 3600
 
     # Rate Limiting - Embedding Specific
     embed_tokens_per_minute: int = 100000  # Token budget for embeddings
@@ -230,7 +234,14 @@ class Settings(BaseSettings):
 
     # RAG Security
     rag_validate_content: bool = True
-    rag_blocked_file_patterns: list[str] = [".env", ".key", ".pem", ".secret", "password", "credential"]
+    rag_blocked_file_patterns: list[str] = [
+        ".env",
+        ".key",
+        ".pem",
+        ".secret",
+        "password",
+        "credential",
+    ]
     rag_max_query_length: int = 1000
 
 

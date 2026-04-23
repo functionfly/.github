@@ -54,7 +54,9 @@ class ProviderManager:
             openai = OpenAIProvider()
             tracked_openai = wrap_provider_with_tracking(openai, ProviderType.OPENAI)
             self._providers[ProviderType.OPENAI.value] = tracked_openai
-            logger.info(f"Initialized OpenAI provider with tracking (available: {openai.available})")
+            logger.info(
+                f"Initialized OpenAI provider with tracking (available: {openai.available})"
+            )
         except Exception as e:
             logger.warning(f"Failed to initialize OpenAI provider: {e}")
 
@@ -63,7 +65,9 @@ class ProviderManager:
             anthropic = AnthropicProvider()
             tracked_anthropic = wrap_provider_with_tracking(anthropic, ProviderType.ANTHROPIC)
             self._providers[ProviderType.ANTHROPIC.value] = tracked_anthropic
-            logger.info(f"Initialized Anthropic provider with tracking (available: {anthropic.available})")
+            logger.info(
+                f"Initialized Anthropic provider with tracking (available: {anthropic.available})"
+            )
         except Exception as e:
             logger.warning(f"Failed to initialize Anthropic provider: {e}")
 
@@ -72,7 +76,9 @@ class ProviderManager:
             ollama = OllamaProvider()
             tracked_ollama = wrap_provider_with_tracking(ollama, ProviderType.OLLAMA)
             self._providers[ProviderType.OLLAMA.value] = tracked_ollama
-            logger.info(f"Initialized Ollama provider with tracking (available: {ollama.available})")
+            logger.info(
+                f"Initialized Ollama provider with tracking (available: {ollama.available})"
+            )
         except Exception as e:
             logger.warning(f"Failed to initialize Ollama provider: {e}")
 
@@ -81,7 +87,9 @@ class ProviderManager:
             openrouter = OpenRouterProvider()
             tracked_openrouter = wrap_provider_with_tracking(openrouter, ProviderType.OPENROUTER)
             self._providers[ProviderType.OPENROUTER.value] = tracked_openrouter
-            logger.info(f"Initialized OpenRouter provider with tracking (available: {openrouter.available})")
+            logger.info(
+                f"Initialized OpenRouter provider with tracking (available: {openrouter.available})"
+            )
         except Exception as e:
             logger.warning(f"Failed to initialize OpenRouter provider: {e}")
 
@@ -90,7 +98,9 @@ class ProviderManager:
             fireworks = FireworksProvider()
             tracked_fireworks = wrap_provider_with_tracking(fireworks, ProviderType.FIREWORKS)
             self._providers[ProviderType.FIREWORKS.value] = tracked_fireworks
-            logger.info(f"Initialized Fireworks AI provider with tracking (available: {fireworks.available})")
+            logger.info(
+                f"Initialized Fireworks AI provider with tracking (available: {fireworks.available})"
+            )
         except Exception as e:
             logger.warning(f"Failed to initialize Fireworks AI provider: {e}")
 
@@ -108,7 +118,9 @@ class ProviderManager:
             deepinfra = DeepInfraProvider()
             tracked_deepinfra = wrap_provider_with_tracking(deepinfra, ProviderType.DEEPINFRA)
             self._providers[ProviderType.DEEPINFRA.value] = tracked_deepinfra
-            logger.info(f"Initialized DeepInfra provider with tracking (available: {deepinfra.available})")
+            logger.info(
+                f"Initialized DeepInfra provider with tracking (available: {deepinfra.available})"
+            )
         except Exception as e:
             logger.warning(f"Failed to initialize DeepInfra provider: {e}")
 
@@ -117,7 +129,9 @@ class ProviderManager:
             together = TogetherProvider()
             tracked_together = wrap_provider_with_tracking(together, ProviderType.TOGETHER)
             self._providers[ProviderType.TOGETHER.value] = tracked_together
-            logger.info(f"Initialized Together AI provider with tracking (available: {together.available})")
+            logger.info(
+                f"Initialized Together AI provider with tracking (available: {together.available})"
+            )
         except Exception as e:
             logger.warning(f"Failed to initialize Together AI provider: {e}")
 
@@ -207,7 +221,7 @@ class ProviderManager:
 
         # Fall back to finding any available embedding provider
         for pname, provider in self._providers.items():
-            if provider.available and hasattr(provider, 'supports_embeddings'):
+            if provider.available and hasattr(provider, "supports_embeddings"):
                 if provider.get_provider_info().supports_embeddings:
                     logger.info(f"Falling back to {pname} for embeddings")
                     return provider
@@ -227,16 +241,18 @@ class ProviderManager:
             except Exception as e:
                 logger.warning(f"Failed to get provider info for {name}: {e}")
                 # Add unavailable provider info
-                providers.append(ProviderInfo(
-                    name=name,
-                    display_name=name.title(),
-                    available=False,
-                    models=[],
-                    rate_limit=0,
-                    embedding_dimensions=0,
-                    supports_streaming=False,
-                    supports_embeddings=False,
-                ))
+                providers.append(
+                    ProviderInfo(
+                        name=name,
+                        display_name=name.title(),
+                        available=False,
+                        models=[],
+                        rate_limit=0,
+                        embedding_dimensions=0,
+                        supports_streaming=False,
+                        supports_embeddings=False,
+                    )
+                )
         return providers
 
     async def health_check_all(self) -> Dict[str, bool]:
@@ -272,6 +288,7 @@ class ProviderManager:
         """
         try:
             from .router import get_provider_router
+
             return get_provider_router()
         except RuntimeError:
             return None
@@ -292,10 +309,30 @@ class ProviderManager:
         # Fallback recommendations
         return [
             {"use_case": "Real-time agent calls", "provider": "groq", "reason": "Lowest latency"},
-            {"use_case": "Function calling / JSON", "provider": "fireworks", "reason": "FireAttention optimized"},
-            {"use_case": "Background/batch work", "provider": "deepinfra", "reason": "Cost-effective"},
-            {"use_case": "Multi-model routing", "provider": "openrouter", "reason": "Agnostic routing"},
+            {
+                "use_case": "Function calling / JSON",
+                "provider": "fireworks",
+                "reason": "FireAttention optimized",
+            },
+            {
+                "use_case": "Background/batch work",
+                "provider": "deepinfra",
+                "reason": "Cost-effective",
+            },
+            {
+                "use_case": "Multi-model routing",
+                "provider": "openrouter",
+                "reason": "Agnostic routing",
+            },
         ]
+
+    def get_all_providers(self) -> Dict[str, TrackedProvider]:
+        """Get all registered providers.
+
+        Returns:
+            Dictionary mapping provider name to TrackedProvider instance
+        """
+        return dict(self._providers)
 
     def get_provider_by_type(self, provider_type: ProviderType) -> Optional[TrackedProvider]:
         """Get a provider by its ProviderType enum value.
@@ -353,6 +390,7 @@ class ProviderManager:
 
             # Use default routing request
             from ..models.schemas import RoutingDecisionRequest
+
             request = RoutingDecisionRequest(
                 function_id="economic_analysis",
             )
@@ -371,7 +409,8 @@ class ProviderManager:
 
             return {
                 "recommended_provider": decision.reasoning.split("Selected ")[1].split("/")[0]
-                if "Selected " in decision.reasoning else None,
+                if "Selected " in decision.reasoning
+                else None,
                 "confidence": decision.confidence,
                 "reasoning": decision.reasoning,
                 "strategy": strategy,

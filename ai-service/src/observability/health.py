@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 class HealthStatus(str, Enum):
     """Health status levels."""
+
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     UNHEALTHY = "unhealthy"
@@ -25,6 +26,7 @@ class HealthStatus(str, Enum):
 @dataclass
 class ComponentHealth:
     """Health status of a component."""
+
     name: str
     status: HealthStatus
     message: Optional[str] = None
@@ -70,6 +72,7 @@ class HealthChecker:
             ComponentHealth
         """
         import time
+
         start_time = time.time()
 
         check_fn = self._checks.get(component_name)
@@ -173,8 +176,7 @@ class HealthChecker:
             "components": components,
             "total_components": len(self._components),
             "healthy_components": sum(
-                1 for c in self._components.values()
-                if c.status == HealthStatus.HEALTHY
+                1 for c in self._components.values() if c.status == HealthStatus.HEALTHY
             ),
         }
 
@@ -186,6 +188,7 @@ def create_default_checks(checker: HealthChecker) -> None:
     Args:
         checker: HealthChecker instance
     """
+
     # Check if Redis is available
     async def check_redis():
         try:
@@ -222,7 +225,7 @@ def create_default_checks(checker: HealthChecker) -> None:
             from ..providers.manager import get_provider_manager
 
             manager = get_provider_manager()
-            return len(manager._providers) > 0
+            return len(manager.get_all_providers()) > 0
         except Exception:
             return False
 

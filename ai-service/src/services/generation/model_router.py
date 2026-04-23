@@ -20,19 +20,21 @@ logger = logging.getLogger(__name__)
 
 class ModelTier(Enum):
     """Model tiers for cost optimization."""
-    CHEAP = "cheap"      # Local/budget models
-    MID = "mid"          # Mid-range API models
+
+    CHEAP = "cheap"  # Local/budget models
+    MID = "mid"  # Mid-range API models
     PREMIUM = "premium"  # Top-tier models
 
 
 @dataclass
 class ModelConfig:
     """Configuration for a model tier."""
+
     provider: ProviderType
     model: str
     max_tokens: int
     temperature: float
-    cost_per_1k_input: float   # USD per 1K tokens
+    cost_per_1k_input: float  # USD per 1K tokens
     cost_per_1k_output: float  # USD per 1K tokens
     avg_latency_ms: int
 
@@ -107,29 +109,82 @@ class ComplexityAnalyzer:
 
     # Complexity keywords
     SIMPLE_KEYWORDS = [
-        "summarize", "parse", "validate", "format", "convert",
-        "simple", "basic", "string", "number", "json", "email",
-        "webhook", "notify", "log", "filter", "sort", "count",
-        "hello", "greeting", "echo", "ping", "health", "status"
+        "summarize",
+        "parse",
+        "validate",
+        "format",
+        "convert",
+        "simple",
+        "basic",
+        "string",
+        "number",
+        "json",
+        "email",
+        "webhook",
+        "notify",
+        "log",
+        "filter",
+        "sort",
+        "count",
+        "hello",
+        "greeting",
+        "echo",
+        "ping",
+        "health",
+        "status",
     ]
 
     COMPLEX_KEYWORDS = [
-        "workflow", "pipeline", "orchestrate", "multi-step",
-        "machine learning", "ai", "llm", "embeddings", "vector",
-        "optimization", "algorithm", "cryptography", "secure",
-        "distributed", "consensus", "blockchain", "real-time",
-        "streaming", "websocket", "complex", "advanced", "sophisticated"
+        "workflow",
+        "pipeline",
+        "orchestrate",
+        "multi-step",
+        "machine learning",
+        "ai",
+        "llm",
+        "embeddings",
+        "vector",
+        "optimization",
+        "algorithm",
+        "cryptography",
+        "secure",
+        "distributed",
+        "consensus",
+        "blockchain",
+        "real-time",
+        "streaming",
+        "websocket",
+        "complex",
+        "advanced",
+        "sophisticated",
     ]
 
     MODERATE_KEYWORDS = [
-        "api", "database", "db", "auth", "authentication",
-        "cache", "queue", "storage", "http", "rest", "graphql",
-        "integration", "third-party", "external", "service",
-        "process", "transform", "aggregate", "analyze"
+        "api",
+        "database",
+        "db",
+        "auth",
+        "authentication",
+        "cache",
+        "queue",
+        "storage",
+        "http",
+        "rest",
+        "graphql",
+        "integration",
+        "third-party",
+        "external",
+        "service",
+        "process",
+        "transform",
+        "aggregate",
+        "analyze",
     ]
 
     @classmethod
-    def analyze(cls, description: str, constraints: Optional[str] = None) -> Tuple[ModelTier, float]:
+    def analyze(
+        cls, description: str, constraints: Optional[str] = None
+    ) -> Tuple[ModelTier, float]:
         """Analyze complexity and return appropriate tier with confidence.
 
         Returns:
@@ -150,17 +205,21 @@ class ComplexityAnalyzer:
 
         # Check for technical indicators
         indicators = {
-            "api_calls": len(re.findall(r'\b(api|endpoint|http|rest|graphql)\b', text)),
-            "db_ops": len(re.findall(r'\b(database|db|sql|query|store|save)\b', text)),
-            "auth": len(re.findall(r'\b(auth|login|token|jwt|password|permission)\b', text)),
-            "async": len(re.findall(r'\b(async|await|callback|promise|concurrent|parallel)\b', text)),
-            "steps": len(re.findall(r'\b(step|stage|phase|then|after|before|first|next|finally)\b', text)),
+            "api_calls": len(re.findall(r"\b(api|endpoint|http|rest|graphql)\b", text)),
+            "db_ops": len(re.findall(r"\b(database|db|sql|query|store|save)\b", text)),
+            "auth": len(re.findall(r"\b(auth|login|token|jwt|password|permission)\b", text)),
+            "async": len(
+                re.findall(r"\b(async|await|callback|promise|concurrent|parallel)\b", text)
+            ),
+            "steps": len(
+                re.findall(r"\b(step|stage|phase|then|after|before|first|next|finally)\b", text)
+            ),
         }
 
         # Calculate complexity score
         score = 0
         score += simple_score * -1  # Simple reduces score
-        score += complex_score * 2   # Complex increases score more
+        score += complex_score * 2  # Complex increases score more
         score += moderate_score * 0.5
         score += indicators["api_calls"] * 0.5
         score += indicators["db_ops"] * 0.5
@@ -187,6 +246,7 @@ class ComplexityAnalyzer:
 @dataclass
 class RoutingDecision:
     """Routing decision with model selection."""
+
     tier: ModelTier
     model_config: ModelConfig
     confidence: float
@@ -208,10 +268,7 @@ class ModelRouter:
     def get_available_models(self, tier: ModelTier) -> List[ModelConfig]:
         """Get available models for a tier."""
         models = TIER_MODELS.get(tier, [])
-        return [
-            m for m in models
-            if self._provider_availability.get(m.provider, True)
-        ]
+        return [m for m in models if self._provider_availability.get(m.provider, True)]
 
     def route(
         self,
@@ -261,10 +318,9 @@ class ModelRouter:
         est_input_tokens = len(description.split()) * 2 + 500  # System prompt
         est_output_tokens = selected.max_tokens * 0.5  # Assume 50% utilization
 
-        est_cost = (
-            (est_input_tokens / 1000) * selected.cost_per_1k_input +
-            (est_output_tokens / 1000) * selected.cost_per_1k_output
-        )
+        est_cost = (est_input_tokens / 1000) * selected.cost_per_1k_input + (
+            est_output_tokens / 1000
+        ) * selected.cost_per_1k_output
 
         reasoning = self._generate_reasoning(tier, confidence, selected)
 
@@ -286,7 +342,7 @@ class ModelRouter:
         return (
             f"Selected {tier_names[tier]} model {model.model} "
             f"from {model.provider.value} with {confidence:.0%} confidence. "
-            f"Estimated cost: ${model.estimated_cost_usd:.4f}"
+            f"Cost: ${model.cost_per_1k_input:.6f}/1k in, ${model.cost_per_1k_output:.6f}/1k out"
         )
 
     def should_escalate(
@@ -311,8 +367,12 @@ class ModelRouter:
 
         # Escalate if syntax errors detected
         syntax_error_patterns = [
-            "syntax error", "unexpected token", "invalid syntax",
-            "parse error", "indentation error", "unexpected indent"
+            "syntax error",
+            "unexpected token",
+            "invalid syntax",
+            "parse error",
+            "indentation error",
+            "unexpected indent",
         ]
         has_syntax_error = any(
             p in e.lower() for e in validation_errors for p in syntax_error_patterns

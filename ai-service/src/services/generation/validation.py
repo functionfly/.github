@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 class ValidationStage(Enum):
     """Validation stages in order of execution."""
+
     SYNTAX = "syntax"
     TYPE_CHECK = "type_check"
     SECURITY = "security"
@@ -32,6 +33,7 @@ class ValidationStage(Enum):
 @dataclass
 class ValidationResult:
     """Result of validation stage."""
+
     stage: ValidationStage
     passed: bool
     errors: List[str]
@@ -43,6 +45,7 @@ class ValidationResult:
 @dataclass
 class ValidationReport:
     """Complete validation report."""
+
     overall_passed: bool
     confidence_score: float  # 0-1
     stages: List[ValidationResult]
@@ -56,7 +59,7 @@ class SyntaxValidator:
     @classmethod
     def validate(cls, code: str, runtime: str) -> ValidationResult:
         """Validate code syntax for given runtime."""
-        start_time = __import__('time').time()
+        start_time = __import__("time").time()
         errors = []
         warnings = []
         fixes = []
@@ -73,7 +76,7 @@ class SyntaxValidator:
             # Generic validation for unknown runtimes
             result = cls._validate_generic(code)
 
-        duration = (__import__('time').time() - start_time) * 1000
+        duration = (__import__("time").time() - start_time) * 1000
 
         return ValidationResult(
             stage=ValidationStage.SYNTAX,
@@ -105,10 +108,19 @@ class SyntaxValidator:
         if "    " not in code and "\n" in code and "def " in code:
             warnings.append("Code may lack proper indentation")
 
-        # Check for balanced brackets
-        for char in "()[]{}":
-            if code.count(char) % 2 != 0:
-                errors.append(f"Unbalanced {char}")
+        # Check for balanced brackets using a stack
+        bracket_pairs = {"(": ")", "[": "]", "{": "}"}
+        stack = []
+        for char in code:
+            if char in bracket_pairs:
+                stack.append(bracket_pairs[char])
+            elif char in bracket_pairs.values():
+                if not stack or stack[-1] != char:
+                    errors.append(f"Unbalanced bracket: {char}")
+                    break
+                stack.pop()
+        if stack:
+            errors.append(f"Unclosed bracket(s): {len(stack)} remaining")
 
         return {
             "passed": len(errors) == 0,
@@ -165,12 +177,12 @@ class SyntaxValidator:
             errors.append("Missing package declaration")
 
         # Check for import without usage (basic check)
-        imports = re.findall(r'import \(\s*([^)]+)\)', code, re.DOTALL)
+        imports = re.findall(r"import \(\s*([^)]+)\)", code, re.DOTALL)
         if imports:
-            import_list = imports[0].strip().split('\n')
+            import_list = imports[0].strip().split("\n")
             for imp in import_list:
                 imp = imp.strip().strip('"')
-                if imp and imp not in code.replace('import', ''):
+                if imp and imp not in code.replace("import", ""):
                     warnings.append(f"Possibly unused import: {imp}")
 
         return {
@@ -204,6 +216,7 @@ class SyntaxValidator:
     def _validate_generic(cls, code: str) -> Dict:
         """Generic syntax validation."""
         errors = []
+        warnings = []
 
         if len(code.strip()) < 50:
             errors.append("Code appears too short to be valid")
@@ -224,37 +237,37 @@ class SecurityValidator:
 
     DANGEROUS_PATTERNS = {
         "python": [
-            (r'\beval\s*\(', "Dangerous eval() call"),
-            (r'\bexec\s*\(', "Dangerous exec() call"),
-            (r'__import__\s*\(', "Dynamic import"),
-            (r'\bos\.system\s*\(', "OS system call"),
-            (r'\bsubprocess\.call\s*\(', "Subprocess call"),
-            (r'\bshell\s*=\s*True', "Shell=True in subprocess"),
-            (r'\bpickle\.loads?\s*\(', "Pickle deserialization"),
-            (r'\byaml\.load\s*\(', "Unsafe YAML load"),
-            (r'input\s*\(', "Raw input without validation"),
+            (r"\beval\s*\(", "Dangerous eval() call"),
+            (r"\bexec\s*\(", "Dangerous exec() call"),
+            (r"__import__\s*\(", "Dynamic import"),
+            (r"\bos\.system\s*\(", "OS system call"),
+            (r"\bsubprocess\.call\s*\(", "Subprocess call"),
+            (r"\bshell\s*=\s*True", "Shell=True in subprocess"),
+            (r"\bpickle\.loads?\s*\(", "Pickle deserialization"),
+            (r"\byaml\.load\s*\(", "Unsafe YAML load"),
+            (r"input\s*\(", "Raw input without validation"),
         ],
         "nodejs": [
-            (r'\beval\s*\(', "Dangerous eval() call"),
-            (r'\bnew\s+Function\s*\(', "Dynamic Function constructor"),
-            (r'child_process', "Child process usage"),
-            (r'exec\s*\(', "Dangerous exec()"),
-            (r'eval\s*\(', "Dangerous eval()"),
+            (r"\beval\s*\(", "Dangerous eval() call"),
+            (r"\bnew\s+Function\s*\(", "Dynamic Function constructor"),
+            (r"child_process", "Child process usage"),
+            (r"exec\s*\(", "Dangerous exec()"),
+            (r"eval\s*\(", "Dangerous eval()"),
         ],
         "go": [
-            (r'\bos\.Exec\s*\(', "OS exec call"),
-            (r'\bunsafe\.\w+', "Unsafe package usage"),
+            (r"\bos\.Exec\s*\(", "OS exec call"),
+            (r"\bunsafe\.\w+", "Unsafe package usage"),
         ],
         "rust": [
-            (r'\bunsafe\s*\{', "Unsafe block"),
-            (r'\.unwrap_unchecked\(\)', "Unchecked unwrap"),
+            (r"\bunsafe\s*\{", "Unsafe block"),
+            (r"\.unwrap_unchecked\(\)", "Unchecked unwrap"),
         ],
     }
 
     @classmethod
     def validate(cls, code: str, runtime: str) -> ValidationResult:
         """Validate code security."""
-        start_time = __import__('time').time()
+        start_time = __import__("time").time()
         errors = []
         warnings = []
 
@@ -276,7 +289,7 @@ class SecurityValidator:
             if re.search(pattern, code, re.IGNORECASE):
                 warnings.append(f"Security: {message}")
 
-        duration = (__import__('time').time() - start_time) * 1000
+        duration = (__import__("time").time() - start_time) * 1000
 
         return ValidationResult(
             stage=ValidationStage.SECURITY,
@@ -294,7 +307,7 @@ class TypeChecker:
     @classmethod
     def validate(cls, code: str, runtime: str) -> ValidationResult:
         """Check type hints and annotations."""
-        start_time = __import__('time').time()
+        start_time = __import__("time").time()
         warnings = []
 
         if runtime == "python":
@@ -310,7 +323,7 @@ class TypeChecker:
             if ": " not in code and "interface" not in code and runtime == "typescript":
                 warnings.append("Missing TypeScript type annotations")
 
-        duration = (__import__('time').time() - start_time) * 1000
+        duration = (__import__("time").time() - start_time) * 1000
 
         return ValidationResult(
             stage=ValidationStage.TYPE_CHECK,
@@ -327,13 +340,10 @@ class RuntimeValidator:
 
     @classmethod
     def validate(
-        cls,
-        code: str,
-        runtime: str,
-        test_inputs: Optional[List[Dict]] = None
+        cls, code: str, runtime: str, test_inputs: Optional[List[Dict]] = None
     ) -> ValidationResult:
         """Run code in sandbox for basic validation."""
-        start_time = __import__('time').time()
+        start_time = __import__("time").time()
         errors = []
         warnings = []
 
@@ -344,7 +354,7 @@ class RuntimeValidator:
             # Skip runtime validation for other languages in MVP
             result = {"passed": True, "errors": [], "warnings": ["Runtime validation skipped"]}
 
-        duration = (__import__('time').time() - start_time) * 1000
+        duration = (__import__("time").time() - start_time) * 1000
 
         return ValidationResult(
             stage=ValidationStage.RUNTIME,
@@ -356,18 +366,22 @@ class RuntimeValidator:
         )
 
     @classmethod
-    def _sandbox_python(
-        cls,
-        code: str,
-        test_inputs: Optional[List[Dict]]
-    ) -> Dict:
+    def _sandbox_python(cls, code: str, test_inputs: Optional[List[Dict]]) -> Dict:
         """Run Python code in restricted environment."""
         errors = []
         warnings = []
 
         # Check for dangerous patterns before execution
-        dangerous = ['import os', 'import sys', 'import subprocess',
-                     '__import__', 'eval(', 'exec(', 'open(', 'file(']
+        dangerous = [
+            "import os",
+            "import sys",
+            "import subprocess",
+            "__import__",
+            "eval(",
+            "exec(",
+            "open(",
+            "file(",
+        ]
         for d in dangerous:
             if d in code.lower():
                 warnings.append(f"Skipping runtime test - contains '{d}'")
@@ -375,7 +389,7 @@ class RuntimeValidator:
 
         # Try to compile first
         try:
-            compile(code, '<string>', 'exec')
+            compile(code, "<string>", "exec")
         except SyntaxError as e:
             errors.append(f"Compile error: {e}")
             return {"passed": False, "errors": errors, "warnings": []}
@@ -385,22 +399,43 @@ class RuntimeValidator:
             # Create restricted environment
             restricted_globals = {
                 "__builtins__": {
-                    "len": len, "range": range, "enumerate": enumerate,
-                    "zip": zip, "map": map, "filter": filter,
-                    "sum": sum, "min": min, "max": max,
-                    "abs": abs, "round": round, "pow": pow,
-                    "int": int, "str": str, "float": float,
-                    "bool": bool, "list": list, "dict": dict,
-                    "set": set, "tuple": tuple,
-                    "True": True, "False": False, "None": None,
-                    "Exception": Exception, "TypeError": TypeError,
-                    "ValueError": ValueError, "KeyError": KeyError,
+                    "len": len,
+                    "range": range,
+                    "enumerate": enumerate,
+                    "zip": zip,
+                    "map": map,
+                    "filter": filter,
+                    "sum": sum,
+                    "min": min,
+                    "max": max,
+                    "abs": abs,
+                    "round": round,
+                    "pow": pow,
+                    "int": int,
+                    "str": str,
+                    "float": float,
+                    "bool": bool,
+                    "list": list,
+                    "dict": dict,
+                    "set": set,
+                    "tuple": tuple,
+                    "True": True,
+                    "False": False,
+                    "None": None,
+                    "Exception": Exception,
+                    "TypeError": TypeError,
+                    "ValueError": ValueError,
+                    "KeyError": KeyError,
                 }
             }
 
             # Execute with timeout using subprocess for safety
             # For MVP, just verify it compiles
-            return {"passed": True, "errors": [], "warnings": ["Runtime execution skipped for safety"]}
+            return {
+                "passed": True,
+                "errors": [],
+                "warnings": ["Runtime execution skipped for safety"],
+            }
 
         except Exception as e:
             errors.append(f"Runtime error: {e}")
@@ -434,7 +469,7 @@ class ValidationPipeline:
         Returns:
             ValidationReport with all results
         """
-        start_time = __import__('time').time()
+        start_time = __import__("time").time()
         stages = []
 
         # Stage 1: Syntax
@@ -447,7 +482,7 @@ class ValidationPipeline:
                 overall_passed=False,
                 confidence_score=0.1,
                 stages=stages,
-                total_duration_ms=(__import__('time').time() - start_time) * 1000,
+                total_duration_ms=(__import__("time").time() - start_time) * 1000,
                 recommended_action="regenerate",
             )
 
@@ -497,7 +532,7 @@ class ValidationPipeline:
             overall_passed=all_passed and confidence >= 0.6,
             confidence_score=max(0, confidence),
             stages=stages,
-            total_duration_ms=(__import__('time').time() - start_time) * 1000,
+            total_duration_ms=(__import__("time").time() - start_time) * 1000,
             recommended_action=action,
         )
 
