@@ -1,0 +1,42 @@
+[build]
+# Enable parallel compilation for faster builds
+# jobs = 0  # Uncomment for newer cargo (1.70+) - 0 = use all cores
+
+# Faster linker configuration (only use if lld or mold is installed)
+# For systems without lld/mold, use default
+rustflags = ["-C", "prefer-dynamic"]
+
+# Note: profile-specific rustflags require unstable cargo feature
+# For now, use RUSTFLAGS environment variable if needed:
+# RUSTFLAGS="-C target-cpu=native" cargo test --profile fast-test
+
+[target.x86_64-unknown-linux-gnu]
+# Use faster linker if available (uncomment if lld or mold is installed)
+# linker = "clang"
+# rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+# Or for mold:
+# rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
+[alias]
+# Aliases for faster testing
+tq = "test --quiet"                          # Quiet test output
+tr = "test --release"                        # Release mode tests (fastest execution)
+tf = "test --profile fast-test"             # Fast test profile
+tn = "test --no-run"                         # Compile only, don't run
+tfast = "test --profile fast-test -- --test-threads=0"  # Fast profile + all cores
+
+[net]
+# Retry failed downloads (useful in CI)
+retry = 5
+
+[cargo-new]
+# Default to edition 2021 for new projects
+edition = "2021"
+
+[registries.crates-io]
+protocol = "sparse"  # Faster crate downloads (default in recent cargo versions)
+
+[env]
+# Environment variables for faster test execution
+# RUST_TEST_THREADS = "auto"  # Use all available threads (handled by --test-threads=0)
+RUST_BACKTRACE = "0"         # Disable backtraces for faster test execution (set to 1 for debugging)

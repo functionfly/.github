@@ -29,7 +29,13 @@ Example:
         }
 """
 
-from .decorators import function, input_schema, output_schema, get_function_definition, get_registered_functions
+from .decorators import (
+    function,
+    input_schema,
+    output_schema,
+    get_function_definition,
+    get_registered_functions,
+)
 from .schema import Schema, Field
 from .types import FunctionMetadata, ExecutionMode
 from .optimizer import optimize_bundle, analyze_bundle_size
@@ -42,7 +48,7 @@ from .performance_monitor import (
     start_performance_monitoring,
     stop_performance_monitoring,
     check_performance_alerts,
-    start_performance_dashboard
+    start_performance_dashboard,
 )
 from .state import (
     StateClient,
@@ -57,6 +63,17 @@ from .state import (
     create_snapshot,
     restore_snapshot,
     get_client,
+)
+from .edge_state import (
+    EdgeStateClient,
+    EdgeStateManager,
+    EdgeStateError,
+    EdgeStateNotFoundError,
+    EdgeStatePermissionError,
+    get as edge_get,
+    set as edge_set,
+    delete as edge_delete,
+    snapshot as edge_snapshot,
 )
 from .agent_types import (
     TrustPolicy,
@@ -106,6 +123,15 @@ __all__ = [
     "create_snapshot",
     "restore_snapshot",
     "get_client",
+    "EdgeStateClient",
+    "EdgeStateManager",
+    "EdgeStateError",
+    "EdgeStateNotFoundError",
+    "EdgeStatePermissionError",
+    "edge_get",
+    "edge_set",
+    "edge_delete",
+    "edge_snapshot",
     "TrustPolicy",
     "TrustedFunction",
     "ToolExecutionMetadata",

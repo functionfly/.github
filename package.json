@@ -18,14 +18,19 @@
     "lint": "nx run-many --target=lint --all",
     "format": "nx format:write",
     "graph": "nx graph",
-    "clean-install": "bun pm cache rm && rm -rf node_modules bun.lockb && mv .env .env.tmp 2>/dev/null; mv .env.production .env.production.tmp 2>/dev/null; bun install && mv .env.tmp .env 2>/dev/null; mv .env.production.tmp .env.production 2>/dev/null; true"
+    "clean-install": "bun pm cache rm && rm -rf node_modules bun.lockb && mv .env .env.tmp 2>/dev/null; mv .env.production .env.production.tmp 2>/dev/null; bun install && mv .env.tmp .env 2>/dev/null; mv .env.production.tmp .env.production 2>/dev/null; true",
+    "i18n:check": "bun scripts/sync-translations.ts --check",
+    "i18n:sync": "bun scripts/sync-translations.ts",
+    "i18n:write": "bun scripts/sync-translations.ts --write",
+    "i18n:ollama": "bun scripts/sync-translations.ts --write --backend=ollama"
   },
   "devDependencies": {
-    "nx": "^22.6.5",
+    "@nx/eslint": "^22.6.5",
+    "@nx/jest": "^22.6.5",
     "@nx/js": "^22.6.5",
     "@nx/vite": "^22.6.5",
-    "@nx/eslint": "^22.6.5",
-    "@nx/jest": "^22.6.5"
+    "nx": "^22.6.5",
+    "typescript": "^6.0.3"
   },
   "engines": {
     "node": ">=20.0.0",

@@ -1,0 +1,49 @@
+# Nextest configuration for faster test execution
+# Install nextest with: cargo install cargo-nextest --locked
+# Run with: cargo nextest run
+
+[profile.default]
+# Default profile settings
+retries = 0
+threads = "num-cpus"  # Auto-detect number of CPUs
+
+[profile.ci]
+# CI-optimized profile: fail fast, clear output
+retries = 1
+fail-fast = false       # Run all tests even if some fail
+status-level = "all"    # Show all test statuses
+final-status-level = "flaky"
+threads = "num-cpus"
+
+[profile.fast]
+# Fast profile for local development
+retries = 0
+fail-fast = true        # Stop on first failure
+threads = "num-cpus"
+status-level = "fail"   # Only show failures
+
+# Test groups for controlling concurrency
+test-groups = [
+    # Limit concurrent async tests to prevent resource contention
+    { name = "async-tests", max-threads = 8 },
+    # Sequential tests that can't run in parallel
+    { name = "sequential", max-threads = 1 },
+]
+
+# Override settings for specific tests
+[[profile.default.overrides]]
+# Tests with "integration" in name get longer timeout
+filter = 'test(integration)'
+slow-timeout = "60s"
+
+[[profile.default.overrides]]
+# Skip tests that need external services in fast mode
+filter = 'test(/needs_/)'
+platform = { host = "any" }
+threads-required = 2
+
+# Per-test configuration
+[test-groups]
+# Define groups for resource-heavy tests
+wasm-compilation = { max-threads = 4 }  # Limit concurrent WASM compiles
+pool-tests = { max-threads = 8 }          # Pool tests can run more parallel
