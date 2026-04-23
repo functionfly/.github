@@ -8,19 +8,17 @@
     "dashboard": "Panel"
   },
   "footer": {
-    "tagline": "La plataforma para herramientas de agentes IA. Publica, descubre, verifica y ejecuta funciones — con puntuaciones de confianza, secretos cifrados y estado duradero integrados.",
+    "tagline": "La capa de confianza para agentes IA. Publica una vez, ejecuta en todas partes, cobra.",
     "product": "Producto",
-    "company": "Empresa",
-    "legal": "Legal",
     "documentation": "Documentación",
-    "trustLayer": "Plataforma",
+    "trustLayer": "Capa de confianza",
     "forAIAgents": "Para agentes IA",
-    "pricing": "Precios",
     "changelog": "Historial",
+    "company": "Empresa",
     "about": "Acerca de",
-    "blog": "Blog",
     "careers": "Empleo",
     "contact": "Contacto",
+    "legal": "Legal",
     "privacy": "Privacidad",
     "terms": "Términos",
     "sla": "SLA",
@@ -31,5 +29,90 @@
     "description": "Elige tu idioma preferido",
     "detected": "Detectado",
     "autoDetected": "Detectado automáticamente desde tu navegador"
+  },
+  "hero": {
+    "badge": "Ahora en Beta Solo por Invitación",
+    "titleLine": "La Plataforma para",
+    "titleGradient": "Herramientas de Agentes IA",
+    "lead": "Publica una vez, ejecuta en todas partes, cobra. Funciones verificadas, puntuaciones de confianza, bóveda de secretos cifrada, estado duradero y aprendizaje continuo — todo lo que necesitan las herramientas de agentes en una plataforma.",
+    "ctaPrimary": "Solicitar Acceso",
+    "ctaSecondary": "Ver Documentación",
+    "stat1Value": "Publica",
+    "stat1Label": "una vez, ejecuta en todas partes",
+    "stat2Value": "Confianza",
+    "stat2Label": "puntuaciones + verificación",
+    "stat3Value": "Bóveda",
+    "stat3Label": "cifrado de conocimiento cero",
+    "stat4Value": "Volante",
+    "stat4Label": "aprendizaje continuo del agente"
+  },
+  "audience": {
+    "title": "¿Quién se beneficia más de FunctionFly?",
+    "intro": "Desde fundadores independientes hasta equipos empresariales, FunctionFly ofrece la fiabilidad y flexibilidad que necesitas para centrarte en crear grandes productos.",
+    "founder": {
+      "title": "Fundador SaaS Independiente",
+      "sub": "Desplegando tu primera app",
+      "desc": "Has construido un producto increíble y ahora necesitas herramientas de agentes confiables sin la complejidad empresarial. FunctionFly te da funciones verificadas, señales claras de confianza y un camino para escalar de forma segura.",
+      "b1": "Publica una vez, ejecuta en todas partes",
+      "b2": "Puntuaciones de confianza y niveles de verificación",
+      "b3": "Bóveda de conocimiento cero para secretos",
+      "b4": "Paga a medida que creces"
+    },
+    "startup": {
+      "title": "Startup en Crecimiento",
+      "sub": "Escalando cargas de agentes + API",
+      "desc": "Tu equipo envía rápido y los agentes llaman a más herramientas cada semana. Necesitas metadatos de confianza compatibles con políticas, atestaciones y señales basadas en ejecución — no un puñado de endpoints sin verificar.",
+      "b1": "Flujos de trabajo de verificación multinivel",
+      "b2": "Artefactos firmados y revocación",
+      "b3": "Historial de ejecución para puntuación de confianza",
+      "b4": "Descubrimiento de marketplace con filtros de confianza"
+    },
+    "enterprise": {
+      "title": "Empresa",
+      "sub": "Gobernanza y cumplimiento",
+      "desc": "Tu organización necesita auditabilidad, acceso de mínimo privilegio a herramientas y políticas de confianza consistentes entre agentes y equipos. FunctionFly alinea verificación, firma y semántica de bóveda con cómo ya piensas sobre el riesgo.",
+      "b1": "Postura de seguridad de nivel empresarial",
+      "b2": "Atestaciones y metadatos listos para políticas",
+      "b3": "Patrones multi-equipo y multi-app",
+      "b4": "Espacio para SLAs y soporte personalizados"
+    }
+  },
+  "features": {
+    "title": "Todo lo que necesitas para confiar en herramientas de agentes",
+    "subtitle": "De la publicación a la producción — cinco capacidades integradas en una plataforma. Verificación + puntuación de confianza para que los agentes actúen de forma segura.",
+    "publishing": {
+      "title": "Publicación de Herramientas Verificadas",
+      "desc": "Convierte código en funciones confiables con verificaciones y artefactos firmados antes de que los agentes puedan usarlas."
+    },
+    "revocation": {
+      "title": "Niveles de Verificación y Revocación",
+      "desc": "La confianza se gana. Verifica en múltiples niveles, firma con claves de plataforma y revoca cuando se encuentren problemas."
+    },
+    "trace": {
+      "title": "Trazabilidad de Ejecución y Puntuaciones de Confianza",
+      "desc": "Los agentes obtienen señales de confianza respaldadas por historial para que \"funciona\" y \"es seguro\" sean distinguibles y dirigidos por políticas."
+    },
+    "tooling": {
+      "title": "Herramientas Listas para Agentes",
+      "desc": "Expón capacidades con manifiestos y esquemas claros — para que los agentes puedan seleccionar herramientas que coincidan con su política de confianza."
+    },
+    "marketplace": {
+      "title": "Marketplace de Herramientas Verificadas",
+      "desc": "Los creadores publican una vez. Los agentes descubren funciones confiables con filtros de confianza integrados y posicionamiento mejorado."
+    },
+    "routing": {
+      "title": "Enrutamiento Impulsado por Confianza",
+      "desc": "Aplica presupuestos y restricciones de confianza en ejecución — para que la ejecución de agentes sea predecible y no imprudente."
+    }
+  },
+  "code": {
+    "title": "Verifica y publica en segundos",
+    "subtitle": "Convierte tu código en una herramienta confiable lista para agentes"
+  },
+  "cta": {
+    "title": "Donde las herramientas confiables se encuentran con la ejecución de agentes",
+    "lead": "Empieza gratis. Herramientas verificadas e historial de ejecución auditable ayudan a tus agentes a moverse más rápido — con menos sorpresas.",
+    "ctaPrimary": "Solicitar Acceso",
+    "ctaSecondary": "Contactar Ventas"
   }
 }

@@ -2,6 +2,7 @@
 import { SITE_ORIGIN, API_ORIGIN } from '../config';
 import { SEO } from 'astro-seo';
 import { Schema } from 'astro-seo-schema';
+import { t, getLocale, SUPPORTED_LOCALES, isRtl } from '../i18n';
 import '../styles/design-system.css';
 
 interface Props {
@@ -43,12 +44,12 @@ const ogUrl = ogImage?.startsWith('http') ? ogImage : new URL(ogImage || '/og-de
 // Newsletter API endpoint for client-side JS
 const newsletterSubscribeUrl = `${API_ORIGIN}/newsletter/subscribe`;
 
-// i18n hreflang tags - supported languages
-const supportedLangs = ['en', 'es'];
-const currentLang = Astro.currentLocale || 'en';
+// i18n hreflang tags - all supported languages
+const currentLang = getLocale(Astro);
+const dir = isRtl(currentLang) ? 'rtl' : 'ltr';
 
 // Generate hreflang alternates
-const alternates = supportedLangs.map(lang => ({
+const alternates = SUPPORTED_LOCALES.map(lang => ({
   lang,
   url: new URL(pathname, SITE_ORIGIN).toString(),
 }));
@@ -89,7 +90,7 @@ const finalSchemas = schema
 ---
 
 <!doctype html>
-<html lang={currentLang}>
+<html lang={currentLang} dir={dir}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

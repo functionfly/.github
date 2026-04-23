@@ -29,6 +29,8 @@ const HAND_WRITTEN_SLUGS = new Set([
 // Do NOT add production runbooks, staging guides, disaster recovery, monitoring,
 // vault ops, email/DNS internals, or repo-specific setup without legal/security review.
 const ALLOWLIST = new Set([
+  "DEPLOY_KEYS.md",
+  "FUNCTION_WEBHOOKS.md",
   "OPEN_SOURCE_STRATEGY.md",
   "QUICK_START.md",
   "SECURITY.md",

@@ -6,6 +6,12 @@ const site = process.env.PUBLIC_SITE_URL || "https://functionfly.com";
 const blogSiteUrl =
   process.env.PUBLIC_BLOG_URL || "https://blog.functionfly.com";
 
+// All supported locales (matches web/dashboard/src/lib/i18n/languages.ts)
+const SUPPORTED_LOCALES = [
+  "en", "es", "fr", "de", "zh", "ja", "ko",
+  "pt", "ar", "ru", "hi", "nl", "pl", "tr", "vi",
+];
+
 // https://astro.build/config
 export default defineConfig({
   site,
@@ -16,8 +22,22 @@ export default defineConfig({
       priority: 0.7,
       lastmod: new Date(),
       filter: (page) => !page.includes("/blog/"),
+      i18n: {
+        defaultLocale: "en",
+        locales: Object.fromEntries(
+          SUPPORTED_LOCALES.map((code) => [code, code])
+        ),
+      },
     }),
   ],
+  i18n: {
+    defaultLocale: "en",
+    locales: SUPPORTED_LOCALES,
+    routing: {
+      prefixDefaultLocale: false, // / = English, /es/ = Spanish
+      redirectToDefaultLocale: false,
+    },
+  },
   output: "static",
   server: {
     host: true,

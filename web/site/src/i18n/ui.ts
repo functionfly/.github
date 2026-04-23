@@ -88,8 +88,8 @@ export const ui = {
     "audience.enterprise.b4": "Room for custom SLAs and support",
 
     "features.title": "Everything your agent tooling platform needs",
-    "features.subtitle": "From publishing to production — five integrated capabilities in one platform."
-      "Verification + trust scoring so agents can act safely.",
+    "features.subtitle": "From publishing to production — five integrated capabilities in one platform. "
+      + "Verification + trust scoring so agents can act safely.",
     "features.publishing.title": "Verified Tool Publishing",
     "features.publishing.desc":
       "Turn code into trusted functions with verification checks and signed artifacts before they can be used by agents.",
@@ -199,8 +199,8 @@ export const ui = {
 
     "features.title":
       "Todo lo que necesitas para confiar en herramientas de agentes",
-    "features.subtitle": "From publishing to production — five integrated capabilities in one platform."
-      "Verificación + puntuación de confianza para que los agentes actúen de forma segura.",
+    "features.subtitle": "From publishing to production — five integrated capabilities in one platform. "
+      + "Verificación + puntuación de confianza para que los agentes actúen de forma segura.",
     "features.publishing.title": "Publicación de Herramientas Verificadas",
     "features.publishing.desc":
       "Convierte código en funciones confiables con verificaciones y artefactos firmados antes de que los agentes puedan usarlas.",
