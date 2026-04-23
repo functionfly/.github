@@ -225,7 +225,7 @@ export function AdminHeader({
 
   return (
     <>
-      <header className="bg-white border-b border-gray-200 shadow-sm shrink-0 sticky top-0 z-30">
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm shrink-0 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
             {/* Left: Menu button + Breadcrumbs */}
@@ -233,10 +233,10 @@ export function AdminHeader({
               {showMenuButton && (
                 <button
                   onClick={onMenuClick}
-                  className="md:hidden p-2 -ml-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="md:hidden p-2 -ml-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                   aria-label="Toggle menu"
                 >
-                  <Menu className="w-5 h-5 text-gray-600" />
+                  <Menu className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                 </button>
               )}
 
@@ -249,7 +249,7 @@ export function AdminHeader({
                       {crumb.path ? (
                         <Link
                           to={crumb.path}
-                          className="text-gray-500 hover:text-gray-900 transition-colors"
+                          className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
                         >
                           {crumb.label}
                         </Link>
@@ -257,7 +257,7 @@ export function AdminHeader({
                         <span
                           className={cn(
                             'font-medium',
-                            index === breadcrumbs.length - 1 ? 'text-gray-900' : 'text-gray-500'
+                            index === breadcrumbs.length - 1 ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
                           )}
                         >
                           {crumb.label}
@@ -269,7 +269,7 @@ export function AdminHeader({
               </nav>
 
               {/* Mobile page title */}
-              <h1 className="sm:hidden text-lg font-semibold text-gray-900">
+              <h1 className="sm:hidden text-lg font-semibold text-gray-900 dark:text-white">
                 {breadcrumbs[breadcrumbs.length - 1]?.label || 'Admin'}
               </h1>
             </div>
@@ -281,11 +281,11 @@ export function AdminHeader({
                   {/* Command Palette Trigger */}
                   <button
                     onClick={() => setShowCommandPalette(true)}
-                    className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-gray-500 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg transition-colors"
+                    className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 rounded-lg transition-colors"
                   >
                     <Command className="w-3.5 h-3.5" />
                     <span>Search</span>
-                    <kbd className="text-[10px] font-mono text-gray-400 bg-gray-200 px-1.5 py-0.5 rounded">
+                    <kbd className="text-[10px] font-mono text-gray-400 dark:text-gray-500 bg-gray-200 dark:bg-gray-600 px-1.5 py-0.5 rounded">
                       ⌘K
                     </kbd>
                   </button>
@@ -294,43 +294,43 @@ export function AdminHeader({
                   <div className="relative" ref={helpRef}>
                     <button
                       onClick={() => setHelpOpen(!helpOpen)}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                     >
-                      <HelpCircle className="w-5 h-5 text-gray-600" />
+                      <HelpCircle className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                     </button>
                     {helpOpen && (
-                      <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                        <div className="px-3 py-2 text-sm font-semibold text-gray-700">
+                      <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
+                        <div className="px-3 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
                           Help & Resources
                         </div>
-                        <hr className="my-1 border-gray-100" />
+                        <hr className="my-1 border-gray-100 dark:border-gray-700" />
                         <button
                           onClick={() => {
                             setHelpOpen(false);
                             setShowCommandPalette(true);
                           }}
-                          className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                          className="w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
                         >
                           <Command className="w-4 h-4" />
                           Command Palette
                           <kbd className="ml-auto text-[10px] font-mono text-gray-400">⌘K</kbd>
                         </button>
-                        <button className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                        <button className="w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
                           <Keyboard className="w-4 h-4" />
                           Keyboard Shortcuts
                         </button>
-                        <button className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                        <button className="w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
                           <LifeBuoy className="w-4 h-4" />
                           Support Center
                         </button>
-                        <hr className="my-1 border-gray-100" />
+                        <hr className="my-1 border-gray-100 dark:border-gray-700" />
                         <div className="px-3 py-2">
-                          <p className="text-xs font-medium text-gray-500 mb-1">Quick Navigation</p>
+                          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Quick Navigation</p>
                           <div className="space-y-1">
                             {quickActions.map((action) => (
                               <div
                                 key={action.label}
-                                className="flex justify-between text-xs text-gray-600"
+                                className="flex justify-between text-xs text-gray-600 dark:text-gray-400"
                               >
                                 <span>{action.label}</span>
                                 <kbd className="font-mono text-gray-400">⌘{action.shortcut}</kbd>
@@ -346,9 +346,9 @@ export function AdminHeader({
                   <div className="relative" ref={notifRef}>
                     <button
                       onClick={() => setNotifOpen(!notifOpen)}
-                      className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      className="relative p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                     >
-                      <Bell className="w-5 h-5 text-gray-600" />
+                      <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                       {unreadCount > 0 && (
                         <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                           {unreadCount > 9 ? '9+' : unreadCount}
@@ -356,13 +356,13 @@ export function AdminHeader({
                       )}
                     </button>
                     {notifOpen && (
-                      <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                        <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100">
-                          <span className="font-medium text-sm">Notifications</span>
+                      <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                        <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 dark:border-gray-700">
+                          <span className="font-medium text-sm text-gray-900 dark:text-white">Notifications</span>
                           {unreadCount > 0 && (
                             <button
                               onClick={markAllRead}
-                              className="text-xs text-indigo-600 hover:text-indigo-700"
+                              className="text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
                             >
                               Mark all read
                             </button>
@@ -381,25 +381,25 @@ export function AdminHeader({
                                   );
                                 }}
                                 className={cn(
-                                  'px-3 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors cursor-pointer',
-                                  notification.unread && 'bg-indigo-50/50'
+                                  'px-3 py-3 border-b border-gray-50 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer',
+                                  notification.unread && 'bg-indigo-50/50 dark:bg-indigo-900/20'
                                 )}
                               >
                                 <div className="flex items-start gap-3">
                                   <div
                                     className={cn(
                                       'w-2 h-2 rounded-full mt-1.5 shrink-0',
-                                      notification.unread ? 'bg-indigo-500' : 'bg-gray-300'
+                                      notification.unread ? 'bg-indigo-500' : 'bg-gray-300 dark:bg-gray-600'
                                     )}
                                   />
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-gray-900">
+                                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                       {notification.title}
                                     </p>
-                                    <p className="text-xs text-gray-500 mt-0.5">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                                       {notification.message}
                                     </p>
-                                    <p className="text-[10px] text-gray-400 mt-1">
+                                    <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
                                       {notification.time}
                                     </p>
                                   </div>
@@ -407,16 +407,16 @@ export function AdminHeader({
                               </div>
                             ))
                           ) : (
-                            <div className="px-3 py-8 text-center text-gray-500">
+                            <div className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
                               <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
                               <p className="text-sm">No notifications</p>
                             </div>
                           )}
                         </div>
-                        <div className="px-3 py-2 border-t border-gray-100">
+                        <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-700">
                           <Link
                             to="#"
-                            className="block text-center text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                            className="block text-center text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 font-medium"
                           >
                             View all notifications
                           </Link>
@@ -439,7 +439,7 @@ export function AdminHeader({
                 <div className="relative" ref={userRef}>
                   <button
                     onClick={() => setUserOpen(!userOpen)}
-                    className="flex items-center gap-2 p-1 pr-2 rounded-lg hover:bg-gray-100 transition-colors ml-2"
+                    className="flex items-center gap-2 p-1 pr-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ml-2"
                   >
                     <div className="w-8 h-8 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
                       {user.name?.trim()
@@ -447,10 +447,10 @@ export function AdminHeader({
                         : (user.email?.charAt(0) || 'A').toUpperCase()}
                     </div>
                     <div className="hidden md:block text-left">
-                      <p className="text-sm font-medium text-gray-900 leading-tight">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white leading-tight">
                         {displayName(user)}
                       </p>
-                      <p className="text-xs text-gray-500 leading-tight">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">
                         {displayRole(user.role)}
                       </p>
                     </div>
@@ -462,15 +462,15 @@ export function AdminHeader({
                     />
                   </button>
                   {userOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
                       <div className="px-3 py-2">
-                        <p className="text-sm font-medium text-gray-900">{displayName(user)}</p>
-                        <p className="text-xs text-gray-500">{user.email}</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{displayName(user)}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
                       </div>
-                      <hr className="my-1 border-gray-100" />
+                      <hr className="my-1 border-gray-100 dark:border-gray-700" />
                       <Link
                         to={`${ROUTES.ADMIN_USERS}/${user.id}`}
-                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                         onClick={() => setUserOpen(false)}
                       >
                         <User className="w-4 h-4" />
@@ -478,33 +478,33 @@ export function AdminHeader({
                       </Link>
                       <Link
                         to={ROUTES.ADMIN_SYSTEM}
-                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                         onClick={() => setUserOpen(false)}
                       >
                         <Settings className="w-4 h-4" />
                         Settings
                       </Link>
                       <button
-                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                         onClick={() => setUserOpen(false)}
                       >
                         <Shield className="w-4 h-4" />
                         Security
                       </button>
-                      <hr className="my-1 border-gray-100 sm:hidden" />
+                      <hr className="my-1 border-gray-100 dark:border-gray-700 sm:hidden" />
                       <div className="sm:hidden px-3 py-2">
                         <div className="flex items-center justify-between text-xs text-gray-500">
                           <span>Theme</span>
                           <DarkModeToggle />
                         </div>
                       </div>
-                      <hr className="my-1 border-gray-100" />
+                      <hr className="my-1 border-gray-100 dark:border-gray-700" />
                       <button
                         onClick={() => {
                           setUserOpen(false);
                           onLogout();
                         }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                       >
                         <LogOut className="w-4 h-4" />
                         Sign out
@@ -513,7 +513,7 @@ export function AdminHeader({
                   )}
                 </div>
               ) : (
-                <div className="flex items-center gap-2 text-gray-500">
+                <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
                   <User className="w-5 h-5" />
                   <p className="text-sm font-medium">Sign in</p>
                 </div>
@@ -526,27 +526,27 @@ export function AdminHeader({
       {/* Command Palette Overlay */}
       {showCommandPalette && (
         <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center pt-[20vh]"
+          className="fixed inset-0 bg-black/50 dark:bg-black/70 z-50 flex items-start justify-center pt-[20vh]"
           onClick={() => setShowCommandPalette(false)}
         >
           <div
-            className="w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden"
+            className="w-full max-w-lg bg-white dark:bg-gray-800 rounded-xl shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-700">
               <Command className="w-5 h-5 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search pages, actions, or users..."
-                className="flex-1 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
+                className="flex-1 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none"
                 autoFocus
               />
-              <kbd className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+              <kbd className="text-[10px] font-mono text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
                 ESC
               </kbd>
             </div>
             <div className="py-2">
-              <div className="px-4 py-2 text-xs font-medium text-gray-500 uppercase">
+              <div className="px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                 Quick Navigation
               </div>
               {quickActions.map((action) => (
@@ -556,23 +556,23 @@ export function AdminHeader({
                     navigate(action.href);
                     setShowCommandPalette(false);
                   }}
-                  className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 transition-colors"
+                  className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <action.icon className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm text-gray-900">{action.label}</span>
+                    <action.icon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                    <span className="text-sm text-gray-900 dark:text-gray-100">{action.label}</span>
                   </div>
-                  <kbd className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                  <kbd className="text-[10px] font-mono text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
                     ⌘{action.shortcut}
                   </kbd>
                 </button>
               ))}
             </div>
-            <div className="px-4 py-2 bg-gray-50 text-xs text-gray-500">
+            <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900 text-xs text-gray-500 dark:text-gray-400">
               <p>
-                Use <kbd className="font-mono bg-gray-200 px-1 rounded">↑</kbd>{' '}
-                <kbd className="font-mono bg-gray-200 px-1 rounded">↓</kbd> to navigate,{' '}
-                <kbd className="font-mono bg-gray-200 px-1 rounded">↵</kbd> to select
+                Use <kbd className="font-mono bg-gray-200 dark:bg-gray-700 px-1 rounded">↑</kbd>{' '}
+                <kbd className="font-mono bg-gray-200 dark:bg-gray-700 px-1 rounded">↓</kbd> to navigate,{' '}
+                <kbd className="font-mono bg-gray-200 dark:bg-gray-700 px-1 rounded">↵</kbd> to select
               </p>
             </div>
           </div>

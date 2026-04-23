@@ -137,14 +137,14 @@ export function AdminCachePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Cache Management</h1>
-          <p className="text-gray-600 mt-1">Monitor and manage system cache</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Cache Management</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Monitor and manage system cache</p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => refetchStats()}
             disabled={statsLoading}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${statsLoading ? 'animate-spin' : ''}`} />
             Refresh
@@ -163,11 +163,11 @@ export function AdminCachePage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Total Entries */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500">Total Entries</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Entries</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {stats?.total_entries?.toLocaleString() || 0}
               </p>
             </div>
@@ -176,11 +176,11 @@ export function AdminCachePage() {
         </div>
 
         {/* Total Size */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500">Total Size</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Size</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {formatBytes(stats?.total_size_bytes || 0)}
               </p>
             </div>
@@ -189,11 +189,11 @@ export function AdminCachePage() {
         </div>
 
         {/* Hit Rate */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500">Hit Rate</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Hit Rate</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {formatPercentage(stats?.hit_rate || 0)}
               </p>
             </div>
@@ -202,11 +202,11 @@ export function AdminCachePage() {
         </div>
 
         {/* Evictions */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500">Evictions</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Evictions</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {stats?.evictions?.toLocaleString() || 0}
               </p>
             </div>
@@ -216,9 +216,9 @@ export function AdminCachePage() {
       </div>
 
       {/* Memory Usage */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold mb-4">Memory Usage</h2>
-        <div className="w-full bg-gray-200 rounded-full h-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Memory Usage</h2>
+        <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-4">
           <div
             className="bg-blue-600 h-4 rounded-full"
             style={{
@@ -230,56 +230,56 @@ export function AdminCachePage() {
             }}
           />
         </div>
-        <div className="mt-2 flex justify-between text-sm text-gray-600">
+        <div className="mt-2 flex justify-between text-sm text-gray-600 dark:text-gray-400">
           <span>Used: {formatBytes(stats?.memory_used || 0)}</span>
           <span>Available: {formatBytes(stats?.memory_available || 0)}</span>
         </div>
       </div>
 
       {/* Cache by Function */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold">Cache by Function</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Cache by Function</h2>
         </div>
         {statsLoading ? (
-          <div className="p-8 text-center text-gray-500">Loading...</div>
+          <div className="p-8 text-center text-gray-500 dark:text-gray-400">Loading...</div>
         ) : stats?.by_function?.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">No cached functions</div>
+          <div className="p-8 text-center text-gray-500 dark:text-gray-400">No cached functions</div>
         ) : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Function
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Entries
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Size
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {stats?.by_function?.map((func) => (
                 <tr key={func.function_id}>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{func.function_name}</div>
-                    <div className="text-sm text-gray-500">{func.function_id}</div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{func.function_name}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">{func.function_id}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {func.entries.toLocaleString()}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {formatBytes(func.size_bytes)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
                       onClick={() => handlePurgeFunction(func.function_id)}
-                      className="text-red-600 hover:text-red-900"
+                      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

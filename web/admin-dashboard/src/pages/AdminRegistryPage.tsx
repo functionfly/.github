@@ -49,8 +49,8 @@ export function AdminRegistryPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Registry</h1>
-        <p className="mt-2 text-gray-600">Review and manage marketplace registry functions.</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Registry</h1>
+        <p className="mt-2 text-gray-600 dark:text-gray-400">Review and manage marketplace registry functions.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -59,28 +59,28 @@ export function AdminRegistryPage() {
         <StatCard label="Flagged" value={stats.flagged_functions ?? 0} />
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
         <table className="w-full">
           <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Visibility</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Updated</th>
+            <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Name</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Visibility</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Status</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Updated</th>
             </tr>
           </thead>
           <tbody>
             {functions.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-8 text-center text-gray-500">No registry functions found.</td>
+                <td colSpan={4} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">No registry functions found.</td>
               </tr>
             ) : (
               functions.map((fn) => (
-                <tr key={fn.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{fn.name}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{fn.visibility || 'public'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{fn.status || 'unknown'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{fn.updated_at ? new Date(fn.updated_at).toLocaleString() : '-'}</td>
+                <tr key={fn.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{fn.name}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{fn.visibility || 'public'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{fn.status || 'unknown'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{fn.updated_at ? new Date(fn.updated_at).toLocaleString() : '-'}</td>
                 </tr>
               ))
             )}
@@ -93,9 +93,9 @@ export function AdminRegistryPage() {
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4">
-      <p className="text-sm text-gray-600">{label}</p>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+      <p className="text-sm text-gray-600 dark:text-gray-400">{label}</p>
+      <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{value}</p>
     </div>
   );
 }

@@ -57,8 +57,8 @@ export function AdminTenantDetailPage() {
   if (!tenant) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold text-gray-900">Tenant not found</h1>
-        <Link to={ROUTES.ADMIN_TENANTS} className="text-blue-600 hover:text-blue-700">Back to tenants</Link>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Tenant not found</h1>
+        <Link to={ROUTES.ADMIN_TENANTS} className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">Back to tenants</Link>
       </div>
     );
   }
@@ -83,19 +83,19 @@ export function AdminTenantDetailPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">{tenant.name}</h1>
-          <p className="mt-2 text-gray-600">Tenant details and lifecycle metadata.</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{tenant.name}</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Tenant details and lifecycle metadata.</p>
         </div>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={openEdit}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-900 dark:text-gray-100"
           >
             <Pencil className="w-4 h-4" />
             Edit
           </button>
-          <Link to={ROUTES.ADMIN_TENANTS} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+          <Link to={ROUTES.ADMIN_TENANTS} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-900 dark:text-gray-100">
             Back
           </Link>
         </div>
@@ -111,25 +111,25 @@ export function AdminTenantDetailPage() {
 
       {isEditOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">Edit tenant</h2>
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">Edit tenant</h2>
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
                 <input
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Plan</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Plan</label>
                 <select
                   value={editPlan}
                   onChange={(e) => setEditPlan(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 >
                   {PLAN_OPTIONS.map((p) => (
                     <option key={p} value={p}>{p}</option>
@@ -137,11 +137,11 @@ export function AdminTenantDetailPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
                 <select
                   value={editStatus}
                   onChange={(e) => setEditStatus(e.target.value as Tenant['status'])}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 >
                   {STATUS_OPTIONS.map((s) => (
                     <option key={s} value={s}>{s}</option>
@@ -152,7 +152,7 @@ export function AdminTenantDetailPage() {
                 <button
                   type="button"
                   onClick={() => setIsEditOpen(false)}
-                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                  className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
                 >
                   Cancel
                 </button>
@@ -174,9 +174,9 @@ export function AdminTenantDetailPage() {
 
 function Detail({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4">
-      <p className="text-sm text-gray-600">{label}</p>
-      <p className="text-sm font-medium text-gray-900 mt-1 break-all">{value}</p>
+    <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+      <p className="text-sm text-gray-600 dark:text-gray-400">{label}</p>
+      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mt-1 break-all">{value}</p>
     </div>
   );
 }

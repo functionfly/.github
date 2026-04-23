@@ -110,8 +110,8 @@ export function AdminBillingPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Billing & Invoicing</h1>
-          <p className="mt-2 text-gray-600">Manage subscriptions, invoices, and revenue</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Billing & Invoicing</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Manage subscriptions, invoices, and revenue</p>
         </div>
 
         <button
@@ -125,11 +125,11 @@ export function AdminBillingPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 text-sm">Total Revenue</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-gray-600 dark:text-gray-400 text-sm">Total Revenue</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 ${billingData?.totalRevenue.toLocaleString() || '0'}
               </p>
             </div>
@@ -137,11 +137,11 @@ export function AdminBillingPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 text-sm">Active Subscriptions</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-gray-600 dark:text-gray-400 text-sm">Active Subscriptions</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {billingData?.activeSubscriptions || '0'}
               </p>
             </div>
@@ -149,11 +149,11 @@ export function AdminBillingPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 text-sm">Pending Invoices</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-gray-600 dark:text-gray-400 text-sm">Pending Invoices</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {billingData?.pendingInvoices || '0'}
               </p>
             </div>
@@ -161,11 +161,11 @@ export function AdminBillingPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 text-sm">Overdue</p>
-              <p className="text-2xl font-bold text-red-600">
+              <p className="text-gray-600 dark:text-gray-400 text-sm">Overdue</p>
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                 ${billingData?.overdue || '0'}
               </p>
             </div>
@@ -183,14 +183,14 @@ export function AdminBillingPage() {
             placeholder="Search invoices or customers..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           />
         </div>
 
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
         >
           <option value="all">All Status</option>
           <option value="paid">Paid</option>
@@ -201,22 +201,22 @@ export function AdminBillingPage() {
       </div>
 
       {/* Invoices List */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Recent Invoices</h2>
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Recent Invoices</h2>
         </div>
-        <div className="divide-y divide-gray-200">
-          <div className="p-6 text-center text-gray-500">
+        <div className="divide-y divide-gray-200 dark:divide-gray-700">
+          <div className="p-6 text-center text-gray-500 dark:text-gray-400">
             Loading invoice data...
           </div>
         </div>
       </div>
 
       {/* State Fabric Add-on Entitlements (Support Override) */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">State Fabric Add-on Entitlements</h2>
-          <p className="text-sm text-gray-600 mt-1">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">State Fabric Add-on Entitlements</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             Support override tool for tenant add-ons.
           </p>
         </div>
@@ -227,12 +227,12 @@ export function AdminBillingPage() {
               placeholder="Tenant UUID"
               value={tenantIdInput}
               onChange={(e) => setTenantIdInput(e.target.value.trim())}
-              className="px-3 py-2 border border-gray-300 rounded-lg"
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             />
             <select
               value={selectedAddon}
               onChange={(e) => setSelectedAddon(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg"
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
               {(addonCatalog?.data ?? []).map((a) => (
                 <option key={a.id} value={a.id}>
@@ -243,7 +243,7 @@ export function AdminBillingPage() {
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg"
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
               <option value="active">active</option>
               <option value="inactive">inactive</option>
@@ -257,17 +257,17 @@ export function AdminBillingPage() {
           >
             {overrideBusy ? 'Updating...' : 'Apply override'}
           </button>
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
             Current entitlements ({(tenantEntitlements?.data ?? []).length})
           </div>
           <div className="space-y-2">
             {(tenantEntitlements?.data ?? []).map((e) => (
               <div
                 key={`${e.addon_id}-${e.stripe_subscription_id ?? 'manual'}`}
-                className="flex items-center justify-between border border-gray-200 rounded px-3 py-2"
+                className="flex items-center justify-between border border-gray-200 dark:border-gray-700 rounded px-3 py-2"
               >
-                <span className="font-mono text-xs">{e.addon_id}</span>
-                <span className="text-xs">{e.status}</span>
+                <span className="font-mono text-xs text-gray-900 dark:text-gray-100">{e.addon_id}</span>
+                <span className="text-xs text-gray-600 dark:text-gray-400">{e.status}</span>
               </div>
             ))}
           </div>

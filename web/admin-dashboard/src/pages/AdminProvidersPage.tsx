@@ -60,8 +60,8 @@ export function AdminProvidersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Service Providers</h1>
-          <p className="mt-2 text-gray-600">Manage external integrations and service providers</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Service Providers</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Manage external integrations and service providers</p>
         </div>
         <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
           <Plus className="w-5 h-5" />
@@ -77,13 +77,13 @@ export function AdminProvidersPage() {
             placeholder="Search providers..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           />
         </div>
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg"
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
         >
           <option value="all">All Types</option>
           {providerTypes.map((type) => (
@@ -94,44 +94,44 @@ export function AdminProvidersPage() {
         </select>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Type</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Last Sync</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+            <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Name</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Type</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Status</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Last Sync</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredProviders.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={5} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                   No providers found
                 </td>
               </tr>
             ) : (
               filteredProviders.map((provider) => (
-                <tr key={provider.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{provider.name}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{provider.type}</td>
+                <tr key={provider.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{provider.name}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{provider.type}</td>
                   <td className="px-6 py-4 text-sm">
                     <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                      provider.status === 'connected' ? 'bg-green-100 text-green-800' :
-                      provider.status === 'error' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-800'
+                      provider.status === 'connected' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' :
+                      provider.status === 'error' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400' :
+                      'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-400'
                     }`}>
                       {provider.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                     {new Date(provider.lastSync).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-sm">
-                    <button className="p-1 hover:bg-gray-100 rounded">
-                      <MoreVertical className="w-4 h-4 text-gray-500" />
+                    <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                      <MoreVertical className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                     </button>
                   </td>
                 </tr>

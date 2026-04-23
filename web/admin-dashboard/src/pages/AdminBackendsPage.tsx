@@ -59,8 +59,8 @@ export function AdminBackendsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Execution Backends</h1>
-          <p className="mt-2 text-gray-600">Manage worker pools and execution infrastructure</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Execution Backends</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Manage worker pools and execution infrastructure</p>
         </div>
         <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
           <Plus className="w-5 h-5" />
@@ -76,13 +76,13 @@ export function AdminBackendsPage() {
             placeholder="Search backends..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg"
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
         >
           <option value="all">All Status</option>
           <option value="active">Active</option>
@@ -93,29 +93,29 @@ export function AdminBackendsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredBackends.map((backend) => (
-          <div key={backend.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div key={backend.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900">{backend.name}</h3>
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">{backend.name}</h3>
               <Activity className={`w-5 h-5 ${
-                backend.status === 'active' ? 'text-green-600' :
-                backend.status === 'unhealthy' ? 'text-red-600' :
+                backend.status === 'active' ? 'text-green-600 dark:text-green-400' :
+                backend.status === 'unhealthy' ? 'text-red-600 dark:text-red-400' :
                 'text-gray-400'
               }`} />
             </div>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Type</span>
-                <span className="font-medium">{backend.type}</span>
+                <span className="text-gray-600 dark:text-gray-400">Type</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">{backend.type}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Workers</span>
-                <span className="font-medium">{backend.workers}</span>
+                <span className="text-gray-600 dark:text-gray-400">Workers</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">{backend.workers}</span>
               </div>
               <div className="flex justify-between text-sm mb-3">
-                <span className="text-gray-600">Utilization</span>
-                <span className="font-medium">{backend.utilization}%</span>
+                <span className="text-gray-600 dark:text-gray-400">Utilization</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">{backend.utilization}%</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                 <div
                   className="bg-blue-600 h-2 rounded-full"
                   style={{ width: `${backend.utilization}%` }}

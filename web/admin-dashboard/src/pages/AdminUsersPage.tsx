@@ -92,10 +92,10 @@ export function AdminUsersPage() {
   }
 
   const roleColors: Record<string, string> = {
-    super_admin: 'bg-red-100 text-red-800',
-    admin: 'bg-blue-100 text-blue-800',
-    moderator: 'bg-purple-100 text-purple-800',
-    user: 'bg-gray-100 text-gray-800',
+    super_admin: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+    admin: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    moderator: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+    user: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
   };
 
   return (
@@ -103,8 +103,8 @@ export function AdminUsersPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Users</h1>
-          <p className="mt-2 text-gray-600">Manage all platform users across tenants and their permissions</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Users</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Manage all platform users across tenants and their permissions</p>
         </div>
 
         {/* Invite Button */}
@@ -174,14 +174,14 @@ export function AdminUsersPage() {
             placeholder="Search users..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           />
         </div>
 
         <select
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
         >
           <option value="all">All Roles</option>
           <option value="super_admin">Super Admin</option>
@@ -192,56 +192,56 @@ export function AdminUsersPage() {
       </div>
 
       {/* Users Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Role</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">MFA</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Created</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+            <tr className="border-b border-gray-200 bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Name</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Email</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Role</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">MFA</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Created</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredUsers.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={6} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                   No users found
                 </td>
               </tr>
             ) : (
               filteredUsers.map((user) => (
-                <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                    <Link to={`/users/${user.id}`} className="text-blue-700 hover:text-blue-800 hover:underline">
+                <tr key={user.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
+                    <Link to={`/users/${user.id}`} className="text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline">
                       {user.name || user.email}
                     </Link>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{user.email}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{user.email}</td>
                   <td className="px-6 py-4 text-sm">
-                    <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${roleColors[user.role] || roleColors.user}`}>
+                    <span className={`inline-block px-2 py-1 rounded text-xs font-medium capitalize ${roleColors[user.role] || roleColors.user}`}>
                       {(user.role ?? 'user').replace(/_/g, ' ')}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm">
                     {user.mfa_enabled ? (
-                      <span className="inline-flex items-center gap-1 text-green-700">
+                      <span className="inline-flex items-center gap-1 text-green-700 dark:text-green-400">
                         <Shield className="w-4 h-4" /> Enabled
                       </span>
                     ) : (
-                      <span className="text-gray-500">Disabled</span>
+                      <span className="text-gray-500 dark:text-gray-400">Disabled</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                     {new Date(user.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-sm">
                     <button
                       onClick={() => handleDeleteUser(user.id)}
                       disabled={deleteMutation.isPending}
-                      className="px-3 py-1 bg-red-100 text-red-800 rounded text-xs hover:bg-red-200 disabled:opacity-50"
+                      className="px-3 py-1 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded text-xs hover:bg-red-200 dark:hover:bg-red-800 disabled:opacity-50"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -255,17 +255,17 @@ export function AdminUsersPage() {
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <p className="text-gray-600 text-sm">Total Users</p>
-          <p className="text-2xl font-bold text-gray-900">{users.length}</p>
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+          <p className="text-gray-600 dark:text-gray-400 text-sm">Total Users</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{users.length}</p>
         </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <p className="text-gray-600 text-sm">Super Admins</p>
-          <p className="text-2xl font-bold text-red-600">{users.filter((u) => u.role === 'super_admin').length}</p>
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+          <p className="text-gray-600 dark:text-gray-400 text-sm">Super Admins</p>
+          <p className="text-2xl font-bold text-red-600 dark:text-red-400">{users.filter((u) => u.role === 'super_admin').length}</p>
         </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <p className="text-gray-600 text-sm">MFA Enabled</p>
-          <p className="text-2xl font-bold text-green-600">{users.filter((u) => u.mfa_enabled).length}</p>
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+          <p className="text-gray-600 dark:text-gray-400 text-sm">MFA Enabled</p>
+          <p className="text-2xl font-bold text-green-600 dark:text-green-400">{users.filter((u) => u.mfa_enabled).length}</p>
         </div>
       </div>
     </div>

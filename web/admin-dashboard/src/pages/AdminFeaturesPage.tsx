@@ -99,21 +99,21 @@ export function AdminFeaturesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Features</h1>
-        <p className="mt-2 text-gray-600">Platform security and operational feature controls.</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Features</h1>
+        <p className="mt-2 text-gray-600 dark:text-gray-400">Platform security and operational feature controls.</p>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
         {isLoading ? (
-          <div className="p-6 text-gray-500">Loading…</div>
+          <div className="p-6 text-gray-500 dark:text-gray-400">Loading…</div>
         ) : measures.length === 0 ? (
-          <div className="p-6 text-gray-500">No feature measures returned.</div>
+          <div className="p-6 text-gray-500 dark:text-gray-400">No feature measures returned.</div>
         ) : (
           measures.map((measure) => (
             <div key={measure.id} className="p-6 flex items-center justify-between gap-4">
               <div className="min-w-0 flex-1">
-                <h2 className="text-sm font-semibold text-gray-900">{measure.name}</h2>
-                <p className="text-sm text-gray-600 mt-1">{measure.description || 'No description provided.'}</p>
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{measure.name}</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{measure.description || 'No description provided.'}</p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {canToggle ? (
@@ -123,14 +123,14 @@ export function AdminFeaturesPage() {
                     disabled={updateEnabled.isPending && (updateEnabled.variables?.id === measure.id)}
                     className={`text-xs font-medium px-3 py-1.5 rounded border transition-colors ${
                       measure.enabled
-                        ? 'bg-green-50 border-green-200 text-green-800 hover:bg-green-100'
-                        : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                        ? 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800 text-green-800 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50'
+                        : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
                     } disabled:opacity-50`}
                   >
                     {(updateEnabled.isPending && updateEnabled.variables?.id === measure.id) ? '…' : measure.enabled ? 'Enabled' : 'Disabled'}
                   </button>
                 ) : (
-                  <span className={`text-xs px-2 py-1 rounded ${measure.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'}`}>
+                  <span className={`text-xs px-2 py-1 rounded ${measure.enabled ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-400'}`}>
                     {measure.enabled ? 'Enabled' : 'Disabled'}
                   </span>
                 )}

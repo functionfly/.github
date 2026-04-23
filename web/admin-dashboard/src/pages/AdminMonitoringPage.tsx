@@ -161,18 +161,18 @@ export function AdminMonitoringPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Monitoring</h1>
-          <p className="text-gray-600 mt-1">Manage alerts, metrics, and health checks</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Monitoring</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Manage alerts, metrics, and health checks</p>
         </div>
         {/* Real-time connection status */}
         <div className="flex items-center gap-2">
           {isRealtimeConnected ? (
-            <span className="flex items-center gap-1 text-sm text-green-600">
+            <span className="flex items-center gap-1 text-sm text-green-600 dark:text-green-400">
               <Wifi className="w-4 h-4" />
               Live
             </span>
           ) : (
-            <span className="flex items-center gap-1 text-sm text-gray-500">
+            <span className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
               <WifiOff className="w-4 h-4" />
               Polling
             </span>
@@ -181,14 +181,14 @@ export function AdminMonitoringPage() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200">
+      <div className="border-b border-gray-200 dark:border-gray-700">
         <nav className="-mb-px flex space-x-8">
           <button
             onClick={() => setActiveTab('alerts')}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'alerts'
                 ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600'
             }`}
           >
             <Bell className="w-4 h-4 inline mr-2" />
@@ -199,7 +199,7 @@ export function AdminMonitoringPage() {
             className={`py-4 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'metrics'
                 ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600'
             }`}
           >
             <Activity className="w-4 h-4 inline mr-2" />
@@ -210,7 +210,7 @@ export function AdminMonitoringPage() {
             className={`py-4 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'health'
                 ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600'
             }`}
           >
             <Server className="w-4 h-4 inline mr-2" />
@@ -229,39 +229,39 @@ export function AdminMonitoringPage() {
             </button>
           </div>
 
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
             {isLoading ? (
-              <div className="p-8 text-center text-gray-500">Loading...</div>
+              <div className="p-8 text-center text-gray-500 dark:text-gray-400">Loading...</div>
             ) : data?.alerts?.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">No alerts configured</div>
+              <div className="p-8 text-center text-gray-500 dark:text-gray-400">No alerts configured</div>
             ) : (
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-800">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Name
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Condition
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Severity
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Created
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {data?.alerts?.map((alert) => (
                     <tr key={alert.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                         {alert.name}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                         {alert.condition}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -276,14 +276,14 @@ export function AdminMonitoringPage() {
                           onClick={() =>
                             toggleAlertMutation.mutate({ id: alert.id, enabled: !alert.enabled })
                           }
-                          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${alert.enabled ? 'bg-green-600' : 'bg-gray-200'}`}
+                          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${alert.enabled ? 'bg-green-600' : 'bg-gray-200 dark:bg-gray-600'}`}
                         >
                           <span
                             className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${alert.enabled ? 'translate-x-5' : 'translate-x-0'}`}
                           />
                         </button>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                         {new Date(alert.created_at).toLocaleDateString()}
                       </td>
                     </tr>
@@ -297,24 +297,24 @@ export function AdminMonitoringPage() {
 
       {/* Metrics Tab */}
       {activeTab === 'metrics' && (
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           {isLoading ? (
-            <div className="text-center text-gray-500">Loading...</div>
+            <div className="text-center text-gray-500 dark:text-gray-400">Loading...</div>
           ) : data?.metrics?.length === 0 ? (
-            <div className="text-center text-gray-500">No metrics available</div>
+            <div className="text-center text-gray-500 dark:text-gray-400">No metrics available</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {data?.metrics?.map((metric, idx) => (
-                <div key={idx} className="border rounded-lg p-4">
+                <div key={idx} className="border rounded-lg p-4 border-gray-200 dark:border-gray-700">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-medium text-gray-900">{metric.name}</h3>
+                    <h3 className="font-medium text-gray-900 dark:text-gray-100">{metric.name}</h3>
                     <Activity className="w-4 h-4 text-gray-400" />
                   </div>
                   <div className="mt-2">
-                    <span className="text-2xl font-bold">{metric.value}</span>
-                    <span className="text-sm text-gray-500 ml-1">{metric.unit}</span>
+                    <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">{metric.value}</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">{metric.unit}</span>
                   </div>
-                  <div className="mt-2 text-xs text-gray-500">
+                  <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                     Updated: {new Date(metric.timestamp).toLocaleString()}
                   </div>
                 </div>
@@ -326,51 +326,51 @@ export function AdminMonitoringPage() {
 
       {/* Health Checks Tab */}
       {activeTab === 'health' && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
           {isLoading ? (
-            <div className="p-8 text-center text-gray-500">Loading...</div>
+            <div className="p-8 text-center text-gray-500 dark:text-gray-400">Loading...</div>
           ) : data?.health_checks?.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">No health checks available</div>
+            <div className="p-8 text-center text-gray-500 dark:text-gray-400">No health checks available</div>
           ) : (
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Service
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Latency
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Last Check
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Message
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {data?.health_checks?.map((check) => (
                   <tr key={check.service}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                       {check.service}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         {getHealthIcon(check.status)}
-                        <span className="text-sm text-gray-900 capitalize">{check.status}</span>
+                        <span className="text-sm text-gray-900 dark:text-gray-100 capitalize">{check.status}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {check.latency_ms}ms
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {new Date(check.last_check).toLocaleString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {check.message || '-'}
                     </td>
                   </tr>

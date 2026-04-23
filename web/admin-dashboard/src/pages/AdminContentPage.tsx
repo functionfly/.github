@@ -21,8 +21,8 @@ export function AdminContentPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Content</h1>
-        <p className="mt-2 text-gray-600">Manage and generate admin content artifacts.</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Content</h1>
+        <p className="mt-2 text-gray-600 dark:text-gray-400">Manage and generate admin content artifacts.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -45,9 +45,9 @@ function GenerateCard({
   onRun: () => void;
 }) {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-5">
-      <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-      <p className="mt-1 text-sm text-gray-600">Triggers a server-side generation job.</p>
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5">
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
+      <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Triggers a server-side generation job.</p>
       <button
         type="button"
         disabled={busy}

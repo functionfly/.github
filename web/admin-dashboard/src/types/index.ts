@@ -10,6 +10,8 @@ export interface AdminUser {
   created_at: string;
   updated_at: string;
   tenant_id?: string;
+  tenant_name?: string;
+  plan?: string; // tenant plan
 }
 
 export interface AdminSession {

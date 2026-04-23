@@ -117,29 +117,29 @@ export function AdminDashboardPage() {
   ];
 
   const colorClasses: Record<string, string> = {
-    blue: 'bg-blue-100 text-blue-600 border-blue-200 hover:border-blue-400',
-    green: 'bg-green-100 text-green-600 border-green-200 hover:border-green-400',
-    purple: 'bg-purple-100 text-purple-600 border-purple-200 hover:border-purple-400',
-    amber: 'bg-amber-100 text-amber-600 border-amber-200 hover:border-amber-400',
-    red: 'bg-red-100 text-red-600 border-red-200 hover:border-red-400',
-    slate: 'bg-slate-100 text-slate-600 border-slate-200 hover:border-slate-400',
-    indigo: 'bg-indigo-100 text-indigo-600 border-indigo-200 hover:border-indigo-400',
-    violet: 'bg-violet-100 text-violet-600 border-violet-200 hover:border-violet-400',
-    orange: 'bg-orange-100 text-orange-600 border-orange-200 hover:border-orange-400',
-    teal: 'bg-teal-100 text-teal-600 border-teal-200 hover:border-teal-400',
-    pink: 'bg-pink-100 text-pink-600 border-pink-200 hover:border-pink-400',
-    cyan: 'bg-cyan-100 text-cyan-600 border-cyan-200 hover:border-cyan-400',
-    emerald: 'bg-emerald-100 text-emerald-600 border-emerald-200 hover:border-emerald-400',
-    rose: 'bg-rose-100 text-rose-600 border-rose-200 hover:border-rose-400',
-    gray: 'bg-gray-100 text-gray-600 border-gray-200 hover:border-gray-400',
+    blue: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:border-blue-400 dark:hover:border-blue-600',
+    green: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800 hover:border-green-400 dark:hover:border-green-600',
+    purple: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800 hover:border-purple-400 dark:hover:border-purple-600',
+    amber: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800 hover:border-amber-400 dark:hover:border-amber-600',
+    red: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800 hover:border-red-400 dark:hover:border-red-600',
+    slate: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600',
+    indigo: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:border-indigo-400 dark:hover:border-indigo-600',
+    violet: 'bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-800 hover:border-violet-400 dark:hover:border-violet-600',
+    orange: 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800 hover:border-orange-400 dark:hover:border-orange-600',
+    teal: 'bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 border-teal-200 dark:border-teal-800 hover:border-teal-400 dark:hover:border-teal-600',
+    pink: 'bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 border-pink-200 dark:border-pink-800 hover:border-pink-400 dark:hover:border-pink-600',
+    cyan: 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800 hover:border-cyan-400 dark:hover:border-cyan-600',
+    emerald: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:border-emerald-400 dark:hover:border-emerald-600',
+    rose: 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800 hover:border-rose-400 dark:hover:border-rose-600',
+    gray: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600',
   };
 
   return (
     <div className="space-y-8">
       {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-        <p className="mt-2 text-gray-600">Welcome back! Here's an overview of your platform.</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
+        <p className="mt-2 text-gray-600 dark:text-gray-400">Welcome back! Here's an overview of your platform.</p>
       </div>
 
       {/* Quick Stats */}
@@ -172,7 +172,7 @@ export function AdminDashboardPage() {
 
       {/* Section Cards */}
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Admin Sections</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Admin Sections</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {sectionCards.map((card) => {
             const Icon = card.icon;
@@ -183,12 +183,12 @@ export function AdminDashboardPage() {
                 to={card.path}
                 className={`flex items-start gap-3 rounded-lg border-2 p-4 transition-colors ${colorClass}`}
               >
-                <div className="flex-shrink-0 p-2 rounded-lg bg-white/80">
+                <div className="flex-shrink-0 p-2 rounded-lg bg-white/80 dark:bg-gray-900/80">
                   <Icon className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-gray-900">{card.title}</p>
-                  <p className="text-sm text-gray-600 line-clamp-2">{card.description}</p>
+                  <p className="font-semibold text-gray-900 dark:text-gray-100">{card.title}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{card.description}</p>
                 </div>
               </Link>
             );
@@ -197,25 +197,25 @@ export function AdminDashboardPage() {
       </div>
 
       {/* Recent Activity */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Activity</h2>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+              <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
                   Action
                 </th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
                   User
                 </th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
                   Resource
                 </th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
                   Time
                 </th>
               </tr>
@@ -223,21 +223,21 @@ export function AdminDashboardPage() {
             <tbody>
               {activities.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                     No recent activity
                   </td>
                 </tr>
               ) : (
                 activities.map((activity, idx) => (
-                  <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm text-gray-900">{activity.action}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{activity.user_email}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  <tr key={idx} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">{activity.action}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{activity.user_email}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
                         {activity.resource_type}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
+                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                       {new Date(activity.timestamp).toLocaleDateString()}
                     </td>
                   </tr>
@@ -260,18 +260,18 @@ interface StatCardProps {
 
 function StatCard({ label, value, icon: Icon, color }: StatCardProps) {
   const colorMap = {
-    blue: 'bg-blue-100 text-blue-600',
-    green: 'bg-green-100 text-green-600',
-    purple: 'bg-purple-100 text-purple-600',
-    red: 'bg-red-100 text-red-600',
+    blue: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
+    green: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400',
+    purple: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400',
+    red: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400',
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm text-gray-600 font-medium">{label}</p>
-          <p className="mt-2 text-3xl font-bold text-gray-900">{value.toLocaleString()}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">{label}</p>
+          <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{value.toLocaleString()}</p>
         </div>
         <div className={`${colorMap[color]} p-3 rounded-lg`}>
           <Icon className="w-6 h-6" />

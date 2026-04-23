@@ -297,8 +297,8 @@ export function AdminSystemPage() {
               </section>
 
               {/* System Configuration (read-only) */}
-              <section className="rounded-xl border border-admin-200 bg-white shadow-sm overflow-hidden">
-                <div className="border-l-4 border-admin-500 bg-admin-50/60 px-5 py-3">
+              <section className="rounded-xl border border-admin-200 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+                <div className="border-l-4 border-admin-500 bg-admin-50/60 dark:bg-admin-900/40 px-5 py-3">
                   <h2 className="text-sm font-semibold text-admin-900 uppercase tracking-wider">
                     System Configuration
                   </h2>
@@ -332,7 +332,7 @@ export function AdminSystemPage() {
 
             <TabsContent value="settings" className="max-w-3xl">
               <section className="rounded-xl border border-admin-200 bg-white shadow-sm overflow-hidden">
-                <div className="border-l-4 border-admin-700 bg-admin-100/80 px-5 py-3 flex items-center gap-2">
+                <div className="border-l-4 border-admin-700 bg-admin-100/80 dark:bg-admin-900/60 px-5 py-3 flex items-center gap-2">
                   <Settings2 className="w-4 h-4 text-admin-700" />
                   <h2 className="text-sm font-semibold text-admin-900 uppercase tracking-wider">
                     Platform Settings
@@ -341,7 +341,7 @@ export function AdminSystemPage() {
                 <div className="p-6 space-y-6">
                   <div className="flex items-center justify-between gap-6 py-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-admin-900">Maintenance mode</p>
+                      <p className="text-sm font-medium text-admin-900 dark:text-admin-100">Maintenance mode</p>
                       <p className="text-xs text-admin-600 mt-0.5">
                         Disable public access; only admins can sign in
                       </p>
@@ -353,7 +353,7 @@ export function AdminSystemPage() {
                   </div>
                   <div className="flex items-center justify-between gap-6 py-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-admin-900">Sign-ups enabled</p>
+                      <p className="text-sm font-medium text-admin-900 dark:text-admin-100">Sign-ups enabled</p>
                       <p className="text-xs text-admin-600 mt-0.5">
                         Allow new tenant and user registration
                       </p>
@@ -368,7 +368,7 @@ export function AdminSystemPage() {
                     <div>
                       <label
                         htmlFor="platform-name"
-                        className="block text-sm font-medium text-admin-900 mb-1"
+                        className="block text-sm font-medium text-admin-900 dark:text-admin-100 mb-1"
                       >
                         Platform name
                       </label>
@@ -379,14 +379,14 @@ export function AdminSystemPage() {
                         onChange={(e) =>
                           setPlatformSettings((s) => ({ ...s, platformName: e.target.value }))
                         }
-                        className="w-full max-w-md rounded-lg border border-admin-300 bg-white px-3 py-2 text-sm text-admin-900 placeholder-admin-400 focus:border-admin-500 focus:outline-none focus:ring-1 focus:ring-admin-500"
+                        className="w-full max-w-md rounded-lg border border-admin-300 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-admin-900 placeholder-admin-400 dark:text-admin-200 dark:placeholder-admin-500 focus:border-admin-500 focus:outline-none focus:ring-1 focus:ring-admin-500"
                         placeholder="FunctionFly"
                       />
                     </div>
                     <div>
                       <label
                         htmlFor="support-email"
-                        className="block text-sm font-medium text-admin-900 mb-1"
+                        className="block text-sm font-medium text-admin-900 dark:text-admin-100 mb-1"
                       >
                         Support email
                       </label>
@@ -397,14 +397,14 @@ export function AdminSystemPage() {
                         onChange={(e) =>
                           setPlatformSettings((s) => ({ ...s, supportEmail: e.target.value }))
                         }
-                        className="w-full max-w-md rounded-lg border border-admin-300 bg-white px-3 py-2 text-sm text-admin-900 placeholder-admin-400 focus:border-admin-500 focus:outline-none focus:ring-1 focus:ring-admin-500"
+                        className="w-full max-w-md rounded-lg border border-admin-300 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-admin-900 placeholder-admin-400 dark:text-admin-200 dark:placeholder-admin-500 focus:border-admin-500 focus:outline-none focus:ring-1 focus:ring-admin-500"
                         placeholder="support@example.com"
                       />
                     </div>
                     <div>
                       <label
                         htmlFor="rate-limit"
-                        className="block text-sm font-medium text-admin-900 mb-1"
+                        className="block text-sm font-medium text-admin-900 dark:text-admin-100 mb-1"
                       >
                         Default API rate limit (per minute)
                       </label>
@@ -423,7 +423,7 @@ export function AdminSystemPage() {
                             ),
                           }))
                         }
-                        className="w-full max-w-xs rounded-lg border border-admin-300 bg-white px-3 py-2 text-sm text-admin-900 focus:border-admin-500 focus:outline-none focus:ring-1 focus:ring-admin-500"
+                        className="w-full max-w-xs rounded-lg border border-admin-300 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-admin-900 dark:text-admin-200 focus:border-admin-500 focus:outline-none focus:ring-1 focus:ring-admin-500"
                       />
                     </div>
                   </div>

@@ -107,8 +107,8 @@ export function AdminTenantsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Tenants</h1>
-          <p className="mt-2 text-gray-600">Manage all tenants and their subscriptions</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Tenants</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Manage all tenants and their subscriptions</p>
         </div>
 
         {/* Create Button */}
@@ -124,11 +124,11 @@ export function AdminTenantsPage() {
       {/* Create Dialog */}
       {isCreateDialogOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">Create New Tenant</h2>
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">Create New Tenant</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Tenant Name
                 </label>
                 <input
@@ -136,13 +136,13 @@ export function AdminTenantsPage() {
                   value={newTenantName}
                   onChange={(e) => setNewTenantName(e.target.value)}
                   placeholder="e.g., Acme Corporation"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 />
               </div>
               <div className="flex gap-3">
                 <button
                   onClick={() => setIsCreateDialogOpen(false)}
-                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+                  className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
                 >
                   Cancel
                 </button>
@@ -168,14 +168,14 @@ export function AdminTenantsPage() {
             placeholder="Search tenants..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           />
         </div>
 
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
         >
           <option value="all">All Status</option>
           <option value="active">Active</option>
@@ -184,34 +184,34 @@ export function AdminTenantsPage() {
       </div>
 
       {/* Tenants Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Plan</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Created</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+            <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Name</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Plan</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Status</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Created</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredTenants.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={5} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                   No tenants found
                 </td>
               </tr>
             ) : (
               filteredTenants.map((tenant) => (
-                <tr key={tenant.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                    <Link to={`/tenants/${tenant.id}`} className="text-blue-700 hover:text-blue-800 hover:underline">
+                <tr key={tenant.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
+                    <Link to={`/tenants/${tenant.id}`} className="text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline">
                       {tenant.name}
                     </Link>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                    <span className="inline-block px-2 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 rounded text-xs font-medium capitalize">
                       {tenant.plan}
                     </span>
                   </td>
@@ -219,14 +219,14 @@ export function AdminTenantsPage() {
                     <span
                       className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                         tenant.status === 'active'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
+                          ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300'
+                          : 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300'
                       }`}
                     >
                       {tenant.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                     {new Date(tenant.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-sm">
@@ -234,14 +234,14 @@ export function AdminTenantsPage() {
                       <button
                         onClick={() => handleStatusChange(tenant.id)}
                         disabled={updateMutation.isPending}
-                        className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded text-xs hover:bg-yellow-200 disabled:opacity-50"
+                        className="px-3 py-1 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300 rounded text-xs hover:bg-yellow-200 dark:hover:bg-yellow-800 disabled:opacity-50"
                       >
                         {tenant.status === 'active' ? 'Suspend' : 'Activate'}
                       </button>
                       <button
                         onClick={() => handleDeleteTenant(tenant.id)}
                         disabled={deleteMutation.isPending}
-                        className="px-3 py-1 bg-red-100 text-red-800 rounded text-xs hover:bg-red-200 disabled:opacity-50"
+                        className="px-3 py-1 bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300 rounded text-xs hover:bg-red-200 dark:hover:bg-red-800 disabled:opacity-50"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -256,17 +256,17 @@ export function AdminTenantsPage() {
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <p className="text-gray-600 text-sm">Total Tenants</p>
-          <p className="text-2xl font-bold text-gray-900">{tenants.length}</p>
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+          <p className="text-gray-600 dark:text-gray-400 text-sm">Total Tenants</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{tenants.length}</p>
         </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <p className="text-gray-600 text-sm">Active</p>
-          <p className="text-2xl font-bold text-green-600">{tenants.filter((t) => t.status === 'active').length}</p>
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+          <p className="text-gray-600 dark:text-gray-400 text-sm">Active</p>
+          <p className="text-2xl font-bold text-green-600 dark:text-green-400">{tenants.filter((t) => t.status === 'active').length}</p>
         </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <p className="text-gray-600 text-sm">Suspended</p>
-          <p className="text-2xl font-bold text-red-600">{tenants.filter((t) => t.status === 'suspended').length}</p>
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+          <p className="text-gray-600 dark:text-gray-400 text-sm">Suspended</p>
+          <p className="text-2xl font-bold text-red-600 dark:text-red-400">{tenants.filter((t) => t.status === 'suspended').length}</p>
         </div>
       </div>
     </div>

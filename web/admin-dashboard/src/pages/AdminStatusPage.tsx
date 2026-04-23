@@ -119,15 +119,15 @@ export function AdminStatusPage() {
       {/* Page header */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-3">
-          <h1 className="font-display text-3xl font-bold tracking-tight text-gray-900">
+          <h1 className="font-display text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
             Platform Status
           </h1>
-          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-400">
             <Zap className="h-3 w-3" />
             Live
           </span>
         </div>
-        <p className="text-gray-600">
+        <p className="text-gray-600 dark:text-gray-400">
           Live system health and subsystem checks.
         </p>
       </div>
@@ -174,15 +174,15 @@ export function AdminStatusPage() {
       </div>
 
       {/* Edge (edge.functionfly.com) monitoring */}
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-200 bg-gray-50/80 px-6 py-4">
+      <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+        <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-800 px-6 py-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h2 className="font-display text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <Globe className="h-5 w-5 text-sky-600" />
+              <h2 className="font-display text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <Globe className="h-5 w-5 text-sky-600 dark:text-sky-400" />
                 Edge — edge.functionfly.com
               </h2>
-              <p className="mt-0.5 text-sm text-gray-500">
+              <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
                 TLS edge and function execution endpoint. Probed by the orchestrator when EDGE_HEALTH_URL is set.
               </p>
             </div>
@@ -190,7 +190,7 @@ export function AdminStatusPage() {
               href="https://edge.functionfly.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm font-medium text-sky-600 hover:text-sky-700"
+              className="text-sm font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
             >
               Open →
             </a>
@@ -198,38 +198,38 @@ export function AdminStatusPage() {
         </div>
         <div className="p-6">
           {isFetching && edgeStats === null ? (
-            <div className="flex items-center gap-3 text-gray-500">
+            <div className="flex items-center gap-3 text-gray-500 dark:text-gray-400">
               <RefreshCw className="h-4 w-4 animate-spin" />
               <span className="text-sm">Loading edge status…</span>
             </div>
           ) : edgeStats === null ? (
-            <div className="flex flex-col gap-2 text-gray-500">
-              <p className="text-sm font-medium">Could not load edge status</p>
+            <div className="flex flex-col gap-2 text-gray-500 dark:text-gray-400">
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Could not load edge status</p>
               <p className="text-xs">
                 Check that you are logged in and the orchestrator is running. If the problem persists, check the browser console.
               </p>
             </div>
           ) : !edgeStats.probe_configured ? (
-            <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50/80 p-4">
-              <p className="text-sm font-medium text-amber-900">Edge monitoring not configured</p>
-              <p className="text-xs text-amber-800">
-                Set <code className="rounded bg-amber-100 px-1 font-mono text-amber-900">EDGE_HEALTH_URL</code> in the orchestrator environment to enable probing of edge.functionfly.com.
+            <div className="flex flex-col gap-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-900/20 p-4">
+              <p className="text-sm font-medium text-amber-900 dark:text-amber-200">Edge monitoring not configured</p>
+              <p className="text-xs text-amber-800 dark:text-amber-300">
+                Set <code className="rounded bg-amber-100 dark:bg-amber-900/50 px-1 font-mono text-amber-900 dark:text-amber-200">EDGE_HEALTH_URL</code> in the orchestrator environment to enable probing of edge.functionfly.com.
               </p>
-              <p className="text-xs text-amber-700">
-                Example: add <code className="rounded bg-amber-100 px-1 font-mono">EDGE_HEALTH_URL=https://edge.functionfly.com</code> to your <code className="rounded bg-amber-100 px-1 font-mono">.env</code> and restart the orchestrator. The health monitor will then probe the edge every cycle.
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                Example: add <code className="rounded bg-amber-100 dark:bg-amber-900/50 px-1 font-mono">EDGE_HEALTH_URL=https://edge.functionfly.com</code> to your <code className="rounded bg-amber-100 dark:bg-amber-900/50 px-1 font-mono">.env</code> and restart the orchestrator. The health monitor will then probe the edge every cycle.
               </p>
             </div>
           ) : (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Status</p>
+                <p className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</p>
                 <div className="mt-1">
                   <StatusBadge status={edgeStats.health} variant="light" />
                 </div>
               </div>
               <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Uptime (recent probes)</p>
-                <p className="mt-1 font-mono text-sm font-medium text-gray-900">
+                <p className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Uptime (recent probes)</p>
+                <p className="mt-1 font-mono text-sm font-medium text-gray-900 dark:text-gray-100">
                   {Math.round(edgeStats.uptime_ratio * 100)}%
                 </p>
                 <div className="status-summary-bar mt-1 w-full max-w-[120px]">
@@ -240,29 +240,29 @@ export function AdminStatusPage() {
                 </div>
               </div>
               <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Last probe</p>
-                <p className="mt-1 flex items-center gap-1.5 font-mono text-sm text-gray-700">
+                <p className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Last probe</p>
+                <p className="mt-1 flex items-center gap-1.5 font-mono text-sm text-gray-700 dark:text-gray-300">
                   <Clock className="h-3.5 w-3.5" />
                   {edgeStats.last_probe_at
                     ? formatDistanceToNow(new Date(edgeStats.last_probe_at), { addSuffix: true })
                     : '—'}
                 </p>
                 {edgeStats.last_probe_latency_ms >= 0 && (
-                  <p className="mt-0.5 text-xs text-gray-500">
+                  <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                     Latency: <span className="font-mono">{edgeStats.last_probe_latency_ms}</span> ms
                   </p>
                 )}
               </div>
               <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-gray-500 flex items-center gap-1">
+                <p className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-1">
                   <TrendingUp className="h-3.5 w-3.5" />
                   Total requests
                 </p>
-                <p className="mt-1 font-mono text-sm font-medium text-gray-900">
+                <p className="mt-1 font-mono text-sm font-medium text-gray-900 dark:text-gray-100">
                   {edgeStats.total_requests.toLocaleString()}
                 </p>
                 {edgeStats.probe_errors_total > 0 && (
-                  <p className="mt-0.5 text-xs text-amber-600">
+                  <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
                     {edgeStats.probe_errors_total} probe error(s)
                   </p>
                 )}

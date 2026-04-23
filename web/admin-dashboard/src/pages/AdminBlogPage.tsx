@@ -53,13 +53,13 @@ export function AdminBlogPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Blog</h1>
-        <p className="mt-2 text-gray-600">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Blog</h1>
+        <p className="mt-2 text-gray-600 dark:text-gray-400">
           Manage blog settings, analytics, posts, and categories.
         </p>
       </div>
 
-      <div className="border-b border-gray-200">
+      <div className="border-b border-gray-200 dark:border-gray-700">
         <nav className="flex gap-6 flex-wrap">
           {tabs.map(({ id, label, icon: Icon }) => (
             <button
@@ -69,7 +69,7 @@ export function AdminBlogPage() {
               className={`flex items-center gap-2 pb-3 px-1 border-b-2 font-medium text-sm ${
                 activeTab === id
                   ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600'
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -164,9 +164,9 @@ function BlogSettingsTab() {
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 max-w-2xl">
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 max-w-2xl">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">Blog settings</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Blog settings</h2>
         {saveMessage === 'success' && (
           <span className="text-sm text-emerald-600 font-medium">Saved</span>
         )}
@@ -174,37 +174,37 @@ function BlogSettingsTab() {
           <span className="text-sm text-red-600 font-medium">Failed to save</span>
         )}
       </div>
-      <p className="text-gray-600 mb-6">Configure how your blog appears and behaves.</p>
+      <p className="text-gray-600 dark:text-gray-400 mb-6">Configure how your blog appears and behaves.</p>
       <form className="space-y-5" onSubmit={handleSave}>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Blog title</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Blog title</label>
           <input
             type="text"
             value={blogTitle}
             onChange={(e) => setBlogTitle(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Posts per page</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Posts per page</label>
           <input
             type="number"
             min={1}
             max={50}
             value={postsPerPage}
             onChange={(e) => setPostsPerPage(Number(e.target.value) || 10)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Default meta description
           </label>
           <textarea
             rows={2}
             value={metaDescription}
             onChange={(e) => setMetaDescription(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
             placeholder="Short description for SEO"
           />
         </div>
@@ -223,27 +223,27 @@ function BlogSettingsTab() {
 function BlogAnalyticsTab() {
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">Blog analytics</h2>
-        <p className="text-gray-600 mb-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Blog analytics</h2>
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
           Track views, engagement, and top posts. Integrate with your analytics provider (e.g.
           Google Analytics) or add server-side event tracking to see data here.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
-            <p className="text-sm text-gray-600">Total views</p>
-            <p className="text-2xl font-bold text-gray-900">—</p>
+          <div className="rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Total views</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">—</p>
           </div>
-          <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
-            <p className="text-sm text-gray-600">Posts published</p>
-            <p className="text-2xl font-bold text-gray-900">—</p>
+          <div className="rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Posts published</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">—</p>
           </div>
-          <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
-            <p className="text-sm text-gray-600">Top post</p>
-            <p className="text-lg font-medium text-gray-900">—</p>
+          <div className="rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Top post</p>
+            <p className="text-lg font-medium text-gray-900 dark:text-gray-100">—</p>
           </div>
         </div>
-        <p className="mt-4 text-sm text-gray-500">
+        <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
           Platform-wide analytics are available under Admin → Analytics. Blog-specific events can be
           added in a future release.
         </p>
@@ -285,7 +285,7 @@ function BlogPostsTab() {
 
   // Handle loading state after all hooks are called (React Rules of Hooks)
   if (isLoading) {
-    return <div className="text-gray-500">Loading posts…</div>;
+    return <div className="text-gray-500 dark:text-gray-400">Loading posts…</div>;
   }
 
   // Handle error state gracefully without crashing
@@ -293,7 +293,7 @@ function BlogPostsTab() {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-900">Blog posts</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Blog posts</h2>
           <button
             type="button"
             onClick={() => {
@@ -306,7 +306,7 @@ function BlogPostsTab() {
             New post
           </button>
         </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800">
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 text-amber-800 dark:text-amber-200">
           <p className="font-medium">Unable to load posts</p>
           <p className="text-sm mt-1">Please try refreshing the page or check your connection.</p>
         </div>
@@ -331,7 +331,7 @@ function BlogPostsTab() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-semibold text-gray-900">Blog posts</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Blog posts</h2>
         <button
           type="button"
           onClick={() => {
@@ -360,37 +360,37 @@ function BlogPostsTab() {
         />
       )}
 
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
         <table className="w-full">
           <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Title</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Slug</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Author</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Updated</th>
-              <th className="px-6 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
+            <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Title</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Slug</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Author</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Status</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Updated</th>
+              <th className="px-6 py-3 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>
             </tr>
           </thead>
           <tbody>
             {posts.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                  No posts yet. Create one with “New post”.
+                <td colSpan={6} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                  No posts yet. Create one with "New post".
                 </td>
               </tr>
             ) : (
               posts.map((post) => (
-                <tr key={post.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{post.title}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{post.slug}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{post.author}</td>
+                <tr key={post.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{post.title}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{post.slug}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{post.author}</td>
                   <td className="px-6 py-4 text-sm">
-                    <span className={post.is_published ? 'text-green-600' : 'text-amber-600'}>
+                    <span className={post.is_published ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}>
                       {post.is_published ? 'Published' : 'Draft'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
+                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                     {new Date(post.updated_at).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-sm text-right">
@@ -400,7 +400,7 @@ function BlogPostsTab() {
                         setEditingPost(post);
                         setShowForm(true);
                       }}
-                      className="text-blue-600 hover:text-blue-800 mr-3"
+                      className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
                     >
                       <Pencil className="w-4 h-4 inline" />
                     </button>
@@ -409,14 +409,14 @@ function BlogPostsTab() {
                         <button
                           type="button"
                           onClick={() => deleteMutation.mutate(post.id)}
-                          className="text-red-600 hover:text-red-800 font-medium"
+                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 font-medium"
                         >
                           Confirm
                         </button>
                         <button
                           type="button"
                           onClick={() => setDeleteConfirm(null)}
-                          className="text-gray-600"
+                          className="text-gray-600 dark:text-gray-400"
                         >
                           Cancel
                         </button>
@@ -425,7 +425,7 @@ function BlogPostsTab() {
                       <button
                         type="button"
                         onClick={() => setDeleteConfirm(post.id)}
-                        className="text-red-600 hover:text-red-800"
+                        className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                       >
                         <Trash2 className="w-4 h-4 inline" />
                       </button>
@@ -564,22 +564,22 @@ function PostForm({
   const saving = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">{post ? 'Edit post' : 'New post'}</h3>
-        <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-700">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{post ? 'Edit post' : 'New post'}</h3>
+        <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
           <X className="w-5 h-5" />
         </button>
       </div>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title *</label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
           />
         </div>
         <div>
@@ -622,7 +622,7 @@ function PostForm({
             placeholder="Start writing your blog post..."
             minHeight="400px"
           />
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             Use the toolbar to format text, add headings, lists, links, and code blocks.
           </p>
         </div>
@@ -654,7 +654,7 @@ function PostForm({
             onChange={(e) => setIsPublished(e.target.checked)}
             className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
-          <label htmlFor="is_published" className="text-sm font-medium text-gray-700">
+          <label htmlFor="is_published" className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Published
           </label>
         </div>
@@ -669,7 +669,7 @@ function PostForm({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
           >
             Cancel
           </button>
@@ -708,7 +708,7 @@ function BlogCategoriesTab() {
 
   // Handle loading state after all hooks are called (React Rules of Hooks)
   if (isLoading) {
-    return <div className="text-gray-500">Loading categories…</div>;
+    return <div className="text-gray-500 dark:text-gray-400">Loading categories…</div>;
   }
 
   // Handle error state gracefully without crashing
@@ -716,7 +716,7 @@ function BlogCategoriesTab() {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-900">Categories</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Categories</h2>
           <button
             type="button"
             onClick={() => {
@@ -729,7 +729,7 @@ function BlogCategoriesTab() {
             Add category
           </button>
         </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800">
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 text-amber-800 dark:text-amber-200">
           <p className="font-medium">Unable to load categories</p>
           <p className="text-sm mt-1">Please try refreshing the page or check your connection.</p>
         </div>
@@ -754,7 +754,7 @@ function BlogCategoriesTab() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-semibold text-gray-900">Categories</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Categories</h2>
         <button
           type="button"
           onClick={() => {
@@ -783,7 +783,7 @@ function BlogCategoriesTab() {
         />
       )}
 
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
         <table className="w-full">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
@@ -918,75 +918,75 @@ function CategoryForm({
   const saving = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
           {category ? 'Edit category' : 'Add category'}
         </h3>
-        <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-700">
+        <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
           <X className="w-5 h-5" />
         </button>
       </div>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title *</label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Slug</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Slug</label>
           <input
             type="text"
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
             placeholder={title ? title.toLowerCase().replace(/\s+/g, '-') : ''}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
           <textarea
             rows={2}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
           />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Color</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Color</label>
             <input
               type="text"
               value={color}
               onChange={(e) => setColor(e.target.value)}
               placeholder="e.g. blue"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Icon</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Icon</label>
             <input
               type="text"
               value={icon}
               onChange={(e) => setIcon(e.target.value)}
               placeholder="e.g. folder"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
             />
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Order</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Order</label>
           <input
             type="number"
             min={0}
             value={order}
             onChange={(e) => setOrder(Number(e.target.value) || 0)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
           />
         </div>
         <div className="flex gap-3 pt-2">
@@ -1000,7 +1000,7 @@ function CategoryForm({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
           >
             Cancel
           </button>

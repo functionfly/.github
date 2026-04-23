@@ -45,14 +45,14 @@ export function Dialog({ open, onOpenChange, children, className }: DialogProps)
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
       role="dialog"
       aria-modal="true"
     >
       <div
         ref={contentRef}
         className={cn(
-          'relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 animate-in zoom-in-95 duration-200',
+          'relative bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-lg mx-4 animate-in zoom-in-95 duration-200',
           className
         )}
         onClick={(e) => e.stopPropagation()}
@@ -81,11 +81,11 @@ interface DialogHeaderProps {
 
 export function DialogHeader({ title, description, onClose, className }: DialogHeaderProps) {
   return (
-    <div className={cn('flex items-start justify-between gap-4 pb-4', className)}>
+    <div className={cn('flex items-start justify-between gap-4 pb-4 border-b border-gray-200 dark:border-gray-700', className)}>
       <div className="flex-1">
-        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
         {description && (
-          <p className="mt-1 text-sm text-gray-500">{description}</p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{description}</p>
         )}
       </div>
       {onClose && (
@@ -93,7 +93,7 @@ export function DialogHeader({ title, description, onClose, className }: DialogH
           variant="ghost"
           size="sm"
           onClick={onClose}
-          className="shrink-0 -mr-2 -mt-2"
+          className="shrink-0 -mr-2 -mt-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
           aria-label="Close dialog"
         >
           <X className="w-4 h-4" />
@@ -110,7 +110,7 @@ interface DialogFooterProps {
 
 export function DialogFooter({ children, className }: DialogFooterProps) {
   return (
-    <div className={cn('flex justify-end gap-3 pt-4 border-t border-gray-200', className)}>
+    <div className={cn('flex justify-end gap-3 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700', className)}>
       {children}
     </div>
   );

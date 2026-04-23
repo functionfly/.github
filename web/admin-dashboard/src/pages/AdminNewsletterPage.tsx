@@ -291,8 +291,8 @@ export function AdminNewsletterPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Newsletters</h1>
-          <p className="text-gray-600">Manage email campaigns and subscriber communications</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Newsletters</h1>
+          <p className="text-gray-600 dark:text-gray-400">Manage email campaigns and subscriber communications</p>
         </div>
         <Button onClick={() => setIsCreateDialogOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
@@ -305,45 +305,45 @@ export function AdminNewsletterPage() {
         <div className="grid grid-cols-4 gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Send className="w-5 h-5 text-blue-600" />
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <Send className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Total Sent</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.total_sent.toLocaleString()}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Total Sent</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.total_sent.toLocaleString()}</p>
               </div>
             </div>
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Users className="w-5 h-5 text-green-600" />
+              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                <Users className="w-5 h-5 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Subscribers</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.total_subscribers.toLocaleString()}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Subscribers</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.total_subscribers.toLocaleString()}</p>
               </div>
             </div>
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-indigo-100 rounded-lg">
-                <Eye className="w-5 h-5 text-indigo-600" />
+              <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                <Eye className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Avg Open Rate</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.avg_open_rate.toFixed(1)}%</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Avg Open Rate</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.avg_open_rate.toFixed(1)}%</p>
               </div>
             </div>
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Filter className="w-5 h-5 text-purple-600" />
+              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                <Filter className="w-5 h-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Avg Click Rate</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.avg_click_rate.toFixed(1)}%</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Avg Click Rate</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.avg_click_rate.toFixed(1)}%</p>
               </div>
             </div>
           </Card>
@@ -445,13 +445,13 @@ export function AdminNewsletterPage() {
               onChange={(e) => setNewNewsletter({ ...newNewsletter, recipient_segment: e.target.value })}
             />
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-gray-700">Content</label>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Content</label>
               <textarea
                 value={newNewsletter.content}
                 onChange={(e) => setNewNewsletter({ ...newNewsletter, content: e.target.value })}
                 placeholder="Write your newsletter content..."
                 rows={6}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-y"
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-y bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 required
               />
             </div>
@@ -485,14 +485,14 @@ export function AdminNewsletterPage() {
             onClose={() => setIsPreviewDialogOpen(false)}
           />
           <div className="mt-4">
-            <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
-              <div className="text-sm text-gray-500 mb-4">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+              <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                 From: FunctionFly Team &lt;team@functionfly.com&gt;
                 <br />
                 To: {selectedNewsletter?.recipient_count.toLocaleString() ?? 0} subscribers
               </div>
               <div className="prose max-w-none">
-                <p className="text-gray-400 italic">Newsletter content would be rendered here...</p>
+                <p className="text-gray-400 dark:text-gray-500 italic">Newsletter content would be rendered here...</p>
               </div>
             </div>
           </div>

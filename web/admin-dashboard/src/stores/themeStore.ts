@@ -3,6 +3,20 @@ import { persist } from 'zustand/middleware';
 
 type Theme = 'light' | 'dark' | 'system';
 
+/**
+ * Apply theme to the document
+ */
+function applyTheme(theme: Theme) {
+  const root = document.documentElement;
+
+  if (theme === 'system') {
+    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    root.classList.toggle('dark', systemDark);
+  } else {
+    root.classList.toggle('dark', theme === 'dark');
+  }
+}
+
 interface ThemeState {
   theme: Theme;
   setTheme: (theme: Theme) => void;
@@ -32,20 +46,6 @@ export const useThemeStore = create<ThemeState>()(
   )
 );
 
-/**
- * Apply theme to the document
- */
-function applyTheme(theme: Theme) {
-  const root = document.documentElement;
-
-  if (theme === 'system') {
-    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    root.classList.toggle('dark', systemDark);
-  } else {
-    root.classList.toggle('dark', theme === 'dark');
-  }
-}
-
 // Initialize theme on load
 if (typeof window !== 'undefined') {
   const stored = localStorage.getItem('admin-theme-storage');
@@ -54,10 +54,14 @@ if (typeof window !== 'undefined') {
       const { state } = JSON.parse(stored);
       if (state?.theme) {
         applyTheme(state.theme);
+      } else {
+        applyTheme('system');
       }
     } catch {
       applyTheme('system');
     }
+  } else {
+    applyTheme('system');
   }
 
   // Listen for system theme changes

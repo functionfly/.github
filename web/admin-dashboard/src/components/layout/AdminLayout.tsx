@@ -40,7 +40,7 @@ export function AdminLayout() {
 
   return (
     <MFAReVerificationChecker>
-      <div className="flex h-screen bg-gray-50">
+      <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
         {/* Sidebar: only when logged in */}
         {isLoggedIn && (
           <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />

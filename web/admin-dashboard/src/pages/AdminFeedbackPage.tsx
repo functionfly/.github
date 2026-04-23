@@ -49,8 +49,8 @@ export function AdminFeedbackPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Feedback</h1>
-        <p className="mt-2 text-gray-600">Review product feedback and support signals.</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Feedback</h1>
+        <p className="mt-2 text-gray-600 dark:text-gray-400">Review product feedback and support signals.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -59,30 +59,30 @@ export function AdminFeedbackPage() {
         <StatCard label="Resolved" value={stats.resolved ?? items.filter((i) => i.status === 'resolved').length} />
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
         <table className="w-full">
           <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">ID</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Category</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Message</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Created</th>
+            <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">ID</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Category</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Status</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Message</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Created</th>
             </tr>
           </thead>
           <tbody>
             {items.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">No feedback found.</td>
+                <td colSpan={5} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">No feedback found.</td>
               </tr>
             ) : (
               items.map((item) => (
-                <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm text-gray-900">{item.id}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{item.category || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{item.status || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600 truncate max-w-[420px]">{item.message || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{item.created_at ? new Date(item.created_at).toLocaleString() : '-'}</td>
+                <tr key={item.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">{item.id}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{item.category || '-'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{item.status || '-'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 truncate max-w-[420px]">{item.message || '-'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{item.created_at ? new Date(item.created_at).toLocaleString() : '-'}</td>
                 </tr>
               ))
             )}
@@ -95,9 +95,9 @@ export function AdminFeedbackPage() {
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4">
-      <p className="text-sm text-gray-600">{label}</p>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+      <p className="text-sm text-gray-600 dark:text-gray-400">{label}</p>
+      <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{value}</p>
     </div>
   );
 }

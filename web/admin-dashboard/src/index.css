@@ -55,8 +55,24 @@ html {
 }
 
 body {
-  background-color: #f9fafb;
-  color: #111827;
+  background-color: var(--color-bg, #f9fafb);
+  color: var(--color-text, #111827);
+}
+
+:root {
+  --color-bg: #f9fafb;
+  --color-text: #111827;
+  --color-scrollbar-track: #f3f4f6;
+  --color-scrollbar-thumb: #d1d5db;
+  --color-scrollbar-thumb-hover: #9ca3af;
+}
+
+.dark {
+  --color-bg: #0f172a;
+  --color-text: #f1f5f9;
+  --color-scrollbar-track: #1e293b;
+  --color-scrollbar-thumb: #475569;
+  --color-scrollbar-thumb-hover: #64748b;
 }
 
 /* ─── Scrollbar ─────────────────────────────────────────────────── */
@@ -66,16 +82,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background-color: #f3f4f6;
+  background-color: var(--color-scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #d1d5db;
+  background-color: var(--color-scrollbar-thumb);
   border-radius: 0.25rem;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #9ca3af;
+  background-color: var(--color-scrollbar-thumb-hover);
 }
 
 /* ─── Custom animation helpers ───────────────────────────────────── */
