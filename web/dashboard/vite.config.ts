@@ -149,7 +149,8 @@ console.log('[Vite] API proxy target:', apiProxyTarget);
 // Production CSP is enforced via public/_headers (Vercel/CF deployments) and the Go backend middleware.
 const DEV_CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://va.vercel-scripts.com",
+  "script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' blob: https://va.vercel-scripts.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnfonts.com https://www.cdnfonts.com",
   "img-src 'self' data: https: blob:",
   "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnfonts.com https://www.cdnfonts.com",

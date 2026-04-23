@@ -2,29 +2,14 @@ import { usersApi } from '@/api/users';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
-const NOTIFICATION_OPTIONS = [
-  {
-    key: 'deploymentSuccess' as const,
-    label: 'Deployment Success',
-    description: 'Get notified when a deployment succeeds',
-  },
-  {
-    key: 'deploymentFailure' as const,
-    label: 'Deployment Failure',
-    description: 'Get notified when a deployment fails',
-  },
-  {
-    key: 'failoverEvents' as const,
-    label: 'Failover Events',
-    description: 'Get notified when failover is triggered',
-  },
-  {
-    key: 'providerIssues' as const,
-    label: 'Provider Issues',
-    description: 'Get notified when a provider has issues',
-  },
+const NOTIFICATION_KEYS = [
+  'deploymentSuccess',
+  'deploymentFailure',
+  'failoverEvents',
+  'providerIssues',
 ] as const;
 
 const DEFAULT_PREFS = {
@@ -47,6 +32,7 @@ function prefsFromSettings(settings: Record<string, unknown> | undefined): typeo
 }
 
 export function NotificationsSettingsTab() {
+  const { t } = useTranslation();
   const [notifications, setNotifications] = useState<typeof DEFAULT_PREFS>(DEFAULT_PREFS);
   const [loading, setLoading] = useState(true);
 
@@ -60,7 +46,7 @@ export function NotificationsSettingsTab() {
         setNotifications(prefsFromSettings(settings));
       })
       .catch(() => {
-        if (!cancelled) toast.error('Failed to load notification preferences');
+        if (!cancelled) toast.error(t('notifSettings.toastFailedToLoad'));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -76,10 +62,10 @@ export function NotificationsSettingsTab() {
     setNotifications(updated);
     try {
       await usersApi.updateMyNotificationSettings(updated);
-      toast.success('Notification preference saved');
+      toast.success(t('notifSettings.toastSaved'));
     } catch {
       setNotifications(previous);
-      toast.error('Failed to save notification preference');
+      toast.error(t('notifSettings.toastFailedToSave'));
     }
   };
 
@@ -87,24 +73,24 @@ export function NotificationsSettingsTab() {
     <div className="space-y-6">
       <Card className="ff-card-velocity">
         <CardHeader>
-          <CardTitle className="font-display">Notification Preferences</CardTitle>
+          <CardTitle className="font-display">{t('notifSettings.title')}</CardTitle>
           <CardDescription className="text-text-secondary">
-            Choose what notifications you want to receive
+            {t('notifSettings.description')}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {loading && <p className="text-sm text-text-muted mb-4">Loading preferences…</p>}
+          {loading && <p className="text-sm text-text-muted mb-4">{t('notifSettings.loadingPreferences')}</p>}
           <div className="space-y-4">
-            {NOTIFICATION_OPTIONS.map((item) => (
-              <div key={item.key} className="flex items-center justify-between gap-4">
+            {NOTIFICATION_KEYS.map((key) => (
+              <div key={key} className="flex items-center justify-between gap-4">
                 <div className="min-w-0 flex-1">
-                  <h4 className="font-medium text-text-primary">{item.label}</h4>
-                  <p className="text-sm text-text-muted">{item.description}</p>
+                  <h4 className="font-medium text-text-primary">{t(`notifSettings.${key}Label`)}</h4>
+                  <p className="text-sm text-text-muted">{t(`notifSettings.${key}Description`)}</p>
                 </div>
                 <div className="shrink-0">
                   <Switch
-                    checked={notifications[item.key]}
-                    onCheckedChange={(checked) => handleToggle(item.key, checked)}
+                    checked={notifications[key]}
+                    onCheckedChange={(checked) => handleToggle(key, checked)}
                   />
                 </div>
               </div>

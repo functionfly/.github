@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ArrowRight, CheckCircle2, Circle, FileText, Loader2, Rocket, Server } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { FieldError } from '../components/editor-ui';
 import type { FunctionEditorModel } from '../useFunctionEditor';
@@ -56,6 +57,7 @@ function WorkflowStep({
 }
 
 export function DeployTargetSection({ editor }: Props) {
+  const { t } = useTranslation();
   const {
     isEditing,
     isDirty,
@@ -76,9 +78,9 @@ export function DeployTargetSection({ editor }: Props) {
     return (
       <Card className="card border-border-subtle/50" style={{ background: 'var(--bg-secondary)' }}>
         <CardHeader className="pb-2 pt-4 px-5">
-          <CardTitle className="text-sm font-semibold text-text-primary flex items-center gap-2 font-display">
+            <CardTitle className="text-sm font-semibold text-text-primary flex items-center gap-2 font-display">
             <Server className="w-4 h-4 text-[#FF6B35]" />
-            Deploy target
+            {t('funcEditor.deployTarget')}
           </CardTitle>
         </CardHeader>
         <CardContent className="px-5 pb-4 space-y-4">
@@ -89,8 +91,8 @@ export function DeployTargetSection({ editor }: Props) {
               current={isDraftStep}
               completed={false}
               icon={<FileText className="w-3.5 h-3.5 text-text-muted" />}
-              label="Draft"
-              description="Save function code and configuration"
+              label={t('funcEditor.draft')}
+              description={t('funcEditor.draftDescription')}
             />
             <div className="flex items-center justify-center py-0.5">
               <ArrowRight className="w-4 h-4 text-text-muted/30" />
@@ -100,8 +102,8 @@ export function DeployTargetSection({ editor }: Props) {
               current={false}
               completed={false}
               icon={<Server className="w-3.5 h-3.5 text-text-muted" />}
-              label="Select Backend"
-              description="Choose where to run your function"
+              label={t('funcEditor.selectBackend')}
+              description={t('funcEditor.selectBackendDescription')}
             />
             <div className="flex items-center justify-center py-0.5">
               <ArrowRight className="w-4 h-4 text-text-muted/30" />
@@ -111,15 +113,15 @@ export function DeployTargetSection({ editor }: Props) {
               current={false}
               completed={false}
               icon={<Rocket className="w-3.5 h-3.5 text-text-muted" />}
-              label="Deploy"
-              description="Publish and make it live"
+              label={t('funcEditor.deploy')}
+              description={t('funcEditor.deployDescription')}
             />
           </div>
 
           <div className="p-3 rounded-lg bg-[#FF6B35]/5 border border-[#FF6B35]/20">
             <p className="text-xs text-text-secondary leading-relaxed">
-              <span className="text-[#FF6B35] font-medium">You're on Step 1.</span>{' '}
-              Save this function as a draft first. You can then choose an app backend and deploy.
+              <span className="text-[#FF6B35] font-medium">{t('funcEditor.step1Message')}</span>{' '}
+              {t('funcEditor.saveDraftFirst')}
             </p>
           </div>
         </CardContent>
@@ -132,11 +134,11 @@ export function DeployTargetSection({ editor }: Props) {
       <CardHeader className="pb-2 pt-4 px-5">
         <CardTitle className="text-sm font-semibold text-text-primary flex items-center gap-2 font-display">
           <Server className="w-4 h-4 text-[#FF6B35]" />
-          Deploy target
+          {t('funcEditor.deployTarget')}
         </CardTitle>
         {linkedAppId ? (
           <p className="text-xs text-text-muted mt-1 font-normal leading-relaxed">
-            This function is linked to an app — only backends for that app are shown.
+            {t('funcEditor.linkedToApp')}
           </p>
         ) : null}
       </CardHeader>
@@ -145,45 +147,45 @@ export function DeployTargetSection({ editor }: Props) {
         <div className="flex items-center gap-2 text-xs">
           <span className="flex items-center gap-1.5 text-emerald-400">
             <CheckCircle2 className="w-3.5 h-3.5" />
-            Draft saved
+            {t('funcEditor.draftSaved')}
           </span>
           <ArrowRight className="w-3 h-3 text-text-muted" />
           <span className={`flex items-center gap-1.5 ${isBackendStep ? 'text-[#FF6B35]' : 'text-emerald-400'}`}>
             {isBackendStep ? <Circle className="w-3.5 h-3.5 fill-current" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-            Select backend
+            {t('funcEditor.selectBackendStatus')}
           </span>
           <ArrowRight className="w-3 h-3 text-text-muted" />
           <span className={`flex items-center gap-1.5 ${isDeployStep ? 'text-[#FF6B35]' : 'text-text-muted'}`}>
             {isDeployStep ? <Rocket className="w-3.5 h-3.5" /> : <Rocket className="w-3.5 h-3.5 opacity-30" />}
-            Deploy
+            {t('funcEditor.deploy')}
           </span>
         </div>
 
         {deployBackendsLoading ? (
           <div className="flex items-center gap-2 text-xs text-text-muted">
             <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-            Loading backends…
+            {t('funcEditor.loadingBackends')}
           </div>
         ) : filteredDeployBackends.length === 0 ? (
           <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
             <p className="text-xs text-text-muted leading-relaxed">
-              No backends found. You need to create an app first:
+              {t('funcEditor.noBackendsFound')}
             </p>
             <ol className="text-xs text-text-secondary mt-2 ml-4 list-decimal space-y-1">
-              <li>Go to <Link to="/apps" className="text-[#FF6B35] hover:underline">Apps</Link></li>
-              <li>Create a new app</li>
-              <li>Add a deployment backend (Cloudflare, AWS, etc.)</li>
-              <li>Return here to deploy</li>
+              <li>{t('funcEditor.goToApps')} <Link to="/apps" className="text-[#FF6B35] hover:underline">{t('funcEditor.apps')}</Link></li>
+              <li>{t('funcEditor.createNewAppStep')}</li>
+              <li>{t('funcEditor.addDeploymentBackend')}</li>
+              <li>{t('funcEditor.returnHereToDeploy')}</li>
             </ol>
           </div>
         ) : (
           <>
             <Label htmlFor="deploy-backend" className="text-xs text-text-muted">
-              Backend {isDeployStep && <span className="text-emerald-400 ml-1">✓ Ready to deploy</span>}
+              {t('funcEditor.backend')} {isDeployStep && <span className="text-emerald-400 ml-1">{t('funcEditor.readyToDeploy')}</span>}
             </Label>
             <Select value={selectedDeployBackendId} onValueChange={setDeployBackendId}>
               <SelectTrigger id="deploy-backend" className="h-9 text-xs">
-                <SelectValue placeholder="Select backend" />
+                <SelectValue placeholder={t('funcEditor.selectBackendPlaceholder')} />
               </SelectTrigger>
               <SelectContent>
                 {filteredDeployBackends.map((b) => (
@@ -198,13 +200,13 @@ export function DeployTargetSection({ editor }: Props) {
             {isDeployStep && !isDirty && (
               <p className="text-xs text-emerald-400 flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                Function is ready to deploy! Click the Deploy button above.
+                {t('funcEditor.readyToDeployMessage')}
               </p>
             )}
             {isDeployStep && isDirty && (
               <p className="text-xs text-amber-400 flex items-center gap-1.5">
                 <Circle className="w-3.5 h-3.5" />
-                Save your changes before deploying
+                {t('funcEditor.saveBeforeDeploy')}
               </p>
             )}
           </>

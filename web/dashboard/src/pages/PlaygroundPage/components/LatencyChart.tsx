@@ -7,6 +7,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
+import { useTranslation } from 'react-i18next';
 import { usePlaygroundState } from '../hooks/usePlaygroundState';
 
 interface LatencyChartProps {
@@ -20,6 +21,7 @@ interface CustomTooltipProps {
 }
 
 function CustomTooltip({ active, payload }: CustomTooltipProps) {
+  const { t } = useTranslation();
   if (!active || !payload || payload.length === 0) return null;
 
   const item = payload[0];
@@ -32,19 +34,20 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
         {date.toLocaleTimeString()}
       </p>
       <p className={item.payload.ok ? 'text-green-400' : 'text-red-400'}>
-        {item.payload.ok ? 'Success' : 'Failed'}
+        {item.payload.ok ? t('playground.success') : t('playground.error')}
       </p>
     </div>
   );
 }
 
 export function LatencyChart({ className }: LatencyChartProps) {
+  const { t } = useTranslation();
   const { latencyHistory, averageLatency } = usePlaygroundState();
 
   if (latencyHistory.length < 2) {
     return (
       <div className="flex items-center justify-center h-16 text-xs text-text-muted">
-        Run the function a few times to see latency history
+        {t('playground.runFewTimesForLatency')}
       </div>
     );
   }
@@ -52,10 +55,10 @@ export function LatencyChart({ className }: LatencyChartProps) {
   return (
     <div className={className}>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-text-muted">Latency History (last {latencyHistory.length} runs)</span>
+        <span className="text-xs text-text-muted">{t('playground.latencyHistory', { count: latencyHistory.length })}</span>
         {averageLatency !== null && (
           <span className="text-xs text-text-secondary">
-            Avg: <span className="font-mono text-indigo-400">{averageLatency}ms</span>
+            {t('playground.avg')} <span className="font-mono text-indigo-400">{averageLatency}ms</span>
           </span>
         )}
       </div>

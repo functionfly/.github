@@ -10,12 +10,14 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useTranslation } from 'react-i18next';
 import type { FunctionEditorModel } from '../useFunctionEditor';
 import { Key, Loader2, Shield } from 'lucide-react';
 
 type Props = { editor: FunctionEditorModel };
 
 export function FunctionEditorVaultDialogs({ editor }: Props) {
+  const { t } = useTranslation();
   const {
     vaultSecrets,
     vaultPickerOpen,
@@ -46,15 +48,15 @@ export function FunctionEditorVaultDialogs({ editor }: Props) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Key className="w-5 h-5" />
-              Use secret from Vault
+              {t('funcEditor.useSecretFromVault')}
             </DialogTitle>
-            <DialogDescription>Choose a secret to add as an environment variable.</DialogDescription>
+            <DialogDescription>{t('funcEditor.chooseSecretDescription')}</DialogDescription>
           </DialogHeader>
           <ScrollArea className="max-h-[280px] rounded-md border border-border-subtle">
             <div className="p-2 space-y-1">
               {!vaultSecrets?.length && (
                 <p className="text-sm text-text-secondary py-4 text-center">
-                  No secrets in Vault yet.
+                  {t('funcEditor.noSecretsInVault')}
                 </p>
               )}
               {vaultSecrets?.map((secret) => (
@@ -99,20 +101,19 @@ export function FunctionEditorVaultDialogs({ editor }: Props) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Key className="w-5 h-5" />
-              Vault passphrase
+              {t('funcEditor.vaultPassphrase')}
             </DialogTitle>
             <DialogDescription>
-              Enter your vault passphrase to use &quot;{pendingSecretForDecrypt?.name}&quot;.
-              Decryption happens on this device only.
+              {t('funcEditor.enterVaultPassphrase', { name: pendingSecretForDecrypt?.name })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="vault-passphrase">Passphrase</Label>
+              <Label htmlFor="vault-passphrase">{t('funcEditor.passphrase')}</Label>
               <Input
                 id="vault-passphrase"
                 type="password"
-                placeholder="Enter encryption passphrase"
+                placeholder={t('funcEditor.enterEncryptionPassphrase')}
                 value={vaultDecryptPassphrase}
                 onChange={(e) => setVaultDecryptPassphrase(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && void handleConfirmVaultPassphrase()}
@@ -128,13 +129,13 @@ export function FunctionEditorVaultDialogs({ editor }: Props) {
                   setVaultDecryptPassphrase('');
                 }}
               >
-                Cancel
+                {t('funcEditor.cancel')}
               </Button>
               <Button
                 onClick={() => void handleConfirmVaultPassphrase()}
                 disabled={!vaultDecryptPassphrase.trim() || pickingSecretId !== null}
               >
-                {pickingSecretId ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Use secret'}
+                {pickingSecretId ? <Loader2 className="w-4 h-4 animate-spin" /> : t('funcEditor.useSecret')}
               </Button>
             </div>
           </div>
@@ -154,8 +155,8 @@ export function FunctionEditorVaultDialogs({ editor }: Props) {
             setRevealGateOpen(false);
             setRevealEnvVarId(null);
           }}
-          title="Reveal secret value"
-          description={`Verify your identity to reveal the value of ${revealTarget.key}.`}
+          title={t('funcEditor.revealSecretValue')}
+          description={t('funcEditor.revealSecretDescription', { key: revealTarget.key })}
           requiredLevel="medium"
         />
       )}

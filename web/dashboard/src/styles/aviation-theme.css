@@ -582,7 +582,7 @@
   );
   border: 1px solid var(--color-aviation-amber-dim);
   color: var(--color-aviation-amber);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.05em;
@@ -715,14 +715,14 @@
    ========================================================================== */
 
 .aviation-heading {
-  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-family: var(--font-mono);
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--color-aviation-text-primary);
 }
 
 .aviation-label {
-  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.15em;
@@ -731,7 +731,7 @@
 }
 
 .aviation-value {
-  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-family: var(--font-mono);
   font-weight: 600;
   color: var(--color-aviation-amber);
 }
@@ -767,7 +767,7 @@
   border-radius: 6px;
   padding: 0 0.875rem;
   color: var(--color-aviation-text-primary);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.875rem;
   line-height: 1;
   height: 2.75rem;
@@ -919,7 +919,7 @@
 }
 
 .aviation-data-label {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.65rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -927,7 +927,7 @@
 }
 
 .aviation-data-value {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--color-aviation-text-primary);
@@ -980,7 +980,7 @@
 .aviation-sidebar-section {
   position: relative;
   color: var(--color-aviation-cyan);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.15em;
@@ -1160,7 +1160,7 @@
 
 /* Keyboard Shortcut Hint */
 .aviation-sidebar-kbd {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.65rem;
   padding: 0.125rem 0.375rem;
   border-radius: 4px;
@@ -1235,12 +1235,12 @@
 }
 
 [data-theme='light'] .aviation-sidebar-item:hover {
-  color: var(--color-aviation-text-primary-light);
-  background: var(--color-aviation-bg-instrument-light);
+  color: #111827 !important;
+  background: #e2e8f0;
 }
 
 [data-theme='light'] .aviation-sidebar-item:hover .aviation-sidebar-icon {
-  color: var(--color-aviation-amber-light);
+  color: #e85a2a;
 }
 
 [data-theme='light'] .aviation-sidebar-item-active {
@@ -1275,6 +1275,27 @@
 [data-theme='light'] .aviation-sidebar-toggle:hover {
   background: var(--color-aviation-bg-instrument-light);
   color: var(--color-aviation-amber-light);
+}
+
+[data-theme='light'] .aviation-onboarding-progress {
+  background: linear-gradient(
+    135deg,
+    rgba(6, 182, 212, 0.15) 0%,
+    rgba(245, 158, 11, 0.15) 100%
+  );
+  border-color: var(--color-aviation-cyan-light);
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
+  color: var(--color-aviation-text-primary);
+}
+
+[data-theme='light'] .aviation-onboarding-progress span:first-child {
+  color: var(--color-aviation-cyan-light);
+  text-shadow: 0 0 4px rgba(6, 182, 212, 0.3);
+}
+
+[data-theme='light'] .aviation-onboarding-progress span:last-child {
+  color: var(--color-aviation-amber-light);
+  text-shadow: 0 0 4px rgba(245, 158, 11, 0.3);
 }
 
 /* ==========================================================================
@@ -1497,7 +1518,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.875rem;
   font-weight: 700;
   background: linear-gradient(
@@ -1579,7 +1600,7 @@
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--color-aviation-text-primary);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   letter-spacing: -0.01em;
   transition: color 0.2s ease;
   white-space: nowrap;
@@ -1597,7 +1618,7 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--color-aviation-text-muted);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
@@ -1854,7 +1875,7 @@
 
 /* Upgrade Title */
 .aviation-upgrade-title {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--color-aviation-text-primary);
@@ -1935,7 +1956,7 @@
 }
 
 .aviation-upgrade-meter-label {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.6rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -1944,7 +1965,7 @@
 }
 
 .aviation-upgrade-meter-value {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.65rem;
   font-weight: 600;
   color: var(--color-aviation-text-secondary);
@@ -1982,7 +2003,7 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 0.625rem 1rem;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -2044,7 +2065,7 @@
 
 /* Upgrade Price Hint */
 .aviation-upgrade-price {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.7rem;
   text-align: center;
   color: var(--color-aviation-text-muted);
@@ -2272,7 +2293,7 @@
 }
 
 .aviation-upgrade-compact-title {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--color-aviation-text-primary);
@@ -2281,7 +2302,7 @@
 .aviation-upgrade-compact-hint {
   font-size: 0.65rem;
   color: var(--color-aviation-text-muted);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
 }
 
 /* Collapse/Expand Icon */
@@ -2427,7 +2448,7 @@
 
 .aviation-tooltip p {
   color: var(--color-aviation-text-primary) !important;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.75rem;
   margin: 0;
 }

@@ -80,7 +80,7 @@
 }
 
 .discovery-header-title {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 1.75rem;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -104,7 +104,7 @@
 }
 
 .discovery-header-subtitle {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 0.875rem;
   color: var(--color-aviation-text-muted);
   margin-top: 0.5rem;
@@ -141,7 +141,7 @@
 }
 
 .discovery-filter-btn {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -323,7 +323,7 @@
 }
 
 .aviation-card-id {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 0.625rem;
   font-weight: 500;
   letter-spacing: 0.08em;
@@ -332,7 +332,7 @@
 }
 
 .aviation-card-title {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 0.9375rem;
   font-weight: 600;
   color: var(--color-aviation-text-primary);
@@ -378,7 +378,7 @@
 
 /* Badges */
 .aviation-badge {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 0.6875rem;
   font-weight: 600;
   padding: 0.25rem 0.5rem;
@@ -422,7 +422,7 @@
 }
 
 .aviation-metric-label {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 0.5625rem;
   font-weight: 500;
   letter-spacing: 0.1em;
@@ -434,7 +434,7 @@
 }
 
 .aviation-metric-value {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--color-aviation-text-primary);
@@ -456,7 +456,7 @@
 }
 
 .aviation-provider-tag {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 0.625rem;
   font-weight: 500;
   padding: 0.25rem 0.5rem;
@@ -475,7 +475,7 @@
 }
 
 .aviation-provider-more {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 0.625rem;
   color: var(--color-aviation-text-dim);
   padding: 0.25rem 0.375rem;
@@ -492,7 +492,7 @@
 }
 
 .aviation-card-hint {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 0.625rem;
   font-weight: 500;
   letter-spacing: 0.05em;
@@ -601,7 +601,7 @@
 }
 
 .discovery-empty-title {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--color-aviation-text-primary);

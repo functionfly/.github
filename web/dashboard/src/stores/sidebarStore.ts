@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
+/** Valid environment values for the environment selector */
+export type Environment = 'production' | 'staging' | 'development';
+
 interface SidebarState {
   // Collapsed state
   isCollapsed: boolean;
@@ -28,9 +31,9 @@ interface SidebarState {
 
   // Workspace/Environment
   currentWorkspace: string;
-  currentEnvironment: 'production' | 'staging' | 'development';
+  currentEnvironment: Environment;
   setWorkspace: (workspace: string) => void;
-  setEnvironment: (env: 'production' | 'staging' | 'development') => void;
+  setEnvironment: (env: Environment) => void;
 
   // Onboarding progress
   showOnboardingHints: boolean;
@@ -41,6 +44,11 @@ interface SidebarState {
 
 const STORAGE_KEY = 'sidebar-preferences-v1';
 const DEFAULT_SECTIONS = ['discover', 'build', 'deploy', 'operate', 'advanced', 'account'];
+
+// Initialize environment in localStorage for API client if not already set
+if (!localStorage.getItem('ff-current-environment')) {
+  localStorage.setItem('ff-current-environment', 'production');
+}
 
 export const useSidebarStore = create<SidebarState>()(
   persist(
@@ -128,6 +136,8 @@ export const useSidebarStore = create<SidebarState>()(
       setEnvironment: (env) =>
         set((state) => {
           state.currentEnvironment = env;
+          // Also sync to localStorage for API client to read without circular deps
+          localStorage.setItem('ff-current-environment', env);
         }),
 
       // Onboarding
@@ -161,6 +171,10 @@ export const useSidebarStore = create<SidebarState>()(
         const state = { ...currentState, ...persistedState } as SidebarState;
         if (Array.isArray(persistedState.expandedSections)) {
           state.expandedSections = new Set(persistedState.expandedSections);
+        }
+        // Sync environment to localStorage for API client access
+        if (persistedState.currentEnvironment) {
+          localStorage.setItem('ff-current-environment', persistedState.currentEnvironment as string);
         }
         return state;
       },

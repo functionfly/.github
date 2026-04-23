@@ -1,6 +1,6 @@
 import { EvolutionDashboard } from '@/components/swarm/EvolutionDashboard';
+import { MetaTags } from '@/components/seo/MetaTags';
 import { useState } from 'react';
-import { Helmet } from 'react-helmet-async';
 import { useParams } from 'react-router-dom';
 
 export function EvolutionPage() {
@@ -9,13 +9,10 @@ export function EvolutionPage() {
 
   return (
     <>
-      <Helmet>
-        <title>Autonomous Operations — FunctionFly</title>
-        <meta
-          name="description"
-          content="Self-evolving backend graph — AI-optimized checkout and payments"
-        />
-      </Helmet>
+      <MetaTags
+        title="Autonomous Operations — FunctionFly"
+        description="Self-evolving backend graph — AI-optimized checkout and payments"
+      />
       <EvolutionDashboard agentId={selectedAgentId} />
     </>
   );

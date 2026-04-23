@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CheckCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { SecurityIncident } from '../types';
 import { RISK_LEVELS, getSeverityRiskLevel, getStatusRiskLevel } from '../utils/riskColors';
 
@@ -8,17 +9,18 @@ interface RecentIncidentsProps {
 }
 
 export function RecentIncidents({ incidents }: RecentIncidentsProps) {
+  const { t } = useTranslation();
   return (
     <div>
       <h4 className="font-semibold mb-4 flex items-center gap-2">
         <AlertTriangle className="h-4 w-4" />
-        Recent Security Events
+        {t('securityPage.recentSecurityEvents')}
       </h4>
       <div className="space-y-3">
         {incidents.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-500" />
-            <p>No security incidents in the last 30 days</p>
+            <p>{t('securityPage.noSecurityIncidents')}</p>
           </div>
         ) : (
           incidents.map((incident) => {
@@ -59,8 +61,8 @@ export function RecentIncidents({ incidents }: RecentIncidentsProps) {
                 </div>
                 <p className="text-sm text-muted-foreground mb-2">{incident.description}</p>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span>Impact: {incident.impact}</span>
-                  <span>Duration: {incident.duration}</span>
+                  <span>{t('securityPage.impact')}: {incident.impact}</span>
+                  <span>{t('securityPage.duration')}: {incident.duration}</span>
                   <span>{new Date(incident.timestamp).toLocaleString()}</span>
                 </div>
               </div>

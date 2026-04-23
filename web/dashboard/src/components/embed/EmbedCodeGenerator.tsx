@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ export function EmbedCodeGenerator({
   version,
   className = "",
 }: EmbedCodeGeneratorProps) {
+  const { t } = useTranslation();
   const [namespace, setNamespace] = useState("ff");
   const [autoload, setAutoload] = useState(true);
   const [uiEnabled, setUiEnabled] = useState(false);
@@ -82,11 +84,11 @@ export function EmbedCodeGenerator({
     try {
       await navigator.clipboard.writeText(snippet.snippet);
       setCopied(true);
-      toast.success("Embed code copied to clipboard!");
+      toast.success(t('embedCode.toastCopied'));
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       console.error("Failed to copy:", error);
-      toast.error("Failed to copy to clipboard");
+      toast.error(t('embedCode.toastCopyFailed'));
     }
   };
 
@@ -95,7 +97,7 @@ export function EmbedCodeGenerator({
       <CardHeader className="card-header">
         <CardTitle className="card-title flex items-center gap-2">
           <Code className="w-5 h-5" />
-          Embed this function
+          {t('embedCode.title')}
         </CardTitle>
       </CardHeader>
       <CardContent className="card-content space-y-4">
@@ -103,7 +105,7 @@ export function EmbedCodeGenerator({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="namespace" className="text-text-secondary">
-              Namespace
+              {t('embedCode.namespace')}
             </Label>
             <Input
               id="namespace"
@@ -116,7 +118,7 @@ export function EmbedCodeGenerator({
 
           <div className="space-y-2">
             <Label htmlFor="theme" className="text-text-secondary">
-              Theme
+              {t('embedCode.theme')}
             </Label>
             <Select
               value={theme}
@@ -126,16 +128,16 @@ export function EmbedCodeGenerator({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="light">Light</SelectItem>
-                <SelectItem value="dark">Dark</SelectItem>
-                <SelectItem value="auto">Auto (System)</SelectItem>
+                <SelectItem value="light">{t('embedCode.themeLight')}</SelectItem>
+                <SelectItem value="dark">{t('embedCode.themeDark')}</SelectItem>
+                <SelectItem value="auto">{t('embedCode.themeAuto')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="flex items-center justify-between space-x-2">
             <Label htmlFor="ui-toggle" className="text-text-secondary cursor-pointer">
-              UI Widget
+              {t('embedCode.uiWidget')}
             </Label>
             <Switch
               id="ui-toggle"
@@ -146,7 +148,7 @@ export function EmbedCodeGenerator({
 
           <div className="flex items-center justify-between space-x-2">
             <Label htmlFor="autoload-toggle" className="text-text-secondary cursor-pointer">
-              Autoload
+              {t('embedCode.autoload')}
             </Label>
             <Switch
               id="autoload-toggle"
@@ -158,17 +160,17 @@ export function EmbedCodeGenerator({
 
         {/* Generated Code Snippet */}
         <div className="space-y-2">
-          <Label className="text-text-secondary">Embed Code</Label>
+          <Label className="text-text-secondary">{t('embedCode.embedCode')}</Label>
           <div className="relative">
             <div className="bg-bg-secondary border rounded-lg p-4 font-mono text-sm overflow-x-auto">
               {loading ? (
                 <div className="flex items-center gap-2 text-text-muted">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Generating...
+                  {t('embedCode.generating')}
                 </div>
               ) : (
                 <code className="text-text-primary whitespace-pre-wrap break-all">
-                  {snippet?.snippet || "// Unable to generate snippet"}
+                  {snippet?.snippet || t('embedCode.unableToGenerate')}
                 </code>
               )}
             </div>
@@ -184,7 +186,7 @@ export function EmbedCodeGenerator({
               ) : (
                 <Copy className="w-4 h-4" />
               )}
-              <span className="ml-2">{copied ? "Copied!" : "Copy"}</span>
+              <span className="ml-2">{copied ? t('embedCode.copied') : t('embedCode.copy')}</span>
             </Button>
           </div>
         </div>
@@ -192,7 +194,7 @@ export function EmbedCodeGenerator({
         {/* Pinned Version Info */}
         {version && snippet && (
           <div className="space-y-2">
-            <Label className="text-text-secondary">Pinned Version</Label>
+            <Label className="text-text-secondary">{t('embedCode.pinnedVersion')}</Label>
             <div className="bg-bg-secondary border rounded-lg p-3 font-mono text-xs overflow-x-auto">
               <code className="text-text-muted">{snippet.pinned_snippet}</code>
             </div>

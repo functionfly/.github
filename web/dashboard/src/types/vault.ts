@@ -41,12 +41,82 @@ export interface SecretMetadata {
   access_count: number;
   created_at: string;
   updated_at: string;
+  current_version?: number;
+  last_modified_at?: string;
 }
 
 /** Full secret with encrypted data */
 export interface Secret extends SecretMetadata {
   tenant_id: string;
   encrypted_data: EncryptedDataPayload;
+}
+
+/** Change type for secret versions */
+export type ChangeType = 'create' | 'update' | 'rollback';
+
+/** Secret version metadata (for list views without encrypted data) */
+export interface SecretVersionMetadata {
+  id: string;
+  secret_id: string;
+  version_number: number;
+  name: string;
+  description?: string;
+  secret_type: SecretType;
+  scopes?: string[];
+  metadata?: Record<string, unknown>;
+  change_type: ChangeType;
+  change_summary?: string;
+  actor_id: string;
+  actor_type: ActorType;
+  created_at: string;
+}
+
+/** Full secret version with encrypted data */
+export interface SecretVersion extends SecretVersionMetadata {
+  encrypted_data: EncryptedDataPayload;
+}
+
+/** Diff between two secret versions */
+export interface SecretVersionDiff {
+  from_version: number;
+  to_version: number;
+  has_changes: boolean;
+  name_changed: boolean;
+  name_from?: string;
+  name_to?: string;
+  description_changed: boolean;
+  description_from?: string;
+  description_to?: string;
+  scopes_changed: boolean;
+  scopes_from?: string[];
+  scopes_to?: string[];
+  encrypted_value_changed: boolean;
+  change_summary?: string;
+  actor_id: string;
+  actor_type: ActorType;
+  created_at: string;
+}
+
+/** Request to rollback a secret to a previous version */
+export interface RollbackSecretRequest {
+  target_version: number;
+  reason?: string;
+}
+
+/** Response after a successful rollback */
+export interface RollbackSecretResponse {
+  secret: Secret;
+  new_version: SecretVersion;
+  rolled_back_to: number;
+  message: string;
+}
+
+/** List secret versions response */
+export interface ListSecretVersionsResponse {
+  versions: SecretVersionMetadata[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 /** Request to create a new secret */

@@ -19,15 +19,15 @@ const CAPABILITY_ICONS: Record<string, React.ReactNode> = {
   wasm: <Cpu className="w-3 h-3" />,
 };
 
-const CAPABILITY_COLORS: Record<string, { bg: string; text: string }> = {
-  edge: { bg: 'bg-yellow-200 dark:bg-yellow-900/50', text: 'text-yellow-950 dark:text-yellow-300' },
-  serverless: { bg: 'bg-blue-200 dark:bg-blue-900/50', text: 'text-blue-950 dark:text-blue-300' },
-  containers: { bg: 'bg-purple-200 dark:bg-purple-900/50', text: 'text-purple-950 dark:text-purple-300' },
-  freeTier: { bg: 'bg-green-200 dark:bg-green-900/50', text: 'text-green-950 dark:text-green-300' },
-  lowLatency: { bg: 'bg-orange-200 dark:bg-orange-900/50', text: 'text-orange-950 dark:text-orange-300' },
-  security: { bg: 'bg-emerald-200 dark:bg-emerald-900/50', text: 'text-emerald-950 dark:text-emerald-300' },
-  global: { bg: 'bg-indigo-200 dark:bg-indigo-900/50', text: 'text-indigo-950 dark:text-indigo-300' },
-  wasm: { bg: 'bg-pink-200 dark:bg-pink-900/50', text: 'text-pink-950 dark:text-pink-300' },
+const CAPABILITY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  edge: { bg: 'bg-amber-100 dark:bg-yellow-900/50', text: 'text-amber-900 dark:text-yellow-300', border: 'border-amber-200 dark:border-yellow-800' },
+  serverless: { bg: 'bg-blue-100 dark:bg-blue-900/50', text: 'text-blue-900 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-800' },
+  containers: { bg: 'bg-purple-100 dark:bg-purple-900/50', text: 'text-purple-900 dark:text-purple-300', border: 'border-purple-200 dark:border-purple-800' },
+  freeTier: { bg: 'bg-green-100 dark:bg-green-900/50', text: 'text-green-900 dark:text-green-300', border: 'border-green-200 dark:border-green-800' },
+  lowLatency: { bg: 'bg-orange-100 dark:bg-orange-900/50', text: 'text-orange-900 dark:text-orange-300', border: 'border-orange-200 dark:border-orange-800' },
+  security: { bg: 'bg-emerald-100 dark:bg-emerald-900/50', text: 'text-emerald-900 dark:text-emerald-300', border: 'border-emerald-200 dark:border-emerald-800' },
+  global: { bg: 'bg-indigo-100 dark:bg-indigo-900/50', text: 'text-indigo-900 dark:text-indigo-300', border: 'border-indigo-200 dark:border-indigo-800' },
+  wasm: { bg: 'bg-pink-100 dark:bg-pink-900/50', text: 'text-pink-900 dark:text-pink-300', border: 'border-pink-200 dark:border-pink-800' },
 };
 
 const CAPABILITY_LABELS: Record<string, string> = {
@@ -57,7 +57,7 @@ export function CapabilityBadges({ providerId, showAll = false, maxDisplay = 3 }
           <Badge
             key={capability}
             variant="outline"
-            className={`${colors.bg} ${colors.text} border-0 text-xs font-medium flex items-center gap-1 px-1.5 py-0.5`}
+            className={`${colors.bg} ${colors.text} ${colors.border} border text-xs font-medium flex items-center gap-1 px-1.5 py-0.5`}
           >
             {CAPABILITY_ICONS[capability]}
             <span>{CAPABILITY_LABELS[capability]}</span>

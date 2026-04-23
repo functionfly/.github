@@ -4,6 +4,29 @@ import { API_BASE_URL } from '../lib/constants';
 import { useAuthStore } from '../stores/authStore';
 import { RealtimeEvent } from './types';
 
+// Helper to get human-readable WebSocket close reason
+function getWebSocketCloseReason(code: number, reason?: string): string {
+  const codeReasons: Record<number, string> = {
+    1000: 'Normal closure',
+    1001: 'Going away (browser close/navigate)',
+    1002: 'Protocol error',
+    1003: 'Unsupported data',
+    1004: 'Reserved',
+    1005: 'No status received',
+    1006: 'Abnormal closure (connection lost/server crash)',
+    1007: 'Invalid frame payload',
+    1008: 'Policy violation (auth failed)',
+    1009: 'Message too big',
+    1010: 'Mandatory extension missing',
+    1011: 'Internal server error',
+    1012: 'Service restart',
+    1013: 'Try again later',
+    1014: 'Bad gateway',
+    1015: 'TLS handshake failure',
+  };
+  return codeReasons[code] || reason || 'Unknown reason';
+}
+
 // WebSocket connection state
 interface WebSocketConnection {
   ws: WebSocket | null;
@@ -132,9 +155,15 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
       ws.onmessage = handleMessage;
 
       ws.onclose = (event) => {
+        // Log detailed close reason in development
         if (import.meta.env.DEV) {
-          console.log('WebSocket disconnected:', event.code, event.reason);
+          const closeReason = getWebSocketCloseReason(event.code, event.reason);
+          console.log(`WebSocket disconnected: ${event.code} (${closeReason})`, {
+            wasClean: event.wasClean,
+            reason: event.reason || 'No reason provided',
+          });
         }
+
         connectionRef.current.isConnected = false;
         connectionRef.current.ws = null;
         setIsConnected(false);
@@ -142,16 +171,27 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
         // Don't retry on authentication failures (close codes that indicate auth issues)
         const isAuthFailure =
           event.code === 1008 || event.code === 1011 || event.reason?.includes('Authentication');
+        
+        // 1006 is abnormal closure - could be network, server crash, or proxy issue
+        // Don't count 1006 as a failed attempt if it's the first try (common on HMR refresh)
+        const isAbnormalClosure = event.code === 1006;
+        const shouldCountAsFailedAttempt = isAbnormalClosure && connectionRef.current.reconnectAttempts > 0;
+        
         const shouldRetry =
           !isAuthFailure &&
           !event.wasClean &&
-          connectionRef.current.reconnectAttempts < connectionRef.current.maxReconnectAttempts;
+          (connectionRef.current.reconnectAttempts < connectionRef.current.maxReconnectAttempts || isAbnormalClosure);
 
         if (shouldRetry) {
-          connectionRef.current.reconnectAttempts++;
+          // Only increment counter for non-1006 codes or if we've already retried
+          if (!isAbnormalClosure || shouldCountAsFailedAttempt) {
+            connectionRef.current.reconnectAttempts++;
+          }
+          
           const delay =
             connectionRef.current.reconnectDelay *
-            Math.pow(2, connectionRef.current.reconnectAttempts - 1);
+            Math.pow(2, Math.min(connectionRef.current.reconnectAttempts - 1, 4)); // Cap at 16x delay
+          
           if (import.meta.env.DEV) {
             console.log(
               `Attempting to reconnect in ${delay}ms (attempt ${connectionRef.current.reconnectAttempts}/${connectionRef.current.maxReconnectAttempts})`
@@ -173,11 +213,11 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
             errorSetForAttemptRef.current = true;
             setError('Authentication failed - please log in again');
           }
-        } else if (event.code === 1006 || !event.wasClean) {
+        } else if (isAbnormalClosure && !event.wasClean) {
           // Set error once per abnormal close to avoid update storm (onerror + onclose both fire)
           if (!errorSetForAttemptRef.current) {
             errorSetForAttemptRef.current = true;
-            setError('WebSocket connection error');
+            setError('WebSocket connection interrupted - check if backend is running');
           }
         }
       };
@@ -260,28 +300,45 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
     [channelName]
   );
 
+  // Track if a connection attempt is in progress to prevent duplicates
+  const connectionAttemptRef = useRef<boolean>(false);
+  const lastConnectTimeRef = useRef<number>(0);
+
   // Effect to manage WebSocket connection
   useEffect(() => {
     const checkAuthAndConnect = async () => {
       const token = localStorage.getItem('ff-access-token');
-      if (import.meta.env.DEV) {
+      const hasAuth = !!(user?.id && user?.email && token);
+
+      // Only log in dev when there's actual auth data to debug (reduces noise on public pages)
+      if (import.meta.env.DEV && (user?.id || token)) {
         console.log('WebSocket auth check:', {
           userId: user?.id,
           userEmail: user?.email,
           hasToken: !!token,
+          willConnect: hasAuth,
         });
       }
 
       // First check basic auth state
-      if (!user?.id || !user?.email || !token) {
-        if (import.meta.env.DEV) {
-          console.log('Skipping WebSocket connection - missing auth data');
-        }
+      if (!hasAuth) {
         disconnect();
         return;
       }
 
+      // Prevent multiple simultaneous connection attempts
+      if (connectionAttemptRef.current) {
+        return;
+      }
+
+      // Debounce connection attempts - minimum 2 seconds between attempts
+      const now = Date.now();
+      if (now - lastConnectTimeRef.current < 2000) {
+        return;
+      }
+
       // Validate session with server
+      connectionAttemptRef.current = true;
       try {
         const response = await axios.get('/api/v1/auth/validate', {
           headers: { Authorization: `Bearer ${token}` },
@@ -290,6 +347,7 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
           if (import.meta.env.DEV) {
             console.log('Session valid, attempting WebSocket connection');
           }
+          lastConnectTimeRef.current = Date.now();
           connect();
         } else {
           throw new Error('Session invalid');
@@ -300,6 +358,8 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
         }
         localStorage.removeItem('ff-access-token');
         disconnect();
+      } finally {
+        connectionAttemptRef.current = false;
       }
     };
 

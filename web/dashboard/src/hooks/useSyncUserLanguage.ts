@@ -1,6 +1,7 @@
 import { useAuthStore } from '@/stores/authStore';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDirection } from './useDirection';
 
 /**
  * Syncs i18next language to the user's stored preference whenever:
@@ -15,6 +16,7 @@ export function useSyncUserLanguage() {
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const authChecked = useAuthStore((s) => s.authChecked);
+  const { applyDir } = useDirection();
 
   useEffect(() => {
     if (!authChecked) return;
@@ -23,7 +25,8 @@ export function useSyncUserLanguage() {
     if (user?.language) {
       if (i18n.language !== user.language) {
         void i18n.changeLanguage(user.language);
+        applyDir(user.language);
       }
     }
-  }, [authChecked, isAuthenticated, user?.language, i18n.language]);
+  }, [authChecked, isAuthenticated, user?.language, i18n.language, applyDir]);
 }

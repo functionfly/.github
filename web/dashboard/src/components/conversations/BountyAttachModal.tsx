@@ -14,12 +14,14 @@ import { conversationsApi } from "@/api/conversations";
 import { toast } from "sonner";
 
 export interface BountyAttachModalProps {
+  username: string;
   conversationId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export function BountyAttachModal({
+  username,
   conversationId,
   open,
   onOpenChange,
@@ -31,14 +33,14 @@ export function BountyAttachModal({
 
   const createBounty = useMutation({
     mutationFn: () =>
-      conversationsApi.createBounty(conversationId, {
+      conversationsApi.createBounty(username, conversationId, {
         amount_reputation: amountReputation,
         amount_cents: amountCents || undefined,
         security_weight_multiplier: securityWeight,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["conversation", conversationId] });
-      queryClient.invalidateQueries({ queryKey: ["conversation-bounties", conversationId] });
+      queryClient.invalidateQueries({ queryKey: ["conversation", username, conversationId] });
+      queryClient.invalidateQueries({ queryKey: ["conversation-bounties", username, conversationId] });
       toast.success("Bounty attached");
       onOpenChange(false);
     },

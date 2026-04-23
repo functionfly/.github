@@ -1,4 +1,5 @@
 import { evaluatePasswordStrength } from '@/lib/validation';
+import { useTranslation } from 'react-i18next';
 import { Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -8,6 +9,7 @@ interface PasswordStrengthIndicatorProps {
 }
 
 export function PasswordStrengthIndicator({ password, className }: PasswordStrengthIndicatorProps) {
+  const { t } = useTranslation();
   const strength = evaluatePasswordStrength(password);
 
   if (!password) return null;
@@ -51,7 +53,7 @@ export function PasswordStrengthIndicator({ password, className }: PasswordStren
             <span className={cn(
               passed ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'
             )}>
-              {getRequirementLabel(key)}
+              {getRequirementLabel(key, t)}
             </span>
           </div>
         ))}
@@ -60,13 +62,13 @@ export function PasswordStrengthIndicator({ password, className }: PasswordStren
   );
 }
 
-function getRequirementLabel(key: string): string {
+function getRequirementLabel(key: string, t: (key: string) => string): string {
   const labels = {
-    length: 'At least 8 characters',
-    uppercase: 'One uppercase letter',
-    lowercase: 'One lowercase letter',
-    number: 'One number',
-    special: 'One special character',
+    length: t('passwordStrength.length'),
+    uppercase: t('passwordStrength.uppercase'),
+    lowercase: t('passwordStrength.lowercase'),
+    number: t('passwordStrength.number'),
+    special: t('passwordStrength.special'),
   };
   return labels[key as keyof typeof labels] || key;
 }

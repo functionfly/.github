@@ -19,9 +19,11 @@ import { toast } from "sonner";
 import { apiKeysApi } from "@/api/apikeys";
 import type { APIKey, CreateAPIKeyRequest } from "@/types/api-key";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { formatDate, getApiErrorMessage } from "../settings-utils";
 
-export function ApiKeysSettingsTab() {
+export function ApiKeysSettingsSection() {
+  const { t } = useTranslation();
   const [generatingKey, setGeneratingKey] = useState(false);
   const [createKeyModalOpen, setCreateKeyModalOpen] = useState(false);
   const [createKeyName, setCreateKeyName] = useState("");
@@ -71,7 +73,7 @@ export function ApiKeysSettingsTab() {
   const handleCreateKeySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createKeyName.trim()) {
-      toast.error("Name is required");
+      toast.error(t('apiKeysSettings.toastNameRequired'));
       return;
     }
     setGeneratingKey(true);
@@ -87,13 +89,13 @@ export function ApiKeysSettingsTab() {
       setCreateKeyPlaintext(plaintext);
       setCreateKeyStep("key");
       refetchApiKeys();
-      toast.success("API key created");
+      toast.success(t('apiKeysSettings.toastCreated'));
     } catch (err: unknown) {
       const msg = getApiErrorMessage(err, {
-        401: "Please sign in to generate API keys.",
-        403: "You don't have permission to create API keys.",
-        404: "API keys route not found. Run the orchestrator API on 8080.",
-        default: "Failed to generate API key.",
+        401: t('apiKeysSettings.errorSignIn'),
+        403: t('apiKeysSettings.errorNoPermission'),
+        404: t('apiKeysSettings.errorRouteNotFound'),
+        default: t('apiKeysSettings.errorFailedToGenerate'),
       });
       toast.error(msg);
     } finally {
@@ -112,7 +114,7 @@ export function ApiKeysSettingsTab() {
 
   const handleCopyKey = (value: string) => {
     navigator.clipboard.writeText(value);
-    toast.success("Copied to clipboard");
+    toast.success(t('apiKeysSettings.toastCopied'));
   };
 
   const handleRotateClick = (key: APIKey) => {
@@ -129,9 +131,9 @@ export function ApiKeysSettingsTab() {
       const plaintext = (res.data as { data?: { plaintext?: string } })?.data?.plaintext ?? null;
       setRotateNewPlaintext(plaintext);
       refetchApiKeys();
-      toast.success("API key rotated. Copy the new key below.");
+      toast.success(t('apiKeysSettings.toastRotated'));
     } catch (err: unknown) {
-      const msg = getApiErrorMessage(err, { default: "Failed to rotate API key." });
+      const msg = getApiErrorMessage(err, { default: t('apiKeysSettings.errorFailedToRotate') });
       toast.error(msg);
     } finally {
       setRotating(false);
@@ -155,11 +157,11 @@ export function ApiKeysSettingsTab() {
     try {
       await apiKeysApi.delete(revokeKeyId);
       refetchApiKeys();
-      toast.success("API key revoked");
+      toast.success(t('apiKeysSettings.toastRevoked'));
       setRevokeKeyId(null);
       setRevokeKeyName("");
     } catch (err: unknown) {
-      const msg = getApiErrorMessage(err, { default: "Failed to revoke API key." });
+      const msg = getApiErrorMessage(err, { default: t('apiKeysSettings.errorFailedToRevoke') });
       toast.error(msg);
     } finally {
       setRevoking(false);
@@ -167,35 +169,34 @@ export function ApiKeysSettingsTab() {
   };
 
   return (
-    <div className="space-y-6">
+    <>
       <Card className="ff-card-velocity">
         <CardHeader>
-          <CardTitle className="font-display">API Keys</CardTitle>
+          <CardTitle className="font-display">{t('apiKeysSettings.title')}</CardTitle>
           <CardDescription className="text-text-secondary">
-            Manage your API keys for programmatic access. Treat keys like passwords—do not share them, and rotate if
-            compromised.
+            {t('apiKeysSettings.description')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {apiKeysLoading ? (
-              <p className="text-text-muted text-sm">Loading API keys...</p>
+              <p className="text-text-muted text-sm">{t('apiKeysSettings.loadingApiKeys')}</p>
             ) : apiKeys.length === 0 ? (
               <div className="rounded-lg border border-border-default bg-bg-secondary/50 p-6 text-center">
-                <p className="text-text-muted text-sm">No API keys yet.</p>
+                <p className="text-text-muted text-sm">{t('apiKeysSettings.noApiKeysYet')}</p>
                 <p className="mt-1 text-sm text-text-secondary">
-                  Generate your first API key to get started with programmatic access.
+                  {t('apiKeysSettings.generateFirst')}
                 </p>
                 <Button className="ff-btn-velocity mt-4 gap-2" onClick={handleOpenCreateKeyModal} disabled={generatingKey}>
                   <Key className="h-4 w-4" />
-                  {generatingKey ? "Generating…" : "Generate your first API key"}
+                  {generatingKey ? t('apiKeysSettings.generating') : t('apiKeysSettings.generateFirstButton')}
                 </Button>
               </div>
             ) : (
               <>
                 {apiKeys.map((key: APIKey) => {
                   const prefix = key.prefix ?? key.key_prefix ?? "ffp_";
-                  const lastUsed = key.last_used_at ? formatDate(key.last_used_at) : "Never";
+                  const lastUsed = key.last_used_at ? formatDate(key.last_used_at) : t('apiKeysSettings.never');
                   const expiresAt = key.expires_at ? formatDate(key.expires_at) : null;
                   return (
                     <div
@@ -203,10 +204,10 @@ export function ApiKeysSettingsTab() {
                       className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border-default bg-bg-secondary p-4"
                     >
                       <div className="min-w-0">
-                        <h4 className="font-medium text-text-primary">{key.name || "API Key"}</h4>
+                        <h4 className="font-medium text-text-primary">{key.name || t('apiKeysSettings.defaultKeyName')}</h4>
                         <p className="text-sm text-text-muted">
-                          Created {key.created_at ? formatDate(key.created_at) : "—"} · Last used {lastUsed}
-                          {expiresAt && ` · Expires ${expiresAt}`}
+                          {t('apiKeysSettings.createdLabel', { created: key.created_at ? formatDate(key.created_at) : '—', lastUsed })}
+                          {expiresAt && ` · ${t('apiKeysSettings.expiresLabel', { expires: expiresAt })}`}
                         </p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
@@ -216,19 +217,19 @@ export function ApiKeysSettingsTab() {
                             key.is_active ? "ff-badge-success" : ""
                           }
                         >
-                          {key.is_active ? "Active" : "Inactive"}
+                          {key.is_active ? t('apiKeysSettings.active') : t('apiKeysSettings.inactive')}
                         </Badge>
                         <code className="rounded bg-bg-tertiary px-3 py-1 text-sm text-text-secondary">
                           {prefix}••••••••••••
                         </code>
-                        <Button variant="ghost" size="sm" onClick={() => handleCopyKey(prefix)} title="Copy prefix">
-                          Copy prefix
+                        <Button variant="ghost" size="sm" onClick={() => handleCopyKey(prefix)} title={t('apiKeysSettings.copyPrefix')}>
+                          {t('apiKeysSettings.copyPrefix')}
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleRotateClick(key)}
-                          title="Rotate key"
+                          title={t('apiKeysSettings.rotateKey')}
                           disabled={rotating}
                         >
                           <RefreshCw className="h-4 w-4" />
@@ -237,7 +238,7 @@ export function ApiKeysSettingsTab() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleRevokeClick(key)}
-                          title="Revoke key"
+                          title={t('apiKeysSettings.revokeKey')}
                           className="text-destructive hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -248,14 +249,14 @@ export function ApiKeysSettingsTab() {
                 })}
                 <Button className="ff-btn-velocity gap-2" onClick={handleOpenCreateKeyModal} disabled={generatingKey}>
                   <Key className="h-4 w-4" />
-                  {generatingKey ? "Generating…" : "Generate New Key"}
+                  {generatingKey ? t('apiKeysSettings.generating') : t('apiKeysSettings.generateNewKey')}
                 </Button>
               </>
             )}
             <p className="text-muted-foreground text-xs">
-              For permissions, environments, and full management, go to{" "}
+              {t('apiKeysSettings.forPermissions')}
               <Link to="/dashboard/api-keys" className="text-primary underline hover:no-underline">
-                API Keys in Dashboard
+                {t('apiKeysSettings.apiKeysInDashboard')}
               </Link>
               <ExternalLink className="ml-0.5 inline h-3 w-3" />
             </p>
@@ -266,37 +267,37 @@ export function ApiKeysSettingsTab() {
       <Dialog open={createKeyModalOpen} onOpenChange={(open) => !open && handleCreateKeyDone()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{createKeyStep === "form" ? "Create API key" : "Copy your API key"}</DialogTitle>
+            <DialogTitle>{createKeyStep === "form" ? t('apiKeysSettings.createDialogTitle') : t('apiKeysSettings.copyDialogTitle')}</DialogTitle>
             <DialogDescription>
               {createKeyStep === "form"
-                ? "Give the key a name and optional description. You can set an expiration date if needed."
-                : "This key is shown only once. Copy it now and store it securely."}
+                ? t('apiKeysSettings.createDialogDescription')
+                : t('apiKeysSettings.copyDialogDescription')}
             </DialogDescription>
           </DialogHeader>
           {createKeyStep === "form" ? (
             <form onSubmit={handleCreateKeySubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="api-key-name">Name</Label>
+                <Label htmlFor="api-key-name">{t('apiKeysSettings.nameLabel')}</Label>
                 <Input
                   id="api-key-name"
                   value={createKeyName}
                   onChange={(e) => setCreateKeyName(e.target.value)}
-                  placeholder="e.g. CI pipeline, Mobile app"
+                  placeholder={t('apiKeysSettings.namePlaceholder')}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="api-key-desc">Description (optional)</Label>
+                <Label htmlFor="api-key-desc">{t('apiKeysSettings.descriptionLabel')}</Label>
                 <Textarea
                   id="api-key-desc"
                   value={createKeyDescription}
                   onChange={(e) => setCreateKeyDescription(e.target.value)}
-                  placeholder="What this key is used for"
+                  placeholder={t('apiKeysSettings.descriptionPlaceholder')}
                   rows={2}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="api-key-expires">Expires at (optional)</Label>
+                <Label htmlFor="api-key-expires">{t('apiKeysSettings.expiresLabel')}</Label>
                 <Input
                   id="api-key-expires"
                   type="date"
@@ -305,11 +306,11 @@ export function ApiKeysSettingsTab() {
                 />
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={handleCreateKeyDone}>
-                  Cancel
+                <Button type="button" onClick={handleCreateKeyDone} className="hover:bg-brand-500 hover:text-white hover:border-brand-500">
+                  {t('apiKeysSettings.cancel')}
                 </Button>
-                <Button type="submit" disabled={generatingKey}>
-                  {generatingKey ? "Creating…" : "Create key"}
+                <Button type="submit" disabled={generatingKey} className="bg-brand-500 hover:bg-brand-600 text-white">
+                  {generatingKey ? t('apiKeysSettings.creating') : t('apiKeysSettings.createKey')}
                 </Button>
               </DialogFooter>
             </form>
@@ -317,18 +318,18 @@ export function ApiKeysSettingsTab() {
             <div className="space-y-4">
               <div className="flex items-center gap-2 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-600 dark:text-amber-400">
                 <AlertTriangle className="h-5 w-5 shrink-0" />
-                <span>Copy this key now. You won&apos;t be able to see it again.</span>
+                <span>{t('apiKeysSettings.copyKeyNowWarning')}</span>
               </div>
               {createKeyPlaintext && (
                 <div className="flex gap-2">
                   <Input readOnly value={createKeyPlaintext} className="font-mono text-sm" />
                   <Button type="button" onClick={() => handleCopyKey(createKeyPlaintext)}>
-                    Copy
+                    {t('apiKeysSettings.copy')}
                   </Button>
                 </div>
               )}
               <DialogFooter>
-                <Button onClick={handleCreateKeyDone}>Done</Button>
+                <Button onClick={handleCreateKeyDone}>{t('apiKeysSettings.done')}</Button>
               </DialogFooter>
             </div>
           )}
@@ -338,36 +339,36 @@ export function ApiKeysSettingsTab() {
       <Dialog open={!!rotateKeyId} onOpenChange={(open) => !open && handleRotateClose()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Rotate API key</DialogTitle>
+            <DialogTitle>{t('apiKeysSettings.rotateDialogTitle')}</DialogTitle>
             <DialogDescription>
               {rotateNewPlaintext
-                ? "Your new key is below. Copy it now; the old key is already invalid."
-                : `Rotate "${rotateKeyName}". The current key will stop working immediately.`}
+                ? t('apiKeysSettings.rotateNewKeyDescription')
+                : t('apiKeysSettings.rotateConfirmDescription', { name: rotateKeyName })}
             </DialogDescription>
           </DialogHeader>
           {rotateNewPlaintext ? (
             <div className="space-y-4">
               <div className="flex items-center gap-2 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-600 dark:text-amber-400">
                 <AlertTriangle className="h-5 w-5 shrink-0" />
-                <span>Copy the new key now. It won&apos;t be shown again.</span>
+                <span>{t('apiKeysSettings.copyNewKeyWarning')}</span>
               </div>
               <div className="flex gap-2">
                 <Input readOnly value={rotateNewPlaintext} className="font-mono text-sm" />
-                <Button type="button" onClick={() => handleCopyKey(rotateNewPlaintext)}>
-                  Copy
-                </Button>
+                  <Button type="button" onClick={() => handleCopyKey(rotateNewPlaintext)}>
+                    {t('apiKeysSettings.copy')}
+                  </Button>
               </div>
               <DialogFooter>
-                <Button onClick={handleRotateClose}>Done</Button>
+                <Button onClick={handleRotateClose}>{t('apiKeysSettings.done')}</Button>
               </DialogFooter>
             </div>
           ) : (
             <DialogFooter>
               <Button variant="outline" onClick={handleRotateClose}>
-                Cancel
+                {t('apiKeysSettings.cancel')}
               </Button>
-              <Button onClick={handleRotateConfirm} disabled={rotating}>
-                {rotating ? "Rotating…" : "Rotate key"}
+              <Button onClick={handleRotateConfirm} disabled={rotating} className="bg-brand-500 hover:bg-brand-600 text-white">
+                {rotating ? t('apiKeysSettings.rotating') : t('apiKeysSettings.rotateKey')}
               </Button>
             </DialogFooter>
           )}
@@ -380,22 +381,21 @@ export function ApiKeysSettingsTab() {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Revoke API key</DialogTitle>
+            <DialogTitle>{t('apiKeysSettings.revokeDialogTitle')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to revoke &quot;{revokeKeyName}&quot;? This key will stop working immediately and
-              cannot be undone.
+              {t('apiKeysSettings.revokeDialogDescription', { name: revokeKeyName })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setRevokeKeyId(null); setRevokeKeyName(""); }}>
-              Cancel
+              {t('apiKeysSettings.cancel')}
             </Button>
             <Button variant="destructive" onClick={handleRevokeConfirm} disabled={revoking}>
-              {revoking ? "Revoking…" : "Revoke key"}
+              {revoking ? t('apiKeysSettings.revoking') : t('apiKeysSettings.revokeKey')}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

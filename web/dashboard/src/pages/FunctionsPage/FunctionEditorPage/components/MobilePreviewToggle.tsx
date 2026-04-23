@@ -1,10 +1,12 @@
 import { Button } from '@/components/ui/button';
 import { Eye, EyeOff, Monitor } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { FunctionEditorModel } from '../useFunctionEditor';
 
 type Props = { editor: FunctionEditorModel };
 
 export function MobilePreviewToggle({ editor }: Props) {
+  const { t } = useTranslation();
   const { activeTab, setActiveTab } = editor;
 
   // Only show on small screens
@@ -13,10 +15,10 @@ export function MobilePreviewToggle({ editor }: Props) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-12 flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-text-secondary">
           <Monitor className="w-4 h-4" />
-          <span className="hidden sm:inline">Preview Mode</span>
+          <span className="hidden sm:inline">{t('funcEditor.previewMode')}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-text-muted">Tap sections below to edit</span>
+          <span className="text-xs text-text-muted">{t('funcEditor.tapSectionsBelow')}</span>
           <Button
             variant="ghost"
             size="sm"
@@ -26,12 +28,12 @@ export function MobilePreviewToggle({ editor }: Props) {
             {activeTab === 'editor' ? (
               <>
                 <Eye className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">View Logs</span>
+                <span className="hidden sm:inline">{t('funcEditor.viewLogs')}</span>
               </>
             ) : (
               <>
                 <EyeOff className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">View Editor</span>
+                <span className="hidden sm:inline">{t('funcEditor.viewEditor')}</span>
               </>
             )}
           </Button>

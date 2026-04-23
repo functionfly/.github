@@ -1,5 +1,4 @@
-import queryString from 'query-string';
-import slugify from 'slugify';
+import slugify from '@sindresorhus/slugify';
 import validator from 'validator';
 
 // ============================================================================
@@ -12,25 +11,41 @@ import validator from 'validator';
  * @returns Record of query parameter key-value pairs
  */
 export function parseQueryParams(search: string): Record<string, string> {
-  return queryString.parse(search) as Record<string, string>;
+  const params = new URLSearchParams(search);
+  const result: Record<string, string> = {};
+  for (const [key, value] of params.entries()) {
+    result[key] = value;
+  }
+  return result;
 }
 
 /**
  * Build a query string from an object of parameters
  * @param params - Object of query parameters
- * @returns Encoded query string
+ * @returns Encoded query string (without leading '?')
  */
 export function buildQueryString(params: Record<string, unknown>): string {
-  return queryString.stringify(params);
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value != null) {
+      searchParams.append(key, String(value));
+    }
+  }
+  return searchParams.toString();
 }
 
 /**
  * Parse URL and extract components
  * @param url - The URL to parse
- * @returns Parsed URL object
+ * @returns Parsed URL object with base url and query params
  */
-export function parseUrl(url: string): queryString.ParsedUrl {
-  return queryString.parseUrl(url);
+export function parseUrl(url: string): { url: string; query: Record<string, string> } {
+  const parsed = new URL(url);
+  const query: Record<string, string> = {};
+  for (const [key, value] of parsed.searchParams.entries()) {
+    query[key] = value;
+  }
+  return { url: parsed.origin + parsed.pathname, query };
 }
 
 // ============================================================================
@@ -61,11 +76,8 @@ export function createSlug(
   const lower = options?.lower ?? true;
 
   const slug = slugify(text, {
-    lower,
-    strict: true,
-    // slugify's option is `replacement`, not `separator`
-    replacement: separator,
-    trim: true,
+    separator,
+    lowercase: lower,
   });
 
   return slug.slice(0, maxLength);

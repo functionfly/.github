@@ -20,7 +20,7 @@ class ApiClient {
       },
     });
 
-    // Add request interceptor to include auth token
+    // Add request interceptor to include auth token and environment header
     this.client.interceptors.request.use(
       (config) => {
         // Always get the latest token from localStorage
@@ -30,6 +30,14 @@ class ApiClient {
           this.token = storedToken;
           config.headers.Authorization = `Bearer ${this.token}`;
         }
+
+        // Add X-Environment header from sidebar store (for API scoping)
+        // Access from localStorage to avoid circular dependencies
+        const environment = localStorage.getItem('ff-current-environment');
+        if (environment) {
+          config.headers['X-Environment'] = environment;
+        }
+
         return config;
       },
       (error) => {

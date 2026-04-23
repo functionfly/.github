@@ -23,6 +23,7 @@ import {
   Webhook,
   Zap,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { Runtime } from '../types';
 import type { FunctionEditorModel } from '../useFunctionEditor';
 
@@ -1522,12 +1523,12 @@ def handler(request, env, ctx):
   },
 ];
 
-const CATEGORIES = [
-  { id: 'all', label: 'All Templates', icon: <LayoutGrid className="w-4 h-4" /> },
-  { id: 'api', label: 'APIs', icon: <Globe className="w-4 h-4" /> },
-  { id: 'integration', label: 'Integrations', icon: <ArrowLeftRight className="w-4 h-4" /> },
-  { id: 'scheduled', label: 'Scheduled', icon: <Calendar className="w-4 h-4" /> },
-  { id: 'utility', label: 'Utilities', icon: <Zap className="w-4 h-4" /> },
+const CATEGORIES_KEYS = [
+  { id: 'all', labelKey: 'funcEditor.allTemplates' as const, icon: <LayoutGrid className="w-4 h-4" /> },
+  { id: 'api', labelKey: 'funcEditor.apisCategory' as const, icon: <Globe className="w-4 h-4" /> },
+  { id: 'integration', labelKey: 'funcEditor.integrations' as const, icon: <ArrowLeftRight className="w-4 h-4" /> },
+  { id: 'scheduled', labelKey: 'funcEditor.scheduled' as const, icon: <Calendar className="w-4 h-4" /> },
+  { id: 'utility', labelKey: 'funcEditor.utilities' as const, icon: <Zap className="w-4 h-4" /> },
 ];
 
 import { Button } from '@/components/ui/button';
@@ -1536,6 +1537,7 @@ import { useState } from 'react';
 type Props = { editor: FunctionEditorModel };
 
 export function TemplateGallery({ editor }: Props) {
+  const { t } = useTranslation();
   const { runtime, setCode, handleRuntimeChange, setFunctionName, setDescription, markDirty } = editor;
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
@@ -1575,10 +1577,10 @@ export function TemplateGallery({ editor }: Props) {
             </div>
             <div>
               <CardTitle className="text-sm font-semibold text-text-primary font-display">
-                Quick Start Templates
+                {t('funcEditor.quickStartTemplates')}
               </CardTitle>
               <p className="text-xs text-text-muted mt-0.5">
-                Choose a starter template to accelerate development
+                {t('funcEditor.chooseStarterTemplate')}
               </p>
             </div>
           </div>
@@ -1586,7 +1588,7 @@ export function TemplateGallery({ editor }: Props) {
             <DialogTrigger asChild>
               <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5">
                 <Code2 className="w-3.5 h-3.5" />
-                Browse All
+                {t('funcEditor.browseAll')}
               </Button>
             </DialogTrigger>
             <DialogContent
@@ -1596,13 +1598,13 @@ export function TemplateGallery({ editor }: Props) {
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-base font-display">
                   <LayoutGrid className="w-5 h-5 text-[#FF6B35]" />
-                  Function Templates
+                  {t('funcEditor.functionTemplates')}
                 </DialogTitle>
               </DialogHeader>
 
               {/* Category filters */}
               <div className="flex flex-wrap gap-2 mt-4">
-                {CATEGORIES.map((cat) => (
+                {CATEGORIES_KEYS.map((cat) => (
                   <button
                     key={cat.id}
                     onClick={() => setSelectedCategory(cat.id)}
@@ -1613,7 +1615,7 @@ export function TemplateGallery({ editor }: Props) {
                     }`}
                   >
                     {cat.icon}
-                    {cat.label}
+                    {t(cat.labelKey)}
                   </button>
                 ))}
               </div>
@@ -1640,7 +1642,7 @@ export function TemplateGallery({ editor }: Props) {
                             {template.name}
                           </span>
                           <Badge variant="outline" className="text-[10px] h-5">
-                            {template.runtimes.length} runtimes
+                            {template.runtimes.length} {t('funcEditor.runtimes')}
                           </Badge>
                         </div>
                         <p className="text-xs text-text-muted mt-1 leading-relaxed">
@@ -1693,7 +1695,7 @@ export function TemplateGallery({ editor }: Props) {
             ))}
             {filteredTemplates.length === 0 && (
               <span className="text-xs text-text-muted py-2">
-                No templates available for {runtime}
+                {t('funcEditor.noTemplatesAvailable', { runtime })}
               </span>
             )}
           </div>
@@ -1703,7 +1705,7 @@ export function TemplateGallery({ editor }: Props) {
         {/* Info hint */}
         <p className="text-xs text-text-muted mt-3 flex items-center gap-1.5">
           <Sparkles className="w-3 h-3 text-[#FF6B35]" />
-          Templates include best practices for {runtime} — customize them to fit your needs
+          {t('funcEditor.templatesInfoHint', { runtime })}
         </p>
       </CardContent>
     </Card>

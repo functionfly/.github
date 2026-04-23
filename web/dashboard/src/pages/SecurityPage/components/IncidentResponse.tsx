@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, Eye, Zap, Users, Database, Monitor, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { securityApi } from '@/api/security';
 import type { IncidentResponse as IncidentResponseType } from '../types';
 
 export function IncidentResponse() {
+  const { t } = useTranslation();
   const [incidentResponse, setIncidentResponse] = useState<IncidentResponseType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,43 +18,43 @@ export function IncidentResponse() {
         const response = await securityApi.getIncidentResponse();
         setIncidentResponse(response);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load incident response data');
+        setError(err instanceof Error ? err.message : t('securityPage.failedToLoadIncidentResponse'));
       } finally {
         setLoading(false);
       }
     };
 
     fetchIncidentResponse();
-  }, []);
+  }, [t]);
 
   const responseSteps = incidentResponse ? [
     {
       icon: Eye,
-      title: 'Detection',
+      title: t('securityPage.detection'),
       description: incidentResponse.detection,
       color: 'blue'
     },
     {
       icon: Zap,
-      title: 'Response',
+      title: t('securityPage.response'),
       description: incidentResponse.response,
       color: 'orange'
     },
     {
       icon: Users,
-      title: 'Communication',
+      title: t('securityPage.communication'),
       description: incidentResponse.communication,
       color: 'green'
     },
     {
       icon: Database,
-      title: 'Recovery',
+      title: t('securityPage.recovery'),
       description: incidentResponse.recovery,
       color: 'purple'
     },
     {
       icon: Monitor,
-      title: 'Learning',
+      title: t('securityPage.learning'),
       description: incidentResponse.learning,
       color: 'indigo'
     }

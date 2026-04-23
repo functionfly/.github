@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,7 @@ import { usePlan } from "@/hooks/usePlan";
 import { toast } from "sonner";
 
 export function AgentsPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { plan } = usePlan();
   const [agents, setAgents] = useState<AgentIdentity[]>([]);
@@ -85,7 +87,7 @@ export function AgentsPage() {
       setAgents(response.agents);
     } catch (err) {
       console.error("Failed to load agents:", err);
-      setError("Failed to load agents. Please try again.");
+      setError(t('agents.failedToLoad'));
     } finally {
       setLoading(false);
     }
@@ -96,7 +98,7 @@ export function AgentsPage() {
     const agentId = (createForm.agentId ?? "").trim().toLowerCase().replace(/\s+/g, "-");
     const name = (createForm.name ?? "").trim();
     if (!agentId || !name) {
-      toast.error("Agent ID and name are required.");
+      toast.error(t('agents.agentIdNameRequired'));
       return;
     }
     setCreateSubmitting(true);
@@ -107,7 +109,7 @@ export function AgentsPage() {
         description: createForm.description.trim() || undefined,
       });
       setCreatedApiKey(res.api_key);
-      toast.success("Agent created successfully.");
+      toast.success(t('agents.agentCreatedSuccess'));
       setCreateForm({ agentId: "", name: "", description: "" });
     } catch (err: unknown) {
       const res = err && typeof err === "object" && "response" in err ? (err as { response?: { status?: number; data?: { error?: { code?: string; message?: string }; message?: string } } }).response : undefined;
@@ -118,9 +120,9 @@ export function AgentsPage() {
       const isTaken = status === 409 || code === "AGENT_ID_TAKEN" || (typeof message === "string" && /already|duplicate|in use/i.test(message));
       if (isTaken) {
         setAgentIdTakenFromSubmit(true);
-        toast.error("This agent ID is already in use. Choose a different one.");
+        toast.error(t('agents.agentIdInUse'));
       } else {
-        toast.error(message || "Failed to create agent. Please try again.");
+        toast.error(message || t('agents.failedToCreate'));
       }
     } finally {
       setCreateSubmitting(false);
@@ -143,10 +145,10 @@ export function AgentsPage() {
     try {
       await navigator.clipboard.writeText(createdApiKey);
       setApiKeyCopied(true);
-      toast.success("API key copied to clipboard.");
+      toast.success(t('agents.apiKeyCopied'));
       setTimeout(() => setApiKeyCopied(false), 2000);
     } catch {
-      toast.error("Failed to copy.");
+      toast.error(t('agents.failedToCopy'));
     }
   };
 
@@ -159,11 +161,11 @@ export function AgentsPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
-        return <Badge className="bg-green-500">Active</Badge>;
+        return <Badge className="bg-green-500">{t('agents.active')}</Badge>;
       case "suspended":
-        return <Badge className="bg-red-500">Suspended</Badge>;
+        return <Badge className="bg-red-500">{t('agents.suspended')}</Badge>;
       case "pending":
-        return <Badge className="bg-yellow-500">Pending</Badge>;
+        return <Badge className="bg-yellow-500">{t('agents.pending')}</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
@@ -183,7 +185,7 @@ export function AgentsPage() {
   const columns = useMemo<ColumnDef<AgentIdentity>[]>(() => [
     {
       accessorKey: 'name',
-      header: 'Name',
+      header: t('agents.name'),
       size: 200,
       cell: ({ row }) => (
         <div className="flex flex-col">
@@ -194,19 +196,19 @@ export function AgentsPage() {
     },
     {
       accessorKey: 'status',
-      header: 'Status',
+      header: t('agents.status'),
       size: 120,
       cell: ({ row }) => getStatusBadge(row.original.status),
     },
     {
       accessorKey: 'swarmRole',
-      header: 'Swarm Role',
+      header: t('agents.swarmRole'),
       size: 140,
       cell: ({ row }) => getSwarmRoleBadge(row.original.swarmRole) || <span className="text-muted-foreground">-</span>,
     },
     {
       accessorKey: 'createdAt',
-      header: 'Created',
+      header: t('agents.created'),
       size: 150,
       cell: ({ row }) => {
         const date = new Date(row.original.createdAt);
@@ -219,7 +221,7 @@ export function AgentsPage() {
     },
     {
       id: 'actions',
-      header: 'Actions',
+      header: t('agents.actions'),
       size: 150,
       enableSorting: false,
       cell: ({ row }) => (
@@ -275,30 +277,30 @@ export function AgentsPage() {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Bot className="h-8 w-8" />
-            Agents
+            {t('agents.title')}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Manage your AI agents and their configurations
+            {t('agents.manageDescription')}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => navigate(ROUTES.SDK_INTEGRATIONS)}>
             <Puzzle className="h-4 w-4 mr-2" />
-            SDK Setup
+            {t('agents.sdkSetup')}
           </Button>
           <Button
             onClick={() => setCreateOpen(true)}
             disabled={!canCreate}
             title={
               !agentsUnlocked
-                ? "Agents are available on Starter and higher plans"
+                ? t('agents.agentsOnStarter')
                 : !canCreate
-                  ? `Plan limit reached (${agentCount} of ${agentsLimit >= 10000 ? "∞" : agentsLimit})`
+                  ? t('agents.planLimitReached', { count: agentCount, limit: agentsLimit >= 10000 ? "∞" : agentsLimit })
                   : undefined
             }
           >
             <Plus className="h-4 w-4 mr-2" />
-            Create Agent
+            {t('agents.createAgent')}
           </Button>
         </div>
       </div>
@@ -306,16 +308,16 @@ export function AgentsPage() {
         <p className="text-sm text-muted-foreground text-right md:text-left">
           {!agentsUnlocked ? (
             <>
-              Upgrade to register agents.{" "}
+              {t('agents.upgradeToRegister')}{" "}
               <Link to={ROUTES.PRICING} className="text-brand-500 hover:underline">
-                View plans
+                {t('agents.viewPlans')}
               </Link>
             </>
           ) : (
             <>
-              Agent limit reached for your plan.{" "}
+              {t('agents.agentLimitReached')}{" "}
               <Link to={ROUTES.PRICING} className="text-brand-500 hover:underline">
-                Upgrade
+                {t('agents.upgrade')}
               </Link>
             </>
           )}
@@ -330,17 +332,17 @@ export function AgentsPage() {
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/15 text-brand-500">
                 <Bot className="h-4 w-4" />
               </span>
-              Create Agent
+              {t('agents.createAgent')}
             </DialogTitle>
             <DialogDescription>
-              Register a new AI agent. You’ll get an API key to authenticate requests — save it, it won’t be shown again.
+              {t('agents.registerNewAgent')}
             </DialogDescription>
           </DialogHeader>
           {createdApiKey ? (
             <div className="space-y-4 min-w-0">
               <div className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/5 px-3 py-2 text-sm text-green-700 dark:text-green-400">
                 <Check className="h-5 w-5 shrink-0" />
-                <span>Agent created. Copy the API key below — it won’t be shown again.</span>
+                <span>{t('agents.agentCreatedCopyKey')}</span>
               </div>
               <div className="flex items-center gap-2 min-w-0 rounded-lg border bg-muted/50 p-3 font-mono text-sm overflow-hidden">
                 <code className="min-w-0 flex-1 truncate break-all">{createdApiKey}</code>
@@ -365,13 +367,13 @@ export function AgentsPage() {
                 </Button>
               </div>
               <DialogFooter className="mt-2">
-                <Button onClick={() => handleCreateClose(false)}>Done</Button>
+                <Button onClick={() => handleCreateClose(false)}>{t('agents.done')}</Button>
               </DialogFooter>
             </div>
           ) : (
             <form onSubmit={handleCreateSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="create-name">Name</Label>
+                <Label htmlFor="create-name">{t('agents.name')}</Label>
                 <Input
                   id="create-name"
                   placeholder="e.g. My Assistant"
@@ -390,7 +392,7 @@ export function AgentsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="create-agentId">Agent ID</Label>
+                <Label htmlFor="create-agentId">{t('agents.agentId')}</Label>
                 <Input
                   id="create-agentId"
                   placeholder="e.g. my-assistant"
@@ -403,18 +405,18 @@ export function AgentsPage() {
                 />
                 {showAgentIdTaken ? (
                   <p className="text-xs text-red-600 dark:text-red-400">
-                    This agent ID is already in use. Choose a different one.
+                    {t('agents.agentIdInUse')}
                   </p>
                 ) : agentIdInvalid ? (
                   <p className="text-xs text-amber-600 dark:text-amber-400">
-                    Use only lowercase letters, numbers, and hyphens.
+                    {t('agents.agentIdChars')}
                   </p>
                 ) : (
-                  <p className="text-xs text-muted-foreground">Used in API calls and URLs. Edit if you want a different slug.</p>
+                  <p className="text-xs text-muted-foreground">{t('agents.agentIdHint')}</p>
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="create-description">Description (optional)</Label>
+                <Label htmlFor="create-description">{t('agents.description')}</Label>
                 <Textarea
                   id="create-description"
                   placeholder="e.g. Handles support queries and triages tickets"
@@ -430,7 +432,7 @@ export function AgentsPage() {
                   variant="outline"
                   onClick={() => handleCreateClose(false)}
                 >
-                  Cancel
+                  {t('agents.cancel')}
                 </Button>
                 <Button
                   type="submit"
@@ -439,10 +441,10 @@ export function AgentsPage() {
                   {createSubmitting ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Creating...
+                      {t('agents.creating')}
                     </>
                   ) : (
-                    "Create Agent"
+                    t('agents.create')
                   )}
                 </Button>
               </DialogFooter>
@@ -458,7 +460,7 @@ export function AgentsPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search agents..."
+                placeholder={t('agents.searchPlaceholder')}
                 className="pl-10"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -470,8 +472,8 @@ export function AgentsPage() {
           value={viewMode}
           onValueChange={(v) => setViewMode(v as 'grid' | 'list')}
           options={[
-            { value: 'grid', label: 'Grid', icon: <LayoutGrid className="h-4 w-4" /> },
-            { value: 'list', label: 'List', icon: <List className="h-4 w-4" /> },
+            { value: 'grid', label: t('agents.grid'), icon: <LayoutGrid className="h-4 w-4" /> },
+            { value: 'list', label: t('agents.list'), icon: <List className="h-4 w-4" /> },
           ]}
           variant="outline"
           size="sm"
@@ -490,11 +492,11 @@ export function AgentsPage() {
         <Card>
           <CardContent className="pt-6 text-center py-12">
             <Bot className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium">No agents found</h3>
+            <h3 className="text-lg font-medium">{t('agents.noAgentsFound')}</h3>
             <p className="text-muted-foreground mt-1">
               {searchQuery
-                ? "Try adjusting your search query"
-                : "Create your first agent to get started"}
+                ? t('agents.adjustSearch')
+                : t('agents.createFirstAgent')}
             </p>
           </CardContent>
         </Card>
@@ -527,7 +529,7 @@ export function AgentsPage() {
                   <div className="flex items-center gap-2 pt-2">
                     <Button variant="outline" size="sm" className="flex-1">
                       <Settings className="h-3 w-3 mr-1" />
-                      Manage
+                      {t('agents.manage')}
                     </Button>
                     <Button variant="outline" size="sm" aria-label="Delete agent">
                       <Trash2 className="h-3 w-3 text-red-500" />
@@ -550,18 +552,18 @@ export function AgentsPage() {
           enableColumnFilters={true}
           onBulkAction={handleBulkAction}
           bulkActions={[
-            { label: 'Delete Selected', value: 'delete', variant: 'destructive' },
+            { label: t('agents.deleteSelected'), value: 'delete', variant: 'destructive' },
           ]}
           exportFileName={`agents-${new Date().toISOString().split('T')[0]}`}
           emptyState={
             <Card>
               <CardContent className="pt-6 text-center py-12">
                 <Bot className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium">No agents found</h3>
+                <h3 className="text-lg font-medium">{t('agents.noAgentsFound')}</h3>
                 <p className="text-muted-foreground mt-1">
                   {searchQuery
-                    ? "Try adjusting your search query"
-                    : "Create your first agent to get started"}
+                    ? t('agents.adjustSearch')
+                    : t('agents.createFirstAgent')}
                 </p>
               </CardContent>
             </Card>

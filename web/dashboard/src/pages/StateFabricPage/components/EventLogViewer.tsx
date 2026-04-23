@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   Search,
   Filter,
@@ -37,11 +38,17 @@ const eventTypeColors: Record<string, string> = {
   sync: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
 };
 
+const ITEM_HEIGHT = 56; // Height of each event row in pixels
+const OVERSCAN = 5;
+
 export function EventLogViewer({ fabricId, events, total }: EventLogViewerProps) {
   const [page, setPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [eventTypeFilter, setEventTypeFilter] = useState<string>("");
   const [selectedEvent, setSelectedEvent] = useState<EventLog | null>(null);
+
+  // Virtual scrolling container ref
+  const parentRef = useRef<HTMLDivElement>(null);
 
   const pageSize = 20;
   const { data, isLoading } = useStateFabricEventLogs(fabricId, {
@@ -60,6 +67,16 @@ export function EventLogViewer({ fabricId, events, total }: EventLogViewerProps)
         event.eventType.toLowerCase().includes(searchQuery.toLowerCase())
       : true
   );
+
+  // Virtualizer setup for handling large event lists
+  const virtualizer = useVirtualizer({
+    count: filteredEvents.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => ITEM_HEIGHT,
+    overscan: OVERSCAN,
+  });
+
+  const virtualItems = virtualizer.getVirtualItems();
 
   const handleExport = () => {
     const dataStr = JSON.stringify(displayedEvents, null, 2);
@@ -118,80 +135,99 @@ export function EventLogViewer({ fabricId, events, total }: EventLogViewerProps)
           ) : filteredEvents.length === 0 ? (
             <div className="py-8 text-center text-text-muted">No events found</div>
           ) : (
-            <div className="space-y-2">
-              {filteredEvents.map((event) => (
-                <Dialog key={event.id}>
-                  <DialogTrigger asChild>
-                    <div
-                      className="flex items-center justify-between p-3 rounded-lg bg-bg-secondary/50 hover:bg-bg-secondary cursor-pointer transition-colors"
-                      onClick={() => setSelectedEvent(event)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Badge
-                          variant="outline"
-                          className={eventTypeColors[event.eventType] || "bg-gray-500/10"}
+            <div
+              ref={parentRef}
+              className="overflow-auto"
+              style={{ height: `${Math.min(filteredEvents.length * ITEM_HEIGHT, 400)}px` }}
+            >
+              <div
+                style={{
+                  height: `${virtualizer.getTotalSize()}px`,
+                  width: "100%",
+                  position: "relative",
+                }}
+              >
+                {virtualItems.map((virtualItem) => {
+                  const event = filteredEvents[virtualItem.index];
+                  return (
+                    <Dialog key={event.id}>
+                      <DialogTrigger asChild>
+                        <div
+                          className="absolute left-0 w-full flex items-center justify-between p-3 rounded-lg bg-bg-secondary/50 hover:bg-bg-secondary cursor-pointer transition-colors"
+                          style={{
+                            height: `${virtualItem.size}px`,
+                            transform: `translateY(${virtualItem.start}px)`,
+                          }}
+                          onClick={() => setSelectedEvent(event)}
                         >
-                          {event.eventType}
-                        </Badge>
-                        <div className="flex items-center gap-2 text-sm text-text-muted">
-                          <Hash className="w-3 h-3" />
-                          <span className="font-mono">
-                            #{event.sequenceNumber.toLocaleString()}
-                          </span>
+                          <div className="flex items-center gap-3">
+                            <Badge
+                              variant="outline"
+                              className={eventTypeColors[event.eventType] || "bg-gray-500/10"}
+                            >
+                              {event.eventType}
+                            </Badge>
+                            <div className="flex items-center gap-2 text-sm text-text-muted">
+                              <Hash className="w-3 h-3" />
+                              <span className="font-mono">
+                                #{event.sequenceNumber.toLocaleString()}
+                              </span>
+                            </div>
+                            {event.correlationId && (
+                              <span className="text-xs text-text-muted font-mono">
+                                {event.correlationId.slice(0, 8)}...
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-text-muted">
+                            <Clock className="w-3 h-3" />
+                            {new Date(event.timestamp).toLocaleString()}
+                          </div>
                         </div>
-                        {event.correlationId && (
-                          <span className="text-xs text-text-muted font-mono">
-                            {event.correlationId.slice(0, 8)}...
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-text-muted">
-                        <Clock className="w-3 h-3" />
-                        {new Date(event.timestamp).toLocaleString()}
-                      </div>
-                    </div>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle className="flex items-center gap-3">
-                        <Badge
-                          variant="outline"
-                          className={eventTypeColors[event.eventType] || "bg-gray-500/10"}
-                        >
-                          {event.eventType}
-                        </Badge>
-                        <span className="font-mono text-sm">Event {event.sequenceNumber}</span>
-                      </DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 mt-4">
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-text-muted">Event ID:</span>
-                          <p className="font-mono">{event.id}</p>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                        <DialogHeader>
+                          <DialogTitle className="flex items-center gap-3">
+                            <Badge
+                              variant="outline"
+                              className={eventTypeColors[event.eventType] || "bg-gray-500/10"}
+                            >
+                              {event.eventType}
+                            </Badge>
+                            <span className="font-mono text-sm">Event {event.sequenceNumber}</span>
+                          </DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 mt-4">
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="text-text-muted">Event ID:</span>
+                              <p className="font-mono">{event.id}</p>
+                            </div>
+                            <div>
+                              <span className="text-text-muted">Timestamp:</span>
+                              <p>{new Date(event.timestamp).toLocaleString()}</p>
+                            </div>
+                            <div>
+                              <span className="text-text-muted">Correlation ID:</span>
+                              <p className="font-mono">{event.correlationId || "N/A"}</p>
+                            </div>
+                            <div>
+                              <span className="text-text-muted">Store ID:</span>
+                              <p className="font-mono">{event.storeId || "N/A"}</p>
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-text-muted text-sm">Payload:</span>
+                            <pre className="mt-2 p-4 bg-bg-secondary rounded-lg overflow-x-auto text-xs font-mono">
+                              {JSON.stringify(event.payload, null, 2)}
+                            </pre>
+                          </div>
                         </div>
-                        <div>
-                          <span className="text-text-muted">Timestamp:</span>
-                          <p>{new Date(event.timestamp).toLocaleString()}</p>
-                        </div>
-                        <div>
-                          <span className="text-text-muted">Correlation ID:</span>
-                          <p className="font-mono">{event.correlationId || "N/A"}</p>
-                        </div>
-                        <div>
-                          <span className="text-text-muted">Store ID:</span>
-                          <p className="font-mono">{event.storeId || "N/A"}</p>
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-text-muted text-sm">Payload:</span>
-                        <pre className="mt-2 p-4 bg-bg-secondary rounded-lg overflow-x-auto text-xs font-mono">
-                          {JSON.stringify(event.payload, null, 2)}
-                        </pre>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              ))}
+                      </DialogContent>
+                    </Dialog>
+                  );
+                })}
+              </div>
             </div>
           )}
 

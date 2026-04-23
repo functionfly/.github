@@ -692,6 +692,28 @@
   box-shadow: 0 0 10px var(--color-warning-glow);
 }
 
+/* Light Mode Status Effects - Better Contrast */
+[data-theme="light"] .status-online {
+  background: #059669;
+  box-shadow: 0 0 8px rgba(5, 150, 105, 0.4), 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .status-offline {
+  background: #dc2626;
+  box-shadow: 0 0 8px rgba(220, 38, 38, 0.4), 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .status-warning {
+  background: #d97706;
+  box-shadow: 0 0 8px rgba(217, 119, 6, 0.4), 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Degraded Status - Light Mode */
+[data-theme="light"] .status-degraded {
+  background: #d97706;
+  box-shadow: 0 0 8px rgba(217, 119, 6, 0.4), 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
 /* ==========================================================================
    Loading Effects
    ========================================================================== */

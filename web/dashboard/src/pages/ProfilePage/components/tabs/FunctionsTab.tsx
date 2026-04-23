@@ -108,7 +108,7 @@ export function FunctionsTab({ profile }: FunctionsTabProps) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="border-border-subtle">
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-text-primary">
+            <p className="text-2xl font-bold font-mono tabular-nums text-text-primary">
               {profile.publishedFunctions.length}
             </p>
             <p className="text-sm text-text-muted">Total Functions</p>
@@ -116,7 +116,7 @@ export function FunctionsTab({ profile }: FunctionsTabProps) {
         </Card>
         <Card className="border-border-subtle">
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-text-primary">
+            <p className="text-2xl font-bold font-mono tabular-nums text-text-primary">
               {formatNumber(profile.stats.totalExecutions)}
             </p>
             <p className="text-sm text-text-muted">Total Executions</p>
@@ -124,7 +124,7 @@ export function FunctionsTab({ profile }: FunctionsTabProps) {
         </Card>
         <Card className="border-border-subtle">
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-text-primary">
+            <p className="text-2xl font-bold font-mono tabular-nums text-text-primary">
               {formatNumber(profile.stats.totalViews)}
             </p>
             <p className="text-sm text-text-muted">Total Views</p>
@@ -132,7 +132,7 @@ export function FunctionsTab({ profile }: FunctionsTabProps) {
         </Card>
         <Card className="border-border-subtle">
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-text-primary">
+            <p className="text-2xl font-bold font-mono tabular-nums text-text-primary">
               {(
                 profile.publishedFunctions.reduce((sum, f) => sum + (f.rating?.average || 0), 0) /
                   profile.publishedFunctions.length || 0

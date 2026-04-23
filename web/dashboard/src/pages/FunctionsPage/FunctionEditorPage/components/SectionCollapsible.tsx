@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface SectionCollapsibleProps {
   title: string;
@@ -15,6 +16,7 @@ export function SectionCollapsible({
   defaultOpen = false,
   badge,
 }: SectionCollapsibleProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
@@ -38,7 +40,7 @@ export function SectionCollapsible({
             )}
           </div>
           <div className="flex items-center gap-2 text-text-muted">
-            <span className="text-xs hidden sm:inline">{isOpen ? 'Hide' : 'Show'}</span>
+            <span className="text-xs hidden sm:inline">{isOpen ? t('common.hide', { defaultValue: 'Hide' }) : t('common.show', { defaultValue: 'Show' })}</span>
             {isOpen ? (
               <ChevronUp className="w-4 h-4" />
             ) : (

@@ -58,7 +58,7 @@ export function InvoicesSection({
                     <CreditCard className="w-5 h-5 text-brand-500" />
                   </div>
                   <div>
-                    <p className="font-medium text-text-primary">
+                    <p className="font-medium font-mono tabular-nums text-text-primary">
                       {formatCurrency(invoice.amount, invoice.currency)}
                     </p>
                     <p className="text-sm text-text-muted">{formatDate(invoice.invoice_date)}</p>

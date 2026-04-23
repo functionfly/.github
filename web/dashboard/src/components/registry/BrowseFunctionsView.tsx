@@ -190,8 +190,9 @@ function reliabilityLabel(score: number): { label: string; cls: string } {
   return { label: 'Low', cls: 'registry-reliability-low' };
 }
 
-function getColorClass(category: string | undefined): string {
-  return CATEGORY_META[category ?? '']?.colorClass ?? 'registry-cat-color-indigo';
+function getColorClass(category: string | null | undefined): string {
+  if (!category) return 'registry-cat-color-indigo';
+  return CATEGORY_META[category]?.colorClass ?? 'registry-cat-color-indigo';
 }
 
 function normalizeCategory(raw: string | null | undefined): string {
@@ -208,8 +209,10 @@ function normalizeCategory(raw: string | null | undefined): string {
 function getCategoryList(functions: RegistryFunction[]): string[] {
   const unique = new Set<string>();
   for (const fn of functions) {
-    const c = normalizeCategory(fn.category);
-    if (c) unique.add(c);
+    if (fn.category != null) {
+      const c = normalizeCategory(fn.category);
+      if (c) unique.add(c);
+    }
   }
 
   const present = Array.from(unique);
@@ -406,7 +409,7 @@ function GridCard({
           <button
             type="button"
             onClick={onView}
-            className="flex-1 h-8 rounded-lg text-xs font-semibold border border-border-subtle
+            className="flex-1 h-8 rounded-lg text-xs font-semibold border border-border-subtle card-action-btn
                        bg-bg-tertiary/60 text-text-secondary hover:bg-bg-hover hover:text-text-primary
                        transition-all duration-150 flex items-center justify-center gap-1"
           >
@@ -416,7 +419,7 @@ function GridCard({
           <button
             type="button"
             onClick={onDeploy}
-            className="flex-1 h-8 rounded-lg text-xs font-semibold
+            className="flex-1 h-8 rounded-lg text-xs font-semibold card-action-btn btn-deploy
                        bg-gradient-to-r from-brand-500 via-purple-500 to-pink-500
                        text-white hover:brightness-110 hover:scale-[1.02]
                        transition-all duration-150 flex items-center justify-center gap-1
@@ -429,7 +432,7 @@ function GridCard({
           <button
             type="button"
             onClick={onTry}
-            className="flex-1 h-8 rounded-lg text-xs font-semibold border border-brand-500/25
+            className="flex-1 h-8 rounded-lg text-xs font-semibold border border-brand-500/25 card-action-btn btn-try
                        bg-brand-500/10 text-brand-400 hover:bg-brand-500/[0.18] hover:border-brand-500/40
                        transition-all duration-150 flex items-center justify-center gap-1"
           >
@@ -725,28 +728,28 @@ export function BrowseFunctionsView({ variant }: { variant: BrowseFunctionsViewV
       let aVal: number | string, bVal: number | string;
       switch (sortBy) {
         case 'popularity':
-          aVal = a.popularity_score;
-          bVal = b.popularity_score;
+          aVal = a.popularity_score ?? 0;
+          bVal = b.popularity_score ?? 0;
           break;
         case 'rating':
-          aVal = a.overall_score;
-          bVal = b.overall_score;
+          aVal = a.overall_score ?? 0;
+          bVal = b.overall_score ?? 0;
           break;
         case 'reliability':
-          aVal = a.reliability_score;
-          bVal = b.reliability_score;
+          aVal = a.reliability_score ?? 0;
+          bVal = b.reliability_score ?? 0;
           break;
         case 'trust_score':
-          aVal = a.trust_score ?? a.overall_score;
-          bVal = b.trust_score ?? b.overall_score;
+          aVal = a.trust_score ?? a.overall_score ?? 0;
+          bVal = b.trust_score ?? b.overall_score ?? 0;
           break;
         case 'newest':
-          aVal = new Date(a.created_at).getTime();
-          bVal = new Date(b.created_at).getTime();
+          aVal = a.created_at ? new Date(a.created_at).getTime() : 0;
+          bVal = b.created_at ? new Date(b.created_at).getTime() : 0;
           break;
         case 'name':
-          aVal = a.name.toLowerCase();
-          bVal = b.name.toLowerCase();
+          aVal = (a.name ?? '').toLowerCase();
+          bVal = (b.name ?? '').toLowerCase();
           break;
         default:
           return 0;

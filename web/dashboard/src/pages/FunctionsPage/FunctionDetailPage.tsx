@@ -30,6 +30,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -252,6 +253,7 @@ function mapToFunctionHeaderData(
 export function FunctionDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('overview');
   const [isRedeploying, setIsRedeploying] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -277,9 +279,9 @@ export function FunctionDetailPage() {
         const functionResponse = await apiClient.get<unknown>(`/v1/functions/${id}`);
         const mapped = mapApiFunctionToFunctionData(functionResponse);
         if (!mapped) {
-          setError('Invalid function response');
+          setError(t('functionDetail.invalidFunctionResponse'));
           setFunctionData(null);
-          toast.error('Could not load function details');
+          toast.error(t('functionDetail.couldNotLoadFunctionDetails'));
           return;
         }
         setFunctionData(mapped);
@@ -295,24 +297,24 @@ export function FunctionDetailPage() {
         setLogs(mapApiLogsToLogEntries(logsResponse.logs));
       } catch (err) {
         console.error('Failed to load function data:', err);
-        setError('Failed to load function data');
-        toast.error('Failed to load function data');
+        setError(t('functionDetail.failedToLoadFunctionData'));
+        toast.error(t('functionDetail.failedToLoadFunctionData'));
       } finally {
         setLoading(false);
       }
     };
 
     fetchFunctionData();
-  }, [id]);
+  }, [id, t]);
 
   const handleRedeploy = async () => {
     if (!id) return;
     setIsRedeploying(true);
     try {
       await apiClient.post(`/v1/functions/${id}/redeploy`);
-      toast.success('Function redeployed successfully');
+      toast.success(t('functionDetail.redeployedSuccessfully'));
     } catch (error) {
-      toast.error('Failed to redeploy function. Please try again.');
+      toast.error(t('functionDetail.failedToRedeploy'));
     } finally {
       setIsRedeploying(false);
     }
@@ -328,11 +330,11 @@ export function FunctionDetailPage() {
     try {
       setIsDeleting(true);
       await apiClient.delete(`/v1/functions/${id}`);
-      toast.success(`Function "${functionData.name}" has been deleted successfully`);
+      toast.success(t('functionDetail.deletedSuccessfully', { name: functionData.name }));
       navigate('/functions');
     } catch (error) {
       console.error('Failed to delete function:', error);
-      toast.error('Failed to delete function. Please try again.');
+      toast.error(t('functionDetail.failedToDelete'));
     } finally {
       setIsDeleting(false);
       setShowDeleteDialog(false);
@@ -369,13 +371,13 @@ export function FunctionDetailPage() {
           <CardContent className="card-content p-8 text-center space-y-4">
             <AlertTriangle className="w-12 h-12 mx-auto text-orange-500" />
             <div>
-              <h2 className="text-lg font-semibold text-text-primary">Function unavailable</h2>
+              <h2 className="text-lg font-semibold text-text-primary">{t('functionDetail.functionUnavailable')}</h2>
               <p className="text-sm text-text-secondary mt-1">
-                {error ?? 'This function could not be loaded.'}
+                {error ?? t('functionDetail.functionCouldNotBeLoaded')}
               </p>
             </div>
             <Button variant="outline" onClick={() => navigate('/functions')}>
-              Back to functions
+              {t('functionDetail.backToFunctions')}
             </Button>
           </CardContent>
         </Card>
@@ -385,30 +387,30 @@ export function FunctionDetailPage() {
 
   const stats = [
     {
-      title: 'Total Requests',
+      title: t('functionDetail.totalRequests'),
       value: (functionData.requests ?? 0).toLocaleString(),
-      change: { value: 12, label: 'from last week' },
+      change: { value: 12, label: t('functionDetail.fromLastWeek') },
       icon: <Globe className="w-5 h-5" />,
       trend: 'up' as const,
     },
     {
-      title: 'Avg Latency',
+      title: t('functionDetail.avgLatency'),
       value: `${functionData.avgLatency ?? 0}ms`,
-      change: { value: -8, label: 'from last week' },
+      change: { value: -8, label: t('functionDetail.fromLastWeek') },
       icon: <Clock className="w-5 h-5" />,
       trend: 'up' as const,
     },
     {
-      title: 'Error Rate',
+      title: t('functionDetail.errorRate'),
       value: `${functionData.errorRate ?? 0}%`,
-      change: { value: -0.2, label: 'from last week' },
+      change: { value: -0.2, label: t('functionDetail.fromLastWeek') },
       icon: <AlertTriangle className="w-5 h-5" />,
       trend: 'up' as const,
     },
     {
-      title: 'Uptime',
+      title: t('functionDetail.uptime'),
       value: `${functionData.uptime ?? 0}%`,
-      change: { value: 0.1, label: 'from last week' },
+      change: { value: 0.1, label: t('functionDetail.fromLastWeek') },
       icon: <Activity className="w-5 h-5" />,
       trend: 'up' as const,
     },
@@ -422,8 +424,8 @@ export function FunctionDetailPage() {
         onBack={() => navigate('/functions')}
         onEdit={() => navigate(`/functions/${id}/edit`)}
         onDeploy={handleRedeploy}
-        onTest={() => toast.info('Test functionality coming soon')}
-        onShare={() => toast.info('Share functionality coming soon')}
+        onTest={() => toast.info(t('functionDetail.testComingSoon'))}
+        onShare={() => toast.info(t('functionDetail.shareComingSoon'))}
       />
 
       {/* Function Info Card */}
@@ -431,7 +433,7 @@ export function FunctionDetailPage() {
         <CardContent className="card-content p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <h3 className="text-sm font-medium text-text-secondary mb-2">Providers</h3>
+              <h3 className="text-sm font-medium text-text-secondary mb-2">{t('functionDetail.providers')}</h3>
               <div className="flex items-center gap-2">
                 {functionData.providers.map((provider) => (
                   <div key={provider} className="flex items-center gap-2">
@@ -442,23 +444,23 @@ export function FunctionDetailPage() {
               </div>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-text-secondary mb-2">Region</h3>
+              <h3 className="text-sm font-medium text-text-secondary mb-2">{t('functionDetail.region')}</h3>
               <p className="text-text-primary">{functionData.region.toUpperCase()}</p>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-text-secondary mb-2">Runtime</h3>
+              <h3 className="text-sm font-medium text-text-secondary mb-2">{t('functionDetail.runtime')}</h3>
               <p className="text-text-primary">{functionData.runtime}</p>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-text-secondary mb-2">Version</h3>
+              <h3 className="text-sm font-medium text-text-secondary mb-2">{t('functionDetail.version')}</h3>
               <Badge variant="secondary">{functionData.version}</Badge>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-text-secondary mb-2">Last Deployed</h3>
+              <h3 className="text-sm font-medium text-text-secondary mb-2">{t('functionDetail.lastDeployed')}</h3>
               <p className="text-text-primary">{functionData.lastDeployed}</p>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-text-secondary mb-2">Created</h3>
+              <h3 className="text-sm font-medium text-text-secondary mb-2">{t('functionDetail.created')}</h3>
               <p className="text-text-primary">{functionData.createdAt}</p>
             </div>
           </div>
@@ -475,28 +477,28 @@ export function FunctionDetailPage() {
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="deployments">Deployments</TabsTrigger>
-          <TabsTrigger value="logs">Logs</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="overview">{t('functionDetail.overview')}</TabsTrigger>
+          <TabsTrigger value="deployments">{t('functionDetail.deployments')}</TabsTrigger>
+          <TabsTrigger value="logs">{t('functionDetail.logs')}</TabsTrigger>
+          <TabsTrigger value="analytics">{t('functionDetail.analytics')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <LineChart
-              title="Requests Over Time"
+              title={t('functionDetail.requestsOverTime')}
               data={requestData}
               series={[
-                { key: 'requests', name: 'Requests', color: '#6366f1' },
-                { key: 'errors', name: 'Errors', color: '#ef4444' },
+                { key: 'requests', name: t('functionDetail.requests'), color: '#6366f1' },
+                { key: 'errors', name: t('functionDetail.errors'), color: '#ef4444' },
               ]}
               height={300}
             />
 
             <BarChart
-              title="Latency by Provider"
+              title={t('functionDetail.latencyByProvider')}
               data={latencyData}
-              series={[{ key: 'latency', name: 'Latency (ms)', color: '#10b981' }]}
+              series={[{ key: 'latency', name: t('functionDetail.latencyMs'), color: '#10b981' }]}
               height={300}
             />
           </div>
@@ -505,7 +507,7 @@ export function FunctionDetailPage() {
         <TabsContent value="deployments" className="space-y-4">
           <Card className="card">
             <CardHeader className="card-header">
-              <CardTitle className="card-title">Deployment History</CardTitle>
+              <CardTitle className="card-title">{t('functionDetail.deploymentHistory')}</CardTitle>
             </CardHeader>
             <CardContent className="card-content">
               <div className="space-y-4">
@@ -556,7 +558,7 @@ export function FunctionDetailPage() {
         <TabsContent value="logs" className="space-y-4">
           <Card className="card h-[600px]">
             <CardHeader className="card-header">
-              <CardTitle className="card-title">Recent Logs</CardTitle>
+              <CardTitle className="card-title">{t('functionDetail.recentLogs')}</CardTitle>
             </CardHeader>
             <CardContent className="card-content p-0">
               <ScrollArea className="h-[520px] p-6">
@@ -591,15 +593,15 @@ export function FunctionDetailPage() {
         <TabsContent value="analytics" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <LineChart
-              title="Error Rate Over Time"
+              title={t('functionDetail.errorRateOverTime')}
               data={requestData}
-              series={[{ key: 'errors', name: 'Errors', color: '#ef4444' }]}
+              series={[{ key: 'errors', name: t('functionDetail.errors'), color: '#ef4444' }]}
               height={300}
             />
 
             <Card className="card">
               <CardHeader className="card-header">
-                <CardTitle className="card-title">Error Distribution</CardTitle>
+                <CardTitle className="card-title">{t('functionDetail.errorDistribution')}</CardTitle>
               </CardHeader>
               <CardContent className="card-content">
                 <div className="h-[300px]">
@@ -628,10 +630,9 @@ export function FunctionDetailPage() {
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Function</DialogTitle>
+            <DialogTitle>{t('functionDetail.deleteFunction')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the function "{functionData?.name}"? This action
-              cannot be undone.
+              {t('functionDetail.deleteFunctionConfirm', { name: functionData?.name })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -640,10 +641,10 @@ export function FunctionDetailPage() {
               onClick={() => setShowDeleteDialog(false)}
               disabled={isDeleting}
             >
-              Cancel
+              {t('functionDetail.cancel')}
             </Button>
             <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting}>
-              {isDeleting ? 'Deleting...' : 'Delete Function'}
+              {isDeleting ? t('functionDetail.deleting') : t('functionDetail.deleteFunction')}
             </Button>
           </DialogFooter>
         </DialogContent>

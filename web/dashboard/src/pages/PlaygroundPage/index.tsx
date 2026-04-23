@@ -9,6 +9,7 @@ import { Navbar } from '@/components/common/Navbar';
 import { Footer } from '@/pages/LandingPage/components';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
+import { useTranslation } from 'react-i18next';
 
 import { usePlaygroundStore, FunctionInfo } from './store/playgroundStore';
 import { usePlaygroundKeyboard } from './hooks/usePlaygroundKeyboard';
@@ -22,6 +23,7 @@ import { PlaygroundSidebar } from './components/PlaygroundSidebar';
 import { PlaygroundStatusBar } from './components/PlaygroundStatusBar';
 
 export function PlaygroundPage() {
+  const { t } = useTranslation();
   const { author, name } = useParams<{ author: string; name: string }>();
   const [searchParams] = useSearchParams();
 
@@ -45,8 +47,8 @@ export function PlaygroundPage() {
       const response = await fetch(
         `/v1/registry/functions/${author}/${name}?expand=manifest`
       );
-      if (response.status === 404) throw new Error('Function not found');
-      if (!response.ok) throw new Error('Failed to fetch function');
+    if (response.status === 404) throw new Error(t('playground.functionNotFound'));
+    if (!response.ok) throw new Error('Failed to fetch function');
       return response.json();
     },
     enabled: !!author && !!name,
@@ -123,21 +125,21 @@ export function PlaygroundPage() {
   }
 
   if (error) {
-    const isNotFound = (error as Error).message === "Function not found";
+    const isNotFound = (error as Error).message === t('playground.functionNotFound');
     if (isNotFound) {
       return (
         <div className="min-h-screen flex flex-col bg-bg-primary">
           <Navbar variant="landing" />
           <main className="flex-1 pt-16 flex items-center justify-center">
             <div className="text-center">
-              <h1 className="text-2xl font-bold mb-2">Function not found</h1>
+              <h1 className="text-2xl font-bold mb-2">{t('playground.functionNotFound')}</h1>
               <p className="text-muted-foreground">
-                The function {author}/{name} could not be found.
+                {t('playground.functionNotFoundDescription', { author, name })}
               </p>
               <Link to="/registry">
                 <Button variant="outline" className="mt-4">
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Registry
+                  {t('playground.backToRegistry')}
                 </Button>
               </Link>
             </div>
@@ -163,14 +165,14 @@ export function PlaygroundPage() {
         <Navbar variant="landing" />
         <main className="flex-1 pt-16 flex items-center justify-center">
           <div className="text-center">
-            <h1 className="text-2xl font-bold mb-2">Function not found</h1>
+            <h1 className="text-2xl font-bold mb-2">{t('playground.functionNotFound')}</h1>
             <p className="text-muted-foreground">
-              The function {author}/{name} could not be found.
+              {t('playground.functionNotFoundDescription', { author, name })}
             </p>
             <Link to="/registry">
               <Button variant="outline" className="mt-4">
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Registry
+                {t('playground.backToRegistry')}
               </Button>
             </Link>
           </div>
@@ -217,7 +219,7 @@ export function PlaygroundPage() {
               className="w-1 bg-border-subtle hover:bg-indigo-500/50 cursor-col-resize transition-colors shrink-0 relative group"
               onMouseDown={handleMouseDown}
               onDoubleClick={resetToEqual}
-              title="Drag to resize · Double-click to reset"
+              title={t('playground.resizeTooltip')}
             >
               <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-indigo-500/10" />
             </div>

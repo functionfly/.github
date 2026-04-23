@@ -9,6 +9,7 @@ import {
   X,
 } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useUserNotifications } from '../../hooks/useRealtime';
 import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
@@ -28,6 +29,8 @@ interface NotificationItemProps {
 }
 
 function NotificationItem({ notification, onMarkAsRead, onDismiss }: NotificationItemProps) {
+  const { t } = useTranslation();
+
   const getIcon = () => {
     switch (notification.type) {
       case 'error':
@@ -64,10 +67,10 @@ function NotificationItem({ notification, onMarkAsRead, onDismiss }: Notificatio
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffMins < 1) return t('realtimeNotif.justNow');
+    if (diffMins < 60) return t('realtimeNotif.minutesAgo', { count: diffMins });
+    if (diffHours < 24) return t('realtimeNotif.hoursAgo', { count: diffHours });
+    if (diffDays < 7) return t('realtimeNotif.daysAgo', { count: diffDays });
     return date.toLocaleDateString();
   };
 
@@ -124,6 +127,7 @@ interface RealtimeNotificationCenterProps {
 }
 
 export function RealtimeNotificationCenter({ className = '' }: RealtimeNotificationCenterProps) {
+  const { t } = useTranslation();
   const { notifications, unreadCount, isConnected, markAsRead, markAllAsRead } =
     useUserNotifications();
 
@@ -170,10 +174,10 @@ export function RealtimeNotificationCenter({ className = '' }: RealtimeNotificat
         <Card className="absolute right-0 top-12 w-96 max-h-96 overflow-hidden shadow-lg z-50">
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Notifications</h3>
+              <h3 className="text-lg font-semibold">{t('realtimeNotif.notifications')}</h3>
               <div className="flex items-center space-x-2">
                 <Badge variant={isConnected ? 'success' : 'warning'} className="text-xs">
-                  {isConnected ? 'Live' : 'Offline'}
+                  {isConnected ? t('realtimeNotif.live') : t('realtimeNotif.offline')}
                 </Badge>
               </div>
             </div>
@@ -186,11 +190,10 @@ export function RealtimeNotificationCenter({ className = '' }: RealtimeNotificat
                   onClick={() => setShowUnreadOnly(!showUnreadOnly)}
                   className={`text-xs ${showUnreadOnly ? 'bg-blue-50 text-blue-700' : ''}`}
                 >
-                  Unread only
+                  {t('realtimeNotif.unreadOnly')}
                 </Button>
                 <span className="text-sm text-gray-500">
-                  {displayedNotifications.length} notification
-                  {displayedNotifications.length !== 1 ? 's' : ''}
+                  {t('realtimeNotif.notificationCount', { count: displayedNotifications.length })}
                 </span>
               </div>
 
@@ -202,7 +205,7 @@ export function RealtimeNotificationCenter({ className = '' }: RealtimeNotificat
                   className="text-xs text-blue-600 hover:text-blue-800"
                 >
                   <CheckCheck className="w-4 h-4 mr-1" />
-                  Mark all read
+                  {t('realtimeNotif.markAllRead')}
                 </Button>
               )}
             </div>
@@ -213,7 +216,7 @@ export function RealtimeNotificationCenter({ className = '' }: RealtimeNotificat
               <div className="p-6 text-center text-gray-500">
                 <Bell className="w-8 h-8 mx-auto mb-2 text-gray-300" />
                 <p className="text-sm">
-                  {showUnreadOnly ? 'No unread notifications' : 'No notifications yet'}
+                  {showUnreadOnly ? t('realtimeNotif.noUnreadNotifications') : t('realtimeNotif.noNotificationsYet')}
                 </p>
               </div>
             ) : (
@@ -241,7 +244,7 @@ export function RealtimeNotificationCenter({ className = '' }: RealtimeNotificat
           {!isConnected && (
             <div className="p-3 bg-yellow-50 border-t border-yellow-200">
               <p className="text-xs text-yellow-800 text-center">
-                Real-time updates paused - check your connection
+                {t('realtimeNotif.realtimePaused')}
               </p>
             </div>
           )}

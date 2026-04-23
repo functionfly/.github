@@ -4,105 +4,45 @@ import {
   BountyAttachModal,
   ExecutableMessage,
   FixModeLayout,
+  MessageSearch,
   ResolutionBanner,
   RunInThreadPanel,
+  TypingIndicator,
 } from '@/components/conversations';
+import { ConversationHeader } from '@/components/conversations/ConversationHeader';
+import { ConversationSidebar } from '@/components/conversations/ConversationSidebar';
+import { NewConversationModal } from '@/components/conversations/NewConversationModal';
+import {
+  applyParticipantUsernamePick,
+  normalizeParticipantHandle,
+  participantSegmentAtCaret,
+  UUID_RE,
+} from '@/components/conversations/constants';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { ChatInput } from '@/components/ui/chat-input';
+import { EmptyChat } from '@/components/ui/empty-chat';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { SkeletonMessages } from '@/components/ui/skeleton-chat';
+import { useRealtimeMessages } from '@/hooks/useConversations';
 import { useDebounce } from '@/hooks/useInfiniteScroll';
-import { cn } from '@/lib/utils';
+import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useAuthStore } from '@/stores/authStore';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { formatDistanceToNow } from 'date-fns';
-import { CheckCircle, Coins, Loader2, MessageSquare, Play, Plus, Send } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Coins, Play, ChevronRight } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function normalizeParticipantHandle(s: string): string {
-  const t = s.trim();
-  if (t.startsWith('@')) return t.slice(1).trim();
-  return t;
-}
-
-function participantSegmentAtCaret(full: string, caret: number): string {
-  const left = full.slice(0, Math.min(Math.max(caret, 0), full.length));
-  const lastComma = left.lastIndexOf(',');
-  const raw = lastComma === -1 ? left : left.slice(lastComma + 1);
-  return normalizeParticipantHandle(raw);
-}
-
-function applyParticipantUsernamePick(
-  full: string,
-  caret: number,
-  username: string
-): { value: string; caret: number } {
-  const left = full.slice(0, caret);
-  const lastComma = left.lastIndexOf(',');
-  const prefix = lastComma === -1 ? '' : left.slice(0, lastComma + 1);
-  const suffix = full.slice(caret);
-  let head: string;
-  if (!prefix) {
-    head = `${username}, `;
-  } else {
-    const needsSpace = !/,\s*$/.test(prefix);
-    head = (needsSpace ? `${prefix} ` : prefix) + `${username}, `;
-  }
-  return { value: head + suffix, caret: head.length };
-}
-
-const CONVERSATION_TYPES: { value: ConversationType; label: string }[] = [
-  { value: 'dm', label: 'Direct message' },
-  { value: 'function_thread', label: 'Function thread' },
-  { value: 'issue_thread', label: 'Issue thread' },
-  { value: 'fix_mode', label: 'Fix mode' },
-  { value: 'bounty_thread', label: 'Bounty thread' },
-  { value: 'org_thread', label: 'Org thread' },
-  { value: 'security_disclosure', label: 'Security disclosure' },
-];
-
-function formatParticipantLine(
-  participantIds: string[] | undefined,
-  currentUserId: string | undefined,
-  displayFor: (id: string) => string
-): string {
-  if (!participantIds?.length) return 'Conversation';
-  const self = currentUserId?.toLowerCase();
-  const others = participantIds.filter((id) => id.toLowerCase() !== self);
-  const idsToShow = others.length > 0 ? others : participantIds;
-  const labels = idsToShow.map(displayFor);
-  if (labels.every((l) => l === '…')) {
-    return `${participantIds.length} participant(s)`;
-  }
-  if (labels.length <= 4) return labels.join(' · ');
-  return `${labels.slice(0, 4).join(' · ')} +${labels.length - 4}`;
-}
-
 export default function ConversationsPage() {
-  const { id: conversationId } = useParams<{ id?: string }>();
+  const { username, id: conversationId } = useParams<{ username?: string; id?: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
+  const currentUsername = username || user?.username;
   const [messageDraft, setMessageDraft] = useState('');
   const [showRunPanel, setShowRunPanel] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [bountyModalOpen, setBountyModalOpen] = useState(false);
   const [newConversationModalOpen, setNewConversationModalOpen] = useState(false);
   const [newConvType, setNewConvType] = useState<ConversationType>('dm');
@@ -135,8 +75,9 @@ export default function ConversationsPage() {
   }, [usernameSearchData?.users, user?.id]);
 
   const { data: listData, isLoading: listLoading } = useQuery({
-    queryKey: ['conversations'],
-    queryFn: () => conversationsApi.listConversations({ limit: 50 }),
+    queryKey: ['conversations', currentUsername],
+    queryFn: () => conversationsApi.listConversations(currentUsername!, { limit: 50 }),
+    enabled: Boolean(currentUsername),
   });
 
   const conversations = listData?.conversations ?? [];
@@ -152,9 +93,9 @@ export default function ConversationsPage() {
   }, [conversations]);
 
   const { data: convData } = useQuery({
-    queryKey: ['conversation', conversationId],
-    queryFn: () => conversationsApi.getConversation(conversationId!),
-    enabled: Boolean(conversationId),
+    queryKey: ['conversation', currentUsername, conversationId],
+    queryFn: () => conversationsApi.getConversation(currentUsername!, conversationId!),
+    enabled: Boolean(currentUsername) && Boolean(conversationId),
   });
 
   const participantIdsForLookupWithOpen = useMemo(() => {
@@ -187,20 +128,24 @@ export default function ConversationsPage() {
     return (id: string) => map.get(id.toLowerCase()) ?? '…';
   }, [participantsLookup]);
 
-  const { data: messagesData, isLoading: messagesLoading } = useQuery({
-    queryKey: ['conversation-messages', conversationId],
-    queryFn: () => conversationsApi.listMessages(conversationId!, { limit: 100 }),
-    enabled: Boolean(conversationId),
-  });
+  const {
+    data: messagesData,
+    isLoading: messagesLoading,
+    typingUsers,
+    sendTyping,
+  } = useRealtimeMessages(
+    Boolean(currentUsername) && Boolean(conversationId) ? conversationId! : '',
+    { limit: 100 },
+  );
 
   useEffect(() => {
-    if (!conversationId || messagesLoading) return;
+    if (!currentUsername || !conversationId || messagesLoading) return;
     let cancelled = false;
     void (async () => {
       try {
-        await conversationsApi.markConversationRead(conversationId);
+        await conversationsApi.markConversationRead(currentUsername, conversationId);
         if (!cancelled) {
-          queryClient.invalidateQueries({ queryKey: ['conversations'] });
+          queryClient.invalidateQueries({ queryKey: ['conversations', currentUsername] });
         }
       } catch {
         // Non-fatal: list still shows stale unread until next refresh
@@ -209,38 +154,49 @@ export default function ConversationsPage() {
     return () => {
       cancelled = true;
     };
-  }, [conversationId, messagesLoading, queryClient]);
+  }, [currentUsername, conversationId, messagesLoading, queryClient]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   const { data: bountiesData } = useQuery({
-    queryKey: ['conversation-bounties', conversationId],
-    queryFn: () => conversationsApi.listBounties(conversationId!),
-    enabled: Boolean(conversationId),
+    queryKey: ['conversation-bounties', currentUsername, conversationId],
+    queryFn: () => conversationsApi.listBounties(currentUsername!, conversationId!),
+    enabled: Boolean(currentUsername) && Boolean(conversationId),
   });
 
   const resolveMutation = useMutation({
     mutationFn: (messageId?: string) =>
-      conversationsApi.resolveConversation(conversationId!, messageId),
+      conversationsApi.resolveConversation(currentUsername!, conversationId!, messageId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['conversation', currentUsername, conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['conversations', currentUsername] });
       toast.success('Conversation resolved');
     },
     onError: (err: Error) => toast.error(err.message || 'Failed to resolve'),
   });
   const claimBountyMutation = useMutation({
-    mutationFn: (bountyId: string) => conversationsApi.claimBounty(conversationId!, bountyId),
+    mutationFn: (bountyId: string) => conversationsApi.claimBounty(currentUsername!, conversationId!, bountyId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['conversation-bounties', conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['conversation-bounties', currentUsername, conversationId] });
       toast.success('Bounty claimed');
     },
     onError: (err: Error) => toast.error(err.message || 'Failed to claim'),
   });
 
   const sendMessage = useMutation({
-    mutationFn: (content: string) => conversationsApi.createMessage(conversationId!, { content }),
+    mutationFn: (content: string) => conversationsApi.createMessage(currentUsername!, conversationId!, { content }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['conversation-messages', conversationId] });
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['conversation-messages', currentUsername, conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['conversations', currentUsername] });
       setMessageDraft('');
     },
   });
@@ -279,22 +235,47 @@ export default function ConversationsPage() {
       if (participant_ids.length === 0) {
         throw new Error('At least one participant is required');
       }
-      return conversationsApi.createConversation({
+      return conversationsApi.createConversation(currentUsername!, {
         type: newConvType,
         participant_ids,
       });
     },
     onSuccess: (conv) => {
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations', currentUsername] });
       setNewConversationModalOpen(false);
       setNewConvParticipantUsernames('');
-      navigate(`/conversations/${conv.id}`);
+      navigate(`/u/${currentUsername}/conversations/${conv.id}`);
     },
     onError: (err: Error) => toast.error(err.message || 'Failed to create conversation'),
   });
 
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  // Swipe gestures for mobile: swipe right to open sidebar, swipe left to close
+  const { gestureHandlers: sidebarSwipeHandlers } = useSwipeGesture({
+    onSwipeLeft: () => setMobileSidebarOpen(false),
+  });
+
+  const { gestureHandlers: mainSwipeHandlers } = useSwipeGesture({
+    onSwipeRight: () => {
+      if (conversationId) setMobileSidebarOpen(true);
+    },
+  });
+
   const messages = messagesData?.messages ?? [];
   const isOwn = (authorId: string) => authorId === user?.id;
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new messages arrive
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
+  useEffect(() => {
+    if (!messagesLoading && messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages.length, messagesLoading, scrollToBottom]);
 
   const handleSend = () => {
     const t = messageDraft.trim();
@@ -302,233 +283,86 @@ export default function ConversationsPage() {
     sendMessage.mutate(t);
   };
 
+  const handlePickUsername = (pickedUsername: string) => {
+    const { value, caret } = applyParticipantUsernamePick(
+      newConvParticipantUsernames,
+      participantCaret,
+      pickedUsername
+    );
+    setNewConvParticipantUsernames(value);
+    setParticipantCaret(caret);
+    requestAnimationFrame(() => {
+      const el = participantInputRef.current;
+      if (el) {
+        el.focus();
+        el.setSelectionRange(caret, caret);
+      }
+    });
+  };
+
   return (
     <div className="flex h-[calc(100vh-4rem)] border-t border-border">
-      {/* Sidebar: conversation list */}
-      <aside className="w-72 border-r border-border bg-muted/20 flex flex-col">
-        <div className="p-3 border-b border-border flex items-center justify-between">
-          <h2 className="font-semibold text-sm">Messages</h2>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => setNewConversationModalOpen(true)}
-            title="New conversation"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
-        <ScrollArea className="flex-1">
-          {listLoading ? (
-            <div className="p-4 flex items-center justify-center">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : conversations.length === 0 ? (
-            <div className="p-4 text-center text-sm text-muted-foreground">
-              <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>No conversations yet.</p>
-              <p className="text-xs mt-1">Start one from a function or profile.</p>
-            </div>
-          ) : (
-            <ul className="p-1">
-              {conversations.map((c) => (
-                <li key={c.id}>
-                  <Link
-                    to={`/conversations/${c.id}`}
-                    className={cn(
-                      'flex flex-col gap-0.5 rounded-lg px-3 py-2 text-left transition-colors',
-                      conversationId === c.id
-                        ? 'bg-brand-500/15 border border-brand-500/30'
-                        : 'hover:bg-muted/60'
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1 flex flex-col gap-0.5">
-                        <span className="text-xs text-muted-foreground capitalize">
-                          {c.type.replace(/_/g, ' ')}
-                        </span>
-                        <span className="text-sm font-medium truncate">
-                          {formatParticipantLine(
-                            c.participant_ids,
-                            user?.id,
-                            displayForParticipantId
-                          )}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(c.updated_at), { addSuffix: true })}
-                        </span>
-                      </div>
-                      {(c.unread_count ?? 0) > 0 && (
-                        <span
-                          className="mt-0.5 shrink-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[10px] font-semibold text-white tabular-nums"
-                          aria-label={`${c.unread_count} unread`}
-                        >
-                          {(c.unread_count ?? 0) > 99 ? '99+' : c.unread_count}
-                        </span>
-                      )}
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </ScrollArea>
-      </aside>
+      {/* Mobile sidebar overlay */}
+      <AnimatePresence>
+        {mobileSidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+        )}
+      </AnimatePresence>
 
-      {/* New conversation modal */}
-      <Dialog open={newConversationModalOpen} onOpenChange={setNewConversationModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>New conversation</DialogTitle>
-            <DialogDescription>
-              Choose a type and add participant usernames (with or without @). You are included
-              automatically for DMs.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="new-conv-type">Type</Label>
-              <Select
-                value={newConvType}
-                onValueChange={(v) => setNewConvType(v as ConversationType)}
-              >
-                <SelectTrigger id="new-conv-type" className="h-9 w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent position="popper" className="z-200">
-                  {CONVERSATION_TYPES.map(({ value, label }) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="new-conv-participants">Participant usernames (comma-separated)</Label>
-              <div className="relative">
-                <Input
-                  ref={participantInputRef}
-                  id="new-conv-participants"
-                  placeholder="Start typing a username…"
-                  autoComplete="off"
-                  value={newConvParticipantUsernames}
-                  onChange={(e) => {
-                    setNewConvParticipantUsernames(e.target.value);
-                    setParticipantCaret(e.target.selectionStart ?? e.target.value.length);
-                  }}
-                  onClick={(e) =>
-                    setParticipantCaret(
-                      e.currentTarget.selectionStart ?? e.currentTarget.value.length
-                    )
-                  }
-                  onKeyUp={(e) =>
-                    setParticipantCaret(
-                      (e.target as HTMLInputElement).selectionStart ??
-                        (e.target as HTMLInputElement).value.length
-                    )
-                  }
-                  onSelect={(e) =>
-                    setParticipantCaret(
-                      (e.target as HTMLInputElement).selectionStart ??
-                        (e.target as HTMLInputElement).value.length
-                    )
-                  }
-                  onFocus={() => setParticipantSuggestOpen(true)}
-                  onBlur={() => {
-                    window.setTimeout(() => setParticipantSuggestOpen(false), 200);
-                  }}
-                />
-                {participantSuggestOpen &&
-                  participantSegment.length >= 2 &&
-                  !UUID_RE.test(participantSegment) && (
-                    <div
-                      className="absolute left-0 right-0 z-200 mt-1 max-h-48 overflow-auto rounded-md border bg-card py-1 shadow-md"
-                      style={{
-                        borderColor: 'var(--border-default)',
-                        backgroundColor: 'var(--card)',
-                      }}
-                    >
-                      {usernameSearchLoading ? (
-                        <div
-                          className="flex items-center gap-2 px-3 py-2 text-sm"
-                          style={{ color: 'var(--text-muted)' }}
-                        >
-                          <Loader2 className="h-4 w-4 shrink-0 animate-spin opacity-70" />
-                          Searching…
-                        </div>
-                      ) : usernameSuggestions.length === 0 ? (
-                        <div className="px-3 py-2 text-sm" style={{ color: 'var(--text-muted)' }}>
-                          No matching users
-                        </div>
-                      ) : (
-                        <ul className="py-0.5" style={{ color: 'var(--card-foreground)' }}>
-                          {usernameSuggestions.map((u) => (
-                            <li key={u.id}>
-                              <button
-                                type="button"
-                                className={cn(
-                                  'flex w-full flex-col gap-0.5 px-3 py-2 text-left text-sm',
-                                  'hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none'
-                                )}
-                                style={{ color: 'var(--card-foreground)' }}
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => {
-                                  const { value, caret } = applyParticipantUsernamePick(
-                                    newConvParticipantUsernames,
-                                    participantCaret,
-                                    u.username
-                                  );
-                                  setNewConvParticipantUsernames(value);
-                                  setParticipantCaret(caret);
-                                  requestAnimationFrame(() => {
-                                    const el = participantInputRef.current;
-                                    if (el) {
-                                      el.focus();
-                                      el.setSelectionRange(caret, caret);
-                                    }
-                                  });
-                                }}
-                              >
-                                <span className="font-medium">@{u.username}</span>
-                                {u.name ? (
-                                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                                    {u.name}
-                                  </span>
-                                ) : null}
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  )}
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setNewConversationModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={() => createConversationMutation.mutate()}
-                disabled={
-                  createConversationMutation.isPending ||
-                  (!user?.id && !newConvParticipantUsernames.trim())
-                }
-              >
-                {createConversationMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  'Create'
-                )}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Sidebar - hidden on mobile unless open */}
+      <div
+        className={`
+          fixed inset-y-0 left-0 z-50 w-72 lg:relative lg:z-auto
+          transition-transform duration-300 ease-in-out
+          lg:translate-x-0
+          ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}
+        style={{ top: '4rem' }}
+        {...sidebarSwipeHandlers}
+      >
+        <ConversationSidebar
+          conversations={conversations}
+          loading={listLoading}
+          currentUsername={currentUsername ?? ''}
+          activeConversationId={conversationId}
+          currentUserId={user?.id}
+          displayForParticipantId={displayForParticipantId}
+          onNewConversation={() => {
+            setNewConversationModalOpen(true);
+            setMobileSidebarOpen(false);
+          }}
+        />
+      </div>
 
-      {/* Main: thread or empty state */}
-      <main className="flex-1 flex flex-col min-w-0">
+      <NewConversationModal
+        open={newConversationModalOpen}
+        onOpenChange={setNewConversationModalOpen}
+        conversationType={newConvType}
+        onConversationTypeChange={setNewConvType}
+        participantUsernames={newConvParticipantUsernames}
+        onParticipantUsernamesChange={setNewConvParticipantUsernames}
+        participantCaret={participantCaret}
+        onParticipantCaretChange={setParticipantCaret}
+        participantSuggestOpen={participantSuggestOpen}
+        onParticipantSuggestOpenChange={setParticipantSuggestOpen}
+        participantSegment={participantSegment}
+        usernameSuggestions={usernameSuggestions}
+        usernameSearchLoading={usernameSearchLoading}
+        onCreate={() => createConversationMutation.mutate()}
+        createPending={createConversationMutation.isPending}
+        canCreate={!(!user?.id && !newConvParticipantUsernames.trim())}
+        onPickUsername={handlePickUsername}
+        participantInputRef={participantInputRef}
+      />
+
+      <main className="flex-1 flex flex-col min-w-0" {...mainSwipeHandlers}>
         {!conversationId ? (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
             {conversations.length > 0 ? (
@@ -540,49 +374,42 @@ export default function ConversationsPage() {
         ) : (
           <>
             {convData && (
-              <div className="border-b border-border px-4 py-2 flex items-center justify-between gap-2">
-                <div className="flex flex-col min-w-0 gap-0.5">
-                  <span className="text-sm font-medium truncate">
-                    {formatParticipantLine(
-                      convData.participant_ids,
-                      user?.id,
-                      displayForParticipantId
-                    )}
-                  </span>
-                  <span className="text-xs text-muted-foreground capitalize">
-                    {convData.type.replace(/_/g, ' ')}
-                  </span>
-                </div>
-                <div className="flex gap-1">
-                  {!convData.resolved_at && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1"
-                      onClick={() => resolveMutation.mutate(undefined)}
-                      disabled={resolveMutation.isPending}
-                    >
-                      <CheckCircle className="h-3.5 w-3.5" />
-                      Resolve
-                    </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="gap-1"
-                    onClick={() => setBountyModalOpen(true)}
-                  >
-                    <Coins className="h-3.5 w-3.5" />
-                    Bounty
-                  </Button>
-                </div>
-              </div>
+              <ConversationHeader
+                conversation={convData}
+                currentUserId={user?.id}
+                displayForParticipantId={displayForParticipantId}
+                onSearch={() => setSearchOpen(true)}
+                onResolve={() => resolveMutation.mutate(undefined)}
+                onBounty={() => setBountyModalOpen(true)}
+                resolvePending={resolveMutation.isPending}
+              />
             )}
-            {conversationId && (
+            {/* Mobile back button */}
+            <div className="lg:hidden flex items-center gap-2 px-3 py-1.5 border-b border-border">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-muted-foreground"
+                onClick={() => setMobileSidebarOpen(true)}
+              >
+                <ChevronRight className="h-3.5 w-3.5 mr-1 rotate-180" />
+                All conversations
+              </Button>
+            </div>
+            {conversationId && currentUsername && (
               <BountyAttachModal
+                username={currentUsername}
                 conversationId={conversationId}
                 open={bountyModalOpen}
                 onOpenChange={setBountyModalOpen}
+              />
+            )}
+            {currentUsername && (
+              <MessageSearch
+                username={currentUsername}
+                conversationId={conversationId}
+                open={searchOpen}
+                onOpenChange={setSearchOpen}
               />
             )}
             <ScrollArea className="flex-1 p-4">
@@ -633,59 +460,55 @@ export default function ConversationsPage() {
                 </div>
               )}
               {messagesLoading ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
+                <SkeletonMessages count={6} />
+              ) : messages.length === 0 ? (
+                <EmptyChat conversationType={convData?.type} />
               ) : (
                 <div className="space-y-4">
                   {messages.map((m) => (
-                    <ExecutableMessage key={m.id} message={m} isOwn={isOwn(m.author_id)} />
+                    <ExecutableMessage
+                      key={m.id}
+                      message={m}
+                      isOwn={isOwn(m.author_id)}
+                      username={currentUsername}
+                      currentUserId={user?.id}
+                    />
                   ))}
+                  <div ref={messagesEndRef} />
                 </div>
               )}
             </ScrollArea>
-            {showRunPanel && conversationId && (
+            <TypingIndicator
+              typingUsers={typingUsers}
+              displayForParticipantId={displayForParticipantId}
+            />
+            {showRunPanel && conversationId && currentUsername && (
               <div className="border-t border-border p-3 bg-muted/20">
                 <RunInThreadPanel
+                  username={currentUsername}
                   conversationId={conversationId}
                   onSnippetAdded={() => setShowRunPanel(false)}
                 />
               </div>
             )}
-            <div className="border-t border-border p-3 flex gap-2">
+            <div className="flex items-center gap-1 border-t border-border px-2 py-1">
               <Button
                 variant="ghost"
-                size="icon"
-                className="shrink-0"
+                size="sm"
+                className="h-7 px-2 text-xs text-muted-foreground"
                 onClick={() => setShowRunPanel((v) => !v)}
-                title={showRunPanel ? 'Hide Run panel' : 'Run in thread'}
               >
-                <Play className="h-4 w-4" />
-              </Button>
-              <Input
-                placeholder="Type a message…"
-                value={messageDraft}
-                onChange={(e) => setMessageDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-                className="flex-1"
-              />
-              <Button
-                size="icon"
-                onClick={handleSend}
-                disabled={!messageDraft.trim() || sendMessage.isPending}
-              >
-                {sendMessage.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
+                <Play className="h-3.5 w-3.5 mr-1" />
+                Run in thread
               </Button>
             </div>
+            <ChatInput
+              value={messageDraft}
+              onChange={setMessageDraft}
+              onSend={handleSend}
+              onTyping={sendTyping}
+              pending={sendMessage.isPending}
+            />
           </>
         )}
       </main>

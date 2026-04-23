@@ -27,6 +27,7 @@ function summarize(obj: unknown): string {
 }
 
 export interface RunInThreadPanelProps {
+  username: string;
   conversationId: string;
   /** Pre-filled function author (e.g. from context) */
   defaultAuthor?: string;
@@ -40,6 +41,7 @@ export interface RunInThreadPanelProps {
 }
 
 export function RunInThreadPanel({
+  username,
   conversationId,
   defaultAuthor = "",
   defaultName = "",
@@ -90,13 +92,13 @@ export function RunInThreadPanel({
         output_summary: summarize(lastResult.data),
       };
       if (lastResult.execution_id) embeddings.execution_id = lastResult.execution_id;
-      await conversationsApi.createMessage(conversationId, {
+      await conversationsApi.createMessage(username, conversationId, {
         content: "",
         embeddings,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["conversation-messages", conversationId] });
+      queryClient.invalidateQueries({ queryKey: ["conversation-messages", username, conversationId] });
       toast.success("Execution snippet added to thread");
       onSnippetAdded?.();
     },

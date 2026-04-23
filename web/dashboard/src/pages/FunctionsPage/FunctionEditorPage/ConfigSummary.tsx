@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CheckCircle2, Circle, DollarSign, Info, Sparkles } from 'lucide-react';
 import { RUNTIME_META } from './constants';
 import type { FunctionEditorModel } from './useFunctionEditor';
@@ -58,11 +59,11 @@ function formatCurrency(amount: number): string {
 }
 
 const INVOCATION_PRESETS = [
-  { value: 1000, label: '1K', description: 'Low traffic' },
-  { value: 100_000, label: '100K', description: 'Medium traffic' },
-  { value: 1_000_000, label: '1M', description: 'High traffic' },
-  { value: 10_000_000, label: '10M', description: 'Very high traffic' },
-  { value: 100_000_000, label: '100M', description: 'Enterprise' },
+  { value: 1000, label: '1K', descriptionKey: 'funcEditor.lowTraffic' as const },
+  { value: 100_000, label: '100K', descriptionKey: 'funcEditor.mediumTraffic' as const },
+  { value: 1_000_000, label: '1M', descriptionKey: 'funcEditor.highTraffic' as const },
+  { value: 10_000_000, label: '10M', descriptionKey: 'funcEditor.veryHighTraffic' as const },
+  { value: 100_000_000, label: '100M', descriptionKey: 'funcEditor.enterprise' as const },
 ];
 
 function scaleInvocations(value: number): number {
@@ -84,6 +85,7 @@ function unscaleInvocations(invocations: number): number {
 }
 
 export function ConfigSummary({ editor }: Props) {
+  const { t } = useTranslation();
   const {
     functionName,
     slug,
@@ -113,48 +115,48 @@ export function ConfigSummary({ editor }: Props) {
   const sliderValue = unscaleInvocations(monthlyInvocations);
 
   const checklist: ChecklistItem[] = [
-    { label: 'Function name', done: !!functionName.trim() },
-    { label: 'Slug / identifier', done: !!slug.trim() },
-    { label: 'Code written', done: code.trim().length > 50 },
-    { label: 'Runtime selected', done: true },
-    { label: 'HTTP or schedule trigger', done: httpTrigger.enabled || scheduleTrigger.enabled },
-    { label: 'Visibility set', done: true },
+    { label: t('funcEditor.checklistFunctionName'), done: !!functionName.trim() },
+    { label: t('funcEditor.checklistSlug'), done: !!slug.trim() },
+    { label: t('funcEditor.checklistCodeWritten'), done: code.trim().length > 50 },
+    { label: t('funcEditor.checklistRuntimeSelected'), done: true },
+    { label: t('funcEditor.checklistTrigger'), done: httpTrigger.enabled || scheduleTrigger.enabled },
+    { label: t('funcEditor.checklistVisibility'), done: true },
   ];
 
   const completedCount = checklist.filter((c) => c.done).length;
   const completionPct = Math.round((completedCount / checklist.length) * 100);
 
   const summaryRows = [
-    { label: 'Name', value: functionName || '—' },
-    { label: 'Slug', value: slug || '—', mono: true },
-    { label: 'Runtime', value: `${RUNTIME_META[runtime].label} ${runtimeVersion}` },
-    { label: 'Memory', value: `${resources.memoryMb} MB` },
-    { label: 'Timeout', value: formatTimeout(resources.timeoutMs) },
-    { label: 'Concurrency', value: `${resources.maxConcurrency}` },
+    { label: t('funcEditor.summaryName'), value: functionName || '—' },
+    { label: t('funcEditor.summarySlug'), value: slug || '—', mono: true },
+    { label: t('funcEditor.summaryRuntime'), value: `${RUNTIME_META[runtime].label} ${runtimeVersion}` },
+    { label: t('funcEditor.summaryMemory'), value: `${resources.memoryMb} MB` },
+    { label: t('funcEditor.summaryTimeout'), value: formatTimeout(resources.timeoutMs) },
+    { label: t('funcEditor.summaryConcurrency'), value: `${resources.maxConcurrency}` },
     {
-      label: 'Visibility',
-      value: visibility === 'public' ? '🌐 Public' : '🔒 Private',
+      label: t('funcEditor.summaryVisibility'),
+      value: visibility === 'public' ? t('funcEditor.publicEmoji') : t('funcEditor.privateEmoji'),
     },
     {
-      label: 'HTTP Trigger',
-      value: httpTrigger.enabled ? `${httpTrigger.method} ${httpTrigger.path}` : 'Disabled',
+      label: t('funcEditor.summaryHttpTrigger'),
+      value: httpTrigger.enabled ? `${httpTrigger.method} ${httpTrigger.path}` : t('funcEditor.disabled'),
     },
     {
-      label: 'Schedule',
-      value: scheduleTrigger.enabled ? scheduleTrigger.cron : 'Disabled',
+      label: t('funcEditor.summarySchedule'),
+      value: scheduleTrigger.enabled ? scheduleTrigger.cron : t('funcEditor.disabled'),
     },
     {
-      label: 'Env Vars',
+      label: t('funcEditor.summaryEnvVars'),
       value: `${envVars.length} variable${envVars.length !== 1 ? 's' : ''}`,
     },
-    { label: 'Tags', value: tags.length > 0 ? tags.join(', ') : 'None' },
+    { label: t('funcEditor.summaryTags'), value: tags.length > 0 ? tags.join(', ') : t('funcEditor.none') },
     {
-      label: 'Retries',
+      label: t('funcEditor.summaryRetries'),
       value: `${retryPolicy.maxRetries} (${retryPolicy.backoffStrategy})`,
     },
     {
-      label: 'Warm Instances',
-      value: warmInstances > 0 ? `${warmInstances}` : 'None',
+      label: t('funcEditor.summaryWarmInstances'),
+      value: warmInstances > 0 ? `${warmInstances}` : t('funcEditor.none'),
     },
   ];
 
@@ -171,7 +173,7 @@ export function ConfigSummary({ editor }: Props) {
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-[#FF6B35]" />
             <CardTitle className="text-sm font-semibold text-text-primary font-display">
-              Configuration Summary
+              {t('funcEditor.configSummary')}
             </CardTitle>
           </div>
         </CardHeader>
@@ -199,11 +201,11 @@ export function ConfigSummary({ editor }: Props) {
             <div className="flex items-center gap-2">
               <DollarSign className="w-4 h-4 text-emerald-400" />
               <CardTitle className="text-sm font-semibold text-text-primary font-display">
-                Estimated Cost
+                {t('funcEditor.estimatedCost')}
               </CardTitle>
             </div>
             <span className="text-xs text-text-muted">
-              {monthlyInvocations.toLocaleString()} invocations/month
+              {t('funcEditor.invocationsPerMonth', { count: monthlyInvocations.toLocaleString() })}
             </span>
           </div>
         </CardHeader>
@@ -228,7 +230,7 @@ export function ConfigSummary({ editor }: Props) {
                       ? 'bg-emerald-500/20 text-emerald-400'
                       : 'text-text-muted hover:text-text-secondary'
                   }`}
-                  title={preset.description}
+                  title={t(preset.descriptionKey)}
                 >
                   {preset.label}
                 </button>
@@ -241,7 +243,7 @@ export function ConfigSummary({ editor }: Props) {
             <p className="text-2xl font-semibold font-mono text-emerald-400">
               {formatCurrency(cost.total)}
             </p>
-            <span className="text-xs text-text-muted">/month</span>
+            <span className="text-xs text-text-muted">{t('funcEditor.perMonth')}</span>
           </div>
 
           {/* Cost breakdown toggle */}
@@ -250,34 +252,34 @@ export function ConfigSummary({ editor }: Props) {
             className="flex items-center gap-1 text-xs text-text-muted hover:text-text-secondary transition-colors mt-2"
           >
             <Info className="w-3 h-3" />
-            {showDetails ? 'Hide breakdown' : 'View breakdown'}
+            {showDetails ? t('funcEditor.hideBreakdown') : t('funcEditor.viewBreakdown')}
           </button>
 
           {/* Cost breakdown */}
           {showDetails && (
             <div className="mt-3 p-3 rounded-lg bg-bg-tertiary/50 space-y-2">
               <div className="flex justify-between text-xs">
-                <span className="text-text-muted">Compute (GB-seconds)</span>
+                <span className="text-text-muted">{t('funcEditor.computeGBSeconds')}</span>
                 <span className="text-text-secondary font-mono">
                   {formatCurrency(cost.computeCost)}
                 </span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-text-muted">Requests</span>
+                <span className="text-text-muted">{t('funcEditor.requests')}</span>
                 <span className="text-text-secondary font-mono">
                   {formatCurrency(cost.requestCost)}
                 </span>
               </div>
               {warmInstances > 0 && (
                 <div className="flex justify-between text-xs">
-                  <span className="text-text-muted">Warm instances ({warmInstances})</span>
+                  <span className="text-text-muted">{t('funcEditor.warmInstancesLabel', { count: warmInstances })}</span>
                   <span className="text-text-secondary font-mono">
                     {formatCurrency(cost.warmInstanceCost)}
                   </span>
                 </div>
               )}
               <div className="pt-2 border-t border-border-subtle/30 flex justify-between text-xs font-medium">
-                <span className="text-text-primary">Total</span>
+                <span className="text-text-primary">{t('funcEditor.total')}</span>
                 <span className="text-emerald-400 font-mono">{formatCurrency(cost.total)}</span>
               </div>
             </div>
@@ -287,14 +289,14 @@ export function ConfigSummary({ editor }: Props) {
           {cost.total < 5 && (
             <p className="text-xs text-emerald-500/80 mt-3 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              Likely covered by free tier on most providers
+              {t('funcEditor.freeTierNotice')}
             </p>
           )}
 
           {cost.total > 100 && (
             <p className="text-xs text-amber-400 mt-3 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-              Consider optimizing: reduce memory, timeout, or warm instances
+              {t('funcEditor.optimizeNotice')}
             </p>
           )}
         </CardContent>
@@ -312,7 +314,7 @@ export function ConfigSummary({ editor }: Props) {
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-[#FF6B35]" />
               <CardTitle className="text-sm font-semibold text-text-primary font-display">
-                Deployment Checklist
+                {t('funcEditor.deploymentChecklist')}
               </CardTitle>
             </div>
             <span className="text-xs font-mono text-text-muted">

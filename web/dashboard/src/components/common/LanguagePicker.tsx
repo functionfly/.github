@@ -18,6 +18,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { Check, ChevronDown, Globe, Languages } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useDirection } from '@/hooks/useDirection';
 
 interface LanguagePickerProps {
   className?: string;
@@ -35,6 +36,7 @@ export function LanguagePicker({
   const [detectedLang] = useState(detectLanguage);
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const { isRtl, applyDir } = useDirection();
 
   const currentLang = getLanguage(i18n.language) ?? getLanguage('en')!;
 
@@ -43,6 +45,7 @@ export function LanguagePicker({
       // Optimistically update i18n
       await i18n.changeLanguage(lang.code);
       persistLanguage(lang.code);
+      applyDir(lang.code);
       setOpen(false);
 
       // Persist to backend if user is logged in
@@ -55,10 +58,8 @@ export function LanguagePicker({
         }
       }
     },
-    [i18n, user, queryClient]
+    [i18n, user, queryClient, applyDir]
   );
-
-  const isRtl = currentLang.dir === 'rtl';
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

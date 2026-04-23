@@ -23,17 +23,19 @@ import {
   Zap,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { AgentMemoryGraph } from './AgentDetailPage/components/AgentMemoryGraph';
 
 function sanitizeAgentIdParam(raw: string | undefined): string | null {
-  const t = raw?.trim();
-  if (!t || t === 'undefined' || t === 'null') return null;
-  return t;
+  const trimmed = raw?.trim();
+  if (!trimmed || trimmed === 'undefined' || trimmed === 'null') return null;
+  return trimmed;
 }
 
 export function AgentDetailPage() {
+  const { t } = useTranslation();
   const { slug: pathAgentId } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const agentId = sanitizeAgentIdParam(pathAgentId);
@@ -85,16 +87,16 @@ export function AgentDetailPage() {
   }, [policy]);
 
   const handleDelete = async () => {
-    if (!agentId || !confirm(`Delete agent "${agent?.name ?? agentId}"? This cannot be undone.`)) {
+    if (!agentId || !confirm(t('agentDetail.confirmDelete', { name: agent?.name ?? agentId }))) {
       return;
     }
     setDeleting(true);
     try {
       await agentApi.deleteAgent(agentId);
-      toast.success('Agent deleted.');
+      toast.success(t('agentDetail.agentDeleted'));
       navigate(ROUTES.AGENTS);
     } catch {
-      toast.error('Failed to delete agent.');
+      toast.error(t('agentDetail.failedToDelete'));
     } finally {
       setDeleting(false);
     }
@@ -117,9 +119,9 @@ export function AgentDetailPage() {
         maxMemoryGrowthMB,
       });
 
-      toast.success('Settings saved successfully');
+      toast.success(t('agentDetail.settingsSaved'));
     } catch {
-      toast.error('Failed to save settings');
+      toast.error(t('agentDetail.failedToSave'));
     } finally {
       setSaving(false);
     }
@@ -131,10 +133,10 @@ export function AgentDetailPage() {
         <Button variant="ghost" size="sm" asChild>
           <Link to={ROUTES.AGENTS}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to agents
+            {t('agentDetail.backToAgents')}
           </Link>
         </Button>
-        <p className="text-sm text-muted-foreground">Invalid agent link.</p>
+        <p className="text-sm text-muted-foreground">{t('agentDetail.invalidAgentLink')}</p>
       </div>
     );
   }
@@ -143,7 +145,7 @@ export function AgentDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
         <Loader2 className="h-8 w-8 animate-spin" />
-        <p className="text-sm">Loading agent…</p>
+        <p className="text-sm">{t('agentDetail.loadingAgent')}</p>
       </div>
     );
   }
@@ -154,14 +156,14 @@ export function AgentDetailPage() {
         <Button variant="ghost" size="sm" asChild>
           <Link to={ROUTES.AGENTS}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to agents
+            {t('agentDetail.backToAgents')}
           </Link>
         </Button>
         <Card className="border-destructive/40">
           <CardHeader>
-            <CardTitle>Agent not found</CardTitle>
+            <CardTitle>{t('agentDetail.agentNotFound')}</CardTitle>
             <CardDescription>
-              {error instanceof Error ? error.message : 'Could not load this agent. It may have been deleted or you may not have access.'}
+              {error instanceof Error ? error.message : t('agentDetail.agentNotFoundDescription')}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -180,7 +182,7 @@ export function AgentDetailPage() {
           <Button variant="ghost" size="sm" className="-ml-2 w-fit" asChild>
             <Link to={ROUTES.AGENTS}>
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to agents
+              {t('agentDetail.backToAgents')}
             </Link>
           </Button>
           <div className="flex items-center gap-2">
@@ -197,17 +199,17 @@ export function AgentDetailPage() {
           <Button variant="outline" size="sm" asChild>
             <Link to={`/evolution/${enc}`}>
               <Zap className="h-4 w-4 mr-2" />
-              Evolution
+              {t('agentDetail.evolution')}
             </Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
             <Link to={`/wallet/agents/${enc}`}>
               <Wallet className="h-4 w-4 mr-2" />
-              Wallet
+              {t('agentDetail.wallet')}
             </Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
-            <Link to={ROUTES.SDK_INTEGRATIONS}>SDK setup</Link>
+            <Link to={ROUTES.SDK_INTEGRATIONS}>{t('agentDetail.sdkSetup')}</Link>
           </Button>
           <Button
             variant="outline"
@@ -217,7 +219,7 @@ export function AgentDetailPage() {
             disabled={deleting}
           >
             {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-            Delete
+            {t('agentDetail.delete')}
           </Button>
         </div>
       </div>
@@ -228,7 +230,7 @@ export function AgentDetailPage() {
         {agent.swarmRole && <Badge variant="secondary">{agent.swarmRole}</Badge>}
         {agent.parentAgentId && (
           <Badge variant="outline" className="text-amber-600 border-amber-500/40">
-            Child of{' '}
+            {t('agentDetail.childOf')}{' '}
             <Link
               className="ml-1 underline font-mono text-xs"
               to={`${ROUTES.AGENTS}/${encodeURIComponent(agent.parentAgentId)}`}
@@ -237,8 +239,8 @@ export function AgentDetailPage() {
             </Link>
           </Badge>
         )}
-        {agent.autonomousEnabled && <Badge variant="outline">Autonomous</Badge>}
-        {agent.evolutionEnabled && <Badge variant="outline">Evolution</Badge>}
+        {agent.autonomousEnabled && <Badge variant="outline">{t('agentDetail.autonomous')}</Badge>}
+        {agent.evolutionEnabled && <Badge variant="outline">{t('agentDetail.evolutionBadge')}</Badge>}
       </div>
 
       {/* Tabs */}
@@ -246,15 +248,15 @@ export function AgentDetailPage() {
         <TabsList className="grid w-full max-w-md grid-cols-3">
           <TabsTrigger value="overview">
             <Brain className="h-4 w-4 mr-2" />
-            Overview
+            {t('agentDetail.overview')}
           </TabsTrigger>
           <TabsTrigger value="settings">
             <Settings className="h-4 w-4 mr-2" />
-            Settings
+            {t('agentDetail.settings')}
           </TabsTrigger>
           <TabsTrigger value="memory">
             <MemoryStick className="h-4 w-4 mr-2" />
-            Memory Graph
+            {t('agentDetail.memoryGraph')}
           </TabsTrigger>
         </TabsList>
 
@@ -264,19 +266,19 @@ export function AgentDetailPage() {
             {/* Agent Info Card */}
             <Card>
               <CardHeader>
-                <CardTitle>Overview</CardTitle>
-                <CardDescription>Identity and capabilities for this agent.</CardDescription>
+                <CardTitle>{t('agentDetail.overview')}</CardTitle>
+                <CardDescription>{t('agentDetail.overviewDescription')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {agent.description ? (
                   <p className="text-sm text-muted-foreground">{agent.description}</p>
                 ) : (
-                  <p className="text-sm text-muted-foreground italic">No description.</p>
+                  <p className="text-sm text-muted-foreground italic">{t('agentDetail.noDescription')}</p>
                 )}
                 {caps.length > 0 && (
                   <div>
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-                      Capabilities
+                      {t('agentDetail.capabilities')}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {caps.map((c) => (
@@ -293,35 +295,35 @@ export function AgentDetailPage() {
             {/* Usage Card */}
             <Card>
               <CardHeader>
-                <CardTitle>Current Usage</CardTitle>
-                <CardDescription>Real-time agent metrics.</CardDescription>
+                <CardTitle>{t('agentDetail.currentUsage')}</CardTitle>
+                <CardDescription>{t('agentDetail.realtimeAgentMetrics')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {usage ? (
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Calls This Minute</p>
+                      <p className="text-xs text-muted-foreground">{t('agentDetail.callsThisMinute')}</p>
                       <p className="text-lg font-semibold">{usage.callsThisMinute}</p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Concurrent Executions</p>
+                      <p className="text-xs text-muted-foreground">{t('agentDetail.concurrentExecutions')}</p>
                       <p className="text-lg font-semibold">{usage.concurrentExecutions}</p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Memory Usage</p>
+                      <p className="text-xs text-muted-foreground">{t('agentDetail.memoryUsage')}</p>
                       <p className="text-lg font-semibold">{usage.memoryUsageMB} MB</p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Avg Execution Time</p>
+                      <p className="text-xs text-muted-foreground">{t('agentDetail.avgExecutionTime')}</p>
                       <p className="text-lg font-semibold">{usage.executionTimeMs} ms</p>
                     </div>
                     <div className="col-span-2 space-y-1">
-                      <p className="text-xs text-muted-foreground">Spend Today</p>
+                      <p className="text-xs text-muted-foreground">{t('agentDetail.spendToday')}</p>
                       <p className="text-lg font-semibold">${usage.spendToday.toFixed(4)}</p>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground italic">No usage data available.</p>
+                  <p className="text-sm text-muted-foreground italic">{t('agentDetail.noUsageData')}</p>
                 )}
               </CardContent>
             </Card>
@@ -331,25 +333,25 @@ export function AgentDetailPage() {
           {policy && (
             <Card>
               <CardHeader>
-                <CardTitle>Behavioral Policy</CardTitle>
-                <CardDescription>Safety limits and constraints.</CardDescription>
+                <CardTitle>{t('agentDetail.behavioralPolicy')}</CardTitle>
+                <CardDescription>{t('agentDetail.safetyLimits')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Max Execution Depth</p>
+                    <p className="text-xs text-muted-foreground">{t('agentDetail.maxExecutionDepth')}</p>
                     <p className="text-lg font-semibold">{policy.maxExecutionDepth}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Max Recursion Depth</p>
+                    <p className="text-xs text-muted-foreground">{t('agentDetail.maxRecursionDepth')}</p>
                     <p className="text-lg font-semibold">{policy.maxRecursionDepth}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Max Wall Time</p>
+                    <p className="text-xs text-muted-foreground">{t('agentDetail.maxWallTime')}</p>
                     <p className="text-lg font-semibold">{policy.maxWallTimeMs}ms</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Max Memory Growth</p>
+                    <p className="text-xs text-muted-foreground">{t('agentDetail.maxMemoryGrowth')}</p>
                     <p className="text-lg font-semibold">{policy.maxMemoryGrowthMB}MB</p>
                   </div>
                 </div>
@@ -362,28 +364,28 @@ export function AgentDetailPage() {
         <TabsContent value="settings" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Agent Settings</CardTitle>
-              <CardDescription>Configure agent identity and behavior.</CardDescription>
+              <CardTitle>{t('agentDetail.agentSettings')}</CardTitle>
+              <CardDescription>{t('agentDetail.configureIdentity')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Basic Info */}
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Name</Label>
+                  <Label htmlFor="name">{t('agentDetail.name')}</Label>
                   <Input
                     id="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Enter agent name"
+                    placeholder={t('agentDetail.namePlaceholder')}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description">{t('agentDetail.description')}</Label>
                   <Textarea
                     id="description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Enter agent description"
+                    placeholder={t('agentDetail.descriptionPlaceholder')}
                     rows={3}
                   />
                 </div>
@@ -397,7 +399,7 @@ export function AgentDetailPage() {
                     checked={autonomousEnabled}
                     onCheckedChange={setAutonomousEnabled}
                   />
-                  <Label htmlFor="autonomous">Autonomous Mode</Label>
+                  <Label htmlFor="autonomous">{t('agentDetail.autonomousMode')}</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Switch
@@ -405,16 +407,16 @@ export function AgentDetailPage() {
                     checked={evolutionEnabled}
                     onCheckedChange={setEvolutionEnabled}
                   />
-                  <Label htmlFor="evolution">Evolution Enabled</Label>
+                  <Label htmlFor="evolution">{t('agentDetail.evolutionEnabled')}</Label>
                 </div>
               </div>
 
               {/* Policy Settings */}
               <div className="space-y-4 border-t pt-4">
-                <h4 className="text-sm font-medium">Behavioral Limits</h4>
+                <h4 className="text-sm font-medium">{t('agentDetail.behavioralLimits')}</h4>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="maxExecutionDepth">Max Execution Depth</Label>
+                    <Label htmlFor="maxExecutionDepth">{t('agentDetail.maxExecutionDepth')}</Label>
                     <Input
                       id="maxExecutionDepth"
                       type="number"
@@ -425,7 +427,7 @@ export function AgentDetailPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="maxRecursionDepth">Max Recursion Depth</Label>
+                    <Label htmlFor="maxRecursionDepth">{t('agentDetail.maxRecursionDepth')}</Label>
                     <Input
                       id="maxRecursionDepth"
                       type="number"
@@ -436,7 +438,7 @@ export function AgentDetailPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="maxWallTimeMs">Max Wall Time (ms)</Label>
+                    <Label htmlFor="maxWallTimeMs">{t('agentDetail.maxWallTimeMs')}</Label>
                     <Input
                       id="maxWallTimeMs"
                       type="number"
@@ -447,7 +449,7 @@ export function AgentDetailPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="maxMemoryGrowthMB">Max Memory Growth (MB)</Label>
+                    <Label htmlFor="maxMemoryGrowthMB">{t('agentDetail.maxMemoryGrowthMB')}</Label>
                     <Input
                       id="maxMemoryGrowthMB"
                       type="number"
@@ -464,12 +466,12 @@ export function AgentDetailPage() {
                 {saving ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
+                    {t('agentDetail.saving')}
                   </>
                 ) : (
                   <>
                     <Save className="h-4 w-4 mr-2" />
-                    Save Settings
+                    {t('agentDetail.saveSettings')}
                   </>
                 )}
               </Button>
@@ -481,8 +483,8 @@ export function AgentDetailPage() {
         <TabsContent value="memory" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Memory Visualization</CardTitle>
-              <CardDescription>Graph view of agent memory relationships and access patterns.</CardDescription>
+              <CardTitle>{t('agentDetail.memoryVisualization')}</CardTitle>
+              <CardDescription>{t('agentDetail.memoryGraphDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
               {memories.length > 0 ? (
@@ -490,8 +492,8 @@ export function AgentDetailPage() {
               ) : (
                 <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                   <Brain className="h-12 w-12 mb-4 opacity-50" />
-                  <p>No memories found for this agent.</p>
-                  <p className="text-sm">Memories will appear here when the agent stores information.</p>
+                  <p>{t('agentDetail.noMemoriesFound')}</p>
+                  <p className="text-sm">{t('agentDetail.memoriesWillAppear')}</p>
                 </div>
               )}
             </CardContent>

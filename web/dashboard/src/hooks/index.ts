@@ -312,8 +312,11 @@ export {
   useCreateMessage,
   useMarkConversationRead,
   useMessages,
+  useRealtimeMessages,
   useResolveConversation,
 } from './useConversations';
+
+export { useConversationWebSocket } from './useConversationWebSocket';
 
 // Dashboard Hooks
 export {
@@ -378,6 +381,7 @@ export { useKeyboardNavigation } from './useKeyboardNavigation';
 export { useNavigationStatus, useStatusBadge } from './useNavigationStatus';
 export { useUserPresence } from './usePresence';
 export { useSwipeGesture } from './useSwipeGesture';
+export { useDirection } from './useDirection';
 export { useSyncUserLanguage } from './useSyncUserLanguage';
 export { useWebVitals } from './useWebVitals';
 
@@ -449,3 +453,12 @@ export { useAccessControl } from './useAccessControl';
 export { useContextualActions } from './useContextualActions';
 export { useNewFunction } from './useNewFunction';
 export { useUndoRedo } from './useUndoRedo';
+
+// Environment Hooks
+export {
+  activeEnvironmentKeys,
+  useActiveEnvironment,
+  useEnvironmentQueryKey,
+  useEnvironmentSelectorVisibility,
+  type Environment,
+} from './useActiveEnvironment';

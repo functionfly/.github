@@ -16,6 +16,7 @@ import {
   Check,
   Search,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { usePlaygroundStore, OutputTab } from '../store/playgroundStore';
 import { JsonTreeViewer } from './JsonTreeViewer';
@@ -28,6 +29,7 @@ interface PlaygroundOutputPanelProps {
 }
 
 function EmptyState() {
+  const { t } = useTranslation();
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -37,19 +39,16 @@ function EmptyState() {
       <div className="w-16 h-16 rounded-full bg-indigo-500/10 flex items-center justify-center mb-4">
         <Play className="w-7 h-7 text-indigo-400" />
       </div>
-      <p className="text-sm font-medium text-text-secondary">Run the function to see results</p>
+      <p className="text-sm font-medium text-text-secondary">{t('playground.runFunctionToSeeResults')}</p>
       <p className="text-xs text-text-muted mt-1">
-        Press{' '}
-        <kbd className="px-1 py-0.5 bg-bg-tertiary border border-border-subtle rounded text-[10px] font-mono">
-          ⌘↵
-        </kbd>{' '}
-        or click Run
+        {t('playground.pressOrClickRun', { shortcut: '⌘↵' })}
       </p>
     </motion.div>
   );
 }
 
 function LoadingState() {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center h-full py-16">
       <div className="w-full max-w-xs space-y-3">
@@ -61,13 +60,14 @@ function LoadingState() {
             transition={{ duration: 2, ease: 'easeInOut', repeat: Infinity }}
           />
         </div>
-        <p className="text-xs text-text-muted text-center">Executing function...</p>
+        <p className="text-xs text-text-muted text-center">{t('playground.executingFunction')}</p>
       </div>
     </div>
   );
 }
 
 export function PlaygroundOutputPanel({ className }: PlaygroundOutputPanelProps) {
+  const { t } = useTranslation();
   const {
     executionResult,
     isExecuting,
@@ -111,7 +111,7 @@ export function PlaygroundOutputPanel({ className }: PlaygroundOutputPanelProps)
                   <XCircle className="w-3.5 h-3.5 text-red-400" />
                 )
               ) : null}
-              Response
+              {t('playground.response')}
             </TabsTrigger>
 
             {settings.showHeaders && (
@@ -120,7 +120,7 @@ export function PlaygroundOutputPanel({ className }: PlaygroundOutputPanelProps)
                 className="h-8 px-3 text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:text-indigo-400 data-[state=active]:bg-transparent gap-1.5"
               >
                 <Database className="w-3.5 h-3.5" />
-                Headers
+                {t('playground.headers')}
               </TabsTrigger>
             )}
 
@@ -130,7 +130,7 @@ export function PlaygroundOutputPanel({ className }: PlaygroundOutputPanelProps)
                 className="h-8 px-3 text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:text-indigo-400 data-[state=active]:bg-transparent gap-1.5"
               >
                 <Activity className="w-3.5 h-3.5" />
-                Timeline
+                {t('playground.timeline')}
               </TabsTrigger>
             )}
 
@@ -139,7 +139,7 @@ export function PlaygroundOutputPanel({ className }: PlaygroundOutputPanelProps)
               className="h-8 px-3 text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:text-indigo-400 data-[state=active]:bg-transparent gap-1.5"
             >
               <GitCompare className="w-3.5 h-3.5" />
-              Diff
+              {t('playground.diff')}
             </TabsTrigger>
           </TabsList>
 
@@ -155,7 +155,7 @@ export function PlaygroundOutputPanel({ className }: PlaygroundOutputPanelProps)
                     : 'bg-red-500/10 text-red-400 border-red-500/20'
                 )}
               >
-                {executionResult.ok ? '200 OK' : 'Error'}
+                {executionResult.ok ? '200 OK' : t('playground.error')}
               </Badge>
               <span className="text-xs text-text-muted flex items-center gap-1">
                 <Clock className="w-3 h-3" />
@@ -166,13 +166,13 @@ export function PlaygroundOutputPanel({ className }: PlaygroundOutputPanelProps)
                   variant="outline"
                   className="text-[10px] px-1.5 py-0 h-5 border bg-amber-500/10 text-amber-400 border-amber-500/20"
                 >
-                  Cached
+                  {t('playground.cached')}
                 </Badge>
               )}
             </div>
           )}
 
-          <div className="ml-auto text-xs text-text-muted pr-1">Output</div>
+          <div className="ml-auto text-xs text-text-muted pr-1">{t('playground.output')}</div>
         </div>
 
         {/* Tab content */}
@@ -196,7 +196,7 @@ export function PlaygroundOutputPanel({ className }: PlaygroundOutputPanelProps)
                     <Input
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search response..."
+                      placeholder={t('playground.searchResponse')}
                       className="h-7 pl-7 text-xs bg-bg-tertiary border-border-subtle"
                     />
                   </div>
@@ -211,7 +211,7 @@ export function PlaygroundOutputPanel({ className }: PlaygroundOutputPanelProps)
                     ) : (
                       <Copy className="w-3 h-3" />
                     )}
-                    {copiedAll ? 'Copied!' : 'Copy All'}
+                    {copiedAll ? t('playground.copied') : t('playground.copyAll')}
                   </Button>
                 </div>
 
@@ -240,10 +240,10 @@ export function PlaygroundOutputPanel({ className }: PlaygroundOutputPanelProps)
                     <XCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                     <div>
                       <p className="text-sm font-medium text-red-400">
-                        {executionResult.error?.code || 'Execution Failed'}
+                        {executionResult.error?.code || t('playground.executionFailed')}
                       </p>
                       <p className="text-sm text-red-300/80 mt-1">
-                        {executionResult.error?.message || 'An unknown error occurred'}
+                        {executionResult.error?.message || t('playground.unknownError')}
                       </p>
                     </div>
                   </div>
@@ -264,10 +264,10 @@ export function PlaygroundOutputPanel({ className }: PlaygroundOutputPanelProps)
               >
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { label: 'Status', value: executionResult.ok ? 'Success' : 'Error', color: executionResult.ok ? 'text-green-400' : 'text-red-400' },
-                    { label: 'Duration', value: `${executionResult.duration_ms}ms`, color: 'text-text-primary' },
-                    { label: 'Cache', value: executionResult.cached ? 'Hit' : 'Miss', color: executionResult.cached ? 'text-amber-400' : 'text-text-secondary' },
-                    { label: 'Version', value: `v${executionResult.version}`, color: 'text-text-primary' },
+                    { label: t('playground.status'), value: executionResult.ok ? t('playground.success') : t('playground.error'), color: executionResult.ok ? 'text-green-400' : 'text-red-400' },
+                    { label: t('playground.duration'), value: `${executionResult.duration_ms}ms`, color: 'text-text-primary' },
+                    { label: t('playground.cache'), value: executionResult.cached ? t('playground.hit') : t('playground.miss'), color: executionResult.cached ? 'text-amber-400' : 'text-text-secondary' },
+                    { label: t('playground.version'), value: `v${executionResult.version}`, color: 'text-text-primary' },
                   ].map((item) => (
                     <div key={item.label} className="bg-bg-tertiary rounded-lg p-3">
                       <p className="text-xs text-text-muted mb-1">{item.label}</p>
@@ -280,7 +280,7 @@ export function PlaygroundOutputPanel({ className }: PlaygroundOutputPanelProps)
 
                 {executionResult.execution_id && (
                   <div className="bg-bg-tertiary rounded-lg p-3">
-                    <p className="text-xs text-text-muted mb-1">Execution ID</p>
+                    <p className="text-xs text-text-muted mb-1">{t('playground.executionId')}</p>
                     <p className="text-xs font-mono text-text-secondary break-all">
                       {executionResult.execution_id}
                     </p>

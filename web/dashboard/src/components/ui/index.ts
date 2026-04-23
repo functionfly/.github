@@ -259,3 +259,65 @@ export type {
   SkeletonChartProps,
   SkeletonAvatarProps,
 } from "./skeleton-domain";
+
+// ============================================================================
+// Chat-Specific UI Components
+// ============================================================================
+
+/**
+ * ChatMessage - Reusable message bubble primitive
+ * Supports own/other styling, attachments, reactions, and custom actions.
+ */
+export { ChatMessage } from "./chat-message";
+export type { ChatMessageProps, ChatMessageReaction, ChatMessageAttachment } from "./chat-message";
+
+/**
+ * ChatInput - Rich message input with file attachment, typing events, auto-grow
+ * Supports drag-and-drop, paperclip button, and Enter-to-send.
+ */
+export { ChatInput } from "./chat-input";
+export type { ChatInputProps } from "./chat-input";
+
+/**
+ * TypingIndicator - Animated dots showing "X is typing..."
+ * Generic typing indicator for any chat context.
+ */
+export { TypingIndicator } from "./typing-indicator";
+export type { TypingIndicatorProps } from "./typing-indicator";
+
+/**
+ * InfiniteScroll - Virtualized scroll container using @tanstack/react-virtual
+ * For message history pagination and long conversation lists.
+ */
+export { InfiniteScroll } from "./infinite-scroll";
+export type { InfiniteScrollProps } from "./infinite-scroll";
+
+/**
+ * EmptyChat - Empty state variant for chat contexts
+ * "No messages yet" with a prompt to start the conversation.
+ */
+export { EmptyChat } from "./empty-chat";
+export type { EmptyChatProps } from "./empty-chat";
+
+/**
+ * ReactionBar - Emoji reaction strip on messages
+ * Renders reaction chips with counts and toggle support.
+ */
+export { ReactionBar } from "./reaction-bar";
+export type { ReactionBarProps, Reaction } from "./reaction-bar";
+
+/**
+ * Skeleton Chat Components - Loading placeholders for chat UIs
+ */
+export {
+  SkeletonMessage,
+  SkeletonMessages,
+  SkeletonConversationItem,
+  SkeletonConversationList,
+} from "./skeleton-chat";
+export type {
+  SkeletonMessageProps,
+  SkeletonMessagesProps,
+  SkeletonConversationItemProps,
+  SkeletonConversationListProps,
+} from "./skeleton-chat";

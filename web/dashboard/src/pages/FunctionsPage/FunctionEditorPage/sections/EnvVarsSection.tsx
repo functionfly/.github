@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Layers, Eye, EyeOff, Key, Plus, Shield, Upload, X } from 'lucide-react';
 import { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { EnvPresetsPicker, type EnvPreset } from '../components/EnvPresetsPicker';
 import { SectionCard } from '../components/editor-ui';
@@ -35,6 +36,7 @@ function parseEnvFile(content: string): Array<{ key: string; value: string }> {
 }
 
 export function EnvVarsSection({ editor }: Props) {
+  const { t } = useTranslation();
   const {
     envVars,
     newEnvKey,
@@ -82,8 +84,8 @@ export function EnvVarsSection({ editor }: Props) {
     });
     markDirty();
     toast.success(
-      `Added ${preset.name} preset (${newVars.length} variables)`
-    );
+        t('funcEditor.toastPresetAdded', { name: preset.name, count: newVars.length })
+      );
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -94,7 +96,7 @@ export function EnvVarsSection({ editor }: Props) {
       const content = ev.target?.result as string;
       const parsed = parseEnvFile(content);
       if (parsed.length === 0) {
-        toast.error('No valid KEY=VALUE pairs found in file');
+        toast.error(t('funcEditor.toastNoValidEnvPairs'));
         return;
       }
       const newVars = parsed.map((p) => ({
@@ -119,8 +121,8 @@ export function EnvVarsSection({ editor }: Props) {
       });
       markDirty();
       toast.success(
-        `Imported ${parsed.length} variable${parsed.length !== 1 ? 's' : ''} from .env`
-      );
+          t('funcEditor.toastImportedVars', { count: parsed.length })
+        );
     };
     reader.readAsText(file);
     // Reset input so same file can be re-imported
@@ -130,9 +132,9 @@ export function EnvVarsSection({ editor }: Props) {
   return (
     <SectionCard
       icon={<Key className="w-4 h-4" />}
-      title="Environment Variables"
+      title={t('funcEditor.envVars')}
       step={4}
-      description="Key-value pairs injected at runtime"
+      description={t('funcEditor.envVarsDescription')}
     >
       {envVars.length > 0 && (
         <div className="space-y-2">
@@ -162,7 +164,7 @@ export function EnvVarsSection({ editor }: Props) {
                     size="sm"
                     className="text-text-muted hover:text-text-primary h-7 w-7 p-0"
                     onClick={() => setShowEnvValues((p) => ({ ...p, [envVar.id]: !p[envVar.id] }))}
-                    aria-label={showEnvValues[envVar.id] ? 'Hide value' : 'Show value'}
+                    aria-label={showEnvValues[envVar.id] ? t('funcEditor.hideValue') : t('funcEditor.showValue')}
                   >
                     {showEnvValues[envVar.id] ? (
                       <EyeOff className="w-3.5 h-3.5" />
@@ -195,7 +197,7 @@ export function EnvVarsSection({ editor }: Props) {
               htmlFor="env-key"
               className="text-xs font-medium text-text-secondary mb-1.5 block"
             >
-              Key
+              {t('funcEditor.key')}
             </Label>
             <Input
               id="env-key"
@@ -214,7 +216,7 @@ export function EnvVarsSection({ editor }: Props) {
               htmlFor="env-value"
               className="text-xs font-medium text-text-secondary mb-1.5 block"
             >
-              Value
+              {t('funcEditor.value')}
             </Label>
             <Input
               id="env-value"
@@ -241,7 +243,7 @@ export function EnvVarsSection({ editor }: Props) {
               className="text-xs text-text-secondary cursor-pointer flex items-center gap-1"
             >
               <Shield className="w-3 h-3" />
-              Mark as secret
+              {t('funcEditor.markAsSecret')}
             </Label>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -253,7 +255,7 @@ export function EnvVarsSection({ editor }: Props) {
                 type="button"
               >
                 <Layers className="w-3 h-3" />
-                Presets
+                {t('funcEditor.presets')}
               </Button>
             </EnvPresetsPicker>
             <Button
@@ -264,7 +266,7 @@ export function EnvVarsSection({ editor }: Props) {
               type="button"
             >
               <Key className="w-3 h-3" />
-              From Vault
+              {t('funcEditor.fromVault')}
             </Button>
             <Button
               variant="outline"
@@ -274,7 +276,7 @@ export function EnvVarsSection({ editor }: Props) {
               type="button"
             >
               <Upload className="w-3 h-3" />
-              Import .env
+              {t('funcEditor.importEnv')}
             </Button>
             <input
               ref={fileInputRef}
@@ -291,7 +293,7 @@ export function EnvVarsSection({ editor }: Props) {
               type="button"
             >
               <Plus className="w-3 h-3" />
-              Add
+              {t('funcEditor.add')}
             </Button>
           </div>
         </div>

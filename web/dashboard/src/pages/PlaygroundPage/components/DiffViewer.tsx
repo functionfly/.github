@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Plus, Minus, Equal, GitCompare } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { usePlaygroundStore, ExecutionHistoryItem } from '../store/playgroundStore';
 import { diffJson, DiffNode, countDiffChanges } from '../utils/jsonDiff';
@@ -87,6 +88,7 @@ function DiffNodeRow({ node, depth }: { node: DiffNode; depth: number }) {
 }
 
 export function DiffViewer({ className }: DiffViewerProps) {
+  const { t } = useTranslation();
   const { executionHistory, executionResult, diffBaseItem, setDiffBaseItem } =
     usePlaygroundStore();
 
@@ -96,7 +98,7 @@ export function DiffViewer({ className }: DiffViewerProps) {
     return (
       <div className={cn('flex flex-col items-center justify-center py-12 text-center', className)}>
         <GitCompare className="w-10 h-10 text-text-muted mb-3" />
-        <p className="text-sm text-text-muted">Run the function to compare results</p>
+        <p className="text-sm text-text-muted">{t('playground.runFunctionToCompare')}</p>
       </div>
     );
   }
@@ -105,7 +107,7 @@ export function DiffViewer({ className }: DiffViewerProps) {
     return (
       <div className={cn('flex flex-col items-center justify-center py-12 text-center', className)}>
         <GitCompare className="w-10 h-10 text-text-muted mb-3" />
-        <p className="text-sm text-text-muted">Run the function at least twice to compare</p>
+        <p className="text-sm text-text-muted">{t('playground.runTwiceToCompare')}</p>
       </div>
     );
   }
@@ -119,7 +121,7 @@ export function DiffViewer({ className }: DiffViewerProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-text-muted">Comparing with:</span>
+          <span className="text-xs text-text-muted">{t('playground.comparingWith')}</span>
           <select
             className="text-xs bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-text-primary"
             value={baseItem.id}
@@ -156,7 +158,7 @@ export function DiffViewer({ className }: DiffViewerProps) {
           )}
           {added === 0 && removed === 0 && changed === 0 && (
             <Badge className="text-[10px] bg-bg-tertiary text-text-muted border-border-subtle">
-              No changes
+              {t('playground.noChanges')}
             </Badge>
           )}
         </div>
@@ -169,7 +171,7 @@ export function DiffViewer({ className }: DiffViewerProps) {
         className="bg-bg-secondary rounded-md p-2 overflow-auto max-h-96"
       >
         {diffNodes.length === 0 ? (
-          <p className="text-xs text-text-muted text-center py-4">Results are identical</p>
+          <p className="text-xs text-text-muted text-center py-4">{t('playground.resultsIdentical')}</p>
         ) : (
           diffNodes.map((node, i) => (
             <DiffNodeRow key={i} node={node} depth={0} />
@@ -181,15 +183,15 @@ export function DiffViewer({ className }: DiffViewerProps) {
       <div className="flex items-center gap-4 text-xs text-text-muted">
         <div className="flex items-center gap-1">
           <Plus className="w-3 h-3 text-green-400" />
-          <span>Added</span>
+          <span>{t('playground.added')}</span>
         </div>
         <div className="flex items-center gap-1">
           <Minus className="w-3 h-3 text-red-400" />
-          <span>Removed</span>
+          <span>{t('playground.removed')}</span>
         </div>
         <div className="flex items-center gap-1">
           <Equal className="w-3 h-3 text-yellow-400" />
-          <span>Changed</span>
+          <span>{t('playground.changed')}</span>
         </div>
       </div>
     </div>

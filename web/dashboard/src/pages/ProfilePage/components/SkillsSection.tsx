@@ -39,7 +39,7 @@ export function SkillsSection({ skills }: SkillsSectionProps) {
   return (
     <Card className="border-border-subtle">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
+        <CardTitle className="text-lg font-display flex items-center gap-2">
           <Code2 className="w-5 h-5 text-brand-500" />
           Skills & Technologies
         </CardTitle>

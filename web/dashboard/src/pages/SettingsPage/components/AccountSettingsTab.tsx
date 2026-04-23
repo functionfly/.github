@@ -1,18 +1,21 @@
 import { usersApi } from '@/api/users';
 import { MyFollowStats } from '@/components/follow';
 import { UsernameChangeField } from '@/components/UsernameChangeField';
+import { LanguagePicker } from '@/components/common/LanguagePicker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/stores/authStore';
 import { useOnboardingStore } from '@/stores/onboardingStore';
-import { Play, Users } from 'lucide-react';
+import { Globe, Play, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
 export function AccountSettingsTab() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const nameParts = (user?.name || '').split(' ');
@@ -111,18 +114,18 @@ export function AccountSettingsTab() {
           <CardHeader>
             <CardTitle className="font-display flex items-center gap-2">
               <Play className="w-5 h-5 text-brand-500" />
-              Onboarding
+              {t('settings.onboarding')}
             </CardTitle>
             <CardDescription className="text-text-secondary">
               {hasSkippedOnboarding
-                ? 'You skipped the setup wizard. Complete it to unlock multi-provider deployment and automatic failover.'
+                ? t('settings.onboardingDescription')
                 : `You've completed ${completedSteps.length} of 4 onboarding steps. Continue where you left off.`}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button onClick={handleResumeOnboarding} className="ff-btn-velocity gap-2">
               <Play className="w-4 h-4" />
-              {completedSteps.length > 0 ? 'Resume Setup' : 'Start Setup'}
+              {completedSteps.length > 0 ? t('settings.resumeSetup') : t('settings.startSetup')}
             </Button>
           </CardContent>
         </Card>
@@ -130,15 +133,15 @@ export function AccountSettingsTab() {
 
       <Card className="ff-card-velocity">
         <CardHeader>
-          <CardTitle className="font-display">Profile Information</CardTitle>
+          <CardTitle className="font-display">{t('settings.profileInformation')}</CardTitle>
           <CardDescription className="text-text-secondary">
-            Update your account details
+            {t('settings.profileDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="firstName">First Name</Label>
+              <Label htmlFor="firstName">{t('settings.firstName')}</Label>
               <Input
                 id="firstName"
                 value={firstName}
@@ -146,7 +149,7 @@ export function AccountSettingsTab() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="lastName">Last Name</Label>
+              <Label htmlFor="lastName">{t('settings.lastName')}</Label>
               <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} />
             </div>
           </div>
@@ -155,7 +158,7 @@ export function AccountSettingsTab() {
             onChange={(val) => setUsername(val)}
           />
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t('settings.email')}</Label>
             <Input
               id="email"
               type="email"
@@ -163,10 +166,10 @@ export function AccountSettingsTab() {
               disabled
               className="opacity-60 cursor-not-allowed"
             />
-            <p className="text-xs text-text-muted">Email cannot be changed here.</p>
+            <p className="text-xs text-text-muted">{t('settings.emailCannotChange')}</p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="dateOfBirth">Date of Birth</Label>
+            <Label htmlFor="dateOfBirth">{t('settings.dateOfBirth')}</Label>
             <Input
               id="dateOfBirth"
               type="date"
@@ -180,27 +183,27 @@ export function AccountSettingsTab() {
               className={isDobLocked ? 'opacity-60 cursor-not-allowed' : undefined}
             />
             {isDobLocked ? (
-              <p className="text-xs text-text-muted">DOB cannot be changed after signup.</p>
+              <p className="text-xs text-text-muted">{t('settings.dobLocked')}</p>
             ) : (
               <p className="text-xs text-text-muted">
-                Set your DOB for verification and compliance.
+                {t('settings.dobDescription')}
               </p>
             )}
           </div>
           <Button onClick={handleSaveProfile} disabled={isSavingProfile} className="ff-btn-velocity">
-            {isSavingProfile ? 'Saving...' : 'Save Changes'}
+            {isSavingProfile ? t('settings.saving') : t('settings.saveChanges')}
           </Button>
         </CardContent>
       </Card>
 
       <Card className="ff-card-velocity">
         <CardHeader>
-          <CardTitle className="font-display">Password</CardTitle>
-          <CardDescription className="text-text-secondary">Update your password</CardDescription>
+          <CardTitle className="font-display">{t('settings.password')}</CardTitle>
+          <CardDescription className="text-text-secondary">{t('settings.passwordDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="currentPassword">Current Password</Label>
+            <Label htmlFor="currentPassword">{t('settings.currentPassword')}</Label>
             <Input
               id="currentPassword"
               type="password"
@@ -209,7 +212,7 @@ export function AccountSettingsTab() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="newPassword">New Password</Label>
+            <Label htmlFor="newPassword">{t('settings.newPassword')}</Label>
             <Input
               id="newPassword"
               type="password"
@@ -218,7 +221,7 @@ export function AccountSettingsTab() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm New Password</Label>
+            <Label htmlFor="confirmPassword">{t('settings.confirmPassword')}</Label>
             <Input
               id="confirmPassword"
               type="password"
@@ -227,7 +230,7 @@ export function AccountSettingsTab() {
             />
           </div>
           <Button onClick={handleUpdatePassword} disabled={isUpdatingPassword} className="ff-btn-velocity">
-            {isUpdatingPassword ? 'Updating...' : 'Update Password'}
+            {isUpdatingPassword ? t('settings.updating') : t('settings.updatePassword')}
           </Button>
         </CardContent>
       </Card>
@@ -235,11 +238,26 @@ export function AccountSettingsTab() {
       <Card className="ff-card-velocity">
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
-            <Users className="w-5 h-5 text-brand-500" />
-            Follow Stats
+            <Globe className="w-5 h-5 text-brand-500" />
+            {t('settings.language')}
           </CardTitle>
           <CardDescription className="text-text-secondary">
-            Your followers, following, and followed functions
+            {t('settings.languageDescription')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <LanguagePicker variant="default" showLabel={true} />
+        </CardContent>
+      </Card>
+
+      <Card className="ff-card-velocity">
+        <CardHeader>
+          <CardTitle className="font-display flex items-center gap-2">
+            <Users className="w-5 h-5 text-brand-500" />
+            {t('settings.followStats')}
+          </CardTitle>
+          <CardDescription className="text-text-secondary">
+            {t('settings.followStatsDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>

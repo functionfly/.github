@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import {
   conversationsApi,
@@ -6,6 +7,7 @@ import {
   type ConversationMessage,
   type ConversationType,
 } from '@/api/conversations';
+import { useConversationWebSocket } from './useConversationWebSocket';
 
 // Query keys
 export const conversationKeys = {
@@ -74,7 +76,7 @@ export function useMarkConversationRead() {
   });
 }
 
-// List messages
+// List messages (initial fetch — no polling; real-time updates come via WebSocket)
 export function useMessages(
   conversationId: string,
   params?: { limit?: number; offset?: number }
@@ -83,9 +85,61 @@ export function useMessages(
     queryKey: conversationKeys.messages(conversationId, params),
     queryFn: () => conversationsApi.listMessages(conversationId, params),
     enabled: !!conversationId,
-    staleTime: 1000 * 10,
-    refetchInterval: 10000, // Poll for new messages every 10s
+    staleTime: 1000 * 60, // Cache aggressively; WS pushes keep it fresh
   });
+}
+
+// Real-time messages hook — combines initial fetch with WebSocket push.
+// Returns the same data shape as useMessages plus connection state.
+export function useRealtimeMessages(
+  conversationId: string,
+  params?: { limit?: number; offset?: number }
+) {
+  const messagesQuery = useMessages(conversationId, params);
+  const [typingUsers, setTypingUsers] = useState<Record<string, boolean>>({});
+
+  const handleTyping = useCallback(
+    (data: { user_id: string; conversation_id: string; typing: boolean }) => {
+      if (data.conversation_id !== conversationId) return;
+      setTypingUsers((prev) => {
+        const next = { ...prev };
+        if (data.typing) {
+          next[data.user_id] = true;
+        } else {
+          delete next[data.user_id];
+        }
+        return next;
+      });
+    },
+    [conversationId],
+  );
+
+  const ws = useConversationWebSocket({
+    conversationIds: conversationId ? [conversationId] : [],
+    enabled: !!conversationId,
+    onTyping: handleTyping,
+  });
+
+  const sendTyping = useCallback(
+    (typing: boolean) => {
+      if (!conversationId) return;
+      ws.send({
+        type: 'typing',
+        payload: { conversation_id: conversationId, typing },
+      });
+    },
+    [ws, conversationId],
+  );
+
+  return {
+    ...messagesQuery,
+    isConnected: ws.isConnected,
+    isConnecting: ws.isConnecting,
+    wsError: ws.error,
+    typingUsers,
+    sendTyping,
+    reconnect: ws.reconnect,
+  };
 }
 
 // Create message

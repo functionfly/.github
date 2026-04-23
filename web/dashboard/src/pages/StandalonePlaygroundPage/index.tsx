@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Editor from '@monaco-editor/react'
 import { useTheme } from '../../components/common/ThemeProvider'
 import { Button } from '../../components/ui/button'
@@ -40,14 +41,66 @@ const RUNTIMES = [
   { value: 'deno', label: 'Deno' },
 ]
 
+// Parse code from URL params (base64url encoded)
+const parseUrlCode = (): { code: string | null; runtime: string | null } => {
+  try {
+    const params = new URLSearchParams(window.location.search)
+    const codeParam = params.get('code')
+    const runtimeParam = params.get('runtime')
+
+    if (!codeParam) return { code: null, runtime: null }
+
+    // Decode from base64url
+    const base64 = codeParam.replace(/-/g, '+').replace(/_/g, '/')
+    const decoded = atob(base64)
+    return { code: decoded, runtime: runtimeParam }
+  } catch {
+    return { code: null, runtime: null }
+  }
+}
+
+// Create shareable URL with code pre-filled
+export const createPlaygroundUrl = (code: string, runtime?: string): string => {
+  const encodedCode = btoa(code).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+  const params = new URLSearchParams()
+  params.set('code', encodedCode)
+  if (runtime) params.set('runtime', runtime)
+  return `${window.location.origin}/playground?${params.toString()}`
+}
+
 export function StandalonePlaygroundPage() {
   const { theme } = useTheme()
-  const [code, setCode] = useState(DEFAULT_CODE)
+  const [searchParams] = useSearchParams()
+
+  // Parse initial code from URL on mount
+  const urlParams = parseUrlCode()
+  const initialCode = urlParams.code || DEFAULT_CODE
+  const initialRuntime = urlParams.runtime || 'python3.12'
+
+  const [code, setCode] = useState(initialCode)
   const [input, setInput] = useState(DEFAULT_INPUT)
-  const [runtime, setRuntime] = useState('python3.12')
+  const [runtime, setRuntime] = useState(initialRuntime)
   const [status, setStatus] = useState<Status>('idle')
   const [result, setResult] = useState<Result | null>(null)
   const [tab, setTab] = useState<'output' | 'logs'>('output')
+
+  // Update code if URL changes (e.g., navigation within page)
+  useEffect(() => {
+    const urlCode = searchParams.get('code')
+    if (urlCode) {
+      try {
+        const base64 = urlCode.replace(/-/g, '+').replace(/_/g, '/')
+        const decoded = atob(base64)
+        setCode(decoded)
+      } catch {
+        // Invalid code param, ignore
+      }
+    }
+    const urlRuntime = searchParams.get('runtime')
+    if (urlRuntime) {
+      setRuntime(urlRuntime)
+    }
+  }, [searchParams])
 
   const handleRun = useCallback(async () => {
     setStatus('running')

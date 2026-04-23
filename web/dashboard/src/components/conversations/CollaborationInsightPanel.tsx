@@ -3,27 +3,31 @@ import { User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface CollaborationInsightPanelProps {
+  username: string;
   userId: string;
   className?: string;
 }
 
-async function fetchCollaborationProfile(userId: string): Promise<{
+async function fetchCollaborationProfile(
+  username: string,
+  userId: string
+): Promise<{
   reputation?: Record<string, number>;
   shared_threads?: number;
   functions_overlap?: string[];
 }> {
   const base = import.meta.env.VITE_API_URL || "";
-  const url = `${base}/v1/conversations/collaboration-profile/${userId}`;
+  const url = `${base}/v1/u/${username}/conversations/collaboration-profile/${userId}`;
   const res = await fetch(url, { credentials: "include" });
   if (!res.ok) return {};
   return res.json();
 }
 
-export function CollaborationInsightPanel({ userId, className }: CollaborationInsightPanelProps) {
+export function CollaborationInsightPanel({ username, userId, className }: CollaborationInsightPanelProps) {
   const { data } = useQuery({
-    queryKey: ["collaboration-profile", userId],
-    queryFn: () => fetchCollaborationProfile(userId),
-    enabled: Boolean(userId),
+    queryKey: ["collaboration-profile", username, userId],
+    queryFn: () => fetchCollaborationProfile(username, userId),
+    enabled: Boolean(username) && Boolean(userId),
   });
 
   if (!data) return null;

@@ -20,6 +20,7 @@ import {
   PanelRightOpen,
   PanelRightClose,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { usePlaygroundStore } from '../store/playgroundStore';
 import { usePlaygroundState } from '../hooks/usePlaygroundState';
 
@@ -29,6 +30,7 @@ interface PlaygroundToolbarProps {
 }
 
 export function PlaygroundToolbar({ author, name }: PlaygroundToolbarProps) {
+  const { t } = useTranslation();
   const {
     execute,
     formatJson,
@@ -74,7 +76,7 @@ export function PlaygroundToolbar({ author, name }: PlaygroundToolbarProps) {
         ) : (
           <Play className="w-3.5 h-3.5" />
         )}
-        {isExecuting ? 'Running...' : 'Run'}
+        {isExecuting ? t('playground.running') : t('playground.run')}
         <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[10px] opacity-60 ml-1 font-mono">
           ⌘↵
         </kbd>
@@ -88,10 +90,10 @@ export function PlaygroundToolbar({ author, name }: PlaygroundToolbarProps) {
         size="sm"
         onClick={formatJson}
         className="gap-1.5 h-8 text-text-secondary hover:text-text-primary"
-        title="Format JSON (⌘⇧F)"
+        title={t('playground.format') + ' (⌘⇧F)'}
       >
         <Code2 className="w-3.5 h-3.5" />
-        <span className="hidden sm:inline text-xs">Format</span>
+        <span className="hidden sm:inline text-xs">{t('playground.format')}</span>
       </Button>
 
       {/* Reset */}
@@ -100,10 +102,10 @@ export function PlaygroundToolbar({ author, name }: PlaygroundToolbarProps) {
         size="sm"
         onClick={resetPlayground}
         className="gap-1.5 h-8 text-text-secondary hover:text-text-primary"
-        title="Reset playground (⌘⇧R)"
+        title={t('playground.reset') + ' playground (⌘⇧R)'}
       >
         <RotateCcw className="w-3.5 h-3.5" />
-        <span className="hidden sm:inline text-xs">Reset</span>
+        <span className="hidden sm:inline text-xs">{t('playground.reset')}</span>
       </Button>
 
       {/* Copy Link */}
@@ -112,7 +114,7 @@ export function PlaygroundToolbar({ author, name }: PlaygroundToolbarProps) {
         size="sm"
         onClick={handleCopyLink}
         className="gap-1.5 h-8 text-text-secondary hover:text-text-primary"
-        title="Copy shareable link (⌘⇧C)"
+        title={t('playground.share') + ' (⌘⇧C)'}
       >
         {copiedLink ? (
           <Check className="w-3.5 h-3.5 text-green-500" />
@@ -120,7 +122,7 @@ export function PlaygroundToolbar({ author, name }: PlaygroundToolbarProps) {
           <Link2 className="w-3.5 h-3.5" />
         )}
         <span className="hidden sm:inline text-xs">
-          {copiedLink ? 'Copied!' : 'Share'}
+          {copiedLink ? t('playground.copied') : t('playground.share')}
         </span>
       </Button>
 
@@ -135,17 +137,17 @@ export function PlaygroundToolbar({ author, name }: PlaygroundToolbarProps) {
             className="gap-1.5 h-8 text-text-secondary hover:text-text-primary"
           >
             <Settings2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline text-xs">Settings</span>
+            <span className="hidden sm:inline text-xs">{t('playground.settings')}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
-          <DropdownMenuLabel className="text-xs">Playground Settings</DropdownMenuLabel>
+          <DropdownMenuLabel className="text-xs">{t('playground.playgroundSettings')}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={() => updateSettings({ autoRun: !settings.autoRun })}
             className="flex items-center justify-between text-xs"
           >
-            <span>Auto-run on change</span>
+            <span>{t('playground.autoRunOnChange')}</span>
             <div
               className={`w-8 h-4 rounded-full transition-colors ${
                 settings.autoRun ? 'bg-indigo-500' : 'bg-border-subtle'
@@ -162,7 +164,7 @@ export function PlaygroundToolbar({ author, name }: PlaygroundToolbarProps) {
             onClick={() => updateSettings({ showTimeline: !settings.showTimeline })}
             className="flex items-center justify-between text-xs"
           >
-            <span>Show execution timeline</span>
+            <span>{t('playground.showExecutionTimeline')}</span>
             <div
               className={`w-8 h-4 rounded-full transition-colors ${
                 settings.showTimeline ? 'bg-indigo-500' : 'bg-border-subtle'
@@ -179,7 +181,7 @@ export function PlaygroundToolbar({ author, name }: PlaygroundToolbarProps) {
             onClick={() => updateSettings({ showHeaders: !settings.showHeaders })}
             className="flex items-center justify-between text-xs"
           >
-            <span>Show response headers</span>
+            <span>{t('playground.showResponseHeaders')}</span>
             <div
               className={`w-8 h-4 rounded-full transition-colors ${
                 settings.showHeaders ? 'bg-indigo-500' : 'bg-border-subtle'
@@ -201,7 +203,7 @@ export function PlaygroundToolbar({ author, name }: PlaygroundToolbarProps) {
         size="sm"
         onClick={() => setSidebarOpen(!sidebarOpen)}
         className="gap-1.5 h-8 text-text-secondary hover:text-text-primary"
-        title="Toggle sidebar"
+        title={t('playground.toggleSidebar')}
       >
         {sidebarOpen ? (
           <PanelRightClose className="w-3.5 h-3.5" />

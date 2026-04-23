@@ -1,11 +1,11 @@
 /**
- * Shared settings content: Account, Billing, API Keys, Notifications, Security, Privacy.
+ * Shared settings content: Account, Billing, Developer, Notifications, Security, Privacy.
  * Used on the standalone /settings page and on /u/{username} (profile Settings tab).
  *
  * URL STRUCTURE (Hash-based routing - long term):
  *   /u/:username/settings#account      → Account tab (default)
  *   /u/:username/settings#billing      → Billing tab
- *   /u/:username/settings#api          → API Keys tab
+ *   /u/:username/settings#developer    → Developer tab (API Keys, Deploy Keys, Webhooks)
  *   /u/:username/settings#notifications → Notifications tab
  *   /u/:username/settings#security      → Security tab
  *   /u/:username/settings#privacy       → Privacy tab
@@ -24,14 +24,15 @@ import { useApiReachableStore } from '@/stores/apiReachableStore';
 import { useAuthStore } from '@/stores/authStore';
 import type { UserProfile } from '@/types';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, CreditCard, Key, Shield, ShieldCheck, User } from 'lucide-react';
+import { Bell, CreditCard, Code, Key, Shield, ShieldCheck, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import {
   AccountSettingsTab,
-  ApiKeysSettingsTab,
   BillingSettingsTab,
+  DeveloperSettingsTab,
   NotificationsSettingsTab,
   SecuritySettingsTab,
 } from './components';
@@ -70,6 +71,7 @@ export function SettingsContent({
   profile,
   initialTab: initialTabProp,
 }: SettingsContentProps) {
+  const { t } = useTranslation();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const subtabFromUrl = searchParams.get('subtab');
@@ -156,9 +158,9 @@ export function SettingsContent({
       {showHeader && (
         <div>
           <h1 className="font-display text-2xl font-bold bg-gradient-to-r from-brand-500 via-ff-afterburner to-brand-400 bg-clip-text text-transparent">
-            Settings
+            {t('settings.title')}
           </h1>
-          <p className="text-text-secondary">Manage your account and preferences</p>
+          <p className="text-text-secondary">{t('settings.manageAccount')}</p>
         </div>
       )}
 
@@ -173,42 +175,42 @@ export function SettingsContent({
             className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500 data-[state=active]:shadow-glow-sm"
           >
             <User className="h-4 w-4 shrink-0" />
-            Account
+            {t('settings.account')}
           </TabsTrigger>
           <TabsTrigger
             value="billing"
             className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500 data-[state=active]:shadow-glow-sm"
           >
             <CreditCard className="h-4 w-4 shrink-0" />
-            Billing
+            {t('settings.billing')}
           </TabsTrigger>
           <TabsTrigger
-            value="api"
+            value="developer"
             className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500 data-[state=active]:shadow-glow-sm"
           >
-            <Key className="h-4 w-4 shrink-0" />
-            API Keys
+            <Code className="h-4 w-4 shrink-0" />
+            {t('settings.developer')}
           </TabsTrigger>
           <TabsTrigger
             value="notifications"
             className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500 data-[state=active]:shadow-glow-sm"
           >
             <Bell className="h-4 w-4 shrink-0" />
-            Notifications
+            {t('settings.notifications')}
           </TabsTrigger>
           <TabsTrigger
             value="security"
             className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500 data-[state=active]:shadow-glow-sm"
           >
             <ShieldCheck className="h-4 w-4 shrink-0" />
-            Security
+            {t('settings.security')}
           </TabsTrigger>
           <TabsTrigger
             value="privacy"
             className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500 data-[state=active]:shadow-glow-sm"
           >
             <Shield className="h-4 w-4 shrink-0" />
-            Privacy
+            {t('settings.privacy')}
           </TabsTrigger>
         </TabsList>
 
@@ -220,8 +222,8 @@ export function SettingsContent({
           <BillingSettingsTab returnUrl={returnUrl} displayPlan={displayPlan} />
         </TabsContent>
 
-        <TabsContent value="api" className="space-y-6">
-          <ApiKeysSettingsTab />
+        <TabsContent value="developer" className="space-y-6">
+          <DeveloperSettingsTab />
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-6">

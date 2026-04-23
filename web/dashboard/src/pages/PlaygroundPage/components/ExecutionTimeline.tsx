@@ -5,6 +5,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
 import { ExecutionResult } from '../store/playgroundStore';
 
 interface ExecutionTimelineProps {
@@ -20,7 +22,7 @@ interface Phase {
   description: string;
 }
 
-function getPhases(result: ExecutionResult): Phase[] {
+function getPhases(result: ExecutionResult, t: TFunction): Phase[] {
   const total = result.duration_ms || 1;
 
   // Estimate phase breakdown (real data would come from backend)
@@ -30,40 +32,41 @@ function getPhases(result: ExecutionResult): Phase[] {
 
   return [
     {
-      label: 'Network',
+      label: t('playground.network'),
       shortLabel: 'Net',
       color: 'text-blue-400',
       bgColor: 'bg-blue-500',
       estimatedPercent: networkPercent,
-      description: `~${Math.round((networkPercent / 100) * total)}ms — Request routing and network overhead`,
+      description: t('playground.networkDescription', { ms: Math.round((networkPercent / 100) * total) }),
     },
     {
-      label: 'Queue',
+      label: t('playground.queue'),
       shortLabel: 'Q',
       color: 'text-yellow-400',
       bgColor: 'bg-yellow-500',
       estimatedPercent: queuePercent,
-      description: `~${Math.round((queuePercent / 100) * total)}ms — Function scheduling and queue wait`,
+      description: t('playground.queueDescription', { ms: Math.round((queuePercent / 100) * total) }),
     },
     {
-      label: 'Execute',
+      label: t('playground.execute'),
       shortLabel: 'Exec',
       color: result.ok ? 'text-green-400' : 'text-red-400',
       bgColor: result.ok ? 'bg-green-500' : 'bg-red-500',
       estimatedPercent: executePercent,
-      description: `~${Math.round((executePercent / 100) * total)}ms — Function execution time`,
+      description: t('playground.executeDescription', { ms: Math.round((executePercent / 100) * total) }),
     },
   ];
 }
 
 export function ExecutionTimeline({ result }: ExecutionTimelineProps) {
-  const phases = getPhases(result);
+  const { t } = useTranslation();
+  const phases = getPhases(result, t);
 
   return (
     <div className="space-y-4">
       {/* Total duration */}
       <div className="flex items-center justify-between text-sm">
-        <span className="text-text-secondary font-medium">Total Duration</span>
+        <span className="text-text-secondary font-medium">{t('playground.totalDuration')}</span>
         <span
           className={`font-mono font-semibold ${
             result.ok ? 'text-green-400' : 'text-red-400'
@@ -120,30 +123,30 @@ export function ExecutionTimeline({ result }: ExecutionTimelineProps) {
       {/* Metadata */}
       <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border-subtle">
         <div className="space-y-1">
-          <p className="text-xs text-text-muted">Status</p>
+          <p className="text-xs text-text-muted">{t('playground.status')}</p>
           <p
             className={`text-sm font-medium ${
               result.ok ? 'text-green-400' : 'text-red-400'
             }`}
           >
-            {result.ok ? '✓ Success' : '✗ Failed'}
+            {result.ok ? t('playground.successCheck') : t('playground.failedCheck')}
           </p>
         </div>
 
         <div className="space-y-1">
-          <p className="text-xs text-text-muted">Cache</p>
+          <p className="text-xs text-text-muted">{t('playground.cache')}</p>
           <p className="text-sm font-medium">
             {result.cached ? (
-              <span className="text-amber-400">Hit</span>
+              <span className="text-amber-400">{t('playground.hit')}</span>
             ) : (
-              <span className="text-text-secondary">Miss</span>
+              <span className="text-text-secondary">{t('playground.miss')}</span>
             )}
           </p>
         </div>
 
         {result.execution_id && (
           <div className="space-y-1 col-span-2">
-            <p className="text-xs text-text-muted">Execution ID</p>
+            <p className="text-xs text-text-muted">{t('playground.executionId')}</p>
             <p className="text-xs font-mono text-text-secondary truncate">
               {result.execution_id}
             </p>
@@ -151,7 +154,7 @@ export function ExecutionTimeline({ result }: ExecutionTimelineProps) {
         )}
 
         <div className="space-y-1">
-          <p className="text-xs text-text-muted">Version</p>
+          <p className="text-xs text-text-muted">{t('playground.version')}</p>
           <p className="text-sm font-mono text-text-secondary">v{result.version}</p>
         </div>
       </div>

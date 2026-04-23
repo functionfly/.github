@@ -10,8 +10,10 @@ import { Label } from "@/components/ui/label";
 import { useAuthStore } from "@/stores/authStore";
 import { usersApi, type UpdateProfileRequest } from "@/api/users";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 export function MyProfilePage() {
+  const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
 
@@ -51,13 +53,13 @@ export function MyProfilePage() {
   const updateMutation = useMutation({
     mutationFn: (data: UpdateProfileRequest) => usersApi.updateMe(data),
     onSuccess: (res) => {
-      toast.success("Profile updated successfully");
+      toast.success(t("profile.updateSuccess"));
       queryClient.invalidateQueries({ queryKey: ["my-profile"] });
       // Also refresh auth store so Navbar reflects changes
       useAuthStore.getState().initialize();
     },
     onError: (err: Error) => {
-      toast.error(err.message || "Failed to update profile");
+      toast.error(err.message || t("profile.updateError"));
     },
   });
 
@@ -81,14 +83,14 @@ export function MyProfilePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">My Profile</h1>
-          <p className="text-text-secondary">Manage your public profile information</p>
+          <h1 className="text-2xl font-bold text-text-primary">{t("profile.title")}</h1>
+          <p className="text-text-secondary">{t("profile.subtitle")}</p>
         </div>
         {profile.username && (
           <Link to={`/u/${profile.username}`} target="_blank">
             <Button variant="outline" size="sm" className="gap-2">
               <ExternalLink className="w-4 h-4" />
-              View Public Profile
+              {t("profile.viewPublicProfile")}
             </Button>
           </Link>
         )}
@@ -97,9 +99,9 @@ export function MyProfilePage() {
       {/* Avatar */}
       <Card>
         <CardHeader>
-          <CardTitle>Avatar</CardTitle>
+          <CardTitle>{t("profile.avatarTitle")}</CardTitle>
           <CardDescription className="text-text-secondary">
-            Your profile picture (set via social login)
+            {t("profile.avatarDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -108,7 +110,7 @@ export function MyProfilePage() {
               {profile.avatar ? (
                 <img
                   src={profile.avatar}
-                  alt={profile.name || "Avatar"}
+                  alt={profile.name || t("profile.avatarTitle")}
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -118,8 +120,8 @@ export function MyProfilePage() {
             <div>
               <p className="text-sm text-text-secondary">
                 {profile.avatar
-                  ? "Avatar synced from your social login provider."
-                  : "No avatar set. Connect a social account to get one."}
+                  ? t("profile.avatarSynced")
+                  : t("profile.avatarNotSet")}
               </p>
             </div>
           </div>
@@ -129,15 +131,15 @@ export function MyProfilePage() {
       {/* Profile Info */}
       <Card>
         <CardHeader>
-          <CardTitle>Profile Information</CardTitle>
+          <CardTitle>{t("profile.profileInformation")}</CardTitle>
           <CardDescription className="text-text-secondary">
-            Update your display name, username, and company
+            {t("profile.profileInformationDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Email (read-only) */}
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("profile.email")}</Label>
             <Input
               id="email"
               type="email"
@@ -145,19 +147,19 @@ export function MyProfilePage() {
               disabled
               className="opacity-60 cursor-not-allowed"
             />
-            <p className="text-xs text-text-muted">Email cannot be changed here.</p>
+            <p className="text-xs text-text-muted">{t("profile.emailCannotChange")}</p>
           </div>
 
           {/* Display Name */}
           <div className="space-y-2">
             <Label htmlFor="name" className="flex items-center gap-2">
               <User className="w-4 h-4" />
-              Display Name
+              {t("profile.displayName")}
             </Label>
             <Input
               id="name"
               type="text"
-              placeholder="Your full name"
+              placeholder={t("profile.displayNamePlaceholder")}
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={isLoading}
@@ -168,21 +170,21 @@ export function MyProfilePage() {
           <div className="space-y-2">
             <Label htmlFor="username" className="flex items-center gap-2">
               <AtSign className="w-4 h-4" />
-              Username
+              {t("profile.username")}
             </Label>
             <Input
               id="username"
               type="text"
-              placeholder="yourhandle"
+              placeholder={t("profile.usernamePlaceholder")}
               value={username}
               onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
               disabled={isLoading}
             />
             <p className="text-xs text-text-muted">
-              Lowercase letters, numbers, hyphens and underscores only.
+              {t("profile.usernameHint")}
               {username && (
                 <span className="ml-1 text-brand-400">
-                  Public URL: /u/{username}
+                  {t("profile.publicUrl", { username })}
                 </span>
               )}
             </p>
@@ -192,12 +194,12 @@ export function MyProfilePage() {
           <div className="space-y-2">
             <Label htmlFor="companyName" className="flex items-center gap-2">
               <Building2 className="w-4 h-4" />
-              Company <span className="text-text-muted text-xs">(optional)</span>
+              {t("profile.company")} <span className="text-text-muted text-xs">{t("profile.optional")}</span>
             </Label>
             <Input
               id="companyName"
               type="text"
-              placeholder="Acme Inc"
+              placeholder={t("profile.companyPlaceholder")}
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
               disabled={isLoading}
@@ -208,11 +210,11 @@ export function MyProfilePage() {
           <div className="space-y-2">
             <Label htmlFor="bio" className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
-              Bio <span className="text-text-muted text-xs">(optional)</span>
+              {t("profile.bio")} <span className="text-text-muted text-xs">{t("profile.optional")}</span>
             </Label>
             <Textarea
               id="bio"
-              placeholder="Tell us about yourself, your expertise, or what you're building..."
+              placeholder={t("profile.bioPlaceholder")}
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               disabled={isLoading}
@@ -220,7 +222,7 @@ export function MyProfilePage() {
               maxLength={500}
             />
             <p className="text-xs text-text-muted text-right">
-              {bio.length}/500 characters
+              {t("profile.bioCharacterCount", { count: bio.length })}
             </p>
           </div>
 
@@ -230,7 +232,7 @@ export function MyProfilePage() {
             className="gap-2"
           >
             <Save className="w-4 h-4" />
-            {updateMutation.isPending ? "Saving..." : "Save Changes"}
+            {updateMutation.isPending ? t("profile.saving") : t("profile.saveChanges")}
           </Button>
         </CardContent>
       </Card>

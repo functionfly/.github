@@ -16,6 +16,9 @@ import type {
   UpdateSecretRequest,
   GenerateTokenRequest,
   GenerateTokenResponse,
+  SecretVersionMetadata,
+  SecretVersionDiff,
+  RollbackSecretRequest,
 } from "@/types/vault";
 
 // ==================== Query Keys ====================
@@ -29,6 +32,9 @@ export const vaultKeys = {
   tokens: (secretId: string) => [...vaultKeys.detail(secretId), "tokens"] as const,
   audit: () => [...vaultKeys.all, "audit"] as const,
   secretAudit: (secretId: string) => [...vaultKeys.detail(secretId), "audit"] as const,
+  versions: (secretId: string) => [...vaultKeys.detail(secretId), "versions"] as const,
+  version: (secretId: string, versionNumber: number) => [...vaultKeys.versions(secretId), versionNumber] as const,
+  versionDiff: (secretId: string, from: number, to: number) => [...vaultKeys.versions(secretId), "diff", from, to] as const,
 };
 
 // ==================== Helper Functions ====================

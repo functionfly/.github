@@ -17,6 +17,7 @@ import { useQuery } from '@tanstack/react-query';
 import { AlertCircle, Check, Clock, DollarSign, History, Info, Loader2, User } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { isAxiosError } from 'axios';
 
 interface UsernameChangeFieldProps {
   value: string;
@@ -152,7 +153,12 @@ export function UsernameChangeField({ value, onChange, disabled }: UsernameChang
         toast.error(response.message || 'Failed to change username');
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to change username';
+      let message = 'Failed to change username';
+      if (isAxiosError(err) && err.response?.data?.message) {
+        message = err.response.data.message;
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
       toast.error(message);
     } finally {
       setIsChanging(false);
@@ -360,11 +366,11 @@ export function UsernameChangeField({ value, onChange, disabled }: UsernameChang
           </div>
 
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setShowConfirmDialog(false)} disabled={isChanging}>
+            <Button variant="default" onClick={() => setShowConfirmDialog(false)} disabled={isChanging}>
               Cancel
             </Button>
             {eligibility?.canChangeFreely ? (
-              <Button onClick={() => handleConfirmChange(false)} disabled={isChanging}>
+              <Button onClick={() => handleConfirmChange(false)} disabled={isChanging} variant="default">
                 {isChanging ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />

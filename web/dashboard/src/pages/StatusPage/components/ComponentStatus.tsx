@@ -17,6 +17,7 @@ import {
   Globe,
   Workflow,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -30,17 +31,17 @@ interface ComponentStatusProps {
 
 const categoryConfig = {
   core: {
-    label: 'Core Services',
+    label: 'coreServices',
     icon: Server,
     color: 'text-brand-400',
   },
   provider: {
-    label: 'Providers',
+    label: 'providers',
     icon: Cloud,
     color: 'text-purple-400',
   },
   infrastructure: {
-    label: 'Infrastructure',
+    label: 'infrastructure',
     icon: HardDrive,
     color: 'text-blue-400',
   },
@@ -53,19 +54,19 @@ const statusConfig = {
   operational: {
     dot: 'bg-emerald-500',
     text: 'text-emerald-400',
-    label: 'Operational',
+    label: 'operational',
     pulse: true,
   },
   degraded: {
     dot: 'bg-amber-500',
     text: 'text-amber-400',
-    label: 'Degraded',
+    label: 'degraded',
     pulse: false,
   },
   down: {
     dot: 'bg-red-500',
     text: 'text-red-400',
-    label: 'Down',
+    label: 'down',
     pulse: false,
   },
 };
@@ -113,6 +114,7 @@ function ComponentCard({
   component: ComponentHealth;
   index: number;
 }) {
+  const { t } = useTranslation();
   const status =
     statusConfig[component.status as keyof typeof statusConfig] ??
     statusConfig.operational;
@@ -147,7 +149,9 @@ function ComponentCard({
               <div>
                 <h3 className="font-medium text-text-primary">{component.name}</h3>
                 <p className="text-xs text-text-muted">
-                  {component.latency_ms > 0 ? `${component.latency_ms}ms latency` : 'No latency data'}
+                  {component.latency_ms > 0
+                    ? t('statusPage.latencyMs', { ms: component.latency_ms })
+                    : t('statusPage.noLatencyData')}
                 </p>
               </div>
             </div>
@@ -169,7 +173,7 @@ function ComponentCard({
                 />
               </span>
               <span className={cn('text-xs font-medium', status.text)}>
-                {status.label}
+                {t(`statusPage.${status.label}`)}
               </span>
             </div>
           </div>
@@ -177,7 +181,7 @@ function ComponentCard({
           {/* Uptime indicator */}
           <div className="mt-4">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-text-muted">Uptime</span>
+              <span className="text-text-muted">{t('statusPage.uptime')}</span>
               <span className={cn('font-medium', status.text)}>
                 {component.uptime_percent.toFixed(2)}%
               </span>
@@ -206,6 +210,7 @@ function ComponentCard({
 // Using standardized SkeletonCard component from ui library
 
 export function ComponentStatus({ components, isLoading }: ComponentStatusProps) {
+  const { t } = useTranslation();
   const list = Array.isArray(components) ? components : [];
   // Group components by category
   const groupedComponents = list.reduce((acc, component) => {
@@ -222,11 +227,11 @@ export function ComponentStatus({ components, isLoading }: ComponentStatusProps)
   });
 
   return (
-    <section aria-label="Component Status">
+    <section aria-label={t('statusPage.componentStatus')}>
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-text-primary">Component Health</h2>
+        <h2 className="text-xl font-semibold text-text-primary">{t('statusPage.componentHealth')}</h2>
         <p className="mt-1 text-sm text-text-secondary">
-          Real-time status of all platform components
+          {t('statusPage.realtimeComponentStatus')}
         </p>
       </div>
 
@@ -246,8 +251,8 @@ export function ComponentStatus({ components, isLoading }: ComponentStatusProps)
       ) : list.length === 0 ? (
         <EmptyState
           icon={<Server className="h-8 w-8" />}
-          title="No component data available"
-          description="Platform component health data will appear here once the monitoring services are connected."
+          title={t('statusPage.noComponentData')}
+          description={t('statusPage.noComponentDataDescription')}
           variant="card"
           size="sm"
         />
@@ -265,7 +270,7 @@ export function ComponentStatus({ components, isLoading }: ComponentStatusProps)
               <div key={category}>
                 <div className="mb-4 flex items-center gap-2">
                   <CategoryIcon className={cn('h-5 w-5', config.color)} />
-                  <h3 className="font-medium text-text-primary">{config.label}</h3>
+                  <h3 className="font-medium text-text-primary">{t(`statusPage.${config.label}`)}</h3>
                   <span className="text-sm text-text-muted">
                     ({groupedComponents[category].length})
                   </span>

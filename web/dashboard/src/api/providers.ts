@@ -44,6 +44,10 @@ export const providersApi = {
     });
   },
 
+  async getProviderCredentials(): Promise<Array<ConnectedProvider & { maskedApiKey: string }>> {
+    return apiClient.get('/v1/providers/credentials');
+  },
+
   async connectProvider(request: ConnectProviderRequest): Promise<ConnectProviderResponse> {
     // Sanitize inputs
     const sanitizedRequest = {
@@ -63,6 +67,21 @@ export const providersApi = {
       '/v1/providers/connect',
       sanitizedRequest
     );
+  },
+
+  async rotateKey(providerId: string, newApiKey: string): Promise<ConnectProviderResponse> {
+    const sanitizedId = sanitizeProviderId(providerId);
+    if (!sanitizedId) {
+      throw new Error('Invalid provider ID');
+    }
+    const sanitizedKey = newApiKey ? sanitizeApiKey(newApiKey) : '';
+
+    const response = await apiClient.postValidatedData(
+      connectProviderResponseSchema,
+      `/v1/providers/${sanitizedId}/rotate`,
+      { apiKey: sanitizedKey }
+    );
+    return response;
   },
 
   async disconnectProvider(providerId: string): Promise<void> {

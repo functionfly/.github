@@ -23,6 +23,7 @@ export function normalizeNotificationStatus(apiStatus: string): NotificationStat
 export function normalizeNotificationCategory(apiCategory: string): NotificationCategory {
   switch (apiCategory) {
     case 'team':
+    case 'messages':
       return 'messages';
     case 'billing':
       return 'revenue';
@@ -36,7 +37,6 @@ export function normalizeNotificationCategory(apiCategory: string): Notification
     case 'trust':
     case 'revenue':
     case 'issues':
-    case 'messages':
     case 'security':
     case 'all':
       return apiCategory;

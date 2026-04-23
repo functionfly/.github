@@ -39,7 +39,7 @@ export function ContributionGraph({ data }: ContributionGraphProps) {
     <Card className="border-border-subtle">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="text-lg font-display flex items-center gap-2">
             <GitBranch className="w-5 h-5 text-brand-500" />
             Contribution Activity
           </CardTitle>

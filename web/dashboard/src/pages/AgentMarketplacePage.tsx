@@ -3,8 +3,10 @@ import { Footer } from "@/pages/LandingPage/components/Footer";
 import { MetaTags } from '@/components/seo/MetaTags';
 import { useWebVitals } from '@/hooks/useWebVitals';
 import { PublicAnalytics } from '@/components/common/PublicAnalytics';
+import { useTranslation } from 'react-i18next';
 
 export function AgentMarketplacePage() {
+  const { t } = useTranslation();
   // Monitor Core Web Vitals
   useWebVitals((metrics) => {
     // Optional: Send to your analytics service
@@ -15,9 +17,9 @@ export function AgentMarketplacePage() {
     <div className="min-h-screen flex flex-col">
       {/* SEO Meta Tags */}
       <MetaTags
-        title="AI Agent Marketplace - Deploy & Monetize AI Agents | FunctionFly"
-        description="Discover, deploy, and monetize AI agents on FunctionFly. Browse pre-built agents, create custom solutions, and join the AI agent economy."
-        keywords={["AI agents", "agent marketplace", "artificial intelligence", "machine learning", "AI deployment", "agent monetization"]}
+        title={t("agentMarketplace:metaTitle")}
+        description={t("agentMarketplace:metaDescription")}
+        keywords={t("agentMarketplace:metaKeywords", { returnObjects: true }) as string[]}
         url={`${window.location.origin}/agents`}
         type="website"
       />

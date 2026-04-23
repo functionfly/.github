@@ -47,6 +47,24 @@ export type { TrustMetricsSectionProps } from "./components/TrustMetricsSection"
 export { ActivityTimeline } from "./components/ActivityTimeline";
 export type { ActivityTimelineProps } from "./components/ActivityTimeline";
 
+// Contribution Activity (unified component set)
+export {
+  ContributionActivity,
+  ActivityHeatRing,
+  ContributionStreak,
+  ActivityCard,
+  ActivityGroup,
+  ContributionSummaryBar,
+} from "./components/ContributionActivity";
+export type {
+  ContributionActivityProps,
+  ActivityHeatRingProps,
+  ContributionStreakProps,
+  ActivityCardProps,
+  ActivityGroupProps,
+  ContributionSummaryBarProps,
+} from "./components/ContributionActivity";
+
 // Tab components
 export { OverviewTab } from "./components/tabs/OverviewTab";
 export type { OverviewTabProps } from "./components/tabs/OverviewTab";

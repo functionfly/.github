@@ -6,6 +6,7 @@ import Editor from '@monaco-editor/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { BookOpen, FileCode2, FormInput } from 'lucide-react';
 import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { InputTab, usePlaygroundStore } from '../store/playgroundStore';
 import { ExampleSelector } from './ExampleSelector';
 
@@ -14,6 +15,7 @@ interface PlaygroundInputPanelProps {
 }
 
 export function PlaygroundInputPanel({ className }: PlaygroundInputPanelProps) {
+  const { t } = useTranslation();
   const {
     functionInfo,
     inputValue,
@@ -68,25 +70,25 @@ export function PlaygroundInputPanel({ className }: PlaygroundInputPanelProps) {
               className="h-8 px-3 text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:text-indigo-400 data-[state=active]:bg-transparent gap-1.5"
             >
               <FormInput className="w-3.5 h-3.5" />
-              Form
+              {t('playground.form')}
             </TabsTrigger>
             <TabsTrigger
               value="json"
               className="h-8 px-3 text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:text-indigo-400 data-[state=active]:bg-transparent gap-1.5"
             >
               <FileCode2 className="w-3.5 h-3.5" />
-              JSON
+              {t('playground.json')}
             </TabsTrigger>
             <TabsTrigger
               value="examples"
               className="h-8 px-3 text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:text-indigo-400 data-[state=active]:bg-transparent gap-1.5"
             >
               <BookOpen className="w-3.5 h-3.5" />
-              Examples
+              {t('playground.examples')}
             </TabsTrigger>
           </TabsList>
 
-          <div className="ml-auto text-xs text-text-muted pr-1">Input</div>
+          <div className="ml-auto text-xs text-text-muted pr-1">{t('playground.input')}</div>
         </div>
 
         {/* Tab content: single keyed child for AnimatePresence mode="wait" */}
@@ -117,9 +119,9 @@ export function PlaygroundInputPanel({ className }: PlaygroundInputPanelProps) {
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full text-center py-8">
                       <FormInput className="w-10 h-10 text-text-muted mb-3" />
-                      <p className="text-sm text-text-muted">No input schema defined</p>
+                      <p className="text-sm text-text-muted">{t('playground.noInputSchema')}</p>
                       <p className="text-xs text-text-muted mt-1">
-                        Switch to JSON tab to enter raw input
+                        {t('playground.switchToJson')}
                       </p>
                     </div>
                   )}

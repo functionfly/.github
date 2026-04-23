@@ -49,6 +49,8 @@ import {
   WifiOff,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import i18next from 'i18next';
 import { toast } from 'sonner';
 import { NotificationCard } from './NotificationCard';
 
@@ -68,27 +70,6 @@ interface TabConfig {
   label: string;
   icon: React.ReactNode;
 }
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-const TABS: TabConfig[] = [
-  { id: 'all', label: 'All', icon: <Inbox className="h-4 w-4" /> },
-  { id: 'trust', label: 'Trust', icon: <Shield className="h-4 w-4" /> },
-  { id: 'revenue', label: 'Revenue', icon: <DollarSign className="h-4 w-4" /> },
-  { id: 'issues', label: 'Issues', icon: <AlertTriangle className="h-4 w-4" /> },
-  { id: 'messages', label: 'Messages', icon: <MessageSquare className="h-4 w-4" /> },
-  { id: 'security', label: 'Security', icon: <Shield className="h-4 w-4" /> },
-];
-
-const PRIORITY_OPTIONS: { value: NotificationPriority | 'all'; label: string }[] = [
-  { value: 'all', label: 'All Priorities' },
-  { value: 'critical', label: 'Critical' },
-  { value: 'high', label: 'High' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'low', label: 'Low' },
-];
 
 // ============================================================================
 // Helper Functions
@@ -139,6 +120,8 @@ function groupNotificationsByDate(notifications: Notification[]): {
 // ============================================================================
 
 function EmptyState({ category }: { category: string }) {
+  const { t } = useTranslation();
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -148,11 +131,11 @@ function EmptyState({ category }: { category: string }) {
       <div className="w-16 h-16 rounded-full bg-bg-tertiary border border-border-subtle flex items-center justify-center mb-4">
         <Inbox className="h-8 w-8 text-text-muted" />
       </div>
-      <h3 className="text-lg font-medium text-text-primary mb-1">No notifications</h3>
+      <h3 className="text-lg font-medium text-text-primary mb-1">{t('notifCenter.emptyTitle')}</h3>
       <p className="text-sm text-text-muted max-w-xs">
         {category === 'all'
-          ? "You're all caught up! Check back later for new notifications."
-          : `No ${category} notifications at the moment.`}
+          ? t('notifCenter.emptyAll')
+          : t('notifCenter.emptyCategory', { category })}
       </p>
     </motion.div>
   );
@@ -163,6 +146,8 @@ function EmptyState({ category }: { category: string }) {
 // ============================================================================
 
 function ErrorState({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation();
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -172,12 +157,12 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
       <div className="w-16 h-16 rounded-full bg-error/10 border border-error/20 flex items-center justify-center mb-4">
         <AlertTriangle className="h-8 w-8 text-error" />
       </div>
-      <h3 className="text-lg font-medium text-text-primary mb-1">Failed to load notifications</h3>
+      <h3 className="text-lg font-medium text-text-primary mb-1">{t('notifCenter.errorTitle')}</h3>
       <p className="text-sm text-text-muted max-w-xs mb-4">
-        Something went wrong while fetching your notifications.
+        {t('notifCenter.errorDescription')}
       </p>
       <Button variant="outline" size="sm" onClick={onRetry}>
-        Try Again
+        {t('notifCenter.tryAgain')}
       </Button>
     </motion.div>
   );
@@ -301,7 +286,7 @@ function useNotificationCenter() {
         id: event.record_id || event.notification_id || String(Date.now()),
         type: (event.data?.type || event.notification_type || 'info') as Notification['type'],
         category: event.data?.category || 'all',
-        title: event.data?.title || event.title || 'New Notification',
+        title: event.data?.title || event.title || i18next.t('notifCenter.toastNewNotification'),
         message: event.data?.message || event.message || '',
         timestamp: event.timestamp || new Date().toISOString(),
         priority: event.data?.priority || 'medium',
@@ -320,7 +305,7 @@ function useNotificationCenter() {
         description: newNotification.message,
         action: newNotification.actionUrl
           ? {
-              label: 'View',
+              label: i18next.t('notifCenter.viewAction'),
               onClick: () => {
                 window.location.href = newNotification.actionUrl!;
               },
@@ -354,7 +339,7 @@ function useNotificationCenter() {
         void syncBellUnreadFromServer();
       } catch (err) {
         console.error('Error marking notification as read:', err);
-        toast.error('Failed to mark notification as read');
+        toast.error(i18next.t('notifCenter.toastMarkAsReadFailed'));
       }
     },
     [syncBellUnreadFromServer]
@@ -375,10 +360,10 @@ function useNotificationCenter() {
       );
       setUnreadCount(0);
       void syncBellUnreadFromServer();
-      toast.success(`${count} notification${count !== 1 ? 's' : ''} marked as read`);
+      toast.success(i18next.t('notifCenter.toastMarkAllSuccess', { count }));
     } catch (err) {
       console.error('Error marking all notifications as read:', err);
-      toast.error('Failed to mark all notifications as read');
+      toast.error(i18next.t('notifCenter.toastMarkAllFailed'));
       throw err;
     } finally {
       setIsMarkingAllRead(false);
@@ -403,10 +388,10 @@ function useNotificationCenter() {
           setUnreadCount((prev) => Math.max(0, prev - 1));
         }
         void syncBellUnreadFromServer();
-        toast.success('Notification archived');
+        toast.success(i18next.t('notifCenter.toastArchived'));
       } catch (err) {
         console.error('Error archiving notification:', err);
-        toast.error('Failed to archive notification');
+        toast.error(i18next.t('notifCenter.toastArchiveFailed'));
       }
     },
     [syncBellUnreadFromServer]
@@ -436,8 +421,26 @@ export function NotificationCenter({
   onNotificationClick,
   onSettingsClick,
 }: NotificationCenterProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<NotificationCategory>('all');
   const [priorityFilter, setPriorityFilter] = useState<NotificationPriority | 'all'>('all');
+
+  const TABS: TabConfig[] = useMemo(() => [
+    { id: 'all', label: t('notifCenter.tabAll'), icon: <Inbox className="h-4 w-4" /> },
+    { id: 'trust', label: t('notifCenter.tabTrust'), icon: <Shield className="h-4 w-4" /> },
+    { id: 'revenue', label: t('notifCenter.tabRevenue'), icon: <DollarSign className="h-4 w-4" /> },
+    { id: 'issues', label: t('notifCenter.tabIssues'), icon: <AlertTriangle className="h-4 w-4" /> },
+    { id: 'messages', label: t('notifCenter.tabMessages'), icon: <MessageSquare className="h-4 w-4" /> },
+    { id: 'security', label: t('notifCenter.tabSecurity'), icon: <Shield className="h-4 w-4" /> },
+  ], [t]);
+
+  const PRIORITY_OPTIONS: { value: NotificationPriority | 'all'; label: string }[] = useMemo(() => [
+    { value: 'all', label: t('notifCenter.priorityAll') },
+    { value: 'critical', label: t('notifCenter.priorityCritical') },
+    { value: 'high', label: t('notifCenter.priorityHigh') },
+    { value: 'medium', label: t('notifCenter.priorityMedium') },
+    { value: 'low', label: t('notifCenter.priorityLow') },
+  ], [t]);
 
   const {
     notifications,
@@ -506,10 +509,10 @@ export function NotificationCenter({
                   <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-brand-500 rounded-full animate-pulse" />
                 )}
               </div>
-              <h2 className="text-lg font-semibold text-text-primary">Notifications</h2>
+              <h2 className="text-lg font-semibold text-text-primary">{t('notifCenter.title')}</h2>
               {unreadCount > 0 && (
                 <Badge variant="secondary" className="text-xs">
-                  {unreadCount} unread
+                  {t('notifCenter.unreadBadge', { count: unreadCount })}
                 </Badge>
               )}
             </div>
@@ -522,13 +525,13 @@ export function NotificationCenter({
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    aria-label="Filter notifications"
+                    aria-label={t('notifCenter.filterByPriority')}
                   >
                     <Filter className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuLabel>Filter by Priority</DropdownMenuLabel>
+                  <DropdownMenuLabel>{t('notifCenter.filterByPriority')}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {PRIORITY_OPTIONS.map((option) => (
                     <DropdownMenuItem
@@ -555,7 +558,7 @@ export function NotificationCenter({
                     className="h-8 w-8"
                     onClick={handleMarkAllAsRead}
                     disabled={unreadCount === 0 || isMarkingAllRead}
-                    aria-label="Mark all as read"
+                    aria-label={t('notifCenter.markAllAsRead')}
                   >
                     {isMarkingAllRead ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -564,7 +567,7 @@ export function NotificationCenter({
                     )}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Mark all as read</TooltipContent>
+                <TooltipContent>{t('notifCenter.markAllAsRead')}</TooltipContent>
               </Tooltip>
 
               {/* Settings */}
@@ -575,12 +578,12 @@ export function NotificationCenter({
                     size="icon"
                     className="h-8 w-8"
                     onClick={onSettingsClick}
-                    aria-label="Notification settings"
+                    aria-label={t('notifCenter.settings')}
                   >
                     <Settings className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Settings</TooltipContent>
+                <TooltipContent>{t('notifCenter.settings')}</TooltipContent>
               </Tooltip>
             </div>
           </div>
@@ -590,7 +593,7 @@ export function NotificationCenter({
             <div className="px-4 pb-2">
               <div className="flex items-center gap-2 text-xs text-warning bg-warning-glow/20 px-3 py-1.5 rounded-md">
                 <WifiOff className="h-3 w-3" />
-                <span>Reconnecting to real-time updates...</span>
+                <span>{t('notifCenter.reconnecting')}</span>
               </div>
             </div>
           )}
@@ -643,21 +646,21 @@ export function NotificationCenter({
                 transition={{ duration: 0.2 }}
               >
                 <NotificationGroup
-                  title="Today"
+                  title={t('notifCenter.groupToday')}
                   notifications={groupedNotifications.today}
                   onNotificationClick={onNotificationClick}
                   onMarkAsRead={markAsRead}
                   onArchive={archiveNotification}
                 />
                 <NotificationGroup
-                  title="Yesterday"
+                  title={t('notifCenter.groupYesterday')}
                   notifications={groupedNotifications.yesterday}
                   onNotificationClick={onNotificationClick}
                   onMarkAsRead={markAsRead}
                   onArchive={archiveNotification}
                 />
                 <NotificationGroup
-                  title="Earlier"
+                  title={t('notifCenter.groupEarlier')}
                   notifications={groupedNotifications.earlier}
                   onNotificationClick={onNotificationClick}
                   onMarkAsRead={markAsRead}

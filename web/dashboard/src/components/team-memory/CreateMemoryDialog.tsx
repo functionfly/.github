@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useCreateMemory } from '@/hooks/use-team-memory';
 import { initTeamMemoryCrypto, getTeamMemoryCrypto } from '@/utils/team-memory-crypto';
+import { toast } from 'sonner';
 
 interface CreateMemoryDialogProps {
   teamId: string;
@@ -85,7 +86,7 @@ export function CreateMemoryDialog({ teamId, open, onOpenChange }: CreateMemoryD
         encryptedData = await crypto.encryptForAPI(content);
         content = {}; // Clear plaintext content
       } catch (error) {
-        alert('Failed to encrypt. Make sure you have set up encryption in the Encryption settings.');
+        toast.error('Failed to encrypt. Make sure you have set up encryption in the Encryption settings.');
         return;
       }
     }

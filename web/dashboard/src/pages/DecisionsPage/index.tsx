@@ -3,6 +3,7 @@ import { DecisionCard, DecisionDetail, DecisionForm } from '@/components/decisio
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 import {
   Select,
   SelectContent,
@@ -101,7 +102,7 @@ export default function DecisionsPage() {
   const handleCreateDecision = () => {
     if (teams.length === 0) {
       // Team is required to record decisions - let user know they need a team first
-      alert('You need to create or join a team first');
+      toast.error('You need to create or join a team first');
       return;
     }
     // If only one team, select it automatically

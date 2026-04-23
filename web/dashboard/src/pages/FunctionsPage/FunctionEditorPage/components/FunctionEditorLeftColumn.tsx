@@ -172,13 +172,8 @@ export function FunctionEditorLeftColumn({ editor }: Props) {
                       ? 'border-[#FF6B35] bg-[#FFF1EB] shadow-sm dark:border-[#FF8C42]/90 dark:bg-[#FF6B35]/25 dark:shadow-[0_0_0_1px_rgba(255,140,66,0.35)]'
                       : 'border-transparent bg-bg-tertiary hover:border-border-default hover:bg-bg-hover'
                   }`}
-                  aria-pressed={retryPolicy === key}
+                  aria-pressed={runtime === key}
                 >
-                  {retryPolicy === key ? (
-                    <span
-                      className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#FF6B35] text-white shadow-sm dark:bg-[#FF8C42]"
-                      aria-hidden
-                    >
                   {runtime === key ? (
                     <span
                       className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#FF6B35] text-white shadow-sm dark:bg-[#FF8C42]"

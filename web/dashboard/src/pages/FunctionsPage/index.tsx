@@ -39,6 +39,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/lib/constants';
 import { toast } from 'sonner';
@@ -49,6 +50,7 @@ import { ToggleButtonGroup } from '@/components/ui';
  * Theme-aware: Industrial instrumentation aesthetic for both light/dark modes
  */
 export function FunctionsPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
@@ -73,12 +75,12 @@ export function FunctionsPage() {
     mutationFn: (id: string) => functionsApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['functions'] });
-      toast.success('Function terminated successfully');
+      toast.success(t('functionsPage.toastFunctionTerminated'));
       setDeleteDialogOpen(false);
       setFunctionToDelete(null);
     },
     onError: () => {
-      toast.error('Failed to terminate function');
+      toast.error(t('functionsPage.toastFailedToTerminate'));
       setDeleteDialogOpen(false);
     },
   });
@@ -95,10 +97,10 @@ export function FunctionsPage() {
     },
     onSuccess: (_, ids) => {
       queryClient.invalidateQueries({ queryKey: ['functions'] });
-      toast.success(`${ids.length} functions terminated successfully`);
+      toast.success(t('functionsPage.toastFunctionsTerminated', { count: ids.length }));
     },
     onError: (_, ids) => {
-      toast.error(`Failed to terminate some of the ${ids.length} functions`);
+      toast.error(t('functionsPage.toastFailedToTerminateSome', { count: ids.length }));
     },
   });
 
@@ -108,7 +110,7 @@ export function FunctionsPage() {
   const columns = useMemo<ColumnDef<FunctionConfig>[]>(() => [
     {
       accessorKey: 'name',
-      header: 'Name',
+      header: t('functionsPage.columnName'),
       size: 200,
       cell: ({ row }) => (
         <div className="flex flex-col">
@@ -119,7 +121,7 @@ export function FunctionsPage() {
     },
     {
       accessorKey: 'status',
-      header: 'Status',
+      header: t('functionsPage.columnStatus'),
       size: 120,
       cell: ({ row }) => {
         const status = row.original.status;
@@ -141,7 +143,7 @@ export function FunctionsPage() {
     },
     {
       accessorKey: 'region',
-      header: 'Region',
+      header: t('functionsPage.columnRegion'),
       size: 120,
       cell: ({ row }) => (
         <span className="text-xs font-mono uppercase">{row.original.region}</span>
@@ -149,7 +151,7 @@ export function FunctionsPage() {
     },
     {
       accessorKey: 'providers',
-      header: 'Providers',
+      header: t('functionsPage.columnProviders'),
       size: 150,
       cell: ({ row }) => (
         <div className="flex flex-wrap gap-1">
@@ -166,7 +168,7 @@ export function FunctionsPage() {
     },
     {
       accessorKey: 'trustScore',
-      header: 'Trust Score',
+      header: t('functionsPage.columnTrustScore'),
       size: 120,
       cell: ({ row }) => {
         const score = row.original.trustScore;
@@ -182,7 +184,7 @@ export function FunctionsPage() {
     },
     {
       accessorKey: 'createdAt',
-      header: 'Created',
+      header: t('functionsPage.columnCreated'),
       size: 150,
       cell: ({ row }) => {
         const date = new Date(row.original.createdAt);
@@ -195,7 +197,7 @@ export function FunctionsPage() {
     },
     {
       id: 'actions',
-      header: 'Actions',
+      header: t('functionsPage.columnActions'),
       size: 150,
       enableSorting: false,
       cell: ({ row }) => (
@@ -227,7 +229,7 @@ export function FunctionsPage() {
         </div>
       ),
     },
-  ], [navigate]);
+  ], [navigate, t]);
 
   // Handle bulk actions
   const handleBulkAction = (action: string, selectedRows: FunctionConfig[]) => {
@@ -308,20 +310,20 @@ export function FunctionsPage() {
             className="text-lg font-mono font-semibold mb-2"
             style={{ color: 'var(--color-aviation-text-primary)' }}
           >
-            SYSTEM ERROR
+            {t('functionsPage.systemError')}
           </h3>
           <p
             className="font-mono text-sm mb-6"
             style={{ color: 'var(--color-aviation-text-secondary)' }}
           >
-            Failed to load function registry. Check connection and retry.
+            {t('functionsPage.failedToLoadRegistry')}
           </p>
           <Button
             onClick={() => queryClient.invalidateQueries({ queryKey: ['functions'] })}
             className="aviation-button gap-2"
           >
             <Radar className="w-4 h-4" />
-            RETRY SCAN
+            {t('functionsPage.retryScan')}
           </Button>
         </div>
       </div>
@@ -353,20 +355,20 @@ export function FunctionsPage() {
 
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="aviation-label">FLEET MANAGEMENT //</span>
-                  <span className="aviation-value-cyan text-xs">ACTIVE</span>
+                  <span className="aviation-label">{t('functionsPage.fleetManagement')}</span>
+                  <span className="aviation-value-cyan text-xs">{t('functionsPage.active')}</span>
                 </div>
                 <h1
                   className="text-2xl md:text-3xl font-bold font-mono tracking-tight uppercase"
                   style={{ color: 'var(--color-aviation-text-primary)' }}
                 >
-                  Functions
+                  {t('functionsPage.title')}
                 </h1>
                 <p
                   className="text-sm font-mono mt-1"
                   style={{ color: 'var(--color-aviation-text-secondary)' }}
                 >
-                  Deploy and manage edge functions across distributed nodes
+                  {t('functionsPage.subtitle')}
                 </p>
               </div>
             </div>
@@ -374,7 +376,7 @@ export function FunctionsPage() {
             {/* Stats row */}
             <div className="flex items-center gap-6 lg:gap-8">
               <div className="text-right">
-                <div className="aviation-label mb-0.5">TOTAL UNITS</div>
+                <div className="aviation-label mb-0.5">{t('functionsPage.totalUnits')}</div>
                 <div
                   className="text-2xl font-mono font-bold"
                   style={{ color: 'var(--color-aviation-amber)' }}
@@ -389,7 +391,7 @@ export function FunctionsPage() {
               />
 
               <div className="text-right">
-                <div className="aviation-label mb-0.5">ONLINE</div>
+                <div className="aviation-label mb-0.5">{t('functionsPage.online')}</div>
                 <div
                   className="text-2xl font-mono font-bold"
                   style={{ color: 'var(--color-aviation-green)' }}
@@ -411,7 +413,7 @@ export function FunctionsPage() {
                 className="aviation-button aviation-button-primary gap-2 hidden md:flex"
               >
                 <Plus className="w-4 h-4" />
-                DEPLOY NEW
+                {t('functionsPage.deployNew')}
               </Button>
 
               <Button
@@ -420,7 +422,7 @@ export function FunctionsPage() {
                 className="aviation-button gap-2 hidden md:flex border-aviation-amber text-aviation-amber hover:bg-aviation-amber/10"
               >
                 <Network className="w-4 h-4" />
-                GRAPH EDITOR
+                {t('functionsPage.graphEditor')}
               </Button>
             </div>
           </div>
@@ -431,7 +433,7 @@ export function FunctionsPage() {
             className="aviation-button aviation-button-primary gap-2 w-full mt-4 md:hidden"
           >
             <Plus className="w-4 h-4" />
-            DEPLOY NEW FUNCTION
+            {t('functionsPage.deployNewFunction')}
           </Button>
         </div>
 
@@ -449,7 +451,7 @@ export function FunctionsPage() {
             />
             <input
               type="text"
-              placeholder="SEARCH FUNCTIONS BY NAME OR ID..."
+              placeholder={t('functionsPage.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="aviation-input w-full pl-12 pr-4"
@@ -460,7 +462,7 @@ export function FunctionsPage() {
                 className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors font-mono text-xs"
                 style={{ color: 'var(--color-aviation-text-muted)' }}
               >
-                CLEAR
+                {t('functionsPage.clear')}
               </button>
             )}
           </div>
@@ -472,8 +474,8 @@ export function FunctionsPage() {
               value={viewMode}
               onValueChange={(v) => setViewMode(v as 'grid' | 'list')}
               options={[
-                { value: 'grid', label: 'Grid', icon: <LayoutGrid className="h-4 w-4" /> },
-                { value: 'list', label: 'List', icon: <List className="h-4 w-4" /> },
+                { value: 'grid', label: t('functionsPage.grid'), icon: <LayoutGrid className="h-4 w-4" /> },
+                { value: 'list', label: t('functionsPage.list'), icon: <List className="h-4 w-4" /> },
               ]}
               variant="outline"
               size="sm"
@@ -490,7 +492,7 @@ export function FunctionsPage() {
                   }}
                 >
                   <Filter className="w-4 h-4" />
-                  FILTER
+                  {t('functionsPage.filter')}
                   {activeFiltersCount > 0 && (
                     <span
                       className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-xs flex items-center justify-center font-mono"
@@ -516,7 +518,7 @@ export function FunctionsPage() {
                     className="font-mono text-sm font-semibold"
                     style={{ color: 'var(--color-aviation-text-primary)' }}
                   >
-                    FILTER OPTIONS
+                    {t('functionsPage.filterOptions')}
                   </span>
                   {activeFiltersCount > 0 && (
                     <button
@@ -525,7 +527,7 @@ export function FunctionsPage() {
                       style={{ color: 'var(--color-aviation-cyan)' }}
                     >
                       <X className="w-3 h-3" />
-                      CLEAR
+                      {t('functionsPage.clear')}
                     </button>
                   )}
                 </div>
@@ -536,7 +538,7 @@ export function FunctionsPage() {
                     className="aviation-label block mb-2"
                     style={{ color: 'var(--color-aviation-text-muted)' }}
                   >
-                    STATUS
+                    {t('functionsPage.status')}
                   </span>
                   <div className="space-y-2">
                     {['draft', 'deployed', 'deploying', 'failed'].map((status) => (
@@ -587,8 +589,8 @@ export function FunctionsPage() {
                       className="aviation-label block mb-2"
                       style={{ color: 'var(--color-aviation-text-muted)' }}
                     >
-                      REGION
-                    </span>
+                    {t('functionsPage.region')}
+                  </span>
                     <div className="space-y-2 max-h-32 overflow-y-auto">
                       {availableRegions.map((region) => (
                         <button
@@ -655,7 +657,7 @@ export function FunctionsPage() {
                 />
               </div>
               <p className="aviation-label" style={{ color: 'var(--color-aviation-text-muted)' }}>
-                INITIALIZING SYSTEMS...
+                {t('functionsPage.initializing')}
               </p>
             </div>
           </div>
@@ -678,13 +680,12 @@ export function FunctionsPage() {
                 {/* Results count */}
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <span className="aviation-label">SCAN RESULTS:</span>
+                    <span className="aviation-label">{t('functionsPage.scanResults')}</span>
                     <span
                       className="font-mono text-sm font-semibold"
                       style={{ color: 'var(--color-aviation-text-primary)' }}
                     >
-                      {filteredFunctions.length} UNIT{filteredFunctions.length !== 1 ? 'S' : ''}{' '}
-                      DETECTED
+                      {t('functionsPage.unitsDetected', { count: filteredFunctions.length, plural: filteredFunctions.length !== 1 ? 'S' : '' })}
                     </span>
                   </div>
 
@@ -697,7 +698,7 @@ export function FunctionsPage() {
                       className="font-mono text-xs flex items-center gap-1 transition-colors hover:opacity-80"
                       style={{ color: 'var(--color-aviation-cyan)' }}
                     >
-                      CLEAR SCAN
+                      {t('functionsPage.clearScan')}
                       <ArrowUpRight className="w-3 h-3" />
                     </button>
                   )}
@@ -729,7 +730,7 @@ export function FunctionsPage() {
                     enableColumnFilters={true}
                     onBulkAction={handleBulkAction}
                     bulkActions={[
-                      { label: 'Delete Selected', value: 'delete', variant: 'destructive' },
+                      { label: t('functionsPage.deleteSelected'), value: 'delete', variant: 'destructive' },
                     ]}
                     exportFileName={`functions-${new Date().toISOString().split('T')[0]}`}
                     isLoading={isLoading}
@@ -762,14 +763,13 @@ export function FunctionsPage() {
               style={{ color: 'var(--color-aviation-text-primary)' }}
             >
               <AlertTriangle className="w-5 h-5" style={{ color: 'var(--color-aviation-red)' }} />
-              CONFIRM TERMINATION
+              {t('functionsPage.confirmTermination')}
             </DialogTitle>
             <DialogDescription
               className="font-mono text-sm"
               style={{ color: 'var(--color-aviation-text-secondary)' }}
             >
-              You are about to terminate function &ldquo;{functionToDelete?.name}&rdquo;. This
-              action is irreversible and will immediately cease all operations.
+              {t('functionsPage.confirmTerminationDesc', { name: functionToDelete?.name })}
             </DialogDescription>
           </DialogHeader>
 
@@ -782,16 +782,16 @@ export function FunctionsPage() {
           >
             <div className="flex items-center gap-2 mb-2">
               <span className="aviation-label" style={{ color: 'var(--color-aviation-red)' }}>
-                WARNING:
+                {t('functionsPage.warning')}
               </span>
             </div>
             <ul
               className="text-xs font-mono space-y-1 ml-4"
               style={{ color: 'var(--color-aviation-text-secondary)' }}
             >
-              <li>• All active invocations will be interrupted</li>
-              <li>• Function will be removed from all providers</li>
-              <li>• Associated logs will be archived after 30 days</li>
+              <li>• {t('functionsPage.warningInvocations')}</li>
+              <li>• {t('functionsPage.warningProviders')}</li>
+              <li>• {t('functionsPage.warningLogs')}</li>
             </ul>
           </div>
 
@@ -801,7 +801,7 @@ export function FunctionsPage() {
               onClick={handleCancelDelete}
               className="aviation-button gap-2"
             >
-              ABORT
+              {t('functionsPage.abort')}
             </Button>
             <Button
               variant="destructive"
@@ -816,12 +816,12 @@ export function FunctionsPage() {
               {deleteMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  TERMINATING...
+                  {t('functionsPage.terminating')}
                 </>
               ) : (
                 <>
                   <Zap className="w-4 h-4" />
-                  CONFIRM TERMINATE
+                  {t('functionsPage.confirmTerminate')}
                 </>
               )}
             </Button>

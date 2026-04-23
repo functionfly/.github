@@ -3,28 +3,30 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Check, ChevronDown, ChevronUp, Settings2, Zap } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { InfoTip, SectionCard } from '../components/editor-ui';
 import type { BackoffStrategy } from '../types';
 import type { FunctionEditorModel } from '../useFunctionEditor';
 
 type Props = { editor: FunctionEditorModel };
 
-const BACKOFF_OPTIONS: { value: BackoffStrategy; label: string; description: string }[] = [
-  { value: 'fixed', label: 'Fixed', description: 'Same delay between each retry' },
-  { value: 'linear', label: 'Linear', description: 'Delay increases linearly' },
-  { value: 'exponential', label: 'Exponential', description: 'Delay doubles each retry' },
+const BACKOFF_OPTIONS: { value: BackoffStrategy; labelKey: string; descKey: string }[] = [
+  { value: 'fixed', labelKey: 'funcEditor.fixed' as const, descKey: 'funcEditor.fixedDescription' as const },
+  { value: 'linear', labelKey: 'funcEditor.linear' as const, descKey: 'funcEditor.linearDescription' as const },
+  { value: 'exponential', labelKey: 'funcEditor.exponential' as const, descKey: 'funcEditor.exponentialDescription' as const },
 ];
 
 export function AdvancedSection({ editor }: Props) {
+  const { t } = useTranslation();
   const { retryPolicy, setRetryPolicy, warmInstances, setWarmInstances, markDirty } = editor;
   const [isOpen, setIsOpen] = useState(false);
 
   return (
     <SectionCard
       icon={<Settings2 className="w-4 h-4" />}
-      title="Advanced Settings"
+      title={t('funcEditor.advancedSettings')}
       step={8}
-      description="Retry policy, warm instances, and concurrency controls"
+      description={t('funcEditor.advancedDescription')}
     >
       {/* Collapsible toggle */}
       <button
@@ -38,7 +40,7 @@ export function AdvancedSection({ editor }: Props) {
         ) : (
           <ChevronDown className="w-3.5 h-3.5 shrink-0" />
         )}
-        {isOpen ? 'Hide advanced settings' : 'Show advanced settings'}
+        {isOpen ? t('funcEditor.hideAdvancedSettings') : t('funcEditor.showAdvancedSettings')}
       </button>
 
       {isOpen && (
@@ -46,15 +48,15 @@ export function AdvancedSection({ editor }: Props) {
           {/* Retry Policy */}
           <div className="space-y-4">
             <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
-              Retry Policy
+              {t('funcEditor.retryPolicy')}
             </p>
 
             {/* Max Retries */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <Label className="text-xs text-text-secondary flex items-center">
-                  Max Retries
-                  <InfoTip content="Number of automatic retries on failure before giving up (0–5)." />
+                  {t('funcEditor.maxRetries')}
+                  <InfoTip content={t('funcEditor.maxRetriesInfoTip')} />
                 </Label>
                 <span className="text-xs font-mono font-semibold text-text-primary">
                   {retryPolicy.maxRetries}
@@ -81,8 +83,8 @@ export function AdvancedSection({ editor }: Props) {
             {/* Backoff Strategy */}
             <div>
               <Label className="text-xs text-text-secondary mb-1.5 block">
-                Backoff Strategy
-                <InfoTip content="How the delay between retries grows." />
+                {t('funcEditor.backoffStrategy')}
+                <InfoTip content={t('funcEditor.backoffInfoTip')} />
               </Label>
               <div className="grid grid-cols-3 gap-2">
                 {BACKOFF_OPTIONS.map((opt) => {
@@ -111,10 +113,10 @@ export function AdvancedSection({ editor }: Props) {
                         </span>
                       ) : null}
                       <span className="pr-6 text-xs font-semibold text-text-primary">
-                        {opt.label}
+                        {t(opt.labelKey)}
                       </span>
                       <span className="pr-6 text-[10px] leading-tight text-text-muted">
-                        {opt.description}
+                        {t(opt.descKey)}
                       </span>
                     </button>
                   );
@@ -125,8 +127,8 @@ export function AdvancedSection({ editor }: Props) {
             {/* Retry Delay */}
             <div>
               <Label htmlFor="backoff-ms" className="text-xs text-text-secondary mb-1.5 block">
-                Retry Delay (ms)
-                <InfoTip content="Base delay in milliseconds between retry attempts." />
+                {t('funcEditor.retryDelayMs')}
+                <InfoTip content={t('funcEditor.retryDelayInfoTip')} />
               </Label>
               <Input
                 id="backoff-ms"
@@ -147,14 +149,14 @@ export function AdvancedSection({ editor }: Props) {
           {/* Warm Instances */}
           <div className="space-y-3 pt-2 border-t border-border-subtle">
             <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider pt-2">
-              Pre-warming
+              {t('funcEditor.preWarming')}
             </p>
             <div>
               <div className="flex items-center justify-between mb-2">
                 <Label className="text-xs text-text-secondary flex items-center">
                   <Zap className="w-3 h-3 mr-1 text-amber-400" />
-                  Warm Instances
-                  <InfoTip content="Number of pre-warmed instances to keep alive. Reduces cold start latency (0–5)." />
+                  {t('funcEditor.warmInstances')}
+                  <InfoTip content={t('funcEditor.warmInstancesInfoTip')} />
                 </Label>
                 <span className="text-xs font-mono font-semibold text-text-primary">
                   {warmInstances}
@@ -173,13 +175,12 @@ export function AdvancedSection({ editor }: Props) {
                 aria-label="Warm instances"
               />
               <div className="flex justify-between mt-1">
-                <span className="text-xs text-text-muted">0 (cold)</span>
+                <span className="text-xs text-text-muted">{t('funcEditor.coldLabel')}</span>
                 <span className="text-xs text-text-muted">5</span>
               </div>
               {warmInstances > 0 && (
                 <p className="text-xs text-amber-400 mt-1.5">
-                  ⚡ {warmInstances} instance{warmInstances !== 1 ? 's' : ''} will be kept warm —
-                  adds to base cost
+                  ⚡ {t('funcEditor.warmInstancesNotice', { count: warmInstances })}
                 </p>
               )}
             </div>

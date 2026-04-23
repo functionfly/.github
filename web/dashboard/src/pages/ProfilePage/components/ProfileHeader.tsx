@@ -197,7 +197,7 @@ function ShareDialog({ profile, children }: { profile: UserProfile; children: Re
         {/* Header with gradient */}
         <div className="relative bg-gradient-to-r from-brand-500/10 via-purple-500/10 to-brand-500/10 p-6 pb-4">
           <DialogHeader className="relative">
-            <DialogTitle className="text-center text-xl font-semibold bg-gradient-to-r from-white via-brand-200 to-white bg-clip-text">
+            <DialogTitle className="text-center text-xl font-semibold font-display bg-gradient-to-r from-white via-brand-200 to-white bg-clip-text">
               Share Profile
             </DialogTitle>
             <DialogDescription className="text-center text-text-muted">
@@ -330,7 +330,7 @@ export function ProfileHeader({
   const [reportOpen, setReportOpen] = useState(false);
 
   const handleMessageUser = async () => {
-    if (!currentUser?.id) {
+    if (!currentUser?.id || !currentUser?.username) {
       toast.error('Sign in to send a message');
       return;
     }
@@ -339,7 +339,7 @@ export function ProfileHeader({
     }
     setMessageLoading(true);
     try {
-      const { conversations } = await conversationsApi.listConversations({ limit: 100 });
+      const { conversations } = await conversationsApi.listConversations(currentUser.username, { limit: 100 });
       const existingDm = conversations.find(
         (c) =>
           c.type === 'dm' &&
@@ -348,14 +348,14 @@ export function ProfileHeader({
           c.participant_ids.includes(currentUser.id)
       );
       if (existingDm) {
-        navigate(`/conversations/${existingDm.id}`);
+        navigate(`/u/${currentUser.username}/conversations/${existingDm.id}`);
         return;
       }
-      const conv = await conversationsApi.createConversation({
+      const conv = await conversationsApi.createConversation(currentUser.username, {
         type: 'dm',
         participant_ids: [currentUser.id, profile.id],
       });
-      navigate(`/conversations/${conv.id}`);
+      navigate(`/u/${currentUser.username}/conversations/${conv.id}`);
     } catch (e: unknown) {
       const res =
         e && typeof e === 'object' && 'response' in e
@@ -493,7 +493,7 @@ export function ProfileHeader({
           {/* User Info — md:pt-20 matches md:-mt-20 on the row so the title row clears the cover (avatar still overlaps) */}
           <div className="flex-1 min-w-0 space-y-2 md:pt-20">
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl md:text-3xl font-bold text-text-primary">
+              <h1 className="text-2xl md:text-3xl font-bold font-display text-text-primary">
                 {profile.name || profile.username}
               </h1>
               {/* Show all three badges for FunctionFly profile */}
@@ -536,7 +536,7 @@ export function ProfileHeader({
               {profile.profileNumber && profile.profileNumber > 0 && (
                 <Badge
                   variant="outline"
-                  className="text-xs font-medium text-text-muted border-border-subtle bg-background/50"
+                  className="text-xs font-medium text-text-muted border-border-subtle bg-background/50 font-mono"
                   title={`Member #${profile.profileNumber.toLocaleString()} - Early adopter badge`}
                 >
                   #{profile.profileNumber.toLocaleString()}

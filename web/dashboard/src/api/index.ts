@@ -20,6 +20,8 @@ export { authApi } from './auth';
 export { createBillingPortalSession } from './billing';
 export { apiClient } from './client';
 export { contentAdminApi, contentApi } from './content';
+export { environmentService } from './environment';
+export type { ActiveEnvironmentResponse, SetEnvironmentRequest, SetEnvironmentResponse } from './environment';
 export { deploymentsApi } from './deployments';
 export { enterpriseSlaApi } from './enterprise';
 export type {

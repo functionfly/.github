@@ -6,6 +6,7 @@ import { ROUTES } from '@/lib/constants';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -31,6 +32,7 @@ function sanitizeWalletAgentIdParam(raw: string | null | undefined): string | nu
  * The sidebar uses /wallet; we resolve a real agent id instead of the invalid placeholder "default-agent".
  */
 export function WalletPage() {
+  const { t } = useTranslation();
   const { slug: pathAgentId } = useParams<{ slug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -60,8 +62,8 @@ export function WalletPage() {
     );
 
     if (credits === 'success') {
-      toast.success('Funds added successfully', {
-        description: 'Your wallet has been topped up. Check your notifications for details.',
+      toast.success(t('walletPage.fundsAddedSuccess'), {
+        description: t('walletPage.fundsAddedDescription'),
       });
       // Refresh the bell badge so the new notification is reflected right away
       notificationsApi
@@ -81,8 +83,8 @@ export function WalletPage() {
           /* silent – badge will catch up on next poll */
         });
     } else if (credits === 'cancel') {
-      toast.info('Payment cancelled', {
-        description: 'No funds were added to your wallet.',
+      toast.info(t('walletPage.paymentCancelled'), {
+        description: t('walletPage.paymentCancelledDescription'),
       });
     }
   }, [searchParams, setSearchParams, updateUnreadCounts]);
@@ -105,7 +107,7 @@ export function WalletPage() {
         const list = res.agents ?? [];
         if (list.length === 0) {
           setPhase('error');
-          setResolveError('No agents yet. Create an agent to use the wallet.');
+          setResolveError(t('walletPage.noAgents'));
           return;
         }
         if (list.length === 1) {
@@ -129,7 +131,7 @@ export function WalletPage() {
       } catch {
         if (!cancelled) {
           setPhase('error');
-          setResolveError('Could not load your agents. Try again.');
+          setResolveError(t('walletPage.couldNotLoadAgents'));
         }
       }
     })();
@@ -147,7 +149,7 @@ export function WalletPage() {
     return (
       <div className="flex flex-col items-center justify-center gap-3 p-12 text-muted-foreground">
         <Loader2 className="h-8 w-8 animate-spin" />
-        <p className="text-sm">Loading wallet…</p>
+        <p className="text-sm">{t('walletPage.loadingWallet')}</p>
       </div>
     );
   }
@@ -155,11 +157,11 @@ export function WalletPage() {
   if (phase === 'error') {
     return (
       <div className="mx-auto max-w-md space-y-4 rounded-lg border border-border p-6">
-        <h1 className="text-xl font-semibold">Agent wallet</h1>
+        <h1 className="text-xl font-semibold">{t('walletPage.agentWallet')}</h1>
         <p className="text-sm text-muted-foreground">{resolveError}</p>
-        <Button asChild>
-          <Link to={ROUTES.AGENTS}>Go to agents</Link>
-        </Button>
+          <Button asChild>
+            <Link to={ROUTES.AGENTS}>{t('walletPage.goToAgents')}</Link>
+          </Button>
       </div>
     );
   }
@@ -167,9 +169,9 @@ export function WalletPage() {
   if (phase === 'pick') {
     return (
       <div className="mx-auto max-w-lg space-y-4 p-6">
-        <h1 className="text-2xl font-bold">Choose an agent</h1>
+        <h1 className="text-2xl font-bold">{t('walletPage.chooseAgent')}</h1>
         <p className="text-sm text-muted-foreground">
-          The wallet is tied to a specific agent. Select one to continue.
+          {t('walletPage.walletTiedToAgent')}
         </p>
         <ul className="space-y-2">
           {agents.map((a) => (

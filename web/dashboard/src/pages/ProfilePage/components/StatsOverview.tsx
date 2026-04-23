@@ -100,7 +100,7 @@ export function StatsOverview({ stats }: StatsOverviewProps) {
                 <span className="text-xs text-text-muted">{item.label}</span>
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-text-primary">
+                <span className="text-2xl font-bold font-mono tabular-nums text-text-primary">
                   {formatNumber(item.value)}{item.suffix || ""}
                 </span>
                 {item.trend !== null && item.trend !== undefined && (

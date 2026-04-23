@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronDown, Copy, Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { getValueType, getTypeColor } from '../utils/schemaHelpers';
 
@@ -22,6 +23,7 @@ interface JsonNodeProps {
 }
 
 function CopyButton({ value }: { value: unknown }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async (e: React.MouseEvent) => {
@@ -40,7 +42,7 @@ function CopyButton({ value }: { value: unknown }) {
     <button
       onClick={handleCopy}
       className="opacity-0 group-hover:opacity-100 ml-1.5 p-0.5 rounded hover:bg-bg-tertiary transition-all"
-      title="Copy value"
+      title={t('playground.copyValue')}
     >
       {copied ? (
         <Check className="w-3 h-3 text-green-400" />
@@ -60,6 +62,7 @@ function JsonNode({
   maxDepth,
   isLast = true,
 }: JsonNodeProps) {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(depth < 2);
   const valueType = getValueType(value);
   const isExpandable = valueType === 'object' || valueType === 'array';
@@ -181,7 +184,7 @@ function JsonNode({
           className="text-xs font-mono text-text-muted py-0.5 px-1"
           style={{ paddingLeft: `${(depth + 1) * 16 + 4}px` }}
         >
-          ... (max depth reached)
+          ... ({t('playground.maxDepthReached')})
         </div>
       )}
     </div>

@@ -11,6 +11,16 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -64,6 +74,10 @@ export function TriggerConfiguration({ fabricId }: TriggerConfigurationProps) {
   const [maxInvocations, setMaxInvocations] = useState("60");
   const [isActive, setIsActive] = useState(true);
 
+  // Delete confirmation dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [triggerToDelete, setTriggerToDelete] = useState<string | null>(null);
+
   const { data: triggersData, isLoading, refetch } = useStateFabricTriggers(fabricId);
   const createTrigger = useCreateTrigger(fabricId);
   const deleteTrigger = useDeleteTrigger(fabricId);
@@ -96,11 +110,22 @@ export function TriggerConfiguration({ fabricId }: TriggerConfigurationProps) {
     setIsActive(true);
   };
 
-  const handleDelete = async (triggerId: string) => {
-    if (confirm("Are you sure you want to delete this trigger?")) {
-      await deleteTrigger.mutateAsync(triggerId);
-      refetch();
-    }
+  const openDeleteDialog = (triggerId: string) => {
+    setTriggerToDelete(triggerId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!triggerToDelete) return;
+    await deleteTrigger.mutateAsync(triggerToDelete);
+    setDeleteDialogOpen(false);
+    setTriggerToDelete(null);
+    refetch();
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setTriggerToDelete(null);
   };
 
   return (
@@ -276,7 +301,7 @@ export function TriggerConfiguration({ fabricId }: TriggerConfigurationProps) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleDelete(trigger.id)}
+                      onClick={() => openDeleteDialog(trigger.id)}
                       aria-label="Delete trigger"
                     >
                       <Trash2 className="w-4 h-4 text-red-400" />
@@ -341,6 +366,27 @@ export function TriggerConfiguration({ fabricId }: TriggerConfigurationProps) {
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Trigger</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this trigger? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelDelete}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {deleteTrigger.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

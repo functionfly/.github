@@ -24,6 +24,7 @@
  */
 
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
@@ -146,8 +147,15 @@ export function AchievementBadge({
   showRarity = true,
   className,
 }: AchievementBadgeProps) {
+  const { t } = useTranslation();
   const Icon = ICON_MAP[achievement.icon] || Trophy;
-  const rarity = RARITY_CONFIG[achievement.tier];
+  const rarityConfig = {
+    bronze: { ...RARITY_CONFIG.bronze, label: t('achievement.common') },
+    silver: { ...RARITY_CONFIG.silver, label: t('achievement.rare') },
+    gold: { ...RARITY_CONFIG.gold, label: t('achievement.epic') },
+    platinum: { ...RARITY_CONFIG.platinum, label: t('achievement.legendary') },
+  };
+  const rarity = rarityConfig[achievement.tier];
   const sizeConfig = SIZE_CONFIG[size];
   const isCompleted = !achievement.progress || achievement.progress.current >= achievement.progress.target;
   const progressPercent = achievement.progress
@@ -278,7 +286,7 @@ export function AchievementBadge({
             {formattedUnlockDate && (
               <p className="text-xs text-text-muted flex items-center gap-1">
                 <Sparkles className="w-3 h-3" />
-                Unlocked on {formattedUnlockDate}
+                {t('achievement.unlockedOn', { date: formattedUnlockDate })}
               </p>
             )}
           </div>
@@ -333,11 +341,19 @@ interface AchievementListProps {
 }
 
 export function AchievementList({ achievements, className }: AchievementListProps) {
+  const { t } = useTranslation();
+
   return (
     <div className={cn("space-y-3", className)}>
       {achievements.map((achievement) => {
         const Icon = ICON_MAP[achievement.icon] || Trophy;
-        const rarity = RARITY_CONFIG[achievement.tier];
+        const rarityConfig = {
+          bronze: { ...RARITY_CONFIG.bronze, label: t('achievement.common') },
+          silver: { ...RARITY_CONFIG.silver, label: t('achievement.rare') },
+          gold: { ...RARITY_CONFIG.gold, label: t('achievement.epic') },
+          platinum: { ...RARITY_CONFIG.platinum, label: t('achievement.legendary') },
+        };
+        const rarity = rarityConfig[achievement.tier];
         const isCompleted =
           !achievement.progress || achievement.progress.current >= achievement.progress.target;
         const progressPercent = achievement.progress
@@ -386,7 +402,7 @@ export function AchievementList({ achievements, className }: AchievementListProp
               {achievement.progress && !isCompleted && (
                 <div className="mt-2 space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-text-muted">Progress</span>
+                  <span className="text-text-muted">{t('achievement.progress')}</span>
                     <span className={rarity.text}>
                       {achievement.progress.current} / {achievement.progress.target}
                     </span>

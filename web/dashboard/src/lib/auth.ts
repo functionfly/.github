@@ -192,8 +192,8 @@ export class FunctionFlyAuth {
   /**
    * Generate HMAC signature for request (disabled in browser by default)
    */
-  private generateHMAC(method: string, path: string, body: string): { signature: string; timestamp: number } {
-    // Skip HMAC signing in browser environments (requires crypto-js)
+  private async generateHMAC(method: string, path: string, body: string): Promise<{ signature: string; timestamp: number }> {
+    // Skip HMAC signing in browser environments
     // Only enable in Node.js server environments
     if (typeof window !== 'undefined' || !this.sharedSecret) {
       return { signature: '', timestamp: Math.floor(Date.now() / 1000) };
@@ -202,8 +202,8 @@ export class FunctionFlyAuth {
     const timestamp = Math.floor(Date.now() / 1000);
 
     try {
-      // Node.js implementation
-      const crypto = require('crypto');
+      // Node.js implementation - dynamic import to avoid browser parse errors
+      const crypto = await import('crypto');
 
       // Calculate SHA256 hash of body
       const bodyHash = body ? crypto.createHash('sha256').update(body).digest('hex') : '';
@@ -248,7 +248,7 @@ export class FunctionFlyAuth {
     if (this.sharedSecret && request.path.startsWith('/v1/admin/') &&
         ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
       const bodyString = request.body ? JSON.stringify(request.body) : '';
-      const { signature, timestamp } = this.generateHMAC(request.method, request.path, bodyString);
+      const { signature, timestamp } = await this.generateHMAC(request.method, request.path, bodyString);
 
       if (signature) {
         headers['X-FFLY-Timestamp'] = timestamp.toString();

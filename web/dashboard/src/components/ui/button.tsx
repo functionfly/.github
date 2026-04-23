@@ -40,10 +40,11 @@ export interface ButtonProps
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   isLoading?: boolean;
+  htmlType?: 'button' | 'submit' | 'reset';
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, isLoading, children, disabled, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, isLoading, children, disabled, htmlType = 'button', ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
     return (
       <Comp
@@ -53,6 +54,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         } as React.CSSProperties}
         ref={ref}
         disabled={disabled || isLoading}
+        type={htmlType}
         {...props}
       >
         {isLoading ? (

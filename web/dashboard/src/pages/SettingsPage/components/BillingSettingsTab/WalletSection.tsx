@@ -63,19 +63,19 @@ export function WalletSection({
             <div className="grid gap-3 sm:grid-cols-3 rounded-lg bg-bg-secondary border border-border-default p-4">
               <div>
                 <p className="text-xs text-text-muted uppercase tracking-wide">Balance</p>
-                <p className="text-lg font-semibold text-amber-500 tabular-nums">
+                <p className="text-lg font-semibold font-mono text-amber-500 tabular-nums">
                   {formatUsd(walletData?.balance_usd ?? 0)}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-text-muted uppercase tracking-wide">Lifetime earned</p>
-                <p className="text-lg font-medium text-text-primary tabular-nums">
+                <p className="text-lg font-medium font-mono text-text-primary tabular-nums">
                   {formatUsd(walletData?.lifetime_earnings_usd ?? 0)}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-text-muted uppercase tracking-wide">Fees paid</p>
-                <p className="text-lg font-medium text-text-primary tabular-nums">
+                <p className="text-lg font-medium font-mono text-text-primary tabular-nums">
                   {formatUsd(walletData?.lifetime_fees_usd ?? 0)}
                 </p>
               </div>

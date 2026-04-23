@@ -30,6 +30,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
 // Types for Wallet Dashboard
@@ -74,6 +75,7 @@ interface SpendingBreakdown {
 }
 
 export function WalletDashboard({ agentId }: { agentId: string }) {
+  const { t } = useTranslation();
   const updateUnreadCounts = useNotificationStore((s) => s.updateUnreadCounts);
   const [wallet, setWallet] = useState<WalletData | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -115,19 +117,19 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
   const formatTxDescription = (tx: AgentFinancialTransaction): string => {
     switch (tx.kind) {
       case 'credit_purchase':
-        return 'Credits purchased';
+        return t('walletDashboard:creditsPurchased');
       case 'execution_debit':
-        return 'Execution cost';
+        return t('walletDashboard:executionCost');
       case 'transfer_in':
-        return 'Transfer received';
+        return t('walletDashboard:transferReceived');
       case 'transfer_out':
-        return 'Transfer sent';
+        return t('walletDashboard:transferSent');
       case 'adjustment':
-        return 'Balance adjustment';
+        return t('walletDashboard:balanceAdjustment');
       case 'refund':
-        return 'Refund';
+        return t('walletDashboard:refund');
       default:
-        return 'Transaction';
+        return t('walletDashboard:transaction');
     }
   };
 
@@ -213,7 +215,7 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
         setTxTotal(0);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load wallet data');
+      setError(e instanceof Error ? e.message : t('walletDashboard:failedToLoadWalletData'));
       setWallet(null);
       setTransactions([]);
       setRevenueBreakdown([]);
@@ -248,11 +250,11 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
     setAddFundsError(null);
     const amount = parseFloat(addFundsAmount);
     if (isNaN(amount) || amount <= 0) {
-      setAddFundsError('Please enter a valid amount');
+      setAddFundsError(t('walletDashboard:pleaseEnterValidAmount'));
       return;
     }
     if (amount < 0.5) {
-      setAddFundsError('Minimum amount is $0.50');
+      setAddFundsError(t('walletDashboard:minimumAmountIs050'));
       return;
     }
 
@@ -265,7 +267,7 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
         // Redirect to Stripe – notification bell refresh happens in WalletPage on return
         window.location.href = res.url;
       } else {
-        setAddFundsError('Failed to create checkout session');
+        setAddFundsError(t('walletDashboard:failedToCreateCheckoutSession'));
       }
     } catch (e: unknown) {
       const ax = e as {
@@ -279,14 +281,14 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
         try {
           await agentApi.purchaseCredits(agentId, amount);
           setShowAddFunds(false);
-          toast.success('Funds added successfully', {
-            description: `$${amount.toFixed(2)} has been added to your wallet.`,
+          toast.success(t('walletDashboard:fundsAddedSuccess'), {
+            description: t('walletDashboard:fundsAddedToWallet', { amount: amount.toFixed(2) }),
           });
           fetchData();
           refreshNotificationBell();
           return;
         } catch (innerErr: unknown) {
-          const msg = innerErr instanceof Error ? innerErr.message : 'Failed to add funds';
+          const msg = innerErr instanceof Error ? innerErr.message : t('walletDashboard:failedToAddFunds');
           setAddFundsError(msg);
           return;
         }
@@ -294,7 +296,7 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
 
       const apiMsg =
         errObj?.message && (errObj.code ? `${errObj.code}: ${errObj.message}` : errObj.message);
-      setAddFundsError(apiMsg ?? (e instanceof Error ? e.message : 'Failed to initiate checkout'));
+      setAddFundsError(apiMsg ?? (e instanceof Error ? e.message : t('walletDashboard:failedToInitiateCheckout')));
     } finally {
       setAddFundsLoading(false);
     }
@@ -303,7 +305,7 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
   const handleExport = () => {
     if (!transactions.length) return;
 
-    const headers = ['Date', 'Type', 'Description', 'Amount', 'Status'];
+    const headers = [t('walletDashboard:csvDate'), t('walletDashboard:csvType'), t('walletDashboard:csvDescription'), t('walletDashboard:csvAmount'), t('walletDashboard:csvStatus')];
     const rows = transactions.map((t) => [
       new Date(t.timestamp).toISOString(),
       t.type,
@@ -405,10 +407,10 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
   if (error) {
     return (
       <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-destructive">
-        <p className="font-medium">Failed to load wallet data</p>
+        <p className="font-medium">{t('walletDashboard:failedToLoadWalletData')}</p>
         <p className="text-sm mt-1">{error}</p>
         <Button variant="outline" size="sm" className="mt-3" onClick={() => fetchData()}>
-          Retry
+          {t('walletDashboard:retry')}
         </Button>
       </div>
     );
@@ -421,20 +423,20 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Wallet className="h-8 w-8" />
-            Agent Wallet
+            {t('walletDashboard:agentWallet')}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Manage your agent's finances and transactions
+            {t('walletDashboard:manageFinances')}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => setShowAddFunds(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            Add Funds
+            {t('walletDashboard:addFunds')}
           </Button>
           <Button variant="outline" onClick={handleExport} disabled={transactions.length === 0}>
             <Download className="h-4 w-4 mr-2" />
-            Export
+            {t('walletDashboard:export')}
           </Button>
         </div>
       </div>
@@ -445,7 +447,7 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Available Balance</p>
+                <p className="text-sm text-muted-foreground">{t('walletDashboard:availableBalance')}</p>
                 <p className="text-3xl font-bold text-green-600">
                   {formatCurrency(wallet?.balance ?? 0)}
                 </p>
@@ -458,7 +460,7 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Escrow Balance</p>
+                <p className="text-sm text-muted-foreground">{t('walletDashboard:escrowBalance')}</p>
                 <p className="text-3xl font-bold">{formatCurrency(wallet?.escrowBalance ?? 0)}</p>
               </div>
               <Shield className="h-8 w-8 text-blue-500" />
@@ -469,7 +471,7 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total Earned</p>
+                <p className="text-sm text-muted-foreground">{t('walletDashboard:totalEarned')}</p>
                 <p className="text-3xl font-bold text-green-600">
                   {formatCurrency(wallet?.totalEarned ?? 0)}
                 </p>
@@ -478,7 +480,7 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
             </div>
             {wallet?.lastEarning ? (
               <p className="text-xs text-muted-foreground mt-2">
-                Last: {new Date(wallet.lastEarning).toLocaleDateString()}
+                {t('walletDashboard:lastDate', { date: new Date(wallet.lastEarning).toLocaleDateString() })}
               </p>
             ) : null}
           </CardContent>
@@ -487,7 +489,7 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total Spent</p>
+                <p className="text-sm text-muted-foreground">{t('walletDashboard:totalSpent')}</p>
                 <p className="text-3xl font-bold text-red-600">
                   {formatCurrency(wallet?.totalSpent ?? 0)}
                 </p>
@@ -496,7 +498,7 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
             </div>
             {wallet?.lastSpending ? (
               <p className="text-xs text-muted-foreground mt-2">
-                Last: {new Date(wallet.lastSpending).toLocaleDateString()}
+                {t('walletDashboard:lastDate', { date: new Date(wallet.lastSpending).toLocaleDateString() })}
               </p>
             ) : null}
           </CardContent>
@@ -507,15 +509,14 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
       <Dialog open={showAddFunds} onOpenChange={setShowAddFunds}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Add Funds</DialogTitle>
+            <DialogTitle>{t('walletDashboard:addFundsDialog')}</DialogTitle>
             <DialogDescription>
-              Purchase execution credits for your agent. You'll be redirected to Stripe to complete
-              the payment.
+              {t('walletDashboard:addFundsDescription')}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="amount">Amount (USD)</Label>
+              <Label htmlFor="amount">{t('walletDashboard:amountUsd')}</Label>
               <Input
                 id="amount"
                 type="number"
@@ -525,7 +526,7 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
                 value={addFundsAmount}
                 onChange={(e) => setAddFundsAmount(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">Minimum amount: $0.50 USD</p>
+              <p className="text-xs text-muted-foreground">{t('walletDashboard:minimumAmountHint')}</p>
             </div>
             {addFundsError && <p className="text-sm text-destructive">{addFundsError}</p>}
           </div>
@@ -535,16 +536,16 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
               onClick={() => setShowAddFunds(false)}
               disabled={addFundsLoading}
             >
-              Cancel
+              {t('walletDashboard:cancel')}
             </Button>
             <Button onClick={handleAddFunds} disabled={addFundsLoading}>
               {addFundsLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
+                  {t('walletDashboard:processing')}
                 </>
               ) : (
-                'Continue to Checkout'
+                t('walletDashboard:continueToCheckout')
               )}
             </Button>
           </DialogFooter>
@@ -554,23 +555,23 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
       {/* Tabs */}
       <Tabs defaultValue="transactions" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="transactions">Transactions</TabsTrigger>
-          <TabsTrigger value="revenue">Revenue Breakdown</TabsTrigger>
-          <TabsTrigger value="spending">Spending Breakdown</TabsTrigger>
+          <TabsTrigger value="transactions">{t('walletDashboard:transactions')}</TabsTrigger>
+          <TabsTrigger value="revenue">{t('walletDashboard:revenueBreakdown')}</TabsTrigger>
+          <TabsTrigger value="spending">{t('walletDashboard:spendingBreakdown')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="transactions">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle>Recent Transactions</CardTitle>
-                <CardDescription>Your agent's financial activity</CardDescription>
+                <CardTitle>{t('walletDashboard:recentTransactions')}</CardTitle>
+                <CardDescription>{t('walletDashboard:financialActivity')}</CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">
                   {txTotal > 0
-                    ? `Showing ${Math.min(txOffset + 1, txTotal)}-${Math.min(txOffset + transactions.length, txTotal)} of ${txTotal}`
-                    : 'No transactions'}
+                    ? t('walletDashboard:showingRange', { from: Math.min(txOffset + 1, txTotal), to: Math.min(txOffset + transactions.length, txTotal), total: txTotal })
+                    : t('walletDashboard:noTransactions')}
                 </span>
                 <Button
                   variant="outline"
@@ -578,7 +579,7 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
                   onClick={() => setTxOffset(Math.max(0, txOffset - txLimit))}
                   disabled={txOffset === 0}
                 >
-                  Previous
+                  {t('walletDashboard:previous')}
                 </Button>
                 <Button
                   variant="outline"
@@ -586,14 +587,14 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
                   onClick={() => setTxOffset(txOffset + txLimit)}
                   disabled={txOffset + txLimit >= txTotal}
                 >
-                  Next
+                  {t('walletDashboard:next')}
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
               {transactions.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-8 text-center">
-                  No transaction history available. Add funds to get started.
+                  {t('walletDashboard:noTransactionHistory')}
                 </p>
               ) : (
                 <div className="space-y-4">
@@ -637,13 +638,13 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
         <TabsContent value="revenue">
           <Card>
             <CardHeader>
-              <CardTitle>Revenue Sources</CardTitle>
-              <CardDescription>Where your agent's earnings come from</CardDescription>
+              <CardTitle>{t('walletDashboard:revenueSources')}</CardTitle>
+              <CardDescription>{t('walletDashboard:revenueSourcesDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
               {revenueBreakdown.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-8 text-center">
-                  No revenue data yet. Earnings will appear here as your agent earns.
+                  {t('walletDashboard:noRevenueData')}
                 </p>
               ) : (
                 <div className="space-y-4">
@@ -673,13 +674,13 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
         <TabsContent value="spending">
           <Card>
             <CardHeader>
-              <CardTitle>Spending Categories</CardTitle>
-              <CardDescription>Where your agent's funds are spent</CardDescription>
+              <CardTitle>{t('walletDashboard:spendingCategories')}</CardTitle>
+              <CardDescription>{t('walletDashboard:spendingCategoriesDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
               {spendingBreakdown.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-8 text-center">
-                  No spending breakdown yet. Cost by function will appear when available.
+                  {t('walletDashboard:noSpendingData')}
                 </p>
               ) : (
                 <div className="space-y-4">

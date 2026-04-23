@@ -26,6 +26,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import './HelpCenter.css';
 
@@ -102,6 +103,7 @@ function QuickLink({ icon, title, href, external }: QuickLinkProps) {
 
 export function HelpCenterPage() {
   const [searchQuery, setSearchQuery] = useState('');
+  const { t } = useTranslation();
 
   useWebVitals((metrics) => {
     if (import.meta.env.DEV) {
@@ -115,94 +117,94 @@ export function HelpCenterPage() {
   const helpCategories: HelpCardProps[] = [
     {
       icon: <Rocket className="h-6 w-6" />,
-      title: 'Getting Started',
-      description: 'New to FunctionFly? Learn the basics and deploy your first function.',
+      title: t('helpCenter.gettingStarted'),
+      description: t('helpCenter.gettingStartedDesc'),
       links: [
-        { label: 'Quick Start Guide', href: `${DOCS_SITE_URL}/quickstart`, external: true },
-        { label: 'Platform Overview', href: '/features' },
+        { label: t('helpCenter.quickStartGuide'), href: `${DOCS_SITE_URL}/quickstart`, external: true },
+        { label: t('helpCenter.platformOverview'), href: '/features' },
         {
-          label: 'Deploy Your First Function',
+          label: t('helpCenter.deployFirstFunction'),
           href: `${DOCS_SITE_URL}/deploy/first-function`,
           external: true,
         },
-        { label: 'Onboarding Walkthrough', href: '/onboarding' },
+        { label: t('helpCenter.onboardingWalkthrough'), href: '/onboarding' },
       ],
     },
     {
       icon: <BookOpen className="h-6 w-6" />,
-      title: 'Documentation',
-      description: 'Comprehensive guides, API references, and examples.',
+      title: t('helpCenter.documentation'),
+      description: t('helpCenter.documentationDesc'),
       links: [
-        { label: 'Full Documentation', href: DOCS_SITE_URL, external: true },
-        { label: 'API Reference', href: `${DOCS_SITE_URL}/api`, external: true },
-        { label: 'SDK Integrations', href: '/sdk-integrations' },
-        { label: 'Code Samples', href: `${DOCS_SITE_URL}/examples`, external: true },
+        { label: t('helpCenter.fullDocumentation'), href: DOCS_SITE_URL, external: true },
+        { label: t('helpCenter.apiReference'), href: `${DOCS_SITE_URL}/api`, external: true },
+        { label: t('helpCenter.sdkIntegrations'), href: '/sdk-integrations' },
+        { label: t('helpCenter.codeSamples'), href: `${DOCS_SITE_URL}/examples`, external: true },
       ],
     },
     {
       icon: <Layout className="h-6 w-6" />,
-      title: 'Building & Deploying',
-      description: 'Learn how to create, deploy, and manage functions.',
+      title: t('helpCenter.buildingDeploying'),
+      description: t('helpCenter.buildingDeployingDesc'),
       links: [
-        { label: 'Function Basics', href: `${DOCS_SITE_URL}/functions/basics`, external: true },
-        { label: 'State Fabric Guide', href: `${DOCS_SITE_URL}/state-fabric`, external: true },
-        { label: 'Secrets Vault', href: `${DOCS_SITE_URL}/secrets`, external: true },
-        { label: 'Version Control', href: `${DOCS_SITE_URL}/functions/versions`, external: true },
+        { label: t('helpCenter.functionBasics'), href: `${DOCS_SITE_URL}/functions/basics`, external: true },
+        { label: t('helpCenter.stateFabricGuide'), href: `${DOCS_SITE_URL}/state-fabric`, external: true },
+        { label: t('helpCenter.secretsVault'), href: `${DOCS_SITE_URL}/secrets`, external: true },
+        { label: t('helpCenter.versionControl'), href: `${DOCS_SITE_URL}/functions/versions`, external: true },
       ],
     },
     {
       icon: <CreditCard className="h-6 w-6" />,
-      title: 'Billing & Plans',
-      description: 'Manage your subscription, usage, and billing details.',
+      title: t('helpCenter.billingPlans'),
+      description: t('helpCenter.billingPlansDesc'),
       links: [
-        { label: 'Pricing Information', href: '/pricing' },
-        { label: 'Billing Settings', href: '/settings' },
-        { label: 'Usage Tracking', href: '/usage' },
-        { label: 'Enterprise Plans', href: '/enterprise' },
+        { label: t('helpCenter.pricingInformation'), href: '/pricing' },
+        { label: t('helpCenter.billingSettings'), href: '/settings' },
+        { label: t('helpCenter.usageTracking'), href: '/usage' },
+        { label: t('helpCenter.enterprisePlans'), href: '/enterprise' },
       ],
     },
     {
       icon: <Key className="h-6 w-6" />,
-      title: 'API Keys & Authentication',
-      description: 'Generate keys, manage access, and secure your functions.',
+      title: t('helpCenter.apiKeysAuth'),
+      description: t('helpCenter.apiKeysAuthDesc'),
       links: [
-        { label: 'API Keys Dashboard', href: '/api-keys' },
-        { label: 'Authentication Guide', href: `${DOCS_SITE_URL}/auth`, external: true },
-        { label: 'Security Best Practices', href: '/security' },
-        { label: 'Provider Connections', href: '/providers' },
+        { label: t('helpCenter.apiKeysDashboard'), href: '/api-keys' },
+        { label: t('helpCenter.authGuide'), href: `${DOCS_SITE_URL}/auth`, external: true },
+        { label: t('helpCenter.securityBestPractices'), href: '/security' },
+        { label: t('helpCenter.providerConnections'), href: '/providers' },
       ],
     },
     {
       icon: <Users className="h-6 w-6" />,
-      title: 'Teams & Collaboration',
-      description: 'Work together with team members and manage access.',
+      title: t('helpCenter.teamsCollaboration'),
+      description: t('helpCenter.teamsCollaborationDesc'),
       links: [
-        { label: 'Team Management', href: '/teams' },
-        { label: 'Member Roles', href: `${DOCS_SITE_URL}/teams/roles`, external: true },
-        { label: 'Shared Functions', href: '/functions' },
-        { label: 'Organization Setup', href: `${DOCS_SITE_URL}/teams`, external: true },
+        { label: t('helpCenter.teamManagement'), href: '/teams' },
+        { label: t('helpCenter.memberRoles'), href: `${DOCS_SITE_URL}/teams/roles`, external: true },
+        { label: t('helpCenter.sharedFunctions'), href: '/functions' },
+        { label: t('helpCenter.organizationSetup'), href: `${DOCS_SITE_URL}/teams`, external: true },
       ],
     },
     {
       icon: <Bug className="h-6 w-6" />,
-      title: 'Troubleshooting',
-      description: 'Debug issues, find solutions, and get unstuck.',
+      title: t('helpCenter.troubleshooting'),
+      description: t('helpCenter.troubleshootingDesc'),
       links: [
-        { label: 'Common Issues', href: '/faq' },
-        { label: 'Error Reference', href: `${DOCS_SITE_URL}/errors`, external: true },
-        { label: 'Debugging Guide', href: `${DOCS_SITE_URL}/debugging`, external: true },
-        { label: 'Status Page', href: 'https://status.functionfly.com', external: true },
+        { label: t('helpCenter.commonIssues'), href: '/faq' },
+        { label: t('helpCenter.errorReference'), href: `${DOCS_SITE_URL}/errors`, external: true },
+        { label: t('helpCenter.debuggingGuide'), href: `${DOCS_SITE_URL}/debugging`, external: true },
+        { label: t('helpCenter.statusPage'), href: 'https://status.functionfly.com', external: true },
       ],
     },
     {
       icon: <LifeBuoy className="h-6 w-6" />,
-      title: 'Support Channels',
-      description: 'Get help from our team and community.',
+      title: t('helpCenter.supportChannels'),
+      description: t('helpCenter.supportChannelsDesc'),
       links: [
-        { label: 'Contact Support', href: '/contact' },
-        { label: 'Community Forum', href: '/community' },
-        { label: 'Enterprise Support', href: '/enterprise/support' },
-        { label: 'Feature Requests', href: '/feedback' },
+        { label: t('helpCenter.contactSupport'), href: '/contact' },
+        { label: t('helpCenter.communityForum'), href: '/community' },
+        { label: t('helpCenter.enterpriseSupport'), href: '/enterprise/support' },
+        { label: t('helpCenter.featureRequests'), href: '/feedback' },
       ],
     },
   ];
@@ -210,20 +212,20 @@ export function HelpCenterPage() {
   const quickLinks: QuickLinkProps[] = [
     {
       icon: <Play className="h-5 w-5" />,
-      title: 'Video Tutorials',
+      title: t('helpCenter.videoTutorials'),
       href: `${DOCS_SITE_URL}/tutorials`,
       external: true,
     },
-    { icon: <FileText className="h-5 w-5" />, title: 'Changelog', href: '/changelog' },
+    { icon: <FileText className="h-5 w-5" />, title: t('helpCenter.changelog'), href: '/changelog' },
     {
       icon: <Server className="h-5 w-5" />,
-      title: 'System Status',
+      title: t('helpCenter.systemStatus'),
       href: 'https://status.functionfly.com',
       external: true,
     },
-    { icon: <Shield className="h-5 w-5" />, title: 'Security', href: '/security' },
-    { icon: <Search className="h-5 w-5" />, title: 'FAQ', href: '/faq' },
-    { icon: <Mail className="h-5 w-5" />, title: 'Contact Us', href: '/contact' },
+    { icon: <Shield className="h-5 w-5" />, title: t('helpCenter.security'), href: '/security' },
+    { icon: <Search className="h-5 w-5" />, title: t('helpCenter.faq'), href: '/faq' },
+    { icon: <Mail className="h-5 w-5" />, title: t('helpCenter.contactUs'), href: '/contact' },
   ];
 
   const filteredCategories = searchQuery
@@ -238,8 +240,8 @@ export function HelpCenterPage() {
   return (
     <div className="min-h-screen bg-bg-primary" style={{ backgroundColor: 'var(--bg-primary)' }}>
       <MetaTags
-        title="Help Center | FunctionFly"
-        description="Get help with FunctionFly. Browse documentation, guides, FAQs, and support resources."
+        title={t('helpCenter.metaTitle')}
+        description={t('helpCenter.metaDescription')}
       />
 
       <Navbar />
@@ -249,11 +251,11 @@ export function HelpCenterPage() {
         <div className="max-w-4xl mx-auto px-4 lg:px-6 text-center">
           <div className="help-hero-badge">
             <HelpCircle className="h-4 w-4" />
-            Help Center
+            {t('helpCenter.helpCenter')}
           </div>
-          <h1 className="help-hero-title">How can we help you?</h1>
+          <h1 className="help-hero-title">{t('helpCenter.heroTitle')}</h1>
           <p className="help-hero-description">
-            Find answers, explore documentation, and get support for your FunctionFly journey.
+            {t('helpCenter.heroDescription')}
           </p>
 
           {/* Search Bar */}
@@ -264,12 +266,12 @@ export function HelpCenterPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search for topics, guides, or answers..."
+                placeholder={t('helpCenter.searchPlaceholder')}
                 className="help-search-input"
               />
               {searchQuery && (
                 <button onClick={() => setSearchQuery('')} className="help-search-clear">
-                  Clear
+                  {t('helpCenter.clear')}
                 </button>
               )}
             </div>
@@ -280,7 +282,7 @@ export function HelpCenterPage() {
       {/* Quick Links */}
       <div className="help-quick-links-section">
         <div className="max-w-7xl mx-auto px-4 lg:px-6">
-          <h2 className="help-section-title">Quick Links</h2>
+          <h2 className="help-section-title">{t('helpCenter.quickLinks')}</h2>
           <div className="quick-links-grid">
             {quickLinks.map((link, index) => (
               <QuickLink key={index} {...link} />
@@ -292,17 +294,17 @@ export function HelpCenterPage() {
       {/* Help Categories */}
       <div className="help-categories-section">
         <div className="max-w-7xl mx-auto px-4 lg:px-6">
-          <h2 className="help-section-title">Browse by Topic</h2>
+          <h2 className="help-section-title">{t('helpCenter.browseByTopic')}</h2>
 
           {filteredCategories.length === 0 ? (
             <div className="help-no-results">
               <HelpCircle className="help-no-results-icon" />
-              <h3 className="help-no-results-title">No results found</h3>
+              <h3 className="help-no-results-title">{t('helpCenter.noResultsFound')}</h3>
               <p className="help-no-results-description">
-                Try adjusting your search terms or browse all categories below.
+                {t('helpCenter.noResultsDescription')}
               </p>
               <button onClick={() => setSearchQuery('')} className="help-clear-search-button">
-                Clear Search
+                {t('helpCenter.clearSearch')}
               </button>
             </div>
           ) : (
@@ -324,16 +326,15 @@ export function HelpCenterPage() {
                 <MessageSquare className="h-8 w-8" />
               </div>
               <div className="help-support-text">
-                <h3 className="help-support-title">Still need help?</h3>
+                <h3 className="help-support-title">{t('helpCenter.stillNeedHelp')}</h3>
                 <p className="help-support-description">
-                  Can&apos;t find what you&apos;re looking for? Our support team is ready to assist
-                  you.
+                  {t('helpCenter.stillNeedHelpDescription')}
                 </p>
               </div>
               <div className="help-support-actions">
                 <Link to="/contact" className="help-support-button primary">
                   <Mail className="h-4 w-4" />
-                  Contact Support
+                  {t('helpCenter.contactSupport')}
                 </Link>
                 <a
                   href={DOCS_SITE_URL}
@@ -342,7 +343,7 @@ export function HelpCenterPage() {
                   className="help-support-button secondary"
                 >
                   <BookOpen className="h-4 w-4" />
-                  Documentation
+                  {t('helpCenter.documentation')}
                 </a>
               </div>
             </div>

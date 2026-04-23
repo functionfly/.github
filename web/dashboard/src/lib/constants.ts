@@ -24,6 +24,8 @@ export const ROUTES = {
   LOGIN: '/login',
   SIGNUP: '/signup',
   DASHBOARD: '/dashboard',
+  /** Marketplace / discovery home (sidebar: Discover). */
+  DISCOVER: '/functions/discovery',
   /** Metrics / activity home (sidebar: Overview). */
   OVERVIEW: '/overview',
   FUNCTIONS: '/functions',
@@ -140,6 +142,7 @@ export const MAIN_NAV_PATHS: string[] = [
   ROUTES.MARKETPLACE_AGENTS,
   ROUTES.FUNCTION_DETAIL,
   ROUTES.APP_DETAIL,
+  ROUTES.DISCOVER,
   ROUTES.DASHBOARD,
   ROUTES.OVERVIEW,
   ROUTES.FUNCTIONS,

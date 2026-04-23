@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ChevronRight, Zap, Clock, Shield } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { FunctionInfo } from '../store/playgroundStore';
 
 interface PlaygroundHeaderProps {
@@ -21,6 +22,7 @@ const runtimeColors: Record<string, string> = {
 };
 
 export function PlaygroundHeader({ functionInfo }: PlaygroundHeaderProps) {
+  const { t } = useTranslation();
   const runtimeColor =
     runtimeColors[functionInfo.runtime?.toLowerCase() || ''] ||
     'bg-gray-500/10 text-gray-400 border-gray-500/20';
@@ -38,7 +40,7 @@ export function PlaygroundHeader({ functionInfo }: PlaygroundHeaderProps) {
           to="/registry"
           className="hover:text-text-primary transition-colors"
         >
-          Registry
+          {t('playground.registry')}
         </Link>
         <ChevronRight className="w-3 h-3" />
         <Link
@@ -48,7 +50,7 @@ export function PlaygroundHeader({ functionInfo }: PlaygroundHeaderProps) {
           {functionInfo.author}/{functionInfo.name}
         </Link>
         <ChevronRight className="w-3 h-3" />
-        <span className="text-text-secondary">Playground</span>
+        <span className="text-text-secondary">{t('playground.playground')}</span>
       </div>
 
       {/* Title row */}
@@ -97,7 +99,7 @@ export function PlaygroundHeader({ functionInfo }: PlaygroundHeaderProps) {
               className="text-xs border bg-amber-500/10 text-amber-400 border-amber-500/20 gap-1"
             >
               <Clock className="w-3 h-3" />
-              Cached
+              {t('playground.cached')}
             </Badge>
           )}
 
@@ -116,7 +118,7 @@ export function PlaygroundHeader({ functionInfo }: PlaygroundHeaderProps) {
             className="text-xs border bg-indigo-500/10 text-indigo-400 border-indigo-500/20 gap-1"
           >
             <Zap className="w-3 h-3" />
-            Playground
+            {t('playground.playground')}
           </Badge>
         </div>
       </div>

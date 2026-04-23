@@ -21,6 +21,12 @@ import type {
   ListSecretsResponse,
   ListTokensResponse,
   ListAuditLogResponse,
+  SecretVersion,
+  SecretVersionMetadata,
+  SecretVersionDiff,
+  RollbackSecretRequest,
+  RollbackSecretResponse,
+  ListSecretVersionsResponse,
 } from "@/types/vault";
 
 /**
@@ -130,6 +136,55 @@ export const vaultApi = {
       `/v1/vault/secrets/${secretId}/audit?limit=${limit}`
     );
     return response.entries;
+  },
+
+  // ==================== Secret Versions ====================
+
+  /**
+   * List all versions for a secret
+   */
+  listSecretVersions: async (secretId: string, limit: number = 50, offset: number = 0): Promise<SecretVersionMetadata[]> => {
+    const response = await apiClient.get<ListSecretVersionsResponse>(
+      `/v1/vault/secrets/${secretId}/versions?limit=${limit}&offset=${offset}`
+    );
+    return response.versions;
+  },
+
+  /**
+   * Get a specific version of a secret
+   */
+  getSecretVersion: async (secretId: string, versionNumber: number, includeEncrypted: boolean = false): Promise<SecretVersion> => {
+    return apiClient.get<SecretVersion>(
+      `/v1/vault/secrets/${secretId}/versions/${versionNumber}?include_encrypted=${includeEncrypted}`
+    );
+  },
+
+  /**
+   * Compare (diff) two versions of a secret
+   */
+  diffSecretVersions: async (
+    secretId: string,
+    fromVersion: number,
+    toVersion?: number
+  ): Promise<SecretVersionDiff> => {
+    const params = new URLSearchParams();
+    params.append('from_version', fromVersion.toString());
+    if (toVersion !== undefined) {
+      params.append('to_version', toVersion.toString());
+    }
+    return apiClient.get<SecretVersionDiff>(
+      `/v1/vault/secrets/${secretId}/versions/diff?${params.toString()}`
+    );
+  },
+
+  /**
+   * Rollback a secret to a previous version
+   */
+  rollbackSecret: async (secretId: string, request: RollbackSecretRequest): Promise<RollbackSecretResponse> => {
+    return apiClient.post<RollbackSecretResponse>(
+      `/v1/vault/secrets/${secretId}/rollback`,
+      request
+    );
   },
 };
 

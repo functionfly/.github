@@ -46,7 +46,7 @@ export function AboutTab({ profile, isOwnProfile, userSkills, onAddSkill, onRemo
           {/* Bio */}
           <Card className="border-border-subtle">
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
+              <CardTitle className="text-lg font-display flex items-center gap-2">
                 <User className="w-5 h-5 text-brand-500" />
                 About
               </CardTitle>
@@ -62,7 +62,7 @@ export function AboutTab({ profile, isOwnProfile, userSkills, onAddSkill, onRemo
           {profile.experience && profile.experience.length > 0 && (
             <Card className="border-border-subtle">
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
+                <CardTitle className="text-lg font-display flex items-center gap-2">
                   <Briefcase className="w-5 h-5 text-brand-500" />
                   Experience
                 </CardTitle>
@@ -94,7 +94,7 @@ export function AboutTab({ profile, isOwnProfile, userSkills, onAddSkill, onRemo
           {profile.education && profile.education.length > 0 && (
             <Card className="border-border-subtle">
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
+                <CardTitle className="text-lg font-display flex items-center gap-2">
                   <GraduationCap className="w-5 h-5 text-brand-500" />
                   Education
                 </CardTitle>
@@ -123,7 +123,7 @@ export function AboutTab({ profile, isOwnProfile, userSkills, onAddSkill, onRemo
           {profile.openSourceContributions && profile.openSourceContributions.length > 0 && (
             <Card className="border-border-subtle">
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
+                <CardTitle className="text-lg font-display flex items-center gap-2">
                   <Icon icon="simple-icons:github" className="w-5 h-5 text-brand-500" />
                   Open Source Contributions
                 </CardTitle>
@@ -157,7 +157,7 @@ export function AboutTab({ profile, isOwnProfile, userSkills, onAddSkill, onRemo
           {/* Contact Info */}
           <Card className="border-border-subtle">
             <CardHeader>
-              <CardTitle className="text-lg">Contact</CardTitle>
+              <CardTitle className="text-lg font-display">Contact</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {profile.socialLinks.github && (
@@ -211,7 +211,7 @@ export function AboutTab({ profile, isOwnProfile, userSkills, onAddSkill, onRemo
           {profile.languages && profile.languages.length > 0 && (
             <Card className="border-border-subtle">
               <CardHeader>
-                <CardTitle className="text-lg">Languages</CardTitle>
+                <CardTitle className="text-lg font-display">Languages</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">

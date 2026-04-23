@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Vite/SPA sitemap generator. Run after build (e.g. postbuild) to emit sitemap.xml and robots.txt into dist/.
- * Uses the same config as next-sitemap (next-sitemap.config.js) for siteUrl, transform, additionalPaths, robots.
+ * Reads config from next-sitemap.config.js for siteUrl, transform, additionalPaths, robots.
  */
 import fs from 'fs';
 import path from 'path';

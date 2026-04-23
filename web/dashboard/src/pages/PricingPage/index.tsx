@@ -18,6 +18,7 @@ import { ArrowLeft, Bot, CreditCard, Database, Mail, Shield, Zap } from 'lucide-
 import { useEffect, useRef, useState } from 'react';
 import Confetti from 'react-confetti';
 import toast, { Toaster } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Tooltip } from 'react-tooltip';
 import { useWindowSize } from 'react-use';
@@ -35,14 +36,14 @@ function cn(...classes: (string | boolean | undefined)[]) {
   return classes.filter(Boolean).join(' ');
 }
 
-const TABS: { id: PricingTab; label: string; icon: typeof Zap }[] = [
-  { id: 'functions', label: 'Function deployment', icon: Zap },
-  { id: 'state-fabric', label: 'State Fabric', icon: Database },
-  { id: 'agents', label: 'Agent execution', icon: Bot },
-];
-
 export function PricingPage() {
+  const { t } = useTranslation();
   const { width, height } = useWindowSize();
+  const TABS: { id: PricingTab; label: string; icon: typeof Zap }[] = [
+    { id: 'functions', label: t("pricing:tabs.functions"), icon: Zap },
+    { id: 'state-fabric', label: t("pricing:tabs.stateFabric"), icon: Database },
+    { id: 'agents', label: t("pricing:tabs.agents"), icon: Bot },
+  ];
   const [showConfetti, setShowConfetti] = useState(false);
   const [activeTab, setActiveTab] = useState<PricingTab>('functions');
   const [searchParams] = useSearchParams();
@@ -101,7 +102,7 @@ export function PricingPage() {
     if (planId === 'free') {
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 3000);
-      toast.success("Great choice! You're about to start with the Free Plan.", {
+      toast.success(t("pricing:toasts.freePlanSuccess"), {
         duration: 4000,
         style: {
           background: '#1a1a1a',
@@ -115,7 +116,7 @@ export function PricingPage() {
 
     // For paid plans, create checkout session
     if (!priceId) {
-      toast.error('Invalid plan. Please try again.');
+      toast.error(t("pricing:toasts.invalidPlan"));
       return;
     }
 
@@ -225,12 +226,12 @@ export function PricingPage() {
                 <div className="p-1 rounded-lg bg-white/5 group-hover:bg-[#6366f1]/10 transition-colors">
                   <ArrowLeft className="w-4 h-4" />
                 </div>
-                <span className="font-medium">Back to Home</span>
+                <span className="font-medium">{t("pricing:hero.backToHome")}</span>
               </Link>
               <div className="flex items-center gap-3">
                 <div className="w-2 h-2 rounded-full bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] animate-pulse" />
                 <h1 className="text-xl font-bold bg-gradient-to-r from-white to-text-secondary bg-clip-text text-transparent">
-                  Pricing
+                  {t("pricing:hero.pricing")}
                 </h1>
               </div>
               <div className="w-24" /> {/* Spacer for centering */}
@@ -256,26 +257,26 @@ export function PricingPage() {
               </div>
 
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
-                <span className="bg-gradient-to-r from-white via-white to-text-secondary bg-clip-text text-transparent">
-                  Simple, transparent
-                </span>
-                <br />
-                <span className="bg-gradient-to-r from-[#6366f1] via-[#8b5cf6] to-[#06b6d4] bg-clip-text text-transparent">
-                  pricing
-                </span>
+                  <span className="bg-gradient-to-r from-white via-white to-text-secondary bg-clip-text text-transparent">
+                    {t("pricing:hero.headingLine1")}
+                  </span>
+                  <br />
+                  <span className="bg-gradient-to-r from-[#6366f1] via-[#8b5cf6] to-[#06b6d4] bg-clip-text text-transparent">
+                    {t("pricing:hero.headingLine2")}
+                  </span>
               </h1>
 
               <p className="text-text-secondary max-w-2xl mx-auto text-lg md:text-xl mb-6 leading-relaxed font-light">
-                Start free, scale as you grow. No hidden fees—upgrade or cancel anytime.
+                {t("pricing:hero.subtitle")}
               </p>
 
               <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm">
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/20">
                   <Shield className="w-3.5 h-3.5 text-green-400" />
-                  <span className="font-medium text-green-400">14-day free trial</span>
+                  <span className="font-medium text-green-400">{t("pricing:hero.freeTrialBadge")}</span>
                 </div>
                 <span className="text-text-secondary">
-                  No setup fees · Cancel anytime · Enterprise support
+                  {t("pricing:hero.trustBadges")}
                 </span>
               </div>
             </motion.div>
@@ -375,9 +376,9 @@ export function PricingPage() {
                 <Zap className="w-6 h-6 text-[#6366f1]" />
               </div>
               <div>
-                <h3 className="font-semibold text-white text-base md:text-lg">Fast failover</h3>
+                <h3 className="font-semibold text-white text-base md:text-lg">{t("pricing:valueStrip.fastFailover")}</h3>
                 <p className="text-text-secondary text-base mt-1">
-                  Sub-ms switching so users never see downtime.
+                  {t("pricing:valueStrip.fastFailoverDesc")}
                 </p>
               </div>
             </div>
@@ -387,10 +388,10 @@ export function PricingPage() {
               </div>
               <div>
                 <h3 className="font-semibold text-white text-base md:text-lg">
-                  Enterprise reliability
+                  {t("pricing:valueStrip.enterpriseReliability")}
                 </h3>
                 <p className="text-text-secondary text-base mt-1">
-                  99.99% uptime, monitoring, and recovery.
+                  {t("pricing:valueStrip.enterpriseReliabilityDesc")}
                 </p>
               </div>
             </div>
@@ -399,9 +400,9 @@ export function PricingPage() {
                 <CreditCard className="w-6 h-6 text-amber-400" />
               </div>
               <div>
-                <h3 className="font-semibold text-white text-base md:text-lg">Developer-first</h3>
+                <h3 className="font-semibold text-white text-base md:text-lg">{t("pricing:valueStrip.developerFirst")}</h3>
                 <p className="text-text-secondary text-base mt-1">
-                  Simple setup, clear APIs, no lock-in.
+                  {t("pricing:valueStrip.developerFirstDesc")}
                 </p>
               </div>
             </div>
@@ -440,10 +441,10 @@ export function PricingPage() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <CreditCard className="w-5 h-5 text-red-500" />
-                Checkout Unavailable
+                {t("pricing:checkoutDialog.title")}
               </DialogTitle>
               <DialogDescription>
-                We couldn't start the checkout process. This might be a temporary issue.
+                {t("pricing:checkoutDialog.description")}
               </DialogDescription>
             </DialogHeader>
             <div className="py-4 space-y-4">
@@ -451,28 +452,28 @@ export function PricingPage() {
                 <p className="text-red-400 text-sm">{checkoutError?.message}</p>
               </div>
               <div className="space-y-2">
-                <p className="text-sm text-text-muted">What would you like to do?</p>
+                <p className="text-sm text-text-muted">{t("pricing:checkoutDialog.prompt")}</p>
                 <ul className="text-sm text-text-secondary space-y-1 ml-4 list-disc">
-                  <li>Try again - it might work this time</li>
-                  <li>Contact our sales team for assistance</li>
-                  <li>Try again in a few minutes</li>
+                  <li>{t("pricing:checkoutDialog.tryAgainOption")}</li>
+                  <li>{t("pricing:checkoutDialog.contactSalesOption")}</li>
+                  <li>{t("pricing:checkoutDialog.tryLaterOption")}</li>
                 </ul>
               </div>
             </div>
             <DialogFooter className="flex gap-2 sm:gap-0">
               <Button variant="outline" onClick={() => setCheckoutError(null)}>
-                Close
+                {t("pricing:checkoutDialog.close")}
               </Button>
               <Button variant="outline" onClick={handleContactSales} className="gap-2">
                 <Mail className="w-4 h-4" />
-                Contact Sales
+                {t("pricing:checkoutDialog.contactSales")}
               </Button>
               <Button
                 onClick={handleRetryCheckout}
                 disabled={isRetrying}
                 className="bg-[#6366f1] hover:bg-[#6366f1]/90"
               >
-                {isRetrying ? 'Retrying...' : 'Try Again'}
+                {isRetrying ? t("pricing:checkoutDialog.retrying") : t("pricing:checkoutDialog.tryAgain")}
               </Button>
             </DialogFooter>
           </DialogContent>

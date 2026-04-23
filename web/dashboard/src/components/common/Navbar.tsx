@@ -381,11 +381,11 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                   <ThemeToggle />
 
                   {/* Messages (Dashboard only) */}
-                  {variant === 'dashboard' && (
+                  {variant === 'dashboard' && user?.username && (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Link
-                          to="/conversations"
+                          to={`/u/${user.username}/conversations`}
                           aria-label={
                             messagesUnread > 0 ? `Messages (${messagesUnread} unread)` : 'Messages'
                           }

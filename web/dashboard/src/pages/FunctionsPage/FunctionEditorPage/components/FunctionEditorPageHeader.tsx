@@ -1,9 +1,11 @@
 import type { FunctionEditorModel } from '../useFunctionEditor';
 import { Sparkles } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 type Props = { editor: FunctionEditorModel };
 
 export function FunctionEditorPageHeader({ editor }: Props) {
+  const { t } = useTranslation();
   const { isEditing, functionName } = editor;
 
   return (
@@ -17,18 +19,14 @@ export function FunctionEditorPageHeader({ editor }: Props) {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-text-primary">
-            {isEditing ? `Edit ${functionName || 'Function'}` : functionName || 'New Function'}
+            {isEditing ? t('funcEditor.editFunctionTitle', { name: functionName || 'Function' }) : functionName || t('funcEditor.newFunction')}
           </h1>
           <p className="text-sm text-text-secondary mt-1">
             {isEditing
-              ? 'Edit and redeploy your edge function.'
-              : 'Create and deploy a serverless edge function.'}
+              ? t('funcEditor.editDescription')
+              : t('funcEditor.createDescription')}
             <span className="ml-2 text-text-muted text-xs">
-              Press{' '}
-              <kbd className="px-1 py-0.5 rounded text-xs font-mono bg-bg-tertiary border border-border-subtle">
-                ⌘S
-              </kbd>{' '}
-              to save draft
+              {t('funcEditor.saveDraftHint', { key: '⌘S' })}
             </span>
           </p>
         </div>

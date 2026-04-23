@@ -18,14 +18,13 @@ export function unreadPartialFromServerCount(
   };
 }
 
-/** Backend category → store slice (API uses `team`; dashboard store uses `messages`). */
+/** Backend category → store slice (API uses `team` for team ops and `messages` for DMs). */
 export function unreadStoreKeyFromEventCategory(category: string): keyof UnreadCounts | null {
-  if (category === 'team') return 'messages';
+  if (category === 'team' || category === 'messages') return 'messages';
   if (
     category === 'trust' ||
     category === 'revenue' ||
     category === 'issues' ||
-    category === 'messages' ||
     category === 'security'
   ) {
     return category;

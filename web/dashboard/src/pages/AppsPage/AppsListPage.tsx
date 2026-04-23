@@ -21,22 +21,24 @@ import {
   X,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AppCard, AppCardSkeleton } from './components/AppCard';
 import { AppsEmptyState } from './components/AppsEmptyState';
 import { CreateAppModal } from './components/CreateAppModal';
 import { useApps, type SortOption } from './hooks/useApps';
 
-const SORT_LABELS: Record<SortOption, string> = {
-  'created-desc': 'Newest first',
-  'created-asc': 'Oldest first',
-  'name-asc': 'Name A–Z',
-  'name-desc': 'Name Z–A',
-};
-
 type ViewMode = 'grid' | 'list';
 
 export function AppsListPage() {
+  const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
+
+  const SORT_LABELS: Record<SortOption, string> = {
+    'created-desc': t('appsPage.sortNewestFirst'),
+    'created-asc': t('appsPage.sortOldestFirst'),
+    'name-asc': t('appsPage.sortNameAZ'),
+    'name-desc': t('appsPage.sortNameZA'),
+  };
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -65,15 +67,13 @@ export function AppsListPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Apps</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t('appsPage.appsTitle')}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {isLoading
-              ? 'Loading your apps...'
+              ? t('appsPage.loadingApps')
               : hasApps
-                ? `${allApps.length} app${allApps.length !== 1 ? 's' : ''}${
-                    isFiltered ? ` · ${apps.length} shown` : ''
-                  }`
-                : 'Manage your applications and multi-cloud deployments'}
+                ? `${t('appsPage.appCount', { count: allApps.length })}${isFiltered ? ` · ${t('appsPage.shownCount', { count: apps.length })}` : ''}`
+                : t('appsPage.manageAppsDescription')}
           </p>
         </div>
 
@@ -83,7 +83,7 @@ export function AppsListPage() {
             trigger={
               <Button className="gap-2">
                 <Plus className="w-4 h-4" />
-                Create App
+                {t('appsPage.createApp')}
               </Button>
             }
           />
@@ -95,9 +95,9 @@ export function AppsListPage() {
         <div className="flex items-center gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive">
           <AlertCircle className="w-5 h-5 flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm">Failed to load apps</p>
+            <p className="font-medium text-sm">{t('appsPage.failedToLoadApps')}</p>
             <p className="text-xs opacity-80 mt-0.5">
-              {error instanceof Error ? error.message : 'An unexpected error occurred'}
+              {error instanceof Error ? error.message : t('appsPage.unexpectedError')}
             </p>
           </div>
           <Button
@@ -107,7 +107,7 @@ export function AppsListPage() {
             className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10"
           >
             <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-            Retry
+            {t('appsPage.retry')}
           </Button>
         </div>
       )}
@@ -120,17 +120,17 @@ export function AppsListPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <Input
               ref={searchInputRef}
-              placeholder="Search apps by name or slug..."
+              placeholder={t('appsPage.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 pr-9"
-              aria-label="Search apps"
+              aria-label={t('appsPage.searchApps')}
             />
             {searchQuery && (
               <button
                 onClick={handleClearSearch}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="Clear search"
+                aria-label={t('appsPage.clearSearch')}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -143,13 +143,13 @@ export function AppsListPage() {
               <Button variant="outline" className="gap-2 shrink-0">
                 <SlidersHorizontal className="w-4 h-4" />
                 <span className="hidden sm:inline">{SORT_LABELS[sortOption]}</span>
-                <span className="sm:hidden">Sort</span>
+                <span className="sm:hidden">{t('appsPage.sort')}</span>
                 <ChevronDown className="w-3.5 h-3.5 opacity-60" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
               <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
-                Sort by
+                {t('appsPage.sortBy')}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {(Object.keys(SORT_LABELS) as SortOption[]).map((option) => (
@@ -175,7 +175,7 @@ export function AppsListPage() {
                   ? 'bg-background shadow-sm text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
               )}
-              aria-label="Grid view"
+              aria-label={t('appsPage.gridView')}
               aria-pressed={viewMode === 'grid'}
             >
               <LayoutGrid className="w-4 h-4" />
@@ -188,7 +188,7 @@ export function AppsListPage() {
                   ? 'bg-background shadow-sm text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
               )}
-              aria-label="List view"
+              aria-label={t('appsPage.listView')}
               aria-pressed={viewMode === 'list'}
             >
               <List className="w-4 h-4" />
@@ -205,7 +205,7 @@ export function AppsListPage() {
               ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'
               : 'flex flex-col gap-3'
           )}
-          aria-label="Loading apps"
+          aria-label={t('appsPage.loadingApps')}
           aria-busy="true"
         >
           {Array.from({ length: 6 }).map((_, i) => (
@@ -226,7 +226,7 @@ export function AppsListPage() {
               : 'flex flex-col gap-3'
           )}
           role="list"
-          aria-label="Apps list"
+          aria-label={t('appsPage.appsList')}
         >
           {apps.map((app, index) => (
             <div key={app.id} role="listitem">
@@ -239,7 +239,7 @@ export function AppsListPage() {
       {/* Results count when filtered */}
       {!isLoading && !error && isFiltered && apps.length > 0 && (
         <p className="text-xs text-muted-foreground text-center">
-          Showing {apps.length} of {allApps.length} apps
+          {t('appsPage.showingResults', { shown: apps.length, total: allApps.length })}
         </p>
       )}
     </div>

@@ -41,6 +41,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ICON_COLORS, ICON_OPTIONS, useCreateApp, type Environment } from './hooks/useCreateApp';
 
@@ -116,6 +117,7 @@ function IconPickerPanel({
   value: string;
   onSelect: (value: string) => void;
 }) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<IconPickerTab>('emoji');
 
   return (
@@ -133,7 +135,7 @@ function IconPickerPanel({
           )}
         >
           <Smile className="w-4 h-4" />
-          Emoji
+          {t('appsPage.emoji')}
         </button>
         <button
           type="button"
@@ -146,7 +148,7 @@ function IconPickerPanel({
           )}
         >
           <Icon icon="fluent:icons-24-filled" className="w-4 h-4" />
-          Icons
+          {t('appsPage.icons')}
         </button>
       </div>
 
@@ -192,8 +194,8 @@ function IconPickerPanel({
       )}
 
       <p className="text-xs text-muted-foreground mt-3 text-center">
-        Click to select • Currently:{' '}
-        {ICON_OPTIONS.find((o) => o.emoji === value)?.label || 'Custom'}
+        {t('appsPage.clickToSelect')}{' '}
+        {ICON_OPTIONS.find((o) => o.emoji === value)?.label || t('appsPage.custom')}
       </p>
     </div>
   );
@@ -271,6 +273,7 @@ function TagInput({
   onRemove: (tag: string) => void;
   disabled?: boolean;
 }) {
+  const { t } = useTranslation();
   const [input, setInput] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -321,7 +324,7 @@ function TagInput({
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder={tags.length === 0 ? 'Add tags (press Enter)' : ''}
+        placeholder={tags.length === 0 ? t('appsPage.addTagsPlaceholder') : ''}
         className="flex-1 min-w-[100px] bg-transparent outline-none text-sm placeholder:text-muted-foreground"
         disabled={disabled}
       />
@@ -330,6 +333,7 @@ function TagInput({
 }
 
 function AppPreviewCard({ formData }: { formData: ReturnType<typeof useCreateApp>['formData'] }) {
+  const { t } = useTranslation();
   const selectedColor = ICON_COLORS.find((c) => c.value === formData.iconColor) || ICON_COLORS[0];
 
   return (
@@ -338,7 +342,7 @@ function AppPreviewCard({ formData }: { formData: ReturnType<typeof useCreateApp
         {/* Preview Header */}
         <div className="px-4 py-3 border-b border-border/50 bg-muted/50 dark:bg-muted/30">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Live Preview
+            {t('appsPage.livePreview')}
           </p>
         </div>
 
@@ -370,15 +374,15 @@ function AppPreviewCard({ formData }: { formData: ReturnType<typeof useCreateApp
                       formData.visibility === 'public' ? 'bg-emerald-500/40' : 'bg-amber-500/40'
                     )}
                   >
-                    {formData.visibility === 'public' ? 'Public' : 'Private'}
+                    {formData.visibility === 'public' ? t('appsPage.public') : t('appsPage.private')}
                   </span>
                 </div>
                 <div className="mt-4">
                   <h3 className="text-lg font-semibold text-white drop-shadow-md">
-                    {formData.name || 'Untitled App'}
+                    {formData.name || t('appsPage.untitledApp')}
                   </h3>
                   <p className="text-sm text-white/90 font-mono mt-0.5 drop-shadow-sm">
-                    {formData.slug || 'app-slug'}
+                    {formData.slug || t('appsPage.appSlugDefault')}
                   </p>
                 </div>
               </div>
@@ -418,7 +422,7 @@ function AppPreviewCard({ formData }: { formData: ReturnType<typeof useCreateApp
           {/* URL Preview */}
           {formData.slug && (
             <div className="pt-4 border-t border-border/50">
-              <p className="text-xs text-muted-foreground mb-1.5">App URL</p>
+              <p className="text-xs text-muted-foreground mb-1.5">{t('appsPage.appUrl')}</p>
               <code className="block text-xs font-mono text-primary break-all bg-muted/50 dark:bg-muted/30 px-3 py-2 rounded-lg">
                 {publicAppUrl(formData.slug)}
               </code>
@@ -474,6 +478,7 @@ function GettingStartedTip({
 }
 
 export function CreateAppPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
@@ -545,11 +550,11 @@ export function CreateAppPage() {
 
   const formatRelativeTime = (date: Date): string => {
     const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-    if (seconds < 5) return 'just now';
-    if (seconds < 60) return `${seconds}s ago`;
+    if (seconds < 5) return t('appsPage.justNow');
+    if (seconds < 60) return t('appsPage.secondsAgo', { count: seconds });
     const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    return `${Math.floor(minutes / 60)}h ago`;
+    if (minutes < 60) return t('appsPage.minutesAgo', { count: minutes });
+    return t('appsPage.hoursAgo', { count: Math.floor(minutes / 60) });
   };
 
   return (
@@ -567,7 +572,7 @@ export function CreateAppPage() {
                 size="icon"
                 onClick={handleCancel}
                 className="shrink-0 text-muted-foreground hover:text-foreground"
-                aria-label="Back to apps"
+                aria-label={t('appsPage.backToApps')}
               >
                 <ArrowLeft className="w-4 h-4" />
               </Button>
@@ -576,10 +581,10 @@ export function CreateAppPage() {
                   to="/apps"
                   className="text-muted-foreground hover:text-foreground transition-colors truncate"
                 >
-                  Apps
+                  {t('appsPage.breadcrumbApps')}
                 </Link>
                 <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                <span className="text-foreground font-medium truncate">Create New App</span>
+                <span className="text-foreground font-medium truncate">{t('appsPage.breadcrumbCreate')}</span>
               </nav>
             </div>
 
@@ -588,24 +593,24 @@ export function CreateAppPage() {
               {isSubmitting ? (
                 <span className="flex items-center gap-1.5">
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-                  Creating app...
+                  {t('appsPage.creatingApp')}
                 </span>
               ) : isDirty ? (
                 lastSaved ? (
                   <span className="flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                    Draft saved {formatRelativeTime(lastSaved)}
+                    {t('appsPage.draftSaved', { time: formatRelativeTime(lastSaved) })}
                   </span>
                 ) : (
                   <span className="flex items-center gap-1.5">
                     <Save className="w-3.5 h-3.5 text-amber-400" />
-                    Unsaved changes
+                    {t('appsPage.unsavedChanges')}
                   </span>
                 )
               ) : (
                 <span className="flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5" />
-                  Ready to create
+                  {t('appsPage.readyToCreate')}
                 </span>
               )}
             </div>
@@ -618,7 +623,7 @@ export function CreateAppPage() {
                 onClick={handleCancel}
                 className="text-muted-foreground hover:text-foreground hidden sm:flex"
               >
-                Cancel
+                {t('appsPage.cancel')}
               </Button>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -634,19 +639,19 @@ export function CreateAppPage() {
                     {isSubmitting ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Creating...
+                        {t('appsPage.creating')}
                       </>
                     ) : (
                       <>
                         <Sparkles className="w-4 h-4" />
-                        Create App
+                        {t('appsPage.createApp')}
                       </>
                     )}
                   </Button>
                 </TooltipTrigger>
                 {!isValid && !isSubmitting && (
                   <TooltipContent>
-                    <p>Please fill in required fields</p>
+                    <p>{t('appsPage.fillRequiredFields')}</p>
                   </TooltipContent>
                 )}
               </Tooltip>
@@ -666,9 +671,9 @@ export function CreateAppPage() {
                 <Rocket className="w-7 h-7 text-indigo-400" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold tracking-tight">Create New App</h1>
+                <h1 className="text-3xl font-bold tracking-tight">{t('appsPage.createNewApp')}</h1>
                 <p className="text-muted-foreground mt-1.5 text-base">
-                  Apps organize your functions into deployable units
+                  {t('appsPage.appsDescription')}
                 </p>
               </div>
             </div>
@@ -694,9 +699,9 @@ export function CreateAppPage() {
                       <Box className="w-4 h-4 text-primary" />
                     </div>
                     <div>
-                      <h2 className="font-semibold text-sm">App Identity</h2>
+                      <h2 className="font-semibold text-sm">{t('appsPage.appIdentity')}</h2>
                       <p className="text-xs text-muted-foreground">
-                        Define your app's name, identifier, and appearance
+                        {t('appsPage.appIdentityDescription')}
                       </p>
                     </div>
                   </div>
@@ -706,7 +711,7 @@ export function CreateAppPage() {
                   {/* App Name */}
                   <div className="space-y-1.5">
                     <Label htmlFor="app-name" className="text-sm font-medium">
-                      App Name <span className="text-destructive">*</span>
+                      {t('appsPage.appName')} <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="app-name"
@@ -727,9 +732,9 @@ export function CreateAppPage() {
                         {errors.name ? (
                           <ValidationMessage message={errors.name} type="error" />
                         ) : nameValidation.valid ? (
-                          <ValidationMessage message="Looks good!" type="success" />
+                          <ValidationMessage message={t('appsPage.looksGood')} type="success" />
                         ) : (
-                          <ValidationMessage message="3–50 characters" type="info" />
+                          <ValidationMessage message={t('appsPage.nameCharLimit')} type="info" />
                         )}
                       </div>
                       <span className="text-xs text-muted-foreground tabular-nums">
@@ -741,7 +746,7 @@ export function CreateAppPage() {
                   {/* App Slug */}
                   <div className="space-y-1.5">
                     <Label htmlFor="app-slug" className="text-sm font-medium">
-                      App Slug / Identifier <span className="text-destructive">*</span>
+                      {t('appsPage.appSlug')} <span className="text-destructive">*</span>
                     </Label>
                     <div className="relative">
                       <Input
@@ -772,13 +777,13 @@ export function CreateAppPage() {
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1.5">
                             <Globe className="w-3 h-3 flex-shrink-0" />
                             <span>
-                              URL:{' '}
+                              {t('appsPage.urlPrefix')}{' '}
                               <code className="font-mono text-foreground/80">{slugPreview}</code>
                             </span>
                           </div>
                         ) : (
                           <ValidationMessage
-                            message="Lowercase letters, numbers, and hyphens only"
+                            message={t('appsPage.slugHint')}
                             type="info"
                           />
                         )}
@@ -794,7 +799,7 @@ export function CreateAppPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Label htmlFor="app-description" className="text-sm font-medium">
-                          Description
+                          {t('appsPage.description')}
                         </Label>
                         <button
                           type="button"
@@ -811,19 +816,19 @@ export function CreateAppPage() {
                           )}
                           title={
                             formData.name.trim()
-                              ? 'AI Generate Description'
-                              : 'Enter app name first'
+                              ? t('appsPage.aiGenerateDescription')
+                              : t('appsPage.enterAppNameFirst')
                           }
                         >
                           {isGeneratingDescription ? (
                             <>
                               <Loader2 className="w-3 h-3 animate-spin" />
-                              Generating...
+                              {t('appsPage.generating')}
                             </>
                           ) : (
                             <>
                               <Sparkles className="w-3 h-3" />
-                              AI Generate
+                              {t('appsPage.aiGenerate')}
                             </>
                           )}
                         </button>
@@ -843,7 +848,7 @@ export function CreateAppPage() {
                     </div>
                     <Textarea
                       id="app-description"
-                      placeholder="What does this app do? Describe its purpose and key features..."
+                      placeholder={t('appsPage.descriptionPlaceholder')}
                       value={formData.description}
                       onChange={(e) => setDescription(e.target.value)}
                       disabled={isSubmitting}
@@ -860,7 +865,7 @@ export function CreateAppPage() {
 
                   {/* Icon Selection */}
                   <div className="space-y-3">
-                    <Label className="text-sm font-medium">App Icon</Label>
+                    <Label className="text-sm font-medium">{t('appsPage.appIcon')}</Label>
                     <div className="flex flex-wrap gap-2 pt-2">
                       {ICON_COLORS.map((color) => (
                         <button
@@ -894,7 +899,7 @@ export function CreateAppPage() {
                           )}
                         >
                           <span>{formData.iconEmoji}</span>
-                          <span className="text-xs text-muted-foreground">Change icon</span>
+                          <span className="text-xs text-muted-foreground">{t('appsPage.changeIcon')}</span>
                         </button>
                       </PopoverTrigger>
                       <PopoverContent
@@ -924,9 +929,9 @@ export function CreateAppPage() {
                       <Key className="w-4 h-4 text-primary" />
                     </div>
                     <div>
-                      <h2 className="font-semibold text-sm">Visibility & Access</h2>
+                      <h2 className="font-semibold text-sm">{t('appsPage.visibilityAccess')}</h2>
                       <p className="text-xs text-muted-foreground">
-                        Control who can see and use your app
+                        {t('appsPage.visibilityAccessDescription')}
                       </p>
                     </div>
                   </div>
@@ -937,12 +942,12 @@ export function CreateAppPage() {
                   <div className="flex items-center justify-between">
                     <div className="space-y-1">
                       <Label className="text-sm font-medium">
-                        {formData.visibility === 'public' ? 'Public App' : 'Private App'}
+                        {formData.visibility === 'public' ? t('appsPage.publicApp') : t('appsPage.privateApp')}
                       </Label>
                       <p className="text-xs text-muted-foreground">
                         {formData.visibility === 'public'
-                          ? "Anyone can discover and use your app's functions"
-                          : 'Only you and your team can access this app'}
+                          ? t('appsPage.publicAppDescription')
+                          : t('appsPage.privateAppDescription')}
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -972,7 +977,7 @@ export function CreateAppPage() {
                         <p className="text-sm font-medium">
                           {user.username || user.name || user.email}
                         </p>
-                        <p className="text-xs text-muted-foreground">Owner</p>
+                        <p className="text-xs text-muted-foreground">{t('appsPage.owner')}</p>
                       </div>
                     </div>
                   )}
@@ -987,9 +992,9 @@ export function CreateAppPage() {
                       <Zap className="w-4 h-4 text-primary" />
                     </div>
                     <div>
-                      <h2 className="font-semibold text-sm">Initial Configuration</h2>
+                      <h2 className="font-semibold text-sm">{t('appsPage.initialConfiguration')}</h2>
                       <p className="text-xs text-muted-foreground">
-                        Set up tags and environment for your app
+                        {t('appsPage.initialConfigurationDescription')}
                       </p>
                     </div>
                   </div>
@@ -1000,7 +1005,7 @@ export function CreateAppPage() {
                   <div className="space-y-2">
                     <Label className="text-sm font-medium flex items-center gap-2">
                       <Tag className="w-3.5 h-3.5" />
-                      Tags / Labels
+                      {t('appsPage.tagsLabels')}
                     </Label>
                     <TagInput
                       tags={formData.tags}
@@ -1009,14 +1014,14 @@ export function CreateAppPage() {
                       disabled={isSubmitting}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Press Enter or comma to add tags (max 10)
+                      {t('appsPage.tagsHint')}
                     </p>
                   </div>
 
                   {/* Environment */}
                   <div className="space-y-2">
                     <Label htmlFor="environment" className="text-sm font-medium">
-                      Environment
+                      {t('appsPage.environment')}
                     </Label>
                     <Select
                       value={formData.environment}
@@ -1030,25 +1035,25 @@ export function CreateAppPage() {
                         <SelectItem value="development">
                           <div className="flex items-center gap-2">
                             <Code2 className="w-4 h-4 text-blue-500" />
-                            Development
+                            {t('appsPage.development')}
                           </div>
                         </SelectItem>
                         <SelectItem value="staging">
                           <div className="flex items-center gap-2">
                             <Layers className="w-4 h-4 text-amber-500" />
-                            Staging
+                            {t('appsPage.staging')}
                           </div>
                         </SelectItem>
                         <SelectItem value="production">
                           <div className="flex items-center gap-2">
                             <Rocket className="w-4 h-4 text-emerald-500" />
-                            Production
+                            {t('appsPage.production')}
                           </div>
                         </SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
-                      Choose the initial environment for your app
+                      {t('appsPage.environmentHint')}
                     </p>
                   </div>
                 </div>
@@ -1058,25 +1063,25 @@ export function CreateAppPage() {
               <div className="pt-4">
                 <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-primary" />
-                  Getting Started
+                  {t('appsPage.gettingStarted')}
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <GettingStartedTip
                     icon={Code2}
-                    title="Add Functions"
-                    description="Create and deploy serverless functions to power your app"
+                    title={t('appsPage.tipAddFunctions')}
+                    description={t('appsPage.tipAddFunctionsDesc')}
                     delay={100}
                   />
                   <GettingStartedTip
                     icon={Cloud}
-                    title="Configure Backends"
-                    description="Connect cloud providers for scalable infrastructure"
+                    title={t('appsPage.tipConfigureBackends')}
+                    description={t('appsPage.tipConfigureBackendsDesc')}
                     delay={200}
                   />
                   <GettingStartedTip
                     icon={Rocket}
-                    title="Deploy"
-                    description="Deploy your app with a single click to the edge"
+                    title={t('appsPage.tipDeploy')}
+                    description={t('appsPage.tipDeployDesc')}
                     delay={300}
                   />
                 </div>

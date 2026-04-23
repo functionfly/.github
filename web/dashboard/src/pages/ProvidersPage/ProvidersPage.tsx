@@ -289,10 +289,11 @@ export function ProvidersPage() {
 
   const handleRotateKey = async (providerId: string, newApiKey: string) => {
     setIsRotating(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    console.log('Rotated key for', providerId, 'New key length:', newApiKey.length);
-    setIsRotating(false);
+    try {
+      await providersApi.rotateKey(providerId, newApiKey);
+    } finally {
+      setIsRotating(false);
+    }
   };
 
   const handleSaveFailover = async (config: FailoverConfig) => {
@@ -392,51 +393,51 @@ export function ProvidersPage() {
               <LayoutGrid className="w-3.5 h-3.5" />
               <span className="hidden sm:inline text-xs">Dashboard</span>
             </Button>
+
+            <div className="w-px h-6 bg-border-subtle" />
+
+            <Button
+              variant={glassMorphism ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setGlassMorphism(!glassMorphism)}
+              className="gap-2"
+              title={glassMorphism ? 'Disable glass effect' : 'Enable glass effect'}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline text-xs">Glass</span>
+            </Button>
+
+            <Button
+              variant={statusGlow ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setStatusGlow(!statusGlow)}
+              className="gap-2"
+              title={statusGlow ? 'Disable status glow' : 'Enable status glow'}
+            >
+              <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
+              <span className="hidden sm:inline text-xs">Glow</span>
+            </Button>
           </div>
-
-          {/* Glass Morphism Toggle */}
-          <Button
-            variant={glassMorphism ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setGlassMorphism(!glassMorphism)}
-            className="gap-2"
-            title={glassMorphism ? 'Disable glass effect' : 'Enable glass effect'}
-          >
-            <Sparkles className="w-4 h-4" />
-            <span className="hidden sm:inline text-xs">Glass</span>
-          </Button>
-
-          {/* Status Glow Toggle */}
-          <Button
-            variant={statusGlow ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setStatusGlow(!statusGlow)}
-            className={`gap-2 ${statusGlow ? 'glow-flame' : ''}`}
-            title={statusGlow ? 'Disable status glow' : 'Enable status glow'}
-          >
-            <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
-            <span className="hidden sm:inline text-xs">Glow</span>
-          </Button>
 
           <div className="w-px h-6 bg-border-subtle mx-1" />
 
           <Button
-            variant="outline"
+            variant={showAuditLog ? 'default' : 'ghost'}
             size="sm"
             onClick={() => setShowAuditLog(!showAuditLog)}
-            className={`gap-2 ${showAuditLog ? 'bg-bg-secondary' : ''}`}
+            className="gap-2"
           >
-            <History className="w-4 h-4" />
-            <span className="hidden sm:inline">Audit Log</span>
+            <History className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline text-xs">Audit</span>
           </Button>
           <Button
-            variant="outline"
+            variant={failoverConfig.enabled ? 'default' : 'ghost'}
             size="sm"
             onClick={() => setFailoverDialogOpen(true)}
-            className={`gap-2 ${failoverConfig.enabled ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800' : ''}`}
+            className="gap-2"
           >
-            <Shield className="w-4 h-4" />
-            <span className="hidden sm:inline">Failover</span>
+            <Shield className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline text-xs">Failover</span>
           </Button>
           <Button
             variant="outline"

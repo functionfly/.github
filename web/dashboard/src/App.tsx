@@ -100,6 +100,7 @@ import {
   useParams,
 } from 'react-router-dom';
 import { Toaster, toast } from 'sonner';
+import { NuqsAdapter } from 'nuqs/adapters/react-router/v7';
 
 import { EnterpriseAuditPage } from '@/pages/EnterpriseAuditPage';
 import { EnterpriseSupportPage } from '@/pages/EnterpriseSupportPage';
@@ -466,7 +467,7 @@ function AppContent() {
         <Route path="/blog/:slug" element={<MarketingBlogRedirect />} />
         <Route path="/products/state-fabric" element={<StateFabricMarketingPage />} />
         <Route path="/frg-showcase" element={<FRGShowcasePage />} />
-        <Route path="/gallery" element={<GalleryPage />} />
+        {/* Gallery is now inside DashboardLayout - see below */}
         <Route path="/registry" element={<BrowseFunctionsPage />} />
         <Route path="/registry/:author/:name" element={<RegistryFunctionRedirect />} />
 
@@ -527,15 +528,24 @@ function AppContent() {
           <Route path="functions/popular" element={<FunctionsDiscoveryPage />} />
           <Route path="functions/favorites" element={<FunctionsDiscoveryPage />} />
           <Route path="functions/my" element={<FunctionsDiscoveryPage />} />
+          <Route path="functions/discovery" element={<FunctionMarketplacePage />} />
           <Route path="functions/discovery/:filter" element={<FunctionsDiscoveryPage />} />
+          <Route path="gallery" element={<GalleryPage />} />
           <Route path="functions/new" element={<FunctionEditorPage />} />
           <Route path="functions/deploy" element={<RegistryDeployPage />} />
           <Route path="functions/:id" element={<FunctionDetailPage />} />
           <Route path="functions/:id/edit" element={<FunctionEditorPage />} />
           <Route path="functions/:author/:name/settings" element={<FunctionSettingsPage />} />
           <Route path="functions/:author/:name/logs" element={<FunctionLogsPage />} />
-          {/* AI Composer Route */}
+          {/* AI Composer Routes - Multiple aliases for flexibility */}
           <Route path="ai-composer" element={<AIComposerPage />} />
+          <Route path="composer" element={<AIComposerPage />} />
+          <Route path="generate" element={<AIComposerPage />} />
+          <Route path="functions/generate" element={<AIComposerPage />} />
+          {/* AI Namespace - Future expansion routes */}
+          <Route path="ai/composer" element={<AIComposerPage />} />
+          <Route path="ai/chat" element={<AIComposerPage />} />
+          <Route path="ai/suggest" element={<AIComposerPage />} />
           {/* FRG (Function Runtime Graph) Routes */}
           <Route path="frg" element={<FRGGraphsPage />} />
           <Route path="frg/new" element={<FRGEditorPage />} />
@@ -590,8 +600,8 @@ function AppContent() {
           <Route path="wallet" element={<WalletPage />} />
           <Route path="wallet/:slug" element={<WalletPage />} />
 
-          <Route path="conversations" element={<ConversationsPage />} />
-          <Route path="conversations/:id" element={<ConversationsPage />} />
+          <Route path="u/:username/conversations" element={<ConversationsPage />} />
+          <Route path="u/:username/conversations/:id" element={<ConversationsPage />} />
         </Route>
 
         {/* 404 - Not Found */}
@@ -614,11 +624,13 @@ function App() {
         <ThemeProvider>
           <CookieConsentProvider>
             <BrowserRouter>
-              <HelmetProvider>
-                <Analytics />
-                <GlobalKeyboardShortcuts />
-                <AppContent />
-              </HelmetProvider>
+              <NuqsAdapter>
+                <HelmetProvider>
+                  <Analytics />
+                  <GlobalKeyboardShortcuts />
+                  <AppContent />
+                </HelmetProvider>
+              </NuqsAdapter>
             </BrowserRouter>
             <Toaster
               position="bottom-right"

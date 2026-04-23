@@ -63,7 +63,7 @@ export function AnalyticsTab({ analytics }: AnalyticsTabProps) {
         {/* Geographic Distribution */}
         <Card className="border-border-subtle">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="text-lg font-display flex items-center gap-2">
               <Map className="w-5 h-5 text-brand-500" />
               Geographic Distribution
             </CardTitle>
@@ -81,7 +81,7 @@ export function AnalyticsTab({ analytics }: AnalyticsTabProps) {
                       />
                     </div>
                   </div>
-                  <span className="text-sm font-medium text-text-primary w-16 text-right">
+                  <span className="text-sm font-medium font-mono tabular-nums text-text-primary w-16 text-right">
                     {country.percentage}%
                   </span>
                 </div>
@@ -95,7 +95,7 @@ export function AnalyticsTab({ analytics }: AnalyticsTabProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="border-border-subtle">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="text-lg font-display flex items-center gap-2">
               <Monitor className="w-5 h-5 text-brand-500" />
               Device Distribution
             </CardTitle>
@@ -105,7 +105,7 @@ export function AnalyticsTab({ analytics }: AnalyticsTabProps) {
               {analytics.deviceStats.map((device) => (
                 <div key={device.device} className="flex items-center justify-between">
                   <span className="text-sm text-text-secondary">{device.device}</span>
-                  <span className="text-sm font-medium text-text-primary">{device.percentage}%</span>
+                  <span className="text-sm font-medium font-mono tabular-nums text-text-primary">{device.percentage}%</span>
                 </div>
               ))}
             </div>
@@ -114,7 +114,7 @@ export function AnalyticsTab({ analytics }: AnalyticsTabProps) {
 
         <Card className="border-border-subtle">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="text-lg font-display flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-brand-500" />
               Browser Distribution
             </CardTitle>
@@ -124,7 +124,7 @@ export function AnalyticsTab({ analytics }: AnalyticsTabProps) {
               {analytics.browserStats.map((browser) => (
                 <div key={browser.browser} className="flex items-center justify-between">
                   <span className="text-sm text-text-secondary">{browser.browser}</span>
-                  <span className="text-sm font-medium text-text-primary">{browser.percentage}%</span>
+                  <span className="text-sm font-medium font-mono tabular-nums text-text-primary">{browser.percentage}%</span>
                 </div>
               ))}
             </div>

@@ -11,6 +11,7 @@ import {
   Search,
   X,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,56 +27,32 @@ interface IncidentTimelineProps {
   maxItems?: number;
 }
 
-const severityConfig: Record<
-  IncidentSeverity,
-  { icon: React.ComponentType<{ className?: string }>; color: string; label: string }
-> = {
-  critical: {
-    icon: AlertTriangle,
-    color: 'text-red-400 border-red-500/30 bg-red-500/10',
-    label: 'Critical',
-  },
-  high: {
-    icon: AlertCircle,
-    color: 'text-orange-400 border-orange-500/30 bg-orange-500/10',
-    label: 'High',
-  },
-  medium: {
-    icon: Info,
-    color: 'text-amber-400 border-amber-500/30 bg-amber-500/10',
-    label: 'Medium',
-  },
-  low: {
-    icon: Info,
-    color: 'text-blue-400 border-blue-500/30 bg-blue-500/10',
-    label: 'Low',
-  },
+const severityIcons: Record<IncidentSeverity, React.ComponentType<{ className?: string }>> = {
+  critical: AlertTriangle,
+  high: AlertCircle,
+  medium: Info,
+  low: Info,
 };
 
-const statusConfig: Record<
-  IncidentStatus,
-  { color: string; bgColor: string; label: string }
-> = {
-  investigating: {
-    color: 'text-red-400',
-    bgColor: 'bg-red-500/10',
-    label: 'Investigating',
-  },
-  identified: {
-    color: 'text-amber-400',
-    bgColor: 'bg-amber-500/10',
-    label: 'Identified',
-  },
-  monitoring: {
-    color: 'text-blue-400',
-    bgColor: 'bg-blue-500/10',
-    label: 'Monitoring',
-  },
-  resolved: {
-    color: 'text-emerald-400',
-    bgColor: 'bg-emerald-500/10',
-    label: 'Resolved',
-  },
+const severityColors: Record<IncidentSeverity, string> = {
+  critical: 'text-red-400 border-red-500/30 bg-red-500/10',
+  high: 'text-orange-400 border-orange-500/30 bg-orange-500/10',
+  medium: 'text-amber-400 border-amber-500/30 bg-amber-500/10',
+  low: 'text-blue-400 border-blue-500/30 bg-blue-500/10',
+};
+
+const statusColors: Record<IncidentStatus, { color: string; bgColor: string }> = {
+  investigating: { color: 'text-red-400', bgColor: 'bg-red-500/10' },
+  identified: { color: 'text-amber-400', bgColor: 'bg-amber-500/10' },
+  monitoring: { color: 'text-blue-400', bgColor: 'bg-blue-500/10' },
+  resolved: { color: 'text-emerald-400', bgColor: 'bg-emerald-500/10' },
+};
+
+const statusLabels: Record<IncidentStatus, string> = {
+  investigating: 'investigating',
+  identified: 'identified',
+  monitoring: 'monitoring',
+  resolved: 'resolved',
 };
 
 function formatDuration(startDate: string, endDate?: string): string {
@@ -109,9 +86,12 @@ interface IncidentCardProps {
 
 function IncidentCard({ incident, index }: IncidentCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const severity = severityConfig[incident.severity];
-  const status = statusConfig[incident.status];
-  const SeverityIcon = severity.icon;
+  const { t } = useTranslation();
+  const severityColor = severityColors[incident.severity];
+  const statusColor = statusColors[incident.status];
+  const SeverityIcon = severityIcons[incident.severity];
+  const severityLabel = t(`statusPage.${incident.severity}`);
+  const statusLabel = t(`statusPage.${statusLabels[incident.status]}`);
   const detailsId = `incident-details-${incident.id}`;
 
   return (
@@ -129,7 +109,7 @@ function IncidentCard({ incident, index }: IncidentCardProps) {
         className={cn(
           'absolute left-0 top-4 h-6 w-6 rounded-full border-2 flex items-center justify-center',
           'bg-bg-primary',
-          severity.color
+          severityColor
         )}
       >
         <SeverityIcon className="h-3 w-3" />
@@ -162,15 +142,15 @@ function IncidentCard({ incident, index }: IncidentCardProps) {
               <div className="flex items-center gap-2 flex-wrap">
                 <Badge
                   variant="secondary"
-                  className={cn('text-xs', status.bgColor, status.color)}
+                  className={cn('text-xs', statusColor.bgColor, statusColor.color)}
                 >
-                  {status.label}
+                  {statusLabel}
                 </Badge>
                 <Badge
                   variant="outline"
-                  className={cn('text-xs', severity.color)}
+                  className={cn('text-xs', severityColor)}
                 >
-                  {severity.label}
+                  {severityLabel}
                 </Badge>
               </div>
               <h3 className="mt-2 font-semibold text-text-primary line-clamp-1">
@@ -202,18 +182,18 @@ function IncidentCard({ incident, index }: IncidentCardProps) {
           <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-text-muted">
             <span className="flex items-center gap-1">
               <Calendar className="h-3 w-3" />
-              Started {formatDate(incident.created_at)}
+              {t('statusPage.started')} {formatDate(incident.created_at)}
             </span>
             <span className="flex items-center gap-1">
               <Clock className="h-3 w-3" />
               {incident.status === 'resolved'
-                ? `Resolved after ${formatDuration(incident.created_at, incident.resolved_at)}`
-                : `Ongoing for ${formatDuration(incident.created_at)}`}
+                ? t('statusPage.resolvedAfter', { duration: formatDuration(incident.created_at, incident.resolved_at) })
+                : t('statusPage.ongoingFor', { duration: formatDuration(incident.created_at) })}
             </span>
             {incident.affected_components.length > 0 && (
               <span className="flex items-center gap-1">
                 <span className="text-text-secondary">
-                  Affects: {incident.affected_components.join(', ')}
+                  {t('statusPage.affects')} {incident.affected_components.join(', ')}
                 </span>
               </span>
             )}
@@ -233,7 +213,7 @@ function IncidentCard({ incident, index }: IncidentCardProps) {
               <CardContent className="pt-0">
                 <div className="border-t border-border-subtle pt-4">
                   <h4 className="text-sm font-medium text-text-primary mb-2">
-                    Description
+                    {t('statusPage.description')}
                   </h4>
                   <p className="text-sm text-text-secondary whitespace-pre-wrap">
                     {incident.description}
@@ -242,7 +222,7 @@ function IncidentCard({ incident, index }: IncidentCardProps) {
                   {incident.updates && incident.updates.length > 0 && (
                     <div className="mt-4">
                       <h4 className="text-sm font-medium text-text-primary mb-2">
-                        Updates
+                        {t('statusPage.updates')}
                       </h4>
                       <div className="space-y-3">
                         {incident.updates.map((update, idx) => (
@@ -259,7 +239,7 @@ function IncidentCard({ incident, index }: IncidentCardProps) {
                             <div className="flex-1 pb-3">
                               <p className="text-text-secondary">{update.message}</p>
                               <p className="text-xs text-text-muted mt-1">
-                                {formatDate(update.created_at)} · {statusConfig[update.status].label}
+                                {formatDate(update.created_at)} · {t(`statusPage.${statusLabels[update.status]}`)}
                               </p>
                             </div>
                           </div>
@@ -272,7 +252,7 @@ function IncidentCard({ incident, index }: IncidentCardProps) {
                     <div className="mt-4 flex items-center gap-2 rounded-lg bg-emerald-500/10 p-3">
                       <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                       <span className="text-sm text-emerald-400">
-                        Resolved on {formatDate(incident.resolved_at)}
+                        {t('statusPage.resolvedOn', { date: formatDate(incident.resolved_at) })}
                       </span>
                     </div>
                   )}
@@ -322,6 +302,7 @@ export function IncidentTimeline({
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<IncidentStatus | 'all'>('all');
   const [severityFilter, setSeverityFilter] = useState<IncidentSeverity | 'all'>('all');
+  const { t } = useTranslation();
 
   // Filter incidents
   const filteredIncidents = incidents.filter((incident) => {
@@ -351,18 +332,18 @@ export function IncidentTimeline({
   };
 
   return (
-    <section aria-label="Incident Timeline">
+    <section aria-label={t('statusPage.incidentTimeline')}>
       <div className="mb-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h2 className="text-xl font-semibold text-text-primary">Recent Incidents</h2>
+            <h2 className="text-xl font-semibold text-text-primary">{t('statusPage.recentIncidents')}</h2>
             <p className="mt-1 text-sm text-text-secondary">
-              History of service disruptions and maintenance events
+              {t('statusPage.incidentHistory')}
             </p>
           </div>
           {incidents.filter((i) => i.status !== 'resolved').length > 0 && (
             <Badge variant="destructive" className="animate-pulse">
-              {incidents.filter((i) => i.status !== 'resolved').length} Active
+              {incidents.filter((i) => i.status !== 'resolved').length} {t('statusPage.active')}
             </Badge>
           )}
         </div>
@@ -372,7 +353,7 @@ export function IncidentTimeline({
             <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
               <Input
-                placeholder="Search incidents..."
+                placeholder={t('statusPage.searchIncidents')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -393,26 +374,26 @@ export function IncidentTimeline({
               onChange={(e) => setStatusFilter(e.target.value as IncidentStatus | 'all')}
               className="h-10 rounded-md border border-border-subtle bg-bg-secondary px-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
-              <option value="all">All Statuses</option>
-              <option value="investigating">Investigating</option>
-              <option value="identified">Identified</option>
-              <option value="monitoring">Monitoring</option>
-              <option value="resolved">Resolved</option>
+              <option value="all">{t('statusPage.allStatuses')}</option>
+              <option value="investigating">{t('statusPage.investigating')}</option>
+              <option value="identified">{t('statusPage.identified')}</option>
+              <option value="monitoring">{t('statusPage.monitoring')}</option>
+              <option value="resolved">{t('statusPage.resolved')}</option>
             </select>
             <select
               value={severityFilter}
               onChange={(e) => setSeverityFilter(e.target.value as IncidentSeverity | 'all')}
               className="h-10 rounded-md border border-border-subtle bg-bg-secondary px-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
-              <option value="all">All Severities</option>
-              <option value="critical">Critical</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
+              <option value="all">{t('statusPage.allSeverities')}</option>
+              <option value="critical">{t('statusPage.critical')}</option>
+              <option value="high">{t('statusPage.high')}</option>
+              <option value="medium">{t('statusPage.medium')}</option>
+              <option value="low">{t('statusPage.low')}</option>
             </select>
             {hasActiveFilters && (
               <Button variant="ghost" size="sm" onClick={clearFilters}>
-                Clear filters
+                {t('statusPage.clearFilters')}
               </Button>
             )}
           </div>
@@ -430,11 +411,11 @@ export function IncidentTimeline({
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10">
             <CheckCircle2 className="h-6 w-6 text-emerald-400" />
           </div>
-          <h3 className="font-medium text-text-primary">No incidents found</h3>
+          <h3 className="font-medium text-text-primary">{t('statusPage.noIncidentsFound')}</h3>
           <p className="mt-1 text-sm text-text-secondary">
             {hasActiveFilters
-              ? 'Try adjusting your filters to see more results.'
-              : 'All systems are running smoothly with no recent incidents.'}
+              ? t('statusPage.adjustFilters')
+              : t('statusPage.allSystemsRunning')}
           </p>
         </Card>
       ) : (

@@ -17,6 +17,7 @@ import {
   Terminal,
   Webhook,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export interface QuickAction {
   id: string;
@@ -111,54 +112,55 @@ export function QuickActionsPanel({
   onCreateGraph,
   className,
 }: QuickActionsPanelProps) {
+  const { t } = useTranslation();
   const actions: QuickAction[] = [
     {
       id: 'function',
-      label: 'New Function',
-      description: 'Deploy serverless function',
+      label: t('quickActions.newFunction'),
+      description: t('quickActions.deployServerless'),
       icon: actionIcons.function,
       onClick: onCreateFunction || (() => {}),
       variant: 'primary',
     },
     {
       id: 'graph',
-      label: 'New Graph',
-      description: 'Create function graph',
+      label: t('quickActions.newGraph'),
+      description: t('quickActions.createFunctionGraph'),
       icon: actionIcons.graph,
       onClick: onCreateGraph || (() => {}),
     },
     {
       id: 'app',
-      label: 'New App',
-      description: 'Create a new application',
+      label: t('quickActions.newApp'),
+      description: t('quickActions.createNewApp'),
       icon: actionIcons.app,
       onClick: onCreateApp || (() => {}),
     },
     {
       id: 'provider',
-      label: 'Connect Provider',
-      description: 'Link cloud provider',
+      label: t('quickActions.connectProvider'),
+      description: t('quickActions.linkCloudProvider'),
       icon: actionIcons.provider,
       onClick: onConnectProvider || (() => {}),
     },
     {
       id: 'secret',
-      label: 'Add Secret',
-      description: 'Store encrypted secrets',
+      label: t('quickActions.addSecret'),
+      description: t('quickActions.storeSecrets'),
       icon: actionIcons.secret,
       onClick: onViewSecrets || (() => {}),
     },
     {
       id: 'logs',
-      label: 'View Logs',
-      description: 'Check function logs',
+      label: t('quickActions.viewLogs'),
+      description: t('quickActions.checkFunctionLogs'),
       icon: actionIcons.logs,
       onClick: onViewLogs || (() => {}),
     },
     {
       id: 'settings',
-      label: 'Settings',
-      description: 'Manage preferences',
+      label: t('quickActions.settings'),
+      description: t('quickActions.managePreferences'),
       icon: actionIcons.settings,
       onClick: onSettings || (() => {}),
     },
@@ -168,10 +170,10 @@ export function QuickActionsPanel({
     <Card className={cn('border-theme bg-card overflow-hidden', className)}>
       <CardHeader className="pb-3 pt-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium text-text-secondary">Quick Actions</CardTitle>
+          <CardTitle className="text-sm font-medium text-text-secondary">{t('quickActions.title')}</CardTitle>
           <button
             className="flex items-center justify-center w-7 h-7 rounded-md bg-bg-tertiary hover:bg-bg-hover transition-colors border border-border-subtle"
-            aria-label="Add new"
+            aria-label={t('quickActions.addNew')}
           >
             <Plus className="w-4 h-4 text-text-muted" />
           </button>

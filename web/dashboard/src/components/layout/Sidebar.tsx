@@ -1,12 +1,14 @@
 import { Logo } from '@/components/common/Logo';
 import { UpgradeBanner } from '@/components/enterprise';
 import { Input } from '@/components/ui/input';
+import { useTranslation } from 'react-i18next';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useActiveEnvironment, type Environment } from '@/hooks/useActiveEnvironment';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 import { useNavigationStatus, useStatusBadge } from '@/hooks/useNavigationStatus';
 import { usePlan } from '@/hooks/usePlan';
@@ -94,7 +96,7 @@ const navigationSections: NavSection[] = [
     collapsible: true,
     items: [
       {
-        path: ROUTES.DASHBOARD,
+        path: ROUTES.DISCOVER,
         label: 'Discover',
         icon: Code,
         shortcut: 'G',
@@ -157,7 +159,7 @@ const navigationSections: NavSection[] = [
         onboardingHint: 'Create your first function here',
       },
       {
-        path: '/ai-composer',
+        path: '/ai/composer',
         label: 'AI Composer',
         icon: Sparkles,
         badge: 'new',
@@ -340,6 +342,43 @@ const navigationSections: NavSection[] = [
 
 const LG_BREAKPOINT = 1024;
 
+// Map sidebar labels to translation keys
+const NAV_LABEL_KEYS: Record<string, string> = {
+  'Discover': 'nav.discover',
+  'Hot': 'nav.hot',
+  'Trending': 'nav.trending',
+  'New': 'nav.new',
+  'Notifications': 'nav.notifications',
+  'Conversations': 'nav.conversations',
+  'My Functions': 'nav.myFunctions',
+  'AI Composer': 'nav.aiComposer',
+  'Graph Editor': 'nav.graphEditor',
+  'State': 'nav.state',
+  'Apps': 'nav.apps',
+  'Agents': 'nav.agents',
+  'Providers': 'nav.providers',
+  'SDK': 'nav.sdk',
+  'Secrets': 'nav.secrets',
+  'API Keys': 'nav.apiKeys',
+  'Analytics': 'nav.analytics',
+  'Usage': 'nav.usage',
+  'Wallet': 'nav.wallet',
+  'Bundles': 'nav.bundles',
+  'Status': 'nav.status',
+  'Evolution': 'nav.evolution',
+  'Marketplace': 'nav.marketplace',
+  'Memory': 'nav.memory',
+  'Teams': 'nav.teams',
+  'Decisions': 'nav.decisions',
+  'State Fabric': 'nav.stateFabric',
+  'Settings': 'nav.settings',
+  'Support': 'nav.support',
+  'Recent': 'nav.recent',
+  'Getting Started': 'nav.gettingStarted',
+  'Sign Out': 'nav.signOut',
+  'Search Results': 'nav.search',
+};
+
 // Animation variants
 const sectionVariants = {
   collapsed: { height: 0, opacity: 0 },
@@ -347,6 +386,7 @@ const sectionVariants = {
 };
 
 function Sidebar({ isOpen, onClose }: SidebarProps) {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
@@ -354,6 +394,8 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
   const status = useNavigationStatus();
   const unreadCount = useNotificationStore((state) => state.unreadCounts.all);
   const { plan } = usePlan();
+
+  const translateLabel = (label: string) => NAV_LABEL_KEYS[label] ? t(NAV_LABEL_KEYS[label]) : label;
 
   // Sidebar store for persistent state
   const {
@@ -364,11 +406,12 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
     favorites,
     toggleFavorite,
     isFavorite,
-    currentEnvironment,
-    setEnvironment,
     showOnboardingHints,
     completedOnboardingSteps,
   } = useSidebarStore();
+
+  // Active environment with backend sync
+  const { environment: currentEnvironment, setEnvironment, isLoading: isEnvironmentLoading } = useActiveEnvironment();
 
   const { isOnboardingComplete } = useOnboardingStore();
 
@@ -644,12 +687,13 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   // Environment switcher component
   const EnvironmentSwitcher = () => (
-    <div className="aviation-environment-tabs">
+    <div className={cn('aviation-environment-tabs', isEnvironmentLoading && 'opacity-50 pointer-events-none')}>
       {(['production', 'staging', 'development'] as const).map((env) => (
         <button
           key={env}
           onClick={() => setEnvironment(env)}
           data-env={env}
+          disabled={isEnvironmentLoading}
           className={cn(
             'aviation-environment-tab',
             currentEnvironment === env && 'active'
@@ -667,7 +711,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
     return (
       <div className="aviation-onboarding-progress">
         <div className="aviation-onboarding-progress-header">
-          <span>Getting Started</span>
+          <span>{translateLabel('Getting Started')}</span>
           <span>{onboardingProgress}%</span>
         </div>
         <div className="aviation-onboarding-progress-bar">
@@ -726,7 +770,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
             <Icon className="aviation-sidebar-icon flex-shrink-0" />
 
             <span className="aviation-sidebar-item-label flex-1 font-medium truncate">
-              {item.label}
+              {translateLabel(item.label)}
             </span>
 
             {/* Favorite button */}
@@ -842,7 +886,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                       )}
                     >
                       <Icon className="w-4 h-4" />
-                      <span>{item.label}</span>
+                      <span>{translateLabel(item.label)}</span>
                     </NavLink>
                   );
                 })}
@@ -886,7 +930,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
           title={section.title}
         >
           <SectionIcon className="w-4 h-4 flex-shrink-0 text-aviation-cyan" />
-          <span className="flex-1 text-aviation-cyan font-semibold">{section.title}</span>
+          <span className="flex-1 text-aviation-cyan font-semibold">{translateLabel(section.title)}</span>
         </div>
 
         {section.collapsible && (
@@ -982,7 +1026,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
 
           {/* Environment Switcher (Desktop only, not collapsed) */}
           {!isCollapsed && isLg && (
-            <div className="aviation-workspace-switcher">
+            <div className="aviation-workspace-switcher !pt-8">
               <EnvironmentSwitcher />
             </div>
           )}
@@ -1021,7 +1065,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                   className="px-3 pb-3"
                 >
                   <p className="px-3 text-xs font-medium text-aviation-text-muted mb-2">
-                    Search Results
+                    {translateLabel('Search Results')}
                   </p>
                   {searchResults.length > 0 ? (
                     <div className="space-y-1">
@@ -1046,7 +1090,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                           >
                             <Icon className="aviation-sidebar-icon" />
                             <div className="flex-1 min-w-0">
-                              <span className="font-medium block truncate">{item.label}</span>
+                              <span className="font-medium block truncate">{translateLabel(item.label)}</span>
                               <span className="text-xs text-aviation-text-muted block truncate">
                                 {item.section}
                               </span>
@@ -1068,7 +1112,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
             {/* Favorites Section */}
             {!mobileSearchQuery && favoriteItems.length > 0 && !isCollapsed && (
               <div className="aviation-sidebar-favorites px-3 mb-4">
-                <p className="aviation-sidebar-favorites-title">Favorites</p>
+                <p className="aviation-sidebar-favorites-title">{translateLabel('Favorites')}</p>
                 <div className="space-y-0.5">
                   {favoriteItems.map((item) => {
                     const isActive = isItemActive(item.path);
@@ -1087,7 +1131,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                           >
                             <Icon className="aviation-sidebar-icon" />
                             <span className="aviation-sidebar-item-label flex-1 font-medium truncate">
-                              {item.label}
+                              {translateLabel(item.label)}
                             </span>
                             <button
                               onClick={(e) => {
@@ -1114,7 +1158,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
             {/* Recent Items */}
             {!mobileSearchQuery && recentItems.length > 0 && !isCollapsed && (
               <div className="aviation-sidebar-recent px-3 mb-4">
-                <p className="aviation-sidebar-recent-title">Recent</p>
+                <p className="aviation-sidebar-recent-title">{translateLabel('Recent')}</p>
                 <div className="space-y-0.5">
                   {recentItems.map((item) => {
                     const isActive = isItemActive(item.path);
@@ -1133,7 +1177,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                           >
                             <Icon className="aviation-sidebar-icon" />
                             <span className="aviation-sidebar-item-label flex-1 font-medium truncate">
-                              {item.label}
+                              {translateLabel(item.label)}
                             </span>
                             {item.shortcut && (
                               <kbd className="aviation-sidebar-kbd">⌘{item.shortcut}</kbd>
@@ -1180,11 +1224,19 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                     >
                       {/* Section Header */}
                       {section.collapsible ? (
-                        <button
+                        <div
+                          role="button"
+                          tabIndex={0}
                           onClick={() => toggleSection(section.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              toggleSection(section.id);
+                            }
+                          }}
                           className={cn(
                             'flex items-center justify-between w-full rounded-lg transition-all duration-200',
-                            'aviation-sidebar-section',
+                            'aviation-sidebar-section cursor-pointer',
                             hasActiveItem && 'aviation-sidebar-section-active'
                           )}
                           aria-expanded={isExpanded}
@@ -1196,7 +1248,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                             isExpanded={isExpanded}
                             hasActiveItem={hasActiveItem}
                           />
-                        </button>
+                        </div>
                       ) : (
                         <div
                           className={cn(
@@ -1278,7 +1330,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                     )
                   }
                 >
-                  Changelog
+                  {translateLabel('Changelog')}
                 </NavLink>
                 <span className="text-aviation-border-subtle">·</span>
                 <NavLink
@@ -1290,7 +1342,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                     )
                   }
                 >
-                  Feedback
+                  {translateLabel('Feedback')}
                 </NavLink>
               </div>
             )}
@@ -1335,12 +1387,12 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                   onClick={handleLogout}
                 >
                   <LogOut className="aviation-signout-icon" />
-                  {!isCollapsed && <span className="aviation-signout-text">Sign Out</span>}
+                  {!isCollapsed && <span className="aviation-signout-text">{translateLabel('Sign Out')}</span>}
                 </button>
               </TooltipTrigger>
               {isCollapsed && (
                 <TooltipContent side="right">
-                  <p>Sign Out</p>
+                  <p>{translateLabel('Sign Out')}</p>
                 </TooltipContent>
               )}
             </Tooltip>

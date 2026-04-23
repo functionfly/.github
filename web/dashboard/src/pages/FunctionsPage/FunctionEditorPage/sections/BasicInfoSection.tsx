@@ -3,6 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Sparkles, Hash, Wand2, Zap } from 'lucide-react';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FieldError, InfoTip, SectionCard } from '../components/editor-ui';
 import type { FunctionEditorModel } from '../useFunctionEditor';
 
@@ -60,6 +61,7 @@ function analyzeCodeForSuggestions(code: string): string[] {
 }
 
 export function BasicInfoSection({ editor }: Props) {
+  const { t } = useTranslation();
   const {
     functionName,
     slug,
@@ -82,11 +84,11 @@ export function BasicInfoSection({ editor }: Props) {
   };
 
   return (
-    <SectionCard icon={<Zap className="w-4 h-4" />} title="Function Basics" step={1}>
+    <SectionCard icon={<Zap className="w-4 h-4" />} title={t('funcEditor.functionBasics')} step={1}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <Label htmlFor="fn-name" className="text-xs font-medium text-text-secondary mb-1.5 block">
-            Name <span className="text-red-400">*</span>
+            {t('funcEditor.name')} <span className="text-red-400">*</span>
           </Label>
           <Input
             id="fn-name"
@@ -102,7 +104,7 @@ export function BasicInfoSection({ editor }: Props) {
             <div className="mt-2">
               <div className="flex items-center gap-1.5 text-xs text-[#FF6B35] mb-1.5">
                 <Wand2 className="w-3 h-3" />
-                <span>Suggested names based on your code:</span>
+                <span>{t('funcEditor.suggestedNames')}</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {suggestions.map((suggestion) => (
@@ -121,8 +123,8 @@ export function BasicInfoSection({ editor }: Props) {
         </div>
         <div>
           <Label htmlFor="fn-slug" className="text-xs font-medium text-text-secondary mb-1.5 block">
-            Slug / Identifier
-            <InfoTip content="URL-safe identifier used in API calls. Auto-generated from name." />
+            {t('funcEditor.slugIdentifier')}
+            <InfoTip content={t('funcEditor.slugInfoTip')} />
           </Label>
           <div className="input-with-icon">
             <Hash className="icon h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -141,7 +143,7 @@ export function BasicInfoSection({ editor }: Props) {
       <div>
         <div className="flex items-center justify-between mb-1.5">
           <Label htmlFor="fn-desc" className="text-xs font-medium text-text-secondary block">
-            Description
+            {t('funcEditor.description')}
           </Label>
           <span
             className={`text-xs tabular-nums ${
@@ -157,7 +159,7 @@ export function BasicInfoSection({ editor }: Props) {
         </div>
         <Textarea
           id="fn-desc"
-          placeholder="What does this function do?"
+          placeholder={t('funcEditor.descriptionPlaceholder')}
           value={description}
           onChange={(e) => {
             if (e.target.value.length <= MAX_DESCRIPTION) {

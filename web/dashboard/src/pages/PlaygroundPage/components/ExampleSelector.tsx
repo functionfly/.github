@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Play, BookOpen } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { usePlaygroundStore } from '../store/playgroundStore';
 
@@ -9,6 +10,7 @@ interface ExampleSelectorProps {
 }
 
 export function ExampleSelector({ className }: ExampleSelectorProps) {
+  const { t } = useTranslation();
   const { functionInfo, setInputValue, setInputJson } = usePlaygroundStore();
 
   const examples = functionInfo?.manifest?.examples || [];
@@ -19,16 +21,16 @@ export function ExampleSelector({ className }: ExampleSelectorProps) {
     examples.length > 0
       ? examples
       : inputExample !== undefined
-      ? [{ name: 'Default Example', input: inputExample, description: 'Default example from function manifest' }]
+      ? [{ name: t('playground.defaultExample'), input: inputExample, description: t('playground.defaultExampleDescription') }]
       : [];
 
   if (allExamples.length === 0) {
     return (
       <div className={cn('flex flex-col items-center justify-center py-12 text-center', className)}>
         <BookOpen className="w-10 h-10 text-text-muted mb-3" />
-        <p className="text-sm text-text-muted">No examples available</p>
+        <p className="text-sm text-text-muted">{t('playground.noExamplesAvailable')}</p>
         <p className="text-xs text-text-muted mt-1">
-          Add examples to your function manifest to see them here
+          {t('playground.addExamplesHint')}
         </p>
       </div>
     );
@@ -42,7 +44,7 @@ export function ExampleSelector({ className }: ExampleSelectorProps) {
   return (
     <div className={cn('space-y-3', className)}>
       <p className="text-xs text-text-muted">
-        Click an example to load it into the editor
+        {t('playground.clickExampleToLoad')}
       </p>
 
       <div className="grid gap-3">
@@ -75,7 +77,7 @@ export function ExampleSelector({ className }: ExampleSelectorProps) {
                 }}
               >
                 <Play className="w-3 h-3" />
-                Load
+                {t('playground.load')}
               </Button>
             </div>
           </motion.div>

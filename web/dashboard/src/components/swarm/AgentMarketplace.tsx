@@ -44,6 +44,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -101,6 +102,7 @@ interface Filters {
 const PAGE_SIZE = 9;
 
 export function AgentMarketplace() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [listings, setListings] = useState<MarketplaceAgent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,7 +128,7 @@ export function AgentMarketplace() {
       setListings(response.agents);
     } catch (err) {
       console.error('Failed to load marketplace agents:', err);
-      setError('Could not load agents. Check your connection or try again.');
+      setError(t('agentMarket.errorLoad'));
     } finally {
       setLoading(false);
     }
@@ -200,7 +202,7 @@ export function AgentMarketplace() {
     return (
       <div className="flex flex-col items-center justify-center p-16 gap-3">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        <p className="text-sm text-muted-foreground">Loading agents…</p>
+        <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
       </div>
     );
   }
@@ -210,19 +212,19 @@ export function AgentMarketplace() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Agent Marketplace</h1>
-          <p className="text-muted-foreground mt-1">Discover and hire autonomous AI agents</p>
+          <h1 className="text-3xl font-bold">{t('agentMarket.title')}</h1>
+          <p className="text-muted-foreground mt-1">{t('agentMarket.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           {listings.length > 0 && (
             <Badge variant="outline" className="bg-green-500/10 text-green-500">
               <CheckCircle className="h-3 w-3 mr-1" />
-              {listings.length} Active Agents
+              {t('agentMarket.activeAgents', { count: listings.length })}
             </Badge>
           )}
           <Badge variant="outline" className="bg-brand-500/10 text-brand-500">
             <Award className="h-3 w-3 mr-1" />
-            {OFFICIAL_AGENT_IDS.size} Official
+            {t('agentMarket.official', { count: OFFICIAL_AGENT_IDS.size })}
           </Badge>
         </div>
       </div>
@@ -239,7 +241,7 @@ export function AgentMarketplace() {
             onClick={loadAgents}
           >
             <RefreshCw className="h-3 w-3 mr-1" />
-            Retry
+            {t('common.retry')}
           </Button>
         </div>
       )}
@@ -251,7 +253,7 @@ export function AgentMarketplace() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search agents…"
+                placeholder={t('agentMarket.searchPlaceholder')}
                 className="pl-10"
                 value={filters.search}
                 onChange={(e) => {
@@ -269,13 +271,13 @@ export function AgentMarketplace() {
               }}
             >
               <SelectTrigger className="w-full md:w-[160px]">
-                <SelectValue placeholder="All Types" />
+                <SelectValue placeholder={t('agentMarket.allTypes')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="worker">Worker</SelectItem>
-                <SelectItem value="manager">Manager</SelectItem>
-                <SelectItem value="infrastructure">Infrastructure</SelectItem>
+                <SelectItem value="all">{t('agentMarket.allTypes')}</SelectItem>
+                <SelectItem value="worker">{t('agentMarket.worker')}</SelectItem>
+                <SelectItem value="manager">{t('agentMarket.manager')}</SelectItem>
+                <SelectItem value="infrastructure">{t('agentMarket.infrastructure')}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -287,14 +289,14 @@ export function AgentMarketplace() {
               }}
             >
               <SelectTrigger className="w-full md:w-[160px]">
-                <SelectValue placeholder="All Pricing" />
+                <SelectValue placeholder={t('agentMarket.allPricing')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Pricing</SelectItem>
-                <SelectItem value="free">Free</SelectItem>
-                <SelectItem value="per_call">Per Call</SelectItem>
-                <SelectItem value="subscription">Subscription</SelectItem>
-                <SelectItem value="revenue_share">Revenue Share</SelectItem>
+                <SelectItem value="all">{t('agentMarket.allPricing')}</SelectItem>
+                <SelectItem value="free">{t('agentMarket.free')}</SelectItem>
+                <SelectItem value="per_call">{t('agentMarket.perCall')}</SelectItem>
+                <SelectItem value="subscription">{t('agentMarket.subscription')}</SelectItem>
+                <SelectItem value="revenue_share">{t('agentMarket.revenueShare')}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -306,13 +308,13 @@ export function AgentMarketplace() {
               }}
             >
               <SelectTrigger className="w-full md:w-[160px]">
-                <SelectValue placeholder="Sort by" />
+                <SelectValue placeholder={t('agentMarket.sortBy')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="featured">Featured</SelectItem>
-                <SelectItem value="top_rated">Top Rated</SelectItem>
-                <SelectItem value="most_used">Most Used</SelectItem>
-                <SelectItem value="roi">Best ROI</SelectItem>
+                <SelectItem value="featured">{t('agentMarket.featured')}</SelectItem>
+                <SelectItem value="top_rated">{t('agentMarket.topRated')}</SelectItem>
+                <SelectItem value="most_used">{t('agentMarket.mostUsed')}</SelectItem>
+                <SelectItem value="roi">{t('agentMarket.bestRoi')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -338,7 +340,7 @@ export function AgentMarketplace() {
             <div className="flex justify-center pt-2">
               <Button variant="outline" onClick={() => setPage((p) => p + 1)}>
                 <ChevronDown className="h-4 w-4 mr-2" />
-                Load more ({filtered.length - paged.length} remaining)
+                {t('agentMarket.loadMore', { count: filtered.length - paged.length })}
               </Button>
             </div>
           )}
@@ -346,11 +348,11 @@ export function AgentMarketplace() {
       ) : (
         <div className="text-center py-16">
           <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium">No agents found</h3>
+          <h3 className="text-lg font-medium">{t('agentMarket.noAgentsFound')}</h3>
           <p className="text-muted-foreground mt-1">
             {filters.search || filters.listingType || filters.pricingModel
-              ? 'Try adjusting your filters'
-              : 'Run the seed script to populate the marketplace'}
+              ? t('agentMarket.adjustFilters')
+              : t('agentMarket.seedScript')}
           </p>
           {(filters.search || filters.listingType || filters.pricingModel) && (
             <Button
@@ -360,7 +362,7 @@ export function AgentMarketplace() {
                 setFilters({ search: '', listingType: '', pricingModel: '', sort: 'featured' })
               }
             >
-              Clear filters
+              {t('agentMarket.clearFilters')}
             </Button>
           )}
         </div>
@@ -421,6 +423,7 @@ function ListingCard({
   roleColor: string;
   onHire: () => void;
 }) {
+  const { t } = useTranslation();
   const isOfficial = OFFICIAL_AGENT_IDS.has(listing.agentId);
   const caps = listing.capabilities ?? [];
 
@@ -430,7 +433,7 @@ function ListingCard({
       {isOfficial && (
         <div className="absolute top-0 right-0 bg-brand-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-md flex items-center gap-1">
           <Award className="h-2.5 w-2.5" />
-          Official
+          {t('agentMarket.officialBadge')}
         </div>
       )}
 
@@ -474,14 +477,14 @@ function ListingCard({
               <Zap className="h-3 w-3 text-blue-500" />
               <span className="text-xs font-semibold">{listing.totalCalls.toLocaleString()}</span>
             </div>
-            <p className="text-[10px] text-muted-foreground">Calls</p>
+            <p className="text-[10px] text-muted-foreground">{t('agentMarket.calls')}</p>
           </div>
           <div>
             <div className="flex items-center justify-center gap-1">
               <TrendingUp className="h-3 w-3 text-green-500" />
               <span className="text-xs font-semibold">{listing.roiScore}%</span>
             </div>
-            <p className="text-[10px] text-muted-foreground">ROI</p>
+            <p className="text-[10px] text-muted-foreground">{t('agentMarket.roi')}</p>
           </div>
           <div>
             <div className="flex items-center justify-center gap-1">
@@ -491,7 +494,7 @@ function ListingCard({
                 {listing.trustScore ? '%' : ''}
               </span>
             </div>
-            <p className="text-[10px] text-muted-foreground">Trust</p>
+            <p className="text-[10px] text-muted-foreground">{t('agentMarket.trust')}</p>
           </div>
         </div>
 
@@ -523,7 +526,7 @@ function ListingCard({
 
       <CardFooter className="pt-3">
         <Button className="w-full" size="sm" onClick={onHire}>
-          Hire Agent
+          {t('agentMarket.hireAgent')}
           <ExternalLink className="h-3.5 w-3.5 ml-2" />
         </Button>
       </CardFooter>
@@ -546,6 +549,7 @@ function HireAgentDialog({
   onGoToAgents: () => void;
   onGoToSDK: () => void;
 }) {
+  const { t } = useTranslation();
   const [copiedSnippet, setCopiedSnippet] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
 
@@ -571,11 +575,11 @@ print(result)`;
     await navigator.clipboard.writeText(text);
     if (which === 'snippet') {
       setCopiedSnippet(true);
-      toast.success('Code copied!');
+      toast.success(t('agentMarket.codeCopied'));
       setTimeout(() => setCopiedSnippet(false), 2000);
     } else {
       setCopiedId(true);
-      toast.success('Agent ID copied!');
+      toast.success(t('agentMarket.agentIdCopied'));
       setTimeout(() => setCopiedId(false), 2000);
     }
   };
@@ -615,7 +619,7 @@ print(result)`;
                 className="bg-brand-500/10 text-brand-500 border-brand-500/30"
               >
                 <Award className="h-3 w-3 mr-1" />
-                Official by FunctionFly
+                {t('agentMarket.officialByFunctionFly')}
               </Badge>
             )}
             {agent.deterministicVerified && (
@@ -624,7 +628,7 @@ print(result)`;
                 className="bg-green-500/10 text-green-600 border-green-500/30"
               >
                 <CheckCircle className="h-3 w-3 mr-1" />
-                Deterministic
+                {t('agentMarket.deterministic')}
               </Badge>
             )}
           </div>
@@ -674,7 +678,7 @@ print(result)`;
           {/* Agent ID */}
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Agent ID
+              {t('agentMarket.agentId')}
             </p>
             <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2">
               <code className="flex-1 text-sm font-mono">{agent.agentId}</code>
@@ -697,7 +701,7 @@ print(result)`;
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Quick Start (Python)
+                {t('agentMarket.quickStartPython')}
               </p>
               <Button
                 variant="ghost"
@@ -710,7 +714,7 @@ print(result)`;
                 ) : (
                   <Copy className="h-3 w-3" />
                 )}
-                {copiedSnippet ? 'Copied' : 'Copy'}
+                {copiedSnippet ? t('common.copied') : t('common.copy')}
               </Button>
             </div>
             <pre className="rounded-md border bg-muted/50 p-3 text-xs font-mono overflow-x-auto leading-relaxed">
@@ -720,28 +724,28 @@ print(result)`;
 
           {/* Next steps */}
           <div className="rounded-md border bg-muted/30 px-4 py-3 space-y-1">
-            <p className="text-xs font-semibold">Next steps</p>
+            <p className="text-xs font-semibold">{t('agentMarket.nextSteps')}</p>
             <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
               <li>
-                Go to <strong>My Agents</strong> and create an agent to get your API key
+                {t('agentMarket.nextStep1', { 1: 'strong' })}
               </li>
               <li>
-                Install the SDK: <code className="bg-muted px-1 rounded">pip install flypy</code>
+                {t('agentMarket.nextStep2', { 1: 'code' })}
               </li>
-              <li>Use the Quick Start snippet above to call this agent</li>
+              <li>{t('agentMarket.nextStep3')}</li>
             </ol>
           </div>
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
           <Button variant="outline" onClick={onClose} className="sm:flex-none">
-            Close
+            {t('agentMarket.close')}
           </Button>
           <Button variant="outline" onClick={onGoToSDK} className="sm:flex-none">
-            SDK Docs
+            {t('agentMarket.sdkDocs')}
           </Button>
           <Button onClick={onGoToAgents} className="flex-1 sm:flex-none">
-            Go to My Agents
+            {t('agentMarket.goToMyAgents')}
             <ExternalLink className="h-4 w-4 ml-2" />
           </Button>
         </DialogFooter>

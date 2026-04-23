@@ -3,6 +3,7 @@ import { Check, Star, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 function cn(...classes: (string | boolean | undefined)[]) {
   return classes.filter(Boolean).join(" ");
@@ -30,6 +31,7 @@ interface AgentPricingCardProps {
 }
 
 export function AgentPricingCard({ plan, index, inView, onPlanSelect }: AgentPricingCardProps) {
+  const { t } = useTranslation();
   const handleClick = () => {
     if (onPlanSelect) {
       onPlanSelect(plan.id, plan.priceId);
@@ -54,7 +56,7 @@ export function AgentPricingCard({ plan, index, inView, onPlanSelect }: AgentPri
           <div className="pricing-agent-badge absolute -top-3 left-1/2 -translate-x-1/2 z-10">
             <span className="px-3 py-1.5 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-lg shadow-cyan-500/25">
               <Star className="w-3.5 h-3.5 fill-current" />
-              Most Popular
+              {t("pricing:agentCard.mostPopular")}
             </span>
           </div>
         )}

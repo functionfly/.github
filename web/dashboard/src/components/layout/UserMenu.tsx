@@ -2,6 +2,7 @@ import { agentApi } from '@/api/agent';
 import { createCheckoutSession, getWalletInfo } from '@/api/billing';
 import { teamsApi } from '@/api/teams';
 import { PlanSelectionModal } from '@/components/enterprise';
+import { LanguagePicker } from '@/components/common/LanguagePicker';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -16,6 +17,7 @@ import { isPlatformAdminRole } from '@/lib/platform-admin';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/components/common/ThemeProvider';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
 import * as React from 'react';
@@ -25,6 +27,7 @@ import {
   ChevronDown,
   ChevronRight,
   CreditCard,
+  Globe,
   LogOut,
   Plus,
   Settings,
@@ -44,6 +47,7 @@ interface UserMenuProps {
 }
 
 export function UserMenu({ className }: UserMenuProps) {
+  const { t } = useTranslation();
   const { user, logout, mfaRequired } = useAuthStore();
   const { theme } = useTheme();
   const navigate = useNavigate();
@@ -356,7 +360,7 @@ export function UserMenu({ className }: UserMenuProps) {
                       <Wallet className="h-3.5 w-3.5 text-emerald-500" />
                     </div>
                     <span className="text-xs font-medium" style={{ color: colors.textSecondary }}>
-                      {usingAgentWallet ? 'Agent Wallet' : 'Balance'}
+                      {usingAgentWallet ? t('usermenu.agentWallet') : t('usermenu.balance')}
                     </span>
                   </div>
                   <span className="text-lg font-bold tracking-tight" style={{ color: colors.textPrimary }}>
@@ -374,7 +378,7 @@ export function UserMenu({ className }: UserMenuProps) {
                   >
                     <TrendingUp className="h-3 w-3 text-emerald-500" />
                     <div>
-                      <p className="text-[10px] uppercase tracking-wider font-medium" style={{ color: colors.textMuted }}>Earned</p>
+                      <p className="text-[10px] uppercase tracking-wider font-medium" style={{ color: colors.textMuted }}>{t('usermenu.earned')}</p>
                       <p className="text-xs font-semibold text-emerald-500">
                         {formatBalance(
                           usingAgentWallet
@@ -394,7 +398,7 @@ export function UserMenu({ className }: UserMenuProps) {
                     <ArrowUpRight className="h-3 w-3 text-rose-500" />
                     <div>
                       <p className="text-[10px] uppercase tracking-wider font-medium" style={{ color: colors.textMuted }}>
-                        {usingAgentWallet ? 'Spent' : 'Fees'}
+                        {usingAgentWallet ? t('usermenu.spent') : t('usermenu.fees')}
                       </p>
                       <p className="text-xs font-semibold text-rose-500">
                         {formatBalance(
@@ -435,7 +439,7 @@ export function UserMenu({ className }: UserMenuProps) {
                   >
                     <Building2 className="w-3.5 h-3.5" style={{ color: colors.textMuted }} />
                   </div>
-                  <span className="font-medium text-xs uppercase tracking-wider" style={{ color: colors.textSecondary }}>Org</span>
+                  <span className="font-medium text-xs uppercase tracking-wider" style={{ color: colors.textSecondary }}>{t('usermenu.org')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium truncate max-w-[100px]" style={{ color: colors.textPrimary }}>
@@ -564,10 +568,10 @@ export function UserMenu({ className }: UserMenuProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold transition-colors group-hover:text-[#FF6B35]" style={{ color: colors.textPrimary }}>
-                      Upgrade to Pro
+                      {t('usermenu.upgradeToPro')}
                     </p>
                     <p className="text-xs mt-0.5 leading-relaxed" style={{ color: colors.textMuted }}>
-                      Unlimited functions, priority support, & more.
+                      {t('usermenu.upgradeDescription')}
                     </p>
                   </div>
                   <ChevronRight className="w-5 h-5 transition-all flex-shrink-0 group-hover:translate-x-1" style={{ color: brand.primary }} />
@@ -604,7 +608,7 @@ export function UserMenu({ className }: UserMenuProps) {
                   style={{ color: colors.textMuted }}
                 />
               </div>
-              <span className="font-medium transition-colors" style={{ color: colors.textSecondary }}>Profile</span>
+              <span className="font-medium transition-colors" style={{ color: colors.textSecondary }}>{t('usermenu.profile')}</span>
             </Link>
           </DropdownMenuItem>
 
@@ -623,7 +627,7 @@ export function UserMenu({ className }: UserMenuProps) {
               >
                 <Settings className="w-3.5 h-3.5 group-hover:text-cyan-500 transition-colors" style={{ color: colors.textMuted }} />
               </div>
-              <span className="font-medium group-hover:text-cyan-500 transition-colors" style={{ color: colors.textSecondary }}>Settings</span>
+              <span className="font-medium group-hover:text-cyan-500 transition-colors" style={{ color: colors.textSecondary }}>{t('usermenu.settings')}</span>
             </Link>
           </DropdownMenuItem>
 
@@ -642,9 +646,22 @@ export function UserMenu({ className }: UserMenuProps) {
               >
                 <CreditCard className="w-3.5 h-3.5 group-hover:text-emerald-500 transition-colors" style={{ color: colors.textMuted }} />
               </div>
-              <span className="font-medium group-hover:text-emerald-500 transition-colors" style={{ color: colors.textSecondary }}>Billing</span>
+              <span className="font-medium group-hover:text-emerald-500 transition-colors" style={{ color: colors.textSecondary }}>{t('usermenu.billing')}</span>
             </Link>
           </DropdownMenuItem>
+
+          <div className="flex items-center gap-3 px-3 py-2.5">
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center border"
+              style={{
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)',
+                borderColor: colors.border
+              }}
+            >
+              <Globe className="w-3.5 h-3.5" style={{ color: colors.textMuted }} />
+            </div>
+            <LanguagePicker variant="ghost" showLabel={true} className="flex-1 h-8 px-0" />
+          </div>
         </div>
 
         {isAdmin && ADMIN_DASHBOARD_URL && (
@@ -667,7 +684,7 @@ export function UserMenu({ className }: UserMenuProps) {
                   >
                     <Shield className="w-3.5 h-3.5 group-hover:text-amber-500 transition-colors" style={{ color: colors.textMuted }} />
                   </div>
-                  <span className="font-medium group-hover:text-amber-500 transition-colors" style={{ color: colors.textSecondary }}>Admin Panel</span>
+                  <span className="font-medium group-hover:text-amber-500 transition-colors" style={{ color: colors.textSecondary }}>{t('usermenu.adminPanel')}</span>
                   <span 
                     className="ml-auto px-1.5 py-0.5 rounded text-[10px] font-semibold"
                     style={{ 
@@ -699,7 +716,7 @@ export function UserMenu({ className }: UserMenuProps) {
             >
               <LogOut className="w-3.5 h-3.5 text-rose-500" />
             </div>
-            <span className="font-medium text-rose-500">Sign out</span>
+            <span className="font-medium text-rose-500">{t('usermenu.signOut')}</span>
           </DropdownMenuItem>
         </div>
       </DropdownMenuContent>

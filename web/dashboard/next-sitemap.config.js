@@ -1,4 +1,4 @@
-/** @type {import('next-sitemap').IConfig} */
+/** @type {{ siteUrl: string; changefreq: string; priority: number; transform: Function; additionalPaths: Function; robotsTxtOptions: object; generateRobotsTxt: boolean }} */
 export default {
   siteUrl: process.env.SITE_URL || 'https://functionfly.com',
   generateRobotsTxt: true,

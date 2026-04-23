@@ -1,0 +1,415 @@
+/* ==========================================================================
+   Contribution Activity Components - Light Mode Overrides
+   Ensures all ContributionActivity sub-components are readable on light backgrounds.
+   ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   ActivityHeatRing - SVG fills need higher opacity for light backgrounds
+   --------------------------------------------------------------------------- */
+
+[data-theme="light"] .ca-heat-fill-0 {
+  fill: rgba(0, 0, 0, 0.06) !important;
+}
+[data-theme="light"] .ca-heat-fill-1 {
+  fill: rgba(249, 115, 22, 0.2) !important;
+}
+[data-theme="light"] .ca-heat-fill-2 {
+  fill: rgba(249, 115, 22, 0.4) !important;
+}
+[data-theme="light"] .ca-heat-fill-3 {
+  fill: rgba(234, 88, 12, 0.65) !important;
+}
+[data-theme="light"] .ca-heat-fill-4 {
+  fill: #ea580c !important;
+}
+
+[data-theme="light"] .ca-heat-stroke-0 {
+  stroke: rgba(0, 0, 0, 0.08) !important;
+}
+[data-theme="light"] .ca-heat-stroke-1 {
+  stroke: rgba(249, 115, 22, 0.25) !important;
+}
+[data-theme="light"] .ca-heat-stroke-2 {
+  stroke: rgba(249, 115, 22, 0.45) !important;
+}
+[data-theme="light"] .ca-heat-stroke-3 {
+  stroke: rgba(234, 88, 12, 0.7) !important;
+}
+[data-theme="light"] .ca-heat-stroke-4 {
+  stroke: #c2410c !important;
+}
+
+/* Heat ring center text */
+[data-theme="light"] .ca-heat-center-value {
+  fill: #0a0a0a !important;
+}
+[data-theme="light"] .ca-heat-center-label {
+  fill: #6b7280 !important;
+}
+
+/* Heat ring legend */
+[data-theme="light"] .ca-legend-0 {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+[data-theme="light"] .ca-legend-1 {
+  background-color: rgba(249, 115, 22, 0.2) !important;
+}
+[data-theme="light"] .ca-legend-2 {
+  background-color: rgba(249, 115, 22, 0.4) !important;
+}
+[data-theme="light"] .ca-legend-3 {
+  background-color: rgba(234, 88, 12, 0.65) !important;
+}
+[data-theme="light"] .ca-legend-4 {
+  background-color: #ea580c !important;
+}
+
+/* Tooltip in light mode */
+[data-theme="light"] .ca-tooltip {
+  background-color: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: #0a0a0a !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ---------------------------------------------------------------------------
+   ContributionStreak - Fire/streak card
+   --------------------------------------------------------------------------- */
+
+[data-theme="light"] .ca-streak-card {
+  background: linear-gradient(
+    to bottom right,
+    #ffffff 0%,
+    #ffffff 60%,
+    rgba(245, 158, 11, 0.06) 100%
+  ) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light"] .ca-streak-glow {
+  opacity: 0.1 !important;
+  background: radial-gradient(circle, rgb(245, 158, 11) 0%, transparent 70%) !important;
+}
+
+/* Streak fire icon container */
+[data-theme="light"] .ca-streak-icon-active {
+  background: linear-gradient(
+    to bottom right,
+    rgba(245, 158, 11, 0.15),
+    rgba(239, 68, 68, 0.1)
+  ) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+[data-theme="light"] .ca-streak-icon-idle {
+  background-color: #f3f4f6 !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Streak counter */
+[data-theme="light"] .ca-streak-count {
+  color: #0a0a0a !important;
+}
+
+/* Streak label */
+[data-theme="light"] .ca-streak-label {
+  color: #6b7280 !important;
+}
+
+/* Progress bar track */
+[data-theme="light"] .ca-streak-progress-track {
+  background-color: #e5e7eb !important;
+}
+
+/* Progress bar fill */
+[data-theme="light"] .ca-streak-progress-fill {
+  background: linear-gradient(to right, #f59e0b, #ea580c) !important;
+}
+
+/* Milestone text */
+[data-theme="light"] .ca-streak-milestone-text {
+  color: #6b7280 !important;
+}
+[data-theme="light"] .ca-streak-milestone-text span {
+  color: #374151 !important;
+}
+
+/* Best streak text */
+[data-theme="light"] .ca-streak-best {
+  color: #6b7280 !important;
+}
+[data-theme="light"] .ca-streak-best span {
+  color: #374151 !important;
+}
+
+/* Fire particles */
+[data-theme="light"] .ca-fire-particle {
+  background-color: #f59e0b !important;
+}
+
+/* ---------------------------------------------------------------------------
+   ActivityCard - Activity cards with type-specific colors
+   --------------------------------------------------------------------------- */
+
+[data-theme="light"] .ca-activity-card {
+  background-color: #ffffff !important;
+}
+
+[data-theme="light"] .ca-activity-card:hover {
+  background-color: #f9fafb !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Accent line colors - stronger in light mode */
+[data-theme="light"] .ca-accent-joined {
+  background-color: rgba(99, 102, 241, 0.5) !important;
+}
+[data-theme="light"] .ca-accent-function_published {
+  background-color: rgba(59, 130, 246, 0.5) !important;
+}
+[data-theme="light"] .ca-accent-function_updated {
+  background-color: rgba(234, 179, 8, 0.5) !important;
+}
+[data-theme="light"] .ca-accent-function_deleted {
+  background-color: rgba(239, 68, 68, 0.5) !important;
+}
+[data-theme="light"] .ca-accent-achievement_earned {
+  background-color: rgba(245, 158, 11, 0.5) !important;
+}
+[data-theme="light"] .ca-accent-review_received {
+  background-color: rgba(168, 85, 247, 0.5) !important;
+}
+[data-theme="light"] .ca-accent-milestone_reached {
+  background-color: rgba(16, 185, 129, 0.5) !important;
+}
+[data-theme="light"] .ca-accent-followed {
+  background-color: rgba(236, 72, 153, 0.5) !important;
+}
+[data-theme="light"] .ca-accent-follower_gained {
+  background-color: rgba(236, 72, 153, 0.5) !important;
+}
+[data-theme="light"] .ca-accent-contribution {
+  background-color: rgba(99, 102, 241, 0.5) !important;
+}
+[data-theme="light"] .ca-accent-deployment {
+  background-color: rgba(34, 197, 94, 0.5) !important;
+}
+[data-theme="light"] .ca-accent-membership_upgraded {
+  background-color: rgba(245, 158, 11, 0.5) !important;
+}
+
+/* Icon container backgrounds - stronger tints in light mode */
+[data-theme="light"] .ca-icon-joined {
+  background-color: rgba(99, 102, 241, 0.12) !important;
+  color: #4f46e5 !important;
+}
+[data-theme="light"] .ca-icon-function_published {
+  background-color: rgba(59, 130, 246, 0.12) !important;
+  color: #2563eb !important;
+}
+[data-theme="light"] .ca-icon-function_updated {
+  background-color: rgba(234, 179, 8, 0.12) !important;
+  color: #ca8a04 !important;
+}
+[data-theme="light"] .ca-icon-function_deleted {
+  background-color: rgba(239, 68, 68, 0.12) !important;
+  color: #dc2626 !important;
+}
+[data-theme="light"] .ca-icon-achievement_earned {
+  background-color: rgba(245, 158, 11, 0.12) !important;
+  color: #d97706 !important;
+}
+[data-theme="light"] .ca-icon-review_received {
+  background-color: rgba(168, 85, 247, 0.12) !important;
+  color: #7c3aed !important;
+}
+[data-theme="light"] .ca-icon-milestone_reached {
+  background-color: rgba(16, 185, 129, 0.12) !important;
+  color: #059669 !important;
+}
+[data-theme="light"] .ca-icon-followed {
+  background-color: rgba(236, 72, 153, 0.12) !important;
+  color: #db2777 !important;
+}
+[data-theme="light"] .ca-icon-follower_gained {
+  background-color: rgba(236, 72, 153, 0.12) !important;
+  color: #db2777 !important;
+}
+[data-theme="light"] .ca-icon-contribution {
+  background-color: rgba(99, 102, 241, 0.12) !important;
+  color: #4f46e5 !important;
+}
+[data-theme="light"] .ca-icon-deployment {
+  background-color: rgba(34, 197, 94, 0.12) !important;
+  color: #16a34a !important;
+}
+[data-theme="light"] .ca-icon-membership_upgraded {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  color: #b45309 !important;
+}
+
+/* Activity title */
+[data-theme="light"] .ca-activity-title {
+  color: #0a0a0a !important;
+}
+
+/* Activity description */
+[data-theme="light"] .ca-activity-desc {
+  color: #6b7280 !important;
+}
+
+/* Activity timestamp */
+[data-theme="light"] .ca-activity-time {
+  color: #9ca3af !important;
+}
+
+/* Function link badge */
+[data-theme="light"] .ca-function-link {
+  background-color: #f3f4f6 !important;
+  color: #374151 !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+[data-theme="light"] .ca-function-link:hover {
+  background-color: #e5e7eb !important;
+  color: #0a0a0a !important;
+}
+
+/* Plan badge overrides for light mode */
+[data-theme="light"] .ca-plan-free {
+  background-color: rgba(107, 114, 128, 0.12) !important;
+  color: #374151 !important;
+  border-color: rgba(107, 114, 128, 0.3) !important;
+}
+[data-theme="light"] .ca-plan-starter {
+  background-color: rgba(59, 130, 246, 0.12) !important;
+  color: #1d4ed8 !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+}
+[data-theme="light"] .ca-plan-professional {
+  background-color: rgba(139, 92, 246, 0.12) !important;
+  color: #6d28d9 !important;
+  border-color: rgba(139, 92, 246, 0.3) !important;
+}
+[data-theme="light"] .ca-plan-enterprise {
+  background-color: rgba(245, 158, 11, 0.12) !important;
+  color: #b45309 !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+
+/* Achievement "unlocked" indicator */
+[data-theme="light"] .ca-achievement-dots {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+[data-theme="light"] .ca-achievement-text {
+  color: #b45309 !important;
+}
+
+/* ---------------------------------------------------------------------------
+   ActivityGroup - Time-grouped sections
+   --------------------------------------------------------------------------- */
+
+[data-theme="light"] .ca-group-header-icon {
+  color: #9ca3af !important;
+}
+[data-theme="light"] .ca-group-header-icon-active {
+  color: #d97706 !important;
+}
+
+[data-theme="light"] .ca-group-header-text {
+  color: #374151 !important;
+}
+
+[data-theme="light"] .ca-group-header-count {
+  color: #9ca3af !important;
+}
+
+[data-theme="light"] .ca-group-divider {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* ---------------------------------------------------------------------------
+   ContributionSummaryBar - Metrics strip
+   --------------------------------------------------------------------------- */
+
+[data-theme="light"] .ca-summary-bar {
+  background-color: #f9fafb !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light"] .ca-summary-divider {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-theme="light"] .ca-summary-value {
+  color: #0a0a0a !important;
+}
+
+[data-theme="light"] .ca-summary-label {
+  color: #6b7280 !important;
+}
+
+/* Icon colors in summary bar */
+[data-theme="light"] .ca-summary-icon-brand {
+  color: #ea580c !important;
+}
+[data-theme="light"] .ca-summary-icon-amber {
+  color: #d97706 !important;
+}
+[data-theme="light"] .ca-summary-icon-emerald {
+  color: #059669 !important;
+}
+[data-theme="light"] .ca-summary-icon-blue {
+  color: #2563eb !important;
+}
+
+/* ---------------------------------------------------------------------------
+   ContributionActivity - Main orchestrator
+   --------------------------------------------------------------------------- */
+
+/* Header icon container */
+[data-theme="light"] .ca-header-icon {
+  background: linear-gradient(
+    to bottom right,
+    rgba(249, 115, 22, 0.1),
+    rgba(245, 158, 11, 0.1)
+  ) !important;
+}
+
+/* View mode toggle */
+[data-theme="light"] .ca-view-toggle {
+  background-color: #f3f4f6 !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light"] .ca-view-toggle-active {
+  background-color: #ffffff !important;
+  color: #0a0a0a !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-theme="light"] .ca-view-toggle-inactive {
+  color: #9ca3af !important;
+}
+[data-theme="light"] .ca-view-toggle-inactive:hover {
+  color: #4b5563 !important;
+}
+
+/* Section header for "Recent Activity" */
+[data-theme="light"] .ca-section-icon {
+  color: #d97706 !important;
+}
+[data-theme="light"] .ca-section-title {
+  color: #374151 !important;
+}
+[data-theme="light"] .ca-section-count {
+  color: #9ca3af !important;
+}
+
+/* Empty state */
+[data-theme="light"] .ca-empty-icon {
+  color: rgba(0, 0, 0, 0.15) !important;
+}
+[data-theme="light"] .ca-empty-text {
+  color: #9ca3af !important;
+}

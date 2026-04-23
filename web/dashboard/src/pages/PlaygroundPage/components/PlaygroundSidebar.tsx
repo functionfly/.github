@@ -22,6 +22,7 @@ import {
   Shield,
   Database,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { usePlaygroundStore, SidebarPanel, ExecutionHistoryItem } from '../store/playgroundStore';
 import { usePlaygroundState } from '../hooks/usePlaygroundState';
@@ -31,14 +32,6 @@ import { CodeSnippetGenerator } from './CodeSnippetGenerator';
 interface PlaygroundSidebarProps {
   className?: string;
 }
-
-const PANELS: Array<{ id: SidebarPanel; icon: React.ReactNode; label: string }> = [
-  { id: 'history', icon: <History className="w-4 h-4" />, label: 'History' },
-  { id: 'schema', icon: <TreePine className="w-4 h-4" />, label: 'Schema' },
-  { id: 'snippets', icon: <Code2 className="w-4 h-4" />, label: 'Snippets' },
-  { id: 'share', icon: <Share2 className="w-4 h-4" />, label: 'Share' },
-  { id: 'info', icon: <Info className="w-4 h-4" />, label: 'Info' },
-];
 
 // ─── History Panel ────────────────────────────────────────────────────────────
 
@@ -103,6 +96,7 @@ function HistoryItem({
 }
 
 function HistoryPanel() {
+  const { t } = useTranslation();
   const { executionHistory, loadFromHistory, removeFromHistory, clearHistory } =
     usePlaygroundStore();
   const [filter, setFilter] = useState<'all' | 'success' | 'error'>('all');
@@ -147,15 +141,15 @@ function HistoryPanel() {
         <div className="flex-1" />
         <button
           onClick={handleExport}
-          className="p-1 rounded hover:bg-bg-tertiary text-text-muted hover:text-text-secondary transition-colors"
-          title="Export history"
-        >
-          <Download className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={clearHistory}
-          className="p-1 rounded hover:bg-bg-tertiary text-text-muted hover:text-red-400 transition-colors"
-          title="Clear history"
+              className="p-1 rounded hover:bg-bg-tertiary text-text-muted hover:text-text-secondary transition-colors"
+              title={t('playground.exportHistory')}
+            >
+              <Download className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={clearHistory}
+              className="p-1 rounded hover:bg-bg-tertiary text-text-muted hover:text-red-400 transition-colors"
+              title={t('playground.clearHistory')}
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
@@ -166,7 +160,7 @@ function HistoryPanel() {
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <History className="w-8 h-8 text-text-muted mb-2" />
-            <p className="text-xs text-text-muted">No history yet</p>
+            <p className="text-xs text-text-muted">{t('playground.noHistoryYet')}</p>
           </div>
         ) : (
           <AnimatePresence>
@@ -188,6 +182,7 @@ function HistoryPanel() {
 // ─── Schema Panel ─────────────────────────────────────────────────────────────
 
 function SchemaPanel() {
+  const { t } = useTranslation();
   const { functionInfo } = usePlaygroundStore();
   const inputSchema = functionInfo?.manifest?.input?.schema as Record<string, unknown> | undefined;
   const outputSchema = functionInfo?.manifest?.output?.schema as Record<string, unknown> | undefined;
@@ -216,12 +211,12 @@ function SchemaPanel() {
           inputSchema ? (
             <SchemaExplorer schema={inputSchema} />
           ) : (
-            <p className="text-xs text-text-muted text-center py-8">No input schema</p>
+            <p className="text-xs text-text-muted text-center py-8">{t('playground.noInputSchemaLabel')}</p>
           )
         ) : outputSchema ? (
           <SchemaExplorer schema={outputSchema} />
         ) : (
-          <p className="text-xs text-text-muted text-center py-8">No output schema</p>
+          <p className="text-xs text-text-muted text-center py-8">{t('playground.noOutputSchema')}</p>
         )}
       </div>
     </div>
@@ -231,6 +226,7 @@ function SchemaPanel() {
 // ─── Share Panel ──────────────────────────────────────────────────────────────
 
 function SharePanel() {
+  const { t } = useTranslation();
   const { shareableUrl } = usePlaygroundState();
   const [copied, setCopied] = useState(false);
 
@@ -247,7 +243,7 @@ function SharePanel() {
   return (
     <div className="p-3 space-y-4">
       <div>
-        <p className="text-xs font-medium text-text-secondary mb-2">Shareable Link</p>
+        <p className="text-xs font-medium text-text-secondary mb-2">{t('playground.shareableLink')}</p>
         <div className="flex gap-2">
           <input
             value={shareableUrl}
@@ -265,14 +261,14 @@ function SharePanel() {
             ) : (
               <Copy className="w-3 h-3" />
             )}
-            {copied ? 'Copied!' : 'Copy'}
+            {copied ? t('playground.copied') : t('playground.copy')}
           </Button>
         </div>
       </div>
 
       {/* QR Code */}
       <div>
-        <p className="text-xs font-medium text-text-secondary mb-2">QR Code</p>
+        <p className="text-xs font-medium text-text-secondary mb-2">{t('playground.qrCode')}</p>
         <div className="flex justify-center p-3 bg-white rounded-lg">
           <QRCodeSVG value={shareableUrl} size={120} />
         </div>
@@ -287,13 +283,13 @@ function SharePanel() {
       >
         <a href={shareableUrl} target="_blank" rel="noopener noreferrer">
           <ExternalLink className="w-3.5 h-3.5" />
-          Open in new tab
+          {t('playground.openInNewTab')}
         </a>
       </Button>
 
       {/* Embed snippet */}
       <div>
-        <p className="text-xs font-medium text-text-secondary mb-2">Embed</p>
+        <p className="text-xs font-medium text-text-secondary mb-2">{t('playground.embed')}</p>
         <pre className="text-[10px] font-mono bg-bg-tertiary border border-border-subtle rounded p-2 overflow-auto text-text-secondary">
           {`<iframe\n  src="${shareableUrl}"\n  width="100%"\n  height="600"\n  frameborder="0"\n/>`}
         </pre>
@@ -305,6 +301,7 @@ function SharePanel() {
 // ─── Info Panel ───────────────────────────────────────────────────────────────
 
 function InfoPanel() {
+  const { t } = useTranslation();
   const { functionInfo } = usePlaygroundStore();
 
   if (!functionInfo) return null;
@@ -313,10 +310,10 @@ function InfoPanel() {
     <div className="p-3 space-y-3">
       <div className="space-y-2">
         {[
-          { label: 'Author', value: functionInfo.author },
-          { label: 'Name', value: functionInfo.name },
-          { label: 'Version', value: `v${functionInfo.version}` },
-          { label: 'Runtime', value: functionInfo.runtime || 'Unknown' },
+          { label: t('playground.author'), value: functionInfo.author },
+          { label: t('playground.name'), value: functionInfo.name },
+          { label: t('playground.version'), value: `v${functionInfo.version}` },
+          { label: t('playground.runtime'), value: functionInfo.runtime || 'Unknown' },
         ].map((item) => (
           <div key={item.label} className="flex items-center justify-between text-xs">
             <span className="text-text-muted">{item.label}</span>
@@ -327,7 +324,7 @@ function InfoPanel() {
 
       {functionInfo.description && (
         <div className="pt-2 border-t border-border-subtle">
-          <p className="text-xs text-text-muted mb-1">Description</p>
+          <p className="text-xs text-text-muted mb-1">{t('playground.description')}</p>
           <p className="text-xs text-text-secondary">{functionInfo.description}</p>
         </div>
       )}
@@ -336,7 +333,7 @@ function InfoPanel() {
         <div className="pt-2 border-t border-border-subtle">
           <p className="text-xs text-text-muted mb-2 flex items-center gap-1">
             <Tag className="w-3 h-3" />
-            Tags
+            {t('playground.tags')}
           </p>
           <div className="flex flex-wrap gap-1">
             {functionInfo.tags.map((tag) => (
@@ -357,7 +354,7 @@ function InfoPanel() {
           <div className="flex items-center justify-between text-xs">
             <span className="text-text-muted flex items-center gap-1">
               <DollarSign className="w-3 h-3" />
-              Price per call
+              {t('playground.pricePerCall')}
             </span>
             <span className="font-mono text-text-secondary">
               ${functionInfo.price_per_call.toFixed(6)}
@@ -369,7 +366,7 @@ function InfoPanel() {
           <div className="flex items-center justify-between text-xs">
             <span className="text-text-muted flex items-center gap-1">
               <Shield className="w-3 h-3" />
-              Reliability
+              {t('playground.reliability')}
             </span>
             <span
               className={cn(
@@ -390,7 +387,7 @@ function InfoPanel() {
           <div className="flex items-center justify-between text-xs">
             <span className="text-text-muted flex items-center gap-1">
               <Database className="w-3 h-3" />
-              Cache TTL
+              {t('playground.cacheTtl')}
             </span>
             <span className="font-mono text-text-secondary">{functionInfo.cache_ttl}s</span>
           </div>
@@ -405,7 +402,7 @@ function InfoPanel() {
       >
         <a href={`/fx/${functionInfo.author}/${functionInfo.name}`}>
           <ExternalLink className="w-3.5 h-3.5" />
-          View full docs
+          {t('playground.viewFullDocs')}
         </a>
       </Button>
     </div>
@@ -415,7 +412,16 @@ function InfoPanel() {
 // ─── Main Sidebar ─────────────────────────────────────────────────────────────
 
 export function PlaygroundSidebar({ className }: PlaygroundSidebarProps) {
+  const { t } = useTranslation();
   const { activeSidebarPanel, setActiveSidebarPanel } = usePlaygroundStore();
+
+  const PANELS: Array<{ id: SidebarPanel; icon: React.ReactNode; label: string }> = [
+    { id: 'history', icon: <History className="w-4 h-4" />, label: t('playground.history') },
+    { id: 'schema', icon: <TreePine className="w-4 h-4" />, label: t('playground.schema') },
+    { id: 'snippets', icon: <Code2 className="w-4 h-4" />, label: t('playground.snippets') },
+    { id: 'share', icon: <Share2 className="w-4 h-4" />, label: t('playground.share') },
+    { id: 'info', icon: <Info className="w-4 h-4" />, label: t('playground.info') },
+  ];
 
   return (
     <div className={cn('flex h-full border-l border-border-subtle bg-bg-primary', className)}>

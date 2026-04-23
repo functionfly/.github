@@ -7,6 +7,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Check, Code2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { SectionCard } from '../components/editor-ui';
 import { RUNTIME_META, RUNTIME_VERSIONS } from '../constants';
 import type { Runtime } from '../types';
@@ -15,12 +16,13 @@ import type { FunctionEditorModel } from '../useFunctionEditor';
 type Props = { editor: FunctionEditorModel };
 
 export function RuntimeSection({ editor }: Props) {
+  const { t } = useTranslation();
   const { runtime, runtimeVersion, setRuntimeVersion, handleRuntimeChange, markDirty } = editor;
 
   return (
-    <SectionCard icon={<Code2 className="w-4 h-4" />} title="Runtime Configuration" step={2}>
+    <SectionCard icon={<Code2 className="w-4 h-4" />} title={t('funcEditor.runtimeConfiguration')} step={2}>
       <div>
-        <Label className="text-xs font-medium text-text-secondary mb-2 block">Runtime</Label>
+        <Label className="text-xs font-medium text-text-secondary mb-2 block">{t('funcEditor.runtime')}</Label>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {(Object.entries(RUNTIME_META) as [Runtime, (typeof RUNTIME_META)[Runtime]][]).map(
             ([key, meta]) => (
@@ -61,7 +63,7 @@ export function RuntimeSection({ editor }: Props) {
           htmlFor="runtime-version"
           className="text-xs font-medium text-text-secondary mb-1.5 block"
         >
-          Version
+          {t('funcEditor.version')}
         </Label>
         <Select
           value={runtimeVersion}

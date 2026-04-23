@@ -2,6 +2,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Timer } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { InfoTip, SectionCard } from '../components/editor-ui';
 import type { FunctionEditorModel } from '../useFunctionEditor';
 import { formatTimeout } from '../utils';
@@ -16,22 +17,23 @@ const CONCURRENCY_MIN = 1;
 const CONCURRENCY_MAX = 100;
 
 export function ResourceLimitsSection({ editor }: Props) {
+  const { t } = useTranslation();
   const { resources, setResources, markDirty } = editor;
 
   return (
     <SectionCard
       icon={<Timer className="w-4 h-4" />}
-      title="Resource Limits"
+      title={t('funcEditor.resourceLimits')}
       step={5}
-      description="Control memory, timeout, and concurrency"
+      description={t('funcEditor.resourceLimitsDescription')}
     >
       <div className="space-y-5">
         {/* Memory */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <Label className="text-xs text-text-secondary flex items-center">
-              Memory
-              <InfoTip content="Maximum RAM allocated to your function per invocation." />
+              {t('funcEditor.memory')}
+              <InfoTip content={t('funcEditor.memoryInfoTip')} />
             </Label>
             <span className="text-xs font-mono font-semibold text-text-primary">
               {resources.memoryMb} MB
@@ -59,8 +61,8 @@ export function ResourceLimitsSection({ editor }: Props) {
         <div>
           <div className="flex items-center justify-between mb-2">
             <Label className="text-xs text-text-secondary flex items-center">
-              Timeout
-              <InfoTip content="Maximum execution time before the function is terminated." />
+              {t('funcEditor.timeout')}
+              <InfoTip content={t('funcEditor.timeoutInfoTip')} />
             </Label>
             <span className="text-xs font-mono font-semibold text-text-primary">
               {formatTimeout(resources.timeoutMs)}
@@ -88,8 +90,8 @@ export function ResourceLimitsSection({ editor }: Props) {
         <div>
           <div className="flex items-center justify-between mb-2">
             <Label htmlFor="concurrency" className="text-xs text-text-secondary flex items-center">
-              Max Concurrency
-              <InfoTip content="Maximum simultaneous executions of this function." />
+              {t('funcEditor.maxConcurrency')}
+              <InfoTip content={t('funcEditor.maxConcurrencyInfoTip')} />
             </Label>
             <span className="text-xs font-mono font-semibold text-text-primary">
               {resources.maxConcurrency}

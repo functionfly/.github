@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +42,7 @@ export function CreateAPIKeyModal({
   onOpenChange,
   onSuccess,
 }: CreateAPIKeyModalProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [showKey, setShowKey] = useState<string | null>(null);
@@ -92,7 +94,7 @@ export function CreateAPIKeyModal({
     setError(null);
 
     if (!name.trim()) {
-      setError("Name is required");
+      setError(t("createApiKey.nameRequired"));
       return;
     }
 
@@ -131,7 +133,7 @@ export function CreateAPIKeyModal({
           ? apiMessage
           : err instanceof Error
             ? err.message
-            : "Failed to create API key"
+            : t("createApiKey.failedToCreate")
       );
     } finally {
       setIsLoading(false);
@@ -153,10 +155,10 @@ export function CreateAPIKeyModal({
     try {
       await navigator.clipboard.writeText(showKey);
       setCopied(true);
-      toast.success("API key copied to clipboard");
+      toast.success(t("createApiKey.apiKeyCopied"));
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("Failed to copy");
+      toast.error(t("createApiKey.failedToCopy"));
     }
   };
 
@@ -165,16 +167,15 @@ export function CreateAPIKeyModal({
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>API Key Created</DialogTitle>
+            <DialogTitle>{t("createApiKey.keyCreatedTitle")}</DialogTitle>
             <DialogDescription>
-              Your new API key has been created. Copy it now as it will not be
-              shown again.
+              {t("createApiKey.keyCreatedDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="bg-muted p-4 rounded-lg">
               <div className="flex items-center justify-between mb-2">
-                <Label className="text-muted-foreground">API Key</Label>
+                <Label className="text-muted-foreground">{t("createApiKey.apiKey")}</Label>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -182,24 +183,22 @@ export function CreateAPIKeyModal({
                   className="text-xs"
                   disabled={copied}
                 >
-                  {copied ? "Copied!" : "Copy"}
+                  {copied ? t("createApiKey.copied") : t("createApiKey.copy")}
                 </Button>
               </div>
               <code className="text-sm break-all font-mono">{showKey}</code>
             </div>
             <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
               <p className="text-sm text-amber-800 dark:text-amber-200">
-                <strong>Important:</strong> This is the only time you will see
-                this key. Store it securely. If you lose it, you will need to
-                create a new API key.
+                <strong>{t("createApiKey.important")}</strong> {t("createApiKey.importantDescription")}
               </p>
             </div>
           </div>
           <DialogFooter>
-            <p className="text-xs text-muted-foreground mr-auto">
-              Closes automatically in {countdownSeconds}s
-            </p>
-            <Button onClick={handleClose}>Done</Button>
+              <p className="text-xs text-muted-foreground mr-auto">
+                {t("createApiKey.closesAutomatically", { countdownSeconds })}
+              </p>
+            <Button onClick={handleClose}>{t("createApiKey.done")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -210,9 +209,9 @@ export function CreateAPIKeyModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Create API Key</DialogTitle>
+          <DialogTitle>{t("createApiKey.createTitle")}</DialogTitle>
           <DialogDescription>
-            Create a new API key for programmatic access to the platform.
+            {t("createApiKey.createDescription")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -223,30 +222,30 @@ export function CreateAPIKeyModal({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="name">Name *</Label>
+            <Label htmlFor="name">{t("createApiKey.name")}</Label>
             <Input
               id="name"
-              placeholder="My API Key"
+              placeholder={t("createApiKey.namePlaceholder")}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description (optional)</Label>
+            <Label htmlFor="description">{t("createApiKey.description")}</Label>
             <Textarea
               id="description"
-              placeholder="Describe what this key is for..."
+              placeholder={t("createApiKey.descriptionPlaceholder")}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="keyType">Key Type *</Label>
+            <Label htmlFor="keyType">{t("createApiKey.keyType")}</Label>
             <Select value={keyType} onValueChange={(v) => setKeyType(v as APIKeyType)}>
               <SelectTrigger className="create-api-key-key-type-trigger">
-                <SelectValue placeholder="Select key type" />
+                <SelectValue placeholder={t("createApiKey.selectKeyType")} />
               </SelectTrigger>
               <SelectContent className="create-api-key-key-type-dropdown">
                 {(Object.keys(API_KEY_TYPE_LABELS) as APIKeyType[]).map((type) => (
@@ -262,12 +261,12 @@ export function CreateAPIKeyModal({
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              The type determines what resources this key can access.
+              {t("createApiKey.keyTypeHelp")}
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="rotationDays">Rotation Frequency (days)</Label>
+            <Label htmlFor="rotationDays">{t("createApiKey.rotationFrequency")}</Label>
             <Input
               id="rotationDays"
               type="number"
@@ -277,7 +276,7 @@ export function CreateAPIKeyModal({
               onChange={(e) => setRotationDays(parseInt(e.target.value, 10) || DEFAULT_ROTATION_DAYS)}
             />
             <p className="text-xs text-muted-foreground">
-              How often the key should be rotated (1-365 days)
+              {t("createApiKey.rotationHelp")}
             </p>
           </div>
 
@@ -316,10 +315,10 @@ export function CreateAPIKeyModal({
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t("createApiKey.cancel")}
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Creating..." : "Create API Key"}
+              {isLoading ? t("createApiKey.creating") : t("createApiKey.create")}
             </Button>
           </DialogFooter>
         </form>

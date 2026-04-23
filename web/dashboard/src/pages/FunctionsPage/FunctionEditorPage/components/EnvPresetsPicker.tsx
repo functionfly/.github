@@ -133,13 +133,13 @@ const ENV_PRESETS: EnvPreset[] = [
   },
 ];
 
-const CATEGORIES = [
-  { id: 'all', label: 'All' },
-  { id: 'database', label: 'Database' },
-  { id: 'api', label: 'APIs' },
-  { id: 'security', label: 'Security' },
-  { id: 'email', label: 'Email' },
-  { id: 'storage', label: 'Storage' },
+const CATEGORIES_KEYS = [
+  { id: 'all', labelKey: 'funcEditor.allCategory' as const },
+  { id: 'database', labelKey: 'funcEditor.databaseCategory' as const },
+  { id: 'api', labelKey: 'funcEditor.apisCategory' as const },
+  { id: 'security', labelKey: 'funcEditor.securityCategory' as const },
+  { id: 'email', labelKey: 'funcEditor.emailCategory' as const },
+  { id: 'storage', labelKey: 'funcEditor.storageCategory' as const },
 ];
 
 interface EnvPresetsPickerProps {
@@ -150,8 +150,10 @@ interface EnvPresetsPickerProps {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export function EnvPresetsPicker({ onSelect, children }: EnvPresetsPickerProps) {
+  const { t } = useTranslation();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [open, setOpen] = useState(false);
 
@@ -173,15 +175,15 @@ export function EnvPresetsPicker({ onSelect, children }: EnvPresetsPickerProps) 
         style={{ background: 'var(--bg-secondary)' }}
       >
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-base font-display">
-            <Layers className="w-5 h-5 text-[#FF6B35]" />
-            Environment Variable Presets
-          </DialogTitle>
+            <DialogTitle className="flex items-center gap-2 text-base font-display">
+              <Layers className="w-5 h-5 text-[#FF6B35]" />
+              {t('funcEditor.envPresets')}
+            </DialogTitle>
         </DialogHeader>
 
         {/* Category filters */}
         <div className="flex flex-wrap gap-2 mt-2">
-          {CATEGORIES.map((cat) => (
+          {CATEGORIES_KEYS.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
@@ -191,7 +193,7 @@ export function EnvPresetsPicker({ onSelect, children }: EnvPresetsPickerProps) 
                   : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'
               }`}
             >
-              {cat.label}
+              {t(cat.labelKey)}
             </button>
           ))}
         </div>
@@ -237,7 +239,7 @@ export function EnvPresetsPicker({ onSelect, children }: EnvPresetsPickerProps) 
                   onClick={() => handleSelect(preset)}
                   className="shrink-0"
                 >
-                  Add
+                  {t('funcEditor.add')}
                 </Button>
               </div>
             ))}
@@ -245,7 +247,7 @@ export function EnvPresetsPicker({ onSelect, children }: EnvPresetsPickerProps) 
         </ScrollArea>
 
         <p className="text-xs text-text-muted mt-2">
-          Variables marked with 🔒 will be stored securely as secrets.
+          {t('funcEditor.secretsMarkedInfo')}
         </p>
       </DialogContent>
     </Dialog>

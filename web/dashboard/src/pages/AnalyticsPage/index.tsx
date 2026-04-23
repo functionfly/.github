@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/common/StatCard";
@@ -9,6 +10,7 @@ import { UsageGraph } from "@/components/dashboard";
 import { LineChart } from "@/components/common/LineChart";
 
 export function AnalyticsPage() {
+  const { t } = useTranslation();
   const [timeRange, setTimeRange] = useState<"24h" | "7d" | "30d">("7d");
 
   // Map time range to days for API calls
@@ -61,30 +63,30 @@ export function AnalyticsPage() {
 
   const stats = [
     {
-      title: "Total Requests",
+      title: t('analytics.totalRequests'),
       value: functionsLoading ? "—" : totalRequests > 0 ? totalRequests.toLocaleString() : "0",
-      change: { value: 0, label: totalRequests > 0 ? `last ${timeRange}` : "no data yet" },
+      change: { value: 0, label: totalRequests > 0 ? t('analytics.lastTimeRange', { timeRange }) : t('analytics.noDataYet') },
       icon: <Globe className="w-5 h-5 text-brand-500" />,
       trend: totalRequests > 0 ? "up" as const : "neutral" as const,
     },
     {
-      title: "Avg Latency",
+      title: t('analytics.avgLatency'),
       value: functionsLoading || metricsLoading ? "—" : avgLatency != null && avgLatency >= 0 ? `${avgLatency}ms` : "—",
-      change: { value: 0, label: avgLatency != null ? "last 7d" : "no data yet" },
+      change: { value: 0, label: avgLatency != null ? t('analytics.last7d') : t('analytics.noDataYet') },
       icon: <Clock className="w-5 h-5 text-brand-500" />,
       trend: avgLatency != null && avgLatency < 100 ? "down" as const : "neutral" as const,
     },
     {
-      title: "Error Rate",
+      title: t('analytics.errorRate'),
       value: functionsLoading || metricsLoading ? "—" : errorRate != null ? `${errorRate}%` : "—",
-      change: { value: 0, label: errorRate != null ? "last 7d" : "no data yet" },
+      change: { value: 0, label: errorRate != null ? t('analytics.last7d') : t('analytics.noDataYet') },
       icon: <AlertTriangle className="w-5 h-5 text-error" />,
       trend: errorRate != null && errorRate < 1 ? "down" as const : "neutral" as const,
     },
     {
-      title: "Success Rate",
+      title: t('analytics.successRate'),
       value: functionsLoading || metricsLoading ? "—" : successRate != null ? `${successRate}%` : "—",
-      change: { value: 0, label: successRate != null ? "last 7d" : "no data yet" },
+      change: { value: 0, label: successRate != null ? t('analytics.last7d') : t('analytics.noDataYet') },
       icon: <TrendingUp className="w-5 h-5 text-success" />,
       trend: successRate != null && successRate > 99 ? "up" as const : "neutral" as const,
     },
@@ -95,8 +97,8 @@ export function AnalyticsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Analytics</h1>
-          <p className="text-text-secondary">Monitor your application's performance</p>
+          <h1 className="text-2xl font-bold text-text-primary">{t('analytics.title')}</h1>
+          <p className="text-text-secondary">{t('analytics.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           {/* Time Range Controls */}
@@ -107,7 +109,7 @@ export function AnalyticsPage() {
               size="sm"
               onClick={() => setTimeRange(range)}
             >
-              {range === "24h" ? "24 Hours" : range === "7d" ? "7 Days" : "30 Days"}
+              {range === "24h" ? t('analytics.hours24') : range === "7d" ? t('analytics.days7') : t('analytics.days30')}
             </Button>
           ))}
         </div>
@@ -130,11 +132,11 @@ export function AnalyticsPage() {
       {!functionsLoading && !usageLoading && !executionRateLoading && !metricsLoading && functions.length === 0 && (
         <EmptyState
           icon={<Rocket className="h-8 w-8" />}
-          title="No functions deployed yet"
-          description="Deploy your first function to start seeing analytics data and performance metrics."
+          title={t('analytics.noFunctionsDeployed')}
+          description={t('analytics.noFunctionsDescription')}
           action={
             <Button asChild>
-              <a href="/functions">Deploy a Function</a>
+              <a href="/functions">{t('analytics.deployFunction')}</a>
             </Button>
           }
         />
@@ -145,7 +147,7 @@ export function AnalyticsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>Requests Over Time</CardTitle>
+              <CardTitle>{t('analytics.requestsOverTime')}</CardTitle>
             </CardHeader>
             <CardContent>
               {usageChartData.length > 0 ? (
@@ -153,12 +155,12 @@ export function AnalyticsPage() {
                   <UsageGraph
                     data={usageChartData}
                     title=""
-                    valueLabel="Requests"
+                    valueLabel={t('analytics.requests')}
                   />
                 </div>
               ) : (
                 <div className="h-[300px] flex items-center justify-center">
-                  <p className="text-text-muted text-sm">No request data available for this time period.</p>
+                  <p className="text-text-muted text-sm">{t('analytics.noRequestData')}</p>
                 </div>
               )}
             </CardContent>
@@ -166,7 +168,7 @@ export function AnalyticsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Execution Rate</CardTitle>
+              <CardTitle>{t('analytics.executionRate')}</CardTitle>
             </CardHeader>
             <CardContent>
               {executionChartData.length > 0 ? (
@@ -176,7 +178,7 @@ export function AnalyticsPage() {
                     series={[
                       {
                         key: "value",
-                        name: "Executions",
+                        name: t('analytics.executions'),
                         color: "#6366f1",
                       },
                     ]}
@@ -186,7 +188,7 @@ export function AnalyticsPage() {
                 </div>
               ) : (
                 <div className="h-[300px] flex items-center justify-center">
-                  <p className="text-text-muted text-sm">No execution data available for this time period.</p>
+                  <p className="text-text-muted text-sm">{t('analytics.noExecutionData')}</p>
                 </div>
               )}
             </CardContent>

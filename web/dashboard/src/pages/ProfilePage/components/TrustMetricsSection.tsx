@@ -53,7 +53,7 @@ function TrustScoreRing({ score }: { score: number }) {
         />
       </svg>
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-0 px-1">
-        <span className={cn('text-xl font-bold leading-none tabular-nums', colorConfig.text)}>
+        <span className={cn('text-xl font-bold font-mono leading-none tabular-nums', colorConfig.text)}>
           {Math.round(normalized)}
         </span>
         <span className="text-[10px] font-medium leading-tight text-text-muted">% trust</span>
@@ -85,7 +85,7 @@ export function TrustMetricsSection({ trustScore }: TrustMetricsSectionProps) {
   return (
     <Card className="border-border-subtle">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
+        <CardTitle className="text-lg font-display flex items-center gap-2">
           <Target className="w-5 h-5 text-brand-500" />
           Trust Metrics
         </CardTitle>
@@ -125,7 +125,7 @@ export function TrustMetricsSection({ trustScore }: TrustMetricsSectionProps) {
                   />
                 </div>
               </div>
-              <span className="text-sm font-medium text-text-primary w-10 text-right">
+              <span className="text-sm font-medium font-mono tabular-nums text-text-primary w-10 text-right">
                 {Math.round(metric.score)}
               </span>
             </div>

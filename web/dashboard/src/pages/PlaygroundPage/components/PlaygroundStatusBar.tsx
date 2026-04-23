@@ -6,11 +6,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useTranslation } from 'react-i18next';
 import { usePlaygroundStore } from '../store/playgroundStore';
 import { usePlaygroundState } from '../hooks/usePlaygroundState';
 import { KEYBOARD_SHORTCUTS } from '../hooks/usePlaygroundKeyboard';
 
 export function PlaygroundStatusBar() {
+  const { t } = useTranslation();
   const { executionResult, functionInfo } = usePlaygroundStore();
   const { averageLatency, successRate } = usePlaygroundState();
 
@@ -26,7 +28,7 @@ export function PlaygroundStatusBar() {
         <div className="flex items-center gap-1.5">
           <Clock className="w-3 h-3" />
           <span>
-            Last run:{' '}
+            {t('playground.lastRun')}{' '}
             <span
               className={
                 executionResult.ok ? 'text-green-400' : 'text-red-400'
@@ -42,7 +44,7 @@ export function PlaygroundStatusBar() {
       {averageLatency !== null && (
         <div className="flex items-center gap-1.5">
           <Zap className="w-3 h-3" />
-          <span>Avg: {averageLatency}ms</span>
+          <span>{t('playground.avg')} {averageLatency}ms</span>
         </div>
       )}
 
@@ -57,9 +59,9 @@ export function PlaygroundStatusBar() {
                 ? 'text-yellow-400'
                 : 'text-red-400'
             }
-          >
-            {successRate}% success
-          </span>
+            >
+              {t('playground.successRate', { rate: successRate })}
+            </span>
         </div>
       )}
 
@@ -67,7 +69,7 @@ export function PlaygroundStatusBar() {
       {executionResult?.cached && (
         <div className="flex items-center gap-1.5 text-amber-400">
           <Database className="w-3 h-3" />
-          <span>Cached</span>
+          <span>{t('playground.cached')}</span>
         </div>
       )}
 
@@ -94,12 +96,12 @@ export function PlaygroundStatusBar() {
           <TooltipTrigger asChild>
             <button className="flex items-center gap-1 hover:text-text-secondary transition-colors">
               <Keyboard className="w-3 h-3" />
-              <span>Shortcuts</span>
+              <span>{t('playground.shortcuts')}</span>
             </button>
           </TooltipTrigger>
           <TooltipContent side="top" align="end" className="p-3 max-w-xs">
             <div className="space-y-1.5">
-              <p className="text-xs font-medium mb-2">Keyboard Shortcuts</p>
+               <p className="text-xs font-medium mb-2">{t('playground.keyboardShortcuts')}</p>
               {KEYBOARD_SHORTCUTS.map((shortcut, i) => (
                 <div key={i} className="flex items-center justify-between gap-4 text-xs">
                   <span className="text-text-muted">{shortcut.description}</span>

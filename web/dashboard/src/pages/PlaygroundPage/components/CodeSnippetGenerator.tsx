@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { CodeBlock } from '@/components/common/CodeBlock';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 import { usePlaygroundStore } from '../store/playgroundStore';
 import {
   generateSnippet,
@@ -14,13 +15,14 @@ interface CodeSnippetGeneratorProps {
 }
 
 export function CodeSnippetGenerator({ className }: CodeSnippetGeneratorProps) {
+  const { t } = useTranslation();
   const [activeLanguage, setActiveLanguage] = useState<SnippetLanguage>('curl');
   const { functionInfo, inputValue } = usePlaygroundStore();
 
   if (!functionInfo) {
     return (
       <div className={cn('text-xs text-text-muted text-center py-4', className)}>
-        No function loaded
+        {t('playground.noFunctionLoaded')}
       </div>
     );
   }

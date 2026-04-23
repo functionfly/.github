@@ -57,7 +57,7 @@ export function CurrentPlanSection({
     <>
       <div className="flex items-center justify-between p-4 rounded-lg bg-linear-to-r from-brand-500/10 to-brand-600/10 border border-border-default">
         <div>
-          <h3 className="font-semibold text-text-primary capitalize">{subscription.plan} Plan</h3>
+          <h3 className="font-semibold font-display text-text-primary capitalize">{subscription.plan} Plan</h3>
           <div className="flex items-center gap-2 mt-1">
             <Badge variant={subscription.status === 'active' ? 'success' : 'secondary'} className={subscription.status === 'active' ? 'ff-badge-success' : ''}>
               {subscription.status}
@@ -185,7 +185,7 @@ export function CurrentPlanSection({
                         <span>{metric.label}</span>
                       </div>
                       <span
-                        className={`font-medium tabular-nums ${isOver ? 'text-red-400' : 'text-text-secondary'}`}
+                        className={`font-medium font-mono tabular-nums ${isOver ? 'text-red-400' : 'text-text-secondary'}`}
                       >
                         {metric.current.toLocaleString()} / {metric.limit.toLocaleString()}
                       </span>
@@ -234,14 +234,14 @@ export function CurrentPlanSection({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-xs text-text-muted mb-1">By period end</p>
-              <p className="text-lg font-semibold text-text-primary tabular-nums">
-                {projectedBilling.projectedTotal.toLocaleString()}
-                <span className="text-xs text-text-muted ml-1">requests</span>
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-text-muted mb-1">Daily rate</p>
-              <p className="text-lg font-semibold text-text-primary tabular-nums">
+               <p className="text-lg font-semibold font-mono text-text-primary tabular-nums">
+                 {projectedBilling.projectedTotal.toLocaleString()}
+                 <span className="text-xs text-text-muted ml-1">requests</span>
+               </p>
+             </div>
+             <div>
+               <p className="text-xs text-text-muted mb-1">Daily rate</p>
+               <p className="text-lg font-semibold font-mono text-text-primary tabular-nums">
                 {projectedBilling.dailyRate > 0
                   ? Math.round(projectedBilling.dailyRate).toLocaleString()
                   : '—'}

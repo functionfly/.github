@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -62,6 +63,7 @@ function NotificationsPageSkeleton() {
 // ============================================================================
 
 export function NotificationsPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const { updateUnreadCounts } = useNotificationStore();
@@ -167,15 +169,15 @@ export function NotificationsPage() {
     <div className="min-h-screen p-4 lg:p-6">
       {/* Page Header */}
       <PageHeader
-        title="Notifications"
-        subtitle="Stay updated on your functions, trust scores, and system alerts"
+        title={t('notificationsPage.title')}
+        subtitle={t('notificationsPage.subtitle')}
         breadcrumbs={[
-          { label: 'Home', path: '/dashboard' },
-          { label: 'Notifications' },
+          { label: t('notificationsPage.home'), path: '/dashboard' },
+          { label: t('notificationsPage.breadcrumbNotifications') },
         ]}
         actions={[
           {
-            label: 'Back',
+            label: t('notificationsPage.back'),
             onClick: handleBack,
             variant: 'outline',
             icon: ArrowLeft,
@@ -231,7 +233,7 @@ export function NotificationsPage() {
             <div className="flex items-center gap-3 px-4 py-3 border-b border-white/8">
               <Bell className="h-5 w-5 text-brand-400" />
               <h2 className="text-lg font-semibold text-text-primary">
-                Activity Feed
+                {t('notificationsPage.activityFeed')}
               </h2>
             </div>
             <ScrollArea className="h-[calc(100vh-300px)]">

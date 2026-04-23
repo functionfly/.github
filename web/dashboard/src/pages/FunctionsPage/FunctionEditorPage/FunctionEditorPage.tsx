@@ -7,6 +7,7 @@
  */
 
 import '@/styles/components.css';
+import { useTranslation } from 'react-i18next';
 import { ActionBar } from './ActionBar';
 import { ConfigSummary } from './ConfigSummary';
 import { FunctionEditorVaultDialogs } from './components/FunctionEditorVaultDialogs';
@@ -25,6 +26,7 @@ import { VisibilitySection } from './sections/VisibilitySection';
 import { useFunctionEditor } from './useFunctionEditor';
 
 export function FunctionEditorPage() {
+  const { t } = useTranslation();
   const editor = useFunctionEditor();
   const { isEditing } = editor;
 
@@ -48,21 +50,21 @@ export function FunctionEditorPage() {
             <CodeEditorSectionMobile editor={editor} />
 
             {/* Collapsible sections for progressive disclosure */}
-            <SectionCollapsible title="Environment & Resources" defaultOpen={false}>
+            <SectionCollapsible title={t('funcEditor.environmentResources')} defaultOpen={false}>
               <div className="space-y-4">
                 <EnvVarsSection editor={editor} />
                 <ResourceLimitsSection editor={editor} />
               </div>
             </SectionCollapsible>
 
-            <SectionCollapsible title="Triggers & Access" defaultOpen={false}>
+            <SectionCollapsible title={t('funcEditor.triggersAccess')} defaultOpen={false}>
               <div className="space-y-4">
                 <TriggersSection editor={editor} />
                 <VisibilitySection editor={editor} />
               </div>
             </SectionCollapsible>
 
-            <SectionCollapsible title="Deployment & Advanced" defaultOpen={false}>
+            <SectionCollapsible title={t('funcEditor.deploymentAdvanced')} defaultOpen={false}>
               <div className="space-y-4">
                 <DeployTargetSection editor={editor} />
                 <AdvancedSection editor={editor} />

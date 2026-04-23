@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertCircle, Check, ChevronDown, ChevronRight, Copy } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SchemaNode, flattenSchema, getTypeBadgeColor } from '../utils/schemaHelpers';
 
 interface SchemaExplorerProps {
@@ -18,6 +19,7 @@ interface SchemaNodeItemProps {
 }
 
 function SchemaNodeItem({ node, depth, onFieldClick }: SchemaNodeItemProps) {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(depth < 1);
   const [copied, setCopied] = useState(false);
   const hasChildren = (node.properties && node.properties.length > 0) || node.items;
@@ -72,7 +74,7 @@ function SchemaNodeItem({ node, depth, onFieldClick }: SchemaNodeItemProps) {
             <span className="font-mono text-text-primary font-medium">{node.key}</span>
 
             {node.required && (
-              <span className="text-red-400 text-[10px]" title="Required">
+              <span className="text-red-400 text-[10px]" title={t('playground.required')}>
                 *
               </span>
             )}
@@ -100,7 +102,7 @@ function SchemaNodeItem({ node, depth, onFieldClick }: SchemaNodeItemProps) {
 
           {node.example !== undefined && (
             <p className="text-text-muted mt-0.5 text-[11px]">
-              <span className="text-text-secondary">Example:</span>{' '}
+              <span className="text-text-secondary">{t('playground.example')}</span>{' '}
               <span className="font-mono text-green-400">
                 {typeof node.example === 'string'
                   ? `"${node.example}"`
@@ -182,13 +184,14 @@ function SchemaNodeItem({ node, depth, onFieldClick }: SchemaNodeItemProps) {
 }
 
 export function SchemaExplorer({ schema, onFieldClick, className }: SchemaExplorerProps) {
+  const { t } = useTranslation();
   const nodes = flattenSchema(schema);
 
   if (nodes.length === 0) {
     return (
       <div className={cn('flex flex-col items-center justify-center py-8 text-center', className)}>
         <AlertCircle className="w-8 h-8 text-text-muted mb-2" />
-        <p className="text-sm text-text-muted">No schema available</p>
+        <p className="text-sm text-text-muted">{t('playground.noSchemaAvailable')}</p>
       </div>
     );
   }

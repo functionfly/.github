@@ -5,15 +5,13 @@
  */
 
 import { FunctionCard } from '@/components/functions/FunctionCard';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { UserProfile } from '@/types';
 import { motion } from 'framer-motion';
-import { Activity, Star } from 'lucide-react';
+import { Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { tabContentVariants } from '../../animations';
 import { AchievementsSection } from '../AchievementsSection';
-import { ActivityTimeline } from '../ActivityTimeline';
-import { ContributionGraph } from '../ContributionGraph';
+import { ContributionActivity } from '../ContributionActivity';
 import { SkillsSection } from '../SkillsSection';
 import { TrustMetricsSection } from '../TrustMetricsSection';
 
@@ -38,7 +36,7 @@ export function OverviewTab({ profile }: OverviewTabProps) {
       {featuredFunctions.length > 0 && (
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+            <h2 className="text-lg font-semibold font-display text-text-primary flex items-center gap-2">
               <Star className="w-5 h-5 text-brand-500" />
               Featured Functions
             </h2>
@@ -56,21 +54,13 @@ export function OverviewTab({ profile }: OverviewTabProps) {
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Activity & Contribution */}
-        <div className="lg:col-span-2 space-y-6">
-          <ContributionGraph data={profile.stats.contributionGraph} />
-
-          <Card className="border-border-subtle">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Activity className="w-5 h-5 text-brand-500" />
-                Recent Activity
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ActivityTimeline activities={profile.recentActivity.slice(0, 6)} />
-            </CardContent>
-          </Card>
+        {/* Left Column - Contribution Activity */}
+        <div className="lg:col-span-2">
+          <ContributionActivity
+            profile={profile}
+            maxActivities={6}
+            compact
+          />
         </div>
 
         {/* Right Column - Achievements, Skills, Trust */}

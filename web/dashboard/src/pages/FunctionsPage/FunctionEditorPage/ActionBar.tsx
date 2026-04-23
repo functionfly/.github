@@ -12,22 +12,24 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { KeyboardShortcutsDialog } from './components/KeyboardShortcutsDialog';
 import type { FunctionEditorModel } from './useFunctionEditor';
 
 type Props = { editor: FunctionEditorModel };
 
-function formatRelativeTime(date: Date): string {
+function formatRelativeTime(date: Date, t: (key: string, opts?: Record<string, unknown>) => string): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (seconds < 5) return 'just now';
-  if (seconds < 60) return `${seconds}s ago`;
+  if (seconds < 5) return t('funcEditor.justNow');
+  if (seconds < 60) return t('funcEditor.secondsAgo', { count: seconds });
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  return `${Math.floor(minutes / 60)}h ago`;
+  if (minutes < 60) return t('funcEditor.minutesAgo', { count: minutes });
+  return t('funcEditor.hoursAgo', { count: Math.floor(minutes / 60) });
 }
 
 export function ActionBar({ editor }: Props) {
+  const { t } = useTranslation();
   const {
     navigate,
     isEditing,
@@ -51,9 +53,9 @@ export function ActionBar({ editor }: Props) {
 
   useEffect(() => {
     if (!lastSaved) return;
-    setRelativeTime(formatRelativeTime(lastSaved));
+    setRelativeTime(formatRelativeTime(lastSaved, t));
     const interval = setInterval(() => {
-      setRelativeTime(formatRelativeTime(lastSaved));
+      setRelativeTime(formatRelativeTime(lastSaved, t));
     }, 10000);
     return () => clearInterval(interval);
   }, [lastSaved]);
@@ -74,11 +76,11 @@ export function ActionBar({ editor }: Props) {
             <div className="flex items-center gap-2 text-sm">
               <Clock className="w-4 h-4 text-[#FF6B35] shrink-0" />
               <span className="text-text-secondary">
-                You have an unsaved draft{draftTimestamp && (
+                {t('funcEditor.unsavedDraft')}{draftTimestamp && (
                   <span className="text-text-muted ml-1">
-                    from {formatRelativeTime(draftTimestamp)}
+                    {t('funcEditor.unsavedDraftFrom', { time: formatRelativeTime(draftTimestamp, t) })}
                   </span>
-                )}. Would you like to restore it?
+                )}. {t('funcEditor.restoreItQuestion')}
               </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -89,7 +91,7 @@ export function ActionBar({ editor }: Props) {
                 className="text-text-muted hover:text-text-primary h-7 gap-1"
               >
                 <X className="w-3.5 h-3.5" />
-                Discard
+                {t('funcEditor.discard')}
               </Button>
               <Button
                 size="sm"
@@ -101,7 +103,7 @@ export function ActionBar({ editor }: Props) {
                   border: 'none',
                 }}
               >
-                Restore Draft
+                {t('funcEditor.restoreDraft')}
               </Button>
             </div>
           </div>
@@ -120,7 +122,7 @@ export function ActionBar({ editor }: Props) {
                 size="icon"
                 onClick={() => navigate('/functions')}
                 className="shrink-0 text-text-secondary hover:text-[#FF6B35]"
-                aria-label="Back to functions"
+                aria-label={t('funcEditor.backToFunctions')}
               >
                 <ArrowLeft className="w-4 h-4" />
               </Button>
@@ -129,11 +131,11 @@ export function ActionBar({ editor }: Props) {
                 to="/functions"
                 className="text-text-muted hover:text-text-primary transition-colors truncate"
               >
-                Functions
+                {t('funcEditor.breadcrumbFunctions')}
               </Link>
               <ChevronRight className="w-3.5 h-3.5 text-text-muted shrink-0" />
               <span className="text-[#FF6B35] font-medium truncate font-display">
-                {isEditing ? functionName || 'Edit Function' : functionName || 'New Function'}
+                {isEditing ? functionName || t('funcEditor.breadcrumbEditFunction') : functionName || t('funcEditor.breadcrumbNewFunction')}
               </span>
             </nav>
           </div>
@@ -145,12 +147,12 @@ export function ActionBar({ editor }: Props) {
             ) : isDirty ? (
               <span className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                Unsaved changes
+                {t('funcEditor.unsavedChanges')}
               </span>
             ) : lastSaved ? (
               <span className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                Draft saved {relativeTime}
+                {t('funcEditor.draftSavedTime', { time: relativeTime })}
               </span>
             ) : null}
           </div>
@@ -160,7 +162,7 @@ export function ActionBar({ editor }: Props) {
             <KeyboardShortcutsDialog>
               <button
                 className="hidden md:flex items-center gap-1.5 text-xs text-text-muted hover:text-text-primary transition-colors px-2 py-1 rounded-md hover:bg-bg-tertiary"
-                aria-label="Keyboard shortcuts"
+                aria-label={t('funcEditor.keyboardShortcuts')}
               >
                 <Keyboard className="w-3.5 h-3.5" />
                 <kbd className="hidden lg:inline-flex items-center px-1.5 py-0.5 rounded bg-bg-tertiary border border-border-subtle text-[10px] font-mono">
@@ -174,7 +176,7 @@ export function ActionBar({ editor }: Props) {
               onClick={() => navigate('/functions')}
               className="text-text-secondary hover:text-[#FF6B35] hidden sm:flex"
             >
-              Cancel
+              {t('funcEditor.cancelAction')}
             </Button>
             <Button
               variant="outline"
@@ -188,7 +190,7 @@ export function ActionBar({ editor }: Props) {
               ) : (
                 <Play className="w-3.5 h-3.5" />
               )}
-              Test
+              {t('funcEditor.test')}
             </Button>
             <Button
               variant="outline"
@@ -202,7 +204,7 @@ export function ActionBar({ editor }: Props) {
               ) : (
                 <Save className="w-3.5 h-3.5" />
               )}
-              <span className="hidden sm:inline">Save Draft</span>
+              <span className="hidden sm:inline">{t('funcEditor.saveDraft')}</span>
             </Button>
             <Button
               size="sm"
@@ -220,7 +222,7 @@ export function ActionBar({ editor }: Props) {
               ) : (
                 <Rocket className="w-3.5 h-3.5" />
               )}
-              {isDeploying ? 'Deploying…' : 'Deploy'}
+              {isDeploying ? t('funcEditor.deploying') : t('funcEditor.deployAction')}
             </Button>
           </div>
         </div>

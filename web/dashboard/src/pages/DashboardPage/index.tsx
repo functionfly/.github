@@ -45,9 +45,11 @@ import { useQuery, useQueries } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Activity, Building2, FunctionSquare, Globe, Loader2, Play, X, Zap } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
 export function DashboardPage() {
+  const { t } = useTranslation();
   const { canResume, completedSteps } = useOnboardingStore();
   const navigate = useNavigate();
   const { isPaid: isOnPaidPlan, hasMinPlan } = usePlan();
@@ -220,7 +222,7 @@ export function DashboardPage() {
 
   const avgLatencyMs = metricsData?.avg_latency_ms;
   const avgLatencyDisplay = avgLatencyMs != null ? `${Math.round(avgLatencyMs)}ms` : '—';
-  const avgLatencyLabel = avgLatencyMs != null ? 'last 7 days' : 'no data yet';
+  const avgLatencyLabel = avgLatencyMs != null ? t('dashboard.last7Days') : t('dashboard.noDataYet');
 
   // Pre-computed data for sections (must be at top level, not inside useMemo callback)
   const errorRateDataPrecomputed = useMemo<ErrorRateDataPoint[]>(() => {
@@ -267,10 +269,10 @@ export function DashboardPage() {
           >
             <div className="text-center lg:text-left">
               <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-4">
-                <span className="text-text-primary text-glow">Dashboard</span>
+                <span className="text-text-primary text-glow">{t('dashboard.title')}</span>
               </h1>
               <p className="text-text-secondary text-lg">
-                Welcome back! Here&apos;s what&apos;s happening with your functions.
+                {t('dashboard.welcomeMessage')}
               </p>
             </div>
             <div className="flex justify-center sm:justify-end">
@@ -294,30 +296,30 @@ export function DashboardPage() {
           >
             <EnterpriseStatusCard />
             <MetricCard
-              title="Active Functions"
+              title={t('dashboard.activeFunctions')}
               value={functionsLoading ? '—' : activeFunctions}
-              changeLabel="total deployed"
+              changeLabel={t('dashboard.totalDeployed')}
               icon={<FunctionSquare className="h-5 w-5" />}
             />
             <MetricCard
-              title="Avg Latency"
+              title={t('dashboard.avgLatency')}
               value={metricsLoading ? '—' : avgLatencyDisplay}
               changeLabel={avgLatencyLabel}
               icon={<Zap className="h-5 w-5" />}
             />
             <MetricCard
-              title="Uptime"
+              title={t('dashboard.uptime')}
               value={metricsLoading ? '—' : uptimePct != null ? `${uptimePct.toFixed(1)}%` : '—'}
               changePercent={uptimeChangePercent}
-              changeLabel="vs last 7d"
+              changeLabel={t('dashboard.vsLast7d')}
               sparklineData={uptimeSparkline}
               icon={<Activity className="h-5 w-5" />}
             />
             <MetricCard
-              title="Requests This Month"
+              title={t('dashboard.requestsThisMonth')}
               value={metricsLoading ? '—' : formatRequests(requestsThisMonth)}
               changePercent={requestsChangePercent}
-              changeLabel="vs last month"
+              changeLabel={t('dashboard.vsLastMonth')}
               sparklineData={requestsSparkline}
               icon={<Globe className="h-5 w-5" />}
             />
@@ -333,9 +335,9 @@ export function DashboardPage() {
             transition={{ duration: 0.5, delay: 0.15 }}
           >
             <QuickCreateAgentCard
-              title="Deploy a function"
-              description="Create and deploy a new function in minutes."
-              actionLabel="New function"
+              title={t('dashboard.deployAFunction')}
+              description={t('dashboard.deployDescription')}
+              actionLabel={t('dashboard.newFunction')}
               isLocked={isFree}
               onCreateClick={() => navigate('/functions/new')}
               onUpgradeClick={() => setShowPlanModal(true)}
@@ -357,7 +359,7 @@ export function DashboardPage() {
                 <Loader2 className="h-8 w-8 animate-spin text-text-muted" />
               </Card>
             ) : (
-              <UsageGraph data={usageGraphData} title="Usage (last 14 days)" valueLabel="Requests" />
+              <UsageGraph data={usageGraphData} title={t('dashboard.usageLast14Days')} valueLabel={t('dashboard.requests')} />
             )}
             {executionRateLoading ? (
               <Card className="border-theme bg-card h-[280px] flex items-center justify-center">
@@ -366,7 +368,7 @@ export function DashboardPage() {
             ) : (
               <ExecutionRateChart
                 data={executionRateData}
-                title="Execution rate (last 24h)"
+                title={t('dashboard.executionRateLast24h')}
                 unit="exec/s"
               />
             )}
@@ -387,11 +389,11 @@ export function DashboardPage() {
                 <Loader2 className="h-8 w-8 animate-spin text-text-muted mx-auto" />
               </Card>
             ) : (
-              <MemoryUsageGauge percent={memoryData?.percent ?? 0} label="Memory" size="md" />
+              <MemoryUsageGauge percent={memoryData?.percent ?? 0} label={t('dashboard.memory')} size="md" />
             )}
             <Card className="border-theme bg-card flex flex-col justify-center p-6">
               <CardHeader className="p-0 pb-2">
-                <CardTitle className="text-sm font-medium text-text-secondary">Trust score</CardTitle>
+                <CardTitle className="text-sm font-medium text-text-secondary">{t('dashboard.trustScore')}</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 {functionsLoading || trustScoresLoading ? (
@@ -409,7 +411,7 @@ export function DashboardPage() {
             <Card className="border-theme bg-card flex flex-col justify-center p-6">
               <CardHeader className="p-0 pb-3">
                 <CardTitle className="text-sm font-medium text-text-secondary">
-                  Real-time Status
+                  {t('dashboard.realtimeStatus')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
@@ -427,13 +429,13 @@ export function DashboardPage() {
                   />
                   <div className="flex flex-col min-w-0">
                     <span className="text-sm font-medium text-text-primary truncate">
-                      Active monitoring
+                      {t('dashboard.activeMonitoring')}
                     </span>
                     <span className="text-xs text-text-muted">
                       {activeFunctions === 0 ? (
-                        <span className="italic">No functions deployed</span>
+                        <span className="italic">{t('dashboard.noFunctionsDeployed')}</span>
                       ) : (
-                        `${activeFunctions} function${activeFunctions !== 1 ? 's' : ''} deployed`
+                        t('dashboard.functionsDeployed', { count: activeFunctions })
                       )}
                     </span>
                   </div>
@@ -537,14 +539,14 @@ export function DashboardPage() {
             ) : !providerStatusList.length ? (
               <Card className="glass-card glow hover-lift">
                 <CardContent className="flex flex-col items-center justify-center py-12">
-                  <p className="text-text-secondary text-sm">No providers connected yet.</p>
+                  <p className="text-text-secondary text-sm">{t('dashboard.noProvidersConnected')}</p>
                   <Button
                     variant="outline"
                     size="sm"
                     className="mt-3"
                     onClick={() => navigate('/providers')}
                   >
-                    Connect a Provider
+                    {t('dashboard.connectAProvider')}
                   </Button>
                 </CardContent>
               </Card>
@@ -565,7 +567,7 @@ export function DashboardPage() {
           >
             <Card className="glass-card glow hover-lift">
               <CardHeader>
-                <CardTitle className="text-text-primary text-glow">Recent Apps</CardTitle>
+                <CardTitle className="text-text-primary text-glow">{t('dashboard.recentApps')}</CardTitle>
               </CardHeader>
               <CardContent>
                 {appsLoading ? (
@@ -574,14 +576,14 @@ export function DashboardPage() {
                   </div>
                 ) : apps.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-text-secondary text-sm">No apps yet.</p>
+                    <p className="text-text-secondary text-sm">{t('dashboard.noAppsYet')}</p>
                     <Button
                       variant="outline"
                       size="sm"
                       className="mt-3"
                       onClick={() => navigate('/apps')}
                     >
-                      Create an App
+                      {t('dashboard.createAnApp')}
                     </Button>
                   </div>
                 ) : (
@@ -611,7 +613,7 @@ export function DashboardPage() {
 
             <Card className="glass-card glow hover-lift">
               <CardHeader>
-                <CardTitle className="text-text-primary text-glow">Recent Functions</CardTitle>
+                <CardTitle className="text-text-primary text-glow">{t('dashboard.recentFunctions')}</CardTitle>
               </CardHeader>
               <CardContent>
                 {functionsLoading ? (
@@ -620,14 +622,14 @@ export function DashboardPage() {
                   </div>
                 ) : functions.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-text-secondary text-sm">No functions deployed yet.</p>
+                    <p className="text-text-secondary text-sm">{t('dashboard.noFunctionsDeployedYet')}</p>
                     <Button
                       variant="outline"
                       size="sm"
                       className="mt-3"
                       onClick={() => navigate('/functions/new')}
                     >
-                      Deploy a Function
+                      {t('dashboard.deployAFunctionBtn')}
                     </Button>
                   </div>
                 ) : (
@@ -670,7 +672,7 @@ export function DashboardPage() {
                 <Loader2 className="h-8 w-8 animate-spin text-text-muted" />
               </Card>
             ) : (
-              <AgentActivityFeed activities={agentActivities} title="Recent activity" maxItems={5} />
+              <AgentActivityFeed activities={agentActivities} title={t('dashboard.recentActivityTitle')} maxItems={5} />
             )}
           </motion.div>
         ),
@@ -702,17 +704,16 @@ export function DashboardPage() {
                 <Play className="w-5 h-5 text-[#6366f1]" />
               </div>
               <div>
-                <h3 className="font-semibold text-text-primary">Complete Your Setup</h3>
+                <h3 className="font-semibold text-text-primary">{t('dashboard.completeYourSetup')}</h3>
                 <p className="text-sm text-text-secondary">
-                  You've completed {completedSteps.length} of 4 onboarding steps. Continue where you
-                  left off to unlock all features.
+                  {t('dashboard.onboardingProgress', { completed: completedSteps.length })}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Button onClick={handleResumeOnboarding} className="btn-primary" size="sm">
                 <Play className="w-4 h-4 mr-2" />
-                Resume Setup
+                {t('dashboard.resumeSetup')}
               </Button>
               <Button
                 variant="ghost"

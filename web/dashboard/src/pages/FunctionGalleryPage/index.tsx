@@ -460,7 +460,7 @@ export function FunctionGalleryPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => navigate('/ai-composer')}>
+          <Button variant="outline" onClick={() => navigate('/ai/composer')}>
             <Sparkles className="mr-2 h-4 w-4" />
             Create with AI
           </Button>

@@ -43,7 +43,7 @@ export function getApiErrorMessage(
 export const VALID_TABS = [
   'account',
   'billing',
-  'api',
+  'developer',
   'notifications',
   'security',
   'privacy',

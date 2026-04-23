@@ -373,6 +373,12 @@ export const usersApi = {
     apiClient.patch<{ message: string }>(`/v1/users/me/settings/privacy`, data),
 
   /**
+   * Update current user security settings (session timeout, remember devices).
+   */
+  updateMySecuritySettings: (data: { sessionTimeout?: string; rememberDevices?: boolean }) =>
+    apiClient.patch<{ message: string }>(`/v1/users/me/settings/security`, data),
+
+  /**
    * Update user privacy settings by username.
    */
   updatePrivacySettings: (username: string, data: Record<string, boolean>) =>
@@ -532,13 +538,20 @@ export const usersApi = {
    * Create a Stripe checkout session for paid username changes.
    * Used when user has used their 2 free changes and wants to pay the early-change fee.
    */
-  createUsernameChangeCheckout: (data: {
+  createUsernameChangeCheckout: async (data: {
     new_username: string;
     success_url?: string;
     cancel_url?: string;
-  }) =>
-    apiClient.post<{ session_id: string; url: string; pending_id: string; message: string }>(
+  }) => {
+    const csrfToken = await apiClient.fetchCSRFToken();
+    const headers: Record<string, string> = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+    return apiClient.post<{ session_id: string; url: string; pending_id: string; message: string }>(
       '/v1/users/me/username/checkout',
-      data
-    ),
+      data,
+      { headers }
+    );
+  },
 };
