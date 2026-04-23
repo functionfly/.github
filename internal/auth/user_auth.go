@@ -780,7 +780,7 @@ func (a *AuthService) ChangeUsername(ctx context.Context, userID uuid.UUID, req 
 		return nil, fmt.Errorf("you have exceeded your username change limit for this year")
 	}
 
-	// Record the username change in history before updating user
+	// Record the username change in history and update user atomically
 	history := &storage.UsernameChangeHistory{
 		ID:             uuid.New(),
 		UserID:         userID,
@@ -798,17 +798,8 @@ func (a *AuthService) ChangeUsername(ctx context.Context, userID uuid.UUID, req 
 		history.StripePaymentID = &req.StripePaymentID
 	}
 
-	if err := a.repo.CreateUsernameChangeHistory(ctx, history); err != nil {
-		return nil, fmt.Errorf("failed to record username change: %w", err)
-	}
-
-	// Update user's username
-	updates := map[string]interface{}{
-		"username": clean,
-	}
-	_, err = a.repo.UpdateUser(ctx, userID, updates)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update username: %w", err)
+	if err := a.repo.ChangeUsernameWithHistory(ctx, userID, clean, history); err != nil {
+		return nil, fmt.Errorf("failed to change username: %w", err)
 	}
 
 	return &ChangeUsernameResponse{

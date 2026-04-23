@@ -57,6 +57,250 @@ func validateDomain(requestURL string) error {
 	return fmt.Errorf("domain not allowed: %s (allowed: %v)", host, globalSecurityConfig.AllowedDomains)
 }
 
+// defineStateFabricHostFunctions registers StateFabric host functions with the linker
+func defineStateFabricHostFunctions(linker *wasmtime.Linker, store *wasmtime.Store, handler HostFunctionHandler) error {
+	// Define state_get function
+	// (param $path_ptr i32) (param $path_len i32) (param $val_ptr i32) (param $val_len_ptr i32) (result i32)
+	if err := linker.DefineFunc(store, "functionfly", "state_get",
+		func(caller *wasmtime.Caller, pathPtr, pathLen, valPtr, valLenPtr int32) int32 {
+			memory := caller.GetExport("memory").Memory()
+			if memory == nil {
+				return -1
+			}
+
+			memoryData := memory.UnsafeData(store)
+
+			// Security: Validate pointer bounds for path
+			if err := validateMemoryBounds(memoryData, pathPtr, pathLen); err != nil {
+				return -1
+			}
+
+			path := string(memoryData[pathPtr : pathPtr+pathLen])
+
+			// Get value from StateFabric
+			value, err := handler.StateGet(path)
+			if err != nil {
+				return -1
+			}
+
+			valueBytes := []byte(value)
+			valLen := len(valueBytes)
+
+			// Security: Check output size limit
+			if globalSecurityConfig != nil && uint32(valLen) > globalSecurityConfig.MaxOutputSize {
+				return -1
+			}
+
+			// Security: Validate pointer bounds for value
+			if err := validateMemoryBounds(memoryData, valPtr, int32(valLen)); err != nil {
+				return -1
+			}
+
+			// Write value
+			copy(memoryData[valPtr:], valueBytes)
+
+			// Write value length
+			if err := validateMemoryBounds(memoryData, valLenPtr, 4); err != nil {
+				return -1
+			}
+			memoryData[valLenPtr] = byte(valLen)
+			memoryData[valLenPtr+1] = byte(valLen >> 8)
+			memoryData[valLenPtr+2] = byte(valLen >> 16)
+			memoryData[valLenPtr+3] = byte(valLen >> 24)
+
+			return 0
+		}); err != nil {
+		return fmt.Errorf("failed to define state_get function: %w", err)
+	}
+
+	// Define state_set function
+	// (param $path_ptr i32) (param $path_len i32) (param $val_ptr i32) (param $val_len i32) (result i32)
+	if err := linker.DefineFunc(store, "functionfly", "state_set",
+		func(caller *wasmtime.Caller, pathPtr, pathLen, valPtr, valLen int32) int32 {
+			memory := caller.GetExport("memory").Memory()
+			if memory == nil {
+				return -1
+			}
+
+			memoryData := memory.UnsafeData(store)
+
+			// Security: Validate pointer bounds for path
+			if err := validateMemoryBounds(memoryData, pathPtr, pathLen); err != nil {
+				return -1
+			}
+
+			path := string(memoryData[pathPtr : pathPtr+pathLen])
+
+			// Security: Validate pointer bounds for value
+			if err := validateMemoryBounds(memoryData, valPtr, valLen); err != nil {
+				return -1
+			}
+
+			value := string(memoryData[valPtr : valPtr+valLen])
+
+			// Security: Check input size limit
+			if globalSecurityConfig != nil && uint32(len(value)) > globalSecurityConfig.MaxInputSize {
+				return -1
+			}
+
+			// Set value in StateFabric
+			if err := handler.StateSet(path, value); err != nil {
+				return -1
+			}
+
+			return 0
+		}); err != nil {
+		return fmt.Errorf("failed to define state_set function: %w", err)
+	}
+
+	// Define state_delete function
+	// (param $path_ptr i32) (param $path_len i32) (result i32)
+	if err := linker.DefineFunc(store, "functionfly", "state_delete",
+		func(caller *wasmtime.Caller, pathPtr, pathLen int32) int32 {
+			memory := caller.GetExport("memory").Memory()
+			if memory == nil {
+				return -1
+			}
+
+			memoryData := memory.UnsafeData(store)
+
+			// Security: Validate pointer bounds for path
+			if err := validateMemoryBounds(memoryData, pathPtr, pathLen); err != nil {
+				return -1
+			}
+
+			path := string(memoryData[pathPtr : pathPtr+pathLen])
+
+			// Delete value from StateFabric
+			if err := handler.StateDelete(path); err != nil {
+				return -1
+			}
+
+			return 0
+		}); err != nil {
+		return fmt.Errorf("failed to define state_delete function: %w", err)
+	}
+
+	// Define state_get_fabric function
+	// (param $fabric_id_ptr i32) (param $fabric_id_len i32) (param $resp_ptr i32) (param $resp_len_ptr i32) (result i32)
+	if err := linker.DefineFunc(store, "functionfly", "state_get_fabric",
+		func(caller *wasmtime.Caller, fabricIDPtr, fabricIDLen, respPtr, respLenPtr int32) int32 {
+			memory := caller.GetExport("memory").Memory()
+			if memory == nil {
+				return -1
+			}
+
+			memoryData := memory.UnsafeData(store)
+
+			// Security: Validate pointer bounds for fabric ID
+			if err := validateMemoryBounds(memoryData, fabricIDPtr, fabricIDLen); err != nil {
+				return -1
+			}
+
+			fabricID := string(memoryData[fabricIDPtr : fabricIDPtr+fabricIDLen])
+
+			// Get fabric metadata from StateFabric
+			fabricInfo, err := handler.StateGetFabric(fabricID)
+			if err != nil {
+				return -1
+			}
+
+			fabricBytes := []byte(fabricInfo)
+			respLen := len(fabricBytes)
+
+			// Security: Check output size limit
+			if globalSecurityConfig != nil && uint32(respLen) > globalSecurityConfig.MaxOutputSize {
+				return -1
+			}
+
+			// Security: Validate pointer bounds for response
+			if err := validateMemoryBounds(memoryData, respPtr, int32(respLen)); err != nil {
+				return -1
+			}
+
+			// Write fabric info
+			copy(memoryData[respPtr:], fabricBytes)
+
+			// Write response length
+			if err := validateMemoryBounds(memoryData, respLenPtr, 4); err != nil {
+				return -1
+			}
+			memoryData[respLenPtr] = byte(respLen)
+			memoryData[respLenPtr+1] = byte(respLen >> 8)
+			memoryData[respLenPtr+2] = byte(respLen >> 16)
+			memoryData[respLenPtr+3] = byte(respLen >> 24)
+
+			return 0
+		}); err != nil {
+		return fmt.Errorf("failed to define state_get_fabric function: %w", err)
+	}
+
+	// Define state_create_snapshot function
+	// (param $path_ptr i32) (param $path_len i32) (param $label_ptr i32) (param $label_len i32) (param $resp_ptr i32) (param $resp_len_ptr i32) (result i32)
+	if err := linker.DefineFunc(store, "functionfly", "state_create_snapshot",
+		func(caller *wasmtime.Caller, pathPtr, pathLen, labelPtr, labelLen, respPtr, respLenPtr int32) int32 {
+			memory := caller.GetExport("memory").Memory()
+			if memory == nil {
+				return -1
+			}
+
+			memoryData := memory.UnsafeData(store)
+
+			// Security: Validate pointer bounds for path
+			if err := validateMemoryBounds(memoryData, pathPtr, pathLen); err != nil {
+				return -1
+			}
+
+			path := string(memoryData[pathPtr : pathPtr+pathLen])
+
+			// Validate label pointer (can be empty)
+			var label string
+			if labelLen > 0 {
+				if err := validateMemoryBounds(memoryData, labelPtr, labelLen); err != nil {
+					return -1
+				}
+				label = string(memoryData[labelPtr : labelPtr+labelLen])
+			}
+
+			// Create snapshot via StateFabric
+			snapshot, err := handler.StateCreateSnapshot(path, label)
+			if err != nil {
+				return -1
+			}
+
+			snapshotBytes := []byte(snapshot)
+			respLen := len(snapshotBytes)
+
+			// Security: Check output size limit
+			if globalSecurityConfig != nil && uint32(respLen) > globalSecurityConfig.MaxOutputSize {
+				return -1
+			}
+
+			// Security: Validate pointer bounds for response
+			if err := validateMemoryBounds(memoryData, respPtr, int32(respLen)); err != nil {
+				return -1
+			}
+
+			// Write snapshot info
+			copy(memoryData[respPtr:], snapshotBytes)
+
+			// Write response length
+			if err := validateMemoryBounds(memoryData, respLenPtr, 4); err != nil {
+				return -1
+			}
+			memoryData[respLenPtr] = byte(respLen)
+			memoryData[respLenPtr+1] = byte(respLen >> 8)
+			memoryData[respLenPtr+2] = byte(respLen >> 16)
+			memoryData[respLenPtr+3] = byte(respLen >> 24)
+
+			return 0
+		}); err != nil {
+		return fmt.Errorf("failed to define state_create_snapshot function: %w", err)
+	}
+
+	return nil
+}
+
 // defineHostFunctions registers all FunctionFly host functions with the linker
 func defineHostFunctions(linker *wasmtime.Linker, store *wasmtime.Store, handler HostFunctionHandler) error {
 
@@ -406,6 +650,10 @@ func defineHostFunctions(linker *wasmtime.Linker, store *wasmtime.Store, handler
 		return fmt.Errorf("failed to define ai_infer function: %w", err)
 	}
 
+	// Register StateFabric host functions for edge state access
+	if err := defineStateFabricHostFunctions(linker, store, handler); err != nil {
+		return fmt.Errorf("failed to define state fabric host functions: %w", err)
+	}
+
 	return nil
 }
-

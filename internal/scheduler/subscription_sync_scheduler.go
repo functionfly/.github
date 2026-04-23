@@ -279,11 +279,11 @@ func (s *SubscriptionSyncScheduler) syncTenantPaymentMethod(ctx context.Context,
 		return fmt.Errorf("failed to fetch customer from Stripe: %w", err)
 	}
 
-	// Check for default payment method
-	if c.DefaultPaymentMethod != nil && c.DefaultPaymentMethod.ID != "" {
-		pm, err := paymentmethod.Get(c.DefaultPaymentMethod.ID, nil)
+	// Check for default payment method via InvoiceSettings
+	if c.InvoiceSettings != nil && c.InvoiceSettings.DefaultPaymentMethod != nil && c.InvoiceSettings.DefaultPaymentMethod.ID != "" {
+		pm, err := paymentmethod.Get(c.InvoiceSettings.DefaultPaymentMethod.ID, nil)
 		if err != nil {
-			s.logger.WithError(err).WithField("payment_method_id", c.DefaultPaymentMethod.ID).Warn("Failed to fetch payment method details")
+			s.logger.WithError(err).WithField("payment_method_id", c.InvoiceSettings.DefaultPaymentMethod.ID).Warn("Failed to fetch payment method details")
 			return nil // Don't fail the sync for this
 		}
 

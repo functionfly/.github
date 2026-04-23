@@ -339,18 +339,18 @@ func (r *PostgresRepository) SavePreference(ctx context.Context, p *Notification
 
 // CreateDefaultPreferences creates default preferences for a new user
 func (r *PostgresRepository) CreateDefaultPreferences(ctx context.Context, userID uuid.UUID) error {
-	categories := []string{CategorySystem, CategorySecurity, CategoryBilling, CategoryDeployment, CategoryFunction, CategoryTeam}
+	categories := []string{CategorySystem, CategorySecurity, CategoryBilling, CategoryDeployment, CategoryFunction, CategoryTeam, CategoryMessages}
 	channels := []string{ChannelEmail, ChannelInApp}
 
 	for _, category := range categories {
 		for _, channel := range channels {
 			pref := &NotificationPreference{
-				UserID:   userID,
-				Channel:  channel,
-				Category: category,
-				Enabled:  true,
+				UserID:    userID,
+				Channel:   channel,
+				Category:  category,
+				Enabled:   true,
 				Frequency: FrequencyImmediate,
-				Timezone: "UTC",
+				Timezone:  "UTC",
 			}
 			if err := r.SavePreference(ctx, pref); err != nil {
 				return err

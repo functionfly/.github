@@ -32,14 +32,15 @@ func (FunctionCache) TableName() string {
 // DiskCache provides L2 persistent caching using GORM
 // This survives restarts and handles repeated calls efficiently
 type DiskCache struct {
-	db *gorm.DB
+	db   *gorm.DB
+	stop chan struct{} // Stop signal for background cleanup goroutine
 }
 
 // NewDiskCache creates a new disk cache with the given GORM database
 // Note: The function_cache table should be created via migrations (see migrations/ directory)
 // This function assumes the table already exists
 func NewDiskCache(db *gorm.DB) (*DiskCache, error) {
-	return &DiskCache{db: db}, nil
+	return &DiskCache{db: db, stop: make(chan struct{})}, nil
 }
 
 // Get retrieves a cache entry by key
@@ -185,10 +186,20 @@ func (d *DiskCache) StartCleanupJob(interval time.Duration) {
 	go func() {
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
-		for range ticker.C {
-			d.Cleanup()
+		for {
+			select {
+			case <-ticker.C:
+				d.Cleanup()
+			case <-d.stop:
+				return
+			}
 		}
 	}()
+}
+
+// Stop stops the background cleanup job
+func (d *DiskCache) Stop() {
+	close(d.stop)
 }
 
 // GetByFunctionAndVersion retrieves all cache entries for a function version

@@ -80,6 +80,10 @@ type Session struct {
 	// MFA
 	MFAVerified bool `gorm:"default:false"`
 
+	// Trusted device tokens — when set, the session is bound to a trusted device
+	// and gets extended expiry (30 days vs the default session max age)
+	TrustedDeviceToken string `gorm:"size:64;index"`
+
 	// Security
 	IPAddress string `gorm:"size:45"` // IPv6 max length
 	UserAgent string `gorm:"type:text"`

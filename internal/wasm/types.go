@@ -40,6 +40,29 @@ type HostFunctionHandler interface {
 	// params: JSON string of model parameters
 	// Returns: JSON response string with output, latency, cost
 	AIInference(model string, input []byte, params string) (string, error)
+	// StateFabric operations for edge functions
+	// StateGet retrieves a value from StateFabric
+	// path: full state path (tenant/fabric/key)
+	// Returns: JSON string with value and metadata
+	StateGet(path string) (string, error)
+	// StateSet stores a value in StateFabric
+	// path: full state path (tenant/fabric/key)
+	// value: JSON string of the value to store
+	// Returns: error if operation fails
+	StateSet(path string, value string) error
+	// StateDelete removes a value from StateFabric
+	// path: full state path (tenant/fabric/key)
+	// Returns: error if operation fails
+	StateDelete(path string) error
+	// StateGetFabric retrieves fabric metadata and stores
+	// fabricID: the fabric identifier
+	// Returns: JSON string with fabric configuration
+	StateGetFabric(fabricID string) (string, error)
+	// StateCreateSnapshot creates a snapshot of current state
+	// path: state path to snapshot
+	// label: optional snapshot label
+	// Returns: JSON string with snapshot metadata
+	StateCreateSnapshot(path string, label string) (string, error)
 }
 
 // DefaultHostHandler provides default implementations of host functions
@@ -146,4 +169,34 @@ func (h *DefaultHostHandler) GetEnv(name string) (string, error) {
 // DefaultHostHandler returns an error since AI inference is not configured
 func (h *DefaultHostHandler) AIInference(model string, input []byte, params string) (string, error) {
 	return "", fmt.Errorf("ai inference not configured: use a handler with AI inference enabled")
+}
+
+// StateGet retrieves a value from StateFabric
+// DefaultHostHandler returns an error since StateFabric is not configured
+func (h *DefaultHostHandler) StateGet(path string) (string, error) {
+	return "", fmt.Errorf("state fabric not configured: use a handler with StateFabric enabled")
+}
+
+// StateSet stores a value in StateFabric
+// DefaultHostHandler returns an error since StateFabric is not configured
+func (h *DefaultHostHandler) StateSet(path string, value string) error {
+	return fmt.Errorf("state fabric not configured: use a handler with StateFabric enabled")
+}
+
+// StateDelete removes a value from StateFabric
+// DefaultHostHandler returns an error since StateFabric is not configured
+func (h *DefaultHostHandler) StateDelete(path string) error {
+	return fmt.Errorf("state fabric not configured: use a handler with StateFabric enabled")
+}
+
+// StateGetFabric retrieves fabric metadata
+// DefaultHostHandler returns an error since StateFabric is not configured
+func (h *DefaultHostHandler) StateGetFabric(fabricID string) (string, error) {
+	return "", fmt.Errorf("state fabric not configured: use a handler with StateFabric enabled")
+}
+
+// StateCreateSnapshot creates a snapshot of state
+// DefaultHostHandler returns an error since StateFabric is not configured
+func (h *DefaultHostHandler) StateCreateSnapshot(path string, label string) (string, error) {
+	return "", fmt.Errorf("state fabric not configured: use a handler with StateFabric enabled")
 }

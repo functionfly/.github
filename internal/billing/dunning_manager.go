@@ -21,6 +21,7 @@ type DunningManager struct {
 	userRepo        storage.Repository
 	notificationSvc *notification.Service
 	stripeKey       string
+	stop            chan struct{}
 }
 
 // NewDunningManager creates a new dunning manager
@@ -35,6 +36,7 @@ func NewDunningManager(
 		userRepo:        userRepo,
 		notificationSvc: notificationSvc,
 		stripeKey:       stripeKey,
+		stop:            make(chan struct{}),
 	}
 }
 
@@ -686,4 +688,14 @@ func (m *DunningManager) sendServiceRestoredNotification(ctx context.Context, te
 	}
 
 	return nil
+}
+
+// Stop signals the dunning processors to stop for graceful shutdown
+func (m *DunningManager) Stop() {
+	close(m.stop)
+}
+
+// StopChan returns the stop channel for the dunning processors
+func (m *DunningManager) StopChan() <-chan struct{} {
+	return m.stop
 }

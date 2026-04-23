@@ -86,6 +86,70 @@ func (sm *SessionManager) GetUserSessions(db *gorm.DB, userID uuid.UUID) ([]Sess
 	return sessions, err
 }
 
+// CreateSessionTrusted creates a new session for a trusted device with extended expiry (30 days).
+// trustedToken is a device-level token used to recognize and trust this device on future logins.
+func (sm *SessionManager) CreateSessionTrusted(db *gorm.DB, userID, tenantID uuid.UUID, ipAddress, userAgent string, trustedToken string) (*Session, error) {
+	token, err := generateSessionToken()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate session token: %w", err)
+	}
+
+	expiresAt := time.Now().Add(30 * 24 * time.Hour) // 30 days for trusted devices
+
+	session := &Session{
+		UserID:             userID,
+		TenantID:           tenantID,
+		SessionToken:       token,
+		TrustedDeviceToken: trustedToken,
+		IPAddress:          ipAddress,
+		UserAgent:          userAgent,
+		ExpiresAt:          expiresAt,
+	}
+
+	if err := db.Create(session).Error; err != nil {
+		return nil, fmt.Errorf("failed to create trusted session: %w", err)
+	}
+
+	return session, nil
+}
+
+// GetSessionByTrustedToken returns an active session matching the given trusted device token.
+// Used during login to "promote" a device to a trusted session if the user has rememberDevices enabled.
+func (sm *SessionManager) GetSessionByTrustedToken(db *gorm.DB, userID uuid.UUID, trustedToken string) (*Session, error) {
+	var session Session
+	err := db.Where("user_id = ? AND trusted_device_token = ? AND expires_at > ?", userID, trustedToken, time.Now()).
+		First(&session).Error
+	if err != nil {
+		return nil, fmt.Errorf("trusted session not found: %w", err)
+	}
+	return &session, nil
+}
+
+// GetOrCreateTrustedSession returns an existing trusted session or creates a new one.
+// This is called during login when rememberDevices is enabled.
+func (sm *SessionManager) GetOrCreateTrustedSession(db *gorm.DB, userID, tenantID uuid.UUID, ipAddress, userAgent string, trustedToken string) (*Session, error) {
+	// Try to get existing trusted session
+	session, err := sm.GetSessionByTrustedToken(db, userID, trustedToken)
+	if err == nil {
+		// Update activity and return existing session
+		db.Model(&session).Updates(map[string]interface{}{
+			"last_activity": time.Now(),
+			"ip_address":    ipAddress,
+			"user_agent":    userAgent,
+			"expires_at":    time.Now().Add(30 * 24 * time.Hour), // refresh expiry
+		})
+		return session, nil
+	}
+
+	// Create new trusted session
+	return sm.CreateSessionTrusted(db, userID, tenantID, ipAddress, userAgent, trustedToken)
+}
+
+// DeleteTrustedSessions deletes all trusted sessions for a user (used when disabling rememberDevices).
+func (sm *SessionManager) DeleteTrustedSessions(db *gorm.DB, userID uuid.UUID) error {
+	return db.Where("user_id = ? AND trusted_device_token IS NOT NULL AND trusted_device_token != ''", userID).Delete(&Session{}).Error
+}
+
 // SetSessionCookie sets the session cookie on an HTTP response
 func (sm *SessionManager) SetSessionCookie(w http.ResponseWriter, token string) {
 	cookie := &http.Cookie{

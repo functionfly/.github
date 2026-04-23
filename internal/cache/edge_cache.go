@@ -19,6 +19,7 @@ type EdgeCacheService struct {
 	minPopularity int                 // Minimum popularity score for edge caching
 	minExecutions int64               // Minimum execution count for edge caching
 	cacheDuration time.Duration       // How long to cache at edge
+	stop          chan struct{}       // Stop signal for background goroutines
 }
 
 // EdgeCacheRepository interface for database operations needed by edge cache
@@ -30,30 +31,30 @@ type EdgeCacheRepository interface {
 
 // EdgeCacheCandidate represents a function that could be cached at edge
 type EdgeCacheCandidate struct {
-	FunctionID     uuid.UUID `json:"function_id"`
-	FunctionName   string    `json:"function_name"`
-	Author         string    `json:"author"`
-	Version        string    `json:"version"`
-	PopularityScore int      `json:"popularity_score"`
-	ExecutionCount int64     `json:"execution_count"`
-	SuccessRate    float64   `json:"success_rate"`
-	AvgLatency     int       `json:"avg_latency"`
-	TrustScore     float64   `json:"trust_score"`
-	LastExecuted   *time.Time `json:"last_executed"`
-	CachePriority  int       `json:"cache_priority"` // Calculated priority score
+	FunctionID      uuid.UUID  `json:"function_id"`
+	FunctionName    string     `json:"function_name"`
+	Author          string     `json:"author"`
+	Version         string     `json:"version"`
+	PopularityScore int        `json:"popularity_score"`
+	ExecutionCount  int64      `json:"execution_count"`
+	SuccessRate     float64    `json:"success_rate"`
+	AvgLatency      int        `json:"avg_latency"`
+	TrustScore      float64    `json:"trust_score"`
+	LastExecuted    *time.Time `json:"last_executed"`
+	CachePriority   int        `json:"cache_priority"` // Calculated priority score
 }
 
 // EdgeCacheConfig holds edge caching configuration
 type EdgeCacheConfig struct {
-	Enabled                bool          // Whether edge caching is enabled
-	MinPopularityScore     int           // Minimum popularity score required
-	MinExecutionCount      int           // Minimum execution count required
-	MinTrustScore          float64       // Minimum trust score required
-	MinSuccessRate         float64       // Minimum success rate required
-	MaxLatencyMs           int           // Maximum average latency allowed
-	CacheDuration          time.Duration // How long to cache at edge
-	MaxEdgeFunctions       int           // Maximum functions to cache at edge
-	RefreshInterval        time.Duration // How often to refresh edge cache list
+	Enabled            bool          // Whether edge caching is enabled
+	MinPopularityScore int           // Minimum popularity score required
+	MinExecutionCount  int           // Minimum execution count required
+	MinTrustScore      float64       // Minimum trust score required
+	MinSuccessRate     float64       // Minimum success rate required
+	MaxLatencyMs       int           // Maximum average latency allowed
+	CacheDuration      time.Duration // How long to cache at edge
+	MaxEdgeFunctions   int           // Maximum functions to cache at edge
+	RefreshInterval    time.Duration // How often to refresh edge cache list
 }
 
 // NewEdgeCacheService creates a new edge cache service
@@ -78,6 +79,7 @@ func NewEdgeCacheService(registryCache *RegistryRedisCache, cdnService *CDNServi
 		minPopularity: config.MinPopularityScore,
 		minExecutions: int64(config.MinExecutionCount),
 		cacheDuration: config.CacheDuration,
+		stop:          make(chan struct{}),
 	}
 
 	if config.Enabled {
@@ -96,10 +98,10 @@ func (e *EdgeCacheService) SetRepository(repo EdgeCacheRepository) {
 // IsEligibleForEdgeCaching determines if a function should be cached at edge
 func (e *EdgeCacheService) IsEligibleForEdgeCaching(functionID uuid.UUID, popularityScore int, executionCount int64, trustScore float64, successRate float64, avgLatency int) bool {
 	return popularityScore >= e.minPopularity &&
-		   executionCount >= e.minExecutions &&
-		   trustScore >= 70.0 && // Minimum trust score
-		   successRate >= 95.0 && // Minimum success rate
-		   avgLatency <= 5000 // Maximum latency 5 seconds
+		executionCount >= e.minExecutions &&
+		trustScore >= 70.0 && // Minimum trust score
+		successRate >= 95.0 && // Minimum success rate
+		avgLatency <= 5000 // Maximum latency 5 seconds
 }
 
 // CalculateCachePriority calculates a priority score for edge caching
@@ -116,7 +118,7 @@ func (e *EdgeCacheService) CalculateCachePriority(candidate *EdgeCacheCandidate)
 		recencyBonus = 10
 	}
 
-	return int(popularityWeight + executionWeight + trustWeight + successWeight) + recencyBonus
+	return int(popularityWeight+executionWeight+trustWeight+successWeight) + recencyBonus
 }
 
 // GetEdgeCacheCandidates finds functions eligible for edge caching
@@ -135,10 +137,10 @@ func (e *EdgeCacheService) GetEdgeCacheCandidates(ctx context.Context) ([]*EdgeC
 	// Query database for edge cache candidates
 	minPopularity := e.minPopularity
 	minExecutionCount := int(e.minExecutions)
-	minTrustScore := 70.0    // Minimum trust score
-	minSuccessRate := 95.0   // Minimum success rate
-	maxLatencyMs := 5000     // Maximum latency 5 seconds
-	limit := 200             // Get more candidates, will be filtered later
+	minTrustScore := 70.0  // Minimum trust score
+	minSuccessRate := 95.0 // Minimum success rate
+	maxLatencyMs := 5000   // Maximum latency 5 seconds
+	limit := 200           // Get more candidates, will be filtered later
 
 	candidates, err := e.repository.GetEdgeCacheCandidates(
 		ctx,
@@ -259,19 +261,30 @@ func (e *EdgeCacheService) startEdgeCacheRefresh(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		if err := e.RefreshEdgeCacheCandidates(ctx); err != nil {
-			logrus.Errorf("Failed to refresh edge cache candidates: %v", err)
+	for {
+		select {
+		case <-ticker.C:
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			if err := e.RefreshEdgeCacheCandidates(ctx); err != nil {
+				logrus.Errorf("Failed to refresh edge cache candidates: %v", err)
+			}
+			cancel()
+		case <-e.stop:
+			logrus.Info("Edge cache refresh stopping")
+			return
 		}
-		cancel()
 	}
+}
+
+// Stop stops the edge cache service background goroutines
+func (e *EdgeCacheService) Stop() {
+	close(e.stop)
 }
 
 // GetEdgeCacheStats returns statistics about edge caching
 func (e *EdgeCacheService) GetEdgeCacheStats(ctx context.Context) (map[string]interface{}, error) {
 	stats := map[string]interface{}{
-		"enabled": e.cdnService != nil && e.cdnService.IsCDNEnabled(),
+		"enabled":        e.cdnService != nil && e.cdnService.IsCDNEnabled(),
 		"min_popularity": e.minPopularity,
 		"min_executions": e.minExecutions,
 		"cache_duration": e.cacheDuration.String(),

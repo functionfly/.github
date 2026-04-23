@@ -54,6 +54,7 @@ const (
 	CategoryDeployment = "deployment"
 	CategoryFunction   = "function"
 	CategoryTeam       = "team"
+	CategoryMessages   = "messages"
 	CategoryRegistry   = "registry"
 )
 

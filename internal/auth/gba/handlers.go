@@ -1,6 +1,8 @@
 package gba
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -12,22 +14,25 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
+	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/storage"
 )
 
 // Handler contains HTTP handlers for GoBetterAuth
 type Handler struct {
-	auth   *Auth
-	db     *gorm.DB
-	logger *logrus.Logger
+	auth     *Auth
+	db       *gorm.DB
+	logger   *logrus.Logger
+	userRepo *storage.UserRepository // for checking user settings (rememberDevices)
 }
 
 // NewHandler creates a new GoBetterAuth handler
-func NewHandler(auth *Auth) *Handler {
+func NewHandler(auth *Auth, userRepo *storage.UserRepository) *Handler {
 	return &Handler{
-		auth:   auth,
-		db:     auth.GetDB(),
-		logger: auth.Logger(),
+		auth:     auth,
+		db:       auth.GetDB(),
+		logger:   auth.Logger(),
+		userRepo: userRepo,
 	}
 }
 
@@ -178,6 +183,7 @@ type SignInResponse struct {
 	User    *User  `json:"user"`
 	Token   string `json:"token,omitempty"`
 	Message string `json:"message,omitempty"`
+	Trusted bool   `json:"trusted,omitempty"` // true when session is a trusted 30-day device session
 }
 
 // HandleSignIn handles user login
@@ -234,8 +240,21 @@ func (h *Handler) HandleSignIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create session
-	session, err := h.auth.sessions.CreateSession(h.db, user.ID, tenantID, r.RemoteAddr, r.UserAgent())
+	// Check rememberDevices setting and trusted device token
+	trustedToken := r.Header.Get("X-Trusted-Device-Token")
+	rememberDevices := h.shouldRememberDevice(user.ID)
+
+	var session *Session
+	var err error
+
+	if trustedToken != "" && rememberDevices {
+		// Use trusted session path for 30-day expiry
+		session, err = h.auth.sessions.GetOrCreateTrustedSession(h.db, user.ID, tenantID, r.RemoteAddr, r.UserAgent(), trustedToken)
+	} else {
+		// Standard session with default expiry
+		session, err = h.auth.sessions.CreateSession(h.db, user.ID, tenantID, r.RemoteAddr, r.UserAgent())
+	}
+
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to create session")
 		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
@@ -266,6 +285,7 @@ func (h *Handler) HandleSignIn(w http.ResponseWriter, r *http.Request) {
 		User:    &user,
 		Token:   token,
 		Message: "Signed in successfully",
+		Trusted: session.TrustedDeviceToken != "",
 	})
 }
 
@@ -769,4 +789,52 @@ func (h *Handler) HandleResendVerification(w http.ResponseWriter, r *http.Reques
 	json.NewEncoder(w).Encode(map[string]string{
 		"message": "If that email address is registered and unverified, a verification email has been sent.",
 	})
+}
+
+// shouldRememberDevice returns true if the user has enabled "remember trusted devices" in their settings.
+func (h *Handler) shouldRememberDevice(userID uuid.UUID) bool {
+	settings, err := h.userRepo.GetUserSettings(userID)
+	if err != nil || settings == nil {
+		return true // default to enabled
+	}
+	if val, ok := settings["rememberDevices"]; ok {
+		if b, ok := val.(bool); ok {
+			return b
+		}
+	}
+	return true
+}
+
+// HandleTrustedDeviceRequest generates a trusted device token for the current user.
+// POST /auth/trusted-device
+// Returns a token the client stores as a cookie/localStorage and sends on future logins via X-Trusted-Device-Token header.
+func (h *Handler) HandleTrustedDeviceRequest(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		http.Error(w, `{"message": "Unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+
+	trustedToken, err := generateTrustedDeviceToken()
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to generate trusted device token")
+		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"trustedToken": trustedToken,
+		"expiresIn":    "30d",
+	})
+}
+
+// generateTrustedDeviceToken creates a cryptographically secure token for device trust.
+func generateTrustedDeviceToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(b), nil
 }
