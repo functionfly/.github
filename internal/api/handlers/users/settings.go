@@ -693,3 +693,93 @@ func (h *Handler) HandlePatchUserSettingsSecurityMe(w http.ResponseWriter, r *ht
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Security settings updated"})
 }
+
+// CustomStatusRequest is the body for PATCH /v1/users/me/settings/status
+type CustomStatusRequest struct {
+	CustomStatus   string `json:"customStatus"`   // "online", "away", "busy", "offline", or ""
+	CustomStatusEmoji string `json:"customStatusEmoji"` // Optional emoji
+}
+
+// ValidCustomStatusValues are the allowed custom status values
+var ValidCustomStatusValues = map[string]bool{
+	"":       true, // Clear status
+	"online":  true,
+	"away":    true,
+	"busy":    true,
+	"offline": true,
+}
+
+// HandlePatchUserSettingsStatusMe handles PATCH /v1/users/me/settings/status
+// This allows users to set their own presence status (online, away, busy, offline)
+func (h *Handler) HandlePatchUserSettingsStatusMe(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var req CustomStatusRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	// Validate custom status value
+	if !ValidCustomStatusValues[req.CustomStatus] {
+		writeJSONError(w, http.StatusBadRequest, "Invalid custom status value. Must be: online, away, busy, offline, or empty string to clear")
+		return
+	}
+
+	// Get current settings
+	currentSettings, err := h.repo.GetUserSettings(claims.UserID)
+	if err != nil {
+		currentSettings = getDefaultSettings()
+	}
+
+	// Update custom status fields
+	if req.CustomStatus == "" {
+		currentSettings["customStatus"] = ""
+		currentSettings["customStatusEmoji"] = ""
+	} else {
+		currentSettings["customStatus"] = req.CustomStatus
+		if req.CustomStatusEmoji != "" {
+			currentSettings["customStatusEmoji"] = req.CustomStatusEmoji
+		}
+	}
+
+	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
+		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update custom status")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to update custom status")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"message":             "Custom status updated",
+		"customStatus":        currentSettings["customStatus"],
+		"customStatusEmoji":   currentSettings["customStatusEmoji"],
+	})
+}
+
+// HandleGetUserSettingsStatusMe handles GET /v1/users/me/settings/status
+// Returns the user's current custom status
+func (h *Handler) HandleGetUserSettingsStatusMe(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	// Get current settings
+	settings, err := h.repo.GetUserSettings(claims.UserID)
+	if err != nil {
+		settings = getDefaultSettings()
+	}
+
+	customStatus, _ := settings["customStatus"].(string)
+	customStatusEmoji, _ := settings["customStatusEmoji"].(string)
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"customStatus":      customStatus,
+		"customStatusEmoji": customStatusEmoji,
+	})
+}

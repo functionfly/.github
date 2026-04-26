@@ -275,3 +275,33 @@ func (db *PostgresDB) GetUserFunctionFollows(ctx context.Context, userID uuid.UU
 func (db *PostgresDB) GetFunctionFollowerCount(ctx context.Context, functionID uuid.UUID) (int, error) {
 	return db.followRepository.GetFunctionFollowerCount(ctx, functionID)
 }
+
+// Favorite operations
+
+func (db *PostgresDB) AddFavorite(ctx context.Context, userID, functionID uuid.UUID, position int) (*FunctionFavorite, error) {
+	return db.favoriteRepository.AddFavorite(ctx, userID, functionID, position)
+}
+
+func (db *PostgresDB) RemoveFavorite(ctx context.Context, userID, functionID uuid.UUID) error {
+	return db.favoriteRepository.RemoveFavorite(ctx, userID, functionID)
+}
+
+func (db *PostgresDB) IsFavorite(ctx context.Context, userID, functionID uuid.UUID) (bool, error) {
+	return db.favoriteRepository.IsFavorite(ctx, userID, functionID)
+}
+
+func (db *PostgresDB) GetUserFavorites(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*FunctionFavorite, int, error) {
+	return db.favoriteRepository.GetUserFavorites(ctx, userID, limit, offset)
+}
+
+func (db *PostgresDB) GetFavoriteCount(ctx context.Context, functionID uuid.UUID) (int, error) {
+	return db.favoriteRepository.GetFavoriteCount(ctx, functionID)
+}
+
+func (db *PostgresDB) UpdateFavoritePosition(ctx context.Context, userID, functionID uuid.UUID, position int) error {
+	return db.favoriteRepository.UpdateFavoritePosition(ctx, userID, functionID, position)
+}
+
+func (db *PostgresDB) GetFavoriteByFunction(ctx context.Context, userID, functionID uuid.UUID) (*FunctionFavorite, error) {
+	return db.favoriteRepository.GetFavoriteByFunction(ctx, userID, functionID)
+}

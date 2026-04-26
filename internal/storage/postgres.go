@@ -60,12 +60,14 @@ type PostgresDB struct {
 	featureMeasureRepository *FeatureMeasureRepository
 	teamRepository           *TeamRepository
 	followRepository         *FollowRepository
+	favoriteRepository       *FavoriteRepository
 	adminSessionRepository   *AdminSessionRepository
 	analyticsRepository      *AnalyticsRepository
 	usageAlertRepository     *UsageAlertRepository
 	encryptionManager        *DatabaseEncryptionManager
 	exportRepository         *ExportRepository
 	teamMemoryRepository     TeamMemoryRepository
+	creditNoteRepository     *CreditNoteRepository
 
 	// Read replica connections
 	readReplicas       []ReadReplicaConnection
@@ -275,11 +277,13 @@ func NewPostgresDBWithOptions(skipPreparedStatements bool) (*PostgresDB, error) 
 	postgresDB.featureMeasureRepository = NewFeatureMeasureRepository(postgresDB.DB)
 	postgresDB.teamRepository = NewTeamRepository(postgresDB.GORM)
 	postgresDB.followRepository = NewFollowRepository(postgresDB)
+	postgresDB.favoriteRepository = NewFavoriteRepository(postgresDB)
 	postgresDB.adminSessionRepository = NewAdminSessionRepository(postgresDB)
 	postgresDB.analyticsRepository = NewAnalyticsRepository(postgresDB)
 	postgresDB.usageAlertRepository = NewUsageAlertRepository(postgresDB.DB)
 	postgresDB.exportRepository = NewExportRepository(postgresDB.DB)
 	postgresDB.teamMemoryRepository = NewTeamMemoryRepository(postgresDB.GORM, nil)
+	postgresDB.creditNoteRepository = NewCreditNoteRepositorySQL(postgresDB)
 
 	// Initialize encryption manager
 	encryptionManager, err := NewDatabaseEncryptionManager(postgresDB)

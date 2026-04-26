@@ -72,7 +72,7 @@ func (s *StateFabricRepositoryTestSuite) CleanupTestData() {
 		"state_triggers",
 		"state_snapshots",
 		"state_events",
-		"state",
+		"states",
 	}
 
 	for _, table := range tables {
@@ -86,40 +86,49 @@ func (s *StateFabricRepositoryTestSuite) CleanupTestData() {
 // createStateFabricTables creates the tables needed for state fabric testing
 func (s *StateFabricRepositoryTestSuite) createStateFabricTables(db *storage.PostgresDB) error {
 	// Drop tables if they exist to ensure clean schema
+	// Note: state has CASCADE dependencies so we drop it last
 	tables := []string{
 		"state_fabric_events",
 		"state_fabric_snapshots",
 		"state_fabric_replays",
 		"state_fabric_pipelines",
 		"state_fabric_stores",
-		"state_triggers",
-		"state_snapshots",
-		"state_events",
-		"state",
 	}
 	for _, table := range tables {
-		_, err := db.DB.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s CASCADE", table))
-		if err != nil {
-			return fmt.Errorf("failed to drop table %s: %w", table, err)
-		}
+		db.DB.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s CASCADE", table))
 	}
+	// Drop state_triggers first (depends on state but not CASCADE)
+	db.DB.Exec("DROP TABLE IF EXISTS state_triggers CASCADE")
+	// Drop state_snapshots and state_events (depend on state via CASCADE)
+	db.DB.Exec("DROP TABLE IF EXISTS state_snapshots CASCADE")
+	db.DB.Exec("DROP TABLE IF EXISTS state_events CASCADE")
+	// Finally drop state (this should be able to proceed now)
+	db.DB.Exec("DROP TABLE IF EXISTS states CASCADE")
 
-	// Create state table
+	// Create state table (matches State model TableName = "states")
 	_, err := db.DB.Exec(`
-		CREATE TABLE state (
+		CREATE TABLE IF NOT EXISTS states (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			tenant_id UUID NOT NULL,
 			name VARCHAR(255) NOT NULL,
 			full_path VARCHAR(512),
+			function_id UUID,
 			storage_type VARCHAR(50) NOT NULL DEFAULT 'keyvalue',
+			ttl_days INTEGER NOT NULL DEFAULT 0,
+			max_size_mb INTEGER NOT NULL DEFAULT 100,
+			current_version INTEGER NOT NULL DEFAULT 1,
+			is_versioned BOOLEAN NOT NULL DEFAULT true,
+			is_encrypted BOOLEAN NOT NULL DEFAULT false,
+			is_public BOOLEAN NOT NULL DEFAULT false,
+			allow_cross_tenant BOOLEAN NOT NULL DEFAULT false,
 			description TEXT,
-			tags JSONB NOT NULL DEFAULT '{}',
-			max_size_mb INTEGER NOT NULL DEFAULT 0,
 			storage_used_mb BIGINT NOT NULL DEFAULT 0,
-			read_ops_month BIGINT NOT NULL DEFAULT 0,
 			write_ops_month BIGINT NOT NULL DEFAULT 0,
+			read_ops_month BIGINT NOT NULL DEFAULT 0,
 			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 			updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			last_accessed_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			tags JSONB NOT NULL DEFAULT '{}',
 			UNIQUE(tenant_id, full_path)
 		)
 	`)
@@ -131,15 +140,26 @@ func (s *StateFabricRepositoryTestSuite) createStateFabricTables(db *storage.Pos
 	_, err = db.DB.Exec(`
 		CREATE TABLE state_events (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-			state_id UUID NOT NULL REFERENCES state(id) ON DELETE CASCADE,
+			state_id UUID NOT NULL REFERENCES states(id) ON DELETE CASCADE,
 			event_type VARCHAR(50) NOT NULL,
 			key VARCHAR(512),
 			value JSONB,
 			new_value JSONB,
 			previous_value JSONB,
+			causation_id UUID,
+			correlation_id VARCHAR(255) NOT NULL,
+			source_type VARCHAR(50) NOT NULL,
+			source_id VARCHAR(255) NOT NULL,
+			input_hash VARCHAR(128),
+			output_hash VARCHAR(128),
+			deterministic BOOLEAN NOT NULL DEFAULT false,
 			sequence_num BIGINT NOT NULL DEFAULT 0,
-			correlation_id VARCHAR(255),
-			timestamp TIMESTAMP NOT NULL DEFAULT NOW()
+			timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+			r2_object_key TEXT,
+			r2_bucket VARCHAR(255),
+			batch_id VARCHAR(255),
+			is_archived BOOLEAN NOT NULL DEFAULT false,
+			archived_at TIMESTAMP
 		)
 	`)
 	if err != nil {
@@ -150,7 +170,7 @@ func (s *StateFabricRepositoryTestSuite) createStateFabricTables(db *storage.Pos
 	_, err = db.DB.Exec(`
 		CREATE TABLE state_snapshots (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-			state_id UUID NOT NULL REFERENCES state(id) ON DELETE CASCADE,
+			state_id UUID NOT NULL REFERENCES states(id) ON DELETE CASCADE,
 			label VARCHAR(255),
 			state_data JSONB NOT NULL DEFAULT '{}',
 			state_size_bytes BIGINT NOT NULL DEFAULT 0,
@@ -168,7 +188,7 @@ func (s *StateFabricRepositoryTestSuite) createStateFabricTables(db *storage.Pos
 		CREATE TABLE state_triggers (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			tenant_id UUID NOT NULL,
-			source_state_id UUID REFERENCES state(id) ON DELETE CASCADE,
+			source_state_id UUID REFERENCES states(id) ON DELETE CASCADE,
 			trigger_type VARCHAR(50) NOT NULL,
 			target_function VARCHAR(255),
 			condition JSONB NOT NULL DEFAULT '{}',
@@ -185,22 +205,22 @@ func (s *StateFabricRepositoryTestSuite) createStateFabricTables(db *storage.Pos
 	}
 
 	// Create indexes
-	_, err = db.DB.Exec(`CREATE INDEX idx_state_tenant_id ON state(tenant_id)`)
+	_, err = db.DB.Exec(`CREATE INDEX IF NOT EXISTS idx_states_tenant_id ON states(tenant_id)`)
 	if err != nil {
 		return fmt.Errorf("failed to create index: %w", err)
 	}
 
-	_, err = db.DB.Exec(`CREATE INDEX idx_state_events_state_id ON state_events(state_id)`)
+	_, err = db.DB.Exec(`CREATE INDEX IF NOT EXISTS idx_state_events_state_id ON state_events(state_id)`)
 	if err != nil {
 		return fmt.Errorf("failed to create index: %w", err)
 	}
 
-	_, err = db.DB.Exec(`CREATE INDEX idx_state_snapshots_state_id ON state_snapshots(state_id)`)
+	_, err = db.DB.Exec(`CREATE INDEX IF NOT EXISTS idx_state_snapshots_state_id ON state_snapshots(state_id)`)
 	if err != nil {
 		return fmt.Errorf("failed to create index: %w", err)
 	}
 
-	_, err = db.DB.Exec(`CREATE INDEX idx_state_triggers_source_state_id ON state_triggers(source_state_id)`)
+	_, err = db.DB.Exec(`CREATE INDEX IF NOT EXISTS idx_state_triggers_source_state_id ON state_triggers(source_state_id)`)
 	if err != nil {
 		return fmt.Errorf("failed to create index: %w", err)
 	}

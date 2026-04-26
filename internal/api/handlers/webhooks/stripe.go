@@ -25,6 +25,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stripe/stripe-go/v83"
 	stripeSub "github.com/stripe/stripe-go/v83/subscription"
+	"github.com/stripe/stripe-go/v83/invoice"
 	"github.com/stripe/stripe-go/v83/webhook"
 	"gorm.io/datatypes"
 )
@@ -1011,22 +1012,45 @@ func (h *StripeWebhookHandler) updateBundleSubscriptionFromStripe(ctx context.Co
 // calculateProrationCredit calculates credit to apply during plan downgrades
 // When downgrading, customers may have prepaid for the current period at a higher rate
 func (h *StripeWebhookHandler) calculateProrationCredit(bundleSub *storage.BundleSubscription, stripeSub *stripe.Subscription) float64 {
-	// Check if there's a proration in the latest invoice
-	if stripeSub.LatestInvoice != nil && stripeSub.LatestInvoice.ID != "" {
-		// The proration amount is typically reflected in the invoice amount
-		// A negative amount indicates credit to the customer
+	if stripeSub.LatestInvoice == nil || stripeSub.LatestInvoice.ID == "" {
+		return 0.0
+	}
+
+	invoiceID := stripeSub.LatestInvoice.ID
+
+	fullInvoice, err := invoice.Get(invoiceID, &stripe.InvoiceParams{})
+	if err != nil {
+		logrus.WithError(err).WithField("invoice_id", invoiceID).
+			Warn("failed to fetch full invoice for proration calculation, using amount_due fallback")
 		amount := stripeSub.LatestInvoice.AmountDue
 		if amount < 0 {
-			credit := float64(-amount) / 100.0 // Convert cents to dollars
-			logrus.WithFields(logrus.Fields{
-				"bundle_subscription_id": bundleSub.ID,
-				"credit_usd":             credit,
-				"invoice_id":             stripeSub.LatestInvoice.ID,
-			}).Info("proration credit calculated from stripe invoice")
-			return credit
+			return float64(-amount) / 100.0
+		}
+		return 0.0
+	}
+
+	var prorationCredit float64
+
+	for _, line := range fullInvoice.Lines.Data {
+		isProration := !line.Discountable && strings.Contains(strings.ToLower(line.Description), "proration")
+		if isProration || (line.Parent != nil && line.Parent.Type == "subscription" && !line.Discountable) {
+			amount := line.Amount
+			if amount < 0 {
+				prorationCredit += float64(-amount) / 100.0
+			}
 		}
 	}
-	return 0.0
+
+	if prorationCredit > 0 {
+		logrus.WithFields(logrus.Fields{
+			"bundle_subscription_id": bundleSub.ID,
+			"credit_usd":            prorationCredit,
+			"invoice_id":            invoiceID,
+			"line_count":            len(fullInvoice.Lines.Data),
+		}).Info("proration credit calculated from stripe invoice lines")
+	}
+
+	return prorationCredit
 }
 
 // handlePlanChangeSideEffects processes membership events, notifications, and credit transfers

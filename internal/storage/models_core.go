@@ -93,6 +93,10 @@ type UserProfileSettings struct {
 	AllowTagging   bool `json:"allowTagging"`
 	AllowIndexing  bool `json:"allowIndexing"`
 	ShowLastActive bool `json:"showLastActive"`
+
+	// Custom status settings
+	CustomStatus   string `json:"customStatus"`   // User's manually set status: "online", "away", "busy", "offline"
+	CustomStatusEmoji string `json:"customStatusEmoji"` // Optional emoji for custom status
 }
 
 // AuditEvent represents an audit log entry

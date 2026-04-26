@@ -144,6 +144,25 @@ type Repository interface {
 	GetInvoiceByID(id uuid.UUID) (*Invoice, error)
 	UpdateInvoice(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*Invoice, error)
 
+	// Credit Note operations (for refund accounting and SOX compliance)
+	CreateCreditNote(ctx context.Context, creditNote *CreditNote) (*CreditNote, error)
+	GetCreditNoteByID(ctx context.Context, id uuid.UUID) (*CreditNote, error)
+	GetCreditNoteByReferenceNumber(ctx context.Context, refNumber string) (*CreditNote, error)
+	ListCreditNotes(ctx context.Context, filter *CreditNoteFilter, limit, offset int) ([]*CreditNote, int64, error)
+	ListCreditNotesByTenant(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*CreditNote, int64, error)
+	ListCreditNotesByInvoice(ctx context.Context, invoiceID uuid.UUID) ([]*CreditNote, error)
+	UpdateCreditNote(ctx context.Context, creditNote *CreditNote) error
+	UpdateCreditNoteStatus(ctx context.Context, id uuid.UUID, status string) error
+	VoidCreditNote(ctx context.Context, id uuid.UUID) error
+	ApplyCreditNote(ctx context.Context, id uuid.UUID) error
+	GetCreditNoteWithRelations(ctx context.Context, id uuid.UUID) (*CreditNote, error)
+	GetCreditNoteStats(ctx context.Context, tenantID *uuid.UUID) (*CreditNoteStats, error)
+	// Credit Note Line Item operations
+	CreateCreditNoteLineItem(ctx context.Context, item *CreditNoteLineItem) error
+	GetCreditNoteLineItems(ctx context.Context, creditNoteID uuid.UUID) ([]*CreditNoteLineItem, error)
+	DeleteCreditNoteLineItem(ctx context.Context, id uuid.UUID) error
+	DeleteCreditNoteLineItems(ctx context.Context, creditNoteID uuid.UUID) error
+
 	RecordUsageEvent(ctx context.Context, event *UsageEvent) error
 	GetUsageByTenant(tenantID uuid.UUID, eventType string, start, end time.Time) ([]*UsageRollup, error)
 
@@ -151,6 +170,25 @@ type Repository interface {
 	ListCoupons() ([]*Coupon, error)
 	GetCouponByCode(code string) (*Coupon, error)
 	RedeemCoupon(ctx context.Context, couponID, tenantID uuid.UUID, subscriptionID *uuid.UUID) (*CouponRedemption, error)
+
+	// Affiliate / Referral Commission System
+	CreateAffiliateCode(ctx context.Context, code *AffiliateCode) (*AffiliateCode, error)
+	GetAffiliateCodeByID(id uuid.UUID) (*AffiliateCode, error)
+	GetAffiliateCodeByCode(code string) (*AffiliateCode, error)
+	ListAffiliateCodes() ([]*AffiliateCode, error)
+	ListAffiliateCodesByPublisher(publisherID uuid.UUID) ([]*AffiliateCode, error)
+	UpdateAffiliateCode(ctx context.Context, code *AffiliateCode) error
+	CreateAffiliateReferral(ctx context.Context, referral *AffiliateReferral) (*AffiliateReferral, error)
+	GetAffiliateReferralByID(id uuid.UUID) (*AffiliateReferral, error)
+	GetAffiliateReferralByTenant(tenantID uuid.UUID) (*AffiliateReferral, error)
+	ListAffiliateReferralsByCode(codeID uuid.UUID) ([]*AffiliateReferral, error)
+	UpdateAffiliateReferralStatus(ctx context.Context, id uuid.UUID, status string) error
+	CreateAffiliateCommission(ctx context.Context, commission *AffiliateCommission) (*AffiliateCommission, error)
+	GetAffiliateCommissionByID(id uuid.UUID) (*AffiliateCommission, error)
+	ListAffiliateCommissionsByCode(codeID uuid.UUID) ([]*AffiliateCommission, error)
+	ListAffiliateCommissionsByPublisher(publisherID uuid.UUID) ([]*AffiliateCommission, error)
+	UpdateAffiliateCommissionStatus(ctx context.Context, id uuid.UUID, status string) error
+	CalculateCommission(commissionType string, commissionValue, baseAmountUSD float64) (commissionCents int64, commissionUSD float64)
 
 	// Revenue System Phase 1 - Trust Layer Monetization
 	// Verification Fees
@@ -213,6 +251,7 @@ type Repository interface {
 	GetAgentTierPricingForRegion(ctx context.Context, slug string, currencyCode string) (*AgentTierPricing, error)
 
 	// Multi-Currency Support
+	SaveCurrencyExchangeRate(ctx context.Context, rate *CurrencyExchangeRate) error
 	GetCurrencyExchangeRate(ctx context.Context, baseCurrency, quoteCurrency string, date *time.Time) (*CurrencyExchangeRate, error)
 	ConvertCurrency(ctx context.Context, amountCents int, fromCurrency, toCurrency string) (int, error)
 	GetSupportedCurrency(ctx context.Context, code string) (*SupportedCurrency, error)
@@ -511,6 +550,15 @@ type Repository interface {
 	GetFunctionFollowers(ctx context.Context, functionID uuid.UUID, limit, offset int) ([]*FunctionFollow, int, error)
 	GetUserFunctionFollows(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*FunctionFollow, int, error)
 	GetFunctionFollowerCount(ctx context.Context, functionID uuid.UUID) (int, error)
+
+	// Function favorites
+	AddFavorite(ctx context.Context, userID, functionID uuid.UUID, position int) (*FunctionFavorite, error)
+	RemoveFavorite(ctx context.Context, userID, functionID uuid.UUID) error
+	IsFavorite(ctx context.Context, userID, functionID uuid.UUID) (bool, error)
+	GetUserFavorites(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*FunctionFavorite, int, error)
+	GetFavoriteCount(ctx context.Context, functionID uuid.UUID) (int, error)
+	UpdateFavoritePosition(ctx context.Context, userID, functionID uuid.UUID, position int) error
+	GetFavoriteByFunction(ctx context.Context, userID, functionID uuid.UUID) (*FunctionFavorite, error)
 
 	// Username change operations (2-per-year limit with early-change fee)
 	CreateUsernameChangeHistory(ctx context.Context, history *UsernameChangeHistory) error

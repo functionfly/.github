@@ -2,12 +2,14 @@ package middleware
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 )
 
@@ -128,6 +130,50 @@ func SimpleActivityTracker(repo *storage.UserRepository) func(http.Handler) http
 				defer cancel()
 				if err := repo.UpdateUserLastActive(ctx, claims.UserID); err != nil {
 					logrus.WithError(err).WithField("userID", claims.UserID).Debug("Failed to update last active")
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+const presenceKeyPrefix = "presence:user:"
+
+type PresenceHeartbeat struct {
+	UserID     uuid.UUID `json:"userId"`
+	TenantID   uuid.UUID `json:"tenantId"`
+	Username   string    `json:"username,omitempty"`
+	ActiveAt   time.Time `json:"activeAt"`
+	LastActive time.Time `json:"lastActive"`
+}
+
+// SimpleActivityTrackerWithRedis is like SimpleActivityTracker but also updates Redis presence.
+// This enables real-time presence tracking via WebSocket without database queries.
+func SimpleActivityTrackerWithRedis(repo *storage.UserRepository, redisClient *redis.Client) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			claims := GetUserFromContext(r)
+			if claims != nil && claims.UserID != uuid.Nil {
+				ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+				defer cancel()
+
+				if err := repo.UpdateUserLastActive(ctx, claims.UserID); err != nil {
+					logrus.WithError(err).WithField("userID", claims.UserID).Debug("Failed to update last active")
+				}
+
+				if redisClient != nil {
+					hb := &PresenceHeartbeat{
+						UserID:     claims.UserID,
+						TenantID:   claims.TenantID,
+						Username:   claims.Username,
+						ActiveAt:   time.Now(),
+						LastActive: time.Now(),
+					}
+					data, _ := json.Marshal(hb)
+					key := presenceKeyPrefix + claims.UserID.String()
+					if err := redisClient.Set(ctx, key, data, 5*time.Minute).Err(); err != nil {
+						logrus.WithError(err).WithField("userID", claims.UserID).Debug("Failed to update Redis presence")
+					}
 				}
 			}
 			next.ServeHTTP(w, r)

@@ -1,23 +1,36 @@
 package statefabric
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 
 	statestore "github.com/functionfly/functionfly/internal/storage/state"
+)
+
+const (
+	MaxStoreSizeBytes = 500 * 1024 * 1024 * 1024 // 500 GB max store size
 )
 
 type Repository struct {
 	db        *gorm.DB
 	stateRepo *statestore.StateRepository
 	r2Backend *R2StorageBackend // Optional R2 backend for large data (events, snapshots, memory, replays)
+
+	// Function execution client
+	httpClient *http.Client
+	baseURL    string
+	apiKey     string
 }
 
 func NewRepository(db *gorm.DB) *Repository {
@@ -30,6 +43,11 @@ func NewRepository(db *gorm.DB) *Repository {
 		}
 	}
 
+	// Initialize HTTP client for function execution
+	repo.httpClient = &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
 	return repo
 }
 
@@ -39,7 +57,16 @@ func NewRepositoryWithR2(db *gorm.DB, r2Backend *R2StorageBackend) *Repository {
 		db:        db,
 		stateRepo: statestore.NewStateRepository(db),
 		r2Backend: r2Backend,
+		httpClient: &http.Client{
+			Timeout: 30 * time.Second,
+		},
 	}
+}
+
+// ConfigureExecution sets the base URL and API key for function execution
+func (r *Repository) ConfigureExecution(baseURL, apiKey string) {
+	r.baseURL = strings.TrimSuffix(baseURL, "/")
+	r.apiKey = apiKey
 }
 
 // R2Backend returns the R2 storage backend if configured
@@ -446,6 +473,12 @@ func (r *Repository) CreateStore(ctx context.Context, tenantID, fabricID uuid.UU
 	if strings.TrimSpace(name) != "" {
 		state.Name = name
 	}
+	if maxSize < 0 {
+		return nil, fmt.Errorf("maxSize cannot be negative")
+	}
+	if maxSize > MaxStoreSizeBytes {
+		return nil, fmt.Errorf("maxSize exceeds maximum allowed size of %d bytes", MaxStoreSizeBytes)
+	}
 	if maxSize > 0 {
 		state.MaxSizeMB = int(maxSize / (1024 * 1024))
 	}
@@ -661,12 +694,183 @@ func (r *Repository) ExecutePipeline(ctx context.Context, tenantID, fabricID, pi
 	if trigger.TenantID != tenantID || trigger.SourceStateID == nil || *trigger.SourceStateID != fabricID {
 		return nil, fmt.Errorf("pipeline not found")
 	}
+
+	executionID := uuid.New()
+	execution := &StateFabricPipelineExecution{
+		ID:        executionID,
+		PipelineID: pipelineID,
+		Status:    "running",
+		InputData: input,
+	}
+
+	if err := r.db.WithContext(ctx).Create(execution).Error; err != nil {
+		return nil, fmt.Errorf("failed to create execution record: %w", err)
+	}
+
+	steps := stepsFromCondition(trigger.Condition)
+	if len(steps) == 0 {
+		execution.Status = "completed"
+		execution.OutputData = map[string]interface{}{"result": "no steps to execute"}
+		if err := r.db.WithContext(ctx).Save(execution).Error; err != nil {
+			return nil, fmt.Errorf("failed to update execution record: %w", err)
+		}
+		return map[string]interface{}{
+			"executionId": executionID.String(),
+			"status":      "completed",
+			"input":       input,
+			"pipelineId":  pipelineID.String(),
+			"output":      execution.OutputData,
+		}, nil
+	}
+
+	var lastOutput map[string]interface{}
+	for i, step := range steps {
+		stepName, _ := step["name"].(string)
+		stepType, _ := step["type"].(string)
+
+		config, ok := step["config"].(map[string]interface{})
+		if !ok {
+			config = map[string]interface{}{}
+		}
+		targetFunction, _ := config["targetFunction"].(string)
+
+		timeoutMs := 30000
+		if tm, ok := config["timeoutMs"].(float64); ok {
+			timeoutMs = int(tm)
+		}
+
+		retryCount := 1
+		if rc, ok := config["retryCount"].(float64); ok {
+			retryCount = int(rc)
+		}
+
+		if targetFunction == "" {
+			execution.Status = "failed"
+			execution.OutputData = map[string]interface{}{
+				"error":     fmt.Sprintf("step %d (%s) has no target function", i, stepName),
+				"stepIndex": i,
+			}
+			if err := r.db.WithContext(ctx).Save(execution).Error; err != nil {
+				return nil, fmt.Errorf("failed to update execution record: %w", err)
+			}
+			return nil, fmt.Errorf("step %d (%s) has no target function", i, stepName)
+		}
+
+		stepInput := input
+		if i > 0 && lastOutput != nil {
+			stepInput = lastOutput
+		}
+
+		var stepErr error
+		var stepOutput map[string]interface{}
+		for attempt := 0; attempt <= retryCount; attempt++ {
+			if attempt > 0 {
+				time.Sleep(time.Duration(attempt*100) * time.Millisecond)
+			}
+
+			stepOutput, stepErr = r.executeFunction(ctx, targetFunction, stepInput, timeoutMs)
+			if stepErr == nil {
+				break
+			}
+		}
+
+		if stepErr != nil {
+			execution.Status = "failed"
+			execution.OutputData = map[string]interface{}{
+				"error":      stepErr.Error(),
+				"stepIndex":  i,
+				"stepName":   stepName,
+				"stepType":   stepType,
+				"attempts":   retryCount + 1,
+			}
+			if err := r.db.WithContext(ctx).Save(execution).Error; err != nil {
+				return nil, fmt.Errorf("failed to update execution record: %w", err)
+			}
+			return map[string]interface{}{
+				"executionId": executionID.String(),
+				"status":      "failed",
+				"error":       stepErr.Error(),
+				"stepIndex":   i,
+				"stepName":    stepName,
+				"pipelineId":  pipelineID.String(),
+				"input":       input,
+			}, stepErr
+		}
+
+		lastOutput = stepOutput
+	}
+
+	execution.Status = "completed"
+	execution.OutputData = lastOutput
+	if err := r.db.WithContext(ctx).Save(execution).Error; err != nil {
+		return nil, fmt.Errorf("failed to update execution record: %w", err)
+	}
+
+	if trigger.LastTriggeredAt != nil {
+		now := time.Now()
+		trigger.LastTriggeredAt = &now
+		if _, err := r.stateRepo.UpdateTrigger(ctx, trigger); err != nil {
+			logrus.WithError(err).Warn("failed to update trigger last triggered time")
+		}
+	}
+
 	return map[string]interface{}{
-		"executionId": uuid.New().String(),
+		"executionId": executionID.String(),
 		"status":      "completed",
 		"input":       input,
 		"pipelineId":  pipelineID.String(),
+		"output":      lastOutput,
 	}, nil
+}
+
+func (r *Repository) executeFunction(ctx context.Context, targetFunction string, input map[string]interface{}, timeoutMs int) (map[string]interface{}, error) {
+	if r.baseURL == "" || r.httpClient == nil {
+		return nil, fmt.Errorf("pipeline executor not configured: baseURL or httpClient is missing")
+	}
+
+	var url string
+	if strings.Contains(targetFunction, "/") {
+		url = fmt.Sprintf("%s/v1/functions/by-name/%s/execute", r.baseURL, targetFunction)
+	} else {
+		url = fmt.Sprintf("%s/v1/functions/%s/execute", r.baseURL, targetFunction)
+	}
+
+	jsonInput, err := json.Marshal(input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal input: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonInput))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	if r.apiKey != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", r.apiKey))
+	}
+
+	resp, err := r.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute function: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("function execution failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return map[string]interface{}{"raw": string(body)}, nil
+	}
+
+	return result, nil
 }
 
 func (r *Repository) ListEvents(ctx context.Context, tenantID, fabricID uuid.UUID, opts EventListOptions) ([]EventLog, int64, error) {
@@ -868,21 +1072,34 @@ func (r *Repository) ListReplays(ctx context.Context, tenantID, fabricID uuid.UU
 	if state.TenantID != tenantID {
 		return nil, fmt.Errorf("state fabric not found")
 	}
-	snapshots, err := r.ListSnapshots(ctx, tenantID, fabricID)
-	if err != nil {
+	var dbReplays []StateFabricReplay
+	if err := r.db.WithContext(ctx).Where("fabric_id = ?", fabricID).Order("started_at DESC").Find(&dbReplays).Error; err != nil {
 		return nil, err
 	}
-	items := make([]ReplaySession, 0, len(snapshots))
-	for _, snapshot := range snapshots {
+	items := make([]ReplaySession, 0, len(dbReplays))
+	for _, replay := range dbReplays {
+		var snapshotID, startEventID, endEventID string
+		if replay.SnapshotID != nil {
+			snapshotID = replay.SnapshotID.String()
+		}
+		if replay.StartEventID != nil {
+			startEventID = replay.StartEventID.String()
+		}
+		if replay.EndEventID != nil {
+			endEventID = replay.EndEventID.String()
+		}
 		items = append(items, ReplaySession{
-			ID:             snapshot.ID,
+			ID:             replay.ID.String(),
 			FabricID:       fabricID.String(),
-			SnapshotID:     snapshot.ID,
-			Status:         "completed",
-			Progress:       100,
-			EventsReplayed: snapshot.EventCount,
-			StartedAt:      snapshot.CreatedAt,
-			CompletedAt:    &snapshot.CreatedAt,
+			SnapshotID:     snapshotID,
+			StartEventID:   startEventID,
+			EndEventID:     endEventID,
+			Status:         replay.Status,
+			Progress:       replay.Progress,
+			EventsReplayed: int(replay.EventsReplayed),
+			StartedAt:      replay.StartedAt,
+			CompletedAt:    replay.CompletedAt,
+			Error:          "",
 		})
 	}
 	return items, nil
@@ -896,20 +1113,210 @@ func (r *Repository) CreateReplay(ctx context.Context, tenantID, fabricID uuid.U
 	if state.TenantID != tenantID {
 		return nil, fmt.Errorf("state fabric not found")
 	}
-	now := time.Now()
-	completed := now
-	return &ReplaySession{
-		ID:             uuid.New().String(),
-		FabricID:       fabricID.String(),
-		SnapshotID:     req.SnapshotID,
-		StartEventID:   req.StartEventID,
-		EndEventID:     req.EndEventID,
-		Status:         "completed",
-		Progress:       100,
+
+	replayID := uuid.New()
+	startedAt := time.Now()
+
+	var snapshotUUID, startEventUUID, endEventUUID *uuid.UUID
+	if req.SnapshotID != "" {
+		if su, err := uuid.Parse(req.SnapshotID); err == nil {
+			snapshotUUID = &su
+		}
+	}
+	if req.StartEventID != "" {
+		if su, err := uuid.Parse(req.StartEventID); err == nil {
+			startEventUUID = &su
+		}
+	}
+	if req.EndEventID != "" {
+		if eu, err := uuid.Parse(req.EndEventID); err == nil {
+			endEventUUID = &eu
+		}
+	}
+
+	dbReplay := &StateFabricReplay{
+		ID:           replayID,
+		FabricID:     fabricID,
+		SnapshotID:   snapshotUUID,
+		StartEventID: startEventUUID,
+		EndEventID:   endEventUUID,
+		Status:       "pending",
+		Progress:     0,
 		EventsReplayed: 0,
-		StartedAt:      now,
-		CompletedAt:    &completed,
-	}, nil
+		StartedAt:    startedAt,
+	}
+	if err := r.db.WithContext(ctx).Create(dbReplay).Error; err != nil {
+		return nil, fmt.Errorf("failed to create replay record: %w", err)
+	}
+
+	session := &ReplaySession{
+		ID:           replayID.String(),
+		FabricID:     fabricID.String(),
+		SnapshotID:   req.SnapshotID,
+		StartEventID: req.StartEventID,
+		EndEventID:   req.EndEventID,
+		Status:       "running",
+		Progress:     0,
+		EventsReplayed: 0,
+		StartedAt:    startedAt,
+	}
+
+	go r.executeReplay(replayID, fabricID, req)
+
+	return session, nil
+}
+
+func (r *Repository) executeReplay(replayID, fabricID uuid.UUID, req ReplayCreateRequest) {
+	ctx := context.Background()
+	logger := logrus.WithFields(logrus.Fields{"replay_id": replayID, "fabric_id": fabricID})
+
+	var events []statestore.StateEvent
+	var err error
+
+	if req.SnapshotID != "" {
+		events, err = r.getEventsFromSnapshot(ctx, fabricID, req.SnapshotID)
+	} else {
+		events, err = r.getEventsForReplay(ctx, fabricID, req.StartEventID, req.EndEventID)
+	}
+
+	if err != nil {
+		r.updateReplayStatus(ctx, replayID, "failed", 0, 0, err.Error())
+		logger.WithError(err).Error("replay failed to fetch events")
+		return
+	}
+
+	totalEvents := int64(len(events))
+	processed := int64(0)
+
+	for i, event := range events {
+		if err := r.applyEventToState(ctx, fabricID, event); err != nil {
+			logger.WithError(err).Warnf("failed to apply event %s, continuing", event.ID)
+		}
+		processed++
+		progress := int(float64(i+1) / float64(totalEvents) * 100)
+		if i%100 == 0 || i == len(events)-1 {
+			r.updateReplayProgress(ctx, replayID, progress, processed)
+		}
+	}
+
+	var eventsReplayed int64
+	if r.r2Backend != nil && len(events) > 0 {
+		metadata := JSONMap{
+			"fabric_id":    fabricID.String(),
+			"snapshot_id":  req.SnapshotID,
+			"start_event":  req.StartEventID,
+			"end_event":    req.EndEventID,
+			"total_events": len(events),
+		}
+		if obj, storeErr := r.r2Backend.StoreReplayData(ctx, uuid.Nil, replayID, events, metadata); storeErr == nil {
+			r.db.WithContext(ctx).Model(&StateFabricReplay{}).Where("id = ?", replayID).Updates(map[string]interface{}{
+				"r2_object_key":   obj.Key,
+				"r2_bucket":       obj.Bucket,
+				"r2_content_hash": obj.ContentHash,
+			})
+		}
+		eventsReplayed = int64(len(events))
+	}
+
+	r.updateReplayStatus(ctx, replayID, "completed", 100, eventsReplayed, "")
+	logger.Infof("replay completed: %d events processed", eventsReplayed)
+}
+
+func (r *Repository) getEventsFromSnapshot(ctx context.Context, fabricID uuid.UUID, snapshotID string) ([]statestore.StateEvent, error) {
+	snapshots, _, err := r.stateRepo.ListSnapshots(ctx, fabricID, 100, 0)
+	if err != nil {
+		return nil, err
+	}
+	var target *statestore.StateSnapshot
+	for _, s := range snapshots {
+		if s.ID.String() == snapshotID {
+			target = s
+			break
+		}
+	}
+	if target == nil {
+		return nil, fmt.Errorf("snapshot not found")
+	}
+
+	var firstSeq, lastSeq int64
+	r.db.WithContext(ctx).Model(&statestore.StateEvent{}).Select("COALESCE(MIN(sequence_num), 0)").Where("state_id = ?", fabricID).Scan(&firstSeq)
+	r.db.WithContext(ctx).Model(&statestore.StateEvent{}).Select("COALESCE(MAX(sequence_num), 0)").Where("state_id = ?", fabricID).Scan(&lastSeq)
+
+	if target.FirstSequence > 0 && target.LastSequence > 0 {
+		firstSeq, lastSeq = target.FirstSequence, target.LastSequence
+	}
+
+	var events []statestore.StateEvent
+	err = r.db.WithContext(ctx).
+		Where("state_id = ? AND sequence_num >= ? AND sequence_num <= ?", fabricID, firstSeq, lastSeq).
+		Order("sequence_num ASC").
+		Find(&events).Error
+	return events, err
+}
+
+func (r *Repository) getEventsForReplay(ctx context.Context, fabricID uuid.UUID, startEventID, endEventID string) ([]statestore.StateEvent, error) {
+	query := r.db.WithContext(ctx).Model(&statestore.StateEvent{}).Where("state_id = ?", fabricID)
+
+	if startEventID != "" {
+		if startUUID, err := uuid.Parse(startEventID); err == nil {
+			var seq int64
+			r.db.WithContext(ctx).Model(&statestore.StateEvent{}).Select("sequence_num").Where("id = ?", startUUID).Scan(&seq)
+			if seq > 0 {
+				query = query.Where("sequence_num >= ?", seq)
+			}
+		}
+	}
+	if endEventID != "" {
+		if endUUID, err := uuid.Parse(endEventID); err == nil {
+			var seq int64
+			r.db.WithContext(ctx).Model(&statestore.StateEvent{}).Select("sequence_num").Where("id = ?", endUUID).Scan(&seq)
+			if seq > 0 {
+				query = query.Where("sequence_num <= ?", seq)
+			}
+		}
+	}
+
+	var events []statestore.StateEvent
+	err := query.Order("sequence_num ASC").Find(&events).Error
+	return events, err
+}
+
+func (r *Repository) applyEventToState(ctx context.Context, fabricID uuid.UUID, event statestore.StateEvent) error {
+	switch event.EventType {
+	case "set":
+		if event.NewValue != nil && event.Key != nil {
+			_, err := r.stateRepo.SetStateValue(ctx, fabricID, *event.Key, *event.NewValue, "replay", event.ID.String())
+			return err
+		}
+	case "delete":
+		if event.Key != nil {
+			return r.stateRepo.DeleteStateValue(ctx, fabricID, *event.Key, "replay", event.ID.String())
+		}
+	}
+	return nil
+}
+
+func (r *Repository) updateReplayStatus(ctx context.Context, replayID uuid.UUID, status string, progress int, eventsReplayed int64, errMsg string) {
+	updates := map[string]interface{}{
+		"status":          status,
+		"progress":        progress,
+		"events_replayed": eventsReplayed,
+	}
+	if status == "completed" || status == "failed" {
+		now := time.Now()
+		updates["completed_at"] = &now
+	}
+	if errMsg != "" {
+		updates["error_message"] = &errMsg
+	}
+	r.db.WithContext(ctx).Model(&StateFabricReplay{}).Where("id = ?", replayID).Updates(updates)
+}
+
+func (r *Repository) updateReplayProgress(ctx context.Context, replayID uuid.UUID, progress int, eventsReplayed int64) {
+	r.db.WithContext(ctx).Model(&StateFabricReplay{}).Where("id = ?", replayID).Updates(map[string]interface{}{
+		"progress":        progress,
+		"events_replayed": eventsReplayed,
+	})
 }
 
 func (r *Repository) GetReplay(ctx context.Context, tenantID, fabricID uuid.UUID, replayID string) (*ReplaySession, error) {
@@ -1150,16 +1557,32 @@ func (r *Repository) ArchiveEventsToR2(ctx context.Context, tenantID, fabricID u
 		return nil
 	}
 
-	// Mark events as archived in PostgreSQL
-	now := time.Now()
-	for _, event := range events {
-		r.db.WithContext(ctx).Model(&statestore.StateEvent{}).Where("id = ?", event.ID).Updates(map[string]interface{}{
-			"is_archived":   true,
-			"archived_at":   now,
-			"r2_object_key": r2Object.Key,
-			"r2_bucket":     r2Object.Bucket,
-			"batch_id":      batchID,
-		})
+	// Mark events as archived in PostgreSQL using transaction
+	err = r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		now := time.Now()
+		for _, event := range events {
+			if err := tx.Model(&statestore.StateEvent{}).Where("id = ?", event.ID).Updates(map[string]interface{}{
+				"is_archived": true,
+				"archived_at": now,
+				"r2_object_key": r2Object.Key,
+				"r2_bucket":     r2Object.Bucket,
+				"batch_id":      batchID,
+			}).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		// Log the partial failure - events are in R2 but DB update failed
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"tenant_id":  tenantID,
+			"fabric_id":  fabricID,
+			"batch_id":   batchID,
+			"event_count": len(events),
+			"r2_key":     r2Object.Key,
+		}).Error("Failed to update event archival status in DB - R2 data may be orphaned")
+		return fmt.Errorf("failed to update event archival status: %w", err)
 	}
 
 	return nil

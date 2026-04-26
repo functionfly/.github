@@ -233,6 +233,7 @@ type RevenueRepository interface {
 	GetAgentTierPricingForRegion(ctx context.Context, slug string, currencyCode string) (*storage.AgentTierPricing, error)
 
 	// Multi-Currency Support
+	SaveCurrencyExchangeRate(ctx context.Context, rate *storage.CurrencyExchangeRate) error
 	GetCurrencyExchangeRate(ctx context.Context, baseCurrency, quoteCurrency string, date *time.Time) (*storage.CurrencyExchangeRate, error)
 	ConvertCurrency(ctx context.Context, amountCents int, fromCurrency, toCurrency string) (int, error)
 	GetSupportedCurrency(ctx context.Context, code string) (*storage.SupportedCurrency, error)

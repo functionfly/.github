@@ -56,6 +56,8 @@ const (
 	CategoryTeam       = "team"
 	CategoryMessages   = "messages"
 	CategoryRegistry   = "registry"
+	CategoryFailover   = "failover"
+	CategoryProvider   = "provider"
 )
 
 // Frequencies
@@ -132,6 +134,15 @@ const (
 	// Registry notifications
 	TypeRegistryNewVersion    = "registry.new_version"
 	TypeRegistryFunctionRated = "registry.function_rated"
+
+	// Failover notifications
+	TypeFailoverTriggered = "failover.triggered"
+	TypeFailoverResolved   = "failover.resolved"
+
+	// Provider notifications
+	TypeProviderOffline = "provider.offline"
+	TypeProviderOnline  = "provider.online"
+	TypeProviderDegraded = "provider.degraded"
 
 	// Follow notifications
 	TypeFollowStarted         = "follow.started"

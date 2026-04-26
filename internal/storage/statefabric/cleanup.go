@@ -33,10 +33,11 @@ func DefaultCleanupConfig() CleanupConfig {
 
 // CleanupService handles periodic cleanup of expired state fabric snapshots
 type CleanupService struct {
-	db     *gorm.DB
-	config CleanupConfig
-	logger *logrus.Logger
-	stopCh chan struct{}
+	db        *gorm.DB
+	r2Backend *R2StorageBackend
+	config    CleanupConfig
+	logger    *logrus.Logger
+	stopCh    chan struct{}
 }
 
 // NewCleanupService creates a new state fabric cleanup service
@@ -49,10 +50,28 @@ func NewCleanupService(db *gorm.DB, config CleanupConfig) *CleanupService {
 	}
 
 	return &CleanupService{
-		db:     db,
-		config: config,
-		logger: logrus.WithField("service", "state_fabric_cleanup").Logger,
-		stopCh: make(chan struct{}),
+		db:        db,
+		config:    config,
+		logger:    logrus.WithField("service", "state_fabric_cleanup").Logger,
+		stopCh:    make(chan struct{}),
+	}
+}
+
+// NewCleanupServiceWithR2 creates a new state fabric cleanup service with R2 support
+func NewCleanupServiceWithR2(db *gorm.DB, r2Backend *R2StorageBackend, config CleanupConfig) *CleanupService {
+	if config.Interval == 0 {
+		config = DefaultCleanupConfig()
+	}
+	if config.BatchSize == 0 {
+		config.BatchSize = 1000
+	}
+
+	return &CleanupService{
+		db:        db,
+		r2Backend: r2Backend,
+		config:    config,
+		logger:    logrus.WithField("service", "state_fabric_cleanup").Logger,
+		stopCh:    make(chan struct{}),
 	}
 }
 
@@ -137,20 +156,29 @@ func (s *CleanupService) cleanupExpiredSnapshots(ctx context.Context) int64 {
 				return err
 			}
 
+			// Delete R2 data for expired snapshots
+			for _, obj := range r2Objects {
+				if obj.R2ObjectKey != nil && *obj.R2ObjectKey != "" {
+					if s.r2Backend != nil {
+						if err := s.r2Backend.DeleteSnapshotData(ctx, *obj.R2ObjectKey); err != nil {
+							s.logger.WithError(err).WithFields(logrus.Fields{
+								"snapshot_id":   obj.ID,
+								"r2_object_key": *obj.R2ObjectKey,
+							}).Warn("Failed to delete R2 snapshot data")
+						} else if s.config.Verbose {
+							s.logger.WithFields(logrus.Fields{
+								"snapshot_id":   obj.ID,
+								"r2_object_key": *obj.R2ObjectKey,
+							}).Debug("Deleted R2 snapshot data")
+						}
+					}
+				}
+			}
+
 			// Delete the snapshots
 			result := tx.Where("id IN ?", expiredIDs).Delete(&StateFabricSnapshot{})
 			if result.Error != nil {
 				return result.Error
-			}
-
-			// Log R2 cleanup needs (actual R2 deletion would be handled separately)
-			for _, obj := range r2Objects {
-				if obj.R2ObjectKey != nil && *obj.R2ObjectKey != "" {
-					s.logger.WithFields(logrus.Fields{
-						"snapshot_id":   obj.ID,
-						"r2_object_key": *obj.R2ObjectKey,
-					}).Debug("Expired snapshot had R2 offloaded data")
-				}
 			}
 
 			return nil
@@ -158,13 +186,6 @@ func (s *CleanupService) cleanupExpiredSnapshots(ctx context.Context) int64 {
 
 		if err != nil {
 			s.logger.WithError(err).Error("Failed to delete expired state fabric snapshots")
-			break
-		}
-
-		// Count the deleted rows
-		result := s.db.WithContext(ctx).Where("id IN ?", expiredIDs).Delete(&StateFabricSnapshot{})
-		if result.Error != nil {
-			s.logger.WithError(result.Error).Error("Failed to count deleted snapshots")
 			break
 		}
 
