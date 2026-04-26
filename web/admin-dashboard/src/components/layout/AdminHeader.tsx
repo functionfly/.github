@@ -78,7 +78,6 @@ const breadcrumbMap: Record<string, BreadcrumbItem[]> = {
   [ROUTES.ADMIN_CONTENT_CALENDAR]: [{ label: 'Content' }, { label: 'Calendar' }],
   [ROUTES.ADMIN_REDIRECTS]: [{ label: 'Content' }, { label: 'Redirects' }],
   [ROUTES.ADMIN_FUNCTIONS]: [{ label: 'Functions' }, { label: 'Management' }],
-  [ROUTES.ADMIN_REGISTRY]: [{ label: 'Functions' }, { label: 'Registry' }],
   [ROUTES.ADMIN_STATE_FABRIC]: [{ label: 'Functions' }, { label: 'State Fabric' }],
   [ROUTES.ADMIN_FACTORY]: [{ label: 'Functions' }, { label: 'Factory' }],
   [ROUTES.ADMIN_TRUST_DASHBOARD]: [{ label: 'Trust & Safety' }, { label: 'Dashboard' }],

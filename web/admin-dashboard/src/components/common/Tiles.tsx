@@ -9,21 +9,23 @@ interface StatCardProps {
 
 export function StatCard({ label, value, icon: Icon, color }: StatCardProps) {
   const colorMap = {
-    blue: { bg: 'rgba(59, 130, 246, 0.1)', text: '#3b82f6' },
-    green: { bg: 'rgba(16, 185, 129, 0.1)', text: '#10b981' },
-    purple: { bg: 'rgba(168, 85, 247, 0.1)', text: '#a855f7' },
-    red: { bg: 'rgba(239, 68, 68, 0.1)', text: '#ef4444' },
+    blue: { bg: 'bg-blue-500/10', text: 'text-blue-500', border: 'border-blue-500/20' },
+    green: { bg: 'bg-green-500/10', text: 'text-green-500', border: 'border-green-500/20' },
+    purple: { bg: 'bg-purple-500/10', text: 'text-purple-500', border: 'border-purple-500/20' },
+    red: { bg: 'bg-red-500/10', text: 'text-red-500', border: 'border-red-500/20' },
   };
 
+  const styles = colorMap[color];
+
   return (
-    <div className="rounded-lg p-6" style={{ backgroundColor: 'var(--bg-secondary)', boxShadow: 'var(--shadow-sm)', borderColor: 'var(--border-default)', borderWidth: '1px' }}>
+    <div className={`rounded-lg p-6 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-sm`}>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{label}</p>
-          <p className="mt-2 text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>{value.toLocaleString()}</p>
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{label}</p>
+          <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{value.toLocaleString()}</p>
         </div>
-        <div className="p-3 rounded-lg" style={{ backgroundColor: colorMap[color].bg, color: colorMap[color].text }}>
-          <Icon className="w-6 h-6" />
+        <div className={`p-3 rounded-lg ${styles.bg}`}>
+          <Icon className={`w-6 h-6 ${styles.text}`} />
         </div>
       </div>
     </div>

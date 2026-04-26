@@ -18,8 +18,8 @@ export function Button({
 }: ButtonProps) {
   const variantClasses: Record<ButtonVariant, string> = {
     primary: 'bg-[#6366f1] text-white hover:bg-[#5558e6] border border-transparent',
-    outline: 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300',
-    ghost: 'bg-transparent text-gray-600 hover:bg-gray-100 border border-transparent',
+    outline: 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 border border-gray-300 dark:border-slate-600',
+    ghost: 'bg-transparent text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 border border-transparent',
   };
 
   const sizeClasses: Record<ButtonSize, string> = {

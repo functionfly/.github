@@ -62,6 +62,9 @@ body {
 :root {
   --color-bg: #f9fafb;
   --color-text: #111827;
+  --color-text-secondary: #4b5563;
+  --color-bg-secondary: #ffffff;
+  --color-border: #e5e7eb;
   --color-scrollbar-track: #f3f4f6;
   --color-scrollbar-thumb: #d1d5db;
   --color-scrollbar-thumb-hover: #9ca3af;
@@ -70,10 +73,69 @@ body {
 .dark {
   --color-bg: #0f172a;
   --color-text: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-bg-secondary: #1e293b;
+  --color-border: #334155;
   --color-scrollbar-track: #1e293b;
   --color-scrollbar-thumb: #475569;
   --color-scrollbar-thumb-hover: #64748b;
 }
+
+/* Dark mode text visibility fixes */
+.dark body,
+.dark {
+  color: var(--color-text);
+}
+
+/* Force admin color variables to use lighter shades in dark mode */
+.dark {
+  --color-admin-100: #1e293b;
+  --color-admin-200: #334155;
+  --color-admin-300: #475569;
+  --color-admin-400: #64748b;
+  --color-admin-500: #94a3b8;
+  --color-admin-600: #94a3b8;
+  --color-admin-700: #cbd5e1;
+  --color-admin-800: #e2e8f0;
+  --color-admin-900: #f1f5f9;
+}
+
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+  color: #f1f5f9;
+}
+
+.dark p {
+  color: var(--color-text-secondary);
+}
+
+.dark span {
+  color: inherit;
+}
+
+.dark label {
+  color: var(--color-text-secondary);
+}
+
+/* Ensure Tailwind dark mode colors work with custom admin palette */
+.dark .text-admin-900 { color: #f1f5f9; }
+.dark .text-admin-800 { color: #e2e8f0; }
+.dark .text-admin-700 { color: #cbd5e1; }
+.dark .text-admin-600 { color: #94a3b8; }
+.dark .text-admin-500 { color: #64748b; }
+.dark .bg-admin-50 { background-color: #0f172a; }
+.dark .bg-admin-100 { background-color: #1e293b; }
+.dark .bg-admin-200 { background-color: #334155; }
+.dark .bg-admin-300 { background-color: #475569; }
+.dark .bg-admin-400 { background-color: #64748b; }
+.dark .bg-admin-500 { background-color: #94a3b8; }
+.dark .bg-admin-600 { background-color: #94a3b8; }
+.dark .bg-admin-700 { background-color: #cbd5e1; }
+.dark .bg-admin-800 { background-color: #e2e8f0; }
+.dark .bg-admin-900 { background-color: #f1f5f9; }
+.dark .border-admin-200 { border-color: #334155; }
+.dark .border-admin-300 { border-color: #475569; }
+.dark .border-admin-600 { border-color: #64748b; }
+.dark .border-admin-700 { border-color: #475569; }
 
 /* ─── Scrollbar ─────────────────────────────────────────────────── */
 ::-webkit-scrollbar {

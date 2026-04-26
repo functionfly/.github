@@ -35,6 +35,8 @@ export const ROUTES = {
   ADMIN_NEWSLETTER: '/newsletter',
   ADMIN_CONTENT_CALENDAR: '/content-calendar',
   ADMIN_FACTORY: '/factory',
+  ADMIN_FACTORY_OPPORTUNITIES: '/factory/opportunities',
+  ADMIN_FACTORY_REVIEWS: '/factory/reviews',
   ADMIN_MAINTENANCE: '/maintenance',
   ADMIN_CACHE: '/cache',
   ADMIN_MONITORING: '/monitoring',
@@ -78,7 +80,26 @@ export const API_ROUTES = {
   ADMIN_SECURITY_INCIDENTS: '/security/incidents',
   ADMIN_SECURITY_COMPLIANCE: '/security/compliance',
   ADMIN_SECURITY_MEASURES: '/security/measures',
-};
+  // Factory
+  FACTORY_STATUS: '/factory/status',
+  FACTORY_CONFIG: '/factory/config',
+  FACTORY_PIPELINE_RUN: '/factory/pipeline/run',
+  FACTORY_REVIEWS_PENDING: '/factory/reviews/pending',
+  FACTORY_OPPORTUNITIES: '/factory/opportunities',
+  FACTORY_FUNCTIONS: '/factory/functions',
+} as const;
+
+export type APIRoute = (typeof API_ROUTES)[keyof typeof API_ROUTES];
+
+export function factoryRoute(opportunityId?: string, action?: 'approve' | 'reject'): string {
+  if (opportunityId && action) {
+    return `/factory/opportunities/${opportunityId}/${action}`;
+  }
+  if (opportunityId) {
+    return `/factory/opportunities/${opportunityId}`;
+  }
+  return API_ROUTES.FACTORY_OPPORTUNITIES;
+}
 
 export const SESSION = {
   TIMEOUT: parseInt(import.meta.env.VITE_SESSION_TIMEOUT || '1800000', 10),

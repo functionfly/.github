@@ -201,15 +201,9 @@ const navigationSections: NavSection[] = [
     items: [
       {
         path: ROUTES.ADMIN_FUNCTIONS,
-        label: 'Functions',
-        icon: BarChart3,
-        description: 'Function management',
-      },
-      {
-        path: ROUTES.ADMIN_REGISTRY,
-        label: 'Registry',
+        label: 'Functions & Registry',
         icon: FileText,
-        description: 'Function registry',
+        description: 'Function management and registry',
       },
       {
         path: ROUTES.ADMIN_STATE_FABRIC,

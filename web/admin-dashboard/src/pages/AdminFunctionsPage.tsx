@@ -1,15 +1,17 @@
 /**
  * Admin Functions Page
  * Manage deployed functions and view registry metrics
+ * Merged with Registry page - both were redundant
  */
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { adminApiClient } from '@/lib/api/adminClient';
-import { Plus, Search, Star, Eye, DollarSign } from 'lucide-react';
+import { Plus, Search, Star, Eye, DollarSign, LayoutGrid, List } from 'lucide-react';
 import { LoadingScreen } from '@/components/common/LoadingScreen';
 import { DeployFunctionModal } from '@/components/common/DeployFunctionModal';
+import clsx from 'clsx';
 
 interface RegistryFunctionData {
   id: string;
@@ -32,30 +34,65 @@ interface RegistryFunctionData {
   updated_at: string;
 }
 
-interface FunctionsAPIResponse {
+interface FunctionsResponse {
   functions: RegistryFunctionData[];
   total: number;
 }
+
+interface RegistryStats {
+  total_functions: number;
+  active_functions: number;
+  flagged_functions: number;
+}
+
+type ViewMode = 'grid' | 'list';
 
 export function AdminFunctionsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [visibilityFilter, setVisibilityFilter] = useState<string>('all');
   const [deployModalOpen, setDeployModalOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['admin-functions'],
     queryFn: async () => {
       try {
-        return await adminApiClient.get<FunctionsAPIResponse>('/registry/functions');
-      } catch {
-        return null;
+        const resp = await adminApiClient.get<{ functions: RegistryFunctionData[], total: number }>('/registry/functions');
+        console.log('/registry/functions response:', resp);
+        // Response shape: {data: {functions: [], total: N}} from AdminAPIResponse wrapper
+        // But log shows direct {functions: [], total: N}, so check both
+        if (resp?.functions) return resp;
+        if (resp?.data?.functions) return resp.data;
+        return { functions: [], total: 0 };
+      } catch (e) {
+        console.error('functions error:', e);
+        return { functions: [], total: 0 };
       }
     },
     staleTime: 1000 * 60,
   });
 
-  const functions = data?.functions || [];
+  const { data: statsData } = useQuery({
+    queryKey: ['admin-registry-stats'],
+    queryFn: async () => {
+      try {
+        const resp = await adminApiClient.get<RegistryStats>('/registry/stats');
+        console.log('/registry/stats response:', resp);
+        // Direct response {total_functions, active_functions, ...}
+        if (resp && 'total_functions' in resp) return resp;
+        if (resp?.data && 'total_functions' in resp.data) return resp.data;
+        return { total_functions: 0, active_functions: 0, flagged_functions: 0 };
+      } catch (e) {
+        console.error('registry stats error:', e);
+        return { total_functions: 0, active_functions: 0, flagged_functions: 0 };
+      }
+    },
+  });
+
+  const functions = data?.functions ?? [];
+  const totalFunctions = data?.total ?? functions.length;
+  const stats = statsData ?? { total_functions: totalFunctions, active_functions: 0, flagged_functions: 0 };
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -79,20 +116,18 @@ export function AdminFunctionsPage() {
     return matchesSearch && matchesCategory && matchesVisibility;
   });
 
+  const flaggedCount = functions.filter((f) => f.is_flagged).length;
   const categories = [...new Set(functions.map((f) => f.category).filter(Boolean))];
-
   const avgRating = functions.length > 0
     ? (functions.reduce((sum, f) => sum + f.overall_score, 0) / functions.length).toFixed(1)
     : '0';
-  const totalPrice = functions.reduce((sum, f) => sum + f.price_per_call, 0);
-  const flaggedCount = functions.filter((f) => f.is_flagged).length;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Functions</h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">Manage deployed functions and view metrics</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Functions & Registry</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Manage deployed functions and marketplace registry</p>
         </div>
         <button
           onClick={() => setDeployModalOpen(true)}
@@ -103,11 +138,18 @@ export function AdminFunctionsPage() {
         </button>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
           <p className="text-gray-600 dark:text-gray-400 text-sm">Total Functions</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{data?.total ?? functions.length}</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.total_functions ?? totalFunctions}</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+          <p className="text-gray-600 dark:text-gray-400 text-sm">Active</p>
+          <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.active_functions ?? 0}</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+          <p className="text-gray-600 dark:text-gray-400 text-sm">Flagged</p>
+          <p className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.flagged_functions ?? flaggedCount}</p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
           <p className="text-gray-600 dark:text-gray-400 text-sm">Avg Rating</p>
@@ -116,20 +158,9 @@ export function AdminFunctionsPage() {
             {avgRating}
           </p>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-          <p className="text-gray-600 dark:text-gray-400 text-sm">Total Revenue</p>
-          <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-            <DollarSign className="inline w-5 h-5 mr-1" />
-            {totalPrice.toFixed(2)}
-          </p>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-          <p className="text-gray-600 dark:text-gray-400 text-sm">Flagged</p>
-          <p className="text-2xl font-bold text-red-600 dark:text-red-400">{flaggedCount}</p>
-        </div>
       </div>
 
-      <div className="flex gap-4 flex-wrap">
+      <div className="flex gap-4 flex-wrap items-center">
         <div className="flex-1 min-w-[200px] relative">
           <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
           <input
@@ -162,79 +193,151 @@ export function AdminFunctionsPage() {
           <option value="private">Private</option>
           <option value="unlisted">Unlisted</option>
         </select>
+        <div className="flex items-center gap-1 border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setViewMode('list')}
+            className={clsx(
+              'p-2 transition-colors',
+              viewMode === 'list' ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
+            )}
+            title="List view"
+          >
+            <List className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => setViewMode('grid')}
+            className={clsx(
+              'p-2 transition-colors',
+              viewMode === 'grid' ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
+            )}
+            title="Grid view"
+          >
+            <LayoutGrid className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Name</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Author</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Category</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Visibility</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Price/Call</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Rating</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredFunctions.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
-                  No functions found
-                </td>
-              </tr>
-            ) : (
-              filteredFunctions.map((func) => (
-                <tr key={func.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-                  <td className="px-6 py-4 text-sm">
-                    <div>
-                      <Link
-                        to={`/functions/${func.id}`}
-                        className="font-medium text-blue-700 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
-                      >
-                        {func.name}
-                      </Link>
-                      {func.title && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[200px]">{func.title}</p>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{func.author}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                    {func.category || <span className="text-gray-400">—</span>}
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                      func.visibility === 'public'
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                        : func.visibility === 'private'
-                        ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                        : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                    }`}>
-                      <Eye className="w-3 h-3" />
-                      {func.visibility}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+      {viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredFunctions.length === 0 ? (
+            <div className="col-span-full p-8 text-center text-gray-500 dark:text-gray-400">
+              No functions found
+            </div>
+          ) : (
+            filteredFunctions.map((func) => (
+              <Link
+                key={func.id}
+                to={`/functions/${func.id}`}
+                className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate">{func.name}</h3>
+                  <span className={clsx(
+                    'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium shrink-0',
+                    func.visibility === 'public'
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                      : func.visibility === 'private'
+                      ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                      : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                  )}>
+                    <Eye className="w-3 h-3" />
+                    {func.visibility}
+                  </span>
+                </div>
+                {func.title && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 line-clamp-2">{func.title}</p>
+                )}
+                <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                  <span>{func.author}</span>
+                  <span>{func.category || 'Uncategorized'}</span>
+                </div>
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                  <div className="flex items-center gap-1">
+                    <Star className="w-4 h-4 text-yellow-500" />
+                    <span className="text-sm">{func.overall_score > 0 ? func.overall_score.toFixed(1) : 'N/A'}</span>
+                  </div>
+                  <span className="text-sm">
                     {func.price_per_call > 0 ? `$${func.price_per_call.toFixed(4)}` : <span className="text-green-600">Free</span>}
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 text-yellow-500" />
-                      <span className={func.overall_score > 0 ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400'}>
-                        {func.overall_score > 0 ? func.overall_score.toFixed(1) : 'N/A'}
-                      </span>
-                      {func.total_ratings > 0 && (
-                        <span className="text-xs text-gray-400">({func.total_ratings})</span>
-                      )}
-                    </div>
+                  </span>
+                </div>
+              </Link>
+            ))
+          )}
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Name</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Author</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Category</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Visibility</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Price/Call</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Rating</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredFunctions.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                    No functions found
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              ) : (
+                filteredFunctions.map((func) => (
+                  <tr key={func.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <td className="px-6 py-4 text-sm">
+                      <div>
+                        <Link
+                          to={`/functions/${func.id}`}
+                          className="font-medium text-blue-700 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
+                        >
+                          {func.name}
+                        </Link>
+                        {func.title && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[200px]">{func.title}</p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{func.author}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {func.category || <span className="text-gray-400">—</span>}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <span className={clsx(
+                        'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium',
+                        func.visibility === 'public'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                          : func.visibility === 'private'
+                          ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                          : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                      )}>
+                        <Eye className="w-3 h-3" />
+                        {func.visibility}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {func.price_per_call > 0 ? `$${func.price_per_call.toFixed(4)}` : <span className="text-green-600">Free</span>}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <div className="flex items-center gap-1">
+                        <Star className="w-4 h-4 text-yellow-500" />
+                        <span className={func.overall_score > 0 ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400'}>
+                          {func.overall_score > 0 ? func.overall_score.toFixed(1) : 'N/A'}
+                        </span>
+                        {func.total_ratings > 0 && (
+                          <span className="text-xs text-gray-400">({func.total_ratings})</span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <DeployFunctionModal
         open={deployModalOpen}

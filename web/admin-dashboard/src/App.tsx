@@ -52,9 +52,6 @@ const AdminContentPage = lazy(() =>
 const AdminBlogPage = lazy(() =>
   import('@/pages/AdminBlogPage').then((m) => ({ default: m.AdminBlogPage }))
 );
-const AdminRegistryPage = lazy(() =>
-  import('@/pages/AdminRegistryPage').then((m) => ({ default: m.AdminRegistryPage }))
-);
 const AdminStateFabricPage = lazy(() =>
   import('@/pages/AdminStateFabricPage').then((m) => ({ default: m.AdminStateFabricPage }))
 );
@@ -255,14 +252,6 @@ function App() {
                   element={
                     <Suspense fallback={<LoadingScreen />}>
                       <AdminBlogPage />
-                    </Suspense>
-                  }
-                />
-                <Route
-                  path="registry"
-                  element={
-                    <Suspense fallback={<LoadingScreen />}>
-                      <AdminRegistryPage />
                     </Suspense>
                   }
                 />
