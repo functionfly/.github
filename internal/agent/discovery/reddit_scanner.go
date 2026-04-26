@@ -19,6 +19,7 @@ import (
 type RedditScanner struct {
 	// Configuration
 	Subreddit  string
+	Subreddits []string // Multiple subreddits when REDDIT_SUBREDDITS is set
 	MaxResults int
 
 	// Internal state
@@ -66,7 +67,9 @@ type RedditAPIResponse struct {
 
 // NewRedditScanner creates a new Reddit scanner with configuration from environment variables.
 // It reads REDDIT_SUBREDDIT from the environment.
+// When REDDIT_SUBREDDITS (plural) is set, scans multiple subreddits.
 func NewRedditScanner() *RedditScanner {
+	subredditsEnv := os.Getenv("REDDIT_SUBREDDITS")
 	subreddit := getEnvOrDefault("REDDIT_SUBREDDIT", "learnprogramming")
 
 	maxResults := 50
@@ -76,8 +79,19 @@ func NewRedditScanner() *RedditScanner {
 		}
 	}
 
+	var subreddits []string
+	if subredditsEnv != "" {
+		subreddits = strings.Split(subredditsEnv, ",")
+		for i := range subreddits {
+			subreddits[i] = strings.TrimSpace(subreddits[i])
+		}
+	} else if subreddit != "" {
+		subreddits = []string{subreddit}
+	}
+
 	return &RedditScanner{
 		Subreddit:  subreddit,
+		Subreddits: subreddits,
 		MaxResults: maxResults,
 		client: &http.Client{
 			Timeout: 30 * time.Second,
@@ -178,6 +192,9 @@ func (rl *RedditRateLimiter) WaitIfNeeded() {
 
 // Name returns the scanner name
 func (r RedditScanner) Name() string {
+	if len(r.Subreddits) > 1 {
+		return fmt.Sprintf("reddit:multi:%d", len(r.Subreddits))
+	}
 	if r.Subreddit == "" {
 		return "reddit"
 	}
@@ -185,9 +202,15 @@ func (r RedditScanner) Name() string {
 }
 
 // Scan fetches posts from Reddit and converts them to opportunity candidates.
+// When multiple subreddits are configured, scans each one and aggregates results.
 func (r RedditScanner) Scan(ctx context.Context) ([]OpportunityCandidate, error) {
-	// Check if we have valid configuration
-	if r.Subreddit == "" {
+	// Determine which subreddits to scan
+	var subreddits []string
+	if len(r.Subreddits) > 1 {
+		subreddits = r.Subreddits
+	} else if r.Subreddit != "" {
+		subreddits = []string{r.Subreddit}
+	} else {
 		// Return empty results if no subreddit configured - don't error
 		return []OpportunityCandidate{}, nil
 	}
@@ -197,48 +220,49 @@ func (r RedditScanner) Scan(ctx context.Context) ([]OpportunityCandidate, error)
 		return []OpportunityCandidate{}, fmt.Errorf("Reddit API rate limit exceeded, try again later")
 	}
 
-	// Fetch posts from the subreddit
-	posts, err := r.fetchPosts(ctx, r.Subreddit, r.MaxResults)
-	if err != nil {
-		// Don't return error, just log and return empty
-		// This ensures the pipeline continues even if Reddit API fails
-		return []OpportunityCandidate{}, nil
-	}
-
-	// Convert to candidates
-	results := make([]OpportunityCandidate, 0, len(posts))
-	for _, post := range posts {
-		// Skip posts that don't indicate a pain point or opportunity
-		text := strings.ToLower(post.Title + " " + post.Body)
-		isOpportunity := r.isOpportunityPost(post, text)
-
-		if !isOpportunity {
+	// Fetch from all subreddits
+	results := make([]OpportunityCandidate, 0)
+	for _, subreddit := range subreddits {
+		posts, err := r.fetchPosts(ctx, subreddit, r.MaxResults/len(subreddits)+1)
+		if err != nil {
+			// Don't fail entirely - continue with other subreddits
 			continue
 		}
 
-		// Calculate demand signal
-		demandSignal := r.calculateDemandSignal(post)
+		for _, post := range posts {
+			// Skip posts that don't indicate a pain point or opportunity
+			text := strings.ToLower(post.Title + " " + post.Body)
+			isOpportunity := r.isOpportunityPost(post, text)
 
-		candidate := OpportunityCandidate{
-			Source:           r.Name(),
-			SourceID:         post.ID,
-			Title:            post.Title,
-			Description:      post.Body,
-			Category:         "community_pain_point",
-			Tags:             uniqueStrings([]string{"reddit", r.Subreddit, post.Flair}),
-			DemandSignal:     demandSignal,
-			ComplexitySignal: estimateComplexity(post.Title+" "+post.Body, []string{post.Flair, r.Subreddit}),
-			Metadata: map[string]any{
-				"permalink":     "https://reddit.com" + post.Permalink,
-				"score":         post.Score,
-				"comment_count": post.CommentCount,
-				"flair":         post.Flair,
-				"created_utc":   post.CreatedUTC,
-				"is_self":       post.IsSelf,
-			},
-			DiscoveredAt: time.Now().UTC(),
+			if !isOpportunity {
+				continue
+			}
+
+			// Calculate demand signal
+			demandSignal := r.calculateDemandSignal(post)
+
+			candidate := OpportunityCandidate{
+				Source:           r.Name(),
+				SourceID:         post.ID,
+				Title:            post.Title,
+				Description:      post.Body,
+				Category:         "community_pain_point",
+				Tags:             uniqueStrings([]string{"reddit", subreddit, post.Flair}),
+				DemandSignal:     demandSignal,
+				ComplexitySignal: estimateComplexity(post.Title+" "+post.Body, []string{post.Flair, subreddit}),
+				Metadata: map[string]any{
+					"permalink":     "https://reddit.com" + post.Permalink,
+					"score":         post.Score,
+					"comment_count": post.CommentCount,
+					"flair":         post.Flair,
+					"created_utc":   post.CreatedUTC,
+					"is_self":       post.IsSelf,
+					"subreddit":     post.Subreddit,
+				},
+				DiscoveredAt: time.Now().UTC(),
+			}
+			results = append(results, candidate)
 		}
-		results = append(results, candidate)
 	}
 
 	return results, nil

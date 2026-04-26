@@ -9,6 +9,7 @@ import (
 	"github.com/functionfly/functionfly/internal/agent/identity"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
@@ -66,7 +67,7 @@ type PublishedFunction struct {
 	Title              string     `json:"title"`
 	Description        string     `json:"description"`
 	Category           string     `json:"category"`
-	Tags               []string   `json:"tags" gorm:"type:text[]"`
+	Tags               pq.StringArray `json:"tags" gorm:"type:text[]"`
 	IsPublic           bool       `json:"is_public" gorm:"not null;default:false"`
 	Status             string     `json:"status" gorm:"not null;default:'pending'"` // pending, published, failed
 	Version            string     `json:"version" gorm:"not null;default:'1.0.0'"`
@@ -153,14 +154,16 @@ func (p *Publisher) Publish(ctx context.Context, req *PublishRequest) (*Publishe
 
 // createRegistryFunction creates a function entry in the registry
 func (p *Publisher) createRegistryFunction(ctx context.Context, generated GeneratedCode, req *PublishRequest) (uuid.UUID, error) {
-	// Check if function already exists
+	// The function was already created by GenerateFunction() in generation/service.go
+	// We just need to find it and update its metadata
 	var existing identity.Function
+
 	err := p.db.WithContext(ctx).
 		Where("author = ? AND name = ?", req.Author, req.Name).
 		First(&existing).Error
 
 	if err == nil {
-		// Function exists, update it
+		// Function exists from GenerateFunction(), update it
 		existing.LatestVersion = "1.0.0"
 		existing.Description = req.Description
 		existing.Category = req.Category
@@ -176,7 +179,6 @@ func (p *Publisher) createRegistryFunction(ctx context.Context, generated Genera
 			return uuid.Nil, fmt.Errorf("failed to update function: %w", err)
 		}
 
-		// Parse existing ID
 		existingID, _ := uuid.Parse(existing.ID)
 		return existingID, nil
 	}
@@ -185,9 +187,10 @@ func (p *Publisher) createRegistryFunction(ctx context.Context, generated Genera
 		return uuid.Nil, fmt.Errorf("failed to check existing function: %w", err)
 	}
 
-	// Create new function
+	// Function not found - this shouldn't happen if GenerateFunction succeeded
+	// But if it does (e.g. partial failure), create it with the generated ID
 	newFunc := identity.Function{
-		ID:                 uuid.New().String(),
+		ID:                 generated.ID.String(),
 		Author:             req.Author,
 		Name:               req.Name,
 		LatestVersion:      "1.0.0",
@@ -212,7 +215,7 @@ func (p *Publisher) createRegistryFunction(ctx context.Context, generated Genera
 		return uuid.Nil, fmt.Errorf("failed to create function: %w", err)
 	}
 
-	return uuid.Parse(newFunc.ID)
+	return generated.ID, nil
 }
 
 // trackOwnership tracks that an agent owns a function

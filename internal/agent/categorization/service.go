@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
@@ -36,19 +37,19 @@ type CategorizationResult struct {
 
 // FunctionCategory stores the categorization result for a function
 type FunctionCategory struct {
-	ID                uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	FunctionID        uuid.UUID `json:"function_id" gorm:"type:uuid;uniqueIndex;not null"`
-	PrimaryCategory   string    `json:"primary_category" gorm:"not null;index"`
-	SecondaryCategory string    `json:"secondary_category"`
-	Tags              []string  `json:"tags" gorm:"type:text[]"`
-	Confidence        float64   `json:"confidence" gorm:"type:decimal(5,4);not null"`
-	Reasoning         string    `json:"reasoning"`
-	CodePatterns      []string  `json:"code_patterns" gorm:"type:text[]"`
-	InputTypes        []string  `json:"input_types" gorm:"type:text[]"`
-	OutputTypes       []string  `json:"output_types" gorm:"type:text[]"`
-	ManuallyEdited    bool      `json:"manually_edited" gorm:"default:false"`
-	CreatedAt         time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt         time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	ID                uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	FunctionID        uuid.UUID      `json:"function_id" gorm:"type:uuid;uniqueIndex;not null"`
+	PrimaryCategory   string         `json:"primary_category" gorm:"not null;index"`
+	SecondaryCategory string         `json:"secondary_category"`
+	Tags              pq.StringArray `json:"tags" gorm:"type:text[]"`
+	Confidence        float64        `json:"confidence" gorm:"type:decimal(5,4);not null"`
+	Reasoning         string         `json:"reasoning"`
+	CodePatterns      pq.StringArray `json:"code_patterns" gorm:"type:text[]"`
+	InputTypes        pq.StringArray `json:"input_types" gorm:"type:text[]"`
+	OutputTypes       pq.StringArray `json:"output_types" gorm:"type:text[]"`
+	ManuallyEdited    bool           `json:"manually_edited" gorm:"default:false"`
+	CreatedAt         time.Time      `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt         time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 func (FunctionCategory) TableName() string {
@@ -292,7 +293,7 @@ func (s *Service) analyzeCodePatterns(code string) []string {
 		{"array-filter", regexp.MustCompile(`(?i)(\.filter\(|filter\s*\(|where|select)`)},
 		{"array-reduce", regexp.MustCompile(`(?i)(\.reduce\(|reduce\s*\(|fold|aggregate)`)},
 		{"array-sort", regexp.MustCompile(`(?i)(\.sort\(|sorted\(|order.*by)`)},
-		{"array-reverse", regexp.MustCompile(`(?i)(\.reverse\(|reversed\(|[::-1])`)},
+		{"array-reverse", regexp.MustCompile(`(?i)(\.reverse\(|reversed\(|\[::-1\])`)},
 
 		// CSV operations
 		{"csv-parse", regexp.MustCompile(`(?i)(csv\.reader|csv\.DictReader|parse.*csv|from_csv)`)},

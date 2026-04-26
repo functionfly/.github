@@ -32,7 +32,7 @@ type Experiment struct {
 	StartDate *time.Time `json:"start_date"`
 	EndDate   *time.Time `json:"end_date"`
 	// Metadata
-	Metadata map[string]any `json:"metadata" gorm:"type:jsonb;default:'{}'"`
+	Metadata JSONMap `json:"metadata" gorm:"type:jsonb;default:'{}'"`
 	// Timestamps
 	CreatedAt time.Time  `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
@@ -57,7 +57,7 @@ type ExperimentVariant struct {
 	// Whether this variant is currently active
 	IsActive bool `json:"is_active" gorm:"not null;default:true"`
 	// Metadata
-	Metadata map[string]any `json:"metadata" gorm:"type:jsonb;default:'{}'"`
+	Metadata JSONMap `json:"metadata" gorm:"type:jsonb;default:'{}'"`
 	// Timestamps
 	CreatedAt time.Time  `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
@@ -87,7 +87,7 @@ type ExperimentMetric struct {
 	// Error information
 	ErrorMessage *string `json:"error_message" gorm:"type:text"`
 	// Metadata
-	Metadata map[string]any `json:"metadata" gorm:"type:jsonb;default:'{}'"`
+	Metadata JSONMap `json:"metadata" gorm:"type:jsonb;default:'{}'"`
 	// Timestamps
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
 }

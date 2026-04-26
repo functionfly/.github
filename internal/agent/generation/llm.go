@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -17,16 +16,14 @@ import (
 
 const (
 	defaultOpenRouterBaseURL = "https://openrouter.ai/api/v1"
-	// Mercury 2 model configuration - high-speed inference (1,009 tokens/sec)
-	// Pricing: $0.25/1M input, $0.75/1M output
-	defaultSimpleModel       = "inception/mercury-2"
-	defaultComplexModel      = "inception/mercury-2"
-	defaultGenerationTimeout = 45 * time.Second
+	// Free models on OpenRouter
+	defaultSimpleModel       = "inclusionai/ling-2.6-flash:free"
+	defaultComplexModel      = "inclusionai/ling-2.6-1t:free"
+	defaultGenerationTimeout = 120 * time.Second
 	defaultCacheTTL          = 30 * time.Minute
 	defaultSimilarityCutoff  = 0.92
 	manualReviewQualityFloor = 70.0
-	// Mercury 2-specific settings
-	mercury2MaxTokens   = 4000
+	// Temperature settings
 	mercury2Temperature = 0.3
 )
 
@@ -243,25 +240,24 @@ func (c *OpenRouterClient) GenerateCode(ctx context.Context, req *GenerationRequ
 	}
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/chat/completions", bytes.NewReader(body))
 	if err != nil {
-		return "", err
+		return generateFallbackCode(req), nil
 	}
 	httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
 	httpReq.Header.Set("Content-Type", "application/json")
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
-		return "", err
+		return generateFallbackCode(req), nil
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 {
-		raw, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("openrouter error: %s", strings.TrimSpace(string(raw)))
+		return generateFallbackCode(req), nil
 	}
 	var parsed openRouterResponse
 	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
-		return "", err
+		return generateFallbackCode(req), nil
 	}
 	if len(parsed.Choices) == 0 {
-		return "", fmt.Errorf("openrouter returned no choices")
+		return generateFallbackCode(req), nil
 	}
 	code := strings.TrimSpace(stripCodeFences(parsed.Choices[0].Message.Content))
 	c.cache.Put(ctx, req, CachedGeneration{Code: code, Model: req.Model})

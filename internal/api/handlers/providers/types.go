@@ -73,6 +73,29 @@ func NewHandler(repo storage.Repository, notify *notification.Service) *Handler 
 	}
 }
 
+// FailoverTestRequest is the request payload for running a failover test
+type FailoverTestRequest struct {
+	PrimaryProviderID string `json:"primary_provider_id"`
+	BackupProviderID  string `json:"backup_provider_id,omitempty"`
+}
+
+// FailoverTestResult contains latency info for a single provider
+type FailoverTestResult struct {
+	Provider  string `json:"provider"`
+	Region    string `json:"region"`
+	Status    string `json:"status"`
+	LatencyMs int    `json:"latency_ms"`
+}
+
+// FailoverTestResponse is the result of a failover test
+type FailoverTestResponse struct {
+	Success          bool                 `json:"success"`
+	Message          string               `json:"message,omitempty"`
+	Results          []FailoverTestResult `json:"results"`
+	FailoverOccurred bool                 `json:"failover_occurred"`
+	TestDurationMs   int                  `json:"test_duration_ms"`
+}
+
 // HTTPHandler defines the interface for provider HTTP handlers
 type HTTPHandler interface {
 	HandleConnectProvider(w http.ResponseWriter, r *http.Request)
@@ -85,6 +108,7 @@ type HTTPHandler interface {
 	HandleCreateTeamInvite(w http.ResponseWriter, r *http.Request)
 	HandleShareProvider(w http.ResponseWriter, r *http.Request)
 	HandleRotateProvider(w http.ResponseWriter, r *http.Request)
+	HandleRunFailoverTest(w http.ResponseWriter, r *http.Request)
 }
 
 // Ensure Handler implements HTTPHandler

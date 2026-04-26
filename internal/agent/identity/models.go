@@ -4,6 +4,8 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -48,6 +50,51 @@ func (m JSONBMap) Value() (driver.Value, error) {
 		return []byte("{}"), nil
 	}
 	return json.Marshal(m)
+}
+
+type StringArray []string
+
+func (a StringArray) Value() (driver.Value, error) {
+	if a == nil {
+		return []byte("[]"), nil
+	}
+	return json.Marshal(a)
+}
+
+func (a *StringArray) Scan(value interface{}) error {
+	if value == nil {
+		*a = nil
+		return nil
+	}
+	switch v := value.(type) {
+	case []byte:
+		return a.scanString(string(v))
+	case string:
+		return a.scanString(v)
+	}
+	return fmt.Errorf("cannot scan type %T into StringArray", value)
+}
+
+func (a *StringArray) scanString(s string) error {
+	if s == "" || s == "{}" {
+		*a = []string{}
+		return nil
+	}
+	s = strings.TrimPrefix(strings.TrimSuffix(s, "}"), "{")
+	if s == "" {
+		*a = []string{}
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	*a = make([]string, len(parts))
+	for i, p := range parts {
+		p = strings.TrimSpace(p)
+		if len(p) >= 2 && p[0] == '"' && p[len(p)-1] == '"' {
+			p = p[1 : len(p)-1]
+		}
+		(*a)[i] = strings.Replace(p, `""`, `"`, -1)
+	}
+	return nil
 }
 
 // AgentIdentity represents a registered agent in the system
@@ -405,7 +452,7 @@ type Function struct {
 	Title                 string    `json:"title,omitempty"`
 	Description           string    `json:"description,omitempty"`
 	Category              string    `json:"category,omitempty"`
-	Tags                  []string  `json:"tags,omitempty" gorm:"type:text[]"`
+	Tags                  StringArray `json:"tags,omitempty" gorm:"type:text[]"`
 	Visibility            string    `json:"visibility" gorm:"default:'public'"`
 	PricePerCall          float64   `json:"price_per_call" gorm:"type:decimal(20,8);default:0"`
 	PopularityScore       int       `json:"popularity_score" gorm:"default:0"`

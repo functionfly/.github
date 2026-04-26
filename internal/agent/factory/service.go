@@ -2,6 +2,8 @@ package factory
 
 import (
 	"context"
+	"database/sql/driver"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -18,6 +20,27 @@ import (
 	"gorm.io/gorm/logger"
 )
 
+type JSONMap map[string]any
+
+func (j JSONMap) Value() (driver.Value, error) {
+	if j == nil {
+		return nil, nil
+	}
+	return json.Marshal(j)
+}
+
+func (j *JSONMap) Scan(value interface{}) error {
+	if value == nil {
+		*j = nil
+		return nil
+	}
+	bytes, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("cannot scan %T into JSONMap", value)
+	}
+	return json.Unmarshal(bytes, j)
+}
+
 type FactoryRun struct {
 	ID                   uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	AgentID              string         `json:"agent_id" gorm:"not null;index"`
@@ -27,7 +50,7 @@ type FactoryRun struct {
 	FunctionsPublished   int            `json:"functions_published"`
 	AverageQualityScore  float64        `json:"average_quality_score" gorm:"type:decimal(5,2);default:0"`
 	ErrorMessage         *string        `json:"error_message" gorm:"type:text"`
-	Metadata             map[string]any `json:"metadata" gorm:"type:jsonb;default:'{}'"`
+	Metadata             JSONMap `json:"metadata" gorm:"type:jsonb;default:'{}'"`
 	CreatedAt            time.Time      `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt            time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
 	CompletedAt          *time.Time     `json:"completed_at"`
@@ -46,7 +69,7 @@ type FactoryVersion struct {
 	QualityScore   float64        `json:"quality_score" gorm:"type:decimal(5,2);default:0"`
 	TestScore      float64        `json:"test_score" gorm:"type:decimal(5,2);default:0"`
 	ReviewRequired bool           `json:"review_required" gorm:"not null;default:false"`
-	Metadata       map[string]any `json:"metadata" gorm:"type:jsonb;default:'{}'"`
+	Metadata       JSONMap `json:"metadata" gorm:"type:jsonb;default:'{}'"`
 	CreatedAt      time.Time      `json:"created_at" gorm:"autoCreateTime"`
 }
 
@@ -108,6 +131,10 @@ func (s *Service) AutoMigrate(ctx context.Context) error {
 	return s.categorizer.AutoMigrate(ctx)
 }
 
+func (s *Service) UpdateDiscoveryService(discoverySvc *discovery.Service) {
+	s.discovery = discoverySvc
+}
+
 func (s *Service) Run(ctx context.Context) (*FactoryRun, error) {
 	run := &FactoryRun{ID: uuid.New(), AgentID: s.config.AgentID, Status: RunStatusRunning, Metadata: map[string]any{}}
 	if err := s.db.WithContext(ctx).Create(run).Error; err != nil {
@@ -131,7 +158,7 @@ func (s *Service) Run(ctx context.Context) (*FactoryRun, error) {
 }
 
 func (s *Service) execute(ctx context.Context, run *FactoryRun) error {
-	opportunities, err := s.discovery.ListQualified(ctx, s.config.DiscoveryBatchSize)
+	opportunities, err := s.discovery.ScanAllAndListQualified(ctx, s.config.DiscoveryBatchSize)
 	if err != nil {
 		return err
 	}
@@ -184,6 +211,9 @@ func (s *Service) processOpportunity(ctx context.Context, runID uuid.UUID, oppor
 	genResult, err := s.generation.GenerateFunction(ctx, request)
 	if err != nil {
 		return nil, 0, err
+	}
+	if !genResult.Success {
+		return nil, 0, fmt.Errorf("code generation failed: %s", genResult.Error)
 	}
 	testResults, err := s.testing.RunTests(ctx, genResult.FunctionID, genResult.Code, request.Runtime)
 	if err != nil {
@@ -290,7 +320,7 @@ func (s *Service) processOpportunity(ctx context.Context, runID uuid.UUID, oppor
 				Tags:         request.Tags,
 			},
 		},
-		Author:      "functionfly-ai",
+		Author:      s.config.AgentID,
 		Name:        request.Name,
 		Title:       request.Name,
 		Description: request.Description,

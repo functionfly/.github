@@ -20,24 +20,33 @@ type Scorer interface {
 
 // Service orchestrates discovery source scanning and opportunity persistence.
 type Service struct {
-	db      *gorm.DB
-	sources []Source
-	scorer  Scorer
+	db                 *gorm.DB
+	sources            []Source
+	scorer             Scorer
+	validationThreshold float64
 }
 
 func NewService(db *gorm.DB, sources ...Source) *Service {
-	return &Service{db: db, sources: sources, scorer: DefaultScorer{}}
+	return &Service{db: db, sources: sources, scorer: DefaultScorer{}, validationThreshold: 70}
 }
 
 func NewServiceWithScorer(db *gorm.DB, scorer Scorer, sources ...Source) *Service {
 	if scorer == nil {
 		scorer = DefaultScorer{}
 	}
-	return &Service{db: db, sources: sources, scorer: scorer}
+	return &Service{db: db, sources: sources, scorer: scorer, validationThreshold: 70}
+}
+
+func NewServiceWithThreshold(db *gorm.DB, threshold float64, sources ...Source) *Service {
+	return &Service{db: db, sources: sources, scorer: DefaultScorer{}, validationThreshold: threshold}
 }
 
 func (s *Service) AutoMigrate(ctx context.Context) error {
 	return s.db.WithContext(ctx).AutoMigrate(&Opportunity{})
+}
+
+func (s *Service) Sources() []Source {
+	return s.sources
 }
 
 func (s *Service) ScanAll(ctx context.Context) ([]DiscoveryBatch, error) {
@@ -50,6 +59,14 @@ func (s *Service) ScanAll(ctx context.Context) ([]DiscoveryBatch, error) {
 		results = append(results, batch)
 	}
 	return results, nil
+}
+
+func (s *Service) ScanAllAndListQualified(ctx context.Context, limit int) ([]Opportunity, error) {
+	_, err := s.ScanAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return s.ListQualified(ctx, limit)
 }
 
 func (s *Service) ScanSource(ctx context.Context, source Source) (DiscoveryBatch, error) {
@@ -103,24 +120,34 @@ func (s *Service) MarkGenerated(ctx context.Context, sourceID string, generatedF
 }
 
 func (s *Service) ApplyReviewDecision(ctx context.Context, opportunityID string, decision ReviewDecision) error {
-	updates := map[string]any{
-		"updated_at": time.Now().UTC(),
-	}
 	if decision.Approved {
-		updates["review_status"] = ReviewStatusApproved
-		updates["status"] = OpportunityStatusQualified
-		updates["validated"] = true
-	} else {
-		updates["review_status"] = ReviewStatusRejected
-		updates["status"] = OpportunityStatusRejected
+		return s.db.WithContext(ctx).Model(&Opportunity{}).Where("id = ?", opportunityID).Updates(map[string]any{
+			"review_status": ReviewStatusApproved,
+			"status":        OpportunityStatusQualified,
+			"validated":     true,
+			"updated_at":    time.Now().UTC(),
+		}).Error
+	}
+
+	updates := map[string]any{
+		"review_status": ReviewStatusRejected,
+		"status":        OpportunityStatusRejected,
+		"updated_at":    time.Now().UTC(),
 	}
 	if reason := strings.TrimSpace(decision.Reason); reason != "" {
 		updates["review_reason"] = reason
 	}
-	if actor := strings.TrimSpace(decision.Actor); actor != "" {
-		updates["metadata"] = gorm.Expr("COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('review_actor', ?)", actor)
+	if err := s.db.WithContext(ctx).Model(&Opportunity{}).Where("id = ?", opportunityID).Updates(updates).Error; err != nil {
+		return err
 	}
-	return s.db.WithContext(ctx).Model(&Opportunity{}).Where("id = ?", opportunityID).Updates(updates).Error
+
+	if actor := strings.TrimSpace(decision.Actor); actor != "" {
+		return s.db.WithContext(ctx).Exec(
+			"UPDATE opportunities SET metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('review_actor', ?) WHERE id = ?",
+			actor, opportunityID,
+		).Error
+	}
+	return nil
 }
 
 func (s *Service) upsertCandidate(ctx context.Context, candidate OpportunityCandidate) (*Opportunity, bool, error) {
@@ -131,7 +158,7 @@ func (s *Service) upsertCandidate(ctx context.Context, candidate OpportunityCand
 
 	reviewStatus, reviewReason, reviewRequestedAt := evaluateReviewNeed(demand, quality, complexity)
 	status := OpportunityStatusQualified
-	validated := quality >= 70
+	validated := quality >= s.validationThreshold
 	if !validated {
 		status = OpportunityStatusRejected
 	}

@@ -8,15 +8,18 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
 
 // StackOverflowScanner is a scanner that fetches questions from StackOverflow.
 // It uses the Stack Exchange API to discover unanswered questions with specific tags.
+// When multiple tags are configured via STACKOVERFLOW_TAGS, scans each one.
 type StackOverflowScanner struct {
 	// Configuration
 	Tag        string
+	Tags       []string // Multiple tags when STACKOVERFLOW_TAGS is set
 	MaxResults int
 
 	// Internal state
@@ -62,8 +65,9 @@ type StackOverflowAPIResponse struct {
 }
 
 // NewStackOverflowScanner creates a new StackOverflow scanner with configuration from environment variables.
-// It reads STACKOVERFLOW_TAG from the environment.
+// It reads STACKOVERFLOW_TAG or STACKOVERFLOW_TAGS (comma-separated) from the environment.
 func NewStackOverflowScanner() *StackOverflowScanner {
+	tagsEnv := os.Getenv("STACKOVERFLOW_TAGS")
 	tag := getEnvOrDefault("STACKOVERFLOW_TAG", "python")
 	apiKey := os.Getenv("STACKOVERFLOW_API_KEY")
 
@@ -74,8 +78,19 @@ func NewStackOverflowScanner() *StackOverflowScanner {
 		}
 	}
 
+	var tags []string
+	if tagsEnv != "" {
+		tags = strings.Split(tagsEnv, ",")
+		for i := range tags {
+			tags[i] = strings.TrimSpace(tags[i])
+		}
+	} else if tag != "" {
+		tags = []string{tag}
+	}
+
 	return &StackOverflowScanner{
 		Tag:        tag,
+		Tags:       tags,
 		MaxResults: maxResults,
 		client: &http.Client{
 			Timeout: 30 * time.Second,
@@ -186,6 +201,9 @@ func (rl *StackOverflowRateLimiter) WaitIfNeeded() {
 
 // Name returns the scanner name
 func (s StackOverflowScanner) Name() string {
+	if len(s.Tags) > 1 {
+		return fmt.Sprintf("stackoverflow:multi:%d", len(s.Tags))
+	}
 	if s.Tag == "" {
 		return "stackoverflow"
 	}
@@ -193,9 +211,15 @@ func (s StackOverflowScanner) Name() string {
 }
 
 // Scan fetches questions from StackOverflow and converts them to opportunity candidates.
+// When multiple tags are configured, scans each one and aggregates results.
 func (s StackOverflowScanner) Scan(ctx context.Context) ([]OpportunityCandidate, error) {
-	// Check if we have valid configuration
-	if s.Tag == "" {
+	// Determine which tags to scan
+	var tags []string
+	if len(s.Tags) > 1 {
+		tags = s.Tags
+	} else if s.Tag != "" {
+		tags = []string{s.Tag}
+	} else {
 		// Return empty results if no tag configured - don't error
 		return []OpportunityCandidate{}, nil
 	}
@@ -205,45 +229,46 @@ func (s StackOverflowScanner) Scan(ctx context.Context) ([]OpportunityCandidate,
 		return []OpportunityCandidate{}, fmt.Errorf("StackOverflow API rate limit exceeded, try again later")
 	}
 
-	// Search for unanswered questions with the configured tag
-	questions, err := s.searchQuestions(ctx, s.Tag, s.MaxResults)
-	if err != nil {
-		// Don't return error, just log and return empty
-		// This ensures the pipeline continues even if StackOverflow API fails
-		return []OpportunityCandidate{}, nil
-	}
-
-	// Convert to candidates
-	results := make([]OpportunityCandidate, 0, len(questions))
-	for _, question := range questions {
-		// Skip answered questions - we want to find problems people need help with
-		if question.IsAnswered && question.Score < 10 {
+	// Search for unanswered questions with each tag
+	results := make([]OpportunityCandidate, 0)
+	for _, tag := range tags {
+		questions, err := s.searchQuestions(ctx, tag, s.MaxResults/len(tags)+1)
+		if err != nil {
+			// Don't fail entirely - continue with other tags
 			continue
 		}
 
-		// Calculate demand signal based on views, score, and lack of answers
-		demandSignal := s.calculateDemandSignal(question)
+		for _, question := range questions {
+			// Skip answered questions - we want to find problems people need help with
+			if question.IsAnswered && question.Score < 10 {
+				continue
+			}
 
-		candidate := OpportunityCandidate{
-			Source:           s.Name(),
-			SourceID:         fmt.Sprintf("%d", question.QuestionID),
-			Title:            question.Title,
-			Description:      question.Body,
-			Category:         "developer_problem",
-			Tags:             append([]string{"stackoverflow"}, question.Tags...),
-			DemandSignal:     demandSignal,
-			ComplexitySignal: estimateComplexity(question.Title+" "+question.Body, question.Tags),
-			Metadata: map[string]any{
-				"link":          question.Link,
-				"views":         question.ViewCount,
-				"answer_count":  question.AnswerCount,
-				"score":         question.Score,
-				"is_answered":   question.IsAnswered,
-				"creation_date": time.Unix(question.CreationDate, 0),
-			},
-			DiscoveredAt: time.Now().UTC(),
+			// Calculate demand signal based on views, score, and lack of answers
+			demandSignal := s.calculateDemandSignal(question)
+
+			candidate := OpportunityCandidate{
+				Source:           s.Name(),
+				SourceID:         fmt.Sprintf("%d", question.QuestionID),
+				Title:            question.Title,
+				Description:      question.Body,
+				Category:         "developer_problem",
+				Tags:             append([]string{"stackoverflow"}, question.Tags...),
+				DemandSignal:     demandSignal,
+				ComplexitySignal: estimateComplexity(question.Title+" "+question.Body, question.Tags),
+				Metadata: map[string]any{
+					"link":          question.Link,
+					"views":         question.ViewCount,
+					"answer_count":  question.AnswerCount,
+					"score":         question.Score,
+					"is_answered":   question.IsAnswered,
+					"creation_date": time.Unix(question.CreationDate, 0),
+					"tag":           tag,
+				},
+				DiscoveredAt: time.Now().UTC(),
+			}
+			results = append(results, candidate)
 		}
-		results = append(results, candidate)
 	}
 
 	return results, nil

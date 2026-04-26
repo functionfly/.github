@@ -2,11 +2,66 @@ package discovery
 
 import (
 	"context"
+	"database/sql/driver"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+type StringArray []string
+
+func (a StringArray) Value() (driver.Value, error) {
+	if a == nil {
+		return nil, nil
+	}
+	result := "{"
+	for i, s := range a {
+		if i > 0 {
+			result += ","
+		}
+		result += fmt.Sprintf(`"%s"`, strings.Replace(s, `"`, `""`, -1))
+	}
+	result += "}"
+	return result, nil
+}
+
+func (a *StringArray) Scan(value interface{}) error {
+	if value == nil {
+		*a = nil
+		return nil
+	}
+	switch v := value.(type) {
+	case []byte:
+		return a.scanString(string(v))
+	case string:
+		return a.scanString(v)
+	}
+	return fmt.Errorf("cannot scan type %T into StringArray", value)
+}
+
+func (a *StringArray) scanString(s string) error {
+	if s == "" || s == "{}" {
+		*a = []string{}
+		return nil
+	}
+	s = strings.TrimPrefix(strings.TrimSuffix(s, "}"), "{")
+	if s == "" {
+		*a = []string{}
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	*a = make([]string, len(parts))
+	for i, p := range parts {
+		p = strings.TrimSpace(p)
+		if len(p) >= 2 && p[0] == '"' && p[len(p)-1] == '"' {
+			p = p[1 : len(p)-1]
+		}
+		(*a)[i] = strings.Replace(p, `""`, `"`, -1)
+	}
+	return nil
+}
 
 const (
 	OpportunityStatusPending     = "pending"
@@ -78,7 +133,7 @@ type Opportunity struct {
 	Title             string         `json:"title" gorm:"not null"`
 	Description       string         `json:"description" gorm:"type:text"`
 	Category          string         `json:"category" gorm:"not null;default:'automation'"`
-	Tags              []string       `json:"tags" gorm:"serializer:json"`
+	Tags              StringArray    `json:"tags" gorm:"type:text[]"`
 	DemandScore       float64        `json:"demand_score" gorm:"type:decimal(5,2);default:0"`
 	Complexity        int            `json:"complexity" gorm:"not null;default:1"`
 	Validated         bool           `json:"validated" gorm:"not null;default:false"`

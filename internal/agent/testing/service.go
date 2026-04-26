@@ -2,6 +2,8 @@ package testing
 
 import (
 	"context"
+	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -9,6 +11,44 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
+
+type JSONBMap map[string]any
+
+func (m JSONBMap) Value() (driver.Value, error) {
+	if m == nil {
+		return []byte("{}"), nil
+	}
+	return json.Marshal(m)
+}
+
+func (m *JSONBMap) Scan(value interface{}) error {
+	if value == nil {
+		*m = make(JSONBMap)
+		return nil
+	}
+	var b []byte
+	switch v := value.(type) {
+	case []byte:
+		b = v
+	case string:
+		b = []byte(v)
+	default:
+		return fmt.Errorf("expected []byte or string for JSONB")
+	}
+	if len(b) == 0 {
+		*m = make(JSONBMap)
+		return nil
+	}
+	var out map[string]any
+	if err := json.Unmarshal(b, &out); err != nil {
+		return err
+	}
+	if out == nil {
+		out = make(map[string]any)
+	}
+	*m = JSONBMap(out)
+	return nil
+}
 
 const (
 	StageSyntax      = "syntax"
@@ -30,7 +70,7 @@ type TestResult struct {
 	Score      float64        `json:"score" gorm:"type:decimal(5,2);default:0"`
 	DurationMs int            `json:"duration_ms"`
 	Error      string         `json:"error,omitempty" gorm:"type:text"`
-	Details    map[string]any `json:"details" gorm:"type:jsonb;default:'{}'"`
+	Details    JSONBMap     `json:"details" gorm:"type:jsonb;default:'{}'"`
 	CreatedAt  time.Time      `json:"created_at" gorm:"autoCreateTime"`
 }
 

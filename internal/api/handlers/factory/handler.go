@@ -86,7 +86,21 @@ func (h *Handler) HandleStatus(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	if latestErr == nil {
-		status["latest_run"] = latest
+		status["latest_run"] = map[string]any{
+			"id":                    latest.ID,
+			"status":                latest.Status,
+			"started_at":             latest.CreatedAt,
+			"completed_at":           latest.CompletedAt,
+			"opportunities_found":    latest.OpportunitiesScanned,
+			"opportunities_approved": 0,
+			"opportunities_rejected": 0,
+			"functions_created":     latest.FunctionsGenerated,
+			"functions_failed":      0,
+			"functions_published":   latest.FunctionsPublished,
+			"quality_score":         latest.AverageQualityScore,
+			"error":                latest.ErrorMessage,
+			"metadata":              latest.Metadata,
+		}
 	}
 	writeJSON(w, http.StatusOK, status)
 }
@@ -189,8 +203,8 @@ func (h *Handler) HandleListPendingReviews(w http.ResponseWriter, r *http.Reques
 
 // HandleGetOpportunity returns details of a specific opportunity for review.
 func (h *Handler) HandleGetOpportunity(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/factory/opportunities/")
-	if id == "" {
+	id := strings.TrimPrefix(r.URL.Path, "/v1/admin/factory/opportunities/")
+	if id == "" || strings.Contains(id, "/") {
 		writeError(w, http.StatusBadRequest, "opportunity ID required")
 		return
 	}
@@ -210,8 +224,11 @@ func (h *Handler) HandleGetOpportunity(w http.ResponseWriter, r *http.Request) {
 
 // HandleApproveOpportunity approves an opportunity for publishing.
 func (h *Handler) HandleApproveOpportunity(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/factory/opportunities/")
-	if id == "" {
+	// URL path is /v1/admin/factory/opportunities/{id}/approve
+	path := r.URL.Path
+	id := strings.TrimPrefix(path, "/v1/admin/factory/opportunities/")
+	id = strings.TrimSuffix(id, "/approve")
+	if id == "" || id == path || strings.Contains(id, "/") {
 		writeError(w, http.StatusBadRequest, "opportunity ID required")
 		return
 	}
@@ -231,6 +248,7 @@ func (h *Handler) HandleApproveOpportunity(w http.ResponseWriter, r *http.Reques
 			writeError(w, http.StatusNotFound, "opportunity not found")
 			return
 		}
+		logrus.WithError(err).Error("failed to approve opportunity")
 		writeError(w, http.StatusInternalServerError, "failed to approve opportunity")
 		return
 	}
@@ -240,8 +258,10 @@ func (h *Handler) HandleApproveOpportunity(w http.ResponseWriter, r *http.Reques
 
 // HandleRejectOpportunity rejects an opportunity with a reason.
 func (h *Handler) HandleRejectOpportunity(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/factory/opportunities/")
-	if id == "" {
+	path := r.URL.Path
+	id := strings.TrimPrefix(path, "/v1/admin/factory/opportunities/")
+	id = strings.TrimSuffix(id, "/reject")
+	if id == "" || id == path || strings.Contains(id, "/") {
 		writeError(w, http.StatusBadRequest, "opportunity ID required")
 		return
 	}
@@ -274,11 +294,12 @@ func (h *Handler) HandleRejectOpportunity(w http.ResponseWriter, r *http.Request
 			writeError(w, http.StatusNotFound, "opportunity not found")
 			return
 		}
+		logrus.WithError(err).Error("failed to reject opportunity")
 		writeError(w, http.StatusInternalServerError, "failed to reject opportunity")
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{"message": "opportunity rejected", "id": id, "reason": req.Reason})
+	writeJSON(w, http.StatusOK, map[string]any{"message": "opportunity rejected", "id": id})
 }
 
 func (h *Handler) HandleGetConfig(w http.ResponseWriter, r *http.Request) {

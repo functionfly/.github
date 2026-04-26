@@ -12,6 +12,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/agent/identity"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -110,39 +111,49 @@ func (s *Service) GenerateFunction(ctx context.Context, req *GenerationRequest) 
 	// 3. Create the function in the registry
 	functionID := uuid.New()
 	promptHash := hashString(req.Prompt)
-	function := &identity.Function{
-		ID:                   functionID.String(),
-		Author:               req.AgentID,
-		Name:                 req.Name,
-		Title:                req.Name,
-		Description:          req.Description,
-		Category:             req.Category,
-		Tags:                 req.Tags,
-		Visibility:           "private", // Private by default
-		PricePerCall:         0,
-		PopularityScore:      0,
-		ReliabilityScore:     0,
-		DeterministicScore:   0,
-		OwnerAgentID:         &req.AgentID,
-		AgentGenerated:       true,
-		GenerationPromptHash: &promptHash,
-		GenerationModel:      &req.Model,
-		RevenueTotalUSD:      0,
-		CreatedAt:            time.Now(),
-		UpdatedAt:            time.Now(),
-	}
-
-	if err := s.db.WithContext(ctx).Create(function).Error; err != nil {
-		return nil, fmt.Errorf("failed to create function: %w", err)
-	}
-
-	// 4. Create deterministic certificate if requested
-	var certHash string
+	certHash := ""
+	deterministicCert := interface{}(nil)
 	if req.Deterministic {
 		certHash = s.generateDeterministicCert(ctx, functionID, code, req)
-		function.DeterministicCertHash = &certHash
-		function.DeterministicScore = 100 // High score for self-certified
-		if err := s.db.WithContext(ctx).Save(function).Error; err != nil {
+		deterministicCert = &certHash
+	}
+
+	logrus.Infof("GenerateFunction: creating function: author=%s name=%s id=%s", req.AgentID, req.Name, functionID.String())
+
+	tagsJSON, _ := json.Marshal(req.Tags)
+	insertSQL := `INSERT INTO "registry_functions" ("id","author","name","latest_version","title","description","category","tags","visibility","price_per_call","popularity_score","reliability_score","deterministic_score","tenant_id","owner_user_id","owner_agent_id","agent_generated","generation_prompt_hash","generation_model","deterministic_cert_hash","revenue_total_usd","created_at","updated_at") VALUES ($1, $2, $3, '', $4, $5, $6, $7::jsonb, 'private', 0, 0, 0, 0, NULL, NULL, $8, true, $9, $10, $11, 0, NOW(), NOW()) ON CONFLICT ("author", "name") DO UPDATE SET "latest_version" = EXCLUDED."latest_version", "title" = EXCLUDED."title", "description" = EXCLUDED."description", "category" = EXCLUDED."category", "tags" = EXCLUDED."tags", "updated_at" = EXCLUDED."updated_at"`
+
+	if err := s.db.WithContext(ctx).Exec(insertSQL, functionID.String(), req.AgentID, req.Name, req.Name, req.Description, req.Category, string(tagsJSON), req.AgentID, promptHash, req.Model, deterministicCert).Error; err != nil {
+		logrus.Errorf("GenerateFunction: INSERT failed: %v", err)
+		return nil, fmt.Errorf("failed to create function: %w", err)
+	}
+	logrus.Infof("GenerateFunction: INSERT succeeded, now querying for ID")
+
+	var existingID string
+	row := s.db.WithContext(ctx).Raw(`SELECT id FROM registry_functions WHERE author = $1 AND name = $2`, req.AgentID, req.Name).Row()
+	if err := row.Scan(&existingID); err != nil {
+		logrus.Errorf("GenerateFunction: SELECT failed or returned no rows: %v", err)
+		return nil, fmt.Errorf("failed to get function ID: %w", err)
+	}
+	if existingID == "" {
+		logrus.Errorf("GenerateFunction: SELECT returned empty id for author=%s name=%s", req.AgentID, req.Name)
+		return nil, fmt.Errorf("function ID is empty after INSERT")
+	}
+	logrus.Infof("GenerateFunction: SELECT returned id=%s", existingID)
+	functionID, err = uuid.Parse(existingID)
+	if err != nil {
+		logrus.Errorf("GenerateFunction: failed to parse existingID=%s: %v", existingID, err)
+		return nil, fmt.Errorf("failed to parse function ID: %w", err)
+	}
+
+	if req.Deterministic {
+		if err := s.db.WithContext(ctx).Exec(`
+			UPDATE "registry_functions"
+			SET "deterministic_cert_hash" = $1,
+				"deterministic_score" = 100,
+				"updated_at" = $2
+			WHERE "author" = $3 AND "name" = $4
+		`, certHash, time.Now(), req.AgentID, req.Name).Error; err != nil {
 			return nil, fmt.Errorf("failed to update function with cert: %w", err)
 		}
 	}

@@ -124,6 +124,31 @@ func NewGitHubScannerWithConfig(owner, repo, token string, labels []string, maxR
 	}
 }
 
+// NewGitHubGlobalScanner creates a scanner that searches GitHub globally for issues
+// matching the specified labels across all public repositories.
+// This is used when GITHUB_OWNER/GITHUB_REPO are not set but GITHUB_TOKEN is available.
+func NewGitHubGlobalScanner(token string, labels []string, maxResults int) *GitHubScanner {
+	if len(labels) == 0 {
+		labels = []string{"enhancement", "feature-request", "help-wanted", "good first issue"}
+	}
+	if maxResults <= 0 {
+		maxResults = 100
+	}
+
+	return &GitHubScanner{
+		Owner:      "", // empty signals global search mode
+		Repo:       "",
+		Token:      token,
+		Labels:     labels,
+		MaxResults: maxResults,
+		client: &http.Client{
+			Timeout: 60 * time.Second,
+		},
+		baseURL:   "https://api.github.com",
+		rateLimit: NewGitHubRateLimiter(),
+	}
+}
+
 // NewGitHubRateLimiter creates a new rate limiter for GitHub API
 func NewGitHubRateLimiter() *GitHubRateLimiter {
 	return &GitHubRateLimiter{
@@ -219,6 +244,9 @@ func (rl *GitHubRateLimiter) WaitIfNeeded() {
 
 // Name returns the scanner name
 func (g GitHubScanner) Name() string {
+	if g.Owner == "" && g.Repo == "" {
+		return "github:global"
+	}
 	if g.Owner == "" || g.Repo == "" {
 		return "github"
 	}
@@ -228,10 +256,20 @@ func (g GitHubScanner) Name() string {
 // Scan fetches issues from GitHub and converts them to opportunity candidates.
 // It searches for issues with the configured labels (enhancement, feature-request, etc.)
 // and returns them as candidates for function automation.
+// When Owner/Repo are empty but Token is set, performs a global search across GitHub.
 func (g GitHubScanner) Scan(ctx context.Context) ([]OpportunityCandidate, error) {
 	// Check if we have valid configuration
+	if g.Owner == "" && g.Repo == "" {
+		// Global search mode - requires token for reasonable rate limits
+		if g.Token == "" {
+			// No token and no owner/repo - return empty silently
+			return []OpportunityCandidate{}, nil
+		}
+		return g.scanGlobal(ctx)
+	}
+
 	if g.Owner == "" || g.Repo == "" {
-		// Return empty results if no repo configured - don't error
+		// Partial configuration - return empty
 		return []OpportunityCandidate{}, nil
 	}
 
@@ -253,7 +291,39 @@ func (g GitHubScanner) Scan(ctx context.Context) ([]OpportunityCandidate, error)
 		return []OpportunityCandidate{}, nil
 	}
 
-	// Convert to candidates
+	return g.convertToCandidates(issues)
+}
+
+// scanGlobal searches GitHub globally for issues matching the configured labels.
+func (g GitHubScanner) scanGlobal(ctx context.Context) ([]OpportunityCandidate, error) {
+	if !g.rateLimit.Allow() {
+		return []OpportunityCandidate{}, fmt.Errorf("GitHub API rate limit exceeded, try again later")
+	}
+
+	// Build global search query - search across all of GitHub for issues with our labels
+	// GitHub search uses commas to match any of several labels (OR behavior)
+	// Labels with spaces must be quoted
+	labelParts := make([]string, len(g.Labels))
+	for i, label := range g.Labels {
+		if strings.Contains(label, " ") {
+			labelParts[i] = fmt.Sprintf("label:%q", label)
+		} else {
+			labelParts[i] = "label:" + label
+		}
+	}
+	labelQuery := strings.Join(labelParts, ",")
+	query := fmt.Sprintf("is:issue is:open %s", labelQuery)
+
+	issues, err := g.searchIssues(ctx, query, g.MaxResults)
+	if err != nil {
+		return []OpportunityCandidate{}, nil
+	}
+
+	return g.convertToCandidates(issues)
+}
+
+// convertToCandidates converts GitHub issues to opportunity candidates.
+func (g GitHubScanner) convertToCandidates(issues []GitHubIssue) ([]OpportunityCandidate, error) {
 	results := make([]OpportunityCandidate, 0, len(issues))
 	for _, issue := range issues {
 		// Skip pull requests
