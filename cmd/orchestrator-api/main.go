@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api"
@@ -13,11 +14,35 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+func findEnvFile() string {
+	candidates := []string{}
+	exePath, err := os.Executable()
+	if err == nil {
+		candidates = append(candidates, filepath.Join(exePath, ".env"))
+		candidates = append(candidates, filepath.Join(filepath.Dir(exePath), ".env"))
+		candidates = append(candidates, filepath.Join(filepath.Dir(filepath.Dir(exePath)), ".env"))
+	}
+	if cwd, err := os.Getwd(); err == nil {
+		candidates = append(candidates, filepath.Join(cwd, ".env"))
+		candidates = append(candidates, filepath.Join(cwd, "..", ".env"))
+	}
+	for _, path := range candidates {
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+	}
+	return ""
+}
+
 func main() {
 	// Load .env file if present (for local development)
-	if err := godotenv.Load(); err != nil {
-		// Only warn, don't fail - production uses actual env vars
-		logrus.WithError(err).Debug("No .env file loaded (using environment variables)")
+	envFile := findEnvFile()
+	if envFile != "" {
+		if err := godotenv.Load(envFile); err == nil {
+			logrus.WithField("path", envFile).Info("Loaded .env file")
+		} else {
+			logrus.WithError(err).WithField("path", envFile).Warn("Failed to load .env file")
+		}
 	}
 
 	// Parse command line flags

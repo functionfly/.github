@@ -73,6 +73,7 @@ import (
 	"github.com/functionfly/functionfly/internal/billing"
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/captcha"
+	"github.com/functionfly/functionfly/internal/currency"
 	monitoringPkg "github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/privacy"
 	"github.com/functionfly/functionfly/internal/scheduler"
@@ -105,6 +106,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// ── Handler initialization ────────────────────────────────────────────────
 	authHandler := authHandlerPkg.NewHandler(s.authSvc)
 	usersHandler := usersHandlerPkg.NewHandler(s.repo, s.authSvc)
+	favoritesHandler := usersHandlerPkg.NewFavoritesHandler(s.repo)
+	presenceHandler := usersHandlerPkg.NewPresenceHandler(s.repo, s.authSvc, s.redisClient, logrus.New())
 	platformFeeRepo := registry.NewPlatformFeeRepository(s.postgresDB.GORM)
 	sfAddonRepo := statefabricaddons.NewRepository(s.postgresDB.GORM)
 	billingHandler := billinghandler.NewHandler(s.repo, platformFeeRepo, sfAddonRepo, s.redisClient)
@@ -365,6 +368,10 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	agentMemoryHandler := agentmemoryhandler.NewHandler(s.postgresDB.GORM)
 
 	stateFabricRepo := statefabricrepo.NewRepository(s.postgresDB.GORM)
+	stateFabricRepo.ConfigureExecution(
+		os.Getenv("FUNCTION_EXECUTION_URL"),
+		os.Getenv("FUNCTION_API_KEY"),
+	)
 	stateFabricHandler := statefabric.NewHandlerWithCleanup(stateFabricRepo, sfAddonRepo, s.stateFabricCleanup)
 
 	vaultRepo := vaultstorage.NewRepository(s.postgresDB.GORM)
@@ -419,12 +426,33 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	statusHandlerInst := statushandler.NewHandler(statusRepo, prometheusURL, s.authSvc)
 
 	factoryConfig := factorysvc.DefaultConfig("factory-agent")
-	factoryDiscovery := discovery.NewService(s.postgresDB.GORM)
+
+	// Determine GitHub scanner type based on configuration
+	var githubScanner discovery.Source
+	if os.Getenv("GITHUB_TOKEN") != "" && (os.Getenv("GITHUB_OWNER") == "" || os.Getenv("GITHUB_REPO") == "") {
+		// Global search mode: token provided but no specific repo
+		logrus.Info("GitHub scanner: using global search mode (no specific repo configured)")
+		githubScanner = discovery.NewGitHubGlobalScanner(os.Getenv("GITHUB_TOKEN"), nil, 100)
+	} else {
+		// Specific repo mode (or no token - will return empty)
+		githubScanner = discovery.NewGitHubScanner()
+	}
+
+	factorySources := []discovery.Source{
+		discovery.NewRedditScanner(),
+		githubScanner,
+		discovery.NewStackOverflowScanner(),
+		discovery.NewGoogleScanner(),
+	}
+	factoryDiscovery := discovery.NewService(s.postgresDB.GORM, factorySources...)
 	factoryGeneration := initializeGenerationServiceWithCache(s.postgresDB.GORM, s.redisClient)
 	if detExec := registryexecution.NewRegistryDeterminismExecutorWithSandbox(registryRepo); detExec != nil {
 		factoryGeneration.SetDeterminismExecutor(detExec)
 	}
 	factoryTesting := testing.NewService(s.postgresDB.GORM, nil, nil)
+	if err := factoryTesting.AutoMigrate(context.Background()); err != nil {
+		logrus.WithError(err).Warn("failed to auto-migrate factory_test_results")
+	}
 	factoryPublisher := agentdeployment.NewPublisher(s.postgresDB.GORM)
 	factoryService := factorysvc.NewService(s.postgresDB.GORM, factoryConfig, factoryDiscovery, factoryGeneration, factoryTesting, factoryPublisher)
 
@@ -435,6 +463,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		factoryConfig = loadedFactoryConfig
 		logrus.Info("loaded factory config from database")
 	}
+
+	factoryDiscoveryWithThreshold := discovery.NewServiceWithThreshold(s.postgresDB.GORM, factoryConfig.MinimumQualityScore, factorySources...)
 
 	factoryPipelineScheduler := scheduler.NewFactoryPipelineScheduler(factoryService)
 	scheduleConfig := scheduler.FactoryScheduleConfig{
@@ -448,7 +478,56 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		logrus.Infof("factory pipeline scheduler started with cron: %s", factoryConfig.ScheduleCron)
 	}
 
+	factoryService.UpdateDiscoveryService(factoryDiscoveryWithThreshold)
+
 	factoryHandler := factoryhandler.NewHandler(s.postgresDB.GORM, factoryService, factoryDiscovery, factoryPublisher, &factoryConfig, factoryPipelineScheduler)
+
+	platformController := swarm.NewPlatformController(
+		s.postgresDB.GORM,
+		agentSwarmService,
+		agentIdentityRepo,
+		agentSwarmMessageService,
+		factoryDiscovery,
+	)
+	metricsCollector := swarm.NewMetricsCollector(s.postgresDB.GORM, factoryService, factoryDiscovery)
+	workerService := swarm.NewWorkerService(
+		s.postgresDB.GORM,
+		agentSwarmMessageService,
+		factoryDiscovery,
+		factoryService,
+		agentIdentityRepo,
+	)
+	swarmControllerHandler := agenthandler.NewSwarmControllerHandler(platformController, metricsCollector, workerService)
+	if err := platformController.Initialize(context.Background()); err != nil {
+		logrus.WithError(err).Warn("failed to initialize platform controller")
+	}
+
+	unfairAdvantageEngine := swarm.NewUnfairAdvantageEngine(s.postgresDB.GORM, platformController, metricsCollector)
+	if err := unfairAdvantageEngine.Initialize(context.Background()); err != nil {
+		logrus.WithError(err).Warn("failed to initialize unfair advantage engine")
+	}
+	unfairAdvantageHandler := agenthandler.NewUnfairAdvantageHandler(unfairAdvantageEngine)
+
+	unfairAdvantageScheduler := scheduler.NewUnfairAdvantageScheduler(unfairAdvantageEngine)
+	unfairAdvantageSchedulerEnabled := os.Getenv("UNFAIR_ADVANTAGE_SCHEDULER_ENABLED") == "true"
+	unfairAdvantageSchedulerCron := os.Getenv("UNFAIR_ADVANTAGE_SCHEDULER_CRON")
+	if unfairAdvantageSchedulerCron == "" {
+		unfairAdvantageSchedulerCron = "0 2 * * *"
+	}
+	unfairAdvantageSchedulerConfig := scheduler.UnfairAdvantageScheduleConfig{
+		Enabled:  unfairAdvantageSchedulerEnabled,
+		Cron:     unfairAdvantageSchedulerCron,
+		Timezone: "UTC",
+	}
+	if err := unfairAdvantageScheduler.Start(context.Background(), unfairAdvantageSchedulerConfig); err != nil {
+		logrus.WithError(err).Error("failed to start unfair advantage scheduler")
+	} else if unfairAdvantageSchedulerEnabled {
+		logrus.Infof("unfair advantage scheduler started with cron: %s", unfairAdvantageSchedulerCron)
+	}
+
+	if err := workerService.Start(context.Background()); err != nil {
+		logrus.WithError(err).Warn("failed to start swarm worker service")
+	}
 
 	// Trust Score Scheduler - hourly trust score recalculation
 	trustScoreScheduler := scheduler.NewTrustScoreScheduler(registryRepo)
@@ -524,6 +603,12 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		} else {
 			logrus.Infof("upcoming renewal scheduler started with cron: %s", upcomingRenewalCron)
 		}
+	}
+
+	// Exchange Rate Scheduler - syncs exchange rates from external providers
+	exchangeRateScheduler := currency.NewExchangeRateScheduler(s.repo, s.redisClient)
+	if err := exchangeRateScheduler.Start(context.Background()); err != nil {
+		logrus.WithError(err).Error("failed to start exchange rate scheduler")
 	}
 
 	experimentService := factorysvc.NewExperimentService(s.postgresDB.GORM)
@@ -670,9 +755,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Online presence: optional JWT on any /v1 and /v2 call sets user context; then we bump last_active_at.
 	userRepoActivity := storage.NewUserRepository(s.postgresDB)
 	api.Use(authMiddleware.OptionalAuth)
-	api.Use(middleware.SimpleActivityTracker(userRepoActivity))
+	api.Use(middleware.SimpleActivityTrackerWithRedis(userRepoActivity, s.redisClient))
 	apiV2.Use(authMiddleware.OptionalAuth)
-	apiV2.Use(middleware.SimpleActivityTracker(userRepoActivity))
+	apiV2.Use(middleware.SimpleActivityTrackerWithRedis(userRepoActivity, s.redisClient))
 
 	authRateLimiter := middleware.NewAuthRateLimiter()
 	vaultRateLimiter := middleware.NewVaultRateLimiter()
@@ -695,11 +780,12 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	registerAuthRoutes(
 		s.router, api,
 		authRateLimiter, walletRateLimiter, mfaRateLimiter, authMiddleware, csrfMiddleware,
-		authHandler, apiKeyAuthHandler, usersHandler,
+		authHandler, apiKeyAuthHandler, usersHandler, favoritesHandler,
 		followHandler, apiKeysHandler, billingHandler,
 		usageHandler, forecastHandler, costAllocationHandler,
 		exportHandler, externalBillingHandler,
 		mfaHandler, notificationHandler, notificationWSHandler,
+		presenceHandler,
 	)
 
 	registerRegistryRoutes(
@@ -716,6 +802,10 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		authMiddleware, executionSecurityMW,
 		registryRepo,
 	)
+
+	if err := platformController.Initialize(context.Background()); err != nil {
+		logrus.WithError(err).Warn("failed to initialize platform controller")
+	}
 
 	registerPlatformRoutes(
 		s, api, protected,
@@ -735,6 +825,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		stateUsageHandler,
 		deployKeysHandler,
 		functionWebhooksHandler,
+		swarmControllerHandler,
+		unfairAdvantageHandler,
 	)
 
 	registerAgentRoutes(
@@ -771,6 +863,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		adminNewsletterHandler, usageHandler, costAllocationHandler,
 		retentionHandler, disputesHandler,
 		stateUsageHandler,
+		unfairAdvantageHandler,
 	)
 
 	// Trust API for external platform partners

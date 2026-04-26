@@ -40,6 +40,7 @@ func registerAuthRoutes(
 	authHandler *authHandlerPkg.Handler,
 	apiKeyAuthHandler *apikeys.APIKeyAuthHandler,
 	usersHandler *usersHandlerPkg.Handler,
+	favoritesHandler *usersHandlerPkg.FavoritesHandler,
 	followHandler *followHandlerPkg.Handler,
 	apiKeysHandler *apikeys.Handler,
 	billingHandler *billing.Handler,
@@ -51,6 +52,7 @@ func registerAuthRoutes(
 	mfaHandler *mfaHandlerPkg.MFAHandler,
 	notificationHandler *notificationHandlerPkg.Handler,
 	notificationWSHandler *notificationHandlerPkg.WebSocketHandler,
+	presenceHandler *usersHandlerPkg.PresenceHandler,
 ) {
 	// ── Auth (public) ──────────────────────────────────────────────────────
 	// Registered on both the bare router and /v1 so the CLI (fly login) works
@@ -122,6 +124,8 @@ func registerAuthRoutes(
 	api.HandleFunc("/users/me/settings/privacy", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsPrivacyMe)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/me/settings/visibility", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsVisibilityMe)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/me/settings/security", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsSecurityMe)).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/users/me/settings/status", authMiddleware.RequireAuth(usersHandler.HandleGetUserSettingsStatusMe)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/users/me/settings/status", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsStatusMe)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/me/environment", authMiddleware.RequireAuth(usersHandler.HandleGetActiveEnvironment)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/me/environment", authMiddleware.RequireAuth(usersHandler.HandleSetActiveEnvironment)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/me/activity", authMiddleware.RequireAuth(usersHandler.HandleCreateUserActivity)).Methods("POST", "OPTIONS")
@@ -137,7 +141,18 @@ func registerAuthRoutes(
 	api.HandleFunc("/users/lookup-by-ids", authMiddleware.RequireAuth(usersHandler.HandleLookupUsersByIDs)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/users/search", authMiddleware.RequireAuth(usersHandler.HandleSearchUsers)).Methods("GET", "OPTIONS")
 
+	// ── User Favorites ────────────────────────────────────────────────────
+	api.HandleFunc("/users/me/favorites", authMiddleware.RequireAuth(favoritesHandler.HandleListFavorites)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/users/me/favorites", authMiddleware.RequireAuth(favoritesHandler.HandleAddFavorite)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/users/me/favorites/{functionId}", authMiddleware.RequireAuth(favoritesHandler.HandleRemoveFavorite)).Methods("DELETE", "OPTIONS")
+	api.HandleFunc("/users/me/favorites/{functionId}", authMiddleware.RequireAuth(favoritesHandler.HandleCheckFavorite)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/users/me/favorites/{functionId}/toggle", authMiddleware.RequireAuth(favoritesHandler.HandleToggleFavorite)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/users/me/favorites/{functionId}/position", authMiddleware.RequireAuth(favoritesHandler.HandleUpdateFavoritePosition)).Methods("PATCH", "OPTIONS")
+
 	// Public user profile (by username)
+	// NOTE: Presence routes must be registered before /users/{username} catch-all
+	// because gorilla/mux matches by order of registration.
+	presenceHandler.RegisterRoutes(api, authMiddleware)
 	api.HandleFunc("/users/{username}", usersHandler.HandleGetPublicProfile).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/{username}/settings", authMiddleware.RequireAuth(usersHandler.HandleGetUserSettings)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/{username}/settings/profile", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsProfile)).Methods("PATCH", "OPTIONS")
@@ -188,6 +203,10 @@ func registerAuthRoutes(
 	api.HandleFunc("/billing/state-fabric/add-ons", billingHandler.HandleListStateFabricAddOnCatalog).Methods("GET", "OPTIONS")
 	// Billing (protected) - POST endpoints require CSRF protection for security
 	api.HandleFunc("/billing/portal-session", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleCreatePortalSession))).Methods("POST", "OPTIONS")
+	api.HandleFunc("/billing/payment-methods", authMiddleware.RequireAuth(billingHandler.HandleListPaymentMethods)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/billing/payment-methods/setup-intent", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleCreateSetupIntent))).Methods("POST", "OPTIONS")
+	api.HandleFunc("/billing/payment-methods/default", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleSetDefaultPaymentMethod))).Methods("POST", "OPTIONS")
+	api.HandleFunc("/billing/payment-methods/{id}", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleDetachPaymentMethod))).Methods("DELETE", "OPTIONS")
 	api.HandleFunc("/billing/checkout", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleCreateCheckoutSession))).Methods("POST", "OPTIONS")
 	api.HandleFunc("/billing/subscription", authMiddleware.RequireAuth(billingHandler.HandleGetSubscription)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/billing/subscription/cancel", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleCancelSubscription))).Methods("POST", "OPTIONS")
@@ -226,6 +245,13 @@ func registerAuthRoutes(
 	api.HandleFunc("/billing/deferred-status", authMiddleware.RequireAuth(billingHandler.HandleGetDeferredBillingStatus)).Methods("GET", "OPTIONS")
 	// Manual conversion to paid plan
 	api.HandleFunc("/billing/convert-to-paid", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleConvertToPaid))).Methods("POST", "OPTIONS")
+
+	// ── Affiliate / Referral Commission System (user-facing) ─────────────
+	api.HandleFunc("/affiliate/my-codes", authMiddleware.RequireAuth(billingHandler.HandleGetMyAffiliateCodes)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/affiliate/my-commissions", authMiddleware.RequireAuth(billingHandler.HandleGetMyAffiliateCommissions)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/affiliate/referrals", authMiddleware.RequireAuth(billingHandler.HandleGetMyAffiliateReferrals)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/affiliate/earnings-summary", authMiddleware.RequireAuth(billingHandler.HandleGetAffiliateEarningsSummary)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/affiliate/apply-code", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleApplyAffiliateCode))).Methods("POST", "OPTIONS")
 
 	// ── Real-time Usage (protected) ───────────────────────────────────────
 	api.HandleFunc("/usage/realtime", authMiddleware.RequireAuth(usageHandler.GetRealtimeUsage)).Methods("GET", "OPTIONS")

@@ -287,7 +287,17 @@ func NewServer(db *storage.PostgresDB) *Server {
 	// Initialize state fabric cleanup service for TTL-based cleanup
 	stateFabricCleanupConfig := statefabricrepo.DefaultCleanupConfig()
 	stateFabricCleanupConfig.Interval = 1 * time.Hour
-	stateFabricCleanup := statefabricrepo.NewCleanupService(db.GORM, stateFabricCleanupConfig)
+	var stateFabricCleanup *statefabricrepo.CleanupService
+	if statefabricrepo.IsR2StorageConfigured() {
+		if r2Backend, err := statefabricrepo.NewR2StorageBackend(); err == nil {
+			stateFabricCleanup = statefabricrepo.NewCleanupServiceWithR2(db.GORM, r2Backend, stateFabricCleanupConfig)
+		} else {
+			logrus.WithError(err).Warn("Failed to initialize R2 backend for state fabric cleanup")
+			stateFabricCleanup = statefabricrepo.NewCleanupService(db.GORM, stateFabricCleanupConfig)
+		}
+	} else {
+		stateFabricCleanup = statefabricrepo.NewCleanupService(db.GORM, stateFabricCleanupConfig)
+	}
 
 	// Initialize verification service
 	clamAVURL := os.Getenv("CLAMAV_URL")

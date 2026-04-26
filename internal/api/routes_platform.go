@@ -3,6 +3,7 @@ package api
 import (
 	"github.com/functionfly/functionfly/internal/analytics/unified"
 	"github.com/functionfly/functionfly/internal/api/handlers/admin"
+	agenthandler "github.com/functionfly/functionfly/internal/api/handlers/agent"
 	agentmemoryhandler "github.com/functionfly/functionfly/internal/api/handlers/agent_memory"
 	analyticshandler "github.com/functionfly/functionfly/internal/api/handlers/analytics"
 	"github.com/functionfly/functionfly/internal/api/handlers/apps"
@@ -73,6 +74,8 @@ func registerPlatformRoutes(
 	stateUsageHandler *billinghandler.StateUsageHandler,
 	deployKeysHandler *deploykeys.Handler,
 	functionWebhooksHandler *function_webhooks.Handler,
+	swarmControllerHandler agenthandler.SwarmControllerHandlerInterface,
+	unfairAdvantageHandler *agenthandler.UnfairAdvantageHandler,
 ) {
 	// ── Metrics (public) ─────────────────────────────────────────────────────
 	api.HandleFunc("/metrics/global", s.handleGlobalMetrics).Methods("GET", "OPTIONS")
@@ -220,6 +223,7 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/providers/{providerId}", authMiddleware.RequireAuth(providerRateLimiter.LimitDisconnect(providersHandler.HandleDisconnectProvider))).Methods("DELETE", "OPTIONS")
 	protected.HandleFunc("/providers/{providerId}/test", authMiddleware.RequireAuth(providerRateLimiter.LimitTest(providersHandler.HandleTestConnection))).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/providers/{providerId}/rotate", authMiddleware.RequireAuth(providerRateLimiter.LimitConnect(providersHandler.HandleRotateProvider))).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/providers/failover-test", authMiddleware.RequireAuth(providersHandler.HandleRunFailoverTest)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/providers/{providerId}/share", authMiddleware.RequireAuth(providersHandler.HandleShareProvider)).Methods("POST")
 	protected.HandleFunc("/teams/invites", authMiddleware.RequireAuth(providersHandler.HandleCreateTeamInvite)).Methods("POST")
 
@@ -230,8 +234,6 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/apps/{appId}/status", authMiddleware.RequireAuth(appsHandler.HandleGetAppStatus)).Methods("GET", "OPTIONS")
 
 	// ── Functions (protected) ─────────────────────────────────────────────────
-	protected.HandleFunc("/functions", authMiddleware.RequireAuth(functionsHandler.HandleListFunctions)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/functions", authMiddleware.RequireAuth(functionsHandler.HandleCreateFunction)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/functions/{id}", authMiddleware.RequireAuth(functionsHandler.HandleGetFunction)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/functions/{id}", authMiddleware.RequireAuth(functionsHandler.HandleUpdateFunction)).Methods("PUT", "OPTIONS")
 	protected.HandleFunc("/functions/{id}", authMiddleware.RequireAuth(functionsHandler.HandleDeleteFunction)).Methods("DELETE", "OPTIONS")
@@ -371,6 +373,9 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/function-webhooks/{id}", authMiddleware.RequireAuth(functionWebhooksHandler.HandleDelete)).Methods("DELETE")
 	protected.HandleFunc("/function-webhooks/{id}/deliveries", authMiddleware.RequireAuth(functionWebhooksHandler.HandleListDeliveries)).Methods("GET")
 	protected.HandleFunc("/function-webhooks/{id}/test", authMiddleware.RequireAuth(functionWebhooksHandler.HandleTest)).Methods("POST")
+
+	// ── Platform Swarm Controller (protected) ────────────────────────────────
+	swarmControllerHandler.RegisterRoutes(protected, "/platform")
 
 	// ── Support (protected; register on api so /v1/support/... is matched) ─────────
 	supportHdlr.RegisterRoutes(api, authMiddleware)

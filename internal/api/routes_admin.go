@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/handlers/admin"
+	agenthandler "github.com/functionfly/functionfly/internal/api/handlers/agent"
 	"github.com/functionfly/functionfly/internal/api/handlers/billing"
 	"github.com/functionfly/functionfly/internal/api/handlers/content"
 	factoryhandler "github.com/functionfly/functionfly/internal/api/handlers/factory"
@@ -58,6 +59,7 @@ func registerAdminRoutes(
 	retentionHandler *admin.RetentionHandler,
 	disputesHandler *admin.DisputesHandler,
 	stateUsageHandler *billing.StateUsageHandler,
+	unfairAdvantageHandler *agenthandler.UnfairAdvantageHandler,
 ) {
 	adminRoutes := api.PathPrefix("/admin").Subrouter()
 
@@ -285,6 +287,15 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/billing/refunds/stats", authMiddleware.RequirePermission(auth.PermBillingRead)(disputesHandler.HandleGetRefundStats)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/billing/refunds/{refundId}", authMiddleware.RequirePermission(auth.PermBillingRead)(disputesHandler.HandleGetRefund)).Methods("GET", "OPTIONS")
 
+	// Credit Notes (for refund accounting / SOX compliance)
+	adminRoutes.HandleFunc("/billing/credit-notes", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleListCreditNotes)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/credit-notes", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleCreateCreditNote))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/credit-notes/stats", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleGetCreditNoteStats)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/credit-notes/{creditNoteId}", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleGetCreditNote)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/credit-notes/{creditNoteId}", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleUpdateCreditNote))).Methods("PATCH", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/credit-notes/{creditNoteId}/void", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleVoidCreditNote))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/credit-notes/{creditNoteId}/apply", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleApplyCreditNote))).Methods("POST", "OPTIONS")
+
 	// Chargeback reconciliation
 	adminRoutes.HandleFunc("/billing/chargebacks/reconciliation", authMiddleware.RequirePermission(auth.PermBillingRead)(disputesHandler.HandleGetChargebackReconciliation)).Methods("GET", "OPTIONS")
 
@@ -307,6 +318,19 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/feedback/{id}/status", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(feedbackHandler.UpdateFeedbackStatus))).Methods("PATCH")
 	adminRoutes.HandleFunc("/billing/coupons", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleCreateCoupon))).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/billing/coupons/{couponId}/redeem", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleRedeemCoupon))).Methods("POST", "OPTIONS")
+
+	// Affiliate / Referral Commission System
+	adminRoutes.HandleFunc("/billing/affiliate-codes", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleListAffiliateCodes)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/affiliate-codes", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleCreateAffiliateCode))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/affiliate-codes/{codeId}", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleGetAffiliateCode)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/affiliate-codes/{codeId}", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleUpdateAffiliateCode))).Methods("PUT", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/affiliate-codes/{codeId}/referrals", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleListAffiliateReferrals)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/affiliate-codes/{codeId}/commissions", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleListAffiliateCommissions)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/affiliate-referrals", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleRecordAffiliateReferral))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/affiliate-referrals/{referralId}/status", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleUpdateAffiliateReferralStatus))).Methods("PATCH", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/affiliate-commissions/{commissionId}/approve", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleApproveAffiliateCommission))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/affiliate-commissions/{commissionId}/paid", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleMarkAffiliateCommissionPaid))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/affiliate-commissions/calculate", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleCalculateAffiliateCommission)).Methods("POST", "OPTIONS")
 
 	// Admin usage management (real-time usage tracking)
 	adminRoutes.HandleFunc("/usage/tenants/{tenantId}", authMiddleware.RequirePermission(auth.PermBillingRead)(usageHandler.AdminGetTenantUsage)).Methods("GET", "OPTIONS")
@@ -399,18 +423,35 @@ func registerAdminRoutes(
 	// Admin factory (same handlers as /v1/factory, for admin dashboard calling /v1/admin/factory/*)
 	adminRoutes.HandleFunc("/factory/status", authMiddleware.RequirePermission(auth.PermSystemRead)(factoryHandler.HandleStatus)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/factory/reviews/pending", authMiddleware.RequirePermission(auth.PermSystemRead)(factoryHandler.HandleListPendingReviews)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/factory/pipeline/run", authMiddleware.RequirePermission(auth.PermSystemWrite)(factoryHandler.HandleRunPipeline)).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/factory/config", authMiddleware.RequirePermission(auth.PermSystemRead)(factoryHandler.HandleGetConfig)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/factory/config", authMiddleware.RequirePermission(auth.PermSystemWrite)(factoryHandler.HandleUpdateConfig)).Methods("PUT", "PATCH", "OPTIONS")
+	adminRoutes.HandleFunc("/factory/opportunities", authMiddleware.RequirePermission(auth.PermSystemRead)(factoryHandler.HandleListOpportunities)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/factory/opportunities/{id}", authMiddleware.RequirePermission(auth.PermSystemRead)(factoryHandler.HandleGetOpportunity)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/factory/opportunities/{id}/approve", authMiddleware.RequirePermission(auth.PermSystemWrite)(factoryHandler.HandleApproveOpportunity)).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/factory/opportunities/{id}/reject", authMiddleware.RequirePermission(auth.PermSystemWrite)(factoryHandler.HandleRejectOpportunity)).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/factory/functions", authMiddleware.RequirePermission(auth.PermSystemRead)(factoryHandler.HandleListFunctions)).Methods("GET", "OPTIONS")
+
+	// ── Unfair Advantage Engine (ADMIN ONLY - FunctionFly Internal) ─────────────────────────────
+	adminRoutes.HandleFunc("/unfair-advantage/dashboard", authMiddleware.RequirePermission(auth.PermSystemRead)(unfairAdvantageHandler.HandleGetDashboard)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/unfair-advantage/value-report", authMiddleware.RequirePermission(auth.PermBillingRead)(unfairAdvantageHandler.HandleGetValueReport)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/unfair-advantage/opportunities", authMiddleware.RequirePermission(auth.PermSystemRead)(unfairAdvantageHandler.HandleListInternalOpportunities)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/unfair-advantage/opportunities/seed", authMiddleware.RequirePermission(auth.PermSystemWrite)(unfairAdvantageHandler.HandleSeedOpportunity)).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/unfair-advantage/opportunities/custom", authMiddleware.RequirePermission(auth.PermSystemWrite)(unfairAdvantageHandler.HandleSeedCustomOpportunity)).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/unfair-advantage/rdlab/run", authMiddleware.RequirePermission(auth.PermSystemWrite)(unfairAdvantageHandler.HandleRunRDLab)).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/unfair-advantage/functions/generate", authMiddleware.RequirePermission(auth.PermSystemWrite)(unfairAdvantageHandler.HandleGenerateInternalFunction)).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/unfair-advantage/functions", authMiddleware.RequirePermission(auth.PermSystemRead)(unfairAdvantageHandler.HandleListInternalFunctions)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/unfair-advantage/stealth/run", authMiddleware.RequirePermission(auth.PermSystemWrite)(unfairAdvantageHandler.HandleRunStealthPipeline)).Methods("POST", "OPTIONS")
 
 	// Admin state fabrics (stats and settings before {id} for route precedence)
-	adminRoutes.HandleFunc("/state-fabrics/stats", authMiddleware.RequirePermission(auth.PermTenantsRead)(stateFabricHandler.HandleGetStats)).Methods("GET", "OPTIONS")
-	adminRoutes.HandleFunc("/state-fabrics/settings", authMiddleware.RequirePermission(auth.PermTenantsRead)(stateFabricHandler.HandleGetSettings)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/state-fabrics/stats", authMiddleware.RequirePermission(auth.PermTenantsRead)(rateLimiter.RequireRateLimit(stateFabricHandler.HandleGetStats))).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/state-fabrics/settings", authMiddleware.RequirePermission(auth.PermTenantsRead)(rateLimiter.RequireRateLimit(stateFabricHandler.HandleGetSettings))).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/state-fabrics/settings", authMiddleware.RequirePermission(auth.PermTenantsWrite)(advancedSecurityMiddleware.RequireHMACSignature(stateFabricHandler.HandleUpdateSettings))).Methods("PATCH", "OPTIONS")
-	adminRoutes.HandleFunc("/state-fabrics", authMiddleware.RequirePermission(auth.PermTenantsRead)(stateFabricHandler.HandleListAll)).Methods("GET", "OPTIONS")
-	adminRoutes.HandleFunc("/state-fabrics/{id}/suspend", authMiddleware.RequirePermission(auth.PermTenantsWrite)(stateFabricHandler.HandleSuspendFabric)).Methods("POST", "OPTIONS")
-	adminRoutes.HandleFunc("/state-fabrics/{id}/resume", authMiddleware.RequirePermission(auth.PermTenantsWrite)(stateFabricHandler.HandleResumeFabric)).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/state-fabrics", authMiddleware.RequirePermission(auth.PermTenantsRead)(rateLimiter.RequireRateLimit(stateFabricHandler.HandleListAll))).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/state-fabrics/{id}/suspend", authMiddleware.RequirePermission(auth.PermTenantsWrite)(rateLimiter.RequireRateLimit(stateFabricHandler.HandleSuspendFabric))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/state-fabrics/{id}/resume", authMiddleware.RequirePermission(auth.PermTenantsWrite)(rateLimiter.RequireRateLimit(stateFabricHandler.HandleResumeFabric))).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/state-fabrics/cleanup", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(stateFabricHandler.HandleRunTTLCleanup))).Methods("POST", "OPTIONS")
-	adminRoutes.HandleFunc("/state-fabrics/cleanup/stats", authMiddleware.RequirePermission(auth.PermSystemRead)(stateFabricHandler.HandleGetTTLCleanupStats)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/state-fabrics/cleanup/stats", authMiddleware.RequirePermission(auth.PermSystemRead)(rateLimiter.RequireRateLimit(stateFabricHandler.HandleGetTTLCleanupStats))).Methods("GET", "OPTIONS")
 
 	// Trigger Engine Admin Endpoints
 	// GET /admin/triggers/stats - Get trigger engine statistics

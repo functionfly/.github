@@ -159,6 +159,69 @@ func (h *Handler) ListRuntimes(w http.ResponseWriter, r *http.Request) {
 			MemoryLimit: 2048,
 			Timeout:     300000,
 		},
+		{
+			ID:          "rust",
+			Name:        "Rust",
+			Version:     "1.75+",
+			Status:      "stable",
+			Features:    []string{"wasm32-wasip1", "WASI", "Near-native performance", "Zero-cost abstractions"},
+			MemoryLimit: 2048,
+			Timeout:     300000,
+		},
+		{
+			ID:          "go",
+			Name:        "Go",
+			Version:     "1.21+",
+			Status:      "stable",
+			Features:    []string{"GOOS=wasip1", "WASI", "Goroutines", "Standard library"},
+			MemoryLimit: 2048,
+			Timeout:     300000,
+		},
+		{
+			ID:          "c",
+			Name:        "C",
+			Version:     "C11",
+			Status:      "beta",
+			Features:    []string{"Emscripten/WASI-SDK", "WASI", "Low-level control", "libc"},
+			MemoryLimit: 2048,
+			Timeout:     300000,
+		},
+		{
+			ID:          "cpp",
+			Name:        "C++",
+			Version:     "C++17",
+			Status:      "beta",
+			Features:    []string{"Emscripten/WASI-SDK", "WASI", "STL", "Templates"},
+			MemoryLimit: 2048,
+			Timeout:     300000,
+		},
+		{
+			ID:          "ruby",
+			Name:        "Ruby",
+			Version:     "3.3 (mruby)",
+			Status:      "beta",
+			Features:    []string{"mruby interpreter", "WASM", "Dynamic typing"},
+			MemoryLimit: 2048,
+			Timeout:     300000,
+		},
+		{
+			ID:          "kotlin",
+			Name:        "Kotlin",
+			Version:     "1.9+",
+			Status:      "beta",
+			Features:    []string{"Kotlin/WASM", "wasmWasi target", "Null safety", "Coroutines"},
+			MemoryLimit: 2048,
+			Timeout:     300000,
+		},
+		{
+			ID:          "swift",
+			Name:        "Swift",
+			Version:     "5.9+",
+			Status:      "experimental",
+			Features:    []string{"SwiftWasm", "Protocols", "Value types", "Structured concurrency"},
+			MemoryLimit: 2048,
+			Timeout:     300000,
+		},
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -333,10 +396,40 @@ func (h *Handler) UpdateRuntimeConfig(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ListToolchains returns available WASM compilation toolchains
+func (h *Handler) ListToolchains(w http.ResponseWriter, r *http.Request) {
+	type ToolchainEntry struct {
+		Name      string `json:"name"`
+		Language  string `json:"language"`
+		Available bool   `json:"available"`
+		Version   string `json:"version,omitempty"`
+		Toolchain string `json:"toolchain,omitempty"`
+	}
+
+	toolchains := []ToolchainEntry{
+		{Name: "Rust (cargo)", Language: "rust", Available: true, Toolchain: "cargo"},
+		{Name: "Go", Language: "go", Available: true, Toolchain: "go"},
+		{Name: "C (Emscripten)", Language: "c", Available: true, Toolchain: "emscripten"},
+		{Name: "C (WASI-SDK)", Language: "c", Available: false, Toolchain: "wasi-sdk"},
+		{Name: "C++ (Emscripten)", Language: "cpp", Available: true, Toolchain: "emscripten"},
+		{Name: "Ruby (mruby)", Language: "ruby", Available: false, Toolchain: "mruby-wasm"},
+		{Name: "Kotlin", Language: "kotlin", Available: false, Toolchain: "kotlin-wasm"},
+		{Name: "Swift (SwiftWasm)", Language: "swift", Available: false, Toolchain: "swiftwasm"},
+		{Name: "JavaScript (Javy)", Language: "javascript", Available: true, Toolchain: "javy"},
+		{Name: "Python (MicroPython)", Language: "python", Available: true, Toolchain: "micropython"},
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"toolchains": toolchains,
+	})
+}
+
 // RegisterRoutes registers runtime routes
 func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/api/v1/runtimes", h.ListRuntimes).Methods("GET")
 	router.HandleFunc("/api/v1/runtimes/{id}", h.GetRuntimeInfo).Methods("GET")
+	router.HandleFunc("/api/v1/runtimes/toolchains", h.ListToolchains).Methods("GET")
 	router.HandleFunc("/api/v1/functions/{function_id}/diagnostics", h.GetDiagnostics).Methods("GET")
 	router.HandleFunc("/api/v1/functions/{function_id}/runtime", h.UpdateRuntimeConfig).Methods("PUT", "POST")
 }
