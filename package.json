@@ -39,7 +39,7 @@
   "dependencies": {
     "@astrojs/partytown": "^2.1.7",
     "ajv": "^8.18.0",
-    "astro": "^5.5.0",
+    "astro": "^6.0.0",
     "astro-compress": "^2.4.1",
     "astro-critters": "^2.2.1",
     "devalue": "^5.7.1",
