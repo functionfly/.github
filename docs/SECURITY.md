@@ -198,6 +198,27 @@ Monitor these logs to detect and respond to security threats.
 
 Account sharing and seat enforcement are governed by per-plan user limits. See [`docs/ACCOUNT_SHARING.md`](ACCOUNT_SHARING.md) for the full operational reference and [`plans/ACCOUNT_SHARING.md`](../plans/ACCOUNT_SHARING.md) for the design spec.
 
+## Information Leakage Prevention (Tenant Mismatch)
+
+State Fabric repository methods use a deliberate error-masking pattern when a resource exists but belongs to a different tenant. Instead of returning "unauthorized" or "forbidden", the API returns "state fabric not found" (HTTP 404).
+
+**Rationale:** Returning "not found" instead of "unauthorized" prevents information leakage about whether a resource ID exists in the system. An attacker cannot enumerate valid resource IDs by observing error responses.
+
+**Affected operations** (in `internal/storage/statefabric/repository.go`):
+- `GetFabric` — tenant ID check at line 346
+- `UpdateFabric` — tenant ID check at line 360
+- `DeleteFabric` — tenant ID check at line 391
+- `GetMetrics` — tenant ID check at line 433
+- `GetPipeline` — tenant ID check at line 444
+- `UpdatePipeline` — tenant ID check at line 678
+- `DeletePipeline` — tenant ID check at line 755
+- `SetFabricSuspended` — tenant ID check at line 787
+- `GetSettings` — tenant ID check at line 851
+- `UpdateSettings` — tenant ID check at line 869
+- `GetAuditLog` — tenant ID check at line 897
+
+This is intentional and should not be changed without careful security review.
+
 ## Before Making the Repo Public
 
 - **No real credentials in docs or examples**: Staging/production DB passwords, Neon project IDs, and connection strings must use placeholders (e.g. `<from Neon Console>`, `ep-staging-xxxxx.us-east-1.aws.neon.tech`). Real values belong in a secrets manager or private runbooks only.

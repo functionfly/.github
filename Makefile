@@ -44,6 +44,10 @@ build-local-runtime: ## Build the local Rust runtime
 	cd runtimes/local && cargo build --release
 	cp runtimes/local/target/release/functionfly-local bin/
 
+build-sar: ## Build the SAR (Stateful Agent Runtime)
+	cd runtimes/sar && cargo build --release
+	cp runtimes/sar/target/release/functionfly-sar bin/
+
 build-microvm-orchestrator: ## Build MicroVM orchestrator (HTTP on :9091; set FUNCTIONFLY_MICROVM_DEV_MODE=1 for host Python without Firecracker)
 	cd runtimes/microvm && cargo build --release
 	cp runtimes/microvm/target/release/functionfly-microvm bin/
@@ -62,6 +66,28 @@ dev-microvm: build-microvm-orchestrator ## Run MicroVM orchestrator in dev mode 
 		--max-vms 4 \
 		--warm-idle-secs 120 \
 		--debug
+
+nats: ## Start NATS server on port 4222 (idempotent — skips if already running)
+	@if pgrep -x nats-server > /dev/null 2>&1; then \
+		echo "NATS already running (PID: $$(pgrep -x nats-server))"; \
+	else \
+		nohup nats-server -p 4222 > /tmp/nats.log 2>&1 & \
+		sleep 1 && echo "NATS started on port 4222 (PID: $$(pgrep -x nats-server))"; \
+	fi
+
+nats-stop: ## Stop NATS server
+	@if pgrep -x nats-server > /dev/null 2>&1; then \
+		pkill nats-server && echo "NATS stopped"; \
+	else \
+		echo "NATS not running"; \
+	fi
+
+dev-sar: nats ## Start SAR (Stateful Agent Runtime) on port 8082
+	@echo "Starting SAR on port $${SAR_PORT:-8082}..."
+	@NATS_URL="$${NATS_URL:-nats://localhost:4222}" \
+	 REDIS_URL="$${REDIS_URL:-}" \
+	 DATABASE_URL="$${DATABASE_URL:-}" \
+	 cargo run --manifest-path runtimes/sar/Cargo.toml
 
 run-microvm: build-microvm-orchestrator ## Run MicroVM orchestrator in production mode (requires Firecracker + VM images in MICROVM_IMAGE_PATH)
 	@[ -f "$${MICROVM_IMAGE_PATH:-bin/vmimages}/python311.ext4" ] || \
@@ -260,8 +286,18 @@ dev-local: ## Start API with local Postgres + Redis + FlyMind. No Neon/Upstash n
 	JWT_SECRET=$${JWT_SECRET:-dev-jwt-secret-not-for-production} \
 	./scripts/run-orchestrator-with-ai.sh ./bin/orchestrator-api --skip-migrations
 
-dev: ## Start development environment (local Postgres + Redis, no Docker). Set DB_PORT=5434 for Docker Postgres. Start Prometheus with: docker compose up -d prometheus (then status page will show component health).
-	@echo "Using local services: DB_PORT=$${DB_PORT:-5432}, REDIS_ADDR=$${REDIS_ADDR:-localhost:6379}, PROMETHEUS_URL=$${PROMETHEUS_URL:-http://127.0.0.1:9091}"
+dev: ## Start development environment (Orchestrator + SAR + NATS). Set DB_PORT=5434 for Docker Postgres.
+	@echo "Using local services: DB_PORT=$${DB_PORT:-5432}, REDIS_ADDR=$${REDIS_ADDR:-localhost:6379}"
+	@# Start NATS if not already running
+	@if ! pgrep -x nats-server > /dev/null 2>&1; then \
+		echo "Starting NATS on port 4222..."; \
+		nohup nats-server -p 4222 > /tmp/nats.log 2>&1 & \
+		sleep 1; \
+	fi
+	@# Start SAR in background
+	@echo "Starting SAR (Stateful Agent Runtime) on port $${SAR_PORT:-8082}..."
+	@NATS_URL="$${NATS_URL:-nats://localhost:4222}" nohup cargo run --manifest-path runtimes/sar/Cargo.toml > /tmp/sar.log 2>&1 & echo "SAR PID: $$!"
+	@# Start Orchestrator API (foreground)
 	@DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
 	DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
 	REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} PROMETHEUS_URL=$${PROMETHEUS_URL:-http://127.0.0.1:9091} DEVELOPMENT=true \
