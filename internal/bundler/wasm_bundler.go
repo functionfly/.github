@@ -39,6 +39,20 @@ func BundleForWasmRuntimeWithWorkingDirectory(manifest *manifest.Manifest, worki
 			result, bundleErr = bundleJSForWasmRuntime(manifest)
 		case "python3.11", "python3.12", "python":
 			result, bundleErr = bundlePythonForWasmRuntime(manifest)
+		case "rust":
+			result, bundleErr = bundleRustToWasm(manifest)
+		case "go", "go1.21":
+			result, bundleErr = bundleGoToWasm(manifest)
+		case "c", "c11":
+			result, bundleErr = bundleCToWasm(manifest)
+		case "cpp", "cpp17", "c++":
+			result, bundleErr = bundleCppToWasm(manifest)
+		case "ruby", "ruby3.3":
+			result, bundleErr = bundleRubyForWasmRuntime(manifest)
+		case "kotlin", "kotlin1.9":
+			result, bundleErr = bundleKotlinForWasmRuntime(manifest)
+		case "swift", "swift5.9":
+			result, bundleErr = bundleSwiftForWasmRuntime(manifest)
 		default:
 			result, bundleErr = bundleJSForWasmRuntime(manifest) // Default to JS
 		}

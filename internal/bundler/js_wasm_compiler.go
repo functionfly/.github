@@ -314,7 +314,7 @@ func createJSWasmWrapper(entryFile string, manifest *manifest.Manifest) ([]byte,
 
   (func (export "init")
   )
-)`, manifest.Name)
+)`)
 
 	return []byte(wat), nil
 }

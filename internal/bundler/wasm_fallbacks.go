@@ -42,7 +42,7 @@ func createJSWasmWrapperFromSource(sourceCode string, manifest *manifest.Manifes
 
   (func (export "init")
   )
-)`, manifest.Name)
+)`)
 
 	return []byte(wat), nil
 }

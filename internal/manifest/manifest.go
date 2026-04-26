@@ -147,7 +147,7 @@ func generateJSONCWithComments(m *Manifest) string {
 `, m.Version))
 
 	// runtime - required
-	sb.WriteString(`  // Runtime: node18, node20, python3.11, python3.12, deno
+	sb.WriteString(`  // Runtime: node18, node20, python3.11, python3.12, deno, bun, rust, go, c, cpp, ruby, kotlin, swift
 `)
 	sb.WriteString(fmt.Sprintf(`  "runtime": "%s",
 `, m.Runtime))
@@ -306,13 +306,27 @@ func (m *Manifest) Validate() error {
 		"node18":       true,
 		"node20":       true,
 		"python3.11":   true,
+		"python3.12":   true,
 		"deno":         true,
 		"bun":          true,
 		"rust":         true,
-		"browser-wasm": true, // Browser Native WebAssembly (0ms cold start)
+		"go":           true,
+		"go1.21":       true,
+		"c":            true,
+		"c11":          true,
+		"cpp":          true,
+		"cpp17":        true,
+		"c++":          true,
+		"ruby":         true,
+		"ruby3.3":      true,
+		"kotlin":       true,
+		"kotlin1.9":    true,
+		"swift":        true,
+		"swift5.9":     true,
+		"browser-wasm": true,
 	}
 	if !validRuntimes[m.Runtime] {
-		return fmt.Errorf("runtime must be one of: node18, node20, python3.11, deno, bun, rust, browser-wasm")
+		return fmt.Errorf("runtime must be one of: node18, node20, python3.11, python3.12, deno, bun, rust, go, c, cpp, ruby, kotlin, swift, browser-wasm")
 	}
 
 	// Entry file validation (if provided)
@@ -329,9 +343,23 @@ func (m *Manifest) Validate() error {
 			"node18":       {".js", ".ts"},
 			"node20":       {".js", ".ts"},
 			"python3.11":   {".py"},
+			"python3.12":   {".py"},
 			"deno":         {".js", ".ts"},
 			"bun":          {".js", ".ts"},
 			"rust":         {".rs"},
+			"go":           {".go"},
+			"go1.21":       {".go"},
+			"c":            {".c"},
+			"c11":          {".c"},
+			"cpp":          {".cpp", ".cc", ".cxx"},
+			"cpp17":        {".cpp", ".cc", ".cxx"},
+			"c++":          {".cpp", ".cc", ".cxx"},
+			"ruby":         {".rb"},
+			"ruby3.3":      {".rb"},
+			"kotlin":       {".kt"},
+			"kotlin1.9":    {".kt"},
+			"swift":        {".swift"},
+			"swift5.9":     {".swift"},
 			"browser-wasm": {".wasm", ".wat"},
 		}
 		ext := filepath.Ext(m.Entry)

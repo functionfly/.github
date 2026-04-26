@@ -45,6 +45,24 @@ const (
 	// RuntimeWASM3IoT represents WASM3 IoT runtime (~500ms cold start, lightweight)
 	RuntimeWASM3IoT RuntimeType = "wasm3-iot"
 
+	// RuntimeGoWASM represents Go WASM (wasi) runtime
+	RuntimeGoWASM RuntimeType = "go-wasm"
+
+	// RuntimeC represents C WASM runtime (via Emscripten/WASI-SDK)
+	RuntimeC RuntimeType = "c"
+
+	// RuntimeCpp represents C++ WASM runtime (via Emscripten/WASI-SDK)
+	RuntimeCpp RuntimeType = "cpp"
+
+	// RuntimeRubyWASM represents Ruby WASM runtime (mruby interpreter)
+	RuntimeRubyWASM RuntimeType = "ruby-wasm"
+
+	// RuntimeKotlinWASM represents Kotlin WASM runtime
+	RuntimeKotlinWASM RuntimeType = "kotlin-wasm"
+
+	// RuntimeSwiftWASM represents Swift WASM runtime (SwiftWasm)
+	RuntimeSwiftWASM RuntimeType = "swift-wasm"
+
 	// RuntimeUnknown represents an unknown runtime
 	RuntimeUnknown RuntimeType = "unknown"
 )
@@ -54,7 +72,8 @@ func (r RuntimeType) IsValid() bool {
 	switch r {
 	case RuntimePython, RuntimePythonWASM, RuntimeJavaScript, RuntimeTypeScriptWASM,
 		RuntimePythonWasi, RuntimeJavaScriptQuickJS, RuntimeRust, RuntimeBrowserNativeWASM,
-		RuntimeWASM3IoT:
+		RuntimeWASM3IoT, RuntimeGoWASM, RuntimeC, RuntimeCpp, RuntimeRubyWASM,
+		RuntimeKotlinWASM, RuntimeSwiftWASM:
 		return true
 	default:
 		return false
@@ -316,6 +335,18 @@ func RuntimeTypeFromString(s string) RuntimeType {
 		return RuntimeBrowserNativeWASM
 	case "wasm3-iot", "wasm3", "iot":
 		return RuntimeWASM3IoT
+	case "go", "go1.21", "go-wasm":
+		return RuntimeGoWASM
+	case "c", "c11":
+		return RuntimeC
+	case "cpp", "cpp17", "c++":
+		return RuntimeCpp
+	case "ruby", "ruby3.3", "ruby-wasm", "mruby":
+		return RuntimeRubyWASM
+	case "kotlin", "kotlin1.9", "kotlin-wasm":
+		return RuntimeKotlinWASM
+	case "swift", "swift5.9", "swift-wasm":
+		return RuntimeSwiftWASM
 	default:
 		return RuntimeUnknown
 	}

@@ -12,9 +12,21 @@ const (
 	RuntimePython311         = "python3.11"
 	RuntimePython312         = "python3.12"
 	RuntimeGo121             = "go1.21"
+	RuntimeGo                = "go"
 	RuntimeRust175           = "rust1.75"
+	RuntimeRust              = "rust"
+	RuntimeC                 = "c"
+	RuntimeC11               = "c11"
+	RuntimeCpp               = "cpp"
+	RuntimeCpp17             = "cpp17"
+	RuntimeRuby              = "ruby"
+	RuntimeRuby33            = "ruby3.3"
+	RuntimeKotlin            = "kotlin"
+	RuntimeKotlin19          = "kotlin1.9"
+	RuntimeSwift             = "swift"
+	RuntimeSwift59           = "swift5.9"
 	RuntimeTypeScriptWASM    = "typescript-wasm"
-	RuntimeBrowserNativeWASM = "browser-wasm" // Browser Native WebAssembly (0ms cold start)
+	RuntimeBrowserNativeWASM = "browser-wasm"
 )
 
 // FunctionVisibility types
