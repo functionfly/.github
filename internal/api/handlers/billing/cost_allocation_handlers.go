@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -572,6 +573,10 @@ func (h *CostAllocationHandler) extractTenantID(r *http.Request) uuid.UUID {
 
 	if user, ok := r.Context().Value("user").(*storage.User); ok && user.TenantID != uuid.Nil {
 		return user.TenantID
+	}
+
+	if claims := middleware.GetUserFromContext(r); claims != nil && claims.TenantID != uuid.Nil {
+		return claims.TenantID
 	}
 
 	return uuid.Nil

@@ -12,15 +12,17 @@ import (
 
 // PricingTier represents a billing pricing tier
 type PricingTier struct {
-	ID          uuid.UUID   `json:"id"`
-	Name        string      `json:"name"`
-	Description string      `json:"description"`
-	PriceCents  int         `json:"price_cents"`
-	Currency    string      `json:"currency"`
-	Features    interface{} `json:"features"` // JSON features/limits
-	IsActive    bool        `json:"is_active"`
-	CreatedAt   time.Time   `json:"created_at"`
-	UpdatedAt   time.Time   `json:"updated_at"`
+	ID               uuid.UUID   `json:"id"`
+	Name             string      `json:"name"`
+	Description      string      `json:"description"`
+	PriceCents       int         `json:"price_cents"`
+	AnnualPriceCents *int        `json:"annual_price_cents,omitempty"`
+	Currency         string      `json:"currency"`
+	BillingCycle     string      `json:"billing_cycle"` // 'monthly' or 'annual'
+	Features         interface{} `json:"features"`     // JSON features/limits
+	IsActive         bool        `json:"is_active"`
+	CreatedAt        time.Time   `json:"created_at"`
+	UpdatedAt        time.Time   `json:"updated_at"`
 }
 
 // Subscription represents a tenant's subscription
@@ -29,6 +31,7 @@ type Subscription struct {
 	TenantID             uuid.UUID    `json:"tenant_id"`
 	PricingTierID        uuid.UUID    `json:"pricing_tier_id"`
 	Status               string       `json:"status"`
+	BillingCycle         string       `json:"billing_cycle"` // 'monthly' or 'annual'
 	StripeSubscriptionID string       `json:"stripe_subscription_id,omitempty"`
 	CurrentPeriodStart   time.Time    `json:"current_period_start"`
 	CurrentPeriodEnd     time.Time    `json:"current_period_end"`
@@ -623,6 +626,80 @@ const (
 	TaxIDTypeOther   TaxIDType = "other"    // Other tax ID type
 )
 
+// CreditNote represents an accounting credit note for refunds
+// Credit notes are issued when refunding a customer and provide proper accounting
+// reconciliation for SOX compliance
+type CreditNote struct {
+	ID              uuid.UUID   `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	TenantID        uuid.UUID   `json:"tenant_id" gorm:"type:uuid;not null;index"`
+	InvoiceID       *uuid.UUID  `json:"invoice_id,omitempty" gorm:"type:uuid;index"`        // Original invoice being credited
+	ReferenceNumber string      `json:"reference_number" gorm:"not null;size:50;uniqueIndex"` // Human-readable credit note number
+	Status          string      `json:"status" gorm:"not null;size:20;default:'draft'"`       // draft, issued, applied, void
+
+	// Amount fields (all in cents)
+	SubtotalCents   int `json:"subtotal_cents" gorm:"not null;default:0"`
+	TaxCents        int `json:"tax_cents" gorm:"not null;default:0"`
+	TotalCents      int `json:"total_cents" gorm:"not null;default:0"`
+
+	Currency string `json:"currency" gorm:"not null;size:3;default:'USD'"`
+
+	// Reason and description
+	Reason          string `json:"reason" gorm:"size:255"` // refund_reason from original transaction
+	Description     string `json:"description,omitempty" gorm:"size:500"`
+
+	// Refund association
+	PaymentRefundID *uuid.UUID `json:"payment_refund_id,omitempty" gorm:"type:uuid;index"`
+
+	// Timestamps
+	IssuedAt  *time.Time `json:"issued_at,omitempty"`
+	AppliedAt *time.Time `json:"applied_at,omitempty"`
+	VoidedAt  *time.Time `json:"voided_at,omitempty"`
+
+	// Audit fields
+	IssuedBy uuid.UUID `json:"issued_by" gorm:"type:uuid;not null"` // Admin user who issued
+	Notes    string    `json:"notes,omitempty" gorm:"size:1000"`
+
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+
+	// Related entities (not stored, populated on query)
+	Invoice        *Invoice        `json:"invoice,omitempty" gorm:"-"`
+	LineItems      []*CreditNoteLineItem `json:"line_items,omitempty" gorm:"-"`
+	PaymentRefund  *PaymentRefund  `json:"payment_refund,omitempty" gorm:"-"`
+}
+
+// CreditNoteLineItem represents a line item on a credit note
+type CreditNoteLineItem struct {
+	ID             uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	CreditNoteID   uuid.UUID  `json:"credit_note_id" gorm:"type:uuid;not null;index"`
+	Description    string     `json:"description" gorm:"not null;size:500"`
+	Quantity       int        `json:"quantity" gorm:"not null;default:1"`
+	UnitPriceCents int        `json:"unit_price_cents" gorm:"not null;default:0"`
+	TaxCents       int        `json:"tax_cents" gorm:"not null;default:0"`
+	AmountCents    int        `json:"amount_cents" gorm:"not null;default:0"` // quantity * unit_price
+	TotalCents     int        `json:"total_cents" gorm:"not null;default:0"` // amount + tax
+	CreatedAt      time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt      time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+// TableName overrides the table name for CreditNote
+func (CreditNote) TableName() string {
+	return "credit_notes"
+}
+
+// TableName overrides the table name for CreditNoteLineItem
+func (CreditNoteLineItem) TableName() string {
+	return "credit_note_line_items"
+}
+
+// CreditNoteStatus constants
+const (
+	CreditNoteStatusDraft  = "draft"
+	CreditNoteStatusIssued = "issued"
+	CreditNoteStatusApplied = "applied"
+	CreditNoteStatusVoid   = "void"
+)
+
 // TaxStatus represents valid tax statuses
 const (
 	TaxStatusPending  = "pending"  // Tax status not yet determined
@@ -1054,8 +1131,146 @@ func (c *SupportedCurrency) ConvertToStripeAmount(cents int) int64 {
 // ConvertFromStripeAmount converts Stripe's smallest unit to cents
 func (c *SupportedCurrency) ConvertFromStripeAmount(stripeAmount int64) int {
 	if c.DecimalPlaces == 0 {
-		// Convert back to cents (multiply by 100)
 		return int(stripeAmount * 100)
 	}
 	return int(stripeAmount)
 }
+
+// =============================================================================
+// Affiliate / Referral Commission System
+// =============================================================================
+
+const (
+	AffiliateStatusActive   = "active"
+	AffiliateStatusPaused  = "paused"
+	AffiliateStatusCanceled = "canceled"
+)
+
+const (
+	CommissionStatusPending   = "pending"
+	CommissionStatusApproved  = "approved"
+	CommissionStatusPaid      = "paid"
+	CommissionStatusCanceled  = "canceled"
+)
+
+// AffiliateCode represents an affiliate/referral code for promoter commissions
+type AffiliateCode struct {
+	ID          uuid.UUID  `json:"id"`
+	Code        string    `json:"code"` // Unique referral code (e.g., "SAVE20")
+	PublisherID uuid.UUID  `json:"publisher_id"` // User who owns this code
+	TenantID    *uuid.UUID `json:"tenant_id,omitempty"`
+
+	Name        string    `json:"name"` // Display name for the campaign
+	Description string    `json:"description,omitempty"`
+
+	// Commission structure
+	CommissionType  string  `json:"commission_type"`  // 'percent' or 'fixed'
+	CommissionValue float64 `json:"commission_value"` // e.g., 20.00 for 20% or $20 fixed
+
+	// Limits
+	MaxCommissions *int `json:"max_commissions,omitempty"` // Max total commissions payout
+	MaxReferrals    *int `json:"max_referrals,omitempty"`    // Max number of referrals
+
+	// Current counts
+	TotalReferrals     int `json:"total_referrals"`
+	TotalCommissions  int `json:"total_commissions"` // Count of paid commissions
+	PendingCommissions int `json:"pending_commissions"`
+
+	// Earnings tracking (in cents for precision)
+	PendingEarningsCents  int64 `json:"pending_earnings_cents"`
+	TotalEarningsCents   int64 `json:"total_earnings_cents"`
+	PaidOutEarningsCents  int64 `json:"paid_out_earnings_cents"`
+
+	// Validity
+	ValidFrom  *time.Time `json:"valid_from,omitempty"`
+	ValidUntil *time.Time `json:"valid_until,omitempty"`
+	IsActive   bool      `json:"is_active"`
+
+	// Metadata
+	UTMSource   string `json:"utm_source,omitempty"`
+	UTMCampaign string `json:"utm_campaign,omitempty"`
+
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// AffiliateReferral represents a referral tracking record
+type AffiliateReferral struct {
+	ID              uuid.UUID  `json:"id"`
+	AffiliateCodeID uuid.UUID  `json:"affiliate_code_id"`
+	AffiliateCode   *AffiliateCode `json:"affiliate_code,omitempty"`
+
+	// Referred tenant info
+	ReferredTenantID uuid.UUID `json:"referred_tenant_id"`
+	ReferralTenant   *Tenant   `json:"referral_tenant,omitempty"`
+
+	// Subscription info (if subscribed)
+	SubscriptionID *uuid.UUID `json:"subscription_id,omitempty"`
+
+	// Attribution
+	UTMSource   string `json:"utm_source,omitempty"`
+	UTMCampaign string `json:"utm_campaign,omitempty"`
+	UTContent   string `json:"utm_content,omitempty"`
+	UTMTerm     string `json:"utm_term,omitempty"`
+
+	IPAddress string `json:"ip_address,omitempty"`
+	UserAgent string `json:"user_agent,omitempty"`
+
+	// Tracking status
+	Status string `json:"status"` // 'pending', 'converted', 'qualified', 'canceled'
+
+	// When the referral was made
+	ReferredAt time.Time `json:"referred_at"`
+
+	// When they subscribed (if they did)
+	ConvertedAt *time.Time `json:"converted_at,omitempty"`
+
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// AffiliateCommission represents a commission earned by an affiliate
+type AffiliateCommission struct {
+	ID              uuid.UUID  `json:"id"`
+	AffiliateCodeID uuid.UUID  `json:"affiliate_code_id"`
+	AffiliateCode   *AffiliateCode `json:"affiliate_code,omitempty"`
+
+	ReferralID       uuid.UUID        `json:"referral_id"`
+	Referral        *AffiliateReferral `json:"referral,omitempty"`
+
+	// Commission details
+	CommissionType  string  `json:"commission_type"`  // 'percent' or 'fixed'
+	CommissionValue float64 `json:"commission_value"` // e.g., 20.00
+
+	// What the commission is based on
+	BaseAmountCents int64   `json:"base_amount_cents"` // Subscription amount in cents
+	BaseAmountUSD    float64 `json:"base_amount_usd"`
+
+	// Calculated commission
+	CommissionCents int64   `json:"commission_cents"`
+	CommissionUSD   float64 `json:"commission_usd"`
+
+	// Status
+	Status string `json:"status"` // 'pending', 'approved', 'paid', 'canceled'
+
+	// For tracking payment
+	PaidAt          *time.Time `json:"paid_at,omitempty"`
+	PaymentBatchID  *uuid.UUID `json:"payment_batch_id,omitempty"`
+	PaymentBatch    string     `json:"payment_batch,omitempty"` // Human-readable batch ID
+
+	// Associated subscription for commission period
+	SubscriptionID *uuid.UUID `json:"subscription_id,omitempty"`
+
+	Notes string `json:"notes,omitempty"`
+
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// AffiliateCodeStatus constants
+const (
+	ReferralStatusPending   = "pending"
+	ReferralStatusConverted = "converted"
+	ReferralStatusQualified = "qualified"
+	ReferralStatusCanceled  = "canceled"
+)

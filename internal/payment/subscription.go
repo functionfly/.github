@@ -11,10 +11,12 @@ import (
 
 // PaymentMethodInfo represents the payment method details for display
 type PaymentMethodInfo struct {
-	Brand    string `json:"brand"`
-	Last4    string `json:"last4"`
-	ExpMonth int    `json:"exp_month"`
-	ExpYear  int    `json:"exp_year"`
+	Brand                 string `json:"brand"`
+	Last4                 string `json:"last4"`
+	ExpMonth              int    `json:"exp_month"`
+	ExpYear               int    `json:"exp_year"`
+	StripePaymentMethodID string `json:"stripe_payment_method_id,omitempty"`
+	IsDefault             bool   `json:"is_default,omitempty"`
 }
 
 // GetPaymentMethodForCustomer retrieves the default payment method for a Stripe customer
@@ -40,10 +42,12 @@ func GetPaymentMethodForCustomer(ctx context.Context, customerID string) (*Payme
 			pm, err := paymentmethod.Get(defaultPM.ID, nil)
 			if err == nil && pm != nil && pm.Card != nil {
 				return &PaymentMethodInfo{
-					Brand:    string(pm.Card.Brand),
-					Last4:    pm.Card.Last4,
-					ExpMonth: int(pm.Card.ExpMonth),
-					ExpYear:  int(pm.Card.ExpYear),
+					Brand:                 string(pm.Card.Brand),
+					Last4:                 pm.Card.Last4,
+					ExpMonth:              int(pm.Card.ExpMonth),
+					ExpYear:               int(pm.Card.ExpYear),
+					StripePaymentMethodID: pm.ID,
+					IsDefault:             true,
 				}, nil
 			}
 			// If Get failed or card is nil, fall through to legacy sources or placeholder
@@ -58,6 +62,7 @@ func GetPaymentMethodForCustomer(ctx context.Context, customerID string) (*Payme
 						Last4:    src.Card.Last4,
 						ExpMonth: int(src.Card.ExpMonth),
 						ExpYear:  int(src.Card.ExpYear),
+						IsDefault: true,
 					}, nil
 				}
 			}
@@ -66,8 +71,10 @@ func GetPaymentMethodForCustomer(ctx context.Context, customerID string) (*Payme
 		// Last resort: we have a default payment method ID but couldn't get details
 		if defaultPM.ID != "" {
 			return &PaymentMethodInfo{
-				Brand: "Card",
-				Last4: "****",
+				Brand:                 "Card",
+				Last4:                 "****",
+				StripePaymentMethodID: defaultPM.ID,
+				IsDefault:             true,
 			}, nil
 		}
 	}

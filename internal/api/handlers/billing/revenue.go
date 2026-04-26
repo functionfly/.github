@@ -24,7 +24,10 @@ type PlanResponse struct {
 	Description           string    `json:"description"`
 	PriceCents            int       `json:"price_cents"`
 	PriceMonthly          float64   `json:"price_monthly"`
+	PriceAnnual           float64   `json:"price_annual,omitempty"`
+	AnnualSavingsPercent  float64   `json:"annual_savings_percent,omitempty"`
 	Currency              string    `json:"currency"`
+	BillingCycle          string    `json:"billing_cycle"`
 	TierType              string    `json:"tier_type"`
 	Features              any       `json:"features"`
 	TrialDays             int       `json:"trial_days"`
@@ -159,7 +162,7 @@ func (h *Handler) HandleGetPlans(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := PlansListResponse{
-		Description: "FunctionFly pricing plans - Free, Starter ($29/mo), Professional ($99/mo), Enterprise (custom)",
+		Description: "FunctionFly pricing plans - Free, Starter ($29/mo, $278/yr), Professional ($99/mo, $950/yr), Enterprise (custom)",
 		Plans:       make([]PlanResponse, 0, len(plans)),
 	}
 
@@ -169,21 +172,32 @@ func (h *Handler) HandleGetPlans(w http.ResponseWriter, r *http.Request) {
 			_ = json.Unmarshal(plan.Features, &features)
 		}
 
-		response.Plans = append(response.Plans, PlanResponse{
+		planResp := PlanResponse{
 			ID:                    plan.ID,
 			Name:                  plan.Name,
 			Description:           plan.Description,
 			PriceCents:            plan.PriceCents,
 			PriceMonthly:          float64(plan.PriceCents) / 100.0,
 			Currency:              plan.Currency,
-			TierType:              plan.TierType,
+			BillingCycle:          plan.BillingCycle,
+			TierType:               plan.TierType,
 			Features:              features,
 			TrialDays:             plan.TrialDays,
 			MaxAgents:             plan.MaxAgents,
 			MaxFunctions:          plan.MaxFunctions,
 			MaxExecutionsPerMonth: plan.MaxExecutionsPerMonth,
 			IsActive:              plan.IsActive,
-		})
+		}
+
+		if plan.AnnualPriceCents != nil && *plan.AnnualPriceCents > 0 {
+			planResp.PriceAnnual = float64(*plan.AnnualPriceCents) / 100.0
+			monthlyAnnual := float64(plan.PriceCents) * 12 / 100.0
+			if monthlyAnnual > 0 {
+				planResp.AnnualSavingsPercent = ((monthlyAnnual - planResp.PriceAnnual) / monthlyAnnual) * 100
+			}
+		}
+
+		response.Plans = append(response.Plans, planResp)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

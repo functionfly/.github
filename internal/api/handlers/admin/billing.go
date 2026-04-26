@@ -616,3 +616,682 @@ func (h *Handler) HandleRedeemCoupon(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(redemption)
 }
+
+// =============================================================================
+// Affiliate / Referral Commission handlers
+// =============================================================================
+
+// HandleListAffiliateCodes lists all affiliate codes
+// GET /v1/admin/billing/affiliate-codes
+func (h *Handler) HandleListAffiliateCodes(w http.ResponseWriter, r *http.Request) {
+	codes, err := h.repo.ListAffiliateCodes()
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list affiliate codes")
+		http.Error(w, "Failed to list affiliate codes", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"affiliate_codes": codes,
+	})
+}
+
+// HandleCreateAffiliateCode creates a new affiliate code
+// POST /v1/admin/billing/affiliate-codes
+func (h *Handler) HandleCreateAffiliateCode(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Code           string     `json:"code"`
+		PublisherID    uuid.UUID  `json:"publisher_id"`
+		TenantID       *uuid.UUID `json:"tenant_id,omitempty"`
+		Name           string     `json:"name"`
+		Description    string     `json:"description,omitempty"`
+		CommissionType string     `json:"commission_type"`
+		CommissionValue float64   `json:"commission_value"`
+		MaxCommissions *int       `json:"max_commissions,omitempty"`
+		MaxReferrals   *int       `json:"max_referrals,omitempty"`
+		ValidFrom      *time.Time `json:"valid_from,omitempty"`
+		ValidUntil     *time.Time `json:"valid_until,omitempty"`
+		UTMSource      string     `json:"utm_source,omitempty"`
+		UTMCampaign    string     `json:"utm_campaign,omitempty"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	code := &storage.AffiliateCode{
+		Code:            strings.ToUpper(req.Code),
+		PublisherID:     req.PublisherID,
+		TenantID:        req.TenantID,
+		Name:            req.Name,
+		Description:     req.Description,
+		CommissionType:  req.CommissionType,
+		CommissionValue: req.CommissionValue,
+		MaxCommissions:  req.MaxCommissions,
+		MaxReferrals:    req.MaxReferrals,
+		ValidFrom:       req.ValidFrom,
+		ValidUntil:      req.ValidUntil,
+		UTMSource:       req.UTMSource,
+		UTMCampaign:     req.UTMCampaign,
+		IsActive:       true,
+	}
+
+	createdCode, err := h.repo.CreateAffiliateCode(r.Context(), code)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to create affiliate code")
+		http.Error(w, "Failed to create affiliate code", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(createdCode)
+}
+
+// HandleGetAffiliateCode retrieves an affiliate code by ID
+// GET /v1/admin/billing/affiliate-codes/{codeId}
+func (h *Handler) HandleGetAffiliateCode(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	codeID, err := uuid.Parse(vars["codeId"])
+	if err != nil {
+		http.Error(w, "Invalid code ID", http.StatusBadRequest)
+		return
+	}
+
+	code, err := h.repo.GetAffiliateCodeByID(codeID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get affiliate code")
+		http.Error(w, "Failed to get affiliate code", http.StatusInternalServerError)
+		return
+	}
+	if code == nil {
+		http.Error(w, "Affiliate code not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(code)
+}
+
+// HandleUpdateAffiliateCode updates an affiliate code
+// PUT /v1/admin/billing/affiliate-codes/{codeId}
+func (h *Handler) HandleUpdateAffiliateCode(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	codeID, err := uuid.Parse(vars["codeId"])
+	if err != nil {
+		http.Error(w, "Invalid code ID", http.StatusBadRequest)
+		return
+	}
+
+	code, err := h.repo.GetAffiliateCodeByID(codeID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get affiliate code")
+		http.Error(w, "Failed to get affiliate code", http.StatusInternalServerError)
+		return
+	}
+	if code == nil {
+		http.Error(w, "Affiliate code not found", http.StatusNotFound)
+		return
+	}
+
+	var req struct {
+		Name            string     `json:"name,omitempty"`
+		Description     string     `json:"description,omitempty"`
+		CommissionType  string     `json:"commission_type,omitempty"`
+		CommissionValue float64    `json:"commission_value,omitempty"`
+		MaxCommissions  *int       `json:"max_commissions,omitempty"`
+		MaxReferrals    *int       `json:"max_referrals,omitempty"`
+		ValidFrom       *time.Time `json:"valid_from,omitempty"`
+		ValidUntil      *time.Time `json:"valid_until,omitempty"`
+		IsActive        *bool     `json:"is_active,omitempty"`
+		UTMSource       string     `json:"utm_source,omitempty"`
+		UTMCampaign     string     `json:"utm_campaign,omitempty"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if req.Name != "" {
+		code.Name = req.Name
+	}
+	if req.Description != "" {
+		code.Description = req.Description
+	}
+	if req.CommissionType != "" {
+		code.CommissionType = req.CommissionType
+	}
+	if req.CommissionValue > 0 {
+		code.CommissionValue = req.CommissionValue
+	}
+	code.MaxCommissions = req.MaxCommissions
+	code.MaxReferrals = req.MaxReferrals
+	code.ValidFrom = req.ValidFrom
+	code.ValidUntil = req.ValidUntil
+	if req.IsActive != nil {
+		code.IsActive = *req.IsActive
+	}
+	if req.UTMSource != "" {
+		code.UTMSource = req.UTMSource
+	}
+	if req.UTMCampaign != "" {
+		code.UTMCampaign = req.UTMCampaign
+	}
+
+	if err := h.repo.UpdateAffiliateCode(r.Context(), code); err != nil {
+		logrus.WithError(err).Error("Failed to update affiliate code")
+		http.Error(w, "Failed to update affiliate code", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(code)
+}
+
+// HandleListAffiliateReferrals lists referrals for an affiliate code
+// GET /v1/admin/billing/affiliate-codes/{codeId}/referrals
+func (h *Handler) HandleListAffiliateReferrals(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	codeID, err := uuid.Parse(vars["codeId"])
+	if err != nil {
+		http.Error(w, "Invalid code ID", http.StatusBadRequest)
+		return
+	}
+
+	referrals, err := h.repo.ListAffiliateReferralsByCode(codeID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list affiliate referrals")
+		http.Error(w, "Failed to list affiliate referrals", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"referrals": referrals,
+	})
+}
+
+// HandleListAffiliateCommissions lists commissions for an affiliate code
+// GET /v1/admin/billing/affiliate-codes/{codeId}/commissions
+func (h *Handler) HandleListAffiliateCommissions(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	codeID, err := uuid.Parse(vars["codeId"])
+	if err != nil {
+		http.Error(w, "Invalid code ID", http.StatusBadRequest)
+		return
+	}
+
+	commissions, err := h.repo.ListAffiliateCommissionsByCode(codeID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list affiliate commissions")
+		http.Error(w, "Failed to list affiliate commissions", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"commissions": commissions,
+	})
+}
+
+// HandleRecordAffiliateReferral records a new affiliate referral
+// POST /v1/admin/billing/affiliate-referrals
+func (h *Handler) HandleRecordAffiliateReferral(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		AffiliateCode string     `json:"affiliate_code"`
+		TenantID     uuid.UUID  `json:"tenant_id"`
+		SubscriptionID *uuid.UUID `json:"subscription_id,omitempty"`
+		UTMSource    string     `json:"utm_source,omitempty"`
+		UTMCampaign  string     `json:"utm_campaign,omitempty"`
+		UTContent    string     `json:"utm_content,omitempty"`
+		UTMTerm      string     `json:"utm_term,omitempty"`
+		IPAddress    string     `json:"ip_address,omitempty"`
+		UserAgent    string     `json:"user_agent,omitempty"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	code, err := h.repo.GetAffiliateCodeByCode(req.AffiliateCode)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get affiliate code")
+		http.Error(w, "Failed to get affiliate code", http.StatusInternalServerError)
+		return
+	}
+	if code == nil {
+		http.Error(w, "Affiliate code not found", http.StatusNotFound)
+		return
+	}
+
+	referral := &storage.AffiliateReferral{
+		AffiliateCodeID: code.ID,
+		ReferredTenantID: req.TenantID,
+		SubscriptionID: req.SubscriptionID,
+		UTMSource: req.UTMSource,
+		UTMCampaign: req.UTMCampaign,
+		UTContent: req.UTContent,
+		UTMTerm: req.UTMTerm,
+		IPAddress: req.IPAddress,
+		UserAgent: req.UserAgent,
+		Status: storage.ReferralStatusPending,
+		ReferredAt: time.Now(),
+	}
+
+	createdReferral, err := h.repo.CreateAffiliateReferral(r.Context(), referral)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to create affiliate referral")
+		http.Error(w, "Failed to create affiliate referral", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(createdReferral)
+}
+
+// HandleUpdateAffiliateReferralStatus updates the status of an affiliate referral
+// PATCH /v1/admin/billing/affiliate-referrals/{referralId}/status
+func (h *Handler) HandleUpdateAffiliateReferralStatus(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	referralID, err := uuid.Parse(vars["referralId"])
+	if err != nil {
+		http.Error(w, "Invalid referral ID", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		Status string `json:"status"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.repo.UpdateAffiliateReferralStatus(r.Context(), referralID, req.Status); err != nil {
+		logrus.WithError(err).Error("Failed to update referral status")
+		http.Error(w, "Failed to update referral status", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "updated"})
+}
+
+// HandleApproveAffiliateCommission approves a pending commission
+// POST /v1/admin/billing/affiliate-commissions/{commissionId}/approve
+func (h *Handler) HandleApproveAffiliateCommission(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	commissionID, err := uuid.Parse(vars["commissionId"])
+	if err != nil {
+		http.Error(w, "Invalid commission ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.repo.UpdateAffiliateCommissionStatus(r.Context(), commissionID, storage.CommissionStatusApproved); err != nil {
+		logrus.WithError(err).Error("Failed to approve commission")
+		http.Error(w, "Failed to approve commission", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "approved"})
+}
+
+// HandleMarkAffiliateCommissionPaid marks a commission as paid
+// POST /v1/admin/billing/affiliate-commissions/{commissionId}/paid
+func (h *Handler) HandleMarkAffiliateCommissionPaid(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	commissionID, err := uuid.Parse(vars["commissionId"])
+	if err != nil {
+		http.Error(w, "Invalid commission ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.repo.UpdateAffiliateCommissionStatus(r.Context(), commissionID, storage.CommissionStatusPaid); err != nil {
+		logrus.WithError(err).Error("Failed to mark commission as paid")
+		http.Error(w, "Failed to mark commission as paid", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "paid"})
+}
+
+// HandleCalculateAffiliateCommission calculates commission for a given base amount
+// POST /v1/admin/billing/affiliate-commissions/calculate
+func (h *Handler) HandleCalculateAffiliateCommission(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		AffiliateCode   string  `json:"affiliate_code"`
+		BaseAmountCents int64   `json:"base_amount_cents"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	code, err := h.repo.GetAffiliateCodeByCode(req.AffiliateCode)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get affiliate code")
+		http.Error(w, "Failed to get affiliate code", http.StatusInternalServerError)
+		return
+	}
+	if code == nil {
+		http.Error(w, "Affiliate code not found", http.StatusNotFound)
+		return
+	}
+
+	baseAmountUSD := float64(req.BaseAmountCents) / 100.0
+	commissionCents, commissionUSD := h.repo.CalculateCommission(code.CommissionType, code.CommissionValue, baseAmountUSD)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"affiliate_code":   code.Code,
+		"commission_type": code.CommissionType,
+		"commission_value": code.CommissionValue,
+		"base_amount_cents": req.BaseAmountCents,
+		"base_amount_usd":  baseAmountUSD,
+		"commission_cents": commissionCents,
+		"commission_usd":   commissionUSD,
+	})
+}
+
+// =============================================================================
+// Credit Note handlers (for refund accounting / SOX compliance)
+// =============================================================================
+
+// HandleCreateCreditNote creates a new credit note
+// POST /v1/admin/billing/credit-notes
+func (h *Handler) HandleCreateCreditNote(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		TenantID      uuid.UUID  `json:"tenant_id"`
+		InvoiceID     *uuid.UUID `json:"invoice_id,omitempty"`
+		Status        string     `json:"status,omitempty"`
+		SubtotalCents int        `json:"subtotal_cents"`
+		TaxCents      int        `json:"tax_cents"`
+		TotalCents    int        `json:"total_cents"`
+		Currency      string     `json:"currency"`
+		Reason        string     `json:"reason"`
+		Description   string     `json:"description,omitempty"`
+		IssuedBy      uuid.UUID  `json:"issued_by"`
+		Notes         string     `json:"notes,omitempty"`
+		LineItems     []struct {
+			Description    string `json:"description"`
+			Quantity       int    `json:"quantity"`
+			UnitPriceCents int    `json:"unit_price_cents"`
+			TaxCents       int    `json:"tax_cents"`
+			AmountCents    int    `json:"amount_cents"`
+			TotalCents     int    `json:"total_cents"`
+		} `json:"line_items,omitempty"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if req.TenantID == uuid.Nil {
+		http.Error(w, "tenant_id is required", http.StatusBadRequest)
+		return
+	}
+
+	if req.Currency == "" {
+		req.Currency = "USD"
+	}
+
+	creditNote := &storage.CreditNote{
+		TenantID:      req.TenantID,
+		InvoiceID:     req.InvoiceID,
+		Status:        req.Status,
+		SubtotalCents: req.SubtotalCents,
+		TaxCents:      req.TaxCents,
+		TotalCents:    req.TotalCents,
+		Currency:      req.Currency,
+		Reason:        req.Reason,
+		Description:   req.Description,
+		IssuedBy:      req.IssuedBy,
+		Notes:         req.Notes,
+	}
+
+	created, err := h.repo.CreateCreditNote(r.Context(), creditNote)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to create credit note")
+		http.Error(w, "Failed to create credit note", http.StatusInternalServerError)
+		return
+	}
+
+	for _, item := range req.LineItems {
+		lineItem := &storage.CreditNoteLineItem{
+			CreditNoteID:   created.ID,
+			Description:    item.Description,
+			Quantity:       item.Quantity,
+			UnitPriceCents: item.UnitPriceCents,
+			TaxCents:       item.TaxCents,
+			AmountCents:    item.AmountCents,
+			TotalCents:     item.TotalCents,
+		}
+		if err := h.repo.CreateCreditNoteLineItem(r.Context(), lineItem); err != nil {
+			logrus.WithError(err).WithField("credit_note_id", created.ID).Error("Failed to create credit note line item")
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(created)
+}
+
+// HandleListCreditNotes lists credit notes with optional filtering
+// GET /v1/admin/billing/credit-notes
+func (h *Handler) HandleListCreditNotes(w http.ResponseWriter, r *http.Request) {
+	filter := &storage.CreditNoteFilter{}
+
+	if tenantIDStr := r.URL.Query().Get("tenant_id"); tenantIDStr != "" {
+		if tenantID, err := uuid.Parse(tenantIDStr); err == nil {
+			filter.TenantID = &tenantID
+		}
+	}
+	if invoiceIDStr := r.URL.Query().Get("invoice_id"); invoiceIDStr != "" {
+		if invoiceID, err := uuid.Parse(invoiceIDStr); err == nil {
+			filter.InvoiceID = &invoiceID
+		}
+	}
+	if status := r.URL.Query().Get("status"); status != "" {
+		filter.Status = status
+	}
+	if startDateStr := r.URL.Query().Get("start_date"); startDateStr != "" {
+		if startDate, err := time.Parse(time.RFC3339, startDateStr); err == nil {
+			filter.StartDate = &startDate
+		}
+	}
+	if endDateStr := r.URL.Query().Get("end_date"); endDateStr != "" {
+		if endDate, err := time.Parse(time.RFC3339, endDateStr); err == nil {
+			filter.EndDate = &endDate
+		}
+	}
+
+	limit := 50
+	offset := 0
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	if o := r.URL.Query().Get("offset"); o != "" {
+		if parsed, err := strconv.Atoi(o); err == nil && parsed >= 0 {
+			offset = parsed
+		}
+	}
+
+	creditNotes, total, err := h.repo.ListCreditNotes(r.Context(), filter, limit, offset)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list credit notes")
+		http.Error(w, "Failed to list credit notes", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"credit_notes": creditNotes,
+		"total":        total,
+		"limit":        limit,
+		"offset":       offset,
+	})
+}
+
+// HandleGetCreditNote retrieves a credit note by ID
+// GET /v1/admin/billing/credit-notes/{creditNoteId}
+func (h *Handler) HandleGetCreditNote(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	creditNoteIDStr := vars["creditNoteId"]
+	creditNoteID, err := uuid.Parse(creditNoteIDStr)
+	if err != nil {
+		http.Error(w, "Invalid credit note ID", http.StatusBadRequest)
+		return
+	}
+
+	creditNote, err := h.repo.GetCreditNoteWithRelations(r.Context(), creditNoteID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get credit note")
+		http.Error(w, "Failed to get credit note", http.StatusInternalServerError)
+		return
+	}
+	if creditNote == nil {
+		http.Error(w, "Credit note not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(creditNote)
+}
+
+// HandleUpdateCreditNote updates a credit note
+// PATCH /v1/admin/billing/credit-notes/{creditNoteId}
+func (h *Handler) HandleUpdateCreditNote(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	creditNoteIDStr := vars["creditNoteId"]
+	creditNoteID, err := uuid.Parse(creditNoteIDStr)
+	if err != nil {
+		http.Error(w, "Invalid credit note ID", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		Status      string `json:"status,omitempty"`
+		Description string `json:"description,omitempty"`
+		Notes       string `json:"notes,omitempty"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	creditNote, err := h.repo.GetCreditNoteByID(r.Context(), creditNoteID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get credit note")
+		http.Error(w, "Failed to get credit note", http.StatusInternalServerError)
+		return
+	}
+	if creditNote == nil {
+		http.Error(w, "Credit note not found", http.StatusNotFound)
+		return
+	}
+
+	if req.Status != "" {
+		creditNote.Status = req.Status
+	}
+	if req.Description != "" {
+		creditNote.Description = req.Description
+	}
+	if req.Notes != "" {
+		creditNote.Notes = req.Notes
+	}
+
+	if err := h.repo.UpdateCreditNote(r.Context(), creditNote); err != nil {
+		logrus.WithError(err).Error("Failed to update credit note")
+		http.Error(w, "Failed to update credit note", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(creditNote)
+}
+
+// HandleVoidCreditNote voids a credit note
+// POST /v1/admin/billing/credit-notes/{creditNoteId}/void
+func (h *Handler) HandleVoidCreditNote(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	creditNoteIDStr := vars["creditNoteId"]
+	creditNoteID, err := uuid.Parse(creditNoteIDStr)
+	if err != nil {
+		http.Error(w, "Invalid credit note ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.repo.VoidCreditNote(r.Context(), creditNoteID); err != nil {
+		logrus.WithError(err).Error("Failed to void credit note")
+		http.Error(w, "Failed to void credit note", http.StatusInternalServerError)
+		return
+	}
+
+	creditNote, _ := h.repo.GetCreditNoteByID(r.Context(), creditNoteID)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":      true,
+		"credit_note": creditNote,
+	})
+}
+
+// HandleApplyCreditNote marks a credit note as applied
+// POST /v1/admin/billing/credit-notes/{creditNoteId}/apply
+func (h *Handler) HandleApplyCreditNote(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	creditNoteIDStr := vars["creditNoteId"]
+	creditNoteID, err := uuid.Parse(creditNoteIDStr)
+	if err != nil {
+		http.Error(w, "Invalid credit note ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.repo.ApplyCreditNote(r.Context(), creditNoteID); err != nil {
+		logrus.WithError(err).Error("Failed to apply credit note")
+		http.Error(w, "Failed to apply credit note", http.StatusInternalServerError)
+		return
+	}
+
+	creditNote, _ := h.repo.GetCreditNoteByID(r.Context(), creditNoteID)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":      true,
+		"credit_note": creditNote,
+	})
+}
+
+// HandleGetCreditNoteStats returns credit note statistics
+// GET /v1/admin/billing/credit-notes/stats
+func (h *Handler) HandleGetCreditNoteStats(w http.ResponseWriter, r *http.Request) {
+	var tenantID *uuid.UUID
+	if tenantIDStr := r.URL.Query().Get("tenant_id"); tenantIDStr != "" {
+		if parsed, err := uuid.Parse(tenantIDStr); err == nil {
+			tenantID = &parsed
+		}
+	}
+
+	stats, err := h.repo.GetCreditNoteStats(r.Context(), tenantID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get credit note stats")
+		http.Error(w, "Failed to get credit note stats", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"stats": stats,
+	})
+}

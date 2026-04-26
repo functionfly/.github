@@ -132,6 +132,24 @@ func (r *BillingRepository) UpdatePricingTier(ctx context.Context, id uuid.UUID,
 		argIndex++
 	}
 
+	if annualPriceCents, ok := updates["annual_price_cents"].(int); ok {
+		setParts = append(setParts, fmt.Sprintf("annual_price_cents = $%d", argIndex))
+		args = append(args, annualPriceCents)
+		argIndex++
+	}
+
+	if billingCycle, ok := updates["billing_cycle"].(string); ok {
+		setParts = append(setParts, fmt.Sprintf("billing_cycle = $%d", argIndex))
+		args = append(args, billingCycle)
+		argIndex++
+	}
+
+	if stripePriceIDAnnual, ok := updates["stripe_price_id_annual"].(string); ok {
+		setParts = append(setParts, fmt.Sprintf("stripe_price_id_annual = $%d", argIndex))
+		args = append(args, stripePriceIDAnnual)
+		argIndex++
+	}
+
 	if isActive, ok := updates["is_active"].(bool); ok {
 		setParts = append(setParts, fmt.Sprintf("is_active = $%d", argIndex))
 		args = append(args, isActive)
@@ -144,18 +162,28 @@ func (r *BillingRepository) UpdatePricingTier(ctx context.Context, id uuid.UUID,
 
 	setParts = append(setParts, "updated_at = NOW()")
 
-	query := fmt.Sprintf("UPDATE pricing_tiers SET %s WHERE id = $%d RETURNING id, name, description, price_cents, currency, features, is_active, created_at, updated_at",
+	query := fmt.Sprintf("UPDATE pricing_tiers SET %s WHERE id = $%d RETURNING id, name, description, price_cents, annual_price_cents, currency, billing_cycle, features, is_active, created_at, updated_at",
 		strings.Join(setParts, ", "), argIndex)
 
 	args = append(args, id)
 
 	updated := &PricingTier{}
 	var features []byte
+	var annualPriceCents sql.NullInt64
+	var billingCycle sql.NullString
 	err = r.db.QueryRow(query, args...).Scan(&updated.ID, &updated.Name, &updated.Description,
-		&updated.PriceCents, &updated.Currency, &features, &updated.IsActive, &updated.CreatedAt, &updated.UpdatedAt)
+		&updated.PriceCents, &annualPriceCents, &updated.Currency, &billingCycle, &features, &updated.IsActive, &updated.CreatedAt, &updated.UpdatedAt)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to update pricing tier: %w", err)
+	}
+
+	if annualPriceCents.Valid {
+		apc := int(annualPriceCents.Int64)
+		updated.AnnualPriceCents = &apc
+	}
+	if billingCycle.Valid {
+		updated.BillingCycle = billingCycle.String
 	}
 
 	if len(features) > 0 {

@@ -637,9 +637,11 @@ func (r *RevenueRepository) GetPlatformFeesSummary(ctx context.Context) (totalCo
 // ListPricingTiersExtended lists all active pricing tiers with extended fields
 func (r *RevenueRepository) ListPricingTiersExtended() ([]*PricingTierExtended, error) {
 	query := `
-		SELECT id, name, description, price_cents, currency, features, is_active,
+		SELECT id, name, description, price_cents, annual_price_cents, currency,
+		       COALESCE(billing_cycle, 'monthly') as billing_cycle, features, is_active,
 		       COALESCE(tier_type, 'subscription') as tier_type,
-		       stripe_price_id, trial_days, max_agents, max_functions, max_executions_per_month,
+		       stripe_price_id, stripe_price_id_annual, trial_days,
+		       max_agents, max_functions, max_executions_per_month,
 		       created_at, updated_at
 		FROM pricing_tiers
 		WHERE is_active = true
@@ -655,13 +657,16 @@ func (r *RevenueRepository) ListPricingTiersExtended() ([]*PricingTierExtended, 
 	for rows.Next() {
 		tier := &PricingTierExtended{}
 		var features []byte
-		var stripePriceID sql.NullString
+		var stripePriceID, stripePriceIDAnnual sql.NullString
 		var tierType sql.NullString
+		var annualPriceCents sql.NullInt64
 		var trialDays, maxAgents, maxFunctions, maxExecutions sql.NullInt64
+		var billingCycle sql.NullString
 
 		err := rows.Scan(
-			&tier.ID, &tier.Name, &tier.Description, &tier.PriceCents, &tier.Currency,
-			&features, &tier.IsActive, &tierType, &stripePriceID, &trialDays,
+			&tier.ID, &tier.Name, &tier.Description, &tier.PriceCents, &annualPriceCents,
+			&tier.Currency, &billingCycle, &features, &tier.IsActive, &tierType,
+			&stripePriceID, &stripePriceIDAnnual, &trialDays,
 			&maxAgents, &maxFunctions, &maxExecutions, &tier.CreatedAt, &tier.UpdatedAt,
 		)
 		if err != nil {
@@ -674,8 +679,18 @@ func (r *RevenueRepository) ListPricingTiersExtended() ([]*PricingTierExtended, 
 		if stripePriceID.Valid {
 			tier.StripePriceID = &stripePriceID.String
 		}
+		if stripePriceIDAnnual.Valid {
+			tier.StripePriceIDAnnual = &stripePriceIDAnnual.String
+		}
 		if tierType.Valid {
 			tier.TierType = tierType.String
+		}
+		if annualPriceCents.Valid {
+			apc := int(annualPriceCents.Int64)
+			tier.AnnualPriceCents = &apc
+		}
+		if billingCycle.Valid {
+			tier.BillingCycle = billingCycle.String
 		}
 		if trialDays.Valid {
 			tier.TrialDays = int(trialDays.Int64)
@@ -698,22 +713,27 @@ func (r *RevenueRepository) ListPricingTiersExtended() ([]*PricingTierExtended, 
 // GetPricingTierExtendedByID retrieves a pricing tier by ID with extended fields
 func (r *RevenueRepository) GetPricingTierExtendedByID(id uuid.UUID) (*PricingTierExtended, error) {
 	query := `
-		SELECT id, name, description, price_cents, currency, features, is_active,
+		SELECT id, name, description, price_cents, annual_price_cents, currency,
+		       COALESCE(billing_cycle, 'monthly') as billing_cycle, features, is_active,
 		       COALESCE(tier_type, 'subscription') as tier_type,
-		       stripe_price_id, trial_days, max_agents, max_functions, max_executions_per_month,
+		       stripe_price_id, stripe_price_id_annual, trial_days,
+		       max_agents, max_functions, max_executions_per_month,
 		       created_at, updated_at
 		FROM pricing_tiers
 		WHERE id = $1`
 
 	tier := &PricingTierExtended{}
 	var features []byte
-	var stripePriceID sql.NullString
+	var stripePriceID, stripePriceIDAnnual sql.NullString
 	var tierType sql.NullString
+	var annualPriceCents sql.NullInt64
 	var trialDays, maxAgents, maxFunctions, maxExecutions sql.NullInt64
+	var billingCycle sql.NullString
 
 	err := r.db.QueryRow(query, id).Scan(
-		&tier.ID, &tier.Name, &tier.Description, &tier.PriceCents, &tier.Currency,
-		&features, &tier.IsActive, &tierType, &stripePriceID, &trialDays,
+		&tier.ID, &tier.Name, &tier.Description, &tier.PriceCents, &annualPriceCents,
+		&tier.Currency, &billingCycle, &features, &tier.IsActive, &tierType,
+		&stripePriceID, &stripePriceIDAnnual, &trialDays,
 		&maxAgents, &maxFunctions, &maxExecutions, &tier.CreatedAt, &tier.UpdatedAt,
 	)
 	if err != nil {
@@ -726,8 +746,18 @@ func (r *RevenueRepository) GetPricingTierExtendedByID(id uuid.UUID) (*PricingTi
 	if stripePriceID.Valid {
 		tier.StripePriceID = &stripePriceID.String
 	}
+	if stripePriceIDAnnual.Valid {
+		tier.StripePriceIDAnnual = &stripePriceIDAnnual.String
+	}
 	if tierType.Valid {
 		tier.TierType = tierType.String
+	}
+	if annualPriceCents.Valid {
+		apc := int(annualPriceCents.Int64)
+		tier.AnnualPriceCents = &apc
+	}
+	if billingCycle.Valid {
+		tier.BillingCycle = billingCycle.String
 	}
 	if trialDays.Valid {
 		tier.TrialDays = int(trialDays.Int64)
@@ -946,11 +976,67 @@ func (r *RevenueRepository) GetAgentTierPricingForRegion(ctx context.Context, sl
 // =============================================================================
 
 // GetCurrencyExchangeRate retrieves the exchange rate for a currency pair
+// If no direct rate exists, attempts to find a cross-rate via USD
 func (r *RevenueRepository) GetCurrencyExchangeRate(ctx context.Context, baseCurrency, quoteCurrency string, date *time.Time) (*CurrencyExchangeRate, error) {
+	rate, err := r.getDirectCurrencyExchangeRate(ctx, baseCurrency, quoteCurrency, date)
+	if err != nil {
+		return nil, err
+	}
+	if rate != nil {
+		return rate, nil
+	}
+
+	if baseCurrency == quoteCurrency {
+		return &CurrencyExchangeRate{
+			ID:              uuid.New(),
+			BaseCurrency:    baseCurrency,
+			QuoteCurrency:   quoteCurrency,
+			Rate:            1.0,
+			RateNumerator:   1_000_000,
+			RateDenominator: 1_000_000,
+			Source:          "identity",
+			EffectiveDate:   time.Now().Format("2006-01-02"),
+		}, nil
+	}
+
+	if baseCurrency == "USD" || quoteCurrency == "USD" {
+		return nil, nil
+	}
+
+	usdToBase, err := r.getDirectCurrencyExchangeRate(ctx, "USD", baseCurrency, date)
+	if err != nil {
+		return nil, err
+	}
+	if usdToBase == nil {
+		return nil, nil
+	}
+
+	usdToQuote, err := r.getDirectCurrencyExchangeRate(ctx, "USD", quoteCurrency, date)
+	if err != nil {
+		return nil, err
+	}
+	if usdToQuote == nil {
+		return nil, nil
+	}
+
+	crossRate := usdToQuote.Rate / usdToBase.Rate
+	return &CurrencyExchangeRate{
+		ID:              uuid.New(),
+		BaseCurrency:    baseCurrency,
+		QuoteCurrency:   quoteCurrency,
+		Rate:            crossRate,
+		RateNumerator:   int64(crossRate * 1_000_000),
+		RateDenominator: 1_000_000,
+		Source:          "cross-rate",
+		EffectiveDate:   usdToBase.EffectiveDate,
+	}, nil
+}
+
+func (r *RevenueRepository) getDirectCurrencyExchangeRate(ctx context.Context, baseCurrency, quoteCurrency string, date *time.Time) (*CurrencyExchangeRate, error) {
 	query := `
-		SELECT id, base_currency, quote_currency, rate, source, source_url,
-		       effective_date, fetched_at, is_manual_override, override_reason,
-		       is_stripe_rate, stripe_precision, created_at, updated_at
+		SELECT id, base_currency, quote_currency, rate, rate_numerator, rate_denominator,
+		       source, source_url, effective_date, fetched_at, is_manual_override,
+		       override_reason, is_stripe_rate, stripe_precision, created_at, updated_at
 		FROM currency_exchange_rates
 		WHERE base_currency = $1 AND quote_currency = $2 AND is_stripe_rate = false`
 
@@ -970,14 +1056,18 @@ func (r *RevenueRepository) GetCurrencyExchangeRate(ctx context.Context, baseCur
 	var err error
 	if date != nil {
 		err = r.db.QueryRowContext(ctx, query, baseCurrency, quoteCurrency, date.Format("2006-01-02")).Scan(
-			&rate.ID, &rate.BaseCurrency, &rate.QuoteCurrency, &rate.Rate, &rate.Source, &sourceURL,
-			&effectiveDate, &fetchedAt, &rate.IsManualOverride, &overrideReason,
+			&rate.ID, &rate.BaseCurrency, &rate.QuoteCurrency, &rate.Rate,
+			&rate.RateNumerator, &rate.RateDenominator,
+			&rate.Source, &sourceURL, &effectiveDate, &fetchedAt,
+			&rate.IsManualOverride, &overrideReason,
 			&rate.IsStripeRate, &rate.StripePrecision, &rate.CreatedAt, &rate.UpdatedAt,
 		)
 	} else {
 		err = r.db.QueryRowContext(ctx, query, baseCurrency, quoteCurrency).Scan(
-			&rate.ID, &rate.BaseCurrency, &rate.QuoteCurrency, &rate.Rate, &rate.Source, &sourceURL,
-			&effectiveDate, &fetchedAt, &rate.IsManualOverride, &overrideReason,
+			&rate.ID, &rate.BaseCurrency, &rate.QuoteCurrency, &rate.Rate,
+			&rate.RateNumerator, &rate.RateDenominator,
+			&rate.Source, &sourceURL, &effectiveDate, &fetchedAt,
+			&rate.IsManualOverride, &overrideReason,
 			&rate.IsStripeRate, &rate.StripePrecision, &rate.CreatedAt, &rate.UpdatedAt,
 		)
 	}
@@ -995,6 +1085,75 @@ func (r *RevenueRepository) GetCurrencyExchangeRate(ctx context.Context, baseCur
 	rate.EffectiveDate = effectiveDate
 
 	return &rate, nil
+}
+
+// SaveCurrencyExchangeRate stores or updates an exchange rate
+func (r *RevenueRepository) SaveCurrencyExchangeRate(ctx context.Context, rate *CurrencyExchangeRate) error {
+	if rate.ID == uuid.Nil {
+		rate.ID = uuid.New()
+	}
+
+	if rate.RateDenominator == 0 {
+		rate.RateDenominator = 1_000_000
+		rate.RateNumerator = int64(rate.Rate * float64(rate.RateDenominator))
+	}
+
+	query := `
+		INSERT INTO currency_exchange_rates (
+			id, base_currency, quote_currency, rate, rate_numerator, rate_denominator,
+			source, source_url, effective_date, fetched_at, is_manual_override,
+			override_reason, is_stripe_rate, stripe_precision, created_at, updated_at
+		) VALUES (
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW(), NOW()
+		)
+		ON CONFLICT (base_currency, quote_currency, effective_date, is_stripe_rate)
+		DO UPDATE SET
+			rate = EXCLUDED.rate,
+			rate_numerator = EXCLUDED.rate_numerator,
+			rate_denominator = EXCLUDED.rate_denominator,
+			source = EXCLUDED.source,
+			source_url = EXCLUDED.source_url,
+			fetched_at = EXCLUDED.fetched_at,
+			is_manual_override = EXCLUDED.is_manual_override,
+			override_reason = EXCLUDED.override_reason,
+			stripe_precision = EXCLUDED.stripe_precision,
+			updated_at = NOW()`
+	if rate.SourceURL == nil {
+		query = `
+		INSERT INTO currency_exchange_rates (
+			id, base_currency, quote_currency, rate, rate_numerator, rate_denominator,
+			source, effective_date, fetched_at, is_manual_override,
+			override_reason, is_stripe_rate, stripe_precision, created_at, updated_at
+		) VALUES (
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW()
+		)
+		ON CONFLICT (base_currency, quote_currency, effective_date, is_stripe_rate)
+		DO UPDATE SET
+			rate = EXCLUDED.rate,
+			rate_numerator = EXCLUDED.rate_numerator,
+			rate_denominator = EXCLUDED.rate_denominator,
+			source = EXCLUDED.source,
+			fetched_at = EXCLUDED.fetched_at,
+			is_manual_override = EXCLUDED.is_manual_override,
+			override_reason = EXCLUDED.override_reason,
+			stripe_precision = EXCLUDED.stripe_precision,
+			updated_at = NOW()`
+		_, err := r.db.ExecContext(ctx, query,
+			rate.ID, rate.BaseCurrency, rate.QuoteCurrency, rate.Rate,
+			rate.RateNumerator, rate.RateDenominator,
+			rate.Source, rate.EffectiveDate, rate.FetchedAt,
+			rate.IsManualOverride, rate.OverrideReason, rate.IsStripeRate, rate.StripePrecision,
+		)
+		return err
+	}
+
+	_, err := r.db.ExecContext(ctx, query,
+		rate.ID, rate.BaseCurrency, rate.QuoteCurrency, rate.Rate,
+		rate.RateNumerator, rate.RateDenominator,
+		rate.Source, rate.SourceURL, rate.EffectiveDate, rate.FetchedAt,
+		rate.IsManualOverride, rate.OverrideReason, rate.IsStripeRate, rate.StripePrecision,
+	)
+	return err
 }
 
 // GetSupportedCurrency retrieves a supported currency by code

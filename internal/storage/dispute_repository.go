@@ -11,6 +11,28 @@ import (
 	"gorm.io/gorm"
 )
 
+// CreditNoteFilter provides filtering options for credit note queries
+type CreditNoteFilter struct {
+	TenantID         *uuid.UUID
+	InvoiceID        *uuid.UUID
+	Status           string
+	StartDate        *time.Time
+	EndDate          *time.Time
+	PaymentRefundID  *uuid.UUID
+}
+
+// CreditNoteStats contains aggregate credit note statistics
+type CreditNoteStats struct {
+	TotalCreditNotes   int64            `json:"total_credit_notes"`
+	TotalCreditedCents int64            `json:"total_credited_cents"`
+	ByStatus           map[string]int64 `json:"by_status"`
+}
+
+// TotalCreditedUSD returns the total credited amount in USD
+func (s *CreditNoteStats) TotalCreditedUSD() float64 {
+	return float64(s.TotalCreditedCents) / 100.0
+}
+
 // PaymentDispute represents a Stripe chargeback or dispute
 type PaymentDispute struct {
 	ID                 uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`

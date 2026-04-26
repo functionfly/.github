@@ -135,11 +135,14 @@ type PricingTierExtended struct {
 	Name                  string          `json:"name"`
 	Description           string          `json:"description"`
 	PriceCents            int             `json:"price_cents"`
+	AnnualPriceCents      *int            `json:"annual_price_cents,omitempty"`
 	Currency              string          `json:"currency"`
+	BillingCycle          string          `json:"billing_cycle"` // 'monthly' or 'annual'
 	Features              json.RawMessage `json:"features"`
 	IsActive              bool            `json:"is_active"`
 	TierType              string          `json:"tier_type"` // 'subscription'
 	StripePriceID         *string         `json:"stripe_price_id,omitempty"`
+	StripePriceIDAnnual   *string         `json:"stripe_price_id_annual,omitempty"`
 	TrialDays             int             `json:"trial_days"`
 	MaxAgents             int             `json:"max_agents"`
 	MaxFunctions          int             `json:"max_functions"`

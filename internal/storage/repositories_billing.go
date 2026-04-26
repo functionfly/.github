@@ -110,6 +110,75 @@ func (db *PostgresDB) RedeemCoupon(ctx context.Context, couponID, tenantID uuid.
 	return db.billingRepository.RedeemCoupon(ctx, couponID, tenantID, subscriptionID)
 }
 
+// Affiliate / Referral Commission System
+func (db *PostgresDB) CreateAffiliateCode(ctx context.Context, code *AffiliateCode) (*AffiliateCode, error) {
+	return db.billingRepository.CreateAffiliateCode(ctx, code)
+}
+
+func (db *PostgresDB) GetAffiliateCodeByID(id uuid.UUID) (*AffiliateCode, error) {
+	return db.billingRepository.GetAffiliateCodeByID(id)
+}
+
+func (db *PostgresDB) GetAffiliateCodeByCode(code string) (*AffiliateCode, error) {
+	return db.billingRepository.GetAffiliateCodeByCode(code)
+}
+
+func (db *PostgresDB) ListAffiliateCodes() ([]*AffiliateCode, error) {
+	return db.billingRepository.ListAffiliateCodes()
+}
+
+func (db *PostgresDB) ListAffiliateCodesByPublisher(publisherID uuid.UUID) ([]*AffiliateCode, error) {
+	return db.billingRepository.ListAffiliateCodesByPublisher(publisherID)
+}
+
+func (db *PostgresDB) UpdateAffiliateCode(ctx context.Context, code *AffiliateCode) error {
+	return db.billingRepository.UpdateAffiliateCode(ctx, code)
+}
+
+func (db *PostgresDB) CreateAffiliateReferral(ctx context.Context, referral *AffiliateReferral) (*AffiliateReferral, error) {
+	return db.billingRepository.CreateAffiliateReferral(ctx, referral)
+}
+
+func (db *PostgresDB) GetAffiliateReferralByID(id uuid.UUID) (*AffiliateReferral, error) {
+	return db.billingRepository.GetAffiliateReferralByID(id)
+}
+
+func (db *PostgresDB) GetAffiliateReferralByTenant(tenantID uuid.UUID) (*AffiliateReferral, error) {
+	return db.billingRepository.GetAffiliateReferralByTenant(tenantID)
+}
+
+func (db *PostgresDB) ListAffiliateReferralsByCode(codeID uuid.UUID) ([]*AffiliateReferral, error) {
+	return db.billingRepository.ListAffiliateReferralsByCode(codeID)
+}
+
+func (db *PostgresDB) UpdateAffiliateReferralStatus(ctx context.Context, id uuid.UUID, status string) error {
+	return db.billingRepository.UpdateAffiliateReferralStatus(ctx, id, status)
+}
+
+func (db *PostgresDB) CreateAffiliateCommission(ctx context.Context, commission *AffiliateCommission) (*AffiliateCommission, error) {
+	return db.billingRepository.CreateAffiliateCommission(ctx, commission)
+}
+
+func (db *PostgresDB) GetAffiliateCommissionByID(id uuid.UUID) (*AffiliateCommission, error) {
+	return db.billingRepository.GetAffiliateCommissionByID(id)
+}
+
+func (db *PostgresDB) ListAffiliateCommissionsByCode(codeID uuid.UUID) ([]*AffiliateCommission, error) {
+	return db.billingRepository.ListAffiliateCommissionsByCode(codeID)
+}
+
+func (db *PostgresDB) ListAffiliateCommissionsByPublisher(publisherID uuid.UUID) ([]*AffiliateCommission, error) {
+	return db.billingRepository.ListAffiliateCommissionsByPublisher(publisherID)
+}
+
+func (db *PostgresDB) UpdateAffiliateCommissionStatus(ctx context.Context, id uuid.UUID, status string) error {
+	return db.billingRepository.UpdateAffiliateCommissionStatus(ctx, id, status)
+}
+
+func (db *PostgresDB) CalculateCommission(commissionType string, commissionValue, baseAmountUSD float64) (commissionCents int64, commissionUSD float64) {
+	return db.billingRepository.CalculateCommission(commissionType, commissionValue, baseAmountUSD)
+}
+
 // Revenue System Phase 1 - Trust Layer Monetization
 
 // Verification Fees
@@ -523,6 +592,10 @@ func (db *PostgresDB) GetAgentTierPricingForRegion(ctx context.Context, slug str
 // Multi-Currency Support
 // =============================================================================
 
+func (db *PostgresDB) SaveCurrencyExchangeRate(ctx context.Context, rate *CurrencyExchangeRate) error {
+	return db.revenueRepository.SaveCurrencyExchangeRate(ctx, rate)
+}
+
 func (db *PostgresDB) GetCurrencyExchangeRate(ctx context.Context, baseCurrency, quoteCurrency string, date *time.Time) (*CurrencyExchangeRate, error) {
 	return db.revenueRepository.GetCurrencyExchangeRate(ctx, baseCurrency, quoteCurrency, date)
 }
@@ -537,4 +610,73 @@ func (db *PostgresDB) GetSupportedCurrency(ctx context.Context, code string) (*S
 
 func (db *PostgresDB) ListSupportedCurrencies(ctx context.Context) ([]*SupportedCurrency, error) {
 	return db.revenueRepository.ListSupportedCurrencies(ctx)
+}
+
+// =============================================================================
+// Credit Note operations (for refund accounting / SOX compliance)
+// =============================================================================
+
+func (db *PostgresDB) CreateCreditNote(ctx context.Context, creditNote *CreditNote) (*CreditNote, error) {
+	return db.creditNoteRepository.Create(ctx, creditNote)
+}
+
+func (db *PostgresDB) GetCreditNoteByID(ctx context.Context, id uuid.UUID) (*CreditNote, error) {
+	return db.creditNoteRepository.GetByID(ctx, id)
+}
+
+func (db *PostgresDB) GetCreditNoteByReferenceNumber(ctx context.Context, refNumber string) (*CreditNote, error) {
+	return db.creditNoteRepository.GetByReferenceNumber(ctx, refNumber)
+}
+
+func (db *PostgresDB) ListCreditNotes(ctx context.Context, filter *CreditNoteFilter, limit, offset int) ([]*CreditNote, int64, error) {
+	return db.creditNoteRepository.List(ctx, filter, limit, offset)
+}
+
+func (db *PostgresDB) ListCreditNotesByTenant(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*CreditNote, int64, error) {
+	return db.creditNoteRepository.ListByTenant(ctx, tenantID, limit, offset)
+}
+
+func (db *PostgresDB) ListCreditNotesByInvoice(ctx context.Context, invoiceID uuid.UUID) ([]*CreditNote, error) {
+	return db.creditNoteRepository.ListByInvoice(ctx, invoiceID)
+}
+
+func (db *PostgresDB) UpdateCreditNote(ctx context.Context, creditNote *CreditNote) error {
+	return db.creditNoteRepository.Update(ctx, creditNote)
+}
+
+func (db *PostgresDB) UpdateCreditNoteStatus(ctx context.Context, id uuid.UUID, status string) error {
+	return db.creditNoteRepository.UpdateStatus(ctx, id, status)
+}
+
+func (db *PostgresDB) VoidCreditNote(ctx context.Context, id uuid.UUID) error {
+	return db.creditNoteRepository.Void(ctx, id)
+}
+
+func (db *PostgresDB) ApplyCreditNote(ctx context.Context, id uuid.UUID) error {
+	return db.creditNoteRepository.Apply(ctx, id)
+}
+
+func (db *PostgresDB) GetCreditNoteWithRelations(ctx context.Context, id uuid.UUID) (*CreditNote, error) {
+	return db.creditNoteRepository.GetWithRelations(ctx, id)
+}
+
+func (db *PostgresDB) GetCreditNoteStats(ctx context.Context, tenantID *uuid.UUID) (*CreditNoteStats, error) {
+	return db.creditNoteRepository.GetCreditNoteStats(ctx, tenantID)
+}
+
+// Credit Note Line Item operations
+func (db *PostgresDB) CreateCreditNoteLineItem(ctx context.Context, item *CreditNoteLineItem) error {
+	return db.creditNoteRepository.CreateLineItem(ctx, item)
+}
+
+func (db *PostgresDB) GetCreditNoteLineItems(ctx context.Context, creditNoteID uuid.UUID) ([]*CreditNoteLineItem, error) {
+	return db.creditNoteRepository.GetLineItems(ctx, creditNoteID)
+}
+
+func (db *PostgresDB) DeleteCreditNoteLineItem(ctx context.Context, id uuid.UUID) error {
+	return db.creditNoteRepository.DeleteLineItem(ctx, id)
+}
+
+func (db *PostgresDB) DeleteCreditNoteLineItems(ctx context.Context, creditNoteID uuid.UUID) error {
+	return db.creditNoteRepository.DeleteLineItems(ctx, creditNoteID)
 }

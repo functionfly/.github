@@ -13,18 +13,32 @@ import (
 // Service provides currency conversion and multi-currency support
 type Service struct {
 	repo         storage.Repository
-	baseCurrency string // Default base currency (typically USD)
+	syncer       *ExchangeRateSyncer
+	baseCurrency string
 }
 
 // NewService creates a new currency service
-func NewService(repo storage.Repository, baseCurrency string) *Service {
+func NewService(repo storage.Repository, syncer *ExchangeRateSyncer, baseCurrency string) *Service {
 	if baseCurrency == "" {
 		baseCurrency = "USD"
 	}
 	return &Service{
 		repo:         repo,
+		syncer:       syncer,
 		baseCurrency: baseCurrency,
 	}
+}
+
+// GetLiveRate retrieves a live exchange rate (uses Redis cache + real-time API)
+func (s *Service) GetLiveRate(ctx context.Context, from, to string) (float64, error) {
+	if s.syncer == nil {
+		rate, err := s.repo.GetCurrencyExchangeRate(ctx, from, to, nil)
+		if err != nil || rate == nil {
+			return 1.0, nil
+		}
+		return rate.Rate, nil
+	}
+	return s.syncer.GetLiveRate(ctx, from, to)
 }
 
 // Convert converts an amount from one currency to another

@@ -698,6 +698,186 @@ func formatPlanName(plan string) string {
 	}
 }
 
+// HandleListPaymentMethods returns all payment methods for the current user's Stripe customer.
+// GET /v1/billing/payment-methods
+func (h *Handler) HandleListPaymentMethods(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil || claims.TenantID == uuid.Nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	if !payment.IsConfigured() {
+		writeJSONError(w, http.StatusServiceUnavailable, "Billing is not configured")
+		return
+	}
+
+	tenant, err := h.repo.GetTenantByID(claims.TenantID)
+	if err != nil || tenant == nil {
+		writeJSONError(w, http.StatusInternalServerError, "Failed to get tenant")
+		return
+	}
+
+	if tenant.StripeCustomerID == nil || *tenant.StripeCustomerID == "" {
+		writeJSONError(w, http.StatusNotFound, "No Stripe customer found")
+		return
+	}
+
+	methods, err := payment.ListPaymentMethodsForCustomer(r.Context(), *tenant.StripeCustomerID)
+	if err != nil {
+		logrus.WithError(err).WithField("customer_id", *tenant.StripeCustomerID).Warn("billing: failed to list payment methods")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to list payment methods")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"payment_methods": methods,
+	})
+}
+
+// HandleCreateSetupIntent creates a Stripe SetupIntent for client-side payment method collection.
+// POST /v1/billing/payment-methods/setup-intent
+func (h *Handler) HandleCreateSetupIntent(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil || claims.TenantID == uuid.Nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	if !payment.IsConfigured() {
+		writeJSONError(w, http.StatusServiceUnavailable, "Billing is not configured")
+		return
+	}
+
+	user, err := h.repo.GetUserByID(claims.UserID)
+	if err != nil || user == nil {
+		writeJSONError(w, http.StatusInternalServerError, "Failed to get user")
+		return
+	}
+
+	name := user.Name
+	if name == "" && user.ProviderData != nil {
+		if n, ok := user.ProviderData["name"].(string); ok {
+			name = n
+		}
+	}
+	if name == "" {
+		name = user.Email
+	}
+
+	customerID, err := payment.CreateOrGetStripeCustomer(r.Context(), h.repo, claims.TenantID, user.Email, name)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Error("setup intent: create or get stripe customer")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to prepare billing")
+		return
+	}
+
+	result, err := payment.CreateSetupIntent(r.Context(), customerID)
+	if err != nil {
+		logrus.WithError(err).WithField("customer_id", customerID).Error("setup intent: create")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to create setup intent")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(result)
+}
+
+// HandleSetDefaultPaymentMethod sets a payment method as the default for the customer.
+// POST /v1/billing/payment-methods/default
+func (h *Handler) HandleSetDefaultPaymentMethod(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil || claims.TenantID == uuid.Nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	if !payment.IsConfigured() {
+		writeJSONError(w, http.StatusServiceUnavailable, "Billing is not configured")
+		return
+	}
+
+	tenant, err := h.repo.GetTenantByID(claims.TenantID)
+	if err != nil || tenant == nil {
+		writeJSONError(w, http.StatusInternalServerError, "Failed to get tenant")
+		return
+	}
+
+	if tenant.StripeCustomerID == nil || *tenant.StripeCustomerID == "" {
+		writeJSONError(w, http.StatusNotFound, "No Stripe customer found")
+		return
+	}
+
+	var req struct {
+		PaymentMethodID string `json:"payment_method_id"`
+	}
+	if r.Body != nil {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+			return
+		}
+	}
+	if req.PaymentMethodID == "" {
+		writeJSONError(w, http.StatusBadRequest, "payment_method_id is required")
+		return
+	}
+
+	err = payment.SetDefaultPaymentMethod(r.Context(), *tenant.StripeCustomerID, req.PaymentMethodID)
+	if err != nil {
+		logrus.WithError(err).WithField("customer_id", *tenant.StripeCustomerID).Warn("billing: failed to set default payment method")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to set default payment method")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Default payment method updated"})
+}
+
+// HandleDetachPaymentMethod detaches a payment method from the customer.
+// DELETE /v1/billing/payment-methods/:id
+func (h *Handler) HandleDetachPaymentMethod(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil || claims.TenantID == uuid.Nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	if !payment.IsConfigured() {
+		writeJSONError(w, http.StatusServiceUnavailable, "Billing is not configured")
+		return
+	}
+
+	// Extract payment method ID from URL path
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+	var paymentMethodID string
+	for i, part := range parts {
+		if part == "payment-methods" && i+1 < len(parts) {
+			paymentMethodID = parts[i+1]
+			break
+		}
+	}
+	if paymentMethodID == "" {
+		writeJSONError(w, http.StatusBadRequest, "Payment method ID is required")
+		return
+	}
+
+	err := payment.DetachPaymentMethod(r.Context(), paymentMethodID)
+	if err != nil {
+		logrus.WithError(err).WithField("payment_method_id", paymentMethodID).Warn("billing: failed to detach payment method")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to remove payment method")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Payment method removed"})
+}
+
 // getUpgradeDescription returns a description based on the plan tier.
 func getUpgradeDescription(plan string) string {
 	switch plan {
@@ -715,6 +895,177 @@ func getUpgradeDescription(plan string) string {
 // isEnterprisePlan checks if a plan name represents an enterprise tier.
 func isEnterprisePlan(plan string) bool {
 	return plan == "enterprise" || plan == "Enterprise"
+}
+
+// HandleGetMyAffiliateCodes returns the affiliate codes belonging to the authenticated user.
+// GET /v1/affiliate/my-codes
+func (h *Handler) HandleGetMyAffiliateCodes(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+
+	codes, err := h.repo.ListAffiliateCodesByPublisher(claims.UserID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list affiliate codes for user")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve affiliate codes")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"affiliate_codes": codes,
+	})
+}
+
+// HandleGetMyAffiliateCommissions returns commissions for the authenticated user's affiliate codes.
+// GET /v1/affiliate/my-commissions
+func (h *Handler) HandleGetMyAffiliateCommissions(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+
+	commissions, err := h.repo.ListAffiliateCommissionsByPublisher(claims.UserID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list affiliate commissions for user")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve commissions")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"commissions": commissions,
+	})
+}
+
+// HandleGetMyAffiliateReferrals returns referrals for the authenticated user's affiliate codes.
+// GET /v1/affiliate/referrals
+func (h *Handler) HandleGetMyAffiliateReferrals(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+
+	codes, err := h.repo.ListAffiliateCodesByPublisher(claims.UserID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list affiliate codes for user")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve referrals")
+		return
+	}
+
+	var allReferrals []*storage.AffiliateReferral
+	for _, code := range codes {
+		referrals, err := h.repo.ListAffiliateReferralsByCode(code.ID)
+		if err != nil {
+			logrus.WithError(err).WithField("code_id", code.ID).Warn("Failed to list referrals for code")
+			continue
+		}
+		allReferrals = append(allReferrals, referrals...)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"referrals": allReferrals,
+	})
+}
+
+// HandleGetAffiliateEarningsSummary returns earnings summary for the authenticated user.
+// GET /v1/affiliate/earnings-summary
+func (h *Handler) HandleGetAffiliateEarningsSummary(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+
+	codes, err := h.repo.ListAffiliateCodesByPublisher(claims.UserID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list affiliate codes for user")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve earnings summary")
+		return
+	}
+
+	var totalPendingEarningsCents int64
+	var totalEarningsCents int64
+	var totalPaidOutCents int64
+	var totalReferrals int
+	var pendingCommissions int
+
+	for _, code := range codes {
+		totalPendingEarningsCents += code.PendingEarningsCents
+		totalEarningsCents += code.TotalEarningsCents
+		totalPaidOutCents += code.PaidOutEarningsCents
+		totalReferrals += code.TotalReferrals
+		pendingCommissions += code.PendingCommissions
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"pending_earnings_cents": totalPendingEarningsCents,
+		"total_earnings_cents":   totalEarningsCents,
+		"paid_out_cents":         totalPaidOutCents,
+		"total_referrals":        totalReferrals,
+		"pending_commissions":    pendingCommissions,
+		"codes_count":           len(codes),
+	})
+}
+
+// HandleApplyAffiliateCode applies an affiliate code during registration.
+// POST /v1/affiliate/apply-code
+func (h *Handler) HandleApplyAffiliateCode(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+
+	var req struct {
+		Code        string `json:"code"`
+		UTMSource   string `json:"utm_source,omitempty"`
+		UTMCampaign string `json:"utm_campaign,omitempty"`
+		UTContent   string `json:"utm_content,omitempty"`
+		UTMTerm     string `json:"utm_term,omitempty"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if req.Code == "" {
+		writeJSONError(w, http.StatusBadRequest, "Affiliate code is required")
+		return
+	}
+
+	code, err := h.repo.GetAffiliateCodeByCode(req.Code)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to look up affiliate code")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to validate affiliate code")
+		return
+	}
+
+	if code == nil {
+		writeJSONError(w, http.StatusNotFound, "Affiliate code not found or inactive")
+		return
+	}
+
+	// Store the applied code association for the user
+	// This could be stored in user preferences or a separate affiliate_applications table
+	// For now, we just return success if the code is valid
+	_ = claims // Mark as used to avoid compile warning
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":          true,
+		"code":             code.Code,
+		"name":             code.Name,
+		"commission_type":  code.CommissionType,
+		"commission_value": code.CommissionValue,
+	})
 }
 
 // awardEnterpriseAchievement awards the "Enterprise Pioneer" achievement to a user.

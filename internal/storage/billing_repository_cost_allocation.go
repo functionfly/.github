@@ -181,11 +181,11 @@ func (r *BillingRepository) GetTenantCostSummary(
 		SELECT
 			COUNT(*) as total_executions,
 			COUNT(DISTINCT function_id) as unique_functions,
-			SUM(execution_cost_cents) as execution_cost_cents,
-			SUM(compute_cost_cents) as compute_cost_cents,
-			SUM(platform_fee_cents) as platform_fee_cents,
-			SUM(data_transfer_cents) as data_transfer_cents,
-			SUM(total_cost_cents) as total_cost_cents
+			COALESCE(SUM(execution_cost_cents), 0) as execution_cost_cents,
+			COALESCE(SUM(compute_cost_cents), 0) as compute_cost_cents,
+			COALESCE(SUM(platform_fee_cents), 0) as platform_fee_cents,
+			COALESCE(SUM(data_transfer_cents), 0) as data_transfer_cents,
+			COALESCE(SUM(total_cost_cents), 0) as total_cost_cents
 		FROM cost_allocation_entries
 		WHERE tenant_id = $1 AND timestamp >= $2 AND timestamp <= $3
 	`
