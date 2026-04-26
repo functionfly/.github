@@ -2,6 +2,12 @@
 
 This directory contains ONNX model files used by the FunctionFly AI inference host functions.
 
+## Security
+
+All model files are verified against SHA256 checksums before use. The `download_model.py` script automatically verifies downloads.
+
+**Important:** Large model files (`.onnx`) are not checked into git. Use the download script or Git LFS.
+
 ## Available Models
 
 ### alexnet.onnx (✅ Ready to use)
@@ -14,16 +20,21 @@ This directory contains ONNX model files used by the FunctionFly AI inference ho
 
 ### Downloading More Models
 
-Use the download script to get additional models:
+Use the download script to get additional models. All downloads are verified against SHA256 checksums:
 
 ```bash
 # Activate the virtual environment first
 source onnx-env/bin/activate
 
-# Download models
+# Download models (automatically verified)
 python download_model.py alexnet     # Already downloaded
 python download_model.py mobilenet   # Lightweight image classification
 python download_model.py bert-small   # Text understanding
+```
+
+If you have an existing alexnet.onnx, verify its hash:
+```bash
+sha256sum runtimes/local/models/alexnet.onnx
 ```
 
 ## Model Input/Output Format

@@ -46,10 +46,11 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
     update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1
 
 # Create function execution directory and install optional Security (1.4) deps
-RUN mkdir -p /function && \
+RUN pip3 install --upgrade pip && \
+    mkdir -p /function && \
     mkdir -p /tmp/function-packages && \
     mkdir -p /opt/functionfly-packages && \
-    pip3 install --target /opt/functionfly-packages --break-system-packages \
+    pip3 install --target /opt/functionfly-packages \
     'cryptography>=46.0' 'bleach>=6.3.0' 'user-agents>=2.2.0' 'PyJWT>=2.11.0' 'bcrypt>=5.0.0'
 
 # Set working directory

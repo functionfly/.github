@@ -28,7 +28,6 @@ export const ClientTurnstile: React.FC<ClientTurnstileProps> = ({
   );
 
   const handleError = useCallback(() => {
-    // Clear the token on error
     const hiddenInput = document.getElementById(inputId) as HTMLInputElement | null;
     if (hiddenInput) {
       hiddenInput.value = "";
@@ -36,7 +35,6 @@ export const ClientTurnstile: React.FC<ClientTurnstileProps> = ({
   }, [inputId]);
 
   const handleExpire = useCallback(() => {
-    // Clear the token when it expires
     const hiddenInput = document.getElementById(inputId) as HTMLInputElement | null;
     if (hiddenInput) {
       hiddenInput.value = "";
@@ -49,7 +47,7 @@ export const ClientTurnstile: React.FC<ClientTurnstileProps> = ({
       onError={handleError}
       onExpire={handleExpire}
       action={action}
-      theme={theme}
+      resolvedTheme={theme}
     />
   );
 };

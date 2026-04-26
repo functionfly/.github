@@ -50,7 +50,7 @@ const rememberMe = Astro.url.searchParams.get("remember_me") === "true";
     </div>
 
     <!-- Password Login Form -->
-    <form id="login-form" class={`auth-form ${showMagic ? "hidden" : ""}`} method="POST" action={`${API_ORIGIN}/auth/login`}>
+    <form id="login-form" class={`auth-form ${showMagic ? "hidden" : ""}`} novalidate>
       <input type="hidden" name="redirect_to" value={redirectTo || ""} />
       <InputField
         client:load
@@ -147,9 +147,9 @@ const rememberMe = Astro.url.searchParams.get("remember_me") === "true";
     gap: 0.5rem;
     margin: 1.5rem 0;
     padding: 0.25rem;
-    background: #161B22;
+    background: var(--ff-flightdeck);
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--ff-border-subtle);
   }
   .mode-btn {
     flex: 1;
@@ -157,19 +157,20 @@ const rememberMe = Astro.url.searchParams.get("remember_me") === "true";
     background: transparent;
     border: none;
     border-radius: 6px;
-    color: #8B949E;
+    color: var(--ff-secondary-text);
     font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.15s;
   }
   .mode-btn:hover {
-    color: #F0F6FC;
+    color: var(--ff-primary-text);
   }
   .mode-btn.active {
-    background: #1C2128;
-    color: #F0F6FC;
-    border: 1px solid rgba(255, 107, 53, 0.3);
+    background: var(--ff-cockpit);
+    color: var(--ff-primary-text);
+    border: 1px solid var(--ff-flame);
+    box-shadow: var(--ff-shadow-sm);
   }
   .auth-form {
     animation: fadeIn 0.3s ease;

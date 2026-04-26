@@ -1,16 +1,35 @@
 {
   "boot-source": {
-    "kernel-image": "/vmlinux",
-    "initrd": "/initrd.img",
-    "boot-args": "console=ttyS0 reboot=k panic=1"
+    "kernel_image": "vmlinux",
+    "initrd": null,
+    "boot_args": "console=ttyS0 reboot=k panic=1"
   },
   "drives": [
     {
-      "drive-id": "rootfs",
-      "path": "/images/python311.ext4",
-      "is-root-device": true,
-      "is-read-only": false
+      "drive_id": "rootfs",
+      "path": "python311.ext4",
+      "is_root_device": true,
+      "is_read_only": false
     }
+  ],
+  "machine-config": {
+    "vcpu_count": 2,
+    "mem_size_mib": 512,
+    "smt": false,
+    "track_dirty_pages": false
+  },
+  "network-interfaces": [
+    {
+      "iface_id": "eth0",
+      "guest_mac": "02:00:00:00:00:01",
+      "host_dev_name": "tap0"
+    }
+  ],
+  "balloon": {
+    "amount_mib": 256,
+    "deflate_on_oom": true
+  }
+}
   ],
   "machine-config": {
     "vcpu_count": 2,

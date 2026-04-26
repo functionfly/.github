@@ -1,0 +1,46 @@
+[Unit]
+Description=FunctionFly MicroVM Orchestrator
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/micro/projects/functionfly/runtimes/microvm
+
+# Environment
+EnvironmentFile=-/etc/functionfly/microvm.env
+Environment=FIRECRACKER_BINARY=/usr/local/bin/firecracker
+Environment=FIRECRACKER_TAP_DEVICE=tap%d
+Environment=TAP_BASE=tap
+Environment=TAP_COUNT=10
+Environment=NETWORK_BRIDGE=br0
+Environment=HOST_IP=172.31.0.1
+
+# Run the orchestrator
+ExecStartPre=/home/micro/projects/functionfly/runtimes/microvm/images/setup-network.sh --create
+ExecStart=/usr/local/cargo/bin/cargo run -p functionfly-microvm -- \
+    --image-path /var/lib/functionfly/vmimages \
+    --port 9091 \
+    --vcpus 2 \
+    --memory-mb 512 \
+    --max-vms 100 \
+    --warm-idle-secs 600 \
+    --cleanup-interval-secs 60
+
+# Restart policy
+Restart=on-failure
+RestartSec=5s
+LimitNOFILE=1048576
+LimitNPROC=4096
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=functionfly-microvm
+
+# Health check
+ExecStartPost=/bin/bash -c 'echo "MicroVM Orchestrator started"'
+
+[Install]
+WantedBy=multi-user.target

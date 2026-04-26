@@ -265,18 +265,35 @@ impl MicroVMOrchestrator {
         let kernel = self.image_path.join("vmlinux");
         let rootfs = self.image_path.join("python311.ext4");
 
-        // Check if images exist
         if !kernel.exists() {
             return Err(anyhow::anyhow!(
-                "Kernel image not found at {}. Please run the image builder first.",
-                kernel.display()
+                "Kernel image not found at {}\n\
+                \n\
+                To fix this, download a Firecracker-compatible kernel:\n\
+                  cd {} && ./download-kernel.sh\n\
+                \n\
+                The kernel (vmlinux) and rootfs (python311.ext4) must both exist in the image directory.",
+                kernel.display(),
+                self.image_path.display()
             ));
         }
 
         if !rootfs.exists() {
             return Err(anyhow::anyhow!(
-                "Root filesystem not found at {}. Please run the image builder first.",
-                rootfs.display()
+                "Root filesystem not found at {}\n\
+                \n\
+                To fix this, build a rootfs image:\n\
+                  cd {} && sudo ./build-rootfs.sh --python 3.11\n\
+                \n\
+                Then copy the resulting .ext4 file to the image directory:\n\
+                  cp python311.ext4 {}/\n\
+                \n\
+                Also download a compatible kernel:\n\
+                  cd {} && ./download-kernel.sh",
+                rootfs.display(),
+                self.image_path.display(),
+                self.image_path.display(),
+                self.image_path.display()
             ));
         }
 

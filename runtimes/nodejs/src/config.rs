@@ -6,6 +6,9 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "wasmtime")]
+use crate::engine::WasmEngineConfig;
+
 /// Runtime version
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -16,6 +19,20 @@ pub enum RuntimeVersion {
     Node20,
     /// Deno
     Deno,
+}
+
+#[cfg(feature = "wasmtime")]
+impl From<&RuntimeConfig> for WasmEngineConfig {
+    fn from(runtime_config: &RuntimeConfig) -> Self {
+        WasmEngineConfig {
+            max_memory_mb: runtime_config.max_memory_mb,
+            max_timeout_ms: runtime_config.max_timeout_ms,
+            max_wasm_stack: runtime_config.max_wasm_stack,
+            fuel_per_ms: runtime_config.fuel_per_ms,
+            consume_fuel: true,
+            epoch_interruption: true,
+        }
+    }
 }
 
 impl Default for RuntimeVersion {
@@ -69,6 +86,14 @@ pub struct RuntimeConfig {
 
     /// Custom handler function name (default: "handler")
     pub handler_name: String,
+
+    #[cfg(feature = "wasmtime")]
+    /// Maximum WASM stack size in bytes (default: 512KB)
+    pub max_wasm_stack: usize,
+
+    #[cfg(feature = "wasmtime")]
+    /// Fuel per millisecond for CPU limit enforcement
+    pub fuel_per_ms: u64,
 }
 
 impl Default for RuntimeConfig {
@@ -85,6 +110,10 @@ impl Default for RuntimeConfig {
             environment: HashMap::new(),
             verbose_logging: false,
             handler_name: "handler".to_string(),
+            #[cfg(feature = "wasmtime")]
+            max_wasm_stack: 512 * 1024,
+            #[cfg(feature = "wasmtime")]
+            fuel_per_ms: 10_000,
         }
     }
 }
@@ -139,6 +168,10 @@ impl RuntimeConfig {
             environment: HashMap::from([("NODE_ENV".to_string(), "development".to_string())]),
             verbose_logging: true,
             handler_name: "handler".to_string(),
+            #[cfg(feature = "wasmtime")]
+            max_wasm_stack: 512 * 1024,
+            #[cfg(feature = "wasmtime")]
+            fuel_per_ms: 10_000,
         }
     }
 
@@ -156,6 +189,10 @@ impl RuntimeConfig {
             environment: HashMap::from([("NODE_ENV".to_string(), "production".to_string())]),
             verbose_logging: false,
             handler_name: "handler".to_string(),
+            #[cfg(feature = "wasmtime")]
+            max_wasm_stack: 512 * 1024,
+            #[cfg(feature = "wasmtime")]
+            fuel_per_ms: 10_000,
         }
     }
 

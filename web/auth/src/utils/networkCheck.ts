@@ -1,4 +1,4 @@
-// web/auth/src/utility/NetworkCheck.ts
+// web/auth/src/utils/networkCheck.ts
 import { API_ORIGIN } from '../config';
 
 /**
@@ -21,5 +21,26 @@ export async function checkNetworkConnectivity(timeoutMs = 3000): Promise<boolea
     return response.ok;
   } catch (error) {
     return false;
+  }
+}
+
+export const DEFAULT_REQUEST_TIMEOUT = 10000;
+
+export async function fetchWithTimeout(
+  url: string,
+  options: RequestInit & { timeout?: number } = {}
+): Promise<Response> {
+  const { timeout = DEFAULT_REQUEST_TIMEOUT, ...fetchOptions } = options;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...fetchOptions,
+      signal: controller.signal,
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }

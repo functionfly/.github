@@ -245,8 +245,14 @@ impl WasmEngine {
                         let python_code = String::from_utf8_lossy(&wasm_bytes);
 
                         // Use pooled interpreter if available, otherwise use shared state, otherwise create fresh one
-                        if let Some(guard) = pooled_guard {
-                            guard.execute_sync(&python_code, &input)
+                        if let Some(mut guard) = pooled_guard {
+                            match guard.execute_sync(&python_code, &input) {
+                                Ok(result) => Ok(result),
+                                Err(e) => {
+                                    // Runtime is already marked dirty by execute_sync
+                                    Err(e)
+                                }
+                            }
                         } else if let Some(ref state) = python_shared_state {
                             state.execute_sync(&python_code, &input)
                         } else {

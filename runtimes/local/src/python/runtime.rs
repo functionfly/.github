@@ -15,11 +15,11 @@ struct PythonExecutionRequest {
     response_tx: oneshot::Sender<anyhow::Result<String>>,
 }
 
-/// Execute Python code on the interpreter (helper for channel-based execution)
 fn execute_on_interpreter(
     interpreter: &vm::Interpreter,
     python_code: &str,
     input: &str,
+    max_output_bytes: usize,
 ) -> anyhow::Result<String> {
     interpreter.enter(|vm| -> anyhow::Result<String> {
         let scope = vm.new_scope_with_builtins();
@@ -38,6 +38,11 @@ except (json.JSONDecodeError, TypeError):
 
 input_data = _parsed_input
 
+def _truncate_output(s, limit):
+    if len(s) > limit:
+        return s[:limit] + "...[truncated]"
+    return s
+
 {}
 "#, python_code);
 
@@ -51,7 +56,15 @@ input_data = _parsed_input
 
         let result_str = result.str(vm)
             .map_err(|e| anyhow::anyhow!("Failed to convert result to string: {:?}", e))?;
-        Ok(result_str.to_string())
+        let result_truncated = if result_str.to_string().len() > max_output_bytes {
+            format!("{}... [output truncated {}->{} bytes]",
+                &result_str.to_string()[..max_output_bytes],
+                result_str.to_string().len(),
+                max_output_bytes)
+        } else {
+            result_str.to_string()
+        };
+        Ok(result_truncated)
     })
 }
 
@@ -70,23 +83,13 @@ pub struct PythonRuntime {
 }
 
 impl PythonRuntime {
-    /// Create a new Python runtime with a dedicated single-threaded runtime for interpreter reuse.
-    ///
-    /// This spawns a dedicated single-threaded Tokio runtime that owns the Python interpreter.
-    /// All async Python execution goes through a channel to this runtime, allowing true
-    /// interpreter reuse across calls while respecting Rust's Send/Sync constraints.
     pub fn new(config: PythonConfig) -> anyhow::Result<Self> {
-        // Create channel for async execution requests
         let (execution_tx, mut execution_rx) = tokio::sync::mpsc::channel::<PythonExecutionRequest>(100);
 
-        // Spawn dedicated single-threaded runtime for Python execution
         std::thread::Builder::new()
             .name("python-runtime-worker".to_string())
             .spawn(move || {
-                // Create interpreter INSIDE the worker thread (not moved from outside)
                 let interpreter = vm::Interpreter::without_stdlib(Default::default());
-
-                // Create single-threaded runtime
                 let rt = tokio::runtime::Builder::new_current_thread()
                     .enable_all()
                     .build()
@@ -95,7 +98,7 @@ impl PythonRuntime {
                 rt.block_on(async move {
                     while let Some(req) = execution_rx.recv().await {
                         let PythonExecutionRequest { code, input, response_tx } = req;
-                        let result = execute_on_interpreter(&interpreter, &code, &input);
+                        let result = execute_on_interpreter(&interpreter, &code, &input, 64 * 1024);
                         let _ = response_tx.send(result);
                     }
                 });
@@ -154,59 +157,57 @@ impl PythonRuntime {
         match_count >= 2
     }
 
-    /// Execute Python code using the RustPython VM (synchronous version for blocking tasks)
-    ///
-    /// Creates a fresh interpreter for each execution to ensure thread safety.
-    /// Each call gets a fresh scope (`vm.new_scope_with_builtins()`) to prevent
-    /// state leakage between executions.
     pub fn execute_sync(
         &self,
         python_code: &str,
         input: &str,
     ) -> anyhow::Result<String> {
-        // Create a fresh interpreter for each execution
         let interpreter = vm::Interpreter::without_stdlib(Default::default());
+        let max_output = self.config.max_output_bytes;
         interpreter.enter(|vm| -> anyhow::Result<String> {
-            // Create a scope for execution
             let scope = vm.new_scope_with_builtins();
 
-            // Set up input as a global variable in the scope (as string)
             let input_value = vm.ctx.new_str(input.to_string());
             scope.globals.set_item("input_data", input_value.into(), vm)
                 .map_err(|e| anyhow::anyhow!("Failed to set input variable: {:?}", e))?;
 
-            // Create a wrapper that parses JSON input and calls the handler
-            // This wraps the user code to provide JSON parsing
             let wrapper_code = format!(r#"
 import json
 
-# Try to parse input_data as JSON, fall back to string
 try:
     _parsed_input = json.loads(input_data)
 except (json.JSONDecodeError, TypeError):
     _parsed_input = input_data
 
-# Make parsed input available
 input_data = _parsed_input
 
-# User's code follows
+def _truncate_output(s, limit):
+    if len(s) > limit:
+        return s[:limit] + "...[truncated]"
+    return s
+
 {}
 "#, python_code);
 
-            // Execute the Python code
             let code_obj = vm
                 .compile(&wrapper_code, vm::compiler::Mode::Exec, r#"<string>.py"#.to_owned())
                 .map_err(|err| vm.new_syntax_error(&err, Some(&wrapper_code)))
                 .map_err(|e| anyhow::anyhow!("Failed to compile Python code: {:?}", e))?;
 
-            // Execute the code
             let result = vm.run_code_obj(code_obj, scope)
                 .map_err(|e| anyhow::anyhow!("Failed to execute Python code: {:?}", e))?;
 
-            // Get the result as a string
             let result_str = result.str(vm)
                 .map_err(|e| anyhow::anyhow!("Failed to convert result to string: {:?}", e))?;
-            Ok(result_str.to_string())
+            let result_truncated = if result_str.to_string().len() > max_output {
+                format!("{}... [output truncated {}->{} bytes]",
+                    &result_str.to_string()[..max_output],
+                    result_str.to_string().len(),
+                    max_output)
+            } else {
+                result_str.to_string()
+            };
+            Ok(result_truncated)
         })
     }
 
@@ -222,7 +223,7 @@ input_data = _parsed_input
     ) -> anyhow::Result<String> {
         if let Some(ref tx) = self.execution_tx {
             let (response_tx, response_rx) = oneshot::channel();
-            
+
             tx.send(PythonExecutionRequest {
                 code: python_code.to_string(),
                 input: input.to_string(),
@@ -235,10 +236,10 @@ input_data = _parsed_input
                 .await
                 .context("Python runtime worker failed")?
         } else {
-            // Fallback: create fresh interpreter (should not happen in normal operation)
             tracing::warn!("Python runtime channel not available, falling back to fresh interpreter");
             let code = python_code.to_string();
             let input_data = input.to_string();
+            let max_output = self.config.max_output_bytes;
 
             let handle = tokio::task::spawn_blocking(move || -> anyhow::Result<String> {
                 let interpreter = vm::Interpreter::without_stdlib(Default::default());
@@ -258,6 +259,11 @@ except (json.JSONDecodeError, TypeError):
 
 input_data = _parsed_input
 
+def _truncate_output(s, limit):
+    if len(s) > limit:
+        return s[:limit] + "...[truncated]"
+    return s
+
 {}
 "#, code);
 
@@ -271,7 +277,15 @@ input_data = _parsed_input
 
                     let result_str = result.str(vm)
                         .map_err(|e| anyhow::anyhow!("Failed to convert result to string: {:?}", e))?;
-                    Ok(result_str.to_string())
+                    let result_truncated = if result_str.to_string().len() > max_output {
+                        format!("{}... [output truncated {}->{} bytes]",
+                            &result_str.to_string()[..max_output],
+                            result_str.to_string().len(),
+                            max_output)
+                    } else {
+                        result_str.to_string()
+                    };
+                    Ok(result_truncated)
                 })
             });
 
@@ -284,28 +298,26 @@ input_data = _parsed_input
 
 /// Configuration for Python runtime
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct PythonConfig {
-    /// Memory limit in bytes
     pub memory_limit: usize,
-    /// Execution timeout in milliseconds
     pub timeout_ms: u64,
-    /// Enable debugging
     pub debug: bool,
-    /// Python version
     pub python_version: String,
-    /// Runtime version
     pub runtime_version: String,
+    pub max_output_bytes: usize,
+    pub stack_size_limit: usize,
 }
 
 impl Default for PythonConfig {
     fn default() -> Self {
         Self {
-            memory_limit: 128 * 1024 * 1024, // 128MB
-            timeout_ms: 5000, // 5 seconds
+            memory_limit: 128 * 1024 * 1024,
+            timeout_ms: 5000,
             debug: false,
             python_version: "3.11".to_string(),
             runtime_version: "rustpython-0.4".to_string(),
+            max_output_bytes: 64 * 1024,
+            stack_size_limit: 8 * 1024 * 1024,
         }
     }
 }
@@ -318,7 +330,27 @@ impl From<crate::config::Config> for PythonConfig {
             debug: config.python_debug,
             python_version: "3.11".to_string(),
             runtime_version: "rustpython-0.4".to_string(),
+            max_output_bytes: config.max_output_bytes,
+            stack_size_limit: 8 * 1024 * 1024, // 8MB default stack limit
         }
+    }
+}
+
+impl PythonConfig {
+    pub fn with_timeout(mut self, timeout_ms: u64) -> Self {
+        self.timeout_ms = timeout_ms;
+        self
+    }
+
+    pub fn with_memory_limit(mut self, memory_limit: usize) -> Self {
+        self.memory_limit = memory_limit;
+        self
+    }
+
+    pub fn fuel_for_timeout(&self) -> u64 {
+        let timeout_ms = self.timeout_ms;
+        let fuel_per_ms = 100_000;
+        timeout_ms.saturating_mul(fuel_per_ms)
     }
 }
 

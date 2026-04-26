@@ -35,7 +35,7 @@ export default function FormCard({
           </p>
         )}
         {tagline && (
-          <p className="mt-3 text-[var(--ff-muted-text)] text-sm italic border-l-2 border-[var(--ff-flame)] pl-3">
+          <p className="mt-4 text-[var(--ff-muted-text)] text-sm italic border-l-2 border-[var(--ff-flame)] pl-3">
             {tagline}
           </p>
         )}

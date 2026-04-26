@@ -26,9 +26,13 @@
   
   /* Semantic Colors */
   --ff-success: #00FF9D;
+  --ff-success-rgb: 0, 255, 157;
   --ff-error: #FF2D55;
+  --ff-error-rgb: 255, 45, 85;
   --ff-warning: #FF9500;
+  --ff-warning-rgb: 255, 149, 0;
   --ff-info: #00D4FF;
+  --ff-info-rgb: 0, 212, 255;
   
   /* Borders */
   --ff-border-default: rgba(255, 255, 255, 0.12);
@@ -95,9 +99,13 @@
   
   /* Semantic Colors - Adjusted for light contrast */
   --ff-success: #059669;
+  --ff-success-rgb: 5, 150, 105;
   --ff-error: #DC2626;
+  --ff-error-rgb: 220, 38, 38;
   --ff-warning: #D97706;
+  --ff-warning-rgb: 217, 119, 6;
   --ff-info: #2563EB;
+  --ff-info-rgb: 37, 99, 235;
   
   /* Borders - Dark borders on light */
   --ff-border-default: rgba(0, 0, 0, 0.12);
@@ -138,9 +146,13 @@
     
     /* Semantic Colors */
     --ff-success: #059669;
+    --ff-success-rgb: 5, 150, 105;
     --ff-error: #DC2626;
+    --ff-error-rgb: 220, 38, 38;
     --ff-warning: #D97706;
+    --ff-warning-rgb: 217, 119, 6;
     --ff-info: #2563EB;
+    --ff-info-rgb: 37, 99, 235;
     
     /* Borders */
     --ff-border-default: rgba(0, 0, 0, 0.12);

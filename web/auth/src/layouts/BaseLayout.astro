@@ -33,6 +33,27 @@ const { title, description = "Authenticate to FunctionFly™" } = Astro.props;
       * { box-sizing: border-box; margin: 0; padding: 0; }
       html, body { height: 100%; }
     </style>
+
+    <!-- Theme initialization (must run before body renders) -->
+    <script is:inline>
+      (function() {
+        try {
+          var stored = localStorage.getItem('theme-storage');
+          if (stored) {
+            var parsed = JSON.parse(stored);
+            if (parsed.state && parsed.state.theme) {
+              var theme = parsed.state.theme;
+              if (theme === 'light' || theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', theme);
+              } else if (theme === 'system') {
+                var isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+              }
+            }
+          }
+        } catch(e) {}
+      })();
+    </script>
   </head>
   <body class="antialiased font-sans bg-[var(--ff-tarmac)] text-[var(--ff-primary-text)]">
     <slot />

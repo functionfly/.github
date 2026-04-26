@@ -1,0 +1,46 @@
+# FunctionFly MicroVM Rootfs with OpenRC
+# Minimal init system for Firecracker microVMs
+# Usage: docker build -f Dockerfile.firecracker -o /path/to/output/
+
+FROM alpine:3.19
+
+# Install OpenRC and essential packages
+RUN apk add --no-cache \
+    openrc \
+    python3 \
+    py3-pip \
+    bash \
+    curl \
+    wget \
+    ca-certificates \
+    procps \
+    openntpd
+
+# Create function directories
+RUN mkdir -p /function /tmp/function-packages /opt/functionfly-packages && \
+    chown -R nobody:nobody /function /tmp/function-packages /opt/functionfly-packages
+
+# Install Python packages
+RUN pip3 install --no-cache-dir --break-system-packages \
+    'cryptography>=46.0' 'bleach>=6.3.0' 'user-agents>=2.2.0' 'PyJWT>=2.11.0' 'bcrypt>=5.0.0' \
+    && pip3 install --no-cache-dir --break-system-packages --target /opt/functionfly-packages \
+    'cryptography>=46.0' 'bleach>=6.3.0' 'user-agents>=2.2.0' 'PyJWT>=2.11.0' 'bcrypt>=5.0.0'
+
+# Copy init script
+COPY init.sh /init.sh
+RUN chmod +x /init.sh
+
+# Copy agent
+COPY agent /usr/local/bin/function-agent
+RUN chmod +x /usr/local/bin/function-agent
+
+# Create symlinks for python
+RUN ln -sf python3 /usr/bin/python
+
+# Environment
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/opt/functionfly-packages:/tmp/function-packages
+ENV PIP_TARGET=/tmp/function-packages
+
+# Init script as entry point
+ENTRYPOINT ["/init.sh"]

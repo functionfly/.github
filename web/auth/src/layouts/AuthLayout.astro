@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "./BaseLayout.astro";
+import ThemeToggle from "../components/ThemeToggle";
 import { MARKETING_ORIGIN } from "../config";
 
 interface Props {
@@ -32,6 +33,7 @@ const { title, description, maxWidth = "440px" } = Astro.props;
         </svg>
         <span class="ff-gradient-text font-semibold text-lg tracking-tight">FunctionFly™</span>
       </a>
+      <ThemeToggle client:load />
     </div>
 
     <main class="auth-card-wrap" style={`max-width: ${maxWidth}`}>
@@ -62,6 +64,9 @@ const { title, description, maxWidth = "440px" } = Astro.props;
 .auth-brand {
   width: 100%;
   max-width: 440px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .brand-link {
@@ -76,8 +81,8 @@ const { title, description, maxWidth = "440px" } = Astro.props;
   transition: opacity var(--ff-transition-fast);
 }
 
-.brand-link:hover { 
-  opacity: 0.85; 
+.brand-link:hover {
+  opacity: 0.85;
 }
 
 .brand-logo {
@@ -87,6 +92,16 @@ const { title, description, maxWidth = "440px" } = Astro.props;
 
 .brand-link:hover .brand-logo {
   filter: drop-shadow(0 0 12px rgba(255, 107, 53, 0.5));
+}
+
+:global(.theme-toggle) {
+  flex-shrink: 0;
+}
+
+:global(.theme-toggle:hover) {
+  background: var(--ff-flightdeck) !important;
+  border-color: var(--ff-border-strong) !important;
+  color: var(--ff-primary-text) !important;
 }
 
 .auth-card-wrap {

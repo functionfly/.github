@@ -84,10 +84,14 @@
     border-radius: var(--ff-radius-lg);
     padding: var(--ff-space-8);
     position: relative;
-    transition: 
+    transition:
       border-color var(--ff-transition-fast),
       box-shadow var(--ff-transition-fast),
       transform var(--ff-transition-fast);
+  }
+
+  [data-theme='light'] .ff-card {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
   }
 
   .ff-card::before {
@@ -112,6 +116,10 @@
     border-color: var(--ff-border-strong);
     transform: translateY(-2px);
     box-shadow: var(--ff-shadow-md);
+  }
+
+  [data-theme='light'] .ff-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
   }
 
   .ff-card--elevated {

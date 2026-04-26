@@ -41,17 +41,38 @@ pub struct PooledPythonRuntime {
 
 impl PooledPythonRuntime {
     /// Execute Python code using this pooled runtime.
-    pub fn execute_sync(&self, python_code: &str, input: &str) -> anyhow::Result<String> {
-        self.runtime
-            .as_ref()
-            .expect("runtime already consumed")
-            .execute_sync(python_code, input)
+    ///
+    /// Marks the runtime dirty if execution fails, ensuring it is discarded
+    /// rather than returned to the pool where it could corrupt subsequent runs.
+    pub fn execute_sync(&mut self, python_code: &str, input: &str) -> anyhow::Result<String> {
+        match self.runtime.as_ref().expect("runtime already consumed").execute_sync(python_code, input) {
+            Ok(result) => {
+                self.pool.reuse_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                if self.pool.reuse_count.load(std::sync::atomic::Ordering::Relaxed) > self.pool.max_reuse {
+                    tracing::debug!("Python runtime exceeded max reuse count ({}/{}), marking dirty",
+                        self.pool.reuse_count.load(std::sync::atomic::Ordering::Relaxed), self.pool.max_reuse);
+                    self.mark_dirty();
+                }
+                Ok(result)
+            }
+            Err(e) => {
+                tracing::warn!("Python execution failed, marking runtime dirty: {}", e);
+                self.mark_dirty();
+                Err(e)
+            }
+        }
     }
 
     /// Mark this runtime as dirty so it is discarded instead of returned.
     #[allow(dead_code)]
     pub fn mark_dirty(&mut self) {
         self.discard = true;
+    }
+
+    /// Check if this runtime is marked for discard.
+    #[allow(dead_code)]
+    pub fn is_dirty(&self) -> bool {
+        self.discard
     }
 }
 
@@ -79,14 +100,12 @@ impl Drop for PooledPythonRuntime {
 }
 
 struct PythonRuntimePoolInner {
-    /// Idle runtimes waiting to be checked out.
     idle: Mutex<VecDeque<PythonRuntime>>,
-    /// Limits the total number of concurrent runtimes (idle + active).
     semaphore: Semaphore,
-    /// Maximum number of idle runtimes to keep.
     max_idle: usize,
-    /// Configuration used to create new runtimes.
     config: PythonConfig,
+    max_reuse: usize,
+    reuse_count: std::sync::atomic::AtomicUsize,
 }
 
 /// Bounded pool of `PythonRuntime` instances.
@@ -97,15 +116,7 @@ pub struct PythonRuntimePool {
 }
 
 impl PythonRuntimePool {
-    /// Create a new pool.
-    ///
-    /// * `max_concurrent`: Maximum number of runtimes that can be checked out
-    ///   simultaneously.  The pool will create new runtimes on demand until
-    ///   this limit is reached.
-    /// * `max_idle`: Maximum number of runtimes to keep idle.  When a runtime is
-    ///   dropped back to the pool it is discarded if the idle queue is full.
-    /// * `config`: Configuration passed to `PythonRuntime::new`.
-    pub fn new(max_concurrent: usize, max_idle: usize, config: PythonConfig) -> Self {
+    pub fn new(max_concurrent: usize, max_idle: usize, max_reuse: usize, config: PythonConfig) -> Self {
         let semaphore = Semaphore::new(max_concurrent);
         let idle = Mutex::new(VecDeque::with_capacity(max_idle));
         Self {
@@ -114,32 +125,20 @@ impl PythonRuntimePool {
                 semaphore,
                 max_idle,
                 config,
+                max_reuse,
+                reuse_count: std::sync::atomic::AtomicUsize::new(0),
             }),
         }
     }
 
-    /// Acquire a runtime from the pool.
-    ///
-    /// If an idle runtime is available it is returned immediately; otherwise a
-    /// new runtime is created provided the concurrency limit has not been
-    /// reached.  When the returned guard is dropped the runtime is returned to
-    /// the idle queue (unless it has been marked dirty).
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the pool is at capacity and no runtimes are idle,
-    /// or if creating a new runtime fails.
     pub async fn acquire(&self) -> anyhow::Result<PooledPythonRuntime> {
-        // Acquire a permit first (represents permission to use a runtime slot)
         let _permit = self.inner.semaphore.acquire().await?;
 
-        // Try to take an idle runtime
         let mut idle = self.inner.idle.lock().await;
         let runtime = if let Some(runtime) = idle.pop_front() {
             runtime
         } else {
-            // No idle runtime available - create a new one
-            drop(idle); // Release the lock before creating
+            drop(idle);
             PythonRuntime::new(self.inner.config.clone())?
         };
 
@@ -150,7 +149,6 @@ impl PythonRuntimePool {
         })
     }
 
-    /// Get current pool statistics.
     pub async fn stats(&self) -> PoolStats {
         let idle = self.inner.idle.lock().await;
         let active_count = self.inner.semaphore.available_permits();
@@ -159,7 +157,13 @@ impl PythonRuntimePool {
             max_idle: self.inner.max_idle,
             idle_count: idle.len(),
             active_count: active_count.saturating_sub(self.inner.semaphore.available_permits().min(active_count)),
+            reuse_count: self.inner.reuse_count.load(std::sync::atomic::Ordering::Relaxed),
+            max_reuse: self.inner.max_reuse,
         }
+    }
+
+    pub fn reuse_count(&self) -> usize {
+        self.inner.reuse_count.load(std::sync::atomic::Ordering::Relaxed)
     }
 }
 
@@ -174,14 +178,12 @@ impl Clone for PythonRuntimePool {
 /// Statistics about the pool state.
 #[derive(Debug, Clone, Copy)]
 pub struct PoolStats {
-    /// Maximum concurrent runtimes allowed.
     pub max_concurrent: usize,
-    /// Maximum idle runtimes to keep.
     pub max_idle: usize,
-    /// Number of runtimes currently idle.
     pub idle_count: usize,
-    /// Number of runtimes currently active.
     pub active_count: usize,
+    pub reuse_count: usize,
+    pub max_reuse: usize,
 }
 
 #[cfg(test)]
@@ -195,7 +197,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_pool_creation() {
-        let pool = PythonRuntimePool::new(4, 2, default_config());
+        let pool = PythonRuntimePool::new(4, 2, 100, default_config());
         let stats = pool.stats().await;
         assert_eq!(stats.max_concurrent, 4);
         assert_eq!(stats.max_idle, 2);
@@ -205,17 +207,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_pool_acquire_release() {
-        let pool = PythonRuntimePool::new(2, 2, default_config());
+        let pool = PythonRuntimePool::new(2, 2, 100, default_config());
 
-        // Acquire a runtime
         let guard = pool.acquire().await.unwrap();
         let stats = pool.stats().await;
         assert_eq!(stats.active_count, 1);
 
-        // Drop the guard to release back to pool
         drop(guard);
 
-        // Give a moment for the runtime to be returned
         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
         let stats = pool.stats().await;
@@ -225,30 +224,55 @@ mod tests {
 
     #[tokio::test]
     async fn test_pool_max_idle_respected() {
-        let pool = PythonRuntimePool::new(4, 1, default_config()); // max_idle = 1
+        let pool = PythonRuntimePool::new(4, 1, 100, default_config());
 
-        // Acquire and release two runtimes
         let g1 = pool.acquire().await.unwrap();
         let g2 = pool.acquire().await.unwrap();
         drop(g1);
         drop(g2);
 
-        // Give a moment for runtimes to be returned
         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
-        // Only 1 should be kept idle
         let stats = pool.stats().await;
         assert_eq!(stats.idle_count, 1);
     }
 
     #[tokio::test]
     async fn test_pool_execute_sync() {
-        let pool = PythonRuntimePool::new(2, 1, default_config());
-        let guard = pool.acquire().await.unwrap();
-        // Simple Python code - verify the pool can execute Python
-        // Just check that execution doesn't panic, actual Python behavior may vary
+        let pool = PythonRuntimePool::new(2, 1, 100, default_config());
+        let mut guard = pool.acquire().await.unwrap();
         let _result = guard.execute_sync("x = 1 + 1", "{}");
-        // We don't assert on result - Python execution may succeed or fail
-        // depending on RustPython state, but the pool mechanism should work
+    }
+
+    #[tokio::test]
+    async fn test_dirty_runtime_discarded() {
+        let pool = PythonRuntimePool::new(2, 1, 100, default_config());
+        let mut guard = pool.acquire().await.unwrap();
+
+        guard.mark_dirty();
+        drop(guard);
+
+        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
+        let stats = pool.stats().await;
+        assert_eq!(stats.idle_count, 0);
+    }
+
+    #[tokio::test]
+    async fn test_max_reuse_respected() {
+        let pool = PythonRuntimePool::new(2, 2, 3, default_config());
+
+        for i in 0..3 {
+            let mut guard = pool.acquire().await.unwrap();
+            let result = guard.execute_sync(&format!("x = {}", i), "{}");
+            if i < 3 {
+                assert!(!guard.is_dirty());
+            }
+            drop(guard);
+            tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+        }
+
+        let stats = pool.stats().await;
+        assert_eq!(stats.reuse_count, 3);
     }
 }

@@ -7,11 +7,29 @@ interface TurnstileWidgetProps {
   onExpire?: () => void;
   action?: string;
   theme?: "light" | "dark" | "auto";
+  resolvedTheme?: "light" | "dark" | "auto";
 }
 
 const TURNSTILE_SITE_KEY =
   (import.meta.env.PUBLIC_TURNSTILE_SITE_KEY as string | undefined) ||
   "1x00000000000000000000AA";
+
+function getResolvedTheme(): "light" | "dark" {
+  const stored = localStorage.getItem("theme-storage");
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      if (parsed.state?.theme) {
+        const theme = parsed.state.theme;
+        if (theme === "light" || theme === "dark") return theme;
+        if (theme === "system") {
+          return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+      }
+    } catch {}
+  }
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
 
 export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
   onVerify,
@@ -19,6 +37,7 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
   onExpire,
   action = "auth",
   theme = "dark",
+  resolvedTheme = "dark",
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
@@ -52,6 +71,8 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
   useEffect(() => {
     if (!isLoaded || !containerRef.current || !window.turnstile) return;
 
+    const widgetTheme = resolvedTheme === "auto" ? getResolvedTheme() : resolvedTheme;
+
     try {
       widgetIdRef.current = window.turnstile.render(containerRef.current, {
         sitekey: TURNSTILE_SITE_KEY,
@@ -67,14 +88,14 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
           onExpire?.();
         },
         action,
-        theme,
+        theme: widgetTheme,
         size: "normal",
       });
     } catch (err) {
       setHasError(true);
       onError?.();
     }
-  }, [isLoaded, action, theme, onVerify, onError, onExpire]);
+  }, [isLoaded, action, resolvedTheme, onVerify, onError, onExpire]);
 
   const handleRetry = () => {
     setHasError(false);

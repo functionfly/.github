@@ -12,6 +12,8 @@ pub mod host_functions;
 pub mod config;
 pub mod metrics;
 pub mod wasm_entry;
+#[cfg(feature = "wasmtime")]
+pub mod engine;
 
 use std::sync::Arc;
 use std::future::Future;

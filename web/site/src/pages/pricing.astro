@@ -105,6 +105,18 @@ const pricingSchemas = [faqSchema, productSchema];
         <h2>Platform</h2>
         <p class="muted">Functions, hosting providers, custom domains, vault secrets, and collaboration—priced per workspace.</p>
       </div>
+
+      {/* Billing Cycle Toggle */}
+      <div class="billing-toggle-wrap">
+        <div class="billing-toggle">
+          <button class="toggle-btn active" data-period="monthly">Monthly</button>
+          <button class="toggle-btn" data-period="annual">
+            Annual
+            <span class="save-badge">Save 20%</span>
+          </button>
+        </div>
+      </div>
+
       <div class="pricing-grid">
         <article class="price-card">
           <h3 class="tier-name">Free</h3>
@@ -123,12 +135,13 @@ const pricingSchemas = [faqSchema, productSchema];
           <a class="btn btn-secondary full-width" href={`${AUTH_ORIGIN}/signup`}>Start free</a>
         </article>
 
-        <article class="price-card">
+        <article class="price-card" data-plan="starter">
           <h3 class="tier-name">Starter</h3>
           <div class="price-row">
-            <span class="price-amount">$29</span>
+            <span class="price-amount" data-monthly="$29" data-annual="$23">$29</span>
             <span class="price-period">/ month</span>
           </div>
+          <div class="annual-note" style="display: none;">$278 billed annually</div>
           <p class="tier-desc">For side projects and MVPs.</p>
           <ul class="feature-list">
             <li><span class="check" aria-hidden="true">✓</span> 5 functions</li>
@@ -141,13 +154,14 @@ const pricingSchemas = [faqSchema, productSchema];
           <a class="btn btn-primary full-width" href={`${AUTH_ORIGIN}/signup?plan=starter`}>Choose Starter</a>
         </article>
 
-        <article class="price-card price-card--featured">
+        <article class="price-card price-card--featured" data-plan="professional">
           <div class="featured-pill">Most popular</div>
           <h3 class="tier-name">Professional</h3>
           <div class="price-row">
-            <span class="price-amount">$99</span>
+            <span class="price-amount" data-monthly="$99" data-annual="$79">$99</span>
             <span class="price-period">/ month</span>
           </div>
+          <div class="annual-note" style="display: none;">$950 billed annually</div>
           <p class="tier-desc">For growing teams and production SaaS.</p>
           <ul class="feature-list">
             <li><span class="check" aria-hidden="true">✓</span> 25 functions</li>
@@ -559,5 +573,39 @@ const pricingSchemas = [faqSchema, productSchema];
       </div>
     </div>
   </section>
+
+  <script>
+    const toggleBtns = document.querySelectorAll('.toggle-btn');
+    const priceAmounts = document.querySelectorAll('.price-amount[data-monthly]');
+    const annualNotes = document.querySelectorAll('.annual-note');
+    const cards = document.querySelectorAll('.price-card[data-plan]');
+
+    toggleBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const period = btn.dataset.period;
+
+        toggleBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        priceAmounts.forEach(el => {
+          const monthly = el.dataset.monthly;
+          const annual = el.dataset.annual;
+          el.textContent = period === 'annual' ? annual : monthly;
+        });
+
+        annualNotes.forEach(note => {
+          note.style.display = period === 'annual' ? 'flex' : 'none';
+        });
+
+        cards.forEach(card => {
+          if (period === 'annual') {
+            card.classList.add('annual-selected');
+          } else {
+            card.classList.remove('annual-selected');
+          }
+        });
+      });
+    });
+  </script>
 
 </Layout>
