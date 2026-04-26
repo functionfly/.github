@@ -1,0 +1,14 @@
+[package]
+name = "functionfly-sdk"
+version = "0.1.0"
+edition = "2021"
+description = "FunctionFly SDK for Rust — build serverless functions in Rust"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+opt-level = "s"
+lto = true
+panic = "abort"
