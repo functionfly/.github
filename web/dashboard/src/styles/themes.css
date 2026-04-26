@@ -210,3 +210,56 @@
     radial-gradient(at 80% 50%, rgba(91, 124, 245, 0.05) 0px, transparent 50%),
     radial-gradient(at 0% 100%, rgba(255, 107, 53, 0.06) 0px, transparent 50%);
 }
+
+/* ==========================================================================
+   Dialog / Modal Theme Overrides
+   ========================================================================== */
+
+/* Default (dark mode) */
+.dialog-content {
+  background-color: #151520;
+  border-color: rgba(255, 107, 53, 0.3);
+  color: #f0f6fc;
+}
+
+/* Light mode override */
+[data-theme='light'] .dialog-content {
+  background-color: #ffffff;
+  border-color: rgba(255, 107, 53, 0.2);
+  color: #0d1117;
+}
+
+/* Dark mode override */
+[data-theme='dark'] .dialog-content {
+  background-color: #151520;
+  border-color: rgba(255, 107, 53, 0.3);
+  color: #f0f6fc;
+}
+
+/* Overlay default */
+.dialog-overlay {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+/* Light mode overlay */
+[data-theme='light'] .dialog-overlay {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* Dark mode overlay */
+[data-theme='dark'] .dialog-overlay {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+/* Close button colors */
+.dialog-close {
+  color: #a0a0b8;
+}
+
+[data-theme='light'] .dialog-close {
+  color: #5f6368;
+}
+
+[data-theme='dark'] .dialog-close {
+  color: #a0a0b8;
+}

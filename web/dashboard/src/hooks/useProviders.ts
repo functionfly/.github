@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { providersApi, type ConnectProviderRequest } from '@/api/providers';
+import { providersApi } from '@/api/providers';
+import type { ConnectProviderRequest } from '@/types';
 
 // Query keys
 export const providerKeys = {

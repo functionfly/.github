@@ -32,6 +32,7 @@ export interface ScanSummary {
   info_count: number;
   risk_score: number;
   coverage_percentage: number;
+  compliance_score?: number;
 }
 
 export interface SecurityScan {

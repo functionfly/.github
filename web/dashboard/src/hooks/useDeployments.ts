@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { deploymentsApi, type Deployment, type DeployRequest } from '@/api/deployments';
+import { deploymentsApi } from '@/api/deployments';
+import type { Deployment, DeployRequest } from '@/types';
 
 // Query keys
 export const deploymentKeys = {
@@ -34,7 +35,7 @@ export function useDeploy() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: DeployRequest) => deploymentsApi.deploy(data),
+    mutationFn: ({ appId, data }: { appId: string; data: DeployRequest }) => deploymentsApi.deploy(appId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: deploymentKeys.all });
       toast.success('Deployment started successfully');

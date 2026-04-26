@@ -48,6 +48,14 @@ export const API_URLS = {
     profile: (userId: string) => `${API}/users/${userId}`,
     updateProfile: `${API}/user/profile`,
     avatar: (userId: string) => `${API}/users/${userId}/avatar`,
+    favorites: {
+      list: `${API}/users/me/favorites`,
+      add: `${API}/users/me/favorites`,
+      remove: (functionId: string) => `${API}/users/me/favorites/${functionId}`,
+      toggle: (functionId: string) => `${API}/users/me/favorites/${functionId}/toggle`,
+      check: (functionId: string) => `${API}/users/me/favorites/${functionId}`,
+      updatePosition: (functionId: string) => `${API}/users/me/favorites/${functionId}/position`,
+    },
   },
 
   // ========================================================================
@@ -55,22 +63,22 @@ export const API_URLS = {
   // ========================================================================
   functions: {
     list: (page = 1, limit = 20) =>
-      `${API}/registry/functions?page=${page}&limit=${limit}`,
+      `${API}/functions?page=${page}&limit=${limit}`,
     get: (author: string, name: string) =>
-      `${API}/registry/functions/${author}/${name}`,
-    create: `${API}/registry/functions`,
+      `${API}/functions/${author}/${name}`,
+    create: `${API}/functions`,
     update: (author: string, name: string) =>
-      `${API}/registry/functions/${author}/${name}`,
+      `${API}/functions/${author}/${name}`,
     delete: (author: string, name: string) =>
-      `${API}/registry/functions/${author}/${name}`,
+      `${API}/functions/${author}/${name}`,
     search: (query: string, page = 1, limit = 20) =>
-      `${API}/registry/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`,
+      `${API}/functions/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`,
     byAuthor: (author: string, page = 1, limit = 20) =>
-      `${API}/registry/authors/${author}/functions?page=${page}&limit=${limit}`,
+      `${API}/functions?author=${author}&page=${page}&limit=${limit}`,
     versions: (author: string, name: string) =>
-      `${API}/registry/functions/${author}/${name}/versions`,
+      `${API}/functions/${author}/${name}/versions`,
     latestVersion: (author: string, name: string) =>
-      `${API}/registry/functions/${author}/${name}/latest`,
+      `${API}/functions/${author}/${name}/versions/latest`,
     settings: (author: string, name: string) =>
       `${API}/functions/${author}/${name}/settings`,
   },

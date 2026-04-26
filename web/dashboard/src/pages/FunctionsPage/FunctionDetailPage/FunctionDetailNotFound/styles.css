@@ -1,0 +1,6 @@
+.glass {
+  background: rgba(var(--bg-secondary), 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(var(--border-subtle), 0.3);
+}

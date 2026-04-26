@@ -157,7 +157,7 @@ export function SettingsContent({
     <div className="space-y-6">
       {showHeader && (
         <div>
-          <h1 className="font-display text-2xl font-bold bg-gradient-to-r from-brand-500 via-ff-afterburner to-brand-400 bg-clip-text text-transparent">
+          <h1 className="font-display text-2xl font-bold text-text-primary text-glow">
             {t('settings.title')}
           </h1>
           <p className="text-text-secondary">{t('settings.manageAccount')}</p>

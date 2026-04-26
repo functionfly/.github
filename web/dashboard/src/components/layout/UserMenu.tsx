@@ -19,6 +19,9 @@ import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/components/common/ThemeProvider';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
+import { useMFAStatus } from '@/hooks/useAuth';
+import { usePresence } from '@/hooks/usePresence';
+import { useCustomStatus, CUSTOM_STATUS_OPTIONS } from '@/hooks/useCustomStatus';
 import { AnimatePresence, motion } from 'framer-motion';
 import * as React from 'react';
 import {
@@ -48,7 +51,7 @@ interface UserMenuProps {
 
 export function UserMenu({ className }: UserMenuProps) {
   const { t } = useTranslation();
-  const { user, logout, mfaRequired } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const { theme } = useTheme();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -57,6 +60,9 @@ export function UserMenu({ className }: UserMenuProps) {
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const walletAgentId =
     typeof window !== 'undefined' ? localStorage.getItem('ff-last-wallet-agent-id') : null;
+  const { data: mfaStatus } = useMFAStatus();
+  const { myPresence, isConnected } = usePresence();
+  const { status: customStatus } = useCustomStatus();
 
   const { data: teamsData } = useQuery({
     queryKey: ['user-teams'],
@@ -98,6 +104,10 @@ export function UserMenu({ className }: UserMenuProps) {
   const planInfo = PLANS[user.plan.toUpperCase() as keyof typeof PLANS] || PLANS.FREE;
   const isAdmin = isPlatformAdminRole(user.role);
   const isDark = theme === 'dark';
+
+  const autoStatus = myPresence?.status || (user?.isOnline ? 'online' : 'offline');
+  const effectiveStatus = customStatus?.customStatus || autoStatus;
+  const statusEmoji = customStatus?.customStatusEmoji || '';
 
   // Velocity brand colors
   const brand = {
@@ -227,13 +237,13 @@ export function UserMenu({ className }: UserMenuProps) {
             </div>
             <span className={cn(
               "absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-bg-primary",
-              user?.isOnline ? 'bg-emerald-500' : 'bg-slate-500'
+              effectiveStatus === 'online' ? 'bg-emerald-500' : effectiveStatus === 'away' ? 'bg-amber-500' : effectiveStatus === 'busy' ? 'bg-red-500' : 'bg-slate-500'
             )}>
-              {user?.isOnline && (
+              {effectiveStatus === 'online' && (
                 <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-40" />
               )}
             </span>
-            {!mfaRequired && (
+            {mfaStatus?.enabled && (
               <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-bg-primary flex items-center justify-center" title="2FA Enabled">
                 <ShieldCheck className="w-2 h-2 text-white" />
               </span>
@@ -286,10 +296,10 @@ export function UserMenu({ className }: UserMenuProps) {
                 </div>
                 <span className={cn(
                   "absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2",
-                  user?.isOnline ? 'bg-emerald-500' : 'bg-slate-500'
+                  effectiveStatus === 'online' ? 'bg-emerald-500' : effectiveStatus === 'away' ? 'bg-amber-500' : effectiveStatus === 'busy' ? 'bg-red-500' : 'bg-slate-500'
                 )}
                 style={{ borderColor: colors.menuBg }}>
-                  {user?.isOnline && (
+                  {effectiveStatus === 'online' && (
                     <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-40" />
                   )}
                 </span>
@@ -307,14 +317,19 @@ export function UserMenu({ className }: UserMenuProps) {
                 <div className="flex items-center gap-2 mt-2">
                   <span className={cn(
                     "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium border",
-                    user?.isOnline 
+                    effectiveStatus === 'online'
                       ? isDark ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25' : 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                      : effectiveStatus === 'away'
+                      ? isDark ? 'bg-amber-500/15 text-amber-400 border-amber-500/25' : 'bg-amber-100 text-amber-700 border-amber-200'
+                      : effectiveStatus === 'busy'
+                      ? isDark ? 'bg-red-500/15 text-red-400 border-red-500/25' : 'bg-red-100 text-red-700 border-red-200'
                       : isDark ? 'bg-slate-500/15 text-slate-400 border-slate-500/25' : 'bg-slate-100 text-slate-600 border-slate-200'
                   )}>
-                    <span className={cn("w-1 h-1 rounded-full", user?.isOnline && 'bg-emerald-500 animate-pulse')} />
-                    {user?.isOnline ? 'Online' : 'Away'}
+                    <span className={cn("w-1 h-1 rounded-full", effectiveStatus === 'online' && 'bg-emerald-500 animate-pulse', effectiveStatus === 'away' && 'bg-amber-500', effectiveStatus === 'busy' && 'bg-red-500')} />
+                    {statusEmoji && <span>{statusEmoji}</span>}
+                    {effectiveStatus === 'online' ? 'Online' : effectiveStatus === 'away' ? 'Away' : effectiveStatus === 'busy' ? 'Busy' : 'Offline'}
                   </span>
-                  {!mfaRequired && (
+                  {mfaStatus?.enabled && (
                     <span 
                       className={cn(
                         "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border",
@@ -658,7 +673,7 @@ export function UserMenu({ className }: UserMenuProps) {
                 borderColor: colors.border
               }}
             >
-              <Globe className="w-3.5 h-3.5" style={{ color: colors.textMuted }} />
+              <Globe className="w-3.5 h-3.5" style={{ color: colors.textSecondary }} />
             </div>
             <LanguagePicker variant="ghost" showLabel={true} className="flex-1 h-8 px-0" />
           </div>

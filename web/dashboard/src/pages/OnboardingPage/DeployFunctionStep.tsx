@@ -223,7 +223,7 @@ export function DeployFunctionStep() {
             recycle={false}
             numberOfPieces={100}
             gravity={0.3}
-            colors={['#6366f1', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444']}
+            colors={['#FF6B35', '#FFB800', '#00D4FF', '#5B7CF5', '#10b981', '#FF4F5E']}
           />
         )}
 
@@ -256,7 +256,7 @@ export function DeployFunctionStep() {
                 {[...Array(20)].map((_, i) => (
                   <motion.div
                     key={i}
-                    className="absolute w-2 h-2 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] rounded-full"
+                    className="absolute w-2 h-2 bg-gradient-to-r from-ff-flame to-ff-cyan rounded-full"
                     initial={{
                       x: "50%",
                       y: "50%",
@@ -283,7 +283,7 @@ export function DeployFunctionStep() {
               </div>
 
               <motion.div
-                className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4 relative z-10"
+                className="w-16 h-16 bg-ff-taxiway/20 rounded-full flex items-center justify-center mx-auto mb-4 relative z-10"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", bounce: 0.5, delay: 0.2 }}
@@ -293,7 +293,7 @@ export function DeployFunctionStep() {
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ type: "spring", bounce: 0.6, delay: 0.4 }}
                 >
-                  <Check className="w-8 h-8 text-green-500" />
+                  <Check className="w-8 h-8 text-ff-taxiway" />
                 </motion.div>
               </motion.div>
 
@@ -327,7 +327,7 @@ export function DeployFunctionStep() {
                   <Copy className="w-4 h-4" />
                 </Button>
               </div>
-              <code className="block p-3 bg-bg-primary rounded text-sm text-[#6366f1] break-all">
+              <code className="block p-3 bg-bg-primary rounded text-sm text-ff-flame break-all">
                 {deployedUrl}
               </code>
             </Card>
@@ -380,7 +380,7 @@ export function DeployFunctionStep() {
                     <div className="text-xs text-text-muted">Errors</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-green-500">
+                    <div className="text-2xl font-bold text-ff-taxiway">
                       {functionMetrics.uptime.toFixed(1)}%
                     </div>
                     <div className="text-xs text-text-muted">Uptime</div>
@@ -497,21 +497,21 @@ export function DeployFunctionStep() {
                 key={func.id}
                 className={`card p-4 cursor-pointer transition-all ${
                   selectedFunction === func.id
-                    ? "border-[#6366f1] ring-1 ring-[#6366f1]"
+                    ? "border-ff-flame ring-1 ring-ff-flame"
                     : "hover:border-border-default"
                 }`}
                 onClick={() => setSelectedFunction(func.id)}
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-[#6366f1]/20 flex items-center justify-center flex-shrink-0">
-                    <Code className="w-5 h-5 text-[#6366f1]" />
+                  <div className="w-10 h-10 rounded-lg bg-ff-flame/20 flex items-center justify-center flex-shrink-0">
+                    <Code className="w-5 h-5 text-ff-flame" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-medium text-text-primary">{func.name}</h3>
                       <HelpTooltip content="Edge functions run close to your users worldwide, reducing latency and improving performance compared to traditional server-based functions." />
                       {selectedFunction === func.id && (
-                        <Check className="w-4 h-4 text-green-500" />
+                        <Check className="w-4 h-4 text-ff-taxiway" />
                       )}
                     </div>
                     <p className="text-sm text-text-secondary">{func.description}</p>

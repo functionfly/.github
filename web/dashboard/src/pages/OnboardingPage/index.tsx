@@ -154,10 +154,10 @@ export function OnboardingPage() {
       <header className="border-b border-border-subtle bg-bg-glass backdrop-blur-sm">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-linear-to-br from-[#6366f1] to-[#8b5cf6] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-ff-flame to-ff-afterburner flex items-center justify-center">
               <Zap className="w-5 h-5 text-white" fill="currentColor" />
             </div>
-            <span className="text-xl font-bold gradient-text">FunctionFly</span>
+            <span className="text-xl font-bold gradient-text ff-brand-flame">FunctionFly</span>
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-text-secondary">
@@ -168,7 +168,7 @@ export function OnboardingPage() {
                 <HelpCircle className="w-4 h-4" />
               </Button>
             </HelpTooltip>
-            <Button variant="ghost" size="sm" onClick={handleSkip} className="text-text-muted">
+            <Button variant="ghost" size="sm" onClick={handleSkip} className="text-text-muted hover:text-ff-flame">
               Skip for now
             </Button>
           </div>
@@ -178,7 +178,7 @@ export function OnboardingPage() {
       {/* Progress Bar */}
       <div className="w-full h-1 bg-bg-secondary">
         <motion.div
-          className="h-full bg-linear-to-r from-[#6366f1] to-[#8b5cf6]"
+          className="h-full bg-gradient-to-r from-ff-flame to-ff-afterburner"
           initial={{ width: 0 }}
           animate={{ width: `${progress}%` }}
           transition={{ duration: 0.5, ease: 'easeInOut' }}
@@ -198,18 +198,27 @@ export function OnboardingPage() {
             >
               <Card className="card">
                 <CardHeader className="text-center pb-2">
-                  <div className="mx-auto w-16 h-16 bg-[#6366f1]/20 rounded-full flex items-center justify-center mb-4">
+                  <div className="mx-auto w-16 h-16 bg-gradient-to-br from-ff-flame/20 to-ff-afterburner/20 rounded-full flex items-center justify-center mb-4">
                     {(() => {
-                      const Icon = steps[currentStepIndex].icon;
-                      return <Icon className="w-8 h-8 text-[#6366f1]" />;
+                      const step = steps[currentStepIndex];
+                      if (!step?.icon) return null;
+                      const Icon = step.icon;
+                      return <Icon className="w-8 h-8 text-ff-flame" />;
                     })()}
                   </div>
-                  <CardTitle className="text-2xl text-text-primary">
-                    {steps[currentStepIndex].title}
-                  </CardTitle>
-                  <CardDescription className="text-text-secondary text-base">
-                    {steps[currentStepIndex].description}
-                  </CardDescription>
+                  {(() => {
+                    const step = steps[currentStepIndex];
+                    return (
+                      <>
+                        <CardTitle className="text-2xl text-text-primary font-display">
+                          {step?.title || ''}
+                        </CardTitle>
+                        <CardDescription className="text-text-secondary text-base">
+                          {step?.description || ''}
+                        </CardDescription>
+                      </>
+                    );
+                  })()}
                 </CardHeader>
 
                 <CardContent className="space-y-6">
@@ -263,9 +272,9 @@ export function OnboardingPage() {
               animate={{ opacity: 1, y: 0 }}
               className="mt-6"
             >
-              <Card className="card p-4 bg-bg-glass backdrop-blur-sm border-[#6366f1]/20">
+              <Card className="card p-4 bg-bg-glass backdrop-blur-sm border-ff-flame/20">
                 <div className="flex items-start gap-3">
-                  <Lightbulb className="w-5 h-5 text-[#6366f1] shrink-0 mt-0.5" />
+                  <Lightbulb className="w-5 h-5 text-ff-flame shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <h4 className="font-medium text-text-primary mb-2">
                       {currentStepIndex === 0 && 'Welcome to FunctionFly'}
@@ -291,10 +300,10 @@ export function OnboardingPage() {
                             <div
                               className={`p-2 rounded text-xs ${
                                 userRole === 'admin'
-                                  ? 'bg-purple-500/10 border border-purple-500/20 text-purple-400'
+                                  ? 'bg-ff-stratosphere/20 border border-ff-stratosphere/40 text-ff-stratosphere'
                                   : userRole === 'member'
-                                    ? 'bg-blue-500/10 border border-blue-500/20 text-blue-400'
-                                    : 'bg-green-500/10 border border-green-500/20 text-green-400'
+                                    ? 'bg-ff-cyan/20 border border-ff-cyan/40 text-ff-cyan'
+                                    : 'bg-ff-taxiway/20 border border-ff-taxiway/40 text-ff-taxiway'
                               }`}
                             >
                               👋 Welcome{' '}
@@ -326,8 +335,8 @@ export function OnboardingPage() {
                             Excellent! Your provider is connected. Now let's deploy your first
                             function to see FunctionFly in action.
                           </p>
-                          <div className="bg-green-500/10 border border-green-500/20 rounded p-2">
-                            <p className="text-green-400 text-xs">
+                          <div className="bg-ff-taxiway border border-ff-taxiway/30 rounded p-2">
+                            <p className="text-ff-pitch text-xs font-medium">
                               ✅ API token securely stored and encrypted
                             </p>
                           </div>
@@ -339,8 +348,8 @@ export function OnboardingPage() {
                             Your function is live! The final step tests your failover setup to
                             ensure high availability.
                           </p>
-                          <div className="bg-blue-500/10 border border-blue-500/20 rounded p-2">
-                            <p className="text-blue-400 text-xs">
+                          <div className="bg-ff-cyan/20 border border-ff-cyan/40 rounded p-2">
+                            <p className="text-ff-cyan text-xs font-medium">
                               💡 FunctionFly automatically routes traffic to healthy providers if
                               one fails
                             </p>
@@ -355,8 +364,8 @@ export function OnboardingPage() {
                               Great! Your failover setup is working. Now let's set up your team for
                               collaboration.
                             </p>
-                            <div className="bg-blue-500/10 border border-blue-500/20 rounded p-2">
-                              <p className="text-blue-400 text-xs">
+                            <div className="bg-ff-cyan/20 border border-ff-cyan/40 rounded p-2">
+                              <p className="text-ff-cyan text-xs font-medium">
                                 👥 Invite team members to collaborate on functions and share
                                 provider access
                               </p>
@@ -371,12 +380,12 @@ export function OnboardingPage() {
                               Excellent! Your FunctionFly setup is complete and ready for
                               production.
                             </p>
-                            <div className="bg-green-500/10 border border-green-500/20 rounded p-2">
-                              <p className="text-green-400 text-xs">
-                                🎉 You're all set to start deploying functions with high
-                                availability!
-                              </p>
-                            </div>
+<div className="bg-ff-taxiway/20 border border-ff-taxiway/40 rounded p-2">
+                            <p className="text-ff-taxiway text-xs font-medium">
+                              🎉 You're all set to start deploying functions with high
+                              availability!
+                            </p>
+                          </div>
                           </div>
                         )}
                       {completedSteps.length === steps.length && (
@@ -385,8 +394,8 @@ export function OnboardingPage() {
                             Congratulations! Your FunctionFly setup is complete and
                             production-ready.
                           </p>
-                          <div className="bg-purple-500/10 border border-purple-500/20 rounded p-2">
-                            <p className="text-purple-400 text-xs">
+                          <div className="bg-ff-stratosphere/10 border border-ff-stratosphere/20 rounded p-2">
+                            <p className="text-ff-stratosphere text-xs">
                               🚀 Your functions are now deployed across multiple providers with
                               automatic failover
                             </p>
@@ -400,84 +409,98 @@ export function OnboardingPage() {
             </motion.div>
           )}
 
-          {/* Step Indicators - Using standardized Stepper component */}
+          {/* Step Indicators - Custom branded stepper */}
           <div className="mt-8 flex justify-center">
-            <Stepper
-              steps={steps.map((s) => ({
-                id: s.id,
-                title: s.title,
-                description: s.description,
-                icon: <s.icon className="h-4 w-4" />,
-              }))}
-              currentStep={currentStepIndex}
-              completedSteps={completedSteps}
-              orientation="horizontal"
-              clickable={false}
-            >
-              <StepperContent />
-            </Stepper>
+            <div className="onboarding-stepper">
+              {steps.map((step, index) => {
+                if (!step) return null;
+                const isActive = index === currentStepIndex;
+                const isCompleted = completedSteps.includes(step.id);
+                const Icon = step.icon;
+                if (!Icon) return null;
+
+                return (
+                  <div
+                    key={step.id}
+                    className={`onboarding-stepper-item ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}
+                  >
+                    <div className="onboarding-stepper-icon">
+                      {isCompleted ? (
+                        <CheckCircle className="w-5 h-5" />
+                      ) : (
+                        Icon ? <Icon className="w-5 h-5" /> : null
+                      )}
+                    </div>
+                    <div className="onboarding-stepper-content">
+                      <span className="onboarding-stepper-title">{step.title}</span>
+                      <span className="onboarding-stepper-description">{step.description}</span>
+                    </div>
+                    {index < steps.length - 1 && (
+                      <div className={`onboarding-stepper-connector ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </main>
 
       {/* Skip Confirmation Dialog */}
-      <Dialog open={showSkipDialog} onOpenChange={setShowSkipDialog}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={showSkipDialog} onOpenChange={setShowSkipDialog} className="onboarding-skip-dialog">
+        <DialogContent className="sm:max-w-md" aria-describedby="skip-dialog-desc">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              <AlertTriangle className="w-5 h-5 onboarding-skip-warning-icon" />
               Skip Onboarding?
             </DialogTitle>
-            <DialogDescription className="space-y-3">
-              <p>
-                You're about to skip the remaining FunctionFly onboarding steps. Here's what that
-                means:
-              </p>
-              <div className="space-y-2 text-sm">
-                {currentStepIndex < 1 && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-red-400 mt-0.5">⚠️</span>
-                    <span>You won't connect any cloud providers for deployment</span>
-                  </div>
-                )}
-                {currentStepIndex < 2 && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-red-400 mt-0.5">⚠️</span>
-                    <span>You won't deploy your first function to test the setup</span>
-                  </div>
-                )}
-                {currentStepIndex < 3 && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-red-400 mt-0.5">⚠️</span>
-                    <span>You won't test automatic failover capabilities</span>
-                  </div>
-                )}
-                {userRole === 'admin' && currentStepIndex < 4 && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-amber-400 mt-0.5">💡</span>
-                    <span>You can still invite team members later from your dashboard</span>
-                  </div>
-                )}
-                <div className="flex items-start gap-2">
-                  <span className="text-blue-400 mt-0.5">💡</span>
-                  <span>You can resume onboarding anytime from your dashboard settings</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-green-400 mt-0.5">✅</span>
-                  <span>
-                    Basic functions can still be deployed, but without multi-provider benefits
-                  </span>
-                </div>
-              </div>
+            <DialogDescription id="skip-dialog-desc" className="onboarding-skip-text">
+              You're about to skip the remaining FunctionFly onboarding steps. Here's what that means:
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowSkipDialog(false)} className="flex-1">
+          <div className="space-y-3">
+            {currentStepIndex < 1 && (
+              <div className="onboarding-skip-alert-item">
+                <AlertTriangle className="w-4 h-4 onboarding-skip-alert-icon onboarding-skip-alert-icon--warning" />
+                <span className="onboarding-skip-text">You won't connect any cloud providers for deployment</span>
+              </div>
+            )}
+            {currentStepIndex < 2 && (
+              <div className="onboarding-skip-alert-item">
+                <AlertTriangle className="w-4 h-4 onboarding-skip-alert-icon onboarding-skip-alert-icon--warning" />
+                <span className="onboarding-skip-text">You won't deploy your first function to test the setup</span>
+              </div>
+            )}
+            {currentStepIndex < 3 && (
+              <div className="onboarding-skip-alert-item">
+                <AlertTriangle className="w-4 h-4 onboarding-skip-alert-icon onboarding-skip-alert-icon--warning" />
+                <span className="onboarding-skip-text">You won't test automatic failover capabilities</span>
+              </div>
+            )}
+            {userRole === 'admin' && currentStepIndex < 4 && (
+              <div className="onboarding-skip-alert-item">
+                <Lightbulb className="w-4 h-4 onboarding-skip-alert-icon onboarding-skip-alert-icon--info" />
+                <span className="onboarding-skip-text">You can still invite team members later from your dashboard</span>
+              </div>
+            )}
+            <div className="onboarding-skip-alert-item">
+              <Lightbulb className="w-4 h-4 onboarding-skip-alert-icon onboarding-skip-alert-icon--info" />
+              <span className="onboarding-skip-text">You can resume onboarding anytime from your dashboard settings</span>
+            </div>
+            <div className="onboarding-skip-alert-item">
+              <CheckCircle className="w-4 h-4 onboarding-skip-alert-icon onboarding-skip-alert-icon--success" />
+              <span className="onboarding-skip-text">
+                Basic functions can still be deployed, but without multi-provider benefits
+              </span>
+            </div>
+          </div>
+          <DialogFooter className="onboarding-skip-dialog-footer">
+            <button onClick={() => setShowSkipDialog(false)} className="onboarding-skip-btn-continue">
               Continue Onboarding
-            </Button>
-            <Button variant="destructive" onClick={confirmSkip} className="flex-1">
+            </button>
+            <button onClick={confirmSkip} className="onboarding-skip-btn-skip">
               Skip Anyway
-            </Button>
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -492,7 +515,7 @@ export function OnboardingPage() {
               recycle={false}
               numberOfPieces={200}
               gravity={0.3}
-              colors={['#6366f1', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4']}
+              colors={['#FF6B35', '#FFB800', '#00D4FF', '#5B7CF5', '#10b981', '#FF4F5E']}
             />
           )}
           <motion.div
@@ -513,7 +536,7 @@ export function OnboardingPage() {
                     key={i}
                     className="absolute w-3 h-3 rounded-full"
                     style={{
-                      background: `linear-gradient(45deg, ${['#6366f1', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'][Math.floor(Math.random() * 5)]}, transparent)`,
+                      background: `linear-gradient(45deg, ${['#FF6B35', '#FF4F5E', '#00D4FF', '#FFB800', '#5B7CF5'][Math.floor(Math.random() * 5)]}, transparent)`,
                       left: `${Math.random() * 100}%`,
                       top: `${Math.random() * 100}%`,
                     }}
@@ -539,7 +562,7 @@ export function OnboardingPage() {
               </div>
 
               <motion.div
-                className="w-24 h-24 bg-linear-to-r from-[#6366f1] to-[#8b5cf6] rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl"
+                className="w-24 h-24 bg-gradient-to-r from-ff-flame to-ff-afterburner rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl"
                 animate={{
                   rotate: [0, 10, -10, 0],
                   scale: [1, 1.1, 1],

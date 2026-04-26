@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { apiKeysApi, type APIKey, type CreateAPIKeyRequest, type APIKeyFilters } from '@/api/apikeys';
+import { apiKeysApi } from '@/api/apikeys';
+import type { APIKey, CreateAPIKeyRequest, APIKeyFilters, RotateAPIKeyRequest } from '@/types/api-key';
 
 // Query keys
 export const apiKeyKeys = {
@@ -86,7 +87,7 @@ export function useRotateAPIKey() {
 
   return useMutation({
     mutationFn: ({ id, expiresInDays }: { id: string; expiresInDays?: number }) =>
-      apiKeysApi.rotate(id, expiresInDays ? { expires_in_days: expiresInDays } : undefined),
+      apiKeysApi.rotate(id, expiresInDays ? { reason: undefined, expires_in_days: expiresInDays } as RotateAPIKeyRequest : undefined),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: apiKeyKeys.detail(id) });
       queryClient.invalidateQueries({ queryKey: apiKeyKeys.lists() });
@@ -118,7 +119,7 @@ export function useAddAPIKeyPermission() {
       resourceType: string;
       resourceId: string;
       action: string;
-    }) => apiKeysApi.addPermission(keyId, { resource_type: resourceType, resource_id: resourceId, action }),
+    }) => apiKeysApi.addPermission(keyId, { permission: action as 'read' | 'write' | 'execute' | 'admin', resource_type: resourceType as any, resource_id: resourceId }),
     onSuccess: (_, { keyId }) => {
       queryClient.invalidateQueries({ queryKey: apiKeyKeys.permissions(keyId) });
       toast.success('Permission added successfully');
@@ -162,7 +163,7 @@ export function useAddAPIKeyEnvironment() {
 
   return useMutation({
     mutationFn: ({ keyId, name, value }: { keyId: string; name: string; value: string }) =>
-      apiKeysApi.addEnvironment(keyId, { name, value }),
+      apiKeysApi.addEnvironment(keyId, { environment_id: value, environment_name: name }),
     onSuccess: (_, { keyId }) => {
       queryClient.invalidateQueries({ queryKey: apiKeyKeys.environments(keyId) });
       toast.success('Environment variable added successfully');

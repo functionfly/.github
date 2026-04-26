@@ -1,0 +1,780 @@
+/* ==========================================================================
+   FunctionFly™ Function Page Styles
+   Consistent styling for /fx/:author/:name pages
+   Uses Velocity brand palette, font stack, and theme-aware CSS variables
+   ========================================================================== */
+
+/* ==========================================================================
+   FUNCTION PAGE LAYOUT
+   ========================================================================== */
+
+.function-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--ff-bg-primary);
+  color: var(--ff-text-primary);
+  font-family: var(--font-sans);
+}
+
+.function-page-content {
+  flex: 1;
+  padding: 2rem 1rem;
+  max-width: 80rem;
+  margin: 0 auto;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .function-page-content {
+    padding: 3rem 1.5rem;
+  }
+}
+
+/* ==========================================================================
+   SECTION SPACING & ANIMATION
+   ========================================================================== */
+
+.function-page-section {
+  margin-bottom: 2rem;
+  animation: ff-fade-in 0.4s ease-out;
+}
+
+.function-page-section--delayed {
+  animation-delay: 0.15s;
+  animation-fill-mode: both;
+}
+
+.function-page-section--delayed-2 {
+  animation-delay: 0.25s;
+  animation-fill-mode: both;
+}
+
+.function-page-section--delayed-3 {
+  animation-delay: 0.35s;
+  animation-fill-mode: both;
+}
+
+@keyframes ff-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+   CTA BUTTONS ROW
+   ========================================================================== */
+
+.function-page-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.function-page-cta-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+}
+
+.function-page-cta-button--primary {
+  background: var(--ff-gradient-cta);
+  color: white;
+  border: none;
+  box-shadow:
+    0 4px 14px rgba(var(--ff-flame-rgb), 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.function-page-cta-button--primary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ff-glow-flame), 0 8px 25px rgba(var(--ff-flame-rgb), 0.3);
+}
+
+.function-page-cta-button--secondary {
+  background: transparent;
+  border: 1px solid var(--ff-border-default);
+  color: var(--ff-text-primary);
+}
+
+.function-page-cta-button--secondary:hover {
+  border-color: var(--ff-cyan);
+  color: var(--ff-cyan);
+  background: rgba(var(--ff-cyan-rgb), 0.05);
+}
+
+/* ==========================================================================
+   TRUST & VERIFICATION GRID
+   ========================================================================== */
+
+.function-page-trust-grid {
+  display: grid;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 768px) {
+  .function-page-trust-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.function-page-trust-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--ff-border-subtle);
+  background-color: var(--ff-bg-secondary);
+  background-image: var(--ff-gradient-sunset-approach);
+  background-size: cover;
+}
+
+.function-page-trust-card-inner {
+  text-align: center;
+}
+
+.function-page-trust-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--ff-flame);
+}
+
+.function-page-trust-card-title {
+  font-weight: 600;
+  color: var(--ff-text-primary);
+}
+
+.function-page-trust-card-description {
+  font-size: 0.875rem;
+  color: var(--ff-text-secondary);
+  max-width: 16rem;
+}
+
+/* ==========================================================================
+   REVIEWS SECTION
+   ========================================================================== */
+
+.function-page-reviews-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.function-page-reviews-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--ff-text-primary);
+}
+
+.function-page-reviews-count {
+  font-size: 0.875rem;
+  color: var(--ff-text-secondary);
+}
+
+.function-page-reviews-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.function-page-review-card {
+  border-radius: 0.75rem;
+  border: 1px solid var(--ff-border-subtle);
+  background-color: var(--ff-bg-secondary);
+  padding: 1rem;
+}
+
+.function-page-review-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.function-page-review-stars {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+.function-page-review-star {
+  width: 1rem;
+  height: 1rem;
+}
+
+.function-page-review-star--filled {
+  color: var(--ff-beacon);
+  fill: var(--ff-beacon);
+}
+
+.function-page-review-star--empty {
+  color: var(--ff-text-muted);
+}
+
+.function-page-review-star--empty svg {
+  opacity: 0.4;
+}
+
+.function-page-review-date {
+  font-size: 0.75rem;
+  color: var(--ff-text-muted);
+}
+
+.function-page-review-title {
+  font-weight: 500;
+  color: var(--ff-text-primary);
+  margin-top: 0.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.function-page-review-body {
+  font-size: 0.875rem;
+  color: var(--ff-text-secondary);
+  margin-top: 0.25rem;
+  white-space: pre-wrap;
+}
+
+.function-page-reviews-empty {
+  border-radius: 0.75rem;
+  border: 1px solid var(--ff-border-subtle);
+  background-color: var(--ff-bg-secondary);
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.function-page-reviews-empty-text {
+  font-size: 0.875rem;
+  color: var(--ff-text-muted);
+}
+
+/* ==========================================================================
+   API REFERENCE SECTION
+   ========================================================================== */
+
+.function-page-api-reference {
+  margin-bottom: 2rem;
+  margin-top: 2rem;
+  border-radius: 1rem;
+  border: 1px solid var(--ff-border-subtle);
+  background: linear-gradient(to bottom, var(--ff-bg-primary), var(--ff-bg-primary) 60%, var(--ff-bg-secondary) 100%);
+  box-shadow: var(--ff-shadow-sm);
+  overflow: hidden;
+}
+
+.function-page-api-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--ff-border-subtle);
+  background-color: var(--ff-bg-tertiary);
+  background-image: var(--ff-gradient-sunset-approach);
+  background-size: cover;
+}
+
+.function-page-api-header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  background-color: rgba(var(--ff-flame-rgb), 0.1);
+  color: var(--ff-flame);
+}
+
+.function-page-api-header-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--ff-text-primary);
+}
+
+.function-page-api-header-subtitle {
+  font-size: 0.75rem;
+  color: var(--ff-text-muted);
+}
+
+.function-page-api-layout {
+  display: grid;
+  gap: 0;
+}
+
+@media (min-width: 1024px) {
+  .function-page-api-layout {
+    grid-template-columns: minmax(0, 12rem) 1fr;
+  }
+}
+
+.function-page-api-nav {
+  padding: 1rem;
+  border-bottom: 1px solid var(--ff-border-subtle);
+}
+
+@media (min-width: 1024px) {
+  .function-page-api-nav {
+    border-bottom: none;
+    border-right: 1px solid var(--ff-border-subtle);
+    padding: 1.5rem;
+  }
+}
+
+.function-page-api-nav-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+@media (min-width: 1024px) {
+  .function-page-api-nav-list {
+    flex-direction: column;
+  }
+}
+
+.function-page-api-nav-link {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ff-text-secondary);
+  border-radius: 0.375rem;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.function-page-api-nav-link:hover {
+  background-color: var(--ff-bg-tertiary);
+  color: var(--ff-text-primary);
+}
+
+.function-page-api-nav-link--active {
+  background-color: rgba(var(--ff-flame-rgb), 0.1);
+  color: var(--ff-flame);
+}
+
+.function-page-api-content {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+@media (min-width: 1024px) {
+  .function-page-api-content {
+    max-height: none;
+  }
+}
+
+.function-page-api-section {
+  padding: 1.5rem;
+}
+
+.function-page-api-card {
+  border-radius: 0.75rem;
+  border: 1px solid var(--ff-border-subtle);
+  background-color: var(--ff-bg-primary);
+  padding: 1.25rem;
+  box-shadow: var(--ff-shadow-sm);
+}
+
+.function-page-api-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ff-text-primary);
+  margin-bottom: 0.75rem;
+}
+
+.function-page-api-section-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.375rem;
+  background-color: rgba(var(--ff-flame-rgb), 0.15);
+  color: var(--ff-flame);
+  font-size: 0.75rem;
+}
+
+.function-page-api-section-number--input {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.function-page-api-section-number--output {
+  background-color: rgba(139, 92, 246, 0.15);
+  color: #8b5cf6;
+}
+
+.function-page-api-description {
+  font-size: 0.875rem;
+  line-height: 1.625;
+  color: var(--ff-text-secondary);
+  margin-bottom: 1rem;
+}
+
+.function-page-api-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .function-page-api-meta-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.function-page-api-meta-item {
+  border-radius: 0.5rem;
+  border: 1px solid var(--ff-border-subtle);
+  background-color: var(--ff-bg-tertiary);
+  padding: 0.625rem 0.75rem;
+}
+
+.function-page-api-meta-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ff-text-muted);
+}
+
+.function-page-api-meta-value {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--ff-text-primary);
+  margin-top: 0.125rem;
+}
+
+.function-page-api-table {
+  width: 100%;
+  text-align: left;
+  font-size: 0.875rem;
+  border-collapse: collapse;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  border: 1px solid var(--ff-border-subtle);
+  margin-bottom: 1rem;
+}
+
+.function-page-api-table thead {
+  background-color: var(--ff-bg-tertiary);
+}
+
+.function-page-api-table th {
+  padding: 0.625rem 1rem;
+  font-weight: 500;
+  color: var(--ff-text-primary);
+  border-bottom: 1px solid var(--ff-border-subtle);
+}
+
+.function-page-api-table td {
+  padding: 0.5rem 1rem;
+  color: var(--ff-text-secondary);
+  border-bottom: 1px solid var(--ff-border-subtle);
+}
+
+.function-page-api-table tr:last-child td {
+  border-bottom: none;
+}
+
+.function-page-api-table-code {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ff-text-primary);
+}
+
+/* ==========================================================================
+   SCHEMA TABS
+   ========================================================================== */
+
+.function-page-tabs {
+  margin-bottom: 0.5rem;
+}
+
+.function-page-tabs-list {
+  display: flex;
+  gap: 0.25rem;
+  height: 2.25rem;
+  padding: 0.25rem;
+  background-color: var(--ff-bg-tertiary);
+  border-radius: 0.5rem;
+}
+
+.function-page-tabs-trigger {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--ff-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.function-page-tabs-trigger:hover {
+  color: var(--ff-text-primary);
+}
+
+.function-page-tabs-trigger--active {
+  background-color: var(--ff-bg-primary);
+  color: var(--ff-flame);
+  box-shadow: var(--ff-shadow-sm);
+}
+
+.function-page-tabs-content {
+  margin-top: 0;
+}
+
+.function-page-tabs-content--hidden {
+  display: none;
+}
+
+/* ==========================================================================
+   CODE EXAMPLES SECTION
+   ========================================================================== */
+
+.function-page-code-examples {
+  border-radius: 1rem;
+  border: 1px solid var(--ff-border-subtle);
+  background-color: var(--ff-bg-secondary);
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+
+.function-page-code-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--ff-border-subtle);
+}
+
+.function-page-code-title {
+  font-weight: 600;
+  color: var(--ff-text-primary);
+}
+
+.function-page-code-snippet {
+  padding: 1rem;
+  background-color: var(--ff-bg-primary);
+}
+
+/* ==========================================================================
+   INPUT/OUTPUT SCHEMA GRID
+   ========================================================================== */
+
+.function-page-schema-grid {
+  display: grid;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 768px) {
+  .function-page-schema-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.function-page-schema-card {
+  border-radius: 0.75rem;
+  border: 1px solid var(--ff-border-subtle);
+  background-color: var(--ff-bg-secondary);
+  padding: 1rem;
+}
+
+/* ==========================================================================
+   RELATED FUNCTIONS CTA
+   ========================================================================== */
+
+.function-page-related-cta {
+  border-radius: 1rem;
+  border: 1px solid var(--ff-border-subtle);
+  background-color: var(--ff-bg-secondary);
+  padding: 1.5rem;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.function-page-related-cta-title {
+  font-weight: 600;
+  color: var(--ff-text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.function-page-related-cta-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  color: var(--ff-text-primary);
+  background-color: var(--ff-bg-tertiary);
+  border: 1px solid var(--ff-border-default);
+  border-radius: 0.5rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.function-page-related-cta-button:hover {
+  border-color: var(--ff-flame);
+  color: var(--ff-flame);
+  background: rgba(var(--ff-flame-rgb), 0.05);
+}
+
+/* ==========================================================================
+   DIVIDER
+   ========================================================================== */
+
+.function-page-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ff-border-default), transparent);
+  margin: 2rem 0;
+}
+
+/* ==========================================================================
+   LOADING STATE
+   ========================================================================== */
+
+.function-page-loading {
+  border-radius: 0.75rem;
+  border: 1px solid var(--ff-border-subtle);
+  background-color: var(--ff-bg-secondary);
+  padding: 1rem;
+  font-size: 0.875rem;
+  color: var(--ff-text-muted);
+}
+
+/* ==========================================================================
+   LIGHT MODE ADJUSTMENTS
+   ========================================================================== */
+
+[data-theme='light'] .function-page-api-header {
+  background-image: none;
+}
+
+[data-theme='light'] .function-page-trust-card {
+  background-image: none;
+}
+
+[data-theme='light'] .function-page-review-star--filled {
+  color: #d97706;
+  fill: #d97706;
+}
+
+[data-theme='light'] .function-page-review-star--empty {
+  color: #9ca3af;
+}
+
+/* ==========================================================================
+   SCROLLBAR STYLING
+   ========================================================================== */
+
+.function-page-api-content::-webkit-scrollbar {
+  width: 0.5rem;
+  height: 0.5rem;
+}
+
+.function-page-api-content::-webkit-scrollbar-track {
+  background: var(--ff-bg-primary);
+}
+
+.function-page-api-content::-webkit-scrollbar-thumb {
+  background: var(--ff-bg-elevated);
+  border-radius: 0.25rem;
+}
+
+.function-page-api-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--ff-flame-rgb), 0.5);
+}
+
+/* ==========================================================================
+   CODE BLOCK SYNTAX HIGHLIGHTING - LIGHT MODE FIX
+   ========================================================================== */
+
+/* Override SyntaxHighlighter dark theme for light mode */
+[data-theme='light'] .functionfly-code-block pre {
+  background: #1e1e1e !important;
+  border: 1px solid var(--ff-border-default);
+}
+
+[data-theme='light'] .functionfly-code-block code {
+  color: #d4d4d4 !important;
+}
+
+/* Token colors that work on dark background in light mode */
+[data-theme='light'] .functionfly-code-block .token.string {
+  color: #ce9178 !important;
+}
+
+[data-theme='light'] .functionfly-code-block .token.number {
+  color: #b5cea8 !important;
+}
+
+[data-theme='light'] .functionfly-code-block .token.keyword {
+  color: #569cd6 !important;
+}
+
+[data-theme='light'] .functionfly-code-block .token.function {
+  color: #dcdcaa !important;
+}
+
+[data-theme='light'] .functionfly-code-block .token.comment {
+  color: #6a9955 !important;
+  font-style: italic;
+}
+
+[data-theme='light'] .functionfly-code-block .token.operator {
+  color: #d4d4d4 !important;
+}
+
+[data-theme='light'] .functionfly-code-block .token.punctuation {
+  color: #d4d4d4 !important;
+}
+
+[data-theme='light'] .functionfly-code-block .token.property {
+  color: #9cdcfe !important;
+}
+
+[data-theme='light'] .functionfly-code-block .token.boolean {
+  color: #569cd6 !important;
+}
+
+/* Line numbers in light mode */
+[data-theme='light'] .functionfly-code-block .linenumber {
+  color: #858585 !important;
+}
+
+/* Background wrapper for code blocks in light mode */
+[data-theme='light'] .functionfly-code-block .relative {
+  background: #1e1e1e !important;
+}

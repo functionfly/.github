@@ -8,6 +8,7 @@ import {
   type ConversationType,
 } from '@/api/conversations';
 import { useConversationWebSocket } from './useConversationWebSocket';
+import { useAuthStore } from '@/stores/authStore';
 
 // Query keys
 export const conversationKeys = {
@@ -22,18 +23,20 @@ export const conversationKeys = {
 
 // List conversations
 export function useConversations(params?: { limit?: number; offset?: number }) {
+  const currentUser = useAuthStore((state) => state.user);
   return useQuery({
     queryKey: conversationKeys.lists(params),
-    queryFn: () => conversationsApi.listConversations(params),
+    queryFn: () => conversationsApi.listConversations(currentUser?.username || '', params),
     staleTime: 1000 * 30,
   });
 }
 
 // Get conversation
 export function useConversation(id: string) {
+  const currentUser = useAuthStore((state) => state.user);
   return useQuery({
     queryKey: conversationKeys.detail(id),
-    queryFn: () => conversationsApi.getConversation(id),
+    queryFn: () => conversationsApi.getConversation(currentUser?.username || '', id),
     enabled: !!id,
     staleTime: 1000 * 30,
   });
@@ -42,6 +45,7 @@ export function useConversation(id: string) {
 // Create conversation
 export function useCreateConversation() {
   const queryClient = useQueryClient();
+  const currentUser = useAuthStore((state) => state.user);
 
   return useMutation({
     mutationFn: (data: {
@@ -49,7 +53,7 @@ export function useCreateConversation() {
       participant_ids: string[];
       source_thread_id?: string;
       organization_id?: string;
-    }) => conversationsApi.createConversation(data),
+    }) => conversationsApi.createConversation(currentUser?.username || '', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: conversationKeys.all });
       toast.success('Conversation created successfully');
@@ -63,9 +67,10 @@ export function useCreateConversation() {
 // Mark conversation as read
 export function useMarkConversationRead() {
   const queryClient = useQueryClient();
+  const currentUser = useAuthStore((state) => state.user);
 
   return useMutation({
-    mutationFn: (conversationId: string) => conversationsApi.markConversationRead(conversationId),
+    mutationFn: (conversationId: string) => conversationsApi.markConversationRead(currentUser?.username || '', conversationId),
     onSuccess: (_, conversationId) => {
       queryClient.invalidateQueries({ queryKey: conversationKeys.detail(conversationId) });
       queryClient.invalidateQueries({ queryKey: conversationKeys.lists() });
@@ -81,9 +86,10 @@ export function useMessages(
   conversationId: string,
   params?: { limit?: number; offset?: number }
 ) {
+  const currentUser = useAuthStore((state) => state.user);
   return useQuery({
     queryKey: conversationKeys.messages(conversationId, params),
-    queryFn: () => conversationsApi.listMessages(conversationId, params),
+    queryFn: () => conversationsApi.listMessages(currentUser?.username || '', conversationId, params),
     enabled: !!conversationId,
     staleTime: 1000 * 60, // Cache aggressively; WS pushes keep it fresh
   });
@@ -145,6 +151,7 @@ export function useRealtimeMessages(
 // Create message
 export function useCreateMessage() {
   const queryClient = useQueryClient();
+  const currentUser = useAuthStore((state) => state.user);
 
   return useMutation({
     mutationFn: ({
@@ -156,7 +163,7 @@ export function useCreateMessage() {
       content: string;
       embeddings?: Record<string, unknown>;
     }) =>
-      conversationsApi.createMessage(conversationId, {
+      conversationsApi.createMessage(currentUser?.username || '', conversationId, {
         content,
         embeddings,
       }),
@@ -173,10 +180,11 @@ export function useCreateMessage() {
 // Resolve conversation
 export function useResolveConversation() {
   const queryClient = useQueryClient();
+  const currentUser = useAuthStore((state) => state.user);
 
   return useMutation({
     mutationFn: ({ conversationId, messageId }: { conversationId: string; messageId?: string }) =>
-      conversationsApi.resolveConversation(conversationId, messageId),
+      conversationsApi.resolveConversation(currentUser?.username || '', conversationId, messageId),
     onSuccess: (_, { conversationId }) => {
       queryClient.invalidateQueries({ queryKey: conversationKeys.detail(conversationId) });
       toast.success('Conversation resolved');
@@ -189,9 +197,10 @@ export function useResolveConversation() {
 
 // List bounties
 export function useBounties(conversationId: string) {
+  const currentUser = useAuthStore((state) => state.user);
   return useQuery({
     queryKey: conversationKeys.bounties(conversationId),
-    queryFn: () => conversationsApi.listBounties(conversationId),
+    queryFn: () => conversationsApi.listBounties(currentUser?.username || '', conversationId),
     enabled: !!conversationId,
     staleTime: 1000 * 30,
   });
@@ -200,6 +209,7 @@ export function useBounties(conversationId: string) {
 // Create bounty
 export function useCreateBounty() {
   const queryClient = useQueryClient();
+  const currentUser = useAuthStore((state) => state.user);
 
   return useMutation({
     mutationFn: ({
@@ -213,7 +223,7 @@ export function useCreateBounty() {
       amountCents?: number;
       securityWeightMultiplier?: number;
     }) =>
-      conversationsApi.createBounty(conversationId, {
+      conversationsApi.createBounty(currentUser?.username || '', conversationId, {
         amount_reputation: amountReputation,
         amount_cents: amountCents,
         security_weight_multiplier: securityWeightMultiplier,
@@ -231,10 +241,11 @@ export function useCreateBounty() {
 // Claim bounty
 export function useClaimBounty() {
   const queryClient = useQueryClient();
+  const currentUser = useAuthStore((state) => state.user);
 
   return useMutation({
     mutationFn: ({ conversationId, bountyId }: { conversationId: string; bountyId: string }) =>
-      conversationsApi.claimBounty(conversationId, bountyId),
+      conversationsApi.claimBounty(currentUser?.username || '', conversationId, bountyId),
     onSuccess: (_, { conversationId }) => {
       queryClient.invalidateQueries({ queryKey: conversationKeys.bounties(conversationId) });
       toast.success('Bounty claimed successfully');

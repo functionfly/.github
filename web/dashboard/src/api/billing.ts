@@ -7,6 +7,16 @@ export interface PaymentMethod {
   last4: string;
   exp_month: number;
   exp_year: number;
+  is_default?: boolean;
+  stripe_payment_method_id?: string;
+}
+
+export interface PaymentMethodsResponse {
+  payment_methods: PaymentMethod[];
+}
+
+export interface SetupIntentResponse {
+  client_secret: string;
 }
 
 export interface CreatePortalSessionResponse {
@@ -200,12 +210,65 @@ export async function createCheckoutSession(
 }
 
 /**
+ * Get the current user's payment methods.
+ */
+export async function listPaymentMethods(): Promise<PaymentMethodsResponse> {
+  return apiClient.get<PaymentMethodsResponse>('/v1/billing/payment-methods')
+}
+
+/**
+ * Create a Stripe SetupIntent for collecting payment methods client-side.
+ */
+export async function createSetupIntent(): Promise<SetupIntentResponse> {
+  const csrfToken = await apiClient.fetchCSRFToken()
+  const headers: Record<string, string> = {}
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken
+  }
+
+  return apiClient.post<SetupIntentResponse>('/v1/billing/payment-methods/setup-intent', {}, { headers })
+}
+
+/**
+ * Set a payment method as the default for the customer.
+ */
+export async function setDefaultPaymentMethod(paymentMethodId: string): Promise<{ message: string }> {
+  const csrfToken = await apiClient.fetchCSRFToken()
+  const headers: Record<string, string> = {}
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken
+  }
+
+  return apiClient.post<{ message: string }>(
+    '/v1/billing/payment-methods/default',
+    { payment_method_id: paymentMethodId },
+    { headers }
+  )
+}
+
+/**
+ * Remove a payment method from the customer's account.
+ */
+export async function removePaymentMethod(paymentMethodId: string): Promise<{ message: string }> {
+  const csrfToken = await apiClient.fetchCSRFToken()
+  const headers: Record<string, string> = {}
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken
+  }
+
+  return apiClient.delete<{ message: string }>(
+    `/v1/billing/payment-methods/${paymentMethodId}`,
+    { headers }
+  )
+}
+
+/**
  * Get the current user's subscription details.
  * Returns subscription information including plan, status, and billing period.
  */
 export async function getSubscription(): Promise<Subscription> {
-  const response = await apiClient.get<Subscription>('/v1/billing/subscription');
-  return response;
+  const response = await apiClient.get<Subscription>('/v1/billing/subscription')
+  return response
 }
 
 /**
@@ -591,6 +654,258 @@ export async function convertToPaid(bundleId: string): Promise<CreateCheckoutSes
   return apiClient.post<CreateCheckoutSessionResponse>(
     '/v1/billing/convert-to-paid',
     { bundle_id: bundleId },
+    { headers }
+  );
+}
+
+// ==================== Revenue Recognition (ASC 606/IFRS 15) ====================
+
+export interface DeferredRevenueResponse {
+  tenant_id: string;
+  period: string;
+  opening_balance_cents: number;
+  new_deferred_cents: number;
+  recognized_cents: number;
+  closing_balance_cents: number;
+}
+
+export interface RecognizedRevenueResponse {
+  tenant_id: string;
+  period: string;
+  subscription_revenue_cents: number;
+  usage_revenue_cents: number;
+  one_time_revenue_cents: number;
+  total_cents: number;
+}
+
+export interface RevenueReportResponse {
+  report_id: string;
+  period: string;
+  total_revenue_cents: number;
+  total_deferred_cents: number;
+  total_recognized_cents: number;
+  opening_deferred_cents: number;
+  new_deferred_cents: number;
+  recognized_from_deferred_cents: number;
+  closing_deferred_cents: number;
+  over_time_revenue_cents: number;
+  point_in_time_revenue_cents: number;
+}
+
+export interface UnbilledRevenueResponse {
+  tenant_id: string;
+  unbilled_revenue_cents: number;
+}
+
+export interface AllocationRequest {
+  invoice_id: string;
+  invoice_amount_cents: number;
+  currency: string;
+  line_items: AllocationLineItem[];
+}
+
+export interface AllocationLineItem {
+  description: string;
+  amount_cents: number;
+  revenue_type: 'subscription' | 'usage' | 'one_time';
+  ssp_cents: number;
+  recognition_method: 'over_time' | 'point_in_time';
+  start_date: string;
+  end_date?: string;
+  delivery_pattern: 'linear' | 'milestone' | 'usage_based';
+}
+
+export interface AllocationResponse {
+  performance_obligation_ids: string[];
+  schedule_count: number;
+}
+
+/**
+ * Get deferred revenue summary for a period.
+ * GET /v1/billing/revenue/deferred?period=YYYY-MM
+ */
+export async function getDeferredRevenue(period?: string): Promise<DeferredRevenueResponse> {
+  const params = period ? `?period=${period}` : '';
+  return apiClient.get<DeferredRevenueResponse>(`/v1/billing/revenue/deferred${params}`);
+}
+
+/**
+ * Get recognized revenue summary for a period.
+ * GET /v1/billing/revenue/recognized?period=YYYY-MM
+ */
+export async function getRecognizedRevenue(period?: string): Promise<RecognizedRevenueResponse> {
+  const params = period ? `?period=${period}` : '';
+  return apiClient.get<RecognizedRevenueResponse>(`/v1/billing/revenue/recognized${params}`);
+}
+
+/**
+ * Get full revenue recognition report for a period.
+ * GET /v1/billing/revenue/report?period=YYYY-MM
+ */
+export async function getRevenueReport(period?: string): Promise<RevenueReportResponse> {
+  const params = period ? `?period=${period}` : '';
+  return apiClient.get<RevenueReportResponse>(`/v1/billing/revenue/report${params}`);
+}
+
+/**
+ * Get unbilled revenue amount (remaining to be recognized).
+ * GET /v1/billing/revenue/unbilled
+ */
+export async function getUnbilledRevenue(): Promise<UnbilledRevenueResponse> {
+  return apiClient.get<UnbilledRevenueResponse>('/v1/billing/revenue/unbilled');
+}
+
+/**
+ * Manually trigger revenue recognition for a schedule.
+ * POST /v1/billing/revenue/recognize
+ */
+export async function recognizeRevenue(scheduleId: string): Promise<{ status: string }> {
+  const csrfToken = await apiClient.fetchCSRFToken();
+  const headers: Record<string, string> = {};
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken;
+  }
+
+  return apiClient.post<{ status: string }>(
+    '/v1/billing/revenue/recognize',
+    { schedule_id: scheduleId },
+    { headers }
+  );
+}
+
+/**
+ * Allocate invoice to performance obligations and create recognition schedules.
+ * POST /v1/billing/revenue/allocate
+ */
+export async function allocateRevenue(request: AllocationRequest): Promise<AllocationResponse> {
+  const csrfToken = await apiClient.fetchCSRFToken();
+  const headers: Record<string, string> = {};
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken;
+  }
+
+  return apiClient.post<AllocationResponse>(
+    '/v1/billing/revenue/allocate',
+    request,
+    { headers }
+  );
+}
+
+// ==================== Affiliate / Referral API ====================
+
+export interface AffiliateCode {
+  id: string;
+  code: string;
+  publisher_id: string;
+  tenant_id?: string;
+  name: string;
+  description?: string;
+  commission_type: 'percent' | 'fixed';
+  commission_value: number;
+  max_commissions?: number;
+  max_referrals?: number;
+  total_referrals: number;
+  total_commissions: number;
+  pending_commissions: number;
+  pending_earnings_cents: number;
+  total_earnings_cents: number;
+  paid_out_earnings_cents: number;
+  valid_from?: string;
+  valid_until?: string;
+  is_active: boolean;
+  utm_source?: string;
+  utm_campaign?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AffiliateReferral {
+  id: string;
+  affiliate_code_id: string;
+  referred_tenant_id: string;
+  subscription_id?: string;
+  utm_source?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_term?: string;
+  ip_address?: string;
+  user_agent?: string;
+  status: 'pending' | 'converted' | 'qualified' | 'canceled';
+  referred_at: string;
+  converted_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AffiliateCommission {
+  id: string;
+  affiliate_code_id: string;
+  referral_id: string;
+  commission_type: 'percent' | 'fixed';
+  commission_value: number;
+  base_amount_cents: number;
+  base_amount_usd: number;
+  commission_cents: number;
+  commission_usd: number;
+  status: 'pending' | 'approved' | 'paid' | 'canceled';
+  paid_at?: string;
+  payment_batch_id?: string;
+  payment_batch?: string;
+  subscription_id?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AffiliateEarningsSummary {
+  pending_earnings_cents: number;
+  total_earnings_cents: number;
+  paid_out_cents: number;
+  total_referrals: number;
+  pending_commissions: number;
+  codes_count: number;
+}
+
+export interface ApplyAffiliateCodeResponse {
+  success: boolean;
+  code: string;
+  name: string;
+  commission_type: string;
+  commission_value: number;
+}
+
+export async function getMyAffiliateCodes(): Promise<AffiliateCode[]> {
+  return apiClient.get<AffiliateCode[]>('/v1/affiliate/my-codes');
+}
+
+export async function getMyAffiliateCommissions(): Promise<AffiliateCommission[]> {
+  return apiClient.get<AffiliateCommission[]>('/v1/affiliate/my-commissions');
+}
+
+export async function getMyAffiliateReferrals(): Promise<AffiliateReferral[]> {
+  return apiClient.get<AffiliateReferral[]>('/v1/affiliate/referrals');
+}
+
+export async function getAffiliateEarningsSummary(): Promise<AffiliateEarningsSummary> {
+  return apiClient.get<AffiliateEarningsSummary>('/v1/affiliate/earnings-summary');
+}
+
+export async function applyAffiliateCode(request: {
+  code: string;
+  utm_source?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_term?: string;
+}): Promise<ApplyAffiliateCodeResponse> {
+  const csrfToken = await apiClient.fetchCSRFToken();
+  const headers: Record<string, string> = {};
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken;
+  }
+
+  return apiClient.post<ApplyAffiliateCodeResponse>(
+    '/v1/affiliate/apply-code',
+    request,
     { headers }
   );
 }

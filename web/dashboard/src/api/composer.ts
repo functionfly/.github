@@ -403,7 +403,7 @@ export const galleryApi = {
 
   // Get function details
   getFunction: async (author: string, name: string): Promise<GalleryFunction> => {
-    const response = await apiClient.get(`/v1/registry/functions/${author}/${name}`);
+    const response = await apiClient.get(`/v1/functions/${author}/${name}`);
     return galleryFunctionSchema.parse(response);
   },
 
@@ -417,19 +417,19 @@ export const galleryApi = {
       private_function?: boolean;
     }
   ): Promise<RemixResponse> => {
-    const response = await apiClient.post(`/v1/registry/functions/${author}/${name}/remix`, data);
+    const response = await apiClient.post(`/v1/functions/${author}/${name}/remix`, data);
     return remixResponseSchema.parse(response);
   },
 
   // Like a function
   like: async (author: string, name: string): Promise<{ liked: boolean; like_count: number }> => {
-    const response = await apiClient.post(`/v1/registry/functions/${author}/${name}/likes`);
+    const response = await apiClient.post(`/v1/functions/${author}/${name}/likes`);
     return z.object({ liked: z.boolean(), like_count: z.number() }).parse(response);
   },
 
   // Get likes for a function
   getLikes: async (author: string, name: string): Promise<{ like_count: number; liked_by_user: boolean }> => {
-    const response = await apiClient.get(`/v1/registry/functions/${author}/${name}/likes`);
+    const response = await apiClient.get(`/v1/functions/${author}/${name}/likes`);
     return z.object({ like_count: z.number(), liked_by_user: z.boolean() }).parse(response);
   },
 
@@ -445,7 +445,7 @@ export const galleryApi = {
       customization: string;
     }>;
   }> => {
-    const response = await apiClient.get(`/v1/registry/functions/${author}/${name}/remix/history`);
+    const response = await apiClient.get(`/v1/functions/${author}/${name}/remix/history`);
     return z.object({
       remix_count: z.number(),
       is_remix: z.boolean(),
@@ -469,7 +469,7 @@ export const galleryApi = {
     function_name: string;
     is_own_function: boolean;
   }> => {
-    const response = await apiClient.get(`/v1/registry/functions/${author}/${name}/remix/cost`);
+    const response = await apiClient.get(`/v1/functions/${author}/${name}/remix/cost`);
     return z.object({
       cost_usd: z.number(),
       balance_usd: z.number(),

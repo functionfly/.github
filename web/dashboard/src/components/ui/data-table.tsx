@@ -66,14 +66,14 @@ export interface DataTableProps<TData> {
 // Export Utilities
 // ============================================================================
 
-function downloadCSV(data: any[], columns: ColumnDef<any, any>[], filename: string) {
+function downloadCSV(data: any[], columns: any[], filename: string) {
   const headers = columns
-    .filter((col) => col.id !== "select")
-    .map((col) => {
+    .filter((col: any) => col.id !== "select")
+    .map((col: any) => {
       const header = col.header;
       if (typeof header === "string") return header;
       if (typeof header === "function") {
-        const result = header({ column: col as any, header: col.header as any });
+        const result = header({ column: col, header: col.header, table: {} });
         if (typeof result === "string") return result;
         return col.id || "Column";
       }
@@ -82,10 +82,10 @@ function downloadCSV(data: any[], columns: ColumnDef<any, any>[], filename: stri
 
   const rows = data.map((row) =>
     columns
-      .filter((col) => col.id !== "select")
-      .map((col) => {
+      .filter((col: any) => col.id !== "select")
+      .map((col: any) => {
         const accessor = col.accessorKey as string;
-        const value = accessor ? (row as any)[accessor] : "";
+        const value = accessor ? row[accessor] : "";
         // Escape CSV values
         if (typeof value === "string" && (value.includes(",") || value.includes('"') || value.includes("\n"))) {
           return `"${value.replace(/"/g, '""')}"`;
@@ -138,14 +138,19 @@ export function DataTable<TData>({
 
     const selectColumn: ColumnDef<TData, any> = {
       id: "select",
-      header: ({ table }) => (
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-          className="translate-y-[2px]"
-        />
-      ),
+      header: ({ table }) => {
+        const isAllSelected = table.getIsAllPageRowsSelected();
+        const isSomeSelected = table.getIsSomePageRowsSelected();
+        const checked: boolean | "indeterminate" = isAllSelected ? true : isSomeSelected ? "indeterminate" : false;
+        return (
+          <Checkbox
+            checked={checked}
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label="Select all"
+            className="translate-y-[2px]"
+          />
+        );
+      },
       cell: ({ row }) => (
         <Checkbox
           checked={row.getIsSelected()}

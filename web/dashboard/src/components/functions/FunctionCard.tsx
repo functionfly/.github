@@ -33,12 +33,14 @@
  */
 
 import * as React from "react";
+import { useState } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import {
   CheckCircle,
   Code,
   DollarSign,
   Heart,
+  Loader2,
   MoreHorizontal,
   Play,
   Share2,
@@ -56,6 +58,7 @@ import {
   X,
   ExternalLink,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn, formatNumber } from "@/lib/utils";
 import type {
   FunctionCardData,
@@ -448,9 +451,36 @@ const FunctionCard = React.forwardRef<HTMLDivElement, FunctionCardProps>(
       onExecute?.(data.id);
     };
 
-    const handleShare = (e: React.MouseEvent) => {
+    const [isSharing, setIsSharing] = useState(false);
+
+    const handleShare = async (e: React.MouseEvent) => {
       e.stopPropagation();
-      onShare?.(data.id);
+      e.preventDefault();
+      setIsSharing(true);
+
+      const shareUrl = `${window.location.origin}/fx/${data.author.username}/${data.name}`;
+      const shareData = {
+        title: `${data.author.username}/${data.name}`,
+        text: data.description || `Check out ${data.name} on FunctionFly`,
+        url: shareUrl,
+      };
+
+      try {
+        if (navigator.share) {
+          await navigator.share(shareData);
+          toast.success('Shared successfully');
+        } else {
+          await navigator.clipboard.writeText(shareUrl);
+          toast.success('Link copied to clipboard');
+        }
+        onShare?.(data.id);
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') {
+          toast.error('Failed to share');
+        }
+      } finally {
+        setIsSharing(false);
+      }
     };
 
     // ============================================================================
@@ -709,7 +739,7 @@ const FunctionCard = React.forwardRef<HTMLDivElement, FunctionCardProps>(
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mt-4">
                 {onFavorite && (
                   <Button
                     variant="ghost"
@@ -733,20 +763,25 @@ const FunctionCard = React.forwardRef<HTMLDivElement, FunctionCardProps>(
                     size="icon"
                     className="h-9 w-9"
                     onClick={handleShare}
+                    disabled={isSharing}
                     aria-label="Share function"
                   >
-                    <Share2 className="h-4 w-4" aria-hidden="true" />
+                    {isSharing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Share2 className="h-4 w-4" aria-hidden="true" />
+                    )}
                   </Button>
                 )}
                 {onView && (
-                  <Button variant="outline" onClick={handleView}>
-                    <ExternalLink className="h-4 w-4 mr-2" />
+                  <Button variant="outline" onClick={handleView} className="gap-2">
+                    <ExternalLink className="h-4 w-4" />
                     View Details
                   </Button>
                 )}
                 {onExecute && (
-                  <Button onClick={handleExecute}>
-                    <Play className="h-4 w-4 mr-2" />
+                  <Button variant="outline" onClick={handleExecute} className="gap-2">
+                    <Play className="h-4 w-4" />
                     Execute
                   </Button>
                 )}

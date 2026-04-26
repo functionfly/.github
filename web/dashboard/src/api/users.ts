@@ -554,4 +554,14 @@ export const usersApi = {
       { headers }
     );
   },
+
+  getCustomStatus: () =>
+    apiClient.get<{ customStatus: string; customStatusEmoji: string }>('/v1/users/me/settings/status'),
+
+  updateCustomStatus: (data: { customStatus: string; customStatusEmoji?: string }) => {
+    return apiClient.patch<{ message: string; customStatus: string; customStatusEmoji: string }>(
+      '/v1/users/me/settings/status',
+      data
+    );
+  },
 };

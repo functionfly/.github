@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { getAnalyticsSettings, updateAnalyticsSettings, type UpdateAnalyticsRequest } from '@/api/analytics';
+import { getAnalyticsSettings, updateAnalyticsSettings } from '@/api/analytics';
+import type { UpdateAnalyticsRequest } from '@/types';
 
 // Query keys
 export const analyticsKeys = {

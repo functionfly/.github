@@ -1,148 +1,178 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '../lib/neon';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuthStore } from '../stores/authStore';
-import { useRealtimeSubscription } from './useRealtimeSubscription.ts';
-import { PresenceEvent } from './types';
+import { presenceApi, PresenceWebSocket, type UserPresence, type PresenceSocketEvent, type PresenceStatus } from '../api/presence';
 
-// Hook for user presence/online status
-export function useUserPresence() {
+export interface UsePresenceOptions {
+  enableWebSocket?: boolean;
+  heartbeatInterval?: number;
+  reconnectAttempts?: number;
+}
+
+export interface UsePresenceReturn {
+  onlineUsers: UserPresence[];
+  myPresence: UserPresence | null;
+  isConnected: boolean;
+  isLoading: boolean;
+  error: string | null;
+  updatePresence: () => Promise<void>;
+  getUserStatus: (userId: string) => PresenceStatus;
+  formatLastSeen: (timestamp: string | null) => string;
+}
+
+const defaultOptions: UsePresenceOptions = {
+  enableWebSocket: true,
+  heartbeatInterval: 30000,
+  reconnectAttempts: 5,
+};
+
+export function usePresence(options: UsePresenceOptions = defaultOptions): UsePresenceReturn {
+  const opts = { ...defaultOptions, ...options };
   const { user } = useAuthStore();
-  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
-  const [presenceEvents, setPresenceEvents] = useState<PresenceEvent[]>([]);
+  const [onlineUsers, setOnlineUsers] = useState<UserPresence[]>([]);
+  const [myPresence, setMyPresence] = useState<UserPresence | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const wsRef = useRef<PresenceWebSocket | null>(null);
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const { isConnected } = useRealtimeSubscription<PresenceEvent>(
-    `tenant_${user?.tenantId}_presence`,
-    'presence_join',
-    (event) => {
-      if (event.type === 'presence_join') {
-        setOnlineUsers(prev => [...new Set([...prev, ...event.new_presences?.map(p => p.user_id) || []])]);
-      } else if (event.type === 'presence_leave') {
-        setOnlineUsers(prev => prev.filter(id => !event.left_presences?.some(p => p.user_id === id)));
+  const fetchPresence = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      const [presenceRes, myRes] = await Promise.all([
+        presenceApi.getPresence().catch(() => null),
+        presenceApi.getMyPresence().catch(() => null),
+      ]);
+
+      if (presenceRes?.data?.users) {
+        setOnlineUsers(presenceRes.data.users.filter(u => u.userId !== user.id));
       }
-      setPresenceEvents(prev => [event, ...prev]);
-    }
-  );
 
-  // Track own presence via database update
-  useEffect(() => {
-    if (user?.id) {
-      const updatePresence = async () => {
-        try {
-          const { error } = await supabase
-            .from('user_profiles')
-            .update({
-              last_active_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .eq('user_id', user.id);
+      if (myRes?.data) {
+        setMyPresence({
+          userId: myRes.data.userId,
+          status: myRes.data.status,
+          lastActive: myRes.data.lastActive,
+          tenantId: myRes.data.tenantId,
+          username: myRes.data.username,
+          displayName: myRes.data.name,
+        });
+      }
 
-          if (error) {
-            console.error('Error updating presence:', error);
-          }
-        } catch (error) {
-          console.error('Error updating presence:', error);
-        }
-      };
-
-      // Update presence immediately and then every 30 seconds
-      updatePresence();
-      const interval = setInterval(updatePresence, 30000);
-
-      return () => {
-        clearInterval(interval);
-      };
+      setError(null);
+    } catch (err) {
+      console.error('Failed to fetch presence:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch presence');
+    } finally {
+      setIsLoading(false);
     }
   }, [user?.id]);
 
-  return {
-    onlineUsers,
-    presenceEvents,
-    isConnected,
-  };
-}
+  const updatePresence = useCallback(async () => {
+    if (!user?.id) return;
 
-// Hook to get user details for presence indicators
-export function useUserPresenceDetails(userIds: string[]) {
-  const [userDetails, setUserDetails] = useState<Array<{
-    id: string;
-    name: string;
-    email: string;
-    avatar_url?: string;
-    last_active_at?: string;
-  }>>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+    try {
+      await presenceApi.updateMyPresence();
+    } catch (err) {
+      console.error('Failed to update presence:', err);
+    }
+  }, [user?.id]);
 
-  useEffect(() => {
-    const fetchUserDetails = async () => {
-      if (userIds.length === 0) {
-        setUserDetails([]);
-        return;
-      }
+  const connectWebSocket = useCallback(() => {
+    if (wsRef.current?.isConnected()) return;
 
-      setLoading(true);
+    const ws = new PresenceWebSocket();
+    wsRef.current = ws;
+
+    ws.on('connected', () => {
+      setIsConnected(true);
       setError(null);
+    });
 
-      try {
-        const { getUsersByIds } = await import('../lib/neon');
-        const details = await getUsersByIds(userIds);
-        setUserDetails(details);
-      } catch (err) {
-        console.error('Error fetching user details:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch user details');
-        // Provide fallback data
-        const fallback = userIds.map(id => ({
-          id,
-          name: `User ${id.slice(0, 8)}`,
-          email: `user${id.slice(0, 8)}@example.com`,
-          avatar_url: undefined,
-          last_active_at: undefined,
-        }));
-        setUserDetails(fallback);
-      } finally {
-        setLoading(false);
+    ws.on('disconnected', () => {
+      setIsConnected(false);
+    });
+
+    ws.on('reconnecting', () => {
+      setIsConnected(false);
+    });
+
+    ws.on('failed', () => {
+      setIsConnected(false);
+      setError('Failed to connect to presence service');
+    });
+
+    ws.on('presence_join', (data: PresenceSocketEvent) => {
+      if (data.type === 'presence_join') {
+        setOnlineUsers(prev => {
+          if (prev.some(u => u.userId === data.userId)) return prev;
+          return [...prev, {
+            userId: data.userId,
+            status: data.status || 'online',
+            lastActive: new Date().toISOString(),
+          }];
+        });
       }
-    };
+    });
 
-    fetchUserDetails();
-  }, [userIds]);
+    ws.on('presence_leave', (data: PresenceSocketEvent) => {
+      if (data.type === 'presence_leave') {
+        setOnlineUsers(prev => prev.filter(u => u.userId !== data.userId));
+      }
+    });
 
-  return {
-    userDetails,
-    loading,
-    error,
-  };
-}
+    ws.on('presence_update', (data: PresenceSocketEvent) => {
+      if (data.type === 'presence_update' && data.userId !== user?.id) {
+        setOnlineUsers(prev => prev.map(u =>
+          u.userId === data.userId
+            ? { ...u, status: data.status, lastActive: new Date().toISOString() }
+            : u
+        ));
+      }
+    });
 
-// Hook to get detailed user presence info including last active time
-export function useUserPresenceInfo(userId: string) {
-  const { isOnline, isRealtimeEnabled } = useUserOnlineStatus(userId);
-  const [lastActiveAt, setLastActiveAt] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+    ws.connect();
+
+    heartbeatRef.current = setInterval(() => {
+      ws.sendHeartbeat();
+      void updatePresence();
+    }, opts.heartbeatInterval);
+  }, [user?.id, opts.heartbeatInterval, updatePresence]);
+
+  const disconnectWebSocket = useCallback(() => {
+    if (heartbeatRef.current) {
+      clearInterval(heartbeatRef.current);
+      heartbeatRef.current = null;
+    }
+    if (wsRef.current) {
+      wsRef.current.disconnect();
+      wsRef.current = null;
+    }
+    setIsConnected(false);
+  }, []);
 
   useEffect(() => {
-    const fetchLastActive = async () => {
-      if (!isOnline) {
-        setLoading(true);
-        try {
-          const { getUserLastActive } = await import('../lib/neon');
-          const lastActive = await getUserLastActive(userId);
-          setLastActiveAt(lastActive);
-        } catch (error) {
-          console.error('Error fetching last active time:', error);
-          setLastActiveAt(null);
-        } finally {
-          setLoading(false);
-        }
-      } else {
-        setLastActiveAt(null);
-      }
+    void fetchPresence();
+
+    if (opts.enableWebSocket && user?.id) {
+      connectWebSocket();
+    }
+
+    return () => {
+      disconnectWebSocket();
     };
+  }, [user?.id, opts.enableWebSocket, fetchPresence, connectWebSocket, disconnectWebSocket]);
 
-    fetchLastActive();
-  }, [userId, isOnline]);
+  const getUserStatus = useCallback((userId: string): PresenceStatus => {
+    if (userId === user?.id) {
+      return myPresence?.status || 'online';
+    }
+    const found = onlineUsers.find(u => u.userId === userId);
+    return found?.status || 'offline';
+  }, [user?.id, onlineUsers, myPresence]);
 
-  const formatLastSeen = (timestamp: string | null): string => {
+  const formatLastSeen = useCallback((timestamp: string | null): string => {
     if (!timestamp) return 'Recently';
 
     const lastActive = new Date(timestamp);
@@ -157,27 +187,45 @@ export function useUserPresenceInfo(userId: string) {
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
     return lastActive.toLocaleDateString();
-  };
+  }, []);
 
   return {
-    isOnline,
-    isRealtimeEnabled,
-    lastActiveAt,
-    lastSeen: formatLastSeen(lastActiveAt),
-    loading,
+    onlineUsers,
+    myPresence,
+    isConnected,
+    isLoading,
+    error,
+    updatePresence,
+    getUserStatus,
+    formatLastSeen,
   };
 }
 
-// Hook to check if a specific user is online
 export function useUserOnlineStatus(userId: string) {
-  const { onlineUsers, presenceEvents } = useUserPresence();
+  const { getUserStatus, onlineUsers } = usePresence();
 
-  const isOnline = onlineUsers.includes(userId);
-  const isRealtimeEnabled = presenceEvents.length > 0 || onlineUsers.length > 0;
+  const status = getUserStatus(userId);
+  const isOnline = status === 'online';
+  const isAway = status === 'away';
 
   return {
     isOnline,
-    isRealtimeEnabled,
-    lastSeen: isOnline ? null : 'offline'
+    isAway,
+    status,
+    isOnlineUsersLoaded: onlineUsers.length > 0,
   };
 }
+
+export function useTenantOnlineUsers() {
+  const { onlineUsers, isLoading, error, isConnected } = usePresence();
+
+  return {
+    onlineUsers,
+    isLoading,
+    error,
+    isConnected,
+    count: onlineUsers.length,
+  };
+}
+
+export const useUserPresence = usePresence;

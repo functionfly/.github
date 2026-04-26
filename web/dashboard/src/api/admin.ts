@@ -106,6 +106,70 @@ export interface Coupon {
   updated_at: string;
 }
 
+export interface AffiliateCode {
+  id: string;
+  code: string;
+  publisher_id: string;
+  tenant_id?: string;
+  name: string;
+  description?: string;
+  commission_type: 'percent' | 'fixed';
+  commission_value: number;
+  max_commissions?: number;
+  max_referrals?: number;
+  total_referrals: number;
+  total_commissions: number;
+  pending_commissions: number;
+  pending_earnings_cents: number;
+  total_earnings_cents: number;
+  paid_out_earnings_cents: number;
+  valid_from?: string;
+  valid_until?: string;
+  is_active: boolean;
+  utm_source?: string;
+  utm_campaign?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AffiliateReferral {
+  id: string;
+  affiliate_code_id: string;
+  referred_tenant_id: string;
+  subscription_id?: string;
+  utm_source?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_term?: string;
+  ip_address?: string;
+  user_agent?: string;
+  status: 'pending' | 'converted' | 'qualified' | 'canceled';
+  referred_at: string;
+  converted_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AffiliateCommission {
+  id: string;
+  affiliate_code_id: string;
+  referral_id: string;
+  commission_type: 'percent' | 'fixed';
+  commission_value: number;
+  base_amount_cents: number;
+  base_amount_usd: number;
+  commission_cents: number;
+  commission_usd: number;
+  status: 'pending' | 'approved' | 'paid' | 'canceled';
+  paid_at?: string;
+  payment_batch_id?: string;
+  payment_batch?: string;
+  subscription_id?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // ============================================================================
 // Tenant API
 // ============================================================================
@@ -211,6 +275,86 @@ export const billingApi = {
 
   createCoupon: async (data: Omit<Coupon, 'id' | 'current_uses' | 'created_at' | 'updated_at'>): Promise<Coupon> => {
     return apiClient.post<Coupon>('/admin/billing/coupons', data);
+  },
+
+  // Affiliate Codes
+  listAffiliateCodes: async (): Promise<AffiliateCode[]> => {
+    return apiClient.get<AffiliateCode[]>('/admin/billing/affiliate-codes');
+  },
+
+  createAffiliateCode: async (data: {
+    code: string;
+    publisher_id: string;
+    tenant_id?: string;
+    name: string;
+    description?: string;
+    commission_type: 'percent' | 'fixed';
+    commission_value: number;
+    max_commissions?: number;
+    max_referrals?: number;
+    valid_from?: string;
+    valid_until?: string;
+    utm_source?: string;
+    utm_campaign?: string;
+  }): Promise<AffiliateCode> => {
+    return apiClient.post<AffiliateCode>('/admin/billing/affiliate-codes', data);
+  },
+
+  getAffiliateCode: async (id: string): Promise<AffiliateCode> => {
+    return apiClient.get<AffiliateCode>(`/admin/billing/affiliate-codes/${id}`);
+  },
+
+  updateAffiliateCode: async (id: string, data: Partial<AffiliateCode>): Promise<AffiliateCode> => {
+    return apiClient.put<AffiliateCode>(`/admin/billing/affiliate-codes/${id}`, data);
+  },
+
+  listAffiliateReferrals: async (codeId: string): Promise<AffiliateReferral[]> => {
+    return apiClient.get<AffiliateReferral[]>(`/admin/billing/affiliate-codes/${codeId}/referrals`);
+  },
+
+  listAffiliateCommissions: async (codeId: string): Promise<AffiliateCommission[]> => {
+    return apiClient.get<AffiliateCommission[]>(`/admin/billing/affiliate-codes/${codeId}/commissions`);
+  },
+
+  recordAffiliateReferral: async (data: {
+    affiliate_code: string;
+    tenant_id: string;
+    subscription_id?: string;
+    utm_source?: string;
+    utm_campaign?: string;
+    utm_content?: string;
+    utm_term?: string;
+    ip_address?: string;
+    user_agent?: string;
+  }): Promise<AffiliateReferral> => {
+    return apiClient.post<AffiliateReferral>('/admin/billing/affiliate-referrals', data);
+  },
+
+  updateAffiliateReferralStatus: async (id: string, status: string): Promise<void> => {
+    return apiClient.patch(`/admin/billing/affiliate-referrals/${id}/status`, { status });
+  },
+
+  approveAffiliateCommission: async (id: string): Promise<void> => {
+    return apiClient.post(`/admin/billing/affiliate-commissions/${id}/approve`);
+  },
+
+  markAffiliateCommissionPaid: async (id: string): Promise<void> => {
+    return apiClient.post(`/admin/billing/affiliate-commissions/${id}/paid`);
+  },
+
+  calculateAffiliateCommission: async (affiliateCode: string, baseAmountCents: number): Promise<{
+    affiliate_code: string;
+    commission_type: string;
+    commission_value: number;
+    base_amount_cents: number;
+    base_amount_usd: number;
+    commission_cents: number;
+    commission_usd: number;
+  }> => {
+    return apiClient.post(`/admin/billing/affiliate-commissions/calculate`, {
+      affiliate_code: affiliateCode,
+      base_amount_cents: baseAmountCents,
+    });
   },
 };
 

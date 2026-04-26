@@ -29,7 +29,7 @@ export function FreeTierSection({
       <div className="flex items-center justify-between p-4 rounded-lg bg-linear-to-r from-brand-500/10 to-brand-600/10 border border-border-default">
         <div>
           <h3 className="font-semibold font-display text-text-primary capitalize">{displayPlan} Plan</h3>
-          <p className="text-sm text-text-secondary mt-1">
+          <div className="text-sm text-text-secondary mt-1">
             {isFreeTier ? (
               <>
                 <Badge variant="default" className="ff-badge-primary mr-2 font-medium">
@@ -45,7 +45,7 @@ export function FreeTierSection({
                 Active
               </>
             )}
-          </p>
+          </div>
         </div>
         <Badge variant="success" className="ff-badge-success font-semibold px-3 py-1">
           Current

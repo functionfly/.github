@@ -1,0 +1,462 @@
+/* ==========================================================================
+   FunctionFly Favorites Page - Aviation Theme Styles
+   Theme-aware with light/dark mode support
+   ========================================================================== */
+
+.favorites-page {
+  --favorites-header-height: 140px;
+  --favorites-grid-gap: 1.5rem;
+  --favorites-card-min-width: 280px;
+
+  min-height: 100vh;
+  background: var(--color-aviation-bg-primary);
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Subtle grid background pattern */
+.favorites-page::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    linear-gradient(rgba(245, 158, 11, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(245, 158, 11, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Light mode grid */
+[data-theme='light'] .favorites-page::before {
+  background-image:
+    linear-gradient(rgba(217, 119, 6, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(217, 119, 6, 0.06) 1px, transparent 1px);
+}
+
+/* ==========================================================================
+   Favorites Page Header
+   ========================================================================== */
+
+.favorites-page-header {
+  position: relative;
+  padding: 2rem 2rem 1.5rem;
+  background: linear-gradient(
+    180deg,
+    var(--color-aviation-bg-secondary) 0%,
+    var(--color-aviation-bg-primary) 100%
+  );
+  border-bottom: 1px solid var(--color-aviation-border-panel);
+}
+
+.favorites-page-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.favorites-page-title h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-aviation-text-primary);
+  letter-spacing: -0.02em;
+}
+
+.favorites-page-title svg {
+  color: var(--color-aviation-amber);
+  filter: drop-shadow(0 0 8px var(--color-aviation-amber-glow));
+}
+
+.favorites-page-subtitle {
+  color: var(--color-aviation-text-secondary);
+  font-size: 0.95rem;
+  margin-left: calc(0.75rem + 24px);
+}
+
+/* ==========================================================================
+   Favorites Content Area
+   ========================================================================== */
+
+.favorites-page-content {
+  position: relative;
+  z-index: 1;
+  padding: 2rem;
+}
+
+/* ==========================================================================
+   Empty State Styles
+   ========================================================================== */
+
+.favorites-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  padding: 3rem;
+}
+
+.favorites-empty-icon {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: var(--color-aviation-bg-panel);
+  border: 2px solid var(--color-aviation-amber-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  animation: pulse-amber 3s ease-in-out infinite;
+}
+
+@keyframes pulse-amber {
+  0%, 100% {
+    box-shadow: 0 0 0 0 var(--color-aviation-amber-dim);
+  }
+  50% {
+    box-shadow: 0 0 20px 10px var(--color-aviation-amber-dim);
+  }
+}
+
+.favorites-empty-icon svg {
+  color: var(--color-aviation-amber-dim);
+  width: 48px;
+  height: 48px;
+}
+
+.favorites-empty-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-aviation-text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.favorites-empty-description {
+  color: var(--color-aviation-text-secondary);
+  font-size: 0.95rem;
+  max-width: 360px;
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.favorites-empty-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ==========================================================================
+   Loading Skeletons
+   ========================================================================== */
+
+.favorites-loading {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--favorites-card-min-width), 1fr));
+  gap: var(--favorites-grid-gap);
+  padding: 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+.favorites-skeleton {
+  height: 180px;
+  background: var(--color-aviation-bg-panel);
+  border-radius: 12px;
+  border: 1px solid var(--color-aviation-border-panel);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* ==========================================================================
+   Favorites Grid
+   ========================================================================== */
+
+.favorites-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--favorites-card-min-width), 1fr));
+  gap: var(--favorites-grid-gap);
+  padding: 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* ==========================================================================
+   Favorite Card Styles
+   ========================================================================== */
+
+.favorite-card {
+  background: var(--color-aviation-bg-panel);
+  border: 1px solid var(--color-aviation-border-panel);
+  border-radius: 12px;
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.favorite-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    var(--color-aviation-amber-subtle) 0%,
+    transparent 50%
+  );
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.favorite-card:hover {
+  border-color: var(--color-aviation-amber-dim);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.favorite-card:hover::before {
+  opacity: 1;
+}
+
+.favorite-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: var(--color-aviation-bg-instrument);
+  border: 1px solid var(--color-aviation-border-instrument);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.favorite-card-icon svg {
+  color: var(--color-aviation-amber);
+}
+
+.favorite-card-info {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.favorite-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-aviation-text-primary);
+  margin-bottom: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.favorite-card-meta {
+  font-size: 0.8rem;
+  color: var(--color-aviation-text-muted);
+}
+
+/* ==========================================================================
+   Error State
+   ========================================================================== */
+
+.favorites-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  text-align: center;
+  padding: 3rem;
+}
+
+.favorites-error svg {
+  color: var(--color-aviation-red);
+  margin-bottom: 1rem;
+}
+
+/* ==========================================================================
+   Corner Decorations (Aviation Theme)
+   ========================================================================== */
+
+.favorite-card .corner-decoration {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: var(--color-aviation-amber-dim);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.favorite-card:hover .corner-decoration {
+  opacity: 1;
+}
+
+.favorite-card .corner-tl {
+  top: 4px;
+  left: 4px;
+  border-top: 2px solid;
+  border-left: 2px solid;
+}
+
+.favorite-card .corner-tr {
+  top: 4px;
+  right: 4px;
+  border-top: 2px solid;
+  border-right: 2px solid;
+}
+
+.favorite-card .corner-bl {
+  bottom: 4px;
+  left: 4px;
+  border-bottom: 2px solid;
+  border-left: 2px solid;
+}
+
+.favorite-card .corner-br {
+  bottom: 4px;
+  right: 4px;
+  border-bottom: 2px solid;
+  border-right: 2px solid;
+}
+
+/* ==========================================================================
+   Badge Styles
+   ========================================================================== */
+
+.favorites-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: var(--color-aviation-amber-subtle);
+  color: var(--color-aviation-amber);
+  border: 1px solid var(--color-aviation-amber-dim);
+}
+
+.favorites-badge svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* ==========================================================================
+   Button Styles
+   ========================================================================== */
+
+.favorites-page .favorites-empty-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.favorites-page .favorites-empty-actions button {
+  background: var(--color-aviation-bg-panel);
+  border: 1px solid var(--color-aviation-amber);
+  color: var(--color-aviation-amber);
+  padding: 0.625rem 1.25rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+}
+
+.favorites-page .favorites-empty-actions button:hover {
+  background: var(--color-aviation-amber);
+  color: #0c0a09;
+  border-color: var(--color-aviation-amber);
+}
+
+[data-theme='light'] .favorites-page .favorites-empty-actions button {
+  color: var(--color-aviation-amber);
+}
+
+[data-theme='light'] .favorites-page .favorites-empty-actions button:hover {
+  background: var(--color-aviation-amber);
+  color: #1c1917;
+}
+
+.favorites-page .btn-outline {
+  background: transparent;
+  color: var(--color-aviation-text-primary);
+  font-weight: 500;
+  padding: 0.625rem 1.25rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-aviation-border-instrument);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.favorites-page .btn-outline:hover {
+  border-color: var(--color-aviation-amber-dim);
+  background: var(--color-aviation-amber-subtle);
+}
+
+/* ==========================================================================
+   Responsive Design
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .favorites-page-header {
+    padding: 1.5rem 1rem 1rem;
+  }
+
+  .favorites-page-title h1 {
+    font-size: 1.5rem;
+  }
+
+  .favorites-page-subtitle {
+    margin-left: 0;
+    font-size: 0.875rem;
+  }
+
+  .favorites-grid,
+  .favorites-loading {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .favorites-empty-state {
+    padding: 2rem 1rem;
+  }
+
+  .favorites-empty-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .favorites-empty-actions button {
+    width: 100%;
+  }
+}

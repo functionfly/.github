@@ -286,7 +286,9 @@ export const PLANS = {
     name: 'Free',
     price: 0,
     priceCents: 0,
+    priceAnnualCents: 0,
     priceId: '',
+    priceIdAnnual: '',
     description: 'Perfect for getting started with FunctionFly',
     features: ['1 function', '2 providers', '100,000 requests/month', 'Community support'],
     overageRate: null, // Hard stop at limit
@@ -309,7 +311,9 @@ export const PLANS = {
     name: 'Starter',
     price: 29,
     priceCents: 2900,
+    priceAnnualCents: 27840,
     priceId: import.meta.env.VITE_STRIPE_PRICE_STARTER || 'price_starter_placeholder',
+    priceIdAnnual: import.meta.env.VITE_STRIPE_PRICE_STARTER_ANNUAL || 'price_starter_annual_placeholder',
     description: 'For side projects and MVPs',
     features: [
       '5 functions',
@@ -340,7 +344,9 @@ export const PLANS = {
     name: 'Professional',
     price: 99,
     priceCents: 9900,
+    priceAnnualCents: 95040,
     priceId: import.meta.env.VITE_STRIPE_PRICE_PROFESSIONAL || 'price_professional_placeholder',
+    priceIdAnnual: import.meta.env.VITE_STRIPE_PRICE_PROFESSIONAL_ANNUAL || 'price_professional_annual_placeholder',
     description: 'For growing businesses and SaaS applications',
     features: [
       '25 functions',
@@ -376,7 +382,9 @@ export const PLANS = {
     name: 'Enterprise',
     price: 'Custom',
     priceCents: 0,
+    priceAnnualCents: 0,
     priceId: '',
+    priceIdAnnual: '',
     description: 'For large-scale applications and enterprises',
     features: [
       'Unlimited functions',

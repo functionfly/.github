@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { functionsApi, type FunctionConfig, type CreateFunctionRequest, type UpdateFunctionRequest, type DeployFunctionRequest } from '@/api/functions';
+import { functionsApi } from '@/api/functions';
+import type { FunctionConfig, CreateFunctionRequest, UpdateFunctionRequest, DeployFunctionRequest } from '@/types';
 
 // Query keys
 export const functionKeys = {
@@ -162,7 +163,7 @@ export function useDeploymentLogs(deploymentId: string) {
 export function useTestFunction() {
   return useMutation({
     mutationFn: ({ functionId, input }: { functionId: string; input: unknown }) =>
-      functionsApi.test({ functionId, input }),
+      functionsApi.test({ functionId, testInput: input }),
     onError: (error: Error) => {
       toast.error(`Test failed: ${error.message}`);
     },

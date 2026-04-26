@@ -45,7 +45,7 @@ export function PlaygroundPage() {
     queryKey: ['function', author, name],
     queryFn: async () => {
       const response = await fetch(
-        `/v1/registry/functions/${author}/${name}?expand=manifest`
+        `/v1/functions/${author}/${name}?expand=manifest`
       );
     if (response.status === 404) throw new Error(t('playground.functionNotFound'));
     if (!response.ok) throw new Error('Failed to fetch function');

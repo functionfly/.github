@@ -1,4 +1,7 @@
 import { providersApi } from '@/api';
+import { dashboardApi } from '@/api/dashboard';
+import { appsApi } from '@/api/apps';
+import { createCheckoutSession } from '@/api/billing';
 import { functionsApi } from '@/api/functions';
 import { ProviderStatus } from '@/components/common/ProviderStatus';
 import type { AgentActivityItem } from '@/components/dashboard';

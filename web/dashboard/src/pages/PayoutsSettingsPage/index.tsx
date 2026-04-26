@@ -1,3 +1,4 @@
+import { AffiliatePanel } from '@/components/payouts/AffiliatePanel';
 import { PayoutsComingSoon } from '@/components/payouts/PayoutsComingSoon';
 import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/lib/constants';
@@ -45,6 +46,7 @@ export function PayoutsSettingsPage() {
         </div>
       </div>
 
+      <AffiliatePanel />
       <PayoutsComingSoon />
     </div>
   );

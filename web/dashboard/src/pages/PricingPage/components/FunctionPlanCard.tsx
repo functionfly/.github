@@ -19,6 +19,7 @@ interface FunctionPlanCardProps {
   onPlanSelect: (planId: string, priceId?: string) => void;
   disabled?: boolean;
   isLoading?: boolean;
+  billingCycle?: 'monthly' | 'annual';
 }
 
 const FEATURE_TOOLTIPS: Record<string, string> = {
@@ -52,9 +53,18 @@ export function FunctionPlanCard({
   onPlanSelect,
   disabled = false,
   isLoading = false,
+  billingCycle = 'monthly',
 }: FunctionPlanCardProps) {
   const { ref, inView } = useScrollAnimation(0.2, false);
   const gestures = useCardGestures(plan.name);
+
+  const displayPrice = billingCycle === 'annual' && plan.priceAnnualCents
+    ? Math.round(plan.priceAnnualCents / 12 / 100)
+    : plan.price;
+  const annualPrice = plan.priceAnnualCents ? plan.priceAnnualCents / 100 : 0;
+  const monthlyEquivalentAnnual = plan.price !== 'Custom' && plan.price !== 0
+    ? (annualPrice / 12).toFixed(0)
+    : null;
 
   return (
     <motion.div
@@ -124,19 +134,32 @@ export function FunctionPlanCard({
             >
               <div className="flex items-baseline gap-2">
                 <span className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-white to-text-secondary bg-clip-text text-transparent">
-                  {plan.price === 'Custom' ? 'Custom' : `$${plan.price}`}
+                  {displayPrice === 'Custom' ? 'Custom' : `$${displayPrice}`}
                 </span>
-                {plan.price !== 'Custom' && (
+                {displayPrice !== 'Custom' && (
                   <span className="text-text-secondary text-lg">/month</span>
                 )}
               </div>
-              {plan.id !== 'free' && plan.id !== 'enterprise' && (
+              {billingCycle === 'annual' && plan.id !== 'free' && plan.id !== 'enterprise' && annualPrice > 0 && (
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <p className="text-emerald-400 text-sm font-medium">
+                    ${annualPrice.toFixed(0)}/year (save {Math.round((1 - annualPrice / (plan.price * 12)) * 100)}%)
+                  </p>
+                </div>
+              )}
+              {billingCycle === 'monthly' && plan.id !== 'free' && plan.id !== 'enterprise' && (
                 <div className="flex items-center gap-2 mt-2">
                   <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
                   <p className="text-green-400 text-sm font-medium">
                     Billed monthly, cancel anytime
                   </p>
                 </div>
+              )}
+              {billingCycle === 'annual' && plan.id !== 'free' && plan.id !== 'enterprise' && (
+                <p className="text-text-muted text-xs mt-1">
+                  Or ${monthlyEquivalentAnnual}/mo if paid monthly
+                </p>
               )}
             </motion.div>
           </div>
@@ -178,7 +201,7 @@ export function FunctionPlanCard({
             <Link
               to={plan.id === 'enterprise' ? '/contact' : '/signup'}
               className="block group"
-              onClick={() => !disabled && !isLoading && onPlanSelect(plan.id, plan.priceId)}
+              onClick={() => !disabled && !isLoading && onPlanSelect(plan.id, billingCycle === 'annual' && plan.priceIdAnnual ? plan.priceIdAnnual : plan.priceId)}
             >
               <Button
                 variant={plan.id === 'free' ? 'outline' : 'default'}

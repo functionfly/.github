@@ -35,18 +35,18 @@ export interface EmbedSnippetParams {
 class EmbedApi {
   /**
    * Get embed configuration for a function
-   * GET /v1/registry/functions/{author}/{name}/embed
+   * GET /v1/functions/{author}/{name}/embed
    */
   async getEmbedConfig(author: string, name: string): Promise<EmbedConfig> {
     const response = await apiClient.get<EmbedConfig>(
-      `/v1/registry/functions/${author}/${name}/embed`
+      `/v1/functions/${author}/${name}/embed`
     );
     return response;
   }
 
   /**
    * Update embed configuration for a function
-   * PUT /v1/registry/functions/{author}/{name}/embed
+   * PUT /v1/functions/{author}/{name}/embed
    */
   async updateEmbedConfig(
     author: string,
@@ -54,7 +54,7 @@ class EmbedApi {
     config: Partial<EmbedConfig>
   ): Promise<EmbedConfig> {
     const response = await apiClient.put<EmbedConfig>(
-      `/v1/registry/functions/${author}/${name}/embed`,
+      `/v1/functions/${author}/${name}/embed`,
       config
     );
     return response;
@@ -62,7 +62,7 @@ class EmbedApi {
 
   /**
    * Get embed code snippet for a function
-   * GET /v1/registry/functions/{author}/{name}/embed/snippet
+   * GET /v1/functions/{author}/{name}/embed/snippet
    */
   async getEmbedSnippet(
     author: string,
@@ -76,7 +76,7 @@ class EmbedApi {
     if (params?.ui !== undefined) queryParams.append("ui", params.ui.toString());
     if (params?.theme) queryParams.append("theme", params.theme);
 
-    const url = `/v1/registry/functions/${author}/${name}/embed/snippet${
+    const url = `/v1/functions/${author}/${name}/embed/snippet${
       queryParams.toString() ? `?${queryParams.toString()}` : ""
     }`;
     return apiClient.get<EmbedSnippet>(url);
@@ -84,7 +84,7 @@ class EmbedApi {
 
   /**
    * Get embed analytics for a function
-   * GET /v1/registry/functions/{author}/{name}/embed/analytics
+   * GET /v1/functions/{author}/{name}/embed/analytics
    */
   async getEmbedAnalytics(
     author: string,
@@ -94,7 +94,7 @@ class EmbedApi {
     const queryParams = new URLSearchParams();
     if (period) queryParams.append("period", period);
 
-    const url = `/v1/registry/functions/${author}/${name}/embed/analytics${
+    const url = `/v1/functions/${author}/${name}/embed/analytics${
       queryParams.toString() ? `?${queryParams.toString()}` : ""
     }`;
     return apiClient.get<EmbedAnalytics>(url);

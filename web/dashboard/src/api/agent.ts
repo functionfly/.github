@@ -139,6 +139,21 @@ export interface ExecutionListResponse {
   offset: number;
 }
 
+export interface SEBGModificationProposal {
+  id: string;
+  graph_id: string;
+  change_type: 'add_node' | 'remove_node' | 'rewire_edge' | 'add_specialist' | 'optimize';
+  target_node_id: string;
+  target_node_name: string;
+  expected_revenue_lift: number;
+  expected_lift_pct: number;
+  risk_score: number;
+  status: 'pending' | 'approved' | 'rejected' | 'applied' | 'expired';
+  approved_by?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
 export interface AgentAnalytics {
   totalExecutions: number;
   successRate: number;

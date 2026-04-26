@@ -35,7 +35,7 @@ export function FunctionHistoryTab({
   const { data: functionInfo, isLoading: loadingFn, error: errorFn } = useQuery({
     queryKey: ["function-info", author, name],
     queryFn: () =>
-      apiClient.get<FunctionInfoResponse>(`/v1/registry/functions/${author}/${name}`),
+      apiClient.get<FunctionInfoResponse>(`/v1/functions/${author}/${name}`),
     enabled: !!author && !!name,
   });
 

@@ -1,3 +1,4 @@
+import { FunctionDetailNotFound } from './FunctionDetailNotFound';
 import { apiClient } from '@/api/client';
 import { BarChart } from '@/components/common/BarChart';
 import { LineChart } from '@/components/common/LineChart';
@@ -365,24 +366,7 @@ export function FunctionDetailPage() {
   }
 
   if (!functionData) {
-    return (
-      <div className="space-y-6">
-        <Card className="card">
-          <CardContent className="card-content p-8 text-center space-y-4">
-            <AlertTriangle className="w-12 h-12 mx-auto text-orange-500" />
-            <div>
-              <h2 className="text-lg font-semibold text-text-primary">{t('functionDetail.functionUnavailable')}</h2>
-              <p className="text-sm text-text-secondary mt-1">
-                {error ?? t('functionDetail.functionCouldNotBeLoaded')}
-              </p>
-            </div>
-            <Button variant="outline" onClick={() => navigate('/functions')}>
-              {t('functionDetail.backToFunctions')}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <FunctionDetailNotFound id={id} errorMessage={error ?? undefined} />;
   }
 
   const stats = [

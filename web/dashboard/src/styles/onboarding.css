@@ -1,0 +1,537 @@
+/* ==========================================================================
+   Onboarding Page Styles
+   Theme-aware styles for /onboarding page
+   Uses FunctionFly brand colors - flame orange (#FF6B35) as primary
+   ========================================================================== */
+
+/* ==========================================================================
+   HEADER & BRANDING
+   ========================================================================== */
+
+.onboarding-logo {
+  background: linear-gradient(135deg, var(--ff-flame) 0%, var(--ff-afterburner) 100%);
+}
+
+.onboarding-brand-text {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 700;
+}
+
+.onboarding-step-counter {
+  font-family: var(--font-display), system-ui, sans-serif;
+  color: var(--ff-text-secondary);
+}
+
+.onboarding-skip-btn {
+  color: var(--ff-text-muted);
+  transition: color 0.2s ease;
+}
+
+.onboarding-skip-btn:hover {
+  color: var(--ff-flame);
+}
+
+/* ==========================================================================
+   SKIP ONBOARDING DIALOG
+   ========================================================================== */
+
+/* Dialog content - inherits from themes.css */
+.dialog-content {
+  background-color: var(--ff-panel);
+  border: 1px solid var(--ff-border-flame);
+  color: var(--ff-text-primary);
+}
+
+[data-theme='light'] .dialog-content {
+  background-color: var(--ff-sky);
+  border-color: var(--ff-flame);
+  color: var(--ff-text-primary-light);
+}
+
+/* Skip dialog title with flame accent */
+.onboarding-skip-title {
+  color: var(--ff-flame);
+  font-family: var(--font-display), system-ui, sans-serif;
+}
+
+/* Warning icon - use flame orange for brand consistency */
+.onboarding-skip-warning-icon {
+  color: var(--ff-flame);
+}
+
+[data-theme='light'] .onboarding-skip-warning-icon {
+  color: var(--ff-flame-dark);
+}
+
+/* Alert items with icons */
+.onboarding-skip-alert-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.onboarding-skip-alert-icon {
+  margin-top: 0.125rem;
+  flex-shrink: 0;
+}
+
+/* Warning icon - flame orange for brand consistency */
+.onboarding-skip-alert-icon--warning {
+  color: var(--ff-flame);
+}
+
+[data-theme='light'] .onboarding-skip-alert-icon--warning {
+  color: var(--ff-flame-dark);
+}
+
+/* Info icon - cyan for contrast */
+.onboarding-skip-alert-icon--info {
+  color: var(--ff-cyan);
+}
+
+[data-theme='light'] .onboarding-skip-alert-icon--info {
+  color: var(--ff-cyan-dark);
+}
+
+/* Success/check icon - taxiway green */
+.onboarding-skip-alert-icon--success {
+  color: var(--ff-taxiway);
+}
+
+/* Danger icon - emergency red */
+.onboarding-skip-alert-icon--danger {
+  color: var(--ff-emergency);
+}
+
+/* Text colors that adapt to theme */
+.onboarding-skip-text {
+  color: var(--ff-text-secondary);
+}
+
+.onboarding-skip-text--primary {
+  color: var(--ff-text-primary);
+  font-weight: 600;
+}
+
+/* Dialog footer - both buttons styled consistently */
+.onboarding-skip-dialog-footer {
+  display: flex;
+  gap: 0.75rem;
+  padding-top: 1rem;
+}
+
+/* Continue button - outline style */
+.onboarding-skip-btn-continue {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  font-family: var(--font-display), system-ui, sans-serif;
+  border: 2px solid var(--ff-border-default);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--ff-text-primary);
+  transition: all 0.2s ease;
+  text-align: center;
+  min-height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.onboarding-skip-btn-continue:hover {
+  border-color: var(--ff-flame);
+  color: var(--ff-flame);
+  background: var(--ff-flame)/5;
+}
+
+/* Skip Anyway button - flame gradient CTA */
+.onboarding-skip-btn-skip {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  font-weight: 700;
+  font-family: var(--font-display), system-ui, sans-serif;
+  border: none;
+  border-radius: 0.5rem;
+  background: var(--ff-gradient-cta);
+  color: white;
+  transition: all 0.2s ease;
+  text-align: center;
+  min-height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.onboarding-skip-btn-skip:hover {
+  box-shadow: var(--ff-glow-flame);
+  transform: translateY(-2px);
+}
+
+[data-theme='light'] .onboarding-skip-btn-skip {
+  background: var(--ff-gradient-cta);
+}
+
+/* ==========================================================================
+   ONBOARDING STEP INDICATORS
+   ========================================================================== */
+
+.onboarding-step-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.onboarding-step-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background-color: var(--ff-bg-tertiary);
+}
+
+.onboarding-step-dot--active {
+  background-color: var(--ff-flame);
+  box-shadow: 0 0 8px rgba(var(--ff-flame-rgb), 0.5);
+}
+
+.onboarding-step-dot--completed {
+  background-color: var(--ff-taxiway);
+}
+
+/* ==========================================================================
+   PROGRESS BAR
+   ========================================================================== */
+
+.onboarding-progress-bar {
+  height: 0.25rem;
+  background-color: var(--ff-bg-secondary);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.onboarding-progress-fill {
+  height: 100%;
+  background: var(--ff-gradient-cta);
+  transition: width 0.3s ease;
+}
+
+/* ==========================================================================
+   STEP CONTENT CARDS
+   ========================================================================== */
+
+.onboarding-step-card {
+  background-color: var(--ff-bg-secondary);
+  border: 1px solid var(--ff-border-subtle);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+}
+
+.onboarding-step-card-title {
+  color: var(--ff-text-primary);
+  font-weight: 600;
+  font-family: var(--font-display), system-ui, sans-serif;
+}
+
+.onboarding-step-card-description {
+  color: var(--ff-text-secondary);
+}
+
+/* ==========================================================================
+   COMPLETION CELEBRATION
+   ========================================================================== */
+
+.onboarding-celebration-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.onboarding-celebration-card {
+  background-color: var(--ff-bg-primary);
+  border: 1px solid var(--ff-border-flame);
+  border-radius: 1rem;
+  padding: 2rem;
+  text-align: center;
+  max-width: 24rem;
+}
+
+/* ==========================================================================
+   NAVIGATION BUTTONS
+   ========================================================================== */
+
+.onboarding-nav-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  font-family: var(--font-display), system-ui, sans-serif;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.onboarding-nav-button--primary {
+  background: var(--ff-gradient-cta);
+  color: white;
+  border: none;
+}
+
+.onboarding-nav-button--primary:hover {
+  box-shadow: var(--ff-glow-flame);
+  transform: translateY(-1px);
+}
+
+.onboarding-nav-button--secondary {
+  background: transparent;
+  border: 1px solid var(--ff-border-default);
+  color: var(--ff-text-primary);
+}
+
+.onboarding-nav-button--secondary:hover {
+  border-color: var(--ff-flame);
+  color: var(--ff-flame);
+}
+
+/* ==========================================================================
+   HELP PANEL
+   ========================================================================== */
+
+.onboarding-help-panel {
+  border: 1px solid var(--ff-border-flame);
+  backdrop-filter: blur(8px);
+}
+
+.onboarding-help-icon {
+  color: var(--ff-flame);
+}
+
+/* ==========================================================================
+   LIGHT MODE ADJUSTMENTS
+   ========================================================================== */
+
+[data-theme='light'] .onboarding-skip-alert-icon--success {
+  color: var(--ff-taxiway-dark);
+}
+
+[data-theme='light'] .onboarding-skip-alert-icon--danger {
+  color: var(--ff-emergency);
+}
+
+[data-theme='light'] .onboarding-step-dot--active {
+  box-shadow: 0 0 8px rgba(var(--ff-flame-rgb), 0.3);
+}
+
+[data-theme='light'] .onboarding-nav-button--secondary:hover {
+  border-color: var(--ff-flame);
+  color: var(--ff-flame);
+}
+
+[data-theme='light'] .onboarding-celebration-card {
+  border-color: var(--ff-flame);
+}
+
+[data-theme='light'] .onboarding-skip-btn:hover {
+  color: var(--ff-flame-dark);
+}
+
+[data-theme='light'] .onboarding-help-panel {
+  background-color: var(--ff-sky);
+  border-color: var(--ff-flame);
+}
+
+/* ==========================================================================
+   STEPPER / STEP INDICATORS (Bottom of page)
+   ========================================================================== */
+
+.onboarding-stepper {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem 0;
+}
+
+.onboarding-stepper-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem 2rem;
+  position: relative;
+  background: var(--ff-bg-primary);
+  border-radius: 1rem;
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.onboarding-stepper-item:hover {
+  background: var(--ff-bg-secondary);
+  border-color: var(--ff-border-flame);
+}
+
+.onboarding-stepper-item.active {
+  background: var(--ff-bg-secondary);
+  border-color: var(--ff-flame);
+  box-shadow: 0 4px 16px rgba(255, 107, 53, 0.2);
+}
+
+.onboarding-stepper-item.completed {
+  background: var(--ff-bg-secondary);
+}
+
+.onboarding-stepper-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 2rem;
+  left: calc(50% + 3rem);
+  width: calc(4rem);
+  height: 4px;
+  background: var(--ff-border-subtle);
+  border-radius: 2px;
+}
+
+.onboarding-stepper-item.active:not(:last-child)::after {
+  background: linear-gradient(90deg, var(--ff-flame), var(--ff-afterburner));
+}
+
+.onboarding-stepper-item.completed:not(:last-child)::after {
+  background: var(--ff-taxiway);
+}
+
+.onboarding-stepper-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.125rem;
+  font-family: var(--font-display), system-ui, sans-serif;
+  background: var(--ff-bg-tertiary);
+  color: var(--ff-text-muted);
+  border: 3px solid var(--ff-border-subtle);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1;
+}
+
+.onboarding-stepper-item.active .onboarding-stepper-icon {
+  background: linear-gradient(135deg, var(--ff-flame), var(--ff-afterburner));
+  color: white;
+  border-color: var(--ff-flame);
+  box-shadow: 0 0 24px rgba(255, 107, 53, 0.6), 0 0 48px rgba(255, 107, 53, 0.3);
+  transform: scale(1.15);
+}
+
+.onboarding-stepper-item.completed .onboarding-stepper-icon {
+  background: var(--ff-taxiway);
+  color: white;
+  border-color: var(--ff-taxiway);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+}
+
+.onboarding-stepper-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.onboarding-stepper-title {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--ff-text-primary);
+  text-align: center;
+  max-width: 9rem;
+  transition: all 0.3s ease;
+  line-height: 1.2;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  letter-spacing: -0.01em;
+}
+
+.onboarding-stepper-item.active .onboarding-stepper-title {
+  color: var(--ff-flame);
+  font-weight: 800;
+  text-shadow: 0 0 12px rgba(255, 107, 53, 0.4);
+}
+
+.onboarding-stepper-item.completed .onboarding-stepper-title {
+  color: var(--ff-taxiway);
+  font-weight: 700;
+}
+
+.onboarding-stepper-description {
+  font-size: 0.9375rem;
+  color: var(--ff-text-secondary);
+  text-align: center;
+  max-width: 9rem;
+  line-height: 1.5;
+  opacity: 1;
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+  background: var(--ff-bg-tertiary);
+  border-radius: 0.375rem;
+}
+
+[data-theme='light'] .onboarding-stepper-icon {
+  background: var(--ff-sky);
+  border-color: var(--ff-border-default);
+}
+
+[data-theme='light'] .onboarding-stepper-item.active .onboarding-stepper-icon {
+  box-shadow: 0 0 16px rgba(255, 107, 53, 0.4);
+}
+
+[data-theme='light'] .onboarding-stepper-item.completed .onboarding-stepper-icon {
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+/* Step connector line styling */
+.onboarding-stepper-connector {
+  width: 5rem;
+  height: 3px;
+  background: var(--ff-border-subtle);
+  margin-top: 1.25rem;
+  border-radius: 2px;
+  transition: background 0.4s ease;
+}
+
+.onboarding-stepper-connector.active {
+  background: linear-gradient(90deg, var(--ff-flame), var(--ff-afterburner));
+}
+
+.onboarding-stepper-connector.completed {
+  background: var(--ff-taxiway);
+}
+
+/* Progress bar in header already uses brand gradient - ensure consistency */
+.onboarding-progress-fill {
+  background: linear-gradient(90deg, var(--ff-flame), var(--ff-afterburner)) !important;
+}
+
+/* Help tooltip icon matching brand */
+.onboarding-help-icon-btn {
+  color: var(--ff-text-muted);
+  transition: color 0.2s ease;
+}
+
+.onboarding-help-icon-btn:hover {
+  color: var(--ff-flame);
+}
+
+/* Skip button hover effect */
+.onboarding-skip-btn-header {
+  color: var(--ff-text-muted);
+  transition: all 0.2s ease;
+}
+
+.onboarding-skip-btn-header:hover {
+  color: var(--ff-flame);
+}

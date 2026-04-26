@@ -91,21 +91,21 @@ class RegistryApi {
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     if (params?.offset) queryParams.append('offset', params.offset.toString());
 
-    const url = `/v1/registry/functions${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const url = `/v1/functions${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     return apiClient.get<{ functions: RegistryFunction[] }>(url);
   }
 
   // Get function details
   async getFunction(author: string, name: string) {
     return apiClient.get<{ function: RegistryFunction; versions: RegistryFunctionVersion[] }>(
-      `/v1/registry/functions/${author}/${name}`
+      `/v1/functions/${author}/${name}`
     );
   }
 
   // Get function versions
   async getFunctionVersions(author: string, name: string) {
     return apiClient.get<{ versions: RegistryFunctionVersion[] }>(
-      `/v1/registry/functions/${author}/${name}/versions`
+      `/v1/functions/${author}/${name}/versions`
     );
   }
 
@@ -152,13 +152,13 @@ class RegistryApi {
       overall_score: number;
       total_ratings: number;
       popularity_score: number;
-    }>(`/v1/registry/functions/${author}/${name}/stats`);
+    }>(`/v1/functions/${author}/${name}/stats`);
   }
 
   // Submit rating
   async submitRating(author: string, name: string, rating: RegistryRatingRequest) {
     return apiClient.post<{ ok: boolean; message: string }>(
-      `/v1/registry/functions/${author}/${name}/rating`,
+      `/v1/functions/${author}/${name}/rating`,
       rating
     );
   }
@@ -175,7 +175,7 @@ class RegistryApi {
       total: number;
       limit: number;
       offset: number;
-    }>(`/v1/registry/functions/${author}/${name}/reviews${suffix}`);
+    }>(`/v1/functions/${author}/${name}/reviews${suffix}`);
   }
 
   // Submit review (requires auth)
@@ -185,7 +185,7 @@ class RegistryApi {
     data: { stars: number; title?: string; body?: string }
   ) {
     return apiClient.post<{ ok: boolean; review: RegistryFunctionReview }>(
-      `/v1/registry/functions/${author}/${name}/reviews`,
+      `/v1/functions/${author}/${name}/reviews`,
       {
         stars: data.stars,
         title: data.title ?? '',
@@ -197,7 +197,7 @@ class RegistryApi {
   // Test function
   async testFunction(author: string, name: string, input: any) {
     return apiClient.post<{ ok: boolean; output: any; duration_ms: number }>(
-      `/v1/registry/functions/${author}/${name}/test`,
+      `/v1/functions/${author}/${name}/test`,
       { input }
     );
   }

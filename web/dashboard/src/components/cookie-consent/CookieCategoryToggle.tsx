@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Lock, CheckCircle, Circle, Info } from 'lucide-react';
+import { Lock, CheckCircle, Circle } from 'lucide-react';
 
 interface CookieCategoryToggleProps {
   category: string;
@@ -49,8 +49,8 @@ export function CookieCategoryToggle({
       <Card
         className={`relative overflow-hidden transition-all duration-300 border cursor-pointer ${
           enabled
-            ? 'border-white/20 bg-gradient-to-r from-white/5 to-white/10 shadow-lg shadow-white/5'
-            : 'border-white/10 bg-white/5 hover:border-white/20'
+            ? 'border-[var(--border-subtle)] bg-[var(--bg-tertiary)] shadow-lg'
+            : 'border-[var(--border-subtle)] bg-[var(--bg-secondary)] hover:border-[var(--border-default)] hover:shadow-md'
         }`}
       >
         {/* Background gradient overlay */}
@@ -76,21 +76,21 @@ export function CookieCategoryToggle({
                   transition={{ duration: 0.3 }}
                 >
                   {readOnly ? (
-                    <Lock className="h-4 w-4 text-green-400" />
+                    <Lock className="h-4 w-4 text-green-400 dark:text-green-400" />
                   ) : enabled ? (
                     <CheckCircle className="h-4 w-4" style={{ color: categoryColor }} />
                   ) : (
-                    <Circle className="h-4 w-4 text-white/40" />
+                    <Circle className="h-4 w-4 text-white/40 dark:text-white/40 text-slate-400" />
                   )}
                 </motion.div>
-                <span className="text-white font-medium">{title}</span>
+                <span className="text-[var(--text-primary)] font-medium">{title}</span>
                 {readOnly && (
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="px-2 py-0.5 rounded-full bg-green-500/20 border border-green-500/30"
+                    className="px-2 py-0.5 rounded-full bg-green-500/20 dark:bg-green-500/20 border border-green-500/30 dark:border-green-500/30"
                   >
-                    <span className="text-xs font-medium text-green-400">Required</span>
+                    <span className="text-xs font-medium text-green-400 dark:text-green-400">Required</span>
                   </motion.div>
                 )}
               </CardTitle>
@@ -131,7 +131,7 @@ export function CookieCategoryToggle({
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="flex items-center gap-2 text-sm text-green-400 font-medium"
+                className="flex items-center gap-2 text-sm text-green-400 dark:text-green-400 font-medium"
               >
                 <CheckCircle className="h-4 w-4" />
                 <span>Always Active</span>
@@ -141,15 +141,15 @@ export function CookieCategoryToggle({
         </CardHeader>
 
         <CardContent className="pt-0 relative z-10">
-          <motion.p
-            className="text-sm text-text-secondary leading-relaxed"
-            animate={{
-              color: isHovered ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.7)'
-            }}
-            transition={{ duration: 0.2 }}
+          <p
+            className={`text-sm leading-relaxed transition-colors duration-200 ${
+              isHovered
+                ? 'text-[var(--text-primary)]'
+                : 'text-[var(--text-secondary)]'
+            }`}
           >
             {description}
-          </motion.p>
+          </p>
 
           {/* Category badge */}
           <motion.div
@@ -172,7 +172,7 @@ export function CookieCategoryToggle({
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                className="flex items-center gap-1 text-xs text-green-400"
+                className="flex items-center gap-1 text-xs text-green-400 dark:text-green-400"
               >
                 <motion.div
                   animate={{ rotate: 360 }}

@@ -306,6 +306,12 @@ export type { EmptyChatProps } from "./empty-chat";
 export { ReactionBar } from "./reaction-bar";
 export type { ReactionBarProps, Reaction } from "./reaction-bar";
 
+// ============================================================================
+// Payment Method UI Components
+// ============================================================================
+
+export { PaymentMethodManager } from "./payment-method-manager";
+
 /**
  * Skeleton Chat Components - Loading placeholders for chat UIs
  */

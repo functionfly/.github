@@ -29,11 +29,14 @@
 @import '@/styles/contact-faq.css';
 @import '@/styles/registry.css';
 @import '@/styles/dre.css';
+@import '@/styles/function-page.css';
+@import '@/styles/onboarding.css';
 @import '@/styles/notifications-light-mode.css';
 @import '@/styles/function-marketplace-light-mode.css';
 @import '@/styles/agent-sdk-integrations-light-mode.css';
 @import '@/styles/enterprise-sla.css';
 @import '@/styles/functions-discovery.css';
+@import '@/styles/favorites-page.css';
 @import '@/styles/discovery-new.css';
 @import '@/styles/provider-theme.css';
 @import '@/styles/contribution-activity-light-mode.css';

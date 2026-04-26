@@ -37,6 +37,10 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   useEffect(() => {
     const root = document.documentElement;
 
+    // Remove cookie consent's dark mode class unconditionally
+    // The library adds cc--darkmode regardless of actual theme
+    root.classList.remove('cc--darkmode');
+
     // Set the data-theme attribute with resolved theme
     root.setAttribute('data-theme', resolvedTheme);
 

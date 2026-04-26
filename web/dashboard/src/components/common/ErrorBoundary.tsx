@@ -108,12 +108,12 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
             {/* Action Buttons - use <a> not <Link> because ErrorBoundary renders outside BrowserRouter */}
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button onClick={this.handleRetry} className="gap-2">
+              <Button onClick={this.handleRetry} className="gap-2 flex-1">
                 <RefreshCcw className="w-4 h-4" />
                 Try Again
               </Button>
-              <a href="/">
-                <Button variant="outline" className="gap-2 w-full sm:w-auto">
+              <a href="/" className="flex-1">
+                <Button variant="outline" className="gap-2 w-full">
                   <Home className="w-4 h-4" />
                   Go Home
                 </Button>

@@ -89,7 +89,7 @@ export function WalletSection({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="border-border-strong tabular-nums"
+                    className="border-border-strong tabular-nums hover:border-brand-500 hover:bg-brand-500/10 hover:text-brand-400 transition-colors duration-150"
                     onClick={() => onTopUpAmountChange(String(n))}
                   >
                     ${n}

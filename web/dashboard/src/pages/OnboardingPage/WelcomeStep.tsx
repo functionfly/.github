@@ -46,10 +46,10 @@ export function WelcomeStep() {
         animate={{ opacity: 1, y: 0 }}
         className="text-center space-y-4"
       >
-        <div className="w-20 h-20 bg-linear-to-br from-[#6366f1] to-[#8b5cf6] rounded-full flex items-center justify-center mx-auto">
+        <div className="w-20 h-20 bg-gradient-to-br from-ff-flame to-ff-afterburner rounded-full flex items-center justify-center mx-auto">
           <Zap className="w-10 h-10 text-white" fill="currentColor" />
         </div>
-        <h2 className="text-3xl font-bold gradient-text">
+        <h2 className="text-3xl font-bold text-ff-cyan">
           Welcome to FunctionFly
         </h2>
         <p className="text-lg text-text-secondary max-w-2xl mx-auto leading-relaxed">
@@ -66,10 +66,10 @@ export function WelcomeStep() {
         className="grid grid-cols-1 md:grid-cols-2 gap-4"
       >
         {benefits.map((benefit, index) => (
-          <Card key={index} className="card p-4 hover:border-[#6366f1]/50 transition-colors">
+          <Card key={index} className="card p-4 hover:border-ff-flame/50 transition-colors">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-[#6366f1]/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                <benefit.icon className="w-5 h-5 text-[#6366f1]" />
+              <div className="w-10 h-10 bg-ff-flame/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                <benefit.icon className="w-5 h-5 text-ff-flame" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
@@ -97,8 +97,8 @@ export function WelcomeStep() {
           <div className="space-y-3">
             {steps.map((step, index) => (
               <div key={index} className="flex items-center gap-3">
-                <div className="w-6 h-6 bg-[#6366f1]/20 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-xs font-medium text-[#6366f1]">{index + 1}</span>
+                <div className="w-6 h-6 bg-ff-flame/20 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs font-medium text-ff-flame">{index + 1}</span>
                 </div>
                 <span className="text-text-primary">{step}</span>
               </div>
@@ -114,8 +114,8 @@ export function WelcomeStep() {
         transition={{ delay: 0.6 }}
         className="text-center space-y-4"
       >
-        <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 inline-block">
-          <div className="flex items-center gap-2 text-green-400">
+        <div className="bg-ff-taxiway/10 border border-ff-taxiway/20 rounded-lg p-4 inline-block">
+          <div className="flex items-center gap-2 text-ff-taxiway">
             <CheckCircle className="w-5 h-5" />
             <span className="font-medium">Ready to get started?</span>
           </div>

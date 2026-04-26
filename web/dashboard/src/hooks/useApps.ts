@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { appsApi, type App, type CreateAppRequest, type Backend, type CreateBackendRequest } from '@/api/apps';
+import { appsApi } from '@/api/apps';
+import type { App, CreateAppRequest, Backend, CreateBackendRequest } from '@/types';
 
 // Query keys
 export const appKeys = {

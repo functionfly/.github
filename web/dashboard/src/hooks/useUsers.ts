@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { usersApi, type UpdateProfileRequest, type MeResponse, type PublicUserProfile } from '@/api/users';
+import { usersApi } from '@/api/users';
+import type { PublicUserProfile } from '@/types';
+import type { UpdateProfileRequest, MeResponse, AddSkillRequest } from '@/api/users';
 
 // Query keys
 export const userKeys = {
@@ -151,8 +153,8 @@ export function useUserSkills(username: string) {
 export function useAddSkill() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (data: { name: string; level?: string; category?: string }) => usersApi.addSkill(data),
+return useMutation({
+    mutationFn: (data: { name: string; level?: 'beginner' | 'intermediate' | 'advanced' | 'expert'; category?: string }) => usersApi.addSkill(data as AddSkillRequest),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: userKeys.all });
       toast.success('Skill added successfully');

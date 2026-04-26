@@ -1,4 +1,5 @@
 import { ProviderIcon } from '@/components/common/ProviderIcon';
+import { providersApi } from '@/api';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';

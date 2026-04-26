@@ -1,7 +1,8 @@
 "use client"
 
-import { CreditCard } from "lucide-react"
+import { CreditCard, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { HelpTooltip } from "./help-tooltip"
 
 // Card brand configurations
 const CARD_BRANDS = {
@@ -105,13 +106,19 @@ export function PaymentMethodCard({
           </div>
         </div>
         {onUpdate && (
-          <button
-            type="button"
-            onClick={onUpdate}
-            className="text-xs text-brand-500 hover:text-brand-500/80 transition-colors"
-          >
-            Update
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={onUpdate}
+              className="text-xs text-brand-500 hover:text-brand-500/80 transition-colors flex items-center gap-1"
+            >
+              Manage <ExternalLink className="w-3 h-3" />
+            </button>
+            <HelpTooltip
+              content="Payment methods are managed via the Stripe billing portal. Click to be redirected."
+              side="top"
+            />
+          </div>
         )}
       </div>
     </div>

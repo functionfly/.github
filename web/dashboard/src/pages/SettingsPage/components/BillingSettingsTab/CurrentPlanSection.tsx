@@ -2,7 +2,7 @@ import type { Subscription } from '@/api/billing';
 import type { CostSummary } from '@/api/usageAnalytics';
 import { Badge } from '@/components/ui/badge';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
-import { PaymentMethodCard } from '@/components/ui/payment-method-card';
+import { PaymentMethodManager } from '@/components/ui/payment-method-manager';
 import { SpendingSummaryWidget } from '@/components/ui/spending-summary-widget';
 import { Zap } from 'lucide-react';
 
@@ -129,14 +129,9 @@ export function CurrentPlanSection({
           </div>
         </div>
       )}
-      {subscription.payment_method && (
-        <PaymentMethodCard
-          brand={subscription.payment_method.brand}
-          last4={subscription.payment_method.last4}
-          expMonth={subscription.payment_method.exp_month}
-          expYear={subscription.payment_method.exp_year}
-          onUpdate={() => openPortal(returnUrl)}
-        />
+      {/* Payment Method Manager - shown for active subscriptions */}
+      {subscription.status === 'active' && (
+        <PaymentMethodManager returnUrl={returnUrl} />
       )}
 
       {/* Spending Summary Widget */}

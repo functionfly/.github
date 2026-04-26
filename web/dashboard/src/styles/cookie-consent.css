@@ -1,385 +1,212 @@
-/* Custom Cookie Consent Styling */
-/* Note: Instrument Sans is loaded via index.html preload — no duplicate import needed */
+/* Custom Cookie Consent Styling - FunctionFly™ Velocity Theme */
+/* These styles use direct element targeting to override vanilla-cookieconsent */
 
-/* Base Cookie Consent Overrides */
-:root {
-  --cc-primary-color: #6366f1;
-  --cc-secondary-color: #8b5cf6;
-  --cc-bg-color: rgba(0, 0, 0, 0.95);
-  --cc-border-color: rgba(255, 255, 255, 0.1);
-  --cc-text-color: #ffffff;
-  --cc-muted-text: rgba(255, 255, 255, 0.7);
-  --cc-border-radius: 16px;
-  --cc-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+/* ============================================
+   BASE OVERRIDES - Target library elements directly
+   ============================================ */
+
+/* Force light mode variables on html element */
+html {
+  --cc-font-family: var(--ff-font-sans) !important;
+  --cc-modal-border-radius: var(--ff-radius-xl) !important;
+  --cc-btn-border-radius: var(--ff-radius-md) !important;
 }
 
-/* Consent Modal (banner) - using #cc-main prefix */
-#cc-main .cm {
-  background: var(--cc-bg-color) !important;
-  border: 1px solid var(--cc-border-color) !important;
-  border-radius: var(--cc-border-radius) !important;
-  box-shadow: var(--cc-shadow) !important;
+/* ============================================
+   DARK MODE (default) - our dark theme
+   ============================================ */
+html:not([data-theme='light']) {
+  --cc-bg: #0D1117 !important;
+  --cc-primary-color: #F0F6FC !important;
+  --cc-secondary-color: #8B949E !important;
+  --cc-btn-primary-bg: #FF6B35 !important;
+  --cc-btn-primary-color: #ffffff !important;
+  --cc-btn-primary-border-color: #FF6B35 !important;
+  --cc-btn-secondary-bg: #21262D !important;
+  --cc-btn-secondary-color: #F0F6FC !important;
+  --cc-cookie-category-block-bg: #21262D !important;
+  --cc-cookie-category-block-border: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ============================================
+   LIGHT MODE - use body.light class for higher specificity
+   ============================================ */
+body.light {
+  --cc-bg: #FFFFFF !important;
+  --cc-primary-color: #0D1117 !important;
+  --cc-secondary-color: #6B7280 !important;
+  --cc-btn-primary-bg: #E85A2A !important;
+  --cc-btn-primary-color: #ffffff !important;
+  --cc-btn-primary-border-color: #E85A2A !important;
+  --cc-btn-secondary-bg: #F6F8FA !important;
+  --cc-btn-secondary-color: #0D1117 !important;
+  --cc-cookie-category-block-bg: #F6F8FA !important;
+  --cc-cookie-category-block-border: rgba(0, 0, 0, 0.08) !important;
+  --cc-cookie-category-block-hover-bg: #EEF1F5 !important;
+  --cc-separator-border-color: rgba(0, 0, 0, 0.08) !important;
+  --cc-footer-bg: #F6F8FA !important;
+}
+
+/* Also target cm and pm directly when light mode is active */
+body.light #cc-main .cm,
+body.light #cc-main .pm {
+  background: #FFFFFF !important;
+}
+
+/* Target when data-theme is set */
+[data-theme='light'] {
+  --cc-bg: #FFFFFF !important;
+  --cc-primary-color: #0D1117 !important;
+  --cc-secondary-color: #6B7280 !important;
+  --cc-btn-primary-bg: #E85A2A !important;
+  --cc-btn-primary-color: #ffffff !important;
+  --cc-btn-primary-border-color: #E85A2A !important;
+  --cc-btn-secondary-bg: #F6F8FA !important;
+  --cc-btn-secondary-color: #0D1117 !important;
+  --cc-cookie-category-block-bg: #F6F8FA !important;
+  --cc-cookie-category-block-border: rgba(0, 0, 0, 0.08) !important;
+  --cc-cookie-category-block-hover-bg: #EEF1F5 !important;
+  --cc-separator-border-color: rgba(0, 0, 0, 0.08) !important;
+  --cc-footer-bg: #F6F8FA !important;
+}
+
+[data-theme='light'] #cc-main .cm,
+[data-theme='light'] #cc-main .pm {
+  background: #FFFFFF !important;
+}
+
+/* ============================================
+   MODAL CONTAINERS - Target directly by element
+   ============================================ */
+#cc-main .cm,
+#cc-main .pm {
+  background: var(--cc-bg) !important;
+  border: 1px solid var(--cc-cookie-category-block-border) !important;
+  border-radius: var(--cc-modal-border-radius) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
 }
 
-#cc-main .cm__title {
-  font-size: 18px !important;
-  font-weight: 600 !important;
-  color: var(--cc-text-color) !important;
-  line-height: 1.4 !important;
+/* ============================================
+   TYPOGRAPHY
+   ============================================ */
+#cc-main .cm__title,
+#cc-main .pm__title {
+  color: var(--cc-primary-color) !important;
 }
 
-#cc-main .cm__desc {
-  font-size: 14px !important;
-  line-height: 1.6 !important;
-  color: var(--cc-muted-text) !important;
+#cc-main .cm__desc,
+#cc-main .pm__section-desc {
+  color: var(--cc-secondary-color) !important;
 }
 
-/* Consent Modal Buttons */
-#cc-main .cm__btn {
-  background: linear-gradient(135deg, var(--cc-primary-color), var(--cc-secondary-color)) !important;
+/* ============================================
+   BUTTONS - Flame gradient for primary
+   ============================================ */
+#cc-main .cm__btn,
+#cc-main .pm__btn {
+  background: linear-gradient(135deg, var(--ff-flame, #FF6B35) 0%, var(--ff-afterburner, #FF4F5E) 100%) !important;
   border: none !important;
-  border-radius: 8px !important;
-  color: white !important;
+  border-radius: var(--cc-btn-border-radius, 8px) !important;
+  color: #ffffff !important;
   font-weight: 500 !important;
-  font-size: 14px !important;
-  padding: 10px 20px !important;
-  cursor: pointer !important;
-  transition: all 0.2s ease !important;
-  box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.3) !important;
+  box-shadow: 0 4px 14px rgba(255, 107, 53, 0.35) !important;
 }
 
-#cc-main .cm__btn:hover {
+#cc-main .cm__btn:hover,
+#cc-main .pm__btn:hover {
   transform: translateY(-1px) !important;
-  box-shadow: 0 6px 20px 0 rgba(99, 102, 241, 0.4) !important;
+  box-shadow: 0 6px 20px rgba(255, 107, 53, 0.45) !important;
 }
 
 /* Secondary buttons */
-#cc-main .cm__btn--secondary {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  color: var(--cc-text-color) !important;
-}
-
-#cc-main .cm__btn--secondary:hover {
-  background: rgba(255, 255, 255, 0.15) !important;
-  border-color: rgba(255, 255, 255, 0.3) !important;
-}
-
-/* Preferences Modal - use #cc-main prefix to match library */
-#cc-main .pm {
-  background: var(--cc-bg-color) !important;
-  border: 1px solid var(--cc-border-color) !important;
-  border-radius: var(--cc-border-radius) !important;
-  box-shadow: var(--cc-shadow) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-  max-width: 600px !important;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
-}
-
-/* Preferences Modal Header */
-#cc-main .pm__header {
-  padding: 24px 32px 16px 32px !important;
-  border-bottom: 1px solid var(--cc-border-color) !important;
-}
-
-#cc-main .pm__title {
-  font-size: 20px !important;
-  font-weight: 600 !important;
-  color: var(--cc-text-color) !important;
-}
-
-/* Preferences Modal Content */
-#cc-main .pm__body {
-  padding: 24px 32px !important;
-  color: var(--cc-text-color) !important;
-}
-
-/* Section blocks - more padding and breathing room */
-#cc-main .pm__section {
-  margin-bottom: 16px !important;
-  padding: 20px 24px !important;
-  background: rgba(255, 255, 255, 0.03) !important;
-  border-radius: 12px !important;
-  border: 1px solid var(--cc-border-color) !important;
-}
-
-/* First section (intro text) - no background */
-#cc-main .pm__section:first-child {
-  background: transparent !important;
-  border: none !important;
-  padding: 0 0 16px 0 !important;
-}
-
-/* Toggle sections (cookie categories) */
-#cc-main .pm__section--toggle {
-  padding: 0 !important;
-  overflow: hidden !important;
-}
-
-/* Section titles inside toggles - use flexbox for proper spacing */
-#cc-main .pm__section--toggle .pm__section-title {
-  padding: 16px 80px 16px 20px !important;
-  font-size: 15px !important;
-  font-weight: 600 !important;
-  color: var(--cc-text-color) !important;
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: none !important;
-  min-height: auto !important;
-  display: flex !important;
-  align-items: center !important;
-  flex-wrap: wrap !important;
-  gap: 10px !important;
-}
-
-/* Badge inside toggle titles - custom styling with proper spacing */
-#cc-main .pm__section--toggle .pm__section-title .pm__badge {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(139, 92, 246, 0.3)) !important;
-  color: #e0e7ff !important;
-  border: 1px solid rgba(139, 92, 246, 0.4) !important;
-  border-radius: 6px !important;
-  padding: 4px 10px !important;
-  font-size: 10px !important;
-  font-weight: 600 !important;
-  letter-spacing: 0.5px !important;
-  text-transform: uppercase !important;
-  order: -1 !important;
-  margin: 0 !important;
-  flex-shrink: 0 !important;
-}
-
-/* Section descriptions inside toggles */
-#cc-main .pm__section--toggle .pm__section-desc {
-  padding: 16px 20px !important;
-  font-size: 14px !important;
-  line-height: 1.6 !important;
-  color: var(--cc-muted-text) !important;
-}
-
-/* Regular section titles (non-toggle) */
-#cc-main .pm__section-title {
-  font-size: 16px !important;
-  font-weight: 600 !important;
-  color: var(--cc-text-color) !important;
-  margin-bottom: 8px !important;
-}
-
-/* Regular section descriptions */
-#cc-main .pm__section-desc {
-  font-size: 14px !important;
-  line-height: 1.6 !important;
-  color: var(--cc-muted-text) !important;
-}
-
-/* Preferences Modal Footer */
-#cc-main .pm__footer {
-  padding: 16px 32px 24px 32px !important;
-  border-top: 1px solid var(--cc-border-color) !important;
-}
-
-#cc-main .pm__btns {
-  display: flex !important;
-  gap: 12px !important;
-  flex-wrap: wrap !important;
-}
-
-#cc-main .pm__btn {
-  flex: 1 !important;
-  background: linear-gradient(135deg, var(--cc-primary-color), var(--cc-secondary-color)) !important;
-  border: none !important;
-  border-radius: 8px !important;
-  color: white !important;
-  font-weight: 500 !important;
-  font-size: 14px !important;
-  padding: 12px 20px !important;
-  cursor: pointer !important;
-  transition: all 0.2s ease !important;
-  box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.3) !important;
-  text-decoration: none !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  min-height: 44px !important;
-}
-
-#cc-main .pm__btn:hover {
-  transform: translateY(-1px) !important;
-  box-shadow: 0 6px 20px 0 rgba(99, 102, 241, 0.4) !important;
-}
-
+#cc-main .cm__btn--secondary,
 #cc-main .pm__btn--secondary {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  color: var(--cc-text-color) !important;
+  background: var(--cc-btn-secondary-bg) !important;
+  border: 1px solid var(--cc-cookie-category-block-border) !important;
+  color: var(--cc-btn-secondary-color) !important;
 }
 
-#cc-main .pm__btn--secondary:hover {
-  background: rgba(255, 255, 255, 0.15) !important;
-  border-color: rgba(255, 255, 255, 0.3) !important;
+/* ============================================
+   SECTIONS / CARDS
+   ============================================ */
+#cc-main .pm__section {
+  background: var(--cc-cookie-category-block-bg) !important;
+  border: 1px solid var(--cc-cookie-category-block-border) !important;
+  border-radius: 12px !important;
 }
 
-/* Close Button */
-#cc-main .pm__close-btn {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  border-radius: 8px !important;
-  width: 36px !important;
-  height: 36px !important;
-  cursor: pointer !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  transition: all 0.2s ease !important;
+#cc-main .pm__section--toggle .pm__section-title {
+  background: var(--cc-cookie-category-block-bg) !important;
+  border-color: var(--cc-cookie-category-block-border) !important;
+  color: var(--cc-primary-color) !important;
 }
 
-#cc-main .pm__close-btn:hover {
-  background: rgba(255, 255, 255, 0.2) !important;
-  border-color: rgba(255, 255, 255, 0.3) !important;
+/* Badge */
+#cc-main .pm__badge {
+  background: rgba(255, 107, 53, 0.15) !important;
+  color: var(--ff-flame, #FF6B35) !important;
+  border: 1px solid rgba(255, 107, 53, 0.3) !important;
 }
 
-/* Cookie Table Styling */
+/* ============================================
+   TOGGLE SWITCHES
+   ============================================ */
+#cc-main .section__toggle:checked ~ .toggle__icon {
+  background: var(--ff-flame, #FF6B35) !important;
+}
+
+#cc-main .toggle__icon-circle {
+  background: #ffffff !important;
+}
+
+/* ============================================
+   FOOTER
+   ============================================ */
+#cc-main .pm__footer,
+#cc-main .cm__footer {
+  background: var(--cc-footer-bg) !important;
+  border-color: var(--cc-separator-border-color) !important;
+}
+
+/* ============================================
+   TABLE
+   ============================================ */
 #cc-main .pm__table {
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: 1px solid var(--cc-border-color) !important;
-  border-radius: 8px !important;
-  overflow: hidden !important;
-  margin-top: 16px !important;
-  width: 100% !important;
-}
-
-#cc-main .pm__table th,
-#cc-main .pm__table td {
-  padding: 12px 16px !important;
-  border-bottom: 1px solid var(--cc-border-color) !important;
-  color: var(--cc-text-color) !important;
+  background: var(--cc-cookie-category-block-bg) !important;
+  border: 1px solid var(--cc-cookie-category-block-border) !important;
 }
 
 #cc-main .pm__table th {
-  background: rgba(255, 255, 255, 0.05) !important;
-  font-weight: 600 !important;
-  font-size: 12px !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.05em !important;
+  background: var(--cc-cookie-category-block-hover-bg) !important;
 }
 
-#cc-main .pm__table td {
-  font-size: 13px !important;
-  color: var(--cc-muted-text) !important;
+/* ============================================
+   OVERLAY
+   ============================================ */
+#cc-main .pm-overlay {
+  background: rgba(0, 0, 0, 0.5) !important;
 }
 
-#cc-main .pm__table tr:last-child td {
-  border-bottom: none !important;
+/* ============================================
+   LINKS
+   ============================================ */
+#cc-main .cc__link {
+  color: var(--ff-cyan, #00D4FF) !important;
 }
 
-
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  #cc-main .cm {
-    padding: 20px !important;
-  }
-
-  #cc-main .cm__btns {
-    flex-direction: column !important;
-  }
-
-  #cc-main .cm__btn {
-    width: 100% !important;
-  }
-
-  #cc-main .pm {
-    max-width: 95vw !important;
-    margin: 20px !important;
-  }
-
-  #cc-main .pm__btns {
-    flex-direction: column !important;
-  }
-
-  #cc-main .pm__btn {
-    width: 100% !important;
-  }
+/* ============================================
+   CLOSE BUTTON
+   ============================================ */
+#cc-main .pm__close-btn {
+  background: var(--cc-btn-secondary-bg) !important;
+  border: 1px solid var(--cc-cookie-category-block-border) !important;
 }
 
-/* Custom scrollbar for modal */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 3px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-/* Animations */
-@keyframes slideInUp {
-  from {
-    transform: translateY(100px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 30px rgba(99, 102, 241, 0.5);
-  }
-}
-
-/* Enhanced button hover effects */
-#cc-main .cm__btn:hover,
-#cc-main .pm__btn:hover {
-  animation: pulse-glow 2s infinite;
-}
-
-/* ===== OVERRIDE BADGE STYLING IN TOGGLE TITLES ===== */
-/* Target the badge specifically inside cookie category toggle headers */
-#cc-main .pm__section--toggle .pm__section-title-wrapper .pm__section-title .pm__badge,
-#cc-main .pm__section--toggle .pm__section-title > .pm__badge,
-#cc-main .pm__section-title[data-role="toggle"] .pm__badge {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(139, 92, 246, 0.25)) !important;
-  color: #e0e7ff !important;
-  border: 1px solid rgba(139, 92, 246, 0.5) !important;
-  border-radius: 4px !important;
-  padding: 2px 8px !important;
-  font-size: 10px !important;
-  font-weight: 600 !important;
-  letter-spacing: 0.5px !important;
-  text-transform: uppercase !important;
-  margin-left: 0 !important;
-  margin-right: 12px !important;
-  position: static !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 4px !important;
-  height: auto !important;
-  min-width: auto !important;
-  flex-shrink: 0 !important;
+/* ============================================
+   SERVICE COUNTER
+   ============================================ */
+#cc-main .pm__service-counter {
+  background: var(--ff-flame, #FF6B35) !important;
+  color: #ffffff !important;
 }

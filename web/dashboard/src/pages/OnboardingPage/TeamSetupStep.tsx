@@ -157,7 +157,7 @@ export function TeamSetupStep() {
       {/* User Role Selection */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <Crown className="w-5 h-5 text-[#6366f1]" />
+          <Crown className="w-5 h-5 text-ff-stratosphere" />
           <h3 className="text-lg font-medium text-text-primary">Your Role</h3>
           <HelpTooltip content="Choose your role in the team. You can change this later in team settings." />
         </div>
@@ -170,21 +170,21 @@ export function TeamSetupStep() {
                 key={option.value}
                 className={`card p-4 cursor-pointer transition-all ${
                   userRole === option.value
-                    ? "border-[#6366f1] ring-1 ring-[#6366f1] bg-[#6366f1]/5"
+                    ? "border-ff-stratosphere ring-1 ring-ff-stratosphere bg-ff-stratosphere/5"
                     : "hover:border-border-default"
                 }`}
                 onClick={() => setLocalUserRole(option.value)}
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    userRole === option.value ? "bg-[#6366f1]/20" : "bg-bg-tertiary"
+                    userRole === option.value ? "bg-ff-stratosphere/20" : "bg-bg-tertiary"
                   }`}>
-                    <Icon className={`w-5 h-5 ${userRole === option.value ? "text-[#6366f1]" : "text-text-muted"}`} />
+                    <Icon className={`w-5 h-5 ${userRole === option.value ? "text-ff-stratosphere" : "text-text-muted"}`} />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <h4 className="font-medium text-text-primary">{option.label}</h4>
-                      {userRole === option.value && <Check className="w-4 h-4 text-[#6366f1]" />}
+                      {userRole === option.value && <Check className="w-4 h-4 text-ff-stratosphere" />}
                     </div>
                     <p className="text-sm text-text-secondary">{option.description}</p>
                   </div>
@@ -198,7 +198,7 @@ export function TeamSetupStep() {
       {/* Team Invitations */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <Users className="w-5 h-5 text-[#6366f1]" />
+          <Users className="w-5 h-5 text-ff-flame" />
           <h3 className="text-lg font-medium text-text-primary">Invite Team Members</h3>
           <HelpTooltip content="Add team members to collaborate on functions and share provider configurations." />
         </div>
@@ -228,7 +228,7 @@ export function TeamSetupStep() {
                   id="role"
                   value={newRole}
                   onChange={(e) => setNewRole(e.target.value as TeamRole)}
-                  className="mt-1 w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-md text-text-primary focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1]"
+                  className="mt-1 w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-md text-text-primary focus:border-ff-flame focus:ring-1 focus:ring-ff-flame"
                 >
                   {roleOptions.slice(1).map((option) => (
                     <option key={option.value} value={option.value}>

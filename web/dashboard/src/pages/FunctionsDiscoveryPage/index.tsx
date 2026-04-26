@@ -1,4 +1,5 @@
 import { functionsApi } from '@/api/functions';
+import { favoritesApi } from '@/api/favorites';
 import { registryApi, RegistryFunction } from '@/api/registry';
 import { AviationEmptyState } from '@/components/functions/AviationEmptyState';
 import { AviationFunctionCard } from '@/components/functions/AviationFunctionCard';
@@ -93,14 +94,17 @@ export function FunctionsDiscoveryPage() {
     try {
       let data: FunctionSummary[] = [];
 
-      // Fetch both user's functions and public registry functions
-      const [userRes, registryRes] = await Promise.allSettled([
+      // Fetch user's functions and public registry functions (except for 'favorites' and 'my' which have different sources)
+      const needsRegistry = filter !== 'my' && filter !== 'favorites';
+      const [userRes, registryRes, favoritesRes] = await Promise.allSettled([
         functionsApi.list(),
-        filter === 'my' ? Promise.resolve({ functions: [] }) : registryApi.getFunctions({ visibility: 'public', limit: 100 }),
+        needsRegistry ? registryApi.getFunctions({ visibility: 'public', limit: 100 }) : Promise.resolve({ functions: [] }),
+        filter === 'favorites' ? favoritesApi.list(1, 50) : Promise.resolve({ favorites: [], total: 0 }),
       ]);
 
       const userFunctionsRaw = userRes.status === 'fulfilled' ? (userRes.value.functions || []) : [];
       const publicFunctions: RegistryFunction[] = registryRes.status === 'fulfilled' ? (registryRes.value.functions || []) : [];
+      const userFavorites = favoritesRes.status === 'fulfilled' ? (favoritesRes.value.favorites || []) : [];
 
       // Convert user functions to FunctionSummary format (camelCase -> snake_case)
       const userFunctions: FunctionSummary[] = userFunctionsRaw.map((f) => ({
@@ -128,6 +132,9 @@ export function FunctionsDiscoveryPage() {
         isPublic: true,
       }));
 
+      // Build a map of favorite function IDs for quick lookup
+      const favoriteIds = new Set(userFavorites.map((fav) => fav.function_id));
+
       // Combine both sources (exclude duplicates based on name)
       const userFunctionNames = new Set(userFunctions.map((f) => f.name));
       const uniquePublicFunctions = mappedPublicFunctions.filter((f) => !userFunctionNames.has(f.name.split('/')[1] || f.name));
@@ -137,29 +144,24 @@ export function FunctionsDiscoveryPage() {
       switch (filter) {
         case 'hot':
         case 'trending':
-          // Sort by recent execution activity
           data = allFunctions.sort((a, b) => (b.execution_count || 0) - (a.execution_count || 0)).slice(0, 50);
           break;
         case 'new':
-          // Sort by creation date
           data = allFunctions.sort(
             (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           ).slice(0, 50);
           break;
         case 'popular':
-          // Sort by total executions
           data = allFunctions.sort((a, b) => (b.execution_count || 0) - (a.execution_count || 0)).slice(0, 50);
           break;
         case 'favorites':
-          // Show functions with high popularity score
-          data = allFunctions
-            .filter((f) => (f.execution_count || 0) > 50 || f.isPublic)
-            .sort((a, b) => (b.execution_count || 0) - (a.execution_count || 0))
-            .slice(0, 20);
+          data = allFunctions.filter((f) => favoriteIds.has(f.id));
           break;
         case 'my':
-        default:
           data = userFunctions;
+          break;
+        default:
+          data = allFunctions;
       }
 
       setFunctions(data);

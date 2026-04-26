@@ -1,4 +1,4 @@
-import { registryApi, type RegistryFunction } from '@/api/registry';
+import { registryApi, type RegistryFunction, type RegistrySearchParams } from '@/api/registry';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {

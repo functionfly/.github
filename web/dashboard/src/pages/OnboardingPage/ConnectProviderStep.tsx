@@ -496,8 +496,8 @@ export function ConnectProviderStep() {
         animate={{ opacity: 1, scale: 1 }}
         className="text-center py-8"
       >
-        <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Check className="w-8 h-8 text-green-500" />
+        <div className="w-16 h-16 bg-ff-taxiway/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Check className="w-8 h-8 text-ff-taxiway" />
         </div>
         <h3 className="text-xl font-semibold text-text-primary mb-2">
           {selectedProviderData?.name} Connected!
@@ -519,19 +519,19 @@ export function ConnectProviderStep() {
           recycle={false}
           numberOfPieces={80}
           gravity={0.3}
-          colors={['#6366f1', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444']}
+          colors={['#FF6B35', '#FFB800', '#00D4FF', '#5B7CF5', '#10b981', '#FF4F5E']}
         />
       )}
       <div className="space-y-6">
         {unavailableProviders.length > 0 && (
-          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+          <div className="bg-ff-cyan/10 border border-ff-cyan/30 rounded-lg p-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+              <AlertTriangle className="w-5 h-5 text-ff-cyan flex-shrink-0 mt-0.5" />
               <div>
-                <h4 className="font-medium text-yellow-400 mb-1">
+                <h4 className="font-medium text-ff-cyan mb-1">
                   Some providers are currently unavailable
                 </h4>
-                <p className="text-sm text-yellow-300">
+                <p className="text-sm text-text-secondary">
                   {unavailableProviders.length === 1
                     ? `${unavailableProviders[0].name} is undergoing maintenance.`
                     : `${unavailableProviders.length} providers are currently unavailable.`}{' '}
@@ -555,17 +555,17 @@ export function ConnectProviderStep() {
                     : CheckCircle2;
               const statusColor =
                 provider.status === 'maintenance'
-                  ? 'text-yellow-500'
+                  ? 'text-ff-cyan'
                   : provider.status === 'outage'
-                    ? 'text-red-500'
-                    : 'text-green-500';
+                    ? 'text-ff-emergency'
+                    : 'text-ff-taxiway';
 
               return (
                 <Card
                   key={provider.id}
                   className={`card p-4 transition-all ${
                     isAvailable
-                      ? 'cursor-pointer hover:border-[#6366f1]/50'
+                      ? 'cursor-pointer hover:border-ff-flame/50'
                       : 'opacity-60 cursor-not-allowed'
                   }`}
                   onClick={() => isAvailable && setSelectedProvider(provider.id)}
@@ -592,10 +592,10 @@ export function ConnectProviderStep() {
                         <HelpTooltip content={provider.tooltip} />
                         {!isAvailable && (
                           <span
-                            className={`text-xs px-2 py-0.5 rounded-full ${
+                            className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                               provider.status === 'maintenance'
-                                ? 'bg-yellow-500/20 text-yellow-400'
-                                : 'bg-red-500/20 text-red-400'
+                                ? 'bg-ff-cyan text-ff-pitch'
+                                : 'bg-ff-emergency text-white'
                             }`}
                           >
                             {provider.status === 'maintenance' ? 'Maintenance' : 'Outage'}
@@ -729,7 +729,7 @@ export function ConnectProviderStep() {
                     validationState === 'invalid'
                       ? 'border-red-500 focus:border-red-500'
                       : validationState === 'valid'
-                        ? 'border-green-500 focus:border-green-500'
+                        ? 'border-ff-taxiway focus:border-ff-taxiway'
                         : ''
                   }`}
                 />
@@ -738,7 +738,7 @@ export function ConnectProviderStep() {
                     <Loader2 className="w-4 h-4 animate-spin text-text-muted" />
                   )}
                   {validationState === 'valid' && (
-                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                    <CheckCircle2 className="w-4 h-4 text-ff-taxiway" />
                   )}
                   {validationState === 'invalid' && (
                     <AlertCircle className="w-4 h-4 text-red-500" />
@@ -785,7 +785,7 @@ export function ConnectProviderStep() {
                 id="shareWithTeam"
                 checked={shareWithTeam}
                 onChange={(e) => setShareWithTeam(e.target.checked)}
-                className="w-4 h-4 text-[#6366f1] border-border-subtle rounded focus:ring-[#6366f1] focus:ring-1"
+                className="w-4 h-4 text-ff-flame border-border-subtle rounded focus:ring-ff-flame focus:ring-1"
               />
               <div className="flex-1">
                 <Label

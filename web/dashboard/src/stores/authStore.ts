@@ -152,6 +152,7 @@ const authStore = create<AuthState>()(
                   role: userData.user.role,
                   createdAt: userData.user.created_at,
                   updatedAt: userData.user.updated_at,
+                  isOnline: true,
                 };
 
                 const session: Session = {
@@ -212,6 +213,7 @@ const authStore = create<AuthState>()(
                   role: refreshData.user.role,
                   createdAt: refreshData.user.created_at,
                   updatedAt: refreshData.user.updated_at,
+                  isOnline: true,
                 };
 
                 // Decode new token to get expiration with safe decoding
@@ -285,7 +287,7 @@ const authStore = create<AuthState>()(
           }
 
           set({
-            user,
+            user: { ...user, isOnline: true },
             session,
             isAuthenticated: true,
             isLoading: false,
@@ -376,6 +378,7 @@ const authStore = create<AuthState>()(
             role: data.user.role,
             createdAt: data.user.created_at,
             updatedAt: data.user.updated_at,
+            isOnline: true,
           };
 
           const payload = safeDecodeJwtPayload(data.token);

@@ -81,7 +81,7 @@ export function CookiePreferencesModal({ isOpen, onClose }: CookiePreferencesMod
     <AnimatePresence>
       {isOpen && (
         <Dialog open={isOpen} onOpenChange={onClose}>
-          <DialogContent className="max-w-2xl max-h-[90vh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-white/10 backdrop-blur-xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] bg-[var(--bg-secondary)] border border-[var(--border-subtle)] backdrop-blur-xl">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -90,14 +90,14 @@ export function CookiePreferencesModal({ isOpen, onClose }: CookiePreferencesMod
             >
               <DialogHeader className="relative pb-6">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] dark:from-[#6366f1] dark:to-[#8b5cf6] flex items-center justify-center">
                     <Settings className="w-5 h-5 text-white" />
                   </div>
-                  <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-white to-text-secondary bg-clip-text text-transparent">
+                  <DialogTitle className="text-2xl font-bold text-[var(--text-primary)]">
                     {t('cookieConsent.title')}
                   </DialogTitle>
                 </div>
-                <p className="text-text-secondary text-sm">
+                <p className="text-[var(--text-secondary)] text-sm">
                   {t('cookieConsent.subtitle')}
                 </p>
               </DialogHeader>
@@ -109,13 +109,13 @@ export function CookiePreferencesModal({ isOpen, onClose }: CookiePreferencesMod
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="p-4 rounded-xl bg-gradient-to-r from-white/5 to-white/10 border border-white/10"
+                    className="p-4 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-subtle)]"
                   >
                     <div className="flex items-start gap-3">
                       <Cookie className="w-5 h-5 text-[#6366f1] mt-0.5 flex-shrink-0" />
                       <div>
-                        <h3 className="text-lg font-semibold text-white mb-2">{t('cookieConsent.cookieUsage')}</h3>
-                        <p className="text-text-secondary text-sm leading-relaxed">
+                        <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">{t('cookieConsent.cookieUsage')}</h3>
+                        <p className="text-[var(--text-secondary)] text-sm leading-relaxed">
                           {t('cookieConsent.cookieUsageDescription')}
                         </p>
                       </div>
@@ -148,19 +148,19 @@ export function CookiePreferencesModal({ isOpen, onClose }: CookiePreferencesMod
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6 }}
-                    className="pt-4 border-t border-white/10"
+                    className="pt-4 border-t border-[var(--border-subtle)]"
                   >
                     <div className="flex items-start gap-3">
-                      <Shield className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                      <Shield className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
                       <div>
-                        <h4 className="text-sm font-semibold text-white mb-1">{t('cookieConsent.privacySecurity')}</h4>
-                        <p className="text-text-secondary text-xs leading-relaxed">
+                        <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-1">{t('cookieConsent.privacySecurity')}</h4>
+                        <p className="text-[var(--text-secondary)] text-xs leading-relaxed">
                           <Trans i18nKey="cookieConsent.privacyContact" components={{
                             1: <a
                               href={getMarketingPageUrl('/privacy')}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-[#6366f1] hover:text-[#8b5cf6] transition-colors underline decoration-[#6366f1]/50 hover:decoration-[#8b5cf6]/50"
+                              className="text-[var(--ff-flame)] hover:text-[var(--ff-afterburner)] transition-colors underline decoration-[var(--ff-flame)]/50 hover:decoration-[var(--ff-afterburner)]/50"
                             />
                           }} />
                         </p>
@@ -170,7 +170,7 @@ export function CookiePreferencesModal({ isOpen, onClose }: CookiePreferencesMod
                 </div>
               </div>
 
-              <DialogFooter className="flex-col sm:flex-row gap-3 pt-6 border-t border-white/10">
+              <DialogFooter className="flex-col sm:flex-row gap-3 pt-6 border-t border-[var(--border-subtle)]">
                 <motion.div
                   className="flex gap-3 w-full sm:w-auto"
                   initial={{ opacity: 0, y: 10 }}
@@ -180,14 +180,14 @@ export function CookiePreferencesModal({ isOpen, onClose }: CookiePreferencesMod
                   <Button
                     variant="outline"
                     onClick={handleAcceptNecessary}
-                    className="flex-1 sm:flex-none border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500/50"
+                    className="flex-1 sm:flex-none border-red-500/30 text-red-500 hover:bg-red-500/10 hover:border-red-500/50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:border-red-500/50"
                   >
                     {t('cookieConsent.rejectAll')}
                   </Button>
                   <Button
                     variant="outline"
                     onClick={onClose}
-                    className="flex-1 sm:flex-none"
+                    className="flex-1 sm:flex-none border-[var(--border-subtle)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] dark:border-[var(--border-subtle)] dark:text-[var(--text-primary)] dark:hover:bg-[var(--bg-hover)]"
                   >
                     {t('cookieConsent.cancel')}
                   </Button>
@@ -201,13 +201,13 @@ export function CookiePreferencesModal({ isOpen, onClose }: CookiePreferencesMod
                 >
                   <Button
                     onClick={handleSavePreferences}
-                    className="flex-1 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] hover:from-[#6366f1]/90 hover:to-[#8b5cf6]/90"
+                    className="flex-1 bg-[var(--ff-gradient-cta)] hover:opacity-90"
                   >
                     {t('cookieConsent.savePreferences')}
                   </Button>
                   <Button
                     onClick={handleAcceptAll}
-                    className="flex-1 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600"
+                    className="flex-1 bg-green-600 hover:bg-green-700"
                   >
                     {t('cookieConsent.acceptAll')}
                   </Button>

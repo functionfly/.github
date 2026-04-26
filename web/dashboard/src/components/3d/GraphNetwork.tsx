@@ -20,8 +20,6 @@ import {
   Html,
   MeshDistortMaterial,
   Shape,
-  BufferGeometry,
-  Float32BufferAttribute,
 } from '@react-three/drei';
 import * as THREE from 'three';
 import { motion } from 'framer-motion';

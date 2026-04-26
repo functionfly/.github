@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useOnboardingStore } from "@/stores/onboardingStore";
 import Confetti from "react-confetti";
+import { apiClient } from "@/api/client";
 
 type TestStatus = "idle" | "running" | "success" | "failed";
 
@@ -19,8 +20,21 @@ interface TestResult {
   latency: number;
 }
 
+interface FailoverTestResponse {
+  success: boolean;
+  message?: string;
+  results: Array<{
+    provider: string;
+    region: string;
+    status: string;
+    latency_ms: number;
+  }>;
+  failover_occurred: boolean;
+  test_duration_ms: number;
+}
+
 export function TestFailoverStep() {
-  const { updateStepData } = useOnboardingStore();
+  const { updateStepData, stepData } = useOnboardingStore();
   const [testStatus, setTestStatus] = useState<TestStatus>("idle");
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState(0);
@@ -46,59 +60,52 @@ export function TestFailoverStep() {
     setShowSkeleton(true);
 
     try {
-      // Simulate test steps with potential failure
+      const connectedProvider = stepData["connect-provider"]?.providerId || "cloudflare";
+      const backupProvider = stepData["connect-provider"]?.backupProviderId;
+
+      const response = await apiClient.post<FailoverTestResponse>(
+        "/v1/providers/failover-test",
+        {
+          primary_provider_id: connectedProvider,
+          backup_provider_id: backupProvider,
+        }
+      );
+
       for (let i = 0; i < testSteps.length; i++) {
         setCurrentStep(i);
-
-        // Simulate potential failure at different steps
-        if (i === 2 && Math.random() < 0.2) { // 20% chance of failure during failover detection
-          throw new Error("failover_detection");
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+        await new Promise((resolve) => setTimeout(resolve, 800));
         setProgress(((i + 1) / testSteps.length) * 100);
-
-        // Add mock results for certain steps
-        if (i === 0) {
-          setResults((prev) => [
-            ...prev,
-            { region: "US-East", provider: "Cloudflare", status: "success", latency: 45 },
-          ]);
-        } else if (i === 3) {
-          setResults((prev) => [
-            ...prev,
-            { region: "US-West", provider: "Vercel", status: "success", latency: 62 },
-          ]);
-        }
       }
 
-      setShowSkeleton(false);
-      setTestStatus("success");
-      setShowConfetti(true);
+      const mappedResults: TestResult[] = response.results.map(r => ({
+        region: r.region,
+        provider: r.provider,
+        status: r.status as "success" | "failed",
+        latency: r.latency_ms,
+      }));
+      setResults(mappedResults);
 
-      // Save step data to onboarding store
+      setShowSkeleton(false);
+      setTestStatus(response.success ? "success" : "failed");
+      if (response.success) {
+        setShowConfetti(true);
+      }
+
       updateStepData("test-failover", {
-        testResults: results,
+        testResults: mappedResults,
         testCompletedAt: new Date().toISOString(),
-        testStatus: "success",
+        testStatus: response.success ? "success" : "failed",
+        failoverOccurred: response.failover_occurred,
+        testDurationMs: response.test_duration_ms,
       });
 
-      // Hide confetti after 3 seconds
       setTimeout(() => setShowConfetti(false), 3000);
-
-      toast.success("Failover test completed successfully!");
-    } catch (error) {
+      toast.success(response.success ? "Failover test completed successfully!" : "Failover test failed");
+    } catch (error: any) {
       setShowSkeleton(false);
       setTestStatus("failed");
-
-      let errorMessage = "Failover test failed due to an unexpected error.";
-      let suggestion = "Please check your provider connections and try again.";
-
-      if (error instanceof Error && error.message === "failover_detection") {
-        errorMessage = "Automatic failover detection failed.";
-        suggestion = "This could be due to network issues or provider API problems. Verify your API tokens are still valid and try again.";
-      }
-
+      const errorMessage = error?.response?.data?.message || "Failover test failed due to an unexpected error.";
+      const suggestion = "Please check your provider connections and try again.";
       setTestError(`${errorMessage} ${suggestion}`);
       toast.error("Failover test failed");
     }
@@ -114,7 +121,7 @@ export function TestFailoverStep() {
             recycle={false}
             numberOfPieces={100}
             gravity={0.3}
-            colors={['#6366f1', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444']}
+            colors={['#FF6B35', '#FFB800', '#00D4FF', '#5B7CF5', '#10b981', '#FF4F5E']}
           />
         )}
         <motion.div
@@ -129,7 +136,7 @@ export function TestFailoverStep() {
               {[...Array(25)].map((_, i) => (
                 <motion.div
                   key={i}
-                  className="absolute w-1 h-1 bg-gradient-to-r from-green-400 to-blue-500 rounded-full"
+                  className="absolute w-1 h-1 bg-gradient-to-r from-ff-taxiway to-ff-cyan rounded-full"
                   initial={{
                     x: "50%",
                     y: "50%",
@@ -158,7 +165,7 @@ export function TestFailoverStep() {
 
           <motion.div
             className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 relative z-10 ${
-              testStatus === "success" ? "bg-green-500/20" : "bg-red-500/20"
+              testStatus === "success" ? "bg-ff-taxiway/20" : "bg-ff-emergency/20"
             }`}
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
@@ -170,7 +177,7 @@ export function TestFailoverStep() {
               transition={{ type: "spring", bounce: 0.6, delay: 0.4 }}
             >
               {testStatus === "success" ? (
-                <Shield className="w-8 h-8 text-green-500" />
+                <Shield className="w-8 h-8 text-ff-taxiway" />
               ) : (
                 <AlertTriangle className="w-8 h-8 text-red-500" />
               )}
@@ -229,11 +236,11 @@ export function TestFailoverStep() {
                 <div className="flex items-center gap-3">
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      result.status === "success" ? "bg-green-500/20" : "bg-red-500/20"
+                      result.status === "success" ? "bg-ff-taxiway/20" : "bg-ff-emergency/20"
                     }`}
                   >
                     {result.status === "success" ? (
-                      <Check className="w-4 h-4 text-green-500" />
+                      <Check className="w-4 h-4 text-ff-taxiway" />
                     ) : (
                       <AlertTriangle className="w-4 h-4 text-red-500" />
                     )}
@@ -255,11 +262,11 @@ export function TestFailoverStep() {
           )}
         </div>
 
-        <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <Activity className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-            <div>
-              <h4 className="font-medium text-green-400 mb-1">What happened?</h4>
+<div className="bg-ff-taxiway/10 border border-ff-taxiway/20 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <Activity className="w-5 h-5 text-ff-taxiway flex-shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-medium text-ff-taxiway mb-1">What happened?</h4>
               <p className="text-sm text-text-secondary">
                 When the primary provider (Cloudflare) was temporarily unavailable,
                 FunctionFly automatically routed traffic to your backup provider
@@ -337,7 +344,7 @@ export function TestFailoverStep() {
                     <Globe className="w-4 h-4 text-text-accent" />
                     <span className="text-sm text-text-primary">{result.provider}</span>
                   </div>
-                  <Check className="w-4 h-4 text-green-500" />
+                  <Check className="w-4 h-4 text-ff-taxiway" />
                 </Card>
               ))}
             </div>

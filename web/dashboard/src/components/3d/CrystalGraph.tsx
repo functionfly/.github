@@ -115,7 +115,7 @@ function CrystalGem({
         
         {/* Faceted gem core */}
         <mesh ref={coreRef}>
-          <OctahedronGeometry args={[1, 0]} />
+          <primitive object={new THREE.OctahedronGeometry(1, 0)} />
           <meshStandardMaterial
             color={CRYSTAL.obsidian}
             metalness={0.95}
@@ -134,7 +134,7 @@ function CrystalGem({
         
         {/* Wireframe overlay */}
         <mesh scale={1.05}>
-          <OctahedronGeometry args={[1, 0]} />
+          <primitive object={new THREE.OctahedronGeometry(1, 0)} />
           <meshBasicMaterial
             color={gemColor}
             wireframe

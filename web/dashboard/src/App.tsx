@@ -47,6 +47,7 @@ import FRGShowcasePage from '@/pages/FRGShowcasePage';
 import FunctionMarketplacePage from '@/pages/FunctionMarketplacePage';
 import FunctionPage from '@/pages/FunctionPage';
 import { FunctionsDiscoveryPage } from '@/pages/FunctionsDiscoveryPage';
+import FavoritesPage from '@/pages/FavoritesPage';
 import { FunctionsPage } from '@/pages/FunctionsPage';
 import { FunctionDetailPage } from '@/pages/FunctionsPage/FunctionDetailPage';
 import { FunctionEditorPage } from '@/pages/FunctionsPage/FunctionEditorPage';
@@ -99,7 +100,8 @@ import {
   useNavigate,
   useParams,
 } from 'react-router-dom';
-import { Toaster, toast } from 'sonner';
+import { toast } from 'sonner';
+import { ThemeAwareToaster } from '@/components/common/ThemeAwareToaster';
 import { NuqsAdapter } from 'nuqs/adapters/react-router/v7';
 
 import { EnterpriseAuditPage } from '@/pages/EnterpriseAuditPage';
@@ -526,7 +528,7 @@ function AppContent() {
           <Route path="functions/trending" element={<FunctionsDiscoveryPage />} />
           <Route path="functions/explore/new" element={<FunctionsDiscoveryPage />} />
           <Route path="functions/popular" element={<FunctionsDiscoveryPage />} />
-          <Route path="functions/favorites" element={<FunctionsDiscoveryPage />} />
+          <Route path="functions/favorites" element={<FavoritesPage />} />
           <Route path="functions/my" element={<FunctionsDiscoveryPage />} />
           <Route path="functions/discovery" element={<FunctionMarketplacePage />} />
           <Route path="functions/discovery/:filter" element={<FunctionsDiscoveryPage />} />
@@ -632,16 +634,7 @@ function App() {
                 </HelmetProvider>
               </NuqsAdapter>
             </BrowserRouter>
-            <Toaster
-              position="bottom-right"
-              toastOptions={{
-                style: {
-                  background: 'var(--bg-secondary)',
-                  border: '1px solid var(--border-subtle)',
-                  color: 'var(--text-primary)',
-                },
-              }}
-            />
+            <ThemeAwareToaster />
           </CookieConsentProvider>
         </ThemeProvider>
       </QueryClientProvider>

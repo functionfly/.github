@@ -150,7 +150,7 @@ export function FunctionGalleryPage() {
       
       // Otherwise use list with filters
       const response = await fetch(
-        `/api/v1/registry/functions?visibility=public&limit=${ITEMS_PER_PAGE}&offset=${offset}${selectedCategory !== 'all' ? `&category=${selectedCategory}` : ''}`
+        `/api/v1/functions?visibility=public&limit=${ITEMS_PER_PAGE}&offset=${offset}${selectedCategory !== 'all' ? `&category=${selectedCategory}` : ''}`
       );
       if (!response.ok) throw new Error('Failed to fetch');
       const json = await response.json();
@@ -167,7 +167,7 @@ export function FunctionGalleryPage() {
   const { data: discoverData } = useQuery({
     queryKey: ['gallery', 'discover'],
     queryFn: async () => {
-      const response = await fetch(`/api/v1/registry/functions?visibility=public&limit=24&offset=0`);
+      const response = await fetch(`/api/v1/functions?visibility=public&limit=24&offset=0`);
       if (!response.ok) throw new Error('Failed to fetch');
       const json = await response.json();
       return json.functions || [];

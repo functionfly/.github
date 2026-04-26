@@ -392,6 +392,8 @@ export { useFormWithValidation } from './useFormWithValidation';
 // Realtime Hooks
 export { useNotificationRealtime } from './useNotificationRealtime';
 export { useRealtime } from './useRealtime';
+export { useCustomStatus, CUSTOM_STATUS_OPTIONS } from './useCustomStatus';
+export type { CustomStatus, CustomStatusValue } from './useCustomStatus';
 export { useRealtimeSubscription } from './useRealtimeSubscription';
 
 // Status & Activity Hooks

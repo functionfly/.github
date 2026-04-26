@@ -31,6 +31,7 @@ import { StateFabricPricingSection } from './components/StateFabricPricingSectio
 import { BundleCTACard } from './components/BundleCTACard';
 
 type PricingTab = 'functions' | 'state-fabric' | 'agents';
+type BillingCycle = 'monthly' | 'annual';
 
 function cn(...classes: (string | boolean | undefined)[]) {
   return classes.filter(Boolean).join(' ');
@@ -46,6 +47,7 @@ export function PricingPage() {
   ];
   const [showConfetti, setShowConfetti] = useState(false);
   const [activeTab, setActiveTab] = useState<PricingTab>('functions');
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
   const [searchParams] = useSearchParams();
   const user = useAuthStore((s) => s.user);
   const [checkoutError, setCheckoutError] = useState<{
@@ -323,6 +325,36 @@ export function PricingPage() {
               className="relative mb-16"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent blur-3xl -mx-8 rounded-3xl" />
+              {/* Billing Cycle Toggle */}
+              <div className="relative flex justify-center mb-8">
+                <div className="inline-flex items-center gap-3 p-1.5 rounded-xl bg-white/5 border border-white/10">
+                  <button
+                    onClick={() => setBillingCycle('monthly')}
+                    className={cn(
+                      'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200',
+                      billingCycle === 'monthly'
+                        ? 'bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white shadow-lg'
+                        : 'text-text-secondary hover:text-white'
+                    )}
+                  >
+                    Monthly
+                  </button>
+                  <button
+                    onClick={() => setBillingCycle('annual')}
+                    className={cn(
+                      'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2',
+                      billingCycle === 'annual'
+                        ? 'bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white shadow-lg'
+                        : 'text-text-secondary hover:text-white'
+                    )}
+                  >
+                    Annual
+                    <span className="px-1.5 py-0.5 text-xs bg-emerald-500/20 text-emerald-400 rounded-full">
+                      Save 20%
+                    </span>
+                  </button>
+                </div>
+              </div>
               <div className="relative grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto pt-6">
                 {Object.values(PLANS).map((plan, index) => (
                   <FunctionPlanCard
@@ -332,6 +364,7 @@ export function PricingPage() {
                     onPlanSelect={handlePlanSelect}
                     disabled={checkoutInitiating}
                     isLoading={checkoutInitiating}
+                    billingCycle={billingCycle}
                   />
                 ))}
               </div>

@@ -5,6 +5,30 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FunctionFly Dashboard</title>
+    <!-- Blocking theme script: must run before any CSS or paint to prevent dark/light flash -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('theme-storage');
+          var theme = 'dark'; // default
+          if (stored) {
+            var parsed = JSON.parse(stored);
+            var t = parsed && parsed.state && parsed.state.theme;
+            if (t === 'light') {
+              theme = 'light';
+            } else if (t === 'dark') {
+              theme = 'dark';
+            } else if (t === 'system' || !t) {
+              theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+            }
+          }
+          document.documentElement.setAttribute('data-theme', theme);
+          document.documentElement.classList.add(theme);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
     <!-- 2026 Font Stack - Velocity Brand -->
     <!-- Instrument Sans: Primary sans (Google Fonts) -->
     <!-- Ranade: Display/hero headlines (cdnfonts.com - 2025 breakout, technical+warm) -->
