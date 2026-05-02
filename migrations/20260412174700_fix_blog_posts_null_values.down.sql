@@ -1,0 +1,4 @@
+-- Migration: Revert blog_posts NULL value fixes
+-- Reverses: 20260412174700_fix_blog_posts_null_values
+-- Note: This undoes the UPDATE fixes - original NULL values are not recoverable
+-- This down migration is a no-op since the original NULL values cannot be restored

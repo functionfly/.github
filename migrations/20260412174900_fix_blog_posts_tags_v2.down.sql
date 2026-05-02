@@ -1,0 +1,3 @@
+-- Migration: Revert blog_posts tags v2 fixes
+-- Reverses: 20260412174900_fix_blog_posts_tags_v2
+-- Note: This down migration cannot restore original malformed values

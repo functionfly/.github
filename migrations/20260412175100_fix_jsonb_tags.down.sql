@@ -1,0 +1,3 @@
+-- Migration: Revert JSONB tags fixes
+-- Reverses: 20260412175100_fix_jsonb_tags
+-- Note: This down migration cannot restore original malformed values
