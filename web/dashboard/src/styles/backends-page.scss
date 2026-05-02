@@ -1,0 +1,427 @@
+// Backends Page - Velocity Brand Styling
+// Bundle-aware backend management with premium dark/light mode support
+
+@use 'sass:color';
+@use 'sass:math';
+
+// ==========================================================================
+// Velocity Brand Variables (Jet exhaust flames at sunset altitude)
+// ==========================================================================
+
+// Primary Brand Colors
+$flame-orange: #FF6B35;
+$altitude-cyan: #00D4FF;
+$velocity-gradient: linear-gradient(135deg, $flame-orange 0%, $altitude-cyan 100%);
+
+// Dark Mode Palette (Default)
+$bg-primary: #0a0a0b;
+$bg-secondary: #18181b;
+$bg-tertiary: #111113;
+$border-color: #27272a;
+$text-primary: #fafafa;
+$text-secondary: #a1a1aa;
+$text-muted: #71717a;
+
+// Light Mode Palette
+$bg-primary-light: #ffffff;
+$bg-secondary-light: #f4f4f5;
+$bg-tertiary-light: #e4e4e7;
+$border-color-light: #d4d4d8;
+$text-primary-light: #09090b;
+$text-secondary-light: #52525b;
+$text-muted-light: #a1a1aa;
+
+// Accent Colors
+$success: #22c55e;
+$info: #3b82f6;
+$warning: #f59e0b;
+$error: #ef4444;
+
+// ==========================================================================
+// Bundle-Specific Theming
+// ==========================================================================
+
+$bundle-colors: (
+  'saas-starter': (
+    primary: $flame-orange,
+    secondary: #f97316,
+    gradient: linear-gradient(135deg, #f97316 0%, $flame-orange 100%),
+  ),
+  'marketplace': (
+    primary: #a855f7,
+    secondary: #c084fc,
+    gradient: linear-gradient(135deg, #a855f7 0%, #c084fc 100%),
+  ),
+  'ai-app': (
+    primary: $altitude-cyan,
+    secondary: #06b6d4,
+    gradient: linear-gradient(135deg, $altitude-cyan 0%, #06b6d4 100%),
+  ),
+);
+
+// ==========================================================================
+// Base Styles
+// ==========================================================================
+
+.backends-page {
+  min-height: 100vh;
+  background-color: $bg-primary;
+
+  &__header {
+    padding: var(--space-6) var(--space-8);
+    border-bottom: 1px solid $border-color;
+  }
+
+  &__title {
+    font-size: 1.875rem;
+    font-weight: 700;
+    color: $text-primary;
+    letter-spacing: -0.025em;
+  }
+
+  &__subtitle {
+    font-size: 1rem;
+    color: $text-secondary;
+    margin-top: var(--space-2);
+  }
+
+  &__actions {
+    display: flex;
+    gap: var(--space-4);
+    margin-top: var(--space-6);
+  }
+}
+
+// ==========================================================================
+// Backend Cards
+// ==========================================================================
+
+.backend-card {
+  position: relative;
+  background: $bg-secondary;
+  border: 1px solid $border-color;
+  border-radius: 12px;
+  padding: var(--space-6);
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: rgba($flame-orange, 0.3);
+    box-shadow: 0 0 20px rgba($flame-orange, 0.1);
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  &__icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba($flame-orange, 0.1);
+    color: $flame-orange;
+  }
+
+  &__info {
+    flex: 1;
+  }
+
+  &__name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: $text-primary;
+  }
+
+  &__provider {
+    font-size: 0.875rem;
+    color: $text-muted;
+  }
+
+  &__status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-3);
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+
+    &--active {
+      background: rgba($success, 0.1);
+      color: $success;
+    }
+
+    &--inactive {
+      background: rgba($text-muted, 0.1);
+      color: $text-muted;
+    }
+
+    &--error {
+      background: rgba($error, 0.1);
+      color: $error;
+    }
+  }
+
+  &__stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-4);
+    margin-top: var(--space-6);
+    padding-top: var(--space-6);
+    border-top: 1px solid $border-color;
+  }
+
+  &__stat {
+    text-align: center;
+  }
+
+  &__stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: $text-primary;
+  }
+
+  &__stat-label {
+    font-size: 0.75rem;
+    color: $text-muted;
+    margin-top: var(--space-1);
+  }
+
+  &__actions {
+    display: flex;
+    gap: var(--space-3);
+    margin-top: var(--space-6);
+  }
+}
+
+// ==========================================================================
+// Bundle Badge
+// ==========================================================================
+
+.bundle-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+
+  @each $bundle, $colors in $bundle-colors {
+    &--#{$bundle} {
+      background: map-get($colors, primary);
+      color: white;
+    }
+  }
+
+  &--saas-starter {
+    background: linear-gradient(135deg, #f97316 0%, $flame-orange 100%);
+    color: white;
+  }
+
+  &--marketplace {
+    background: linear-gradient(135deg, #a855f7 0%, #c084fc 100%);
+    color: white;
+  }
+
+  &--ai-app {
+    background: linear-gradient(135deg, $altitude-cyan 0%, #06b6d4 100%);
+    color: #09090b;
+  }
+}
+
+// ==========================================================================
+// Deploy Wizard Integration
+// ==========================================================================
+
+.deploy-wizard-email-step {
+  &__workflow-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  &__workflow-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    background: $bg-tertiary;
+    border: 1px solid $border-color;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: rgba($flame-orange, 0.3);
+    }
+
+    &--selected {
+      border-color: $flame-orange;
+      background: rgba($flame-orange, 0.05);
+    }
+  }
+
+  &__workflow-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba($flame-orange, 0.1);
+    color: $flame-orange;
+  }
+
+  &__workflow-info {
+    flex: 1;
+  }
+
+  &__workflow-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: $text-primary;
+  }
+
+  &__workflow-description {
+    font-size: 0.75rem;
+    color: $text-muted;
+    margin-top: var(--space-1);
+  }
+
+  &__workflow-toggle {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid $border-color;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &--active {
+      background: $flame-orange;
+      border-color: $flame-orange;
+    }
+  }
+}
+
+// ==========================================================================
+// Email Workflow Card
+// ==========================================================================
+
+.email-workflow-card {
+  background: $bg-secondary;
+  border: 1px solid $border-color;
+  border-radius: 12px;
+  padding: var(--space-6);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: $velocity-gradient;
+  }
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  &__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba($flame-orange, 0.1);
+    color: $flame-orange;
+  }
+
+  &__title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: $text-primary;
+    margin-top: var(--space-4);
+  }
+
+  &__description {
+    font-size: 0.875rem;
+    color: $text-secondary;
+    margin-top: var(--space-2);
+    line-height: 1.6;
+  }
+
+  &__triggers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+  }
+
+  &__trigger {
+    padding: var(--space-1) var(--space-3);
+    background: $bg-tertiary;
+    border: 1px solid $border-color;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: $text-muted;
+  }
+
+  &__actions {
+    display: flex;
+    gap: var(--space-3);
+    margin-top: var(--space-6);
+    padding-top: var(--space-6);
+    border-top: 1px solid $border-color;
+  }
+}
+
+// ==========================================================================
+// Light Mode Adjustments
+// ==========================================================================
+
+.light-mode {
+  .backends-page {
+    background-color: $bg-primary-light;
+
+    &__header {
+      border-bottom-color: $border-color-light;
+    }
+
+    &__title {
+      color: $text-primary-light;
+    }
+
+    &__subtitle {
+      color: $text-secondary-light;
+    }
+  }
+
+  .backend-card {
+    background: $bg-secondary-light;
+    border-color: $border-color-light;
+
+    &:hover {
+      border-color: rgba($flame-orange, 0.5);
+    }
+
+    &__name {
+      color: $text-primary-light;
+    }
+
+    &__stat-value {
+      color: $text-primary-light;
+    }
+  }
+}

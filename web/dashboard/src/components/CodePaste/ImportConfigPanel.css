@@ -1,0 +1,287 @@
+.import-config-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.import-config-panel--disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.import-config-panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  background: var(--bg-secondary, #f9f9f9);
+}
+
+.import-config-panel__header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+}
+
+.import-config-panel__count {
+  font-size: 13px;
+  color: var(--text-secondary, #666);
+}
+
+.import-config-panel__content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.import-config-panel__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.import-config-panel__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+}
+
+.import-config-panel__visibility-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.visibility-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 12px;
+  background: var(--bg-primary, #fff);
+  border: 2px solid var(--border-color, #e0e0e0);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.visibility-option:hover {
+  border-color: var(--border-hover, #ccc);
+}
+
+.visibility-option--active {
+  border-color: var(--accent-color, #007bff);
+  background: var(--accent-bg, #f0f7ff);
+}
+
+.visibility-option__icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.visibility-option__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+}
+
+.visibility-option__desc {
+  font-size: 11px;
+  color: var(--text-secondary, #666);
+  margin-top: 4px;
+}
+
+.import-config-panel__select {
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 8px;
+  background: var(--bg-primary, #fff);
+  color: var(--text-primary, #333);
+  cursor: pointer;
+}
+
+.import-config-panel__select:focus {
+  outline: 2px solid var(--focus-color, #007bff);
+  outline-offset: 2px;
+}
+
+.import-config-panel__providers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.provider-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--bg-secondary, #f5f5f5);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-primary, #333);
+}
+
+.provider-checkbox input {
+  cursor: pointer;
+}
+
+.import-config-panel__section--advanced {
+  border-top: 1px solid var(--border-color, #e0e0e0);
+  padding-top: 16px;
+}
+
+.import-config-panel__toggle-advanced {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary, #666);
+  cursor: pointer;
+}
+
+.import-config-panel__toggle-advanced:hover {
+  color: var(--accent-color, #007bff);
+}
+
+.import-config-panel__advanced-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.import-config-panel__input,
+.import-config-panel__textarea {
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 8px;
+  background: var(--bg-primary, #fff);
+  color: var(--text-primary, #333);
+  font-family: inherit;
+}
+
+.import-config-panel__input:focus,
+.import-config-panel__textarea:focus {
+  outline: 2px solid var(--focus-color, #007bff);
+  outline-offset: 2px;
+}
+
+.import-config-panel__textarea {
+  resize: vertical;
+}
+
+.import-config-panel__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border-color, #e0e0e0);
+  background: var(--bg-secondary, #f9f9f9);
+}
+
+.import-config-panel__cancel-btn {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary, #666);
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.import-config-panel__cancel-btn:hover:not(:disabled) {
+  background: var(--bg-secondary, #f5f5f5);
+}
+
+.import-config-panel__import-btn {
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent-color, #007bff);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.import-config-panel__import-btn:hover:not(:disabled) {
+  background: var(--accent-hover, #0056b3);
+}
+
+.import-config-panel__import-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.import-config-panel__import-btn--loading {
+  background: var(--accent-color, #007bff);
+}
+
+.import-config-panel__spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Dark mode */
+.dark .import-config-panel {
+  background: var(--bg-primary, #1e1e1e);
+  border-color: var(--border-color, #404040);
+}
+
+.dark .import-config-panel__header {
+  background: var(--bg-secondary, #2d2d2d);
+  border-color: var(--border-color, #404040);
+}
+
+.dark .visibility-option {
+  background: var(--bg-primary, #1e1e1e);
+  border-color: var(--border-color, #404040);
+}
+
+.dark .visibility-option--active {
+  background: rgba(0, 123, 255, 0.1);
+}
+
+.dark .provider-checkbox {
+  background: var(--bg-secondary, #2d2d2d);
+}
+
+.dark .import-config-panel__select,
+.dark .import-config-panel__input,
+.dark .import-config-panel__textarea {
+  background: var(--bg-primary, #1e1e1e);
+  border-color: var(--border-color, #404040);
+  color: var(--text-primary, #f0f0f0);
+}
+
+.dark .import-config-panel__footer {
+  background: var(--bg-secondary, #2d2d2d);
+  border-color: var(--border-color, #404040);
+}

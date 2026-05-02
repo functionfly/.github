@@ -1,0 +1,1 @@
+export { SecurityAlertsPanel } from './SecurityAlertsPanel';

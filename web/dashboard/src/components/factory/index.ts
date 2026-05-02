@@ -1,0 +1,1 @@
+export { FactoryDashboard } from './FactoryDashboard';
