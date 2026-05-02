@@ -1,0 +1,74 @@
+---
+title: Agents Overview
+description: Learn about FunctionFly Agents - autonomous AI entities with memory, behavioral policies, and enterprise-grade security.
+sidebar:
+  order: 1
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+FunctionFly Agents are autonomous AI entities that can execute tasks, make decisions, and evolve over time based on their behavioral policies. Built for production with enterprise-grade security.
+
+## Key Features
+
+<CardGrid>
+  <Card title="Autonomous Execution" icon="seti:custom">
+    Agents can execute tasks autonomously based on configured behavioral policies without requiring approval for each action.
+  </Card>
+  <Card title="Memory & Context" icon="seti:memory">
+    Multiple memory types (short-term, long-term, episodic, semantic) enable agents to maintain context across interactions.
+  </Card>
+  <Card title="Behavioral Policies" icon="seti:lock">
+    Safety limits and operational boundaries ensure agents operate within defined parameters.
+  </Card>
+  <Card title="Enterprise Security" icon="shield">
+    Zero-knowledge encryption, API key management, and compliance-ready audit logging built in.
+  </Card>
+</CardGrid>
+
+## Agent Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        Agent                                │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
+│  │   Memory    │  │  Policy     │  │     Capabilities    │  │
+│  │   System    │  │  Engine     │  │                     │  │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
+├─────────────────────────────────────────────────────────────┤
+│                      SDK Interface                          │
+├─────────────────────────────────────────────────────────────┤
+│                      REST API                               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Agent States
+
+| State | Description |
+|-------|-------------|
+| `initializing` | Agent is being set up |
+| `idle` | Agent is ready but not executing |
+| `busy` | Agent is processing a task |
+| `error` | Agent encountered an error |
+| `stopped` | Agent has been manually stopped |
+
+## Production Readiness Checklist
+
+Before deploying agents to production, ensure:
+
+- [ ] **API Key Security** - Each agent has a dedicated API key with minimal required permissions
+- [ ] **Behavioral Policies** - Max execution depth, recursion limits, and timeouts configured
+- [ ] **Memory Encryption** - Sensitive data in memory is encrypted at rest
+- [ ] **Monitoring** - Alerts configured for policy violations and unusual activity
+- [ ] **Cost Controls** - Wallet limits and spending alerts configured
+- [ ] **Audit Logging** - Agent actions are logged for compliance
+
+## Quick Links
+
+- [Create Your First Agent](/guides/creating-agents/) - Step-by-step guide
+- [Agent Marketplace](/agents/marketplace/) - Discover pre-built agents
+- [SDK Integration](/agents/sdk/) - Programmatic access
+- [Agent Security](/agents/security/) - Production security best practices
+- [Behavioral Policies](/agents/policies/) - Configure safety limits
+- [Agent Memory](/agents/memory/) - Understand memory types

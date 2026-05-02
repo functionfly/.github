@@ -1,0 +1,287 @@
+---
+title: Behavioral Policies
+description: Configure safety limits and operational boundaries for FunctionFly Agents.
+sidebar:
+  order: 5
+---
+
+Behavioral policies define how your agent operates, including safety limits, tool access, and operational boundaries.
+
+## Policy Structure
+
+```json
+{
+  "behavioral_policy": {
+    "max_execution_depth": 5,
+    "max_recursion_depth": 3,
+    "max_wall_time_seconds": 300,
+    "max_memory_mb": 512,
+    "max_cost_per_execution": 1.00,
+    "allowed_tools": ["web_search", "code_execution"],
+    "blocked_tools": [],
+    "blocked_topics": [],
+    "require_approval_for": [],
+    "rate_limit": {
+      "requests_per_minute": 60,
+      "concurrent_executions": 5
+    }
+  }
+}
+```
+
+## Core Parameters
+
+### Execution Limits
+
+| Parameter | Default | Min | Max | Description |
+|-----------|---------|-----|-----|-------------|
+| `max_execution_depth` | 5 | 1 | 10 | Nested tool calls |
+| `max_recursion_depth` | 3 | 1 | 5 | Recursive operations |
+| `max_wall_time_seconds` | 300 | 5 | 3600 | Execution timeout |
+| `max_memory_mb` | 512 | 64 | 4096 | Memory limit |
+
+### Cost Controls
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `max_cost_per_execution` | 1.00 | Max spend per task (USD) |
+| `daily_spend_limit` | 100.00 | Daily budget cap |
+
+## Tool Control
+
+### Allowed Tools
+
+Define which tools the agent can use:
+
+```json
+{
+  "allowed_tools": [
+    "web_search",
+    "code_execution",
+    "file_read",
+    "api_calls"
+  ]
+}
+```
+
+### Available Tools
+
+| Tool | Description | Security Risk |
+|------|-------------|---------------|
+| `web_search` | Search the web | Low |
+| `code_execution` | Run code in sandbox | Medium |
+| `file_read` | Read files | Medium |
+| `file_write` | Write files | High |
+| `api_calls` | External API requests | Medium |
+| `database_queries` | Query databases | High |
+| `shell_commands` | Execute shell commands | Critical |
+
+### Blocking Dangerous Tools
+
+```json
+{
+  "blocked_tools": [
+    "shell_commands",
+    "database_queries"
+  ]
+}
+```
+
+## Topic Restrictions
+
+Prevent agents from engaging with sensitive topics:
+
+```json
+{
+  "blocked_topics": [
+    "financial_advice",
+    "medical_diagnosis",
+    "legal_counsel",
+    "harmful_content"
+  ]
+}
+```
+
+### Custom Topic Blocking
+
+```json
+{
+  "blocked_topics": [
+    "political_content",
+    "religious_debate",
+    "competitor_analysis"
+  ],
+  "blocked_topics_regex": [
+    "^secret_",
+    "^confidential_",
+    "^do_not_share"
+  ]
+}
+```
+
+## Approval Requirements
+
+Require human approval for sensitive actions:
+
+```json
+{
+  "require_approval_for": [
+    "file_deletion",
+    "external_api_calls",
+    "database_writes",
+    "large_data_access"
+  ]
+}
+```
+
+### Approval Workflow
+
+```javascript
+agent.on('approval_required', async (event) => {
+  const { action, details, callbackUrl } = event;
+
+  // Send to approval queue
+  const approval = await sendForApproval({
+    agentId: agent.id,
+    action,
+    details,
+    callbackUrl
+  });
+
+  // Wait for approval
+  if (approval.status === 'approved') {
+    return { proceed: true };
+  } else {
+    return { proceed: false, reason: approval.reason };
+  }
+});
+```
+
+## Rate Limiting
+
+Control agent request rates:
+
+```json
+{
+  "rate_limit": {
+    "requests_per_minute": 60,
+    "requests_per_hour": 1000,
+    "concurrent_executions": 5,
+    "burst_allowance": 10
+  }
+}
+```
+
+## Policy Templates
+
+### Development
+
+```json
+{
+  "max_execution_depth": 10,
+  "max_recursion_depth": 5,
+  "max_wall_time_seconds": 600,
+  "max_memory_mb": 1024,
+  "allowed_tools": ["web_search", "code_execution", "file_read", "file_write"]
+}
+```
+
+### Production (Restrictive)
+
+```json
+{
+  "max_execution_depth": 3,
+  "max_recursion_depth": 2,
+  "max_wall_time_seconds": 60,
+  "max_memory_mb": 256,
+  "max_cost_per_execution": 0.50,
+  "allowed_tools": ["web_search"],
+  "blocked_topics": ["financial_advice", "medical_diagnosis", "legal_counsel"],
+  "require_approval_for": ["file_deletion", "api_calls"]
+}
+```
+
+### High-Security
+
+```json
+{
+  "max_execution_depth": 2,
+  "max_recursion_depth": 1,
+  "max_wall_time_seconds": 30,
+  "max_memory_mb": 128,
+  "max_cost_per_execution": 0.25,
+  "allowed_tools": [],
+  "blocked_topics": ["*"],
+  "require_approval_for": ["*"]
+}
+```
+
+## Updating Policies
+
+### Runtime Updates
+
+```javascript
+// Update policy at runtime
+await agent.updatePolicy({
+  max_wall_time_seconds: 60,
+  allowed_tools: ["web_search", "code_execution"]
+});
+```
+
+### Versioned Policies
+
+```javascript
+// Create new policy version
+const newPolicy = await agent.policies.create({
+  name: "v2-restrictive",
+  rules: { ... },
+  rollout_percentage: 10 // A/B testing
+});
+```
+
+## Policy Violation Handling
+
+### Violation Types
+
+| Type | Severity | Action |
+|------|----------|--------|
+| `execution_limit` | Medium | Stop execution |
+| `tool_access` | High | Block and alert |
+| `topic_restriction` | Medium | Redirect |
+| `rate_limit` | Low | Queue request |
+
+### Custom Violation Handlers
+
+```javascript
+agent.on('policy_violation', (event) => {
+  const { type, details, policy } = event;
+
+  if (type === 'execution_limit') {
+    // Log and continue with reduced limits
+    agent.reduceLimits();
+  } else if (type === 'tool_access') {
+    // Block and alert security team
+    await securityAlert({ event });
+    return { blocked: true };
+  }
+});
+```
+
+## Monitoring Policy Effectiveness
+
+### Metrics to Track
+
+- Policy violations per agent
+- Average execution depth used
+- Tool usage patterns
+- Rate limit hits
+- Approval request frequency
+
+### Dashboard Metrics
+
+| Metric | Target | Alert Threshold |
+|--------|--------|-----------------|
+| Violations/day | < 5 | > 20 |
+| Avg execution depth | < 50% of max | > 80% |
+| Tool usage diversity | Stable | Sudden changes |
+| Approval queue depth | < 10 | > 50 |

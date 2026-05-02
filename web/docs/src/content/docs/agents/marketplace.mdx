@@ -1,0 +1,228 @@
+---
+title: Agent Marketplace
+description: Discover, install, and manage pre-built agents from the FunctionFly marketplace.
+sidebar:
+  order: 2
+---
+
+The Agent Marketplace provides pre-built agents that you can install and customize for your use case.
+
+## Browse Agents
+
+Visit the [Agent Marketplace](/agents/marketplace/) in your dashboard or browse via API:
+
+```bash
+# List available agents
+curl https://api.functionfly.com/v1/marketplace/agents \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Filtering Agents
+
+```bash
+# Filter by category
+curl "https://api.functionfly.com/v1/marketplace/agents?category=productivity" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Filter by capabilities
+curl "https://api.functionfly.com/v1/marketplace/agents?capabilities=web_search,code_execution" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Search by description
+curl "https://api.functionfly.com/v1/marketplace/agents?search=image+processing" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Agent Categories
+
+| Category | Description | Examples |
+|----------|-------------|----------|
+| `productivity` | Task automation | Scheduler, reminders, organizer |
+| `development` | Coding assistance | Code reviewer, debugger, docs writer |
+| `research` | Data analysis | Researcher, data analyzer, fact checker |
+| `communication` | Messaging | Email assistant, summarizer, translator |
+| `security` | Monitoring | Threat detector, anomaly detector |
+| `custom` | User-created | Community agents |
+
+## Installing an Agent
+
+### From Dashboard
+
+1. Navigate to **Agent Marketplace**
+2. Find the agent you want
+3. Click **Install**
+4. Configure initial settings
+5. Click **Deploy**
+
+### Via API
+
+```bash
+# Install an agent from marketplace
+curl -X POST https://api.functionfly.com/v1/marketplace/agents/INSTALL_ID/install \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "my-research-agent",
+    "configuration": {
+      "max_execution_depth": 3,
+      "allowed_tools": ["web_search", "code_execution"]
+    }
+  }'
+```
+
+## Agent Templates
+
+### Code Reviewer Agent
+
+```bash
+curl -X POST https://api.functionfly.com/v1/marketplace/agents/code-reviewer/install \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "name": "my-code-reviewer",
+    "configuration": {
+      "languages": ["python", "javascript", "go"],
+      "review_depth": "detailed",
+      "auto_fix": false
+    }
+  }'
+```
+
+### Data Analyzer Agent
+
+```bash
+curl -X POST https://api.functionfly.com/v1/marketplace/agents/data-analyzer/install \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "name": "my-analyzer",
+    "configuration": {
+      "data_sources": ["csv", "api"],
+      "visualization": true,
+      "export_formats": ["json", "csv", "pdf"]
+    }
+  }'
+```
+
+## Publishing Your Agent
+
+### Prepare Your Agent
+
+```javascript
+// manifest.json - Agent metadata
+{
+  "name": "my-custom-agent",
+  "version": "1.0.0",
+  "description": "A helpful assistant for...",
+  "category": "productivity",
+  "capabilities": {
+    "web_search": true,
+    "code_execution": true
+  },
+  "behavioral_policy": {
+    "max_execution_depth": 3,
+    "max_wall_time_seconds": 60
+  },
+  "inputs": [
+    { "name": "query", "type": "string", "required": true }
+  ],
+  "outputs": [
+    { "name": "result", "type": "string" }
+  ]
+}
+```
+
+### Test Your Agent
+
+```bash
+# Test before publishing
+curl -X POST https://api.functionfly.com/v1/agents/TEST_AGENT_ID/test \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "task": "Your test task here",
+    "expected_output": "Expected behavior"
+  }'
+```
+
+### Publish to Marketplace
+
+```bash
+# Submit for review
+curl -X POST https://api.functionfly.com/v1/marketplace/submit \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "your-agent-id",
+    "manifest": { ... },
+    "documentation": "Agent usage docs...",
+    "support_contact": "support@yourcompany.com"
+  }'
+```
+
+### Review Process
+
+1. **Automated Testing** - Runs test cases against your agent
+2. **Security Scan** - Checks for vulnerabilities
+3. **Manual Review** - Marketplace team reviews
+4. **Approval** - Agent published to marketplace
+
+## Managing Installed Agents
+
+### List Installed Agents
+
+```bash
+curl https://api.functionfly.com/v1/agents \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Update Agent
+
+```bash
+# Update agent configuration
+curl -X PATCH https://api.functionfly.com/v1/agents/YOUR_AGENT_ID \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "configuration": {
+      "max_execution_depth": 5,
+      "allowed_tools": ["web_search"]
+    }
+  }'
+```
+
+### Uninstall Agent
+
+```bash
+curl -X DELETE https://api.functionfly.com/v1/agents/YOUR_AGENT_ID \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Marketplace Analytics
+
+### Agent Performance
+
+View performance metrics for your installed agents:
+
+| Metric | Description |
+|--------|-------------|
+| `executions` | Total task executions |
+| `success_rate` | Percentage of successful tasks |
+| `avg_duration` | Average execution time |
+| `cost` | Total compute cost |
+| `rating` | User rating (1-5 stars) |
+
+### Agent Versioning
+
+```bash
+# List agent versions
+curl https://api.functionfly.com/v1/marketplace/agents/AGENT_ID/versions \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Pin to specific version
+curl -X PATCH https://api.functionfly.com/v1/agents/YOUR_AGENT_ID \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{ "version": "1.2.0" }'
+
+# Enable auto-update
+curl -X PATCH https://api.functionfly.com/v1/agents/YOUR_AGENT_ID \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{ "auto_update": true, "update_channel": "stable" }'
+```

@@ -1,0 +1,244 @@
+---
+title: Agent Security
+description: Production security best practices for FunctionFly Agents including API key management, encryption, and compliance.
+sidebar:
+  order: 4
+---
+
+Security is critical when deploying autonomous agents. This guide covers production-ready security configurations.
+
+## API Key Management
+
+### Per-Agent Keys
+
+Each agent should have its own API key with minimal permissions:
+
+```bash
+# Create agent-specific API key
+curl -X POST https://api.functionfly.com/v1/agents/YOUR_AGENT_ID/keys \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "production-agent-key",
+    "permissions": ["execute", "memory:read", "memory:write"],
+    "expires_at": "2025-12-31T23:59:59Z"
+  }'
+```
+
+### Key Rotation
+
+Rotate agent keys regularly:
+
+```bash
+# Rotate agent key
+curl -X POST https://api.functionfly.com/v1/agents/YOUR_AGENT_ID/keys/rotate \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Never Commit Keys
+
+Store agent API keys in environment variables, never in code:
+
+```bash
+# Environment variable (correct)
+export FFLY_AGENT_API_KEY="sk_agent_..."
+
+# ❌ Never do this
+# const agentKey = "sk_agent_..."; // Hardcoded!
+```
+
+## Zero-Knowledge Memory Encryption
+
+Agent memory is encrypted by default. For enhanced security:
+
+```javascript
+// Enable additional encryption for sensitive memory
+await agent.memory.configure({
+  encryptionEnabled: true,
+  encryptionKey: process.env.MEMORY_ENCRYPTION_KEY
+});
+```
+
+### Memory Security Levels
+
+| Level | Description | Use Case |
+|-------|-------------|----------|
+| `standard` | Default encryption | General purpose |
+| `enhanced` | Additional encryption layer | Sensitive data |
+| `isolated` | Memory isolated per session | High-security operations |
+
+## Behavioral Policy Security
+
+Configure strict policies to prevent unintended actions:
+
+```json
+{
+  "behavioral_policy": {
+    "max_execution_depth": 3,
+    "max_recursion_depth": 2,
+    "max_wall_time_seconds": 60,
+    "max_memory_mb": 256,
+    "allowed_tools": ["web_search", "code_execution"],
+    "blocked_topics": ["financial_advice", "medical_diagnosis"],
+    "require_approval_for": ["file_deletion", "api_calls_external"]
+  }
+}
+```
+
+### Security-First Policy Defaults
+
+```json
+{
+  "max_execution_depth": 2,
+  "max_recursion_depth": 1,
+  "max_wall_time_seconds": 30,
+  "max_memory_mb": 128,
+  "allowed_tools": [],
+  "blocked_topics": ["*"]
+}
+```
+
+## Audit Logging
+
+Enable comprehensive audit logging for compliance:
+
+```javascript
+// Configure audit logging
+agent.configure({
+  auditLogging: {
+    enabled: true,
+    level: "verbose",
+    retentionDays: 90,
+    events: [
+      "execution_start",
+      "execution_complete",
+      "policy_violation",
+      "memory_access",
+      "tool_usage"
+    ]
+  }
+});
+```
+
+### Audit Event Types
+
+| Event | Description |
+|-------|-------------|
+| `execution_start` | Agent begins processing |
+| `execution_complete` | Task finished successfully |
+| `execution_error` | Task failed |
+| `policy_violation` | Action blocked by policy |
+| `memory_access` | Read/write to agent memory |
+| `tool_usage` | External tool invocation |
+| `approval_request` | Human approval requested |
+
+## Network Security
+
+### Outbound Connections
+
+Control what agents can access:
+
+```json
+{
+  "network_policy": {
+    "allowed_domains": ["api.stripe.com", "your-service.com"],
+    "blocked_domains": ["malicious-site.com", "庞统.cn"],
+    "max_requests_per_minute": 100
+  }
+}
+```
+
+### Webhook Security
+
+Secure webhook endpoints for agent callbacks:
+
+```javascript
+// Verify webhook signatures
+function verifyWebhookSignature(payload, signature, secret) {
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expected)
+  );
+}
+```
+
+## Compliance Considerations
+
+### Data Residency
+
+Configure agent data residency:
+
+```bash
+# Set data residency for agent operations
+export FFLY_AGENT_DATA_REGION="us-east-1"
+```
+
+### GDPR Compliance
+
+For agents processing EU data:
+
+```javascript
+agent.configure({
+  gdprCompliant: true,
+  dataRetention: {
+    memoryDays: 30,
+    logsDays: 90,
+    auditDays: 2555 // 7 years for tax compliance
+  },
+  rightToDeletion: true
+});
+```
+
+### SOC 2 Readiness
+
+For SOC 2 compliance:
+
+- [ ] Enable `auditLogging` with `verbose` level
+- [ ] Configure 90+ day log retention
+- [ ] Use per-agent API keys with rotation
+- [ ] Enable memory encryption
+- [ ] Configure alerting for policy violations
+
+## Security Monitoring
+
+### Alert Configuration
+
+Set up alerts for security events:
+
+```javascript
+agent.on('policy_violation', (event) => {
+  // Send alert to security team
+  await sendSecurityAlert({
+    severity: 'high',
+    agentId: event.agentId,
+    violation: event.details,
+    timestamp: event.timestamp
+  });
+});
+```
+
+### Anomaly Detection
+
+Monitor for unusual patterns:
+
+- High-frequency API calls
+- Access to unusual domains
+- Memory consumption spikes
+- Policy violation attempts
+
+## Production Security Checklist
+
+- [ ] Per-agent API keys with minimal permissions
+- [ ] Key rotation scheduled (90 days recommended)
+- [ ] Memory encryption enabled for sensitive data
+- [ ] Strict behavioral policies configured
+- [ ] Audit logging at `verbose` level
+- [ ] 90+ day log retention configured
+- [ ] Network policies restricting outbound access
+- [ ] Security alerts configured
+- [ ] Anomaly detection enabled
+- [ ] GDPR/SOC 2 controls implemented if required

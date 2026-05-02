@@ -1,0 +1,347 @@
+---
+title: Agent SDK Integration
+description: Programmatic access to FunctionFly Agents via SDK for Node.js, Python, Go, and more.
+sidebar:
+  order: 3
+---
+
+Integrate FunctionFly Agents into your applications using our multi-language SDKs.
+
+## Available SDKs
+
+| SDK | Package | Documentation |
+|-----|---------|---------------|
+| Node.js | `@functionfly/agent-sdk` | [Guide](/sdks/javascript/) |
+| Python | `functionfly-agent` | [Guide](/sdks/python/) |
+| Go | `github.com/functionfly/agent-go` | [Guide](/sdks/go/) |
+| Rust | `functionfly-agent` | [Guide](/sdks/rust/) |
+
+## Installation
+
+```bash
+# Node.js
+npm install @functionfly/agent-sdk
+
+# Python
+pip install functionfly-agent
+
+# Go
+go get github.com/functionfly/agent-go
+
+# Rust
+cargo add functionfly-agent
+```
+
+## Quick Start
+
+### Node.js
+
+```javascript
+import { FunctionFlyAgent } from '@functionfly/agent-sdk';
+
+// Initialize agent
+const agent = new FunctionFlyAgent({
+  agentId: process.env.FFLY_AGENT_ID,
+  apiKey: process.env.FFLY_AGENT_API_KEY
+});
+
+// Execute a task
+const result = await agent.execute({
+  task: 'Research the latest developments in AI',
+  context: { depth: 'comprehensive' }
+});
+
+console.log(result);
+```
+
+### Python
+
+```python
+from functionfly_agent import FunctionFlyAgent
+
+# Initialize agent
+agent = FunctionFlyAgent(
+    agent_id=os.environ["FFLY_AGENT_ID"],
+    api_key=os.environ["FFLY_AGENT_API_KEY"]
+)
+
+# Execute a task
+result = agent.execute(
+    task="Research the latest developments in AI",
+    context={"depth": "comprehensive"}
+)
+
+print(result)
+```
+
+### Go
+
+```go
+import "github.com/functionfly/agent-go"
+
+agent := functionfly.NewAgent(functionfly.Config{
+    AgentID: os.Getenv("FFLY_AGENT_ID"),
+    APIKey:  os.Getenv("FFLY_AGENT_API_KEY"),
+})
+
+result, err := agent.Execute(context.Background(), &functionfly.ExecuteRequest{
+    Task:    "Research the latest developments in AI",
+    Context: map[string]interface{}{"depth": "comprehensive"},
+})
+```
+
+## Configuration Options
+
+### Basic Configuration
+
+```javascript
+const agent = new FunctionFlyAgent({
+  agentId: 'your-agent-id',
+  apiKey: process.env.FFLY_AGENT_API_KEY,
+
+  // Optional configuration
+  timeout: 30000,           // Request timeout in ms
+  retries: 3,               // Retry on failure
+  region: 'us-east-1',       // Specify region
+  version: 'stable',        // Agent version
+});
+```
+
+### Advanced Configuration
+
+```javascript
+const agent = new FunctionFlyAgent({
+  agentId: 'your-agent-id',
+  apiKey: process.env.FFLY_AGENT_API_KEY,
+
+  // Retry configuration
+  retry: {
+    maxAttempts: 3,
+    backoff: 'exponential',
+    initialDelay: 1000,
+    maxDelay: 30000,
+  },
+
+  // Circuit breaker
+  circuitBreaker: {
+    enabled: true,
+    threshold: 5,           // Failures before opening
+    timeout: 60000,         // Time to wait before half-open
+  },
+
+  // Caching
+  cache: {
+    enabled: true,
+    ttl: 300,               // Cache TTL in seconds
+    maxSize: 100,           // Max cached items
+  },
+});
+```
+
+## Agent Operations
+
+### Execute Task
+
+```javascript
+// Simple execution
+const result = await agent.execute({
+  task: 'Analyze this data and provide insights',
+  data: { /* your data */ }
+});
+
+// With options
+const result = await agent.execute({
+  task: 'Analyze this data',
+  data: { /* your data */ },
+  options: {
+    waitForCompletion: true,  // Wait for result (vs. async)
+    timeout: 60000,          // Max wait time
+    correlationId: 'req-123', // For tracking
+  }
+});
+```
+
+### Async Execution
+
+```javascript
+// Start execution without waiting
+const handle = await agent.executeAsync({
+  task: 'Process large dataset',
+  data: { /* large data */ }
+});
+
+// Poll for result
+const result = await handle.wait({ timeout: 300000 });
+
+// Or check status
+const status = await handle.status();
+```
+
+### Streaming Responses
+
+```javascript
+// Stream response as it's generated
+const stream = await agent.executeStream({
+  task: 'Write a detailed report on...'
+});
+
+for await (const chunk of stream) {
+  console.log(chunk);
+}
+```
+
+## Memory Operations
+
+### Store in Memory
+
+```javascript
+// Store context for later use
+await agent.memory.store('user_context', {
+  preferences: { theme: 'dark' },
+  history: ['action1', 'action2']
+});
+
+// Store with expiration
+await agent.memory.store('temp_data', data, {
+  ttl: 3600  // 1 hour
+});
+```
+
+### Retrieve from Memory
+
+```javascript
+// Get specific data
+const context = await agent.memory.get('user_context');
+
+// Search memory
+const results = await agent.memory.search('user preferences');
+```
+
+## Policy Management
+
+### Get Current Policy
+
+```javascript
+const policy = await agent.getPolicy();
+console.log(policy);
+```
+
+### Update Policy
+
+```javascript
+await agent.updatePolicy({
+  max_execution_depth: 3,
+  max_wall_time_seconds: 60,
+  allowed_tools: ['web_search', 'code_execution']
+});
+```
+
+### Policy Events
+
+```javascript
+// Listen for policy violations
+agent.on('policy_violation', (event) => {
+  console.log('Policy violated:', event.details);
+});
+
+// Listen for approval requests
+agent.on('approval_required', async (event) => {
+  const action = await getHumanApproval(event);
+  return action;
+});
+```
+
+## Error Handling
+
+### Error Types
+
+```javascript
+try {
+  const result = await agent.execute({ task: '...' });
+} catch (error) {
+  if (error instanceof AgentTimeoutError) {
+    // Execution took too long
+  } else if (error instanceof AgentPolicyViolationError) {
+    // Action blocked by policy
+  } else if (error instanceof AgentAuthError) {
+    // Authentication failed
+  } else if (error instanceof AgentRateLimitError) {
+    // Too many requests
+  }
+}
+```
+
+### Retry Logic
+
+```javascript
+const agent = new FunctionFlyAgent({
+  // ... config
+  retry: {
+    maxAttempts: 3,
+    on: [AgentTimeoutError, AgentRateLimitError],
+    backoff: 'exponential'
+  }
+});
+```
+
+## Webhooks
+
+### Register Webhook
+
+```javascript
+agent.webhooks.register({
+  url: 'https://your-server.com/webhook',
+  events: ['execution_complete', 'policy_violation', 'error'],
+  secret: process.env.WEBHOOK_SECRET
+});
+```
+
+### Verify Webhook Signature
+
+```javascript
+function verifyWebhook(signature, payload, secret) {
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expected)
+  );
+}
+```
+
+## TypeScript Support
+
+```typescript
+import { FunctionFlyAgent, type ExecuteOptions, type AgentConfig } from '@functionfly/agent-sdk';
+
+// Full type safety
+const config: AgentConfig = {
+  agentId: process.env.FLLY_AGENT_ID!,
+  apiKey: process.env.FLLY_AGENT_API_KEY!,
+  timeout: 30000,
+};
+
+const agent = new FunctionFlyAgent(config);
+
+const options: ExecuteOptions = {
+  waitForCompletion: true,
+  timeout: 60000,
+};
+
+const result = await agent.execute({
+  task: 'Analyze the data',
+  options
+});
+```
+
+## Best Practices
+
+1. **Use Environment Variables** - Never hardcode API keys
+2. **Implement Retry Logic** - Handle transient failures
+3. **Set Timeouts** - Prevent hanging requests
+4. **Monitor Usage** - Track costs and performance
+5. **Handle Errors Gracefully** - Provide fallbacks
+6. **Use Streaming** - For long-running tasks
+7. **Secure Webhooks** - Always verify signatures

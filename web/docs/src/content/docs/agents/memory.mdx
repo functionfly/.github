@@ -1,0 +1,328 @@
+---
+title: Agent Memory
+description: Understand how FunctionFly Agents use different memory types to maintain context and learn over time.
+sidebar:
+  order: 6
+---
+
+FunctionFly Agents use a sophisticated memory system to maintain context across interactions, learn from experiences, and provide personalized responses.
+
+## Memory Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Agent Memory                           │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌────┐  │
+│  │ Short-Term  │  │  Long-Term  │  │  Episodic   │  │Se- │  │
+│  │   Memory    │  │   Memory    │  │   Memory    │  │man-│  │
+│  │             │  │             │  │             │  │tic │  │
+│  │  Session    │  │  Persistent │  │   Event     │  │ tic│  │
+│  │  Context    │  │  User Data  │  │  History    │  │    │  │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └────┘  │
+├─────────────────────────────────────────────────────────────┤
+│                    Memory Manager                            │
+├─────────────────────────────────────────────────────────────┤
+│                    Vector Store                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Memory Types
+
+### Short-Term Memory
+
+Used for current session context. Fast access, limited capacity.
+
+```javascript
+// Store in short-term memory
+await agent.memory.shortTerm.store('current_task', {
+  goal: 'Research AI developments',
+  progress: 'completed web search',
+  next_step: 'analyze findings'
+});
+
+// Retrieve
+const context = await agent.memory.shortTerm.get('current_task');
+```
+
+**Use cases:**
+- Active task state
+- Conversation context
+- Temporary calculations
+
+### Long-Term Memory
+
+Persistent storage for user preferences and learned information.
+
+```javascript
+// Store in long-term memory
+await agent.memory.longTerm.store('user_preferences', {
+  theme: 'dark',
+  language: 'en',
+  communication_style: 'concise'
+});
+
+// Search long-term memory
+const preferences = await agent.memory.longTerm.search('theme preference');
+```
+
+**Use cases:**
+- User preferences
+- Historical interactions
+- Learned patterns
+
+### Episodic Memory
+
+Stores specific events and experiences for later recall.
+
+```javascript
+// Record an experience
+await agent.memory.episodic.record({
+  timestamp: Date.now(),
+  event: 'user_asked_about_pricing',
+  context: 'User was evaluating enterprise plan',
+  outcome: 'Provided pricing breakdown',
+  tags: ['pricing', 'enterprise', 'evaluation']
+});
+
+// Recall similar experiences
+const similar = await agent.memory.episodic.recall({
+  tags: ['pricing', 'enterprise']
+});
+```
+
+**Use cases:**
+- Event history
+- Success/failure patterns
+- Decision rationale
+
+### Semantic Memory
+
+Stores learned knowledge and facts. Uses vector embeddings for semantic search.
+
+```javascript
+// Store learned knowledge
+await agent.memory.semantic.store('product_knowledge', {
+  fact: 'FunctionFly supports Python, JavaScript, Go, and Rust',
+  source: 'product documentation',
+  confidence: 0.95,
+  expires_at: null
+});
+
+// Semantic search
+const relevant = await agent.memory.semantic.search(
+  'What languages does FunctionFly support?'
+);
+```
+
+**Use cases:**
+- Factual knowledge
+- Learned concepts
+- Semantic relationships
+
+## Vector Store
+
+Agent memory uses vector embeddings for similarity search:
+
+```javascript
+// Configure vector store
+agent.memory.configure({
+  vectorStore: {
+    provider: 'pgvector',
+    dimensions: 1536,
+    metric: 'cosine'
+  }
+});
+```
+
+### Supported Providers
+
+| Provider | Description | Best For |
+|----------|-------------|----------|
+| `pgvector` | PostgreSQL extension | Self-hosted |
+| `pinecone` | Managed vector DB | Production |
+| `weaviate` | Open source vector | Hybrid |
+| `memory` | Built-in (default) | Development |
+
+## Memory Operations
+
+### Store Data
+
+```javascript
+// Generic store (auto-selects memory type)
+await agent.memory.store('key', { data: 'value' });
+
+// Explicit type selection
+await agent.memory.store('key', data, { type: 'long_term' });
+```
+
+### Retrieve Data
+
+```javascript
+// Get with fallback
+const data = await agent.memory.get('key', {
+  default: 'fallback_value',
+  type: 'short_term'
+});
+```
+
+### Search
+
+```javascript
+// Semantic search across all memory
+const results = await agent.memory.search('query', {
+  limit: 10,
+  threshold: 0.8
+});
+
+// Type-specific search
+const results = await agent.memory.search('query', {
+  type: 'semantic',
+  limit: 5
+});
+```
+
+### Delete
+
+```javascript
+// Delete specific key
+await agent.memory.delete('key');
+
+// Clear by type
+await agent.memory.clear('short_term');
+
+// Clear all
+await agent.memory.clear('all');
+```
+
+## Memory Configuration
+
+### Encryption
+
+Encrypt sensitive memory:
+
+```javascript
+agent.memory.configure({
+  encryption: {
+    enabled: true,
+    key: process.env.MEMORY_ENCRYPTION_KEY,
+    algorithm: 'AES-256-GCM'
+  }
+});
+```
+
+### Retention Policies
+
+```javascript
+agent.memory.configure({
+  retention: {
+    short_term: { max_age_days: 1 },
+    long_term: { max_age_days: 365 },
+    episodic: { max_events: 10000 },
+    semantic: { max_entries: 50000 }
+  }
+});
+```
+
+### Automatic Cleanup
+
+```javascript
+agent.memory.configure({
+  auto_cleanup: {
+    enabled: true,
+    schedule: 'daily',
+    preserve_important: true
+  }
+});
+```
+
+## Memory in Production
+
+### Performance Optimization
+
+```javascript
+// Use caching for frequent reads
+agent.memory.configure({
+  cache: {
+    enabled: true,
+    max_size_mb: 128,
+    ttl_seconds: 300
+  }
+});
+```
+
+### Monitoring
+
+```javascript
+// Monitor memory usage
+agent.memory.on('usage_alert', (alert) => {
+  if (alert.type === 'memory_full') {
+    // Trigger cleanup
+    await agent.memory.cleanup();
+  }
+});
+```
+
+### Backup
+
+```javascript
+// Export memory state
+const backup = await agent.memory.export({
+  format: 'json',
+  include_vectors: false
+});
+
+// Import backup
+await agent.memory.import(backup);
+```
+
+## Security Considerations
+
+### Sensitive Data Handling
+
+```javascript
+// Mark sensitive data
+await agent.memory.store('api_key', sensitiveData, {
+  encrypted: true,
+  access_audit: true
+});
+
+// Access with verification
+const data = await agent.memory.get('api_key', {
+  verify_access: true,
+  reason: 'needed for external call'
+});
+```
+
+### Access Control
+
+```javascript
+agent.memory.configure({
+  access_control: {
+    require_auth: true,
+    allowed_roles: ['agent', 'admin'],
+    audit_reads: true,
+    audit_writes: true
+  }
+});
+```
+
+## Troubleshooting
+
+### Memory Not Persisting
+
+1. Check retention policy settings
+2. Verify vector store connection
+3. Check disk space
+
+### Slow Retrieval
+
+1. Enable caching
+2. Reduce vector dimensions
+3. Optimize search queries
+
+### Memory Full
+
+1. Trigger manual cleanup
+2. Increase retention policy strictness
+3. Archive old episodic memories
