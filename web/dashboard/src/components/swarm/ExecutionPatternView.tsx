@@ -28,10 +28,10 @@ interface Pattern {
   id: string;
   pattern_type: string;
   confidence: number;
-  occurrence_count: number;
   recommendations: string[];
-  first_seen_at: string;
-  last_seen_at: string;
+  occurrence_count?: number;
+  first_seen_at?: string;
+  last_seen_at?: string;
 }
 
 interface Optimization {
@@ -356,7 +356,7 @@ export function ExecutionPatternView({ agentId, agentName }: ExecutionPatternVie
                               {pattern.confidence.toFixed(0)}% confidence
                             </Badge>
                             <span className="text-xs text-muted-foreground">
-                              {pattern.occurrence_count} occurrences
+                              {pattern.occurrence_count ?? 0} occurrences
                             </span>
                           </div>
                           
@@ -373,8 +373,8 @@ export function ExecutionPatternView({ agentId, agentName }: ExecutionPatternVie
                           </div>
                           
                           <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-                            <span>First seen: {new Date(pattern.first_seen_at).toLocaleDateString()}</span>
-                            <span>Last seen: {new Date(pattern.last_seen_at).toLocaleDateString()}</span>
+                            <span>First seen: {pattern.first_seen_at ? new Date(pattern.first_seen_at).toLocaleDateString() : 'N/A'}</span>
+                            <span>Last seen: {pattern.last_seen_at ? new Date(pattern.last_seen_at).toLocaleDateString() : 'N/A'}</span>
                           </div>
                         </div>
                       </div>

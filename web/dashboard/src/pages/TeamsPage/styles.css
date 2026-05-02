@@ -37,10 +37,12 @@
   --status-pending-bg: rgba(234, 179, 8, 0.2);
   --status-pending-text: #fbbf24;
 
-  /* Team Card Styles */
+  /* Team Card Styles - Dark Mode Default */
   --team-card-bg: #161b22;
   --team-card-border: #30363d;
   --team-card-hover-border: rgba(99, 102, 241, 0.5);
+  --team-card-text: #ffffff;
+  --team-card-text-secondary: #9ca3af;
 
   /* Team Avatar */
   --team-avatar-bg: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
@@ -49,6 +51,14 @@
   /* Activity Feed */
   --activity-icon-bg: #21262d;
   --activity-border: #30363d;
+  --activity-text: #ffffff;
+  --activity-text-muted: #9ca3af;
+
+  /* Input/Select Background */
+  --team-input-bg: #0d1117;
+  --team-input-border: #30363d;
+  --team-input-text: #ffffff;
+  --team-input-placeholder: #6b7280;
 
   /* Quick Action Cards */
   --quick-action-memory-bg: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
@@ -65,10 +75,36 @@
   --team-transition-normal: 250ms ease;
   --team-transition-slow: 350ms ease;
 
-  /* Shadows */
+  /* Shadows - Dark Mode */
   --team-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
   --team-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
   --team-shadow-glow: 0 0 20px rgba(99, 102, 241, 0.15);
+}
+
+/* Light Mode Overrides */
+[data-theme="light"] {
+  --team-card-bg: #ffffff;
+  --team-card-border: #e5e7eb;
+  --team-card-hover-border: rgba(99, 102, 241, 0.5);
+  --team-card-text: #0d1117;
+  --team-card-text-secondary: #6b7280;
+
+  --team-avatar-bg: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+  --team-avatar-border: rgba(99, 102, 241, 0.3);
+
+  --activity-icon-bg: #f3f4f6;
+  --activity-border: #e5e7eb;
+  --activity-text: #0d1117;
+  --activity-text-muted: #6b7280;
+
+  --team-input-bg: #ffffff;
+  --team-input-border: #d1d5db;
+  --team-input-text: #0d1117;
+  --team-input-placeholder: #9ca3af;
+
+  --team-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --team-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --team-shadow-glow: 0 0 20px rgba(99, 102, 241, 0.1);
 }
 
 /* ----------------------------------------

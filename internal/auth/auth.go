@@ -146,6 +146,19 @@ func (a *AuthService) IsMFARequired(userID uuid.UUID) (bool, error) {
 	return a.mfaSvc.IsMFARequired(userID)
 }
 
+// GetTenantOAuthProviders returns the list of enabled OAuth provider names for a tenant
+func (a *AuthService) GetTenantOAuthProviders(ctx context.Context, tenantID uuid.UUID) ([]string, error) {
+	providers, err := a.repo.GetEnabledOAuthProviders(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, len(providers))
+	for i, p := range providers {
+		names[i] = p.Provider
+	}
+	return names, nil
+}
+
 // GenerateInviteToken generates a cryptographically secure token for team invitations.
 // Uses 32 bytes of crypto/rand (256 bits) — significantly stronger than a UUID v4.
 func GenerateInviteToken() (string, time.Time) {

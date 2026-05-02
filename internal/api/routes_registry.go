@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 
+	"github.com/functionfly/functionfly/internal/api/handlers/blog"
 	"github.com/functionfly/functionfly/internal/api/handlers/content"
 	feedbackHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/feedback"
 	"github.com/functionfly/functionfly/internal/api/handlers/playground"
@@ -32,6 +33,7 @@ func registerRegistryRoutes(
 	docsHandler *registryhandler.DocumentationHandler,
 	tutorialsHandler *registryhandler.TutorialsHandler,
 	versionHandler *versionhandler.Handler,
+	blogHandler *blog.Handler,
 	contentHandler *content.Handler,
 	feedbackHandler *feedbackHandlerPkg.Handler,
 	recommendationHandler *recommendations.Handler,
@@ -110,6 +112,7 @@ func registerRegistryRoutes(
 	api.HandleFunc("/functions/{author}/{name}", registryHandler.HandleGetFunction).Methods("GET")
 	api.HandleFunc("/functions/{author}/{name}", authMiddleware.RequireAuth(registryHandler.HandleDeleteFunction)).Methods("DELETE")
 	api.HandleFunc("/functions/{author}/{name}/versions", registryHandler.HandleListVersions).Methods("GET")
+	api.HandleFunc("/functions/{author}/{name}/source", registryHandler.HandleGetFunctionSource).Methods("GET")
 	api.HandleFunc("/functions/{author}/{name}/history", registryHandler.HandleGetVersionHistory).Methods("GET")
 	api.HandleFunc("/functions/{author}/{name}/changelogs", registryHandler.HandleGetChangelogs).Methods("GET")
 	api.HandleFunc("/functions/{author}/{name}/changelogs/{version}", registryHandler.HandleGetChangelogByVersion).Methods("GET")
@@ -141,13 +144,13 @@ func registerRegistryRoutes(
 	api.HandleFunc("/internal/contracts/negotiate", versionHandler.HandleNegotiateContractVersion).Methods("POST", "OPTIONS")
 
 	// ── Recommendations (query params for filtering) ─────────────────────────
-	api.HandleFunc("/recommendations", recommendationHandler.HandleGetRecommendations).Methods("GET", "OPTIONS")
-	api.HandleFunc("/recommendations/interactions", recommendationHandler.HandleRecordInteraction).Methods("POST", "OPTIONS")
-	api.HandleFunc("/recommendations/executions", recommendationHandler.HandleRecordExecution).Methods("POST", "OPTIONS")
-	api.HandleFunc("/recommendations/feedback", recommendationHandler.HandleRecordFeedback).Methods("POST", "OPTIONS")
+	api.HandleFunc("/recommendations", authMiddleware.RequireAuth(recommendationHandler.HandleGetRecommendations)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/recommendations/interactions", authMiddleware.RequireAuth(recommendationHandler.HandleRecordInteraction)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/recommendations/executions", authMiddleware.RequireAuth(recommendationHandler.HandleRecordExecution)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/recommendations/feedback", authMiddleware.RequireAuth(recommendationHandler.HandleRecordFeedback)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/recommendations/refresh", authMiddleware.RequirePermission(auth.PermSystemWrite)(recommendationHandler.HandleRefreshRecommendations)).Methods("POST", "OPTIONS")
-	api.HandleFunc("/recommendations/triple-search", recommendationHandler.HandleTripleSearch).Methods("POST", "OPTIONS")
-	api.HandleFunc("/recommendations/composable/{function_id}", recommendationHandler.HandleFindComposable).Methods("GET", "OPTIONS")
+	api.HandleFunc("/recommendations/triple-search", authMiddleware.RequireAuth(recommendationHandler.HandleTripleSearch)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/recommendations/composable/{function_id}", authMiddleware.RequireAuth(recommendationHandler.HandleFindComposable)).Methods("GET", "OPTIONS")
 
 	// ── Registry v2 ──────────────────────────────────────────────────────────
 	apiV2.HandleFunc("/functions", registryHandler.HandleListFunctions).Methods("GET")
@@ -263,6 +266,12 @@ func registerRegistryRoutes(
 	api.HandleFunc("/content/blog/{slug}", contentHandler.HandleGetPublishedBlogPostBySlug).Methods("GET")
 	api.HandleFunc("/content/categories", contentHandler.HandleGetBlogCategories).Methods("GET")
 	api.HandleFunc("/content/authors", contentHandler.HandleGetBlogAuthors).Methods("GET")
+
+	// ── Blog API (NestJS migration - public) ───────────────────────────────
+	api.HandleFunc("/blog/posts", blogHandler.HandleListPosts).Methods("GET")
+	api.HandleFunc("/blog/posts/{slug}", blogHandler.HandleGetPostBySlug).Methods("GET")
+	api.HandleFunc("/blog/categories", blogHandler.HandleGetCategories).Methods("GET")
+	api.HandleFunc("/blog/authors", blogHandler.HandleGetAuthors).Methods("GET")
 
 	// ── Feedback (public submit, protected read) ──────────────────────────────
 	api.HandleFunc("/feedback", feedbackHandler.CreateFeedback).Methods("POST")

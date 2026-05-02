@@ -193,6 +193,71 @@ export interface CreateBackendRequest {
   priority?: number;
 }
 
+export interface BackendTemplate {
+  provider: string;
+  name: string;
+  icon: string;
+  description: string;
+  features: string[];
+  supportedRegions: string[];
+  maxBackends?: number;
+  capabilities: string[];
+  documentationUrl?: string;
+}
+
+export const BACKEND_PROVIDERS: BackendTemplate[] = [
+  {
+    provider: 'functionfly-edge',
+    name: 'FunctionFly Edge',
+    icon: '⬡',
+    description: 'FunctionFly managed edge network with global distribution, automatic scaling, and built-in DDoS protection.',
+    features: ['Global CDN', 'Auto-scaling', 'DDoS Protection', 'Edge Caching', '99.9% SLA'],
+    supportedRegions: ['us-east-1', 'eu-central-1'],
+    capabilities: ['http', 'websocket', 'grpc'],
+    documentationUrl: '/docs/backends/functionfly-edge',
+  },
+  {
+    provider: 'workers',
+    name: 'Cloudflare Workers',
+    icon: '☁',
+    description: 'V8-based serverless functions running on Cloudflare\'s global network with sub-millisecond cold starts.',
+    features: ['Global Network', 'Cold Start < 1ms', 'KV Storage', 'Durable Objects', 'Cache API'],
+    supportedRegions: ['us-east-1', 'us-west-1', 'eu-west-1', 'ap-southeast-1', 'ap-northeast-1', 'ap-southeast-2', 'sa-east-1', 'af-south-1'],
+    capabilities: ['http', 'websocket', 'queue'],
+    documentationUrl: '/docs/backends/cloudflare-workers',
+  },
+  {
+    provider: 'vercel',
+    name: 'Vercel',
+    icon: '▲',
+    description: 'Zero-config deployment platform with instant scaling, edge functions, and built-in CI/CD.',
+    features: ['Instant Scaling', 'Edge Functions', 'Preview Deployments', 'Git Integration', 'Analytics'],
+    supportedRegions: ['arn1', 'bom1', 'cdg1', 'cle1', 'cpt1', 'dub1', 'fra1', 'gru1', 'hkg1', 'hnd1', 'iad1', 'icn1', 'jnb1', 'lax1', 'lhr1', 'pdx1', 'sfo1', 'sin1', 'syd1'],
+    capabilities: ['http', 'serverless'],
+    documentationUrl: '/docs/backends/vercel',
+  },
+  {
+    provider: 'fly',
+    name: 'Fly.io',
+    icon: '✈',
+    description: 'Run applications close to users worldwide with Fly\'s lightweight VMs and anycast routing.',
+    features: ['Anycast Routing', 'Fly Machines', 'Private Networking', 'Auto Health Checks', 'Edge Locations'],
+    supportedRegions: ['ams', 'arn', 'atl', 'bog', 'bos', 'bru', 'cdg', 'den', 'dfw', 'ewr', 'eze', 'fra', 'gig', 'gru', 'hkg', 'iad', 'jnb', 'lax', 'lhr', 'mad', 'mia', 'nrt', 'ord', 'phx', 'pma', 'sea', 'sfo', 'sin', 'syd', 'tsn', 'waw', 'yyz'],
+    capabilities: ['http', 'websocket', 'tcp'],
+    documentationUrl: '/docs/backends/fly',
+  },
+  {
+    provider: 'deno-deploy',
+    name: 'Deno Deploy',
+    icon: '  ',
+    description: 'Edge runtime powered by Deno with TypeScript native support, built-in KV, and zero config deployment.',
+    features: ['TypeScript Native', 'Built-in KV', 'Queues', 'Cron Triggers', 'Edge Caching'],
+    supportedRegions: ['us-east4', 'europe-west4', 'asia-southeast1', 'us-west2'],
+    capabilities: ['http', 'websocket', 'kv'],
+    documentationUrl: '/docs/backends/deno-deploy',
+  },
+];
+
 export interface DeployRequest {
   provider: string;
   region: string;
@@ -432,9 +497,13 @@ export interface FunctionConfig {
   createdAt: string;
   updatedAt: string;
   version: string;
-  status: 'draft' | 'deploying' | 'deployed' | 'failed';
+  status: 'draft' | 'deploying' | 'deployed' | 'failed' | 'active' | 'suspended';
   /** Trust score 0-100, available when function has execution history */
   trustScore?: number;
+  /** Number of times this function has been executed */
+  executionCount?: number;
+  /** Average execution duration in milliseconds */
+  avgDurationMs?: number;
 }
 
 export interface CreateFunctionRequest {
@@ -729,8 +798,10 @@ export interface PipelineStep {
   config: Record<string, any>;
   order: number;
   enabled: boolean;
-  timeoutMs: number;
-  retryCount: number;
+  timeout: number;
+  retry_count: number;
+  description?: string;
+  condition?: string;
 }
 
 export interface EventLog {
@@ -754,6 +825,7 @@ export interface Snapshot {
   eventCount: number;
   sizeBytes: number;
   createdAt: string;
+  createdBy?: string;
   expiresAt?: string;
 }
 
@@ -1185,6 +1257,12 @@ export * from './vault';
 export * from './api-key';
 
 // ============================================================================
+// GitHub Integration Types - Re-export from github module
+// ============================================================================
+
+export * from './github';
+
+// ============================================================================
 // Simple State Types
 // ============================================================================
 
@@ -1303,4 +1381,109 @@ export interface TimeTravelResponse {
   value: StateValue;
   version: number;
   timestamp: string;
+}
+
+// ============================================================================
+// Tenant Auth Types for Backend-in-a-Box Bundles
+// ============================================================================
+
+/** Per-tenant authentication settings */
+export interface TenantAuthSettings {
+  id: string;
+  tenant_id: string;
+  mfa_required: boolean;
+  mfa_mode: 'optional' | 'required' | 'enforced';
+  password_policy: PasswordPolicy;
+  session_timeout_minutes: number;
+  ip_allowlist_enabled: boolean;
+  ip_allowlist: string[];
+  allowed_domains: string[];
+  sso_provider: 'none' | 'saml' | 'oidc';
+  saml_metadata_url?: string;
+  saml_entity_id?: string;
+  use_custom_branding: boolean;
+  email_from_name: string;
+  email_from_address: string;
+  require_email_verification: boolean;
+  allow_password_login: boolean;
+  allow_magic_link: boolean;
+  max_login_attempts: number;
+  lockout_duration_minutes: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Password policy requirements */
+export interface PasswordPolicy {
+  min_length: number;
+  require_uppercase: boolean;
+  require_lowercase: boolean;
+  require_digit: boolean;
+  require_special: boolean;
+  max_age_days?: number;
+  prevent_reuse_count?: number;
+}
+
+/** OAuth provider configuration for a tenant */
+export interface TenantOAuthProvider {
+  id: string;
+  tenant_id: string;
+  provider: 'github' | 'google' | 'microsoft' | 'apple' | 'gitlab' | 'bitbucket';
+  client_id: string;
+  enabled: boolean;
+  callback_url?: string;
+  scopes: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+/** Team membership record */
+export interface TenantMembership {
+  id: string;
+  tenant_id: string;
+  user_id: string;
+  role: 'team_owner' | 'team_admin' | 'team_member' | 'team_viewer';
+  invited_by?: string;
+  invited_at?: string;
+  joined_at: string;
+  last_active_at?: string;
+  status: 'active' | 'suspended' | 'invited';
+  user?: {
+    id: string;
+    email: string;
+    name?: string;
+    avatar?: string;
+  };
+}
+
+/** Invitation for a user to join a tenant */
+export interface TenantInviteCode {
+  id: string;
+  tenant_id: string;
+  code: string;
+  email: string;
+  role: 'team_owner' | 'team_admin' | 'team_member' | 'team_viewer';
+  invited_by: string;
+  expires_at: string;
+  accepted_at?: string;
+  accepted_by?: string;
+  max_uses: number;
+  uses: number;
+  created_at: string;
+}
+
+/** Auth audit log entry */
+export interface TenantAuthAuditLog {
+  id: string;
+  tenant_id: string;
+  user_id?: string;
+  action: string;
+  resource_type?: string;
+  resource_id?: string;
+  ip_address?: string;
+  user_agent?: string;
+  metadata?: Record<string, unknown>;
+  success: boolean;
+  error_message?: string;
+  created_at: string;
 }

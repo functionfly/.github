@@ -64,7 +64,7 @@ gsap.registerPlugin(ScrollTrigger);
 
 // Feature card component
 interface FeatureCardProps {
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string }>;
   title: string;
   description: string;
   color: string;

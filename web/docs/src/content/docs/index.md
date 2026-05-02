@@ -37,17 +37,17 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 ## Quick Start
 
 ```bash
-# Install the fly CLI (Go 1.25+)
+# Install the ffly CLI (Go 1.25+)
 go install github.com/functionfly/functionfly/cmd/fly@latest
 
 # Login to FunctionFly
-fly login
+ffly login
 
 # Initialize a new function
-fly init my-function
+ffly init my-function
 
 # Deploy to the edge
-fly deploy
+ffly deploy
 ```
 
 ## Documentation

@@ -13,6 +13,9 @@ Welcome to the FunctionFly guides. These step-by-step tutorials will help you le
   <Card title="Creating Functions" icon="rocket" href="/guides/creating-functions/">
     Learn how to write, test, and deploy serverless functions using your favorite programming language.
   </Card>
+  <Card title="Creating Your First Agent" icon="seti:custom" href="/guides/creating-agents/">
+    Create and configure AI agents with autonomous capabilities and behavioral policies.
+  </Card>
   <Card title="Using the Registry" icon="external" href="/guides/using-registry/">
     Browse, install, and publish functions to the public FunctionFly registry.
   </Card>

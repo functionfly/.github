@@ -8,12 +8,14 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { useAgent, useAgentPolicy, useAgentUsage, useUpdateAgent, useUpdateAgentPolicy } from '@/hooks/useAgent';
+import { useAgentChildren } from '@/hooks/useAgentSwarm';
 import { useAgentMemories } from '@/hooks/useAgentMemory';
 import { ROUTES } from '@/lib/constants';
 import {
   ArrowLeft,
   Bot,
   Brain,
+  GitBranch,
   Loader2,
   MemoryStick,
   Save,
@@ -21,12 +23,15 @@ import {
   Trash2,
   Wallet,
   Zap,
+  BarChart3,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { AgentMemoryGraph } from './AgentDetailPage/components/AgentMemoryGraph';
+import { SwarmTopologyView } from '@/components/topology';
+import AgentAnalyticsComponent from '@/components/analytics';
 
 function sanitizeAgentIdParam(raw: string | undefined): string | null {
   const trimmed = raw?.trim();
@@ -36,7 +41,7 @@ function sanitizeAgentIdParam(raw: string | undefined): string | null {
 
 export function AgentDetailPage() {
   const { t } = useTranslation();
-  const { slug: pathAgentId } = useParams<{ slug: string }>();
+  const { id: pathAgentId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const agentId = sanitizeAgentIdParam(pathAgentId);
 
@@ -57,6 +62,7 @@ export function AgentDetailPage() {
   const { data: agentData, isLoading: loading, error } = useAgent(agentId ?? '');
   const { data: policyData } = useAgentPolicy(agentId ?? '');
   const { data: usageData } = useAgentUsage(agentId ?? '');
+  const { data: childrenData } = useAgentChildren(agentId ?? '');
   const { data: memoriesData } = useAgentMemories({ agent_id: agentId ?? undefined }, !!agentId);
   const updateAgent = useUpdateAgent(agentId ?? '');
   const updatePolicy = useUpdateAgentPolicy(agentId ?? '');
@@ -64,6 +70,7 @@ export function AgentDetailPage() {
   const agent = agentData?.agent ?? null;
   const policy = policyData?.policy;
   const usage = usageData?.usage;
+  const children = childrenData?.children ?? [];
   const memories = memoriesData?.memories ?? [];
 
   // Initialize form states from agent data
@@ -94,7 +101,7 @@ export function AgentDetailPage() {
     try {
       await agentApi.deleteAgent(agentId);
       toast.success(t('agentDetail.agentDeleted'));
-      navigate(ROUTES.AGENTS);
+      navigate(ROUTES.AGENT_LIST);
     } catch {
       toast.error(t('agentDetail.failedToDelete'));
     } finally {
@@ -131,7 +138,7 @@ export function AgentDetailPage() {
     return (
       <div className="space-y-4">
         <Button variant="ghost" size="sm" asChild>
-          <Link to={ROUTES.AGENTS}>
+          <Link to={ROUTES.AGENT_LIST}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             {t('agentDetail.backToAgents')}
           </Link>
@@ -154,7 +161,7 @@ export function AgentDetailPage() {
     return (
       <div className="space-y-4">
         <Button variant="ghost" size="sm" asChild>
-          <Link to={ROUTES.AGENTS}>
+          <Link to={ROUTES.AGENT_LIST}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             {t('agentDetail.backToAgents')}
           </Link>
@@ -172,7 +179,6 @@ export function AgentDetailPage() {
   }
 
   const caps = agent.capabilities ? Object.keys(agent.capabilities) : [];
-  const enc = encodeURIComponent(agent.agentId);
 
   return (
     <div className="space-y-6">
@@ -180,7 +186,7 @@ export function AgentDetailPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2">
           <Button variant="ghost" size="sm" className="-ml-2 w-fit" asChild>
-            <Link to={ROUTES.AGENTS}>
+            <Link to={ROUTES.AGENT_LIST}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               {t('agentDetail.backToAgents')}
             </Link>
@@ -197,19 +203,22 @@ export function AgentDetailPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" asChild>
-            <Link to={`/evolution/${enc}`}>
-              <Zap className="h-4 w-4 mr-2" />
-              {t('agentDetail.evolution')}
+            <Link to={ROUTES.AGENT_ANALYTICS.replace(':id', agentId ?? '')}>
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Analytics
             </Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
-            <Link to={`/wallet/agents/${enc}`}>
+            <Link to={ROUTES.AGENT_WALLET.replace(':id', agentId ?? '')}>
               <Wallet className="h-4 w-4 mr-2" />
               {t('agentDetail.wallet')}
             </Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
-            <Link to={ROUTES.SDK_INTEGRATIONS}>{t('agentDetail.sdkSetup')}</Link>
+            <Link to={ROUTES.AGENT_EDIT.replace(':id', agentId ?? '')}>
+              <Settings className="h-4 w-4 mr-2" />
+              Edit
+            </Link>
           </Button>
           <Button
             variant="outline"
@@ -233,7 +242,7 @@ export function AgentDetailPage() {
             {t('agentDetail.childOf')}{' '}
             <Link
               className="ml-1 underline font-mono text-xs"
-              to={`${ROUTES.AGENTS}/${encodeURIComponent(agent.parentAgentId)}`}
+              to={`/agents/${encodeURIComponent(agent.parentAgentId)}`}
             >
               {agent.parentAgentId}
             </Link>
@@ -245,7 +254,7 @@ export function AgentDetailPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-3">
+        <TabsList className="grid w-full max-w-lg grid-cols-5">
           <TabsTrigger value="overview">
             <Brain className="h-4 w-4 mr-2" />
             {t('agentDetail.overview')}
@@ -253,6 +262,14 @@ export function AgentDetailPage() {
           <TabsTrigger value="settings">
             <Settings className="h-4 w-4 mr-2" />
             {t('agentDetail.settings')}
+          </TabsTrigger>
+          <TabsTrigger value="topology">
+            <GitBranch className="h-4 w-4 mr-2" />
+            {t('agentDetail.topology')}
+          </TabsTrigger>
+          <TabsTrigger value="analytics">
+            <BarChart3 className="h-4 w-4 mr-2" />
+            {t('agentDetail.analytics')}
           </TabsTrigger>
           <TabsTrigger value="memory">
             <MemoryStick className="h-4 w-4 mr-2" />
@@ -475,6 +492,40 @@ export function AgentDetailPage() {
                   </>
                 )}
               </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Topology Tab */}
+        <TabsContent value="topology" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('agentDetail.swarmTopology')}</CardTitle>
+              <CardDescription>{t('agentDetail.swarmTopologyDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {children.length > 0 ? (
+                <SwarmTopologyView agentId={agentId ?? ''} />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                  <GitBranch className="h-12 w-12 mb-4 opacity-50" />
+                  <p>{t('agentDetail.noChildAgents')}</p>
+                  <p className="text-sm">{t('agentDetail.childAgentsWillAppear')}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Analytics Tab */}
+        <TabsContent value="analytics" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('agentDetail.agentAnalytics')}</CardTitle>
+              <CardDescription>{t('agentDetail.analyticsDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AgentAnalyticsComponent agentId={agentId ?? ''} />
             </CardContent>
           </Card>
         </TabsContent>

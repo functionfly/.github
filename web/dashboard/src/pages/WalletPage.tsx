@@ -160,7 +160,7 @@ export function WalletPage() {
         <h1 className="text-xl font-semibold">{t('walletPage.agentWallet')}</h1>
         <p className="text-sm text-muted-foreground">{resolveError}</p>
           <Button asChild>
-            <Link to={ROUTES.AGENTS}>{t('walletPage.goToAgents')}</Link>
+            <Link to="/agents">{t('walletPage.goToAgents')}</Link>
           </Button>
       </div>
     );

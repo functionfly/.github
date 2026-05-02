@@ -15,7 +15,7 @@ export const SecretType = {
 };
 
 /** Audit action enumeration */
-export type AuditAction = 'create' | 'read' | 'update' | 'delete' | 'use' | 'revoke';
+export type AuditAction = 'create' | 'read' | 'update' | 'delete' | 'use' | 'revoke' | 'version' | 'rollback';
 
 /** Actor type enumeration */
 export type ActorType = 'user' | 'token' | 'system' | 'api_key';
@@ -52,7 +52,7 @@ export interface Secret extends SecretMetadata {
 }
 
 /** Change type for secret versions */
-export type ChangeType = 'create' | 'update' | 'rollback';
+export type ChangeType = 'create' | 'update' | 'rollback' | 'rotate';
 
 /** Secret version metadata (for list views without encrypted data) */
 export interface SecretVersionMetadata {

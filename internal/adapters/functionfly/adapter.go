@@ -95,7 +95,7 @@ func (a *FunctionFlyAdapter) ValidateConfig(region, rawURL string) error {
 }
 
 func (a *FunctionFlyAdapter) GetRegions() []string {
-	return []string{"us-east-1", "eu-west-1", "ap-southeast-1"}
+	return []string{"eu-central-1", "us-east-1"}
 }
 
 // HealthCheck performs an HTTP GET to backend.URL/healthz with signed request, respects context and reports latency.

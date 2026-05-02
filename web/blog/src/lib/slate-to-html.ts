@@ -146,26 +146,153 @@ function createCodeBlockHtml(code: string, lang: string): string {
  */
 export function slateBodyToHtml(body: unknown): string {
   if (body == null) return '';
+
+  let processedBody = body;
+
   if (typeof body === 'string') {
-    // Try to parse as JSON first (TipTap format)
     try {
       const parsed = JSON.parse(body);
       if (parsed && typeof parsed === 'object') {
-        return tipTapToHtml(parsed);
+        processedBody = parsed;
       }
     } catch {
-      // Plain text fallback
     }
-    return `<p>${escapeHtml(body)}</p>`;
   }
-  if (!Array.isArray(body) && typeof body === 'object' && body !== null) {
-    // TipTap document format
-    return tipTapToHtml(body as TipTapDoc);
-  }
-  if (!Array.isArray(body)) return '';
 
-  // Legacy Slate format
-  return legacySlateToHtml(body as Array<Record<string, unknown>>);
+  if (typeof processedBody === 'string') {
+    try {
+      const decoded = atob(processedBody);
+      const parsed = JSON.parse(decoded);
+      processedBody = parsed;
+    } catch {
+      return `<p>${escapeHtml(String(processedBody))}</p>`;
+    }
+  }
+
+  if (Array.isArray(processedBody)) {
+    return tipTapArrayToHtml(processedBody);
+  }
+
+  if (!Array.isArray(processedBody) && typeof processedBody === 'object' && processedBody !== null) {
+    const obj = processedBody as Record<string, unknown>;
+    if (obj.type === 'doc' && obj.content) {
+      return tipTapToHtml(processedBody as TipTapDoc);
+    }
+    return tipTapToHtml(processedBody as TipTapDoc);
+  }
+
+  return '';
+}
+
+function tipTapArrayToHtml(nodes: unknown[]): string {
+  if (!nodes || nodes.length === 0) return '';
+  return nodes.map((node) => renderTipTapNodeFromArray(node)).join('\n');
+}
+
+function renderTipTapNodeFromArray(node: unknown): string {
+  if (!node || typeof node !== 'object') return '';
+  const n = node as Record<string, unknown>;
+  if (!n.type || typeof n.type !== 'string') return '';
+
+  const type = n.type as string;
+  const content = n.content as unknown[] | undefined;
+  const children = n.children as unknown[] | undefined;
+  const attrs = n.attrs as Record<string, unknown> | undefined;
+
+  switch (type) {
+    case 'heading': {
+      const level = (attrs?.level as number) || 2;
+      const inner = renderContentArray(children || content);
+      return `<h${level} class="content-heading-${level}">${inner}</h${level}>`;
+    }
+    case 'paragraph': {
+      const inner = renderContentArray(children || content);
+      if (!inner.trim()) return '<p class="content-paragraph">&nbsp;</p>';
+      return `<p class="content-paragraph">${inner}</p>`;
+    }
+    case 'blockquote': {
+      const inner = (children || content || []).map(renderTipTapNodeFromArray).join('');
+      return `<blockquote class="content-blockquote">${inner}</blockquote>`;
+    }
+    case 'bulletList': {
+      const items = (children || content || []).map(item => {
+        if (typeof item === 'object' && item !== null && (item as Record<string, unknown>).type === 'listItem') {
+          const listItem = item as Record<string, unknown>;
+          const itemContent = listItem.content as unknown[] | undefined;
+          const inner = renderContentArray(itemContent);
+          return `<li>${inner}</li>`;
+        }
+        return '';
+      }).join('');
+      return `<ul class="content-list content-list--bullet">${items}</ul>`;
+    }
+    case 'orderedList': {
+      const items = (children || content || []).map(item => {
+        if (typeof item === 'object' && item !== null && (item as Record<string, unknown>).type === 'listItem') {
+          const listItem = item as Record<string, unknown>;
+          const itemContent = listItem.content as unknown[] | undefined;
+          const inner = renderContentArray(itemContent);
+          return `<li>${inner}</li>`;
+        }
+        return '';
+      }).join('');
+      return `<ol class="content-list content-list--numbered">${items}</ol>`;
+    }
+    case 'listItem': {
+      const inner = renderContentArray(children || content);
+      return inner;
+    }
+    case 'codeBlock': {
+      const lang = (attrs?.language as string) || 'text';
+      const rawCode = renderContentArray(children || content);
+      return createCodeBlockHtml(rawCode, lang);
+    }
+    case 'horizontalRule':
+      return '<hr class="content-divider">';
+    default:
+      return '';
+  }
+}
+
+function renderContentArray(nodes: unknown[] | undefined): string {
+  if (!nodes || !Array.isArray(nodes)) return '';
+  return nodes.map(node => {
+    if (!node || typeof node !== 'object') return '';
+    const n = node as Record<string, unknown>;
+    if (n.text !== undefined && typeof n.text === 'string') {
+      let t = escapeHtml(n.text);
+      if (n.marks && Array.isArray(n.marks)) {
+        for (const mark of n.marks as Array<{type: string; attrs?: Record<string, unknown>}>) {
+          switch (mark.type) {
+            case 'code':
+              t = `<code class="inline-code">${t}</code>`;
+              break;
+            case 'bold':
+              t = `<strong>${t}</strong>`;
+              break;
+            case 'italic':
+              t = `<em>${t}</em>`;
+              break;
+            case 'link':
+              const href = escapeHtml((mark.attrs?.href as string) || '#');
+              t = `<a href="${href}" class="content-link" target="_blank" rel="noopener noreferrer">${t}</a>`;
+              break;
+            case 'strike':
+              t = `<s>${t}</s>`;
+              break;
+            case 'underline':
+              t = `<u>${t}</u>`;
+              break;
+          }
+        }
+      }
+      return t;
+    }
+    if (n.type && typeof n.type === 'string') {
+      return renderTipTapNodeFromArray(node);
+    }
+    return '';
+  }).join('');
 }
 
 // TipTap types

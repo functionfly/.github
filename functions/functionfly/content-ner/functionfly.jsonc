@@ -11,5 +11,6 @@
   "output": { "type": "object", "properties": { "ok": {}, "entities": {}, "note": {}, "error": {} } },
   "deterministic": true, "idempotent": true,
   "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "price_per_call": 0.002,
   "example": { "input": { "text": "Dr. Alice Smith joined Google Inc. She lives in New York City." }, "output": { "ok": true } }
 }

@@ -1,4 +1,4 @@
-import { FunctionDetailNotFound } from './FunctionDetailNotFound';
+import { FunctionDetailNotFound } from './FunctionDetailPage/FunctionDetailNotFound';
 import { apiClient } from '@/api/client';
 import { BarChart } from '@/components/common/BarChart';
 import { LineChart } from '@/components/common/LineChart';

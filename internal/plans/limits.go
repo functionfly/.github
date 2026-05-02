@@ -8,6 +8,11 @@ import (
 )
 
 const (
+	// App limits per tenant
+	StarterMaxApps    = 3
+	ProMaxApps        = 10
+	EnterpriseMaxApps = -1 // Unlimited
+
 	// Provider limits per app
 	StarterMaxProvidersPerApp    = 2
 	ProMaxProvidersPerApp        = 3
@@ -144,15 +149,89 @@ const (
 	AgentEnterpriseLogRetentionDays = -1 // Custom
 )
 
-// AEP Monthly pricing (cents) - revised based on market research
-// Pricing philosophy: Offer generous limits at lower price points to build market share
-// while ensuring we're not losing money on AI inference costs.
-// The actual AI cost per call is ~$0.0001-0.0003 depending on model used.
+// ==================== 2026 Unified Plan Pricing ====================
+// Agent capabilities are now BUNDLED into main plans (no separate agent plans)
+// Legacy agent tiers still exist as aliases for backward compatibility
+
+// Main Plan Monthly Pricing (cents) - 2026 optimized (Option C Hybrid)
 const (
-	AgentStarterPriceCents    = 2900   // $29/month - competitive entry point
-	AgentScalePriceCents      = 14900  // $149/month - mid-tier with good margins
-	AgentProPriceCents        = 39900  // $399/month - professional tier
-	AgentEnterprisePriceCents = 99000  // $990+/month base - custom enterprise
+	StarterPriceCents        = 2400  // $24/month
+	ProPriceCents            = 7900  // $79/month
+	EnterprisePriceCents     = 29900 // $299/month base (includes 5M AI calls)
+	AgentEnterprisePriceCents = 49900 // $499/month - unlimited AI
+)
+
+// Annual Pricing (2 months free = 10 months billed)
+const (
+	StarterAnnualCents        = 24000 // $240/year ($24/mo equiv)
+	ProAnnualCents            = 79000 // $790/year ($79/mo equiv)
+	EnterpriseAnnualCents     = 299000 // $2990/year ($299/mo equiv)
+	AgentEnterpriseAnnualCents = 499000 // $4990/year ($499/mo equiv)
+)
+
+// Usage-Based Overage (cents per 1000 calls) - 2026 optimized
+const (
+	StarterOveragePer1000Cents     = 15  // $0.15/1K calls
+	ProOveragePer1000Cents          = 8   // $0.08/1K calls
+	EnterpriseOveragePer1000Cents   = 5   // $0.05/1K calls (lower for higher tier)
+	// Agent Enterprise: no overage (unlimited)
+)
+
+// ==================== Agent Capabilities (Bundled in Main Plans) ====================
+// Free: Basic 10K calls/mo, 3 concurrency, hard stop
+// Starter: 100K calls/mo, 10 concurrency, $0.15/1K overage
+// Professional: 1M calls/mo, 100 concurrency, $0.08/1K overage
+// Enterprise: 5M calls/mo, 500 concurrency, $0.05/1K overage
+// Agent Enterprise: Unlimited, $499/mo base
+
+// Free tier agent limits
+const (
+	FreeMaxAgents             = 3
+	FreeMaxAICallsPerMonth    = 10_000
+	FreeMaxConcurrency        = 3
+	FreeMaxCallsPerMinute     = 10
+	FreeOverageAllowed        = false // Hard stop
+)
+
+// Starter agent limits (included in $24/mo plan)
+const (
+	StarterMaxAgents             = 10
+	StarterMaxAICallsPerMonth    = 100_000
+	StarterMaxConcurrency        = 10
+	StarterMaxCallsPerMinute     = 100
+	StarterMaxStateWritesPerHr   = 1_000
+	StarterMaxMemoryGB           = 10
+	StarterLogRetentionDays      = 30
+)
+
+// Professional agent limits (included in $79/mo plan)
+const (
+	ProMaxAgents             = 100
+	ProMaxAICallsPerMonth    = 1_000_000
+	ProMaxConcurrency        = 100
+	ProMaxCallsPerMinute     = 500
+	ProMaxStateWritesPerHr   = 10_000
+	ProMaxMemoryGB           = 100
+	ProLogRetentionDays      = 90
+)
+
+// Enterprise agent limits (included in $299/mo plan)
+const (
+	EnterpriseMaxAgents             = 500
+	EnterpriseMaxAICallsPerMonth   = 5_000_000  // 5M calls included
+	EnterpriseMaxConcurrency       = 500
+	EnterpriseMaxCallsPerMinute    = 2000
+	EnterpriseMaxStateWritesPerHr  = 50_000
+	EnterpriseMaxMemoryGB          = 500
+	EnterpriseLogRetentionDays     = 365
+)
+
+// Agent Enterprise limits ($499/mo - unlimited)
+// Note: Many are -1 (unlimited), defined here to avoid reference issues
+const (
+	AgentEnterpriseMaxAgents   = -1 // Unlimited
+	AgentEnterpriseMaxAICallsPerMonth = -1 // Unlimited
+	// AgentEnterpriseMaxConcurrency, MaxCallsPerMinute etc. are defined in AEP section above
 )
 
 // User seat limits per plan
@@ -265,59 +344,147 @@ func GetSeatUsage(plan string, currentUsers int) *SeatUsageInfo {
 	return info
 }
 
-// AgentMaxCallsPerMinute returns the calls-per-minute limit for an AEP plan
+// AgentMaxCallsPerMinute returns the calls-per-minute limit for a plan
+// Supports both legacy agent tiers and main plan names
 func AgentMaxCallsPerMinute(plan string) int {
 	switch plan {
-	case PlanAgentScale:
-		return AgentScaleMaxCallsPerMinute
-	case PlanAgentPro:
-		return AgentProMaxCallsPerMinute
+	case PlanAgentScale, PlanPro:
+		return ProMaxCallsPerMinute
+	case PlanAgentPro, PlanEnterprise:
+		return EnterpriseMaxCallsPerMinute
 	case PlanAgentEnterprise:
-		return AgentEnterpriseMaxCallsPerMinute
+		return -1 // Unlimited
+	case PlanStarter, PlanAgentStarter:
+		return StarterMaxCallsPerMinute
 	default:
-		return AgentStarterMaxCallsPerMinute
+		return StarterMaxCallsPerMinute
 	}
 }
 
-// AgentMaxCallsPerDay returns the calls-per-day limit for an AEP plan
+// AgentMaxCallsPerDay returns the calls-per-day limit for a plan
 func AgentMaxCallsPerDay(plan string) int {
 	switch plan {
-	case PlanAgentScale:
-		return AgentScaleMaxCallsPerDay
-	case PlanAgentPro:
-		return AgentProMaxCallsPerDay
+	case PlanAgentScale, PlanPro:
+		return 33_333
+	case PlanAgentPro, PlanEnterprise:
+		return 333_333
 	case PlanAgentEnterprise:
-		return AgentEnterpriseMaxCallsPerDay
+		return -1 // Unlimited
+	case PlanStarter, PlanAgentStarter:
+		return 3_333
 	default:
-		return AgentStarterMaxCallsPerDay
+		return 3_333
 	}
 }
 
-// AgentMaxConcurrency returns the max concurrency for an AEP plan
+// AgentMaxConcurrency returns the max concurrency for a plan
 func AgentMaxConcurrency(plan string) int {
 	switch plan {
-	case PlanAgentScale:
-		return AgentScaleMaxConcurrency
-	case PlanAgentPro:
-		return AgentProMaxConcurrency
+	case PlanAgentScale, PlanPro:
+		return ProMaxConcurrency
+	case PlanAgentPro, PlanEnterprise:
+		return EnterpriseMaxConcurrency
 	case PlanAgentEnterprise:
-		return AgentEnterpriseMaxConcurrency
+		return -1 // Unlimited
+	case PlanStarter, PlanAgentStarter:
+		return StarterMaxConcurrency
 	default:
-		return AgentStarterMaxConcurrency
+		return StarterMaxConcurrency
 	}
 }
 
-// AgentLogRetentionDays returns the log retention days for an AEP plan
+// AgentLogRetentionDays returns the log retention days for a plan
 func AgentLogRetentionDays(plan string) int {
 	switch plan {
-	case PlanAgentScale:
-		return AgentScaleLogRetentionDays
-	case PlanAgentPro:
-		return AgentProLogRetentionDays
+	case PlanAgentScale, PlanPro:
+		return ProLogRetentionDays
+	case PlanAgentPro, PlanEnterprise:
+		return EnterpriseLogRetentionDays
 	case PlanAgentEnterprise:
-		return AgentEnterpriseLogRetentionDays
+		return -1 // Custom
+	case PlanStarter, PlanAgentStarter:
+		return StarterLogRetentionDays
 	default:
-		return AgentStarterLogRetentionDays
+		return StarterLogRetentionDays
+	}
+}
+
+// GetAgentLimitsForPlan returns the agent limits for any plan (main or agent tier)
+func GetAgentLimitsForPlan(plan string) (maxAgents, maxCallsPerMonth, maxConcurrency, maxCallsPerMinute int) {
+	switch plan {
+	case PlanEnterprise, PlanAgentPro:
+		return EnterpriseMaxAgents, EnterpriseMaxAICallsPerMonth, EnterpriseMaxConcurrency, EnterpriseMaxCallsPerMinute
+	case PlanPro, PlanAgentScale:
+		return ProMaxAgents, ProMaxAICallsPerMonth, ProMaxConcurrency, ProMaxCallsPerMinute
+	case PlanStarter, PlanAgentStarter:
+		return StarterMaxAgents, StarterMaxAICallsPerMonth, StarterMaxConcurrency, StarterMaxCallsPerMinute
+	case PlanAgentEnterprise:
+		return AgentEnterpriseMaxAgents, AgentEnterpriseMaxAICallsPerMonth, AgentEnterpriseMaxConcurrency, AgentEnterpriseMaxCallsPerMinute
+	default: // Free
+		return FreeMaxAgents, FreeMaxAICallsPerMonth, FreeMaxConcurrency, FreeMaxCallsPerMinute
+	}
+}
+
+// GetAgentTierLimits returns the quota limits for an agent based on plan tier
+// Returns: (maxCallsPerMinute, maxCallsPerDay, maxStateWritesPerHr, maxDailySpendUSD)
+func GetAgentTierLimits(planTier string) (int, int, int, float64) {
+	switch planTier {
+	case PlanAgentEnterprise:
+		return -1, -1, -1, -1.0 // Unlimited
+	case PlanAgentPro, PlanEnterprise:
+		return EnterpriseMaxCallsPerMinute, 333_333, EnterpriseMaxStateWritesPerHr, 100.0
+	case PlanAgentScale, PlanPro:
+		return ProMaxCallsPerMinute, 33_333, ProMaxStateWritesPerHr, 30.0
+	case PlanAgentStarter, PlanStarter:
+		return StarterMaxCallsPerMinute, 3_333, StarterMaxStateWritesPerHr, 5.0
+	default: // Free or unknown
+		return FreeMaxCallsPerMinute, 333, 100, 1.0
+	}
+}
+
+// GetOverageRate returns the overage rate (cents per 1000 calls) for a plan
+func GetOverageRate(plan string) int {
+	switch plan {
+	case PlanEnterprise, PlanAgentPro:
+		return EnterpriseOveragePer1000Cents
+	case PlanPro, PlanAgentScale:
+		return ProOveragePer1000Cents
+	case PlanStarter, PlanAgentStarter:
+		return StarterOveragePer1000Cents
+	default:
+		return 0 // Free has hard stop
+	}
+}
+
+// GetPlanPriceCents returns the monthly price in cents for a plan
+func GetPlanPriceCents(plan string) int {
+	switch plan {
+	case PlanAgentEnterprise:
+		return AgentEnterprisePriceCents
+	case PlanEnterprise, PlanAgentPro:
+		return EnterprisePriceCents
+	case PlanPro, PlanAgentScale:
+		return ProPriceCents
+	case PlanStarter, PlanAgentStarter:
+		return StarterPriceCents
+	default:
+		return 0 // Free
+	}
+}
+
+// GetAnnualPriceCents returns the annual price in cents for a plan
+func GetAnnualPriceCents(plan string) int {
+	switch plan {
+	case PlanAgentEnterprise:
+		return AgentEnterpriseAnnualCents
+	case PlanEnterprise, PlanAgentPro:
+		return EnterpriseAnnualCents
+	case PlanPro, PlanAgentScale:
+		return ProAnnualCents
+	case PlanStarter, PlanAgentStarter:
+		return StarterAnnualCents
+	default:
+		return 0 // Free
 	}
 }
 
@@ -343,6 +510,20 @@ func MaxProviders(plan string) int {
 		fallthrough
 	default:
 		return StarterMaxProvidersPerApp
+	}
+}
+
+// MaxApps returns the maximum number of apps allowed for the given plan
+func MaxApps(plan string) int {
+	switch plan {
+	case PlanPro:
+		return ProMaxApps
+	case PlanEnterprise:
+		return EnterpriseMaxApps
+	case PlanStarter:
+		fallthrough
+	default:
+		return StarterMaxApps
 	}
 }
 
@@ -542,38 +723,45 @@ type UsagePricingTier struct {
 	MaxRequestsPerMonth     int     // -1 for unlimited
 }
 
-// Usage-based pricing tiers for the main platform
+// Usage-based pricing tiers for the main platform - 2026 optimized (Option C Hybrid)
 var UsagePricingTiers = map[string]UsagePricingTier{
-	"free": {
+"free": {
 		Name:                    "Free",
 		IncludedRequestsMonthly: 100_000,
 		MonthlyPriceCents:       0,
 		OveragePricePer1000:     0, // Hard stop
-		AnnualDiscountPercent:   0,
 		MaxRequestsPerMonth:     100_000,
 	},
 	"starter": {
 		Name:                    "Starter",
-		IncludedRequestsMonthly: 1_000_000,
-		MonthlyPriceCents:       2900, // $29/month
-		OveragePricePer1000:     3,    // $0.003 per request
-		AnnualDiscountPercent:   0.20, // 20% off annual
+		IncludedRequestsMonthly: 100_000,
+		MonthlyPriceCents:       StarterPriceCents, // $24/month
+		OveragePricePer1000:     StarterOveragePer1000Cents, // $0.15/1K
+		AnnualDiscountPercent:   0.17, // 17% off (2 months free)
 		MaxRequestsPerMonth:     -1,
 	},
 	"professional": {
 		Name:                    "Professional",
-		IncludedRequestsMonthly: 10_000_000,
-		MonthlyPriceCents:       9900, // $99/month
-		OveragePricePer1000:     2,    // $0.002 per request
-		AnnualDiscountPercent:   0.20, // 20% off annual
+		IncludedRequestsMonthly: 1_000_000,
+		MonthlyPriceCents:       ProPriceCents, // $79/month
+		OveragePricePer1000:     ProOveragePer1000Cents, // $0.08/1K
+		AnnualDiscountPercent:   0.17, // 17% off
 		MaxRequestsPerMonth:     -1,
 	},
 	"enterprise": {
 		Name:                    "Enterprise",
-		IncludedRequestsMonthly: 100_000_000,
-		MonthlyPriceCents:       49900, // $499/month
-		OveragePricePer1000:     1,     // $0.001 per request
-		AnnualDiscountPercent:   0.30, // 30% off annual
+		IncludedRequestsMonthly: 10_000_000,
+		MonthlyPriceCents:       EnterprisePriceCents, // $199/month
+		OveragePricePer1000:     EnterpriseOveragePer1000Cents, // $0.04/1K
+		AnnualDiscountPercent:   0.17, // 17% off
+		MaxRequestsPerMonth:     -1,
+	},
+	"agent_enterprise": {
+		Name:                    "Agent Enterprise",
+		IncludedRequestsMonthly: -1, // Unlimited
+		MonthlyPriceCents:       AgentEnterprisePriceCents, // $499/month
+		OveragePricePer1000:     0, // No overage (unlimited)
+		AnnualDiscountPercent:   0.17, // 17% off
 		MaxRequestsPerMonth:     -1,
 	},
 }

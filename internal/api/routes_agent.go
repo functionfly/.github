@@ -25,6 +25,7 @@ func registerAgentRoutes(
 	api *mux.Router,
 	protected *mux.Router,
 	authMiddleware *middleware.AuthMiddleware,
+	agentRateLimiter *middleware.AgentRateLimiter,
 	aepHandler *agenthandler.Handler,
 	swarmHandler *agenthandler.SwarmHandler,
 	sebgHandler *agenthandler.SEBGHandler,
@@ -60,7 +61,12 @@ func registerAgentRoutes(
 	}
 
 	// Wrap agent handlers with team memory middleware
-	protected.HandleFunc("/agent/register", authMiddleware.RequireAuth(wrapWithTeamMiddleware(aepHandler.HandleRegisterAgent, agentTeamMiddleware))).Methods("POST", "OPTIONS")
+	// Agent registration is rate-limited per tenant to prevent DoS via agent ID exhaustion
+	if agentRateLimiter != nil {
+		protected.HandleFunc("/agent/register", authMiddleware.RequireAuth(agentRateLimiter.Limit(wrapWithTeamMiddleware(aepHandler.HandleRegisterAgent, agentTeamMiddleware)))).Methods("POST", "OPTIONS")
+	} else {
+		protected.HandleFunc("/agent/register", authMiddleware.RequireAuth(wrapWithTeamMiddleware(aepHandler.HandleRegisterAgent, agentTeamMiddleware))).Methods("POST", "OPTIONS")
+	}
 	protected.HandleFunc("/agent", authMiddleware.RequireAuth(wrapWithTeamMiddleware(aepHandler.HandleListAgents, agentTeamMiddleware))).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}", authMiddleware.RequireAuth(wrapWithTeamMiddleware(aepHandler.HandleGetAgent, agentTeamMiddleware))).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}", authMiddleware.RequireAuth(wrapWithTeamMiddleware(aepHandler.HandleDeleteAgent, agentTeamMiddleware))).Methods("DELETE", "OPTIONS")
@@ -83,6 +89,11 @@ func registerAgentRoutes(
 	protected.HandleFunc("/agent/{agent_id}/credits/checkout", authMiddleware.RequireAuth(aepHandler.HandleCreateCreditsCheckout)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}/transactions", authMiddleware.RequireAuth(aepHandler.HandleListAgentTransactions)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/agent/concurrency/stats", authMiddleware.RequireAuth(aepHandler.HandleGetConcurrencyStats)).Methods("GET", "OPTIONS")
+
+	// ── Agent Lifecycle Management ────────────────────────────────────────
+	protected.HandleFunc("/agent/{agent_id}/lifecycle/status", authMiddleware.RequireAuth(aepHandler.HandleAgentLifecycleStatus)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}/lifecycle/heartbeat", aepHandler.HandleAgentHeartbeat).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}/lifecycle/shutdown", authMiddleware.RequireAuth(aepHandler.HandleAgentShutdown)).Methods("POST", "OPTIONS")
 
 	// ── Swarm / Marketplace / Evolution (protected) ───────────────────────────
 	// Swarm routes MUST be registered AFTER AEP routes to take precedence for overlapping paths
@@ -119,11 +130,16 @@ func registerAgentRoutes(
 		disputeRepo,
 		refundRepo,
 		registryRepo,
+		s.emailSvc,
 	)
 	// Wire up dunning manager for automated payment retry
 	stripeWebhookHandler.SetDunningManager(s.dunningManager)
 	// Wire up operational repository for webhook payload storage and replay
 	stripeWebhookHandler.SetOperationalRepository(billingOperationalRepo)
+	// Wire up payout service for Stripe Connect payout webhook events
+	if s.payoutWebhookProcessor != nil {
+		stripeWebhookHandler.SetPayoutService(s.payoutWebhookProcessor)
+	}
 	stripeWebhookHandler.RegisterRoutes(api)
 
 	// ── Executable Conversations ──────────────────────────────────────────────

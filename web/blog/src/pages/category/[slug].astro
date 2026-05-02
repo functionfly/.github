@@ -96,8 +96,8 @@ const categoryDescription = currentCategory?.description || `Posts in the ${cate
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.14), transparent 55%),
-      radial-gradient(ellipse 50% 30% at 100% 10%, rgba(16, 185, 129, 0.05), transparent 40%);
+      radial-gradient(ellipse 80% 50% at 50% -20%, color-mix(in srgb, var(--color-primary) 14%, transparent), transparent 55%),
+      radial-gradient(ellipse 50% 30% at 100% 10%, color-mix(in srgb, var(--color-secondary) 5%, transparent), transparent 40%);
   }
 
   .category-page {
@@ -135,7 +135,7 @@ const categoryDescription = currentCategory?.description || `Posts in the ${cate
   }
 
   .gradient-text {
-    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #94a3b8 100%);
+    background: var(--gradient-primary);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -158,6 +158,10 @@ const categoryDescription = currentCategory?.description || `Posts in the ${cate
   .category-sidebar {
     position: sticky;
     top: 6rem;
+    padding: 1.5rem;
+    background: color-mix(in srgb, var(--color-bg-light) 50%, transparent);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
   }
 
   .category-main {
@@ -190,8 +194,8 @@ const categoryDescription = currentCategory?.description || `Posts in the ${cate
   }
 
   .btn-primary:hover {
-    background: #4f46e5;
-    border-color: #4f46e5;
+    background: var(--color-primary-dark);
+    border-color: var(--color-primary-dark);
   }
 
   @media (max-width: 992px) {

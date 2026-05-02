@@ -34,6 +34,7 @@
   "cache_ttl": 0,
   "timeout_ms": 200,
   "memory_mb": 64,
+  "price_per_call": 0.0001,
   "example": {
     "input": {
       "payload": "{\"event\":\"push\"}",

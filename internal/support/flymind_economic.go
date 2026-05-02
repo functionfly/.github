@@ -23,7 +23,7 @@ type EconomicRoutingConfig struct {
 // DefaultEconomicRoutingConfig returns default configuration
 func DefaultEconomicRoutingConfig() *EconomicRoutingConfig {
 	return &EconomicRoutingConfig{
-		BaseURL:          "http://localhost:8081", // ai-service default
+		BaseURL:          "http://localhost:18081", // ai-service default
 		APIKey:           "",
 		Timeout:          30 * time.Second,
 		DefaultStrategy:  "balanced",

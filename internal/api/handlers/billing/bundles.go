@@ -83,6 +83,199 @@ func (h *Handler) HandleGetBundle(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(bundleToResponse(bundle))
 }
 
+// HandleGetBundleUsageStatus returns current usage against bundle limits
+// GET /v1/billing/bundle/usage
+func (h *Handler) HandleGetBundleUsageStatus(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil || claims.TenantID == uuid.Nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	ctx := r.Context()
+	now := time.Now().UTC()
+	periodStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	periodEnd := periodStart.AddDate(0, 1, 0).Add(-time.Second)
+
+	sub, err := h.repo.GetBundleSubscriptionByTenant(ctx, claims.TenantID)
+	if err != nil || sub == nil {
+		writeJSONError(w, http.StatusNotFound, "No bundle subscription found")
+		return
+	}
+
+	bundle, err := h.repo.GetPricingBundleByID(ctx, sub.BundleID)
+	if err != nil || bundle == nil {
+		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve bundle")
+		return
+	}
+
+	execRollups, _ := h.repo.GetUsageByTenant(claims.TenantID, "function_execution", periodStart, periodEnd)
+	totalExecutions := 0
+	for _, rollup := range execRollups {
+		totalExecutions += rollup.TotalQuantity
+	}
+
+	storageUsedBytes := 0
+	usersCount, _ := h.repo.CountUsersByTenant(ctx, claims.TenantID)
+
+	executionLimit := bundle.FeatureLimits["function_executions"]
+	storageLimit := bundle.FeatureLimits["storage_bytes"]
+	userLimit := bundle.FeatureLimits["users"]
+
+	usagePercent := 0.0
+	if executionLimit > 0 {
+		usagePercent = float64(totalExecutions) / float64(executionLimit) * 100
+		if usagePercent > 100 {
+			usagePercent = 100
+		}
+	}
+
+	storagePercent := 0.0
+	if storageLimit > 0 {
+		storagePercent = float64(storageUsedBytes) / float64(storageLimit) * 100
+		if storagePercent > 100 {
+			storagePercent = 100
+		}
+	}
+
+	userPercent := 0.0
+	if userLimit > 0 {
+		userPercent = float64(usersCount) / float64(userLimit) * 100
+		if userPercent > 100 {
+			userPercent = 100
+		}
+	}
+
+	isAtLimit := totalExecutions >= executionLimit && executionLimit > 0
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"bundle_slug":           bundle.Slug,
+		"subscription_status":   sub.Status,
+		"period_start":          periodStart.Format("2006-01-02"),
+		"period_end":            periodEnd.Format("2006-01-02"),
+		"usage": map[string]interface{}{
+			"function_executions": map[string]interface{}{
+				"used":   totalExecutions,
+				"limit":  executionLimit,
+				"percent": usagePercent,
+			},
+			"storage_bytes": map[string]interface{}{
+				"used":   storageUsedBytes,
+				"limit":  storageLimit,
+				"percent": storagePercent,
+			},
+			"users": map[string]interface{}{
+				"used":   usersCount,
+				"limit":  userLimit,
+				"percent": userPercent,
+			},
+		},
+		"is_at_limit": isAtLimit,
+		"upgrade_required": isAtLimit,
+	})
+}
+
+// HandleChangeBundle upgrades or downgrades the bundle subscription
+// POST /v1/billing/bundle/change
+func (h *Handler) HandleChangeBundle(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil || claims.TenantID == uuid.Nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	if !payment.IsConfigured() {
+		writeJSONError(w, http.StatusServiceUnavailable, "Billing is not configured")
+		return
+	}
+
+	var req struct {
+		NewBundleSlug string `json:"new_bundle_slug"`
+		SuccessURL    string `json:"success_url"`
+		CancelURL     string `json:"cancel_url"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if req.NewBundleSlug == "" {
+		writeJSONError(w, http.StatusBadRequest, "new_bundle_slug is required")
+		return
+	}
+
+	validSlugs := map[string]bool{"saas-starter": true, "marketplace": true, "ai-app": true}
+	if !validSlugs[req.NewBundleSlug] {
+		writeJSONError(w, http.StatusBadRequest, "Invalid bundle slug")
+		return
+	}
+
+	ctx := r.Context()
+	sub, err := h.repo.GetBundleSubscriptionByTenant(ctx, claims.TenantID)
+	if err != nil || sub == nil {
+		writeJSONError(w, http.StatusNotFound, "No bundle subscription found")
+		return
+	}
+
+	oldBundle, err := h.repo.GetPricingBundleByID(ctx, sub.BundleID)
+	if err != nil || oldBundle == nil {
+		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve current bundle")
+		return
+	}
+
+	newBundle, err := h.repo.GetPricingBundleBySlug(ctx, req.NewBundleSlug)
+	if err != nil || newBundle == nil {
+		writeJSONError(w, http.StatusNotFound, "Bundle not found")
+		return
+	}
+
+	if newBundle.StripePriceID == "" {
+		writeJSONError(w, http.StatusServiceUnavailable, "Bundle not available for upgrade")
+		return
+	}
+
+	user, err := h.repo.GetUserByID(claims.UserID)
+	if err != nil || user == nil {
+		writeJSONError(w, http.StatusNotFound, "User not found")
+		return
+	}
+
+	name := user.Name
+	if name == "" && user.ProviderData != nil {
+		if n, ok := user.ProviderData["name"].(string); ok {
+			name = n
+		}
+	}
+	if name == "" {
+		name = user.Email
+	}
+
+	resp, err := payment.CreateBundleCheckoutSession(
+		ctx,
+		h.repo,
+		claims.TenantID,
+		user.Email,
+		name,
+		payment.CreateBundleCheckoutSessionRequest{
+			PriceID:    newBundle.StripePriceID,
+			SuccessURL: req.SuccessURL,
+			CancelURL:  req.CancelURL,
+			BundleSlug: newBundle.Slug,
+		},
+	)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Error("billing bundle change: failed to create session")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to create checkout session")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
+}
+
 // HandleRegisterFounderMode registers a user for founder mode (free until trigger)
 // POST /v1/billing/bundles/:slug/founder
 func (h *Handler) HandleRegisterFounderMode(w http.ResponseWriter, r *http.Request) {

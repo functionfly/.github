@@ -15,7 +15,7 @@ For browser-based applications and the dashboard:
 
 ```bash
 # Login via CLI
-fly login
+ffly login
 
 # This opens a browser window for authentication
 # and stores a session token locally
@@ -27,15 +27,15 @@ For programmatic access and server-to-server communication:
 
 ```bash
 # Create a new API key
-fly keys create --name "Production API" \
+ffly keys create --name "Production API" \
   --permissions read,execute \
   --environments production
 
 # List your API keys
-fly keys list
+ffly keys list
 
 # Revoke an API key
-fly keys revoke <key-id>
+ffly keys revoke <key-id>
 ```
 
 ### 3. JWT Tokens
@@ -44,7 +44,7 @@ For temporary access or delegated authentication:
 
 ```bash
 # Generate a JWT token
-fly token generate --expires 24h
+ffly token generate --expires 24h
 
 # Use the token in API requests
 curl https://api.functionfly.com/v1/execute/<function-id> \
@@ -139,7 +139,7 @@ Control what each key can do:
 ### Example: Read-Only Key
 
 ```bash
-fly keys create \
+ffly keys create \
   --name "Monitoring Service" \
   --permissions read \
   --environments production
@@ -148,7 +148,7 @@ fly keys create \
 ### Example: Deployment Key
 
 ```bash
-fly keys create \
+ffly keys create \
   --name "CI/CD Pipeline" \
   --permissions read,deploy \
   --environments staging,production
@@ -160,10 +160,10 @@ Restrict API keys to specific environments:
 
 ```bash
 # Development only
-fly keys create --name "Dev Key" --environments development
+ffly keys create --name "Dev Key" --environments development
 
 # Staging and production
-fly keys create --name "Prod Key" --environments staging,production
+ffly keys create --name "Prod Key" --environments staging,production
 ```
 
 ## Rate Limits
@@ -182,12 +182,12 @@ Regularly rotate API keys for security:
 
 ```bash
 # Create a new key with the same permissions
-fly keys rotate <old-key-id> --name "Production API (Rotated)"
+ffly keys rotate <old-key-id> --name "Production API (Rotated)"
 
 # The old key remains active for 24 hours
 # Update your applications with the new key
 # Then revoke the old key
-fly keys revoke <old-key-id>
+ffly keys revoke <old-key-id>
 ```
 
 ## Best Practices

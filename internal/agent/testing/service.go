@@ -111,10 +111,6 @@ func NewService(db *gorm.DB, sandbox SandboxExecutor, benchmark BenchmarkRunner)
 	return &Service{db: db, security: NewSecurityScanner(), sandbox: sandbox, benchmark: benchmark}
 }
 
-func (s *Service) AutoMigrate(ctx context.Context) error {
-	return s.db.WithContext(ctx).AutoMigrate(&TestResult{})
-}
-
 func (s *Service) RunTests(ctx context.Context, functionID uuid.UUID, code, runtime string) ([]TestResult, error) {
 	results := []TestResult{
 		s.runSyntaxValidation(functionID, code, runtime),

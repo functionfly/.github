@@ -29,7 +29,7 @@ type AIClientConfig struct {
 func DefaultAIClientConfig() *AIClientConfig {
 	baseURL := os.Getenv("AI_SERVICE_URL")
 	if baseURL == "" {
-		baseURL = "http://localhost:8081" // Default ai-service port
+		baseURL = "http://localhost:18081" // Default ai-service port
 	}
 
 	apiKey := os.Getenv("AI_SERVICE_API_KEY")

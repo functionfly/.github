@@ -21,18 +21,18 @@ const imageUrl = post.heroImage?.url;
 const categoryColors: Record<string, string> = {
   'engineering': '#3b82f6',
   'product': '#10b981',
-  'company-news': '#8b5cf6',
+  'company-news': '#FF6B35',
   'tutorials': '#f59e0b',
   'community': '#ec4899',
   'security': '#ef4444',
-  'ai-ml': '#6366f1',
+  'ai-ml': '#FF6B35',
   'devops': '#06b6d4',
   'api-sdks': '#f97316',
   'releases': '#14b8a6',
   'case-studies': '#0ea5e9',
 };
 
-const categoryColor = post.category?.slug ? categoryColors[post.category.slug] || '#6366f1' : '#6366f1';
+const categoryColor = post.category?.slug ? categoryColors[post.category.slug] || '#FF6B35' : '#FF6B35';
 ---
 
 <article class:list={['blog-card', `blog-card--${variant}`, { 'animate-in': true }]} style={`--category-color: ${categoryColor}; --animation-delay: ${index * 0.1}s`}>
@@ -103,8 +103,8 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
 <style>
   .blog-card {
     position: relative;
-    background: linear-gradient(145deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
-    border: 1px solid rgba(148, 163, 184, 0.1);
+    background: color-mix(in srgb, var(--color-bg-light) 80%, transparent);
+    border: 1px solid var(--color-border);
     border-radius: 16px;
     overflow: hidden;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -125,7 +125,7 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
     content: '';
     position: absolute;
     inset: 0;
-    background: radial-gradient(ellipse at top, rgba(99, 102, 241, 0.1) 0%, transparent 50%);
+    background: radial-gradient(ellipse at top, color-mix(in srgb, var(--color-primary) 10%, transparent) 0%, transparent 50%);
     opacity: 0;
     transition: opacity 0.4s ease;
     pointer-events: none;
@@ -140,7 +140,7 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
     content: '';
     position: absolute;
     inset: -1px;
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.4) 0%, transparent 50%, rgba(16, 185, 129, 0.2) 100%);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 40%, transparent) 0%, transparent 50%, color-mix(in srgb, var(--color-secondary) 20%, transparent) 100%);
     border-radius: 16px;
     z-index: -1;
     opacity: 0;
@@ -153,10 +153,10 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
 
   .blog-card:hover {
     transform: translateY(-6px) scale(1.01);
-    border-color: rgba(99, 102, 241, 0.3);
-    box-shadow: 
+    border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+    box-shadow:
       0 20px 40px rgba(0, 0, 0, 0.4),
-      0 0 60px rgba(99, 102, 241, 0.15);
+      0 0 60px color-mix(in srgb, var(--color-primary) 15%, transparent);
   }
 
   .blog-card__link {
@@ -171,13 +171,13 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
     position: relative;
     aspect-ratio: 16 / 9;
     overflow: hidden;
-    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    background: linear-gradient(135deg, var(--color-bg-light) 0%, var(--color-bg) 100%);
   }
 
   .blog-card__image-overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(to bottom, transparent 50%, rgba(15, 23, 42, 0.8) 100%);
+    background: linear-gradient(to bottom, transparent 50%, color-mix(in srgb, var(--color-bg) 80%, transparent) 100%);
     z-index: 1;
     transition: opacity 0.3s ease;
   }
@@ -196,7 +196,7 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
   .blog-card__image-glow {
     position: absolute;
     inset: 0;
-    background: radial-gradient(ellipse at center, var(--category-color, #6366f1) 0%, transparent 70%);
+    background: radial-gradient(ellipse at center, var(--category-color, #FF6B35) 0%, transparent 70%);
     opacity: 0;
     transition: opacity 0.4s ease;
     z-index: 2;
@@ -222,20 +222,20 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
     align-items: center;
     gap: 0.5rem;
     padding: 0.4rem 0.85rem;
-    background: rgba(var(--cat-color-rgb, 99, 102, 241), 0.1);
-    border: 1px solid rgba(var(--cat-color-rgb, 99, 102, 241), 0.2);
+    background: color-mix(in srgb, var(--category-color, #FF6B35) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--category-color, #FF6B35) 20%, transparent);
     border-radius: 9999px;
     font-size: 0.75rem;
     font-weight: 600;
-    color: var(--category-color, #6366f1);
+    color: var(--category-color, #FF6B35);
     margin-bottom: 0.875rem;
     width: fit-content;
     transition: all 0.3s ease;
   }
 
   .blog-card:hover .blog-card__category {
-    background: rgba(var(--cat-color-rgb, 99, 102, 241), 0.2);
-    border-color: rgba(var(--cat-color-rgb, 99, 102, 241), 0.4);
+    background: color-mix(in srgb, var(--category-color, #FF6B35) 20%, transparent);
+    border-color: color-mix(in srgb, var(--category-color, #FF6B35) 40%, transparent);
     transform: translateX(4px);
   }
 
@@ -243,8 +243,8 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--category-color, #6366f1);
-    box-shadow: 0 0 8px var(--category-color, #6366f1);
+    background: var(--category-color, #FF6B35);
+    box-shadow: 0 0 8px var(--category-color, #FF6B35);
   }
 
   .blog-card__title {
@@ -252,26 +252,26 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
     font-weight: 600;
     line-height: 1.4;
     margin-bottom: 0.75rem;
-    color: #f8fafc;
+    color: var(--color-text);
     position: relative;
   }
 
   .blog-card__title-text {
-    background: linear-gradient(90deg, #f8fafc 0%, #e2e8f0 100%);
+    background: var(--gradient-text);
     -webkit-background-clip: text;
     background-clip: text;
     transition: all 0.3s ease;
   }
 
   .blog-card:hover .blog-card__title-text {
-    background: linear-gradient(90deg, #f8fafc 0%, #818cf8 50%, #c7d2fe 100%);
+    background: linear-gradient(90deg, var(--color-text) 0%, var(--color-primary-light) 50%, var(--color-primary) 100%);
     -webkit-background-clip: text;
     background-clip: text;
   }
 
   .blog-card__description {
     font-size: 0.875rem;
-    color: #94a3b8;
+    color: var(--color-text-muted);
     line-height: 1.7;
     margin-bottom: 1.25rem;
     flex: 1;
@@ -283,7 +283,7 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
   }
 
   .blog-card:hover .blog-card__description {
-    color: #cbd5e1;
+    color: var(--color-text-secondary);
   }
 
   .blog-card__meta {
@@ -291,10 +291,10 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
     align-items: center;
     gap: 0.75rem;
     font-size: 0.75rem;
-    color: #64748b;
+    color: var(--color-text-dim);
     margin-top: auto;
     padding-top: 1rem;
-    border-top: 1px solid rgba(148, 163, 184, 0.1);
+    border-top: 1px solid var(--color-border);
   }
 
   .blog-card__meta-item {
@@ -310,14 +310,14 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
 
   .blog-card:hover .blog-card__meta-icon {
     opacity: 1;
-    color: #818cf8;
+    color: var(--color-primary-light);
   }
 
   .blog-card__meta-separator {
     width: 4px;
     height: 4px;
     border-radius: 50%;
-    background: #475569;
+    background: var(--color-text-dim);
   }
 
   .blog-card__arrow {
@@ -327,12 +327,12 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: rgba(99, 102, 241, 0.1);
-    border: 1px solid rgba(99, 102, 241, 0.2);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #818cf8;
+    color: var(--color-primary-light);
     opacity: 0;
     transform: translateX(-10px);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);

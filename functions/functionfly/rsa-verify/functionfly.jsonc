@@ -30,6 +30,7 @@
   "cache_ttl": 0,
   "timeout_ms": 1000,
   "memory_mb": 128,
+  "price_per_call": 0.001,
   "example": {
     "input": { "message": "Hello", "signature": "...", "public_key": "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----" },
     "output": { "ok": true, "result": true }

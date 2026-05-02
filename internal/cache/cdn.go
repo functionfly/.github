@@ -59,6 +59,11 @@ type CDNConfig struct {
 	// Cloudflare cache purge
 	CloudflareZoneID string // Cloudflare Zone ID for cache purge API
 	CloudflareToken  string // Cloudflare API token for cache purge
+	// AWS CloudFront cache purge
+	CloudFrontDistributionID string // CloudFront distribution ID
+	CloudFrontRegion        string // AWS region for CloudFront
+	// Fastly cache purge
+	FastlyToken string // Fastly API token
 }
 
 // NewCDNConfig creates a default CDN configuration
@@ -72,5 +77,8 @@ func NewCDNConfig() *CDNConfig {
 		StaticBasePath:   "/static",
 		CloudflareZoneID: getEnvString("CLOUDFLARE_ZONE_ID", ""),
 		CloudflareToken:  getEnvString("CLOUDFLARE_API_TOKEN", ""),
+		CloudFrontDistributionID: getEnvString("CLOUDFRONT_DISTRIBUTION_ID", ""),
+		CloudFrontRegion:        getEnvString("CLOUDFRONT_REGION", "us-east-1"),
+		FastlyToken:              getEnvString("FASTLY_API_TOKEN", ""),
 	}
 }

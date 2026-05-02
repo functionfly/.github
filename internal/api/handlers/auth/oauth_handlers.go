@@ -25,6 +25,7 @@ import (
 //   - invite_code: for invite-only signup validation
 //   - login_hint: preserves tenant subdomain or email context through the OAuth flow
 //     (e.g., if user was on tenant1.functionfly.com, this is stored and restored post-auth for redirect)
+//   - tenant_id: tenant UUID to use per-tenant OAuth provider (optional, falls back to global)
 func (h *Handler) HandleGetOAuthURL(w http.ResponseWriter, r *http.Request) {
 	provider := r.URL.Query().Get("provider")
 	if provider == "" {
@@ -34,10 +35,19 @@ func (h *Handler) HandleGetOAuthURL(w http.ResponseWriter, r *http.Request) {
 	redirectURI := r.URL.Query().Get("redirect_uri")
 	inviteCode := r.URL.Query().Get("invite_code")
 	loginHint := r.URL.Query().Get("login_hint")
+	tenantIDStr := r.URL.Query().Get("tenant_id")
 
 	deviceFingerprint := generateDeviceFingerprint(r)
 
-	url, err := h.authSvc.GetOAuthURL(provider, redirectURI, inviteCode, loginHint, deviceFingerprint)
+	// Parse tenant ID if provided
+	var tenantID *uuid.UUID
+	if tenantIDStr != "" {
+		if parsed, err := uuid.Parse(tenantIDStr); err == nil {
+			tenantID = &parsed
+		}
+	}
+
+	url, err := h.authSvc.GetOAuthURL(provider, redirectURI, inviteCode, loginHint, deviceFingerprint, tenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("provider", provider).Warn("Failed to get OAuth URL")
 		writeJSONError(w, http.StatusBadRequest, err.Error())
@@ -149,9 +159,35 @@ func (h *Handler) HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, buildOAuthRedirectURL(redirectURL, result), http.StatusFound)
 }
 
-// HandleGetOAuthProviders returns list of configured OAuth providers
+// HandleGetOAuthProviders returns list of configured OAuth providers.
+// Optional query params:
+//   - tenant_id: tenant UUID to get per-tenant OAuth providers (merges with global if both exist)
 func (h *Handler) HandleGetOAuthProviders(w http.ResponseWriter, r *http.Request) {
-	providers := h.authSvc.GetConfiguredOAuthProviders()
+	// Get global providers
+	globalProviders := h.authSvc.GetConfiguredOAuthProviders()
+	providerSet := make(map[string]bool)
+	for _, p := range globalProviders {
+		providerSet[p] = true
+	}
+
+	// Check for per-tenant providers
+	tenantIDStr := r.URL.Query().Get("tenant_id")
+	if tenantIDStr != "" {
+		if tenantID, err := uuid.Parse(tenantIDStr); err == nil {
+			tenantProviders, err := h.authSvc.GetTenantOAuthProviders(r.Context(), tenantID)
+			if err == nil {
+				for _, p := range tenantProviders {
+					providerSet[p] = true
+				}
+			}
+		}
+	}
+
+	// Convert set to list
+	providers := make([]string, 0, len(providerSet))
+	for p := range providerSet {
+		providers = append(providers, p)
+	}
 
 	response := map[string]interface{}{
 		"providers": providers,

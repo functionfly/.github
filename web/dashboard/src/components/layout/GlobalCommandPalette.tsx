@@ -195,7 +195,7 @@ export function GlobalCommandPalette({ open, onOpenChange }: GlobalCommandPalett
               </CommandItem>
               <CommandItem
                 onSelect={() =>
-                  goTo(username ? `/u/${username}/agents` : ROUTES.AGENTS)
+                  goTo(username ? `/u/${username}/agents` : ROUTES.AGENT_LIST)
                 }
               >
                 <Bot className="mr-2 h-4 w-4" />
@@ -280,7 +280,7 @@ export function GlobalCommandPalette({ open, onOpenChange }: GlobalCommandPalett
               </CommandItem>
               <CommandItem
                 onSelect={() =>
-                  goTo(username ? `/u/${username}/agents` : ROUTES.AGENTS)
+                  goTo(username ? `/u/${username}/agents` : ROUTES.AGENT_LIST)
                 }
               >
                 <Bot className="mr-2 h-4 w-4" />

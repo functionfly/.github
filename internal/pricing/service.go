@@ -123,15 +123,17 @@ func (s *Service) GetAnnualPrice(ctx context.Context, slug string, currencyCode 
 }
 
 // getFallbackPricing returns hardcoded pricing for backward compatibility
+// Agent tiers now map to unified plans: agent_starter→starter, agent_scale→professional, agent_pro→enterprise
 func (s *Service) getFallbackPricing(slug string) (*storage.AgentTierPricing, error) {
 	switch slug {
 	case plans.PlanAgentStarter:
-		monthly := plans.AgentStarterPriceCents
+		monthly := plans.StarterPriceCents
+		annual := plans.StarterAnnualCents
 		return &storage.AgentTierPricing{
 			TierSlug:                 slug,
 			DisplayName:              "Agent Starter",
 			MonthlyPriceCents:        monthly,
-			AnnualPriceCents:         &monthly, // Same as monthly (no discount) in fallback
+			AnnualPriceCents:         &annual,
 			BaseCurrency:             "USD",
 			MaxAgents:                5,
 			IncludedAICalls:          10000,
@@ -141,12 +143,13 @@ func (s *Service) getFallbackPricing(slug string) (*storage.AgentTierPricing, er
 			IsActive:                 true,
 		}, nil
 	case plans.PlanAgentScale:
-		monthly := plans.AgentScalePriceCents
+		monthly := plans.ProPriceCents
+		annual := plans.ProAnnualCents
 		return &storage.AgentTierPricing{
 			TierSlug:                 slug,
 			DisplayName:              "Agent Scale",
 			MonthlyPriceCents:        monthly,
-			AnnualPriceCents:         &monthly,
+			AnnualPriceCents:         &annual,
 			BaseCurrency:             "USD",
 			MaxAgents:                25,
 			IncludedAICalls:          100000,
@@ -156,12 +159,13 @@ func (s *Service) getFallbackPricing(slug string) (*storage.AgentTierPricing, er
 			IsActive:                 true,
 		}, nil
 	case plans.PlanAgentPro:
-		monthly := plans.AgentProPriceCents
+		monthly := plans.EnterprisePriceCents
+		annual := plans.EnterpriseAnnualCents
 		return &storage.AgentTierPricing{
 			TierSlug:                 slug,
 			DisplayName:              "Agent Pro",
 			MonthlyPriceCents:        monthly,
-			AnnualPriceCents:         &monthly,
+			AnnualPriceCents:         &annual,
 			BaseCurrency:             "USD",
 			MaxAgents:                100,
 			IncludedAICalls:          500000,
@@ -172,11 +176,12 @@ func (s *Service) getFallbackPricing(slug string) (*storage.AgentTierPricing, er
 		}, nil
 	case plans.PlanAgentEnterprise:
 		monthly := plans.AgentEnterprisePriceCents
+		annual := plans.AgentEnterpriseAnnualCents
 		return &storage.AgentTierPricing{
 			TierSlug:                 slug,
 			DisplayName:              "Agent Enterprise",
 			MonthlyPriceCents:        monthly,
-			AnnualPriceCents:         nil, // No annual discount for enterprise
+			AnnualPriceCents:         &annual,
 			BaseCurrency:             "USD",
 			MaxAgents:                -1, // Unlimited
 			IncludedAICalls:          -1,
@@ -191,14 +196,15 @@ func (s *Service) getFallbackPricing(slug string) (*storage.AgentTierPricing, er
 }
 
 // getFallbackMonthlyPrice returns hardcoded monthly prices for backward compatibility
+// Maps agent tier slugs to unified plan prices
 func (s *Service) getFallbackMonthlyPrice(slug string) int {
 	switch slug {
 	case plans.PlanAgentStarter:
-		return plans.AgentStarterPriceCents
+		return plans.StarterPriceCents
 	case plans.PlanAgentScale:
-		return plans.AgentScalePriceCents
+		return plans.ProPriceCents
 	case plans.PlanAgentPro:
-		return plans.AgentProPriceCents
+		return plans.EnterprisePriceCents
 	case plans.PlanAgentEnterprise:
 		return plans.AgentEnterprisePriceCents
 	default:
@@ -212,7 +218,6 @@ func (s *Service) getFallbackAnnualPrice(slug string) int {
 	if monthly == 0 {
 		return 0
 	}
-	// 2 months free when paying annually
 	return monthly * 10
 }
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,7 @@ import { toast } from "sonner";
 export function AgentsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { username } = useParams();
   const { plan } = usePlan();
   const [agents, setAgents] = useState<AgentIdentity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -246,6 +247,7 @@ export function AgentsPage() {
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-red-500 hover:text-red-600"
+            onClick={() => handleDelete(row.original)}
           >
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -254,11 +256,31 @@ export function AgentsPage() {
     },
   ], [navigate]);
 
-  // Handle bulk actions
-  const handleBulkAction = (action: string, selectedRows: AgentIdentity[]) => {
-    if (action === 'delete') {
-      // Implement bulk delete
-      toast.info(`Would delete ${selectedRows.length} agents`);
+  const handleDelete = async (agent: AgentIdentity) => {
+    if (!confirm(t('agents.confirmDelete', { name: agent.name ?? agent.agentId }))) {
+      return;
+    }
+    try {
+      await agentApi.deleteAgent(agent.id);
+      toast.success(t('agents.agentDeleted'));
+      loadAgents();
+    } catch {
+      toast.error(t('agents.failedToDelete'));
+    }
+  };
+
+  const handleBulkAction = async (action: string, selectedRows: AgentIdentity[]) => {
+    if (action === 'delete' && selectedRows.length > 0) {
+      if (!confirm(t('agents.confirmBulkDelete', { count: selectedRows.length }))) {
+        return;
+      }
+      try {
+        await Promise.all(selectedRows.map((row) => agentApi.deleteAgent(row.id)));
+        toast.success(t('agents.agentsDeleted', { count: selectedRows.length }));
+        loadAgents();
+      } catch {
+        toast.error(t('agents.failedToDelete'));
+      }
     }
   };
 
@@ -277,7 +299,7 @@ export function AgentsPage() {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Bot className="h-8 w-8" />
-            {t('agents.title')}
+            {username ? `${username}'s agents` : t('agents.title')}
           </h1>
           <p className="text-muted-foreground mt-1">
             {t('agents.manageDescription')}
@@ -288,17 +310,7 @@ export function AgentsPage() {
             <Puzzle className="h-4 w-4 mr-2" />
             {t('agents.sdkSetup')}
           </Button>
-          <Button
-            onClick={() => setCreateOpen(true)}
-            disabled={!canCreate}
-            title={
-              !agentsUnlocked
-                ? t('agents.agentsOnStarter')
-                : !canCreate
-                  ? t('agents.planLimitReached', { count: agentCount, limit: agentsLimit >= 10000 ? "∞" : agentsLimit })
-                  : undefined
-            }
-          >
+          <Button onClick={() => navigate(ROUTES.AGENT_NEW)} disabled={!canCreate} title={!agentsUnlocked ? t('agents.agentsOnStarter') : !canCreate ? t('agents.planLimitReached', { count: agentCount, limit: agentsLimit >= 10000 ? "∞" : agentsLimit }) : undefined}>
             <Plus className="h-4 w-4 mr-2" />
             {t('agents.createAgent')}
           </Button>
@@ -527,11 +539,21 @@ export function AgentsPage() {
                     </p>
                   )}
                   <div className="flex items-center gap-2 pt-2">
-                    <Button variant="outline" size="sm" className="flex-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => navigate(`/agents/${agent.id}`)}
+                    >
                       <Settings className="h-3 w-3 mr-1" />
                       {t('agents.manage')}
                     </Button>
-                    <Button variant="outline" size="sm" aria-label="Delete agent">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      aria-label="Delete agent"
+                      onClick={() => handleDelete(agent)}
+                    >
                       <Trash2 className="h-3 w-3 text-red-500" />
                     </Button>
                   </div>

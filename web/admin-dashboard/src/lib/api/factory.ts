@@ -131,6 +131,21 @@ export interface ReviewDecisionResponse {
   id: string;
 }
 
+export interface FactoryVersion {
+  id: string;
+  run_id: string;
+  opportunity_id: string;
+  function_id: string;
+  generated_code: string;
+  manifest: string;
+  model_used: string;
+  quality_score: number;
+  test_score: number;
+  review_required: boolean;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
 export interface PublishedFunction {
   id: string;
   author: string;
@@ -141,8 +156,11 @@ export interface PublishedFunction {
   status: string;
 }
 
+// Re-export for convenience
+export type { PublishedFunction as FactoryPublishedFunction };
+
 export interface FactoryFunctionsResponse {
-  versions: PublishedFunction[];
+  versions: FactoryVersion[];
   total_versions: number;
   published_functions?: PublishedFunction[];
   total_published?: number;
@@ -289,6 +307,35 @@ export async function getFactoryFunctions(params?: {
   return unwrap(response);
 }
 
+export interface FactoryVersionCode {
+  id: string;
+  run_id: string;
+  opportunity_id: string;
+  function_id: string;
+  generated_code: string;
+  manifest: string;
+  model_used: string;
+  quality_score: number;
+  test_score: number;
+  review_required: boolean;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface FactoryVersionCodeResponse {
+  version: FactoryVersionCode;
+}
+
+/**
+ * Get factory version code (includes generated_code and manifest)
+ */
+export async function getFactoryVersionCode(versionId: string): Promise<FactoryVersionCode> {
+  const response = await adminApiClient.get<FactoryVersionCodeResponse>(
+    `${API_ROUTES.FACTORY_VERSION_CODE}/${versionId}/code`
+  );
+  return unwrap(response);
+}
+
 // ============================================================================
 // Export all functions
 // ============================================================================
@@ -305,6 +352,7 @@ export const factoryApi = {
   listOpportunities,
   updateOpportunity,
   getFactoryFunctions,
+  getFactoryVersionCode,
 };
 
 export default factoryApi;

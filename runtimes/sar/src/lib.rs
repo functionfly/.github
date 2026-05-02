@@ -7,6 +7,9 @@ pub mod scheduler;
 pub mod wasm;
 pub mod actions;
 pub mod observability;
+pub mod persistence;
+pub mod nats_client;
+pub mod lifecycle;
 
 pub use core::{
     AgentId, AgentCell, AgentConfig, AgentMetrics, AgentState, AgentStatus,
@@ -23,5 +26,8 @@ pub use engine::ExecutionContext;
 pub use events::{Event, EventSource, EventSubscription, NatsEventBus};
 pub use model::{ModelRouter, ModelConfig, ModelResponse, Usage, ModelRouterConfig, RoutingContext, TaskComplexity};
 pub use scheduler::{AgentScheduler, SchedulerConfig, ExecutionPriority, PendingExecution};
-pub use wasm::{WasmCell, WasmSandbox};
+pub use wasm::{WasmCell, WasmSandbox, CellPool, SandboxConfig, ExecutionResult};
 pub use observability::{CostAttributor, MetricsCollector, SelfOptimizationEngine};
+pub use persistence::{AgentRepository, CachedAgentRegistry, AgentPersistence, AgentUpdate};
+pub use nats_client::NatsOrchestratorClient;
+pub use lifecycle::{LifecycleManager, LifecycleStats, GracefulShutdown, AgentLifecycleState};

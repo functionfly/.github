@@ -3,6 +3,9 @@
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+#[allow(unused_imports)]
+use std::sync::atomic;
+
 /// Memory layout for shared linear memory between wrapper and MicroPython.
 ///
 /// The memory is organized as follows:
@@ -174,6 +177,45 @@ impl Default for MemoryManager {
     }
 }
 
+/// A pending host function call from Python code.
+#[derive(Debug, Clone)]
+pub struct HostFunctionCall {
+    /// The function name (e.g. "state_get", "state_set")
+    pub function: String,
+    /// JSON-encoded arguments
+    pub args: String,
+    /// Unique call ID for matching request/response
+    pub call_id: u32,
+}
+
+/// Result of a host function call.
+#[derive(Debug, Clone)]
+pub struct HostFunctionResult {
+    /// JSON-encoded result (empty string on error)
+    pub result: String,
+    /// Error message (empty string on success)
+    pub error: String,
+    /// The call ID this result corresponds to
+    pub call_id: u32,
+}
+
+/// Environment variable provider function type.
+pub type EnvProvider = Arc<dyn Fn(&str) -> Option<String> + Send + Sync>;
+
+/// Key-value store provider function types.
+pub type KvGetFn = Arc<dyn Fn(&str) -> Result<String, String> + Send + Sync>;
+pub type KvSetFn = Arc<dyn Fn(&str, &str) -> Result<(), String> + Send + Sync>;
+
+/// HTTP fetch provider function type.
+pub type FetchFn = Arc<dyn Fn(&str) -> Result<String, String> + Send + Sync>;
+
+/// State fabric provider function types.
+pub type StateGetFn = Arc<dyn Fn(&str) -> Result<String, String> + Send + Sync>;
+pub type StateSetFn = Arc<dyn Fn(&str, &str) -> Result<(), String> + Send + Sync>;
+pub type StateDeleteFn = Arc<dyn Fn(&str) -> Result<(), String> + Send + Sync>;
+pub type StateGetFabricFn = Arc<dyn Fn(&str) -> Result<String, String> + Send + Sync>;
+pub type StateCreateSnapshotFn = Arc<dyn Fn(&str, &str) -> Result<String, String> + Send + Sync>;
+
 /// Host state passed to the WASM store during execution.
 pub struct HostState {
     /// Input data (JSON string)
@@ -185,6 +227,33 @@ pub struct HostState {
     pub memory: MemoryManager,
     /// Execution logs
     pub logs: Arc<RwLock<Vec<String>>>,
+
+    // --- Host function providers ---
+    /// Environment variable provider
+    pub env_provider: Option<EnvProvider>,
+    /// KV store get function
+    pub kv_get: Option<KvGetFn>,
+    /// KV store set function
+    pub kv_set: Option<KvSetFn>,
+    /// HTTP fetch function
+    pub fetch: Option<FetchFn>,
+    /// State fabric get function
+    pub state_get: Option<StateGetFn>,
+    /// State fabric set function
+    pub state_set: Option<StateSetFn>,
+    /// State fabric delete function
+    pub state_delete: Option<StateDeleteFn>,
+    /// State fabric get fabric info function
+    pub state_get_fabric: Option<StateGetFabricFn>,
+    /// State fabric create snapshot function
+    pub state_create_snapshot: Option<StateCreateSnapshotFn>,
+
+    /// Pending host function calls (from Python → host)
+    pub pending_calls: Arc<RwLock<Vec<HostFunctionCall>>>,
+    /// Completed host function results (host → Python)
+    pub call_results: Arc<RwLock<Vec<HostFunctionResult>>>,
+    /// Auto-incrementing call ID counter
+    pub next_call_id: Arc<std::sync::atomic::AtomicU32>,
 }
 
 impl HostState {
@@ -195,6 +264,18 @@ impl HostState {
             output: Arc::new(RwLock::new(String::new())),
             memory: MemoryManager::default(),
             logs: Arc::new(RwLock::new(Vec::new())),
+            env_provider: None,
+            kv_get: None,
+            kv_set: None,
+            fetch: None,
+            state_get: None,
+            state_set: None,
+            state_delete: None,
+            state_get_fabric: None,
+            state_create_snapshot: None,
+            pending_calls: Arc::new(RwLock::new(Vec::new())),
+            call_results: Arc::new(RwLock::new(Vec::new())),
+            next_call_id: Arc::new(std::sync::atomic::AtomicU32::new(1)),
         }
     }
 
@@ -260,5 +341,9 @@ mod tests {
 
         state.set_output("result".to_string()).await;
         assert_eq!(state.get_output().await, "result");
+
+        // Verify host function providers are None by default
+        assert!(state.state_get.is_none());
+        assert!(state.env_provider.is_none());
     }
 }

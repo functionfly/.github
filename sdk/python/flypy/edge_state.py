@@ -117,18 +117,65 @@ class EdgeStateClient:
 
     def _call_wasm_host(self, func_name: str, *args) -> Any:
         """
-        Call a WASM host function.
+        Call a WASM host function via the _functionfly bridge module.
 
-        In a real WASM environment, these would be imported from
-        the host. For now, we use a placeholder implementation.
+        Uses the FunctionFly Python bridge module (_functionfly) which
+        communicates with the WASM runtime's host functions via a shared
+        memory protocol. The host functions are registered by the runtime
+        as env.ff_* (Go runtime) or host.ff_* (Rust runtime).
+
+        Args:
+            func_name: The host function name (e.g., "state_get", "state_set")
+            *args: Arguments to pass to the host function
+
+        Returns:
+            The result from the host function call
+
+        Raises:
+            EdgeStateError: If the host function is not available or fails
         """
-        # TODO: When WASM Python runtime supports host function imports,
-        # this will be replaced with actual WASM import calls
-        # Example: return __import__("functionfly").state_get(*args)
-        raise EdgeStateError(
-            f"WASM host function '{func_name}' not available. "
-            "Ensure you're running in the FunctionFly WASM runtime."
-        )
+        try:
+            from . import _functionfly
+
+            # Map SDK function names to _functionfly module functions
+            func_map = {
+                "state_get": _functionfly.state_get,
+                "state_set": _functionfly.state_set,
+                "state_delete": _functionfly.state_delete,
+                "state_get_fabric": _functionfly.state_get_fabric,
+                "state_create_snapshot": _functionfly.state_create_snapshot,
+                "get_env": _functionfly.get_env,
+                "kv_get": _functionfly.kv_get,
+                "kv_set": _functionfly.kv_set,
+                "log": lambda *a: _functionfly.log(1, a[0] if a else ""),
+            }
+
+            fn = func_map.get(func_name)
+            if fn is None:
+                raise EdgeStateError(
+                    f"Unknown host function: {func_name}"
+                )
+
+            result = fn(*args)
+
+            # For state operations, None indicates an error
+            if result is None and func_name in (
+                "state_get",
+                "state_get_fabric",
+                "state_create_snapshot",
+            ):
+                raise EdgeStateError(
+                    f"Host function '{func_name}' returned no result"
+                )
+
+            return result
+
+        except ImportError:
+            raise EdgeStateError(
+                f"WASM host function '{func_name}' not available. "
+                "The _functionfly module is required for WASM host function calls. "
+                "Ensure you're running in the FunctionFly WASM runtime."
+            )
 
     def get(self, key: str, default: Any = None) -> Any:
         """

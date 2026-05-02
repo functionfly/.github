@@ -471,6 +471,10 @@ func (db *PostgresDB) GetPricingBundleByStripePriceID(ctx context.Context, strip
 	return db.billingRepository.GetPricingBundleByStripePriceID(ctx, stripePriceID)
 }
 
+func (db *PostgresDB) UpdatePricingBundleStripePrice(ctx context.Context, slug, stripePriceID string) error {
+	return db.billingRepository.UpdatePricingBundleStripePrice(ctx, slug, stripePriceID)
+}
+
 // Founder Mode (viral pricing - deferred billing) - delegated to BillingRepository
 func (db *PostgresDB) CreateFounderModeRegistration(ctx context.Context, reg *FounderModeRegistration) error {
 	return db.billingRepository.CreateFounderModeRegistration(ctx, reg)
@@ -679,4 +683,17 @@ func (db *PostgresDB) DeleteCreditNoteLineItem(ctx context.Context, id uuid.UUID
 
 func (db *PostgresDB) DeleteCreditNoteLineItems(ctx context.Context, creditNoteID uuid.UUID) error {
 	return db.creditNoteRepository.DeleteLineItems(ctx, creditNoteID)
+}
+
+// Tenant Stripe Config (Isolated Payment Processing)
+func (db *PostgresDB) GetTenantStripeConfig(ctx context.Context, tenantID uuid.UUID) (*TenantStripeConfig, error) {
+	return db.tenantStripeConfigRepository.GetByTenantID(ctx, tenantID)
+}
+
+func (db *PostgresDB) CreateTenantStripeConfig(ctx context.Context, config *TenantStripeConfig) error {
+	return db.tenantStripeConfigRepository.Create(ctx, config)
+}
+
+func (db *PostgresDB) UpdateTenantStripeConfig(ctx context.Context, config *TenantStripeConfig) error {
+	return db.tenantStripeConfigRepository.Update(ctx, config)
 }

@@ -13,10 +13,10 @@ Deploy your functions to the FunctionFly global registry with automatic scaling 
 
 ```bash
 # Publish to registry
-fly publish
+ffly publish
 
 # Deploy with specific version
-fly deploy --version 1.0.0
+ffly deploy --version 1.0.0
 ```
 
 ### 2. CI/CD Integration
@@ -73,26 +73,26 @@ jobs:
 
 ```bash
 # Deploy to staging first
-fly deploy --env staging
+ffly deploy --env staging
 
 # Test and verify
 curl https://api.staging.functionfly.com/your-function
 
 # Promote to production
-fly deploy --env production
+ffly deploy --env production
 ```
 
 ### Canary Releases
 
 ```bash
 # Deploy canary (10% traffic)
-fly deploy --canary=10
+ffly deploy --canary=10
 
 # Increase traffic
-fly deploy --canary=50
+ffly deploy --canary=50
 
 # Full rollout
-fly deploy --canary=100
+ffly deploy --canary=100
 ```
 
 ## Monitoring
@@ -101,28 +101,28 @@ After deployment, monitor your function:
 
 ```bash
 # View logs
-fly logs my-function
+ffly logs my-function
 
 # Check metrics
-fly stats my-function
+ffly stats my-function
 
 # Check health
-fly health my-function
+ffly health my-function
 ```
 
 ## Rollback
 
 ```bash
 # Rollback to previous version
-fly rollback my-function
+ffly rollback my-function
 
 # Rollback to specific version
-fly rollback my-function --version 1.0.0
+ffly rollback my-function --version 1.0.0
 ```
 
 ## Best Practices
 
-1. **Test locally first** - Use `fly dev` before publishing
+1. **Test locally first** - Use `ffly dev` before publishing
 2. **Use versions** - Tag releases for easy rollback
 3. **Monitor metrics** - Track execution times and errors
 4. **Set appropriate limits** - Configure timeout and memory

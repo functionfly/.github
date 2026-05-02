@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { formatDate } from '../utils';
 import { COLORS } from '../constants';
-import type { CostSummary, FunctionCostSummary, DailyCostBreakdown, RegionCostBreakdown } from '@/api/usageAnalytics';
+import type { CostSummary, FunctionCostSummary, DailyCostBreakdown } from '@/api/usageAnalytics';
 
 interface UsageDataPoint {
   time: string;
@@ -13,13 +13,27 @@ interface ExecutionRatePoint {
   rate: number;
 }
 
+interface FunctionCostsResponse {
+  tenant_id: string;
+  period_start: string;
+  period_end: string;
+  function_count: number;
+  functions: FunctionCostSummary[];
+}
+
 interface ChartDataParams {
   usageData: { data?: Array<{ time: string; value: number }> } | undefined;
   executionRateDataRes: { data?: Array<{ time: string; rate: number }> } | undefined;
   periodData: { daily_breakdown?: DailyCostBreakdown[] } | null | undefined;
   costSummary: CostSummary | null | undefined;
-  regionData: { regions?: Record<string, RegionCostBreakdown> } | null | undefined;
-  functionCosts: FunctionCostSummary | null | undefined;
+  regionData: {
+    regions?: Record<string, {
+      total_executions: number;
+      total_cost_usd: number;
+      cost_breakdown: { execution: number; compute: number; platform_fee: number; data_transfer: number; };
+    }>;
+  } | null | undefined;
+  functionCosts: FunctionCostsResponse | null | undefined;
 }
 
 export function useChartData({

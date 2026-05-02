@@ -94,6 +94,17 @@ impl WrapperGenerator {
   (import "host" "get_input" (func $host_get_input (param i32 i32) (result i32)))
   (import "host" "set_output" (func $host_set_output (param i32 i32)))
 
+  ;; FunctionFly host function imports for Python bridge
+  (import "host" "ff_log" (func $ff_log (param i32 i32 i32)))
+  (import "host" "ff_get_env" (func $ff_get_env (param i32 i32 i32 i32) (result i32)))
+  (import "host" "ff_kv_get" (func $ff_kv_get (param i32 i32 i32 i32) (result i32)))
+  (import "host" "ff_kv_set" (func $ff_kv_set (param i32 i32 i32 i32) (result i32)))
+  (import "host" "ff_state_get" (func $ff_state_get (param i32 i32 i32 i32) (result i32)))
+  (import "host" "ff_state_set" (func $ff_state_set (param i32 i32 i32 i32) (result i32)))
+  (import "host" "ff_state_delete" (func $ff_state_delete (param i32 i32) (result i32)))
+  (import "host" "ff_state_get_fabric" (func $ff_state_get_fabric (param i32 i32 i32 i32) (result i32)))
+  (import "host" "ff_state_create_snapshot" (func $ff_state_create_snapshot (param i32 i32 i32 i32 i32 i32) (result i32)))
+
   ;; Shared memory exported for MicroPython
   (memory (export "memory") {} {})
 
@@ -170,6 +181,138 @@ impl WrapperGenerator {
   ;; get_output_size - Get the size of output buffer
   (func (export "get_output_size") (result i32)
     (i32.const {}))
+
+  ;; --- FunctionFly Python Bridge ---
+  ;; Host call buffer at fixed memory offset (after dynamic_base + 256KB)
+  ;; Layout: [4 bytes: fn_id][4 bytes: arg1_ptr][4 bytes: arg1_len]
+  ;;         [4 bytes: arg2_ptr][4 bytes: arg2_len][4 bytes: status]
+  ;;         [4 bytes: result_ptr][4 bytes: result_len]
+
+  ;; ff_invoke - Generic host function call via shared memory buffer
+  ;; Reads request from HOST_CALL_BUF, dispatches to the appropriate host function
+  ;; Returns 0 on success, negative on error
+  (func (export "ff_invoke") (param $buf_ptr i32) (result i32)
+    (local $fn_id i32)
+    (local $arg1_ptr i32)
+    (local $arg1_len i32)
+    (local $arg2_ptr i32)
+    (local $arg2_len i32)
+    (local $result_buf_ptr i32)
+    (local $result_len_ptr i32)
+    (local $status i32)
+
+    ;; Read fn_id from buffer
+    (local.set $fn_id
+      (i32.load (local.get $buf_ptr)))
+    ;; Read arg1_ptr
+    (local.set $arg1_ptr
+      (i32.load (i32.add (local.get $buf_ptr) (i32.const 4))))
+    ;; Read arg1_len
+    (local.set $arg1_len
+      (i32.load (i32.add (local.get $buf_ptr) (i32.const 8))))
+    ;; Read arg2_ptr
+    (local.set $arg2_ptr
+      (i32.load (i32.add (local.get $buf_ptr) (i32.const 12))))
+    ;; Read arg2_len
+    (local.set $arg2_len
+      (i32.load (i32.add (local.get $buf_ptr) (i32.const 16))))
+    ;; Read result buffer ptr (where to write result)
+    (local.set $result_buf_ptr
+      (i32.load (i32.add (local.get $buf_ptr) (i32.const 24))))
+    ;; Read result len ptr (where to write result length)
+    (local.set $result_len_ptr
+      (i32.load (i32.add (local.get $buf_ptr) (i32.const 28))))
+
+    ;; Dispatch based on fn_id
+    (block $done
+      ;; fn_id=1: state_get(path_ptr, path_len, val_ptr, val_len_ptr)
+      (if (i32.eq (local.get $fn_id) (i32.const 1))
+        (then
+          (local.set $status
+            (call $ff_state_get
+              (local.get $arg1_ptr) (local.get $arg1_len)
+              (local.get $result_buf_ptr) (local.get $result_len_ptr)))
+          (br $done)))
+
+      ;; fn_id=2: state_set(path_ptr, path_len, val_ptr, val_len)
+      (if (i32.eq (local.get $fn_id) (i32.const 2))
+        (then
+          (local.set $status
+            (call $ff_state_set
+              (local.get $arg1_ptr) (local.get $arg1_len)
+              (local.get $arg2_ptr) (local.get $arg2_len)))
+          (br $done)))
+
+      ;; fn_id=3: state_delete(path_ptr, path_len)
+      (if (i32.eq (local.get $fn_id) (i32.const 3))
+        (then
+          (local.set $status
+            (call $ff_state_delete
+              (local.get $arg1_ptr) (local.get $arg1_len)))
+          (br $done)))
+
+      ;; fn_id=4: state_get_fabric(fabric_id_ptr, fabric_id_len, resp_ptr, resp_len_ptr)
+      (if (i32.eq (local.get $fn_id) (i32.const 4))
+        (then
+          (local.set $status
+            (call $ff_state_get_fabric
+              (local.get $arg1_ptr) (local.get $arg1_len)
+              (local.get $result_buf_ptr) (local.get $result_len_ptr)))
+          (br $done)))
+
+      ;; fn_id=5: state_create_snapshot(path_ptr, path_len, label_ptr, label_len, resp_ptr, resp_len_ptr)
+      (if (i32.eq (local.get $fn_id) (i32.const 5))
+        (then
+          (local.set $status
+            (call $ff_state_create_snapshot
+              (local.get $arg1_ptr) (local.get $arg1_len)
+              (local.get $arg2_ptr) (local.get $arg2_len)
+              (local.get $result_buf_ptr) (local.get $result_len_ptr)))
+          (br $done)))
+
+      ;; fn_id=6: get_env(name_ptr, name_len, val_ptr, val_len_ptr)
+      (if (i32.eq (local.get $fn_id) (i32.const 6))
+        (then
+          (local.set $status
+            (call $ff_get_env
+              (local.get $arg1_ptr) (local.get $arg1_len)
+              (local.get $result_buf_ptr) (local.get $result_len_ptr)))
+          (br $done)))
+
+      ;; fn_id=7: kv_get(key_ptr, key_len, val_ptr, val_len_ptr)
+      (if (i32.eq (local.get $fn_id) (i32.const 7))
+        (then
+          (local.set $status
+            (call $ff_kv_get
+              (local.get $arg1_ptr) (local.get $arg1_len)
+              (local.get $result_buf_ptr) (local.get $result_len_ptr)))
+          (br $done)))
+
+      ;; fn_id=8: kv_set(key_ptr, key_len, val_ptr, val_len)
+      (if (i32.eq (local.get $fn_id) (i32.const 8))
+        (then
+          (local.set $status
+            (call $ff_kv_set
+              (local.get $arg1_ptr) (local.get $arg1_len)
+              (local.get $arg2_ptr) (local.get $arg2_len)))
+          (br $done)))
+
+      ;; fn_id=9: log(level, msg_ptr, msg_len)
+      (if (i32.eq (local.get $fn_id) (i32.const 9))
+        (then
+          (call $ff_log
+            (local.get $arg1_ptr) (local.get $arg2_ptr) (local.get $arg2_len))
+          (local.set $status (i32.const 0))
+          (br $done)))
+
+      ;; Unknown function ID
+      (local.set $status (i32.const -99)))
+
+    ;; Write status to buffer offset 20
+    (i32.store (i32.add (local.get $buf_ptr) (i32.const 20)) (local.get $status))
+
+    ;; Return status
+    (local.get $status))
 )"#,
             initial_pages,
             max_pages,

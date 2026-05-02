@@ -52,66 +52,48 @@ type BrowseFunctionsViewVariant = 'public' | 'dashboard';
 /* ────────────────────────────────────────────────────────────── */
 
 const CATEGORY_ALIASES: Record<string, string> = {
-  api: 'API Tools',
-  'api-tools': 'API Tools',
-  apitools: 'API Tools',
-  authentication: 'Authentication',
-  auth: 'Authentication',
-  'data-format': 'Data Format',
-  'data-formatting': 'Data Format',
-  dataformat: 'Data Format',
-  database: 'Database',
-  db: 'Database',
+  ai: 'AI & ML',
+  'ai-ml': 'AI & ML',
+  ml: 'AI & ML',
+  machinelearning: 'AI & ML',
+  analytics: 'Analytics',
+  community_pain_point: 'Community',
+  encoding: 'Encoding',
+  devops: 'DevOps',
+  ecommerce: 'Ecommerce',
+  finance: 'Finance',
+  format: 'Format',
+  network: 'Network',
+  social: 'Social',
+  crypto: 'Security',
+  arrays: 'Arrays',
   datetime: 'datetime',
-  date: 'datetime',
-  email: 'Email',
-  mail: 'Email',
-  'file-processing': 'File Processing',
-  fileprocessing: 'File Processing',
-  files: 'File Processing',
   http: 'http',
-  web: 'http',
-  'image-processing': 'Image Processing',
-  imageprocessing: 'Image Processing',
-  images: 'Image Processing',
-  'machine-learning': 'Machine Learning',
-  ml: 'Machine Learning',
   math: 'math',
   media: 'media',
-  payment: 'Payment',
-  payments: 'Payment',
-  security: 'security',
-  crypto: 'security',
-  'text-processing': 'text-processing',
-  text: 'text-processing',
-  utility: 'Utility',
+  security: 'Security',
+  textprocessing: 'text-processing',
   utilities: 'Utility',
-  'web-scraping': 'Web Scraping',
-  scraping: 'Web Scraping',
-  workflow: 'Workflow',
-  workflows: 'Workflow',
-  arrays: 'arrays',
 };
 
 const PREFERRED_CATEGORY_ORDER: string[] = [
-  'API Tools',
-  'Authentication',
-  'Data Format',
-  'Database',
+  'AI & ML',
+  'Utility',
+  'Encoding',
+  'DevOps',
+  'Security',
+  'Ecommerce',
+  'Finance',
+  'Format',
+  'Analytics',
+  'Community',
+  'Network',
+  'Social',
   'datetime',
-  'Email',
-  'File Processing',
   'http',
-  'Image Processing',
-  'Machine Learning',
   'math',
   'media',
-  'Payment',
-  'security',
   'text-processing',
-  'Utility',
-  'Web Scraping',
-  'Workflow',
   'arrays',
 ];
 
@@ -174,6 +156,17 @@ const CATEGORY_META: Record<string, { icon: React.ElementType; colorClass: strin
   Utility: { icon: Wrench, colorClass: 'registry-cat-color-cyan' },
   'Web Scraping': { icon: Globe, colorClass: 'registry-cat-color-rose' },
   Workflow: { icon: GitBranch, colorClass: 'registry-cat-color-orange' },
+  'AI & ML': { icon: Brain, colorClass: 'registry-cat-color-violet' },
+  'Community': { icon: Sparkles, colorClass: 'registry-cat-color-yellow' },
+  'Encoding': { icon: Code, colorClass: 'registry-cat-color-gray' },
+  'DevOps': { icon: GitBranch, colorClass: 'registry-cat-color-orange' },
+  'Ecommerce': { icon: CreditCard, colorClass: 'registry-cat-color-emerald' },
+  'Finance': { icon: CreditCard, colorClass: 'registry-cat-color-teal' },
+  'Format': { icon: FileJson, colorClass: 'registry-cat-color-blue' },
+  'Network': { icon: Globe, colorClass: 'registry-cat-color-green' },
+  'Social': { icon: Activity, colorClass: 'registry-cat-color-pink' },
+  'Analytics': { icon: TrendingUp, colorClass: 'registry-cat-color-cyan' },
+  'Arrays': { icon: Layers, colorClass: 'registry-cat-color-slate' },
 };
 
 /* ────────────────────────────────────────────────────────────── */
@@ -237,10 +230,11 @@ function StatItem({
   label: string;
   icon: React.ElementType;
 }) {
+  const IconComponent = Icon as React.ComponentType<{ className?: string }>;
   return (
     <div className="registry-stat-item">
       <div className="flex items-center gap-1.5">
-        <Icon className="h-3.5 w-3.5 text-brand-500 opacity-70 shrink-0" />
+        <IconComponent className="h-3.5 w-3.5 text-brand-500 opacity-70 shrink-0" />
         <span className="registry-stat-value">{value}</span>
       </div>
       <span className="registry-stat-label">{label}</span>
@@ -261,6 +255,7 @@ function CategoryItem({
 }) {
   const meta = CATEGORY_META[category] ?? { icon: Code, colorClass: 'registry-cat-color-indigo' };
   const Icon = meta.icon;
+  const IconComponent = Icon as React.ComponentType<{ className?: string }>;
   return (
     <button
       type="button"
@@ -268,7 +263,7 @@ function CategoryItem({
       onClick={onClick}
     >
       <span className="registry-cat-icon">
-        <Icon className="h-3.5 w-3.5" />
+        <IconComponent className="h-3.5 w-3.5" />
       </span>
       <span className="registry-cat-label">{category}</span>
       <span className="registry-cat-count">{count}</span>
@@ -287,13 +282,14 @@ function MobileChip({
 }) {
   const meta = CATEGORY_META[category] ?? { icon: Code, colorClass: 'registry-cat-color-indigo' };
   const Icon = meta.icon;
+  const IconComponent = Icon as React.ComponentType<{ className?: string }>;
   return (
     <button
       type="button"
       className={`registry-mobile-chip ${active ? 'active' : ''}`}
       onClick={onClick}
     >
-      <Icon className="h-3 w-3 shrink-0" />
+      <IconComponent className="h-3 w-3 shrink-0" />
       {category === 'All Categories' ? 'All' : category}
     </button>
   );

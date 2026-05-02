@@ -23,6 +23,7 @@ const HAND_WRITTEN_SLUGS = new Set([
   "functions",
   "getting-started",
   "index",
+  "trust-and-verification",
 ]);
 
 // Public docs site only: integrator / trust / high-level security & onboarding.

@@ -2,12 +2,14 @@ package apps
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/functionfly/functionfly/internal/api/apputil"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/api/types"
+	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/sirupsen/logrus"
 )
@@ -76,6 +78,22 @@ func (h *Handler) HandleCreateApp(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(req.Slug, " ") || strings.ToLower(req.Slug) != req.Slug {
 		http.Error(w, "Slug must be lowercase with no spaces", http.StatusBadRequest)
 		return
+	}
+
+	// Check app limit for the plan
+	plan := middleware.GetTenantPlan(r)
+	maxApps := plans.MaxApps(plan)
+	if maxApps != -1 {
+		apps, err := h.repo.ListAppsByTenant(user.TenantID)
+		if err != nil {
+			logrus.WithError(err).WithField("tenant_id", user.TenantID).Error("Failed to list apps")
+			http.Error(w, "Failed to check app limit", http.StatusInternalServerError)
+			return
+		}
+		if len(apps) >= maxApps {
+			http.Error(w, fmt.Sprintf("App limit reached for your plan (%d). Upgrade to create more.", maxApps), http.StatusForbidden)
+			return
+		}
 	}
 
 	app, err := h.repo.CreateApp(req.Name, req.Slug, user.TenantID)

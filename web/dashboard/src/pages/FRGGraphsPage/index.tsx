@@ -29,10 +29,11 @@ import {
   Tag,
   AlertCircle,
   CheckCircle2,
-  Archive,
+  Loader2,
+  X,
 } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -43,11 +44,6 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,132 +58,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-
-// Types
-interface Graph {
-  id: string;
-  name: string;
-  version: string;
-  status: 'active' | 'draft' | 'archived';
-  lastModified: string;
-  executionCount: number;
-  thumbnail?: string;
-  tags: string[];
-  author: string;
-}
-
-interface ExecutionActivity {
-  id: string;
-  graphName: string;
-  status: 'success' | 'error' | 'running';
-  timestamp: string;
-  duration: number;
-}
-
-// Mock data for demonstration
-const mockGraphs: Graph[] = [
-  {
-    id: '1',
-    name: 'AI Pipeline Processor',
-    version: '2.1.0',
-    status: 'active',
-    lastModified: '2026-04-08T14:30:00Z',
-    executionCount: 12543,
-    tags: ['ai', 'ml', 'production'],
-    author: 'functionfly',
-  },
-  {
-    id: '2',
-    name: 'Webhook Handler Chain',
-    version: '1.5.2',
-    status: 'active',
-    lastModified: '2026-04-09T09:15:00Z',
-    executionCount: 8921,
-    tags: ['webhook', 'api', 'production'],
-    author: 'acme-corp',
-  },
-  {
-    id: '3',
-    name: 'Data Transformation Flow',
-    version: '0.9.0',
-    status: 'draft',
-    lastModified: '2026-04-10T16:45:00Z',
-    executionCount: 0,
-    tags: ['etl', 'data', 'wip'],
-    author: 'data-team',
-  },
-  {
-    id: '4',
-    name: 'Scheduled Report Generator',
-    version: '3.0.1',
-    status: 'archived',
-    lastModified: '2026-03-15T10:00:00Z',
-    executionCount: 45678,
-    tags: ['scheduled', 'reports', 'deprecated'],
-    author: 'analytics',
-  },
-  {
-    id: '5',
-    name: 'Real-time Stream Processor',
-    version: '1.2.0',
-    status: 'active',
-    lastModified: '2026-04-07T11:20:00Z',
-    executionCount: 234567,
-    tags: ['streaming', 'realtime', 'kafka'],
-    author: 'streaming-team',
-  },
-  {
-    id: '6',
-    name: 'ML Model Inference Pipeline',
-    version: '2.0.0',
-    status: 'draft',
-    lastModified: '2026-04-10T08:00:00Z',
-    executionCount: 123,
-    tags: ['ml', 'inference', 'testing'],
-    author: 'ml-team',
-  },
-];
-
-const recentActivities: ExecutionActivity[] = [
-  {
-    id: '1',
-    graphName: 'AI Pipeline Processor',
-    status: 'success',
-    timestamp: '2026-04-10T19:25:00Z',
-    duration: 234,
-  },
-  {
-    id: '2',
-    graphName: 'Webhook Handler Chain',
-    status: 'running',
-    timestamp: '2026-04-10T19:24:00Z',
-    duration: 0,
-  },
-  {
-    id: '3',
-    graphName: 'Real-time Stream Processor',
-    status: 'success',
-    timestamp: '2026-04-10T19:22:00Z',
-    duration: 12,
-  },
-  {
-    id: '4',
-    graphName: 'AI Pipeline Processor',
-    status: 'error',
-    timestamp: '2026-04-10T19:20:00Z',
-    duration: 45,
-  },
-  {
-    id: '5',
-    graphName: 'Webhook Handler Chain',
-    status: 'success',
-    timestamp: '2026-04-10T19:18:00Z',
-    duration: 89,
-  },
-];
+import { frgApi } from '@/api/frg';
+import type { GraphDefinition } from '@/types/frg';
 
 const quickStartTemplates = [
   {
@@ -224,30 +98,12 @@ const quickStartTemplates = [
   },
 ];
 
-const statusConfig = {
-  active: {
-    label: 'Active',
-    color: 'bg-green-500/10 text-green-500 border-green-500/20',
-    dotColor: 'bg-green-500',
-  },
-  draft: {
-    label: 'Draft',
-    color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
-    dotColor: 'bg-yellow-500',
-  },
-  archived: {
-    label: 'Archived',
-    color: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
-    dotColor: 'bg-gray-400',
-  },
-};
-
 function GraphThumbnail({ gradient = true }: { gradient?: boolean }) {
   return (
     <div className="relative w-full h-full overflow-hidden rounded-lg">
-      {gradient ? (
+      {gradient && (
         <div className="absolute inset-0 bg-gradient-to-br from-brand-500/20 via-purple-500/20 to-pink-500/20" />
-      ) : null}
+      )}
       <svg className="absolute inset-0 w-full h-full opacity-30" viewBox="0 0 100 60">
         <defs>
           <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
@@ -275,13 +131,13 @@ function GraphCard({
   onDuplicate,
   onDelete,
 }: {
-  graph: Graph;
-  onEdit: (id: string) => void;
-  onRun: (id: string) => void;
-  onDuplicate: (id: string) => void;
-  onDelete: (id: string) => void;
+  graph: GraphDefinition;
+  onEdit: (graph: GraphDefinition) => void;
+  onRun: (graph: GraphDefinition) => void;
+  onDuplicate: (graph: GraphDefinition) => void;
+  onDelete: (graph: GraphDefinition) => void;
 }) {
-  const status = statusConfig[graph.status];
+  const isPublished = !!graph.publishedAt;
 
   return (
     <motion.div
@@ -293,13 +149,12 @@ function GraphCard({
       className="group"
     >
       <Card className="overflow-hidden border-[var(--border-subtle)] bg-[var(--bg-secondary)] hover:border-[var(--border-focus)] transition-all duration-200">
-        {/* Thumbnail */}
         <div className="relative h-32 bg-[var(--bg-tertiary)]">
           <GraphThumbnail />
           <div className="absolute top-2 right-2">
-            <Badge variant="outline" className={cn("text-xs", status.color)}>
-              <span className={cn("w-1.5 h-1.5 rounded-full mr-1.5", status.dotColor)} />
-              {status.label}
+            <Badge variant="outline" className={cn("text-xs", isPublished ? "bg-green-500/10 text-green-500 border-green-500/20" : "bg-yellow-500/10 text-yellow-500 border-yellow-500/20")}>
+              <span className={cn("w-1.5 h-1.5 rounded-full mr-1.5", isPublished ? "bg-green-500" : "bg-yellow-500")} />
+              {isPublished ? 'Published' : 'Draft'}
             </Badge>
           </div>
         </div>
@@ -321,21 +176,21 @@ function GraphCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
-                <DropdownMenuItem onClick={() => onEdit(graph.id)}>
+                <DropdownMenuItem onClick={() => onEdit(graph)}>
                   <Edit3 className="w-4 h-4 mr-2" />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onRun(graph.id)}>
+                <DropdownMenuItem onClick={() => onRun(graph)}>
                   <Play className="w-4 h-4 mr-2" />
                   Run
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onDuplicate(graph.id)}>
+                <DropdownMenuItem onClick={() => onDuplicate(graph)}>
                   <Copy className="w-4 h-4 mr-2" />
                   Duplicate
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={() => onDelete(graph.id)}
+                  onClick={() => onDelete(graph)}
                   className="text-red-500 focus:text-red-500"
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
@@ -347,34 +202,36 @@ function GraphCard({
         </CardHeader>
 
         <CardContent className="p-4 pt-0">
-          {/* Tags */}
           <div className="flex flex-wrap gap-1 mb-3">
-            {graph.tags.slice(0, 3).map((tag) => (
-              <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0">
-                {tag}
+            {graph.visibility && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                {graph.visibility}
               </Badge>
-            ))}
+            )}
+            {graph.executionMode && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                {graph.executionMode}
+              </Badge>
+            )}
           </div>
 
-          {/* Meta info */}
           <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
             <div className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
-              {new Date(graph.lastModified).toLocaleDateString()}
+              {new Date(graph.updatedAt).toLocaleDateString()}
             </div>
             <div className="flex items-center gap-1">
               <Activity className="w-3 h-3" />
-              {graph.executionCount.toLocaleString()}
+              {graph.nodeRefs?.length || 0} nodes
             </div>
           </div>
 
-          {/* Quick actions bar */}
           <div className="flex items-center gap-1 mt-3 pt-3 border-t border-[var(--border-subtle)] opacity-0 group-hover:opacity-100 transition-opacity">
             <Button
               variant="ghost"
               size="sm"
               className="h-7 text-xs"
-              onClick={() => onEdit(graph.id)}
+              onClick={() => onEdit(graph)}
             >
               <Edit3 className="w-3 h-3 mr-1" />
               Edit
@@ -383,7 +240,7 @@ function GraphCard({
               variant="ghost"
               size="sm"
               className="h-7 text-xs"
-              onClick={() => onRun(graph.id)}
+              onClick={() => onRun(graph)}
             >
               <Play className="w-3 h-3 mr-1" />
               Run
@@ -392,7 +249,7 @@ function GraphCard({
               variant="ghost"
               size="icon"
               className="h-7 w-7 ml-auto"
-              onClick={() => onDuplicate(graph.id)}
+              onClick={() => onDuplicate(graph)}
             >
               <Copy className="w-3 h-3" />
             </Button>
@@ -469,79 +326,110 @@ function QuickStartTemplate({
   );
 }
 
-function RecentActivityItem({ activity }: { activity: ExecutionActivity }) {
-  const statusIcon =
-    activity.status === 'success' ? (
-      <CheckCircle2 className="w-4 h-4 text-green-500" />
-    ) : activity.status === 'error' ? (
-      <AlertCircle className="w-4 h-4 text-red-500" />
-    ) : (
-      <div className="w-4 h-4 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
-    );
-
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors">
-      {statusIcon}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-[var(--text-primary)] truncate">
-          {activity.graphName}
-        </p>
-        <p className="text-xs text-[var(--text-secondary)]">
-          {new Date(activity.timestamp).toLocaleTimeString()} •{' '}
-          {activity.duration > 0 ? `${activity.duration}ms` : 'Running...'}
-        </p>
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="flex flex-col items-center justify-center py-20 px-4"
+    >
+      <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-red-500/20 to-red-500/10 flex items-center justify-center mb-6">
+        <AlertCircle className="w-10 h-10 text-red-500" />
       </div>
-    </div>
+      <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
+        Failed to load graphs
+      </h3>
+      <p className="text-sm text-[var(--text-secondary)] text-center max-w-sm mb-6">
+        {message}
+      </p>
+      <Button onClick={onRetry} variant="outline">
+        Try Again
+      </Button>
+    </motion.div>
   );
 }
 
 export function FRGGraphsPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [dateFilter, setDateFilter] = useState<string>('all');
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [visibilityFilter, setVisibilityFilter] = useState<string>('all');
+  const [executionModeFilter, setExecutionModeFilter] = useState<string>('all');
+
+  // Fetch graphs from API
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ['frg', 'graphs', visibilityFilter, executionModeFilter],
+    queryFn: () => frgApi.listGraphs({
+      visibility: visibilityFilter !== 'all' ? visibilityFilter : undefined,
+      executionMode: executionModeFilter !== 'all' ? executionModeFilter : undefined,
+    }),
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: ({ author, name }: { author: string; name: string }) =>
+      frgApi.deleteGraph(author, name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['frg', 'graphs'] });
+    },
+  });
+
+  // Remix mutation
+  const remixMutation = useMutation({
+    mutationFn: ({ author, name, newName }: { author: string; name: string; newName: string }) =>
+      frgApi.remixGraph(author, name, newName),
+    onSuccess: (newGraph) => {
+      queryClient.invalidateQueries({ queryKey: ['frg', 'graphs'] });
+      navigate(`/frg/${newGraph.author}/${newGraph.name}`);
+    },
+  });
+
+  const graphs = data?.graphs || [];
 
   const filteredGraphs = useMemo(() => {
-    return mockGraphs.filter((graph) => {
+    return graphs.filter((graph) => {
       const matchesSearch =
         graph.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        graph.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-      const matchesStatus = statusFilter === 'all' || graph.status === statusFilter;
-      const matchesTag = !selectedTag || graph.tags.includes(selectedTag);
-      return matchesSearch && matchesStatus && matchesTag;
+        graph.author.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesSearch;
     });
-  }, [searchQuery, statusFilter, selectedTag]);
-
-  const allTags = useMemo(() => {
-    const tags = new Set<string>();
-    mockGraphs.forEach((graph) => graph.tags.forEach((tag) => tags.add(tag)));
-    return Array.from(tags);
-  }, []);
+  }, [graphs, searchQuery]);
 
   const handleCreateGraph = () => {
     navigate('/frg/new');
   };
 
   const handleImportGraph = () => {
-    // TODO: Implement import
     console.log('Import graph');
   };
 
-  const handleEdit = (id: string) => {
-    navigate(`/frg/${id}`);
+  const handleEdit = (graph: GraphDefinition) => {
+    navigate(`/frg/${graph.author}/${graph.name}`);
   };
 
-  const handleRun = (id: string) => {
-    console.log('Run graph', id);
+  const handleRun = async (graph: GraphDefinition) => {
+    try {
+      const result = await frgApi.executeGraph(graph.author, graph.name);
+      if (result.instanceId) {
+        navigate(`/frg/${graph.author}/${graph.name}?instance=${result.instanceId}`);
+      }
+    } catch (err) {
+      console.error('Failed to run graph:', err);
+    }
   };
 
-  const handleDuplicate = (id: string) => {
-    console.log('Duplicate graph', id);
+  const handleDuplicate = (graph: GraphDefinition) => {
+    remixMutation.mutate({
+      author: graph.author,
+      name: graph.name,
+      newName: `${graph.name}-copy`,
+    });
   };
 
-  const handleDelete = (id: string) => {
-    console.log('Delete graph', id);
+  const handleDelete = (graph: GraphDefinition) => {
+    if (confirm(`Delete "${graph.name}"? This cannot be undone.`)) {
+      deleteMutation.mutate({ author: graph.author, name: graph.name });
+    }
   };
 
   const handleTemplateSelect = (templateId: string) => {
@@ -549,195 +437,144 @@ export function FRGGraphsPage() {
   };
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
-        >
-          <div>
-            <h1 className="text-3xl font-bold text-[var(--text-primary)]">
-              Function Runtime Graphs
-            </h1>
-            <p className="text-sm text-[var(--text-secondary)] mt-1">
-              Build, deploy, and monitor powerful function workflows
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleImportGraph}>
-              <Upload className="w-4 h-4 mr-2" />
-              Import
-            </Button>
-            <Button
-              onClick={handleCreateGraph}
-              className="bg-gradient-to-r from-brand-500 to-purple-500"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create Graph
-            </Button>
-          </div>
-        </motion.div>
-
-        {/* Search and Filters */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="flex flex-col lg:flex-row gap-4"
-        >
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
-            <Input
-              placeholder="Search graphs by name or tag..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[140px]">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="archived">Archived</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={dateFilter} onValueChange={setDateFilter}>
-              <SelectTrigger className="w-[140px]">
-                <Calendar className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Date" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Time</SelectItem>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="week">This Week</SelectItem>
-                <SelectItem value="month">This Month</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </motion.div>
-
-        {/* Tags filter */}
-        {allTags.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.15 }}
-            className="flex items-center gap-2 flex-wrap"
+    <div className="space-y-6">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+      >
+        <div>
+          <h1 className="text-3xl font-bold text-[var(--text-primary)]">
+            Function Runtime Graphs
+          </h1>
+          <p className="text-sm text-[var(--text-secondary)] mt-1">
+            Build, deploy, and monitor powerful function workflows
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleImportGraph}>
+            <Upload className="w-4 h-4 mr-2" />
+            Import
+          </Button>
+          <Button
+            onClick={handleCreateGraph}
+            className="bg-gradient-to-r from-brand-500 to-purple-500"
           >
-            <Tag className="w-4 h-4 text-[var(--text-muted)]" />
-            <Button
-              variant={selectedTag === null ? 'secondary' : 'ghost'}
-              size="sm"
-              className="h-7 text-xs"
-              onClick={() => setSelectedTag(null)}
-            >
-              All
-            </Button>
-            {allTags.map((tag) => (
-              <Button
-                key={tag}
-                variant={selectedTag === tag ? 'secondary' : 'ghost'}
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}
+            <Plus className="w-4 h-4 mr-2" />
+            Create Graph
+          </Button>
+        </div>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="flex flex-col lg:flex-row gap-4"
+      >
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+          <Input
+            placeholder="Search graphs by name or author..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Select value={visibilityFilter} onValueChange={setVisibilityFilter}>
+            <SelectTrigger className="w-[140px]">
+              <Filter className="w-4 h-4 mr-2" />
+              <SelectValue placeholder="Visibility" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Visibility</SelectItem>
+              <SelectItem value="public">Public</SelectItem>
+              <SelectItem value="private">Private</SelectItem>
+              <SelectItem value="team">Team</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={executionModeFilter} onValueChange={setExecutionModeFilter}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Mode" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Modes</SelectItem>
+              <SelectItem value="sync">Sync</SelectItem>
+              <SelectItem value="async">Async</SelectItem>
+              <SelectItem value="streaming">Streaming</SelectItem>
+              <SelectItem value="event_driven">Event Driven</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </motion.div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+        <div className="xl:col-span-3">
+          <AnimatePresence mode="wait">
+            {isLoading ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex items-center justify-center py-20"
               >
-                {tag}
-              </Button>
-            ))}
+                <Loader2 className="w-8 h-8 animate-spin text-brand-500" />
+              </motion.div>
+            ) : isError ? (
+              <ErrorState
+                message={error instanceof Error ? error.message : 'Unknown error'}
+                onRetry={() => refetch()}
+              />
+            ) : filteredGraphs.length === 0 ? (
+              <EmptyState onCreate={handleCreateGraph} />
+            ) : (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+              >
+                {filteredGraphs.map((graph) => (
+                  <GraphCard
+                    key={`${graph.author}/${graph.name}@${graph.version}`}
+                    graph={graph}
+                    onEdit={handleEdit}
+                    onRun={handleRun}
+                    onDuplicate={handleDuplicate}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <div className="space-y-6">
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Card className="border-[var(--border-subtle)] bg-[var(--bg-secondary)]">
+              <CardHeader className="p-4 pb-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-brand-500" />
+                  Quick Start Templates
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0 space-y-3">
+                {quickStartTemplates.map((template) => (
+                  <QuickStartTemplate
+                    key={template.id}
+                    template={template}
+                    onSelect={handleTemplateSelect}
+                  />
+                ))}
+              </CardContent>
+            </Card>
           </motion.div>
-        )}
-
-        {/* Main Content */}
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-          {/* Graphs Grid */}
-          <div className="xl:col-span-3">
-            <AnimatePresence mode="wait">
-              {filteredGraphs.length === 0 ? (
-                <EmptyState onCreate={handleCreateGraph} />
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-                >
-                  {filteredGraphs.map((graph) => (
-                    <GraphCard
-                      key={graph.id}
-                      graph={graph}
-                      onEdit={handleEdit}
-                      onRun={handleRun}
-                      onDuplicate={handleDuplicate}
-                      onDelete={handleDelete}
-                    />
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Quick Start Templates */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <Card className="border-[var(--border-subtle)] bg-[var(--bg-secondary)]">
-                <CardHeader className="p-4 pb-2">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-brand-500" />
-                    Quick Start Templates
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 pt-0 space-y-3">
-                  {quickStartTemplates.map((template) => (
-                    <QuickStartTemplate
-                      key={template.id}
-                      template={template}
-                      onSelect={handleTemplateSelect}
-                    />
-                  ))}
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            {/* Recent Activity */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <Card className="border-[var(--border-subtle)] bg-[var(--bg-secondary)]">
-                <CardHeader className="p-4 pb-2">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-brand-500" />
-                    Recent Activity
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 pt-0">
-                  <ScrollArea className="h-48">
-                    <div className="space-y-1">
-                      {recentActivities.map((activity) => (
-                        <RecentActivityItem key={activity.id} activity={activity} />
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </div>
         </div>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }
 

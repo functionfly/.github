@@ -17,10 +17,10 @@ export function AgentMarketplacePage() {
     <div className="min-h-screen flex flex-col">
       {/* SEO Meta Tags */}
       <MetaTags
-        title={t("agentMarketplace:metaTitle")}
-        description={t("agentMarketplace:metaDescription")}
-        keywords={t("agentMarketplace:metaKeywords", { returnObjects: true }) as string[]}
-        url={`${window.location.origin}/agents`}
+        title={t('agentMarketplace.metaTitle')}
+        description={t('agentMarketplace.metaDescription')}
+        keywords={t('agentMarketplace.metaKeywords', { returnObjects: true }) as string[]}
+        url={`${window.location.origin}/marketplace/agents`}
         type="website"
       />
 

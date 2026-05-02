@@ -107,6 +107,7 @@ function TreeNode({ type, hash, verified, onClick, defaultExpanded = false }: Tr
   const [expanded, setExpanded] = useState(defaultExpanded);
   const config = componentConfig[type];
   const Icon = config.icon;
+  const IconComponent = Icon as React.ComponentType<{ className?: string }>;
 
   return (
     <div className="select-none">
@@ -131,7 +132,7 @@ function TreeNode({ type, hash, verified, onClick, defaultExpanded = false }: Tr
         ) : (
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         )}
-        <Icon className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+        <IconComponent className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
         <span className="font-medium text-sm flex-1">{config.label}</span>
         <HashBlock hash={hash} truncate truncateChars={8} verified={verified} className="w-32" />
       </div>

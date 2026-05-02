@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"encoding/csv"
 	"encoding/json"
@@ -11,6 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/functionfly/functionfly/internal/email"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
@@ -731,8 +735,47 @@ func (s *ExportService) deliverViaWebhook(ctx context.Context, job *storage.Usag
 
 // deliverViaS3 delivers the export to S3
 func (s *ExportService) deliverViaS3(ctx context.Context, job *storage.UsageExportJob, filePath, fileName string) error {
-	// TODO: Implement S3 upload using AWS SDK
-	s.logger.Infof("S3 delivery not yet implemented for job %s", job.ID.String())
+	bucket := os.Getenv("EXPORT_S3_BUCKET")
+	if bucket == "" {
+		return fmt.Errorf("EXPORT_S3_BUCKET not configured")
+	}
+
+	s3Region := os.Getenv("EXPORT_S3_REGION")
+	if s3Region == "" {
+		s3Region = "us-east-1"
+	}
+
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(s3Region))
+	if err != nil {
+		return fmt.Errorf("failed to load AWS config: %w", err)
+	}
+
+	s3Endpoint := os.Getenv("EXPORT_S3_ENDPOINT")
+	opts := func(o *s3.Options) {
+		if s3Endpoint != "" {
+			o.UsePathStyle = true
+			o.BaseEndpoint = aws.String(s3Endpoint)
+		}
+	}
+	s3Client := s3.NewFromConfig(cfg, opts)
+
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read file: %w", err)
+	}
+
+	key := fmt.Sprintf("exports/%s/%s/%s", job.TenantID.String(), job.ID.String(), fileName)
+	_, err = s3Client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(bucket),
+		Key:         aws.String(key),
+		Body:        bytes.NewReader(content),
+		ContentType: aws.String("application/octet-stream"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to upload to S3: %w", err)
+	}
+
+	s.logger.Infof("Export uploaded to S3: bucket=%s, key=%s", bucket, key)
 	return nil
 }
 

@@ -34,6 +34,7 @@
 @import '@/styles/notifications-light-mode.css';
 @import '@/styles/function-marketplace-light-mode.css';
 @import '@/styles/agent-sdk-integrations-light-mode.css';
+@import '@/styles/agent-sdk-integrations-dark-mode.css';
 @import '@/styles/enterprise-sla.css';
 @import '@/styles/functions-discovery.css';
 @import '@/styles/favorites-page.css';

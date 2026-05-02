@@ -15,11 +15,17 @@ import {
 } from '@/lib/constants';
 import { unreadStoreKeyFromEventCategory } from '@/lib/notification-unread-sync';
 import { isPlatformAdminRole } from '@/lib/platform-admin';
-import AgentMarketplacePage from '@/pages/AgentMarketplacePage';
+import AgentMarketplaceDetailPage from '@/pages/AgentMarketplaceDetailPage';
+import AgentsMarketplacePage from '@/pages/AgentsMarketplacePage';
+import { AgentDetailPage } from '@/pages/AgentDetailPage';
+import { AgentCreatePage } from '@/pages/AgentCreatePage';
+import { AgentEditPage } from '@/pages/AgentEditPage';
+import { AgentWalletPage } from '@/pages/AgentWalletPage';
+import { AgentAnalyticsPage } from '@/pages/AgentAnalyticsPage';
 import { AgentMemoryPage } from '@/pages/AgentMemoryPage';
 import { AgentMemoryDetailPage } from '@/pages/AgentMemoryPage/AgentMemoryDetailPage';
-import AgentSDKIntegrationsPage from '@/pages/AgentSDKIntegrationsPage';
-import AgentsPage from '@/pages/AgentsPage';
+import { AgentSDKIntegrationsPage } from '@/pages/AgentSDKIntegrationsPage';
+import { AgentsPage } from '@/pages/AgentsPage';
 import { AIComposerPage } from '@/pages/AIComposerPage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import { APIKeyDetailPage, APIKeysPage } from '@/pages/api-keys';
@@ -34,8 +40,10 @@ import { ContactPage } from '@/pages/ContactPage';
 import ConversationsPage from '@/pages/ConversationsPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import DecisionsPage from '@/pages/DecisionsPage';
+import { EnterpriseAuditPage } from '@/pages/EnterpriseAuditPage';
 import EnterpriseSLAPage from '@/pages/EnterpriseSLAPage';
-import EvolutionPage from '@/pages/EvolutionPage';
+import { EnterpriseSupportPage } from '@/pages/EnterpriseSupportPage';
+import { EvolutionPage } from '@/pages/EvolutionPage';
 import ExecutionExplorerPage from '@/pages/ExecutionExplorerPage';
 import { FAQPage } from '@/pages/FAQPage';
 import { FeaturesPage } from '@/pages/FeaturesPage';
@@ -44,6 +52,8 @@ import { ForbiddenPage } from '@/pages/ForbiddenPage';
 import FRGEditorPage from '@/pages/FRGEditorPage';
 import FRGGraphsPage from '@/pages/FRGGraphsPage';
 import FRGShowcasePage from '@/pages/FRGShowcasePage';
+import GitHubPage from '@/pages/GitHubPage';
+import GitHubRepoImportPage from '@/pages/GitHubRepoImportPage';
 import FunctionMarketplacePage from '@/pages/FunctionMarketplacePage';
 import FunctionPage from '@/pages/FunctionPage';
 import { FunctionsDiscoveryPage } from '@/pages/FunctionsDiscoveryPage';
@@ -104,11 +114,10 @@ import { toast } from 'sonner';
 import { ThemeAwareToaster } from '@/components/common/ThemeAwareToaster';
 import { NuqsAdapter } from 'nuqs/adapters/react-router/v7';
 
-import { EnterpriseAuditPage } from '@/pages/EnterpriseAuditPage';
-import { EnterpriseSupportPage } from '@/pages/EnterpriseSupportPage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
 import StatusPage from '@/pages/StatusPage';
 import { UsagePage } from '@/pages/UsagePage';
+import { PasteCodePage } from '@/pages/PasteCodePage';
 
 function RegistryFunctionRedirect() {
   const { author, name } = useParams<{ author: string; name: string }>();
@@ -473,6 +482,10 @@ function AppContent() {
         <Route path="/registry" element={<BrowseFunctionsPage />} />
         <Route path="/registry/:author/:name" element={<RegistryFunctionRedirect />} />
 
+        {/* Agent Marketplace Routes (Public) - temporarily inside DashboardLayout for auth */}
+        <Route path="/marketplace/agents/:id" element={<AgentMarketplaceDetailPage />} />
+        <Route path="/agents/:id" element={<AgentMarketplaceDetailPage />} />
+
         {/* Public user profile pages */}
         <Route path="/u/:username" element={<ProfilePage />} />
         <Route path="/profile/:username" element={<ProfilePage />} />
@@ -534,6 +547,7 @@ function AppContent() {
           <Route path="functions/discovery/:filter" element={<FunctionsDiscoveryPage />} />
           <Route path="gallery" element={<GalleryPage />} />
           <Route path="functions/new" element={<FunctionEditorPage />} />
+          <Route path="functions/paste" element={<PasteCodePage />} />
           <Route path="functions/deploy" element={<RegistryDeployPage />} />
           <Route path="functions/:id" element={<FunctionDetailPage />} />
           <Route path="functions/:id/edit" element={<FunctionEditorPage />} />
@@ -553,6 +567,10 @@ function AppContent() {
           <Route path="frg/new" element={<FRGEditorPage />} />
           <Route path="frg/:id" element={<FRGEditorPage />} />
 
+          {/* GitHub Integration Routes */}
+          <Route path="github" element={<GitHubPage />} />
+          <Route path="github/repos/:repoId/import" element={<GitHubRepoImportPage />} />
+
           <Route path="providers" element={<ProvidersPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="usage" element={<UsagePage />} />
@@ -560,6 +578,8 @@ function AppContent() {
           <Route path="state-fabric/new" element={<StateFabricDetailPage />} />
           <Route path="state-fabric/:id" element={<StateFabricDetailPage />} />
           <Route path="state-fabric/:id/edit" element={<StateFabricDetailPage />} />
+          <Route path="backends" element={<BundlePricingPage />} />
+
           <Route path="state" element={<StatePage />} />
           <Route path="state/new" element={<StateDetailPage />} />
           <Route path="state/:path" element={<StateDetailPage />} />
@@ -593,15 +613,20 @@ function AppContent() {
 
           {/* Agent Routes */}
           <Route path="agents" element={<AgentsPage />} />
-          <Route path="agents/:slug" element={<AgentsPage />} />
+          <Route path="agents/new" element={<AgentCreatePage />} />
+          <Route path="agents/:id" element={<AgentDetailPage />} />
+          <Route path="agents/:id/edit" element={<AgentEditPage />} />
+          <Route path="agents/:id/wallet" element={<AgentWalletPage />} />
+          <Route path="agents/:id/analytics" element={<AgentAnalyticsPage />} />
           <Route path="sdk-integrations" element={<AgentSDKIntegrationsPage />} />
-          <Route path="marketplace/agents" element={<AgentMarketplacePage />} />
-          <Route path="marketplace/functions" element={<Navigate to="/dashboard" replace />} />
+          <Route path="marketplace" element={<AgentsMarketplacePage />} />
+          <Route path="marketplace/agents" element={<AgentsMarketplacePage />} />
           <Route path="evolution" element={<EvolutionPage />} />
           <Route path="evolution/:slug" element={<EvolutionPage />} />
           <Route path="wallet" element={<WalletPage />} />
           <Route path="wallet/:slug" element={<WalletPage />} />
 
+          <Route path="u/:username/agents" element={<AgentsPage />} />
           <Route path="u/:username/conversations" element={<ConversationsPage />} />
           <Route path="u/:username/conversations/:id" element={<ConversationsPage />} />
         </Route>

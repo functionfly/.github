@@ -38,6 +38,7 @@ import { KeyboardShortcutsHelp } from '@/components/frg/controls/KeyboardShortcu
 import { LiveCursors } from '@/components/frg/collaboration/LiveCursors';
 import { CommentPins } from '@/components/frg/collaboration/CommentPins';
 import { useFRGStore } from '@/stores/frgStore';
+import { frgApi } from '@/api/frg';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -120,8 +121,12 @@ function FRGEditorInner() {
     startExecution,
     pauseExecution,
     stopExecution,
-    stepExecution,
-    
+    saveGraph,
+    isLoading,
+    isSaving,
+    isExecuting,
+    lastSavedAt,
+    operationQueue,
     setViewport,
   } = store;
 
@@ -131,7 +136,56 @@ function FRGEditorInner() {
   const [showCollaboration, setShowCollaboration] = useState(false);
   const [presentationMode, setPresentationMode] = useState(false);
   const [isNewGraph, setIsNewGraph] = useState(!id && nodes.length === 0);
+  const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Dirty-state navigation guard
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (store.isDirty) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [store.isDirty]);
+
+  // Auto-save mechanism with debounce
+  useEffect(() => {
+    if (!store.isDirty || !store.autoSaveEnabled) return;
+
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+
+    const timer = setTimeout(() => {
+      if (store.isDirty && store.graphName && store.graphName !== 'Untitled Graph') {
+        store.saveGraph();
+      }
+    }, store.autoSaveInterval);
+
+    setAutoSaveTimer(timer);
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [store.isDirty, store.autoSaveEnabled, store.autoSaveInterval, store.graphName]);
+
+  // Online/offline detection
+  useEffect(() => {
+    const handleOnline = () => store.setIsOffline(false);
+    const handleOffline = () => store.setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Set initial state
+    if (!navigator.onLine) store.setIsOffline(true);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Check if this is a new graph
   useEffect(() => {
@@ -239,9 +293,10 @@ function FRGEditorInner() {
     stopExecution();
   }, [stopExecution]);
 
-  const handleStep = useCallback(() => {
-    stepExecution();
-  }, [stepExecution]);
+  const handleSave = useCallback(async () => {
+    if (!graphName.trim()) return;
+    await saveGraph();
+  }, [graphName, saveGraph]);
 
   // Handle template selection from empty state
   const handleTemplateSelect = useCallback((template: string) => {
@@ -250,10 +305,75 @@ function FRGEditorInner() {
   }, []);
 
   // Handle AI prompt submission
-  const handleAIPrompt = useCallback((prompt: string) => {
+  const handleAIPrompt = useCallback(async (prompt: string) => {
     setIsNewGraph(false);
-    // AI generation logic would run here
-  }, []);
+
+    // Show loading state
+    store.setIsLoading(true);
+
+    // Call AI composition API
+    try {
+      const response = await frgApi.aiCompose({
+        prompt,
+        requirements: [],
+      });
+
+      console.log('[handleAIPrompt] Response:', JSON.stringify(response).slice(0, 500));
+
+      // Handle both snake_case (from backend) and camelCase (if normalized)
+      const graphData = response.graph as any;
+      const nodeRefs = graphData?.nodeRefs || graphData?.node_refs;
+      const edgesData = graphData?.edges || graphData?.edges;
+
+      console.log('[handleAIPrompt] nodeRefs:', nodeRefs);
+      console.log('[handleAIPrompt] Store nodes before:', store.nodes.length);
+
+      if (nodeRefs && Array.isArray(nodeRefs) && nodeRefs.length > 0) {
+        // Convert graph definition to React Flow nodes/edges
+        const flowNodes = nodeRefs.map((ref: any) => ({
+          id: ref.nodeId || ref.node_id,
+          type: 'functionNode',
+          position: { x: 100 + Math.random() * 400, y: 100 + Math.random() * 300 },
+          data: {
+            functionRef: ref,
+            runtimeState: null,
+            isSelected: false,
+            isEditable: true,
+          },
+        }));
+
+        const flowEdges = (edgesData || []).map((edge: any) => ({
+          id: edge.id,
+          source: edge.sourceNodeId || edge.source_node_id,
+          target: edge.targetNodeId || edge.target_node_id,
+          type: 'custom',
+          data: {
+            mapping: edge.mapping || { sourcePath: '*', targetPath: '*' },
+          },
+        }));
+
+        console.log('[handleAIPrompt] Flow nodes:', flowNodes.length);
+        console.log('[handleAIPrompt] Flow edges:', flowEdges.length);
+        console.log('[handleAIPrompt] First node:', JSON.stringify(flowNodes[0]));
+
+        store.setNodes(flowNodes);
+        store.setEdges(flowEdges);
+
+        console.log('[handleAIPrompt] Immediately after setNodes, store.nodes.length:', store.nodes.length);
+        console.log('[handleAIPrompt] store.nodes:', JSON.stringify(store.nodes).slice(0, 200));
+      } else if (response.suggestions && response.suggestions.length > 0) {
+        console.log('AI suggestions returned:', response.suggestions);
+      } else if (response.error) {
+        console.error('AI composition error:', response.error);
+      } else {
+        console.log('AI composition returned empty result:', response);
+      }
+    } catch (err) {
+      console.error('AI composition failed:', err);
+    } finally {
+      store.setIsLoading(false);
+    }
+  }, [store]);
 
   // Determine which right panel to show
   const showRightPanel = rightPanel !== null || selectedNodeId !== null;
@@ -358,10 +478,6 @@ function FRGEditorInner() {
                   <Play className="w-4 h-4 mr-2" />
                   Resume
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleStep}>
-                  <StepForward className="w-4 h-4 mr-2" />
-                  Step
-                </Button>
               </>
             ) : (
               <Button 
@@ -424,10 +540,20 @@ function FRGEditorInner() {
               <Download className="w-4 h-4 mr-2" />
               Export
             </Button>
-            <Button variant="default" size="sm" className={cn(isDirty && "animate-pulse")}>
+            {store.isOffline && operationQueue.length > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {operationQueue.length} queued
+              </Badge>
+            )}
+            <Button variant="default" size="sm" className={cn(isDirty && "animate-pulse")} onClick={handleSave} disabled={isLoading || isSaving}>
               <Save className="w-4 h-4 mr-2" />
-              Save
+              {isSaving ? 'Saving...' : isLoading ? 'Loading...' : 'Save'}
             </Button>
+            {lastSavedAt && (
+              <span className="text-xs text-[var(--text-muted)]">
+                Saved {new Date(lastSavedAt).toLocaleTimeString()}
+              </span>
+            )}
             <Separator orientation="vertical" className="h-6 mx-1" />
             <Button variant="ghost" size="icon" onClick={toggleFullscreen}>
               {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -443,7 +569,7 @@ function FRGEditorInner() {
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar */}
         {!presentationMode && leftPanel && (
-          <aside className="w-72 border-r border-[var(--border-subtle)] bg-[var(--bg-secondary)] flex flex-col shrink-0">
+          <aside className="w-72 border-r border-[var(--border-subtle)] bg-[var(--bg-secondary)] flex flex-col shrink-0 overflow-hidden">
             <Tabs value={leftPanel} className="w-full">
               <TabsList className="w-full grid grid-cols-4 h-10">
                 <TabsTrigger 
@@ -480,13 +606,13 @@ function FRGEditorInner() {
                 </TabsTrigger>
               </TabsList>
               
-              <TabsContent value="library" className="m-0 flex-1">
+              <TabsContent value="library" className="m-0 flex-1 overflow-hidden">
                 <FunctionLibrary />
               </TabsContent>
-              <TabsContent value="ai" className="m-0 flex-1">
+              <TabsContent value="ai" className="m-0 flex-1 overflow-hidden">
                 <AIAssistantPanel />
               </TabsContent>
-              <TabsContent value="versions" className="m-0 flex-1">
+              <TabsContent value="versions" className="m-0 flex-1 overflow-hidden">
                 <VersionSelector />
               </TabsContent>
               <TabsContent value="evolution" className="m-0 flex-1 overflow-hidden">
@@ -561,8 +687,8 @@ function FRGEditorInner() {
 
         {/* Right Sidebar */}
         {!presentationMode && showRightPanel && (
-          <aside className="w-80 border-l border-[var(--border-subtle)] bg-[var(--bg-secondary)] flex flex-col shrink-0">
-            <Tabs value={activeRightPanel || 'inspector'} className="w-full">
+          <aside className="w-80 border-l border-[var(--border-subtle)] bg-[var(--bg-secondary)] flex flex-col shrink-0 overflow-hidden">
+            <Tabs value={activeRightPanel || 'inspector'} className="w-full h-full flex flex-col">
               <TabsList className="w-full grid grid-cols-3 h-10">
                 <TabsTrigger 
                   value="inspector" 
@@ -617,7 +743,6 @@ function FRGEditorInner() {
         <CollapsibleExecutionPanel 
           onRun={handleRun}
           onStop={handleStop}
-          onStep={handleStep}
         />
       )}
 

@@ -3,24 +3,29 @@
  * Manage external providers and service integrations
  */
 
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useRef, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApiClient } from '@/lib/api/adminClient';
-import { Plus, Search, MoreVertical } from 'lucide-react';
+import { Plus, Search, MoreVertical, Trash2 } from 'lucide-react';
 import { LoadingScreen } from '@/components/common/LoadingScreen';
 
 interface Provider {
   id: string;
-  name: string;
-  type: string;
-  status: 'connected' | 'disconnected' | 'error';
-  lastSync: string;
+  user_email: string;
+  tenant_name: string;
+  provider: string;
+  status: string;
+  is_shared: boolean;
   created_at: string;
+  updated_at: string;
 }
 
 export function AdminProvidersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [deleteProviderId, setDeleteProviderId] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: providersResponse, isLoading, isError } = useQuery({
     queryKey: ['admin-providers'],
@@ -28,13 +33,23 @@ export function AdminProvidersPage() {
       try {
         return await adminApiClient.get<Provider[]>('/providers');
       } catch {
-        return { data: [], success: false };
+        return { providers: [], success: false };
       }
     },
     staleTime: 1000 * 60,
   });
 
-  const providers = providersResponse?.data || [];
+  const deleteMutation = useMutation({
+    mutationFn: async (providerId: string) => {
+      await adminApiClient.delete(`/providers/${providerId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-providers'] });
+      setOpenMenuId(null);
+    },
+  });
+
+  const providers = providersResponse?.providers || [];
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -49,12 +64,12 @@ export function AdminProvidersPage() {
   }
 
   const filteredProviders = providers.filter((provider) => {
-    const matchesSearch = provider.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = typeFilter === 'all' || provider.type === typeFilter;
+    const matchesSearch = (provider.tenant_name || provider.user_email).toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = typeFilter === 'all' || provider.provider === typeFilter;
     return matchesSearch && matchesType;
   });
 
-  const providerTypes = [...new Set(providers.map((p) => p.type))];
+  const providerTypes = [...new Set(providers.map((p) => p.provider))];
 
   return (
     <div className="space-y-6">
@@ -94,8 +109,8 @@ export function AdminProvidersPage() {
         </select>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <table className="w-full">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-visible">
+        <table className="w-full overflow-visible">
           <thead>
             <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Name</th>
@@ -115,8 +130,8 @@ export function AdminProvidersPage() {
             ) : (
               filteredProviders.map((provider) => (
                 <tr key={provider.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{provider.name}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{provider.type}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{provider.tenant_name || provider.user_email}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{provider.provider}</td>
                   <td className="px-6 py-4 text-sm">
                     <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                       provider.status === 'connected' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' :
@@ -127,12 +142,32 @@ export function AdminProvidersPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                    {new Date(provider.lastSync).toLocaleDateString()}
+                    {new Date(provider.updated_at).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-sm">
-                    <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
-                      <MoreVertical className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                    </button>
+                    <div className="relative inline-block">
+                      <button
+                        onClick={() => setOpenMenuId(openMenuId === provider.id ? null : provider.id)}
+                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                        data-dropdown
+                      >
+                        <MoreVertical className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                      </button>
+                      {openMenuId === provider.id && (
+                        <div className="absolute left-0 mt-1 w-36 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-50" data-dropdown>
+                          <button
+                            onClick={() => {
+                              if (confirm('Are you sure you want to delete this provider?')) {
+                                deleteMutation.mutate(provider.id);
+                              }
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 rounded-md"
+                          >
+                            <Trash2 className="w-4 h-4" /> Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))

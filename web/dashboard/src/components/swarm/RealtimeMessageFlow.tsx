@@ -82,7 +82,15 @@ export function RealtimeMessageFlow({
       
       // Transform and dedupe messages
       const transformed: Message[] = inboxMessages.map(m => ({
-        ...m,
+        id: m.id,
+        fromAgentId: m.fromAgentId,
+        toAgentId: m.toAgentId,
+        messageType: m.messageType,
+        payload: m.payload,
+        status: (m.status === 'pending' || m.status === 'delivered' || m.status === 'read' || m.status === 'failed' || m.status === 'expired'
+          ? m.status
+          : 'pending') as Message['status'],
+        createdAt: m.createdAt,
         direction: m.fromAgentId === agentId ? 'outgoing' : 'incoming',
       }));
 

@@ -97,8 +97,8 @@ const { totalPages } = postsResponse.meta;
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.14), transparent 55%),
-      radial-gradient(ellipse 50% 30% at 100% 10%, rgba(16, 185, 129, 0.05), transparent 40%);
+      radial-gradient(ellipse 80% 50% at 50% -20%, color-mix(in srgb, var(--color-primary) 14%, transparent), transparent 55%),
+      radial-gradient(ellipse 50% 30% at 100% 10%, color-mix(in srgb, var(--color-secondary) 5%, transparent), transparent 40%);
   }
 
   .blog-page {
@@ -126,8 +126,8 @@ const { totalPages } = postsResponse.meta;
     font-size: 0.8125rem;
     font-weight: 500;
     color: var(--color-secondary);
-    background: rgba(16, 185, 129, 0.1);
-    border: 1px solid rgba(16, 185, 129, 0.25);
+    background: color-mix(in srgb, var(--color-secondary) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-secondary) 25%, transparent);
     margin-bottom: 1.25rem;
   }
 
@@ -145,10 +145,11 @@ const { totalPages } = postsResponse.meta;
   }
 
   .blog-title-gradient {
-    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #94a3b8 100%);
+    background: var(--gradient-primary);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+    -webkit-text-stroke: 1px var(--color-primary-dark);
   }
 
   .blog-subtitle {
@@ -176,6 +177,10 @@ const { totalPages } = postsResponse.meta;
   .blog-sidebar {
     position: sticky;
     top: 6rem;
+    padding: 1.5rem;
+    background: color-mix(in srgb, var(--color-bg-light) 50%, transparent);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
   }
 
   .blog-main {
@@ -200,8 +205,8 @@ const { totalPages } = postsResponse.meta;
     width: 96px;
     height: 96px;
     border-radius: 20px;
-    background: rgba(99, 102, 241, 0.1);
-    border: 1px solid rgba(99, 102, 241, 0.2);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
     color: var(--color-primary);
     margin-bottom: 1.75rem;
   }

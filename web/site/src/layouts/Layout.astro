@@ -1,5 +1,5 @@
 ---
-import { SITE_ORIGIN, API_ORIGIN } from '../config';
+import { SITE_ORIGIN, API_ORIGIN, DOCS_ORIGIN } from '../config';
 import { SEO } from 'astro-seo';
 import { Schema } from 'astro-seo-schema';
 import { t, getLocale, SUPPORTED_LOCALES, isRtl } from '../i18n';
@@ -173,12 +173,83 @@ const finalSchemas = schema
   </head>
   <body class="ff-grid-bg">
     <script is:inline>
-      // Theme initialization - runs before render to prevent flash
+      // Theme initialization - unified across all FunctionFly apps
       (function() {
-        const stored = localStorage.getItem('ff-theme');
-        const system = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-        const theme = stored || system;
-        document.documentElement.setAttribute('data-theme', theme);
+        var STORAGE_KEY = 'ff-user-theme';
+        var LEGACY_KEY = 'ff-theme';
+        var _cached = null;
+
+        function getSystemTheme() {
+          return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+
+        function resolveTheme(mode) {
+          return mode === 'system' ? getSystemTheme() : mode;
+        }
+
+        function readStorage() {
+          try {
+            var stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+              var parsed = JSON.parse(stored);
+              if (parsed.mode === 'light' || parsed.mode === 'dark' || parsed.mode === 'system') {
+                return parsed;
+              }
+            }
+          } catch (e) {}
+          return null;
+        }
+
+        function migrateLegacy() {
+          try {
+            var legacy = localStorage.getItem(LEGACY_KEY);
+            if (legacy && (legacy === 'light' || legacy === 'dark')) {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode: legacy }));
+              localStorage.removeItem(LEGACY_KEY);
+              return { mode: legacy };
+            }
+          } catch (e) {}
+          return null;
+        }
+
+        function applyTheme() {
+          var migrated = migrateLegacy();
+          var preference = migrated || readStorage();
+          var mode = preference ? preference.mode : 'system';
+          var resolved = resolveTheme(mode);
+          _cached = { mode: mode, resolved: resolved };
+          document.documentElement.setAttribute('data-theme', resolved);
+        }
+
+        applyTheme();
+
+        window.addEventListener('ff-theme-change', function(e) {
+          _cached = e.detail;
+          document.documentElement.setAttribute('data-theme', e.detail.resolved);
+          updateThemeIcon();
+        });
+
+        function updateThemeIcon() {
+          var toggle = document.getElementById('theme-toggle');
+          if (toggle) {
+            var isLight = document.documentElement.getAttribute('data-theme') === 'light';
+            toggle.classList.toggle('is-light', isLight);
+          }
+        }
+
+        window.ffThemeSync = {
+          toggle: function() {
+            var current = _cached ? _cached.resolved : getSystemTheme();
+            var next = current === 'dark' ? 'light' : 'dark';
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode: next }));
+            var resolved = resolveTheme(next);
+            _cached = { mode: next, resolved: resolved };
+            document.documentElement.setAttribute('data-theme', resolved);
+            window.dispatchEvent(new CustomEvent('ff-theme-change', { detail: _cached }));
+            updateThemeIcon();
+          },
+          updateIcon: updateThemeIcon
+        };
       })();
     </script>
 
@@ -194,7 +265,7 @@ const finalSchemas = schema
           <span>FunctionFly</span>
         </a>
         <div class="nav-links">
-          <a href="/docs" class:list={[navClass('/docs')]}>Docs</a>
+          <a href={`${DOCS_ORIGIN}/`} class:list={[navClass('/docs')]}>Docs</a>
           <a href="/for-agents" class:list={[navClass('/for-agents')]}>For AI Agents</a>
           <a href="/trust" class:list={[navClass('/trust')]}>Trust</a>
           <a href="/pricing" class:list={[navClass('/pricing')]}>Pricing</a>
@@ -236,7 +307,7 @@ const finalSchemas = schema
         <div class="footer-links">
           <div class="footer-column">
             <h4>Product</h4>
-            <a href="/docs">Documentation</a>
+            <a href={`${DOCS_ORIGIN}/`}>Documentation</a>
             <a href="/trust">Trust layer</a>
             <a href="/for-agents">For AI agents</a>
             <a href="/pricing">Pricing</a>
@@ -315,23 +386,20 @@ const finalSchemas = schema
         });
       }
 
-      // Theme toggle
+      // Theme toggle - uses unified ff-user-theme storage
       const themeToggle = document.getElementById('theme-toggle');
+      function updateThemeIcon() {
+        const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+        if (themeToggle) themeToggle.classList.toggle('is-light', isLight);
+      }
+
+      updateThemeIcon();
+
       if (themeToggle) {
-        function updateThemeIcon() {
-          const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-          themeToggle.classList.toggle('is-light', isLight);
-        }
-
-        // Set initial icon
-        updateThemeIcon();
-
         themeToggle.addEventListener('click', () => {
-          const current = document.documentElement.getAttribute('data-theme');
-          const next = current === 'light' ? 'dark' : 'light';
-          document.documentElement.setAttribute('data-theme', next);
-          localStorage.setItem('ff-theme', next);
-          updateThemeIcon();
+          if (window.ffThemeSync && window.ffThemeSync.toggle) {
+            window.ffThemeSync.toggle();
+          }
         });
       }
     </script>

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -234,6 +235,35 @@ func (h *Handler) HandleGetExportDownload(w http.ResponseWriter, r *http.Request
 
 	// Local file: stream it directly
 	filePath := downloadURL
+
+	// SECURITY: Validate the file path is within the allowed export directory
+	// This prevents path traversal attacks (e.g., ../../etc/passwd)
+	exportBasePath := os.Getenv("PRIVACY_EXPORT_LOCAL_PATH")
+	if exportBasePath == "" {
+		exportBasePath = "./exports"
+	}
+	cleanPath, err := filepath.Abs(filePath)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid file path", "Failed to resolve file path")
+		return
+	}
+	cleanBasePath, err := filepath.Abs(exportBasePath)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Configuration error", "Failed to resolve export base path")
+		return
+	}
+	cleanPath = filepath.Clean(cleanPath)
+	cleanBasePath = filepath.Clean(cleanBasePath)
+	if !strings.HasPrefix(cleanPath, cleanBasePath) {
+		logrus.WithFields(logrus.Fields{
+			"requested_path": filePath,
+			"clean_path":      cleanPath,
+			"base_path":       cleanBasePath,
+		}).Warn("Path traversal attempt detected in GDPR export download")
+		respondWithError(w, http.StatusForbidden, "Access denied", "Invalid file path")
+		return
+	}
+
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		respondWithError(w, http.StatusNotFound, "Export file not found", "The export file may have been deleted or expired.")
 		return

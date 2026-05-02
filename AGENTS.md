@@ -90,9 +90,7 @@ curl http://localhost:8080/api/health
 | Script | What runs |
 |--------|-----------|
 | `bun dev` | **dashboard** (3000), **marketing** `web/site` (4321), **docs** `web/docs` (4322) — the usual local trio for redirects between apps. |
-| `bun run dev:all` | Every project that defines `dev` (includes **admin-dashboard**, **blog-api**). |
-| `bun run dev:admin` | Admin SPA only (port **3002** via Nx). |
-| `bun run dev:blog` | Nest **blog-api** only. |
+| `bun run dev:all` | Every project that defines `dev` (includes **admin-dashboard**). |
 
 `nx run <project> -t dev` works per app; `nx show projects` lists project names.
 

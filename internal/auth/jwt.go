@@ -29,20 +29,27 @@ func (a *AuthService) ValidateToken(tokenString string) (*Claims, error) {
 	}
 
 	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
-		// SECURITY FIX: Validate token version for revocation support
+		// SECURITY: Validate token version for revocation support
 		// If the token has a TokenVersion, verify it matches the user's current version
 		// This allows invalidating tokens when password is changed or logout all is triggered
 		if claims.TokenVersion > 0 && a.repo != nil {
 			user, err := a.repo.GetUserByID(claims.UserID)
-			if err != nil || user == nil {
-				// If we can't verify, be permissive (user might have been deleted)
-				logrus.WithError(err).WithField("user_id", claims.UserID).Warn("Could not verify token version for user")
-			} else if user.TokenVersion > 0 && claims.TokenVersion != user.TokenVersion {
+			if err != nil {
+				// Database error - fail closed for security
+				// An attacker could exploit a DB outage to use revoked tokens
+				logrus.WithError(err).WithField("user_id", claims.UserID).Error("Could not verify token version - database error, rejecting token for security")
+				return nil, fmt.Errorf("token verification unavailable")
+			}
+			if user == nil {
+				// User deleted - reject token (already handled by getting nil user)
+				return nil, fmt.Errorf("user not found")
+			}
+			if user.TokenVersion > 0 && claims.TokenVersion != user.TokenVersion {
 				logrus.WithFields(logrus.Fields{
 					"user_id":               claims.UserID,
 					"token_token_version":   claims.TokenVersion,
 					"current_token_version": user.TokenVersion,
-				}).Warn("Token version mismatch - token may have been revoked")
+				}).Warn("Token version mismatch - token has been revoked")
 				return nil, fmt.Errorf("token has been revoked")
 			}
 		}

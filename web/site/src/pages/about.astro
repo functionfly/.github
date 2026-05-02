@@ -594,7 +594,7 @@ const aboutSchema = {
           </a>
           <a href="/pricing" class="btn btn-outline btn-large">View pricing</a>
         </div>
-        <p class="cta-footnote" data-reveal>No credit card required. Free tier includes 10,000 function calls/month.</p>
+        <p class="cta-footnote" data-reveal>No credit card required. Free tier includes 100,000 requests/month.</p>
       </div>
     </div>
   </section>
@@ -704,23 +704,48 @@ const aboutSchema = {
     --text:        #f8fafc;
     --text-dim:    #94a3b8;
     --text-muted:  #64748b;
-    --accent:      #6366f1;
-    --accent-dim:  rgba(99,102,241,0.12);
-    --accent-line: rgba(99,102,241,0.35);
-    --indigo:      #6366F1;
-    --indigo-dim:  rgba(99,102,241,0.12);
+    --accent:      #FF6B35;
+    --accent-dim:  rgba(255,107,53,0.12);
+    --accent-line: rgba(255,107,53,0.35);
+    --indigo:      #FF6B35;
+    --indigo-dim:  rgba(255,107,53,0.12);
     --green:       #10b981;
     --green-dim:   rgba(16,185,129,0.12);
     --amber:       #f59e0b;
     --amber-dim:   rgba(245,158,11,0.12);
     --purple:      #8b5cf6;
     --purple-dim:  rgba(139,92,246,0.12);
-    --cyan:        #06b6d4;
+    --cyan:        #00D4FF;
     --red:         #ef4444;
 
     --font-display: 'Inter', system-ui, sans-serif;
     --font-body:    'Inter', system-ui, sans-serif;
     --font-mono:    'JetBrains Mono', monospace;
+  }
+
+  [data-theme='light'] {
+    --bg:          #ffffff;
+    --bg-raised:   #f8fafc;
+    --bg-card:     #ffffff;
+    --bg-card-hover:#f1f5f9;
+    --border:      #e2e8f0;
+    --border-mid:  #cbd5e1;
+    --text:        #0f172a;
+    --text-dim:    #475569;
+    --text-muted:  #64748b;
+    --accent:      #E85A2A;
+    --accent-dim:  rgba(232,90,42,0.1);
+    --accent-line: rgba(232,90,42,0.25);
+    --indigo:      #E85A2A;
+    --indigo-dim:  rgba(232,90,42,0.1);
+    --green:       #10b981;
+    --green-dim:   rgba(16,185,129,0.1);
+    --amber:       #f59e0b;
+    --amber-dim:   rgba(245,158,11,0.1);
+    --purple:      #8b5cf6;
+    --purple-dim:  rgba(139,92,246,0.1);
+    --cyan:        #00A8CC;
+    --red:         #ef4444;
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -821,9 +846,9 @@ const aboutSchema = {
     color: #ffffff;
   }
   .btn-primary:hover {
-    background: #818cf8;
+    background: var(--ff-flame-light, #FF8C42);
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(99,102,241,0.25);
+    box-shadow: 0 8px 24px rgba(255,107,53,0.25);
   }
   .btn-ghost {
     background: transparent;
@@ -1304,7 +1329,7 @@ const aboutSchema = {
   .val-icon--green  { background: var(--green-dim);       border-color: rgba(52,211,153,0.2);  color: var(--green); }
   .val-icon--amber  { background: var(--amber-dim);       border-color: rgba(251,191,36,0.2);  color: var(--amber); }
   .val-icon--purple { background: var(--purple-dim);       border-color: rgba(167,139,250,0.2); color: var(--purple); }
-  .val-icon--cyan   { background: rgba(34,211,238,0.1);    border-color: rgba(34,211,238,0.2);  color: var(--cyan); }
+  .val-icon--cyan   { background: rgba(0,212,255,0.1);    border-color: rgba(0,212,255,0.2);  color: var(--cyan); }
   .val-card h3 {
     font-family: var(--font-display);
     font-size: 1rem;
@@ -1361,12 +1386,12 @@ const aboutSchema = {
   }
   .marker-dot--live {
     background: var(--accent);
-    box-shadow: 0 0 0 1px var(--accent), 0 0 12px rgba(99,102,241,0.4);
+    box-shadow: 0 0 0 1px var(--accent), 0 0 12px rgba(255,107,53,0.4);
     animation: livePulse 2s ease-in-out infinite;
   }
   @keyframes livePulse {
-    0%, 100% { box-shadow: 0 0 0 1px var(--accent), 0 0 12px rgba(99,102,241,0.4); }
-    50% { box-shadow: 0 0 0 3px var(--accent), 0 0 24px rgba(99,102,241,0.6); }
+    0%, 100% { box-shadow: 0 0 0 1px var(--accent), 0 0 12px rgba(255,107,53,0.4); }
+    50% { box-shadow: 0 0 0 3px var(--accent), 0 0 24px rgba(255,107,53,0.6); }
   }
   .marker-year {
     font-family: var(--font-mono);
@@ -1455,7 +1480,7 @@ const aboutSchema = {
     border-radius: 6px;
     font-weight: 600;
   }
-  .cta-link--primary:hover { background: #818cf8; color: #ffffff; }
+  .cta-link--primary:hover { background: #FF8C42; color: #ffffff; }
 
   /* ═══════════════════════════════════════════════════
      FINAL CTA

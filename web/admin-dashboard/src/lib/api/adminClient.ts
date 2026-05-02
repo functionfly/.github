@@ -242,6 +242,19 @@ class AdminAPIClient {
   }
 
   /**
+   * PUT request with HMAC signing
+   */
+  async put<T>(
+    path: string,
+    data?: any,
+    config?: AxiosRequestConfig
+  ): Promise<AdminAPIResponse<T>> {
+    const signedConfig = this.signRequest('PUT', path, data, config);
+    const response = await this.client.put<AdminAPIResponse<T>>(path, data, signedConfig);
+    return response.data;
+  }
+
+  /**
    * PATCH request with HMAC signing
    */
   async patch<T>(

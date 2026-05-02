@@ -22,7 +22,7 @@ import {
   ChevronDown,
   Check,
 } from 'lucide-react';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 interface RichTextEditorProps {
   content: string;
@@ -78,7 +78,16 @@ export function RichTextEditor({
         },
       }),
     ],
-    content,
+    content: (() => {
+      if (typeof content === 'string' && content.trim().startsWith('{')) {
+        try {
+          return JSON.parse(content);
+        } catch {
+          return content;
+        }
+      }
+      return content;
+    })(),
     onUpdate: ({ editor }) => {
       const json = editor.getJSON();
       onChange(JSON.stringify(json));
@@ -90,6 +99,22 @@ export function RichTextEditor({
       },
     },
   });
+
+  // Update editor content when content prop changes (e.g., loading a different post)
+  useEffect(() => {
+    if (editor && content) {
+      try {
+        let parsed = typeof content === 'string' ? JSON.parse(content) : content;
+        if (typeof parsed === 'string') {
+          parsed = JSON.parse(parsed);
+        }
+        editor.commands.setContent(parsed);
+      } catch (e) {
+        console.error('Failed to set content:', e);
+        editor.commands.setContent(content);
+      }
+    }
+  }, [content, editor]);
 
   const setLink = useCallback(() => {
     if (!editor) return;

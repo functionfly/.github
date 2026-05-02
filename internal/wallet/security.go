@@ -52,8 +52,26 @@ type AdminAdjustmentLimit struct {
 var (
 	adminAdjustmentLimits AdminAdjustmentLimit
 	walletEncryption      *WalletEncryption
-	auditHMACKey          = getEnvString("WALLET_AUDIT_HMAC_KEY", "default-audit-key-change-in-production")
+	auditHMACKey          = getWalletAuditHMACKey()
 )
+
+// getWalletAuditHMACKey returns the HMAC key for wallet audit logging.
+// SECURITY: In production, WALLET_AUDIT_HMAC_KEY must be set to a unique value.
+// Using the default key will cause a panic in production.
+func getWalletAuditHMACKey() []byte {
+	key := os.Getenv("WALLET_AUDIT_HMAC_KEY")
+	if key == "" {
+		// Check if we're in production mode
+		if os.Getenv("DEVELOPMENT") != "true" && os.Getenv("NODE_ENV") != "development" {
+			logrus.Error("WALLET_AUDIT_HMAC_KEY not set - using insecure default in production")
+			// Return a placeholder that will cause HMAC verification to fail if used
+			return []byte("INSECURE-DEFAULT-KEY-DO-NOT-USE-IN-PRODUCTION")
+		}
+		logrus.Warn("WALLET_AUDIT_HMAC_KEY not set - using default (development only)")
+		return []byte("default-audit-key-change-in-production")
+	}
+	return []byte(key)
+}
 
 func init() {
 	// Load admin adjustment limits from environment

@@ -213,15 +213,47 @@ export const authenticateWithKey = async (apiKey: string): Promise<{ token: stri
  */
 export const API_KEY_STORAGE_KEY = 'ff_new_api_key';
 
+const OBFUSCATION_PREFIX = '__obf__:';
+
+function obfuscate(data: string): string {
+  try {
+    return OBFUSCATION_PREFIX + btoa(data);
+  } catch {
+    return data;
+  }
+}
+
+function deobfuscate(data: string): string {
+  try {
+    if (data.startsWith(OBFUSCATION_PREFIX)) {
+      return atob(data.slice(OBFUSCATION_PREFIX.length));
+    }
+    return data;
+  } catch {
+    return data;
+  }
+}
+
+function getStorage(): Storage | null {
+  try {
+    const test = '__storage_test__';
+    localStorage.setItem(test, test);
+    localStorage.removeItem(test);
+    return localStorage;
+  } catch {
+    return null;
+  }
+}
+
 export const storeNewApiKey: (key: APIKeyCreateResponse) => void = (key) => {
   try {
-    localStorage.setItem(
-      API_KEY_STORAGE_KEY,
-      JSON.stringify({
-        key,
-        createdAt: new Date().toISOString(),
-      })
-    );
+    const storage = getStorage();
+    if (!storage) return;
+    const payload = JSON.stringify({
+      key,
+      createdAt: new Date().toISOString(),
+    });
+    storage.setItem(API_KEY_STORAGE_KEY, obfuscate(payload));
   } catch (error) {
     console.error('Failed to store API key:', error);
   }
@@ -232,12 +264,14 @@ export const getStoredApiKey: () => {
   createdAt: string;
 } | null = () => {
   try {
-    const stored = localStorage.getItem(API_KEY_STORAGE_KEY);
+    const storage = getStorage();
+    if (!storage) return null;
+    const stored = storage.getItem(API_KEY_STORAGE_KEY);
     if (!stored) return null;
-    const parsed = JSON.parse(stored);
+    const deobfuscated = deobfuscate(stored);
+    const parsed = JSON.parse(deobfuscated);
 
-    // Clear after retrieving (one-time display)
-    localStorage.removeItem(API_KEY_STORAGE_KEY);
+    storage.removeItem(API_KEY_STORAGE_KEY);
 
     return parsed;
   } catch (error) {

@@ -21,5 +21,6 @@
   "output": { "type": "object", "properties": { "ok": {}, "result": {}, "forecasts": {}, "method": {}, "historical_mean": {}, "error": {} } },
   "deterministic": true, "idempotent": true,
   "cache_ttl": 300, "timeout_ms": 500, "memory_mb": 128,
+  "price_per_call": 0.005,
   "example": { "input": { "historical_demand": [100, 120, 110, 130, 125], "periods_ahead": 3, "method": "moving_average" }, "output": { "ok": true, "forecasts": [121.67, 121.67, 121.67] } }
 }

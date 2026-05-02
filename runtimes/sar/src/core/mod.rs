@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
-use tracing::{info, instrument};
+use tracing::{info, instrument, warn};
 use uuid::Uuid;
 
 use crate::engine::{
@@ -136,8 +137,14 @@ impl StatefulAgentRuntime {
     pub async fn with_config(config: RuntimeConfig) -> anyhow::Result<Self> {
         let scheduler = Arc::new(AgentScheduler::new(config.scheduler));
 
-        let event_bus = if let Some(nats_url) = &config.nats_url {
-            Arc::new(NatsEventBus::new(nats_url.clone())?)
+        let event_bus = if let Some(ref nats_url) = config.nats_url {
+            match NatsEventBus::new(nats_url.clone()) {
+                Ok(bus) => Arc::new(bus),
+                Err(e) => {
+                    tracing::warn!(error = %e, "Failed to connect to NATS, using default event bus");
+                    Arc::new(NatsEventBus::default())
+                }
+            }
         } else {
             Arc::new(NatsEventBus::default())
         };
@@ -269,6 +276,42 @@ impl StatefulAgentRuntime {
             let _ = tx.send(()).await;
         }
         info!("SAR runtime shutting down");
+    }
+
+    pub fn get_agent_state(&self, agent_id: AgentId) -> Option<AgentState> {
+        self.agent_states.read().get(&agent_id).cloned()
+    }
+
+    pub fn save_checkpoint(&self, agent_id: AgentId) -> Option<AgentState> {
+        let states = self.agent_states.read();
+        states.get(&agent_id).cloned()
+    }
+
+    pub fn restore_from_checkpoint(&self, state: AgentState) {
+        let mut states = self.agent_states.write();
+        states.insert(state.agent_id, state);
+        info!(agent_id = %state.agent_id, "Agent state restored from checkpoint");
+    }
+
+    pub async fn graceful_shutdown_agent(&self, agent_id: AgentId, grace_period: Duration) -> bool {
+        let start = Instant::now();
+
+        while start.elapsed() < grace_period {
+            {
+                let states = self.agent_states.read();
+                if let Some(state) = states.get(&agent_id) {
+                    if state.metrics.total_executions == 0 ||
+                       state.status == AgentStatus::Idle {
+                        info!(agent_id = %agent_id, "Agent shutdown complete");
+                        return true;
+                    }
+                }
+            }
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
+
+        warn!(agent_id = %agent_id, "Agent graceful shutdown timed out");
+        false
     }
 }
 

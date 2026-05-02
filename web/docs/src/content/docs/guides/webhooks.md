@@ -114,10 +114,10 @@ secrets:
 
 ```bash
 # Deploy the webhook handler
-fly deploy
+ffly deploy
 
 # Get the webhook URL
-fly info
+ffly info
 
 # URL will be: https://api.functionfly.com/v1/execute/<function-id>/webhooks/events
 ```
@@ -205,11 +205,11 @@ events:
 
 ```bash
 # Subscribe to an event
-fly events subscribe function.completed \
+ffly events subscribe function.completed \
   --webhook https://my-function.com/webhooks/completed
 
 # Subscribe with filtering
-fly events subscribe user.created \
+ffly events subscribe user.created \
   --webhook https://my-function.com/webhooks/users \
   --filter "data.plan=premium"
 ```
@@ -300,7 +300,7 @@ Return appropriate status codes:
 ngrok http 8080
 
 # Configure webhook URL to ngrok URL
-fly webhook test \
+ffly webhook test \
   --url https://<ngrok-id>.ngrok.io/webhooks \
   --event function.completed
 ```
@@ -309,7 +309,7 @@ fly webhook test \
 
 ```bash
 # View recent webhook payloads
-fly webhook logs \
+ffly webhook logs \
   --function webhook-handler \
   --limit 10
 ```
@@ -347,7 +347,7 @@ webhook:
 Filter events by criteria:
 
 ```bash
-fly events subscribe order.created \
+ffly events subscribe order.created \
   --webhook https://example.com/webhooks/orders \
   --filter "data.amount > 100" \
   --filter "data.currency = USD"
@@ -359,7 +359,7 @@ fly events subscribe order.created \
 
 ```bash
 # View webhook delivery logs
-fly webhook logs \
+ffly webhook logs \
   --function my-webhook \
   --status failed \
   --since 1h

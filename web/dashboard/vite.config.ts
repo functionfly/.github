@@ -1,6 +1,7 @@
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import sass from 'sass';
 import fs from 'fs';
 import path from 'path';
 import type { PluginOption } from 'vite';
@@ -150,13 +151,14 @@ console.log('[Vite] API proxy target:', apiProxyTarget);
 const DEV_CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://va.vercel-scripts.com",
-  "script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' blob: https://va.vercel-scripts.com",
+  "script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' blob: https://va.vercel-scripts.com https://js.stripe.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnfonts.com https://www.cdnfonts.com",
   "img-src 'self' data: https: blob:",
   "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnfonts.com https://www.cdnfonts.com",
   "connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://va.vercel-scripts.com http://localhost:8080 http://localhost:8081 ws://localhost:8081 wss://localhost:8081 https: ws: wss:",
   "worker-src 'self' blob:",
   "frame-ancestors 'none'",
+  "frame-src 'self' blob: https://js.stripe.com",
   "form-action 'self' https://api.functionfly.com https://api.staging.functionfly.com",
 ].join('; ');
 
@@ -183,6 +185,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@functionfly/shared': path.resolve(__dirname, '../shared'),
 
     },
     // Prefer ESM builds to avoid CJS/scheduler issues
@@ -296,11 +299,38 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api\/v1/, '/v1'),
         configure: proxyConfigure,
       },
+      // /api/frg/... -> backend /frg/... (FRG routes from apiClient with /api prefix)
+      '/api/frg': {
+        target: apiProxyTarget,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/frg/, '/frg'),
+        configure: proxyConfigure,
+      },
+      // /api/gx/... -> backend /gx/... (graph execution routes from apiClient)
+      '/api/gx': {
+        target: apiProxyTarget,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/gx/, '/gx'),
+        configure: proxyConfigure,
+      },
+      // /frg/... -> backend /frg/... (direct FRG routes, no v1 rewrite)
+      '/frg': {
+        target: apiProxyTarget,
+        changeOrigin: true,
+        configure: proxyConfigure,
+      },
+      // /gx/... -> backend /gx/... (graph execution routes)
+      '/gx': {
+        target: apiProxyTarget,
+        changeOrigin: true,
+        configure: proxyConfigure,
+      },
       // /v1/... -> backend /v1/... (direct v1 calls from FunctionPage, PlaygroundPage, etc.)
       '/v1': {
         target: apiProxyTarget,
         changeOrigin: true,
         configure: proxyConfigure,
+        ws: true,
       },
       // /api/... -> backend /v1/... (fallback for other API calls)
       '/api': {

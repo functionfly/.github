@@ -88,7 +88,7 @@ func (h *Handler) HandleRegisterAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	agent, apiKey, err := h.identityRepo.CreateAgent(r.Context(), claims.TenantID, &req)
+	agent, apiKey, signingKey, err := h.identityRepo.CreateAgent(r.Context(), claims.TenantID, &req)
 	if err != nil {
 		logrus.WithError(err).Error("failed to register agent")
 		errStr := err.Error()
@@ -101,9 +101,10 @@ func (h *Handler) HandleRegisterAgent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, identity.RegisterAgentResponse{
-		OK:     true,
-		Agent:  agent,
-		APIKey: apiKey,
+		OK:        true,
+		Agent:     agent,
+		APIKey:    apiKey,
+		SigningKey: signingKey,
 	})
 }
 
@@ -1066,6 +1067,108 @@ func (h *Handler) HandleGetConcurrencyStats(w http.ResponseWriter, r *http.Reque
 		"ok":                      true,
 		"pools":                   stats,
 		"total_active_executions": h.scheduler.TotalActiveExecutions(),
+	})
+}
+
+// ============================================================
+// Agent Lifecycle Management
+// ============================================================
+
+func (h *Handler) HandleAgentHeartbeat(w http.ResponseWriter, r *http.Request) {
+	agentID := mux.Vars(r)["agent_id"]
+
+	var req struct {
+		Status      string         `json:"status"`
+		StateSnapshot map[string]any `json:"state_snapshot,omitempty"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "invalid request body")
+		return
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"agent_id": agentID,
+		"status":   req.Status,
+	}).Debug("Agent heartbeat received")
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"ok":             true,
+		"next_heartbeat": time.Now().Add(30 * time.Second).Format(time.RFC3339),
+	})
+}
+
+func (h *Handler) HandleAgentShutdown(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
+		return
+	}
+
+	agentID := mux.Vars(r)["agent_id"]
+
+	agent, err := h.identityRepo.GetAgent(r.Context(), agentID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "agent not found")
+		return
+	}
+
+	if agent.TenantID != claims.TenantID {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied")
+		return
+	}
+
+	var req struct {
+		GracePeriodSeconds int `json:"grace_period_seconds,omitempty"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+
+	gracePeriod := 30
+	if req.GracePeriodSeconds > 0 {
+		gracePeriod = req.GracePeriodSeconds
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"agent_id":            agentID,
+		"grace_period_seconds": gracePeriod,
+	}).Info("Agent graceful shutdown initiated")
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"ok":                true,
+		"message":           "graceful shutdown initiated",
+		"grace_period_seconds": gracePeriod,
+	})
+}
+
+func (h *Handler) HandleAgentLifecycleStatus(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
+		return
+	}
+
+	agentID := mux.Vars(r)["agent_id"]
+
+	agent, err := h.identityRepo.GetAgent(r.Context(), agentID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "agent not found")
+		return
+	}
+
+	if agent.TenantID != claims.TenantID {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied")
+		return
+	}
+
+	lifecycleStatus := "active"
+	if agent.Status == "suspended" {
+		lifecycleStatus = "suspended"
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"ok":            true,
+		"agent_id":      agentID,
+		"status":        lifecycleStatus,
+		"last_heartbeat": agent.UpdatedAt.Format(time.RFC3339),
 	})
 }
 

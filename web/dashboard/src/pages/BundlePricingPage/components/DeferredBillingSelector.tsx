@@ -17,20 +17,20 @@ export function DeferredBillingSelector({ mode, onModeChange }: DeferredBillingS
       transition={{ delay: 0.3 }}
       className="max-w-2xl mx-auto mb-10"
     >
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-2">
+      <div className="bg-bg-secondary rounded-xl shadow-sm border border-border p-2">
         <div className="flex flex-col sm:flex-row gap-2">
           <button
             onClick={() => onModeChange('immediate')}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-all ${
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-all duration-300 ${
               mode === 'immediate'
-                ? 'bg-slate-900 dark:bg-slate-700 text-white shadow-md'
-                : 'hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-400'
+                ? 'bg-text-primary text-white shadow-md'
+                : 'hover:bg-ff-flame/10 text-text-secondary hover:text-ff-flame'
             }`}
           >
             <CreditCard className="w-4 h-4" />
             <div className="text-left">
               <div className="font-semibold text-sm">Pay Now</div>
-              <div className={`text-xs ${mode === 'immediate' ? 'text-slate-300' : 'text-slate-500'}`}>
+              <div className={`text-xs ${mode === 'immediate' ? 'text-white/70' : 'text-text-muted'}`}>
                 Start immediately with full features
               </div>
             </div>
@@ -38,10 +38,10 @@ export function DeferredBillingSelector({ mode, onModeChange }: DeferredBillingS
 
           <button
             onClick={() => onModeChange('deferred')}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-all relative overflow-hidden ${
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-all duration-300 relative overflow-hidden ${
               mode === 'deferred'
-                ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-md'
-                : 'hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-400'
+                ? 'bg-gradient-to-r from-brand-500 to-brand-400 text-white shadow-md'
+                : 'hover:bg-ff-flame/10 text-text-secondary hover:text-ff-flame'
             }`}
           >
             {mode === 'deferred' && (
@@ -54,12 +54,12 @@ export function DeferredBillingSelector({ mode, onModeChange }: DeferredBillingS
                 <span className={`text-xs px-2 py-0.5 rounded-full ${
                   mode === 'deferred'
                     ? 'bg-white/20 text-white'
-                    : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                    : 'bg-success/10 text-success'
                 }`}>
                   FREE
                 </span>
               </div>
-              <div className={`text-xs ${mode === 'deferred' ? 'text-white/80' : 'text-slate-500'}`}>
+              <div className={`text-xs ${mode === 'deferred' ? 'text-white/80' : 'text-text-muted'}`}>
                 Pay only when you hit 100 users or $1K MRR
               </div>
             </div>
@@ -71,17 +71,17 @@ export function DeferredBillingSelector({ mode, onModeChange }: DeferredBillingS
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="mt-3 p-3 bg-gradient-to-r from-violet-50 to-fuchsia-50 dark:from-violet-900/20 dark:to-fuchsia-900/20 rounded-lg border border-violet-100 dark:border-violet-800"
+            className="mt-3 p-3 bg-brand-500/5 dark:bg-brand-500/10 rounded-lg border border-brand-500/20"
           >
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 bg-violet-100 dark:bg-violet-800 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Clock className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+              <div className="w-8 h-8 bg-brand-500/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Clock className="w-4 h-4 text-brand-400" />
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-900 dark:text-white">
+                <p className="text-sm font-medium text-text-primary">
                   "Build Now, Pay Later" is active
                 </p>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                <p className="text-sm text-text-secondary mt-1">
                   We'll track your growth and email you when you're approaching the billing threshold.
                   You'll have a 7-day grace period to add payment info.
                 </p>

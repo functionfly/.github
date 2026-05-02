@@ -277,7 +277,7 @@ func (ws *WorkerService) sendTaskResult(ctx context.Context, workerID string, pa
 		CreatedAt: time.Now(),
 	}
 
-	ws.messageSvc.SendMessage(ctx, msg)
+	ws.messageSvc.SendSystemMessage(ctx, msg)
 }
 
 func (ws *WorkerService) logTask(workerID, taskType string) {
@@ -339,5 +339,14 @@ func (ws *WorkerService) processScheduledTasks(ctx context.Context) {
 }
 
 func (ws *WorkerService) sendHeartbeatToChild(ctx context.Context, child *identity.AgentIdentity) {
-	ws.messageSvc.SendHeartbeat(ctx, PlatformControllerAgentID, child.AgentID)
+	msg := &identity.AgentMessage{
+		ID:          uuid.New(),
+		FromAgentID: PlatformControllerAgentID,
+		ToAgentID:   child.AgentID,
+		MessageType: identity.MessageTypeHeartbeat,
+		Payload:     map[string]any{"timestamp": time.Now().Unix()},
+		TTLSeconds:  300,
+		Status:      "pending",
+	}
+	ws.messageSvc.SendSystemMessage(ctx, msg)
 }

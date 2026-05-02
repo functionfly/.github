@@ -52,16 +52,17 @@ export function BundleCard({ bundle, icon: Icon, colorClass, onSelect, delay = 0
       transition={{ delay, duration: 0.4 }}
       className="relative group"
     >
-      {bundle.is_popular && (
-        <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-          <div className="bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white text-sm font-bold px-4 py-1 rounded-full flex items-center gap-1 shadow-lg">
-            <Sparkles className="w-4 h-4" />
-            Most Popular
+      <div className="h-full bg-bg-secondary rounded-2xl shadow-lg hover:shadow-xl transition-shadow border border-border overflow-hidden">
+        {/* Most Popular Badge - floats above card */}
+        {bundle.is_popular && (
+          <div className="absolute -top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+            <div className="bg-gradient-to-r from-amber-400 via-orange-500 to-amber-400 bg-[length:200%_100%] animate-shimmer text-white text-xs font-bold px-5 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg border border-white/30 whitespace-nowrap">
+              <Sparkles className="w-3.5 h-3.5" />
+              Most Popular
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="h-full bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-xl transition-shadow border border-slate-200 dark:border-slate-700 overflow-hidden">
         {/* Header with gradient */}
         <div className={`bg-gradient-to-r ${colorClass} p-6 text-white`}>
           <div className="flex items-center gap-3 mb-4">
@@ -83,21 +84,21 @@ export function BundleCard({ bundle, icon: Icon, colorClass, onSelect, delay = 0
         {/* Content */}
         <div className="p-6">
           {/* Tagline */}
-          <p className="text-slate-600 dark:text-slate-400 mb-6">
+          <p className="text-text-secondary mb-6">
             {bundle.description}
           </p>
 
           {/* Features */}
           <div className="space-y-3 mb-6">
-            <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+            <p className="text-sm font-semibold text-text-muted uppercase tracking-wide">
               Includes:
             </p>
             {bundle.features_included.map((feature) => (
               <div key={feature} className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
-                  <Check className="w-3 h-3 text-green-600 dark:text-green-400" />
+                <div className="w-5 h-5 rounded-full bg-success/10 dark:bg-success/20 flex items-center justify-center flex-shrink-0">
+                  <Check className="w-3 h-3 text-success" />
                 </div>
-                <span className="text-slate-700 dark:text-slate-300">
+                <span className="text-text-primary">
                   {featureLabels[feature] || feature}
                 </span>
               </div>
@@ -105,15 +106,15 @@ export function BundleCard({ bundle, icon: Icon, colorClass, onSelect, delay = 0
           </div>
 
           {/* Resource limits preview */}
-          <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4 mb-6">
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+          <div className="bg-bg-tertiary rounded-lg p-4 mb-6">
+            <p className="text-xs text-text-muted mb-2">
               Resources included:
             </p>
             <div className="flex flex-wrap gap-2">
               {Object.entries(bundle.feature_limits).slice(0, 3).map(([key, value]) => (
                 <span
                   key={key}
-                  className="text-xs bg-slate-200 dark:bg-slate-600 px-2 py-1 rounded"
+                  className="text-xs bg-bg-primary px-2 py-1 rounded"
                 >
                   {value === -1 || value === 999999999 ? 'Unlimited' : value.toLocaleString()} {key}
                 </span>
@@ -125,7 +126,7 @@ export function BundleCard({ bundle, icon: Icon, colorClass, onSelect, delay = 0
           <div className="space-y-3">
             <Button
               onClick={() => onSelect(bundle)}
-              className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white"
+              className="w-full bg-gradient-to-r from-brand-500 to-brand-400 hover:from-ff-flame hover:to-ff-afterburner text-white transition-all duration-300 hover:shadow-[0_4px_20px_rgba(255,107,53,0.4)]"
             >
               <Rocket className="w-4 h-4 mr-2" />
               {bundle.price_cents === 0 ? 'Start Free' : 'Get Started'}
@@ -134,7 +135,7 @@ export function BundleCard({ bundle, icon: Icon, colorClass, onSelect, delay = 0
             <Button
               variant="ghost"
               onClick={() => onSelect(bundle)}
-              className="w-full text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              className="w-full text-text-secondary hover:text-ff-flame hover:bg-ff-flame/5 transition-all"
             >
               View Details
             </Button>

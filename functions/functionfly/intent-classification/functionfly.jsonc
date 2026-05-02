@@ -28,6 +28,7 @@
   "cache_ttl": 3600,
   "timeout_ms": 500,
   "memory_mb": 64,
+  "price_per_call": 0.002,
   "example": {
     "input": { "text": "Can you help me reset my password?" },
     "output": { "ok": true, "intent": "request" }

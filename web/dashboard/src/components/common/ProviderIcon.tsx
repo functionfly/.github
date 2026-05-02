@@ -1,9 +1,9 @@
 import { Terminal, Zap } from "lucide-react";
-import { CloudflareIcon, VercelIcon, FlyIoIcon, FunctionFlyEdgeIcon } from "@/pages/LandingPage/components/icons";
+import { CloudflareIcon, VercelIcon, FlyIoIcon, FunctionFlyEdgeIcon, AwsIcon } from "@/pages/LandingPage/components/icons";
 import { cn } from "@/lib/utils";
 
 interface ProviderIconProps {
-  provider: "workers" | "vercel" | "fly" | "deno" | "functionfly-edge" | string;
+  provider: "workers" | "vercel" | "fly" | "deno" | "functionfly-edge" | "aws-lambda" | string;
   size?: "sm" | "md" | "lg";
   className?: string;
 }
@@ -39,6 +39,11 @@ const providerConfig = {
     Icon: FunctionFlyEdgeIcon,
     color: "#6366f1",
     label: "FunctionFly Edge",
+  },
+  "aws-lambda": {
+    Icon: AwsIcon,
+    color: "#FF9900",
+    label: "AWS Lambda",
   },
 };
 

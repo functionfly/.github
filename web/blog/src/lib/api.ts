@@ -1,13 +1,11 @@
 /**
  * Blog API Client for public blog consumption
- * Connects to the NestJS blog-api at cmd/blog-api/
+ * Uses the Go backend at /v1/blog/*
  */
 
-const BLOG_API_URL = import.meta.env.PUBLIC_BLOG_API_URL || 'http://localhost:3000/api/v1';
-// Main API URL for categories/authors (shared with admin dashboard)
-const MAIN_API_URL = import.meta.env.PUBLIC_MAIN_API_URL || 'http://localhost:8080/api/v1';
+const BLOG_API_URL = import.meta.env.PUBLIC_MAIN_API_URL || 'http://localhost:8080/api/v1';
 
-// Types matching the NestJS API response
+// Types matching the Go backend API response
 export interface BlogPost {
   id: string;
   title: string;
@@ -17,7 +15,7 @@ export interface BlogPost {
   authorId?: string;
   categoryId?: string;
   tags?: string[];
-  heroImage?: { url: string; alt?: string; caption?: string } | null;
+  heroImage?: { url: string; alt: string; caption?: string } | null;
   status: string;
   publishedAt?: string | null;
   scheduledAt?: string | null;
@@ -25,32 +23,19 @@ export interface BlogPost {
   seoDescription?: string | null;
   keywords?: string[];
   canonicalUrl?: string | null;
-  ogImage?: { url: string; alt?: string } | null;
+  ogImage?: { url: string; alt: string } | null;
   campaign?: string;
   ownerId?: string;
   createdAt: string;
   updatedAt: string;
-  // Relations
+  // Relations (from Go backend)
   author?: {
-    id: string;
     name: string;
     slug: string;
-    bio?: string;
-    photo?: unknown;
-    email?: string;
-    website?: string;
-    socialLinks?: unknown;
-    role?: string;
-    active: boolean;
   } | null;
   category?: {
-    id: string;
     title: string;
     slug: string;
-    description?: string;
-    color?: string;
-    icon?: string;
-    order: number;
   } | null;
 }
 
@@ -62,7 +47,7 @@ export interface Author {
   photo?: unknown;
   email?: string;
   website?: string;
-  socialLinks?: unknown;
+  socialLinks?: { platform: string; url: string }[];
   role?: string;
   active: boolean;
   createdAt: string;
@@ -148,85 +133,36 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
 }
 
 /**
- * Fetch all categories from main API (shared with admin dashboard)
+ * Fetch all categories from Go backend
  */
 export async function getCategories(): Promise<Category[]> {
   try {
-    const response = await fetch(`${MAIN_API_URL}/content/categories`);
+    const response = await fetch(`${BLOG_API_URL}/blog/categories`);
     if (!response.ok) {
       throw new Error(`Failed to fetch categories: ${response.status}`);
     }
     const data = await response.json();
-    // Map main API format to blog format
-    if (Array.isArray(data)) {
-      return data.map(cat => ({
-        id: cat.id || cat.ID || '',
-        title: cat.title || cat.Title || '',
-        slug: cat.slug || cat.Slug || '',
-        description: cat.description || cat.Description || '',
-        color: cat.color || cat.Color || '',
-        icon: cat.icon || cat.Icon || '',
-        order: cat.order || cat.Order || 0,
-        createdAt: cat.created_at || cat.CreatedAt || '',
-        updatedAt: cat.updated_at || cat.UpdatedAt || '',
-      }));
-    }
-    return [];
+    return Array.isArray(data) ? data : [];
   } catch (error) {
-    console.error('Failed to fetch categories from main API, falling back to blog API:', error);
-    // Fallback to blog API if main API is unavailable
-    try {
-      const response = await fetch(`${BLOG_API_URL}/blog/categories`);
-      if (!response.ok) throw new Error(`Failed to fetch categories: ${response.status}`);
-      const data = await response.json();
-      return Array.isArray(data) ? data : [];
-    } catch (fallbackError) {
-      console.error('Fallback also failed:', fallbackError);
-      return [];
-    }
+    console.error('Failed to fetch categories:', error);
+    return [];
   }
 }
 
 /**
- * Fetch all authors from main API (shared with admin dashboard)
+ * Fetch all authors from Go backend
  */
 export async function getAuthors(): Promise<Author[]> {
   try {
-    const response = await fetch(`${MAIN_API_URL}/content/authors`);
+    const response = await fetch(`${BLOG_API_URL}/blog/authors`);
     if (!response.ok) {
       throw new Error(`Failed to fetch authors: ${response.status}`);
     }
     const data = await response.json();
-    // Map main API format to blog format
-    if (Array.isArray(data)) {
-      return data.map(author => ({
-        id: author.id || author.ID || '',
-        name: author.name || author.Name || '',
-        slug: author.slug || author.Slug || '',
-        bio: author.bio || author.Bio || '',
-        photo: author.photo || author.Photo || null,
-        email: author.email || author.Email || '',
-        website: author.website || author.Website || '',
-        socialLinks: author.social_links || author.SocialLinks || null,
-        role: author.role || author.Role || '',
-        active: author.active ?? author.Active ?? true,
-        createdAt: author.created_at || author.CreatedAt || '',
-        updatedAt: author.updated_at || author.UpdatedAt || '',
-      }));
-    }
-    return [];
+    return Array.isArray(data) ? data : [];
   } catch (error) {
-    console.error('Failed to fetch authors from main API, falling back to blog API:', error);
-    // Fallback to blog API if main API is unavailable
-    try {
-      const response = await fetch(`${BLOG_API_URL}/blog/authors`);
-      if (!response.ok) throw new Error(`Failed to fetch authors: ${response.status}`);
-      const data = await response.json();
-      return Array.isArray(data) ? data : [];
-    } catch (fallbackError) {
-      console.error('Fallback also failed:', fallbackError);
-      return [];
-    }
+    console.error('Failed to fetch authors:', error);
+    return [];
   }
 }
 

@@ -167,14 +167,13 @@ export const useSidebarStore = create<SidebarState>()(
         completedOnboardingSteps: state.completedOnboardingSteps,
       }),
       merge: (persistedState, currentState) => {
-        // Restore Set from array
-        const state = { ...currentState, ...persistedState } as SidebarState;
-        if (Array.isArray(persistedState.expandedSections)) {
-          state.expandedSections = new Set(persistedState.expandedSections);
+        const ps = persistedState as Partial<SidebarState>;
+        const state = { ...currentState, ...ps } as SidebarState;
+        if (Array.isArray(ps.expandedSections)) {
+          state.expandedSections = new Set(ps.expandedSections);
         }
-        // Sync environment to localStorage for API client access
-        if (persistedState.currentEnvironment) {
-          localStorage.setItem('ff-current-environment', persistedState.currentEnvironment as string);
+        if (ps.currentEnvironment) {
+          localStorage.setItem('ff-current-environment', ps.currentEnvironment as string);
         }
         return state;
       },

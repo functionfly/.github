@@ -375,7 +375,7 @@ export function AgentMarketplace() {
         onClose={() => setSelectedAgent(null)}
         onGoToAgents={() => {
           setSelectedAgent(null);
-          navigate(ROUTES.AGENTS);
+          navigate(ROUTES.AGENT_LIST);
         }}
         onGoToSDK={() => {
           setSelectedAgent(null);

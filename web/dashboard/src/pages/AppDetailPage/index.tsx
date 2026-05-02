@@ -126,11 +126,11 @@ function StatCard({
   label: string;
   value: string | number;
   sub?: string;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string }>;
   trend?: 'up' | 'down' | 'neutral';
   color?: 'default' | 'success' | 'warning' | 'danger';
 }) {
-  const colorMap = {
+  const colorMap: Record<string, string> = {
     default: 'text-brand-500 bg-brand-500/10',
     success: 'text-emerald-500 bg-emerald-500/10',
     warning: 'text-amber-500 bg-amber-500/10',
@@ -149,7 +149,7 @@ function StatCard({
             {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
           </div>
           <div
-            className={cn('w-10 h-10 rounded-xl flex items-center justify-center', colorMap[color])}
+            className={'w-10 h-10 rounded-xl flex items-center justify-center ' + colorMap[color]}
           >
             <Icon className="w-5 h-5" />
           </div>

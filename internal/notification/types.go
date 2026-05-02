@@ -86,6 +86,14 @@ const (
 	TypeBillingForecastExceeded     = "billing.forecast_exceeded"
 	TypeBillingUsageSpike           = "billing.usage_spike"
 
+	// Payout notifications
+	TypePayoutCompleted      = "payout.completed"
+	TypePayoutFailed         = "payout.failed"
+	TypePayoutCancelled      = "payout.cancelled"
+	TypePayoutReversed       = "payout.reversed"
+	TypePayoutScheduled      = "payout.scheduled"
+	TypePayoutApprovalNeeded = "payout.approval_needed"
+
 	// Chargeback and refund notifications
 	TypeBillingDisputeCreated           = "billing.dispute_created"
 	TypeBillingDisputeUpdated           = "billing.dispute_updated"

@@ -170,14 +170,14 @@ export function FunctionGalleryPage() {
       const response = await fetch(`/api/v1/functions?visibility=public&limit=24&offset=0`);
       if (!response.ok) throw new Error('Failed to fetch');
       const json = await response.json();
-      return json.functions || [];
+      return json.results || json.functions || [];
     },
     staleTime: 5 * 60 * 1000,
     enabled: activeTab === 'discover',
   });
 
-  const allFunctions = functionsData?.functions || [];
-  const totalCount = functionsData?.total_count || 0;
+  const allFunctions = ((functionsData as { results?: GalleryFunction[]; functions?: GalleryFunction[] })?.results || (functionsData as any)?.functions || []) as GalleryFunction[];
+  const totalCount = (functionsData as { total_count?: number; Total?: number })?.total_count || (functionsData as any)?.Total || 0;
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
   // Get unique runtimes from current data

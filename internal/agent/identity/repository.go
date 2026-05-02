@@ -24,33 +24,41 @@ func NewRepository(db *gorm.DB) *Repository {
 }
 
 // CreateAgent registers a new agent identity and returns the plaintext API key (only once)
-func (r *Repository) CreateAgent(ctx context.Context, tenantID uuid.UUID, req *RegisterAgentRequest) (*AgentIdentity, string, error) {
+// Returns (agent, apiKey, signingKey, error)
+func (r *Repository) CreateAgent(ctx context.Context, tenantID uuid.UUID, req *RegisterAgentRequest) (*AgentIdentity, string, string, error) {
 	// Validate plan tier
 	planTier := req.PlanTier
 	if planTier == "" {
 		planTier = plans.PlanAgentStarter
 	}
 	if !plans.IsAgentTier(planTier) {
-		return nil, "", fmt.Errorf("invalid plan tier: %s", planTier)
+		return nil, "", "", fmt.Errorf("invalid plan tier: %s", planTier)
 	}
 
 	// Generate API key
 	rawKey, keyHash, err := generateAPIKey()
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to generate API key: %w", err)
+		return nil, "", "", fmt.Errorf("failed to generate API key: %w", err)
+	}
+
+	// Generate signing key for A2A message authentication
+	signingKey, signingHash, err := generateSigningKey()
+	if err != nil {
+		return nil, "", "", fmt.Errorf("failed to generate signing key: %w", err)
 	}
 
 	agent := &AgentIdentity{
-		ID:          uuid.New(),
-		TenantID:    tenantID,
-		AgentID:     req.AgentID,
-		Name:        req.Name,
-		Description: req.Description,
-		PlanTier:    planTier,
-		Status:      AgentStatusActive,
-		APIKeyHash:  keyHash,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		ID:           uuid.New(),
+		TenantID:     tenantID,
+		AgentID:      req.AgentID,
+		Name:         req.Name,
+		Description:  req.Description,
+		PlanTier:     planTier,
+		Status:       AgentStatusActive,
+		APIKeyHash:   keyHash,
+		SigningKeyHash: signingHash,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
 	}
 
 	err = r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -67,10 +75,10 @@ func (r *Repository) CreateAgent(ctx context.Context, tenantID uuid.UUID, req *R
 		return nil
 	})
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
 
-	return agent, rawKey, nil
+	return agent, rawKey, signingKey, nil
 }
 
 // GetAgent retrieves an agent by its agent_id string
@@ -96,6 +104,20 @@ func (r *Repository) GetAgentByAPIKeyHash(ctx context.Context, apiKey string) (*
 			return nil, fmt.Errorf("invalid API key")
 		}
 		return nil, fmt.Errorf("failed to authenticate agent: %w", err)
+	}
+	return &agent, nil
+}
+
+// GetAgentBySigningKeyHash retrieves an agent by hashed signing key (for A2A message verification)
+func (r *Repository) GetAgentBySigningKeyHash(ctx context.Context, signingKey string) (*AgentIdentity, error) {
+	keyHash := hashAPIKey(signingKey)
+	var agent AgentIdentity
+	err := r.db.WithContext(ctx).Where("signing_key_hash = ? AND status = ?", keyHash, AgentStatusActive).First(&agent).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("invalid signing key")
+		}
+		return nil, fmt.Errorf("failed to authenticate agent by signing key: %w", err)
 	}
 	return &agent, nil
 }
@@ -197,6 +219,17 @@ func generateAPIKey() (string, string, error) {
 	return rawKey, hashAPIKey(rawKey), nil
 }
 
+// generateSigningKey creates a random signing key for agent-to-agent message authentication
+// Returns (plaintext, hash)
+func generateSigningKey() (string, string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", "", err
+	}
+	rawKey := "ags_" + hex.EncodeToString(b)
+	return rawKey, hashAPIKey(rawKey), nil
+}
+
 // hashAPIKey returns the SHA-256 hash of an API key
 func hashAPIKey(key string) string {
 	h := sha256.Sum256([]byte(key))
@@ -204,37 +237,22 @@ func hashAPIKey(key string) string {
 }
 
 // defaultQuotaForPlan creates a default quota config based on the plan tier
+// Supports both legacy agent tiers (agent_starter, etc.) and main plan names (starter, professional, etc.)
 func defaultQuotaForPlan(agentID, planTier string) *AgentQuotaConfig {
 	quota := &AgentQuotaConfig{
 		ID:      uuid.New(),
 		AgentID: agentID,
 	}
 
-	switch planTier {
-	case plans.PlanAgentScale:
-		quota.MaxCallsPerMinute = plans.AgentScaleMaxCallsPerMinute
-		quota.MaxCallsPerDay = plans.AgentScaleMaxCallsPerDay
-		quota.MaxStateWritesPerHr = plans.AgentScaleMaxStateWritesPerHr
-		quota.MaxDailySpendUSD = plans.AgentScaleDailySpendCapUSD
-	case plans.PlanAgentPro:
-		quota.MaxCallsPerMinute = plans.AgentProMaxCallsPerMinute
-		quota.MaxCallsPerDay = plans.AgentProMaxCallsPerDay
-		quota.MaxStateWritesPerHr = plans.AgentProMaxStateWritesPerHr
-		quota.MaxDailySpendUSD = plans.AgentProDailySpendCapUSD
-	case plans.PlanAgentEnterprise:
-		// Enterprise: very high defaults, customized per contract
-		quota.MaxCallsPerMinute = 10000
-		quota.MaxCallsPerDay = 10_000_000
-		quota.MaxStateWritesPerHr = 500_000
-		quota.MaxDailySpendUSD = 10000.0
-	default: // agent_starter
-		quota.MaxCallsPerMinute = plans.AgentStarterMaxCallsPerMinute
-		quota.MaxCallsPerDay = plans.AgentStarterMaxCallsPerDay
-		quota.MaxStateWritesPerHr = plans.AgentStarterMaxStateWritesPerHr
-		quota.MaxDailySpendUSD = plans.AgentStarterDailySpendCapUSD
-	}
+	// Use unified limit getter for all plan types
+	maxCallsPerMinute, maxCallsPerDay, maxStateWritesPerHr, maxDailySpendUSD := plans.GetAgentTierLimits(planTier)
 
+	quota.MaxCallsPerMinute = maxCallsPerMinute
+	quota.MaxCallsPerDay = maxCallsPerDay
+	quota.MaxStateWritesPerHr = maxStateWritesPerHr
+	quota.MaxDailySpendUSD = maxDailySpendUSD
 	quota.MaxCostPerExecution = 0.01
+
 	return quota
 }
 
@@ -246,6 +264,32 @@ func (r *Repository) CreateAgentHiring(ctx context.Context, hiring *AgentHiring)
 	hiring.CreatedAt = time.Now()
 	hiring.UpdatedAt = time.Now()
 	return r.db.WithContext(ctx).Create(hiring).Error
+}
+
+// CountAgentHiring returns the total number of hiring records for an agent
+func (r *Repository) CountAgentHiring(ctx context.Context, agentID string) (int, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&AgentHiring{}).Where("agent_id = ?", agentID).Count(&count).Error
+	return int(count), err
+}
+
+// CountHiringByHirer returns the total number of hiring records made by a specific hirer
+func (r *Repository) CountHiringByHirer(ctx context.Context, hirerID string) (int, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&AgentHiring{}).Where("hirer_id = ?", hirerID).Count(&count).Error
+	return int(count), err
+}
+
+// GetAgentHiringHistory returns hiring records for an agent with pagination
+func (r *Repository) GetAgentHiringHistory(ctx context.Context, agentID string, limit, offset int) ([]AgentHiring, error) {
+	var hirings []AgentHiring
+	err := r.db.WithContext(ctx).
+		Where("agent_id = ?", agentID).
+		Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&hirings).Error
+	return hirings, err
 }
 
 // CreateFunctionPurchase creates a new function purchase record

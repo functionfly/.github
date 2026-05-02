@@ -32,6 +32,7 @@
   "cache_ttl": 3600,
   "timeout_ms": 1000,
   "memory_mb": 128,
+  "price_per_call": 0.003,
   "example": {
     "input": {
       "text": "Artificial intelligence is transforming industries. Machine learning enables computers to learn from data. Deep learning uses neural networks with many layers.",

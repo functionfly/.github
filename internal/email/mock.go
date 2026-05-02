@@ -313,6 +313,22 @@ func (m *MockService) SendTeamInvite(email, orgName, invitedBy, role, acceptURL 
 	return m.sendEmail(email, subject, text, html)
 }
 
+func (m *MockService) SendBundleWelcomeEmail(email, bundleName, dashboardURL string) error {
+	subject := fmt.Sprintf("[TEST] Welcome to %s — FunctionFly", bundleName)
+	tpl := BundleWelcomeTemplate(bundleName, dashboardURL)
+	html := TestBannerHTML(tpl.HTML)
+	text := TestBannerText(tpl.Text)
+	return m.sendEmail(email, subject, text, html)
+}
+
+func (m *MockService) SendInviteEmail(email, inviterName, orgName, role, acceptURL string) error {
+	subject := fmt.Sprintf("[TEST] You're Invited to Join %s — FunctionFly", orgName)
+	tpl := InviteEmailTemplate(inviterName, orgName, role, acceptURL)
+	html := TestBannerHTML(tpl.HTML)
+	text := TestBannerText(tpl.Text)
+	return m.sendEmail(email, subject, text, html)
+}
+
 func (m *MockService) SendVaultSecretShared(email, secretName, sharedBy, accessLevel, viewURL string) error {
 	subject := "[TEST] Secret Shared with You — FunctionFly Vault"
 	tpl := VaultSecretSharedTemplate(secretName, sharedBy, accessLevel, viewURL)

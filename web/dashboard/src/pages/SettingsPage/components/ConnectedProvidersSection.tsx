@@ -24,7 +24,7 @@ interface ProviderCredential {
   status: string;
   connectedAt: string;
   maskedApiKey: string;
-  isStale: boolean;
+  isStale?: boolean;
   lastUsedAt?: string;
 }
 
@@ -38,8 +38,7 @@ export function ConnectedProvidersSection() {
     queryKey: ["provider-credentials"],
     queryFn: async () => {
       try {
-        const res = await providersApi.getProviderCredentials();
-        return res.data as ProviderCredential[];
+        return await providersApi.getProviderCredentials();
       } catch (e: unknown) {
         const status = (e as { response?: { status?: number } })?.response?.status;
         if (status === 404) return [];

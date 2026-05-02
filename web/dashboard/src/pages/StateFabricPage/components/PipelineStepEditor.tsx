@@ -96,8 +96,8 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
     type: 'transform',
     config: defaultStepConfig.transform,
     enabled: true,
-    timeoutMs: 30000,
-    retryCount: 3,
+    timeout: 30000,
+    retry_count: 3,
   });
 
   const handleAddStep = async () => {
@@ -112,8 +112,8 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
         config: newStep.config || {},
         order: steps.length,
         enabled: newStep.enabled ?? true,
-        timeoutMs: newStep.timeoutMs ?? 30000,
-        retryCount: newStep.retryCount ?? 3,
+        timeout: newStep.timeout ?? 30000,
+        retry_count: newStep.retry_count ?? 3,
       };
 
       const updatedSteps = [...steps, step];
@@ -126,8 +126,8 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
         type: 'transform',
         config: defaultStepConfig.transform,
         enabled: true,
-        timeoutMs: 30000,
-        retryCount: 3,
+        timeout: 30000,
+        retry_count: 3,
       });
     } finally {
       setIsSubmitting(false);
@@ -448,8 +448,8 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
                       </div>
                       <p className="text-sm text-text-muted">{stepTypeDescriptions[step.type]}</p>
                       <div className="flex items-center gap-4 mt-2 text-xs text-text-muted">
-                        <span>Timeout: {step.timeoutMs}ms</span>
-                        <span>Retries: {step.retryCount}</span>
+                        <span>Timeout: {step.timeout}ms</span>
+                        <span>Retries: {step.retry_count}</span>
                       </div>
                     </div>
 
@@ -526,8 +526,8 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
                 <Label>Timeout (ms)</Label>
                 <Input
                   type="number"
-                  value={newStep.timeoutMs || 30000}
-                  onChange={(e) => setNewStep({ ...newStep, timeoutMs: parseInt(e.target.value) })}
+                  value={newStep.timeout || 30000}
+                  onChange={(e) => setNewStep({ ...newStep, timeout: parseInt(e.target.value) })}
                   min={1000}
                   max={300000}
                 />
@@ -536,8 +536,8 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
                 <Label>Retry Count</Label>
                 <Input
                   type="number"
-                  value={newStep.retryCount || 3}
-                  onChange={(e) => setNewStep({ ...newStep, retryCount: parseInt(e.target.value) })}
+                  value={newStep.retry_count || 3}
+                  onChange={(e) => setNewStep({ ...newStep, retry_count: parseInt(e.target.value) })}
                   min={0}
                   max={10}
                 />
@@ -615,9 +615,9 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
                   <Label>Timeout (ms)</Label>
                   <Input
                     type="number"
-                    value={editingStep.timeoutMs}
+                    value={editingStep.timeout}
                     onChange={(e) =>
-                      setEditingStep({ ...editingStep, timeoutMs: parseInt(e.target.value) })
+                      setEditingStep({ ...editingStep, timeout: parseInt(e.target.value) })
                     }
                     min={1000}
                     max={300000}
@@ -627,9 +627,9 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
                   <Label>Retry Count</Label>
                   <Input
                     type="number"
-                    value={editingStep.retryCount}
+                    value={editingStep.retry_count}
                     onChange={(e) =>
-                      setEditingStep({ ...editingStep, retryCount: parseInt(e.target.value) })
+                      setEditingStep({ ...editingStep, retry_count: parseInt(e.target.value) })
                     }
                     min={0}
                     max={10}

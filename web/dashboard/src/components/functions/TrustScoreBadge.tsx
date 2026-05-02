@@ -114,11 +114,12 @@ interface MetricItemProps {
 }
 
 function MetricItem({ label, value, icon: Icon, colorClass, description }: MetricItemProps) {
+  const IconComponent = Icon as React.ComponentType<{ className?: string }>;
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-xs">
         <div className="flex items-center gap-1.5">
-          <Icon className={cn("h-3.5 w-3.5", colorClass)} />
+          <IconComponent className={cn("h-3.5 w-3.5", colorClass)} />
           <span className="text-text-secondary">{label}</span>
         </div>
         <span className={cn("font-semibold", colorClass)}>{Math.round(value)}%</span>
@@ -459,10 +460,11 @@ function TooltipMetricRow({
   icon: React.ElementType;
   colorClass: string;
 }) {
+  const IconComponent = Icon as React.ComponentType<{ className?: string }>;
   return (
     <div className="flex items-center justify-between text-xs">
       <div className="flex items-center gap-1.5">
-        <Icon className={cn("h-3.5 w-3.5", colorClass)} />
+        <IconComponent className={cn("h-3.5 w-3.5", colorClass)} />
         <span className="text-text-secondary">{label}</span>
       </div>
       <span className={cn("font-medium", colorClass)}>{Math.round(value)}%</span>
@@ -540,7 +542,6 @@ export function TrustScoreBadge({
         <TooltipTrigger asChild>{content}</TooltipTrigger>
         <TooltipContent
           side="top"
-          align="center"
           sideOffset={8}
           className="bg-bg-primary border-border-subtle p-3 shadow-lg"
         >

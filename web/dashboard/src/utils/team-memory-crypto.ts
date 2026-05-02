@@ -51,7 +51,7 @@ export class TeamMemoryCrypto {
     return crypto.subtle.deriveKey(
       {
         name: 'PBKDF2',
-        salt,
+        salt: salt as BufferSource,
         iterations: PBKDF2_ITERATIONS,
         hash: 'SHA-256'
       },
@@ -107,9 +107,9 @@ export class TeamMemoryCrypto {
 
     // Decrypt
     const decrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv, tagLength: TAG_SIZE * 8 },
+      { name: 'AES-GCM', iv: iv as BufferSource, tagLength: TAG_SIZE * 8 },
       this.key,
-      combined
+      combined as BufferSource
     );
 
     // Decode JSON

@@ -29,6 +29,12 @@ import {
   DEFAULT_ROTATION_DAYS,
 } from "@/types/api-key";
 import { apiKeysService, storeNewApiKey } from "@/services/api-keys";
+import {
+  storeApiKeyInVault,
+  isVaultPassphraseSet,
+  getVaultPassphrase,
+  markVaultApiKeyStored,
+} from "@/services/vault-api-key-storage";
 import { toast } from "sonner";
 
 interface CreateAPIKeyModalProps {
@@ -58,6 +64,9 @@ export function CreateAPIKeyModal({
   const [rph, setRph] = useState(DEFAULT_RATE_LIMIT.rph);
   const [rpd, setRpd] = useState(DEFAULT_RATE_LIMIT.rpd);
   const [error, setError] = useState<string | null>(null);
+  const [saveToVault, setSaveToVault] = useState(false);
+  const [vaultSaveStatus, setVaultSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle');
+  const [hasVaultPassphrase, setHasVaultPassphrase] = useState(false);
 
   const resetForm = () => {
     setName("");
@@ -68,7 +77,14 @@ export function CreateAPIKeyModal({
     setRph(DEFAULT_RATE_LIMIT.rph);
     setRpd(DEFAULT_RATE_LIMIT.rpd);
     setError(null);
+    setVaultSaveStatus('idle');
   };
+
+  useEffect(() => {
+    const hasVault = isVaultPassphraseSet();
+    setHasVaultPassphrase(hasVault);
+    setSaveToVault(hasVault);
+  }, [open]);
 
   // Live countdown and auto-close when showing the new key
   useEffect(() => {
@@ -115,8 +131,31 @@ export function CreateAPIKeyModal({
       const plaintext = response.plaintext ?? "";
       setCopied(false);
       setShowKey(plaintext || null);
+
+      if (saveToVault && plaintext && hasVaultPassphrase) {
+        setVaultSaveStatus('saving');
+        try {
+          const passphrase = await getVaultPassphrase();
+          if (passphrase) {
+            await storeApiKeyInVault(response, passphrase);
+            markVaultApiKeyStored(response.id);
+            setVaultSaveStatus('saved');
+            toast.success('API key saved to vault', {
+              description: 'Your key is now encrypted and stored securely',
+            });
+          } else {
+            setVaultSaveStatus('failed');
+          }
+        } catch (vaultErr) {
+          console.error('Failed to save to vault:', vaultErr);
+          setVaultSaveStatus('failed');
+          toast.error('Failed to save to vault', {
+            description: 'Your API key was created but could not be saved to vault',
+          });
+        }
+      }
+
       onSuccess?.({ ...data, plaintext });
-      // If no plaintext in response, close modal so user isn't stuck (key still created, list will update)
       if (!plaintext) {
         resetForm();
         onOpenChange(false);
@@ -312,6 +351,52 @@ export function CreateAPIKeyModal({
               />
             </div>
           </div>
+
+          {hasVaultPassphrase ? (
+            <div className="flex items-start space-x-3 p-4 rounded-lg bg-muted/50 border border-border-subtle">
+              <input
+                type="checkbox"
+                id="saveToVault"
+                checked={saveToVault}
+                onChange={(e) => setSaveToVault(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-border text-brand-500 focus:ring-brand-500"
+              />
+              <div className="flex-1">
+                <Label htmlFor="saveToVault" className="text-sm font-medium cursor-pointer">
+                  Encrypt and store in Vault
+                </Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Your API key will be encrypted client-side and stored securely in your vault.
+                  {vaultSaveStatus === 'saved' && (
+                    <span className="text-green-600 ml-1">Saved</span>
+                  )}
+                  {vaultSaveStatus === 'saving' && (
+                    <span className="text-amber-600 ml-1">Saving...</span>
+                  )}
+                  {vaultSaveStatus === 'failed' && (
+                    <span className="text-red-600 ml-1">Failed - key created but not stored in vault</span>
+                  )}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <strong>Want to secure your API keys?</strong>{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onOpenChange(false);
+                    window.dispatchEvent(new CustomEvent('openVaultSetup'));
+                  }}
+                  className="underline hover:no-underline"
+                >
+                  Set up Vault
+                </button>{" "}
+                to encrypt and store your keys securely.
+              </p>
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

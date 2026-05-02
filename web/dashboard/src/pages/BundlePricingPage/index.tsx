@@ -1,4 +1,4 @@
-import { getBundles, registerFounderMode, createBundleCheckout } from '@/api/billing';
+import { getBundles, registerFounderMode, createBundleCheckout, type Bundle } from '@/api/billing';
 import { MetaTags } from '@/components/seo/MetaTags';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,24 +20,7 @@ import { useWindowSize } from 'react-use';
 import { BundleCard } from './components/BundleCard';
 import { FounderModeModal } from './components/FounderModeModal';
 import { DeferredBillingSelector } from './components/DeferredBillingSelector';
-
-interface Bundle {
-  id: string;
-  slug: string;
-  name: string;
-  display_name: string;
-  description: string;
-  short_description: string;
-  price_cents: number;
-  price_usd: string;
-  billing_interval: string;
-  icon: string;
-  color: string;
-  features_included: string[];
-  feature_limits: Record<string, number>;
-  provisioning_steps: string[];
-  is_popular: boolean;
-}
+import { DeployWizard } from './components/DeployWizard';
 
 type PricingMode = 'immediate' | 'deferred';
 
@@ -63,6 +46,7 @@ export function BundlePricingPage() {
   const [selectedBundle, setSelectedBundle] = useState<Bundle | null>(null);
   const [pricingMode, setPricingMode] = useState<PricingMode>('immediate');
   const [showFounderModal, setShowFounderModal] = useState(false);
+  const [showDeployWizard, setShowDeployWizard] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const user = useAuthStore((s) => s.user);
 
@@ -85,11 +69,12 @@ export function BundlePricingPage() {
   const handleBundleSelect = (bundle: Bundle) => {
     setSelectedBundle(bundle);
 
-    if (pricingMode === 'deferred') {
-      setShowFounderModal(true);
-    } else {
-      handleImmediateCheckout(bundle);
+    if (!user) {
+      navigate(`/signup?returnTo=/pricing/bundles&plan=${bundle.slug}`);
+      return;
     }
+
+    setShowDeployWizard(true);
   };
 
   const handleImmediateCheckout = async (bundle: Bundle) => {
@@ -129,33 +114,19 @@ export function BundlePricingPage() {
 
     setCheckoutLoading(true);
     try {
-      await registerFounderMode(selectedBundle.slug, {
-        mode_type: modeType,
-        free_days: freeDays,
-        mrr_threshold: mrrThreshold * 100, // Convert dollars to cents
-        success_url: `${window.location.origin}/dashboard?founder=true`,
-        cancel_url: `${window.location.origin}/pricing/bundles`,
-      });
-
-      toast.success('🎉 Founder mode activated! Start building for free.');
-      setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 3000);
-
-      // Redirect to dashboard after a moment
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 2000);
+      toast.success('🎉 Activating Founder Mode!');
+      setShowFounderModal(false);
+      setShowDeployWizard(true);
     } catch (error) {
       console.error('Founder mode registration error:', error);
       toast.error('Failed to register founder mode. Please try again.');
     } finally {
       setCheckoutLoading(false);
-      setShowFounderModal(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950">
+    <div className="min-h-screen bg-bg-primary relative">
       <MetaTags
         title="Backend-in-a-Box Pricing | FunctionFly"
         description="Pre-configured backend bundles with viral pricing: SaaS Starter, Marketplace, and AI App packs. Start free until you hit 100 users or $1K MRR."
@@ -164,10 +135,9 @@ export function BundlePricingPage() {
       {showConfetti && <Confetti width={width} height={height} recycle={false} numberOfPieces={200} />}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Back Link */}
         <Link
           to="/pricing"
-          className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 mb-8 transition-colors"
+          className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary mb-8 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to all pricing
@@ -179,31 +149,31 @@ export function BundlePricingPage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded-full text-sm font-semibold mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-brand-500 to-brand-400 text-white rounded-full text-sm font-semibold mb-6">
             <Sparkles className="w-4 h-4" />
             Backend-in-a-Box Pricing
           </div>
 
-          <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 dark:text-white mb-4">
+          <h1 className="text-4xl sm:text-5xl font-bold text-text-primary mb-4">
             One Click → Full Backend
           </h1>
 
-          <p className="text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto mb-6">
-            Pre-configured bundles that include everything you need. 
+          <p className="text-xl text-text-secondary max-w-2xl mx-auto mb-6">
+            Pre-configured bundles that include everything you need.
             No thinking required. Just build.
           </p>
 
           {/* Viral Pricing Badges */}
           <div className="flex flex-wrap justify-center gap-4 text-sm">
-            <div className="flex items-center gap-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full">
+            <div className="flex items-center gap-2 px-4 py-2 bg-success/10 dark:bg-success/20 text-success rounded-full">
               <Clock className="w-4 h-4" />
               Free for 3 months (Founder Mode)
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full">
+            <div className="flex items-center gap-2 px-4 py-2 bg-info/10 dark:bg-info/20 text-info rounded-full">
               <TrendingUp className="w-4 h-4" />
               Or free until $1K MRR
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-full">
+            <div className="flex items-center gap-2 px-4 py-2 bg-brand-500/10 dark:bg-brand-500/20 text-brand-400 rounded-full">
               <Zap className="w-4 h-4" />
               Or free until 100 users
             </div>
@@ -222,7 +192,7 @@ export function BundlePricingPage() {
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-96 bg-slate-200 dark:bg-slate-800 rounded-2xl animate-pulse"
+                className="h-96 bg-bg-secondary rounded-2xl animate-pulse"
               />
             ))}
           </div>
@@ -244,7 +214,7 @@ export function BundlePricingPage() {
         {/* Fallback if no bundles loaded */}
         {!loading && bundles.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-slate-500 dark:text-slate-400">
+            <p className="text-text-muted">
               No bundles available. Please check back later.
             </p>
           </div>
@@ -257,32 +227,32 @@ export function BundlePricingPage() {
           transition={{ delay: 0.5 }}
           className="mt-16 text-center"
         >
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-lg">
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">
+          <div className="bg-bg-secondary rounded-2xl p-8 shadow-lg">
+            <h3 className="text-2xl font-bold text-text-primary mb-4">
               Why founders love this
             </h3>
             <div className="grid sm:grid-cols-3 gap-6">
               <div>
-                <div className="text-3xl font-bold text-violet-600 dark:text-violet-400 mb-2">
+                <div className="text-3xl font-bold text-brand-400 mb-2">
                   0
                 </div>
-                <p className="text-slate-600 dark:text-slate-400">
+                <p className="text-text-secondary">
                   Decision fatigue. Everything's pre-configured.
                 </p>
               </div>
               <div>
-                <div className="text-3xl font-bold text-violet-600 dark:text-violet-400 mb-2">
+                <div className="text-3xl font-bold text-brand-400 mb-2">
                   $0
                 </div>
-                <p className="text-slate-600 dark:text-slate-400">
+                <p className="text-text-secondary">
                   To start. Pay only when you succeed.
                 </p>
               </div>
               <div>
-                <div className="text-3xl font-bold text-violet-600 dark:text-violet-400 mb-2">
+                <div className="text-3xl font-bold text-brand-400 mb-2">
                   5min
                 </div>
-                <p className="text-slate-600 dark:text-slate-400">
+                <p className="text-text-secondary">
                   To production-ready backend.
                 </p>
               </div>
@@ -297,7 +267,7 @@ export function BundlePricingPage() {
           transition={{ delay: 0.6 }}
           className="mt-12 max-w-3xl mx-auto"
         >
-          <h3 className="text-2xl font-bold text-slate-900 dark:text-white text-center mb-6">
+          <h3 className="text-2xl font-bold text-text-primary text-center mb-6">
             Frequently Asked Questions
           </h3>
           <div className="space-y-4">
@@ -333,6 +303,23 @@ export function BundlePricingPage() {
         onSubmit={handleFounderModeSubmit}
         loading={checkoutLoading}
       />
+
+      {/* Deploy Wizard */}
+      {selectedBundle && (
+        <DeployWizard
+          open={showDeployWizard}
+          onOpenChange={setShowDeployWizard}
+          bundle={selectedBundle}
+          pricingMode={pricingMode}
+          onDeployComplete={(appId, backendId) => {
+            toast.success('Bundle deployed successfully!');
+            setTimeout(() => navigate(`/dashboard/apps/${appId}`), 1500);
+          }}
+          onDeployError={(error) => {
+            toast.error(error);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -341,21 +328,21 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm overflow-hidden">
+    <div className="bg-bg-secondary rounded-lg shadow-sm overflow-hidden">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-6 py-4 flex items-center justify-between text-left"
+        className="w-full px-6 py-4 flex items-center justify-between text-left hover:text-ff-flame transition-colors"
       >
-        <span className="font-semibold text-slate-900 dark:text-white">
+        <span className="font-semibold text-text-primary">
           {question}
         </span>
-        <span className="text-slate-400">
+        <span className="text-text-muted">
           {isOpen ? '−' : '+'}
         </span>
       </button>
       {isOpen && (
         <div className="px-6 pb-4">
-          <p className="text-slate-600 dark:text-slate-400">{answer}</p>
+          <p className="text-text-secondary">{answer}</p>
         </div>
       )}
     </div>

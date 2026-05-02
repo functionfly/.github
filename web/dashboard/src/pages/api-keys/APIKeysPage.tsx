@@ -34,6 +34,7 @@ import {
   CreateAPIKeyModal,
   APIKeyRotationModal,
 } from "@/components/api-keys";
+import { VaultSetupDialog } from "@/components/api-keys/VaultSetupDialog";
 import { APIKey, APIKeyFilters, DEFAULT_RATE_LIMIT } from "@/types/api-key";
 import { apiKeysService, getStoredApiKey } from "@/services/api-keys";
 import { getApiBaseUrl } from "@/lib/constants";
@@ -54,9 +55,16 @@ export function APIKeysPage() {
   const [usageOpen, setUsageOpen] = useState(false);
   const [securityOpen, setSecurityOpen] = useState(true);
   const [copiedSnippet, setCopiedSnippet] = useState(false);
+  const [showVaultSetup, setShowVaultSetup] = useState(false);
 
   const toggleUsage = () => setUsageOpen((v) => !v);
   const toggleSecurity = () => setSecurityOpen((v) => !v);
+
+  useEffect(() => {
+    const handleOpenVaultSetup = () => setShowVaultSetup(true);
+    window.addEventListener('openVaultSetup', handleOpenVaultSetup);
+    return () => window.removeEventListener('openVaultSetup', handleOpenVaultSetup);
+  }, []);
 
   // Check for stored newly created API key
   useEffect(() => {
@@ -379,6 +387,18 @@ export function APIKeysPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <VaultSetupDialog
+        open={showVaultSetup}
+        onOpenChange={setShowVaultSetup}
+        mode="setup"
+        onSuccess={() => {
+          toast.success('Vault set up successfully', {
+            description: 'You can now encrypt and store API keys securely',
+          });
+          setShowCreateModal(true);
+        }}
+      />
     </div>
   );
 }

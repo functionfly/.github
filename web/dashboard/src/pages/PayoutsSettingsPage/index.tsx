@@ -1,14 +1,13 @@
 import { AffiliatePanel } from '@/components/payouts/AffiliatePanel';
-import { PayoutsComingSoon } from '@/components/payouts/PayoutsComingSoon';
+import { PublisherPayoutsPanel } from '@/components/payouts/PublisherPayoutsPanel';
+import { PayoutScheduleSettings } from '@/components/payouts/PayoutScheduleSettings';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ROUTES } from '@/lib/constants';
 import { useAuthStore } from '@/stores/authStore';
 import { ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
-/**
- * Full-page publisher payouts. Route must stay at `/settings/payouts` (Stripe Connect return URLs).
- */
 export function PayoutsSettingsPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -31,7 +30,7 @@ export function PayoutsSettingsPage() {
           <div>
             <h1 className="text-2xl font-bold text-text-primary">Publisher payouts</h1>
             <p className="text-text-secondary">
-              Connect a bank account via Stripe and withdraw earnings to your account.
+              Connect a bank account via Stripe, manage payout schedule, and withdraw earnings.
             </p>
             <p className="mt-2 text-sm text-text-muted">
               Looking for subscription billing?{' '}
@@ -46,8 +45,25 @@ export function PayoutsSettingsPage() {
         </div>
       </div>
 
-      <AffiliatePanel />
-      <PayoutsComingSoon />
+      <Tabs defaultValue="payouts" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="payouts">Payouts</TabsTrigger>
+          <TabsTrigger value="schedule">Schedule</TabsTrigger>
+          <TabsTrigger value="affiliate">Affiliate</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="payouts" className="space-y-6">
+          <PublisherPayoutsPanel />
+        </TabsContent>
+
+        <TabsContent value="schedule" className="space-y-6">
+          <PayoutScheduleSettings />
+        </TabsContent>
+
+        <TabsContent value="affiliate" className="space-y-6">
+          <AffiliatePanel />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

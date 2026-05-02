@@ -270,7 +270,7 @@ export function EvolutionPanel() {
         </div>
 
         {/* Evolution Mode Toggle */}
-        <Card variant="outline" className="mb-4">
+        <Card className="mb-4 border-border-subtle">
           <CardContent className="p-3 flex items-center justify-between">
             <div>
               <p className="text-sm font-medium">Evolution Mode</p>

@@ -131,6 +131,15 @@ func (h *Handler) HandleSystemMetrics(w http.ResponseWriter, r *http.Request) {
 		apiResponsiveness = 95
 	}
 
+	apiVersion := os.Getenv("API_VERSION")
+	if apiVersion == "" {
+		apiVersion = "1.0.0"
+	}
+	environment := os.Getenv("ENVIRONMENT")
+	if environment == "" {
+		environment = "development"
+	}
+
 	data := map[string]interface{}{
 		"status":            status,
 		"uptime":            0, // Process uptime would require global start time
@@ -139,6 +148,8 @@ func (h *Handler) HandleSystemMetrics(w http.ResponseWriter, r *http.Request) {
 		"diskUsage":         0, // Would require os.Stat or syscall
 		"apiResponsiveness": apiResponsiveness,
 		"databaseHealth":    dbHealth,
+		"apiVersion":        apiVersion,
+		"environment":       environment,
 	}
 	// Optional: set memoryUsage from Go runtime (process heap, not system-wide)
 	var m runtime.MemStats
@@ -153,8 +164,9 @@ func (h *Handler) HandleSystemMetrics(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"data":    data,
-		"success": true,
+		"data":      data,
+		"success":   true,
+		"timestamp": time.Now().Format(time.RFC3339),
 	})
 }
 

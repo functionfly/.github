@@ -1,9 +1,16 @@
 package payment
 
 import (
+	"context"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
+
+	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/google/uuid"
+	"github.com/stripe/stripe-go/v83"
+	"github.com/stripe/stripe-go/v83/tax/calculation"
 )
 
 // TaxService provides tax calculation and management using Stripe Tax
@@ -17,6 +24,142 @@ func NewTaxService() *TaxService {
 	return &TaxService{
 		enabled: stripeKey() != "",
 	}
+}
+
+// TaxCalculationParams contains parameters for tax calculation
+type TaxCalculationParams struct {
+	AmountCents         int64
+	Currency            string
+	CustomerID          string
+	CustomerCountry     string
+	CustomerState       string
+	CustomerPostalCode  string
+	TaxID               string
+	TaxIDType           string
+	LineItemDescription string
+}
+
+// CalculateTax calculates tax using Stripe Tax API
+// Returns TaxCalculationResult with tax amount and breakdown
+func (s *TaxService) CalculateTax(ctx context.Context, params TaxCalculationParams) (*TaxCalculationResult, error) {
+	if !s.enabled {
+		return nil, fmt.Errorf("Stripe Tax is not configured")
+	}
+
+	if params.AmountCents <= 0 {
+		return nil, fmt.Errorf("amount must be positive")
+	}
+	if params.Currency == "" {
+		params.Currency = "USD"
+	}
+
+	customerDetails := &stripe.TaxCalculationCustomerDetailsParams{
+		Address: &stripe.AddressParams{
+			Country: stripe.String(params.CustomerCountry),
+		},
+		AddressSource: stripe.String(string(stripe.TaxCalculationCustomerDetailsAddressSourceBilling)),
+	}
+
+	if params.CustomerPostalCode != "" {
+		customerDetails.Address.PostalCode = stripe.String(params.CustomerPostalCode)
+	}
+	if params.CustomerState != "" {
+		customerDetails.Address.State = stripe.String(params.CustomerState)
+	}
+
+	if params.TaxID != "" {
+		taxID := &stripe.TaxCalculationCustomerDetailsTaxIDParams{
+			Type: stripe.String(params.TaxIDType),
+		}
+		taxID.Value = stripe.String(params.TaxID)
+		customerDetails.TaxIDs = []*stripe.TaxCalculationCustomerDetailsTaxIDParams{taxID}
+	}
+
+	calcParams := &stripe.TaxCalculationParams{
+		Currency: stripe.String(strings.ToLower(params.Currency)),
+		LineItems: []*stripe.TaxCalculationLineItemParams{
+			{
+				Amount:      stripe.Int64(params.AmountCents),
+				Reference:   stripe.String(params.LineItemDescription),
+				TaxBehavior: stripe.String(string(stripe.TaxTransactionLineItemTaxBehaviorExclusive)),
+			},
+		},
+		CustomerDetails: customerDetails,
+	}
+
+	calc, err := calculation.New(calcParams)
+	if err != nil {
+		return nil, fmt.Errorf("Stripe Tax calculation failed: %w", err)
+	}
+
+	taxAmount := calc.TaxAmountExclusive
+	taxRate := 0.0
+	taxName := "Tax"
+	jurisdiction := ""
+
+	if len(calc.TaxBreakdown) > 0 && calc.TaxBreakdown[0].TaxRateDetails != nil {
+		if calc.TaxBreakdown[0].TaxRateDetails.PercentageDecimal != "" {
+			if rate, err := strconv.ParseFloat(calc.TaxBreakdown[0].TaxRateDetails.PercentageDecimal, 64); err == nil {
+				taxRate = rate
+			}
+		}
+		if calc.TaxBreakdown[0].TaxRateDetails.TaxType != "" {
+			taxName = string(calc.TaxBreakdown[0].TaxRateDetails.TaxType)
+		}
+		if calc.TaxBreakdown[0].TaxRateDetails.Country != "" {
+			jurisdiction = calc.TaxBreakdown[0].TaxRateDetails.Country
+		}
+		if calc.TaxBreakdown[0].TaxRateDetails.State != "" {
+			if jurisdiction != "" {
+				jurisdiction += "/" + calc.TaxBreakdown[0].TaxRateDetails.State
+			} else {
+				jurisdiction = calc.TaxBreakdown[0].TaxRateDetails.State
+			}
+		}
+	}
+
+	result := &TaxCalculationResult{
+		TaxAmountCents:      taxAmount,
+		SubtotalCents:       params.AmountCents,
+		TotalCents:          params.AmountCents + taxAmount,
+		TaxRatePercentage:   taxRate,
+		TaxName:             taxName,
+		Jurisdiction:        jurisdiction,
+		StripeCalculationID: calc.ID,
+		TaxBreakdown:        make([]TaxBreakdownItem, 0, len(calc.TaxBreakdown)),
+	}
+
+	for _, tb := range calc.TaxBreakdown {
+		item := TaxBreakdownItem{
+			TaxAmount: tb.Amount,
+		}
+		if tb.TaxRateDetails != nil {
+			item.TaxType = string(tb.TaxRateDetails.TaxType)
+			if tb.TaxRateDetails.PercentageDecimal != "" {
+				if rate, err := strconv.ParseFloat(tb.TaxRateDetails.PercentageDecimal, 64); err == nil {
+					item.TaxRate = rate
+				}
+			}
+			if tb.TaxRateDetails.Country != "" {
+				item.Jurisdiction = tb.TaxRateDetails.Country
+			}
+			if tb.TaxRateDetails.State != "" {
+				if item.Jurisdiction != "" {
+					item.Jurisdiction += "/" + tb.TaxRateDetails.State
+				} else {
+					item.Jurisdiction = tb.TaxRateDetails.State
+				}
+			}
+		}
+		result.TaxBreakdown = append(result.TaxBreakdown, item)
+	}
+
+	return result, nil
+}
+
+// UpdateTenantTaxSettings persists tax settings to the tenant record in storage.
+func (s *TaxService) UpdateTenantTaxSettings(ctx context.Context, repo storage.Repository, tenantID uuid.UUID, settings *storage.TaxSettings) error {
+	return repo.UpdateTenantTaxSettings(ctx, tenantID, settings)
 }
 
 // IsEnabled returns whether Stripe Tax is configured and enabled

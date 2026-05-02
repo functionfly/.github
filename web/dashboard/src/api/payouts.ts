@@ -48,6 +48,19 @@ export interface PayoutRequestResult {
   status: string;
 }
 
+export interface PayoutFeeInfo {
+  gross_amount_cents: number;
+  fee_amount_cents: number;
+  net_amount_cents: number;
+  fee_type: string;
+  fee_rate: number;
+}
+
+export interface PayoutRequestWithFee {
+  payout: PayoutRequestResult;
+  fee: PayoutFeeInfo;
+}
+
 export interface PayoutLedgerEntry {
   id: string;
   user_id: string;
@@ -75,54 +88,53 @@ export interface PayoutLedgerResponse {
   offset: number;
 }
 
+export interface PayoutSchedulePreference {
+  schedule_enabled: boolean;
+  frequency: 'weekly' | 'biweekly' | 'monthly';
+  minimum_amount_cents: number;
+  day_of_week?: number;
+  day_of_month?: number;
+  last_auto_payout_at?: string;
+  next_scheduled_at?: string;
+}
+
 // ==================== API Functions ====================
 
-/**
- * Get the current user's Stripe Connect account status.
- */
 export async function getConnectAccountStatus(): Promise<ConnectAccountStatus> {
   return apiClient.get<ConnectAccountStatus>('/v1/payouts/connect-account');
 }
 
-/**
- * Start Stripe Connect onboarding. Returns an onboarding URL.
- */
 export async function startConnectOnboarding(): Promise<OnboardingResult> {
   return apiClient.post<OnboardingResult>('/v1/payouts/connect-account', {});
 }
 
-/**
- * Refresh the connect account status from Stripe.
- */
 export async function refreshConnectAccount(): Promise<ConnectAccountStatus> {
   return apiClient.post<ConnectAccountStatus>('/v1/payouts/connect-account/refresh', {});
 }
 
-/**
- * Get the user's payout balance breakdown.
- */
 export async function getPayoutBalance(): Promise<PayoutBalance> {
   return apiClient.get<PayoutBalance>('/v1/payouts/balance');
 }
 
-/**
- * Request a payout.
- * @param amountCents Amount in USD cents
- * @param idempotencyKey Unique key to prevent duplicate requests
- */
 export async function requestPayout(
   amountCents: number,
-  idempotencyKey: string
-): Promise<PayoutRequestResult> {
-  return apiClient.post<PayoutRequestResult>('/v1/payouts/request', {
+  idempotencyKey: string,
+  feeType = 'standard'
+): Promise<PayoutRequestWithFee> {
+  return apiClient.post<PayoutRequestWithFee>('/v1/payouts/request', {
     amount_cents: amountCents,
     idempotency_key: idempotencyKey,
+    fee_type: feeType,
   });
 }
 
-/**
- * List payout requests.
- */
+export async function cancelPayout(
+  payoutId: string,
+  reason?: string
+): Promise<{ success: boolean; payout_id: string; cancelled_at: string }> {
+  return apiClient.post(`/v1/payouts/${payoutId}/cancel`, { reason: reason ?? '' });
+}
+
 export async function listPayoutRequests(
   limit = 20,
   offset = 0
@@ -132,9 +144,6 @@ export async function listPayoutRequests(
   });
 }
 
-/**
- * List payout ledger entries.
- */
 export async function listPayoutLedger(
   limit = 50,
   offset = 0
@@ -142,4 +151,14 @@ export async function listPayoutLedger(
   return apiClient.get<PayoutLedgerResponse>('/v1/payouts/ledger', {
     params: { limit, offset },
   });
+}
+
+export async function getPayoutSchedule(): Promise<PayoutSchedulePreference> {
+  return apiClient.get<PayoutSchedulePreference>('/v1/payouts/schedule');
+}
+
+export async function updatePayoutSchedule(
+  pref: Omit<PayoutSchedulePreference, 'last_auto_payout_at' | 'next_scheduled_at'>
+): Promise<{ success: boolean; preference: PayoutSchedulePreference }> {
+  return apiClient.put('/v1/payouts/schedule', pref);
 }

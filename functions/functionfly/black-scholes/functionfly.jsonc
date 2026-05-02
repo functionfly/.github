@@ -66,6 +66,7 @@
   "cache_ttl": 3600,
   "timeout_ms": 1000,
   "memory_mb": 128,
+  "price_per_call": 0.005,
   "example": {
     "input": {
       "spot_price": 100,

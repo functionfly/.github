@@ -34,6 +34,28 @@ var OptionalEnvVars = []struct {
 	{"Shutdown Timeout", "SHUTDOWN_TIMEOUT", "30s"},
 }
 
+// GitHubEnvVars lists GitHub-specific environment variables.
+// These are conditionally required when GitHub integration is enabled.
+var GitHubEnvVars = []struct {
+	Name    string
+	EnvVar  string
+	Example string
+}{
+	{"GitHub OAuth Client ID", "GITHUB_CLIENT_ID", "Create at github.com/settings/developers"},
+	{"GitHub OAuth Client Secret", "GITHUB_CLIENT_SECRET", "Create at github.com/settings/developers"},
+}
+
+// GitHubOptionalEnvVars lists optional GitHub environment variables with defaults.
+var GitHubOptionalEnvVars = []struct {
+	Name         string
+	EnvVar       string
+	DefaultValue string
+}{
+	{"GitHub Vault Key", "GITHUB_VAULT_KEY", "(auto-generated dev key)"},
+	{"GitHub Redirect URL", "GITHUB_REDIRECT_URL", "{BASE_URL}/api/v1/github/callback"},
+	{"Frontend URL", "FRONTEND_URL", "http://localhost:3000"},
+}
+
 // ValidateEnv checks that all required environment variables are set.
 // It returns an error listing all missing variables rather than failing on the
 // first one, so operators can fix everything in one pass.
@@ -60,6 +82,25 @@ func ValidateEnv() error {
 	for _, v := range OptionalEnvVars {
 		if strings.TrimSpace(os.Getenv(v.EnvVar)) == "" {
 			logrus.Warnf("ENV: %s (%s) not set, defaulting to %q", v.Name, v.EnvVar, v.DefaultValue)
+		}
+	}
+
+	// Validate GitHub integration env vars (warn if partially configured)
+	ghClientID := strings.TrimSpace(os.Getenv("GITHUB_CLIENT_ID"))
+	ghClientSecret := strings.TrimSpace(os.Getenv("GITHUB_CLIENT_SECRET"))
+	if ghClientID != "" || ghClientSecret != "" {
+		// At least one is set — warn if the other is missing
+		for _, v := range GitHubEnvVars {
+			if strings.TrimSpace(os.Getenv(v.EnvVar)) == "" {
+				logrus.Warnf("ENV: GitHub integration partially configured — %s (%s) is missing. OAuth will fail without both.", v.Name, v.EnvVar)
+			}
+		}
+	} else {
+		logrus.Info("ENV: GitHub integration not configured (GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET not set)")
+	}
+	for _, v := range GitHubOptionalEnvVars {
+		if strings.TrimSpace(os.Getenv(v.EnvVar)) == "" {
+			logrus.Debugf("ENV: %s (%s) not set, defaulting to %q", v.Name, v.EnvVar, v.DefaultValue)
 		}
 	}
 

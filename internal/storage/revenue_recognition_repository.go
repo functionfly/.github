@@ -399,9 +399,19 @@ func (r *RevenueRecognitionRepository) MarkScheduleRecognized(ctx context.Contex
 	query := `
 		UPDATE revenue_recognition_schedules
 		SET is_recognized = true, recognized_at = NOW(), updated_at = NOW()
-		WHERE id = $1`
-	_, err := r.db.ExecContext(ctx, query, id)
-	return err
+		WHERE id = $1 AND is_recognized = false`
+	result, err := r.db.ExecContext(ctx, query, id)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("schedule already recognized or not found")
+	}
+	return nil
 }
 
 func (r *RevenueRecognitionRepository) CreateRecognitionEvent(ctx context.Context, event *RevenueRecognitionEvent) error {

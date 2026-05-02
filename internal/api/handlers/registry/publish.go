@@ -128,7 +128,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 			Author:             req.Author,
 			Name:               req.Name,
 			Visibility:         "public",
-			PricePerCall:       0,
+			PricePerCall:       m.PricePerCall,
 			PopularityScore:    0,
 			ReliabilityScore:   relScore,
 			DeterministicScore: detScore,
@@ -167,6 +167,9 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		}
 		if len(m.Tags) > 0 {
 			meta["tags"] = m.Tags
+		}
+		if m.PricePerCall > 0 {
+			meta["price_per_call"] = m.PricePerCall
 		}
 		// FunctionFly functions get default high trust on function record if not already set
 		if strings.EqualFold(req.Author, "functionfly") && existingFn.ReliabilityScore == 0 && existingFn.DeterministicScore == 0 {

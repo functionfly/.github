@@ -58,6 +58,7 @@ export class PresenceWebSocket {
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
   private listeners: Map<string, Set<(data: PresenceSocketEvent) => void>> = new Map();
   private url: string;
+  private intentionalClose = false;
 
   constructor() {
     const baseUrl = getWebSocketUrl();
@@ -76,6 +77,7 @@ export class PresenceWebSocket {
       this.ws = new WebSocket(this.url);
 
       this.ws.onopen = () => {
+        this.intentionalClose = false;
         this.reconnectAttempts = 0;
         this.startHeartbeat();
         this.emit('connected', { type: 'connected', timestamp: new Date().toISOString() });
@@ -93,7 +95,9 @@ export class PresenceWebSocket {
       this.ws.onclose = () => {
         this.stopHeartbeat();
         this.emit('disconnected', { type: 'disconnected', timestamp: new Date().toISOString() });
-        this.attemptReconnect();
+        if (!this.intentionalClose) {
+          this.attemptReconnect();
+        }
       };
 
       this.ws.onerror = (error) => {
@@ -107,6 +111,7 @@ export class PresenceWebSocket {
   }
 
   disconnect() {
+    this.intentionalClose = true;
     this.stopHeartbeat();
     if (this.ws) {
       this.ws.close();

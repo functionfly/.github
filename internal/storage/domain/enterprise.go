@@ -49,6 +49,7 @@ type BundlePricingRepository interface {
 	ListPricingBundles(ctx context.Context, activeOnly bool) ([]*storage.PricingBundle, error)
 	GetPricingBundleBySlug(ctx context.Context, slug string) (*storage.PricingBundle, error)
 	GetPricingBundleByID(ctx context.Context, id uuid.UUID) (*storage.PricingBundle, error)
+	UpdatePricingBundleStripePrice(ctx context.Context, slug, stripePriceID string) error
 }
 
 // FounderModeRepository handles Founder Mode (viral pricing)

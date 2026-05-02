@@ -224,7 +224,7 @@ export function AgentSDKIntegrationsPage() {
       {/* Header */}
       <div className="sdk-header">
         <div className="flex items-center gap-2 mb-1.5">
-          <ShieldCheck className="h-7 w-7 text-violet-500" />
+          <ShieldCheck className="h-7 w-7 text-orange-500" />
           <h1 className="text-2xl font-bold">SDK Integrations</h1>
           <Badge variant="secondary" className="text-xs">
             Python
@@ -252,7 +252,7 @@ export function AgentSDKIntegrationsPage() {
       </div>
 
       {/* Install banner */}
-      <Card className="border-violet-500/30 bg-violet-500/5 sdk-install-banner">
+      <Card className="border-orange-500/30 bg-orange-500/5 sdk-install-banner">
         <CardContent className="pt-4 pb-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex-1">
@@ -289,7 +289,7 @@ export function AgentSDKIntegrationsPage() {
         <Card id="policy" className="lg:col-span-1 sdk-policy-card scroll-mt-28">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <Shield className="h-4 w-4 text-violet-500" />
+              <Shield className="h-4 w-4 text-orange-500" />
               Trust Policy
             </CardTitle>
             <CardDescription className="text-xs">
@@ -334,7 +334,7 @@ export function AgentSDKIntegrationsPage() {
                 onChange={(e) =>
                   setPolicy((p) => ({ ...p, minTrustScore: Number(e.target.value) }))
                 }
-                className="w-full accent-violet-500"
+                className="w-full accent-orange-500"
               />
               <div className="sdk-slider-ticks">
                 {[0, 50, 80, 100].map((tick) => (
@@ -381,8 +381,8 @@ export function AgentSDKIntegrationsPage() {
                     onClick={() => toggleLevel(level)}
                     className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
                       policy.requiredTrustLevels.includes(level)
-                        ? 'bg-violet-500 border-violet-500 text-white'
-                        : 'border-border text-muted-foreground hover:border-violet-400'
+                        ? 'bg-orange-500 border-orange-500 text-white'
+                         : 'border-border text-muted-foreground hover:border-orange-400'
                     }`}
                   >
                     {level}
@@ -417,7 +417,7 @@ export function AgentSDKIntegrationsPage() {
                 <Info className="h-3 w-3 text-muted-foreground" />
                 <span className="text-[11px] text-muted-foreground font-medium">Policy Hash</span>
               </div>
-              <code className="text-xs font-mono text-violet-400">{hash}</code>
+              <code className="text-xs font-mono text-orange-400">{hash}</code>
               <p className="text-[10px] text-muted-foreground mt-0.5">
                 Included in every execution envelope for audit.
               </p>

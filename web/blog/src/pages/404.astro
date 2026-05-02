@@ -63,8 +63,8 @@ const description = 'The page you are looking for does not exist.';
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.14), transparent 55%),
-      radial-gradient(ellipse 50% 30% at 100% 10%, rgba(16, 185, 129, 0.05), transparent 40%);
+      radial-gradient(ellipse 80% 50% at 50% -20%, color-mix(in srgb, var(--color-primary) 14%, transparent), transparent 55%),
+      radial-gradient(ellipse 50% 30% at 100% 10%, color-mix(in srgb, var(--color-secondary) 5%, transparent), transparent 40%);
   }
 
   .error-page {
@@ -168,10 +168,10 @@ const description = 'The page you are looking for does not exist.';
   }
 
   .btn-primary:hover {
-    background: #4f46e5;
-    border-color: #4f46e5;
+    background: var(--color-primary-dark);
+    border-color: var(--color-primary-dark);
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 8px 20px color-mix(in srgb, var(--color-primary) 30%, transparent);
   }
 
   .btn-secondary {
@@ -182,7 +182,7 @@ const description = 'The page you are looking for does not exist.';
     font-size: 0.9rem;
     font-weight: 500;
     color: var(--color-text);
-    background: rgba(30, 41, 59, 0.5);
+    background: color-mix(in srgb, var(--color-bg-light) 50%, transparent);
     border: 1px solid var(--color-border);
     border-radius: 10px;
     text-decoration: none;
@@ -190,8 +190,8 @@ const description = 'The page you are looking for does not exist.';
   }
 
   .btn-secondary:hover {
-    background: rgba(99, 102, 241, 0.1);
-    border-color: rgba(99, 102, 241, 0.3);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
     transform: translateY(-2px);
   }
 

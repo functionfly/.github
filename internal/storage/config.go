@@ -318,6 +318,16 @@ func loadReadReplicaConfig() []ReadReplicaConfig {
 	return replicas
 }
 
+// parseEnvInt parses an integer from an environment variable or returns default
+func parseEnvInt(key string, defaultValue int) int {
+	if val := os.Getenv(key); val != "" {
+		if intVal, err := strconv.Atoi(val); err == nil {
+			return intVal
+		}
+	}
+	return defaultValue
+}
+
 // getEnvDuration parses a duration from environment variable or returns default
 func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
 	if value := os.Getenv(key); value != "" {
@@ -326,6 +336,71 @@ func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
 		}
 	}
 	return defaultValue
+}
+
+// TenantDatabaseConfig holds configuration for per-tenant dedicated databases
+type TenantDatabaseConfig struct {
+	Enabled        bool
+	Host           string
+	Port           int
+	User           string
+	Password       string
+	TemplateDB     string // Template database name for cloning new tenant DBs
+	Prefix         string // Prefix for tenant DB names (default: "functionfly_tenant_")
+	PoolMin        int
+	PoolMax        int
+	MaxIdleTime    time.Duration
+	ConnMaxLifetime time.Duration
+
+	// Encryption key for storing credentials (references vault)
+	EncryptionKeyID string
+
+	// Template database for cloning
+	UseTemplateDB bool
+
+	// Connection retry settings
+	RetryAttempts int
+	RetryDelay    time.Duration
+}
+
+// LoadTenantDatabaseConfig loads configuration for per-tenant databases from environment variables
+func LoadTenantDatabaseConfig() *TenantDatabaseConfig {
+	enabled := os.Getenv("TENANT_DB_ENABLED") == "true"
+
+	cfg := &TenantDatabaseConfig{
+		Enabled:         enabled,
+		Host:            getEnvOrDefault("TENANT_DB_HOST", "localhost"),
+		Port:            parseEnvInt("TENANT_DB_PORT", 5432),
+		User:            getEnvOrDefault("TENANT_DB_USER", "postgres"),
+		Password:        os.Getenv("TENANT_DB_PASSWORD"),
+		TemplateDB:      getEnvOrDefault("TENANT_DB_TEMPLATE", "functionfly_tenant_template"),
+		Prefix:          getEnvOrDefault("TENANT_DB_PREFIX", "functionfly_tenant_"),
+		PoolMin:         parseEnvInt("TENANT_DB_POOL_MIN", 2),
+		PoolMax:         parseEnvInt("TENANT_DB_POOL_MAX", 10),
+		MaxIdleTime:     getEnvDuration("TENANT_DB_MAX_IDLE_TIME", 5*time.Minute),
+		ConnMaxLifetime:  getEnvDuration("TENANT_DB_CONN_MAX_LIFETIME", 1*time.Hour),
+		EncryptionKeyID: getEnvOrDefault("TENANT_DB_ENCRYPTION_KEY_ID", "tenant-db-key"),
+		UseTemplateDB:    os.Getenv("TENANT_DB_USE_TEMPLATE") == "true",
+		RetryAttempts:   parseEnvInt("TENANT_DB_RETRY_ATTEMPTS", 3),
+		RetryDelay:      getEnvDuration("TENANT_DB_RETRY_DELAY", 2*time.Second),
+	}
+
+	return cfg
+}
+
+// GetTenantDBName returns the database name for a given tenant ID
+func (c *TenantDatabaseConfig) GetTenantDBName(tenantID string) string {
+	// Use first 8 chars of tenant ID for brevity
+	if len(tenantID) >= 8 {
+		return c.Prefix + tenantID[:8]
+	}
+	return c.Prefix + tenantID
+}
+
+// BuildTenantDBConnectionString builds a PostgreSQL connection string for a tenant DB
+func (c *TenantDatabaseConfig) BuildTenantDBConnectionString(dbName string) string {
+	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=require pool_max_conns=%d",
+		c.Host, c.Port, c.User, c.Password, dbName, c.PoolMax)
 }
 
 // calculateConnectionPoolSize dynamically calculates optimal connection pool size based on system resources and load

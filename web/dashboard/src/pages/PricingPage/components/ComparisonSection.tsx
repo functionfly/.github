@@ -213,7 +213,7 @@ export function ComparisonSection({ onPlanSelect }: ComparisonSectionProps) {
                   <div className="flex justify-between">
                     <span className="text-text-secondary">Price:</span>
                     <span className="text-white font-medium">
-                      {plan.price === "Custom" ? "Custom" : `$${plan.price}/mo`}
+                      {`$${(plan as { price: number }).price}/mo`}
                     </span>
                   </div>
                   {comparisonFeatures.map((feature) => (

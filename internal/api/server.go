@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/adapters/aws"
 	"github.com/functionfly/functionfly/internal/adapters/cloudflare"
 	"github.com/functionfly/functionfly/internal/adapters/common"
 	"github.com/functionfly/functionfly/internal/adapters/deno"
@@ -122,6 +123,13 @@ type Server struct {
 
 	// Export scheduler for automated exports
 	exportScheduler *services.ExportScheduler
+
+	// Payout webhook processor for Stripe Connect payout events
+	payoutWebhookProcessor interface {
+		ProcessTransferReversed(ctx context.Context, stripeTransferID string) error
+		ProcessPayoutPaid(ctx context.Context, stripePayoutID, stripeAccountID string) error
+		RefreshAccountStatus(ctx context.Context, stripeAccountID string) error
+	}
 }
 
 func NewServer(db *storage.PostgresDB) *Server {
@@ -161,6 +169,7 @@ func NewServer(db *storage.PostgresDB) *Server {
 		"deno-deploy":      deno.NewDenoAdapter(),
 		"functionfly-edge": ffEdge,
 		"functionfly":      ffEdge, // alias for CLI/engine compatibility
+		"aws-lambda":       aws.NewAWSAdapter(),
 	}
 
 	// Initialize Redis client for caching and artifact store

@@ -11,5 +11,6 @@
   "output": { "type": "object", "properties": { "ok": {}, "similarity": {}, "is_plagiarized": {}, "shared_shingles": {}, "error": {} } },
   "deterministic": true, "idempotent": true,
   "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 128,
+  "price_per_call": 0.003,
   "example": { "input": { "text_a": "The quick brown fox jumps over the lazy dog.", "text_b": "The quick brown fox jumps over the lazy cat." }, "output": { "ok": true } }
 }

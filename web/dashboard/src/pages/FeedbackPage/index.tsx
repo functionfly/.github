@@ -13,6 +13,23 @@ import { Footer } from '@/pages/LandingPage/components/Footer';
 import { Navbar } from '@/components/common/Navbar';
 
 export function FeedbackPage() {
+  const textPrimary = 'var(--text-primary)';
+  const textSecondary = 'var(--text-secondary)';
+  const textMuted = 'var(--text-muted)';
+  const bgPrimary = 'var(--bg-primary)';
+  const bgSecondary = 'var(--bg-secondary)';
+  const bgTertiary = 'var(--bg-tertiary)';
+  const bgHover = 'var(--bg-hover)';
+  const borderSubtle = 'var(--border-subtle)';
+  const borderDefault = 'var(--border-default)';
+  const cardBg = 'var(--card)';
+  const inputBg = 'var(--input, #ffffff)';
+  const inputText = 'var(--input-foreground, #0a0a0a)';
+  const brand500 = '#FF6B35';
+  const success = 'var(--color-success, #10b981)';
+  const warning = 'var(--color-warning, #f59e0b)';
+  const error = 'var(--color-error, #ef4444)';
+  const info = 'var(--color-info, #3b82f6)';
   const [feedbackType, setFeedbackType] = useState('');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
@@ -24,6 +41,8 @@ export function FeedbackPage() {
   const [attachments, setAttachments] = useState<File[]>([]);
   const [feedbackHistory, setFeedbackHistory] = useState<any[]>([]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [lastSubmittedAt, setLastSubmittedAt] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
 
   const checkRateLimit = () => {
     const lastSubmit = localStorage.getItem('last-feedback-submit');
@@ -73,13 +92,19 @@ export function FeedbackPage() {
       }
     }
 
+    // Load last submitted timestamp
+    const lastSubmit = localStorage.getItem('last-feedback-submit');
+    if (lastSubmit) {
+      setLastSubmittedAt(new Date(parseInt(lastSubmit)).toLocaleString());
+    }
+
     // Load feedback history
     const loadFeedbackHistory = async () => {
       try {
         const response = await fetch('/api/feedback/history');
         if (response.ok) {
-          const history = await response.json();
-          setFeedbackHistory(history);
+          const data = await response.json();
+          setFeedbackHistory(data.feedback || data || []);
         }
       } catch (error) {
         // History loading failed, continue without it
@@ -165,32 +190,32 @@ export function FeedbackPage() {
       },
       {
         question: 'What kind of support do you offer?',
-        answer: 'We offer multiple support channels including documentation, community forums, email support, and priority support for paid customers.'
+        answer: 'We offer documentation, GitHub community discussions, email support at api-support@functionfly.com, and priority support for paid customers.'
       }
     ],
     deployment: [
       {
         question: 'How fast is deployment?',
-        answer: 'Deployments typically take 10-30 seconds for cold starts and under 5 seconds for warm deployments.'
+        answer: 'FunctionFly deploys to 35+ edge locations worldwide. Cold starts vary by runtime: Go functions are fastest, while Python/JavaScript may take longer depending on dependencies. Warm deployments are typically faster.'
       },
       {
         question: 'Can I deploy to multiple regions?',
-        answer: 'Yes! FunctionFly allows you to deploy to multiple cloud providers and regions simultaneously for optimal performance and availability.'
+        answer: 'Yes! FunctionFly deploys to 35+ edge locations across North America, Europe, Asia, and Australia for optimal performance and availability worldwide.'
       }
     ],
     'getting-started': [
       {
         question: 'How do I get started with FunctionFly?',
-        answer: 'Getting started is simple! Sign up for a free account, connect your first cloud provider, and deploy your first function using our CLI or web dashboard.'
+        answer: 'Sign up for a free account, install the ffly CLI (go install github.com/functionfly/functionfly/cmd/ffly@latest), connect your first cloud provider, and deploy your first function using ffly deploy.'
       },
       {
         question: 'What programming languages are supported?',
-        answer: 'FunctionFly supports all major programming languages including JavaScript/TypeScript, Python, Go, Rust, Java, PHP, Ruby, and .NET.'
+        answer: 'FunctionFly supports JavaScript/TypeScript, Python, and Go. Additional runtimes available include Rust (WASM), Swift (WASM), Kotlin (WASM), C/C++ (WASM), and Ruby (mruby).'
       }
     ]
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, retryCount = 0) => {
     e.preventDefault();
 
     if (!feedbackType || !subject || !message) {
@@ -224,32 +249,46 @@ export function FeedbackPage() {
       formData.append('priority', priority);
       formData.append('browserInfo', browserInfo);
 
-      // Add attachments
+      // Track upload progress for attachments
+      const uploadProgressState: { [key: string]: number } = {};
       attachments.forEach((file, index) => {
         formData.append(`attachment_${index}`, file);
+        uploadProgressState[`attachment_${index}`] = 0;
       });
+      setUploadProgress(uploadProgressState);
 
       const response = await fetch('/v1/feedback', {
         method: 'POST',
-        body: formData // Remove Content-Type header, let browser set it with boundary
+        body: formData
       });
 
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || 'Failed to submit feedback';
+
         if (response.status === 429) {
           toast.error('Too many submissions. Please try again later.');
+        } else if (response.status >= 500 && retryCount < 2) {
+          // Retry on server errors (up to 2 retries)
+          toast.warning(`Server error, retrying... (${retryCount + 1}/2)`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+          setIsSubmitting(false);
+          return handleSubmit(e, retryCount + 1);
         } else {
-          toast.error('Failed to submit feedback. Please try again.');
+          toast.error(errorMessage);
         }
         return;
       }
 
       // Success handling
-      await response.json(); // Parse response to ensure it's valid JSON
+      const result = await response.json();
       toast.success('Feedback submitted successfully! Thank you for your input.');
       setIsSubmitted(true);
 
-      // Update rate limiting state
-      localStorage.setItem('last-feedback-submit', Date.now().toString());
+      // Update rate limiting state and last submitted timestamp
+      const now = Date.now();
+      localStorage.setItem('last-feedback-submit', now.toString());
+      setLastSubmittedAt(new Date(now).toLocaleString());
 
       // Reset form
       setFeedbackType('');
@@ -259,11 +298,25 @@ export function FeedbackPage() {
       setBrowserInfo('');
       setAttachments([]);
       setValidationErrors([]);
+      setUploadProgress({});
 
       // Clear draft from localStorage
       localStorage.removeItem('feedback-draft');
 
+      // Show view status link with feedback ID if available
+      if (result?.id) {
+        toast.success(<div className="flex items-center gap-2">
+          <span>Your feedback ID: {result.id}</span>
+        </div>, { duration: 10000 });
+      }
+
     } catch (error) {
+      if (retryCount < 2) {
+        toast.warning('Network error, retrying...');
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+        setIsSubmitting(false);
+        return handleSubmit(e, retryCount + 1);
+      }
       toast.error('Network error. Please check your connection and try again.');
     } finally {
       setIsSubmitting(false);
@@ -272,36 +325,36 @@ export function FeedbackPage() {
 
 
   return (
-    <div className="min-h-screen bg-bg-primary">
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       {/* Navbar */}
       <Navbar variant="landing" />
 
       {/* Header */}
-      <div className="border-b border-border-subtle pt-16">
+      <div className="border-b border-border-subtle pt-16" style={{ backgroundColor: 'var(--bg-primary)' }}>
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center gap-3 mb-4">
-            <MessageSquare className="h-8 w-8 text-text-primary" />
-            <h1 className="text-3xl font-bold text-text-primary">Feedback & Support</h1>
+            <MessageSquare className="h-8 w-8" style={{ color: 'var(--text-primary)' }} />
+            <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>Feedback & Support</h1>
           </div>
-          <p className="text-text-secondary text-lg">
+          <p style={{ color: 'var(--text-secondary)' }}>
             Help us improve FunctionFly by sharing your thoughts, reporting bugs, or requesting features.
           </p>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto space-y-8">
+        <div className="max-w-4xl mx-auto space-y-8" style={{ color: textPrimary }}>
 
           {/* Draft Restoration */}
           {(feedbackType || subject || message || priority) && (
-            <Card className="border-info/20 bg-info/5">
+            <Card style={{ borderColor: 'var(--color-info)', backgroundColor: 'rgba(59, 130, 246, 0.05)' }}>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <FileText className="h-5 w-5 text-info" />
+                    <FileText className="h-5 w-5" style={{ color: 'var(--color-info)' }} />
                     <div>
-                      <h3 className="font-semibold text-info">Draft Saved</h3>
-                      <p className="text-sm text-text-secondary">
+                      <h3 className="font-semibold" style={{ color: 'var(--color-info)' }}>Draft Saved</h3>
+                      <p className="text-sm" style={{ color: textSecondary }}>
                         Your progress is automatically saved as you type
                       </p>
                     </div>
@@ -330,25 +383,43 @@ export function FeedbackPage() {
 
           {/* Success Message */}
           {isSubmitted && (
-            <Card className="border-success/20 bg-success/5">
+            <Card style={{ borderColor: 'var(--color-success)', backgroundColor: 'rgba(16, 185, 129, 0.05)' }}>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3">
-                  <CheckCircle className="h-6 w-6 text-success" />
-                  <div>
-                    <h3 className="font-semibold text-success">Feedback Submitted!</h3>
-                    <p className="text-sm text-text-secondary">
+                  <CheckCircle className="h-6 w-6" style={{ color: 'var(--color-success)' }} />
+                  <div className="flex-1">
+                    <h3 className="font-semibold" style={{ color: 'var(--color-success)' }}>Feedback Submitted!</h3>
+                    <p className="text-sm" style={{ color: textSecondary }}>
                       Thank you for your feedback. We'll review it and get back to you if needed.
                     </p>
+                    {lastSubmittedAt && (
+                      <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                        Submitted at {lastSubmittedAt}
+                      </p>
+                    )}
                   </div>
                 </div>
+                {lastSubmittedAt && (
+                  <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--color-success)' }}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setIsSubmitted(false);
+                      }}
+                    >
+                      Submit Another
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
 
           {/* Feedback Form */}
-          <Card>
+          <Card style={{ backgroundColor: cardBg, borderColor: borderDefault }}>
             <CardHeader>
-              <CardTitle>Submit Feedback</CardTitle>
+              <CardTitle style={{ color: textPrimary }}>Submit Feedback</CardTitle>
             </CardHeader>
             <CardContent className="pb-24 md:pb-6">
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -368,10 +439,10 @@ export function FeedbackPage() {
                             setFeedbackType(type.value);
                             setExpandedFaq(null); // Reset FAQ expansion when changing feedback type
                           }}
-                          className={`p-4 border rounded-lg text-left transition-all hover:border-border-focus ${
+                          className={`p-4 border rounded-lg text-left transition-all hover:border-[var(--border-focus)] ${
                             feedbackType === type.value
-                              ? 'border-border-focus bg-brand-500/5 ring-1 ring-border-focus'
-                              : 'border-border-subtle hover:bg-bg-hover'
+                              ? 'border-[var(--border-focus)] bg-brand-500/5 ring-1 ring-[var(--border-focus)]'
+                              : 'border-[var(--border-subtle)] hover:bg-[var(--bg-hover)]'
                           }`}
                         >
                           <IconComponent className="h-5 w-5 mb-2 text-text-primary" />
@@ -400,7 +471,13 @@ export function FeedbackPage() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Priority Level</label>
                   <Select value={priority} onValueChange={setPriority}>
-                    <SelectTrigger>
+                    <SelectTrigger
+                      style={{
+                        backgroundColor: 'var(--input, #ffffff)',
+                        borderColor: 'var(--border-default, rgba(0,0,0,0.18))',
+                        color: 'var(--input-foreground, #0a0a0a)',
+                      }}
+                    >
                       <SelectValue placeholder="Select priority (optional)" />
                     </SelectTrigger>
                     <SelectContent>
@@ -460,7 +537,7 @@ export function FeedbackPage() {
                 {/* Attachments */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Attachments (optional)</label>
-                  <div className="border-2 border-dashed border-border-default rounded-lg p-4 text-center">
+                  <div className="border-2 border-dashed border-[var(--border-default)] rounded-lg p-4 text-center">
                     <input
                       type="file"
                       multiple
@@ -482,12 +559,17 @@ export function FeedbackPage() {
                       <p className="text-sm font-medium">Attached files:</p>
                       <div className="space-y-2">
                         {attachments.map((file, index) => (
-                          <div key={index} className="flex items-center gap-2 p-2 bg-bg-tertiary rounded-lg">
+                          <div key={index} className="flex items-center gap-2 p-2 bg-[var(--bg-tertiary)] rounded-lg">
                             <File className="h-4 w-4 text-text-muted" />
                             <span className="text-sm flex-1 truncate text-text-primary">{file.name}</span>
                             <span className="text-xs text-text-muted">
                               {(file.size / 1024 / 1024).toFixed(2)}MB
                             </span>
+                            {uploadProgress[`attachment_${index}`] !== undefined && uploadProgress[`attachment_${index}`] < 100 && (
+                              <span className="text-xs text-info">
+                                {uploadProgress[`attachment_${index}`]}%
+                              </span>
+                            )}
                             <Button
                               type="button"
                               variant="ghost"
@@ -523,37 +605,45 @@ export function FeedbackPage() {
                 {/* Loading States - Skeleton Loading */}
                 {isSubmitting && (
                   <div className="space-y-4 animate-pulse">
-                    <div className="h-4 bg-bg-tertiary rounded w-3/4"></div>
-                    <div className="h-4 bg-bg-tertiary rounded w-1/2"></div>
-                    <div className="h-20 bg-bg-tertiary rounded"></div>
-                    <div className="h-12 bg-bg-tertiary rounded"></div>
+                    <div className="h-4 bg-[var(--bg-tertiary)] rounded w-3/4"></div>
+                    <div className="h-4 bg-[var(--bg-tertiary)] rounded w-1/2"></div>
+                    <div className="h-20 bg-[var(--bg-tertiary)] rounded"></div>
+                    <div className="h-12 bg-[var(--bg-tertiary)] rounded"></div>
                   </div>
                 )}
 
                 {/* Submit Button - Hidden on mobile, shown on desktop */}
                 {!isSubmitting && (
-                  <Button
+                  <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full hidden md:flex"
-                    size="lg"
+                    className="w-full hidden md:flex items-center justify-center gap-2 h-12 px-6 rounded-lg text-white font-semibold transition-all hover:brightness-110 active:scale-[0.98]"
+                    style={{
+                      background: 'linear-gradient(135deg, #FF6B35 0%, #FF4F5E 100%)',
+                      boxShadow: '0 4px 14px rgba(255, 107, 53, 0.4)',
+                      color: '#ffffff',
+                    }}
                   >
-                    <Send className="h-4 w-4 mr-2" />
+                    <Send className="h-4 w-4" />
                     Submit Feedback
-                  </Button>
+                  </button>
                 )}
 
                 {/* Sticky submit button on mobile */}
-                <div className="fixed bottom-0 left-0 right-0 bg-bg-primary border-t border-border-subtle p-4 md:hidden">
-                  <Button
+                <div className="fixed bottom-0 left-0 right-0 bg-[var(--bg-primary)] border-t border-[var(--border-subtle)] p-4 md:hidden">
+                  <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full"
-                    size="lg"
+                    className="w-full flex items-center justify-center gap-2 h-12 px-6 rounded-lg text-white font-semibold transition-all hover:brightness-110 active:scale-[0.98]"
+                    style={{
+                      background: 'linear-gradient(135deg, #FF6B35 0%, #FF4F5E 100%)',
+                      boxShadow: '0 4px 14px rgba(255, 107, 53, 0.4)',
+                      color: '#ffffff',
+                    }}
                   >
-                    <Send className="h-4 w-4 mr-2" />
+                    <Send className="h-4 w-4" />
                     Submit Feedback
-                  </Button>
+                  </button>
                 </div>
               </form>
             </CardContent>
@@ -745,7 +835,11 @@ export function FeedbackPage() {
                     <p className="text-sm text-text-secondary mb-2">
                       Check our docs for answers to common questions.
                     </p>
-                    <Button variant="outline" size="sm">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(import.meta.env.DEV ? '/docs' : 'https://docs.functionfly.com', '_blank')}
+                    >
                       View Docs
                     </Button>
                   </div>

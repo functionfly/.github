@@ -26,8 +26,8 @@ interface CostsTabProps {
   // Data
   costSummary: {
     total_cost_usd: number;
-    previous_period_cost_usd: number;
-    cost_trend_percent: number;
+    previous_period_cost_usd?: number;
+    cost_trend_percent?: number;
     total_executions: number;
     cost_breakdown?: {
       execution: number;

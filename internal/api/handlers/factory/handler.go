@@ -201,6 +201,28 @@ func (h *Handler) HandleListPendingReviews(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusOK, map[string]any{"reviews": items, "total": total, "limit": limit, "offset": offset})
 }
 
+// HandleGetFactoryVersion returns a single factory version including its generated code.
+func (h *Handler) HandleGetFactoryVersion(w http.ResponseWriter, r *http.Request) {
+	id := strings.TrimPrefix(r.URL.Path, "/v1/admin/factory/versions/")
+	id = strings.TrimSuffix(id, "/code")
+	if id == "" || strings.Contains(id, "/") {
+		writeError(w, http.StatusBadRequest, "version ID required")
+		return
+	}
+
+	var version factorysvc.FactoryVersion
+	if err := h.db.WithContext(r.Context()).First(&version, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			writeError(w, http.StatusNotFound, "version not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to get version")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"version": version})
+}
+
 // HandleGetOpportunity returns details of a specific opportunity for review.
 func (h *Handler) HandleGetOpportunity(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/v1/admin/factory/opportunities/")

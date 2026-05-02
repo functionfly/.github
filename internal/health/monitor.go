@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/adapters/aws"
 	"github.com/functionfly/functionfly/internal/adapters/cloudflare"
 	"github.com/functionfly/functionfly/internal/adapters/common"
 	"github.com/functionfly/functionfly/internal/adapters/deno"
@@ -254,6 +255,8 @@ func (m *Monitor) getAdapterForProvider(provider string) common.ProviderAdapter 
 		return deno.NewDenoAdapter()
 	case "functionfly-edge", "functionfly":
 		return functionfly.NewFunctionFlyAdapter()
+	case "aws-lambda":
+		return aws.NewAWSAdapter()
 	default:
 		return nil
 	}

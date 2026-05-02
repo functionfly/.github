@@ -25,11 +25,12 @@ interface ScoreBarProps {
 }
 
 function ScoreBar({ label, value, icon: Icon, color }: ScoreBarProps) {
+  const IconComponent = Icon as React.ComponentType<{ className?: string }>;
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm">
         <div className="flex items-center gap-2">
-          <Icon className={cn("h-4 w-4", color)} />
+          <IconComponent className={cn("h-4 w-4", color)} />
           <span>{label}</span>
         </div>
         <span className="font-medium">{value}%</span>

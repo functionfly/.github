@@ -36,6 +36,7 @@
   "cache_ttl": 0,
   "timeout_ms": 10000,
   "memory_mb": 256,
+  "price_per_call": 0.01,
   "example": {
     "input": { "password": "mypassword", "salt": "aabbcc..." },
     "output": { "ok": true }

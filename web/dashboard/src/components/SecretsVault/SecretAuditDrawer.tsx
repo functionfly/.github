@@ -132,6 +132,8 @@ const actionIcons: Record<AuditAction, typeof Eye> = {
   delete: Trash2,
   use: CheckCircle,
   revoke: XCircle,
+  version: FileEdit,
+  rollback: XCircle,
 };
 
 // Action label mapping
@@ -142,6 +144,8 @@ const actionLabels: Record<AuditAction, string> = {
   delete: "Deleted",
   use: "Used",
   revoke: "Revoked",
+  version: "Versioned",
+  rollback: "Rolled back",
 };
 
 // Action badge variant mapping
@@ -155,6 +159,8 @@ const actionVariants: Record<
   delete: "error",
   use: "default",
   revoke: "error",
+  version: "warning",
+  rollback: "error",
 };
 
 // Action color mapping for icons
@@ -165,6 +171,8 @@ const actionColors: Record<AuditAction, string> = {
   delete: "text-error bg-error-glow",
   use: "text-brand-500 bg-brand-500/10",
   revoke: "text-error bg-error-glow",
+  version: "text-warning bg-warning-glow",
+  rollback: "text-error bg-error-glow",
 };
 
 // Actor type icon mapping

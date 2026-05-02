@@ -514,3 +514,142 @@ func (h *Handler) logAuditError(ctx context.Context, tenantID uuid.UUID, action 
 		logrus.WithError(logErr).Warn("Failed to create audit log for error")
 	}
 }
+
+// HandleRotateSecret handles PATCH /v1/vault/secrets/{id}/rotate
+// Rotates a secret's encrypted value by replacing it with new ciphertext.
+// Creates a version snapshot before updating.
+func (h *Handler) HandleRotateSecret(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		h.respondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
+	vars := mux.Vars(r)
+	secretID := parseUUID(vars["id"])
+	if secretID == nil {
+		h.respondError(w, http.StatusBadRequest, "INVALID_ID", "Invalid secret ID")
+		return
+	}
+
+	var req RotateSecretRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.respondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
+		return
+	}
+
+	// Get existing secret
+	secret, err := h.repo.GetSecretByID(r.Context(), *secretID, claims.TenantID)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get secret")
+		h.respondError(w, http.StatusInternalServerError, "GET_FAILED", "Failed to get secret")
+		return
+	}
+	if secret == nil {
+		h.respondError(w, http.StatusNotFound, "NOT_FOUND", "Secret not found")
+		return
+	}
+
+	// Decode new encrypted data
+	ciphertext, err := base64.StdEncoding.DecodeString(req.EncryptedData.Ciphertext)
+	if err != nil {
+		h.respondError(w, http.StatusBadRequest, "INVALID_CIPHERTEXT", "Ciphertext must be base64 encoded")
+		return
+	}
+	saltBytes, err := base64.StdEncoding.DecodeString(req.EncryptedData.Salt)
+	if err != nil {
+		h.respondError(w, http.StatusBadRequest, "INVALID_SALT", "Salt must be base64 encoded")
+		return
+	}
+	ivBytes, err := base64.StdEncoding.DecodeString(req.EncryptedData.IV)
+	if err != nil {
+		h.respondError(w, http.StatusBadRequest, "INVALID_IV", "IV must be base64 encoded")
+		return
+	}
+	var authTagBytes []byte
+	if req.EncryptedData.Tag != "" {
+		authTagBytes, err = base64.StdEncoding.DecodeString(req.EncryptedData.Tag)
+		if err != nil {
+			h.respondError(w, http.StatusBadRequest, "INVALID_TAG", "Tag must be base64 encoded")
+			return
+		}
+	}
+	if authTagBytes == nil {
+		authTagBytes = []byte{}
+	}
+
+	// Reject oversized payloads
+	totalPayloadSize := len(ciphertext) + len(saltBytes) + len(ivBytes) + len(authTagBytes)
+	if totalPayloadSize > maxEncryptedPayloadBytes {
+		h.respondError(w, http.StatusBadRequest, "PAYLOAD_TOO_LARGE",
+			fmt.Sprintf("Encrypted payload must not exceed %d bytes", maxEncryptedPayloadBytes))
+		return
+	}
+
+	// Create version snapshot before rotating
+	version := &vault.SecretVersion{
+		SecretID:          secret.ID,
+		TenantID:          secret.TenantID,
+		Name:              secret.Name,
+		Description:       secret.Description,
+		SecretType:        secret.SecretType,
+		EncryptedValue:    secret.EncryptedValue,
+		EncryptionSalt:    secret.EncryptionSalt,
+		IV:                secret.IV,
+		EncryptionAuthTag: secret.EncryptionAuthTag,
+		KeyVersion:        secret.KeyVersion,
+		Scopes:            secret.Scopes,
+		Metadata:          secret.Metadata,
+		ChangeType:        "rotate",
+		ChangeSummary:     "Rotated encrypted value",
+		ActorID:           claims.UserID,
+		ActorType:         vault.ActorTypeUser,
+	}
+
+	if err := h.repo.CreateSecretVersion(r.Context(), version); err != nil {
+		h.logger.WithError(err).Error("Failed to create version snapshot before rotation")
+	}
+
+	// Update secret with new encrypted data
+	secret.EncryptedValue = ciphertext
+	secret.EncryptionSalt = saltBytes
+	secret.IV = ivBytes
+	secret.EncryptionAuthTag = authTagBytes
+	secret.KeyVersion = req.EncryptedData.KeyVersion
+
+	if err := h.repo.UpdateSecret(r.Context(), secret); err != nil {
+		h.logger.WithError(err).Error("Failed to rotate secret")
+		h.respondError(w, http.StatusInternalServerError, "ROTATE_FAILED", "Failed to rotate secret")
+		return
+	}
+
+	// Log audit event
+	auditLog := &vault.AuditLog{
+		SecretID:  secretID,
+		TenantID:  claims.TenantID,
+		Action:    vault.AuditActionUpdate,
+		ActorID:   claims.UserID.String(),
+		ActorType: vault.ActorTypeUser,
+		RequestID: r.Header.Get("X-Request-ID"),
+		IPAddress: getClientIP(r),
+		UserAgent: r.UserAgent(),
+		Metadata: vault.JSONMap{
+			"secret_name": secret.Name,
+			"operation":   "rotate",
+			"reason":      req.Reason,
+			"new_version": version.VersionNumber + 1,
+		},
+		Success: true,
+	}
+	if err := h.repo.CreateAuditLog(r.Context(), auditLog); err != nil {
+		h.logger.WithError(err).Warn("Failed to create audit log")
+	}
+
+	// Get updated secret
+	updatedSecret, err := h.repo.GetSecretByID(r.Context(), *secretID, claims.TenantID)
+	if err != nil || updatedSecret == nil {
+		updatedSecret = secret
+	}
+
+	h.respondJSON(w, http.StatusOK, secretToResponse(updatedSecret))
+}

@@ -185,6 +185,11 @@ func (s *Service) SearchAgents(ctx context.Context, req *SearchAgentsRequest) ([
 		query = query.Where("roi_score >= ?", req.MinROIScore)
 	}
 
+	// Filter by capabilities (OR logic - agent must have ANY of the specified capabilities)
+	if len(req.Capabilities) > 0 {
+		query = query.Where("agent.capabilities ?| ?", pq.Array(req.Capabilities))
+	}
+
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
 		if isRelationNotFound(err) {
@@ -193,8 +198,11 @@ func (s *Service) SearchAgents(ctx context.Context, req *SearchAgentsRequest) ([
 		return nil, 0, err
 	}
 
+	// Build ordering
+	orderClause := s.buildSearchAgentsOrderClause(req.SortBy)
+
 	var listings []identity.AgentListing
-	if err := query.Order("rating_score DESC").Limit(req.Limit).Offset(req.Offset).Find(&listings).Error; err != nil {
+	if err := query.Order(orderClause).Limit(req.Limit).Offset(req.Offset).Find(&listings).Error; err != nil {
 		if isRelationNotFound(err) {
 			return nil, 0, nil
 		}
@@ -211,16 +219,35 @@ func (s *Service) SearchAgents(ctx context.Context, req *SearchAgentsRequest) ([
 		}
 	}
 
-	// Sort by rank score
-	for i := 0; i < len(results)-1; i++ {
-		for j := i + 1; j < len(results); j++ {
-			if results[j].RankScore > results[i].RankScore {
-				results[i], results[j] = results[j], results[i]
+	// If sorting by rank_score, sort in-memory (calculated field)
+	if req.SortBy == "rank_score" {
+		for i := 0; i < len(results)-1; i++ {
+			for j := i + 1; j < len(results); j++ {
+				if results[j].RankScore > results[i].RankScore {
+					results[i], results[j] = results[j], results[i]
+				}
 			}
 		}
 	}
 
 	return results, total, nil
+}
+
+// buildSearchAgentsOrderClause builds the ORDER BY clause for SearchAgents
+func (s *Service) buildSearchAgentsOrderClause(sortBy string) string {
+	switch sortBy {
+	case "price_per_call":
+		return "price_per_call ASC NULLS LAST"
+	case "total_calls":
+		return "total_calls DESC"
+	case "rating_score":
+		return "rating_score DESC"
+	case "rank_score":
+		// rank_score is calculated, sort by it after fetching
+		return "rating_score DESC"
+	default:
+		return "rating_score DESC"
+	}
 }
 
 // SearchAgentsRequest represents a search request for agents
@@ -230,6 +257,8 @@ type SearchAgentsRequest struct {
 	MinRating       float64
 	MaxPricePerCall float64
 	MinROIScore     float64
+	Capabilities    []string // e.g. code_generation,analysis
+	SortBy          string   // rank_score | rating_score | price_per_call | total_calls
 	Limit           int
 	Offset          int
 }

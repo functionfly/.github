@@ -9,6 +9,7 @@ interface PageLayoutProps {
   padding?: "none" | "sm" | "md" | "lg";
   animate?: boolean;
   title?: string;
+  subtitle?: string;
 }
 
 const maxWidthClasses = {
@@ -39,6 +40,7 @@ export function PageLayout({
   padding = "md",
   animate = true,
   title,
+  subtitle,
 }: PageLayoutProps) {
   const Content = animate ? motion.div : "div";
 
@@ -61,6 +63,7 @@ export function PageLayout({
         {title && (
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-text-primary">{title}</h1>
+            {subtitle && <p className="text-sm text-text-secondary mt-1">{subtitle}</p>}
           </div>
         )}
         {children}

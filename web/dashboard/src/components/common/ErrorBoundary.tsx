@@ -79,27 +79,27 @@ export class ErrorBoundary extends React.Component<Props, State> {
       }
 
       return (
-        <div className="min-h-screen flex items-center justify-center bg-bg-primary px-4">
-          <div className="max-w-md w-full text-center space-y-6">
+        <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--bg-primary)' }}>
+          <div className="max-w-md w-full text-center space-y-6" style={{ color: 'var(--text-primary)' }}>
             {/* Error Icon */}
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-red-500/10 mb-4">
-              <AlertTriangle className="w-10 h-10 text-red-500" />
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-4" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)' }}>
+              <AlertTriangle className="w-10 h-10" style={{ color: 'var(--color-error, #ef4444)' }} />
             </div>
 
             {/* Error Message */}
             <div className="space-y-2">
-              <h1 className="text-2xl font-bold text-text-primary">Something went wrong</h1>
-              <p className="text-text-secondary">
+              <h1 className="text-2xl font-bold">Something went wrong</h1>
+              <p style={{ color: 'var(--text-secondary)' }}>
                 We apologize for the inconvenience. An unexpected error has occurred.
               </p>
             </div>
 
             {/* Error Details (only in development) */}
             {import.meta.env.DEV && this.state.error && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-left">
-                <p className="text-red-400 font-mono text-sm mb-2">{this.state.error.message}</p>
+              <div className="rounded-lg p-4 text-left" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
+                <p className="font-mono text-sm mb-2" style={{ color: 'var(--color-error, #ef4444)' }}>{this.state.error.message}</p>
                 {this.state.errorInfo && (
-                  <pre className="text-red-400/70 font-mono text-xs overflow-auto max-h-32 whitespace-pre-wrap">
+                  <pre className="font-mono text-xs overflow-auto max-h-32 whitespace-pre-wrap" style={{ color: 'var(--color-error, #ef4444)', opacity: 0.7 }}>
                     {this.state.errorInfo.componentStack}
                   </pre>
                 )}
@@ -108,22 +108,20 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
             {/* Action Buttons - use <a> not <Link> because ErrorBoundary renders outside BrowserRouter */}
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button onClick={this.handleRetry} className="gap-2 flex-1">
+              <button onClick={this.handleRetry} className="flex-1 flex items-center justify-center gap-2 h-10 px-4 rounded-lg font-medium text-white transition-all hover:brightness-110 active:scale-[0.98]" style={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' }}>
                 <RefreshCcw className="w-4 h-4" />
                 Try Again
-              </Button>
-              <a href="/" className="flex-1">
-                <Button variant="outline" className="gap-2 w-full">
+              </button>
+              <a href="/" className="flex-1 flex items-center justify-center gap-2 h-10 px-4 rounded-lg font-medium transition-all" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}>
                   <Home className="w-4 h-4" />
                   Go Home
-                </Button>
-              </a>
+                </a>
             </div>
 
             {/* Support Link */}
-            <p className="text-sm text-text-muted">
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
               If the problem persists, please{' '}
-              <a href="/contact" className="text-brand-500 hover:underline">
+              <a href="/contact" style={{ color: 'var(--color-brand-500, #f97316)' }}>
                 contact support
               </a>
             </p>

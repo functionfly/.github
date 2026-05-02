@@ -20,6 +20,8 @@ type Policy struct {
 	RetryableErrors []error
 	// OnRetry is called before each retry attempt
 	OnRetry func(attempt int, err error, delay time.Duration)
+	// OnExhausted is called when all retries are exhausted
+	OnExhausted func(finalError error, attempts int)
 }
 
 // DefaultPolicy returns a sensible default retry policy
@@ -62,6 +64,9 @@ func (p *Policy) Execute(ctx context.Context, fn func() error) error {
 		}
 	}
 
+	if p.OnExhausted != nil {
+		p.OnExhausted(lastErr, p.MaxRetries+1)
+	}
 	return lastErr
 }
 
@@ -98,6 +103,9 @@ func ExecuteWithResult[T any](ctx context.Context, policy Policy, fn func() (T, 
 		}
 	}
 
+	if policy.OnExhausted != nil {
+		policy.OnExhausted(lastErr, policy.MaxRetries+1)
+	}
 	return zero, lastErr
 }
 
@@ -156,5 +164,11 @@ func (p Policy) WithRetryableErrors(errs ...error) Policy {
 // WithOnRetry sets the retry callback
 func (p Policy) WithOnRetry(fn func(attempt int, err error, delay time.Duration)) Policy {
 	p.OnRetry = fn
+	return p
+}
+
+// WithOnExhausted sets the callback for when retries are exhausted
+func (p Policy) WithOnExhausted(fn func(finalError error, attempts int)) Policy {
+	p.OnExhausted = fn
 	return p
 }

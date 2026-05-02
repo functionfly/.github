@@ -488,3 +488,265 @@ func (h *Handler) provisionAIApp(tenantID uuid.UUID) {
 		"templates_count": len(templates),
 	}).Info("AI App Pack provisioning complete")
 }
+
+// ProvisionBundleResources is a standalone function for provisioning bundle resources
+// This can be called from webhook handlers that don't have access to the full billing Handler
+func ProvisionBundleResources(repo storage.Repository, tenantID uuid.UUID, bundleSlug string) error {
+	ctx := context.Background()
+
+	bundle, err := repo.GetPricingBundleBySlug(ctx, bundleSlug)
+	if err != nil || bundle == nil {
+		return fmt.Errorf("failed to get bundle: %w", err)
+	}
+
+	// Create a minimal handler to call the provisioning methods
+	h := &Handler{repo: repo}
+	h.provisionBundleResources(tenantID, bundle)
+
+	return nil
+}
+
+// ProvisionBundleAppAndBackend creates the default app and backend for a bundle
+// This is the "one-click deploy" - called when bundle is purchased via Stripe webhook
+func ProvisionBundleAppAndBackend(repo storage.Repository, tenantID uuid.UUID, bundleSlug string) (*storage.App, error) {
+	ctx := context.Background()
+	now := time.Now()
+
+	bundleAppNames := map[string]string{
+		"saas-starter": "SaaS Starter",
+		"marketplace":  "Marketplace",
+		"ai-app":      "AI App",
+	}
+	bundleAppSlugs := map[string]string{
+		"saas-starter": "saas-starter",
+		"marketplace":  "marketplace",
+		"ai-app":      "ai-app",
+	}
+
+	appName := bundleAppNames[bundleSlug]
+	appSlug := bundleAppSlugs[bundleSlug]
+	if appName == "" {
+		appName = "My Backend"
+		appSlug = "my-backend"
+	}
+
+	// Create the default app
+	app, err := repo.CreateApp(appName, appSlug, tenantID)
+	if err != nil {
+		if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
+			apps, listErr := repo.ListAppsByTenant(tenantID)
+			if listErr == nil && len(apps) > 0 {
+				for _, a := range apps {
+					if a.Slug == appSlug {
+						app = a
+						break
+					}
+				}
+			}
+			if app == nil && len(apps) > 0 {
+				app = apps[0]
+			}
+		}
+		if app == nil {
+			return nil, fmt.Errorf("failed to create app: %w", err)
+		}
+	}
+
+	// Determine backend config based on bundle
+	region := "eu-central-1"
+	url := "https://api.functionfly.io/v1/apps/" + app.ID.String()
+
+	// Create default backend
+	backend, err := repo.CreateBackend(app.ID, "functionfly", region, url, "", nil)
+	if err != nil {
+		if !strings.Contains(err.Error(), "unique") && !strings.Contains(err.Error(), "duplicate") {
+			logrus.WithError(err).WithFields(logrus.Fields{
+				"app_id":  app.ID,
+				"backend": "functionfly",
+			}).Warn("Failed to create default backend, continuing anyway")
+		}
+	} else {
+		logrus.WithFields(logrus.Fields{
+			"backend_id": backend.ID,
+			"app_id":    app.ID,
+			"provider":  backend.Provider,
+		}).Info("Created default backend for bundle via standalone function")
+	}
+
+	// Create bundle-specific functions
+	templates := getBundleFunctionTemplates(bundleSlug)
+	for _, tmpl := range templates {
+		function := &storage.FunctionConfig{
+			ID:           uuid.New(),
+			TenantID:     tenantID,
+			AppID:        &app.ID,
+			Name:         tmpl.name,
+			Code:         tmpl.code,
+			Region:       tmpl.region,
+			Status:       "active",
+			Version:      "1.0.0",
+			Capabilities: tmpl.capabs,
+			CreatedAt:    now,
+			UpdatedAt:    now,
+		}
+		if _, err := repo.CreateFunction(ctx, function); err != nil {
+			logrus.WithError(err).WithFields(logrus.Fields{
+				"tenant_id": tenantID,
+				"app_id":    app.ID,
+				"function":  tmpl.name,
+			}).Warn("Failed to create bundle function template")
+		}
+	}
+
+	return app, nil
+}
+
+type bundleFunctionTemplate struct {
+	name   string
+	code   string
+	region string
+	capabs []string
+}
+
+func getBundleFunctionTemplates(bundleSlug string) []bundleFunctionTemplate {
+	templates := map[string][]bundleFunctionTemplate{
+		"saas-starter": {
+			{
+				name: "stripe-webhook",
+				code: `export default async (req, res) => {
+  const event = req.body;
+  try {
+    switch (event.type) {
+      case 'customer.subscription.created':
+        await state.set('subscriptions/' + event.data.object.customer, {
+          status: 'active',
+          plan: event.data.object.items.data[0].plan.id
+        });
+        break;
+      case 'invoice.payment_succeeded':
+        await state.set('payments/' + event.data.object.id, {
+          status: 'paid',
+          amount: event.data.object.amount_paid
+        });
+        break;
+      case 'invoice.payment_failed':
+        await state.set('failed_payments/' + event.data.object.customer, {
+          timestamp: Date.now()
+        });
+        break;
+    }
+    res.json({ received: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};`,
+				region: "us-east-1",
+				capabs: []string{"webhook", "storage"},
+			},
+			{
+				name: "welcome-email",
+				code: `export default async (req, res) => {
+  const { email: recipientEmail, name } = req.body;
+  await email.send({
+    to: recipientEmail,
+    subject: 'Welcome!',
+    template: 'welcome',
+    data: { name, email: recipientEmail }
+  });
+  res.json({ sent: true });
+};`,
+				region: "us-east-1",
+				capabs: []string{"email"},
+			},
+		},
+		"marketplace": {
+			{
+				name: "create-listing",
+				code: `export default async (req, res) => {
+  const { title, description, price } = req.body;
+  const seller_id = req.user?.id || 'anonymous';
+  const listing = {
+    id: crypto.randomUUID(),
+    seller_id,
+    title,
+    description,
+    price_cents: Math.round(price * 100),
+    status: 'active',
+    created_at: new Date().toISOString()
+  };
+  await state.set('listings/' + listing.id, listing);
+  res.json({ success: true, listing_id: listing.id });
+};`,
+				region: "us-east-1",
+				capabs: []string{"storage"},
+			},
+			{
+				name: "send-message",
+				code: `export default async (req, res) => {
+  const { recipient_id, content } = req.body;
+  const sender_id = req.user?.id || 'anonymous';
+  const message = {
+    id: crypto.randomUUID(),
+    sender_id,
+    recipient_id,
+    content,
+    created_at: new Date().toISOString()
+  };
+  await state.push('messages/' + recipient_id, message);
+  res.json({ success: true, message_id: message.id });
+};`,
+				region: "us-east-1",
+				capabs: []string{"storage"},
+			},
+		},
+		"ai-app": {
+			{
+				name: "chat-completion",
+				code: `export default async (req, res) => {
+  const { message, model = 'gpt-4' } = req.body;
+  if (!message) {
+    res.status(400).json({ error: 'message is required' });
+    return;
+  }
+  const completion = await ai.chat.completions.create({
+    model,
+    messages: [{ role: 'user', content: message }]
+  });
+  res.json({ 
+    message: completion.choices[0].message.content,
+    model: completion.model,
+    usage: completion.usage
+  });
+};`,
+				region: "us-east-1",
+				capabs: []string{"ai"},
+			},
+			{
+				name: "embed-and-store",
+				code: `export default async (req, res) => {
+  const { content, metadata = {} } = req.body;
+  if (!content) {
+    res.status(400).json({ error: 'content is required' });
+    return;
+  }
+  const embedding = await ai.embeddings.create({
+    model: 'text-embedding-3-small',
+    input: content
+  });
+  const id = crypto.randomUUID();
+  await state.set('embeddings/' + id, {
+    vector: embedding.data[0].embedding,
+    content: content.substring(0, 1000),
+    metadata,
+    created_at: new Date().toISOString()
+  });
+  res.json({ embedded: true, id });
+};`,
+				region: "us-east-1",
+				capabs: []string{"ai", "storage"},
+			},
+		},
+	}
+
+	return templates[bundleSlug]
+}

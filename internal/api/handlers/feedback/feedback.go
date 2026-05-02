@@ -37,12 +37,12 @@ func NewHandler(repo storage.Repository, storageService *services.StorageService
 	}
 }
 
-// getStorageBucketName returns the configured bucket name for attachment metadata (env-driven).
+// getStorageBucketName returns the configured bucket name for attachment metadata.
 func getStorageBucketName() string {
 	if b := os.Getenv("STORAGE_BUCKET"); b != "" {
 		return b
 	}
-	return "functionfly-uploads"
+	return "" // Let storage service handle defaults
 }
 
 // CreateFeedback handles POST /v1/feedback
@@ -119,8 +119,19 @@ func (h *Handler) CreateFeedback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Normalize IP for Postgres INET (address only, no port). Use nil if not parseable so DB accepts NULL.
-	ipAddr := r.RemoteAddr
-	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+	// Check X-Forwarded-For chain (comma-separated) for real client IP
+	ipAddr := ""
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		// X-Forwarded-For: client, proxy1, proxy2, ... - take the first (leftmost) which is the original client
+		if idx := strings.Index(xff, ","); idx != -1 {
+			ipAddr = strings.TrimSpace(xff[:idx])
+		} else {
+			ipAddr = strings.TrimSpace(xff)
+		}
+	} else {
+		ipAddr = r.RemoteAddr
+	}
+	if host, _, err := net.SplitHostPort(ipAddr); err == nil {
 		ipAddr = host
 	}
 	if ipAddr != "" && net.ParseIP(ipAddr) == nil {

@@ -12,6 +12,7 @@ Part of the "Backend as a Graph" vision - Phase 1 implementation.
 
 import json
 import logging
+import os
 import time
 from typing import Optional, List, Dict, Any, Tuple
 from dataclasses import dataclass
@@ -26,6 +27,7 @@ from ...models.schemas import (
     GraphNodeOutput,
     GraphEdge,
     GraphEdgeMapping,
+    GraphEdgeCondition,
     GraphTriggerConfig,
     TemplateCategory,
     GraphTemplateInfo,
@@ -1056,9 +1058,9 @@ class GraphCompositionService:
 
         # Apply customizations if provided
         if customization_prompt:
-            # TODO: Use LLM to customize template based on prompt
-            # For now, just add a note
-            pass
+            nodes, edges = await self._customize_template_with_llm(
+                template, customization_prompt
+            )
 
         graph = GraphDefinition(
             name=template_id.replace("_", "-"),
@@ -1123,16 +1125,28 @@ class GraphCompositionService:
 
             # Step 2: Use LLM to generate graph topology
             provider_manager = self._get_provider()
-            provider = provider_manager.get_provider("openai")
 
-            if not provider or not provider.available:
-                return GraphCompositionResponse(
-                    success=False,
-                    generation_id=generation_id,
-                    latency_ms=(time.time() - start_time) * 1000,
-                    confidence=0.0,
-                    error="AI generation service not available",
-                )
+            # Try OpenAI first, fallback to OpenRouter with free model
+            provider = provider_manager.get_provider("openai")
+            model_to_use = "gpt-4o"
+
+            # Check if OpenAI is actually usable (not just available - has real key)
+            openai_key = os.environ.get("OPENAI_API_KEY") or ""
+            if provider and provider.available and openai_key and not openai_key.startswith("your-"):
+                # OpenAI has a valid key, use it
+                pass
+            else:
+                # Fall back to OpenRouter with a free model
+                provider = provider_manager.get_provider("openrouter")
+                model_to_use = "inclusionai/ling-2.6-flash:free"
+                if not provider or not provider.available:
+                    return GraphCompositionResponse(
+                        success=False,
+                        generation_id=generation_id,
+                        latency_ms=(time.time() - start_time) * 1000,
+                        confidence=0.0,
+                        error="AI generation service not available",
+                    )
 
             # Build the composition prompt
             system_prompt = self._build_system_prompt(request.preferred_runtime)
@@ -1143,10 +1157,10 @@ class GraphCompositionService:
                 ChatMessage(role=MessageRole.USER, content=user_prompt),
             ]
 
-            # Generate with GPT-4
+            # Generate with available model
             completion = await provider.complete(
                 messages=messages,
-                model="gpt-4o",
+                model=model_to_use,
                 temperature=0.3,  # Lower temperature for structured output
                 max_tokens=4000,
             )
@@ -1200,6 +1214,126 @@ class GraphCompositionService:
                 error=str(e),
                 suggestions=["Try rephrasing your prompt with more specific details"],
             )
+
+    async def _customize_template_with_llm(
+        self,
+        template: Dict[str, Any],
+        customization_prompt: str,
+    ) -> Tuple[List[GraphNodeRef], List[GraphEdge]]:
+        """Use LLM to customize a template based on user prompt."""
+        provider_manager = self._get_provider()
+        provider = provider_manager.get_provider("openai")
+        model_to_use = "gpt-4o"
+
+        openai_key = os.environ.get("OPENAI_API_KEY") or ""
+        if not provider or not provider.available or not openai_key or openai_key.startswith("your-"):
+            provider = provider_manager.get_provider("openrouter")
+            model_to_use = "inclusionai/ling-2.6-flash:free"
+            if not provider or not provider.available:
+                return self._customize_template_basic(template, customization_prompt)
+
+        system_prompt = """You are an expert backend architect customizing a serverless workflow template.
+
+Given the original template and a user customization request, you must return a JSON object with:
+{
+  "nodes": [...], // Modified or new nodes
+  "edges": [...]  // Modified or new edges
+}
+
+Rules:
+1. Keep nodes that fit the customization request, modify or remove ones that don't
+2. Add new nodes if needed to fulfill the request
+3. Update edge connections to reflect node changes
+4. Preserve node_id format: "author-name" where author is "functionfly" or "user"
+5. Use functionfly functions where possible
+6. Return empty array [] if no changes needed to that section"""
+
+        template_json = json.dumps(template, indent=2)
+        user_prompt = f"""Original template:
+{template_json}
+
+User customization request: {customization_prompt}
+
+Return the modified nodes and edges as JSON."""
+
+        messages = [
+            ChatMessage(role=MessageRole.SYSTEM, content=system_prompt),
+            ChatMessage(role=MessageRole.USER, content=user_prompt),
+        ]
+
+        try:
+            completion = await provider.complete(
+                messages=messages,
+                model=model_to_use,
+                temperature=0.3,
+                max_tokens=3000,
+            )
+
+            result_data = json.loads(completion.content)
+            nodes = [
+                GraphNodeRef(
+                    node_id=n["node_id"],
+                    author=n.get("author", "functionfly"),
+                    name=n["name"],
+                    version=n.get("version", "latest"),
+                    config=n.get("config", {}),
+                    description=n.get("description"),
+                )
+                for n in result_data.get("nodes", [])
+            ]
+            edges = [
+                GraphEdge(
+                    id=e["id"],
+                    source_node_id=e["source_node_id"],
+                    target_node_id=e["target_node_id"],
+                    mapping=GraphEdgeMapping(),
+                    condition=None,
+                    type=e.get("type", "sync"),
+                )
+                for e in result_data.get("edges", [])
+            ]
+            return nodes, edges
+        except Exception as e:
+            logger.warning(f"LLM customization failed, using basic customization: {e}")
+            return self._customize_template_basic(template, customization_prompt)
+
+    def _customize_template_basic(
+        self,
+        template: Dict[str, Any],
+        customization_prompt: str,
+    ) -> Tuple[List[GraphNodeRef], List[GraphEdge]]:
+        """Basic template customization without LLM (keyword-based)."""
+        prompt_lower = customization_prompt.lower()
+        nodes = []
+        edges = []
+
+        for node_def in template["default_nodes"]:
+            node_text = f"{node_def['name']} {node_def.get('description', '')}".lower()
+            exclude = any(kw in prompt_lower for kw in ["without", "no", "exclude", "skip", "remove"])
+            if exclude and any(kw in node_text for kw in prompt_lower.split()):
+                continue
+            nodes.append(GraphNodeRef(
+                node_id=node_def["node_id"],
+                author=node_def["author"],
+                name=node_def["name"],
+                version="latest",
+                config={},
+                description=node_def.get("description"),
+            ))
+
+        node_ids = {n.node_id for n in nodes}
+        for edge_def in template["default_edges"]:
+            if edge_def["source_node_id"] in node_ids and edge_def["target_node_id"] in node_ids:
+                edges.append(GraphEdge(
+                    id=edge_def["id"],
+                    source_node_id=edge_def["source_node_id"],
+                    target_node_id=edge_def["target_node_id"],
+                    mapping=GraphEdgeMapping(),
+                    condition=None,
+                    type="sync",
+                ))
+
+        return nodes, edges
 
     def _match_prompt_to_template(self, prompt: str) -> Optional[str]:
         """Check if prompt matches a known template pattern."""
@@ -1319,7 +1453,7 @@ Use {preferred_runtime} as the preferred runtime when suggesting functions."""
                 source_node_id=edge_def["source_node_id"],
                 target_node_id=edge_def["target_node_id"],
                 mapping=mapping,
-                condition=None,  # TODO: Parse conditions
+                condition=self._parse_edge_condition(edge_def.get("condition")),
                 type=edge_def.get("type", "sync"),
                 fallback_node_id=edge_def.get("fallback_node_id"),
             ))
@@ -1372,6 +1506,17 @@ Use {preferred_runtime} as the preferred runtime when suggesting functions."""
                 flow_parts.append(f"{source.node_id} → {target.node_id}")
 
         return " → ".join(flow_parts) if len(flow_parts) <= 3 else "\n".join(flow_parts)
+
+
+def _parse_edge_condition(self, cond: Optional[Dict[str, Any]]) -> Optional[GraphEdgeCondition]:
+        """Parse edge condition from dict or None."""
+        if not cond:
+            return None
+        return GraphEdgeCondition(
+            operator=cond.get("operator", "eq"),
+            field=cond.get("field", ""),
+            value=cond.get("value"),
+        )
 
 
 # Singleton instance

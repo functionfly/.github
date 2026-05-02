@@ -192,6 +192,27 @@ export {
   useUpdateAgentMemory,
 } from './useAgentMemory';
 
+// Agent Swarm Hooks
+export {
+  swarmKeys,
+  useAgentChildren,
+  useAgentParent,
+  useSwarmHealth,
+  useAgentInbox,
+  useSwarmStats,
+  useSpawnChildAgent,
+  useSendAgentMessage,
+} from './useAgentSwarm';
+
+// Security Alert Hooks
+export {
+  securityAlertKeys,
+  useSecurityAlerts,
+  useAcknowledgeAlert,
+  useResolveAlert,
+  useKillSwitch,
+} from './useSecurityAlerts';
+
 // State & Fabric Hooks
 export {
   stateKeys,

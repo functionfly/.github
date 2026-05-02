@@ -29,6 +29,7 @@ export interface RegistryFunctionVersion {
   id: string;
   version: string;
   manifest: any;
+  source_code?: string; // The actual source code
   runtime: string;
   timeout_ms: number;
   memory_mb: number;
@@ -91,7 +92,7 @@ class RegistryApi {
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     if (params?.offset) queryParams.append('offset', params.offset.toString());
 
-    const url = `/v1/functions${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const url = `/v2/functions${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     return apiClient.get<{ functions: RegistryFunction[] }>(url);
   }
 
@@ -107,6 +108,18 @@ class RegistryApi {
     return apiClient.get<{ versions: RegistryFunctionVersion[] }>(
       `/v1/functions/${author}/${name}/versions`
     );
+  }
+
+  // Get function version source code
+  async getFunctionVersionSource(author: string, name: string, version: string = 'latest') {
+    const response = await apiClient.get<{ source_code: string; version: string }>(
+      `/v1/functions/${author}/${name}/source${version !== 'latest' ? `?version=${version}` : ''}`
+    );
+    console.log('[getFunctionVersionSource] Response:', response);
+    if (!response?.source_code) {
+      throw new Error('Source code not available for this function version');
+    }
+    return response.source_code;
   }
 
   // Search functions

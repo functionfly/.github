@@ -9,6 +9,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/apps"
 	"github.com/functionfly/functionfly/internal/api/handlers/backends"
 	billinghandler "github.com/functionfly/functionfly/internal/api/handlers/billing"
+	"github.com/functionfly/functionfly/internal/api/handlers/chat"
 	categorizationhandler "github.com/functionfly/functionfly/internal/api/handlers/categorization"
 	"github.com/functionfly/functionfly/internal/api/handlers/dashboard"
 	"github.com/functionfly/functionfly/internal/api/handlers/decisions"
@@ -76,6 +77,9 @@ func registerPlatformRoutes(
 	functionWebhooksHandler *function_webhooks.Handler,
 	swarmControllerHandler agenthandler.SwarmControllerHandlerInterface,
 	unfairAdvantageHandler *agenthandler.UnfairAdvantageHandler,
+	chatHandler *chat.Handler,
+	chatConnectorHandler *chat.ConnectorHandler,
+	chatWSHub *chat.WebSocketHub,
 ) {
 	// ── Metrics (public) ─────────────────────────────────────────────────────
 	api.HandleFunc("/metrics/global", s.handleGlobalMetrics).Methods("GET", "OPTIONS")
@@ -234,6 +238,8 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/apps/{appId}/status", authMiddleware.RequireAuth(appsHandler.HandleGetAppStatus)).Methods("GET", "OPTIONS")
 
 	// ── Functions (protected) ─────────────────────────────────────────────────
+	protected.HandleFunc("/functions", authMiddleware.RequireAuth(functionsHandler.HandleListFunctions)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/functions", authMiddleware.RequireAuth(functionsHandler.HandleCreateFunction)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/functions/{id}", authMiddleware.RequireAuth(functionsHandler.HandleGetFunction)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/functions/{id}", authMiddleware.RequireAuth(functionsHandler.HandleUpdateFunction)).Methods("PUT", "OPTIONS")
 	protected.HandleFunc("/functions/{id}", authMiddleware.RequireAuth(functionsHandler.HandleDeleteFunction)).Methods("DELETE", "OPTIONS")
@@ -243,6 +249,8 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/functions/deployments/{deploymentId}", authMiddleware.RequireAuth(functionsHandler.HandleGetFunctionDeployment)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/functions/deploy", authMiddleware.RequireAuth(functionsHandler.HandleDeployFunction)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/functions/test", authMiddleware.RequireAuth(functionsHandler.HandleTestFunction)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/functions/parse", authMiddleware.RequireAuth(functionsHandler.HandleParseCode)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/functions/from-code", authMiddleware.RequireAuth(functionsHandler.HandleCreateFromCode)).Methods("POST", "OPTIONS")
 
 	// ── Dashboard (protected, tenant-scoped) ──────────────────────────────────
 	protected.HandleFunc("/dashboard/usage", authMiddleware.RequireAuth(dashboardHandler.HandleGetUsage)).Methods("GET", "OPTIONS")
@@ -327,15 +335,19 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/state-fabrics/{id}/replays/{replayId}", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleGetReplay))).Methods("GET", "OPTIONS")
 
 	// ── Secrets Vault (protected) ─────────────────────────────────────────────
-	protected.HandleFunc("/vault/secrets", authMiddleware.RequireAuth(vaultHandler.HandleListSecrets)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/vault/secrets", authMiddleware.RequireAuth(vaultRateLimiter.LimitList(vaultHandler.HandleListSecrets))).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/vault/secrets", authMiddleware.RequireAuth(vaultRateLimiter.LimitCreate(vaultHandler.HandleCreateSecret))).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/vault/secrets/{id}", authMiddleware.RequireAuth(vaultHandler.HandleGetSecret)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/vault/secrets/{id}", authMiddleware.RequireAuth(vaultRateLimiter.LimitRead(vaultHandler.HandleGetSecret))).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/vault/secrets/{id}", authMiddleware.RequireAuth(vaultHandler.HandleUpdateSecret)).Methods("PATCH", "OPTIONS")
 	protected.HandleFunc("/vault/secrets/{id}", authMiddleware.RequireAuth(vaultHandler.HandleDeleteSecret)).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/vault/secrets/{id}/rotate", authMiddleware.RequireAuth(vaultRateLimiter.LimitCreate(vaultHandler.HandleRotateSecret))).Methods("PATCH", "OPTIONS")
 	protected.HandleFunc("/vault/secrets/{id}/tokens", authMiddleware.RequireAuth(vaultHandler.HandleListTokens)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/vault/secrets/{id}/tokens", authMiddleware.RequireAuth(vaultRateLimiter.LimitGenerateToken(vaultHandler.HandleGenerateToken))).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/vault/secrets/{id}/audit", authMiddleware.RequireAuth(vaultHandler.HandleGetSecretAuditLog)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/vault/tokens/{id}", authMiddleware.RequireAuth(vaultHandler.HandleRevokeToken)).Methods("DELETE", "OPTIONS")
 	protected.HandleFunc("/vault/audit", authMiddleware.RequireAuth(vaultHandler.HandleGetAuditLog)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/vault/audit/action/{action}", authMiddleware.RequireAuth(vaultHandler.HandleGetAuditLogByAction)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/vault/audit/actor/{actor_type}/{actor_id}", authMiddleware.RequireAuth(vaultHandler.HandleGetAuditLogByActor)).Methods("GET", "OPTIONS")
 
 	// ── Secret Versions (protected) ─────────────────────────────────────────
 	protected.HandleFunc("/vault/secrets/{id}/versions", authMiddleware.RequireAuth(vaultHandler.HandleListSecretVersions)).Methods("GET", "OPTIONS")
@@ -384,4 +396,9 @@ func registerPlatformRoutes(
 	// ── Support WebSocket (real-time chat) ──────────────────────────────────────
 	// Register on api subrouter so /v1/support/ws matches (auth middleware runs first)
 	support.RegisterWebSocketRoutes(api, supportWSHub)
+
+	// ── Chat (AI chat with integrations) ───────────────────────────────────────
+	chatHandler.RegisterRoutes(api, authMiddleware)
+	chatConnectorHandler.RegisterRoutes(api, authMiddleware)
+	api.HandleFunc("/chat/ws", chatWSHub.HandleWebSocket).Methods("GET")
 }

@@ -138,25 +138,34 @@ function NodePulse({
 
 // Mini metrics card
 function LiveMetrics() {
-  const [metrics, setMetrics] = useState({
-    throughput: 0,
-    latency: 0,
-    cpu: 0,
-    memory: 0,
-  });
+  const { nodeRuntimeStates, executionStatus, executionProgress } = useFRGStore();
 
-  // Simulate live metrics
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setMetrics({
-        throughput: Math.floor(Math.random() * 1000) + 500,
-        latency: Math.floor(Math.random() * 100) + 20,
-        cpu: Math.floor(Math.random() * 30) + 10,
-        memory: Math.floor(Math.random() * 100) + 50,
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  const metrics = useMemo(() => {
+    const states = Object.values(nodeRuntimeStates);
+    const totalNodes = states.length;
+    const executingNodes = states.filter(s => s.status === 'executing' || s.status === 'retrying').length;
+    const completedNodes = states.filter(s => s.status === 'completed').length;
+    const failedNodes = states.filter(s => s.status === 'failed').length;
+
+    const totalDurationMs = states.reduce((sum, s) => sum + (s.durationMs || 0), 0);
+    const avgLatency = totalNodes > 0 ? Math.round(totalDurationMs / totalNodes) : 0;
+
+    const activeCount = executingNodes + completedNodes + failedNodes;
+    const throughput = activeCount > 0 ? Math.round((completedNodes / Math.max(activeCount, 1)) * 1000) : 0;
+    const cpu = executionStatus === 'running' ? Math.min(100, Math.round((executingNodes / Math.max(totalNodes, 1)) * 100)) : 0;
+    const memory = Math.round(totalDurationMs / 10000);
+
+    return {
+      throughput,
+      latency: avgLatency,
+      cpu,
+      memory: Math.max(memory, 10),
+      progress: executionProgress,
+      executing: executingNodes,
+      completed: completedNodes,
+      failed: failedNodes,
+    };
+  }, [nodeRuntimeStates, executionStatus, executionProgress]);
 
   return (
     <div className="bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded-lg p-3 shadow-lg">
@@ -166,9 +175,9 @@ function LiveMetrics() {
       </div>
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div>
-          <span className="text-[var(--text-muted)]">Throughput</span>
+          <span className="text-[var(--text-muted)]">Progress</span>
           <div className="text-[var(--text-primary)] font-mono">
-            {metrics.throughput.toLocaleString()} req/s
+            {metrics.progress}%
           </div>
         </div>
         <div>
@@ -181,7 +190,7 @@ function LiveMetrics() {
           <span className="text-[var(--text-muted)]">CPU</span>
           <div className="flex items-center gap-1">
             <div className="flex-1 h-1 bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
-              <div 
+              <div
                 className="h-full bg-blue-500 rounded-full transition-all"
                 style={{ width: `${metrics.cpu}%` }}
               />
@@ -194,6 +203,9 @@ function LiveMetrics() {
           <div className="text-[var(--text-primary)] font-mono">
             {metrics.memory}MB
           </div>
+        </div>
+        <div className="col-span-2 text-xs text-[var(--text-muted)] mt-1">
+          Executing: {metrics.executing} | Completed: {metrics.completed} | Failed: {metrics.failed}
         </div>
       </div>
     </div>

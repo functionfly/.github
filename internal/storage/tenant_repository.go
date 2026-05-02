@@ -453,7 +453,7 @@ func (r *TenantRepository) UpdateTenantStatus(ctx context.Context, tenantID uuid
 	}
 
 	_, err := r.db.ExecContext(ctx, `
-		UPDATE tenants 
+		UPDATE tenants
 		SET status = $1, updated_at = NOW()
 		WHERE id = $2
 	`, status, tenantID)
@@ -461,4 +461,164 @@ func (r *TenantRepository) UpdateTenantStatus(ctx context.Context, tenantID uuid
 		return fmt.Errorf("failed to update tenant status: %w", err)
 	}
 	return nil
+}
+
+// UpdateTenantTaxSettings updates a tenant's tax-related fields including billing
+// location and tax ID information.
+func (r *TenantRepository) UpdateTenantTaxSettings(ctx context.Context, tenantID uuid.UUID, settings *TaxSettings) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE tenants
+		SET billing_country = $1,
+		    billing_state = $2,
+		    billing_postal_code = $3,
+		    tax_id = $4,
+		    tax_id_type = $5,
+		    tax_exempt = $6,
+		    updated_at = NOW()
+		WHERE id = $7
+	`, settings.BillingCountry,
+		settings.BillingState,
+		settings.BillingPostalCode,
+		settings.TaxID,
+		settings.TaxIDType,
+		settings.TaxExempt,
+		tenantID)
+	if err != nil {
+		return fmt.Errorf("failed to update tenant tax settings: %w", err)
+	}
+	return nil
+}
+
+// ============================================================================
+// Dedicated Tenant Database Management
+// ============================================================================
+
+// TenantDBConfig represents tenant-specific database configuration
+type TenantDBConfig struct {
+	TenantID        uuid.UUID
+	DBName          string
+	Status          string
+	ConnectionString string
+	MaxConnections  int
+	CreatedAt       time.Time
+}
+
+// ShouldHaveDedicatedDB checks if a tenant qualifies for a dedicated database
+// based on their plan. Starter pack and above get dedicated databases.
+func (r *TenantRepository) ShouldHaveDedicatedDB(ctx context.Context, tenantID uuid.UUID) (bool, error) {
+	tenant, err := r.GetTenantByID(tenantID)
+	if err != nil {
+		return false, err
+	}
+	if tenant == nil {
+		return false, fmt.Errorf("tenant not found")
+	}
+
+	// Plans that qualify for dedicated databases
+	dedicatedPlans := map[string]bool{
+		plans.PlanStarter: true,
+		plans.PlanPro:     true,
+		plans.PlanEnterprise: true,
+	}
+
+	return dedicatedPlans[tenant.Plan], nil
+}
+
+// GetTenantDBConfig retrieves the dedicated database configuration for a tenant
+func (r *TenantRepository) GetTenantDBConfig(ctx context.Context, tenantID uuid.UUID) (*TenantDBConfig, error) {
+	cfg := &TenantDBConfig{}
+	err := r.db.QueryRowContext(ctx, `
+		SELECT tenant_id, db_name, status, connection_string_template, max_connections, created_at
+		FROM tenant_database_configs
+		WHERE tenant_id = $1
+	`, tenantID).Scan(
+		&cfg.TenantID, &cfg.DBName, &cfg.Status, &cfg.ConnectionString,
+		&cfg.MaxConnections, &cfg.CreatedAt)
+
+	if err == sql.ErrNoRows {
+		return nil, nil // No dedicated DB for this tenant
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tenant DB config: %w", err)
+	}
+
+	return cfg, nil
+}
+
+// HasDedicatedDB checks if a tenant already has a dedicated database configured
+func (r *TenantRepository) HasDedicatedDB(ctx context.Context, tenantID uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.db.QueryRowContext(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM tenant_database_configs
+			WHERE tenant_id = $1 AND status IN ('active', 'provisioning')
+		)
+	`, tenantID).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("failed to check dedicated DB: %w", err)
+	}
+	return exists, nil
+}
+
+// AssignDedicatedDB assigns a dedicated database to a tenant (called after provisioning)
+func (r *TenantRepository) AssignDedicatedDB(ctx context.Context, tenantID uuid.UUID, dbName, connectionTemplate string) error {
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO tenant_database_configs (tenant_id, db_name, connection_string_template, status)
+		VALUES ($1, $2, $3, 'active')
+		ON CONFLICT (tenant_id) DO UPDATE SET
+			db_name = EXCLUDED.db_name,
+			connection_string_template = EXCLUDED.connection_string_template,
+			status = 'active',
+			updated_at = NOW()
+	`, tenantID, dbName, connectionTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to assign dedicated DB: %w", err)
+	}
+	return nil
+}
+
+// RemoveDedicatedDB removes the dedicated database from a tenant (e.g., when downgrading)
+func (r *TenantRepository) RemoveDedicatedDB(ctx context.Context, tenantID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE tenant_database_configs SET status = 'deleting', updated_at = NOW()
+		WHERE tenant_id = $1
+	`, tenantID)
+	if err != nil {
+		return fmt.Errorf("failed to remove dedicated DB: %w", err)
+	}
+	return nil
+}
+
+// ListTenantsWithDedicatedDBs returns all tenants that have dedicated databases
+func (r *TenantRepository) ListTenantsWithDedicatedDBs(ctx context.Context) ([]*TenantDBConfig, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT tenant_id, db_name, status, connection_string_template, max_connections, created_at
+		FROM tenant_database_configs
+		WHERE status IN ('active', 'provisioning', 'suspended')
+		ORDER BY created_at DESC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list dedicated DBs: %w", err)
+	}
+	defer rows.Close()
+
+	var configs []*TenantDBConfig
+	for rows.Next() {
+		cfg := &TenantDBConfig{}
+		err := rows.Scan(&cfg.TenantID, &cfg.DBName, &cfg.Status, &cfg.ConnectionString, &cfg.MaxConnections, &cfg.CreatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan tenant DB config: %w", err)
+		}
+		configs = append(configs, cfg)
+	}
+
+	return configs, rows.Err()
+}
+
+// GetOrCreateTenantDBProvisioner returns a configured tenant DB provisioner
+// This integrates the provisioner with the existing tenant repository
+func (r *TenantRepository) GetOrCreateTenantDBProvisioner(provisioner *TenantDBProvisioner, poolManager *TenantPoolManager) (*TenantDBProvisioner, *TenantPoolManager, error) {
+	// Return the injected provisioner and pool manager
+	// In production, these would be injected at startup
+	return provisioner, poolManager, nil
 }

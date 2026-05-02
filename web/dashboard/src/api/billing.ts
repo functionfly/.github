@@ -658,6 +658,70 @@ export async function convertToPaid(bundleId: string): Promise<CreateCheckoutSes
   );
 }
 
+// ==================== Backend-in-a-Box Bundle Deployment ====================
+
+export interface DeploymentStep {
+  id: string;
+  name: string;
+  description: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  error?: string;
+}
+
+export interface DeploymentResponse {
+  deployment_id: string;
+  status: string;
+  message?: string;
+  app_id?: string;
+  backend_id?: string;
+  steps?: DeploymentStep[];
+}
+
+export interface DeploymentStatusResponse {
+  deployment_id: string;
+  status: string;
+  message?: string;
+  progress: number;
+  current_step?: string;
+  steps: DeploymentStep[];
+  error?: string;
+  app_id?: string;
+  backend_id?: string;
+}
+
+/**
+ * Initiate a bundle deployment.
+ * POST /v1/billing/bundles/{slug}/deploy
+ */
+export async function deployBundle(
+  slug: string,
+  region?: string
+): Promise<DeploymentResponse> {
+  const csrfToken = await apiClient.fetchCSRFToken();
+  const headers: Record<string, string> = {};
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken;
+  }
+
+  return apiClient.post<DeploymentResponse>(
+    `/v1/billing/bundles/${slug}/deploy`,
+    { bundle_slug: slug, region },
+    { headers }
+  );
+}
+
+/**
+ * Get deployment status by deployment ID.
+ * GET /v1/billing/deployments/{deploymentId}/status
+ */
+export async function getDeploymentStatus(
+  deploymentId: string
+): Promise<DeploymentStatusResponse> {
+  return apiClient.get<DeploymentStatusResponse>(
+    `/v1/billing/deployments/${deploymentId}/status`
+  );
+}
+
 // ==================== Revenue Recognition (ASC 606/IFRS 15) ====================
 
 export interface DeferredRevenueResponse {

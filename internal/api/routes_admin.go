@@ -10,6 +10,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/admin"
 	agenthandler "github.com/functionfly/functionfly/internal/api/handlers/agent"
 	"github.com/functionfly/functionfly/internal/api/handlers/billing"
+	"github.com/functionfly/functionfly/internal/api/handlers/blog"
 	"github.com/functionfly/functionfly/internal/api/handlers/content"
 	factoryhandler "github.com/functionfly/functionfly/internal/api/handlers/factory"
 	feedbackHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/feedback"
@@ -44,6 +45,7 @@ func registerAdminRoutes(
 	oversightHandler *admin.OversightHandler,
 	factoryHandler *factoryhandler.Handler,
 	stateFabricHandler *statefabric.Handler,
+	blogHandler *blog.Handler,
 	contentHandler *content.Handler,
 	csrfMiddleware *middleware.CSRFMiddleware,
 	rateLimiter *middleware.AdminRateLimiter,
@@ -431,6 +433,7 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/factory/opportunities/{id}/approve", authMiddleware.RequirePermission(auth.PermSystemWrite)(factoryHandler.HandleApproveOpportunity)).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/factory/opportunities/{id}/reject", authMiddleware.RequirePermission(auth.PermSystemWrite)(factoryHandler.HandleRejectOpportunity)).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/factory/functions", authMiddleware.RequirePermission(auth.PermSystemRead)(factoryHandler.HandleListFunctions)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/factory/versions/{versionId}/code", authMiddleware.RequirePermission(auth.PermSystemRead)(factoryHandler.HandleGetFactoryVersion)).Methods("GET", "OPTIONS")
 
 	// ── Unfair Advantage Engine (ADMIN ONLY - FunctionFly Internal) ─────────────────────────────
 	adminRoutes.HandleFunc("/unfair-advantage/dashboard", authMiddleware.RequirePermission(auth.PermSystemRead)(unfairAdvantageHandler.HandleGetDashboard)).Methods("GET", "OPTIONS")
@@ -615,6 +618,28 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/content/generate/author", authMiddleware.RequirePermission(auth.PermSystemWrite)(contentHandler.HandleGenerateAuthorContent)).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/content/generate/category", authMiddleware.RequirePermission(auth.PermSystemWrite)(contentHandler.HandleGenerateCategoryContent)).Methods("POST", "OPTIONS")
 
+	// ── Blog API (NestJS migration - admin) ───────────────────────────────
+	blogAdminRoutes := api.PathPrefix("/admin/blog").Subrouter()
+	blogAdminRoutes.HandleFunc("/posts", authMiddleware.RequirePermission(auth.PermSystemWrite)(blogHandler.HandleListPostsAdmin)).Methods("GET")
+	blogAdminRoutes.HandleFunc("/posts", authMiddleware.RequirePermission(auth.PermSystemWrite)(blogHandler.HandleCreatePost)).Methods("POST")
+	blogAdminRoutes.HandleFunc("/posts/{id}", authMiddleware.RequirePermission(auth.PermSystemWrite)(blogHandler.HandleUpdatePost)).Methods("PUT")
+	blogAdminRoutes.HandleFunc("/posts/{id}", authMiddleware.RequirePermission(auth.PermSystemWrite)(blogHandler.HandleDeletePost)).Methods("DELETE")
+	blogAdminRoutes.HandleFunc("/posts/{id}", authMiddleware.RequirePermission(auth.PermSystemWrite)(blogHandler.HandleGetPostAdmin)).Methods("GET")
+	blogAdminRoutes.HandleFunc("/posts/{id}/related", authMiddleware.RequirePermission(auth.PermSystemWrite)(blogHandler.HandleGetRelatedPosts)).Methods("GET")
+	blogAdminRoutes.HandleFunc("/posts/{id}/related", authMiddleware.RequirePermission(auth.PermSystemWrite)(blogHandler.HandleSetRelatedPosts)).Methods("PUT")
+	blogAdminRoutes.HandleFunc("/posts/{id}/cta-blocks", authMiddleware.RequirePermission(auth.PermSystemWrite)(blogHandler.HandleGetCTABlocks)).Methods("GET")
+	blogAdminRoutes.HandleFunc("/posts/{id}/cta-blocks", authMiddleware.RequirePermission(auth.PermSystemWrite)(blogHandler.HandleSetCTABlocks)).Methods("PUT")
+	blogAdminRoutes.HandleFunc("/categories", authMiddleware.RequirePermission(auth.PermSystemWrite)(blogHandler.HandleCreateCategory)).Methods("POST")
+	blogAdminRoutes.HandleFunc("/categories/{id}", authMiddleware.RequirePermission(auth.PermSystemWrite)(blogHandler.HandleUpdateCategory)).Methods("PUT")
+	blogAdminRoutes.HandleFunc("/categories/{id}", authMiddleware.RequirePermission(auth.PermSystemWrite)(blogHandler.HandleDeleteCategory)).Methods("DELETE")
+	blogAdminRoutes.HandleFunc("/categories/slug/{slug}", authMiddleware.RequirePermission(auth.PermSystemWrite)(blogHandler.HandleGetCategoryBySlug)).Methods("GET")
+	blogAdminRoutes.HandleFunc("/authors", authMiddleware.RequirePermission(auth.PermSystemWrite)(blogHandler.HandleCreateAuthor)).Methods("POST")
+	blogAdminRoutes.HandleFunc("/authors/{id}", authMiddleware.RequirePermission(auth.PermSystemWrite)(blogHandler.HandleUpdateAuthor)).Methods("PUT")
+	blogAdminRoutes.HandleFunc("/authors/{id}", authMiddleware.RequirePermission(auth.PermSystemWrite)(blogHandler.HandleDeleteAuthor)).Methods("DELETE")
+	blogAdminRoutes.HandleFunc("/authors/slug/{slug}", authMiddleware.RequirePermission(auth.PermSystemWrite)(blogHandler.HandleGetAuthorBySlug)).Methods("GET")
+	blogAdminRoutes.HandleFunc("/settings", authMiddleware.RequirePermission(auth.PermSystemWrite)(blogHandler.HandleGetSettings)).Methods("GET")
+	blogAdminRoutes.HandleFunc("/settings", authMiddleware.RequirePermission(auth.PermSystemWrite)(blogHandler.HandleUpdateSettings)).Methods("PUT")
+
 	// Tenant-scoped operations (admin impersonating tenant)
 	adminRoutes.HandleFunc("/tenants/{tenantId}/apps", authMiddleware.RequirePermission(auth.PermTenantsRead)(adminHandler.HandleListTenantApps)).Methods("GET")
 	adminRoutes.HandleFunc("/tenants/{tenantId}/apps/{appId}", authMiddleware.RequirePermission(auth.PermTenantsRead)(adminHandler.HandleGetTenantApp)).Methods("GET")
@@ -630,6 +655,14 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/tenants/{tenantId}/seat-usage", authMiddleware.RequirePermission(auth.PermTenantsRead)(adminHandler.HandleGetSeatUsage)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/users/{userId}/deactivate", authMiddleware.RequirePermission(auth.PermUsersWrite)(adminHandler.HandleDeactivateUser)).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/users/{userId}/reactivate", authMiddleware.RequirePermission(auth.PermUsersWrite)(adminHandler.HandleReactivateUser)).Methods("POST", "OPTIONS")
+
+	// Dedicated tenant database management
+	adminRoutes.HandleFunc("/tenants/{tenantId}/dedicated-db/status", authMiddleware.RequirePermission(auth.PermTenantsRead)(adminHandler.HandleGetTenantDedicatedDBStatus)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/tenants/{tenantId}/dedicated-db/provision", authMiddleware.RequirePermission(auth.PermTenantsWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleProvisionTenantDedicatedDB))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/tenants/{tenantId}/dedicated-db/suspend", authMiddleware.RequirePermission(auth.PermTenantsWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleSuspendTenantDedicatedDB))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/tenants/{tenantId}/dedicated-db/resume", authMiddleware.RequirePermission(auth.PermTenantsWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleResumeTenantDedicatedDB))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/tenants/{tenantId}/dedicated-db", authMiddleware.RequirePermission(auth.PermTenantsWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleDeprovisionTenantDedicatedDB))).Methods("DELETE", "OPTIONS")
+	adminRoutes.HandleFunc("/dedicated-dbs", authMiddleware.RequirePermission(auth.PermSystemRead)(adminHandler.HandleListTenantDedicatedDBs)).Methods("GET", "OPTIONS")
 
 	// Newsletter management
 	adminRoutes.HandleFunc("/newsletter/subscribers", authMiddleware.RequirePermission(auth.PermSystemRead)(newsletterHandler.ListSubscribers)).Methods("GET", "OPTIONS")

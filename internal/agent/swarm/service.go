@@ -86,9 +86,19 @@ func (s *Service) SpawnChild(ctx context.Context, req *SpawnChildRequest) (*iden
 		Description: req.ChildDescription,
 	}
 
-	child, apiKey, err := s.identityRepo.CreateAgent(ctx, parent.TenantID, childReq)
+	child, apiKey, signingKey, err := s.identityRepo.CreateAgent(ctx, parent.TenantID, childReq)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to create child agent: %w", err)
+	}
+
+	// Store signing key in daemon config for later use by the parent
+	if signingKey != "" {
+		daemonConfig := map[string]any{
+			"signing_key": signingKey,
+		}
+		s.db.WithContext(ctx).Model(&identity.AgentIdentity{}).
+			Where("agent_id = ?", child.AgentID).
+			Update("daemon_config", daemonConfig)
 	}
 
 	// Update swarm fields

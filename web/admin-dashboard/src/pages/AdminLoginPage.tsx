@@ -123,7 +123,7 @@ export function AdminLoginPage() {
   };
 
   return (
-    <div className="w-full max-w-md">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8" style={{ backgroundColor: 'var(--color-bg)' }}>
       {/* Logo */}
       <div className="flex items-center justify-center gap-3 mb-8">
         <svg
@@ -138,14 +138,14 @@ export function AdminLoginPage() {
           <path d="M16 9.5L22.5 16L16 22.5L9.5 16L16 9.5Z" fill="white" />
           <path d="M16 12.5L19.5 16L16 19.5L12.5 16L16 12.5Z" fill="#6366F1" />
         </svg>
-        <span className="text-xl font-bold text-gray-900">FunctionFly™</span>
+        <span className="text-xl font-bold text-gray-900 dark:text-white">FunctionFly™</span>
       </div>
 
       {/* Single card: title + form */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-lg shadow-gray-200/50 p-8 sm:p-10">
+      <div className="w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-lg shadow-gray-200/50 dark:shadow-slate-900/50 p-8 sm:p-10">
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Sign in</h1>
-          <p className="mt-2 text-sm text-gray-500">
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-white">Sign in</h1>
+          <p className="mt-2 text-sm text-gray-500 dark:text-slate-400">
             Use your admin credentials to access the dashboard.
           </p>
         </div>
@@ -154,7 +154,7 @@ export function AdminLoginPage() {
         {lastLogin && !suspiciousConfirmed && (
           <div
             className={`mb-6 p-4 rounded-lg border ${
-              lastLogin.suspicious ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'
+              lastLogin.suspicious ? 'bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700' : 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700'
             }`}
           >
             <div className="flex items-start gap-3">
@@ -166,28 +166,28 @@ export function AdminLoginPage() {
               <div className="flex-1 min-w-0">
                 <p
                   className={`text-sm font-medium ${
-                    lastLogin.suspicious ? 'text-amber-800' : 'text-green-800'
+                    lastLogin.suspicious ? 'text-amber-800 dark:text-amber-300' : 'text-green-800 dark:text-green-300'
                   }`}
                 >
                   {lastLogin.suspicious ? 'Unusual login detected' : 'Last successful login'}
                 </p>
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="text-xs text-gray-600 dark:text-slate-400 mt-1">
                   {lastLogin.device_name} · {lastLogin.ip_address}
                 </p>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-xs text-gray-500 dark:text-slate-500 mt-0.5">
                   {new Date(lastLogin.timestamp).toLocaleString()}
                 </p>
 
                 {lastLogin.suspicious && (
-                  <div className="mt-3 pt-3 border-t border-amber-200">
-                    <p className="text-xs text-amber-700 mb-2">
+                  <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-700">
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mb-2">
                       Was this you? If not, your account may be compromised.
                     </p>
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => handleSuspiciousLogin(true)}
-                        className="flex-1 text-xs py-1.5 px-3 bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
+                        className="flex-1 text-xs py-1.5 px-3 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded hover:bg-green-200 dark:hover:bg-green-800 transition-colors"
                       >
                         <Check className="w-3 h-3 inline mr-1" />
                         This was me
@@ -195,7 +195,7 @@ export function AdminLoginPage() {
                       <button
                         type="button"
                         onClick={() => handleSuspiciousLogin(false)}
-                        className="flex-1 text-xs py-1.5 px-3 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                        className="flex-1 text-xs py-1.5 px-3 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
                       >
                         <AlertTriangle className="w-3 h-3 inline mr-1" />
                         Not me
@@ -210,7 +210,7 @@ export function AdminLoginPage() {
 
         <form onSubmit={handleLogin} className="space-y-5">
           <div>
-            <label htmlFor="admin-email" className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label htmlFor="admin-email" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
               Email address
             </label>
             <input
@@ -220,7 +220,7 @@ export function AdminLoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="admin@functionfly.com"
               autoComplete="email"
-              className="w-full px-4 py-2.5 bg-white rounded-lg ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-500 transition-all text-gray-900 placeholder:text-gray-400 outline-none"
+              className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 rounded-lg ring-1 ring-inset ring-gray-300 dark:ring-slate-600 focus:ring-2 focus:ring-blue-500 transition-all text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500 outline-none"
               required
             />
           </div>
@@ -228,7 +228,7 @@ export function AdminLoginPage() {
           <div>
             <label
               htmlFor="admin-password"
-              className="block text-sm font-medium text-gray-700 mb-1.5"
+              className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5"
             >
               Password
             </label>
@@ -239,14 +239,14 @@ export function AdminLoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               autoComplete="current-password"
-              className="w-full px-4 py-2.5 bg-white rounded-lg ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-500 transition-all text-gray-900 placeholder:text-gray-400 outline-none"
+              className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 rounded-lg ring-1 ring-inset ring-gray-300 dark:ring-slate-600 focus:ring-2 focus:ring-blue-500 transition-all text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500 outline-none"
               required
             />
           </div>
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-700">{error}</p>
+            <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
+              <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
             </div>
           )}
 
@@ -260,7 +260,7 @@ export function AdminLoginPage() {
           </button>
         </form>
 
-        <p className="mt-6 pt-6 border-t border-gray-100 text-center text-xs text-gray-500">
+        <p className="mt-6 pt-6 border-t border-gray-100 dark:border-slate-700 text-center text-xs text-gray-500 dark:text-slate-400">
           Protected admin area · All access is logged
         </p>
       </div>

@@ -141,7 +141,7 @@ func (h *Handler) HandleGetFunction(w http.ResponseWriter, r *http.Request) {
 // buildRegistryFunctionInfos loads latest versions and ratings in two queries instead of 2N per-function calls.
 func (h *Handler) buildRegistryFunctionInfos(functions []storageregistry.RegistryFunction) ([]map[string]interface{}, error) {
 	if len(functions) == 0 {
-		return nil, nil
+		return make([]map[string]interface{}, 0), nil
 	}
 	ids := make([]uuid.UUID, len(functions))
 	for i := range functions {
@@ -271,6 +271,42 @@ func (h *Handler) HandleListVersions(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(versions)
+}
+
+// HandleGetFunctionSource handles getting the source code for a function version
+// URL: /functions/{author}/{name}/source
+func (h *Handler) HandleGetFunctionSource(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	author := vars["author"]
+	name := vars["name"]
+	version := r.URL.Query().Get("version")
+	if version == "" {
+		version = "latest"
+	}
+
+	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	if err != nil {
+		http.Error(w, "Function not found", http.StatusNotFound)
+		return
+	}
+
+	var fnVersion *storageregistry.RegistryFunctionVersion
+	if version == "latest" {
+		fnVersion, err = h.repo.GetLatestFunctionVersion(fn.ID)
+	} else {
+		fnVersion, err = h.repo.GetFunctionVersion(fn.ID, version)
+	}
+	if err != nil {
+		http.Error(w, "Version not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"source_code": fnVersion.SourceCode.String,
+		"version":     fnVersion.Version,
+		"runtime":     fnVersion.Runtime,
+	})
 }
 
 // HandleListVersionsAt handles listing function versions using @username URL structure

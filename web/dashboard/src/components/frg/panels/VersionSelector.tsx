@@ -1,13 +1,13 @@
 /**
  * VersionSelector Panel
- * Switch function versions and compare changes
+ * Switch graph versions and compare changes
  */
 
-import { useState, useCallback } from 'react';
-import { 
-  GitBranch, 
-  GitCommit, 
-  GitMerge, 
+import { useState, useCallback, useEffect } from 'react';
+import {
+  GitBranch,
+  GitCommit,
+  GitMerge,
   GitCompare,
   ArrowRightLeft,
   Clock,
@@ -20,16 +20,14 @@ import {
   Copy,
   Trash2,
   Plus,
-  ChevronDown,
-  ChevronRight,
+  Loader2,
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Accordion,
@@ -43,7 +41,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   DropdownMenu,
@@ -52,29 +49,39 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 
 import { useFRGStore } from '@/stores/frgStore';
-import type { VersionComparison } from '@/types/frg';
+import { frgApi } from '@/api/frg';
+import type { GraphDefinition } from '@/types/frg';
 
-// Mock versions - in production, from API
-const mockVersions = [
-  { version: '1.2.0', createdAt: '2024-04-10T10:30:00Z', isPublished: true, author: 'john.doe', message: 'Add error handling' },
-  { version: '1.1.2', createdAt: '2024-04-08T15:20:00Z', isPublished: true, author: 'jane.smith', message: 'Fix data mapping' },
-  { version: '1.1.1', createdAt: '2024-04-05T09:10:00Z', isPublished: false, author: 'john.doe', message: 'WIP: streaming support' },
-  { version: '1.1.0', createdAt: '2024-04-01T14:45:00Z', isPublished: true, author: 'jane.smith', message: 'Add retry logic' },
-  { version: '1.0.0', createdAt: '2024-03-28T11:00:00Z', isPublished: true, author: 'john.doe', message: 'Initial release' },
-];
+interface VersionItem {
+  version: string;
+  createdAt: string;
+  isPublished: boolean;
+  author?: string;
+  message?: string;
+}
 
 export function VersionSelector() {
   const store = useFRGStore();
-  const { selectedVersion, setSelectedVersion, compareVersions, setCompareVersions } = store;
+  const { graphAuthor, graphName, selectedVersion, setSelectedVersion, compareVersions, setCompareVersions } = store;
 
   const [activeTab, setActiveTab] = useState('versions');
   const [compareMode, setCompareMode] = useState(false);
   const [compareFrom, setCompareFrom] = useState<string | null>(null);
   const [compareTo, setCompareTo] = useState<string | null>(null);
+
+  // Fetch versions from API
+  const { data: versionData, isLoading: versionsLoading } = useQuery({
+    queryKey: ['frg', 'versions', graphAuthor, graphName],
+    queryFn: () => {
+      if (!graphAuthor || !graphName) return { versions: [] };
+      return frgApi.listVersions(graphAuthor, graphName);
+    },
+    enabled: !!graphAuthor && !!graphName,
+  });
+
+  const versions: VersionItem[] = versionData?.versions || [];
 
   const handleVersionSelect = useCallback((version: string) => {
     if (compareMode) {
@@ -97,12 +104,21 @@ export function VersionSelector() {
   }, [setCompareVersions]);
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', { 
-      month: 'short', 
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const handlePublish = async () => {
+    if (!graphAuthor || !graphName) return;
+    try {
+      await frgApi.publishGraph(graphAuthor, graphName);
+    } catch (err) {
+      console.error('Failed to publish graph:', err);
+    }
   };
 
   return (
@@ -117,14 +133,14 @@ export function VersionSelector() {
             <div>
               <h3 className="font-semibold text-sm text-[var(--text-primary)]">Versions</h3>
               <p className="text-[10px] text-[var(--text-secondary)]">
-                {mockVersions.length} versions available
+                {versionsLoading ? 'Loading...' : `${versions.length} version${versions.length !== 1 ? 's' : ''} available`}
               </p>
             </div>
           </div>
           <div className="flex gap-1">
-            <Button 
-              variant={compareMode ? 'default' : 'ghost'} 
-              size="sm" 
+            <Button
+              variant={compareMode ? 'default' : 'ghost'}
+              size="sm"
               className="h-7 text-xs"
               onClick={() => {
                 setCompareMode(!compareMode);
@@ -133,9 +149,6 @@ export function VersionSelector() {
             >
               <GitCompare className="w-3 h-3 mr-1" />
               Compare
-            </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7">
-              <Plus className="w-4 h-4" />
             </Button>
           </div>
         </div>
@@ -171,19 +184,19 @@ export function VersionSelector() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
         <TabsList className="w-full rounded-none border-b border-[var(--border-subtle)] bg-transparent p-0 h-9 px-3">
-          <TabsTrigger 
-            value="versions" 
+          <TabsTrigger
+            value="versions"
             className="rounded-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-brand-500 text-xs"
           >
             Versions
           </TabsTrigger>
-          <TabsTrigger 
+          <TabsTrigger
             value="forks"
             className="rounded-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-brand-500 text-xs"
           >
             Forks
           </TabsTrigger>
-          <TabsTrigger 
+          <TabsTrigger
             value="history"
             className="rounded-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-brand-500 text-xs"
           >
@@ -193,91 +206,108 @@ export function VersionSelector() {
 
         <ScrollArea className="flex-1">
           <TabsContent value="versions" className="m-0 p-0">
-            <div className="divide-y divide-[var(--border-subtle)]">
-              {mockVersions.map((v, index) => (
-                <div 
-                  key={v.version}
-                  className={cn(
-                    "p-3 hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer",
-                    selectedVersion === v.version && !compareMode && "bg-brand-500/10",
-                    compareFrom === v.version && compareMode && "bg-blue-500/10",
-                    compareTo === v.version && compareMode && "bg-purple-500/10"
-                  )}
-                  onClick={() => handleVersionSelect(v.version)}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="flex flex-col items-center gap-1">
-                      {index === 0 ? (
-                        <GitCommit className="w-4 h-4 text-brand-500" />
-                      ) : (
-                        <Circle className="w-4 h-4 text-[var(--text-muted)]" />
-                      )}
-                      {index < mockVersions.length - 1 && (
-                        <div className="w-px h-6 bg-[var(--border-subtle)]" />
-                      )}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-sm font-medium">v{v.version}</span>
-                        {v.isPublished && (
-                          <Badge variant="default" className="text-[9px] h-4">
-                            Published
-                          </Badge>
+            {versionsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-brand-500" />
+              </div>
+            ) : versions.length === 0 ? (
+              <div className="p-4 text-center">
+                <p className="text-sm text-[var(--text-secondary)]">No versions yet</p>
+                <p className="text-xs text-[var(--text-muted)] mt-1">
+                  Save your graph to create the first version
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-[var(--border-subtle)]">
+                {versions.map((v, index) => (
+                  <div
+                    key={v.version}
+                    className={cn(
+                      "p-3 hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer",
+                      selectedVersion === v.version && !compareMode && "bg-brand-500/10",
+                      compareFrom === v.version && compareMode && "bg-blue-500/10",
+                      compareTo === v.version && compareMode && "bg-purple-500/10"
+                    )}
+                    onClick={() => handleVersionSelect(v.version)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex flex-col items-center gap-1">
+                        {index === 0 ? (
+                          <GitCommit className="w-4 h-4 text-brand-500" />
+                        ) : (
+                          <Circle className="w-4 h-4 text-[var(--text-muted)]" />
                         )}
-                        {index === 0 && (
-                          <Badge variant="secondary" className="text-[9px] h-4">
-                            Latest
-                          </Badge>
+                        {index < versions.length - 1 && (
+                          <div className="w-px h-6 bg-[var(--border-subtle)]" />
                         )}
                       </div>
-                      
-                      <p className="text-xs text-[var(--text-secondary)] mt-1 truncate">
-                        {v.message}
-                      </p>
-                      
-                      <div className="flex items-center gap-2 mt-2 text-[10px] text-[var(--text-muted)]">
-                        <span className="flex items-center gap-1">
-                          <User className="w-3 h-3" />
-                          {v.author}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {formatDate(v.createdAt)}
-                        </span>
-                      </div>
-                    </div>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="h-6 w-6">
-                          <MoreHorizontal className="w-3 h-3" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Copy className="w-4 h-4 mr-2" />
-                          Copy
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Download className="w-4 h-4 mr-2" />
-                          Export
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <GitMerge className="w-4 h-4 mr-2" />
-                          Fork
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-500">
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm font-medium">v{v.version}</span>
+                          {v.isPublished && (
+                            <Badge variant="default" className="text-[9px] h-4">
+                              Published
+                            </Badge>
+                          )}
+                          {index === 0 && (
+                            <Badge variant="secondary" className="text-[9px] h-4">
+                              Latest
+                            </Badge>
+                          )}
+                        </div>
+
+                        {v.message && (
+                          <p className="text-xs text-[var(--text-secondary)] mt-1 truncate">
+                            {v.message}
+                          </p>
+                        )}
+
+                        <div className="flex items-center gap-2 mt-2 text-[10px] text-[var(--text-muted)]">
+                          {v.author && (
+                            <span className="flex items-center gap-1">
+                              <User className="w-3 h-3" />
+                              {v.author}
+                            </span>
+                          )}
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {formatDate(v.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon" className="h-6 w-6">
+                            <MoreHorizontal className="w-3 h-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>
+                            <Copy className="w-4 h-4 mr-2" />
+                            Copy Version
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Download className="w-4 h-4 mr-2" />
+                            Export
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <GitMerge className="w-4 h-4 mr-2" />
+                            Fork
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-red-500">
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="forks" className="m-0 p-4">
@@ -313,7 +343,7 @@ export function VersionSelector() {
             <Download className="w-3 h-3 mr-1" />
             Export
           </Button>
-          <Button size="sm" className="flex-1">
+          <Button size="sm" className="flex-1" onClick={handlePublish}>
             <Upload className="w-3 h-3 mr-1" />
             Publish
           </Button>
@@ -336,23 +366,19 @@ export function VersionSelector() {
                 Compare changes between the selected versions
               </DialogDescription>
             </DialogHeader>
-            
+
             <div className="space-y-4 mt-4">
               <div className="bg-[var(--bg-tertiary)] rounded-lg p-4">
                 <h4 className="text-sm font-medium mb-2">Changes</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center gap-2 text-green-500">
                     <Plus className="w-4 h-4" />
-                    <span>Added retry logic to data processing node</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-yellow-500">
-                    <ArrowRightLeft className="w-4 h-4" />
-                    <span>Modified input schema for better validation</span>
+                    <span>Version comparison details would appear here</span>
                   </div>
                 </div>
               </div>
             </div>
-            
+
             <div className="flex justify-end gap-2 mt-4">
               <Button variant="outline" onClick={clearComparison}>
                 Close

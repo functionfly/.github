@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stripe/stripe-go/v83"
 	"github.com/stripe/stripe-go/v83/checkout/session"
+	stripeSub "github.com/stripe/stripe-go/v83/subscription"
 )
 
 // CreateCheckoutSessionRequest contains the parameters for creating a checkout session.
@@ -101,7 +102,16 @@ func IsValidReturnURL(returnURL string) bool {
 		return false
 	}
 
-	return parsed.Host == allowedURL.Host
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return false
+	}
+	if parsed.Host != allowedURL.Host {
+		return false
+	}
+	if strings.HasPrefix(parsed.Path, "//") || strings.HasPrefix(parsed.Path, "/\\") {
+		return false
+	}
+	return true
 }
 
 // SanitizeReturnURL ensures the return URL is valid and safe.
@@ -368,6 +378,13 @@ type CreateUsernameChangeCheckoutSessionRequest struct {
 	FeeCents        int
 }
 
+// UpdateBundleSubscriptionRequest contains parameters for changing bundle subscription
+type UpdateBundleSubscriptionRequest struct {
+	SubscriptionID string
+	NewPriceID    string
+	Prorate       bool
+}
+
 // CreateUsernameChangeCheckoutSession creates a Stripe Checkout session for username change fee.
 // This is a one-time payment (not a subscription) for users who want to change their username
 // before the 6-month free window expires.
@@ -458,4 +475,36 @@ func CreateUsernameChangeCheckoutSession(
 		SessionID: sess.ID,
 		URL:       sess.URL,
 	}, nil
+}
+
+// UpdateBundleSubscription updates a Stripe subscription to a new price (for bundle changes)
+func UpdateBundleSubscription(ctx context.Context, req UpdateBundleSubscriptionRequest) error {
+	if stripeKey() == "" {
+		return fmt.Errorf("STRIPE_SECRET_KEY is not set")
+	}
+
+	if err := ValidatePriceID(req.NewPriceID); err != nil {
+		return err
+	}
+
+	params := &stripe.SubscriptionParams{
+		Items: []*stripe.SubscriptionItemsParams{
+			{
+				ID:    stripe.String(req.SubscriptionID),
+				Price: stripe.String(req.NewPriceID),
+			},
+		},
+		ProrationBehavior: stripe.String("always_invoice"),
+	}
+
+	if !req.Prorate {
+		params.ProrationBehavior = stripe.String("none")
+	}
+
+	_, err := stripeSub.Update(req.SubscriptionID, params)
+	if err != nil {
+		return fmt.Errorf("failed to update subscription: %w", err)
+	}
+
+	return nil
 }

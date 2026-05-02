@@ -30,6 +30,7 @@
   "cache_ttl": 0,
   "timeout_ms": 1000,
   "memory_mb": 128,
+  "price_per_call": 0.002,
   "example": {
     "input": { "message": "Hello", "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----" },
     "output": { "ok": true, "algorithm": "sha256" }

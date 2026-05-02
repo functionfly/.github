@@ -33,6 +33,13 @@ type CacheConfiguration struct {
 	CloudflareZoneID string `json:"cloudflare_zone_id"`
 	CloudflareToken  string `json:"cloudflare_token"`
 
+	// AWS CloudFront cache purge
+	CloudFrontDistributionID string `json:"cloudfront_distribution_id"`
+	CloudFrontRegion        string `json:"cloudfront_region"`
+
+	// Fastly cache purge
+	FastlyToken string `json:"fastly_token"`
+
 	// Edge caching settings
 	EdgeCacheEnabled         bool          `json:"edge_cache_enabled"`
 	EdgeMinPopularityScore   int           `json:"edge_min_popularity_score"`
@@ -74,6 +81,9 @@ func LoadCacheConfiguration() *CacheConfiguration {
 		StaticBasePath:  getEnvString("CACHE_STATIC_BASE_PATH", "/static"),
 		CloudflareZoneID: getEnvString("CLOUDFLARE_ZONE_ID", ""),
 		CloudflareToken:  getEnvString("CLOUDFLARE_API_TOKEN", ""),
+		CloudFrontDistributionID: getEnvString("CLOUDFRONT_DISTRIBUTION_ID", ""),
+		CloudFrontRegion:        getEnvString("CLOUDFRONT_REGION", "us-east-1"),
+		FastlyToken:              getEnvString("FASTLY_API_TOKEN", ""),
 
 		// Edge caching defaults
 		EdgeCacheEnabled:       getEnvBool("CACHE_EDGE_ENABLED", false),

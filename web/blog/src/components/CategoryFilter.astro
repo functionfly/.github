@@ -31,7 +31,7 @@ function getIconSvg(icon?: string): string {
 }
 
 function getIconColor(color?: string): string {
-  return color || '#6366f1';
+  return color || '#FF6B35';
 }
 ---
 
@@ -91,8 +91,8 @@ function getIconColor(color?: string): string {
 <style>
   .category-filter {
     position: relative;
-    background: linear-gradient(145deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.7) 100%);
-    border: 1px solid rgba(148, 163, 184, 0.1);
+    background: var(--color-bg-light);
+    border: 1px solid var(--color-border);
     border-radius: 16px;
     padding: 1.25rem;
     overflow: hidden;
@@ -103,7 +103,7 @@ function getIconColor(color?: string): string {
     content: '';
     position: absolute;
     inset: 0;
-    background: radial-gradient(ellipse at top, rgba(99, 102, 241, 0.08) 0%, transparent 50%);
+    background: radial-gradient(ellipse at top, color-mix(in srgb, var(--color-primary) 8%, transparent) 0%, transparent 50%);
     pointer-events: none;
   }
 
@@ -132,14 +132,14 @@ function getIconColor(color?: string): string {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: #64748b;
+    color: var(--color-text-muted);
   }
 
   .category-filter__count {
     font-size: 0.75rem;
     font-weight: 600;
-    color: #94a3b8;
-    background: rgba(148, 163, 184, 0.1);
+    color: var(--color-text-muted);
+    background: var(--color-bg-lighter);
     padding: 0.25rem 0.5rem;
     border-radius: 9999px;
   }
@@ -159,7 +159,7 @@ function getIconColor(color?: string): string {
     padding: 0.625rem 0.75rem;
     border-radius: 10px;
     font-size: 0.875rem;
-    color: #94a3b8;
+    color: var(--color-text-muted);
     text-decoration: none;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
@@ -181,14 +181,14 @@ function getIconColor(color?: string): string {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg, var(--cat-color, #6366f1) 0%, transparent 100%);
+    background: linear-gradient(90deg, var(--cat-color, var(--color-primary)) 0%, transparent 100%);
     opacity: 0;
     transition: opacity 0.3s ease;
   }
 
   .category-filter__link:hover {
-    color: #f8fafc;
-    background: rgba(255, 255, 255, 0.03);
+    color: var(--color-text);
+    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
     transform: translateX(4px);
   }
 
@@ -197,9 +197,9 @@ function getIconColor(color?: string): string {
   }
 
   .category-filter__link--active {
-    color: #f8fafc;
-    background: linear-gradient(90deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.05) 100%);
-    border: 1px solid rgba(99, 102, 241, 0.2);
+    color: var(--color-text);
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
   }
 
   .category-filter__link--active::before {
@@ -207,7 +207,7 @@ function getIconColor(color?: string): string {
   }
 
   .category-filter__link--active:hover {
-    background: linear-gradient(90deg, rgba(99, 102, 241, 0.2) 0%, rgba(99, 102, 241, 0.08) 100%);
+    background: color-mix(in srgb, var(--color-primary) 15%, transparent);
   }
 
   .category-filter__icon-wrapper {
@@ -222,8 +222,8 @@ function getIconColor(color?: string): string {
   }
 
   .category-filter__icon-wrapper--all {
-    background: rgba(148, 163, 184, 0.1);
-    color: #64748b;
+    background: var(--color-bg-lighter);
+    color: var(--color-text-muted);
   }
 
   .category-filter__link:hover .category-filter__icon-wrapper {
@@ -231,8 +231,8 @@ function getIconColor(color?: string): string {
   }
 
   .category-filter__link--active .category-filter__icon-wrapper--all {
-    background: rgba(99, 102, 241, 0.2);
-    color: #818cf8;
+    background: color-mix(in srgb, var(--color-primary) 20%, transparent);
+    color: var(--color-primary);
   }
 
   .category-filter__icon {
@@ -253,7 +253,7 @@ function getIconColor(color?: string): string {
     opacity: 0;
     transform: translateX(-10px);
     transition: all 0.3s ease;
-    color: #64748b;
+    color: var(--color-text-dim);
   }
 
   .category-filter__link:hover .category-filter__arrow {
@@ -262,7 +262,7 @@ function getIconColor(color?: string): string {
   }
 
   .category-filter__link--active .category-filter__arrow {
-    color: #818cf8;
+    color: var(--color-primary);
   }
 
   /* Mobile responsiveness */
@@ -270,7 +270,7 @@ function getIconColor(color?: string): string {
     .category-filter {
       padding: 1rem;
     }
-    
+
     .category-filter__link {
       padding: 0.5rem 0.625rem;
     }

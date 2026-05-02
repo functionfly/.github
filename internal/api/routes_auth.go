@@ -38,12 +38,14 @@ func registerAuthRoutes(
 	authMiddleware *middleware.AuthMiddleware,
 	csrfMiddleware *middleware.CSRFMiddleware,
 	authHandler *authHandlerPkg.Handler,
+	tenantAuthHandler *authHandlerPkg.TenantAuthHandler,
 	apiKeyAuthHandler *apikeys.APIKeyAuthHandler,
 	usersHandler *usersHandlerPkg.Handler,
 	favoritesHandler *usersHandlerPkg.FavoritesHandler,
 	followHandler *followHandlerPkg.Handler,
 	apiKeysHandler *apikeys.Handler,
 	billingHandler *billing.Handler,
+	tenantWebhookHandler *billing.TenantWebhookHandler,
 	usageHandler *billing.UsageHandler,
 	forecastHandler *billing.UsageForecastHandler,
 	costAllocationHandler *billing.CostAllocationHandler,
@@ -165,6 +167,20 @@ func registerAuthRoutes(
 	api.HandleFunc("/users/{username}/contributions", usersHandler.HandleGetUserContributions).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/{username}/skills", usersHandler.HandleGetUserSkills).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/{username}/report", authMiddleware.RequireAuth(usersHandler.HandleReportProfile)).Methods("POST", "OPTIONS")
+
+	// ── Tenant Auth Settings (Backend-in-a-Box) ─────────────────────────────
+	api.HandleFunc("/auth/settings", authMiddleware.RequireAuth(tenantAuthHandler.GetSettings)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/auth/settings", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(tenantAuthHandler.UpdateSettings))).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/auth/oauth", authMiddleware.RequireAuth(tenantAuthHandler.ListOAuthProviders)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/auth/oauth", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(tenantAuthHandler.ConfigureOAuthProvider))).Methods("POST", "OPTIONS")
+	api.HandleFunc("/auth/oauth/{provider}", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(tenantAuthHandler.DeleteOAuthProvider))).Methods("DELETE", "OPTIONS")
+	api.HandleFunc("/auth/members", authMiddleware.RequireAuth(tenantAuthHandler.ListMembers)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/auth/members/invite", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(tenantAuthHandler.InviteMember))).Methods("POST", "OPTIONS")
+	api.HandleFunc("/auth/members/{userId}/role", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(tenantAuthHandler.UpdateMemberRole))).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/auth/members/{userId}", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(tenantAuthHandler.RemoveMember))).Methods("DELETE", "OPTIONS")
+	api.HandleFunc("/auth/invites", authMiddleware.RequireAuth(tenantAuthHandler.ListPendingInvites)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/auth/invites/{code}", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(tenantAuthHandler.RevokeInvite))).Methods("DELETE", "OPTIONS")
+	api.HandleFunc("/auth/invites/{code}/accept", authMiddleware.RequireAuth(tenantAuthHandler.AcceptInvite)).Methods("POST", "OPTIONS")
 	// Username change endpoints (by username path)
 	api.HandleFunc("/users/{username}/username/eligibility", authMiddleware.RequireAuth(usersHandler.HandleGetUsernameChangeEligibilityByUsername)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/{username}/username/change", authMiddleware.RequireAuth(usersHandler.HandleChangeUsernameByUsername)).Methods("POST", "OPTIONS")
@@ -231,6 +247,8 @@ func registerAuthRoutes(
 	// Internal webhook endpoint for subscription updates (called by Stripe webhook handler or admin)
 	// Requires X-Internal-Webhook-Secret header matching INTERNAL_WEBHOOK_SECRET env var
 	api.HandleFunc("/billing/subscription/webhook", billingHandler.HandleSubscriptionWebhook).Methods("POST", "OPTIONS")
+	// Tenant-isolated payment webhook (for tenants with isolated payments enabled)
+	api.HandleFunc("/billing/tenants/{tenant_id}/webhook", tenantWebhookHandler.HandleTenantWebhook).Methods("POST", "OPTIONS")
 
 	// ── Backend-in-a-Box Pricing Bundles (viral pricing) ───────────────────
 	// Bundle catalog and details
@@ -245,6 +263,10 @@ func registerAuthRoutes(
 	api.HandleFunc("/billing/deferred-status", authMiddleware.RequireAuth(billingHandler.HandleGetDeferredBillingStatus)).Methods("GET", "OPTIONS")
 	// Manual conversion to paid plan
 	api.HandleFunc("/billing/convert-to-paid", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleConvertToPaid))).Methods("POST", "OPTIONS")
+	// Bundle usage status (for dashboard limit tracking)
+	api.HandleFunc("/billing/bundle/usage", authMiddleware.RequireAuth(billingHandler.HandleGetBundleUsageStatus)).Methods("GET", "OPTIONS")
+	// Bundle upgrade/downgrade (change to different bundle plan)
+	api.HandleFunc("/billing/bundle/change", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleChangeBundle))).Methods("POST", "OPTIONS")
 
 	// ── Affiliate / Referral Commission System (user-facing) ─────────────
 	api.HandleFunc("/affiliate/my-codes", authMiddleware.RequireAuth(billingHandler.HandleGetMyAffiliateCodes)).Methods("GET", "OPTIONS")

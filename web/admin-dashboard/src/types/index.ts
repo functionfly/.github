@@ -3,6 +3,7 @@
 export interface AdminUser {
   id: string;
   email: string;
+  username?: string;
   name?: string;
   role: string; // super_admin | admin | moderator | user | etc.
   permissions?: string[];

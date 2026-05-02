@@ -259,7 +259,7 @@ export const aiExpansionApi = {
     return z.object({
       namespace: z.string(),
       version: z.string(),
-      features: z.record(z.object({
+      features: z.record(z.string(), z.object({
         path: z.string(),
         status: z.string(),
         description: z.string(),
@@ -267,7 +267,7 @@ export const aiExpansionApi = {
         endpoints: z.array(z.string()),
       })),
       message: z.string(),
-    }).parse(response);
+    }).parse(response) as { namespace: string; version: string; features: Record<string, { path: string; status: string; description: string; estimated_release?: string; endpoints: string[]; }>; message: string; };
   },
 
   // AI Chat - RESERVED FOR FUTURE (Q3 2026)
@@ -362,10 +362,11 @@ export const galleryApi = {
     const response = await apiClient.get(`/v1/registry/search?${searchParams.toString()}`);
     console.log('[Gallery API] Raw response:', response);
     
-    // Schema handles transformation internally, but we need to ensure 
+    // Schema handles transformation internally, but we need to ensure
     // the raw response has the expected shape before parsing
+    const responseObj = response as Record<string, unknown>;
     const responseWithDefaults = {
-      ...response,
+      ...responseObj,
       query: params.query || '',
     };
     
@@ -373,14 +374,14 @@ export const galleryApi = {
     const parseResult = gallerySearchResponseSchema.safeParse(responseWithDefaults);
     
     if (!parseResult.success) {
-      console.error('[Gallery API] Validation error:', parseResult.error.errors);
+      console.error('[Gallery API] Validation error:', parseResult.error.issues);
       // Try to extract functions anyway from raw response using safe parsing
-      const rawFunctions = response.functions || response.Functions || [];
+      const rawFunctions = (responseObj.functions || responseObj.Functions || []) as unknown[];
       const fallbackFunctions = parseFunctionsArray(rawFunctions);
       console.log('[Gallery API] Using fallback with', fallbackFunctions.length, 'functions (raw had', rawFunctions.length, ')');
       return {
         results: fallbackFunctions,
-        total_count: response.total || response.Total || fallbackFunctions.length,
+        total_count: (responseObj.total || responseObj.Total || fallbackFunctions.length) as number,
         limit: params.limit || 50,
         offset: params.offset || 0,
         query: params.query || '',

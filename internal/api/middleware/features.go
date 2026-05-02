@@ -142,8 +142,8 @@ func (fm *FeatureMiddleware) writeFeatureError(w http.ResponseWriter, r *http.Re
 		},
 	}
 
-	if plan == plans.PlanStarter || plan == plans.PlanAgentStarter {
-		errorResp["upgrade_options"] = []string{plans.PlanPro, plans.PlanEnterprise}
+	if plan == plans.PlanFree || plan == plans.PlanStarter || plan == plans.PlanAgentStarter {
+		errorResp["upgrade_options"] = []string{plans.PlanPro, plans.PlanEnterprise, plans.PlanAgentEnterprise}
 	}
 
 	json.NewEncoder(w).Encode(errorResp)

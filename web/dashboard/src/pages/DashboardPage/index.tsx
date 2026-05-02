@@ -46,21 +46,51 @@ import { useAuthStore } from '@/stores/authStore';
 import { useOnboardingStore } from '@/stores/onboardingStore';
 import { useQuery, useQueries } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Activity, Building2, FunctionSquare, Globe, Loader2, Play, X, Zap } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Activity, Building2, FunctionSquare, Globe, Loader2, Play, Rocket, X, Zap } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 export function DashboardPage() {
   const { t } = useTranslation();
   const { canResume, completedSteps } = useOnboardingStore();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { isPaid: isOnPaidPlan, hasMinPlan } = usePlan();
   const user = useAuthStore((state) => state.user);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const isFree = !isOnPaidPlan;
   const nextTier = isFree ? 'Starter' : !hasMinPlan('professional') ? 'Professional' : 'Enterprise';
+
+  // Handle bundle success redirect - redirect to the bundle's default app
+  const bundleSuccess = searchParams.get('bundle');
+  const founderMode = searchParams.get('founder');
+
+  const { data: appsData, isLoading: appsLoading } = useQuery({
+    queryKey: ['apps'],
+    queryFn: async () => {
+      const res = await appsApi.list();
+      return res.apps;
+    },
+  });
+
+  const apps = appsData ?? [];
+
+  useEffect(() => {
+    if (bundleSuccess && apps.length > 0) {
+      // Find the app matching the bundle slug (e.g., "saas-starter", "marketplace", "ai-app")
+      const bundleApp = apps.find(app => app.slug === bundleSuccess);
+      if (bundleApp) {
+        // Clean URL and navigate to the app
+        navigate(`/apps/${bundleApp.id}`, { replace: true });
+      }
+    }
+    if (founderMode === 'true') {
+      // Founder mode success - show a toast or banner
+      // The user should see their new bundle resources
+    }
+  }, [bundleSuccess, founderMode, apps, navigate]);
 
   const { data: functionsData, isLoading: functionsLoading } = useQuery({
     queryKey: ['functions'],
@@ -104,16 +134,7 @@ export function DashboardPage() {
     queryFn: () => providersApi.getConnectedProviders(),
   });
 
-  const { data: appsData, isLoading: appsLoading } = useQuery({
-    queryKey: ['apps'],
-    queryFn: async () => {
-      const res = await appsApi.list();
-      return res.apps;
-    },
-  });
-
   const functions = functionsData?.functions ?? [];
-  const apps = appsData ?? [];
   const activeFunctions = functions.filter((f) => f.status === 'deployed').length;
 
   const handleResumeOnboarding = () => {

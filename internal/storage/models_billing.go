@@ -284,6 +284,7 @@ type BundleSubscription struct {
 	ConvertedFromFounderMode bool       `json:"converted_from_founder_mode"`
 	Status                   string     `json:"status"` // 'active', 'deferred', 'canceled', 'past_due'
 	StripeSubscriptionID     string     `json:"stripe_subscription_id,omitempty"`
+	DefaultAppID             *uuid.UUID `json:"default_app_id,omitempty"` // App created during bundle provisioning
 	CurrentPeriodStart       time.Time  `json:"current_period_start"`
 	CurrentPeriodEnd         time.Time  `json:"current_period_end"`
 	CancelAtPeriodEnd        bool       `json:"cancel_at_period_end"`

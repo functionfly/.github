@@ -13,6 +13,8 @@ import (
 	"github.com/functionfly/functionfly/internal/agent/categorization"
 	agentdeployment "github.com/functionfly/functionfly/internal/agent/deployment"
 	"github.com/functionfly/functionfly/internal/agent/discovery"
+	agenttesting "github.com/functionfly/functionfly/internal/agent/testing"
+	secureSandbox "github.com/functionfly/functionfly/internal/agent/testing/sandbox"
 	"github.com/functionfly/functionfly/internal/agent/economy"
 	"github.com/functionfly/functionfly/internal/agent/evolution"
 	factorysvc "github.com/functionfly/functionfly/internal/agent/factory"
@@ -23,7 +25,6 @@ import (
 	"github.com/functionfly/functionfly/internal/agent/marketplace"
 	agentsecurity "github.com/functionfly/functionfly/internal/agent/security"
 	"github.com/functionfly/functionfly/internal/agent/swarm"
-	"github.com/functionfly/functionfly/internal/agent/testing"
 	"github.com/functionfly/functionfly/internal/analytics"
 	"github.com/functionfly/functionfly/internal/analytics/unified"
 	"github.com/functionfly/functionfly/internal/api/docs"
@@ -33,10 +34,12 @@ import (
 	analyticshandler "github.com/functionfly/functionfly/internal/api/handlers/analytics"
 	"github.com/functionfly/functionfly/internal/api/handlers/apikeys"
 	"github.com/functionfly/functionfly/internal/api/handlers/apps"
+	"github.com/functionfly/functionfly/internal/api/handlers/blog"
 	authHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/auth"
 	"github.com/functionfly/functionfly/internal/api/handlers/backends"
 	billinghandler "github.com/functionfly/functionfly/internal/api/handlers/billing"
 	categorizationhandler "github.com/functionfly/functionfly/internal/api/handlers/categorization"
+	"github.com/functionfly/functionfly/internal/api/handlers/chat"
 	"github.com/functionfly/functionfly/internal/api/handlers/content"
 	"github.com/functionfly/functionfly/internal/api/handlers/dashboard"
 	"github.com/functionfly/functionfly/internal/api/handlers/decisions"
@@ -48,10 +51,12 @@ import (
 	followHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/follow"
 	"github.com/functionfly/functionfly/internal/api/handlers/function_webhooks"
 	"github.com/functionfly/functionfly/internal/api/handlers/functions"
+	githubhandler "github.com/functionfly/functionfly/internal/api/handlers/github"
 	mfaHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/mfa"
 	"github.com/functionfly/functionfly/internal/api/handlers/monitoring"
 	"github.com/functionfly/functionfly/internal/api/handlers/newsletter"
-	notificationHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/notifications"
+	notificationHandlerPkg 	"github.com/functionfly/functionfly/internal/api/handlers/notifications"
+	payoutsHandler "github.com/functionfly/functionfly/internal/api/handlers/payouts"
 	"github.com/functionfly/functionfly/internal/api/handlers/playground"
 	privacyhandler "github.com/functionfly/functionfly/internal/api/handlers/privacy"
 	"github.com/functionfly/functionfly/internal/api/handlers/providers"
@@ -76,6 +81,7 @@ import (
 	"github.com/functionfly/functionfly/internal/currency"
 	monitoringPkg "github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/privacy"
+	paymentPkg "github.com/functionfly/functionfly/internal/payment"
 	"github.com/functionfly/functionfly/internal/scheduler"
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/statefabricaddons"
@@ -105,16 +111,19 @@ import (
 func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// ── Handler initialization ────────────────────────────────────────────────
 	authHandler := authHandlerPkg.NewHandler(s.authSvc)
+	tenantAuthHandler := authHandlerPkg.NewTenantAuthHandler(s.repo)
 	usersHandler := usersHandlerPkg.NewHandler(s.repo, s.authSvc)
 	favoritesHandler := usersHandlerPkg.NewFavoritesHandler(s.repo)
 	presenceHandler := usersHandlerPkg.NewPresenceHandler(s.repo, s.authSvc, s.redisClient, logrus.New())
 	platformFeeRepo := registry.NewPlatformFeeRepository(s.postgresDB.GORM)
 	sfAddonRepo := statefabricaddons.NewRepository(s.postgresDB.GORM)
 	billingHandler := billinghandler.NewHandler(s.repo, platformFeeRepo, sfAddonRepo, s.redisClient)
-	appsHandler := apps.NewHandler(s.repo)
+	tenantWebhookHandler := billinghandler.NewTenantWebhookHandler(s.repo)
+appsHandler := apps.NewHandler(s.repo)
 	backendsHandler := backends.NewHandler(s.repo, s.routingSvc)
 	deploymentsHandler := deployments.NewHandler(s.repo, s.deploySvc)
-	functionsHandler := functions.NewHandler(s.repo, s.deploySvc)
+	pasteHandler := functions.NewPasteHandler(s.repo)
+	functionsHandler := functions.NewHandler(s.repo, s.deploySvc, pasteHandler)
 	unifiedAnalyticsSvc := unified.NewService(s.postgresDB.GORM, s.usageMetricsAgg)
 	adminHandler := admin.NewHandler(s.repo, s.postgresDB.LoginAttemptRepository(), s.postgresDB.AnalyticsRepository(), s.authSvc, unifiedAnalyticsSvc, sfAddonRepo)
 
@@ -134,6 +143,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	maintenanceHandler := admin.NewMaintenanceHandler(maintenanceRepo, s.authSvc)
 	maintenanceMiddleware := middleware.NewMaintenanceMiddleware(maintenanceRepo)
 	contentHandler := content.NewHandler(s.repo)
+	blogRepo := blog.NewBlogRepository(s.postgresDB.DB)
+	blogHandler := blog.NewHandler(blogRepo)
 	feedbackHandler := feedbackHandlerPkg.NewHandler(s.repo, s.storageService)
 
 	followService := services.NewFollowService(s.repo)
@@ -174,6 +185,19 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	functionWebhookRepo := storage.NewFunctionWebhookRepository(s.postgresDB.GORM)
 	functionWebhookService := storage.NewFunctionWebhookService(functionWebhookRepo)
 	functionWebhooksHandler := function_webhooks.NewHandler(functionWebhookRepo, functionWebhookService)
+
+	// ── GitHub Integration ────────────────────────────────────────────────────
+	githubRepo := storage.NewGitHubRepository(s.postgresDB.DB)
+	githubVaultKey := os.Getenv("GITHUB_VAULT_KEY")
+	if githubVaultKey == "" {
+		githubVaultKey = "default-dev-key-must-be-32-bytes!" // 32 bytes for dev
+	}
+	githubBaseURL := os.Getenv("FRONTEND_URL")
+	if githubBaseURL == "" {
+		githubBaseURL = "http://localhost:3000"
+	}
+	githubHandler := githubhandler.NewHandler(s.repo, githubRepo, logrus.New(), githubVaultKey, githubBaseURL)
+	githubHandler.SetAuthService(s.authSvc)
 
 	// ── Real-time Usage Tracking ─────────────────────────────────────────────
 	// Initialize the real-time usage tracker with Redis counters for quota enforcement
@@ -391,7 +415,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		Enabled: os.Getenv("AI_SUPPORT_ENABLED") != "false",
 	}
 	if aiSupportConfig.BaseURL == "" {
-		aiSupportConfig.BaseURL = "http://localhost:8081"
+		aiSupportConfig.BaseURL = "http://localhost:18081"
 	}
 	if aiSupportConfig.Model == "" {
 		aiSupportConfig.Model = "gpt-4o-mini"
@@ -406,6 +430,21 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	supportWSHub := supportHandler.NewWebSocketHub(supportService, nil, s.authSvc, supportLogger)
 	go supportWSHub.Run()
 
+	// Chat handler initialization
+	chatRepo := chat.NewRepository(s.postgresDB.GORM)
+	aiChatBaseURL := os.Getenv("AI_SERVICE_URL")
+	if aiChatBaseURL == "" {
+		aiChatBaseURL = "http://localhost:18081"
+	}
+	aiChatAPIKey := os.Getenv("AI_SERVICE_API_KEY")
+	chatAIClient := chat.NewAIServiceClient(aiChatBaseURL, aiChatAPIKey, logrus.New())
+	chatConnectorRegistry := chat.NewConnectorRegistry(logrus.New())
+	chatService := chat.NewService(chatRepo, chatAIClient, chatConnectorRegistry, logrus.New())
+	chatWSHub := chat.NewWebSocketHub(chatService, chatRepo, chatAIClient, logrus.New())
+	go chatWSHub.Run()
+	chatHandler := chat.NewHandler(chatRepo, chatService, chatWSHub, logrus.New())
+	chatConnectorHandler := chat.NewConnectorHandler(chatRepo, chatConnectorRegistry, logrus.New())
+
 	aepHandler := agenthandler.NewHandler(s.postgresDB.GORM, s.redisClient, registryRepo, s.repo, s.notificationSvc)
 
 	agentIdentityRepo := identity.NewRepository(s.postgresDB.GORM)
@@ -415,7 +454,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	agentMarketplaceService := marketplace.NewService(s.postgresDB.GORM)
 	agentAutonomyService := autonomy.NewService(s.postgresDB.GORM)
 	agentEvolutionService := evolution.NewService(s.postgresDB.GORM, agentGraphSvc, agentActuatorSvc)
-	agentSwarmMessageService := swarm.NewMessageService(s.postgresDB.GORM)
+	agentSwarmMessageService := swarm.NewMessageService(s.postgresDB.GORM, s.redisClient)
 	agentSwarmService := swarm.NewService(s.postgresDB.GORM, agentIdentityRepo, agentEconomyService)
 
 	prometheusURL := os.Getenv("PROMETHEUS_URL")
@@ -449,10 +488,20 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	if detExec := registryexecution.NewRegistryDeterminismExecutorWithSandbox(registryRepo); detExec != nil {
 		factoryGeneration.SetDeterminismExecutor(detExec)
 	}
-	factoryTesting := testing.NewService(s.postgresDB.GORM, nil, nil)
-	if err := factoryTesting.AutoMigrate(context.Background()); err != nil {
-		logrus.WithError(err).Warn("failed to auto-migrate factory_test_results")
+	// factory_test_results schema is managed by migration 20260428182910_create_factory_test_results.up.sql
+
+	// Initialize secure sandbox executor for factory testing
+	var factorySandbox agenttesting.SandboxExecutor
+	secureSandbox, err := secureSandbox.NewSecureSandboxExecutor()
+	if err != nil {
+		logrus.WithError(err).Warn("failed to create secure sandbox, falling back to heuristic")
+		factorySandbox = nil
+	} else {
+		factorySandbox = secureSandbox
+		logrus.Infof("secure sandbox executor initialized (gVisor available: %v)", secureSandbox.IsGvisorAvailable())
 	}
+
+	factoryTesting := agenttesting.NewService(s.postgresDB.GORM, factorySandbox, nil)
 	factoryPublisher := agentdeployment.NewPublisher(s.postgresDB.GORM)
 	factoryService := factorysvc.NewService(s.postgresDB.GORM, factoryConfig, factoryDiscovery, factoryGeneration, factoryTesting, factoryPublisher)
 
@@ -776,12 +825,15 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Public newsletter routes
 	newsletterHandler.RegisterRoutes(api)
 
+	// ── GitHub Integration ─────────────────────────────────────────────────────
+	registerGitHubRoutes(api, authMiddleware, githubHandler)
+
 	// ── Domain-scoped route registration ─────────────────────────────────────
 	registerAuthRoutes(
 		s.router, api,
 		authRateLimiter, walletRateLimiter, mfaRateLimiter, authMiddleware, csrfMiddleware,
-		authHandler, apiKeyAuthHandler, usersHandler, favoritesHandler,
-		followHandler, apiKeysHandler, billingHandler,
+		authHandler, tenantAuthHandler, apiKeyAuthHandler, usersHandler, favoritesHandler,
+		followHandler, apiKeysHandler, billingHandler, tenantWebhookHandler,
 		usageHandler, forecastHandler, costAllocationHandler,
 		exportHandler, externalBillingHandler,
 		mfaHandler, notificationHandler, notificationWSHandler,
@@ -793,14 +845,19 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		authMiddleware, executionSecurityMW, verificationMiddleware,
 		registryRepo, registryHandler, registryPlaygroundHandler,
 		appPlaygroundHandler, docsHandler, tutorialsHandler,
-		versionHandler, contentHandler, feedbackHandler, recommendationHandler,
+		versionHandler, blogHandler, contentHandler, feedbackHandler, recommendationHandler,
 	)
 
 	// ── FRG (Function Registry + Live Runtime Graph) ─────────────────────────
+	// Register on root router for /frg/* paths (not /v1/frg/*)
+	registerFRGRoutesOnRoot(s, s.router, authMiddleware, executionSecurityMW, registryRepo, advancedSecurityMiddleware, realtimeUsageTracker)
+
+	// Also register on /v1 for compatibility
 	registerFRGRoutes(
 		s, api,
 		authMiddleware, executionSecurityMW,
-		registryRepo,
+		registryRepo, advancedSecurityMiddleware,
+		realtimeUsageTracker,
 	)
 
 	if err := platformController.Initialize(context.Background()); err != nil {
@@ -827,11 +884,15 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		functionWebhooksHandler,
 		swarmControllerHandler,
 		unfairAdvantageHandler,
+		chatHandler, chatConnectorHandler, chatWSHub,
 	)
+
+	agentRateLimiter := middleware.NewAgentRateLimiter(s.redisClient)
 
 	registerAgentRoutes(
 		s, api, protected,
 		authMiddleware,
+		agentRateLimiter,
 		aepHandler, swarmHandler, sebgHandler, evolutionHandler, daemonHandler,
 		registryRepo, cacheService,
 		platformFeeRepo,
@@ -857,7 +918,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		maintenanceHandler, feedbackHandler, monitoringHandler,
 		securityHandler, mfaHandler, adminRegistryHandler,
 		registryHandler, oversightHandler, factoryHandler,
-		stateFabricHandler, contentHandler,
+		stateFabricHandler, blogHandler, contentHandler,
 		csrfMiddleware, adminRateLimiter, adminSessionMiddleware,
 		ipAllowlistMiddleware, adminIPAllowlistHandler, adminAuditHandler, securityEventHandler, alertHandler,
 		adminNewsletterHandler, usageHandler, costAllocationHandler,
@@ -871,6 +932,49 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// Privacy API routes (GDPR compliance, data export/deletion, consent management)
 	registerPrivacyRoutes(api, authMiddleware, privacyHandler)
+
+	// ── Payout System (Stripe Connect) ───────────────────────────────────────
+	payoutRepo := storage.NewPayoutRepository(s.postgresDB.DB)
+	payoutServiceExtended := paymentPkg.NewPayoutServiceExtended(payoutRepo, s.notificationSvc)
+	payoutExtendedHandler := payoutsHandler.NewExtendedHandler(payoutServiceExtended, payoutRepo, s.repo)
+	payoutLegacyHandler := payoutsHandler.NewHandler(payoutServiceExtended.PayoutService, payoutRepo, s.repo)
+
+	// Payout scheduler for auto-payouts
+	payoutSchedulerConfig := scheduler.EnvPayoutScheduleConfig()
+	payoutScheduler := scheduler.NewPayoutScheduler(payoutServiceExtended)
+	if err := payoutScheduler.Start(context.Background(), payoutSchedulerConfig); err != nil {
+		logrus.WithError(err).Error("failed to start payout scheduler")
+	}
+
+	// Wire payout service to Stripe webhook handler (registered later in registerAgentRoutes)
+	// Store on server for access by agent routes
+	s.payoutWebhookProcessor = payoutServiceExtended
+
+	// ── Payout Routes (user-facing, protected) ──────────────────────────────
+	// Account management
+	api.HandleFunc("/payouts/connect-account", authMiddleware.RequireAuth(payoutLegacyHandler.HandleGetConnectAccount)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/payouts/connect-account", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(payoutLegacyHandler.HandleStartOnboarding))).Methods("POST", "OPTIONS")
+	api.HandleFunc("/payouts/connect-account/refresh", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(payoutLegacyHandler.HandleRefreshConnectAccount))).Methods("POST", "OPTIONS")
+
+	// Balance and ledger
+	api.HandleFunc("/payouts/balance", authMiddleware.RequireAuth(payoutLegacyHandler.HandleGetBalance)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/payouts/ledger", authMiddleware.RequireAuth(payoutLegacyHandler.HandleListLedgerEntries)).Methods("GET", "OPTIONS")
+
+	// Payout requests with fee calculation
+	api.HandleFunc("/payouts/request", authMiddleware.RequireAuth(walletRateLimiter.LimitTopUp(csrfMiddleware.RequireCSRF(payoutExtendedHandler.HandleRequestPayoutWithFees)))).Methods("POST", "OPTIONS")
+	api.HandleFunc("/payouts/{id}/cancel", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(payoutExtendedHandler.HandleCancelPayout))).Methods("POST", "OPTIONS")
+
+	// Payout history (enhanced)
+	api.HandleFunc("/payouts/requests", authMiddleware.RequireAuth(payoutLegacyHandler.HandleListPayoutRequests)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/payouts/history", authMiddleware.RequireAuth(payoutExtendedHandler.HandleGetPayoutHistory)).Methods("GET", "OPTIONS")
+
+	// Schedule preferences
+	api.HandleFunc("/payouts/schedule", authMiddleware.RequireAuth(payoutExtendedHandler.HandleGetSchedulePreference)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/payouts/schedule", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(payoutExtendedHandler.HandleUpdateSchedulePreference))).Methods("PUT", "OPTIONS")
+
+	// Suppress unused variable warnings (admin routes registered in routes_admin.go)
+	_ = payoutExtendedHandler
+	_ = payoutLegacyHandler
 
 	// ── Runtime Optimization Endpoint (receives suggestions from Rust GraphOptimizer) ──
 	api.HandleFunc("/optimizations", optimizationHandler.ReceiveOptimizationSuggestion).Methods("POST", "OPTIONS")
@@ -916,7 +1020,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 			return false
 		}
 		pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-		return len(pathParts) >= 1 && (pathParts[0] == "fx" || pathParts[0] == "run" || pathParts[0] == "replay")
+		return len(pathParts) >= 1 && (pathParts[0] == "fx" || pathParts[0] == "run" || pathParts[0] == "replay" || pathParts[0] == "functions" || pathParts[0] == "v1" || pathParts[0] == "v2")
 	}).HandlerFunc(s.serveSPAIndex)
 
 	// Public routing endpoint: /{appSlug}/*
@@ -924,13 +1028,18 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/content/") ||
 			strings.HasPrefix(r.URL.Path, "/admin/") || r.URL.Path == "/health" || r.URL.Path == "/healthz" ||
 			strings.HasPrefix(r.URL.Path, "/v1/") || strings.HasPrefix(r.URL.Path, "/auth/") ||
-			r.URL.Path == "/waitlist" {
+			r.URL.Path == "/waitlist" ||
+			strings.HasPrefix(r.URL.Path, "/frg/") || r.URL.Path == "/frg" ||
+			strings.HasPrefix(r.URL.Path, "/gx/") || r.URL.Path == "/gx" ||
+			strings.HasPrefix(r.URL.Path, "/webhook/") {
 			return false
 		}
 		pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 		return len(pathParts) >= 2 && pathParts[0] != "" && pathParts[0] != "api" &&
 			pathParts[0] != "content" && pathParts[0] != "health" && pathParts[0] != "auth" &&
-			pathParts[0] != "fx" && pathParts[0] != "run" && pathParts[0] != "replay"
+			pathParts[0] != "fx" && pathParts[0] != "run" && pathParts[0] != "replay" &&
+			pathParts[0] != "frg" && pathParts[0] != "gx" && pathParts[0] != "functions" &&
+			pathParts[0] != "v1" && pathParts[0] != "v2"
 	}).HandlerFunc(s.handlePublicRoute)
 }
 

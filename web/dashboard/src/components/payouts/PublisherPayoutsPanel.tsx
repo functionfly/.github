@@ -1,4 +1,5 @@
 import {
+  cancelPayout,
   getConnectAccountStatus,
   getPayoutBalance,
   listPayoutLedger,
@@ -40,7 +41,7 @@ import {
 import { navigateToStripeHostedUrl } from '@/lib/stripe-redirect';
 import { formatDate } from '@/pages/SettingsPage/settings-utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Banknote, ExternalLink, Info, Loader2, RefreshCw, Shield, Wallet } from 'lucide-react';
+import { Banknote, ExternalLink, Info, Loader2, RefreshCw, Shield, Wallet, XCircle } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -123,10 +124,25 @@ export function PublisherPayoutsPanel({
   const payoutMutation = useMutation({
     mutationFn: ({ cents, key }: { cents: number; key: string }) => requestPayout(cents, key),
     onSuccess: (data) => {
-      toast.success('Payout submitted', {
-        description: `${formatPayoutUsd(data.amount_cents / 100)} — status: ${data.status}`,
-      });
+      const netUsd = (data.fee.net_amount_cents / 100).toFixed(2);
+      const feeUsd = (data.fee.fee_amount_cents / 100).toFixed(2);
+      const desc =
+        data.fee.fee_amount_cents > 0
+          ? `$${netUsd} after $${feeUsd} fee — ${data.payout.status}`
+          : `$${netUsd} — ${data.payout.status}`;
+      toast.success('Payout submitted', { description: desc });
       setAmountUsd('');
+      queryClient.invalidateQueries({ queryKey: payoutQueryKeys.balance });
+      queryClient.invalidateQueries({ queryKey: payoutQueryKeys.requests });
+      queryClient.invalidateQueries({ queryKey: payoutQueryKeys.ledger });
+    },
+    onError: (err) => toast.error(getPayoutApiErrorMessage(err)),
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: ({ payoutId }: { payoutId: string }) => cancelPayout(payoutId, 'Cancelled by user'),
+    onSuccess: () => {
+      toast.success('Payout cancelled — funds returned to balance');
       queryClient.invalidateQueries({ queryKey: payoutQueryKeys.balance });
       queryClient.invalidateQueries({ queryKey: payoutQueryKeys.requests });
       queryClient.invalidateQueries({ queryKey: payoutQueryKeys.ledger });
@@ -443,6 +459,7 @@ export function PublisherPayoutsPanel({
                         <TableHead>Amount</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="hidden md:table-cell">Note</TableHead>
+                        <TableHead className="w-[60px]" />
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -459,6 +476,20 @@ export function PublisherPayoutsPanel({
                           </TableCell>
                           <TableCell className="hidden max-w-[240px] truncate text-xs text-text-muted md:table-cell">
                             {r.failure_reason ?? '—'}
+                          </TableCell>
+                          <TableCell>
+                            {(r.status === 'pending' || r.status === 'processing') && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-text-muted hover:text-destructive"
+                                disabled={cancelMutation.isPending}
+                                onClick={() => cancelMutation.mutate({ payoutId: r.id })}
+                                title="Cancel payout"
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}

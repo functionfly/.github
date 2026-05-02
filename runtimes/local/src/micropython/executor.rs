@@ -18,6 +18,54 @@ static EXECUTOR_RUNTIME: Lazy<Arc<tokio::runtime::Runtime>> = Lazy::new(|| {
     )
 });
 
+/// Bootstrap code injected before user Python code to provide the _functionfly module.
+/// This module bridges Python calls to WASM host functions via shared memory.
+const _FUNCTIONFLY_BOOTSTRAP: &str = r#"
+import sys as _sys
+class _FunctionFly:
+    """WASM host function bridge - injected by FunctionFly runtime."""
+    _available = False
+    def _try_init(self):
+        try:
+            import _functionfly as _ff
+            self._ff = _ff
+            self._available = True
+        except ImportError:
+            self._available = False
+    def __init__(self):
+        self._try_init()
+    def state_get(self, path):
+        if self._available: return self._ff.state_get(path)
+        return None
+    def state_set(self, path, value):
+        if self._available: return self._ff.state_set(path, value)
+        return False
+    def state_delete(self, path):
+        if self._available: return self._ff.state_delete(path)
+        return False
+    def state_get_fabric(self, fabric_id):
+        if self._available: return self._ff.state_get_fabric(fabric_id)
+        return None
+    def state_create_snapshot(self, path, label=''):
+        if self._available: return self._ff.state_create_snapshot(path, label)
+        return None
+    def get_env(self, name):
+        if self._available: return self._ff.get_env(name)
+        import os; return os.environ.get(name)
+    def kv_get(self, key):
+        if self._available: return self._ff.kv_get(key)
+        return None
+    def kv_set(self, key, value):
+        if self._available: return self._ff.kv_set(key, value)
+        return False
+    def log(self, level, message):
+        if self._available: self._ff.log(level, message)
+    def is_available(self):
+        return self._available
+_functionfly = _FunctionFly()
+_sys.modules['_functionfly'] = _functionfly
+"#;
+
 /// Configuration for MicroPython execution.
 #[derive(Debug, Clone)]
 pub struct ExecutorConfig {
@@ -136,8 +184,13 @@ impl MicroPythonExecutor {
 
     /// Internal execution with full wrapper generation and error handling.
     async fn execute_with_wrapper(&self, python_code: &str, input: &str) -> Result<String> {
+        // Prepend _functionfly bootstrap module to make host functions
+        // available via `from _functionfly import state_get` etc.
+        let bootstrap = _FUNCTIONFLY_BOOTSTRAP;
+        let wrapped_code = format!("{}\n{}", bootstrap, python_code);
+
         // Generate wrapper module with embedded Python code
-        let wrapper_wasm = self.wrapper_gen.generate(python_code)?;
+        let wrapper_wasm = self.wrapper_gen.generate(&wrapped_code)?;
         let wrapper_module = Module::new(&self.engine, &wrapper_wasm).map_err(|e| {
             MicroPythonError::WrapperError(format!("Failed to compile wrapper: {}", e))
         })?;

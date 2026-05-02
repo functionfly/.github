@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage"
@@ -53,8 +54,7 @@ func (s *RevenueRecognitionService) AllocateAndSchedule(ctx context.Context, req
 	var obligations []*storage.PerformanceObligation
 
 	for _, item := range req.LineItems {
-		ratio := float64(item.SSPCents) / float64(totalSSP)
-		allocatedPrice := int(float64(req.InvoiceAmountCents) * ratio)
+		allocatedPrice := (req.InvoiceAmountCents * item.SSPCents) / totalSSP
 
 		po := &storage.PerformanceObligation{
 			ID:                      uuid.New(),
@@ -161,6 +161,7 @@ func (s *RevenueRecognitionService) createOverTimeSchedules(po *storage.Performa
 	}
 
 	monthlyAmount := po.AllocatedPriceCents / totalMonths
+	remainder := po.AllocatedPriceCents % totalMonths
 
 	currentDate := startDate
 	for i := 0; i < totalMonths; i++ {
@@ -171,6 +172,9 @@ func (s *RevenueRecognitionService) createOverTimeSchedules(po *storage.Performa
 		adjustedMonthlyAmount := monthlyAmount
 		if isLastMonth {
 			adjustedMonthlyAmount = po.AllocatedPriceCents - (monthlyAmount * (totalMonths - 1))
+		}
+		if isLastMonth && remainder > 0 {
+			adjustedMonthlyAmount += remainder
 		}
 
 		schedule := &storage.RevenueRecognitionSchedule{
@@ -323,6 +327,9 @@ func (s *RevenueRecognitionService) RecognizeRevenue(ctx context.Context, schedu
 	}
 
 	if err := s.repo.MarkScheduleRecognized(ctx, scheduleID); err != nil {
+		if strings.Contains(err.Error(), "already recognized") {
+			return nil
+		}
 		return fmt.Errorf("failed to mark schedule recognized: %w", err)
 	}
 

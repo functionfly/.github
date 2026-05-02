@@ -46,11 +46,17 @@ export const ROUTES = {
   APP_DETAIL: '/apps/:slug',
   FUNCTION_DETAIL: '/functions/:id',
   // Agent routes
-  AGENTS: '/agents',
-  AGENT_DETAIL: '/agents/:slug',
+  AGENTS: (username: string) => `/u/${username}/agents`,
+  AGENT_LIST: '/agents',
+  AGENT_NEW: '/agents/new',
+  AGENT_DETAIL: '/agents/:id',
+  AGENT_EDIT: '/agents/:id/edit',
+  AGENT_WALLET: '/agents/:id/wallet',
+  AGENT_ANALYTICS: '/agents/:id/analytics',
   SDK_INTEGRATIONS: '/sdk-integrations',
-  MARKETPLACE_AGENTS: '/marketplace/agents',
-  MARKETPLACE_FUNCTIONS: '/marketplace/functions',
+  MARKETPLACE: '/marketplace',
+  MARKETPLACE_AGENTS: '/marketplace',
+  MARKETPLACE_FUNCTIONS: '/functions/discovery',
   EVOLUTION: '/evolution',
   // FRG - Function Runtime Graph
   FRG: '/frg',
@@ -150,7 +156,7 @@ export const MAIN_NAV_PATHS: string[] = [
   ROUTES.REGISTRY,
   ROUTES.PROVIDERS,
   ROUTES.TEAMS,
-  ROUTES.AGENTS,
+  ROUTES.AGENT_LIST,
   ROUTES.ANALYTICS,
   ROUTES.USAGE,
   ROUTES.SECRETS,
@@ -270,6 +276,15 @@ export const PROVIDERS = {
       "Host your edge functions on FunctionFly's infrastructure - no deployment required",
     isManaged: true,
   },
+  AWS_LAMBDA: {
+    id: 'aws-lambda',
+    name: 'AWS Lambda',
+    color: '#FF9900',
+    icon: 'Aws',
+    regions: ['us-east-1', 'us-east-2', 'us-west-2', 'eu-west-1', 'eu-central-1', 'ap-southeast-1', 'ap-northeast-1'],
+    description:
+      'Deploy functions to AWS Lambda with full lifecycle management, auto-scaling, and pay-per-use pricing',
+  },
 } as const;
 
 /** Vendor cloud dashboards opened from Providers → Configure (connected). */
@@ -278,6 +293,7 @@ export const PROVIDER_EXTERNAL_DASHBOARD_URL = {
   vercel: 'https://vercel.com/dashboard',
   fly: 'https://fly.io/dashboard/',
   deno: 'https://dash.deno.com/',
+  'aws-lambda': 'https://console.aws.amazon.com/lambda/',
 } as const;
 
 export const PLANS = {
@@ -300,6 +316,7 @@ export const PLANS = {
       customDomains: 0,
       stateFabrics: 0,
       agents: 0,
+      apps: 0,
       secrets: 0,
       tokensPerSecret: 0,
       apiKeyBudgets: false,
@@ -309,50 +326,56 @@ export const PLANS = {
   STARTER: {
     id: 'starter',
     name: 'Starter',
-    price: 29,
-    priceCents: 2900,
-    priceAnnualCents: 27840,
+    price: 24,
+    priceCents: 2400,
+    priceAnnualCents: 24000,
     priceId: import.meta.env.VITE_STRIPE_PRICE_STARTER || 'price_starter_placeholder',
     priceIdAnnual: import.meta.env.VITE_STRIPE_PRICE_STARTER_ANNUAL || 'price_starter_annual_placeholder',
     description: 'For side projects and MVPs',
     features: [
       '5 functions',
       '3 providers',
-      '1M requests/month',
-      '$0.003 per overage request',
+      '100K AI calls/month',
+      '$0.15 per 1K overage calls',
       '1 custom domain',
       'Email support',
       'Basic analytics',
+      '10 agents included',
+      '100 state writes/hour',
     ],
-    overageRate: 3, // $0.003 per request
-    annualDiscount: 0.2, // 20% off
+    overageRate: 15, // $0.15 per 1000 calls
+    annualDiscount: 0.17, // 17% off (2 months free)
     limits: {
       functions: 5,
       providers: 3,
       requests: 1000000,
       customDomains: 1,
       stateFabrics: 1,
-      agents: 2,
+      agents: 10,
+      apps: 3,
       secrets: 10,
       tokensPerSecret: 5,
       apiKeyBudgets: false,
       perKeyCostAttribution: false,
+      aiCallsPerMonth: 100000,
+      agentConcurrency: 10,
+      agentCallsPerMinute: 100,
     },
   },
   PROFESSIONAL: {
     id: 'professional',
     name: 'Professional',
-    price: 99,
-    priceCents: 9900,
-    priceAnnualCents: 95040,
+    price: 79,
+    priceCents: 7900,
+    priceAnnualCents: 79000,
     priceId: import.meta.env.VITE_STRIPE_PRICE_PROFESSIONAL || 'price_professional_placeholder',
     priceIdAnnual: import.meta.env.VITE_STRIPE_PRICE_PROFESSIONAL_ANNUAL || 'price_professional_annual_placeholder',
     description: 'For growing businesses and SaaS applications',
     features: [
       '25 functions',
       '5 providers',
-      '10M requests/month',
-      '$0.002 per overage request',
+      '1M AI calls/month',
+      '$0.08 per 1K overage calls',
       '5 custom domains',
       '99.9% SLA',
       'Priority support',
@@ -360,9 +383,11 @@ export const PLANS = {
       'Team collaboration',
       'Per-API-key cost tracking',
       'Custom routing rules',
+      '100 agents included',
+      '10K state writes/hour',
     ],
-    overageRate: 2, // $0.002 per request
-    annualDiscount: 0.2, // 20% off
+    overageRate: 8, // $0.08 per 1000 calls
+    annualDiscount: 0.17, // 17% off
     limits: {
       functions: 25,
       providers: 5,
@@ -370,27 +395,31 @@ export const PLANS = {
       customDomains: 5,
       sla: '99.9%',
       stateFabrics: 5,
-      agents: 10,
+      agents: 100,
+      apps: 10,
       secrets: 50,
       tokensPerSecret: 20,
       apiKeyBudgets: false,
       perKeyCostAttribution: true, // Can track costs per API key
+      aiCallsPerMonth: 1000000,
+      agentConcurrency: 100,
+      agentCallsPerMinute: 500,
     },
   },
   ENTERPRISE: {
     id: 'enterprise',
     name: 'Enterprise',
-    price: 'Custom',
-    priceCents: 0,
-    priceAnnualCents: 0,
-    priceId: '',
-    priceIdAnnual: '',
+    price: 299,
+    priceCents: 29900,
+    priceAnnualCents: 299000,
+    priceId: import.meta.env.VITE_STRIPE_PRICE_ENTERPRISE || 'price_enterprise_placeholder',
+    priceIdAnnual: import.meta.env.VITE_STRIPE_PRICE_ENTERPRISE_ANNUAL || 'price_enterprise_annual_placeholder',
     description: 'For large-scale applications and enterprises',
     features: [
       'Unlimited functions',
       'All providers',
-      '100M+ requests/month',
-      '$0.001 per overage request',
+      '5M AI calls/month',
+      '$0.05 per 1K overage calls',
       'Unlimited custom domains',
       '99.99% SLA',
       'Dedicated support',
@@ -398,9 +427,11 @@ export const PLANS = {
       'Per-API-key budgets & alerts',
       'Volume discounts',
       'On-premise deployment',
+      '500 agents included',
+      '50K state writes/hour',
     ],
-    overageRate: 1, // $0.001 per request
-    annualDiscount: 0.3, // 30% off
+    overageRate: 5, // $0.05 per 1000 calls
+    annualDiscount: 0.17, // 17% off
     limits: {
       functions: Infinity,
       providers: Infinity,
@@ -408,32 +439,87 @@ export const PLANS = {
       customDomains: Infinity,
       sla: '99.99%',
       stateFabrics: Infinity,
-      agents: Infinity,
+      agents: 500,
+      apps: -1, // Unlimited
       secrets: 10000,
       tokensPerSecret: 100,
       apiKeyBudgets: true, // Full API key budget controls
       perKeyCostAttribution: true,
       highValueKeySeparation: true,
+      aiCallsPerMonth: 5000000,
+      agentConcurrency: 500,
+      agentCallsPerMinute: 2000,
     },
   },
 } as const;
 
 // ============================================================================
-// Agent Execution Plans (AEP) - AI Agent Infrastructure
+// Agent Enterprise Plan - Ultimate tier with unlimited AI
+// ============================================================================
+
+export const AGENT_ENTERPRISE = {
+  id: 'agent_enterprise',
+  name: 'Agent Enterprise',
+  price: 499,
+  priceCents: 49900,
+  priceAnnualCents: 499000,
+  priceId: import.meta.env.VITE_STRIPE_PRICE_AGENT_ENTERPRISE || 'price_agent_enterprise_placeholder',
+  priceIdAnnual: import.meta.env.VITE_STRIPE_PRICE_AGENT_ENTERPRISE_ANNUAL || 'price_agent_enterprise_annual_placeholder',
+  description: 'Unlimited AI agent scale for enterprise',
+  features: [
+    'Unlimited AI calls/month',
+    'Unlimited agents',
+    'Unlimited concurrency',
+    'Unlimited state writes',
+    'Unlimited memory storage',
+    '1-year log retention',
+    'Dedicated infrastructure',
+    'Custom SLA',
+    '24/7 support',
+    'Volume discounts',
+    'On-premise deployment',
+  ],
+  overageRate: 0, // No overage (unlimited)
+  annualDiscount: 0.17, // 17% off
+  limits: {
+    functions: Infinity,
+    providers: Infinity,
+    requests: Infinity,
+    customDomains: Infinity,
+    sla: '99.99%',
+    stateFabrics: Infinity,
+    agents: -1, // Unlimited
+    apps: -1, // Unlimited
+    secrets: Infinity,
+    tokensPerSecret: Infinity,
+    apiKeyBudgets: true,
+    perKeyCostAttribution: true,
+    highValueKeySeparation: true,
+    aiCallsPerMonth: -1, // Unlimited
+    agentConcurrency: -1, // Unlimited
+    agentCallsPerMinute: -1, // Unlimited
+  },
+} as const;
+
+// ============================================================================
+// Agent Execution Plans (AEP) - LEGACY, now bundled into main PLANS
+// Kept for backward compatibility - agents now get capabilities from main plan
+// These are now aliased to equivalent main plan limits
 // ============================================================================
 
 export const AGENT_PLANS = {
   STARTER: {
     id: 'agent_starter',
     name: 'Agent Starter',
-    price: 29,
-    priceCents: 2900,
+    price: 24,
+    priceCents: 2400,
+    priceAnnualCents: 24000,
     priceId: import.meta.env.VITE_STRIPE_PRICE_AGENT_STARTER || 'price_agent_starter_placeholder',
     description: 'For small AI agent projects and prototyping',
     features: [
       '100K tool calls/month',
       '10 concurrent agents',
-      '50 calls/second burst',
+      '100 calls/second',
       '1K state writes/hour',
       '10GB memory storage',
       '30-day log retention',
@@ -443,24 +529,28 @@ export const AGENT_PLANS = {
     limits: {
       callsPerMonth: 100000,
       concurrency: 10,
-      burst: 50,
+      burst: 100,
       dailySpendCap: 5,
       stateWritesPerHour: 1000,
       memoryGB: 10,
       logRetentionDays: 30,
     },
+    // DEPRECATED: Use PLANS.STARTER instead - same pricing and limits
+    deprecated: true,
+    aliasFor: 'starter',
   },
   SCALE: {
     id: 'agent_scale',
     name: 'Agent Scale',
-    price: 149,
-    priceCents: 14900,
+    price: 79,
+    priceCents: 7900,
+    priceAnnualCents: 79000,
     priceId: import.meta.env.VITE_STRIPE_PRICE_AGENT_SCALE || 'price_agent_scale_placeholder',
     description: 'For growing AI agent applications',
     features: [
       '1M tool calls/month',
       '100 concurrent agents',
-      '500 calls/second burst',
+      '500 calls/second',
       '10K state writes/hour',
       '100GB memory storage',
       '90-day log retention',
@@ -477,18 +567,22 @@ export const AGENT_PLANS = {
       memoryGB: 100,
       logRetentionDays: 90,
     },
+    // DEPRECATED: Use PLANS.PROFESSIONAL instead - same pricing and limits
+    deprecated: true,
+    aliasFor: 'professional',
   },
   PRO: {
     id: 'agent_pro',
     name: 'Agent Pro',
-    price: 399,
-    priceCents: 39900,
+    price: 299,
+    priceCents: 29900,
+    priceAnnualCents: 299000,
     priceId: import.meta.env.VITE_STRIPE_PRICE_AGENT_PRO || 'price_agent_pro_placeholder',
     description: 'For production AI agent systems',
     features: [
-      '10M tool calls/month',
+      '5M tool calls/month',
       '500 concurrent agents',
-      '2000 calls/second burst',
+      '2000 calls/second',
       '50K state writes/hour',
       '500GB memory storage',
       '1-year log retention',
@@ -498,7 +592,7 @@ export const AGENT_PLANS = {
       'Dedicated support',
     ],
     limits: {
-      callsPerMonth: 10000000,
+      callsPerMonth: 5000000,
       concurrency: 500,
       burst: 2000,
       dailySpendCap: 100,
@@ -506,22 +600,25 @@ export const AGENT_PLANS = {
       memoryGB: 500,
       logRetentionDays: 365,
     },
+    // DEPRECATED: Use PLANS.ENTERPRISE instead - same pricing and limits
+    deprecated: true,
+    aliasFor: 'enterprise',
   },
   ENTERPRISE: {
     id: 'agent_enterprise',
     name: 'Agent Enterprise',
-    price: 'Custom',
-    priceCents: 99000,
-    priceId: '',
-    description: 'For large-scale AI agent deployments',
+    price: 499,
+    priceCents: 49900,
+    priceAnnualCents: 499000,
+    priceId: import.meta.env.VITE_STRIPE_PRICE_AGENT_ENTERPRISE || 'price_agent_enterprise_placeholder',
+    description: 'For unlimited AI agent scale',
     features: [
       'Unlimited tool calls',
       'Unlimited concurrent agents',
       'Unlimited burst',
-      'Custom spend caps',
       'Unlimited state writes',
       'Unlimited memory storage',
-      'Unlimited log retention',
+      '1-year log retention',
       'Per-agent cost attribution',
       'Custom budget controls',
       'Multi-region deployment',
@@ -529,14 +626,17 @@ export const AGENT_PLANS = {
       '24/7 phone support',
     ],
     limits: {
-      callsPerMonth: Infinity,
-      concurrency: Infinity,
-      burst: Infinity,
+      callsPerMonth: -1,
+      concurrency: -1,
+      burst: -1,
       dailySpendCap: -1,
-      stateWritesPerHour: Infinity,
-      memoryGB: Infinity,
+      stateWritesPerHour: -1,
+      memoryGB: -1,
       logRetentionDays: -1,
     },
+    // ACTIVE: This is the max tier for unlimited agents
+    deprecated: false,
+    aliasFor: null,
   },
 } as const;
 

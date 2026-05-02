@@ -1,5 +1,8 @@
 package swarm
 
+// Package swarm provides the Unfair Advantage Engine - FunctionFly's private internal
+// R&D lab and competitive intelligence system. It enables autonomous generation of
+// internal opportunities, RD lab operations, and stealth competitive analysis.
 import (
 	"context"
 	"fmt"
@@ -15,6 +18,9 @@ const (
 	UnfairAdvantageEngineAgentID = "functionfly/unfair-advantage-engine"
 )
 
+// UnfairAdvantageEngine is FunctionFly's private internal R&D lab agent that enables
+// autonomous opportunity generation, competitive intelligence, and stealth function
+// development. It maintains a separate pipeline from public marketplace activities.
 type UnfairAdvantageEngine struct {
 	db            *gorm.DB
 	platformCtrl  *PlatformController
@@ -22,6 +28,8 @@ type UnfairAdvantageEngine struct {
 	initialized   bool
 }
 
+// NewUnfairAdvantageEngine creates a new Unfair Advantage Engine instance with the
+// provided database, platform controller, and metrics collector dependencies.
 func NewUnfairAdvantageEngine(db *gorm.DB, platformCtrl *PlatformController, metricsColl *MetricsCollector) *UnfairAdvantageEngine {
 	return &UnfairAdvantageEngine{
 		db:           db,
@@ -30,6 +38,9 @@ func NewUnfairAdvantageEngine(db *gorm.DB, platformCtrl *PlatformController, met
 	}
 }
 
+// Initialize prepares the engine for operation by ensuring the engine agent identity
+// exists and running database migrations for internal opportunity tracking tables.
+// Safe to call multiple times; subsequent calls are no-ops after first successful init.
 func (uae *UnfairAdvantageEngine) Initialize(ctx context.Context) error {
 	if uae.initialized {
 		return nil
@@ -105,6 +116,8 @@ func (uae *UnfairAdvantageEngine) createEngineAgent(ctx context.Context) error {
 	return uae.db.WithContext(ctx).Create(agent).Error
 }
 
+// GetDashboard returns a comprehensive view of the engine's current state including
+// swarm status, daily metrics, internal function count, and competitive value meters.
 func (uae *UnfairAdvantageEngine) GetDashboard(ctx context.Context) (*AdvantageDashboard, error) {
 	status, err := uae.platformCtrl.GetStatus(ctx)
 	if err != nil {
@@ -152,6 +165,8 @@ func (uae *UnfairAdvantageEngine) GetDashboard(ctx context.Context) (*AdvantageD
 	return dashboard, nil
 }
 
+// SeedInternalOpportunity creates a new internal opportunity with high quality and demand
+// scores by default, marked as confidential. Used to seed the RD lab pipeline.
 func (uae *UnfairAdvantageEngine) SeedInternalOpportunity(ctx context.Context, req *SeedOpportunityRequest) (*InternalOpportunity, error) {
 	opportunity := &InternalOpportunity{
 		ID:                uuid.New(),
@@ -184,6 +199,8 @@ func (uae *UnfairAdvantageEngine) SeedInternalOpportunity(ctx context.Context, r
 	return opportunity, nil
 }
 
+// ListInternalOpportunities returns filtered opportunities sorted by priority, value,
+// and creation date. Supports category, status, priority, and confidentiality filters.
 func (uae *UnfairAdvantageEngine) ListInternalOpportunities(ctx context.Context, filter *OpportunityFilter) ([]InternalOpportunity, int64, error) {
 	query := uae.db.WithContext(ctx).Model(&InternalOpportunity{})
 
@@ -212,6 +229,8 @@ func (uae *UnfairAdvantageEngine) ListInternalOpportunities(ctx context.Context,
 	return opportunities, total, err
 }
 
+// RunInternalRDLab scouts high-priority qualified opportunities and marks them as
+// processed by the RD lab, tracking ideas scouted and funded during the run.
 func (uae *UnfairAdvantageEngine) RunInternalRDLab(ctx context.Context) (*RDLabRun, error) {
 	run := &RDLabRun{
 		ID:           uuid.New(),
@@ -256,6 +275,8 @@ func (uae *UnfairAdvantageEngine) RunInternalRDLab(ctx context.Context) (*RDLabR
 	return run, nil
 }
 
+// GenerateInternalFunction creates a prototype function from a qualified opportunity,
+// generates template code, and updates the opportunity status to "generated".
 func (uae *UnfairAdvantageEngine) GenerateInternalFunction(ctx context.Context, oppID uuid.UUID) (*InternalFunction, error) {
 	var opportunity InternalOpportunity
 	if err := uae.db.WithContext(ctx).Where("id = ?", oppID).First(&opportunity).Error; err != nil {
@@ -291,6 +312,8 @@ func (uae *UnfairAdvantageEngine) GenerateInternalFunction(ctx context.Context, 
 	return function, nil
 }
 
+// GetValueReport generates a comprehensive value analysis report for the last 30 days,
+// including cost savings, revenue boost, speed gains, competitive moat value, and ROI.
 func (uae *UnfairAdvantageEngine) GetValueReport(ctx context.Context) (*ValueReport, error) {
 	var totalInternalValue, totalCostSavings, totalRevenueBoost, totalSpeedGain, totalMoat float64
 
@@ -348,6 +371,8 @@ func (uae *UnfairAdvantageEngine) GetValueReport(ctx context.Context) (*ValueRep
 	}, nil
 }
 
+// SeedCustomOpportunity creates a custom opportunity with user-specified parameters
+// for targeted competitive analysis or strategic initiatives.
 func (uae *UnfairAdvantageEngine) SeedCustomOpportunity(ctx context.Context, seed *CustomOpportunitySeed) (*discovery.Opportunity, error) {
 	opportunity := &discovery.Opportunity{
 		ID:                uuid.New(),
@@ -379,6 +404,8 @@ func (uae *UnfairAdvantageEngine) SeedCustomOpportunity(ctx context.Context, see
 	return opportunity, nil
 }
 
+// RunStealthPipeline executes a competitive stealth pipeline that dispatches scan and
+// generation tasks to child agents based on configured targets and quality floors.
 func (uae *UnfairAdvantageEngine) RunStealthPipeline(ctx context.Context, cfg *StealthConfig) (*StealthRun, error) {
 	run := &StealthRun{
 		ID:            uuid.New(),
@@ -436,6 +463,7 @@ func (uae *UnfairAdvantageEngine) getChildrenByRole(ctx context.Context, role st
 	return filtered
 }
 
+// calculateMomentum determines swarm momentum based on conversion rate and quality.
 func calculateMomentum(metrics *DailySwarmMetrics) string {
 	if metrics == nil {
 		return "unknown"
@@ -449,6 +477,7 @@ func calculateMomentum(metrics *DailySwarmMetrics) string {
 	return "slow"
 }
 
+// calculateMoatDepth returns a qualitative moat depth assessment based on value.
 func calculateMoatDepth(moatValue float64) string {
 	if moatValue >= 100000 {
 		return "massive"
@@ -462,6 +491,8 @@ func calculateMoatDepth(moatValue float64) string {
 	return "nascent"
 }
 
+// sanitizeFunctionName removes non-alphanumeric characters from a title to produce
+// a valid Python function name identifier.
 func sanitizeFunctionName(title string) string {
 	name := ""
 	for _, c := range title {
@@ -479,13 +510,48 @@ func generateTemplateCode(opp InternalOpportunity) string {
 	return `# Internal Function Generated by FunctionFly Unfair Advantage Engine
 # Source: ` + opp.Source + ` | Priority: ` + opp.Priority + `
 # Estimated Value: $` + fmt.Sprintf("%.2f", opp.EstimatedValueUSD) + `
+# RD Phase: prototype | Category: ` + opp.Category + `
 
-def handle_` + sanitizeFunctionName(opp.Title) + `(event, context):
+import json
+import logging
+from typing import Any, Dict, Optional
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
+
+def handle_` + sanitizeFunctionName(opp.Title) + `(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     ` + opp.Description + `
+
+    Internal prototype function - implement based on specific requirements.
     """
-    # TODO: Implement based on internal requirements
-    return {"status": "prototype", "source": "` + opp.Source + `"}
+    try:
+        logger.info(f"Processing event: {event.get('type', 'unknown')}")
+
+        input_data = event.get("data", {})
+        action = event.get("action", "process")
+
+        if action == "validate":
+            return {"status": "valid", "source": "` + opp.Source + `"}
+        elif action == "process":
+            result = {
+                "status": "success",
+                "source": "` + opp.Source + `",
+                "processed_at": datetime.utcnow().isoformat(),
+                "category": "` + opp.Category + `",
+                "data": input_data,
+            }
+            return result
+        else:
+            return {"status": "unknown_action", "action": action}
+
+    except Exception as e:
+        logger.error(f"Error processing request: {e}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "source": "` + opp.Source + `",
+        }
 `
 }
 
@@ -501,6 +567,8 @@ func estimateTimeToValue(opp InternalOpportunity) string {
 
 type EngineAgent = identity.AgentIdentity
 
+// AdvantageDashboard provides a comprehensive view of the Unfair Advantage Engine's
+// current state, including swarm status, metrics, value tracking, and momentum.
 type AdvantageDashboard struct {
 	EngineID            string             `json:"engine_id"`
 	GeneratedAt        time.Time          `json:"generated_at"`
@@ -512,6 +580,7 @@ type AdvantageDashboard struct {
 	Momentum           string             `json:"momentum"`
 }
 
+// CompetitiveMeters tracks competitive advantage value across four dimensions.
 type CompetitiveMeters struct {
 	CostSavings     float64 `json:"cost_savings"`
 	RevenueBoost    float64 `json:"revenue_boost"`
@@ -519,6 +588,8 @@ type CompetitiveMeters struct {
 	CompetitiveMoat float64 `json:"competitive_moat"`
 }
 
+// InternalOpportunity represents a confidential internal R&D opportunity with
+// estimated business value and priority tracking.
 type InternalOpportunity struct {
 	ID                uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	Source            string         `json:"source" gorm:"not null"`
@@ -542,6 +613,7 @@ type InternalOpportunity struct {
 
 func (InternalOpportunity) TableName() string { return "internal_opportunities" }
 
+// SeedOpportunityRequest contains the parameters for creating a new internal opportunity.
 type SeedOpportunityRequest struct {
 	Title           string   `json:"title" validate:"required"`
 	Description     string   `json:"description"`
@@ -555,6 +627,7 @@ type SeedOpportunityRequest struct {
 	TimeToMarket    string   `json:"time_to_market"`
 }
 
+// OpportunityFilter defines filtering and pagination parameters for opportunity queries.
 type OpportunityFilter struct {
 	Category         string
 	Status           string
@@ -564,6 +637,8 @@ type OpportunityFilter struct {
 	Offset           int
 }
 
+// InternalFunction represents a generated prototype function from an internal opportunity.
+// These are internal-only functions not published to the public marketplace.
 type InternalFunction struct {
 	ID              uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	Name            string     `json:"name" gorm:"not null"`
@@ -584,6 +659,8 @@ type InternalFunction struct {
 
 func (InternalFunction) TableName() string { return "internal_functions" }
 
+// RDLabRun tracks a single execution of the internal R&D lab pipeline, recording
+// opportunities scouted, funded, and total value tracked during the run.
 type RDLabRun struct {
 	ID            uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	Status        string    `json:"status" gorm:"not null"`
@@ -596,8 +673,8 @@ type RDLabRun struct {
 	TotalValueTracked float64 `json:"total_value_tracked"`
 }
 
-func (RDLabRun) TableName() string { return "rd_lab_runs" }
-
+// ValueReport provides a comprehensive value analysis for a given period, tracking
+// competitive advantage metrics, efficiency gains, and ROI calculations.
 type ValueReport struct {
 	PeriodStart      time.Time `json:"period_start"`
 	PeriodEnd        time.Time `json:"period_end"`
@@ -613,6 +690,8 @@ type ValueReport struct {
 	GeneratedAt      time.Time `json:"generated_at"`
 }
 
+// CustomOpportunitySeed contains parameters for creating a custom opportunity with
+// specific targeting parameters for competitive analysis initiatives.
 type CustomOpportunitySeed struct {
 	Title         string   `json:"title" validate:"required"`
 	Description   string   `json:"description"`
@@ -627,6 +706,7 @@ type CustomOpportunitySeed struct {
 	ExperimentID  string   `json:"experiment_id"`
 }
 
+// StealthConfig configures the stealth competitive pipeline execution parameters.
 type StealthConfig struct {
 	Mode            string   `json:"mode"`
 	ScanTargets     []string `json:"scan_targets"`
@@ -636,6 +716,8 @@ type StealthConfig struct {
 	AutoPublish     bool     `json:"auto_publish"`
 }
 
+// StealthRun tracks a stealth pipeline execution including dispatched operations
+// and generated functions for competitive intelligence purposes.
 type StealthRun struct {
 	ID             uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	Status         string    `json:"status"`
@@ -647,4 +729,8 @@ type StealthRun struct {
 	ValueGenerated float64   `json:"value_generated"`
 }
 
+// TableName specifies the database table name for RDLabRun.
+func (RDLabRun) TableName() string { return "rd_lab_runs" }
+
+// TableName specifies the database table name for StealthRun.
 func (StealthRun) TableName() string { return "stealth_runs" }

@@ -34,7 +34,7 @@ interface Template {
   icon: React.ReactNode;
   runtimes: Runtime[];
   category: 'api' | 'integration' | 'scheduled' | 'utility';
-  code: Record<Runtime, string>;
+  code: Partial<Record<Runtime, string>>;
 }
 
 const TEMPLATES: Template[] = [

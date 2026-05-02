@@ -99,7 +99,7 @@ export function PlaygroundStatusBar() {
               <span>{t('playground.shortcuts')}</span>
             </button>
           </TooltipTrigger>
-          <TooltipContent side="top" align="end" className="p-3 max-w-xs">
+          <TooltipContent side="top" className="p-3 max-w-xs">
             <div className="space-y-1.5">
                <p className="text-xs font-medium mb-2">{t('playground.keyboardShortcuts')}</p>
               {KEYBOARD_SHORTCUTS.map((shortcut, i) => (

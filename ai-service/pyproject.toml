@@ -39,6 +39,7 @@ dependencies = [
     "grpcio-tools>=1.80.0",
     "prometheus-client>=0.24.1",
     "cryptography>=46.0.7",
+    "psycopg2-binary>=2.9.12",
 ]
 
 [project.optional-dependencies]

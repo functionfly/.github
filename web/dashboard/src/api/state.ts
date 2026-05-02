@@ -26,7 +26,8 @@ export const stateApi = {
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     if (params?.offset) queryParams.append("offset", params.offset.toString());
 
-    return apiClient.get<SimpleState[]>(`/v1/state?${queryParams.toString()}`);
+    const data = await apiClient.get<{ states: SimpleState[]; total: number; limit: number; offset: number }>(`/v1/state?${queryParams.toString()}`);
+    return data.states;
   },
 
   // Get state by path

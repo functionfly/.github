@@ -16,6 +16,7 @@ import {
   MoreHorizontal,
   Search,
   AlertCircle,
+  AlertTriangle,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -85,6 +86,22 @@ const secretTypeVariants: Record<SecretType, "default" | "secondary" | "outline"
   password: "warning",
   certificate: "outline",
 };
+
+// Stale threshold in days
+const STALE_THRESHOLD_DAYS = 90;
+
+function getRotationStatus(secret: SecretMetadata): { label: string; variant: 'default' | 'secondary' | 'outline' | 'success' | 'warning'; icon: typeof Clock } {
+  const updatedAt = secret.updated_at ? new Date(secret.updated_at) : new Date(secret.created_at);
+  const daysSinceUpdate = Math.floor((Date.now() - updatedAt.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (daysSinceUpdate > STALE_THRESHOLD_DAYS) {
+    return { label: 'Stale', variant: 'warning', icon: AlertTriangle };
+  }
+  if (secret.current_version && secret.current_version > 1) {
+    return { label: 'Rotated', variant: 'success', icon: Shield };
+  }
+  return { label: 'Active', variant: 'secondary', icon: Clock };
+}
 
 export interface SecretListProps {
   className?: string;
@@ -244,6 +261,7 @@ export function SecretList({ className }: SecretListProps) {
                 <TableHead>Name</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Description</TableHead>
+                <TableHead>Rotation</TableHead>
                 <TableHead>Last Accessed</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead className="w-16"></TableHead>
@@ -277,6 +295,18 @@ export function SecretList({ className }: SecretListProps) {
                       <span className="text-text-secondary line-clamp-1 max-w-[200px]">
                         {secret.description || "—"}
                       </span>
+                    </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const status = getRotationStatus(secret);
+                        const StatusIcon = status.icon;
+                        return (
+                          <Badge variant={status.variant} className="gap-1">
+                            <StatusIcon className="h-3 w-3" />
+                            {status.label}
+                          </Badge>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5 text-text-secondary">

@@ -1,12 +1,13 @@
 /* ==========================================================================
    Agent SDK Integrations - Light Mode Improvements
+   Uses FunctionFly brand colors - flame orange (--ff-flame = #FF6B35)
    ========================================================================== */
 
 [data-theme='light'] .agent-sdk-integrations-page {
   background:
-    radial-gradient(circle at 10% 0%, rgba(99, 102, 241, 0.08), transparent 40%),
-    radial-gradient(circle at 90% 5%, rgba(139, 92, 246, 0.08), transparent 35%);
-  border: 1px solid rgba(99, 102, 241, 0.14);
+    radial-gradient(circle at 10% 0%, rgba(var(--ff-flame-rgb), 0.06), transparent 40%),
+    radial-gradient(circle at 90% 5%, rgba(var(--ff-afterburner-rgb, 255, 79, 94), 0.04), transparent 35%);
+  border: 1px solid rgba(var(--ff-flame-rgb), 0.15);
   border-radius: 16px;
   padding: 1rem;
 }
@@ -17,7 +18,7 @@
 
 [data-theme='light'] .agent-sdk-integrations-page .sdk-section-nav {
   background-color: rgba(255, 255, 255, 0.9) !important;
-  border-color: rgba(15, 23, 42, 0.12) !important;
+  border-color: rgba(var(--ff-flame-rgb), 0.12) !important;
 }
 
 [data-theme='light'] .agent-sdk-integrations-page .sdk-section-link {
@@ -30,44 +31,44 @@
 }
 
 [data-theme='light'] .agent-sdk-integrations-page .sdk-section-link:hover {
-  color: #3730a3;
-  background-color: rgba(99, 102, 241, 0.12);
+  color: var(--ff-flame-dark);
+  background-color: rgba(var(--ff-flame-rgb), 0.1);
 }
 
 [data-theme='light'] .agent-sdk-integrations-page .sdk-install-banner {
   background: linear-gradient(
     180deg,
-    rgba(238, 242, 255, 0.95),
-    rgba(245, 243, 255, 0.9)
+    rgba(var(--ff-flame-rgb), 0.08),
+    rgba(var(--ff-afterburner-rgb, 255, 79, 94), 0.05)
   ) !important;
-  border-color: rgba(99, 102, 241, 0.25) !important;
+  border-color: rgba(var(--ff-flame-rgb), 0.25) !important;
 }
 
 [data-theme='light'] .agent-sdk-integrations-page .sdk-quickstart-btn {
-  background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 100%) !important;
+  background: linear-gradient(90deg, var(--ff-flame) 0%, var(--ff-afterburner, #FF4F5E) 100%) !important;
   color: #ffffff !important;
   border: none !important;
-  box-shadow: 0 6px 14px rgba(79, 70, 229, 0.3);
+  box-shadow: 0 6px 14px rgba(var(--ff-flame-rgb), 0.35);
 }
 
 [data-theme='light'] .agent-sdk-integrations-page .sdk-quickstart-btn:hover {
   filter: brightness(1.06);
-  box-shadow: 0 9px 18px rgba(79, 70, 229, 0.35);
+  box-shadow: 0 9px 18px rgba(var(--ff-flame-rgb), 0.4);
 }
 
 [data-theme='light'] .agent-sdk-integrations-page .sdk-policy-card,
 [data-theme='light'] .agent-sdk-integrations-page .sdk-preview-card,
 [data-theme='light'] .agent-sdk-integrations-page .sdk-security-card {
   background-color: #ffffff !important;
-  border-color: rgba(15, 23, 42, 0.1) !important;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  border-color: rgba(var(--ff-flame-rgb), 0.12) !important;
+  box-shadow: 0 6px 18px rgba(var(--ff-flame-rgb), 0.08);
 }
 
 [data-theme='light'] .agent-sdk-integrations-page .sdk-control-group {
   padding: 0.5rem 0.55rem;
   border-radius: 10px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background-color: rgba(248, 250, 252, 0.85);
+  border: 1px solid rgba(var(--ff-flame-rgb), 0.1);
+  background-color: rgba(var(--ff-flame-rgb), 0.04);
 }
 
 [data-theme='light'] .agent-sdk-integrations-page .sdk-slider-ticks {
@@ -84,19 +85,19 @@
 }
 
 [data-theme='light'] .agent-sdk-integrations-page .sdk-slider-tick-default {
-  color: #4338ca;
+  color: var(--ff-flame-dark);
   font-weight: 700;
 }
 
 [data-theme='light'] .agent-sdk-integrations-page .sdk-tabs-list {
-  background-color: #f1f5f9 !important;
-  border: 1px solid rgba(15, 23, 42, 0.1);
+  background-color: rgba(var(--ff-flame-rgb), 0.06) !important;
+  border: 1px solid rgba(var(--ff-flame-rgb), 0.1);
 }
 
 [data-theme='light'] .agent-sdk-integrations-page .sdk-tabs-list button[data-state='active'] {
   background-color: #ffffff !important;
-  color: #0f172a !important;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  color: var(--ff-flame-dark) !important;
+  box-shadow: 0 1px 2px rgba(var(--ff-flame-rgb), 0.15);
 }
 
 [data-theme='light'] .agent-sdk-integrations-page .sdk-tabs-list button[data-state='inactive'] {
@@ -110,18 +111,22 @@
 }
 
 [data-theme='light'] .agent-sdk-integrations-page .sdk-code-header {
-  background-color: #f8fafc !important;
-  border-color: rgba(15, 23, 42, 0.1) !important;
+  background-color: rgba(var(--ff-flame-rgb), 0.04) !important;
+  border-color: rgba(var(--ff-flame-rgb), 0.1) !important;
 }
 
 [data-theme='light'] .agent-sdk-integrations-page .sdk-copy-btn {
   color: #334155 !important;
 }
 
+[data-theme='light'] .agent-sdk-integrations-page .sdk-copy-btn:hover {
+  color: var(--ff-flame-dark) !important;
+}
+
 [data-theme='light'] .agent-sdk-integrations-page .sdk-code-pre {
-  background: #f8fafc !important;
+  background: rgba(var(--ff-flame-rgb), 0.03) !important;
   color: #0f172a !important;
-  border-color: rgba(15, 23, 42, 0.12) !important;
+  border-color: rgba(var(--ff-flame-rgb), 0.12) !important;
 }
 
 [data-theme='light'] .agent-sdk-integrations-page .sdk-code-pre code {

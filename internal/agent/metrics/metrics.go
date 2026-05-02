@@ -122,6 +122,52 @@ var (
 		},
 		[]string{"agent_id", "function_uri"},
 	)
+
+	// AgentDeadLetterTotal tracks dead letter queue entries
+	AgentDeadLetterTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "agent_dead_letter_total",
+			Help: "Total dead letter entries created",
+		},
+		[]string{"agent_id", "function_uri", "error_code"},
+	)
+
+	// AgentDeadLetterPending tracks pending dead letter entries
+	AgentDeadLetterPending = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "agent_dead_letter_pending",
+			Help: "Current pending dead letter entries",
+		},
+		[]string{"agent_id"},
+	)
+
+	// AgentDeadLetterRetryStorm tracks potential retry storms
+	AgentDeadLetterRetryStorm = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "agent_dead_letter_retry_storm_total",
+			Help: "Dead letter entries that triggered retry storm alerts",
+		},
+		[]string{"agent_id", "function_uri"},
+	)
+
+	// AgentDeadLetterAttemptsHistogram tracks distribution of attempts before dead letter
+	AgentDeadLetterAttemptsHistogram = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "agent_dead_letter_attempts_histogram",
+			Help:    "Distribution of attempts before dead letter",
+			Buckets: []float64{1, 2, 3, 4, 5, 10, 20, 50},
+		},
+		[]string{"agent_id", "function_uri"},
+	)
+
+	// AgentDeadLetterRetryOutcome tracks retry outcomes for dead letter entries
+	AgentDeadLetterRetryOutcome = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "agent_dead_letter_retry_outcome_total",
+			Help: "Dead letter retry outcomes",
+		},
+		[]string{"agent_id", "outcome"},
+	)
 )
 
 func init() {
@@ -139,5 +185,10 @@ func init() {
 		AgentCircuitTransitions,
 		AgentRetryAttempts,
 		AgentRetrySuccesses,
+		AgentDeadLetterTotal,
+		AgentDeadLetterPending,
+		AgentDeadLetterRetryStorm,
+		AgentDeadLetterAttemptsHistogram,
+		AgentDeadLetterRetryOutcome,
 	)
 }

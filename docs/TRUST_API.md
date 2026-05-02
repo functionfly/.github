@@ -4,13 +4,13 @@
 **Status**: Active
 **Base URL**: `https://api.functionfly.com/v1`
 
-The Trust API allows external platform partners to access FunctionFly's verification and trust infrastructure. Other platforms can pay to integrate FunctionFly's trust scoring system into their own applications.
+The Trust API provides access to FunctionFly's verification and trust infrastructure. Use it to query trust scores, submit functions for verification, and integrate trust evaluation into your applications.
 
 ---
 
 ## Overview
 
-The Trust API is a B2B2B revenue stream that allows other platforms to:
+The Trust API enables you to:
 
 - Query trust scores for functions
 - Submit functions for verification

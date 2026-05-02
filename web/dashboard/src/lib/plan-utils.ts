@@ -1,12 +1,13 @@
-import { PLANS } from './constants';
+import { PLANS, AGENT_ENTERPRISE } from './constants';
 
-export type PlanTier = 'free' | 'starter' | 'professional' | 'enterprise';
+export type PlanTier = 'free' | 'starter' | 'professional' | 'enterprise' | 'agent_enterprise';
 
 export const PLAN_HIERARCHY: Record<PlanTier, number> = {
   free: 0,
   starter: 1,
   professional: 2,
   enterprise: 3,
+  agent_enterprise: 4, // Top tier - unlimited
 };
 
 /**
@@ -111,11 +112,68 @@ export const getStateFabricsLimit = (plan?: string): number => {
  * Max agents for the tier (from PLANS.limits.agents).
  */
 export const getAgentsLimit = (plan?: string): number => {
+  // Handle agent_enterprise specially (unlimited)
+  if (plan === 'agent_enterprise') {
+    return AGENT_ENTERPRISE.limits.agents as number;
+  }
   const limits = getPlanLimits(plan);
   if (!limits) return 0;
   const raw = (limits as { agents?: number }).agents;
   if (raw === undefined) return 0;
   return raw === Infinity ? 10000 : raw;
+};
+
+/**
+ * Max apps for the tier (from PLANS.limits.apps).
+ */
+export const getAppsLimit = (plan?: string): number => {
+  if (plan === 'agent_enterprise') {
+    return -1; // Unlimited
+  }
+  const limits = getPlanLimits(plan);
+  if (!limits) return 0;
+  const raw = (limits as { apps?: number }).apps;
+  if (raw === undefined) return 0;
+  return raw === Infinity ? -1 : raw;
+};
+
+/**
+ * Max AI calls per month for the tier (bundled agent capability).
+ */
+export const getAICallsLimit = (plan?: string): number => {
+  if (plan === 'agent_enterprise') {
+    return -1; // Unlimited
+  }
+  const limits = getPlanLimits(plan);
+  if (!limits) return 0;
+  const raw = (limits as { aiCallsPerMonth?: number }).aiCallsPerMonth;
+  return raw ?? 0;
+};
+
+/**
+ * Agent concurrency limit for the tier.
+ */
+export const getAgentConcurrencyLimit = (plan?: string): number => {
+  if (plan === 'agent_enterprise') {
+    return -1; // Unlimited
+  }
+  const limits = getPlanLimits(plan);
+  if (!limits) return 0;
+  const raw = (limits as { agentConcurrency?: number }).agentConcurrency;
+  return raw ?? 0;
+};
+
+/**
+ * Agent calls per minute limit for the tier.
+ */
+export const getAgentCallsPerMinuteLimit = (plan?: string): number => {
+  if (plan === 'agent_enterprise') {
+    return -1; // Unlimited
+  }
+  const limits = getPlanLimits(plan);
+  if (!limits) return 0;
+  const raw = (limits as { agentCallsPerMinute?: number }).agentCallsPerMinute;
+  return raw ?? 0;
 };
 
 /**
@@ -136,6 +194,7 @@ export const canCreateAgent = (plan: string | undefined, currentCount: number): 
   if (!hasFeature(plan, 'AGENTS')) return false;
   const limit = getAgentsLimit(plan);
   if (limit === 0) return false;
+  if (limit < 0) return true; // Negative means unlimited (agent_enterprise)
   if (limit >= 10000) return true;
   return currentCount < limit;
 };
@@ -192,7 +251,7 @@ export const FEATURES: Record<string, readonly PlanTier[]> = {
   /** Stateful fabrics: Free has 0 quota; paid tiers per PLANS.limits.stateFabrics */
   STATE_FABRIC: ['starter', 'professional', 'enterprise'],
   /** AI agents: Free has 0 quota; paid tiers per PLANS.limits.agents */
-  AGENTS: ['starter', 'professional', 'enterprise'],
+  AGENTS: ['starter', 'professional', 'enterprise', 'agent_enterprise'],
   UNLIMITED_FUNCTIONS: ['enterprise'],
   UNLIMITED_PROVIDERS: ['enterprise'],
   PRIORITY_SUPPORT: ['professional', 'enterprise'],
@@ -272,7 +331,7 @@ export const getAnnualDiscount = (plan?: string): number => {
 export const getAnnualPrice = (plan?: string): number | null => {
   const planKey = plan?.toUpperCase() as keyof typeof PLANS;
   const planData = PLANS[planKey];
-  if (!planData || !planData.price || planData.price === 'Custom') return null;
+  if (!planData || typeof planData.price !== 'number' || planData.price === 0) return null;
   const monthly = planData.price * (1 - (planData.annualDiscount || 0));
   return Math.round(monthly * 12);
 };

@@ -194,9 +194,27 @@ func (h *SwarmHandler) GetParent(w http.ResponseWriter, r *http.Request) {
 }
 
 // SendMessage handles POST /v1/agent/:id/message
+// Requires X-Agent-Signing-Key header for message authentication
 func (h *SwarmHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 	fromAgentID := mux.Vars(r)["id"]
 	if !h.requireAgentTenant(w, r, fromAgentID) {
+		return
+	}
+
+	signingKey := r.Header.Get("X-Agent-Signing-Key")
+	if signingKey == "" {
+		writeError(w, http.StatusUnauthorized, "MISSING_SIGNING_KEY", "X-Agent-Signing-Key header is required for agent-to-agent messages")
+		return
+	}
+
+	agent, err := h.identityRepo.GetAgentBySigningKeyHash(r.Context(), signingKey)
+	if err != nil || agent == nil {
+		writeError(w, http.StatusUnauthorized, "INVALID_SIGNING_KEY", "invalid signing key")
+		return
+	}
+
+	if agent.AgentID != fromAgentID {
+		writeError(w, http.StatusForbidden, "SIGNING_KEY_MISMATCH", "signing key does not match the from agent")
 		return
 	}
 
@@ -208,7 +226,7 @@ func (h *SwarmHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 
 	msg.FromAgentID = fromAgentID
 
-	if err := h.messageService.SendMessage(r.Context(), &msg); err != nil {
+	if err := h.messageService.SendMessage(r.Context(), &msg, signingKey); err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
@@ -323,6 +341,11 @@ type marketplaceAgentResponse struct {
 	Capabilities           []string `json:"capabilities,omitempty"`
 	Status                 string   `json:"status"`
 	IsOfficial             bool     `json:"isOfficial"`
+	RankScore              float64  `json:"rankScore"`
+
+	// Auth-gated fields (only populated when user is authenticated)
+	WalletBalanceUSD    *float64 `json:"walletBalanceUsd,omitempty"`
+	HiringHistoryCount  *int     `json:"hiringHistoryCount,omitempty"`
 }
 
 // officialAgentIDs are the FunctionFly-built default agents seeded at launch.
@@ -348,9 +371,7 @@ func marketplaceAgentFromResult(res marketplace.AgentSearchResult) marketplaceAg
 		status = l.Agent.Status
 		ts := l.Agent.TrustScore
 		trustScore = &ts
-		// derive deterministic_verified: trust score >= 90
 		deterministicVerified = l.Agent.TrustScore >= 90
-		// flatten capabilities map keys into a string slice
 		for k := range l.Agent.Capabilities {
 			capabilities = append(capabilities, k)
 		}
@@ -374,6 +395,7 @@ func marketplaceAgentFromResult(res marketplace.AgentSearchResult) marketplaceAg
 		Capabilities:           capabilities,
 		Status:                 status,
 		IsOfficial:             officialAgentIDs[l.AgentID],
+		RankScore:              res.RankScore,
 	}
 }
 
@@ -382,6 +404,7 @@ func (h *SwarmHandler) SearchAgents(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	req := marketplace.SearchAgentsRequest{
 		PricingModel: q.Get("pricing_model"),
+		SortBy:       q.Get("sort_by"),
 		Limit:        20,
 		Offset:       0,
 	}
@@ -416,6 +439,12 @@ func (h *SwarmHandler) SearchAgents(w http.ResponseWriter, r *http.Request) {
 			req.ListingTypes[i] = strings.TrimSpace(req.ListingTypes[i])
 		}
 	}
+	if c := q.Get("capabilities"); c != "" {
+		req.Capabilities = strings.Split(c, ",")
+		for i := range req.Capabilities {
+			req.Capabilities[i] = strings.TrimSpace(req.Capabilities[i])
+		}
+	}
 
 	results, total, err := h.marketplaceService.SearchAgents(r.Context(), &req)
 	if err != nil {
@@ -423,14 +452,32 @@ func (h *SwarmHandler) SearchAgents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	agents := make([]marketplaceAgentResponse, len(results))
+	claims := middleware.GetUserFromContext(r)
+	agents := make([]interface{}, len(results))
 	for i, res := range results {
-		agents[i] = marketplaceAgentFromResult(res)
+		agentResp := marketplaceAgentFromResult(res)
+		if claims != nil {
+			wallet, err := h.walletService.GetWallet(r.Context(), res.Listing.AgentID)
+			if err == nil && wallet != nil {
+				balance := wallet.BalanceUSD
+				agentResp.WalletBalanceUSD = &balance
+			}
+			count, err := h.identityRepo.CountAgentHiring(r.Context(), res.Listing.AgentID)
+			if err == nil {
+				agentResp.HiringHistoryCount = &count
+			}
+		}
+		agents[i] = agentResp
 	}
+
+	hasMore := int64(req.Offset+len(results)) < total
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok":     true,
 		"agents": agents,
 		"total":  total,
+		"limit":  req.Limit,
+		"offset": req.Offset,
+		"has_more": hasMore,
 	})
 }
 
@@ -796,7 +843,9 @@ func (h *SwarmHandler) HireAgent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send message to the hired agent
-	msg := &identity.AgentMessage{
+	// Note: hiring message is sent without signing as it's initiated by the user via API
+	// The hired agent can verify via its own signing key if needed
+	hiringMsg := &identity.AgentMessage{
 		ID:          uuid.New(),
 		FromAgentID: hirerID,
 		ToAgentID:   req.AgentID,
@@ -811,7 +860,7 @@ func (h *SwarmHandler) HireAgent(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: time.Now(),
 	}
 
-	if err := h.messageService.SendMessage(r.Context(), msg); err != nil {
+	if err := h.messageService.ReceiveMessage(r.Context(), hiringMsg); err != nil {
 		logrus.Warnf("Failed to send hiring message: %v", err)
 	}
 

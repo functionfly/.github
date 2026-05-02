@@ -131,6 +131,7 @@ export function UsagePage() {
     forecast,
     spendCap,
     functionCosts,
+    periodComparison,
   });
 
   // Plan limit calculations

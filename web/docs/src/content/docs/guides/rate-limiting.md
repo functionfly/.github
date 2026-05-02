@@ -155,7 +155,7 @@ Configure alerts for quota thresholds:
 
 ```bash
 # Set up quota alerts
-fly limits alerts set \
+ffly limits alerts set \
   --function my-function \
   --daily-requests 80% \
   --email admin@example.com
@@ -230,13 +230,13 @@ View rate limit usage in the dashboard:
 
 ```bash
 # Get current usage stats
-fly limits stats
+ffly limits stats
 
 # Get usage for a specific function
-fly limits stats --function my-function
+ffly limits stats --function my-function
 
 # Historical data
-fly limits stats --from 2024-01-01 --to 2024-01-31
+ffly limits stats --from 2024-01-01 --to 2024-01-31
 ```
 
 ## Best Practices

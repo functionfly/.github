@@ -62,7 +62,7 @@ export function UserMenu({ className }: UserMenuProps) {
     typeof window !== 'undefined' ? localStorage.getItem('ff-last-wallet-agent-id') : null;
   const { data: mfaStatus } = useMFAStatus();
   const { myPresence, isConnected } = usePresence();
-  const { status: customStatus } = useCustomStatus();
+  const { status: customStatus, setStatus } = useCustomStatus();
 
   const { data: teamsData } = useQuery({
     queryKey: ['user-teams'],
@@ -676,6 +676,39 @@ export function UserMenu({ className }: UserMenuProps) {
               <Globe className="w-3.5 h-3.5" style={{ color: colors.textSecondary }} />
             </div>
             <LanguagePicker variant="ghost" showLabel={true} className="flex-1 h-8 px-0" />
+          </div>
+        </div>
+
+<DropdownMenuSeparator className="mx-3" style={{ backgroundColor: colors.border }} />
+
+        {/* Status Selector */}
+        <div className="px-1.5 py-1">
+          <div className="flex items-center gap-1 px-2 py-1">
+            {CUSTOM_STATUS_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => {
+                  void customStatus.customStatus === option.value
+                    ? setStatus('')
+                    : setStatus(option.value, option.emoji);
+                }}
+                className={cn(
+                  "flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg transition-all duration-150",
+                  customStatus.customStatus === option.value
+                    ? "bg-orange-500/15 border border-orange-500/30"
+                    : "hover:bg-black/5 dark:hover:bg-white/5"
+                )}
+                style={{ minWidth: '52px' }}
+              >
+                <span className="text-base">{option.emoji}</span>
+                <span className={cn(
+                  "text-[10px] font-medium",
+                  customStatus.customStatus === option.value ? "text-orange-500" : ""
+                )} style={{ color: colors.textMuted }}>
+                  {option.label}
+                </span>
+              </button>
+            ))}
           </div>
         </div>
 

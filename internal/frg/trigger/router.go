@@ -10,9 +10,14 @@ package trigger
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -26,11 +31,12 @@ import (
 
 // Router manages trigger registration and routing for graph execution
 type Router struct {
-	frgRepo  *frg.Repository
-	engine   *frg.ExecutionEngine
-	cron     *cron.Cron
-	webhooks map[string]*WebhookTrigger // path -> trigger
-	mu       sync.RWMutex
+	frgRepo       *frg.Repository
+	engine        *frg.ExecutionEngine
+	cron          *cron.Cron
+	webhooks      map[string]*WebhookTrigger // path -> trigger
+	webhookSecret string                    // Secret for webhook signature verification
+	mu            sync.RWMutex
 }
 
 // WebhookTrigger represents a registered webhook trigger
@@ -52,11 +58,13 @@ type CronTrigger struct {
 
 // NewRouter creates a new trigger router
 func NewRouter(frgRepo *frg.Repository, engine *frg.ExecutionEngine) *Router {
+	webhookSecret := os.Getenv("FRG_WEBHOOK_SECRET")
 	return &Router{
-		frgRepo:  frgRepo,
-		engine:   engine,
-		cron:     cron.New(cron.WithSeconds()),
-		webhooks: make(map[string]*WebhookTrigger),
+		frgRepo:       frgRepo,
+		engine:        engine,
+		cron:          cron.New(cron.WithSeconds()),
+		webhooks:      make(map[string]*WebhookTrigger),
+		webhookSecret: webhookSecret,
 	}
 }
 
@@ -160,6 +168,29 @@ func (r *Router) GetWebhookHandler() http.HandlerFunc {
 			return
 		}
 
+		// Verify webhook signature if secret is configured
+		if r.webhookSecret != "" {
+			signature := req.Header.Get("X-Webhook-Signature")
+			if signature == "" {
+				logrus.Warn("Webhook signature missing")
+				http.Error(w, "Missing webhook signature", http.StatusUnauthorized)
+				return
+			}
+
+			// Read body for signature verification
+			body, err := io.ReadAll(req.Body)
+			if err != nil {
+				http.Error(w, "Failed to read request body", http.StatusBadRequest)
+				return
+			}
+
+			if !r.verifyWebhookSignature(body, signature) {
+				logrus.Warn("Webhook signature verification failed")
+				http.Error(w, "Invalid webhook signature", http.StatusUnauthorized)
+				return
+			}
+		}
+
 		// Parse input from request
 		var inputData map[string]interface{}
 		if req.Method == "POST" || req.Method == "PUT" || req.Method == "PATCH" {
@@ -238,6 +269,17 @@ func (r *Router) GetWebhookHandler() http.HandlerFunc {
 			http.Error(w, "Unsupported execution mode", http.StatusInternalServerError)
 		}
 	}
+}
+
+// verifyWebhookSignature verifies the webhook signature using HMAC-SHA256
+func (r *Router) verifyWebhookSignature(payload []byte, signature string) bool {
+	// Compute expected signature
+	mac := hmac.New(sha256.New, []byte(r.webhookSecret))
+	mac.Write(payload)
+	expectedSignature := "sha256=" + hex.EncodeToString(mac.Sum(nil))
+
+	// Compare signatures using constant-time comparison to prevent timing attacks
+	return hmac.Equal([]byte(signature), []byte(expectedSignature))
 }
 
 // RegisterCron registers a cron trigger for a graph

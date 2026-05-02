@@ -218,36 +218,6 @@ async function performWebAuthnAuthWithServer(): Promise<{
 }
 
 /**
- * Fallback: perform WebAuthn with a client-generated challenge (no server verification).
- * Used when the server WebAuthn endpoint is not available.
- */
-async function performWebAuthnAuthLocal(
-  challenge: string,
-  timeout?: number
-): Promise<VerificationResult> {
-  const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions = {
-    challenge: Uint8Array.from(atob(challenge), (c) => c.charCodeAt(0)),
-    timeout: timeout || 60000,
-    userVerification: 'required',
-    rpId: window.location.hostname,
-  };
-
-  const credential = await navigator.credentials.get({
-    publicKey: publicKeyCredentialRequestOptions,
-  });
-
-  if (!credential) {
-    throw new Error('No credential returned');
-  }
-
-  return {
-    success: true,
-    method: 'webauthn',
-    timestamp: new Date().toISOString(),
-  };
-}
-
-/**
  * Format remaining time for display
  */
 function formatRemainingTime(minutes: number): string {
@@ -364,7 +334,7 @@ export function SecretRevealGate({
     setError(null);
 
     try {
-      // Prefer server-issued challenge and server-side verification (production)
+      // Use server-issued challenge and server-side verification only
       const serverResult = await performWebAuthnAuthWithServer();
       if (serverResult.success && serverResult.verifiedByServer) {
         const expiry = new Date();
@@ -384,24 +354,9 @@ export function SecretRevealGate({
         return;
       }
 
-      // Fallback: client-generated challenge when server WebAuthn is unavailable (e.g. dev/demo)
-      const challenge = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))));
-      const result = await performWebAuthnAuthLocal(challenge);
-
-      if (result.success) {
-        const expiry = new Date();
-        expiry.setMinutes(expiry.getMinutes() + sessionDurationMinutes);
-        const finalResult: VerificationResult = {
-          ...result,
-          deviceId: rememberDevice ? `device_${Date.now()}` : undefined,
-          expiresAt: expiry.toISOString(),
-        };
-        setIsVerified(true);
-        setVerificationResult(finalResult);
-        setSessionExpiry(expiry);
-        setIsOpen(false);
-        onVerified(finalResult);
-      }
+      // Server WebAuthn unavailable — show error instead of insecure local fallback
+      setError('WebAuthn server verification is not available. Please use password instead.');
+      setShowPasswordForm(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed. Please try again.');
     } finally {

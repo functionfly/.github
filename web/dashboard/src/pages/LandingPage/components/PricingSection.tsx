@@ -55,11 +55,9 @@ export function PricingSection() {
                     </p>
                     <div className="flex items-baseline gap-1">
                       <span className="text-4xl font-bold text-text-primary" style={{ color: 'var(--text-primary)' }}>
-                        {plan.price === "Custom"
-                          ? "Custom"
-                          : `$${plan.price}`}
+                        {`$${(plan as { price: number }).price}`}
                       </span>
-                      {plan.price !== "Custom" && (
+                      {((plan as { price: number }).price) > 0 && (
                         <span className="text-text-secondary">/month</span>
                       )}
                     </div>

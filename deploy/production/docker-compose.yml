@@ -175,7 +175,7 @@ services:
       - WEBSOCKET_ENABLED=true
     ports:
       - "8080:8080"
-      - "9090:9090" # Metrics port
+      - "127.0.0.1:9090:9090" # Metrics port - bound to localhost only
     depends_on:
       postgres:
         condition: service_healthy

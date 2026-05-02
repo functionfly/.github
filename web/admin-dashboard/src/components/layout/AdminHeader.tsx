@@ -427,11 +427,9 @@ export function AdminHeader({
               )}
 
               {/* Dark Mode Toggle */}
-              {user && (
-                <div className="hidden sm:block">
-                  <DarkModeToggle />
-                </div>
-              )}
+              <div className="hidden sm:block">
+                <DarkModeToggle />
+              </div>
 
               {/* User Dropdown */}
               {user ? (
@@ -490,13 +488,6 @@ export function AdminHeader({
                         <Shield className="w-4 h-4" />
                         Security
                       </button>
-                      <hr className="my-1 border-gray-100 dark:border-gray-700 sm:hidden" />
-                      <div className="sm:hidden px-3 py-2">
-                        <div className="flex items-center justify-between text-xs text-gray-500">
-                          <span>Theme</span>
-                          <DarkModeToggle />
-                        </div>
-                      </div>
                       <hr className="my-1 border-gray-100 dark:border-gray-700" />
                       <button
                         onClick={() => {

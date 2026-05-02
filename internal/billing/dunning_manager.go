@@ -292,6 +292,7 @@ func (m *DunningManager) attemptStripeRetry(retry *storage.PaymentRetry) (*strip
 
 // SuspendService suspends service for a tenant due to failed payment
 // This updates both the service_suspensions table and the tenant status
+// Also marks bundle subscriptions as past_due
 func (m *DunningManager) SuspendService(ctx context.Context, retryID, tenantID uuid.UUID, reason string) error {
 	// Check if already suspended
 	isSuspended, err := m.dunningRepo.IsTenantSuspended(ctx, tenantID)
@@ -320,6 +321,11 @@ func (m *DunningManager) SuspendService(ctx context.Context, retryID, tenantID u
 		// Don't fail the suspension, but log the error
 	}
 
+	// Update bundle subscription status to "past_due" if tenant has one
+	if err := m.updateBundleSubscriptionStatus(ctx, tenantID, "past_due"); err != nil {
+		logrus.WithError(err).WithField("tenant_id", tenantID).Warn("Failed to update bundle subscription status to past_due")
+	}
+
 	// Send suspension notification
 	m.sendServiceSuspendedNotification(ctx, suspension)
 
@@ -333,8 +339,33 @@ func (m *DunningManager) SuspendService(ctx context.Context, retryID, tenantID u
 	return nil
 }
 
+// updateBundleSubscriptionStatus updates the bundle subscription status for a tenant
+func (m *DunningManager) updateBundleSubscriptionStatus(ctx context.Context, tenantID uuid.UUID, status string) error {
+	// Get the bundle subscription for this tenant
+	sub, err := m.userRepo.GetBundleSubscriptionByTenant(ctx, tenantID)
+	if err != nil || sub == nil {
+		return nil // No bundle subscription to update
+	}
+
+	sub.Status = status
+	sub.UpdatedAt = time.Now()
+
+	if err := m.userRepo.UpdateBundleSubscription(ctx, sub); err != nil {
+		return fmt.Errorf("failed to update bundle subscription status: %w", err)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"tenant_id":    tenantID,
+		"sub_id":       sub.ID,
+		"new_status":   status,
+	}).Info("Bundle subscription status updated")
+
+	return nil
+}
+
 // RestoreService restores service for a tenant after payment is resolved
 // This updates both the service_suspensions table and the tenant status
+// Also restores bundle subscription status to "active"
 func (m *DunningManager) RestoreService(ctx context.Context, tenantID uuid.UUID, restoredBy, reason string) error {
 	suspension, err := m.dunningRepo.GetActiveSuspensionByTenant(ctx, tenantID)
 	if err != nil {
@@ -349,6 +380,11 @@ func (m *DunningManager) RestoreService(ctx context.Context, tenantID uuid.UUID,
 	if err := m.userRepo.UpdateTenantStatus(ctx, tenantID, "active"); err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to restore tenant status to active")
 		// Don't fail the restoration, but log the error
+	}
+
+	// Restore bundle subscription status to "active" if tenant has one
+	if err := m.updateBundleSubscriptionStatus(ctx, tenantID, "active"); err != nil {
+		logrus.WithError(err).WithField("tenant_id", tenantID).Warn("Failed to update bundle subscription status to active")
 	}
 
 	// Send restoration notification

@@ -52,7 +52,7 @@ export function WebhooksSettingsSection() {
         return await functionWebhooksApi.list();
       } catch (e: unknown) {
         const status = (e as { response?: { status?: number } })?.response?.status;
-        if (status === 404) return { webhooks: [], total_count: 0, page: 1, page_size: 20 };
+        if (status === 404) return { subscriptions: [], total_count: 0, page: 1, page_size: 20 };
         throw e;
       }
     },

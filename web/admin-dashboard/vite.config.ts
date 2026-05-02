@@ -20,6 +20,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '/v1'),
       },
+      '/v1/admin': {
+        target: process.env.VITE_API_BASE_URL || 'http://localhost:8080',
+        changeOrigin: true,
+      },
     },
   },
   build: {

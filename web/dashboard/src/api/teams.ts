@@ -11,6 +11,7 @@ export interface TeamMember {
     email: string;
     username?: string;
     name?: string;
+    avatar?: string;
   };
 }
 
@@ -18,6 +19,7 @@ export interface Team {
   id: string;
   tenant_id: string;
   name: string;
+  owner_id: string;
   created_by: string;
   created_at: string;
   members?: TeamMember[];

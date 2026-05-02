@@ -37,7 +37,7 @@ func NewExchangeRateSyncer(repo storage.Repository, redisClient *redis.Client) *
 		repo:      repo,
 		redis:     redisClient,
 		logger:    logrus.New(),
-		providers: []RateProvider{&FrankfurterProvider{}, &StripeRateProvider{}},
+		providers: []RateProvider{NewFrankfurterProvider(), NewStripeRateProvider()},
 		cacheTTL:  15 * time.Minute,
 	}
 }
@@ -351,12 +351,12 @@ func NewExchangeRateScheduler(repo storage.Repository, redisClient *redis.Client
 	}
 
 	return &ExchangeRateScheduler{
-		cron:    cron.New(),
-		repo:    repo,
-		redis:   redisClient,
-		syncer:  NewExchangeRateSyncer(repo, redisClient),
-		logger:  logrus.New(),
-		enabled: enabled,
+		cron:     cron.New(),
+		repo:     repo,
+		redis:    redisClient,
+		syncer:   NewExchangeRateSyncer(repo, redisClient),
+		logger:   logrus.New(),
+		enabled:  enabled,
 		syncCron: syncCron,
 	}
 }
@@ -429,8 +429,8 @@ func (s *ExchangeRateScheduler) GetSchedule() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"enabled":        s.enabled,
-		"sync_cron":      s.syncCron,
-		"next_sync_run":  nextSync,
+		"enabled":       s.enabled,
+		"sync_cron":     s.syncCron,
+		"next_sync_run": nextSync,
 	}
 }

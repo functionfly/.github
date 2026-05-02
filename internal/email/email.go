@@ -43,6 +43,8 @@ type Service interface {
 
 	// Collaboration
 	SendTeamInvite(email, orgName, invitedBy, role, acceptURL string) error
+	SendBundleWelcomeEmail(email, bundleName, dashboardURL string) error
+	SendInviteEmail(email, inviterName, orgName, role, acceptURL string) error
 	SendVaultSecretShared(email, secretName, sharedBy, accessLevel, viewURL string) error
 
 	// Maintenance & Reminders

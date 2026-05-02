@@ -52,6 +52,7 @@
   "cache_ttl": 3600,
   "timeout_ms": 3000,
   "memory_mb": 256,
+  "price_per_call": 0.02,
   "example": {
     "input": {
       "text": "Hello, world!",

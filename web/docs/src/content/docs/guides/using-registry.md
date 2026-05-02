@@ -22,13 +22,13 @@ Visit [functionfly.com/registry](https://functionfly.com/registry) to browse ava
 
 ```bash
 # Search the registry
-fly search <query>
+ffly search <query>
 
 # List all functions
-fly list
+ffly list
 
 # Get detailed information about a function
-fly info <function-name>
+ffly info <function-name>
 ```
 
 ## Installing Functions
@@ -37,13 +37,13 @@ Install functions from the registry to use in your projects:
 
 ```bash
 # Install a function
-fly install <author>/<function-name>
+ffly install <author>/<function-name>
 
 # Install a specific version
-fly install <author>/<function-name>@1.2.0
+ffly install <author>/<function-name>@1.2.0
 
 # Install to a specific directory
-fly install <author>/<function-name> --dir ./my-functions/
+ffly install <author>/<function-name> --dir ./my-functions/
 ```
 
 ## Using Installed Functions
@@ -52,10 +52,10 @@ Once installed, you can invoke functions directly:
 
 ```bash
 # Invoke an installed function
-fly run <function-name> --data '{"key": "value"}'
+ffly run <function-name> --data '{"key": "value"}'
 
 # Invoke with a file
-fly run <function-name> --file input.json
+ffly run <function-name> --file input.json
 ```
 
 Or use them in your code:
@@ -83,14 +83,14 @@ Share your functions with the community:
 
 ```bash
 # Prepare your function for publishing
-fly publish --dry-run
+ffly publish --dry-run
 
 # Publish to the registry
-fly publish
+ffly publish
 
 # Publish with a specific visibility
-fly publish --public    # Visible to everyone
-fly publish --unlisted  # Accessible but not listed
+ffly publish --public    # Visible to everyone
+ffly publish --unlisted  # Accessible but not listed
 ```
 
 ### Versioning
@@ -99,13 +99,13 @@ Follow semantic versioning when publishing:
 
 ```bash
 # Bump patch version (bug fixes)
-fly publish --bump patch
+ffly publish --bump patch
 
 # Bump minor version (new features)
-fly publish --bump minor
+ffly publish --bump minor
 
 # Bump major version (breaking changes)
-fly publish --bump major
+ffly publish --bump major
 ```
 
 ## Trust Scores
@@ -124,16 +124,16 @@ Trust scores range from 0-100%. We recommend using functions with scores above 7
 
 ```bash
 # List your published functions
-fly list --mine
+ffly list --mine
 
 # Update a published function
-fly update <function-name>
+ffly update <function-name>
 
 # Deprecate a function
-fly deprecate <function-name>
+ffly deprecate <function-name>
 
 # Unpublish a function
-fly unpublish <function-name>
+ffly unpublish <function-name>
 ```
 
 ## Best Practices

@@ -16,7 +16,7 @@ INSERT INTO pricing_bundles (
     'One click → full backend',
     2900,
     'month',
-    NULL, -- Set STRIPE_PRICE_SAAS_STARTER env var for actual Stripe ID
+    NULL, -- Sandbox: price_1TRiNTKxe78Jyppiq28mrxVP | Prod: price_1TRjFz4GpTfnozQjrOx1eJMz
     'rocket',
     'blue',
     '["auth", "payments", "user_db", "email", "analytics"]'::jsonb,
@@ -44,7 +44,7 @@ INSERT INTO pricing_bundles (
     'Complete marketplace backend',
     4900,
     'month',
-    NULL, -- Set STRIPE_PRICE_MARKETPLACE env var for actual Stripe ID
+    NULL, -- Sandbox: price_1TRiNdKxe78JyppiinhfRiqr | Prod: price_1TRjGA4GpTfnozQjwMLI9dfF
     'shopping-cart',
     'purple',
     '["listings", "payments", "messaging", "notifications"]'::jsonb,
@@ -72,7 +72,7 @@ INSERT INTO pricing_bundles (
     'AI infrastructure in one bundle',
     3900,
     'month',
-    NULL, -- Set STRIPE_PRICE_AI_APP env var for actual Stripe ID
+    NULL, -- Sandbox: price_1TRiNmKxe78JyppiXc4SrNhF | Prod: price_1TRjGM4GpTfnozQjU554K57I
     'brain',
     'orange',
     '["vector_db", "embeddings", "chat", "memory"]'::jsonb,

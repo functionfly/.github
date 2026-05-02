@@ -26,15 +26,17 @@ import (
 
 // Handler contains function management handlers
 type Handler struct {
-	repo      storage.Repository
-	deploySvc *deployPkg.Orchestrator
+	repo          storage.Repository
+	deploySvc     *deployPkg.Orchestrator
+	pasteHandler  *PasteHandler
 }
 
 // NewHandler creates a new functions handler
-func NewHandler(repo storage.Repository, deploySvc *deployPkg.Orchestrator) *Handler {
+func NewHandler(repo storage.Repository, deploySvc *deployPkg.Orchestrator, pasteHandler *PasteHandler) *Handler {
 	return &Handler{
-		repo:      repo,
-		deploySvc: deploySvc,
+		repo:         repo,
+		deploySvc:    deploySvc,
+		pasteHandler: pasteHandler,
 	}
 }
 
@@ -827,4 +829,20 @@ func (h *Handler) executeTestFunction(ctx context.Context, req *types.TestFuncti
 	}
 
 	return response, nil
+}
+
+func (h *Handler) HandleParseCode(w http.ResponseWriter, r *http.Request) {
+	if h.pasteHandler != nil {
+		h.pasteHandler.HandleParseCode(w, r)
+		return
+	}
+	http.Error(w, "Not implemented", http.StatusNotFound)
+}
+
+func (h *Handler) HandleCreateFromCode(w http.ResponseWriter, r *http.Request) {
+	if h.pasteHandler != nil {
+		h.pasteHandler.HandleCreateFromCode(w, r)
+		return
+	}
+	http.Error(w, "Not implemented", http.StatusNotFound)
 }

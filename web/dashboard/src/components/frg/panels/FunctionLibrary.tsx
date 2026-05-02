@@ -318,7 +318,7 @@ export function FunctionLibrary() {
       </div>
 
       {/* Content */}
-      <Tabs value={activeTab as any} onValueChange={setActiveTab as any} className="flex-1 flex flex-col">
+      <Tabs value={activeTab as any} onValueChange={setActiveTab as any} className="flex-1 flex flex-col h-full">
         <TabsList className="w-full rounded-none border-b border-[var(--border-subtle)] bg-transparent p-0 h-9 px-3">
           <TabsTrigger
             value={"browse" as any}
@@ -341,7 +341,7 @@ export function FunctionLibrary() {
         </TabsList>
 
         <ScrollArea className="flex-1">
-          <TabsContent value={"browse" as any} className="m-0 p-3">
+          <TabsContent value={"browse" as any} className="m-0 p-3 h-full">
             {/* Smart Suggestions */}
             <div className="mb-4">
               <div className="flex items-center gap-2 mb-2">

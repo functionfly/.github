@@ -48,7 +48,7 @@ type AIChatClientConfig struct {
 // DefaultAIChatClientConfig returns default configuration
 func DefaultAIChatClientConfig() *AIChatClientConfig {
 	return &AIChatClientConfig{
-		BaseURL:     "http://localhost:8081", // ai-service default
+		BaseURL:     "http://localhost:18081", // ai-service default
 		APIKey:      "",
 		Timeout:     30 * time.Second,
 		Model:       "gpt-4o-mini",

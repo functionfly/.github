@@ -667,8 +667,8 @@ func (h *Handler) HandleTest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate function version is deployed
-	if fnVersion.DeploymentID == nil && fnVersion.BackendID == nil {
+	// Validate function version has code to execute (deployed or source code for lazy bundling)
+	if fnVersion.DeploymentID == nil && fnVersion.BackendID == nil && (!fnVersion.SourceCode.Valid || fnVersion.SourceCode.String == "") {
 		h.writeError(w, http.StatusBadRequest, functionregistry.ErrCodeInvalidInput, "Function version is not deployed")
 		return
 	}

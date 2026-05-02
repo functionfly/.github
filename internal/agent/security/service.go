@@ -3,10 +3,13 @@ package security
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/functionfly/functionfly/internal/agent/attribution"
 	"github.com/functionfly/functionfly/internal/agent/identity"
+	"golang.org/x/text/unicode/norm"
 	"gorm.io/gorm"
 )
 
@@ -320,9 +323,14 @@ func (s *SwarmSecurityService) getDescendants(ctx context.Context, agentID strin
 	return descendants
 }
 
-// FilterPromptInjection filters potentially malicious prompts
+// FilterPromptInjection filters potentially malicious prompts using multiple detection layers
 func (s *SwarmSecurityService) FilterPromptInjection(input string) (bool, string) {
-	// Common prompt injection patterns
+	if input == "" {
+		return true, ""
+	}
+
+	normalized := normalizeForInjectionCheck(input)
+
 	injectionPatterns := []string{
 		"ignore previous instructions",
 		"ignore all previous",
@@ -335,14 +343,102 @@ func (s *SwarmSecurityService) FilterPromptInjection(input string) (bool, string
 		"override your",
 	}
 
-	lowerInput := input
 	for _, pattern := range injectionPatterns {
-		if len(lowerInput) > 0 && contains(lowerInput, pattern) {
+		if contains(normalized, pattern) {
 			return false, fmt.Sprintf("Potential prompt injection detected: contains '%s'", pattern)
 		}
 	}
 
+	combinedWeight := s.checkStructuralAnomalies(input) + s.checkHomoglyph_attack(input)
+	if combinedWeight >= 3 {
+		return false, "Potential prompt injection detected: structural anomalies and homoglyph attacks exceed threshold"
+	}
+
 	return true, ""
+}
+
+func normalizeForInjectionCheck(input string) string {
+	input = strings.ToLower(input)
+	input = strings.ReplaceAll(input, "\u00a0", " ")
+	input = strings.ReplaceAll(input, "\u200b", "")
+	input = strings.ReplaceAll(input, "\u200c", "")
+	input = strings.ReplaceAll(input, "\ufeff", "")
+	replacer := strings.NewReplacer(
+		"\t", " ",
+		"\r", "",
+		"\n", " ",
+		"\v", " ",
+		"\f", " ",
+	)
+	input = replacer.Replace(input)
+	for strings.Contains(input, "  ") {
+		input = strings.ReplaceAll(input, "  ", " ")
+	}
+	input = strings.Trim(input, " ")
+	return input
+}
+
+func (s *SwarmSecurityService) checkStructuralAnomalies(input string) int {
+	score := 0
+	hasNullBytes := strings.Contains(input, "\x00")
+	hasManyTabs := strings.Count(input, "\t") > 5
+	hasExcessiveWhitespace := len(input) > 100 && float64(strings.Count(input, " "))/float64(len(input)) > 0.4
+	hasMixedNewlines := strings.Contains(input, "\r\n") && strings.Contains(input, "\n")
+	hasBackspaceChars := strings.Contains(input, "\x08")
+
+	if hasNullBytes {
+		score += 2
+	}
+	if hasManyTabs {
+		score += 1
+	}
+	if hasExcessiveWhitespace {
+		score += 1
+	}
+	if hasMixedNewlines {
+		score += 1
+	}
+	if hasBackspaceChars {
+		score += 2
+	}
+
+	return score
+}
+
+var homoglyphReplacements = map[rune]rune{
+	'a':  'a',
+	'c':  'c',
+	'e':  'e',
+	'i':  'i',
+	'o':  'o',
+	's':  's',
+	'u':  'u',
+	'v':  'v',
+	'w':  'w',
+	'y':  'y',
+	'0':  '0',
+	'1':  '1',
+}
+
+func (s *SwarmSecurityService) checkHomoglyph_attack(input string) int {
+	score := 0
+	transformed := norm.NFKC.String(input)
+	if transformed != input {
+		score += 2
+	}
+	detectedHomoglyphs := 0
+	for _, r := range input {
+		if r > 127 {
+			if _, ok := homoglyphReplacements[unicode.ToLower(r)]; ok {
+				detectedHomoglyphs++
+				if detectedHomoglyphs > 10 {
+					score += 2
+					break
+				}
+			}
+		}
+	}
+	return score
 }
 
 func contains(s, substr string) bool {

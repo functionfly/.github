@@ -45,7 +45,6 @@ export function FunctionNotFound({ author, name, onSearch }: FunctionNotFoundPro
         <ParticleBackground
           particleCount={20}
           color="rgba(var(--brand-500), 0.3)"
-          speed={0.3}
         />
       </div>
 

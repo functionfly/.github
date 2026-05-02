@@ -73,6 +73,7 @@ type Repository interface {
 	ListTenantsWithStripeCustomerID() ([]*Tenant, error)
 	UpdateTenant(ctx context.Context, tenantID uuid.UUID, updates map[string]interface{}) (*Tenant, error)
 	UpdateTenantStatus(ctx context.Context, tenantID uuid.UUID, status string) error
+	UpdateTenantTaxSettings(ctx context.Context, tenantID uuid.UUID, settings *TaxSettings) error
 	DeleteTenant(ctx context.Context, tenantID uuid.UUID) error
 	CountUsersByTenant(ctx context.Context, tenantID uuid.UUID) (int, error)
 	CountRoutingEventsForTenantSince(tenantID uuid.UUID, since time.Time) (int, error)
@@ -244,6 +245,7 @@ type Repository interface {
 	GetPricingBundleBySlug(ctx context.Context, slug string) (*PricingBundle, error)
 	GetPricingBundleByID(ctx context.Context, id uuid.UUID) (*PricingBundle, error)
 	GetPricingBundleByStripePriceID(ctx context.Context, stripePriceID string) (*PricingBundle, error)
+	UpdatePricingBundleStripePrice(ctx context.Context, slug, stripePriceID string) error
 
 	// Database-Driven Agent Tier Pricing (replaces hardcoded constants)
 	GetAgentTierPricingBySlug(ctx context.Context, slug string) (*AgentTierPricing, error)
@@ -613,6 +615,24 @@ type Repository interface {
 	MarkEmailEventReviewed(ctx context.Context, eventID int64, reviewedBy uuid.UUID) error
 	GetEmailEventStats(ctx context.Context, filters map[string]interface{}) (map[string]interface{}, error)
 
+	// Email workflow operations (tenant-isolated, auto-provisioned per bundle)
+	CreateEmailWorkflowConfig(ctx context.Context, config *EmailWorkflowConfig) error
+	GetEmailWorkflowConfigsByTenant(ctx context.Context, tenantID uuid.UUID) ([]EmailWorkflowConfig, error)
+	GetEmailWorkflowConfigsByBundle(ctx context.Context, tenantID uuid.UUID, bundleSlug string) ([]EmailWorkflowConfig, error)
+	GetActiveEmailWorkflowConfigsByTenant(ctx context.Context, tenantID uuid.UUID) ([]EmailWorkflowConfig, error)
+	GetEmailWorkflowConfigByID(ctx context.Context, id uuid.UUID) (*EmailWorkflowConfig, error)
+	UpdateEmailWorkflowConfig(ctx context.Context, config *EmailWorkflowConfig) error
+	DeleteEmailWorkflowConfig(ctx context.Context, id uuid.UUID) error
+	CreateEmailWorkflowExecution(ctx context.Context, exec *EmailWorkflowExecution) error
+	GetPendingEmailWorkflowExecutions(ctx context.Context, limit int) ([]EmailWorkflowExecution, error)
+	GetEmailWorkflowExecutionsByWorkflow(ctx context.Context, workflowID uuid.UUID, limit int) ([]EmailWorkflowExecution, error)
+	GetEmailWorkflowExecutionsByTenant(ctx context.Context, tenantID uuid.UUID, limit int) ([]EmailWorkflowExecution, error)
+	UpdateEmailWorkflowExecution(ctx context.Context, exec *EmailWorkflowExecution) error
+	MarkEmailWorkflowExecutionSent(ctx context.Context, id uuid.UUID) error
+	MarkEmailWorkflowExecutionFailed(ctx context.Context, id uuid.UUID, errorMsg string) error
+	RetryFailedEmailWorkflowExecutions(ctx context.Context, maxRetries int) ([]EmailWorkflowExecution, error)
+	CleanupOldEmailWorkflowExecutions(ctx context.Context, retentionDays int) (int64, error)
+
 	// Waitlist operations
 	CreateWaitlistEntry(ctx context.Context, email, name, company, useCase, source, ip, userAgent string) (*WaitlistEntry, error)
 	GetWaitlistEntryByEmail(ctx context.Context, email string) (*WaitlistEntry, error)
@@ -744,4 +764,50 @@ type Repository interface {
 	ListMemorySharesByTargetTeam(ctx context.Context, teamID uuid.UUID, status string, limit, offset int) ([]*MemoryShare, error)
 	ListMemorySharesBySourceTeam(ctx context.Context, teamID uuid.UUID, status string, limit, offset int) ([]*MemoryShare, error)
 	ListMemorySharesByMemoryID(ctx context.Context, memoryID uuid.UUID, status string) ([]*MemoryShare, error)
+
+	// ── Tenant Auth Settings (Backend-in-a-Box) ────────────────────────────────
+	CreateAuthSettings(ctx context.Context, settings *TenantAuthSettings) error
+	GetAuthSettings(ctx context.Context, tenantID uuid.UUID) (*TenantAuthSettings, error)
+	UpdateAuthSettings(ctx context.Context, tenantID uuid.UUID, updates map[string]interface{}) error
+	DeleteAuthSettings(ctx context.Context, tenantID uuid.UUID) error
+
+	// Tenant OAuth Providers
+	CreateOAuthProvider(ctx context.Context, provider *TenantOAuthProvider) error
+	GetOAuthProvider(ctx context.Context, tenantID uuid.UUID, provider string) (*TenantOAuthProvider, error)
+	ListOAuthProviders(ctx context.Context, tenantID uuid.UUID) ([]*TenantOAuthProvider, error)
+	UpdateOAuthProvider(ctx context.Context, tenantID uuid.UUID, provider string, updates map[string]interface{}) (*TenantOAuthProvider, error)
+	DeleteOAuthProvider(ctx context.Context, tenantID uuid.UUID, provider string) error
+	GetEnabledOAuthProviders(ctx context.Context, tenantID uuid.UUID) ([]*TenantOAuthProvider, error)
+
+	// Tenant Invite Codes
+	CreateInviteCode(ctx context.Context, invite *TenantInviteCode) error
+	GetInviteCode(ctx context.Context, code string) (*TenantInviteCode, error)
+	GetInviteCodesByTenant(ctx context.Context, tenantID uuid.UUID, includeUsed bool) ([]*TenantInviteCode, error)
+	GetInviteCodeByEmail(ctx context.Context, tenantID uuid.UUID, email string) (*TenantInviteCode, error)
+	AcceptInviteCode(ctx context.Context, code string, userID uuid.UUID) error
+	RevokeInviteCode(ctx context.Context, code string) error
+	IncrementInviteCodeUses(ctx context.Context, code string) error
+	DeleteExpiredInviteCodes(ctx context.Context) (int64, error)
+
+	// Tenant Memberships
+	CreateMembership(ctx context.Context, membership *TenantMembership) error
+	GetMembership(ctx context.Context, tenantID, userID uuid.UUID) (*TenantMembership, error)
+	ListMemberships(ctx context.Context, tenantID uuid.UUID) ([]*TenantMembership, error)
+	ListMembershipsByRole(ctx context.Context, tenantID uuid.UUID, role string) ([]*TenantMembership, error)
+	UpdateMembership(ctx context.Context, tenantID, userID uuid.UUID, updates map[string]interface{}) (*TenantMembership, error)
+	DeleteMembership(ctx context.Context, tenantID, userID uuid.UUID) error
+	UpdateMembershipLastActive(ctx context.Context, tenantID, userID uuid.UUID) error
+	CountMembershipsByTenant(ctx context.Context, tenantID uuid.UUID) (int, error)
+	CountMembershipsByRole(ctx context.Context, tenantID uuid.UUID, role string) (int, error)
+
+	// Auth Audit Log
+	CreateAuthAuditLog(ctx context.Context, log *TenantAuthAuditLog) error
+	ListAuthAuditLogs(ctx context.Context, tenantID uuid.UUID, limit, offset int, actions []string, userID *uuid.UUID, since *time.Time) ([]*TenantAuthAuditLog, int, error)
+	GetAuthAuditLogsByUser(ctx context.Context, tenantID, userID uuid.UUID, limit int) ([]*TenantAuthAuditLog, error)
+	DeleteOldAuthAuditLogs(ctx context.Context, before time.Time) (int64, error)
+
+	// Tenant Stripe Config (Isolated Payment Processing)
+	GetTenantStripeConfig(ctx context.Context, tenantID uuid.UUID) (*TenantStripeConfig, error)
+	CreateTenantStripeConfig(ctx context.Context, config *TenantStripeConfig) error
+	UpdateTenantStripeConfig(ctx context.Context, config *TenantStripeConfig) error
 }

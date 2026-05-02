@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/functionfly/functionfly/internal/adapters/aws"
 	"github.com/functionfly/functionfly/internal/adapters/cloudflare"
 	"github.com/functionfly/functionfly/internal/adapters/common"
 	"github.com/functionfly/functionfly/internal/adapters/deno"
@@ -26,6 +27,8 @@ func GetAdapterForProvider(provider string) common.DeploymentAdapter {
 		return deno.NewDenoAdapter()
 	case "functionfly-edge":
 		return functionfly.NewFunctionFlyAdapter()
+	case "aws-lambda":
+		return aws.NewAWSAdapter()
 	default:
 		return nil
 	}
@@ -44,6 +47,8 @@ func GetProviderAdapter(provider string) common.ProviderAdapter {
 		return deno.NewDenoAdapter()
 	case "functionfly-edge":
 		return functionfly.NewFunctionFlyAdapter()
+	case "aws-lambda":
+		return aws.NewAWSAdapter()
 	default:
 		return nil
 	}

@@ -2,6 +2,7 @@ package gba
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -145,9 +146,11 @@ func (m *Middleware) nextWithLegacyAuth(w http.ResponseWriter, r *http.Request, 
 		next.ServeHTTP(w, r)
 		return
 	}
-	if (os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development") && os.Getenv("PRODUCTION_ENV") != "true" {
+	isDevelopment := os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development"
+	isLocalhostRequest := m.isLocalhostRequest(r)
+	if isDevelopment && isLocalhostRequest && os.Getenv("PRODUCTION_ENV") != "true" {
 		m.logger.WithFields(logrus.Fields{"user_id": claims.UserID, "email": claims.Email}).
-			Debug("Legacy permission check bypassed for development")
+			Debug("Legacy permission check bypassed for development (localhost only)")
 		next.ServeHTTP(w, r)
 		return
 	}
@@ -228,4 +231,41 @@ func (m *Middleware) extractTenantID(r *http.Request) uuid.UUID {
 	}
 
 	return uuid.Nil
+}
+
+// isLocalhostRequest checks if the client IP is from localhost
+func (m *Middleware) isLocalhostRequest(r *http.Request) bool {
+	clientIP := m.getClientIP(r)
+	if ip := net.ParseIP(clientIP); ip != nil {
+		return ip.IsLoopback()
+	}
+	return strings.HasPrefix(clientIP, "127.") ||
+		strings.HasPrefix(clientIP, "10.") ||
+		strings.HasPrefix(clientIP, "192.168.") ||
+		clientIP == "::1" ||
+		clientIP == "localhost"
+}
+
+// getClientIP extracts the client IP address from the request
+func (m *Middleware) getClientIP(r *http.Request) string {
+	xff := r.Header.Get("X-Forwarded-For")
+	if xff != "" {
+		s := strings.TrimSpace(xff)
+		if idx := strings.Index(s, ","); idx > 0 {
+			s = strings.TrimSpace(s[:idx])
+		}
+		return stripPort(s)
+	}
+	xri := r.Header.Get("X-Real-IP")
+	if xri != "" {
+		return stripPort(strings.TrimSpace(xri))
+	}
+	return stripPort(r.RemoteAddr)
+}
+
+func stripPort(s string) string {
+	if host, _, err := net.SplitHostPort(s); err == nil {
+		return host
+	}
+	return s
 }

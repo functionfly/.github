@@ -111,13 +111,6 @@ export const vaultApi = {
     await apiClient.delete<void>(`/v1/vault/tokens/${tokenId}`);
   },
 
-  /**
-   * Get token details
-   */
-  getToken: async (tokenId: string): Promise<AccessToken> => {
-    return apiClient.get<AccessToken>(`/v1/vault/tokens/${tokenId}`);
-  },
-
   // ==================== Audit Log ====================
 
   /**
@@ -186,14 +179,27 @@ export const vaultApi = {
       request
     );
   },
+
+  /**
+   * Rotate a secret's encrypted value (re-encrypt with new ciphertext)
+   */
+  rotateSecret: async (secretId: string, data: { encrypted_data: EncryptedDataPayload; reason?: string }): Promise<Secret> => {
+    return apiClient.patch<Secret>(
+      `/v1/vault/secrets/${secretId}/rotate`,
+      data
+    );
+  },
 };
 
 /**
- * Admin Vault API methods for administrative operations
+ * Admin Vault API methods for administrative operations.
+ * NOTE: These endpoints require admin/vault routes to be implemented on the backend.
+ * Currently stubbed — call only after confirming the admin vault routes exist.
  */
 export const adminVaultApi = {
   /**
    * List all secrets across tenants (admin only)
+   * @warning Requires /v1/admin/vault/secrets route on backend
    */
   listAllSecrets: async (params?: {
     tenantId?: string;
@@ -210,6 +216,7 @@ export const adminVaultApi = {
 
   /**
    * Get vault statistics (admin only)
+   * @warning Requires /v1/admin/vault/stats route on backend
    */
   getStats: async (): Promise<{
     totalSecrets: number;
@@ -229,6 +236,7 @@ export const adminVaultApi = {
 
   /**
    * Rotate encryption keys (admin only)
+   * @warning Requires /v1/admin/vault/rotate-keys route on backend
    */
   rotateKeys: async (): Promise<{ success: boolean; message: string }> => {
     return apiClient.post<{ success: boolean; message: string }>("/v1/admin/vault/rotate-keys", {});

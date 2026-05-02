@@ -28,6 +28,7 @@
   "cache_ttl": 0,
   "timeout_ms": 2000,
   "memory_mb": 128,
+  "price_per_call": 0.005,
   "example": {
     "input": { "private_key": "-----BEGIN ENCRYPTED PRIVATE KEY-----\n...", "passphrase": "mysecretpass" },
     "output": { "ok": true }

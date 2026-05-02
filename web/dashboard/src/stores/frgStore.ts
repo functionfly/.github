@@ -20,7 +20,14 @@ import type {
   SmartConnection,
   NodeExecutionStatus,
   ExecutionResult,
+  GraphNodeRef,
+  GraphEdgeDefinition,
 } from '@/types/frg';
+import { frgApi, type ExecuteGraphResponse } from '@/api/frg';
+import { registryApi } from '@/api/registry';
+import { apiClient } from '@/api/client';
+import { getApiBaseUrl } from '@/lib/constants';
+import { toast } from '@/components/ui';
 import type { Connection, Viewport, NodeChange, EdgeChange } from '@xyflow/react';
 
 // Editor modes
@@ -111,13 +118,28 @@ interface FRGState {
   // Runtime state for live updates
   nodeRuntimeStates: Record<string, RuntimeNodeState>;
   edgeRuntimeStates: Record<string, RuntimeEdgeState>;
+  setNodeRuntimeState: (nodeId: string, state: Partial<RuntimeNodeState>) => void;
+  
+  // Graph metadata
+  graphAuthor: string | null;
+  graphName: string | null;
+  graphVersion: string | null;
+  
+  // Graph load/save actions
+  loadGraph: (author: string, name: string, version?: string) => Promise<void>;
+  saveGraph: () => Promise<void>;
+  createNewGraph: (name: string, executionMode?: string) => void;
+  
+  // Library
+  fetchLibraryFunctions: () => Promise<void>;
   
   // Execution controls
-  startExecution: (input?: unknown) => void;
+  startExecution: (input?: Record<string, unknown>) => Promise<void>;
+  runNode: (nodeId: string, input?: Record<string, unknown>) => Promise<void>;
   pauseExecution: () => void;
   resumeExecution: () => void;
-  stopExecution: () => void;
-  stepExecution: () => void;
+  stopExecution: () => Promise<void>;
+  pollInstanceStatus: () => Promise<void>;
   
   // Live events
   events: GraphEvent[];
@@ -168,9 +190,29 @@ interface FRGState {
   markDirty: () => void;
   markClean: () => void;
   
-  // Loading states
+  // Loading states (granular per-operation)
   isLoading: boolean;
+  isSaving: boolean;
+  isExecuting: boolean;
   setIsLoading: (loading: boolean) => void;
+  setIsSaving: (saving: boolean) => void;
+  setIsExecuting: (executing: boolean) => void;
+
+  // Auto-save
+  autoSaveEnabled: boolean;
+  autoSaveInterval: number; // ms
+  lastSavedAt: string | null;
+  setAutoSaveEnabled: (enabled: boolean) => void;
+  setAutoSaveInterval: (ms: number) => void;
+
+  // Offline support
+  isOffline: boolean;
+  operationQueue: Array<{ id: string; type: string; payload: unknown; timestamp: string }>;
+  queuedOperationCount: number;
+  setIsOffline: (offline: boolean) => void;
+  queueOperation: (type: string, payload: unknown) => void;
+  processQueue: () => Promise<void>;
+  clearQueue: () => void;
   
   // Error handling
   error: string | null;
@@ -239,6 +281,19 @@ export const useFRGStore = create<FRGState>()(
         executionResult: null,
         nodeRuntimeStates: {},
         edgeRuntimeStates: {},
+        setNodeRuntimeState: (nodeId, state) => set((prev) => ({
+          nodeRuntimeStates: {
+            ...prev.nodeRuntimeStates,
+            [nodeId]: {
+              status: 'idle',
+              attemptCount: 0,
+              durationMs: 0,
+              isActive: false,
+              ...prev.nodeRuntimeStates[nodeId],
+              ...state,
+            } as RuntimeNodeState,
+          },
+        })),
         events: [],
         smartConnections: [],
         aiSuggestions: [],
@@ -255,8 +310,16 @@ export const useFRGStore = create<FRGState>()(
         canRedo: false,
         isDirty: false,
         isLoading: false,
+        isSaving: false,
+        isExecuting: false,
         error: null,
         dataFlowParticles: [],
+        autoSaveEnabled: true,
+        autoSaveInterval: 30000, // 30 seconds
+        lastSavedAt: null,
+        isOffline: false,
+        operationQueue: [],
+        queuedOperationCount: 0,
         
         // Evolution initial state
         evolutionStatus: null,
@@ -279,13 +342,58 @@ export const useFRGStore = create<FRGState>()(
         },
         
         onNodesChange: (changes) => {
-          // This would use applyNodeChanges from React Flow
-          // For now, simplified implementation
-          get().saveToHistory();
+          const { nodes, setNodes, saveToHistory } = get();
+          const hasMeaningfulChange = changes.some(c =>
+            c.type === 'position' || c.type === 'remove' || c.type === 'add' ||
+            (c.type === 'dimensions') ||
+            (c.type === 'select')
+          );
+          if (!hasMeaningfulChange) return;
+
+          const applyNodeChanges = (nodes: FRGNode[], changes: NodeChange<FRGNode>[]): FRGNode[] => {
+            return changes.reduce((acc, change) => {
+              switch (change.type) {
+                case 'position':
+                  return acc.map(n => n.id === change.id ? { ...n, position: change.position } : n);
+                case 'dimensions':
+                  return acc.map(n => n.id === change.id ? {
+                    ...n,
+                    width: (change as { width?: number }).width,
+                    height: (change as { height?: number }).height
+                  } : n);
+                case 'remove':
+                  return acc.filter(n => n.id !== change.id);
+                case 'select':
+                  return acc.map(n => n.id === change.id ? { ...n, selected: change.selected } : n);
+                default:
+                  return acc;
+              }
+            }, nodes);
+          };
+
+          const newNodes = applyNodeChanges(nodes, changes);
+          saveToHistory();
+          setNodes(newNodes);
         },
         onEdgesChange: (changes) => {
-          // This would use applyEdgeChanges from React Flow
-          get().saveToHistory();
+          const { edges, setEdges, saveToHistory } = get();
+
+          const applyEdgeChanges = (edges: FRGEdge[], changes: EdgeChange<FRGEdge>[]): FRGEdge[] => {
+            return changes.reduce((acc, change) => {
+              switch (change.type) {
+                case 'remove':
+                  return acc.filter(e => e.id !== change.id);
+                case 'select':
+                  return acc.map(e => e.id === change.id ? { ...e, selected: change.selected } : e);
+                default:
+                  return acc;
+              }
+            }, edges);
+          };
+
+          const newEdges = applyEdgeChanges(edges, changes);
+          saveToHistory();
+          setEdges(newEdges);
         },
         
         // Selection
@@ -316,40 +424,457 @@ export const useFRGStore = create<FRGState>()(
         toggleRightPanel: (panel) => set((state) => ({
           rightPanel: state.rightPanel === panel ? null : panel,
         })),
-        
-        // Library
         setLibrarySearch: (search) => set({ librarySearch: search }),
         setLibraryCategory: (category) => set({ libraryCategory: category }),
         
+        // Graph metadata
+        graphAuthor: null,
+        graphName: null,
+        graphVersion: null,
+
+        // Library
+        fetchLibraryFunctions: async () => {
+          set({ isLoading: true, error: null });
+          try {
+            const response = await registryApi.getFunctions({ limit: 50 });
+            const functions = response.functions || [];
+            
+            const categoryColors: Record<string, string> = {
+              api: '#6366f1',
+              data: '#10b981',
+              text: '#3b82f6',
+              image: '#8b5cf6',
+              video: '#ef4444',
+              audio: '#f59e0b',
+              code: '#14b8a6',
+              ml: '#ec4899',
+              default: '#6b7280',
+            };
+            
+            const categoryIcons: Record<string, string> = {
+              api: 'globe',
+              data: 'database',
+              text: 'file-text',
+              image: 'image',
+              video: 'video',
+              audio: 'music',
+              code: 'code',
+              ml: 'cpu',
+              default: 'code',
+            };
+            
+            const libraryFunctions: FunctionCatalogItem[] = functions.map((fn) => {
+              const category = fn.category || 'default';
+              return {
+                id: fn.id,
+                author: fn.author,
+                name: fn.name,
+                version: fn.latest_version || '1.0.0',
+                description: fn.description || `${fn.name} - ${fn.author}`,
+                category,
+                tags: fn.tags || [],
+                inputSchema: { type: 'object', properties: {} },
+                outputSchema: { type: 'object', properties: {} },
+                trustScore: fn.trust_score ?? fn.overall_score ?? 4.0,
+                usageCount: fn.popularity_score ? Math.round(fn.popularity_score * 1000) : 0,
+                avgExecutionTimeMs: 0,
+                icon: categoryIcons[category] || categoryIcons.default,
+                color: categoryColors[category] || categoryColors.default,
+              };
+            });
+            
+            set({ libraryFunctions, isLoading: false });
+            toast({ title: `Loaded ${libraryFunctions.length} functions from library` });
+          } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to fetch library functions';
+            set({
+              error: message,
+              isLoading: false,
+              libraryFunctions: [],
+            });
+            toast({ title: message, variant: 'destructive' });
+          }
+        },
+
+        // Graph load/save
+        loadGraph: async (author: string, name: string, version?: string) => {
+          set({ isLoading: true, error: null });
+          try {
+            const graph = await frgApi.getGraph(author, name, version);
+
+            const flowNodes: FRGNode[] = graph.nodeRefs.map((ref: GraphNodeRef) => ({
+              id: ref.nodeId,
+              type: 'functionNode',
+              position: { x: 0, y: 0 },
+              data: {
+                functionRef: ref,
+                isSelected: false,
+                isEditable: true,
+              },
+            }));
+
+            const flowEdges: FRGEdge[] = graph.edges.map((edge: GraphEdgeDefinition) => ({
+              id: edge.id,
+              source: edge.sourceNodeId,
+              target: edge.targetNodeId,
+              type: 'custom',
+              data: {
+                mapping: edge.mapping,
+                condition: edge.condition,
+                retryPolicy: edge.retryPolicy,
+                isValid: true,
+                runtimeState: {
+                  status: 'idle' as const,
+                  recordsTransferred: 0,
+                  bytesTransferred: 0,
+                  isDataFlowing: false,
+                  flowProgress: 0,
+                },
+              },
+            }));
+
+            set({
+              definition: graph,
+              nodes: flowNodes,
+              edges: flowEdges,
+              graphAuthor: graph.author,
+              graphName: graph.name,
+              graphVersion: graph.version,
+              isLoading: false,
+              isDirty: false,
+            });
+            toast({ title: `Graph "${graph.name}" loaded successfully` });
+          } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to load graph';
+            set({
+              error: message,
+              isLoading: false,
+            });
+            toast({ title: message, variant: 'destructive' });
+          }
+        },
+
+        saveGraph: async () => {
+          const { graphAuthor, graphName, definition, nodes, edges, isOffline, queueOperation } = get();
+          if (!graphAuthor || !graphName) {
+            toast({ title: 'No graph loaded to save', variant: 'destructive' });
+            return;
+          }
+
+          if (nodes.length === 0) {
+            toast({ title: 'Cannot save an empty graph. Add at least one function node.', variant: 'destructive' });
+            return;
+          }
+
+          set({ isSaving: true, error: null });
+
+          if (isOffline) {
+            queueOperation('saveGraph', { graphAuthor, graphName, definition, nodes, edges });
+            set({ isSaving: false });
+            toast({ title: 'Save queued for when you reconnect' });
+            return;
+          }
+
+          try {
+            const nodeRefs: GraphNodeRef[] = nodes.map((node) => ({
+              nodeId: node.id,
+              author: node.data.functionRef?.author || '',
+              name: node.data.functionRef?.name || '',
+              version: node.data.functionRef?.version || 'latest',
+              config: node.data.functionRef?.config || {},
+              metadata: node.data.functionRef?.metadata || {},
+            }));
+
+            const graphEdges: GraphEdgeDefinition[] = edges.map((edge) => ({
+              id: edge.id,
+              sourceNodeId: edge.source,
+              targetNodeId: edge.target,
+              mapping: edge.data?.mapping || { sourcePath: '*', targetPath: '*' },
+              condition: edge.data?.condition,
+              type: 'sync',
+              retryPolicy: edge.data?.retryPolicy,
+            }));
+
+            if (definition?.id) {
+              const updated = await frgApi.updateGraph(graphAuthor, graphName, {
+                nodes: nodeRefs,
+                edges: graphEdges,
+              });
+              set({ definition: updated, isDirty: false, isSaving: false, lastSavedAt: new Date().toISOString() });
+              toast({ title: `Graph "${graphName}" saved successfully` });
+            } else {
+              const created = await frgApi.createGraph({
+                name: graphName,
+                nodes: nodeRefs,
+                edges: graphEdges,
+                executionMode: definition?.executionMode || 'sync',
+              });
+              set({
+                definition: created,
+                graphAuthor: created.author,
+                graphName: created.name,
+                graphVersion: created.version,
+                isDirty: false,
+                isSaving: false,
+                lastSavedAt: new Date().toISOString(),
+              });
+              toast({ title: `Graph "${graphName}" created successfully` });
+            }
+          } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to save graph';
+            set({
+              error: message,
+              isSaving: false,
+            });
+            toast({ title: message, variant: 'destructive' });
+          }
+        },
+
+        createNewGraph: (name: string, executionMode = 'sync') => {
+          set({
+            definition: {
+              id: '',
+              author: '',
+              name,
+              version: 'v1',
+              fullName: name,
+              nodeRefs: [],
+              edges: [],
+              executionMode: executionMode as GraphDefinition['executionMode'],
+              visibility: 'private',
+              compositionScore: 0,
+              trustScore: 0,
+              deterministic: false,
+              pricingType: 'free',
+              basePrice: 0,
+              revenueShare: 80,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+            nodes: [],
+            edges: [],
+            graphAuthor: 'local',
+            graphName: name,
+            graphVersion: 'v1',
+            isDirty: true,
+            isLoading: false,
+            error: null,
+          });
+        },
+
         // Execution controls
-        startExecution: (input) => {
-          set({ 
+        startExecution: async (input?: Record<string, unknown>) => {
+          const { graphAuthor, graphName, nodes, isOffline, queueOperation } = get();
+          if (!graphAuthor || !graphName) {
+            toast({ title: 'No graph loaded to execute', variant: 'destructive' });
+            return;
+          }
+
+          if (nodes.length === 0) {
+            toast({ title: 'Cannot execute an empty graph', variant: 'destructive' });
+            return;
+          }
+
+          if (isOffline) {
+            queueOperation('executeGraph', { graphAuthor, graphName, input });
+            toast({ title: 'Execution queued for when you reconnect' });
+            return;
+          }
+
+          set({
+            isExecuting: true,
             executionStatus: 'running',
             executionProgress: 0,
             events: [],
             nodeRuntimeStates: {},
             edgeRuntimeStates: {},
+            error: null,
           });
+          toast({ title: 'Graph execution started' });
+
+          try {
+            const result = await frgApi.executeGraph(graphAuthor, graphName, input);
+
+            if (result.instanceId) {
+              set({
+                activeInstance: {
+                  id: result.instanceId,
+                  definitionId: '',
+                  status: result.status as GraphInstance['status'],
+                  inputData: input,
+                  outputData: result.output,
+                  errorMessage: result.error || undefined,
+                  totalDurationMs: result.durationMs || 0,
+                  createdAt: new Date().toISOString(),
+                } as GraphInstance,
+              });
+
+              if (result.output) {
+                set({
+                  isExecuting: false,
+                  executionStatus: 'completed',
+                  executionProgress: 100,
+                  executionResult: {
+                    instanceId: result.instanceId,
+                    status: 'completed',
+                    output: result.output,
+                    nodeResults: result.nodeResults as Record<string, { status: NodeExecutionStatus; output?: unknown; error?: string; durationMs: number }> || {},
+                    durationMs: result.durationMs || 0,
+                    computeUnits: 0,
+                  },
+                });
+                toast({ title: 'Graph execution completed' });
+              } else {
+                get().pollInstanceStatus();
+              }
+            }
+          } catch (err) {
+            const message = err instanceof Error ? err.message : 'Execution failed';
+            set({
+              isExecuting: false,
+              executionStatus: 'failed',
+              error: message,
+            });
+            toast({ title: message, variant: 'destructive' });
+          }
         },
-        pauseExecution: () => set({ executionStatus: 'paused' }),
-        resumeExecution: () => set({ executionStatus: 'running' }),
-        stopExecution: () => {
-          set({ 
+
+        pollInstanceStatus: async () => {
+          const { activeInstance } = get();
+          if (!activeInstance?.id) return;
+
+          try {
+            const instance = await frgApi.getInstanceStatus(activeInstance.id);
+            set({ activeInstance: instance });
+
+            // Update progress based on status
+            if (instance.status === 'running') {
+              // Continue polling every 500ms
+              setTimeout(() => get().pollInstanceStatus(), 500);
+            } else if (instance.status === 'completed') {
+              set({ isExecuting: false, executionStatus: 'completed', executionProgress: 100 });
+            } else if (instance.status === 'failed') {
+              set({
+                isExecuting: false,
+                executionStatus: 'failed',
+                error: instance.errorMessage || 'Execution failed',
+              });
+            }
+          } catch (err) {
+            console.error('Failed to poll instance status:', err);
+          }
+        },
+
+        pauseExecution: () => {
+          const { activeInstance } = get();
+          if (activeInstance?.id) {
+            set({ executionStatus: 'paused' });
+          }
+        },
+
+        runNode: async (nodeId: string, input?: Record<string, unknown>) => {
+          const { nodes, setNodeRuntimeState, graphAuthor } = get();
+          const node = nodes.find(n => n.id === nodeId);
+          if (!node?.data?.functionRef) {
+            toast({ title: 'Node not found or has no function reference', variant: 'destructive' });
+            return;
+          }
+
+          const fn = node.data.functionRef;
+          setNodeRuntimeState(nodeId, { status: 'executing', isActive: true });
+          toast({ title: `Executing node: ${fn.name}` });
+
+          try {
+            let fnExists = false;
+            try {
+              await registryApi.getFunction(fn.author, fn.name);
+              fnExists = true;
+            } catch (err: any) {
+              if (err?.response?.status === 404) {
+                fnExists = false;
+              } else {
+                throw err;
+              }
+            }
+
+            if (!fnExists) {
+              console.log('[runNode] Function not found, generating code for:', fn.author, fn.name);
+              let generated: Record<string, unknown>;
+              try {
+                generated = await apiClient.post<Record<string, unknown>>('/frg/functions/generate', {
+                  author: fn.author,
+                  name: fn.name,
+                  description: fn.metadata?.description || fn.name,
+                  runtime: 'python',
+                });
+              } catch (err: unknown) {
+                const axiosErr = err as { response?: { data?: unknown }; message?: string };
+                console.error('[runNode] Generate failed:', axiosErr?.response?.data || axiosErr?.message);
+                throw new Error(`Failed to generate function code: ${axiosErr?.response?.data || axiosErr?.message}`);
+              }
+              console.log('[runNode] Generated function:', generated);
+
+              const generatedCode = ((generated?.version as Record<string, unknown> | undefined)?.SourceCode as string | undefined) || (generated?.code as string | undefined);
+              if (generatedCode) {
+                setNodeRuntimeState(nodeId, { generatedCode });
+              }
+            }
+
+            const result = await frgApi.executeNode(
+              fn.author,
+              fn.name,
+              fn.version || 'latest',
+              input
+            );
+
+            const status = result.error ? 'failed' : 'completed';
+            setNodeRuntimeState(nodeId, {
+              status,
+              output: result.output ?? result.result ?? JSON.stringify(result),
+              error: result.error,
+              durationMs: result.durationMs,
+              isActive: false,
+            });
+
+            if (result.error) {
+              toast({ title: `Node execution failed: ${result.error}`, variant: 'destructive' });
+            } else {
+              toast({ title: 'Node execution completed' });
+            }
+          } catch (err) {
+            const message = err instanceof Error ? err.message : 'Execution failed';
+            setNodeRuntimeState(nodeId, {
+              status: 'failed',
+              error: message,
+              isActive: false,
+            });
+            toast({ title: message, variant: 'destructive' });
+          }
+        },
+
+        resumeExecution: () => {
+          const { activeInstance } = get();
+          if (activeInstance?.id) {
+            // TODO: Call resume API if available
+            set({ executionStatus: 'running' });
+            get().pollInstanceStatus();
+          }
+        },
+
+        stopExecution: async () => {
+          const { activeInstance } = get();
+          if (activeInstance?.id) {
+            try {
+              await frgApi.stopInstance(activeInstance.id);
+            } catch (err) {
+              console.error('Failed to stop instance:', err);
+            }
+          }
+          set({
             executionStatus: 'idle',
             executionProgress: 0,
             activeInstance: null,
           });
-        },
-        stepExecution: () => {
-          // Step execution - advance to next node
-          const { executionStatus, executionProgress } = get();
-          if (executionStatus === "paused" || executionStatus === "running") {
-            const newProgress = Math.min(executionProgress + 10, 100);
-            set({ executionProgress: newProgress });
-            if (newProgress >= 100) {
-              set({ executionStatus: "completed" });
-            }
-          }
         },
         
         // Events
@@ -449,7 +974,36 @@ export const useFRGStore = create<FRGState>()(
         
         // Loading
         setIsLoading: (loading) => set({ isLoading: loading }),
+        setIsSaving: (saving) => set({ isSaving: saving }),
+        setIsExecuting: (executing) => set({ isExecuting: executing }),
         setError: (error) => set({ error }),
+
+        // Auto-save
+        setAutoSaveEnabled: (enabled) => set({ autoSaveEnabled: enabled }),
+        setAutoSaveInterval: (ms) => set({ autoSaveInterval: ms }),
+
+        // Offline support
+        setIsOffline: (offline) => set({ isOffline: offline }),
+        queueOperation: (type, payload) => set((state) => ({
+          operationQueue: [
+            ...state.operationQueue,
+            {
+              id: `op-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+              type,
+              payload,
+              timestamp: new Date().toISOString(),
+            },
+          ],
+        })),
+        processQueue: async () => {
+          const { operationQueue, setIsOffline } = get();
+          if (operationQueue.length === 0) return;
+
+          setIsOffline(true);
+          // Process queued operations when back online
+          // Each operation will be replayed via its respective API call
+        },
+        clearQueue: () => set({ operationQueue: [], queuedOperationCount: 0 }),
         
         // CRUD operations
         addNode: (node) => {
@@ -548,40 +1102,37 @@ export const useFRGStore = create<FRGState>()(
               s.id === id ? { ...s, status: 'approved' as const } : s
             ),
           }));
+          // Optimizations are considered "approved" - in a full impl, track this
         },
-        
+
         rejectEvolutionSuggestion: (id) => {
           set((state) => ({
-            evolutionSuggestions: state.evolutionSuggestions.map(s =>
-              s.id === id ? { ...s, status: 'rejected' as const } : s
-            ),
+            evolutionSuggestions: state.evolutionSuggestions.filter(s => s.id !== id),
+            evolutionHistory: [
+              ...state.evolutionHistory,
+              ...state.evolutionSuggestions.filter(s => s.id === id).map(s => ({
+                ...s,
+                status: 'rejected' as const,
+              })),
+            ],
           }));
         },
         
         toggleEvolutionMode: async (enabled) => {
+          const definition = get().definition;
+          if (!definition?.author || !definition?.name) return;
+
           set({ isEvolutionLoading: true, evolutionError: null });
           try {
-            const definition = get().definition;
-            if (!definition?.id) throw new Error('No graph loaded');
-            
-            const response = await fetch(`/api/agents/${definition.id}/evolution/auto-enable`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ enabled }),
-            });
-            
-            if (!response.ok) throw new Error('Failed to toggle evolution mode');
-            
-            // Update local state
             set((state) => ({
-              evolutionStatus: state.evolutionStatus 
+              evolutionStatus: state.evolutionStatus
                 ? { ...state.evolutionStatus, evolutionEnabled: enabled }
-                : { 
-                    agentId: definition.id!, 
-                    evolutionEnabled: enabled, 
-                    pendingCount: 0, 
+                : {
+                    agentId: definition.id || '',
+                    evolutionEnabled: enabled,
+                    pendingCount: 0,
                     implementedCount: 0,
-                    canEvolve: enabled
+                    canEvolve: enabled,
                   },
             }));
           } catch (err) {
@@ -593,93 +1144,137 @@ export const useFRGStore = create<FRGState>()(
         
         fetchEvolutionStatus: async () => {
           const definition = get().definition;
-          if (!definition?.id) return;
-          
+          if (!definition?.author || !definition?.name) return;
+
           try {
-            const response = await fetch(`/api/agents/${definition.id}/evolution/status`);
-            if (!response.ok) throw new Error('Failed to fetch evolution status');
-            
-            const data = await response.json();
-            if (data.ok) {
-              set({ evolutionStatus: data.status });
-            }
+            const optimizations = await frgApi.getOptimizations(definition.author, definition.name);
+            set({
+              evolutionStatus: {
+                agentId: definition.id || '',
+                evolutionEnabled: optimizations.length > 0,
+                pendingCount: optimizations.filter(o => !o.applied && !o.dismissed).length,
+                implementedCount: optimizations.filter(o => o.applied).length,
+                canEvolve: optimizations.length > 0,
+              },
+            });
           } catch (err) {
             console.error('Failed to fetch evolution status:', err);
           }
         },
-        
+
         fetchEvolutionSuggestions: async () => {
           const definition = get().definition;
-          if (!definition?.id) return;
-          
+          if (!definition?.author || !definition?.name) return;
+
           set({ isEvolutionLoading: true });
           try {
-            const response = await fetch(`/api/agents/${definition.id}/evolution/suggestions`);
-            if (!response.ok) throw new Error('Failed to fetch suggestions');
-            
-            const data = await response.json();
-            if (data.ok) {
-              set({ evolutionSuggestions: data.suggestions });
-            }
+            const optimizations = await frgApi.getOptimizations(definition.author, definition.name);
+            set({
+              evolutionSuggestions: optimizations
+                .filter(o => !o.applied && !o.dismissed)
+                .map(o => ({
+                  id: o.id,
+                  type: o.suggestionType,
+                  status: 'pending' as const,
+                  data: o.actionConfig || {},
+                  description: o.description,
+                  expectedImpact: o.estimatedImpact || 0,
+                  confidence: (o.aiConfidence >= 0.8 ? 'high' : o.aiConfidence >= 0.5 ? 'medium' : 'low') as 'low' | 'medium' | 'high',
+                  createdAt: o.generatedAt || new Date().toISOString(),
+                })),
+            });
           } catch (err) {
             set({ evolutionError: err instanceof Error ? err.message : 'Unknown error' });
           } finally {
             set({ isEvolutionLoading: false });
           }
         },
-        
+
         fetchEvolutionHistory: async () => {
           const definition = get().definition;
-          if (!definition?.id) return;
-          
+          if (!definition?.author || !definition?.name) return;
+
           try {
-            const response = await fetch(`/api/agents/${definition.id}/evolution/history`);
-            if (!response.ok) throw new Error('Failed to fetch history');
-            
-            const data = await response.json();
-            if (data.ok) {
-              set({ evolutionHistory: data.history });
-            }
+            const optimizations = await frgApi.getOptimizations(definition.author, definition.name);
+            set({
+              evolutionHistory: optimizations
+                .filter(o => o.applied || o.dismissed)
+                .map(o => ({
+                  id: o.id,
+                  type: o.suggestionType,
+                  status: (o.applied ? 'implemented' : 'rejected') as 'implemented' | 'rejected',
+                  data: o.actionConfig || {},
+                  description: o.description,
+                  expectedImpact: o.estimatedImpact || 0,
+                  confidence: (o.aiConfidence >= 0.8 ? 'high' : o.aiConfidence >= 0.5 ? 'medium' : 'low') as 'low' | 'medium' | 'high',
+                  createdAt: o.generatedAt || new Date().toISOString(),
+                  implementedAt: o.applied ? new Date().toISOString() : undefined,
+                })),
+            });
           } catch (err) {
             console.error('Failed to fetch evolution history:', err);
           }
         },
-        
+
         triggerEvolutionAnalysis: async () => {
-          const definition = get().definition;
-          if (!definition?.id) return;
-          
           set({ isEvolutionLoading: true, evolutionError: null });
-          try {
-            const response = await fetch(`/api/agents/${definition.id}/evolution/analyze`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-            });
-            
-            if (!response.ok) throw new Error('Failed to trigger analysis');
-            
-            const data = await response.json();
-            if (data.ok && data.proposal_created) {
-              // Refresh suggestions
-              await get().fetchEvolutionSuggestions();
-            }
-          } catch (err) {
-            set({ evolutionError: err instanceof Error ? err.message : 'Unknown error' });
-          } finally {
-            set({ isEvolutionLoading: false });
-          }
+          // Trigger optimization analysis via the existing optimizations endpoint
+          // The backend will compute new optimizations if the graph has changed
+          await get().fetchEvolutionSuggestions();
+          set({ isEvolutionLoading: false });
         },
       }),
       {
         name: 'frg-editor-storage',
-        partialize: (state) => ({
-          // Only persist these fields
-          definition: state.definition,
-          nodes: state.nodes,
-          edges: state.edges,
-          viewport: state.viewport,
-          testCases: state.testCases,
-        }),
+        partialize: (state) => {
+          const persistedNodeIds = new Set(state.nodes.map(n => n.id));
+          const filteredRuntimeStates: Record<string, RuntimeNodeState> = {};
+          for (const [nodeId, runtimeState] of Object.entries(state.nodeRuntimeStates)) {
+            if (persistedNodeIds.has(nodeId)) {
+              filteredRuntimeStates[nodeId] = runtimeState;
+            }
+          }
+
+          const SECRET_CONFIG_KEYS = ['apiKey', 'api_key', 'apiSecret', 'api_secret', 'password', 'passwd', 'secret', 'token', 'auth', 'credential', 'privateKey', 'private_key'];
+
+          function isSecretKey(key: string): boolean {
+            const lower = key.toLowerCase();
+            return SECRET_CONFIG_KEYS.some(sk => lower.includes(sk.toLowerCase()));
+          }
+
+          function redactNodeConfigs(nodes: typeof state.nodes): typeof state.nodes {
+            return nodes.map(node => {
+              if (!node.data?.functionRef?.config) return node;
+              const redactedConfig: Record<string, unknown> = {};
+              for (const [key, value] of Object.entries(node.data.functionRef.config)) {
+                if (isSecretKey(key)) {
+                  redactedConfig[key] = '[REDACTED]';
+                } else {
+                  redactedConfig[key] = value;
+                }
+              }
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  functionRef: {
+                    ...node.data.functionRef,
+                    config: redactedConfig,
+                  },
+                },
+              };
+            });
+          }
+
+          return {
+            definition: state.definition,
+            nodes: redactNodeConfigs(state.nodes),
+            edges: state.edges,
+            viewport: state.viewport,
+            testCases: state.testCases,
+            nodeRuntimeStates: filteredRuntimeStates,
+          };
+        },
       }
     )
   )

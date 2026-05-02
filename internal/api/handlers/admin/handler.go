@@ -23,6 +23,8 @@ type Handler struct {
 	payoutApprovalService  *wallet.PayoutApprovalService
 	reconciliationService  *wallet.ReconciliationService
 	billingOperationalRepo *storage.BillingOperationalRepository
+	// TenantDBService for dedicated database management
+	tenantDBService TenantDBServiceInterface
 }
 
 // NewHandler creates a new admin handler. unifiedAnalytics may be nil (tenant metrics will be placeholders).

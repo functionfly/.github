@@ -48,8 +48,23 @@ export default defineConfig({
             { label: "Rate Limiting", link: "/guides/rate-limiting/" },
             { label: "Webhooks", link: "/guides/webhooks/" },
             { label: "Deploy Keys", link: "/deploy-keys/" },
+            { label: "Trust and Verification", link: "/trust-and-verification/" },
             { label: "Function Webhooks", link: "/function-webhooks/" },
             { label: "CI/CD Integration", link: "/guides/ci-cd/" },
+          ],
+        },
+        {
+          label: "Agents",
+          badge: { text: "New", variant: "tip" },
+          collapsed: false,
+          items: [
+            { label: "Overview", link: "/agents/" },
+            { label: "Creating Your First Agent", link: "/guides/creating-agents/" },
+            { label: "Agent Marketplace", link: "/agents/marketplace/" },
+            { label: "SDK Integration", link: "/agents/sdk/" },
+            { label: "Agent Security", link: "/agents/security/" },
+            { label: "Behavioral Policies", link: "/agents/policies/" },
+            { label: "Agent Memory", link: "/agents/memory/" },
           ],
         },
         {
@@ -145,7 +160,6 @@ export default defineConfig({
           badge: { text: "Beta", variant: "caution" },
           collapsed: false,
           items: [
-            { label: "Trust API Guide", link: "/trust-api/" },
             { label: "Trust API Reference", link: "/trust-api/" },
             { label: "Trust Protocol Spec", link: "/trust-protocol-spec/" },
             {

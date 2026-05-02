@@ -146,6 +146,7 @@ export const DefaultProvider: RenderStory = {
           isDefault={isDefault}
           onSetDefault={() => setIsDefault(!isDefault)}
           onDisconnect={() => {}}
+          onConnect={async () => {}}
           isDisconnecting={false}
           lastUsedAt={new Date().toISOString()}
           healthData={generateMockHealthData(24, true)}

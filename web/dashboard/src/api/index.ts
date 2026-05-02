@@ -42,6 +42,7 @@ export type {
   PendingReview,
   PublishedFunction,
 } from './factory';
+export { frgApi } from './frg';
 export { functionsApi } from './functions';
 export { notificationsApi } from './notifications';
 export type { FetchNotificationsParams, NotificationCount } from './notifications';

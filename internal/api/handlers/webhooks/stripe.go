@@ -14,6 +14,8 @@ import (
 
 	agentbilling "github.com/functionfly/functionfly/internal/agent/billing"
 	billingpkg "github.com/functionfly/functionfly/internal/billing"
+	billing "github.com/functionfly/functionfly/internal/api/handlers/billing"
+	"github.com/functionfly/functionfly/internal/email"
 	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/notification"
 	"github.com/functionfly/functionfly/internal/statefabricaddons"
@@ -71,18 +73,27 @@ func sanitizeMetadataForLogging(metadata map[string]string) map[string]string {
 
 // StripeWebhookHandler handles Stripe webhook events for payment processing.
 type StripeWebhookHandler struct {
-	financialTxRepo *storage.FinancialTransactionRepository
-	billingCtrl     *agentbilling.Controller
-	notificationSvc *notification.Service
-	userRepo        storage.Repository
-	platformFees    *storageregistry.PlatformFeeRepository
-	sfAddons        *statefabricaddons.Repository
-	webhookSecret   string
-	disputeRepo     *storage.DisputeRepository
-	refundRepo      *storage.RefundRepository
-	registryRepo    *storageregistry.RegistryRepository
+	financialTxRepo    *storage.FinancialTransactionRepository
+	billingCtrl         *agentbilling.Controller
+	notificationSvc    *notification.Service
+	userRepo            storage.Repository
+	platformFees        *storageregistry.PlatformFeeRepository
+	sfAddons            *statefabricaddons.Repository
+	disputeRepo         *storage.DisputeRepository
+	refundRepo          *storage.RefundRepository
+	registryRepo        *storageregistry.RegistryRepository
+	webhookSecret       string
+	emailSvc            email.Service
 	dunningManager  *billingpkg.DunningManager
 	operationalRepo *storage.BillingOperationalRepository
+	payoutService   PayoutWebhookProcessor
+}
+
+// PayoutWebhookProcessor handles payout-related webhook events.
+type PayoutWebhookProcessor interface {
+	ProcessTransferReversed(ctx context.Context, stripeTransferID string) error
+	ProcessPayoutPaid(ctx context.Context, stripePayoutID, stripeAccountID string) error
+	RefreshAccountStatus(ctx context.Context, stripeAccountID string) error
 }
 
 // StripeDisputeEvent represents a Stripe dispute event payload
@@ -119,18 +130,20 @@ func NewStripeWebhookHandler(
 	disputeRepo *storage.DisputeRepository,
 	refundRepo *storage.RefundRepository,
 	registryRepo *storageregistry.RegistryRepository,
+	emailSvc email.Service,
 ) *StripeWebhookHandler {
 	return &StripeWebhookHandler{
-		financialTxRepo: financialTxRepo,
-		billingCtrl:     billingCtrl,
-		notificationSvc: notificationSvc,
-		userRepo:        userRepo,
-		platformFees:    platformFees,
-		sfAddons:        sfAddons,
-		webhookSecret:   os.Getenv("STRIPE_WEBHOOK_SECRET"),
-		disputeRepo:     disputeRepo,
-		refundRepo:      refundRepo,
-		registryRepo:    registryRepo,
+		financialTxRepo:  financialTxRepo,
+		billingCtrl:      billingCtrl,
+		notificationSvc:  notificationSvc,
+		userRepo:         userRepo,
+		platformFees:     platformFees,
+		sfAddons:         sfAddons,
+		webhookSecret:    os.Getenv("STRIPE_WEBHOOK_SECRET"),
+		disputeRepo:      disputeRepo,
+		refundRepo:       refundRepo,
+		registryRepo:     registryRepo,
+		emailSvc:         emailSvc,
 	}
 }
 
@@ -267,6 +280,15 @@ func (h *StripeWebhookHandler) handleEvent(w http.ResponseWriter, r *http.Reques
 	// Two-way sync: Customer updates from Stripe dashboard
 	case "customer.updated":
 		h.handleCustomerUpdated(w, r, event)
+	// Payout events: Stripe Connect payout lifecycle
+	case "payout.paid":
+		h.handlePayoutPaid(w, r, event)
+	case "payout.failed":
+		h.handlePayoutFailed(w, r, event)
+	case "transfer.reversed":
+		h.handleTransferReversed(w, r, event)
+	case "account.updated":
+		h.handleConnectAccountUpdated(w, r, event)
 	default:
 		// Acknowledge but ignore other events
 		w.WriteHeader(http.StatusOK)
@@ -574,6 +596,7 @@ func (h *StripeWebhookHandler) handleBundleSubscriptionCheckout(w http.ResponseW
 	// If existing deferred subscription exists, update it
 	if existingSub != nil && existingSub.Status == "deferred" {
 		sub.ID = existingSub.ID
+		sub.DefaultAppID = existingSub.DefaultAppID // Preserve the app created during founder mode provisioning
 		if err := h.userRepo.UpdateBundleSubscription(r.Context(), sub); err != nil {
 			logrus.WithError(err).Error("failed to update bundle subscription from deferred")
 			http.Error(w, "Failed to update subscription", http.StatusInternalServerError)
@@ -593,6 +616,52 @@ func (h *StripeWebhookHandler) handleBundleSubscriptionCheckout(w http.ResponseW
 		"subscription_id": sub.ID,
 		"session_id":      session.ID,
 	}).Info("Bundle subscription created/updated successfully")
+
+	// Trigger provisioning of bundle resources (app, backend, functions)
+	// This is called for both new purchases and conversions from founder mode
+	app, appErr := billing.ProvisionBundleAppAndBackend(h.userRepo, tenantID, bundleSlug)
+	if appErr != nil {
+		logrus.WithError(appErr).WithField("tenant_id", tenantID).Warn("Failed to provision bundle app and backend")
+	} else if app != nil {
+		// Update subscription with the default app ID
+		sub.DefaultAppID = &app.ID
+		if updateErr := h.userRepo.UpdateBundleSubscription(r.Context(), sub); updateErr != nil {
+			logrus.WithError(updateErr).WithField("tenant_id", tenantID).Warn("Failed to update subscription with app ID")
+		}
+	}
+
+	// Also provision general bundle resources (auth, analytics, vector collections)
+	go func() {
+		if err := billing.ProvisionBundleResources(h.userRepo, tenantID, bundleSlug); err != nil {
+			logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to provision bundle resources")
+		}
+	}()
+
+	// Send bundle welcome email
+	if h.emailSvc != nil {
+		dashboardURL := os.Getenv("DASHBOARD_URL")
+		if dashboardURL == "" {
+			dashboardURL = "https://app.functionfly.com"
+		}
+		var userEmail string
+		if session.CustomerEmail != "" {
+			userEmail = session.CustomerEmail
+		} else {
+			users, uErr := h.userRepo.ListActiveUsersByTenant(r.Context(), tenantID)
+			if uErr == nil && len(users) > 0 {
+				userEmail = users[0].Email
+			}
+		}
+		if userEmail != "" {
+			go func() {
+				if err := h.emailSvc.SendBundleWelcomeEmail(userEmail, bundle.Name, dashboardURL); err != nil {
+					logrus.WithError(err).WithField("tenant_id", tenantID).Warn("Failed to send bundle welcome email")
+				} else {
+					logrus.WithField("tenant_id", tenantID).Info("Bundle welcome email sent successfully")
+				}
+			}()
+		}
+	}
 
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]string{"status": "success"})
@@ -2825,4 +2894,158 @@ func (h *StripeWebhookHandler) handleCustomerUpdated(w http.ResponseWriter, r *h
 		"tenant_id":   tenant.ID.String(),
 		"customer_id": customer.ID,
 	})
+}
+
+// SetPayoutService sets the payout service for handling payout-related webhook events.
+func (h *StripeWebhookHandler) SetPayoutService(ps PayoutWebhookProcessor) {
+	h.payoutService = ps
+}
+
+// handlePayoutPaid processes payout.paid events from Stripe.
+// This fires when a Stripe payout to a connected account's bank succeeds.
+func (h *StripeWebhookHandler) handlePayoutPaid(w http.ResponseWriter, r *http.Request, event *stripe.Event) {
+	raw, err := event.Data.Raw.MarshalJSON()
+	if err != nil {
+		http.Error(w, "Invalid payload", http.StatusBadRequest)
+		return
+	}
+
+	var payout struct {
+		ID      string `json:"id"`
+		Amount  int64  `json:"amount"`
+		Status  string `json:"status"`
+		Account string `json:"account"`
+	}
+	if err := json.Unmarshal(raw, &payout); err != nil {
+		http.Error(w, "Invalid payout payload", http.StatusBadRequest)
+		return
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"payout_id":  payout.ID,
+		"account_id": payout.Account,
+		"amount":     payout.Amount,
+		"status":     payout.Status,
+	}).Info("Stripe payout.paid event received")
+
+	if h.payoutService != nil {
+		if err := h.payoutService.ProcessPayoutPaid(r.Context(), payout.ID, payout.Account); err != nil {
+			logrus.WithError(err).WithField("payout_id", payout.ID).Error("failed to process payout.paid event")
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "processed"})
+}
+
+// handlePayoutFailed processes payout.failed events from Stripe.
+// This fires when a Stripe payout to a connected account's bank fails.
+func (h *StripeWebhookHandler) handlePayoutFailed(w http.ResponseWriter, r *http.Request, event *stripe.Event) {
+	raw, err := event.Data.Raw.MarshalJSON()
+	if err != nil {
+		http.Error(w, "Invalid payload", http.StatusBadRequest)
+		return
+	}
+
+	var payout struct {
+		ID      string `json:"id"`
+		Amount  int64  `json:"amount"`
+		Status  string `json:"status"`
+		Account string `json:"account"`
+		FailureCode    string `json:"failure_code"`
+		FailureMessage string `json:"failure_message"`
+	}
+	if err := json.Unmarshal(raw, &payout); err != nil {
+		http.Error(w, "Invalid payout payload", http.StatusBadRequest)
+		return
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"payout_id":      payout.ID,
+		"account_id":     payout.Account,
+		"amount":         payout.Amount,
+		"failure_code":   payout.FailureCode,
+		"failure_message": payout.FailureMessage,
+	}).Warn("Stripe payout.failed event received")
+
+	if h.payoutService != nil {
+		if err := h.payoutService.RefreshAccountStatus(r.Context(), payout.Account); err != nil {
+			logrus.WithError(err).WithField("account_id", payout.Account).Warn("failed to refresh account status after payout failure")
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "processed"})
+}
+
+// handleTransferReversed processes transfer.reversed events from Stripe.
+// This fires when a transfer to a connected account is reversed (e.g., due to a dispute).
+func (h *StripeWebhookHandler) handleTransferReversed(w http.ResponseWriter, r *http.Request, event *stripe.Event) {
+	raw, err := event.Data.Raw.MarshalJSON()
+	if err != nil {
+		http.Error(w, "Invalid payload", http.StatusBadRequest)
+		return
+	}
+
+	var txfr struct {
+		ID       string `json:"id"`
+		Amount   int64  `json:"amount"`
+		Currency string `json:"currency"`
+		Dest     string `json:"destination"`
+	}
+	if err := json.Unmarshal(raw, &txfr); err != nil {
+		http.Error(w, "Invalid transfer payload", http.StatusBadRequest)
+		return
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"transfer_id":  txfr.ID,
+		"destination":  txfr.Dest,
+		"amount":       txfr.Amount,
+	}).Warn("Stripe transfer.reversed event received")
+
+	if h.payoutService != nil {
+		if err := h.payoutService.ProcessTransferReversed(r.Context(), txfr.ID); err != nil {
+			logrus.WithError(err).WithField("transfer_id", txfr.ID).Error("failed to process transfer.reversed")
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "processed"})
+}
+
+// handleConnectAccountUpdated processes account.updated events for Stripe Connect accounts.
+func (h *StripeWebhookHandler) handleConnectAccountUpdated(w http.ResponseWriter, r *http.Request, event *stripe.Event) {
+	raw, err := event.Data.Raw.MarshalJSON()
+	if err != nil {
+		http.Error(w, "Invalid payload", http.StatusBadRequest)
+		return
+	}
+
+	var account struct {
+		ID             string `json:"id"`
+		PayoutsEnabled bool   `json:"payouts_enabled"`
+		DetailsSubmitted bool `json:"details_submitted"`
+		ChargesEnabled bool   `json:"charges_enabled"`
+	}
+	if err := json.Unmarshal(raw, &account); err != nil {
+		http.Error(w, "Invalid account payload", http.StatusBadRequest)
+		return
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"account_id":        account.ID,
+		"payouts_enabled":   account.PayoutsEnabled,
+		"details_submitted": account.DetailsSubmitted,
+		"charges_enabled":   account.ChargesEnabled,
+	}).Info("Stripe Connect account.updated event received")
+
+	if h.payoutService != nil {
+		if err := h.payoutService.RefreshAccountStatus(r.Context(), account.ID); err != nil {
+			logrus.WithError(err).WithField("account_id", account.ID).Warn("failed to refresh connect account status")
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "processed"})
 }

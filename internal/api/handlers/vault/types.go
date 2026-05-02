@@ -226,3 +226,9 @@ type RollbackSecretResponse struct {
 	RolledBackTo int                   `json:"rolled_back_to"`
 	Message      string                `json:"message"`
 }
+
+// RotateSecretRequest represents a request to rotate a secret's encrypted value
+type RotateSecretRequest struct {
+	EncryptedData EncryptedDataPayload `json:"encrypted_data" validate:"required"`
+	Reason        string               `json:"reason,omitempty"`
+}

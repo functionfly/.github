@@ -55,6 +55,8 @@ const actionIcons: Record<AuditAction, typeof Eye> = {
   delete: Trash2,
   use: CheckCircle,
   revoke: XCircle,
+  version: FileEdit,
+  rollback: XCircle,
 };
 
 // Action label mapping
@@ -65,6 +67,8 @@ const actionLabels: Record<AuditAction, string> = {
   delete: "Deleted",
   use: "Used",
   revoke: "Revoked",
+  version: "Versioned",
+  rollback: "Rolled back",
 };
 
 // Action badge variant mapping
@@ -78,6 +82,8 @@ const actionVariants: Record<
   delete: "error",
   use: "default",
   revoke: "error",
+  version: "warning",
+  rollback: "error",
 };
 
 // Actor type icon mapping

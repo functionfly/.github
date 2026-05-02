@@ -676,6 +676,12 @@
   --provider-glow: rgba(249, 115, 22, 0.4);
 }
 
+/* AWS Lambda Orange */
+.provider-accent-aws-lambda {
+  --provider-brand-color: #FF9900;
+  --provider-glow: rgba(255, 153, 0, 0.3);
+}
+
 /* ==========================================================================
    7. UTILITY CLASSES
    Quick application helpers

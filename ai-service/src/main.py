@@ -4,7 +4,9 @@ This is the FastAPI application entry point.
 Includes Phase 1 (Foundation) and Phase 2 (Intelligence Layer).
 """
 
+import hashlib
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -15,6 +17,7 @@ from .config import settings, get_settings
 from .api.routes import router
 from .providers.manager import get_provider_manager
 from .services.embeddings import get_embeddings_service
+from .security.auth import get_api_key_validator, KeyScope
 
 
 # Configure logging (uppercase so "info" maps to logging.INFO, not logging.info)
@@ -33,6 +36,37 @@ async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and shutdown events."""
     # Startup
     logger.info(f"Starting {settings.service_name} v{settings.service_version}")
+
+    # Initialize API key validator and load persistent key from environment
+    try:
+        validator = get_api_key_validator()
+        persistent_key = os.environ.get("AI_SERVICE_API_KEY")
+        if persistent_key:
+            # Check if this key already exists
+            key_info = validator.validate_key(persistent_key)
+            if not key_info:
+                # Add the persistent key to the validator
+                key_hash = hashlib.sha256(persistent_key.encode()).hexdigest()
+                from .security.auth import APIKeyInfo, KeyStatus
+                from datetime import datetime
+                from typing import List
+
+                info = APIKeyInfo(
+                    key_id="persistent",
+                    tenant_id="system",
+                    name="Persistent API Key",
+                    scopes=[KeyScope.FULL, KeyScope.CHAT_WRITE],
+                    status=KeyStatus.ACTIVE,
+                    created_at=datetime.utcnow(),
+                    rate_limit=120,
+                )
+                validator._keys["persistent"] = (key_hash, info)
+                validator._key_lookup[key_hash] = "persistent"
+                logger.info("Loaded persistent API key from AI_SERVICE_API_KEY environment")
+        else:
+            logger.info("No AI_SERVICE_API_KEY environment variable set")
+    except Exception as e:
+        logger.warning(f"Could not initialize persistent API key: {e}")
 
     # Initialize providers
     try:

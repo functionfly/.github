@@ -34,7 +34,7 @@ func NewService(db *gorm.DB, registryRepo *registry.RegistryRepository, config *
 		repo:           NewRepository(db),
 		registry:       registryRepo,
 		config:         config,
-		flyEmbedSvcURL: "http://localhost:8081",
+		flyEmbedSvcURL: "http://localhost:18081",
 		flyEmbedAPIKey: "",
 		httpClient:     &http.Client{Timeout: 30 * time.Second},
 	}

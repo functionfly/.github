@@ -22,13 +22,13 @@ export function useGenerationHistory() {
     try {
       const stored = localStorage.getItem(HISTORY_KEY);
       if (stored) {
-        const parsed = JSON.parse(stored);
+        const parsed = JSON.parse(stored) as GenerationHistoryItem[];
         // Convert timestamp strings back to Date objects for refinement history
         const restored = parsed.map((item: GenerationHistoryItem) => ({
           ...item,
-          refinementHistory: (item.refinementHistory || []).map((ref: { id: string; request: string; timestamp: string }) => ({
+          refinementHistory: (item.refinementHistory || []).map((ref: { id: string; request: string; timestamp: string | Date }) => ({
             ...ref,
-            timestamp: new Date(ref.timestamp),
+            timestamp: ref.timestamp instanceof Date ? ref.timestamp : new Date(ref.timestamp),
           })),
         }));
         setHistory(restored);

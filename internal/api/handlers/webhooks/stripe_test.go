@@ -29,7 +29,7 @@ func TestStripeWebhookHandler_HandleWebhook_SignatureVerification(t *testing.T) 
 		repo := storage.NewFinancialTransactionRepository(db)
 		billingCtrl := billing.NewController(db, nil)
 
-		handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil)
+		handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil, nil)
 		handler.webhookSecret = "whsec_test_secret"
 
 		router := http.NewServeMux()
@@ -55,7 +55,7 @@ func TestStripeWebhookHandler_HandleWebhook_SignatureVerification(t *testing.T) 
 		repo := storage.NewFinancialTransactionRepository(db)
 		billingCtrl := billing.NewController(db, nil)
 
-		handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil)
+		handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil, nil)
 		handler.webhookSecret = "" // No secret configured
 
 		router := http.NewServeMux()
@@ -100,7 +100,7 @@ func TestStripeWebhookHandler_Idempotency(t *testing.T) {
 		repo := storage.NewFinancialTransactionRepository(db)
 		billingCtrl := billing.NewController(db, nil)
 
-		handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil)
+		handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil, nil)
 		handler.webhookSecret = "" // Skip signature verification for test
 
 		// First webhook
@@ -170,7 +170,7 @@ func TestStripeWebhookHandler_IgnoresNonCheckoutEvents(t *testing.T) {
 	repo := storage.NewFinancialTransactionRepository(db)
 	billingCtrl := billing.NewController(db, nil)
 
-	handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil)
+	handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil, nil)
 	handler.webhookSecret = ""
 
 	router := http.NewServeMux()
@@ -205,7 +205,7 @@ func TestStripeWebhookHandler_InvoicePaymentFailed(t *testing.T) {
 	repo := storage.NewFinancialTransactionRepository(db)
 	billingCtrl := billing.NewController(db, nil)
 
-	handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil)
+	handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil, nil)
 	handler.webhookSecret = ""
 
 	router := http.NewServeMux()
@@ -253,7 +253,7 @@ func TestStripeWebhookHandler_SubscriptionLifecycle(t *testing.T) {
 		repo := storage.NewFinancialTransactionRepository(db)
 		billingCtrl := billing.NewController(db, nil)
 
-		handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil)
+		handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil, nil)
 		handler.webhookSecret = ""
 
 		router := http.NewServeMux()
@@ -295,7 +295,7 @@ func TestStripeWebhookHandler_SubscriptionLifecycle(t *testing.T) {
 		repo := storage.NewFinancialTransactionRepository(db)
 		billingCtrl := billing.NewController(db, nil)
 
-		handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil)
+		handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil, nil)
 		handler.webhookSecret = ""
 
 		router := http.NewServeMux()
@@ -353,7 +353,7 @@ func TestStripeWebhookHandler_CheckoutSessionRegistryWallet(t *testing.T) {
 	}
 	require.NoError(t, db.Create(tenant).Error)
 
-	handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil)
+	handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil, nil)
 	handler.webhookSecret = ""
 
 	router := http.NewServeMux()
@@ -395,7 +395,7 @@ func TestStripeWebhookHandler_PaymentIntentFailed(t *testing.T) {
 	repo := storage.NewFinancialTransactionRepository(db)
 	billingCtrl := billing.NewController(db, nil)
 
-	handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil)
+	handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil, nil)
 	handler.webhookSecret = ""
 
 	router := http.NewServeMux()
@@ -459,7 +459,7 @@ func TestStripeWebhookHandler_ProductionSecretEnforcement(t *testing.T) {
 		repo := storage.NewFinancialTransactionRepository(db)
 		billingCtrl := billing.NewController(db, nil)
 
-		handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil)
+		handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil, nil)
 		handler.webhookSecret = "" // No secret configured
 
 		// Set production environment
@@ -494,7 +494,7 @@ func TestStripeWebhookHandler_ProductionSecretEnforcement(t *testing.T) {
 		repo := storage.NewFinancialTransactionRepository(db)
 		billingCtrl := billing.NewController(db, nil)
 
-		handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil)
+		handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil, nil)
 		handler.webhookSecret = "whsec_test_secret"
 
 		// Set production environment

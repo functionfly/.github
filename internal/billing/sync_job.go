@@ -358,61 +358,32 @@ func (j *BillingSyncJob) executeSync(ctx context.Context, syncID uuid.UUID, tena
 
 	log.Info("Starting billing sync execution")
 
-	// Update sync status to running (no completed_at yet)
-	if err := j.exportRepo.UpdateBillingIntegrationSyncStatus(ctx, syncID, "running", nil); err != nil {
-		log.WithError(err).Error("Failed to update sync status to running")
-	}
-
-	// Get the external billing system configuration
-	system, err := j.exportRepo.GetExternalBillingSystem(ctx, systemID)
+	// Get the pending sync to get the full sync object
+	syncs, err := j.exportRepo.GetPendingSyncs(ctx, 100)
 	if err != nil {
-		log.WithError(err).Error("Failed to get external billing system")
-		j.failSync(ctx, syncID, fmt.Sprintf("Failed to get billing system: %v", err))
+		log.WithError(err).Error("Failed to get pending syncs")
+		j.failSync(ctx, syncID, fmt.Sprintf("Failed to get pending syncs: %v", err))
 		return
 	}
 
-	// Get the appropriate exporter - convert string to BillingSystemType
-	systemType := storage.BillingSystemType(system.SystemType)
-	exporterFactory, ok := j.exporters[systemType]
-	if !ok {
-		log.WithField("system_type", system.SystemType).Error("No exporter found for system type")
-		j.failSync(ctx, syncID, fmt.Sprintf("Unsupported billing system type: %s", system.SystemType))
+	var billingSync *storage.BillingIntegrationSync
+	for _, s := range syncs {
+		if s.ID == syncID {
+			billingSync = s
+			break
+		}
+	}
+
+	if billingSync == nil {
+		log.Error("Sync not found in pending syncs")
+		j.failSync(ctx, syncID, "Sync not found")
 		return
 	}
 
-	exporter := exporterFactory()
-
-	// Test the connection first
-	if err := exporter.TestConnection(ctx, system); err != nil {
-		log.WithError(err).Error("Connection test failed")
-		j.failSync(ctx, syncID, fmt.Sprintf("Connection test failed: %v", err))
-		return
+	// Use the existing processSync which handles all the logic
+	if err := j.processSync(ctx, billingSync); err != nil {
+		log.WithError(err).Error("Sync processing failed")
 	}
-
-	// TODO: Implement actual data synchronization
-	// This would involve:
-	// 1. Fetching cost allocation data or usage data based on sync type
-	// 2. Transforming the data according to field mappings
-	// 3. Exporting to the external system using the exporter
-	// 4. Updating the sync record with results
-
-	// For now, mark as completed with a placeholder result
-	if err := j.exportRepo.UpdateBillingIntegrationSyncStats(ctx, syncID, 0, 0, 0, 0, 0); err != nil {
-		log.WithError(err).Error("Failed to update sync stats")
-	}
-
-	// Mark sync as completed
-	completedAt := time.Now()
-	if err := j.exportRepo.UpdateBillingIntegrationSyncStatus(ctx, syncID, "completed", &completedAt); err != nil {
-		log.WithError(err).Error("Failed to complete sync")
-	}
-
-	// Update the external system's last sync time
-	if err := j.exportRepo.UpdateExternalBillingSystemSyncStatus(ctx, systemID, "completed"); err != nil {
-		log.WithError(err).Warn("Failed to update external system sync status")
-	}
-
-	log.Info("Billing sync completed successfully")
 }
 
 // failSync marks a sync as failed with the given error message.

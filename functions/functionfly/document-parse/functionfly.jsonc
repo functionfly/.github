@@ -40,6 +40,7 @@
   "cache_ttl": 3600,
   "timeout_ms": 2000,
   "memory_mb": 256,
+  "price_per_call": 0.01,
   "example": {
     "input": {
       "text": "# Title\n\nParagraph text here.\n\n- Item 1\n- Item 2"

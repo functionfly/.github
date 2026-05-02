@@ -654,23 +654,26 @@ func (m *MFARateLimiter) LimitVerify(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// VaultRateLimiter applies per-tenant rate limits for vault write operations.
+// VaultRateLimiter applies per-tenant rate limits for vault operations.
 // Use after RequireAuth so tenant ID is available from context.
 type VaultRateLimiter struct {
 	createSecretLimiter  *RateLimiter // e.g. 30/hour per tenant
 	generateTokenLimiter *RateLimiter // e.g. 60/hour per tenant
+	readSecretLimiter    *RateLimiter // e.g. 200/hour per tenant
+	listSecretsLimiter   *RateLimiter // e.g. 100/hour per tenant
 }
 
-// NewVaultRateLimiter creates a limiter for vault create secret (30/hour) and generate token (60/hour) per tenant.
+// NewVaultRateLimiter creates a limiter for vault operations per tenant.
 func NewVaultRateLimiter() *VaultRateLimiter {
 	return &VaultRateLimiter{
 		createSecretLimiter:  NewRateLimiter(time.Hour, 30),
 		generateTokenLimiter: NewRateLimiter(time.Hour, 60),
+		readSecretLimiter:    NewRateLimiter(time.Hour, 200),
+		listSecretsLimiter:   NewRateLimiter(time.Hour, 100),
 	}
 }
 
 // LimitCreate wraps a handler with per-tenant rate limiting for creating secrets.
-// Requires auth context (use after RequireAuth). Key is tenant ID.
 func (v *VaultRateLimiter) LimitCreate(next http.HandlerFunc) http.HandlerFunc {
 	return v.limitByTenant("vault_create", v.createSecretLimiter, next)
 }
@@ -678,6 +681,16 @@ func (v *VaultRateLimiter) LimitCreate(next http.HandlerFunc) http.HandlerFunc {
 // LimitGenerateToken wraps a handler with per-tenant rate limiting for generating tokens.
 func (v *VaultRateLimiter) LimitGenerateToken(next http.HandlerFunc) http.HandlerFunc {
 	return v.limitByTenant("vault_token", v.generateTokenLimiter, next)
+}
+
+// LimitRead wraps a handler with per-tenant rate limiting for reading a secret.
+func (v *VaultRateLimiter) LimitRead(next http.HandlerFunc) http.HandlerFunc {
+	return v.limitByTenant("vault_read", v.readSecretLimiter, next)
+}
+
+// LimitList wraps a handler with per-tenant rate limiting for listing secrets.
+func (v *VaultRateLimiter) LimitList(next http.HandlerFunc) http.HandlerFunc {
+	return v.limitByTenant("vault_list", v.listSecretsLimiter, next)
 }
 
 func (v *VaultRateLimiter) limitByTenant(prefix string, limiter *RateLimiter, next http.HandlerFunc) http.HandlerFunc {

@@ -29,6 +29,8 @@ interface SystemMetrics {
   diskUsage: number;
   apiResponsiveness: number;
   databaseHealth: 'connected' | 'disconnected';
+  apiVersion: string;
+  environment: string;
 }
 
 interface PlatformSettingsState {
@@ -57,8 +59,8 @@ function Switch({
       onClick={() => onChange(!checked)}
       className={`
         relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent
-        transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-admin-700 focus-visible:ring-offset-2
-        ${checked ? 'bg-admin-700' : 'bg-admin-300'}
+        transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 dark:focus-visible:ring-blue-400 focus-visible:ring-offset-2
+        ${checked ? 'bg-blue-700 dark:bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}
         ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
       `}
     >
@@ -144,8 +146,8 @@ export function AdminSystemPage() {
     <div className="min-h-full flex flex-col">
       {/* Page header + modern tabs */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-admin-900 tracking-tight">System</h1>
-        <p className="mt-1 text-admin-600 text-sm">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">System</h1>
+        <p className="mt-1 text-gray-600 dark:text-gray-400 text-sm">
           Health, configuration, and platform-wide settings
         </p>
 
@@ -162,32 +164,32 @@ export function AdminSystemPage() {
           <div className="mt-6 flex-1 min-h-0">
             <TabsContent value="health" className="space-y-8">
               {/* System Health */}
-              <section className="rounded-xl border border-admin-200 bg-white shadow-sm overflow-hidden">
-                <div className="border-l-4 border-admin-600 bg-admin-50/60 px-5 py-3">
-                  <h2 className="text-sm font-semibold text-admin-900 uppercase tracking-wider">
+              <section className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+                <div className="border-l-4 border-blue-600 bg-blue-50 dark:bg-blue-950/30 px-5 py-3">
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider">
                     System Health
                   </h2>
-                  <p className="text-xs text-admin-600 mt-0.5">Live resources and health checks</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Live resources and health checks</p>
                 </div>
                 <div className="p-6 space-y-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div
-                      className={`rounded-lg border p-4 flex items-center justify-between ${statusBg}`}
+                      className={`rounded-lg border p-4 flex items-center justify-between ${statusBg} dark:border-opacity-50`}
                     >
                       <div className="flex items-center gap-3">
                         <div
                           className={`rounded-lg p-2 ${
                             metrics?.status === 'healthy'
-                              ? 'bg-emerald-100'
+                              ? 'bg-emerald-100 dark:bg-emerald-900/50'
                               : metrics?.status === 'degraded'
-                                ? 'bg-amber-100'
-                                : 'bg-red-100'
+                                ? 'bg-amber-100 dark:bg-amber-900/50'
+                                : 'bg-red-100 dark:bg-red-900/50'
                           }`}
                         >
                           <Activity className={`w-5 h-5 ${statusColor}`} />
                         </div>
                         <div>
-                          <p className="text-xs font-medium text-admin-600 uppercase tracking-wider">
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                             System Status
                           </p>
                           <p className={`font-semibold ${statusColor}`}>
@@ -199,35 +201,35 @@ export function AdminSystemPage() {
                     <div
                       className={`rounded-lg border p-4 flex items-center justify-between ${
                         metrics?.databaseHealth === 'connected'
-                          ? 'bg-emerald-50 border-emerald-200'
-                          : 'bg-red-50 border-red-200'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800'
+                          : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <div
                           className={`rounded-lg p-2 ${
                             metrics?.databaseHealth === 'connected'
-                              ? 'bg-emerald-100'
-                              : 'bg-red-100'
+                              ? 'bg-emerald-100 dark:bg-emerald-900/50'
+                              : 'bg-red-100 dark:bg-red-900/50'
                           }`}
                         >
                           <HardDrive
                             className={
                               metrics?.databaseHealth === 'connected'
-                                ? 'w-5 h-5 text-emerald-600'
-                                : 'w-5 h-5 text-red-600'
+                                ? 'w-5 h-5 text-emerald-600 dark:text-emerald-400'
+                                : 'w-5 h-5 text-red-600 dark:text-red-400'
                             }
                           />
                         </div>
                         <div>
-                          <p className="text-xs font-medium text-admin-600 uppercase tracking-wider">
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                             Database
                           </p>
                           <p
                             className={`font-semibold ${
                               metrics?.databaseHealth === 'connected'
-                                ? 'text-emerald-600'
-                                : 'text-red-600'
+                                ? 'text-emerald-600 dark:text-emerald-400'
+                                : 'text-red-600 dark:text-red-400'
                             }`}
                           >
                             {metrics?.databaseHealth ?? 'checking…'}
@@ -260,9 +262,9 @@ export function AdminSystemPage() {
                     ].map(({ label, value, stroke }) => (
                       <div
                         key={label}
-                        className="rounded-lg border border-admin-200 bg-admin-50/40 p-5 flex flex-col items-center"
+                        className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-5 flex flex-col items-center"
                       >
-                        <p className="text-xs font-medium text-admin-600 uppercase tracking-wider mb-3">
+                        <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-3">
                           {label}
                         </p>
                         <div className="relative w-20 h-20">
@@ -274,6 +276,7 @@ export function AdminSystemPage() {
                               fill="none"
                               stroke="#e9ecef"
                               strokeWidth="8"
+                              className="dark:stroke-gray-700"
                             />
                             <circle
                               cx="50"
@@ -286,7 +289,7 @@ export function AdminSystemPage() {
                               strokeDasharray={`${(value / 100) * 263.9} 263.9`}
                             />
                           </svg>
-                          <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-admin-800">
+                          <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-gray-900 dark:text-gray-100">
                             {value}%
                           </span>
                         </div>
@@ -297,31 +300,31 @@ export function AdminSystemPage() {
               </section>
 
               {/* System Configuration (read-only) */}
-              <section className="rounded-xl border border-admin-200 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
-                <div className="border-l-4 border-admin-500 bg-admin-50/60 dark:bg-admin-900/40 px-5 py-3">
-                  <h2 className="text-sm font-semibold text-admin-900 uppercase tracking-wider">
+              <section className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+                <div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-950/30 px-5 py-3">
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider">
                     System Configuration
                   </h2>
                 </div>
                 <div className="p-6">
                   <dl className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-5">
                     <div className="flex justify-between sm:block">
-                      <dt className="text-sm text-admin-600">API Version</dt>
-                      <dd className="text-sm font-medium text-admin-900 sm:mt-0.5">v1.0.0</dd>
+                      <dt className="text-sm text-gray-600 dark:text-gray-400">API Version</dt>
+                      <dd className="text-sm font-medium text-gray-900 dark:text-gray-100 sm:mt-0.5">{metrics?.apiVersion ?? '—'}</dd>
                     </div>
                     <div className="flex justify-between sm:block">
-                      <dt className="text-sm text-admin-600">Environment</dt>
-                      <dd className="text-sm font-medium text-admin-900 sm:mt-0.5">Production</dd>
+                      <dt className="text-sm text-gray-600 dark:text-gray-400">Environment</dt>
+                      <dd className="text-sm font-medium text-gray-900 dark:text-gray-100 sm:mt-0.5 capitalize">{metrics?.environment ?? '—'}</dd>
                     </div>
                     <div className="flex justify-between sm:block">
-                      <dt className="text-sm text-admin-600">Uptime</dt>
-                      <dd className="text-sm font-medium text-admin-900 sm:mt-0.5">
+                      <dt className="text-sm text-gray-600 dark:text-gray-400">Uptime</dt>
+                      <dd className="text-sm font-medium text-gray-900 dark:text-gray-100 sm:mt-0.5">
                         {metrics?.uptime ?? 0}h
                       </dd>
                     </div>
                     <div className="flex justify-between sm:block">
-                      <dt className="text-sm text-admin-600">API Responsiveness</dt>
-                      <dd className="text-sm font-medium text-admin-900 sm:mt-0.5">
+                      <dt className="text-sm text-gray-600 dark:text-gray-400">API Responsiveness</dt>
+                      <dd className="text-sm font-medium text-gray-900 dark:text-gray-100 sm:mt-0.5">
                         {metrics?.apiResponsiveness ?? '—'}ms
                       </dd>
                     </div>
@@ -331,18 +334,18 @@ export function AdminSystemPage() {
             </TabsContent>
 
             <TabsContent value="settings" className="max-w-3xl">
-              <section className="rounded-xl border border-admin-200 bg-white shadow-sm overflow-hidden">
-                <div className="border-l-4 border-admin-700 bg-admin-100/80 dark:bg-admin-900/60 px-5 py-3 flex items-center gap-2">
-                  <Settings2 className="w-4 h-4 text-admin-700" />
-                  <h2 className="text-sm font-semibold text-admin-900 uppercase tracking-wider">
+              <section className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+                <div className="border-l-4 border-blue-700 dark:border-blue-500 bg-gray-50 dark:bg-gray-800/60 px-5 py-3 flex items-center gap-2">
+                  <Settings2 className="w-4 h-4 text-blue-700 dark:text-blue-400" />
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider">
                     Platform Settings
                   </h2>
                 </div>
                 <div className="p-6 space-y-6">
                   <div className="flex items-center justify-between gap-6 py-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-admin-900 dark:text-admin-100">Maintenance mode</p>
-                      <p className="text-xs text-admin-600 mt-0.5">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Maintenance mode</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                         Disable public access; only admins can sign in
                       </p>
                     </div>
@@ -353,8 +356,8 @@ export function AdminSystemPage() {
                   </div>
                   <div className="flex items-center justify-between gap-6 py-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-admin-900 dark:text-admin-100">Sign-ups enabled</p>
-                      <p className="text-xs text-admin-600 mt-0.5">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Sign-ups enabled</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                         Allow new tenant and user registration
                       </p>
                     </div>
@@ -364,11 +367,11 @@ export function AdminSystemPage() {
                     />
                   </div>
 
-                  <div className="border-t border-admin-200 pt-6 space-y-5">
+                  <div className="border-t border-gray-200 dark:border-gray-700 pt-6 space-y-5">
                     <div>
                       <label
                         htmlFor="platform-name"
-                        className="block text-sm font-medium text-admin-900 dark:text-admin-100 mb-1"
+                        className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1"
                       >
                         Platform name
                       </label>
@@ -379,14 +382,13 @@ export function AdminSystemPage() {
                         onChange={(e) =>
                           setPlatformSettings((s) => ({ ...s, platformName: e.target.value }))
                         }
-                        className="w-full max-w-md rounded-lg border border-admin-300 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-admin-900 placeholder-admin-400 dark:text-admin-200 dark:placeholder-admin-500 focus:border-admin-500 focus:outline-none focus:ring-1 focus:ring-admin-500"
-                        placeholder="FunctionFly"
+                        className="w-full max-w-md rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400"
                       />
                     </div>
                     <div>
                       <label
                         htmlFor="support-email"
-                        className="block text-sm font-medium text-admin-900 dark:text-admin-100 mb-1"
+                        className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1"
                       >
                         Support email
                       </label>
@@ -397,14 +399,13 @@ export function AdminSystemPage() {
                         onChange={(e) =>
                           setPlatformSettings((s) => ({ ...s, supportEmail: e.target.value }))
                         }
-                        className="w-full max-w-md rounded-lg border border-admin-300 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-admin-900 placeholder-admin-400 dark:text-admin-200 dark:placeholder-admin-500 focus:border-admin-500 focus:outline-none focus:ring-1 focus:ring-admin-500"
-                        placeholder="support@example.com"
+                        className="w-full max-w-md rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400"
                       />
                     </div>
                     <div>
                       <label
                         htmlFor="rate-limit"
-                        className="block text-sm font-medium text-admin-900 dark:text-admin-100 mb-1"
+                        className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1"
                       >
                         Default API rate limit (per minute)
                       </label>
@@ -423,7 +424,7 @@ export function AdminSystemPage() {
                             ),
                           }))
                         }
-                        className="w-full max-w-xs rounded-lg border border-admin-300 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-admin-900 dark:text-admin-200 focus:border-admin-500 focus:outline-none focus:ring-1 focus:ring-admin-500"
+                        className="w-full max-w-xs rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400"
                       />
                     </div>
                   </div>
@@ -433,7 +434,7 @@ export function AdminSystemPage() {
                       type="button"
                       onClick={handleSavePlatformSettings}
                       disabled={saving}
-                      className="inline-flex items-center gap-2 rounded-lg bg-admin-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-admin-800 focus:outline-none focus:ring-2 focus:ring-admin-600 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                      className="inline-flex items-center gap-2 rounded-lg bg-blue-700 dark:bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                     >
                       {saving ? (
                         <>
@@ -448,10 +449,10 @@ export function AdminSystemPage() {
                       )}
                     </button>
                     {saveMessage === 'success' && (
-                      <p className="mt-2 text-sm text-emerald-600">Settings saved.</p>
+                      <p className="mt-2 text-sm text-emerald-600 dark:text-emerald-400">Settings saved.</p>
                     )}
                     {saveMessage === 'error' && (
-                      <p className="mt-2 text-sm text-red-600">Failed to save. Try again.</p>
+                      <p className="mt-2 text-sm text-red-600 dark:text-red-400">Failed to save. Try again.</p>
                     )}
                   </div>
                 </div>

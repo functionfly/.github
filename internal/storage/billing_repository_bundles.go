@@ -164,6 +164,22 @@ func (r *BillingRepository) GetPricingBundleByID(ctx context.Context, id uuid.UU
 	return bundle, nil
 }
 
+// UpdatePricingBundleStripePrice updates the Stripe Price ID for a pricing bundle
+func (r *BillingRepository) UpdatePricingBundleStripePrice(ctx context.Context, slug, stripePriceID string) error {
+	query := `UPDATE pricing_bundles SET stripe_price_id = $1, updated_at = NOW() WHERE slug = $2`
+	result, err := r.db.ExecContext(ctx, query, stripePriceID, slug)
+	if err != nil {
+		return fmt.Errorf("failed to update pricing bundle stripe price: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("pricing bundle not found: %s", slug)
+	}
+
+	return nil
+}
+
 // GetPricingBundleByStripePriceID retrieves a pricing bundle by its Stripe Price ID
 // This is used when processing plan changes from Stripe webhooks
 func (r *BillingRepository) GetPricingBundleByStripePriceID(ctx context.Context, stripePriceID string) (*PricingBundle, error) {
@@ -421,7 +437,7 @@ func (r *BillingRepository) CreateBundleSubscription(ctx context.Context, sub *B
 // GetBundleSubscriptionByTenant retrieves the active bundle subscription for a tenant
 func (r *BillingRepository) GetBundleSubscriptionByTenant(ctx context.Context, tenantID uuid.UUID) (*BundleSubscription, error) {
 	query := `SELECT id, tenant_id, bundle_id, founder_mode_id, converted_from_founder_mode,
-		status, stripe_subscription_id, current_period_start, current_period_end,
+		status, stripe_subscription_id, default_app_id, current_period_start, current_period_end,
 		cancel_at_period_end, canceled_at, created_at, updated_at
 		FROM bundle_subscriptions
 		WHERE tenant_id = $1 AND status IN ('active', 'deferred')`
@@ -429,10 +445,11 @@ func (r *BillingRepository) GetBundleSubscriptionByTenant(ctx context.Context, t
 	sub := &BundleSubscription{}
 	var founderModeID sql.NullString
 	var canceledAt sql.NullTime
+	var defaultAppID sql.NullString
 
 	err := r.db.QueryRow(query, tenantID).Scan(
 		&sub.ID, &sub.TenantID, &sub.BundleID, &founderModeID, &sub.ConvertedFromFounderMode,
-		&sub.Status, &sub.StripeSubscriptionID, &sub.CurrentPeriodStart, &sub.CurrentPeriodEnd,
+		&sub.Status, &sub.StripeSubscriptionID, &defaultAppID, &sub.CurrentPeriodStart, &sub.CurrentPeriodEnd,
 		&sub.CancelAtPeriodEnd, &canceledAt, &sub.CreatedAt, &sub.UpdatedAt,
 	)
 
@@ -446,6 +463,10 @@ func (r *BillingRepository) GetBundleSubscriptionByTenant(ctx context.Context, t
 	if founderModeID.Valid {
 		id, _ := uuid.Parse(founderModeID.String)
 		sub.FounderModeID = &id
+	}
+	if defaultAppID.Valid {
+		id, _ := uuid.Parse(defaultAppID.String)
+		sub.DefaultAppID = &id
 	}
 	if canceledAt.Valid {
 		sub.CanceledAt = &canceledAt.Time
@@ -463,16 +484,18 @@ func (r *BillingRepository) UpdateBundleSubscription(ctx context.Context, sub *B
 			converted_from_founder_mode = $4,
 			status = $5,
 			stripe_subscription_id = $6,
-			current_period_start = $7,
-			current_period_end = $8,
-			cancel_at_period_end = $9,
-			canceled_at = $10,
-			updated_at = $11
+			default_app_id = $7,
+			current_period_start = $8,
+			current_period_end = $9,
+			cancel_at_period_end = $10,
+			canceled_at = $11,
+			updated_at = $12
 		WHERE id = $1`
 
 	result, err := r.db.Exec(query,
 		sub.ID, sub.BundleID, sub.FounderModeID, sub.ConvertedFromFounderMode,
-		sub.Status, sub.StripeSubscriptionID, sub.CurrentPeriodStart, sub.CurrentPeriodEnd,
+		sub.Status, sub.StripeSubscriptionID, sub.DefaultAppID,
+		sub.CurrentPeriodStart, sub.CurrentPeriodEnd,
 		sub.CancelAtPeriodEnd, sub.CanceledAt, sub.UpdatedAt,
 	)
 	if err != nil {
@@ -493,7 +516,7 @@ func (r *BillingRepository) UpdateBundleSubscription(ctx context.Context, sub *B
 // ListBundleSubscriptionsByTenant retrieves all bundle subscriptions for a tenant
 func (r *BillingRepository) ListBundleSubscriptionsByTenant(ctx context.Context, tenantID uuid.UUID) ([]*BundleSubscription, error) {
 	query := `SELECT id, tenant_id, bundle_id, founder_mode_id, converted_from_founder_mode,
-		status, stripe_subscription_id, current_period_start, current_period_end,
+		status, stripe_subscription_id, default_app_id, current_period_start, current_period_end,
 		cancel_at_period_end, canceled_at, created_at, updated_at
 		FROM bundle_subscriptions WHERE tenant_id = $1 ORDER BY created_at DESC`
 
@@ -508,10 +531,11 @@ func (r *BillingRepository) ListBundleSubscriptionsByTenant(ctx context.Context,
 		sub := &BundleSubscription{}
 		var founderModeID sql.NullString
 		var canceledAt sql.NullTime
+		var defaultAppID sql.NullString
 
 		err := rows.Scan(
 			&sub.ID, &sub.TenantID, &sub.BundleID, &founderModeID, &sub.ConvertedFromFounderMode,
-			&sub.Status, &sub.StripeSubscriptionID, &sub.CurrentPeriodStart, &sub.CurrentPeriodEnd,
+			&sub.Status, &sub.StripeSubscriptionID, &defaultAppID, &sub.CurrentPeriodStart, &sub.CurrentPeriodEnd,
 			&sub.CancelAtPeriodEnd, &canceledAt, &sub.CreatedAt, &sub.UpdatedAt,
 		)
 		if err != nil {
@@ -521,6 +545,10 @@ func (r *BillingRepository) ListBundleSubscriptionsByTenant(ctx context.Context,
 		if founderModeID.Valid {
 			id, _ := uuid.Parse(founderModeID.String)
 			sub.FounderModeID = &id
+		}
+		if defaultAppID.Valid {
+			id, _ := uuid.Parse(defaultAppID.String)
+			sub.DefaultAppID = &id
 		}
 		if canceledAt.Valid {
 			sub.CanceledAt = &canceledAt.Time

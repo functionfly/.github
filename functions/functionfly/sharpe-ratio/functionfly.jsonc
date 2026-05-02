@@ -51,6 +51,7 @@
   "cache_ttl": 3600,
   "timeout_ms": 1000,
   "memory_mb": 128,
+  "price_per_call": 0.002,
   "example": {
     "input": {
       "portfolio_return": 0.12,

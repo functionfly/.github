@@ -26,7 +26,6 @@ import {
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -36,46 +35,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 import { useFRGStore } from '@/stores/frgStore';
 import type { AISuggestion } from '@/types/frg';
-
-// Mock suggestions - in production, from API
-const mockSuggestions: AISuggestion[] = [
-  {
-    id: 's1',
-    type: 'add_node',
-    description: 'Add error handling to your data processing chain',
-    confidence: 0.92,
-    affectedNodes: ['node-1', 'node-2'],
-    action: {
-      type: 'insert_node',
-      payload: { nodeType: 'error-handler', target: 'node-2' },
-    },
-    explanation: 'Based on the current flow, adding an error handler after the data transformer will improve reliability',
-  },
-  {
-    id: 's2',
-    type: 'optimize',
-    description: 'Parallelize independent operations',
-    confidence: 0.88,
-    affectedNodes: ['node-3', 'node-4'],
-    action: {
-      type: 'parallelize',
-      payload: { nodes: ['node-3', 'node-4'] },
-    },
-    explanation: 'These two nodes don\'t depend on each other and can run simultaneously for 40% speedup',
-  },
-  {
-    id: 's3',
-    type: 'fix',
-    description: 'Fix data type mismatch in edge connection',
-    confidence: 0.95,
-    affectedNodes: ['node-1', 'node-2'],
-    action: {
-      type: 'add_transform',
-      payload: { edge: 'e-1-2', transform: 'map' },
-    },
-    explanation: 'The output from node-1 is an array but node-2 expects an object. Add a mapper to fix this.',
-  },
-];
+import { frgApi } from '@/api/frg';
 
 interface ChatMessage {
   id: string;
@@ -115,7 +75,7 @@ export function AIAssistantPanel() {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const sendMessage = useCallback(() => {
+  const sendMessage = useCallback(async () => {
     if (!input.trim()) return;
 
     const userMessage: ChatMessage = {
@@ -126,23 +86,67 @@ export function AIAssistantPanel() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = input;
     setInput('');
     setAiLoading(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const response: ChatMessage = {
+    // Add placeholder loading message
+    const loadingMsgId = `msg-${Date.now()}`;
+    setMessages(prev => [...prev, {
+      id: loadingMsgId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date(),
+      isLoading: true,
+    }]);
+
+    try {
+      const response = await frgApi.aiCompose({
+        prompt: currentInput,
+        requirements: [
+          `Current graph has ${nodes.length} nodes and ${edges.length} edges`,
+        ],
+      });
+
+      // Remove loading message
+      setMessages(prev => prev.filter(m => m.id !== loadingMsgId));
+
+      const assistantMessage: ChatMessage = {
         id: `msg-${Date.now()}`,
         role: 'assistant',
-        content: 'I analyzed your workflow and found some opportunities:',
+        content: typeof response.explanation === 'string' 
+          ? response.explanation 
+          : 'I analyzed your workflow. Here are my suggestions:',
         timestamp: new Date(),
-        suggestions: mockSuggestions,
       };
-      setMessages(prev => [...prev, response]);
-      setAiSuggestions(mockSuggestions);
+      setMessages(prev => [...prev, assistantMessage]);
+
+      if (response.graph) {
+        setAiSuggestions(response.suggestions?.map((desc, i) => ({
+          id: `suggestion-${i}`,
+          type: 'optimize' as const,
+          description: desc,
+          confidence: response.confidence,
+          affectedNodes: [],
+          action: { type: 'apply', payload: {} },
+          explanation: '',
+        })) || []);
+      }
+    } catch (err) {
+      // Remove loading message
+      setMessages(prev => prev.filter(m => m.id !== loadingMsgId));
+      const errorContent = err instanceof Error ? err.message : 'Unknown error';
+      const errorMessage: ChatMessage = {
+        id: `msg-${Date.now()}`,
+        role: 'assistant',
+        content: `Sorry, I encountered an error: ${errorContent}. Please try again.`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setAiLoading(false);
-    }, 1500);
-  }, [input, setAiLoading, setAiSuggestions]);
+    }
+  }, [input, nodes.length, edges.length, setAiLoading, setAiSuggestions]);
 
   const handleSuggestionAction = useCallback((suggestionId: string, action: 'apply' | 'dismiss') => {
     if (action === 'apply') {

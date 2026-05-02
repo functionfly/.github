@@ -107,6 +107,7 @@ type AgentIdentity struct {
 	PlanTier          string    `json:"plan_tier" gorm:"not null;default:'agent_starter'"`
 	Status            string    `json:"status" gorm:"not null;default:'active'"` // active | suspended | deleted
 	APIKeyHash        string    `json:"-" gorm:"column:api_key_hash"`            // hashed API key, never returned
+	SigningKeyHash    string    `json:"-" gorm:"column:signing_key_hash"`        // hashed signing key for A2A messages
 	ParentAgentID     *string   `json:"parent_agent_id" gorm:"column:parent_agent_id"`
 	SwarmRole         string    `json:"swarm_role" gorm:"not null;default:'worker'"` // worker | manager | infrastructure
 	MaxChildAgents    int       `json:"max_child_agents" gorm:"not null;default:0"`
@@ -162,10 +163,11 @@ type RegisterAgentRequest struct {
 
 // RegisterAgentResponse is the response after registering an agent
 type RegisterAgentResponse struct {
-	OK      bool           `json:"ok"`
-	Agent   *AgentIdentity `json:"agent"`
-	APIKey  string         `json:"api_key,omitempty"` // Only returned on creation
-	Message string         `json:"message,omitempty"`
+	OK        bool           `json:"ok"`
+	Agent     *AgentIdentity `json:"agent"`
+	APIKey    string         `json:"api_key,omitempty"`    // Only returned on creation
+	SigningKey string        `json:"signing_key,omitempty"` // Only returned on creation, for A2A auth
+	Message   string         `json:"message,omitempty"`
 }
 
 // AgentStatus constants
@@ -254,16 +256,24 @@ func (AgentRelationship) TableName() string {
 
 // AgentMessage represents a message between agents
 type AgentMessage struct {
-	ID          uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	FromAgentID string         `json:"from_agent_id" gorm:"not null"`
-	ToAgentID   string         `json:"to_agent_id" gorm:"not null"`
-	MessageType string         `json:"message_type" gorm:"not null"`
-	Payload     map[string]any `json:"payload" gorm:"type:jsonb;default:'{}'"`
-	SessionID   *string        `json:"session_id"`
-	TTLSeconds  int            `json:"ttl_seconds" gorm:"not null;default:3600"`
-	Status      string         `json:"status" gorm:"not null;default:'pending'"` // pending | delivered | read | expired | failed
-	CreatedAt   time.Time      `json:"created_at" gorm:"autoCreateTime"`
-	DeliveredAt *time.Time     `json:"delivered_at"`
+	ID             uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	FromAgentID    string         `json:"from_agent_id" gorm:"not null"`
+	ToAgentID      string         `json:"to_agent_id" gorm:"not null"`
+	MessageType    string         `json:"message_type" gorm:"not null"`
+	Payload        map[string]any `json:"payload" gorm:"type:jsonb;default:'{}'"`
+	SessionID      *string        `json:"session_id"`
+	TTLSeconds     int            `json:"ttl_seconds" gorm:"not null;default:3600"`
+	Status         string         `json:"status" gorm:"not null;default:'pending'"` // pending | delivered | read | expired | failed
+	CreatedAt      time.Time      `json:"created_at" gorm:"autoCreateTime"`
+	DeliveredAt    *time.Time     `json:"delivered_at"`
+	Signature      string         `json:"signature,omitempty" gorm:"column:signature;type:text"`
+	Nonce          string         `json:"nonce,omitempty" gorm:"column:nonce;type:text;index"`
+	SequenceNumber int64          `json:"sequence_number,omitempty" gorm:"column:sequence_number;default:0"`
+
+	TraceID    string `json:"trace_id,omitempty" gorm:"column:trace_id;type:text;index"`
+	SpanID     string `json:"span_id,omitempty" gorm:"column:span_id;type:text"`
+	TraceFlags string `json:"trace_flags,omitempty" gorm:"column:trace_flags;type:text"`
+	TraceState string `json:"trace_state,omitempty" gorm:"column:trace_state;type:text"`
 }
 
 // TableName returns the GORM table name

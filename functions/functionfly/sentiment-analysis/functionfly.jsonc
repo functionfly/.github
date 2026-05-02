@@ -29,6 +29,7 @@
   "cache_ttl": 3600,
   "timeout_ms": 500,
   "memory_mb": 64,
+  "price_per_call": 0.001,
   "example": {
     "input": { "text": "I absolutely love this product! It works great." },
     "output": { "ok": true, "sentiment": "positive" }

@@ -83,6 +83,7 @@
     "sdk": "SDK",
     "secrets": "Secrets",
     "apiKeys": "API Keys",
+    "oneClickBackends": "One-Click Backends",
     "analytics": "Analytics",
     "usage": "Usage",
     "wallet": "Wallet",
@@ -578,7 +579,12 @@
     "copied": "Copied",
     "copy": "Copy",
     "done": "Done",
-    "failedToLoad": "Failed to load agents. Please try again."
+    "failedToLoad": "Failed to load agents. Please try again.",
+    "confirmDelete": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
+    "confirmBulkDelete": "Are you sure you want to delete {{count}} agents? This action cannot be undone.",
+    "agentDeleted": "Agent deleted successfully.",
+    "agentsDeleted": "{{count}} agents deleted successfully.",
+    "failedToDelete": "Failed to delete agent. Please try again."
   },
   "achievement": {
     "common": "Common",

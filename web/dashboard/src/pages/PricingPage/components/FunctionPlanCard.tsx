@@ -62,7 +62,7 @@ export function FunctionPlanCard({
     ? Math.round(plan.priceAnnualCents / 12 / 100)
     : plan.price;
   const annualPrice = plan.priceAnnualCents ? plan.priceAnnualCents / 100 : 0;
-  const monthlyEquivalentAnnual = plan.price !== 'Custom' && plan.price !== 0
+  const monthlyEquivalentAnnual = typeof plan.price === 'number' && plan.price !== 0
     ? (annualPrice / 12).toFixed(0)
     : null;
 
@@ -134,9 +134,9 @@ export function FunctionPlanCard({
             >
               <div className="flex items-baseline gap-2">
                 <span className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-white to-text-secondary bg-clip-text text-transparent">
-                  {displayPrice === 'Custom' ? 'Custom' : `$${displayPrice}`}
+                  {typeof displayPrice === 'string' ? displayPrice : `$${displayPrice}`}
                 </span>
-                {displayPrice !== 'Custom' && (
+                {typeof displayPrice === 'number' && (
                   <span className="text-text-secondary text-lg">/month</span>
                 )}
               </div>
@@ -144,7 +144,7 @@ export function FunctionPlanCard({
                 <div className="flex items-center gap-2 mt-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                   <p className="text-emerald-400 text-sm font-medium">
-                    ${annualPrice.toFixed(0)}/year (save {Math.round((1 - annualPrice / (plan.price * 12)) * 100)}%)
+                    ${annualPrice.toFixed(0)}/year (save {Math.round((1 - annualPrice / ((plan.price as number) * 12)) * 100)}%)
                   </p>
                 </div>
               )}

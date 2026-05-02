@@ -2,6 +2,7 @@ package cache
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -13,6 +14,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
+	"github.com/aws/aws-sdk-go-v2/service/cloudfront/types"
 	"github.com/sirupsen/logrus"
 )
 
@@ -25,6 +30,11 @@ type CDNService struct {
 	// Cloudflare cache purge
 	cloudflareZoneID string
 	cloudflareToken  string
+	// AWS CloudFront cache purge
+	cloudfrontDistributionID string
+	cloudfrontRegion        string
+	// Fastly cache purge
+	fastlyToken string
 	httpClient       *http.Client
 }
 
@@ -59,6 +69,9 @@ func NewCDNService(config *CDNConfig) *CDNService {
 		providers:        make(map[string]*CDNProvider),
 		cloudflareZoneID: config.CloudflareZoneID,
 		cloudflareToken:  config.CloudflareToken,
+		cloudfrontDistributionID: config.CloudFrontDistributionID,
+		cloudfrontRegion:        config.CloudFrontRegion,
+		fastlyToken:              config.FastlyToken,
 		httpClient:       &http.Client{Timeout: 30 * time.Second},
 	}
 
@@ -588,19 +601,71 @@ type cfPurgeError struct {
 // purgeCloudFront calls AWS CloudFront's cache purge API.
 // Requires AWS credentials with CloudFront distribution access.
 func (c *CDNService) purgeCloudFront(urls []string) error {
-	// TODO: Implement CloudFront cache purge using AWS SDK
-	// CloudFront has a CreateInvalidation API that can be called via AWS SDK for Go v2
-	logrus.Warnf("CloudFront cache purge not yet implemented, %d URL(s) not purged", len(urls))
+	if c.cloudfrontDistributionID == "" {
+		return fmt.Errorf("CloudFront distribution ID is required for cache purge")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	cfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(c.cloudfrontRegion))
+	if err != nil {
+		return fmt.Errorf("failed to load AWS config: %w", err)
+	}
+
+	client := cloudfront.NewFromConfig(cfg)
+
+	input := &cloudfront.CreateInvalidationInput{
+		DistributionId: aws.String(c.cloudfrontDistributionID),
+		InvalidationBatch: &types.InvalidationBatch{
+			Paths: &types.Paths{
+				Quantity: aws.Int32(int32(len(urls))),
+				Items:    urls,
+			},
+			CallerReference: aws.String(fmt.Sprintf("functionfly-%d", time.Now().UnixNano())),
+		},
+	}
+
+	_, err = client.CreateInvalidation(ctx, input)
+	if err != nil {
+		return fmt.Errorf("failed to create CloudFront invalidation: %w", err)
+	}
+
+	logrus.Infof("CloudFront invalidation created for %d URLs", len(urls))
 	return nil
 }
 
-// purgeFastly calls Fastly's purge API for a single URL.
-// Fastly also supports purging by Surrogate-Key (prefix) but that requires additional setup.
+// purgeFastly calls Fastly's purge API for URLs.
+// Fastly API: POST https://api.fastly.com/purge/<url>
 func (c *CDNService) purgeFastly(urls []string) error {
-	// TODO: Implement Fastly cache purge
-	// Fastly API: POST https://api.fastly.com/purge/<url>
-	// Or use soft purge: POST https://api.fastly.com/purge/<url> with Surrogate-Key header
-	logrus.Warnf("Fastly cache purge not yet implemented, %d URL(s) not purged", len(urls))
+	if c.fastlyToken == "" {
+		return fmt.Errorf("Fastly API token is required for cache purge")
+	}
+
+	apiURL := "https://api.fastly.com"
+	client := &http.Client{Timeout: 30 * time.Second}
+
+	for _, url := range urls {
+		req, err := http.NewRequest(http.MethodPost, apiURL+"/purge/"+url, nil)
+		if err != nil {
+			return fmt.Errorf("failed to create purge request: %w", err)
+		}
+
+		req.Header.Set("Fastly-Key", c.fastlyToken)
+		req.Header.Set("Accept", "application/json")
+
+		resp, err := client.Do(req)
+		if err != nil {
+			return fmt.Errorf("failed to purge %s: %w", url, err)
+		}
+		resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
+			logrus.Warnf("Fastly purge returned %d for %s", resp.StatusCode, url)
+		}
+	}
+
+	logrus.Infof("Fastly cache purge completed for %d URLs", len(urls))
 	return nil
 }
 

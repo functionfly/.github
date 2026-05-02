@@ -2,6 +2,13 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { presenceApi, PresenceWebSocket, type UserPresence, type PresenceSocketEvent, type PresenceStatus } from '../api/presence';
 
+let _hmrDisposing = false;
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    _hmrDisposing = true;
+  });
+}
+
 export interface UsePresenceOptions {
   enableWebSocket?: boolean;
   heartbeatInterval?: number;
@@ -35,6 +42,7 @@ export function usePresence(options: UsePresenceOptions = defaultOptions): UsePr
   const [error, setError] = useState<string | null>(null);
   const wsRef = useRef<PresenceWebSocket | null>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const connectingRef = useRef(false);
 
   const fetchPresence = useCallback(async () => {
     if (!user?.id) return;
@@ -80,17 +88,20 @@ export function usePresence(options: UsePresenceOptions = defaultOptions): UsePr
   }, [user?.id]);
 
   const connectWebSocket = useCallback(() => {
-    if (wsRef.current?.isConnected()) return;
+    if (wsRef.current?.isConnected() || connectingRef.current) return;
+    connectingRef.current = true;
 
     const ws = new PresenceWebSocket();
     wsRef.current = ws;
 
     ws.on('connected', () => {
+      connectingRef.current = false;
       setIsConnected(true);
       setError(null);
     });
 
     ws.on('disconnected', () => {
+      connectingRef.current = false;
       setIsConnected(false);
     });
 
@@ -99,6 +110,7 @@ export function usePresence(options: UsePresenceOptions = defaultOptions): UsePr
     });
 
     ws.on('failed', () => {
+      connectingRef.current = false;
       setIsConnected(false);
       setError('Failed to connect to presence service');
     });
@@ -160,6 +172,14 @@ export function usePresence(options: UsePresenceOptions = defaultOptions): UsePr
     }
 
     return () => {
+      if (_hmrDisposing) {
+        _hmrDisposing = false;
+        if (heartbeatRef.current) {
+          clearInterval(heartbeatRef.current);
+          heartbeatRef.current = null;
+        }
+        return;
+      }
       disconnectWebSocket();
     };
   }, [user?.id, opts.enableWebSocket, fetchPresence, connectWebSocket, disconnectWebSocket]);

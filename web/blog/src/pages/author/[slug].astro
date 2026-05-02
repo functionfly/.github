@@ -91,8 +91,8 @@ const authorName = author?.name || slug.replace(/-/g, ' ');
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.14), transparent 55%),
-      radial-gradient(ellipse 50% 30% at 100% 10%, rgba(16, 185, 129, 0.05), transparent 40%);
+      radial-gradient(ellipse 80% 50% at 50% -20%, color-mix(in srgb, var(--color-primary) 14%, transparent), transparent 55%),
+      radial-gradient(ellipse 50% 30% at 100% 10%, color-mix(in srgb, var(--color-secondary) 5%, transparent), transparent 40%);
   }
 
   .author-page {

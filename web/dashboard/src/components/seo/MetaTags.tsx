@@ -23,7 +23,7 @@ export function MetaTags({
     <>
       <Title>{title}</Title>
       <Meta name="description" content={description} />
-      <Meta name="keywords" content={keywords.join(', ')} />
+      <Meta name="keywords" content={Array.isArray(keywords) ? keywords.join(', ') : keywords} />
       <Meta name="author" content={author} />
       <Meta name="robots" content="index, follow" />
       <Meta name="language" content="English" />

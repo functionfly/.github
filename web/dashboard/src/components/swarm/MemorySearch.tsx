@@ -74,8 +74,8 @@ export function MemorySearch({ agentId, agentName }: MemorySearchProps) {
         q: searchQuery,
         limit: pageSize,
       });
-      
-      setMemories(data);
+
+      setMemories(data as Memory[]);
       
       // Calculate stats from data
       const typeCounts: Record<string, number> = {};

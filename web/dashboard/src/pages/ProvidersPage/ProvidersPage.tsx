@@ -33,6 +33,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ProviderCard } from './components/ProviderCard';
 import { ProviderCardSkeleton } from './components/ProviderCardSkeleton';
 import { ConnectDialog } from './components/ConnectDialog';
+import { ConnectAWSDialog } from './components/ConnectAWSDialog';
 import { DisconnectConfirmationDialog } from './components/DisconnectConfirmationDialog';
 import { ProviderSearchFilter } from './components/ProviderSearchFilter';
 import { ApiKeyRotationDialog } from './components/ApiKeyRotationDialog';
@@ -62,6 +63,7 @@ const providerAccents: Record<string, { border: string; glow: string; text: stri
   fly: { border: '#7b68ee', glow: 'rgba(123, 104, 238, 0.15)', text: '#7b68ee' },
   deno: { border: '#0a0a0a', glow: 'rgba(10, 10, 10, 0.15)', text: '#3c3c3c' },
   'functionfly-edge': { border: '#f97316', glow: 'rgba(249, 115, 22, 0.25)', text: '#f97316' },
+  'aws-lambda': { border: '#FF9900', glow: 'rgba(255, 153, 0, 0.20)', text: '#FF9900' },
 };
 
 // Extended provider data with mock stats for demonstration
@@ -323,6 +325,25 @@ export function ProvidersPage() {
       glow: 'rgba(249, 115, 22, 0.25)',
       text: '#f97316',
     };
+  };
+
+  const renderConnectDialog = (provider: ProviderConfig, accent: { border: string; glow: string; text: string }) => {
+    if (provider.id === 'aws-lambda') {
+      return (
+        <ConnectAWSDialog
+          provider={provider}
+          accent={accent}
+          onConnect={async (pid, key) => handleConnect(pid, key)}
+        />
+      );
+    }
+    return (
+      <ConnectDialog
+        provider={provider}
+        accent={accent}
+        onConnect={async (pid, key) => handleConnect(pid, key)}
+      />
+    );
   };
 
   // Get grid columns based on density mode
@@ -625,13 +646,7 @@ export function ProvidersPage() {
                     last24hUptime={providerData?.last24hUptime}
                     functionCount={providerData?.functionCount}
                     accent={accent}
-                    connectDialog={
-                      <ConnectDialog
-                        provider={provider}
-                        accent={accent}
-                        onConnect={async (pid, key) => handleConnect(pid, key)}
-                      />
-                    }
+                    connectDialog={renderConnectDialog(provider, accent)}
                     glassMorphism={glassMorphism}
                     density={dataDensity}
                     statusGlow={statusGlow}
@@ -730,11 +745,7 @@ export function ProvidersPage() {
                           </Button>
                         </>
                       ) : (
-                        <ConnectDialog
-                          provider={provider}
-                          accent={accent}
-                          onConnect={async (pid, key) => handleConnect(pid, key)}
-                        />
+                        renderConnectDialog(provider, accent)
                       )}
                     </div>
                   </div>

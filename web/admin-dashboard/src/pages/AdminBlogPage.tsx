@@ -95,19 +95,14 @@ function BlogSettingsTab() {
     queryFn: async () => {
       const res = await adminApiClient.get<{
         id: string;
-        blog_title: string;
-        posts_per_page: number;
-        meta_description: string;
-      }>('/content/blog/settings');
-      const raw = res as unknown as {
-        blog_title?: string;
-        posts_per_page?: number;
-        meta_description?: string;
-      };
+        blogTitle: string;
+        postsPerPage: number;
+        metaDescription: string;
+      }>('/blog/settings');
       return {
-        blogTitle: raw.blog_title ?? 'FunctionFly Blog',
-        postsPerPage: raw.posts_per_page ?? 10,
-        metaDescription: raw.meta_description ?? '',
+        blogTitle: res.blogTitle ?? 'FunctionFly Blog',
+        postsPerPage: res.postsPerPage ?? 10,
+        metaDescription: res.metaDescription ?? '',
       } as BlogSettings;
     },
   });
@@ -135,10 +130,10 @@ function BlogSettingsTab() {
 
   const saveMutation = useMutation({
     mutationFn: async (settings: BlogSettings) => {
-      await adminApiClient.patch('/content/blog/settings', {
-        blog_title: settings.blogTitle,
-        posts_per_page: settings.postsPerPage,
-        meta_description: settings.metaDescription,
+      await adminApiClient.put('/blog/settings', {
+        blogTitle: settings.blogTitle,
+        postsPerPage: settings.postsPerPage,
+        metaDescription: settings.metaDescription,
       });
     },
     onSuccess: (_data, variables) => {
@@ -265,16 +260,32 @@ function BlogPostsTab() {
   } = useQuery({
     queryKey: ['admin-blog-posts'],
     queryFn: async () => {
-      const res = await adminApiClient.get<{ posts: BlogPost[]; limit: number; offset: number }>(
-        '/content/blog'
+      const res = await adminApiClient.get<{ data: BlogPost[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(
+        '/blog/posts?limit=50'
       );
-      const raw = res as unknown as { posts?: BlogPost[] };
-      return { posts: raw.posts ?? [], limit: 50, offset: 0 };
+      const posts: BlogPost[] = (res.data ?? []).map((p: BlogPost) => {
+        return {
+          id: p.id,
+          title: p.title,
+          slug: p.slug,
+          content: typeof p.body === 'object' ? JSON.stringify(p.body) : p.body,
+          body: typeof p.body === 'object' ? p.body : null,
+          excerpt: p.description,
+          author: p.author?.name ?? 'Unknown',
+          tags: p.tags ?? [],
+          featured_image: p.heroImage?.url,
+          is_published: p.status === 'published',
+          published_at: p.publishedAt,
+          created_at: p.createdAt,
+          updated_at: p.updatedAt ?? p.createdAt,
+        };
+      });
+      return { posts, limit: 50, offset: 0 };
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => adminApiClient.delete(`/content/blog/${id}`),
+    mutationFn: (id: string) => adminApiClient.delete(`/blog/posts/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-blog-posts'] });
       setDeleteConfirm(null);
@@ -353,9 +364,11 @@ function BlogPostsTab() {
             setEditingPost(null);
           }}
           onSaved={() => {
+            console.log('onSaved called - invalidating queries and closing form');
             queryClient.invalidateQueries({ queryKey: ['admin-blog-posts'] });
             setShowForm(false);
             setEditingPost(null);
+            console.log('Form should now be closed');
           }}
         />
       )}
@@ -488,16 +501,24 @@ function PostForm({
   }, [post]);
 
   const createMutation = useMutation({
-    mutationFn: (payload: Record<string, unknown>) => adminApiClient.post('/content/blog', payload),
+    mutationFn: (payload: Record<string, unknown>) => adminApiClient.post('/blog/posts', payload),
     onSuccess: () => {
       onSaved();
+    },
+    onError: (error) => {
+      console.error('Create post error:', error);
+      alert(`Failed to create post: ${error.message}`);
     },
   });
   const updateMutation = useMutation({
     mutationFn: (payload: Record<string, unknown>) =>
-      adminApiClient.patch(`/content/blog/${post!.id}`, payload),
+      adminApiClient.put(`/blog/posts/${post!.id}`, payload),
     onSuccess: () => {
       onSaved();
+    },
+    onError: (error) => {
+      console.error('Update post error:', error);
+      alert(`Failed to update post: ${error.message}`);
     },
   });
 
@@ -554,9 +575,21 @@ function PostForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('1. Form submitted, post:', post?.id);
     if (post) {
-      updateMutation.mutate(payload);
+      console.log('2. Calling updateMutation.mutate');
+      updateMutation.mutate(payload, {
+        onSuccess: (data) => {
+          console.log('3. Update success, data:', data);
+          onSaved();
+        },
+        onError: (err, variables, context) => {
+          console.error('3. Update error:', err, 'Response:', err.response?.data);
+          alert(`Failed to update post: ${err.message}`);
+        }
+      });
     } else {
+      console.log('2. Calling createMutation.mutate');
       createMutation.mutate(payload);
     }
   };
@@ -692,14 +725,13 @@ function BlogCategoriesTab() {
   } = useQuery({
     queryKey: ['admin-blog-categories'],
     queryFn: async () => {
-      const res = await adminApiClient.get<BlogCategory[]>('/content/categories');
-      const raw = res as unknown as BlogCategory[] | { data?: BlogCategory[] };
-      return Array.isArray(raw) ? raw : (raw?.data ?? []);
+      const res = await adminApiClient.get<BlogCategory[]>('/blog/categories');
+      return Array.isArray(res) ? res : [];
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => adminApiClient.delete(`/content/categories/${id}`),
+    mutationFn: (id: string) => adminApiClient.delete(`/blog/categories/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-blog-categories'] });
       setDeleteConfirm(null);
@@ -889,12 +921,12 @@ function CategoryForm({
 
   const createMutation = useMutation({
     mutationFn: (payload: Record<string, unknown>) =>
-      adminApiClient.post('/content/categories', payload),
+      adminApiClient.post('/blog/categories', payload),
     onSuccess: () => onSaved(),
   });
   const updateMutation = useMutation({
     mutationFn: (payload: Record<string, unknown>) =>
-      adminApiClient.patch(`/content/categories/${category!.id}`, payload),
+      adminApiClient.put(`/blog/categories/${category!.id}`, payload),
     onSuccess: () => onSaved(),
   });
 

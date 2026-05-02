@@ -24,7 +24,7 @@ type AIProxyHandler struct {
 func NewAIProxyHandler() *AIProxyHandler {
 	aiURL := os.Getenv("AI_SERVICE_URL")
 	if aiURL == "" {
-		aiURL = "http://localhost:8081" // Default AI service URL
+		aiURL = "http://localhost:18081" // Default AI service URL
 	}
 
 	return &AIProxyHandler{

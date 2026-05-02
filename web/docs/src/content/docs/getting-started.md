@@ -10,20 +10,20 @@ Welcome to FunctionFly™, a production-ready serverless function platform built
 ## Quick Start
 
 ```bash
-# Install the fly CLI
+# Install the ffly CLI
 curl -fsSL https://raw.githubusercontent.com/functionfly/functionfly/main/scripts/install.sh | bash
 
 # Login
-fly login
+ffly login
 
 # Initialize a function
-fly init my-function
+ffly init my-function
 
 # Run locally
-fly dev
+ffly dev
 
 # Publish to registry
-fly publish
+ffly publish
 ```
 
 ## Installation
@@ -46,7 +46,7 @@ go build -o bin/fly ./cmd/fly
 
 ```bash
 fly --version
-fly login --help
+ffly login --help
 ```
 
 ## Your First Function
@@ -64,10 +64,10 @@ export default async function(req) {
 ```
 
 ```bash
-fly init hello-world
+ffly init hello-world
 cd hello-world
-fly dev  # Test locally
-fly publish  # Deploy to production
+ffly dev  # Test locally
+ffly publish  # Deploy to production
 ```
 
 ## Next Steps

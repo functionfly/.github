@@ -150,16 +150,110 @@ func (a *AuthService) getEnvVar(key string) string {
 	return os.Getenv(key)
 }
 
+// getTenantOAuthProvider retrieves a decrypted OAuth provider configuration for a tenant.
+// It looks up the provider in the database, decrypts the client secret, and returns
+// an OAuthProvider ready for use in the OAuth flow.
+func (a *AuthService) getTenantOAuthProvider(ctx context.Context, provider string, tenantID uuid.UUID) (*OAuthProvider, error) {
+	// Get the tenant provider configuration from DB
+	tenantProvider, err := a.repo.GetOAuthProvider(ctx, tenantID, provider)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get OAuth provider from DB: %w", err)
+	}
+	if tenantProvider == nil {
+		return nil, nil // Not found, will fall back to global provider
+	}
+	if !tenantProvider.Enabled {
+		return nil, fmt.Errorf("OAuth provider '%s' is disabled for this tenant", provider)
+	}
+
+	// Decrypt the client secret
+	clientSecret, err := a.repo.DecryptField(tenantProvider.EncryptedClientSecret)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt client secret: %w", err)
+	}
+
+	// Build the oauth2 config for this provider
+	// Note: We need to set the correct endpoint based on the provider
+	endpoint := a.getOAuthEndpoint(provider)
+	callbackURL := a.baseURL + "/v1/auth/oauth/" + provider + "/callback"
+
+	// Parse scopes - default to common scopes if not stored
+	scopes := []string{"openid", "profile", "email"}
+	if len(tenantProvider.Scopes) > 0 {
+		if err := json.Unmarshal(tenantProvider.Scopes, &scopes); err != nil {
+			logrus.WithError(err).Warn("Failed to parse OAuth scopes, using defaults")
+		}
+	}
+
+	oauth2Config := &oauth2.Config{
+		ClientID:     tenantProvider.ClientID,
+		ClientSecret: clientSecret,
+		RedirectURL:  callbackURL,
+		Scopes:       scopes,
+		Endpoint:     endpoint,
+	}
+
+	return &OAuthProvider{
+		Name:        provider,
+		Config:      oauth2Config,
+		UserInfoURL: a.getUserInfoURL(provider),
+		Scopes:      scopes,
+	}, nil
+}
+
+// getOAuthEndpoint returns the correct OAuth2 endpoint for a provider
+func (a *AuthService) getOAuthEndpoint(provider string) oauth2.Endpoint {
+	switch provider {
+	case "google":
+		return google.Endpoint
+	case "github":
+		return github.Endpoint
+	default:
+		// Default to Google for unknown providers
+		return google.Endpoint
+	}
+}
+
+// getUserInfoURL returns the user info endpoint for a provider
+func (a *AuthService) getUserInfoURL(provider string) string {
+	switch provider {
+	case "google":
+		return "https://www.googleapis.com/oauth2/v2/userinfo"
+	case "github":
+		return "https://api.github.com/user"
+	case "microsoft":
+		return "https://graph.microsoft.com/v1.0/me"
+	default:
+		return ""
+	}
+}
+
 // GetOAuthURL generates OAuth authorization URL for a provider.
 // redirectURI is optional; when set (e.g. CLI callback URL), the callback will redirect there with the token.
 // Only http://127.0.0.1 and http://localhost (any port) are allowed for redirectURI.
 // inviteCode is optional unless SignupInviteRequired(); then it must be valid (read-only check) and is stored in OAuth state for callback redemption.
 // loginHint is optional; preserves tenant subdomain or email context through the OAuth flow for better UX (redirect back to origin post-auth).
 // deviceFingerprint is optional; stores a hash of device characteristics for session binding validation on callback (prevents session fixation attacks).
-func (a *AuthService) GetOAuthURL(provider, redirectURI, inviteCode, loginHint, deviceFingerprint string) (string, error) {
-	p, exists := a.oauthProviders[provider]
-	if !exists {
-		return "", fmt.Errorf("OAuth provider '%s' not configured", provider)
+// tenantID is optional; when provided, checks for per-tenant OAuth provider configuration first.
+func (a *AuthService) GetOAuthURL(provider, redirectURI, inviteCode, loginHint, deviceFingerprint string, tenantID *uuid.UUID) (string, error) {
+	var p *OAuthProvider
+	var err error
+
+	// Check for per-tenant OAuth provider first if tenantID is provided
+	if tenantID != nil && *tenantID != uuid.Nil {
+		p, err = a.getTenantOAuthProvider(context.Background(), provider, *tenantID)
+		if err != nil {
+			return "", fmt.Errorf("failed to get tenant OAuth provider: %w", err)
+		}
+	}
+
+	// Fall back to global OAuth provider if not found in tenant
+	if p == nil {
+		var exists bool
+		p, exists = a.oauthProviders[provider]
+		if !exists {
+			return "", fmt.Errorf("OAuth provider '%s' not configured", provider)
+		}
 	}
 
 	if redirectURI != "" && !isAllowedRedirectURI(redirectURI) {

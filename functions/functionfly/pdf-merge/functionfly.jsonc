@@ -49,6 +49,7 @@
   "cache_ttl": 0,
   "timeout_ms": 20000,
   "memory_mb": 512,
+  "price_per_call": 0.015,
   "example": {
     "input": {
       "pdfs": [

@@ -52,11 +52,14 @@ export function AdminUserDetailPage() {
   const updateMutation = useMutation({
     mutationFn: async (payload: { name?: string; email?: string; role?: string; plan?: string }) => {
       const res = await adminApiClient.patch<AdminUser>(`/users/${userId!}`, payload);
-      return res && typeof res === 'object' && 'email' in res ? (res as unknown as AdminUser) : (res as { data?: AdminUser })?.data;
+      // res is AdminAPIResponse<AdminUser> = { data: AdminUser, success: boolean, ... }
+      return (res as { data?: AdminUser })?.data ?? res as AdminUser;
     },
     onSuccess: (updated) => {
-      queryClient.setQueryData(['admin-user-detail', userId], updated ?? data);
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      if (updated) {
+        queryClient.setQueryData(['admin-user-detail', userId], updated);
+        queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      }
       setEditingField(null);
     },
   });
@@ -247,6 +250,7 @@ export function AdminUserDetailPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Detail label="User ID" value={user.id} />
         <Detail label="Email" value={user.email} />
+        <Detail label="Username" value={user.username ?? '—'} />
         <DetailWithAction label="Role" value={(user.role ?? 'user').replace(/_/g, ' ')} capitalize onEdit={() => setEditingField('role')} />
         <DetailWithAction label="Plan" value={PLAN_LABELS[user.plan ?? 'free'] ?? user.plan ?? 'free'} onEdit={() => startEditingPlan(user)} />
         <Detail label="MFA" value={user.mfa_enabled ? 'Enabled' : 'Disabled'} />

@@ -1,6 +1,6 @@
 ---
 title: CLI Reference
-description: Complete fly CLI command reference
+description: Complete ffly CLI command reference
 ---
 
 # CLI Reference
@@ -13,123 +13,123 @@ Complete reference for the `fly` CLI.
 
 ```bash
 # Login with OAuth
-fly login
+ffly login
 
 # Login with dev credentials
-fly login --dev
+ffly login --dev
 
 # Logout
-fly logout
+ffly logout
 
 # Show current user
-fly whoami
+ffly whoami
 ```
 
 ### Project Management
 
 ```bash
 # Initialize new function
-fly init my-function
+ffly init my-function
 
 # List functions
-fly list
+ffly list
 
 # View function details
-fly info my-function
+ffly info my-function
 ```
 
 ### Development
 
 ```bash
 # Run locally with hot reload
-fly dev
+ffly dev
 
 # Run with specific port
-fly dev --port 3000
+ffly dev --port 3000
 
 # Test local function
-fly test local
+ffly test local
 ```
 
 ### Deployment
 
 ```bash
 # Publish to registry
-fly publish
+ffly publish
 
 # Build and publish
-fly publish --build
+ffly publish --build
 
 # Deploy with options
-fly deploy --env production --version 1.0.0
+ffly deploy --env production --version 1.0.0
 ```
 
 ### Execution
 
 ```bash
 # Execute function
-fly invoke my-function --data '{"name": "World"}'
+ffly invoke my-function --data '{"name": "World"}'
 
 # Execute with headers
-fly invoke my-function -H "Authorization: Bearer ..."
+ffly invoke my-function -H "Authorization: Bearer ..."
 
 # Stream execution logs
-fly logs my-function --follow
+ffly logs my-function --follow
 ```
 
 ### Updates
 
 ```bash
 # Bump patch version
-fly update patch
+ffly update patch
 
 # Bump minor version
-fly update minor
+ffly update minor
 
 # Bump major version
-fly update major
+ffly update major
 ```
 
 ### Environment Variables
 
 ```bash
 # List env vars
-fly env list
+ffly env list
 
 # Set env var
-fly env set API_KEY=xxx
+ffly env set API_KEY=xxx
 
 # Get env var
-fly env get API_KEY
+ffly env get API_KEY
 
 # Remove env var
-fly env unset API_KEY
+ffly env unset API_KEY
 ```
 
 ### Secrets
 
 ```bash
 # List secrets
-fly secrets list
+ffly secrets list
 
 # Set secret
-fly secrets set DB_PASSWORD=xxx
+ffly secrets set DB_PASSWORD=xxx
 
 # Remove secret
-fly secrets unset DB_PASSWORD
+ffly secrets unset DB_PASSWORD
 ```
 
 ### Monitoring
 
 ```bash
 # View stats
-fly stats my-function
+ffly stats my-function
 
 # View health
-fly health my-function
+ffly health my-function
 
 # View execution history
-fly executions my-function
+ffly executions my-function
 ```
 
 ## Configuration
@@ -164,12 +164,12 @@ log_level: info
 
 ```bash
 # Full workflow
-fly login
-fly init my-api
-fly dev
-fly publish
-fly logs my-api --follow
+ffly login
+ffly init my-api
+ffly dev
+ffly publish
+ffly logs my-api --follow
 
 # Production deployment
-fly deploy --env production --version 2.0.0
-fly stats my-api
+ffly deploy --env production --version 2.0.0
+ffly stats my-api

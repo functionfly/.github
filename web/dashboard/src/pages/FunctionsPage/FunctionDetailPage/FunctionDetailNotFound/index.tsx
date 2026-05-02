@@ -35,7 +35,6 @@ export function FunctionDetailNotFound({ id, errorMessage }: FunctionDetailNotFo
         <ParticleBackground
           particleCount={15}
           color="rgba(var(--brand-500), 0.3)"
-          speed={0.2}
         />
       </div>
 

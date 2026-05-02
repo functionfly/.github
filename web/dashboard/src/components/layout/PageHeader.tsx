@@ -232,7 +232,7 @@ function generateDefaultBreadcrumbs(pathname: string): BreadcrumbItem[] {
       breadcrumbs.push({ label: 'Settings', path: ROUTES.SETTINGS });
       break;
     case 'agents':
-      breadcrumbs.push({ label: 'Agents', path: ROUTES.AGENTS });
+      breadcrumbs.push({ label: 'Agents', path: ROUTES.AGENT_LIST });
       break;
     case 'evolution':
       breadcrumbs.push({ label: 'Evolution', path: ROUTES.EVOLUTION });

@@ -151,6 +151,7 @@ export interface RuntimeNodeState {
   durationMs: number;
   isActive: boolean;
   progress?: number;
+  generatedCode?: string; // Source code from AI generation
 }
 
 // Runtime edge state for UI
@@ -277,6 +278,7 @@ export interface TestCase {
   status: 'pending' | 'running' | 'passed' | 'failed';
   durationMs?: number;
   logs?: string[];
+  error?: string;
 }
 
 // Version comparison

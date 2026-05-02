@@ -87,6 +87,7 @@ export const API_ROUTES = {
   FACTORY_REVIEWS_PENDING: '/factory/reviews/pending',
   FACTORY_OPPORTUNITIES: '/factory/opportunities',
   FACTORY_FUNCTIONS: '/factory/functions',
+  FACTORY_VERSION_CODE: '/factory/versions',
 } as const;
 
 export type APIRoute = (typeof API_ROUTES)[keyof typeof API_ROUTES];

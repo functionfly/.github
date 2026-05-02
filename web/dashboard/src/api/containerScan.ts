@@ -17,7 +17,7 @@ const vulnerabilitySchema = z.object({
   status: z.enum(['open', 'fixed', 'accepted', 'false_positive']),
   remediation: z.string().optional(),
   reference_urls: z.array(z.string()).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   discovered: z.string(),
   updated: z.string(),
 });

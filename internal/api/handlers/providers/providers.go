@@ -1,6 +1,7 @@
 package providers
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -8,8 +9,13 @@ import (
 	mathrand "math/rand"
 	"net/http"
 	"sort"
+	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	awscredentials "github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/api/utils"
 	"github.com/functionfly/functionfly/internal/auth"
@@ -514,8 +520,17 @@ func (h *Handler) HandleGetProviderCredentials(w http.ResponseWriter, r *http.Re
 	json.NewEncoder(w).Encode(out)
 }
 
-// maskAPIKey returns a masked version of an API key showing first 4 and last 4 characters
+// maskAPIKey returns a masked version of an API key showing first 4 and last 4 characters.
+// For pipe-delimited AWS credentials, masks each field individually.
 func maskAPIKey(key string) string {
+	if strings.Contains(key, "|") {
+		parts := strings.SplitN(key, "|", 4)
+		masked := make([]string, len(parts))
+		for i, p := range parts {
+			masked[i] = maskAPIKey(p)
+		}
+		return strings.Join(masked, "|")
+	}
 	if len(key) <= 12 {
 		return "***"
 	}
@@ -750,6 +765,8 @@ func (h *Handler) validateProviderToken(provider, token string) ProviderValidati
 		return h.validateVercelToken(token)
 	case "fly":
 		return h.validateFlyToken(token)
+	case "aws-lambda":
+		return h.validateAWSToken(token)
 	default:
 		return ProviderValidationResponse{
 			IsValid: false,
@@ -970,27 +987,126 @@ func (h *Handler) validateFlyToken(token string) ProviderValidationResponse {
 	}
 }
 
+// validateAWSToken validates AWS credentials using STS GetCallerIdentity.
+// The token is expected in the format: ACCESS_KEY_ID|SECRET_ACCESS_KEY|REGION[|ROLE_ARN]
+func (h *Handler) validateAWSToken(token string) ProviderValidationResponse {
+	parts := strings.SplitN(token, "|", 4)
+	if len(parts) < 3 {
+		return ProviderValidationResponse{
+			IsValid: false,
+			Message: "Invalid AWS credential format. Expected: AccessKeyID|SecretAccessKey|Region[|RoleARN]",
+		}
+	}
+
+	accessKeyID := strings.TrimSpace(parts[0])
+	secretAccessKey := strings.TrimSpace(parts[1])
+	region := strings.TrimSpace(parts[2])
+
+	if accessKeyID == "" || secretAccessKey == "" || region == "" {
+		return ProviderValidationResponse{
+			IsValid: false,
+			Message: "AWS Access Key ID, Secret Access Key, and Region are all required",
+		}
+	}
+
+	if !strings.HasPrefix(accessKeyID, "AKIA") || len(accessKeyID) != 20 {
+		return ProviderValidationResponse{
+			IsValid: false,
+			Message: "Invalid AWS Access Key ID format (must start with AKIA and be 20 characters)",
+		}
+	}
+
+	if len(secretAccessKey) != 40 {
+		return ProviderValidationResponse{
+			IsValid: false,
+			Message: "Invalid AWS Secret Access Key format (must be 40 characters)",
+		}
+	}
+
+	validRegion := false
+	for _, r := range []string{
+		"us-east-1", "us-east-2", "us-west-1", "us-west-2",
+		"af-south-1", "ap-east-1", "ap-south-1", "ap-south-2",
+		"ap-southeast-1", "ap-southeast-2", "ap-southeast-3",
+		"ap-northeast-1", "ap-northeast-2", "ap-northeast-3",
+		"ca-central-1",
+		"eu-central-1", "eu-central-2", "eu-west-1", "eu-west-2", "eu-west-3",
+		"eu-south-1", "eu-south-2", "eu-north-1",
+		"me-south-1", "me-central-1",
+		"sa-east-1",
+	} {
+		if region == r {
+			validRegion = true
+			break
+		}
+	}
+	if !validRegion {
+		return ProviderValidationResponse{
+			IsValid: false,
+			Message: fmt.Sprintf("Invalid AWS region: %s", region),
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	cfg, err := awsconfig.LoadDefaultConfig(ctx,
+		awsconfig.WithRegion(region),
+		awsconfig.WithCredentialsProvider(
+			awscredentials.NewStaticCredentialsProvider(accessKeyID, secretAccessKey, ""),
+		),
+	)
+	if err != nil {
+		return ProviderValidationResponse{
+			IsValid: false,
+			Message: fmt.Sprintf("Failed to configure AWS client: %v", err),
+		}
+	}
+
+	stsClient := sts.NewFromConfig(cfg)
+	identity, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
+	if err != nil {
+		return ProviderValidationResponse{
+			IsValid: false,
+			Message: fmt.Sprintf("AWS credential validation failed: %v", err),
+		}
+	}
+
+	accountID := aws.ToString(identity.Account)
+	arn := aws.ToString(identity.Arn)
+
+	return ProviderValidationResponse{
+		IsValid: true,
+		Message: fmt.Sprintf("AWS credentials validated — Account: %s", accountID),
+		UserID:  arn,
+		Email:   accountID,
+	}
+}
+
 // estimateCost calculates cost estimation for function deployment
 func (h *Handler) estimateCost(req CostEstimationRequest) CostEstimationResponse {
 	// Base costs per provider (monthly estimates)
 	baseCosts := map[string]float64{
-		"cloudflare": 0.0,  // Free tier
-		"vercel":     0.0,  // Free tier
-		"fly":        2.67, // ~$2.67 for basic usage
+		"cloudflare":  0.0,  // Free tier
+		"vercel":      0.0,  // Free tier
+		"fly":         2.67, // ~$2.67 for basic usage
+		"aws-lambda":  0.0,  // Pay-per-use, no base cost
 	}
 
 	// Compute costs per million requests
 	computeCosts := map[string]float64{
-		"cloudflare": 0.30, // $0.30 per million requests
-		"vercel":     0.40, // $0.40 per million requests
-		"fly":        0.22, // $0.22 per million requests
+		"cloudflare":  0.30, // $0.30 per million requests
+		"vercel":      0.40, // $0.40 per million requests
+		"fly":         0.22, // $0.22 per million requests
+		"aws-lambda":  0.20, // $0.20 per million requests + GB-seconds
 	}
 
 	// Storage costs (per GB/month)
 	storageCosts := map[string]float64{
-		"cloudflare": 0.055,
-		"vercel":     0.10,
-		"fly":        0.15,
+		"cloudflare":  0.055,
+		"vercel":      0.10,
+		"fly":         0.15,
+		"aws-lambda":  0.03, // S3/Lambda storage
 	}
 
 	// Calculate requests per month
@@ -1139,11 +1255,12 @@ func (h *Handler) measureProviderLatency(provider *storage.Provider) int {
 		providerName = "cloudflare"
 	}
 	baseLatencies := map[string]int{
-		"cloudflare": 45,
-		"vercel":     62,
-		"netlify":    55,
-		"aws":        70,
-		"gcp":        65,
+		"cloudflare":  45,
+		"vercel":      62,
+		"netlify":     55,
+		"aws":         70,
+		"aws-lambda":  70,
+		"gcp":         65,
 	}
 	if latency, ok := baseLatencies[providerName]; ok {
 		jitter := time.Duration(mathrand.Intn(20)-10) * time.Millisecond

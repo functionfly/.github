@@ -231,10 +231,7 @@ func (s *DataRetentionScheduler) runRetentionCleanup(ctx context.Context) {
 
 // checkLegalHolds queries if any active legal holds exist that should block cleanup
 func (s *DataRetentionScheduler) checkLegalHolds(ctx context.Context) (bool, error) {
-	// This is a simplified check - in production, you'd query the legal_holds table
-	// For now, we return false to allow cleanup to proceed
-	// TODO: Implement proper legal hold check query
-	return false, nil
+	return s.billingRepo.HasActiveLegalHolds(ctx)
 }
 
 // sendRetentionAlert sends a notification when retention cleanup fails

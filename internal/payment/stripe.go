@@ -4,16 +4,27 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/stripe/stripe-go/v83"
+	"github.com/stripe/stripe-go/v83/account"
+	"github.com/stripe/stripe-go/v83/accountlink"
+	"github.com/stripe/stripe-go/v83/customer"
 	"github.com/stripe/stripe-go/v83/paymentintent"
 )
 
+var (
+	stripeKeyOnce sync.Once
+	stripeKeyVal  string
+)
+
 func stripeKey() string {
-	if stripe.Key != "" {
-		return stripe.Key
+	stripeKeyOnce.Do(func() {
+		stripeKeyVal = os.Getenv("STRIPE_SECRET_KEY")
+	})
+	if stripeKeyVal != "" {
+		stripe.Key = stripeKeyVal
 	}
-	stripe.Key = os.Getenv("STRIPE_SECRET_KEY")
 	return stripe.Key
 }
 
@@ -74,4 +85,86 @@ func Charge(ctx context.Context, paymentMethodID string, amountUSD float64, meta
 // IsConfigured reports whether Stripe is configured (secret key set).
 func IsConfigured() bool {
 	return stripeKey() != ""
+}
+
+// CreateStripeCustomer creates a new Stripe customer with metadata.
+// This is used for tenant-isolated payment processing.
+func CreateStripeCustomer(ctx context.Context, email, name string, metadata map[string]string) (*stripe.Customer, error) {
+	if stripeKey() == "" {
+		return nil, fmt.Errorf("STRIPE_SECRET_KEY is not set")
+	}
+
+	params := &stripe.CustomerParams{
+		Email: stripe.String(email),
+		Name:  stripe.String(name),
+	}
+	if metadata != nil {
+		params.Metadata = metadata
+	}
+
+	cust, err := customer.New(params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Stripe customer: %w", err)
+	}
+
+	return cust, nil
+}
+
+// CreateConnectAccount creates a new Stripe Connect Express account for marketplace tenants.
+// This enables the tenant to receive payments directly to their own Stripe account.
+func CreateConnectAccount(ctx context.Context, email string, metadata map[string]string) (string, error) {
+	if stripeKey() == "" {
+		return "", fmt.Errorf("STRIPE_SECRET_KEY is not set")
+	}
+
+	params := &stripe.AccountParams{
+		Type:  stripe.String(string(stripe.AccountTypeExpress)),
+		Email: stripe.String(email),
+		Capabilities: &stripe.AccountCapabilitiesParams{
+			CardPayments: &stripe.AccountCapabilitiesCardPaymentsParams{
+				Requested: stripe.Bool(true),
+			},
+			Transfers: &stripe.AccountCapabilitiesTransfersParams{
+				Requested: stripe.Bool(true),
+			},
+		},
+		BusinessType: stripe.String(string(stripe.AccountBusinessTypeIndividual)),
+	}
+	if metadata != nil {
+		params.Metadata = metadata
+	}
+
+	acct, err := account.New(params)
+	if err != nil {
+		return "", fmt.Errorf("failed to create Stripe Connect account: %w", err)
+	}
+
+	return acct.ID, nil
+}
+
+// CreateConnectAccountOnboardingLink creates an onboarding link for a Stripe Connect account.
+// This URL allows the tenant to complete their Stripe Connect onboarding.
+func CreateConnectAccountOnboardingLink(ctx context.Context, accountID string) (string, error) {
+	if stripeKey() == "" {
+		return "", fmt.Errorf("STRIPE_SECRET_KEY is not set")
+	}
+
+	returnURL := os.Getenv("APP_URL")
+	if returnURL == "" {
+		returnURL = "https://functionfly.com"
+	}
+
+	params := &stripe.AccountLinkParams{
+		Account:    stripe.String(accountID),
+		RefreshURL: stripe.String(returnURL + "/settings/payouts?refresh=true"),
+		ReturnURL:  stripe.String(returnURL + "/settings/payouts?connected=true"),
+		Type:       stripe.String(string(stripe.AccountLinkTypeAccountOnboarding)),
+	}
+
+	link, err := accountlink.New(params)
+	if err != nil {
+		return "", fmt.Errorf("failed to create account link: %w", err)
+	}
+
+	return link.URL, nil
 }

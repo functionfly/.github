@@ -7,7 +7,7 @@ import { useCreateSecret, useUpdateSecret } from '@/hooks/useVault';
 import { cn } from '@/lib/utils';
 import type { CreateSecretRequest, SecretMetadata, SecretType } from '@/types/vault';
 import { VaultCrypto } from '@/utils/vault-crypto';
-import { Eye, EyeOff, FileKey, Key, Loader2, Lock, Shield } from 'lucide-react';
+import { Eye, EyeOff, FileKey, Key, Loader2, Lock, Shield, Wand2, Copy, Check } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { z } from 'zod';
 
@@ -37,8 +37,11 @@ const secretFormSchema = z.object({
   plaintext: z.string().min(1, 'Secret value is required'),
   passphrase: z
     .string()
-    .min(8, 'Passphrase must be at least 8 characters')
-    .min(1, 'Passphrase is required'),
+    .min(12, 'Passphrase must be at least 12 characters')
+    .min(1, 'Passphrase is required')
+    .regex(/[A-Z]/, 'Passphrase must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Passphrase must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Passphrase must contain at least one digit'),
   scopes: z.array(z.string()).optional(),
 });
 
@@ -59,6 +62,33 @@ const SECRET_TYPES: { value: SecretType; label: string; icon: typeof Key }[] = [
   { value: 'password', label: 'Password', icon: Lock },
   { value: 'certificate', label: 'Certificate', icon: FileKey },
 ];
+
+// Characters for passphrase generation (no ambiguous chars like 0/O, 1/l/I)
+const PASSPHRASE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+const PASSPHRASE_SYMBOLS = '!@#$%^&*+-=?';
+
+function generatePassphrase(length: number = 20): string {
+  const allChars = PASSPHRASE_CHARS + PASSPHRASE_SYMBOLS;
+  const randomValues = crypto.getRandomValues(new Uint8Array(length));
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += allChars[randomValues[i] % allChars.length];
+  }
+  // Ensure at least one of each required class
+  const classes = [
+    'ABCDEFGHJKLMNPQRSTUVWXYZ',
+    'abcdefghjkmnpqrstuvwxyz',
+    '23456789',
+    PASSPHRASE_SYMBOLS,
+  ];
+  const rng = crypto.getRandomValues(new Uint8Array(classes.length));
+  classes.forEach((chars, i) => {
+    const pos = (rng[i] & 0x7f) % result.length;
+    const replacement = chars[rng[i] % chars.length];
+    result = result.substring(0, pos) + replacement + result.substring(pos + 1);
+  });
+  return result;
+}
 
 export interface SecretFormProps {
   onSubmit: () => void;
@@ -84,6 +114,26 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
   const [showPlaintext, setShowPlaintext] = useState(false);
   const [showPassphrase, setShowPassphrase] = useState(false);
   const [isEncrypting, setIsEncrypting] = useState(false);
+  const [passphraseCopied, setPassphraseCopied] = useState(false);
+
+  const handleGeneratePassphrase = useCallback(() => {
+    const generated = generatePassphrase(20);
+    setFormData((prev) => ({ ...prev, passphrase: generated }));
+    setShowPassphrase(true);
+    setPassphraseCopied(false);
+    setErrors((prev) => ({ ...prev, passphrase: undefined }));
+  }, []);
+
+  const handleCopyPassphrase = useCallback(async () => {
+    if (!formData.passphrase) return;
+    try {
+      await navigator.clipboard.writeText(formData.passphrase);
+      setPassphraseCopied(true);
+      setTimeout(() => setPassphraseCopied(false), 2000);
+    } catch {
+      // clipboard API may fail in some environments
+    }
+  }, [formData.passphrase]);
 
   // Validate form field
   const validateField = useCallback(
@@ -304,9 +354,40 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
 
           {/* Passphrase field */}
           <div className="space-y-2">
-            <Label htmlFor="passphrase">
-              Encryption Passphrase <span className="text-error">*</span>
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="passphrase">
+                Encryption Passphrase <span className="text-error">*</span>
+              </Label>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={handleGeneratePassphrase}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-brand-500 hover:text-brand-600 transition-colors"
+                >
+                  <Wand2 className="h-3 w-3" />
+                  Generate
+                </button>
+                {formData.passphrase && (
+                  <button
+                    type="button"
+                    onClick={handleCopyPassphrase}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-text-muted hover:text-text-primary transition-colors ml-2"
+                  >
+                    {passphraseCopied ? (
+                      <>
+                        <Check className="h-3 w-3 text-success" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3 w-3" />
+                        Copy
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
             <div className="relative">
               <Input
                 id="passphrase"

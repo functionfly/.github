@@ -28,16 +28,16 @@ FunctionFly's Secrets Vault provides zero-knowledge encryption for sensitive con
 
 ```bash
 # Create a secret interactively
-fly secrets set DB_PASSWORD
+ffly secrets set DB_PASSWORD
 
 # Create a secret with a value
-fly secrets set API_KEY="sk-1234567890"
+ffly secrets set API_KEY="sk-1234567890"
 
 # Create from a file
-fly secrets set PRIVATE_KEY --file ./key.pem
+ffly secrets set PRIVATE_KEY --file ./key.pem
 
 # Create from environment variable
-fly secrets set WEBHOOK_SECRET --env
+ffly secrets set WEBHOOK_SECRET --env
 ```
 
 ## Using Secrets in Functions
@@ -89,10 +89,10 @@ The passphrase is used to encrypt and decrypt your secrets:
 
 ```bash
 # Set a new passphrase
-fly secrets passphrase set
+ffly secrets passphrase set
 
 # Change existing passphrase (re-encrypts all secrets)
-fly secrets passphrase rotate
+ffly secrets passphrase rotate
 ```
 
 ### Recovery
@@ -118,30 +118,30 @@ FunctionFly cannot recover lost passphrases. Store your passphrase securely:
 
 ```bash
 # List all secret names (values are never shown)
-fly secrets list
+ffly secrets list
 
 # List with metadata
-fly secrets list --verbose
+ffly secrets list --verbose
 ```
 
 ### Update Secrets
 
 ```bash
 # Update an existing secret
-fly secrets set API_KEY="new-value"
+ffly secrets set API_KEY="new-value"
 
 # Update multiple secrets at once
-fly secrets set DB_USER="admin" DB_PASS="secret"
+ffly secrets set DB_USER="admin" DB_PASS="secret"
 ```
 
 ### Delete Secrets
 
 ```bash
 # Remove a secret
-fly secrets delete API_KEY
+ffly secrets delete API_KEY
 
 # Bulk delete
-fly secrets delete OLD_KEY1 OLD_KEY2
+ffly secrets delete OLD_KEY1 OLD_KEY2
 ```
 
 ## Secret Scopes
@@ -150,21 +150,21 @@ fly secrets delete OLD_KEY1 OLD_KEY2
 
 ```bash
 # Secret only available to a specific function
-fly secrets set DATABASE_URL --function my-function
+ffly secrets set DATABASE_URL --function my-function
 ```
 
 ### Environment-Specific Secrets
 
 ```bash
 # Secret only for production environment
-fly secrets set STRIPE_KEY --environment production
+ffly secrets set STRIPE_KEY --environment production
 ```
 
 ### Global Secrets
 
 ```bash
 # Secret available to all functions (default)
-fly secrets set SHARED_CONFIG
+ffly secrets set SHARED_CONFIG
 ```
 
 ## Best Practices

@@ -401,6 +401,73 @@ var (
 		[]string{"tenant_id", "state_path", "trigger_type", "error_type"},
 	)
 
+	// FRG Graph execution metrics
+	frgGraphExecutionsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_frg_graph_executions_total",
+			Help: "Total number of FRG graph executions",
+		},
+		[]string{"tenant_id", "graph_id", "operation_type", "status"},
+	)
+
+	frgGraphExecutionDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "functionfly_frg_graph_execution_duration_seconds",
+			Help:    "FRG graph execution duration in seconds",
+			Buckets: []float64{0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0},
+		},
+		[]string{"tenant_id", "graph_id"},
+	)
+
+	frgGraphActiveCount = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "functionfly_frg_graph_active_count",
+			Help: "Number of active FRG graph executions",
+		},
+		[]string{"tenant_id"},
+	)
+
+	// FRG Quota metrics
+	frgQuotaExceededTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_frg_quota_exceeded_total",
+			Help: "Total number of FRG graph executions blocked due to quota exceeded",
+		},
+		[]string{"tenant_id"},
+	)
+
+	frgQuotaUsagePercent = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "functionfly_frg_quota_usage_percent",
+			Help: "Current FRG quota usage percentage",
+		},
+		[]string{"tenant_id"},
+	)
+
+	frgWebhookSignatureFailures = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_frg_webhook_signature_failures_total",
+			Help: "Total number of FRG webhook signature verification failures",
+		},
+		[]string{"reason"},
+	)
+
+	frgGraphCreationTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_frg_graph_creation_total",
+			Help: "Total number of FRG graph definitions created",
+		},
+		[]string{"tenant_id", "visibility", "status"},
+	)
+
+	frgGraphNodesTotal = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "functionfly_frg_graph_nodes_total",
+			Help: "Total number of nodes across all FRG graphs",
+		},
+		[]string{"tenant_id"},
+	)
+
 	// Event and snapshot metrics
 	stateEventCount = promauto.NewCounterVec(
 		prometheus.CounterOpts{
@@ -956,6 +1023,53 @@ func RecordTriggerExecutionDuration(tenantID, statePath, triggerType string, dur
 // RecordTriggerError records trigger error metrics
 func RecordTriggerError(tenantID, statePath, triggerType, errorType string) {
 	triggerErrorsTotal.WithLabelValues(tenantID, statePath, triggerType, errorType).Inc()
+}
+
+// FRG Graph execution metrics recording functions
+
+// RecordFRGGraphExecution records a FRG graph execution event
+func RecordFRGGraphExecution(tenantID, graphID, operationType, status string) {
+	frgGraphExecutionsTotal.WithLabelValues(tenantID, graphID, operationType, status).Inc()
+}
+
+// RecordFRGGraphExecutionDuration records the duration of a FRG graph execution
+func RecordFRGGraphExecutionDuration(tenantID, graphID string, duration time.Duration) {
+	frgGraphExecutionDuration.WithLabelValues(tenantID, graphID).Observe(duration.Seconds())
+}
+
+// RecordFRGGraphActiveIncrement increments the active graph execution count
+func RecordFRGGraphActiveIncrement(tenantID string) {
+	frgGraphActiveCount.WithLabelValues(tenantID).Inc()
+}
+
+// RecordFRGGraphActiveDecrement decrements the active graph execution count
+func RecordFRGGraphActiveDecrement(tenantID string) {
+	frgGraphActiveCount.WithLabelValues(tenantID).Dec()
+}
+
+// RecordFRGQuotaExceeded records when a FRG graph execution is blocked due to quota
+func RecordFRGQuotaExceeded(tenantID string) {
+	frgQuotaExceededTotal.WithLabelValues(tenantID).Inc()
+}
+
+// RecordFRGQuotaUsagePercent records the current quota usage percentage
+func RecordFRGQuotaUsagePercent(tenantID string, percent float64) {
+	frgQuotaUsagePercent.WithLabelValues(tenantID).Set(percent)
+}
+
+// RecordFRGWebhookSignatureFailure records a FRG webhook signature verification failure
+func RecordFRGWebhookSignatureFailure(reason string) {
+	frgWebhookSignatureFailures.WithLabelValues(reason).Inc()
+}
+
+// RecordFRGGraphCreation records a FRG graph creation event
+func RecordFRGGraphCreation(tenantID, visibility, status string) {
+	frgGraphCreationTotal.WithLabelValues(tenantID, visibility, status).Inc()
+}
+
+// UpdateFRGGraphNodesTotal updates the total node count across all FRG graphs
+func UpdateFRGGraphNodesTotal(tenantID string, count int) {
+	frgGraphNodesTotal.WithLabelValues(tenantID).Set(float64(count))
 }
 
 // Edge metrics (edge.functionfly.com)

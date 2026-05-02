@@ -254,11 +254,21 @@ func (pc *PlatformController) GetStatus(ctx context.Context) (*PlatformStatus, e
 
 func (pc *PlatformController) DispatchTask(ctx context.Context, targetAgentID string, taskType string, taskData map[string]any) error {
 	sessionID := uuid.New().String()
-	return pc.messageService.SendTaskDelegation(ctx, PlatformControllerAgentID, targetAgentID, map[string]any{
-		"task_type": taskType,
-		"task_data": taskData,
-		"dispatched_at": time.Now().UTC(),
-	}, sessionID)
+	msg := &identity.AgentMessage{
+		ID:          uuid.New(),
+		FromAgentID: PlatformControllerAgentID,
+		ToAgentID:   targetAgentID,
+		MessageType: identity.MessageTypeTaskDelegation,
+		Payload: map[string]any{
+			"task_type":    taskType,
+			"task_data":    taskData,
+			"dispatched_at": time.Now().UTC(),
+		},
+		SessionID:  &sessionID,
+		TTLSeconds: 3600,
+		Status:     "pending",
+	}
+	return pc.messageService.SendSystemMessage(ctx, msg)
 }
 
 func (pc *PlatformController) TriggerDiscoveryScan(ctx context.Context) error {
@@ -301,7 +311,16 @@ func (pc *PlatformController) TriggerGeneration(ctx context.Context) error {
 }
 
 func (pc *PlatformController) SendHeartbeat(ctx context.Context, agentID string) error {
-	return pc.messageService.SendHeartbeat(ctx, PlatformControllerAgentID, agentID)
+	msg := &identity.AgentMessage{
+		ID:          uuid.New(),
+		FromAgentID: PlatformControllerAgentID,
+		ToAgentID:   agentID,
+		MessageType: identity.MessageTypeHeartbeat,
+		Payload:     map[string]any{"timestamp": time.Now().Unix()},
+		TTLSeconds:  300,
+		Status:      "pending",
+	}
+	return pc.messageService.SendSystemMessage(ctx, msg)
 }
 
 type PlatformStatus struct {

@@ -210,7 +210,7 @@ export const functionConfigSchema = z
     updated_at: timestampSchema.optional(),
     updatedAt: timestampSchema.optional(),
     version: z.string().min(1),
-    status: z.enum(['draft', 'deploying', 'deployed', 'failed']),
+    status: z.enum(['draft', 'deploying', 'deployed', 'failed', 'active', 'suspended']),
     trust_score: z.number().min(0).max(100).optional(),
     trustScore: z.number().min(0).max(100).optional(),
   })

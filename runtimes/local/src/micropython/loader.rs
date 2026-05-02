@@ -169,6 +169,447 @@ impl MicroPythonLoader {
                 MicroPythonError::LinkError(format!("Failed to define host_set_output: {}", e))
             })?;
 
+        // --- FunctionFly host functions ---
+        // These provide the same host functions as the Go runtime's functionfly.* namespace,
+        // enabling Python code running in MicroPython to access platform services.
+
+        // host.ff_log(ptr, len) - Log a message via the FunctionFly logging system
+        linker
+            .func_wrap(
+                "host",
+                "ff_log",
+                |mut caller: wasmtime::Caller<'_, HostState>, level: i32, msg_ptr: i32, msg_len: i32| {
+                    let memory = caller.get_export("memory").and_then(|e| e.into_memory());
+                    if let Some(memory) = memory {
+                        let mut buffer = vec![0u8; msg_len as usize];
+                        if memory.read(&caller, msg_ptr as usize, &mut buffer).is_ok() {
+                            if let Ok(message) = String::from_utf8(buffer) {
+                                match level {
+                                    0 => tracing::debug!(target: "functionfly", "{}", message),
+                                    1 => tracing::info!(target: "functionfly", "{}", message),
+                                    2 => tracing::warn!(target: "functionfly", "{}", message),
+                                    3 => tracing::error!(target: "functionfly", "{}", message),
+                                    _ => tracing::info!(target: "functionfly", "{}", message),
+                                }
+                            }
+                        }
+                    }
+                },
+            )
+            .map_err(|e| {
+                MicroPythonError::LinkError(format!("Failed to define host.ff_log: {}", e))
+            })?;
+
+        // host.ff_get_env(name_ptr, name_len, val_ptr, val_len_ptr) -> i32
+        // Returns 0 on success, -1 if not found, -2 on memory error
+        linker
+            .func_wrap(
+                "host",
+                "ff_get_env",
+                |mut caller: wasmtime::Caller<'_, HostState>,
+                 name_ptr: i32,
+                 name_len: i32,
+                 val_ptr: i32,
+                 val_len_ptr: i32| -> i32 {
+                    let memory = match caller.get_export("memory").and_then(|e| e.into_memory()) {
+                        Some(m) => m,
+                        None => return -2,
+                    };
+
+                    // Read the variable name
+                    let mut name_buf = vec![0u8; name_len as usize];
+                    if memory.read(&caller, name_ptr as usize, &mut name_buf).is_err() {
+                        return -2;
+                    }
+                    let name = match String::from_utf8(name_buf) {
+                        Ok(n) => n,
+                        Err(_) => return -2,
+                    };
+
+                    // Get the value from the env provider or std::env
+                    let value = {
+                        let state = caller.data();
+                        if let Some(ref provider) = state.env_provider {
+                            match provider(&name) {
+                                Some(v) => v,
+                                None => return -1,
+                            }
+                        } else {
+                            match std::env::var(&name) {
+                                Ok(v) => v,
+                                Err(_) => return -1,
+                            }
+                        }
+                    };
+
+                    let value_bytes = value.as_bytes();
+                    let value_len = value_bytes.len() as i32;
+
+                    // Write value length
+                    if memory.write(&mut caller, val_len_ptr as usize, &value_len.to_le_bytes()).is_err() {
+                        return -2;
+                    }
+
+                    // Write value data
+                    if memory.write(&mut caller, val_ptr as usize, value_bytes).is_err() {
+                        return -2;
+                    }
+
+                    0
+                },
+            )
+            .map_err(|e| {
+                MicroPythonError::LinkError(format!("Failed to define host.ff_get_env: {}", e))
+            })?;
+
+        // host.ff_kv_get(key_ptr, key_len, val_ptr, val_len_ptr) -> i32
+        linker
+            .func_wrap(
+                "host",
+                "ff_kv_get",
+                |mut caller: wasmtime::Caller<'_, HostState>,
+                 key_ptr: i32,
+                 key_len: i32,
+                 val_ptr: i32,
+                 val_len_ptr: i32| -> i32 {
+                    let memory = match caller.get_export("memory").and_then(|e| e.into_memory()) {
+                        Some(m) => m,
+                        None => return -2,
+                    };
+
+                    let mut key_buf = vec![0u8; key_len as usize];
+                    if memory.read(&caller, key_ptr as usize, &mut key_buf).is_err() {
+                        return -2;
+                    }
+                    let key = match String::from_utf8(key_buf) {
+                        Ok(k) => k,
+                        Err(_) => return -2,
+                    };
+
+                    let state = caller.data();
+                    let kv_get = match &state.kv_get {
+                        Some(f) => f.clone(),
+                        None => return -3, // KV not configured
+                    };
+
+                    match kv_get(&key) {
+                        Ok(value) => {
+                            let value_bytes = value.as_bytes();
+                            let value_len = value_bytes.len() as i32;
+                            if memory.write(&mut caller, val_len_ptr as usize, &value_len.to_le_bytes()).is_err() {
+                                return -2;
+                            }
+                            if memory.write(&mut caller, val_ptr as usize, value_bytes).is_err() {
+                                return -2;
+                            }
+                            0
+                        }
+                        Err(_) => -1,
+                    }
+                },
+            )
+            .map_err(|e| {
+                MicroPythonError::LinkError(format!("Failed to define host.ff_kv_get: {}", e))
+            })?;
+
+        // host.ff_kv_set(key_ptr, key_len, val_ptr, val_len) -> i32
+        linker
+            .func_wrap(
+                "host",
+                "ff_kv_set",
+                |mut caller: wasmtime::Caller<'_, HostState>,
+                 key_ptr: i32,
+                 key_len: i32,
+                 val_ptr: i32,
+                 val_len: i32| -> i32 {
+                    let memory = match caller.get_export("memory").and_then(|e| e.into_memory()) {
+                        Some(m) => m,
+                        None => return -2,
+                    };
+
+                    let mut key_buf = vec![0u8; key_len as usize];
+                    if memory.read(&caller, key_ptr as usize, &mut key_buf).is_err() {
+                        return -2;
+                    }
+                    let key = match String::from_utf8(key_buf) {
+                        Ok(k) => k,
+                        Err(_) => return -2,
+                    };
+
+                    let mut val_buf = vec![0u8; val_len as usize];
+                    if memory.read(&caller, val_ptr as usize, &mut val_buf).is_err() {
+                        return -2;
+                    }
+                    let value = match String::from_utf8(val_buf) {
+                        Ok(v) => v,
+                        Err(_) => return -2,
+                    };
+
+                    let state = caller.data();
+                    let kv_set = match &state.kv_set {
+                        Some(f) => f.clone(),
+                        None => return -3,
+                    };
+
+                    match kv_set(&key, &value) {
+                        Ok(()) => 0,
+                        Err(_) => -1,
+                    }
+                },
+            )
+            .map_err(|e| {
+                MicroPythonError::LinkError(format!("Failed to define host.ff_kv_set: {}", e))
+            })?;
+
+        // host.ff_state_get(path_ptr, path_len, val_ptr, val_len_ptr) -> i32
+        linker
+            .func_wrap(
+                "host",
+                "ff_state_get",
+                |mut caller: wasmtime::Caller<'_, HostState>,
+                 path_ptr: i32,
+                 path_len: i32,
+                 val_ptr: i32,
+                 val_len_ptr: i32| -> i32 {
+                    let memory = match caller.get_export("memory").and_then(|e| e.into_memory()) {
+                        Some(m) => m,
+                        None => return -2,
+                    };
+
+                    let mut path_buf = vec![0u8; path_len as usize];
+                    if memory.read(&caller, path_ptr as usize, &mut path_buf).is_err() {
+                        return -2;
+                    }
+                    let path = match String::from_utf8(path_buf) {
+                        Ok(p) => p,
+                        Err(_) => return -2,
+                    };
+
+                    let state = caller.data();
+                    let state_get = match &state.state_get {
+                        Some(f) => f.clone(),
+                        None => return -3, // StateFabric not configured
+                    };
+
+                    match state_get(&path) {
+                        Ok(value) => {
+                            let value_bytes = value.as_bytes();
+                            let value_len = value_bytes.len() as i32;
+                            if memory.write(&mut caller, val_len_ptr as usize, &value_len.to_le_bytes()).is_err() {
+                                return -2;
+                            }
+                            if memory.write(&mut caller, val_ptr as usize, value_bytes).is_err() {
+                                return -2;
+                            }
+                            0
+                        }
+                        Err(_) => -1,
+                    }
+                },
+            )
+            .map_err(|e| {
+                MicroPythonError::LinkError(format!("Failed to define host.ff_state_get: {}", e))
+            })?;
+
+        // host.ff_state_set(path_ptr, path_len, val_ptr, val_len) -> i32
+        linker
+            .func_wrap(
+                "host",
+                "ff_state_set",
+                |mut caller: wasmtime::Caller<'_, HostState>,
+                 path_ptr: i32,
+                 path_len: i32,
+                 val_ptr: i32,
+                 val_len: i32| -> i32 {
+                    let memory = match caller.get_export("memory").and_then(|e| e.into_memory()) {
+                        Some(m) => m,
+                        None => return -2,
+                    };
+
+                    let mut path_buf = vec![0u8; path_len as usize];
+                    if memory.read(&caller, path_ptr as usize, &mut path_buf).is_err() {
+                        return -2;
+                    }
+                    let path = match String::from_utf8(path_buf) {
+                        Ok(p) => p,
+                        Err(_) => return -2,
+                    };
+
+                    let mut val_buf = vec![0u8; val_len as usize];
+                    if memory.read(&caller, val_ptr as usize, &mut val_buf).is_err() {
+                        return -2;
+                    }
+                    let value = match String::from_utf8(val_buf) {
+                        Ok(v) => v,
+                        Err(_) => return -2,
+                    };
+
+                    let state = caller.data();
+                    let state_set = match &state.state_set {
+                        Some(f) => f.clone(),
+                        None => return -3,
+                    };
+
+                    match state_set(&path, &value) {
+                        Ok(()) => 0,
+                        Err(_) => -1,
+                    }
+                },
+            )
+            .map_err(|e| {
+                MicroPythonError::LinkError(format!("Failed to define host.ff_state_set: {}", e))
+            })?;
+
+        // host.ff_state_delete(path_ptr, path_len) -> i32
+        linker
+            .func_wrap(
+                "host",
+                "ff_state_delete",
+                |mut caller: wasmtime::Caller<'_, HostState>,
+                 path_ptr: i32,
+                 path_len: i32| -> i32 {
+                    let memory = match caller.get_export("memory").and_then(|e| e.into_memory()) {
+                        Some(m) => m,
+                        None => return -2,
+                    };
+
+                    let mut path_buf = vec![0u8; path_len as usize];
+                    if memory.read(&caller, path_ptr as usize, &mut path_buf).is_err() {
+                        return -2;
+                    }
+                    let path = match String::from_utf8(path_buf) {
+                        Ok(p) => p,
+                        Err(_) => return -2,
+                    };
+
+                    let state = caller.data();
+                    let state_delete = match &state.state_delete {
+                        Some(f) => f.clone(),
+                        None => return -3,
+                    };
+
+                    match state_delete(&path) {
+                        Ok(()) => 0,
+                        Err(_) => -1,
+                    }
+                },
+            )
+            .map_err(|e| {
+                MicroPythonError::LinkError(format!("Failed to define host.ff_state_delete: {}", e))
+            })?;
+
+        // host.ff_state_get_fabric(fabric_id_ptr, fabric_id_len, resp_ptr, resp_len_ptr) -> i32
+        linker
+            .func_wrap(
+                "host",
+                "ff_state_get_fabric",
+                |mut caller: wasmtime::Caller<'_, HostState>,
+                 fabric_id_ptr: i32,
+                 fabric_id_len: i32,
+                 resp_ptr: i32,
+                 resp_len_ptr: i32| -> i32 {
+                    let memory = match caller.get_export("memory").and_then(|e| e.into_memory()) {
+                        Some(m) => m,
+                        None => return -2,
+                    };
+
+                    let mut id_buf = vec![0u8; fabric_id_len as usize];
+                    if memory.read(&caller, fabric_id_ptr as usize, &mut id_buf).is_err() {
+                        return -2;
+                    }
+                    let fabric_id = match String::from_utf8(id_buf) {
+                        Ok(id) => id,
+                        Err(_) => return -2,
+                    };
+
+                    let state = caller.data();
+                    let get_fabric = match &state.state_get_fabric {
+                        Some(f) => f.clone(),
+                        None => return -3,
+                    };
+
+                    match get_fabric(&fabric_id) {
+                        Ok(value) => {
+                            let value_bytes = value.as_bytes();
+                            let value_len = value_bytes.len() as i32;
+                            if memory.write(&mut caller, resp_len_ptr as usize, &value_len.to_le_bytes()).is_err() {
+                                return -2;
+                            }
+                            if memory.write(&mut caller, resp_ptr as usize, value_bytes).is_err() {
+                                return -2;
+                            }
+                            0
+                        }
+                        Err(_) => -1,
+                    }
+                },
+            )
+            .map_err(|e| {
+                MicroPythonError::LinkError(format!("Failed to define host.ff_state_get_fabric: {}", e))
+            })?;
+
+        // host.ff_state_create_snapshot(path_ptr, path_len, label_ptr, label_len, resp_ptr, resp_len_ptr) -> i32
+        linker
+            .func_wrap(
+                "host",
+                "ff_state_create_snapshot",
+                |mut caller: wasmtime::Caller<'_, HostState>,
+                 path_ptr: i32,
+                 path_len: i32,
+                 label_ptr: i32,
+                 label_len: i32,
+                 resp_ptr: i32,
+                 resp_len_ptr: i32| -> i32 {
+                    let memory = match caller.get_export("memory").and_then(|e| e.into_memory()) {
+                        Some(m) => m,
+                        None => return -2,
+                    };
+
+                    let mut path_buf = vec![0u8; path_len as usize];
+                    if memory.read(&caller, path_ptr as usize, &mut path_buf).is_err() {
+                        return -2;
+                    }
+                    let path = match String::from_utf8(path_buf) {
+                        Ok(p) => p,
+                        Err(_) => return -2,
+                    };
+
+                    let label = if label_len > 0 {
+                        let mut label_buf = vec![0u8; label_len as usize];
+                        if memory.read(&caller, label_ptr as usize, &mut label_buf).is_err() {
+                            return -2;
+                        }
+                        String::from_utf8(label_buf).unwrap_or_default()
+                    } else {
+                        String::new()
+                    };
+
+                    let state = caller.data();
+                    let create_snapshot = match &state.state_create_snapshot {
+                        Some(f) => f.clone(),
+                        None => return -3,
+                    };
+
+                    match create_snapshot(&path, &label) {
+                        Ok(value) => {
+                            let value_bytes = value.as_bytes();
+                            let value_len = value_bytes.len() as i32;
+                            if memory.write(&mut caller, resp_len_ptr as usize, &value_len.to_le_bytes()).is_err() {
+                                return -2;
+                            }
+                            if memory.write(&mut caller, resp_ptr as usize, value_bytes).is_err() {
+                                return -2;
+                            }
+                            0
+                        }
+                        Err(_) => -1,
+                    }
+                },
+            )
+            .map_err(|e| {
+                MicroPythonError::LinkError(format!("Failed to define host.ff_state_create_snapshot: {}", e))
+            })?;
+
         Ok(())
     }
 

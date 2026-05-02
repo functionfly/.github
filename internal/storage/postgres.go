@@ -68,6 +68,7 @@ type PostgresDB struct {
 	exportRepository         *ExportRepository
 	teamMemoryRepository     TeamMemoryRepository
 	creditNoteRepository     *CreditNoteRepository
+	tenantStripeConfigRepository *TenantStripeConfigRepository
 
 	// Read replica connections
 	readReplicas       []ReadReplicaConnection
@@ -284,6 +285,7 @@ func NewPostgresDBWithOptions(skipPreparedStatements bool) (*PostgresDB, error) 
 	postgresDB.exportRepository = NewExportRepository(postgresDB.DB)
 	postgresDB.teamMemoryRepository = NewTeamMemoryRepository(postgresDB.GORM, nil)
 	postgresDB.creditNoteRepository = NewCreditNoteRepositorySQL(postgresDB)
+	postgresDB.tenantStripeConfigRepository = NewTenantStripeConfigRepository(postgresDB.DB)
 
 	// Initialize encryption manager
 	encryptionManager, err := NewDatabaseEncryptionManager(postgresDB)
@@ -613,4 +615,130 @@ func (db *PostgresDB) ListMemorySharesByMemoryID(ctx context.Context, memoryID u
 	}
 	err := query.Find(&shares).Error
 	return shares, err
+}
+
+// ── Tenant Auth Settings (Backend-in-a-Box) ─────────────────────────────────
+
+func (db *PostgresDB) CreateAuthSettings(ctx context.Context, settings *TenantAuthSettings) error {
+	return db.billingRepository.CreateAuthSettings(ctx, settings)
+}
+
+func (db *PostgresDB) GetAuthSettings(ctx context.Context, tenantID uuid.UUID) (*TenantAuthSettings, error) {
+	return db.billingRepository.GetAuthSettings(ctx, tenantID)
+}
+
+func (db *PostgresDB) UpdateAuthSettings(ctx context.Context, tenantID uuid.UUID, updates map[string]interface{}) error {
+	return db.billingRepository.UpdateAuthSettings(ctx, tenantID, updates)
+}
+
+func (db *PostgresDB) DeleteAuthSettings(ctx context.Context, tenantID uuid.UUID) error {
+	return db.billingRepository.DeleteAuthSettings(ctx, tenantID)
+}
+
+func (db *PostgresDB) CreateOAuthProvider(ctx context.Context, provider *TenantOAuthProvider) error {
+	return db.billingRepository.CreateOAuthProvider(ctx, provider)
+}
+
+func (db *PostgresDB) GetOAuthProvider(ctx context.Context, tenantID uuid.UUID, provider string) (*TenantOAuthProvider, error) {
+	return db.billingRepository.GetOAuthProvider(ctx, tenantID, provider)
+}
+
+func (db *PostgresDB) ListOAuthProviders(ctx context.Context, tenantID uuid.UUID) ([]*TenantOAuthProvider, error) {
+	return db.billingRepository.ListOAuthProviders(ctx, tenantID)
+}
+
+func (db *PostgresDB) UpdateOAuthProvider(ctx context.Context, tenantID uuid.UUID, provider string, updates map[string]interface{}) (*TenantOAuthProvider, error) {
+	return db.billingRepository.UpdateOAuthProvider(ctx, tenantID, provider, updates)
+}
+
+func (db *PostgresDB) DeleteOAuthProvider(ctx context.Context, tenantID uuid.UUID, provider string) error {
+	return db.billingRepository.DeleteOAuthProvider(ctx, tenantID, provider)
+}
+
+func (db *PostgresDB) GetEnabledOAuthProviders(ctx context.Context, tenantID uuid.UUID) ([]*TenantOAuthProvider, error) {
+	return db.billingRepository.GetEnabledOAuthProviders(ctx, tenantID)
+}
+
+func (db *PostgresDB) CreateInviteCode(ctx context.Context, invite *TenantInviteCode) error {
+	return db.billingRepository.CreateInviteCode(ctx, invite)
+}
+
+func (db *PostgresDB) GetInviteCode(ctx context.Context, code string) (*TenantInviteCode, error) {
+	return db.billingRepository.GetInviteCode(ctx, code)
+}
+
+func (db *PostgresDB) GetInviteCodesByTenant(ctx context.Context, tenantID uuid.UUID, includeUsed bool) ([]*TenantInviteCode, error) {
+	return db.billingRepository.GetInviteCodesByTenant(ctx, tenantID, includeUsed)
+}
+
+func (db *PostgresDB) GetInviteCodeByEmail(ctx context.Context, tenantID uuid.UUID, email string) (*TenantInviteCode, error) {
+	return db.billingRepository.GetInviteCodeByEmail(ctx, tenantID, email)
+}
+
+func (db *PostgresDB) AcceptInviteCode(ctx context.Context, code string, userID uuid.UUID) error {
+	return db.billingRepository.AcceptInviteCode(ctx, code, userID)
+}
+
+func (db *PostgresDB) RevokeInviteCode(ctx context.Context, code string) error {
+	return db.billingRepository.RevokeInviteCode(ctx, code)
+}
+
+func (db *PostgresDB) IncrementInviteCodeUses(ctx context.Context, code string) error {
+	return db.billingRepository.IncrementInviteCodeUses(ctx, code)
+}
+
+func (db *PostgresDB) DeleteExpiredInviteCodes(ctx context.Context) (int64, error) {
+	return db.billingRepository.DeleteExpiredInviteCodes(ctx)
+}
+
+func (db *PostgresDB) CreateMembership(ctx context.Context, membership *TenantMembership) error {
+	return db.billingRepository.CreateMembership(ctx, membership)
+}
+
+func (db *PostgresDB) GetMembership(ctx context.Context, tenantID, userID uuid.UUID) (*TenantMembership, error) {
+	return db.billingRepository.GetMembership(ctx, tenantID, userID)
+}
+
+func (db *PostgresDB) ListMemberships(ctx context.Context, tenantID uuid.UUID) ([]*TenantMembership, error) {
+	return db.billingRepository.ListMemberships(ctx, tenantID)
+}
+
+func (db *PostgresDB) ListMembershipsByRole(ctx context.Context, tenantID uuid.UUID, role string) ([]*TenantMembership, error) {
+	return db.billingRepository.ListMembershipsByRole(ctx, tenantID, role)
+}
+
+func (db *PostgresDB) UpdateMembership(ctx context.Context, tenantID, userID uuid.UUID, updates map[string]interface{}) (*TenantMembership, error) {
+	return db.billingRepository.UpdateMembership(ctx, tenantID, userID, updates)
+}
+
+func (db *PostgresDB) DeleteMembership(ctx context.Context, tenantID, userID uuid.UUID) error {
+	return db.billingRepository.DeleteMembership(ctx, tenantID, userID)
+}
+
+func (db *PostgresDB) UpdateMembershipLastActive(ctx context.Context, tenantID, userID uuid.UUID) error {
+	return db.billingRepository.UpdateMembershipLastActive(ctx, tenantID, userID)
+}
+
+func (db *PostgresDB) CountMembershipsByTenant(ctx context.Context, tenantID uuid.UUID) (int, error) {
+	return db.billingRepository.CountMembershipsByTenant(ctx, tenantID)
+}
+
+func (db *PostgresDB) CountMembershipsByRole(ctx context.Context, tenantID uuid.UUID, role string) (int, error) {
+	return db.billingRepository.CountMembershipsByRole(ctx, tenantID, role)
+}
+
+func (db *PostgresDB) CreateAuthAuditLog(ctx context.Context, log *TenantAuthAuditLog) error {
+	return db.billingRepository.CreateAuthAuditLog(ctx, log)
+}
+
+func (db *PostgresDB) ListAuthAuditLogs(ctx context.Context, tenantID uuid.UUID, limit, offset int, actions []string, userID *uuid.UUID, since *time.Time) ([]*TenantAuthAuditLog, int, error) {
+	return db.billingRepository.ListAuthAuditLogs(ctx, tenantID, limit, offset, actions, userID, since)
+}
+
+func (db *PostgresDB) GetAuthAuditLogsByUser(ctx context.Context, tenantID, userID uuid.UUID, limit int) ([]*TenantAuthAuditLog, error) {
+	return db.billingRepository.GetAuthAuditLogsByUser(ctx, tenantID, userID, limit)
+}
+
+func (db *PostgresDB) DeleteOldAuthAuditLogs(ctx context.Context, before time.Time) (int64, error) {
+	return db.billingRepository.DeleteOldAuthAuditLogs(ctx, before)
 }

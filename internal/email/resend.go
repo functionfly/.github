@@ -362,6 +362,18 @@ func (s *ResendService) SendTeamInvite(email, orgName, invitedBy, role, acceptUR
 	return s.SendEmail(email, subject, tpl.Text, tpl.HTML)
 }
 
+func (s *ResendService) SendBundleWelcomeEmail(email, bundleName, dashboardURL string) error {
+	subject := fmt.Sprintf("Welcome to %s — FunctionFly", bundleName)
+	tpl := BundleWelcomeTemplate(bundleName, dashboardURL)
+	return s.SendEmail(email, subject, tpl.Text, tpl.HTML)
+}
+
+func (s *ResendService) SendInviteEmail(email, inviterName, orgName, role, acceptURL string) error {
+	subject := fmt.Sprintf("You're Invited to Join %s — FunctionFly", orgName)
+	tpl := InviteEmailTemplate(inviterName, orgName, role, acceptURL)
+	return s.SendEmail(email, subject, tpl.Text, tpl.HTML)
+}
+
 func (s *ResendService) SendVaultSecretShared(email, secretName, sharedBy, accessLevel, viewURL string) error {
 	subject := "Secret Shared with You — FunctionFly Vault"
 	tpl := VaultSecretSharedTemplate(secretName, sharedBy, accessLevel, viewURL)

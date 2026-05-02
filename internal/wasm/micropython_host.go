@@ -431,3 +431,276 @@ func DefineMicropythonHostFunctionsWithState(linker *wasmtime.Linker, store *was
 
 	return nil
 }
+
+// DefineFunctionFlyPythonBridge registers env.ff_* host functions that bridge
+// Python code running in MicroPython to FunctionFly platform services.
+// These functions are called by the _functionfly Python module via the
+// shared memory + mp_js_hook protocol.
+func DefineFunctionFlyPythonBridge(linker *wasmtime.Linker, store *wasmtime.Store, handler HostFunctionHandler) error {
+	// env.ff_log(level, msg_ptr, msg_len)
+	if err := linker.DefineFunc(store, "env", "ff_log", func(caller *wasmtime.Caller, level, msgPtr, msgLen int32) {
+		memory := caller.GetExport("memory").Memory()
+		if memory == nil {
+			return
+		}
+		memoryData := memory.UnsafeData(store)
+		if msgPtr < 0 || int(msgPtr)+int(msgLen) > len(memoryData) {
+			return
+		}
+		message := string(memoryData[msgPtr : msgPtr+msgLen])
+		handler.Log(message)
+	}); err != nil {
+		return err
+	}
+
+	// env.ff_get_env(name_ptr, name_len, val_ptr, val_len_ptr) -> i32
+	if err := linker.DefineFunc(store, "env", "ff_get_env", func(caller *wasmtime.Caller, namePtr, nameLen, valPtr, valLenPtr int32) int32 {
+		memory := caller.GetExport("memory").Memory()
+		if memory == nil {
+			return -2
+		}
+		memoryData := memory.UnsafeData(store)
+		if err := validateMemoryBounds(memoryData, namePtr, nameLen); err != nil {
+			return -2
+		}
+		name := string(memoryData[namePtr : namePtr+nameLen])
+		value, err := handler.GetEnv(name)
+		if err != nil {
+			return -1
+		}
+		valueBytes := []byte(value)
+		valLen := len(valueBytes)
+		if err := validateMemoryBounds(memoryData, valPtr, int32(valLen)); err != nil {
+			return -2
+		}
+		copy(memoryData[valPtr:], valueBytes)
+		if err := validateMemoryBounds(memoryData, valLenPtr, 4); err != nil {
+			return -2
+		}
+		memoryData[valLenPtr] = byte(valLen)
+		memoryData[valLenPtr+1] = byte(valLen >> 8)
+		memoryData[valLenPtr+2] = byte(valLen >> 16)
+		memoryData[valLenPtr+3] = byte(valLen >> 24)
+		return 0
+	}); err != nil {
+		return err
+	}
+
+	// env.ff_kv_get(key_ptr, key_len, val_ptr, val_len_ptr) -> i32
+	if err := linker.DefineFunc(store, "env", "ff_kv_get", func(caller *wasmtime.Caller, keyPtr, keyLen, valPtr, valLenPtr int32) int32 {
+		memory := caller.GetExport("memory").Memory()
+		if memory == nil {
+			return -2
+		}
+		memoryData := memory.UnsafeData(store)
+		if err := validateMemoryBounds(memoryData, keyPtr, keyLen); err != nil {
+			return -2
+		}
+		key := string(memoryData[keyPtr : keyPtr+keyLen])
+		value, err := handler.KVGet(key)
+		if err != nil {
+			return -1
+		}
+		valueBytes := []byte(value)
+		valLen := len(valueBytes)
+		if err := validateMemoryBounds(memoryData, valPtr, int32(valLen)); err != nil {
+			return -2
+		}
+		copy(memoryData[valPtr:], valueBytes)
+		if err := validateMemoryBounds(memoryData, valLenPtr, 4); err != nil {
+			return -2
+		}
+		memoryData[valLenPtr] = byte(valLen)
+		memoryData[valLenPtr+1] = byte(valLen >> 8)
+		memoryData[valLenPtr+2] = byte(valLen >> 16)
+		memoryData[valLenPtr+3] = byte(valLen >> 24)
+		return 0
+	}); err != nil {
+		return err
+	}
+
+	// env.ff_kv_set(key_ptr, key_len, val_ptr, val_len) -> i32
+	if err := linker.DefineFunc(store, "env", "ff_kv_set", func(caller *wasmtime.Caller, keyPtr, keyLen, valPtr, valLen int32) int32 {
+		memory := caller.GetExport("memory").Memory()
+		if memory == nil {
+			return -2
+		}
+		memoryData := memory.UnsafeData(store)
+		if err := validateMemoryBounds(memoryData, keyPtr, keyLen); err != nil {
+			return -2
+		}
+		key := string(memoryData[keyPtr : keyPtr+keyLen])
+		if err := validateMemoryBounds(memoryData, valPtr, valLen); err != nil {
+			return -2
+		}
+		value := string(memoryData[valPtr : valPtr+valLen])
+		if err := handler.KVSet(key, value); err != nil {
+			return -1
+		}
+		return 0
+	}); err != nil {
+		return err
+	}
+
+	// env.ff_state_get(path_ptr, path_len, val_ptr, val_len_ptr) -> i32
+	if err := linker.DefineFunc(store, "env", "ff_state_get", func(caller *wasmtime.Caller, pathPtr, pathLen, valPtr, valLenPtr int32) int32 {
+		memory := caller.GetExport("memory").Memory()
+		if memory == nil {
+			return -2
+		}
+		memoryData := memory.UnsafeData(store)
+		if err := validateMemoryBounds(memoryData, pathPtr, pathLen); err != nil {
+			return -2
+		}
+		path := string(memoryData[pathPtr : pathPtr+pathLen])
+		value, err := handler.StateGet(path)
+		if err != nil {
+			return -1
+		}
+		valueBytes := []byte(value)
+		valLen := len(valueBytes)
+		if globalSecurityConfig != nil && uint32(valLen) > globalSecurityConfig.MaxOutputSize {
+			return -1
+		}
+		if err := validateMemoryBounds(memoryData, valPtr, int32(valLen)); err != nil {
+			return -2
+		}
+		copy(memoryData[valPtr:], valueBytes)
+		if err := validateMemoryBounds(memoryData, valLenPtr, 4); err != nil {
+			return -2
+		}
+		memoryData[valLenPtr] = byte(valLen)
+		memoryData[valLenPtr+1] = byte(valLen >> 8)
+		memoryData[valLenPtr+2] = byte(valLen >> 16)
+		memoryData[valLenPtr+3] = byte(valLen >> 24)
+		return 0
+	}); err != nil {
+		return err
+	}
+
+	// env.ff_state_set(path_ptr, path_len, val_ptr, val_len) -> i32
+	if err := linker.DefineFunc(store, "env", "ff_state_set", func(caller *wasmtime.Caller, pathPtr, pathLen, valPtr, valLen int32) int32 {
+		memory := caller.GetExport("memory").Memory()
+		if memory == nil {
+			return -2
+		}
+		memoryData := memory.UnsafeData(store)
+		if err := validateMemoryBounds(memoryData, pathPtr, pathLen); err != nil {
+			return -2
+		}
+		path := string(memoryData[pathPtr : pathPtr+pathLen])
+		if err := validateMemoryBounds(memoryData, valPtr, valLen); err != nil {
+			return -2
+		}
+		value := string(memoryData[valPtr : valPtr+valLen])
+		if globalSecurityConfig != nil && uint32(len(value)) > globalSecurityConfig.MaxInputSize {
+			return -1
+		}
+		if err := handler.StateSet(path, value); err != nil {
+			return -1
+		}
+		return 0
+	}); err != nil {
+		return err
+	}
+
+	// env.ff_state_delete(path_ptr, path_len) -> i32
+	if err := linker.DefineFunc(store, "env", "ff_state_delete", func(caller *wasmtime.Caller, pathPtr, pathLen int32) int32 {
+		memory := caller.GetExport("memory").Memory()
+		if memory == nil {
+			return -2
+		}
+		memoryData := memory.UnsafeData(store)
+		if err := validateMemoryBounds(memoryData, pathPtr, pathLen); err != nil {
+			return -2
+		}
+		path := string(memoryData[pathPtr : pathPtr+pathLen])
+		if err := handler.StateDelete(path); err != nil {
+			return -1
+		}
+		return 0
+	}); err != nil {
+		return err
+	}
+
+	// env.ff_state_get_fabric(fabric_id_ptr, fabric_id_len, resp_ptr, resp_len_ptr) -> i32
+	if err := linker.DefineFunc(store, "env", "ff_state_get_fabric", func(caller *wasmtime.Caller, fabricIDPtr, fabricIDLen, respPtr, respLenPtr int32) int32 {
+		memory := caller.GetExport("memory").Memory()
+		if memory == nil {
+			return -2
+		}
+		memoryData := memory.UnsafeData(store)
+		if err := validateMemoryBounds(memoryData, fabricIDPtr, fabricIDLen); err != nil {
+			return -2
+		}
+		fabricID := string(memoryData[fabricIDPtr : fabricIDPtr+fabricIDLen])
+		result, err := handler.StateGetFabric(fabricID)
+		if err != nil {
+			return -1
+		}
+		resultBytes := []byte(result)
+		respLen := len(resultBytes)
+		if globalSecurityConfig != nil && uint32(respLen) > globalSecurityConfig.MaxOutputSize {
+			return -1
+		}
+		if err := validateMemoryBounds(memoryData, respPtr, int32(respLen)); err != nil {
+			return -2
+		}
+		copy(memoryData[respPtr:], resultBytes)
+		if err := validateMemoryBounds(memoryData, respLenPtr, 4); err != nil {
+			return -2
+		}
+		memoryData[respLenPtr] = byte(respLen)
+		memoryData[respLenPtr+1] = byte(respLen >> 8)
+		memoryData[respLenPtr+2] = byte(respLen >> 16)
+		memoryData[respLenPtr+3] = byte(respLen >> 24)
+		return 0
+	}); err != nil {
+		return err
+	}
+
+	// env.ff_state_create_snapshot(path_ptr, path_len, label_ptr, label_len, resp_ptr, resp_len_ptr) -> i32
+	if err := linker.DefineFunc(store, "env", "ff_state_create_snapshot", func(caller *wasmtime.Caller, pathPtr, pathLen, labelPtr, labelLen, respPtr, respLenPtr int32) int32 {
+		memory := caller.GetExport("memory").Memory()
+		if memory == nil {
+			return -2
+		}
+		memoryData := memory.UnsafeData(store)
+		if err := validateMemoryBounds(memoryData, pathPtr, pathLen); err != nil {
+			return -2
+		}
+		path := string(memoryData[pathPtr : pathPtr+pathLen])
+		label := ""
+		if labelLen > 0 {
+			if err := validateMemoryBounds(memoryData, labelPtr, labelLen); err != nil {
+				return -2
+			}
+			label = string(memoryData[labelPtr : labelPtr+labelLen])
+		}
+		result, err := handler.StateCreateSnapshot(path, label)
+		if err != nil {
+			return -1
+		}
+		resultBytes := []byte(result)
+		respLen := len(resultBytes)
+		if globalSecurityConfig != nil && uint32(respLen) > globalSecurityConfig.MaxOutputSize {
+			return -1
+		}
+		if err := validateMemoryBounds(memoryData, respPtr, int32(respLen)); err != nil {
+			return -2
+		}
+		copy(memoryData[respPtr:], resultBytes)
+		if err := validateMemoryBounds(memoryData, respLenPtr, 4); err != nil {
+			return -2
+		}
+		memoryData[respLenPtr] = byte(respLen)
+		memoryData[respLenPtr+1] = byte(respLen >> 8)
+		memoryData[respLenPtr+2] = byte(respLen >> 16)
+		memoryData[respLenPtr+3] = byte(respLen >> 24)
+		return 0
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}

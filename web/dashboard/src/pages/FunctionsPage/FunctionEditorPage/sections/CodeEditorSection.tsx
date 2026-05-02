@@ -280,7 +280,7 @@ export function CodeEditorSection({ editor }: Props) {
                     automaticLayout: true,
                     tabSize: 2,
                     wordWrap: 'on',
-                    padding: { top: 12, bottom: 12, left: 12, right: 12 },
+                    padding: { top: 12, bottom: 12 },
                     folding: true,
                     renderLineHighlight: 'none',
                   }}

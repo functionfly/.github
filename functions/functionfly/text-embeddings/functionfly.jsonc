@@ -30,6 +30,7 @@
   "cache_ttl": 3600,
   "timeout_ms": 500,
   "memory_mb": 64,
+  "price_per_call": 0.005,
   "example": {
     "input": { "text": "Hello world", "dimensions": 8 },
     "output": { "ok": true, "dimensions": 8 }

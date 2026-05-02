@@ -1,43 +1,20 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { initTheme, setTheme as sharedSetTheme, subscribe, type ThemeState } from '@functionfly/shared/theme';
 
 export type Theme = 'light' | 'dark' | 'system';
 
-// Get system preference
 const getSystemTheme = (): 'light' | 'dark' => {
   if (typeof window === 'undefined') return 'dark';
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 };
 
-// Get initial theme from localStorage or system preference
-const getInitialTheme = (): Theme => {
-  if (typeof window === 'undefined') return 'dark';
-  const stored = localStorage.getItem('theme-storage');
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored);
-      if (parsed.state?.theme) {
-        return parsed.state.theme;
-      }
-    } catch {}
-  }
-  return 'system';
-};
-
-// Get resolved theme (resolves system to actual theme)
 const getResolvedTheme = (theme: Theme): 'light' | 'dark' => {
-  if (theme === 'system') {
-    const systemTheme = getSystemTheme();
-    return systemTheme === 'dark' ? 'dark' : 'light';
-  }
-  return theme;
+  return theme === 'system' ? getSystemTheme() : theme;
 };
 
-// Apply theme-specific styles to elements
 const applyThemeStyles = (theme: 'light' | 'dark') => {
   if (typeof window === 'undefined') return;
 
-  // Apply styles to newsletter input
   const newsletterInput = document.querySelector('.newsletter-input') as HTMLInputElement;
   if (newsletterInput) {
     if (theme === 'light') {
@@ -53,7 +30,6 @@ const applyThemeStyles = (theme: 'light' | 'dark') => {
     }
   }
 
-  // Apply styles to social icons
   const socialIcons = document.querySelectorAll('.footer-enhanced .text-text-secondary');
   socialIcons.forEach((icon) => {
     const element = icon as HTMLElement;
@@ -65,95 +41,68 @@ const applyThemeStyles = (theme: 'light' | 'dark') => {
   });
 };
 
-interface ThemeState {
+const applyThemeToDocument = (resolved: 'light' | 'dark') => {
+  if (typeof window === 'undefined') return;
+  document.documentElement.setAttribute('data-theme', resolved);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => applyThemeStyles(resolved));
+  } else {
+    requestAnimationFrame(() => applyThemeStyles(resolved));
+  }
+};
+
+interface ThemeStoreState {
   theme: Theme;
   resolvedTheme: 'light' | 'dark';
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
 }
 
-export const useThemeStore = create<ThemeState>()(
-  persist(
-    (set, get) => ({
-      theme: getInitialTheme(),
-      resolvedTheme: getResolvedTheme(getInitialTheme()),
-      setTheme: (theme: Theme) => {
-        const resolved = getResolvedTheme(theme);
-        if (import.meta.env.DEV) {
-          console.log('Setting theme:', theme, 'resolved:', resolved);
-        }
-        set({
-          theme,
-          resolvedTheme: resolved,
-        });
-        // Update the data-theme attribute
-        if (typeof window !== 'undefined') {
-          document.documentElement.setAttribute('data-theme', resolved);
+export const useThemeStore = create<ThemeStoreState>()((set, get) => {
+  let initialized = false;
 
-          // Apply theme-specific styles after DOM is ready
-          if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-              applyThemeStyles(resolved);
-            });
-          } else {
-            requestAnimationFrame(() => applyThemeStyles(resolved));
-          }
-        }
-      },
-      toggleTheme: () => {
-        const current = get().resolvedTheme;
-        const nextTheme = current === 'dark' ? 'light' : 'dark';
-        set({
-          theme: nextTheme,
-          resolvedTheme: nextTheme,
-        });
-        // Update the data-theme attribute and apply styles
-        if (typeof window !== 'undefined') {
-          document.documentElement.setAttribute('data-theme', nextTheme);
-          // Apply styles after DOM is ready
-          if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-              applyThemeStyles(nextTheme);
-            });
-          } else {
-            requestAnimationFrame(() => applyThemeStyles(nextTheme));
-          }
-        }
-      },
-    }),
-    {
-      name: 'theme-storage',
-      onRehydrateStorage: () => (state) => {
-        // Listen for system theme changes
-        if (typeof window !== 'undefined') {
-          const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-          const handleChange = () => {
-            const currentState = useThemeStore.getState();
-            if (currentState.theme === 'system') {
-              useThemeStore.setState({
-                resolvedTheme: getSystemTheme(),
-              });
-              // Update the data-theme attribute
-              document.documentElement.setAttribute('data-theme', getSystemTheme());
-            }
-          };
-          mediaQuery.addEventListener('change', handleChange);
+  const handleExternalChange = (state: ThemeState) => {
+    const resolved = getResolvedTheme(state.mode);
+    set({ theme: state.mode, resolvedTheme: resolved });
+    applyThemeToDocument(resolved);
+  };
 
-          // Set initial theme on the document
-          if (state) {
-            document.documentElement.setAttribute('data-theme', state.resolvedTheme);
-            // Apply styles after DOM is ready
-            if (document.readyState === 'loading') {
-              document.addEventListener('DOMContentLoaded', () => {
-                applyThemeStyles(state.resolvedTheme);
-              });
-            } else {
-              // DOM is already ready
-              requestAnimationFrame(() => applyThemeStyles(state.resolvedTheme));
-            }
-          }
-        }
-      },
+  const init = () => {
+    if (initialized || typeof window === 'undefined') return;
+    initialized = true;
+
+    const initial = initTheme();
+    applyThemeToDocument(initial.resolved);
+    subscribe(handleExternalChange);
+  };
+
+  if (typeof window !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
     }
-  )
-);
+  }
+
+  return {
+    theme: 'system',
+    resolvedTheme: 'dark',
+    setTheme: (theme: Theme) => {
+      const resolved = getResolvedTheme(theme);
+      if (import.meta.env.DEV) {
+        console.log('Setting theme:', theme, 'resolved:', resolved);
+      }
+      set({ theme, resolvedTheme: resolved });
+      sharedSetTheme(theme);
+      applyThemeToDocument(resolved);
+    },
+    toggleTheme: () => {
+      const current = get().resolvedTheme;
+      const nextTheme: Theme = current === 'dark' ? 'light' : 'dark';
+      const resolved = nextTheme;
+      set({ theme: nextTheme, resolvedTheme: resolved });
+      sharedSetTheme(nextTheme);
+      applyThemeToDocument(resolved);
+    },
+  };
+});

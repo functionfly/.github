@@ -63,6 +63,7 @@ const (
 	FeatureBasicProviders   = "basic_providers"
 	FeatureBaseRequests     = "base_requests"
 	FeatureAgentStarter     = "agent_starter"
+	FeatureAgents           = "agents" // Bundled agent capability (replaces agent_starter as standalone)
 	FeatureCommunitySupport = "community_support"
 	FeatureBasicLogging     = "basic_logging"
 	FeatureStandardSLA      = "standard_sla"
@@ -279,10 +280,18 @@ var featureDefinitions = map[string]Feature{
 	FeatureAgentStarter: {
 		Key:         FeatureAgentStarter,
 		Name:        "Agent Starter",
-		Description: "Basic agent access",
+		Description: "Basic agent access (100K calls/mo, 10 concurrency)",
 		Category:    CategoryCore,
 		Type:        FeatureTypeBoolean,
 		Default:     true,
+	},
+	FeatureAgents: {
+		Key:         FeatureAgents,
+		Name:        "AI Agents",
+		Description: "Bundled agent capability (limits vary by plan)",
+		Category:    CategoryCore,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
 	},
 	FeatureCommunitySupport: {
 		Key:         FeatureCommunitySupport,
@@ -318,7 +327,8 @@ var featureDefinitions = map[string]Feature{
 	},
 }
 
-// Feature sets per plan
+// Feature sets per plan - 2026 unified structure
+// Agents are now BUNDLED into main plans, no separate agent plan hierarchy
 var (
 	enterpriseFeatures = []string{
 		FeatureMicroVMs,
@@ -336,7 +346,6 @@ var (
 		FeatureAdvancedAnalytics,
 		FeatureTeamRBAC,
 		FeatureSecretRotation,
-		// Plus all pro and starter features
 		FeatureExtendedProviders,
 		FeatureHigherRequests,
 		FeatureAgentScaleTier,
@@ -352,6 +361,7 @@ var (
 		FeatureBasicLogging,
 		FeatureStandardSLA,
 		FeaturePublishFunctions,
+		FeatureAgents, // Bundled agent capability
 	}
 
 	proFeatures = []string{
@@ -370,19 +380,28 @@ var (
 		FeatureBasicLogging,
 		FeatureStandardSLA,
 		FeaturePublishFunctions,
+		FeatureAgents, // Bundled agent capability (Agent Scale level)
 	}
 
 	starterFeatures = []string{
 		FeatureBasicProviders,
 		FeatureBaseRequests,
-		FeatureAgentStarter,
+		FeatureAgentStarter, // Bundled agent capability (Agent Starter level)
 		FeatureCommunitySupport,
 		FeatureBasicLogging,
 		FeatureStandardSLA,
 		FeaturePublishFunctions,
 	}
 
-	// Agent plan features
+	freeFeatures = []string{
+		FeatureBasicProviders,
+		FeatureBaseRequests,
+		FeatureCommunitySupport,
+		FeatureBasicLogging,
+		FeatureStandardSLA,
+		FeaturePublishFunctions,
+	}
+
 	agentEnterpriseFeatures = []string{
 		FeatureDedicatedPool,
 		FeatureAdvancedSecurity,
@@ -429,22 +448,19 @@ func GetFeatureDefinition(key string) (Feature, bool) {
 }
 
 // GetFeaturesForPlan returns all features available for a plan
+// Supports both main plans (free/starter/pro/enterprise) and legacy agent tiers
 func GetFeaturesForPlan(plan string) []string {
 	switch plan {
-	case PlanEnterprise:
+	case PlanFree:
+		return freeFeatures
+	case PlanEnterprise, PlanAgentPro:
 		return enterpriseFeatures
-	case PlanPro:
+	case PlanPro, PlanAgentScale:
 		return proFeatures
-	case PlanStarter:
+	case PlanStarter, PlanAgentStarter:
 		return starterFeatures
 	case PlanAgentEnterprise:
 		return agentEnterpriseFeatures
-	case PlanAgentPro:
-		return agentProFeatures
-	case PlanAgentScale:
-		return agentScaleFeatures
-	case PlanAgentStarter:
-		return agentStarterFeatures
 	default:
 		return starterFeatures
 	}
@@ -514,6 +530,7 @@ type PlanInfo struct {
 // GetAllPlanInfo returns information about all plans
 func GetAllPlanInfo() []PlanInfo {
 	return []PlanInfo{
+		{Plan: PlanFree, Features: freeFeatures},
 		{Plan: PlanStarter, Features: starterFeatures},
 		{Plan: PlanPro, Features: proFeatures},
 		{Plan: PlanEnterprise, Features: enterpriseFeatures},

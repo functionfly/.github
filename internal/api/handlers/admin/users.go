@@ -185,8 +185,22 @@ func (h *Handler) HandleGetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Fetch tenant to get plan and attach to response
+	tenant, _ := h.repo.GetTenantByID(user.TenantID)
+	response := map[string]interface{}{}
+	bytes, _ := json.Marshal(user)
+	json.Unmarshal(bytes, &response)
+	if tenant != nil {
+		response["plan"] = tenant.Plan
+		response["tenant_name"] = tenant.Name
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(user)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"data":      response,
+		"success":   true,
+		"timestamp": time.Now().Format(time.RFC3339),
+	})
 }
 
 // HandleCreateUser creates a new user
@@ -308,15 +322,87 @@ func (h *Handler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.repo.UpdateUser(r.Context(), userID, updates)
-	if err != nil {
-		logrus.WithError(err).WithField("user_id", userID).Error("Failed to update user")
-		http.Error(w, "Failed to update user", http.StatusInternalServerError)
+	// Handle plan update separately since plan is a tenant field, not a user field
+	if newPlan, ok := updates["plan"].(string); ok {
+		logrus.WithFields(logrus.Fields{"user_id": userID, "new_plan": newPlan}).Info("Plan update request received")
+		user, err := h.repo.GetUserByID(userID)
+		if err != nil {
+			logrus.WithError(err).WithField("user_id", userID).Error("Failed to get user for plan update")
+			http.Error(w, "Failed to get user", http.StatusInternalServerError)
+			return
+		}
+		if user == nil {
+			http.Error(w, "User not found", http.StatusNotFound)
+			return
+		}
+		logrus.WithFields(logrus.Fields{"tenant_id": user.TenantID, "new_plan": newPlan}).Info("Updating tenant plan")
+		// Update the tenant's plan
+		tenantUpdates := map[string]interface{}{"plan": newPlan}
+		updatedTenant, err := h.repo.UpdateTenant(r.Context(), user.TenantID, tenantUpdates)
+		if err != nil {
+			logrus.WithError(err).WithField("tenant_id", user.TenantID).Error("Failed to update tenant plan")
+			http.Error(w, "Failed to update plan", http.StatusInternalServerError)
+			return
+		}
+		logrus.WithFields(logrus.Fields{"tenant_id": user.TenantID, "new_plan": updatedTenant.Plan}).Info("Tenant plan updated successfully")
+		// Remove plan from user updates since we handled it via tenant
+		delete(updates, "plan")
+	}
+
+	// Only call UpdateUser if there are remaining user-level fields to update
+	if len(updates) > 0 {
+		user, err := h.repo.UpdateUser(r.Context(), userID, updates)
+		if err != nil {
+			logrus.WithError(err).WithField("user_id", userID).Error("Failed to update user")
+			http.Error(w, "Failed to update user", http.StatusInternalServerError)
+			return
+		}
+		// Fetch tenant to get current plan and attach to response
+		tenant, _ := h.repo.GetTenantByID(user.TenantID)
+		response := map[string]interface{}{}
+		bytes, _ := json.Marshal(user)
+		json.Unmarshal(bytes, &response)
+		if tenant != nil {
+			response["plan"] = tenant.Plan
+			response["tenant_name"] = tenant.Name
+		}
+		// Wrap in AdminAPIResponse format
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"data":      response,
+			"success":   true,
+			"timestamp": time.Now().Format(time.RFC3339),
+		})
 		return
 	}
 
+	// If only plan was updated, fetch and return the updated user with tenant plan
+	user, err := h.repo.GetUserByID(userID)
+	if err != nil {
+		logrus.WithError(err).WithField("user_id", userID).Error("Failed to get user after plan update")
+		http.Error(w, "Failed to get user", http.StatusInternalServerError)
+		return
+	}
+	// Fetch the tenant to get the updated plan
+	tenant, err := h.repo.GetTenantByID(user.TenantID)
+	if err == nil && tenant != nil {
+		user.Tenant = tenant
+	}
+	// Build response with plan flattened from tenant (frontend expects user.plan)
+	response := map[string]interface{}{}
+	bytes, _ := json.Marshal(user)
+	json.Unmarshal(bytes, &response)
+	if tenant != nil {
+		response["plan"] = tenant.Plan
+		response["tenant_name"] = tenant.Name
+	}
+	// Wrap in AdminAPIResponse format
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(user)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"data":      response,
+		"success":   true,
+		"timestamp": time.Now().Format(time.RFC3339),
+	})
 }
 
 // HandleDeleteUser deletes a user

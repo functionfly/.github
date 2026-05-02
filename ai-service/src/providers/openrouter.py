@@ -64,8 +64,8 @@ class OpenRouterProvider(BaseProvider):
             "openrouter/hunter-alpha",
             "nvidia/nemotron-3-super-120b-a12b:free",
             "inception/mercury-2",
-
-
+            "inclusionai/ling-2.6-flash:free",
+            "inclusionai/ling-2.6-1t:free",
         ]
         self._available = True
         try:

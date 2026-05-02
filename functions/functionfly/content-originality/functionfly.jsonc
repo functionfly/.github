@@ -11,5 +11,6 @@
   "output": { "type": "object", "properties": { "ok": {}, "originality_score": {}, "unique_word_ratio": {}, "cliche_count": {}, "grade": {}, "error": {} } },
   "deterministic": true, "idempotent": true,
   "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "price_per_call": 0.002,
   "example": { "input": { "text": "The innovative approach uses cutting-edge technology to transform complex data pipelines." }, "output": { "ok": true, "grade": "original" } }
 }

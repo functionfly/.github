@@ -35,7 +35,7 @@ export function useActiveEnvironment() {
   const mutation = useMutation({
     mutationFn: (env: Environment) => environmentService.setActiveEnvironment(env),
     onSuccess: (response) => {
-      // Update local store
+      // Update local store to ensure consistency with backend
       setEnvironment(response.environment);
       // Invalidate queries that depend on environment
       queryClient.invalidateQueries({ queryKey: ['functions'] });

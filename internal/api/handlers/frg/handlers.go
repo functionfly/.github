@@ -4,6 +4,7 @@ package frg
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,11 +16,15 @@ import (
 	"github.com/functionfly/functionfly/internal/agent/graph"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/cache"
+	"github.com/functionfly/functionfly/internal/functionregistry"
 	"github.com/functionfly/functionfly/internal/frg"
+	"github.com/functionfly/functionfly/internal/monitoring"
+	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 )
 
 // AICompositionClient calls the AI service for graph composition
@@ -33,7 +38,7 @@ type AICompositionClient struct {
 func NewAICompositionClient() *AICompositionClient {
 	baseURL := os.Getenv("AI_SERVICE_URL")
 	if baseURL == "" {
-		baseURL = "http://localhost:8081"
+		baseURL = "http://localhost:18081"
 	}
 
 	return &AICompositionClient{
@@ -56,7 +61,7 @@ type EmbeddingServiceClient struct {
 func NewEmbeddingServiceClient() *EmbeddingServiceClient {
 	baseURL := os.Getenv("AI_SERVICE_URL")
 	if baseURL == "" {
-		baseURL = "http://localhost:8081"
+		baseURL = "http://localhost:18081"
 	}
 
 	return &EmbeddingServiceClient{
@@ -129,7 +134,7 @@ type CompositionRequest struct {
 	Prompt           string   `json:"prompt"`
 	Requirements     []string `json:"requirements,omitempty"`
 	PreferredRuntime string   `json:"preferred_runtime"`
-	TenantID         string   `json:"tenant_id,omitempty"`
+	// TenantID intentionally omitted - do not leak tenant identifiers to external AI services
 }
 
 // CompositionResponse is the response from AI service
@@ -252,6 +257,9 @@ type Handler struct {
 
 	// Embedding Service for semantic search
 	embedClient *EmbeddingServiceClient
+
+	// UsageTracker provides real-time quota enforcement and usage tracking
+	UsageTracker services.RealtimeUsageTrackerInterface
 }
 
 // NewHandler creates a new FRG handler
@@ -264,6 +272,7 @@ func NewHandler(
 	cacheService *cache.CacheService,
 	aiClient *AICompositionClient,
 	embedClient *EmbeddingServiceClient,
+	usageTracker services.RealtimeUsageTrackerInterface,
 ) *Handler {
 	if aiClient == nil {
 		aiClient = NewAICompositionClient()
@@ -280,6 +289,7 @@ func NewHandler(
 		cacheService: cacheService,
 		aiClient:     aiClient,
 		embedClient:  embedClient,
+		UsageTracker: usageTracker,
 	}
 }
 
@@ -320,9 +330,30 @@ func (h *Handler) CreateGraph(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Input size limits to prevent memory exhaustion
+	const (
+		maxNodes     = 100
+		maxEdges     = 500
+		maxGraphJSON = 1_000_000 // ~1MB
+	)
+	if len(req.Nodes) > maxNodes {
+		respondError(w, http.StatusBadRequest, fmt.Sprintf("Graph cannot have more than %d nodes", maxNodes))
+		return
+	}
+	if len(req.Edges) > maxEdges {
+		respondError(w, http.StatusBadRequest, fmt.Sprintf("Graph cannot have more than %d edges", maxEdges))
+		return
+	}
+
 	// Validate required fields
 	if req.Name == "" || len(req.Nodes) == 0 {
 		respondError(w, http.StatusBadRequest, "Name and nodes are required")
+		return
+	}
+
+	// Validate name format
+	if len(req.Name) > 100 {
+		respondError(w, http.StatusBadRequest, "Graph name too long (max 100 characters)")
 		return
 	}
 
@@ -591,6 +622,12 @@ type ExecuteGraphResponse struct {
 // ExecuteGraph executes a graph synchronously or asynchronously
 func (h *Handler) ExecuteGraph(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		respondError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
 	vars := mux.Vars(r)
 	author := vars["author"]
 	name := vars["name"]
@@ -612,17 +649,88 @@ func (h *Handler) ExecuteGraph(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Tenant isolation: private graphs can only be executed by their owners
+	if def.Visibility == "private" {
+		// Check ownership: either user owns the graph directly, or their tenant owns it
+		if def.OwnerUserID != nil && *def.OwnerUserID != user.UserID {
+			// Check tenant ownership
+			if def.TenantID != nil && *def.TenantID != user.TenantID {
+				respondError(w, http.StatusForbidden, "Not authorized to execute this graph")
+				return
+			}
+		}
+	}
+
+	// Real-time quota enforcement
+	if h.UsageTracker != nil && h.UsageTracker.IsEnabled() && user.TenantID != uuid.Nil {
+		quotaResult, err := h.UsageTracker.RecordExecution(ctx, user.TenantID, "")
+		if err != nil {
+			logrus.WithError(err).WithField("tenant_id", user.TenantID).Warn("Quota check failed, allowing execution")
+		} else if !quotaResult.Allowed {
+			logrus.WithFields(logrus.Fields{
+				"tenant_id": user.TenantID,
+				"reason":    quotaResult.Reason,
+			}).Warn("Quota exceeded, blocking FRG graph execution")
+			monitoring.RecordFRGQuotaExceeded(user.TenantID.String())
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusPaymentRequired)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": map[string]interface{}{
+					"code":    "QUOTA_EXCEEDED",
+					"message": quotaResult.Reason,
+					"type":    "quota_exceeded",
+				},
+				"quota_status": quotaResult.Status,
+				"upgrade_url": "/settings/billing",
+			})
+			return
+		}
+
+		// Add quota headers and record metrics
+		if quotaResult.Status != nil {
+			w.Header().Set("X-Quota-Executions-Used", fmt.Sprintf("%d", quotaResult.Status.ExecutionsUsed))
+			w.Header().Set("X-Quota-Executions-Limit", fmt.Sprintf("%d", quotaResult.Status.ExecutionsLimit))
+			w.Header().Set("X-Quota-Executions-Percent", fmt.Sprintf("%.1f", quotaResult.Status.ExecutionsPercent))
+			w.Header().Set("X-Quota-Status", quotaResult.Status.Status)
+			monitoring.RecordFRGQuotaUsagePercent(user.TenantID.String(), quotaResult.Status.ExecutionsPercent)
+		}
+	}
+
 	// Parse input
 	var req ExecuteGraphRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		req.Input = make(map[string]interface{})
 	}
 
+	// Audit logging for graph execution
+	executionStart := time.Now()
+	graphID := def.ID.String()
+
+	// Default execution timeout (5 minutes for sync execution)
+	const defaultExecutionTimeout = 5 * time.Minute
+	execTimeout := defaultExecutionTimeout
+	if timeoutStr := r.URL.Query().Get("timeout"); timeoutStr != "" {
+		if parsedTimeout, err := time.ParseDuration(timeoutStr); err == nil {
+			// Cap timeout at maximum to prevent abuse
+			if parsedTimeout < defaultExecutionTimeout {
+				execTimeout = parsedTimeout
+			}
+		}
+	}
+	execCtx, execCancel := context.WithTimeout(ctx, execTimeout)
+	defer execCancel()
+
 	// Execute based on mode
 	switch def.ExecutionMode {
 	case frg.ExecutionModeSync:
-		result, err := h.engine.ExecuteSync(ctx, def, req.Input)
+		result, err := h.engine.ExecuteSync(execCtx, def, req.Input)
 		if err != nil {
+			if execCtx.Err() == context.DeadlineExceeded {
+				monitoring.RecordFRGGraphExecution(user.TenantID.String(), graphID, "execute", "timeout")
+				respondError(w, http.StatusGatewayTimeout, "Graph execution timed out")
+				return
+			}
+			monitoring.RecordFRGGraphExecution(user.TenantID.String(), graphID, "execute", "error")
 			respondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -631,6 +739,9 @@ func (h *Handler) ExecuteGraph(w http.ResponseWriter, r *http.Request) {
 		if result.Output != nil {
 			json.Unmarshal(result.Output, &output)
 		}
+
+		monitoring.RecordFRGGraphExecution(user.TenantID.String(), graphID, "execute", "success")
+		monitoring.RecordFRGGraphExecutionDuration(user.TenantID.String(), graphID, time.Since(executionStart))
 
 		respondJSON(w, http.StatusOK, ExecuteGraphResponse{
 			InstanceID: result.InstanceID.String(),
@@ -641,11 +752,14 @@ func (h *Handler) ExecuteGraph(w http.ResponseWriter, r *http.Request) {
 
 	case frg.ExecutionModeAsync, frg.ExecutionModeStreaming, frg.ExecutionModeEventDriven:
 		// Async execution - return instance ID immediately
-		instance, err := h.engine.ExecuteAsync(ctx, def, req.Input)
+		instance, err := h.engine.ExecuteAsync(execCtx, def, req.Input)
 		if err != nil {
+			monitoring.RecordFRGGraphExecution(user.TenantID.String(), graphID, "execute_async", "error")
 			respondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+
+		monitoring.RecordFRGGraphExecution(user.TenantID.String(), graphID, "execute_async", "started")
 
 		respondJSON(w, http.StatusAccepted, ExecuteGraphResponse{
 			InstanceID: instance.ID.String(),
@@ -818,12 +932,11 @@ func (h *Handler) AICompose(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Call AI service for composition
+	// Call AI service for composition (without TenantID to avoid leaking to external AI)
 	composeReq := CompositionRequest{
 		Prompt:           req.Prompt,
 		Requirements:     req.Requirements,
 		PreferredRuntime: "python", // Default to Python
-		TenantID:         user.TenantID.String(),
 	}
 
 	aiResp, err := h.aiClient.Compose(ctx, composeReq)
@@ -882,12 +995,12 @@ func (h *Handler) AICompose(w http.ResponseWriter, r *http.Request) {
 	inputSchemaJSON, _ := json.Marshal(aiResp.Graph.InputSchema)
 	outputSchemaJSON, _ := json.Marshal(aiResp.Graph.OutputSchema)
 
-	// Create the graph definition
+	// Create the graph definition (sanitize AI-generated content to prevent XSS)
 	graphDef := &frg.GraphDefinition{
 		Author:        user.Username,
 		Name:          aiResp.Graph.Name,
 		Version:       "v1",
-		AIDescription: aiResp.Graph.Description,
+		AIDescription: sanitizeString(aiResp.Graph.Description),
 		ExecutionMode: frg.ExecutionMode(aiResp.Graph.ExecutionMode),
 		Visibility:    aiResp.Graph.Visibility,
 		OwnerUserID:   &user.UserID,
@@ -981,6 +1094,146 @@ func (h *Handler) SemanticSearch(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, responses)
 }
 
+// GenerateFunctionRequest is the request to generate a function using AI
+type GenerateFunctionRequest struct {
+	Author      string `json:"author"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Runtime     string `json:"runtime"`
+}
+
+// GenerateFunction generates a production-ready function using OpenRouter
+func (h *Handler) GenerateFunction(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		respondError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var req GenerateFunctionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if req.Author == "" || req.Name == "" {
+		respondError(w, http.StatusBadRequest, "author and name are required")
+		return
+	}
+
+	// Check if function already exists
+	existingFn, err := h.registryRepo.GetFunctionByAuthorName(req.Author, req.Name)
+	if err == nil && existingFn != nil {
+		respondError(w, http.StatusConflict, "Function already exists")
+		return
+	}
+
+	// Call AI service for code generation using internal bypass endpoint
+	aiServiceURL := os.Getenv("AI_SERVICE_URL")
+	if aiServiceURL == "" {
+		aiServiceURL = "http://localhost:18081"
+	}
+
+	genReq := map[string]interface{}{
+		"description": req.Description,
+		"runtime":      req.Runtime,
+	}
+	body, _ := json.Marshal(genReq)
+
+	// Use internal endpoint that bypasses auth
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", aiServiceURL+"/internal/composer/generate", bytes.NewReader(body))
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to create request")
+		return
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	// Use internal AI service endpoint that bypasses auth
+	httpReq.Header.Set("X-API-Key", os.Getenv("AI_SERVICE_API_KEY"))
+
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to call AI generation service")
+		respondError(w, http.StatusServiceUnavailable, "AI generation service unavailable")
+		return
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		logrus.WithFields(logrus.Fields{"status": resp.StatusCode, "body": string(bodyBytes[:min(500, len(bodyBytes))])}).Info("AI generation response")
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		respondError(w, http.StatusInternalServerError, fmt.Sprintf("AI generation failed with status %d: %s", resp.StatusCode, string(bodyBytes)))
+		return
+	}
+
+	var genResp struct {
+		Success bool `json:"success"`
+		Result  struct {
+			Code        string                  `json:"code"`
+			Manifest    functionregistry.FunctionManifest `json:"manifest"`
+			Explanation string                  `json:"explanation"`
+		} `json:"result"`
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal(bodyBytes, &genResp); err != nil {
+		respondError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to parse generation response: %s", err.Error()))
+		return
+	}
+
+	if !genResp.Success {
+		respondError(w, http.StatusInternalServerError, fmt.Sprintf("AI generation failed: %s", genResp.Error))
+		return
+	}
+
+	manifest := genResp.Result.Manifest
+
+	// Create the function in the registry
+	fn := &registry.RegistryFunction{
+		Author:      req.Author,
+		Name:        req.Name,
+		Title:       sql.NullString{String: manifest.Name, Valid: manifest.Name != ""},
+		Description: sql.NullString{String: manifest.Description, Valid: manifest.Description != ""},
+		Category:    sql.NullString{String: req.Runtime, Valid: true},
+		Visibility:  "private", // Default to private for auto-generated functions
+		TenantID:     &user.TenantID,
+		OwnerUserID: &user.UserID,
+	}
+
+	if err := h.registryRepo.CreateFunction(fn); err != nil {
+		logrus.WithError(err).Error("Failed to create function in registry")
+		respondError(w, http.StatusInternalServerError, "Failed to create function")
+		return
+	}
+
+	// Create version with generated code
+	manifestJSON, _ := json.Marshal(manifest)
+	version := &registry.RegistryFunctionVersion{
+		ID:          uuid.New(),
+		FunctionID:   fn.ID,
+		Version:      "1.0.0",
+		Manifest:     manifestJSON,
+		SourceCode:   sql.NullString{String: genResp.Result.Code, Valid: genResp.Result.Code != ""},
+		Runtime:      req.Runtime,
+		MemoryMB:     256,
+		TimeoutMs:    30000,
+		PublishedAt:  time.Now(),
+	}
+
+	if err := h.registryRepo.CreateFunctionVersion(version); err != nil {
+		logrus.WithError(err).Error("Failed to create function version")
+	}
+
+	respondJSON(w, http.StatusCreated, map[string]interface{}{
+		"success":    true,
+		"function":   fn,
+		"version":    version,
+		"explanation": genResp.Result.Explanation,
+	})
+}
+
 // embeddingToBytes converts a float32 slice to bytes for pgvector
 func embeddingToBytes(embedding []float32) []byte {
 	// pgvector expects the embedding as a string representation of the array
@@ -996,6 +1249,16 @@ func embeddingToBytes(embedding []float32) []byte {
 	}
 	vectorStr := "[" + strings.Join(parts, ",") + "]"
 	return []byte(vectorStr)
+}
+
+// sanitizeString removes/replaces characters that could be used for XSS attacks
+func sanitizeString(s string) string {
+	// Use basic HTML escaping to prevent XSS in stored/generated content
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	s = strings.ReplaceAll(s, "\"", "&quot;")
+	s = strings.ReplaceAll(s, "'", "&#39;")
+	return s
 }
 
 // ==================== Optimization Handlers ====================

@@ -1,59 +1,89 @@
 import { useEffect, useState } from "react";
 
-type Theme = "light" | "dark";
+type Theme = "light" | "dark" | "system";
+type ResolvedTheme = "light" | "dark";
 
-const STORAGE_KEY = "theme-storage";
+interface ThemeState {
+  mode: Theme;
+  resolved: ResolvedTheme;
+}
 
-function getSystemTheme(): Theme {
+declare global {
+  interface Window {
+    ffTheme?: {
+      init: () => void;
+      get: () => ThemeState;
+      set: (mode: Theme) => void;
+      toggle: () => void;
+      subscribe: (callback: (state: ThemeState) => void) => () => void;
+    };
+  }
+}
+
+const getSystemTheme = (): ResolvedTheme => {
   if (typeof window === "undefined") return "dark";
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
+};
 
-function getStoredTheme(): Theme {
-  if (typeof window === "undefined") return "dark";
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored);
-      if (parsed.state?.theme) {
-        return parsed.state.theme === "system" ? getSystemTheme() : parsed.state.theme;
+const getStoredTheme = (): Theme => {
+  if (typeof window === "undefined") return "system";
+  try {
+    const stored = localStorage.getItem("ff-user-theme");
+    if (stored) {
+      const parsed = JSON.parse(stored) as { mode: Theme };
+      if (parsed.mode === "light" || parsed.mode === "dark" || parsed.mode === "system") {
+        return parsed.mode;
       }
-    } catch {}
-  }
-  return "system" as Theme;
-}
+    }
+  } catch {}
+  return "system";
+};
 
-function getResolvedTheme(theme: "light" | "dark" | "system"): Theme {
+const getResolvedTheme = (theme: Theme): ResolvedTheme => {
   return theme === "system" ? getSystemTheme() : theme;
-}
+};
 
-function toggleTheme() {
-  const current = getResolvedTheme(getStoredTheme() as Theme);
-  const next: Theme = current === "dark" ? "light" : "dark";
+const toggleTheme = () => {
+  if (typeof window === "undefined") return;
+  const current = getResolvedTheme(getStoredTheme());
+  const next: ResolvedTheme = current === "dark" ? "light" : "dark";
 
   document.documentElement.setAttribute("data-theme", next);
 
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    let currentState = { state: { theme: "system" } };
-    if (stored) {
-      currentState = JSON.parse(stored);
-    }
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ ...currentState, state: { ...currentState.state, theme: next } })
-    );
+    localStorage.setItem("ff-user-theme", JSON.stringify({ mode: next }));
   } catch {}
-}
+};
 
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [theme, setTheme] = useState<ResolvedTheme>("dark");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const resolved = getResolvedTheme(getStoredTheme() as Theme);
+    const resolved = getResolvedTheme(getStoredTheme());
     setTheme(resolved);
     setMounted(true);
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "ff-user-theme" && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue) as { mode: Theme };
+          setTheme(getResolvedTheme(parsed.mode));
+        } catch {}
+      }
+    };
+
+    const handleCustomEvent = (e: CustomEvent<ThemeState>) => {
+      setTheme(e.detail.resolved);
+    };
+
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("ff-theme-change", handleCustomEvent as EventListener);
+
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("ff-theme-change", handleCustomEvent as EventListener);
+    };
   }, []);
 
   if (!mounted) {

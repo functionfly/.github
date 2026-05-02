@@ -182,6 +182,7 @@ export const FlyModeSwitcher: React.FC<FlyModeSwitcherProps> = ({
         const isActive = currentMode === mode.id;
         const isDisabled = disabledModes.includes(mode.id);
         const Icon = mode.icon;
+        const IconComponent = Icon as React.ComponentType<{ className?: string }>;
 
         return (
           <button
@@ -208,7 +209,7 @@ export const FlyModeSwitcher: React.FC<FlyModeSwitcherProps> = ({
                 "opacity-50 cursor-not-allowed hover:text-[var(--color-text-secondary)]"
             )}
           >
-            <Icon
+            <IconComponent
               className={cn(
                 "w-3.5 h-3.5 transition-transform duration-200",
                 isActive && "scale-110"

@@ -112,6 +112,11 @@ func NewPythonRuntimeWithConfigAndDebug(wasmPath string, stdout, stderr io.Write
 		return nil, fmt.Errorf("failed to define micropython host functions: %w", err)
 	}
 
+	// Define FunctionFly Python bridge (env.ff_* functions)
+	if err := DefineFunctionFlyPythonBridge(linker, store, handler); err != nil {
+		return nil, fmt.Errorf("failed to define python bridge host functions: %w", err)
+	}
+
 	// Instantiate the module
 	instance, err := linker.Instantiate(store, module)
 	if err != nil {

@@ -59,6 +59,10 @@ func (db *PostgresDB) UpdateTenantStatus(ctx context.Context, tenantID uuid.UUID
 	return db.tenantRepository.UpdateTenantStatus(ctx, tenantID, status)
 }
 
+func (db *PostgresDB) UpdateTenantTaxSettings(ctx context.Context, tenantID uuid.UUID, settings *TaxSettings) error {
+	return db.tenantRepository.UpdateTenantTaxSettings(ctx, tenantID, settings)
+}
+
 func (db *PostgresDB) DeleteTenant(ctx context.Context, tenantID uuid.UUID) error {
 	return db.tenantRepository.DeleteTenant(ctx, tenantID)
 }

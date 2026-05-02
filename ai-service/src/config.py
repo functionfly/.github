@@ -97,7 +97,7 @@ class Settings(BaseSettings):
     anthropic_model: str = "claude-sonnet-4-6"
     anthropic_max_tokens: int = 8192
 
-    openrouter_model: str = "openrouter/free"
+    openrouter_model: str = "inclusionai/ling-2.6-flash:free"
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
 
     # Fireworks AI configuration (primary for structured output)

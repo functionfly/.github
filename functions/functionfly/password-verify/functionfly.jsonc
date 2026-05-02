@@ -46,6 +46,7 @@
   "cache_ttl": 0,
   "timeout_ms": 5000,
   "memory_mb": 128,
+  "price_per_call": 0.001,
   "example": {
     "input": {
       "password": "test",

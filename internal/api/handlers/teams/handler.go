@@ -73,9 +73,11 @@ func (h *Handler) HandleCreateTeam(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	slug := uuid.New().String()[:8]
 	team := &storage.Team{
 		TenantID:    user.TenantID,
 		Name:        req.Name,
+		Slug:        slug,
 		Description: req.Description,
 		CreatedBy:   user.UserID,
 	}

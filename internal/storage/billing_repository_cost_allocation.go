@@ -297,8 +297,9 @@ func (r *BillingRepository) GetCostAllocationEntries(
 	}
 
 	if filter.FunctionName != nil {
+		sanitized := SanitizeSQLWildcards(*filter.FunctionName)
 		whereClause += fmt.Sprintf(" AND function_name ILIKE $%d", argIdx)
-		args = append(args, fmt.Sprintf("%%%s%%", *filter.FunctionName))
+		args = append(args, fmt.Sprintf("%%%s%%", sanitized))
 		argIdx++
 	}
 
@@ -1006,22 +1007,13 @@ func (r *BillingRepository) GetDepartmentBudgetSpend(ctx context.Context, budget
 	// Build spend query based on team_ids or tag_filters
 	var totalSpent int64
 	if len(budget.TeamIDs) > 0 {
-		// Sum by team_id tags
-		placeholders := make([]string, len(budget.TeamIDs))
-		args := make([]interface{}, len(budget.TeamIDs)+2)
-		args[0] = budget.PeriodStart
-		args[1] = budget.PeriodEnd
-		for i, t := range budget.TeamIDs {
-			placeholders[i] = fmt.Sprintf("$%d", i+3)
-			args[i+2] = t.String()
-		}
-		query := fmt.Sprintf(`
+		query := `
 			SELECT COALESCE(SUM(total_cost_cents), 0)
 			FROM cost_allocation_entries
 			WHERE timestamp >= $1 AND timestamp <= $2
-			  AND tags->>'team_id' IN (%s)
-		`, strings.Join(placeholders, ","))
-		_ = r.db.QueryRowContext(ctx, query, args...).Scan(&totalSpent)
+			  AND tags->>'team_id' = ANY($3::uuid[])
+		`
+		_ = r.db.QueryRowContext(ctx, query, budget.PeriodStart, budget.PeriodEnd, pq.Array(budget.TeamIDs)).Scan(&totalSpent)
 	} else if len(budget.TagFilters) > 0 {
 		// Build dynamic tag filters
 		where := "timestamp >= $1 AND timestamp <= $2"
@@ -1137,4 +1129,11 @@ func (r *BillingRepository) ListCostAnomalies(ctx context.Context, tenantID uuid
 		anomalies = append(anomalies, a)
 	}
 	return anomalies, rows.Err()
+}
+
+func SanitizeSQLWildcards(s string) string {
+	s = strings.ReplaceAll(s, "\\", "\\\\")
+	s = strings.ReplaceAll(s, "%", "\\%")
+	s = strings.ReplaceAll(s, "_", "\\_")
+	return s
 }

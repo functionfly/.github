@@ -38,7 +38,7 @@ import { TestFailoverStep } from './TestFailoverStep';
 import { WelcomeStep } from './WelcomeStep';
 
 // Define base steps
-const baseSteps = [
+const baseSteps: Array<{ id: OnboardingStep; title: string; description: string; icon: typeof Zap }> = [
   {
     id: 'welcome',
     title: 'Welcome to FunctionFly',
@@ -66,7 +66,7 @@ const baseSteps = [
 ];
 
 // Admin-only step
-const adminSteps = [
+const adminSteps: Array<{ id: OnboardingStep; title: string; description: string; icon: typeof Users }> = [
   {
     id: 'team-setup',
     title: 'Setup Your Team',
@@ -447,8 +447,8 @@ export function OnboardingPage() {
       </main>
 
       {/* Skip Confirmation Dialog */}
-      <Dialog open={showSkipDialog} onOpenChange={setShowSkipDialog} className="onboarding-skip-dialog">
-        <DialogContent className="sm:max-w-md" aria-describedby="skip-dialog-desc">
+      <Dialog open={showSkipDialog} onOpenChange={setShowSkipDialog}>
+        <DialogContent className="onboarding-skip-dialog sm:max-w-md" aria-describedby="skip-dialog-desc">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 onboarding-skip-warning-icon" />

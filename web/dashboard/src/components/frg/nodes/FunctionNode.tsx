@@ -356,7 +356,7 @@ export const FunctionNode = memo(function FunctionNode({
                   <Play className="w-3 h-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Run</TooltipContent>
+              <TooltipContent side="top">Run</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -364,7 +364,7 @@ export const FunctionNode = memo(function FunctionNode({
                   <Zap className="w-3 h-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Quick Test</TooltipContent>
+              <TooltipContent side="top">Quick Test</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -372,7 +372,7 @@ export const FunctionNode = memo(function FunctionNode({
                   <Bug className="w-3 h-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Debug</TooltipContent>
+              <TooltipContent side="top">Debug</TooltipContent>
             </Tooltip>
           </div>
         )}

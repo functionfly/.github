@@ -19,6 +19,7 @@ import type {
   SecretVersionMetadata,
   SecretVersionDiff,
   RollbackSecretRequest,
+  EncryptedDataPayload,
 } from "@/types/vault";
 
 // ==================== Query Keys ====================
@@ -247,6 +248,28 @@ export function useDecryptSecret() {
       vaultApi.decryptSecret(id, passphrase),
     onError: (error: Error) => {
       toast.error(`Failed to decrypt secret: ${error.message}`);
+    },
+  });
+}
+
+/**
+ * Hook to rotate a secret's encrypted value (re-encrypt with new ciphertext).
+ * Creates a version snapshot before updating.
+ */
+export function useRotateSecret(secretId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { encrypted_data: EncryptedDataPayload; reason?: string }) =>
+      vaultApi.rotateSecret(secretId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: vaultKeys.detail(secretId) });
+      queryClient.invalidateQueries({ queryKey: vaultKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: vaultKeys.versions(secretId) });
+      toast.success("Secret rotated successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to rotate secret: ${error.message}`);
     },
   });
 }

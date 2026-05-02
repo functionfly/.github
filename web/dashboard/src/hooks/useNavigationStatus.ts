@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 import { useNotificationStore } from '@/stores/notificationStore';
+import { getAppsLimit } from '@/lib/plan-utils';
+import { useAuthStore } from '@/stores/authStore';
 
 interface NavigationStatus {
   functions: {
@@ -43,61 +45,70 @@ interface NavigationStatus {
   };
 }
 
-// Enhanced mock data - in real app this would come from API/websockets
-// This provides realistic data for badge displays
+// Default values - apps.totalCount will be overridden in useNavigationStatus
+// based on the user's plan
 const mockStatusData: NavigationStatus = {
   functions: {
-    hasIssues: true,
-    pendingDeployments: 2,
-    totalCount: 12,
+    hasIssues: false,
+    pendingDeployments: 0,
+    totalCount: 0,
   },
   providers: {
     hasOffline: false,
-    totalCount: 3,
+    totalCount: 0,
   },
   analytics: {
-    hasAlerts: true,
-    alertCount: 3,
+    hasAlerts: false,
+    alertCount: 0,
   },
   settings: {
-    hasWarnings: true,
-    warningCount: 1,
+    hasWarnings: false,
+    warningCount: 0,
   },
   wallet: {
-    balance: 47.50,
+    balance: 0,
     currency: 'USD',
-    isLowBalance: true,
-    lowBalanceThreshold: 50.00,
+    isLowBalance: false,
+    lowBalanceThreshold: 50.0,
   },
   agents: {
-    totalCount: 5,
-    activeCount: 4,
-    hasOffline: true,
+    totalCount: 0,
+    activeCount: 0,
+    hasOffline: false,
   },
   apps: {
-    totalCount: 3,
-    deployedCount: 2,
+    totalCount: 0,
+    deployedCount: 0,
   },
   secrets: {
-    totalCount: 8,
+    totalCount: 0,
   },
   teams: {
-    totalCount: 4,
-    pendingInvites: 2,
+    totalCount: 0,
+    pendingInvites: 0,
   },
 };
 
 export function useNavigationStatus(): NavigationStatus {
   const unreadCount = useNotificationStore((state) => state.unreadCounts.all);
+  const user = useAuthStore((state) => state.user);
+  const plan = user?.plan;
+
+  // Apps limit from plan (unlimited = -1)
+  const appsLimit = getAppsLimit(plan);
 
   // In a real app, this would fetch from API with polling/websockets
   // For now, return mock data enhanced with notifications
   return useMemo(() => {
     return {
       ...mockStatusData,
+      apps: {
+        totalCount: appsLimit,
+        deployedCount: 0,
+      },
       // Could incorporate unreadCount into relevant sections
     };
-  }, [unreadCount]);
+  }, [unreadCount, appsLimit]);
 }
 
 // Helper hook for getting specific status badge content

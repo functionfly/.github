@@ -276,7 +276,6 @@ export function NotFoundPage() {
         <ParticleBackground 
           particleCount={30}
           color="rgba(var(--brand-500), 0.4)"
-          speed={0.5}
         />
       </div>
       

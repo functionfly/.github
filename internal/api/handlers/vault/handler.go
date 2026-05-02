@@ -133,7 +133,7 @@ func secretToResponse(s *vault.Secret) SecretResponse {
 			Ciphertext: base64.StdEncoding.EncodeToString(s.EncryptedValue),
 			Salt:       base64.StdEncoding.EncodeToString(s.EncryptionSalt),
 			IV:         base64.StdEncoding.EncodeToString(s.IV),
-			Tag:        "", // Tag is part of ciphertext in GCM mode
+			Tag:        base64.StdEncoding.EncodeToString(s.EncryptionAuthTag),
 			KeyVersion: s.KeyVersion,
 		},
 		Scopes:         jsonMapToScopes(s.Scopes),

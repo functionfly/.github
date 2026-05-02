@@ -24,9 +24,11 @@ import { useOnboardingStore } from '@/stores/onboardingStore';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Activity,
+  ArrowRight,
   BarChart3,
   Bell,
   Bot,
+  Boxes,
   Building2,
   CheckCircle,
   ChevronDown,
@@ -37,6 +39,7 @@ import {
   Command,
   Database,
   Flame,
+GitFork,
   GripVertical,
   Key,
   KeyRound,
@@ -50,6 +53,7 @@ import {
   Puzzle,
   Rocket,
   Search,
+  Server,
   Settings,
   Shield,
   Sparkles,
@@ -62,8 +66,14 @@ import {
   Zap,
   type LucideIcon,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+
+const GitHubIcon = () => (
+  <svg role="img" viewBox="0 0 24 24" className="w-5 h-5" xmlns="http://www.w3.org/2000/svg">
+    <path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+  </svg>
+);
 
 interface SidebarProps {
   isOpen: boolean;
@@ -73,7 +83,7 @@ interface SidebarProps {
 interface NavItem {
   path: string;
   label: string;
-  icon: LucideIcon;
+  icon: LucideIcon | React.ComponentType;
   badge?: 'new' | 'beta' | number;
   shortcut?: string;
   description?: string;
@@ -179,6 +189,13 @@ const navigationSections: NavSection[] = [
         icon: Database,
         description: 'Function state management',
       },
+      {
+        path: '/github',
+        label: 'GitHub Import',
+        icon: GitHubIcon,
+        badge: 'new',
+        description: 'Import functions from GitHub repositories',
+      },
     ],
   },
   {
@@ -195,7 +212,7 @@ const navigationSections: NavSection[] = [
         onboardingHint: 'Deploy your first app',
       },
       {
-        path: ROUTES.AGENTS,
+        path: '/agents', // Resolved dynamically in resolveNavPath based on username
         label: 'Agents',
         icon: Bot,
         shortcut: 'A',
@@ -226,6 +243,14 @@ const navigationSections: NavSection[] = [
         label: 'API Keys',
         icon: KeyRound,
         description: 'API key management',
+      },
+      {
+        path: '/backends',
+        label: 'One-Click Backends',
+        icon: Boxes,
+        badge: 'new',
+        shortcut: 'B',
+        description: 'Deploy backends with one click',
       },
     ],
   },
@@ -360,6 +385,7 @@ const NAV_LABEL_KEYS: Record<string, string> = {
   'SDK': 'nav.sdk',
   'Secrets': 'nav.secrets',
   'API Keys': 'nav.apiKeys',
+  'One-Click Backends': 'nav.oneClickBackends',
   'Analytics': 'nav.analytics',
   'Usage': 'nav.usage',
   'Wallet': 'nav.wallet',
@@ -371,6 +397,7 @@ const NAV_LABEL_KEYS: Record<string, string> = {
   'Teams': 'nav.teams',
   'Decisions': 'nav.decisions',
   'State Fabric': 'nav.stateFabric',
+  'GitHub Import': 'nav.githubImport',
   'Settings': 'nav.settings',
   'Support': 'nav.support',
   'Recent': 'nav.recent',
@@ -472,8 +499,14 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
   }, [location.pathname]);
 
   const resolveNavPath = useCallback(
-    (item: NavItem) => (item.label === 'Wallet' ? walletNavPath : item.path),
-    [walletNavPath]
+    (item: NavItem) => {
+      if (item.label === 'Wallet') return walletNavPath;
+      if (item.label === 'Agents' && user?.username) {
+        return ROUTES.AGENTS(user.username);
+      }
+      return item.path;
+    },
+    [walletNavPath, user]
   );
 
   // Swipe gesture for mobile
@@ -490,7 +523,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
           if (item.path === ROUTES.STATE_FABRIC) {
             return planHasFeature(plan, 'STATE_FABRIC');
           }
-          if (item.path === ROUTES.AGENTS) {
+          if (item.path === '/agents') {
             return planHasFeature(plan, 'AGENTS');
           }
           if (item.path === ROUTES.ENTERPRISE_SUPPORT) {
@@ -685,8 +718,8 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
     </button>
   );
 
-  // Environment switcher component
-  const EnvironmentSwitcher = () => (
+  // Environment switcher component - memoized to prevent unnecessary re-renders
+  const EnvironmentSwitcher = useCallback(() => (
     <div className={cn('aviation-environment-tabs', isEnvironmentLoading && 'opacity-50 pointer-events-none')}>
       {(['production', 'staging', 'development'] as const).map((env) => (
         <button
@@ -704,7 +737,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
         </button>
       ))}
     </div>
-  );
+  ), [currentEnvironment, setEnvironment, isEnvironmentLoading]);
 
   // Onboarding progress component
   const OnboardingProgress = () => {
@@ -767,7 +800,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
               />
             )}
 
-            <Icon className="aviation-sidebar-icon flex-shrink-0" />
+            {Icon && <Icon className="aviation-sidebar-icon flex-shrink-0" />}
 
             <span className="aviation-sidebar-item-label flex-1 font-medium truncate">
               {translateLabel(item.label)}

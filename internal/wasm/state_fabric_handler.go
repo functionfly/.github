@@ -206,29 +206,35 @@ func (h *StateFabricHostHandler) StateGetFabric(fabricIDStr string) (string, err
 
 // StateCreateSnapshot creates a snapshot of state
 func (h *StateFabricHostHandler) StateCreateSnapshot(path string, label string) (string, error) {
-	// Parse the path
 	tenantID, fabricID, key, err := h.parsePath(path)
 	if err != nil {
 		return "", fmt.Errorf("invalid path: %w", err)
 	}
 
-	// For now, create a simple snapshot record
-	// Full implementation would snapshot the actual state data
-	snapshot := map[string]interface{}{
-		"id":         uuid.New().String(),
-		"fabric_id":  fabricID.String(),
-		"tenant_id":  tenantID.String(),
-		"key":        key,
-		"label":      label,
-		"path":       path,
-		"created_at": time.Now().UTC().Format(time.RFC3339),
-		"status":     "created",
+	snapshotName := label
+	if snapshotName == "" {
+		snapshotName = fmt.Sprintf("snapshot-%s", uuid.New().String()[:8])
 	}
 
-	// TODO: Integrate with repository CreateSnapshot when available
-	// For now, return the snapshot metadata
+	snapshot, err := h.repo.CreateSnapshot(h.ctx, tenantID, fabricID, snapshotName)
+	if err != nil {
+		return "", fmt.Errorf("failed to create snapshot: %w", err)
+	}
 
-	jsonResult, err := json.Marshal(snapshot)
+	result := map[string]interface{}{
+		"id":                snapshot.ID,
+		"fabric_id":         fabricID.String(),
+		"tenant_id":         tenantID.String(),
+		"key":               key,
+		"label":             label,
+		"path":              path,
+		"created_at":        snapshot.CreatedAt.Format(time.RFC3339),
+		"event_count":       snapshot.EventCount,
+		"size_bytes":        snapshot.SizeBytes,
+		"status":            "created",
+	}
+
+	jsonResult, err := json.Marshal(result)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal snapshot: %w", err)
 	}

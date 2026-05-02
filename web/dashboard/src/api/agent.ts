@@ -207,6 +207,7 @@ export interface ConcurrencyStats {
 
 export interface ChildAgent {
   id: string;
+  agentId: string;
   name: string;
   status: 'active' | 'suspended' | 'pending';
   swarmRole: 'worker' | 'manager' | 'infrastructure';
@@ -268,7 +269,7 @@ export interface MarketplaceAgent {
   name: string;
   description: string;
   listingType: 'worker' | 'manager' | 'infrastructure';
-  pricingModel: 'free' | 'per_call' | 'subscription' | 'revenue_share';
+  pricingModel: 'free' | 'per_call' | 'subscription' | 'revenue_share' | 'tiered' | 'dynamic' | 'auction';
   pricePerCall?: number;
   subscriptionMonthlyUsd?: number;
   revenueSharePercent?: number;
@@ -278,6 +279,11 @@ export interface MarketplaceAgent {
   trustScore?: number;
   deterministicVerified?: boolean;
   capabilities?: string[];
+  status?: string;
+  isOfficial?: boolean;
+  rankScore?: number;
+  walletBalanceUsd?: number;
+  hiringHistoryCount?: number;
 }
 
 export interface MarketplaceAgentSearchParams {
@@ -286,6 +292,8 @@ export interface MarketplaceAgentSearchParams {
   max_price_per_call?: number;
   min_roi_score?: number;
   listing_types?: string[];
+  capabilities?: string[];
+  sort_by?: 'rank_score' | 'rating_score' | 'price_per_call' | 'total_calls';
   limit?: number;
   offset?: number;
 }
@@ -612,7 +620,7 @@ export const agentApi = {
   spawnChild: (
     agentId: string,
     data: {
-      child_agent_id: string;
+      child_agent_id?: string;
       child_name: string;
       child_description?: string;
       swarm_role?: string;
@@ -688,7 +696,14 @@ export const agentApi = {
    * GET /v1/marketplace/agents
    */
   searchMarketplaceAgents: (params?: MarketplaceAgentSearchParams) =>
-    apiClient.get<{ ok: boolean; agents: MarketplaceAgent[]; total: number }>(
+    apiClient.get<{
+      ok: boolean;
+      agents: MarketplaceAgent[];
+      total: number;
+      limit: number;
+      offset: number;
+      has_more: boolean;
+    }>(
       '/v1/marketplace/agents',
       { params }
     ),
@@ -969,6 +984,56 @@ export const agentApi = {
       }>;
       children: number;
     }>(`/v1/agent/${agentId}/health`, { params }),
+
+  /**
+   * Get swarm statistics.
+   * GET /v1/agent/{id}/swarm/stats
+   */
+  getSwarmStats: (agentId: string) =>
+    apiClient.get<{
+      ok: boolean;
+      stats: SwarmStats;
+    }>(`/v1/agent/${agentId}/swarm/stats`),
+
+  /**
+   * Get security alerts for an agent.
+   * GET /v1/agent/{id}/security/alerts
+   */
+  getSecurityAlerts: (agentId: string, filters?: { severity?: string; status?: string }) =>
+    apiClient.get<{
+      ok: boolean;
+      alerts: Array<{
+        id: string;
+        agent_id: string;
+        alert_type: string;
+        severity: 'low' | 'medium' | 'high' | 'critical';
+        status: 'active' | 'acknowledged' | 'resolved';
+        message: string;
+        created_at: string;
+        acknowledged_at?: string;
+        resolved_at?: string;
+      }>;
+      total: number;
+    }>(`/v1/agent/${agentId}/security/alerts`, { params: filters }),
+
+  /**
+   * Acknowledge a security alert.
+   * POST /v1/agent/{id}/security/alerts/{alert_id}/acknowledge
+   */
+  acknowledgeSecurityAlert: (agentId: string, alertId: string) =>
+    apiClient.post<{ ok: boolean; message: string }>(
+      `/v1/agent/${agentId}/security/alerts/${alertId}/acknowledge`
+    ),
+
+  /**
+   * Resolve a security alert.
+   * POST /v1/agent/{id}/security/alerts/{alert_id}/resolve
+   */
+  resolveSecurityAlert: (agentId: string, alertId: string, resolution?: string) =>
+    apiClient.post<{ ok: boolean; message: string }>(
+      `/v1/agent/${agentId}/security/alerts/${alertId}/resolve`,
+      resolution ? { resolution } : {}
+    ),
 
   // ---------------------------------------------------------------------------
   // Marketplace Hiring & Purchasing (New)

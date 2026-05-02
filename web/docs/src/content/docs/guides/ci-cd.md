@@ -37,7 +37,7 @@ jobs:
         env:
           FLY_API_KEY: ${{ secrets.FLY_API_KEY }}
         run: |
-          fly deploy --environment production
+          ffly deploy --environment production
 ```
 
 ### Multi-Environment Deployment
@@ -61,7 +61,7 @@ jobs:
       - name: Deploy to Staging
         env:
           FLY_API_KEY: ${{ secrets.FLY_API_KEY_STAGING }}
-        run: fly deploy --environment staging
+        run: ffly deploy --environment staging
 
   deploy-production:
     if: github.ref == 'refs/heads/main'
@@ -72,7 +72,7 @@ jobs:
       - name: Deploy to Production
         env:
           FLY_API_KEY: ${{ secrets.FLY_API_KEY_PRODUCTION }}
-        run: fly deploy --environment production
+        run: ffly deploy --environment production
 ```
 
 ### Testing Before Deploy
@@ -111,7 +111,7 @@ jobs:
       - name: Deploy
         env:
           FLY_API_KEY: ${{ secrets.FLY_API_KEY }}
-        run: fly deploy
+        run: ffly deploy
 ```
 
 ## GitLab CI
@@ -137,7 +137,7 @@ deploy_staging:
   stage: deploy
   image: functionfly/fly-cli:latest
   script:
-    - fly deploy --environment staging
+    - ffly deploy --environment staging
   only:
     - staging
   variables:
@@ -147,7 +147,7 @@ deploy_production:
   stage: deploy
   image: functionfly/fly-cli:latest
   script:
-    - fly deploy --environment production
+    - ffly deploy --environment production
   only:
     - main
   variables:
@@ -185,7 +185,7 @@ jobs:
       - checkout
       - run:
           name: Deploy to FunctionFly
-          command: fly deploy
+          command: ffly deploy
 
 workflows:
   test_and_deploy:
@@ -223,7 +223,7 @@ pipeline {
                 branch 'main'
             }
             steps {
-                sh 'fly deploy --environment production'
+                sh 'ffly deploy --environment production'
             }
         }
     }
@@ -262,7 +262,7 @@ steps:
 
 - script: |
     curl -fsSL https://cli.functionfly.com/install.sh | sh
-    fly deploy --environment $(environment)
+    ffly deploy --environment $(environment)
   displayName: 'Deploy to FunctionFly'
   env:
     FLY_API_KEY: $(FLY_API_KEY)
@@ -309,11 +309,11 @@ resource "functionfly_function" "api" {
 
 ```bash
 # Deploy to staging on PR
-fly deploy --environment staging \
+ffly deploy --environment staging \
   --tag "pr-${GITHUB_PR_NUMBER}"
 
 # Deploy to production on merge
-fly deploy --environment production \
+ffly deploy --environment production \
   --tag "v${GITHUB_SHA:0:7}"
 ```
 
@@ -343,25 +343,25 @@ deployments:
 # .github/workflows/deploy.yml
 - name: Deploy with rollback
   run: |
-    fly deploy || \
+    ffly deploy || \
     (echo "Deployment failed, rolling back..." && \
-     fly rollback --environment production)
+     ffly rollback --environment production)
 ```
 
 ### Blue-Green Deployment
 
 ```bash
 # Deploy to green environment
-fly deploy --environment production-green
+ffly deploy --environment production-green
 
 # Run smoke tests
 ./scripts/smoke-tests.sh https://green-api.functionfly.com
 
 # Switch traffic
-fly traffic --environment production-green --percentage 100
+ffly traffic --environment production-green --percentage 100
 
 # Keep blue for 24h, then remove
-fly schedule-cleanup --environment production-blue --after 24h
+ffly schedule-cleanup --environment production-blue --after 24h
 ```
 
 ## Secrets in CI/CD
@@ -422,7 +422,7 @@ if __name__ == '__main__':
 ```yaml
 - name: Run smoke tests
   run: |
-    fly deploy --environment staging
+    ffly deploy --environment staging
     python test/smoke_test.py https://staging-api.functionfly.com
 ```
 

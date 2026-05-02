@@ -106,8 +106,8 @@ const matchingCategory = categories.find(c =>
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.14), transparent 55%),
-      radial-gradient(ellipse 50% 30% at 100% 10%, rgba(16, 185, 129, 0.05), transparent 40%);
+      radial-gradient(ellipse 80% 50% at 50% -20%, color-mix(in srgb, var(--color-primary) 14%, transparent), transparent 55%),
+      radial-gradient(ellipse 50% 30% at 100% 10%, color-mix(in srgb, var(--color-secondary) 5%, transparent), transparent 40%);
   }
 
   .search-page {
@@ -130,7 +130,7 @@ const matchingCategory = categories.find(c =>
   }
 
   .gradient-text {
-    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #94a3b8 100%);
+    background: var(--gradient-primary);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;

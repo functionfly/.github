@@ -206,4 +206,41 @@ export const functionsApi = {
     }
     return { trustScore: 0 };
   },
+
+  // Parse code to extract functions
+  parseCode: async (code: string, forceLanguage?: string): Promise<{
+    language: string;
+    confidence: number;
+    functions: Array<{
+      id: string;
+      name: string;
+      language: string;
+      signature: string;
+      parameters: Array<{ name: string; type?: string; has_default: boolean }>;
+      return_type?: string;
+      docstring?: string;
+      code: string;
+      start_line: number;
+      end_line: number;
+    }>;
+    raw_code_length: number;
+  }> => {
+    return apiClient.post('/v1/functions/parse', {
+      code,
+      force_language: forceLanguage,
+    });
+  },
+
+  // Create functions from parsed code
+  createFromCode: async (data: {
+    functions: Array<{ name: string; code: string; language: string }>;
+    visibility: 'private' | 'public';
+    providers?: string[];
+    region?: string;
+  }): Promise<{
+    created: Array<{ id: string; name: string; status: string }>;
+    failed?: Array<{ name: string; error: string }>;
+  }> => {
+    return apiClient.post('/v1/functions/from-code', data);
+  },
 };
