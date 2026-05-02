@@ -1,0 +1,195 @@
+---
+import ContentPage from '../../layouts/ContentPage.astro';
+import { SITE_ORIGIN } from '../../config';
+
+const blogPostSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: 'Introducing Flexible Pricing Bundles',
+  description: 'Launch faster with our new Backend-in-a-Box pricing bundles. Get auth, payments, AI, and more in one click.',
+  author: {
+    '@type': 'Organization',
+    name: 'FunctionFly',
+    url: SITE_ORIGIN,
+  },
+  publisher: {
+    '@type': 'Organization',
+    name: 'FunctionFly',
+    logo: {
+      '@type': 'ImageObject',
+      url: `${SITE_ORIGIN}/favicon.svg`,
+    },
+  },
+  datePublished: '2026-04-30',
+  dateModified: '2026-04-30',
+  mainEntityOfPage: {
+    '@type': 'WebPage',
+    '@id': `${SITE_ORIGIN}/blog/introducing-pricing-bundles`,
+  },
+};
+---
+
+<ContentPage
+  title="Introducing Flexible Pricing Bundles — FunctionFly"
+  description="Launch faster with our new Backend-in-a-Box pricing bundles. Get auth, payments, AI, and more in one click."
+  schema={blogPostSchema}
+  ogImage="/og-blog-pricing-bundles.svg"
+>
+  <span class="badge">
+    <span class="badge-dot"></span>
+    New Feature
+  </span>
+
+  <h1>Introducing Flexible Pricing Bundles</h1>
+
+  <p class="lead">We're excited to launch our new <strong>Backend-in-a-Box</strong> pricing bundles. Each bundle packages exactly what you need to ship your product — auth, payments, AI, and more — with one click provisioning.</p>
+
+  <p>Building a modern SaaS means stitching together dozens of services. Auth providers, payment processors, vector databases, email services — each one requires setup, integration testing, and ongoing maintenance. We thought: what if we solved this for you?</p>
+
+  <h2>Three Bundles, Built for Different Products</h2>
+
+  <div class="bundle-grid">
+    <div class="bundle-card bundle-popular">
+      <span class="badge badge-muted">Most Popular</span>
+      <h3>🚀 SaaS Starter Pack</h3>
+      <p class="bundle-price">$29<span class="bundle-period">/month</span></p>
+      <p class="bundle-tagline">One click → full backend</p>
+      <p>Everything you need to launch a SaaS product. Includes authentication, Stripe payments, user database, email templates, and an analytics dashboard.</p>
+      <ul>
+        <li>20 functions, 5 providers</li>
+        <li>2M requests, 5K AI calls</li>
+        <li>10GB storage, 100 workflows</li>
+        <li>Pre-built provisioning templates</li>
+      </ul>
+    </div>
+
+    <div class="bundle-card">
+      <h3>🛒 Marketplace Pack</h3>
+      <p class="bundle-price">$49<span class="bundle-period">/month</span></p>
+      <p class="bundle-tagline">Complete marketplace backend</p>
+      <p>Full marketplace infrastructure with listings management, payment processing, real-time messaging, and notification workflows.</p>
+      <ul>
+        <li>30 functions, 8 providers</li>
+        <li>5M requests, 10K AI calls</li>
+        <li>25GB storage, 250 workflows</li>
+        <li>Escrow payment templates</li>
+      </ul>
+    </div>
+
+    <div class="bundle-card">
+      <h3>🤖 AI App Pack</h3>
+      <p class="bundle-price">$39<span class="bundle-period">/month</span></p>
+      <p class="bundle-tagline">AI infrastructure in one bundle</p>
+      <p>Everything you need to build AI-powered applications: vector database, embeddings pipeline, chat workflows, and a memory system.</p>
+      <ul>
+        <li>25 functions, 5 providers</li>
+        <li>3M requests, 50K AI calls</li>
+        <li>15GB storage, 150 workflows</li>
+        <li>100K vector searches/month</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Build Now, Pay Later with Founder Mode</h2>
+
+  <p>We know that when you're building, every dollar counts. That's why all bundles include our <strong>Founder Mode</strong> — start free, pay when you hit traction.</p>
+
+  <p>Founder Mode activates when you hit any of these thresholds:</p>
+  <ul>
+    <li><strong>100 users</strong> — you've proven people want your product</li>
+    <li><strong>$1,000 MRR</strong> — revenue validation of your idea</li>
+    <li><strong>90 days</strong> — time to validate and iterate</li>
+  </ul>
+
+  <p>You'll get a 7-day grace period after hitting a threshold, giving you time to convert to a paid plan without service interruption. No surprise bills, no hidden fees.</p>
+
+  <h2>One-Click Provisioning</h2>
+
+  <p>Each bundle comes with pre-built provisioning templates that set up your entire backend in one click:</p>
+
+  <ul>
+    <li><strong>SaaS Starter</strong> — auth setup, Stripe payments, user database schema, email templates, analytics dashboard</li>
+    <li><strong>Marketplace</strong> — listings schema, escrow payment workflow, messaging system, notification templates</li>
+    <li><strong>AI App</strong> — vector collections, embeddings pipeline, chat templates, memory config, OpenRouter preset</li>
+  </ul>
+
+  <p>Stop stitching together services. Start with everything you need.</p>
+
+  <h2>Get Started</h2>
+
+  <p>Visit your dashboard to choose a bundle and provision your backend in minutes. Questions? <a href="/contact">Talk to us</a>.</p>
+
+  <div class="actions">
+    <a href="/pricing" class="btn-primary">View Pricing</a>
+    <a href="/docs" class="btn-outline">Read the Docs</a>
+  </div>
+
+  <p class="muted" style="margin-top: 2rem;">April 30, 2026 — Product Update</p>
+</ContentPage>
+
+<style>
+  .bundle-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin: 2rem 0;
+  }
+
+  .bundle-card {
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 1.75rem;
+    backdrop-filter: blur(8px);
+  }
+
+  .bundle-card:hover {
+    border-color: rgba(99, 102, 241, 0.3);
+  }
+
+  .bundle-popular {
+    border-color: rgba(99, 102, 241, 0.4);
+    position: relative;
+  }
+
+  .bundle-card h3 {
+    margin: 0.75rem 0 0.5rem;
+    font-size: 1.25rem;
+  }
+
+  .bundle-price {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--color-text);
+    margin: 0;
+  }
+
+  .bundle-period {
+    font-size: 1rem;
+    font-weight: 400;
+    color: var(--color-text-muted);
+  }
+
+  .bundle-tagline {
+    font-size: 0.9rem;
+    color: var(--color-primary);
+    font-weight: 500;
+    margin-bottom: 1rem;
+  }
+
+  .bundle-card ul {
+    margin: 1rem 0 0;
+    padding-left: 1.25rem;
+  }
+
+  .bundle-card li {
+    margin-bottom: 0.35rem;
+    font-size: 0.9rem;
+  }
+
+  @media (max-width: 640px) {
+    .bundle-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
