@@ -317,6 +317,10 @@
     color: var(--ff-primary-text);
   }
 
+  .ff-required {
+    color: var(--ff-error);
+  }
+
   .ff-field__hint {
     font-size: 0.75rem;
     color: var(--ff-muted-text);

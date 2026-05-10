@@ -250,7 +250,7 @@ export default function UsernameField() {
   return (
     <div className="ff-field">
       <label className="ff-field__label" htmlFor="username">
-        Username
+        Username <span className="ff-required" aria-label="required">*</span>
       </label>
       <div className="relative min-w-0">
         <input

@@ -7,12 +7,10 @@ import Checkbox from "../components/Checkbox";
 import ClientTurnstile from "../components/ClientTurnstile";
 import OAuthProviders from "../components/OAuthProviders";
 import UsernameField from "../components/UsernameField";
-import InviteCodeField from "../components/InviteCodeField";
-import RequestInviteModal from "../components/RequestInviteModal";
+import PasswordStrength from "../components/PasswordStrength";
 import { API_ORIGIN, MARKETING_ORIGIN } from "../config";
 import "../styles/oauth-providers.css";
 
-// Server-rendered to capture invite codes and redirect URIs from query params
 export const prerender = false;
 
 const urlInviteCode = Astro.url.searchParams.get("invite_code") || undefined;
@@ -21,25 +19,6 @@ const inviteCode = urlInviteCode || "";
 ---
 
 <AuthLayout title="Create account — FunctionFly™">
-  <!-- Invite Request Banner (outside FormCard so modal backdrop is unclipped) -->
-  <div class="invite-request-banner" id="invite-banner">
-    <div class="invite-request-content">
-      <div class="invite-request-icon" aria-hidden="true">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
-        </svg>
-      </div>
-      <div class="invite-request-text">
-        <span class="invite-request-title">Don't have an invite code?</span>
-        <span class="invite-request-subtitle">Request early access from our team</span>
-      </div>
-    </div>
-    <button type="button" class="invite-request-btn" id="open-invite-modal">Request invite</button>
-  </div>
-
-  <!-- Request Invite Modal -->
-  <RequestInviteModal client:load />
-
   <FormCard title="Create your account" subtitle="Start building on FunctionFly™" client:load>
     <OAuthProviders client:only="react" inviteCode={inviteCode} redirectAfterLogin={redirectAfterLogin} />
 
@@ -99,19 +78,7 @@ const inviteCode = urlInviteCode || "";
             id="password-field"
             aria-describedby="password-strength"
           />
-          <div id="password-strength" class="password-strength hidden" role="status" aria-live="polite">
-            <div class="strength-bar" aria-hidden="true">
-              <div class="strength-fill" id="strength-fill"></div>
-            </div>
-            <p class="strength-text" id="strength-text"></p>
-            <ul class="password-requirements" aria-label="Password requirements">
-              <li id="req-length">At least 8 characters</li>
-              <li id="req-upper">One uppercase letter</li>
-              <li id="req-lower">One lowercase letter</li>
-              <li id="req-number">One number</li>
-              <li id="req-special">One special character</li>
-            </ul>
-          </div>
+          <PasswordStrength client:load />
         </div>
 
         <InputField
@@ -126,6 +93,19 @@ const inviteCode = urlInviteCode || "";
           id="confirm-password-field"
         />
         <p id="password-match-error" class="field-error hidden" role="alert" aria-live="polite">Passwords do not match</p>
+
+        <!-- Terms of Service toggle -->
+        <div class="tos-toggle">
+          <Checkbox
+            client:load
+            label="I agree to the "
+            name="tos_accepted"
+            required={true}
+            id="tos-checkbox"
+            termsUrl={`${MARKETING_ORIGIN}/terms`}
+            privacyUrl={`${MARKETING_ORIGIN}/privacy`}
+          />
+        </div>
 
         <div class="step-navigation">
           <div></div> <!-- Spacer -->
@@ -162,6 +142,15 @@ const inviteCode = urlInviteCode || "";
 
         <UsernameField client:load />
 
+        <InputField
+          client:load
+          label="Company"
+          name="company"
+          type="text"
+          placeholder="Acme Inc. (optional)"
+          autoComplete="organization"
+        />
+
         <div class="dob-field">
           <label class="field-label" for="date_of_birth">
             Date of birth <span class="required" aria-label="required">*</span>
@@ -193,40 +182,23 @@ const inviteCode = urlInviteCode || "";
         </div>
       </div>
 
-      <!-- Step 3: Invite Code, Terms & CAPTCHA -->
+      <!-- Step 3: Referral & CAPTCHA -->
       <div class="step-content" data-step="3" aria-labelledby="step3-title">
         <div class="step-header">
           <h3 class="step-title" id="step3-title">Almost done!</h3>
-          <p class="step-description" id="invite-description">Enter your invite code to join</p>
+          <p class="step-description" id="step3-desc">Review and complete your signup</p>
         </div>
 
-        <div class="invite-section" id="invite-section">
-          <p class="invite-message">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="invite-icon" aria-hidden="true">
-              <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
-            </svg>
-            Private beta — enter the code you received from the team.
-          </p>
-          <InviteCodeField
-            client:only="react"
-            initialValue={inviteCode}
-            required={true}
+        <div class="referral-section" id="referral-section">
+          <InputField
+            client:load
+            label="Referral code"
+            name="referral_code"
+            type="text"
+            placeholder="Enter a code if you have one (optional)"
+            id="referral-code-field"
           />
-          <p class="invite-request">
-            Don't have one? <a href="/waitlist">Request one now</a>
-          </p>
         </div>
-
-        <!-- Terms Checkbox -->
-        <Checkbox
-          client:load
-          label="I agree to the "
-          name="terms"
-          required={true}
-          id="terms-checkbox"
-          termsUrl={`${MARKETING_ORIGIN}/terms`}
-          privacyUrl={`${MARKETING_ORIGIN}/privacy`}
-        />
 
         <!-- CAPTCHA -->
         <div class="captcha-section">
@@ -257,70 +229,6 @@ const inviteCode = urlInviteCode || "";
 </AuthLayout>
 
 <style>
-  /* Invite Request Banner */
-  .invite-request-banner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    background: rgba(255, 107, 53, 0.08);
-    border: 1px solid rgba(255, 107, 53, 0.25);
-    border-radius: 10px;
-    margin-bottom: 1.25rem;
-    flex-wrap: wrap;
-  }
-  .invite-request-content {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-  .invite-request-icon {
-    flex-shrink: 0;
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    background: rgba(255, 107, 53, 0.15);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #FF6B35;
-  }
-  .invite-request-text {
-    display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
-  }
-  .invite-request-title {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #F0F6FC;
-  }
-  .invite-request-subtitle {
-    font-size: 0.75rem;
-    color: #8B949E;
-  }
-  .invite-request-btn {
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    padding: 0.5rem 1rem;
-    background: linear-gradient(135deg, #FF6B35 0%, #FF4F5E 100%);
-    color: white;
-    border-radius: 6px;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    text-decoration: none;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-    box-shadow: 0 4px 14px rgba(255, 107, 53, 0.4);
-  }
-  .invite-request-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 8px 25px rgba(255, 107, 53, 0.5);
-    text-decoration: none;
-  }
-
   /* Form containment */
   #signup-form { overflow: hidden; min-width: 0; }
 
@@ -336,12 +244,12 @@ const inviteCode = urlInviteCode || "";
     content: '';
     flex: 1;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255, 107, 53, 0.3) 50%, transparent);
+    background: linear-gradient(90deg, transparent, rgba(var(--ff-flame-rgb), 0.3) 50%, transparent);
   }
   .divider-text {
     padding: 0 1rem;
     font-size: 0.75rem;
-    color: #6E7681;
+    color: var(--ff-muted-text);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
@@ -365,8 +273,8 @@ const inviteCode = urlInviteCode || "";
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: #1C2128;
-    color: #6E7681;
+    background: var(--ff-flightdeck);
+    color: var(--ff-muted-text);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -375,30 +283,30 @@ const inviteCode = urlInviteCode || "";
     transition: all 0.3s ease;
   }
   .step.active .step-number {
-    background: linear-gradient(135deg, #FF6B35 0%, #FF4F5E 100%);
+    background: linear-gradient(135deg, var(--ff-flame) 0%, var(--ff-afterburner) 100%);
     color: white;
-    box-shadow: 0 0 20px rgba(255, 107, 53, 0.4);
+    box-shadow: 0 0 20px rgba(var(--ff-flame-rgb), 0.4);
   }
   .step.completed .step-number {
-    background: #00FF9D;
-    color: #0D1117;
+    background: var(--ff-success);
+    color: var(--ff-tarmac);
   }
   .step-label {
     font-size: 0.75rem;
-    color: #6E7681;
+    color: var(--ff-muted-text);
     font-weight: 500;
   }
   .step.active .step-label {
-    color: #F0F6FC;
+    color: var(--ff-primary-text);
   }
   .step-connector {
     width: 40px;
     height: 2px;
-    background: #1C2128;
+    background: var(--ff-flightdeck);
     transition: background 0.3s ease;
   }
   .step-connector.completed {
-    background: #00FF9D;
+    background: var(--ff-success);
   }
 
   /* Step Content */
@@ -424,12 +332,12 @@ const inviteCode = urlInviteCode || "";
   .step-title {
     font-size: 1.125rem;
     font-weight: 600;
-    color: #F0F6FC;
+    color: var(--ff-primary-text);
     margin-bottom: 0.25rem;
   }
   .step-description {
     font-size: 0.875rem;
-    color: #8B949E;
+    color: var(--ff-secondary-text);
   }
 
   /* Step Navigation */
@@ -439,7 +347,7 @@ const inviteCode = urlInviteCode || "";
     align-items: center;
     margin-top: 1.5rem;
     padding-top: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    border-top: 1px solid var(--ff-border-default);
     flex-wrap: wrap;
     gap: 0.5rem;
   }
@@ -455,13 +363,13 @@ const inviteCode = urlInviteCode || "";
     border: none;
   }
   .btn-primary {
-    background: linear-gradient(135deg, #FF6B35 0%, #FF4F5E 100%);
+    background: linear-gradient(135deg, var(--ff-flame) 0%, var(--ff-afterburner) 100%);
     color: white;
-    box-shadow: 0 4px 14px rgba(255, 107, 53, 0.4);
+    box-shadow: 0 4px 14px rgba(var(--ff-flame-rgb), 0.4);
   }
   .btn-primary:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(255, 107, 53, 0.5);
+    box-shadow: 0 8px 25px rgba(var(--ff-flame-rgb), 0.5);
   }
   .btn-primary:disabled {
     opacity: 0.5;
@@ -469,54 +377,22 @@ const inviteCode = urlInviteCode || "";
   }
   .btn-secondary {
     background: transparent;
-    color: #8B949E;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--ff-secondary-text);
+    border: 1px solid var(--ff-border-default);
   }
   .btn-secondary:hover {
-    background: #1C2128;
-    border-color: #00D4FF;
-    color: #00D4FF;
+    background: var(--ff-flightdeck);
+    border-color: var(--ff-cyan);
+    color: var(--ff-cyan);
   }
 
-  /* Invite Section */
-  .invite-section {
+  /* Referral Section */
+  .referral-section {
     margin-bottom: 1rem;
     min-width: 0;
-    overflow: hidden;
-  }
-  .invite-message {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.8125rem;
-    color: #8B949E;
-    margin-bottom: 0.75rem;
-    padding: 0.625rem 0.875rem;
-    background: rgba(255, 107, 53, 0.08);
-    border: 1px solid rgba(255, 107, 53, 0.25);
-    border-radius: 8px;
-  }
-  .invite-icon {
-    flex-shrink: 0;
-    color: #FF6B35;
-  }
-  .invite-request {
-    margin-top: 0.5rem;
-    font-size: 0.8125rem;
-    color: #6E7681;
-    text-align: center;
-  }
-  .invite-request a {
-    color: #00D4FF;
-    text-decoration: none;
-    font-weight: 500;
-  }
-  .invite-request a:hover {
-    text-decoration: underline;
-    color: #FF6B35;
   }
   .required {
-    color: #FF6B7A;
+    color: var(--ff-error);
   }
 
   /* CAPTCHA section */
@@ -530,20 +406,25 @@ const inviteCode = urlInviteCode || "";
     min-width: 0;
     overflow: hidden;
   }
+
+  /* TOS toggle */
+  .tos-toggle {
+    margin: 1rem 0 0.25rem;
+  }
   .password-strength {
     margin-top: 0.5rem;
     margin-bottom: 1rem;
     padding: 0.75rem;
-    background: rgba(28, 33, 40, 0.5);
+    background: var(--ff-flightdeck);
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--ff-border-subtle);
   }
   .password-strength.hidden {
     display: none;
   }
   .strength-bar {
     height: 4px;
-    background: #1C2128;
+    background: var(--ff-flightdeck);
     border-radius: 2px;
     overflow: hidden;
     margin-bottom: 0.5rem;
@@ -553,19 +434,19 @@ const inviteCode = urlInviteCode || "";
     width: 0%;
     transition: width 0.3s, background-color 0.3s;
   }
-  .strength-fill.weak { background: #FF6B7A; width: 25%; }
-  .strength-fill.fair { background: #FF6B35; width: 50%; }
-  .strength-fill.good { background: #FF8C42; width: 75%; }
-  .strength-fill.strong { background: #00FF9D; width: 100%; }
+  .strength-fill.weak { background: var(--ff-error); width: 25%; }
+  .strength-fill.fair { background: var(--ff-warning); width: 50%; }
+  .strength-fill.good { background: var(--ff-flame); width: 75%; }
+  .strength-fill.strong { background: var(--ff-success); width: 100%; }
   .strength-text {
     font-size: 0.75rem;
     font-weight: 500;
     margin-bottom: 0.5rem;
   }
-  .strength-text.weak { color: #FF6B7A; }
-  .strength-text.fair { color: #FF6B35; }
-  .strength-text.good { color: #FF8C42; }
-  .strength-text.strong { color: #00FF9D; }
+  .strength-text.weak { color: var(--ff-error); }
+  .strength-text.fair { color: var(--ff-warning); }
+  .strength-text.good { color: var(--ff-flame); }
+  .strength-text.strong { color: var(--ff-success); }
   .password-requirements {
     list-style: none;
     padding: 0;
@@ -573,7 +454,7 @@ const inviteCode = urlInviteCode || "";
   }
   .password-requirements li {
     font-size: 0.75rem;
-    color: #6E7681;
+    color: var(--ff-muted-text);
     padding: 0.125rem 0;
     display: flex;
     align-items: center;
@@ -584,13 +465,13 @@ const inviteCode = urlInviteCode || "";
     font-size: 0.5rem;
   }
   .password-requirements li.met {
-    color: #00FF9D;
+    color: var(--ff-success);
   }
   .password-requirements li.met::before {
     content: "✓";
   }
   .field-error {
-    color: #FF6B7A;
+    color: var(--ff-error);
     font-size: 0.875rem;
     margin: -0.5rem 0 0.75rem 0;
   }
@@ -608,57 +489,57 @@ const inviteCode = urlInviteCode || "";
     margin-bottom: 0.375rem;
     font-size: 0.875rem;
     font-weight: 500;
-    color: #F0F6FC;
+    color: var(--ff-primary-text);
   }
   .dob-field .field-input {
     width: 100%;
     padding: 0.625rem 0.875rem;
-    background: #09090B;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: var(--ff-tower);
+    border: 1px solid var(--ff-border-default);
     border-radius: 8px;
-    color: #F0F6FC;
+    color: var(--ff-primary-text);
     font-size: 0.9375rem;
     transition: border-color 0.2s, box-shadow 0.2s;
     box-sizing: border-box;
   }
   .dob-field .field-input:focus {
     outline: none;
-    border-color: #FF6B35;
-    box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2);
+    border-color: var(--ff-flame);
+    box-shadow: 0 0 0 2px rgba(var(--ff-flame-rgb), 0.2);
   }
   .dob-field .field-input.error {
-    border-color: #FF6B7A;
+    border-color: var(--ff-error);
   }
   .dob-field .field-hint {
     margin-top: 0.375rem;
     font-size: 0.75rem;
-    color: #6E7681;
+    color: var(--ff-muted-text);
   }
 
   /* Card footer */
   .card-footer {
     text-align: center;
     font-size: 0.875rem;
-    color: #6E7681;
+    color: var(--ff-muted-text);
     margin-top: 1.5rem;
     padding-top: 1.5rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    border-top: 1px solid var(--ff-border-default);
   }
   .card-footer a {
-    color: #00D4FF;
+    color: var(--ff-cyan);
     text-decoration: none;
     font-weight: 500;
   }
   .card-footer a:hover {
     text-decoration: underline;
-    color: #FF6B35;
+    color: var(--ff-flame);
   }
 
   /* Network error styles */
   .network-error {
-    background: rgba(255, 45, 85, 0.1);
-    border: 1px solid rgba(255, 45, 85, 0.3);
-    color: #FF6B7A;
+    background: rgba(var(--ff-error-rgb), 0.1);
+    border: 1px solid rgba(var(--ff-error-rgb), 0.3);
+    color: var(--ff-error);
     padding: 0.75rem 1rem;
     border-radius: 8px;
     font-size: 0.875rem;
@@ -671,11 +552,6 @@ const inviteCode = urlInviteCode || "";
 
 <script is:inline define:vars={{ apiBase: API_ORIGIN }}>
   (function() {
-    // Banner: open invite modal via native dialog API
-    document.getElementById('open-invite-modal')?.addEventListener('click', () => {
-      document.getElementById('invite-modal')?.showModal();
-    });
-
     // Utility functions
     const validators = {
       email: (value) => {
@@ -829,6 +705,7 @@ const inviteCode = urlInviteCode || "";
           const emailEl = document.getElementById('email-field');
           const passwordEl = document.getElementById('password-field');
           const confirmEl = document.getElementById('confirm-password-field');
+          const tosEl = document.getElementById('tos-checkbox');
 
           const validations = [
             { name: 'email', result: validators.email(emailEl?.value || '') },
@@ -836,15 +713,24 @@ const inviteCode = urlInviteCode || "";
             { name: 'passwordMatch', result: validators.passwordMatch(passwordEl?.value || '', confirmEl?.value || '') },
           ];
 
+          if (!tosEl?.checked) {
+            validations.push({ name: 'tos', result: { valid: false, error: 'You must agree to the Terms of Service and Privacy Policy' } });
+          }
+
           const { valid, errors } = validateAll(validations);
 
           // Show errors inline
           Object.entries(errors).forEach(([field, error]) => {
+            if (field === 'tos') return;
             const el = document.getElementById(`${field === 'email' ? 'email' : field === 'passwordMatch' ? 'confirm-password' : 'password'}-field`);
             if (el) {
               el.setAttribute('aria-invalid', 'true');
             }
           });
+
+          if (errors.tos) {
+            alert(errors.tos);
+          }
 
           if (!valid) {
             trackFormError('signup_step_1', errors);
@@ -854,27 +740,36 @@ const inviteCode = urlInviteCode || "";
         }
 
         function validateStep2() {
+          const usernameEl = document.getElementById('username');
           const dobEl = document.getElementById('date_of_birth');
-          const result = validators.dateOfBirth(dobEl?.value || '');
+          const errors = {};
 
-          if (!result.valid) {
-            dobEl?.classList.add('error');
-            dobEl?.setAttribute('aria-invalid', 'true');
-            trackFormError('signup_step_2', { dateOfBirth: result.error || 'Invalid' });
+          if (!usernameEl?.value || usernameEl.value.trim().length < 3) {
+            errors.username = 'Username is required (min 3 characters)';
+            usernameEl?.setAttribute('aria-invalid', 'true');
+          } else if (usernameEl.classList.contains('ff-input--error')) {
+            errors.username = 'Please choose a valid username';
           }
 
-          return result.valid;
+          const dobResult = validators.dateOfBirth(dobEl?.value || '');
+          if (!dobResult.valid) {
+            errors.dateOfBirth = dobResult.error || 'Invalid';
+            dobEl?.classList.add('error');
+            dobEl?.setAttribute('aria-invalid', 'true');
+          }
+
+          if (Object.keys(errors).length > 0) {
+            trackFormError('signup_step_2', errors);
+            return false;
+          }
+
+          return true;
         }
 
         function validateStep3() {
-          const termsEl = document.getElementById('terms-checkbox');
           const captchaEl = document.getElementById('turnstile-token');
 
           const validations = [];
-
-          if (!termsEl?.checked) {
-            validations.push({ name: 'terms', result: { valid: false, error: 'You must agree to the Terms of Service and Privacy Policy' } });
-          }
 
           if (!captchaEl?.value) {
             validations.push({ name: 'captcha', result: { valid: false, error: 'Please complete the CAPTCHA verification' } });
@@ -884,7 +779,6 @@ const inviteCode = urlInviteCode || "";
 
           if (!valid) {
             trackFormError('signup_step_3', errors);
-            // Show alert for terms/captcha errors
             const firstError = Object.values(errors)[0];
             if (firstError) {
               alert(firstError);
@@ -971,37 +865,30 @@ const inviteCode = urlInviteCode || "";
           dobField.max = getMaxDateOfBirth();
         }
 
-        // Signup config - hide invite section when not required
-        const inviteSection = document.getElementById('invite-section');
-        const inviteDescription = document.getElementById('invite-description');
+        // Signup config
         const urlParams = new URLSearchParams(window.location.search);
-        const hasInviteCode = urlParams.has('invite_code');
-
-        fetch(`${apiBase}/auth/signup-config`, { credentials: 'include' })
-          .then(res => res.json())
-          .then(data => {
-            const inviteRequired = data.inviteRequired || data.invite_required || data.InviteRequired || false;
-            if (!inviteRequired && !hasInviteCode) {
-              if (inviteSection) inviteSection.style.display = 'none';
-              if (inviteDescription) inviteDescription.textContent = 'Review and complete your signup';
-            }
-          })
-          .catch(() => {
-            // On error, keep invite field visible
-          });
+        const referralCode = urlParams.get('referral_code');
+        if (referralCode) {
+          const referralField = document.getElementById('referral-code-field');
+          if (referralField) referralField.value = referralCode;
+        }
 
         // Network status monitoring
         function updateNetworkStatus() {
           const submitBtn = document.getElementById('submit-btn');
           if (submitBtn) {
             submitBtn.disabled = !navigator.onLine;
-            submitBtn.title = navigator.onLine ? '' : 'You appear to be offline';
+            if (navigator.onLine) {
+              submitBtn.removeAttribute('title');
+            } else {
+              submitBtn.title = 'You appear to be offline';
+            }
           }
         }
 
         window.addEventListener('online', updateNetworkStatus);
         window.addEventListener('offline', updateNetworkStatus);
-        updateNetworkStatus();
+        setTimeout(updateNetworkStatus, 0);
 
         // Form submission with analytics and network error handling
         const form = document.getElementById('signup-form');
@@ -1027,10 +914,11 @@ const inviteCode = urlInviteCode || "";
             confirmPassword: body.confirm_password,
             name: body.name,
             username: body.username,
+            companyName: body.company || undefined,
             dateOfBirth: body.date_of_birth,
-            inviteCode: body.invite_code,
-            termsAccepted: true,
-            turnstileToken: body.turnstile_token,
+            inviteCode: body.referral_code || undefined,
+            termsAccepted: !!body.tos_accepted,
+            recaptchaToken: body.turnstile_token,
           };
 
           try {
@@ -1045,7 +933,7 @@ const inviteCode = urlInviteCode || "";
 
             if (res.ok) {
               const duration = Math.round(performance.now() - startTime);
-              trackAuth("signup_complete", { duration, has_invite: !!body.invite_code });
+              trackAuth("signup_complete", { duration, has_referral: !!body.referral_code });
 
               window.location.href = '/confirm?email=' + encodeURIComponent(apiBody.email) +
                 '&sent=' + (data.emailSent || data.email_sent || false);
@@ -1094,7 +982,6 @@ const inviteCode = urlInviteCode || "";
             }
           }
         });
-      });
     }
   })();
 </script>
