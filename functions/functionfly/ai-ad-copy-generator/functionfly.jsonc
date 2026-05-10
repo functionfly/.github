@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "cache_ttl": 0,
+  "category": "ai",
+  "description": "Generate advertising copy",
+  "deterministic": true,
+  "idempotent": true,
+  "input": {
+    "properties": {
+      "data": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "memory_mb": 128,
+  "name": "ai-ad-copy-generator",
+  "output": {
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "price_per_call": 0.06,
+  "runtime": "python3.12",
+  "tags": [
+    "ai",
+    "ads",
+    "marketing"
+  ],
+  "tier": "premium",
+  "timeout_ms": 5000,
+  "title": "AI Ad Copy Generator",
+  "version": "1.0.0"
+}

@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "cache_ttl": 0,
+  "category": "ai",
+  "description": "Translate text between languages",
+  "deterministic": true,
+  "idempotent": true,
+  "input": {
+    "properties": {
+      "data": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "memory_mb": 128,
+  "name": "ai-language-translate",
+  "output": {
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "price_per_call": 0.05,
+  "runtime": "python3.12",
+  "tags": [
+    "ai",
+    "translate",
+    "nlp"
+  ],
+  "tier": "premium",
+  "timeout_ms": 5000,
+  "title": "AI Language Translator",
+  "version": "1.0.0"
+}

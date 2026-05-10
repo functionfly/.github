@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "cache_ttl": 0,
+  "category": "ai",
+  "description": "Summarize long text using AI",
+  "deterministic": true,
+  "idempotent": true,
+  "input": {
+    "properties": {
+      "data": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "memory_mb": 128,
+  "name": "ai-text-summarize",
+  "output": {
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "price_per_call": 0.05,
+  "runtime": "python3.12",
+  "tags": [
+    "ai",
+    "summarize",
+    "nlp"
+  ],
+  "tier": "premium",
+  "timeout_ms": 5000,
+  "title": "AI Text Summarizer",
+  "version": "1.0.0"
+}

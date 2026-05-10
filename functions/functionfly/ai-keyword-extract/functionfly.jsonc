@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "cache_ttl": 0,
+  "category": "ai",
+  "description": "Extract keywords from text using AI",
+  "deterministic": true,
+  "idempotent": true,
+  "input": {
+    "properties": {
+      "data": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "memory_mb": 128,
+  "name": "ai-keyword-extract",
+  "output": {
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "price_per_call": 0.04,
+  "runtime": "python3.12",
+  "tags": [
+    "ai",
+    "keywords",
+    "nlp"
+  ],
+  "tier": "premium",
+  "timeout_ms": 5000,
+  "title": "AI Keyword Extractor",
+  "version": "1.0.0"
+}
