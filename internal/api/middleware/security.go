@@ -220,7 +220,10 @@ func IsOriginAllowedForRequest(r *http.Request) bool {
 		// SECURITY: If no CORS_ALLOWED_ORIGINS is set, deny all cross-origin requests in production.
 		// Only allow localhost in development mode.
 		if isDev {
-			return strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://127.0.0.1:")
+			return strings.HasPrefix(origin, "http://localhost:") ||
+				strings.HasPrefix(origin, "https://localhost:") ||
+				strings.HasPrefix(origin, "http://127.0.0.1:") ||
+				strings.HasPrefix(origin, "https://127.0.0.1:")
 		}
 		return false
 	}

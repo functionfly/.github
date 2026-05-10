@@ -128,6 +128,7 @@ func registerAuthRoutes(
 	api.HandleFunc("/users/me/settings/security", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsSecurityMe)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/me/settings/status", authMiddleware.RequireAuth(usersHandler.HandleGetUserSettingsStatusMe)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/me/settings/status", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsStatusMe)).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/users/me/settings/platform", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsPlatformMe)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/me/environment", authMiddleware.RequireAuth(usersHandler.HandleGetActiveEnvironment)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/me/environment", authMiddleware.RequireAuth(usersHandler.HandleSetActiveEnvironment)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/me/activity", authMiddleware.RequireAuth(usersHandler.HandleCreateUserActivity)).Methods("POST", "OPTIONS")
@@ -253,6 +254,7 @@ func registerAuthRoutes(
 	// ── Backend-in-a-Box Pricing Bundles (viral pricing) ───────────────────
 	// Bundle catalog and details
 	api.HandleFunc("/billing/bundles", billingHandler.HandleGetBundles).Methods("GET", "OPTIONS")
+	api.HandleFunc("/billing/bundles/stats", billingHandler.HandleGetBundleStats).Methods("GET", "OPTIONS")
 	api.HandleFunc("/billing/bundles/{slug}", billingHandler.HandleGetBundle).Methods("GET", "OPTIONS")
 	// Immediate bundle checkout
 	api.HandleFunc("/billing/bundles/{slug}/checkout", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleCreateBundleCheckout))).Methods("POST", "OPTIONS")

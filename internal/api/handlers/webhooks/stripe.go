@@ -254,6 +254,8 @@ func (h *StripeWebhookHandler) handleEvent(w http.ResponseWriter, r *http.Reques
 		h.handleSubscriptionUpdated(w, r, event)
 	case "customer.subscription.deleted":
 		h.handleSubscriptionDeleted(w, r, event)
+	case "customer.subscription.created":
+		h.handleSubscriptionCreated(w, r, event)
 	case "invoice.created":
 		h.handleInvoiceCreated(w, r, event)
 	case "invoice.payment_failed":
@@ -846,6 +848,77 @@ func (h *StripeWebhookHandler) handleSubscriptionUpdated(w http.ResponseWriter, 
 
 	// Handle main (bundle) subscriptions
 	h.handleMainSubscriptionUpdated(w, r, &sub)
+}
+
+// handleSubscriptionCreated handles new bundle subscriptions created via Stripe checkout
+// (including founder mode conversions that transition to paid)
+func (h *StripeWebhookHandler) handleSubscriptionCreated(w http.ResponseWriter, r *http.Request, event *stripe.Event) {
+	var sub stripe.Subscription
+	raw, err := event.Data.Raw.MarshalJSON()
+	if err != nil || json.Unmarshal(raw, &sub) != nil {
+		http.Error(w, "Invalid subscription payload", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+
+	// Log the event for audit trail
+	h.logStripeEvent(ctx, event, &sub)
+
+	// Check if this is a bundle subscription
+	bundleSlug := sub.Metadata["bundle_slug"]
+	if bundleSlug == "" {
+		// Not a bundle subscription — ignore
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ignored", "reason": "not_bundle_subscription"})
+		return
+	}
+
+	tenantIDStr := sub.Metadata["tenant_id"]
+	tenantID, _ := uuid.Parse(tenantIDStr)
+
+	// Check for founder mode conversion
+	founderModeIDStr := sub.Metadata["founder_mode_id"]
+	if founderModeIDStr != "" {
+		// Founder mode conversion — process via the dedicated handler
+		if err := h.handleBundleSubscriptionCreated(ctx, &sub, tenantID); err != nil {
+			logrus.WithError(err).WithField("founder_mode_id", founderModeIDStr).Error("stripe webhook: founder mode conversion failed")
+			http.Error(w, "Failed to process founder mode conversion", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "founder_mode_converted"})
+		return
+	}
+
+	// Regular bundle subscription (not from founder mode)
+	// Update the bundle subscription with the Stripe subscription ID and mark as active
+	bundleSub, err := h.userRepo.GetBundleSubscriptionByTenant(ctx, tenantID)
+	if err != nil || bundleSub == nil {
+		logrus.WithField("tenant_id", tenantIDStr).Warn("stripe webhook: no bundle subscription found for regular creation")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ignored", "reason": "no_subscription_found"})
+		return
+	}
+
+	bundleSub.StripeSubscriptionID = sub.ID
+	bundleSub.Status = "active"
+	bundleSub.CurrentPeriodStart = time.Now()
+	bundleSub.CurrentPeriodEnd = time.Now().AddDate(0, 1, 0)
+
+	if err := h.userRepo.UpdateBundleSubscription(ctx, bundleSub); err != nil {
+		logrus.WithError(err).Error("stripe webhook: failed to update bundle subscription to active")
+		http.Error(w, "Failed to update subscription", http.StatusInternalServerError)
+		return
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"bundle_subscription_id": bundleSub.ID,
+		"stripe_subscription_id": sub.ID,
+	}).Info("stripe webhook: bundle subscription marked active")
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "active"})
 }
 
 // handleStateFabricSubscriptionUpdated handles updates to State Fabric addon subscriptions

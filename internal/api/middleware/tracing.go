@@ -147,6 +147,12 @@ func (w *tracingResponseWriter) WriteHeader(code int) {
 	w.ResponseWriter.WriteHeader(code)
 }
 
+func (w *tracingResponseWriter) Flush() {
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
 // GetTraceID extracts the trace ID from context
 func GetTraceID(ctx context.Context) string {
 	if id, ok := ctx.Value(TraceIDKey).(string); ok {

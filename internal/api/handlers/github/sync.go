@@ -135,36 +135,41 @@ func (h *Handler) HandleGetSyncLogs(w http.ResponseWriter, r *http.Request) {
 }
 
 // ensureWebhook creates a GitHub webhook for auto-sync if one doesn't exist.
-func (h *Handler) ensureWebhook(ctx context.Context, imp *storage.GitHubImport) {
+// Returns an error if webhook creation fails.
+func (h *Handler) ensureWebhook(ctx context.Context, imp *storage.GitHubImport) error {
 	log := h.logger.WithField("import_id", imp.ID)
 
 	conn, err := h.githubRepo.GetConnectionByID(ctx, imp.ConnectionID)
 	if err != nil || conn == nil {
 		log.Warn("Cannot ensure webhook: connection not found")
-		return
+		return fmt.Errorf("connection not found: %w", err)
 	}
 
 	repo, err := h.githubRepo.GetRepoByID(ctx, imp.RepoID)
 	if err != nil || repo == nil {
 		log.Warn("Cannot ensure webhook: repo not found")
-		return
+		return fmt.Errorf("repo not found: %w", err)
 	}
 
 	existing, err := h.githubRepo.GetWebhookByRepoID(ctx, imp.RepoID)
-	if err == nil && existing != nil {
-		return
+	if err != nil {
+		log.WithError(err).Warn("Failed to check existing webhook")
+		return fmt.Errorf("failed to check existing webhook: %w", err)
+	}
+	if existing != nil {
+		return nil
 	}
 
 	vault, err := githubsvc.NewTokenVault(h.vaultKey)
 	if err != nil {
 		log.WithError(err).Warn("Cannot create vault for webhook")
-		return
+		return fmt.Errorf("create vault: %w", err)
 	}
 
 	token, err := vault.Decrypt(conn.EncryptedToken, conn.TokenIV, conn.TokenTag)
 	if err != nil {
 		log.WithError(err).Warn("Cannot decrypt token for webhook")
-		return
+		return fmt.Errorf("decrypt token: %w", err)
 	}
 
 	ghClient := githubsvc.NewClient(token, githubsvc.WithLogger(h.logger))
@@ -172,7 +177,7 @@ func (h *Handler) ensureWebhook(ctx context.Context, imp *storage.GitHubImport) 
 	secretBytes := make([]byte, 32)
 	if _, err := rand.Read(secretBytes); err != nil {
 		log.WithError(err).Warn("Cannot generate webhook secret")
-		return
+		return fmt.Errorf("generate secret: %w", err)
 	}
 	webhookSecret := fmt.Sprintf("%x", secretBytes)
 
@@ -189,7 +194,7 @@ func (h *Handler) ensureWebhook(ctx context.Context, imp *storage.GitHubImport) 
 	whResp, err := ghClient.CreateWebhook(ctx, repo.Owner, repo.Name, whReq)
 	if err != nil {
 		log.WithError(err).Warn("Failed to create webhook on GitHub")
-		return
+		return fmt.Errorf("create webhook on GitHub: %w", err)
 	}
 
 	eventsJSON, _ := json.Marshal([]string{"push", "pull_request"})
@@ -204,5 +209,9 @@ func (h *Handler) ensureWebhook(ctx context.Context, imp *storage.GitHubImport) 
 
 	if _, err := h.githubRepo.CreateWebhook(ctx, wh); err != nil {
 		log.WithError(err).Warn("Failed to store webhook record")
+		return fmt.Errorf("store webhook record: %w", err)
 	}
+
+	log.Info("Webhook registered successfully for auto-sync")
+	return nil
 }

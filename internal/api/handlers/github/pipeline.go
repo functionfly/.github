@@ -3,24 +3,30 @@ package github
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/functionfly/functionfly/internal/services/github"
 	"github.com/functionfly/functionfly/internal/storage"
+	storageregistry "github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 )
 
 // pipelineStep tracks which steps have been completed for saga rollback.
 type pipelineStep string
 
 const (
-	stepConnectionLoaded pipelineStep = "connection_loaded"
-	stepBranchResolved   pipelineStep = "branch_resolved"
-	stepTreeFetched      pipelineStep = "tree_fetched"
-	stepScanCompleted    pipelineStep = "scan_completed"
-	stepFunctionCreated  pipelineStep = "function_created"
+	stepConnectionLoaded  pipelineStep = "connection_loaded"
+	stepBranchResolved    pipelineStep = "branch_resolved"
+	stepTreeFetched       pipelineStep = "tree_fetched"
+	stepScanCompleted     pipelineStep = "scan_completed"
+	stepFunctionCreated   pipelineStep = "function_created"
 	stepWebhookRegistered pipelineStep = "webhook_registered"
 )
 
@@ -34,6 +40,8 @@ func (h *Handler) runImportPipeline(importID uuid.UUID) {
 
 	var completedSteps []pipelineStep
 	var imp *storage.GitHubImport
+	var functionID uuid.UUID
+	var functionCreatedByThisImport bool
 
 	var rollbackFn = func() {
 		if imp == nil {
@@ -57,6 +65,17 @@ func (h *Handler) runImportPipeline(importID uuid.UUID) {
 					log.Info("Rollback: removed webhook")
 				}
 			case stepFunctionCreated:
+				if functionID != uuid.Nil && functionCreatedByThisImport {
+					if fn, getErr := h.registryRepo.GetFunctionByID(functionID); getErr == nil {
+						if delErr := h.registryRepo.DeleteFunction(fn.Author, fn.Name); delErr != nil {
+							log.WithError(delErr).WithField("function_id", functionID).Warn("Rollback: failed to delete function")
+						} else {
+							log.WithField("function_id", functionID).Info("Rollback: deleted function")
+						}
+					} else {
+						log.WithError(getErr).WithField("function_id", functionID).Warn("Rollback: failed to get function for deletion")
+					}
+				}
 				_ = h.githubRepo.UpdateRepoImportStatus(ctx, imp.RepoID, "not_imported")
 				log.Info("Rollback: reset repo import status")
 			}
@@ -197,10 +216,183 @@ func (h *Handler) runImportPipeline(importID uuid.UUID) {
 
 	h.sendProgress(ctx, importID, "publishing", 70, "Creating function in registry")
 
-	functionID := uuid.New()
-	versionID := uuid.New()
+	// Resolve the author's username from user ID for proper registry authorship
+	authorUsername, err := h.resolveAuthorUsername(ctx, imp.UserID)
+	if err != nil {
+		log.WithError(err).Warn("Failed to resolve author username, using fallback")
+		authorUsername = "imported"
+	}
+	log.WithField("author_username", authorUsername).Info("Resolved author username")
 
+	// Compute content hash for version tracking
 	contentHash := computeContentHash(tree.Tree)
+
+	// Check if function with same author/name already exists (idempotent import)
+	log.WithFields(logrus.Fields{
+		"author": authorUsername,
+		"name":   imp.FunctionName,
+	}).Info("Looking up existing function by author/name")
+	existingFn, err := h.registryRepo.GetFunctionByAuthorName(authorUsername, imp.FunctionName)
+	if err != nil {
+		log.WithError(err).Warn("Failed to check for existing function")
+	} else if existingFn != nil {
+		log.WithFields(logrus.Fields{
+			"existing_fn_id": existingFn.ID,
+			"author":         existingFn.Author,
+			"name":           existingFn.Name,
+		}).Info("Found existing function")
+	}
+
+	if existingFn != nil {
+		functionID = existingFn.ID
+		functionCreatedByThisImport = false
+		log.WithField("function_id", functionID).Info("Using existing function, will create new version")
+	} else {
+		// Create new function in registry
+		fn := &storageregistry.RegistryFunction{
+			Author:          authorUsername,
+			Name:            imp.FunctionName,
+			Title:           sql.NullString{String: imp.FunctionName, Valid: true},
+			Visibility:      imp.Visibility,
+			PopularityScore: 0,
+			TenantID:        &imp.TenantID,
+			OwnerUserID:     &imp.UserID,
+			Tags:            json.RawMessage(`[]`),
+		}
+
+		// Apply manifest overrides for title, description, category
+		if title, ok := manifestConfig["title"].(string); ok && title != "" {
+			fn.Title = sql.NullString{String: title, Valid: true}
+		}
+		if desc, ok := manifestConfig["description"].(string); ok && desc != "" {
+			fn.Description = sql.NullString{String: desc, Valid: true}
+		}
+		if cat, ok := manifestConfig["category"].(string); ok && cat != "" {
+			fn.Category = sql.NullString{String: cat, Valid: true}
+		}
+
+		if err := h.registryRepo.CreateFunction(fn); err != nil {
+			errStr := err.Error()
+			if !strings.Contains(errStr, "duplicate key") && !strings.Contains(errStr, "23505") {
+				rollbackFn()
+				h.failImport(ctx, importID, fmt.Sprintf("Failed to create function in registry: %v", err))
+				return
+			}
+
+			log.Info("Function already exists (concurrent or duplicate), fetching existing")
+			existingFn, fetchErr := h.registryRepo.GetFunctionByAuthorName(authorUsername, imp.FunctionName)
+			if fetchErr == nil && existingFn != nil {
+				functionID = existingFn.ID
+				functionCreatedByThisImport = false
+				log.WithField("function_id", functionID).Info("Using existing function, will create new version")
+			} else if errors.Is(fetchErr, gorm.ErrRecordNotFound) {
+				rollbackFn()
+				h.failImport(ctx, importID, fmt.Sprintf("Failed to create function: function already exists but could not be fetched: %v", err))
+				return
+			} else {
+				rollbackFn()
+				h.failImport(ctx, importID, fmt.Sprintf("Failed to create function (concurrent): %v", err))
+				return
+			}
+		} else {
+			functionID = fn.ID
+			functionCreatedByThisImport = true
+			log.WithField("function_id", functionID).Info("Created new function in registry")
+		}
+	}
+
+	log.WithField("function_id", functionID).Info("Function ID to use for version")
+
+	completedSteps = append(completedSteps, stepFunctionCreated)
+
+	// Create function version
+	versionID := uuid.New()
+	manifestJSON, _ := json.Marshal(manifestConfig)
+
+	runtimeStr := "node18"
+	if rt, ok := manifestConfig["runtime"].(string); ok && rt != "" {
+		runtimeStr = rt
+	}
+
+	version := &storageregistry.RegistryFunctionVersion{
+		ID:          versionID,
+		FunctionID:  functionID,
+		Version:     "1.0.0",
+		Manifest:    manifestJSON,
+		Runtime:     runtimeStr,
+		MemoryMB:    256,
+		TimeoutMs:   30000,
+		ContentHash: sql.NullString{String: contentHash, Valid: true},
+	}
+
+	// Set source code if available from tree
+	if len(tree.Tree) > 0 {
+		var sourceFiles []string
+		for _, entry := range tree.Tree {
+			if entry.Type != "blob" {
+				continue
+			}
+			ext := strings.ToLower(filepath.Ext(entry.Path))
+			if ext == ".js" || ext == ".ts" || ext == ".mjs" || ext == ".cjs" ||
+				ext == ".jsx" || ext == ".tsx" || ext == ".py" || ext == ".go" ||
+				ext == ".rs" || ext == ".java" || ext == ".rb" || ext == ".php" {
+				sourceFiles = append(sourceFiles, entry.Path)
+			}
+		}
+
+		if len(sourceFiles) > 0 {
+			h.sendProgress(ctx, importID, "building", 73, "Fetching source code")
+
+			var sourceCode strings.Builder
+			maxFiles := 20
+			maxFileSize := 50 * 1024
+			totalFetched := 0
+			totalSize := 0
+
+			for _, filePath := range sourceFiles {
+				if totalFetched >= maxFiles {
+					fmt.Fprintf(&sourceCode, "\n// ... and %d more files\n", len(sourceFiles)-maxFiles)
+					break
+				}
+
+				content, err := ghClient.GetFileContent(ctx, repo.Owner, repo.Name, filePath, branchSHA)
+				if err != nil {
+					log.WithError(err).WithField("file", filePath).Warn("Failed to fetch source file")
+					fmt.Fprintf(&sourceCode, "// %s (failed to fetch)\n", filePath)
+					continue
+				}
+
+				if totalSize+len(content) > maxFileSize {
+					fmt.Fprintf(&sourceCode, "\n// %s (truncated, total size exceeded)\n", filePath)
+					continue
+				}
+
+				totalSize += len(content)
+				totalFetched++
+				fmt.Fprintf(&sourceCode, "// %s\n%s\n\n", filePath, string(content))
+			}
+
+			if sourceCode.Len() > 0 {
+				version.SourceCode = sql.NullString{String: sourceCode.String(), Valid: true}
+				log.WithFields(logrus.Fields{
+					"files_fetched": totalFetched,
+					"total_size":    totalSize,
+				}).Info("Source code fetched for function version")
+			}
+		}
+	}
+
+	if err := h.registryRepo.CreateFunctionVersion(version); err != nil {
+		log.WithError(err).Error("Failed to create function version")
+		rollbackFn()
+		h.failImport(ctx, importID, fmt.Sprintf("Failed to create function version: %v", err))
+		return
+	}
+
+	log.WithFields(logrus.Fields{
+		"function_id": functionID,
+		"version_id":  version.ID,
+	}).Info("Created function and version in registry")
 
 	h.sendProgress(ctx, importID, "publishing", 80, "Publishing function version")
 
@@ -212,12 +404,11 @@ func (h *Handler) runImportPipeline(importID uuid.UUID) {
 
 	h.sendProgress(ctx, importID, "publishing", 90, "Finalizing import")
 
-	if err := h.githubRepo.UpdateImportResult(ctx, importID, functionID, versionID, branchSHA, contentHash, filesImported, totalSize); err != nil {
+	if err := h.githubRepo.UpdateImportResult(ctx, importID, functionID, version.ID, branchSHA, contentHash, filesImported, totalSize); err != nil {
 		rollbackFn()
 		h.failImport(ctx, importID, fmt.Sprintf("Failed to save import result: %v", err))
 		return
 	}
-	completedSteps = append(completedSteps, stepFunctionCreated)
 
 	if err := h.githubRepo.UpdateRepoImportStatus(ctx, imp.RepoID, "imported"); err != nil {
 		log.WithError(err).Warn("Failed to update repo import status")
@@ -225,10 +416,14 @@ func (h *Handler) runImportPipeline(importID uuid.UUID) {
 
 	if imp.AutoSyncEnabled {
 		h.sendProgress(ctx, importID, "configuring", 95, "Registering webhook for auto-sync")
-		go func() {
-			h.ensureWebhook(ctx, imp)
+
+		webhookErr := h.ensureWebhook(ctx, imp)
+		if webhookErr != nil {
+			log.WithError(webhookErr).Warn("Webhook registration failed, auto-sync will not work")
+			h.sendProgress(ctx, importID, "configuring", 97, "Webhook registration failed: "+webhookErr.Error())
+		} else {
 			completedSteps = append(completedSteps, stepWebhookRegistered)
-		}()
+		}
 	}
 
 	if err := ghClient.CreateCommitStatus(ctx, repo.Owner, repo.Name, branchSHA, &github.CommitStatusRequest{

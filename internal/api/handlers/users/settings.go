@@ -783,3 +783,114 @@ func (h *Handler) HandleGetUserSettingsStatusMe(w http.ResponseWriter, r *http.R
 		"customStatusEmoji": customStatusEmoji,
 	})
 }
+
+// PlatformSettingsRequest is the body for PATCH /v1/users/me/settings/platform
+type PlatformSettingsRequest struct {
+	AutoEvolve               *bool   `json:"auto_evolve,omitempty"`
+	RequireApproval          *bool   `json:"require_approval,omitempty"`
+	SandboxValidation        *bool   `json:"sandbox_validation,omitempty"`
+	DefaultCanaryPct         *int    `json:"default_canary_pct,omitempty"`
+	MaxMutationsPerDay       *int    `json:"max_mutations_per_day,omitempty"`
+	NotifyOnProposal         *bool   `json:"notify_on_proposal,omitempty"`
+	NotifyOnDeploy           *bool   `json:"notify_on_deploy,omitempty"`
+	NotifyOnRollback         *bool   `json:"notify_on_rollback,omitempty"`
+	AutoRollbackOnError       *bool   `json:"auto_rollback_on_error,omitempty"`
+	AutoRollbackErrorThreshold *int   `json:"auto_rollback_error_threshold,omitempty"`
+}
+
+// HandlePatchUserSettingsPlatformMe handles PATCH /v1/users/me/settings/platform
+func (h *Handler) HandlePatchUserSettingsPlatformMe(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var req PlatformSettingsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	// Get current settings
+	currentSettings, err := h.repo.GetUserSettings(claims.UserID)
+	if err != nil {
+		currentSettings = getDefaultSettings()
+	}
+
+	// Ensure platform key exists
+	if currentSettings["platform"] == nil {
+		currentSettings["platform"] = map[string]interface{}{}
+	}
+	platform := currentSettings["platform"].(map[string]interface{})
+
+	// Apply valid fields
+	if req.AutoEvolve != nil {
+		platform["auto_evolve"] = *req.AutoEvolve
+	}
+	if req.RequireApproval != nil {
+		platform["require_approval"] = *req.RequireApproval
+	}
+	if req.SandboxValidation != nil {
+		platform["sandbox_validation"] = *req.SandboxValidation
+	}
+	if req.DefaultCanaryPct != nil {
+		v := *req.DefaultCanaryPct
+		if v < 1 {
+			v = 1
+		}
+		if v > 100 {
+			v = 100
+		}
+		platform["default_canary_pct"] = v
+	}
+	if req.MaxMutationsPerDay != nil {
+		v := *req.MaxMutationsPerDay
+		if v < 1 {
+			v = 1
+		}
+		if v > 100 {
+			v = 100
+		}
+		platform["max_mutations_per_day"] = v
+	}
+	if req.NotifyOnProposal != nil {
+		platform["notify_on_proposal"] = *req.NotifyOnProposal
+	}
+	if req.NotifyOnDeploy != nil {
+		platform["notify_on_deploy"] = *req.NotifyOnDeploy
+	}
+	if req.NotifyOnRollback != nil {
+		platform["notify_on_rollback"] = *req.NotifyOnRollback
+	}
+	if req.AutoRollbackOnError != nil {
+		platform["auto_rollback_on_error"] = *req.AutoRollbackOnError
+	}
+	if req.AutoRollbackErrorThreshold != nil {
+		v := *req.AutoRollbackErrorThreshold
+		if v < 1 {
+			v = 1
+		}
+		if v > 50 {
+			v = 50
+		}
+		platform["auto_rollback_error_threshold"] = v
+	}
+
+	currentSettings["platform"] = platform
+
+	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
+		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update platform settings")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to update platform settings")
+		return
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"user_id":          claims.UserID,
+		"auto_evolve":      platform["auto_evolve"],
+		"require_approval":  platform["require_approval"],
+		"default_canary":    platform["default_canary_pct"],
+	}).Info("users: platform settings updated")
+
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Platform settings updated"})
+}

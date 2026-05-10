@@ -12,15 +12,15 @@ type ConnectResponse struct {
 }
 
 type ConnectionResponse struct {
-	ID              uuid.UUID  `json:"id"`
-	GithubUsername  string     `json:"github_username"`
-	GithubAvatarURL *string    `json:"github_avatar_url,omitempty"`
-	GithubProfileURL *string   `json:"github_profile_url,omitempty"`
-	TokenScope      *string    `json:"token_scope,omitempty"`
-	TokenExpiresAt  *time.Time `json:"token_expires_at,omitempty"`
-	Status          string     `json:"status"`
-	ConnectedAt     time.Time  `json:"connected_at"`
-	LastSyncedAt    *time.Time `json:"last_synced_at,omitempty"`
+	ID               uuid.UUID  `json:"id"`
+	GithubUsername   string     `json:"github_username"`
+	GithubAvatarURL  *string    `json:"github_avatar_url,omitempty"`
+	GithubProfileURL *string    `json:"github_profile_url,omitempty"`
+	TokenScope       *string    `json:"token_scope,omitempty"`
+	TokenExpiresAt   *time.Time `json:"token_expires_at,omitempty"`
+	Status           string     `json:"status"`
+	ConnectedAt      time.Time  `json:"connected_at"`
+	LastSyncedAt     *time.Time `json:"last_synced_at,omitempty"`
 }
 
 type RefreshTokenResponse struct {
@@ -28,10 +28,10 @@ type RefreshTokenResponse struct {
 }
 
 type ListReposResponse struct {
-	Repos      []*RepoResponse `json:"repos"`
-	Total      int             `json:"total"`
-	Page       int             `json:"page"`
-	PerPage    int             `json:"per_page"`
+	Repos   []*RepoResponse `json:"repos"`
+	Total   int             `json:"total"`
+	Page    int             `json:"page"`
+	PerPage int             `json:"per_page"`
 }
 
 type RepoResponse struct {
@@ -82,15 +82,16 @@ type TreeNodeResponse struct {
 }
 
 type ImportRequest struct {
-	RepoID           uuid.UUID       `json:"repo_id"`
-	Branch           string          `json:"branch"`
-	SourcePath       *string         `json:"source_path,omitempty"`
-	FunctionName     string          `json:"function_name"`
-	Visibility       string          `json:"visibility"`
-	RuntimeOverride  *string         `json:"runtime_override,omitempty"`
+	RepoID            uuid.UUID       `json:"repo_id"`
+	Branch            string          `json:"branch"`
+	SourcePath        *string         `json:"source_path,omitempty"`
+	FunctionName      string          `json:"function_name"`
+	FunctionNames     []string        `json:"function_names,omitempty"`
+	Visibility        string          `json:"visibility"`
+	RuntimeOverride   *string         `json:"runtime_override,omitempty"`
 	ManifestOverrides json.RawMessage `json:"manifest_overrides,omitempty"`
-	AutoSync         bool            `json:"auto_sync"`
-	SyncBranches     json.RawMessage `json:"sync_branches,omitempty"`
+	AutoSync          bool            `json:"auto_sync"`
+	SyncBranches      json.RawMessage `json:"sync_branches,omitempty"`
 }
 
 type BulkImportRequest struct {
@@ -126,6 +127,7 @@ type ImportDetailResponse struct {
 	Progress          int             `json:"progress"`
 	ErrorMessage      *string         `json:"error_message,omitempty"`
 	FunctionID        *uuid.UUID      `json:"function_id,omitempty"`
+	FunctionAuthor    string          `json:"function_author,omitempty"`
 	FunctionVersionID *uuid.UUID      `json:"function_version_id,omitempty"`
 	CommitSHA         *string         `json:"commit_sha,omitempty"`
 	FilesImported     int             `json:"files_imported"`

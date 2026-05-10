@@ -389,6 +389,7 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/registry/functions/{functionId}/versions", authMiddleware.RequirePermission(auth.PermTenantsRead)(adminRegistryHandler.HandleListRegistryFunctionVersions)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/registry/generate-description", authMiddleware.RequirePermission(auth.PermTenantsWrite)(adminRegistryHandler.HandleGenerateRegistryDescription)).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/registry/dre/regenerate-bootstrap", authMiddleware.RequirePermission(auth.PermTenantsWrite)(registryHandler.HandleRegenerateBootstrap)).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/registry/readmes/backfill", authMiddleware.RequirePermission(auth.PermTenantsWrite)(registryHandler.HandleBackfillReadmes)).Methods("POST", "OPTIONS")
 
 	// Admin cache management routes
 	adminRoutes.HandleFunc("/cache/stats", authMiddleware.RequirePermission(auth.PermSystemRead)(adminRegistryHandler.HandleGetCacheStats)).Methods("GET", "OPTIONS")

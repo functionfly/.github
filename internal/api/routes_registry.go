@@ -49,17 +49,18 @@ func registerRegistryRoutes(
 	dreHandler := drehandler.NewHandler(registryRepo)
 
 	// ── App-based Playground (public) ───────────────────────────────────────
-	api.HandleFunc("/run/{appSlug}/{functionName}", appPlaygroundHandler.HandlePlaygroundUI).Methods("GET", "OPTIONS")
-	api.HandleFunc("/run/{appSlug}/{functionName}/info", appPlaygroundHandler.HandleGetFunctionInfo).Methods("GET", "OPTIONS")
-	api.HandleFunc("/run/{appSlug}/{functionName}/execute", func(w http.ResponseWriter, r *http.Request) {
+	// NOTE: uses /app-run/ prefix to avoid collision with registry playground /run/ routes.
+	api.HandleFunc("/app-run/{appSlug}/{functionName}", appPlaygroundHandler.HandlePlaygroundUI).Methods("GET", "OPTIONS")
+	api.HandleFunc("/app-run/{appSlug}/{functionName}/info", appPlaygroundHandler.HandleGetFunctionInfo).Methods("GET", "OPTIONS")
+	api.HandleFunc("/app-run/{appSlug}/{functionName}/execute", func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		app, err := s.repo.GetAppBySlug(vars["appSlug"])
-		if err != nil {
+		if err != nil || app == nil {
 			http.Error(w, "App not found", http.StatusNotFound)
 			return
 		}
 		fn, err := s.repo.GetFunctionByAppIDAndName(r.Context(), app.ID, vars["functionName"])
-		if err != nil {
+		if err != nil || fn == nil {
 			http.Error(w, "Function not found", http.StatusNotFound)
 			return
 		}
@@ -79,13 +80,13 @@ func registerRegistryRoutes(
 		executionSecurityMW.SecureExecution(fn.ID, version)(registryHandler.HandleExecute).ServeHTTP(w, r)
 	}
 	if verificationMiddleware != nil {
-		api.Handle("/v1/{author}/{name}", verificationMiddleware.RequireVerifiedFunction("standard")(http.HandlerFunc(secureExecuteHandler))).Methods("POST", "OPTIONS")
-		api.Handle("/v1/{author}/{name}@{version}", verificationMiddleware.RequireVerifiedFunction("standard")(http.HandlerFunc(secureExecuteHandler))).Methods("POST", "OPTIONS")
+		api.Handle("/{author}/{name}", verificationMiddleware.RequireVerifiedFunction("standard")(http.HandlerFunc(secureExecuteHandler))).Methods("POST", "OPTIONS")
+		api.Handle("/{author}/{name}@{version}", verificationMiddleware.RequireVerifiedFunction("standard")(http.HandlerFunc(secureExecuteHandler))).Methods("POST", "OPTIONS")
 		api.Handle("/fx/{author}/{name}", verificationMiddleware.RequireVerifiedFunction("standard")(http.HandlerFunc(secureExecuteHandler))).Methods("POST", "OPTIONS")
 		api.Handle("/fx/{author}/{name}@{version}", verificationMiddleware.RequireVerifiedFunction("standard")(http.HandlerFunc(secureExecuteHandler))).Methods("POST", "OPTIONS")
 	} else {
-		api.HandleFunc("/v1/{author}/{name}", secureExecuteHandler).Methods("POST", "OPTIONS")
-		api.HandleFunc("/v1/{author}/{name}@{version}", secureExecuteHandler).Methods("POST", "OPTIONS")
+		api.HandleFunc("/{author}/{name}", secureExecuteHandler).Methods("POST", "OPTIONS")
+		api.HandleFunc("/{author}/{name}@{version}", secureExecuteHandler).Methods("POST", "OPTIONS")
 		api.HandleFunc("/fx/{author}/{name}", secureExecuteHandler).Methods("POST", "OPTIONS")
 		api.HandleFunc("/fx/{author}/{name}@{version}", secureExecuteHandler).Methods("POST", "OPTIONS")
 	}
@@ -96,6 +97,7 @@ func registerRegistryRoutes(
 	api.HandleFunc("/fx/{author}/{name}/ai-schema", registryPlaygroundHandler.HandleAIToolSchema).Methods("GET", "OPTIONS")
 	api.HandleFunc("/run/{author}/{name}", registryPlaygroundHandler.HandlePlaygroundUI).Methods("GET", "OPTIONS")
 	api.HandleFunc("/run/{author}/{name}/execute", registryPlaygroundHandler.HandlePlaygroundExecute).Methods("POST", "OPTIONS")
+	api.HandleFunc("/run/{author}/{name}/execute/stream", registryPlaygroundHandler.HandlePlaygroundExecuteStream).Methods("POST", "OPTIONS")
 	api.HandleFunc("/run/{author}/{name}/share", registryPlaygroundHandler.HandlePlaygroundShare).Methods("POST", "OPTIONS")
 	api.HandleFunc("/replay/{executionId}", registryPlaygroundHandler.HandleReplay).Methods("GET", "OPTIONS")
 
@@ -153,6 +155,7 @@ func registerRegistryRoutes(
 	api.HandleFunc("/recommendations/composable/{function_id}", authMiddleware.RequireAuth(recommendationHandler.HandleFindComposable)).Methods("GET", "OPTIONS")
 
 	// ── Registry v2 ──────────────────────────────────────────────────────────
+	apiV2.HandleFunc("/functions/mine", authMiddleware.RequireAuth(registryHandler.HandleListMyFunctions)).Methods("GET")
 	apiV2.HandleFunc("/functions", registryHandler.HandleListFunctions).Methods("GET")
 	apiV2.HandleFunc("/functions/search", registryHandler.HandleSearchFunctions).Methods("GET")
 	apiV2.HandleFunc("/functions/{author}/{name}", registryHandler.HandleGetFunction).Methods("GET")
@@ -196,11 +199,11 @@ func registerRegistryRoutes(
 	api.HandleFunc("/docs/{type}/{version}/{path}", registryHandler.HandleServeDocs).Methods("GET")
 	api.HandleFunc("/static/{category}/{path}", registryHandler.HandleServeStatic).Methods("GET")
 
-	// ── Embed (public read, protected write) ─────────────────────────────────
+	// ── Embed (public read for script serving, protected for config/analytics) ─
 	api.HandleFunc("/embed/{author}/{nameVersion}", registryHandler.HandleServeEmbed).Methods("GET", "OPTIONS")
-	api.HandleFunc("/functions/{author}/{name}/embed", registryHandler.HandleGetEmbedConfig).Methods("GET", "OPTIONS")
+	api.HandleFunc("/functions/{author}/{name}/embed", authMiddleware.RequireAuth(registryHandler.HandleGetEmbedConfig)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/functions/{author}/{name}/embed/snippet", registryHandler.HandleGetEmbedSnippet).Methods("GET", "OPTIONS")
-	api.HandleFunc("/functions/{author}/{name}/embed/analytics", registryHandler.HandleGetEmbedAnalytics).Methods("GET", "OPTIONS")
+	api.HandleFunc("/functions/{author}/{name}/embed/analytics", authMiddleware.RequireAuth(registryHandler.HandleGetEmbedAnalytics)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/functions/{author}/{name}/embed", authMiddleware.RequireAuth(registryHandler.HandleUpdateEmbedConfig)).Methods("PUT", "OPTIONS")
 
 	// Function settings (protected)

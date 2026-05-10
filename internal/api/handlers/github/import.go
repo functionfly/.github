@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strconv"
+	"strings"
 
+	githubsvc "github.com/functionfly/functionfly/internal/services/github"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 )
@@ -105,31 +108,167 @@ func (h *Handler) HandlePreviewImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build a preview response showing what would be created
+	if req.RepoID == uuid.Nil {
+		h.respondError(w, http.StatusBadRequest, "missing_repo", "repo_id is required")
+		return
+	}
+	if len(req.FunctionNames) == 0 && req.FunctionName == "" {
+		h.respondError(w, http.StatusBadRequest, "missing_name", "function_name or function_names is required")
+		return
+	}
+	if req.Branch == "" {
+		req.Branch = "main"
+	}
+
+	functionNames := req.FunctionNames
+	if len(functionNames) == 0 {
+		functionNames = []string{req.FunctionName}
+	}
+
+	var detectedFuncs []githubsvc.DetectedFunction
+	if repo, err := h.githubRepo.GetRepoByID(r.Context(), req.RepoID); err == nil && repo != nil && repo.DetectedFunctions != nil {
+		json.Unmarshal(repo.DetectedFunctions, &detectedFuncs)
+	}
+
+	previewFunctions := make([]map[string]interface{}, 0, len(functionNames))
+	for _, fnName := range functionNames {
+		var detected githubsvc.DetectedFunction
+		for _, df := range detectedFuncs {
+			if df.Name == fnName {
+				detected = df
+				break
+			}
+		}
+		if detected.Name == "" {
+			detected = githubsvc.DetectedFunction{
+				Name:       fnName,
+				EntryPoint: fnName,
+				Runtime:    "auto-detect",
+				Confidence: 0.85,
+				Strategy:   "single",
+			}
+		}
+
+		previewFunctions = append(previewFunctions, map[string]interface{}{
+			"name":                 detected.Name,
+			"entry_point":          detected.EntryPoint,
+			"confidence":           detected.Confidence,
+			"strategy":             detected.Strategy,
+			"sub_directory":        detected.SubDirectory,
+			"file_count":           0,
+			"branch":               req.Branch,
+			"runtime":              detected.Runtime,
+			"visibility":           req.Visibility,
+			"estimated_size_bytes": 0,
+			"estimated_cost_usd":   0.0,
+			"has_conflict":         false,
+			"conflict_type":        "none",
+		})
+	}
+
 	preview := map[string]interface{}{
-		"functions": []map[string]interface{}{
-			{
-				"name":               req.FunctionName,
-				"runtime":            "auto-detect",
-				"visibility":         req.Visibility,
-				"estimated_size_bytes": 0,
-				"estimated_cost_usd": 0.0,
-				"has_conflict":       false,
-				"conflict_type":      "none",
-			},
-		},
+		"repo_id":                  req.RepoID.String(),
+		"repo_full_name":           "",
+		"functions":                previewFunctions,
+		"total_file_count":         0,
+		"total_size_bytes":         0,
 		"total_estimated_cost_usd": 0.0,
 		"warnings":                 []string{},
 		"conflicts":                []map[string]interface{}{},
 	}
 
-	// Check for conflicts
 	conn, err := h.githubRepo.GetConnectionByUserID(r.Context(), claims.UserID)
-	if err == nil && conn != nil {
-		repo, err := h.githubRepo.GetRepoByID(r.Context(), req.RepoID)
-		if err == nil && repo != nil {
-			preview["functions"].([]map[string]interface{})[0]["runtime"] = repo.DetectedRuntime
+	if err != nil || conn == nil {
+		h.respondJSON(w, http.StatusOK, preview)
+		return
+	}
+
+	repo, err := h.githubRepo.GetRepoByID(r.Context(), req.RepoID)
+	if err != nil || repo == nil || repo.ConnectionID != conn.ID {
+		h.respondJSON(w, http.StatusOK, preview)
+		return
+	}
+
+	vault, err := githubsvc.NewTokenVault(h.vaultKey)
+	if err != nil {
+		h.respondJSON(w, http.StatusOK, preview)
+		return
+	}
+
+	token, err := vault.Decrypt(conn.EncryptedToken, conn.TokenIV, conn.TokenTag)
+	if err != nil {
+		h.respondJSON(w, http.StatusOK, preview)
+		return
+	}
+
+	ghClient := githubsvc.NewClient(token, githubsvc.WithLogger(h.logger))
+
+	branch := req.Branch
+	if branch == "" {
+		branch = repo.DefaultBranch
+	}
+
+	branches, err := ghClient.ListBranches(r.Context(), repo.Owner, repo.Name)
+	if err != nil {
+		h.respondJSON(w, http.StatusOK, preview)
+		return
+	}
+
+	var branchSHA string
+	for _, b := range branches {
+		if b.Name == branch {
+			branchSHA = b.Commit.SHA
+			break
 		}
+	}
+	if branchSHA == "" {
+		h.respondJSON(w, http.StatusOK, preview)
+		return
+	}
+
+	tree, err := ghClient.GetTree(r.Context(), repo.Owner, repo.Name, branchSHA, true)
+	if err != nil {
+		h.respondJSON(w, http.StatusOK, preview)
+		return
+	}
+
+	var totalSize int64
+	var sourceFiles []string
+	for _, entry := range tree.Tree {
+		if entry.Type == "blob" {
+			totalSize += int64(entry.Size)
+			ext := strings.ToLower(filepath.Ext(entry.Path))
+			if ext == ".js" || ext == ".ts" || ext == ".mjs" || ext == ".cjs" ||
+				ext == ".jsx" || ext == ".tsx" || ext == ".py" || ext == ".go" ||
+				ext == ".rs" || ext == ".java" || ext == ".rb" || ext == ".php" {
+				sourceFiles = append(sourceFiles, entry.Path)
+			}
+		}
+	}
+
+	runtime := detectRuntimeFromTree(tree.Tree, repo)
+	if req.RuntimeOverride != nil && *req.RuntimeOverride != "" {
+		runtime = *req.RuntimeOverride
+	}
+
+	estimatedCost := calculateImportCost(len(sourceFiles), totalSize, runtime)
+
+	preview["repo_full_name"] = repo.FullName
+	funcSlice := preview["functions"].([]map[string]interface{})
+	perFunctionCost := estimatedCost / float64(len(funcSlice))
+	for i := range funcSlice {
+		funcSlice[i]["runtime"] = runtime
+		funcSlice[i]["file_count"] = len(sourceFiles)
+		funcSlice[i]["estimated_size_bytes"] = totalSize
+		funcSlice[i]["estimated_cost_usd"] = perFunctionCost
+	}
+	preview["total_file_count"] = len(sourceFiles)
+	preview["total_size_bytes"] = totalSize
+	preview["total_estimated_cost_usd"] = estimatedCost
+
+	if len(sourceFiles) == 0 {
+		warnings := preview["warnings"].([]string)
+		preview["warnings"] = append(warnings, "No source files detected in repository")
 	}
 
 	h.respondJSON(w, http.StatusOK, preview)
@@ -469,14 +608,20 @@ func (h *Handler) HandleImportProgress(w http.ResponseWriter, r *http.Request) {
 	ch := h.getProgressChan(importID)
 
 	if imp.Status == "completed" {
-		fmt.Fprintf(w, "event: complete\ndata: %s\n\n", mustJSON(map[string]interface{}{
-			"stage":        "completed",
-			"progress":     100,
-			"function_id":  imp.FunctionID,
-			"function_name": imp.FunctionName,
-			"commit_sha":   imp.CommitSHA,
+		completeEvent := map[string]interface{}{
+			"stage":          "completed",
+			"progress":       100,
+			"function_id":    imp.FunctionID,
+			"function_name":  imp.FunctionName,
+			"commit_sha":     imp.CommitSHA,
 			"files_imported": imp.FilesImported,
-		}))
+		}
+		if imp.FunctionID != nil && h.registryRepo != nil {
+			if fn, err := h.registryRepo.GetFunctionByID(*imp.FunctionID); err == nil && fn != nil {
+				completeEvent["author"] = fn.Author
+			}
+		}
+		fmt.Fprintf(w, "event: complete\ndata: %s\n\n", mustJSON(completeEvent))
 		flusher.Flush()
 		return
 	}
@@ -486,9 +631,9 @@ func (h *Handler) HandleImportProgress(w http.ResponseWriter, r *http.Request) {
 			errMsg = *imp.ErrorMessage
 		}
 		fmt.Fprintf(w, "event: error\ndata: %s\n\n", mustJSON(map[string]interface{}{
-			"stage":     "error",
-			"progress":  imp.Progress,
-			"message":   errMsg,
+			"stage":    "error",
+			"progress": imp.Progress,
+			"message":  errMsg,
 		}))
 		flusher.Flush()
 		return
@@ -506,9 +651,9 @@ func (h *Handler) HandleImportProgress(w http.ResponseWriter, r *http.Request) {
 
 			if event.Stage == "error" {
 				fmt.Fprintf(w, "event: error\ndata: %s\n\n", mustJSON(map[string]interface{}{
-					"stage":   "error",
+					"stage":    "error",
 					"progress": event.Progress,
-					"message": event.Message,
+					"message":  event.Message,
 				}))
 				flusher.Flush()
 				return
@@ -539,7 +684,7 @@ func (h *Handler) HandleImportProgress(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) mapImportResponse(imp *storage.GitHubImport) *ImportDetailResponse {
-	return &ImportDetailResponse{
+	resp := &ImportDetailResponse{
 		ID:                imp.ID,
 		RepoID:            imp.RepoID,
 		FunctionName:      imp.FunctionName,
@@ -560,9 +705,87 @@ func (h *Handler) mapImportResponse(imp *storage.GitHubImport) *ImportDetailResp
 		UpdatedAt:         imp.UpdatedAt,
 		CompletedAt:       imp.CompletedAt,
 	}
+	if imp.FunctionID != nil && h.registryRepo != nil {
+		if fn, err := h.registryRepo.GetFunctionByID(*imp.FunctionID); err == nil && fn != nil {
+			resp.FunctionAuthor = fn.Author
+		}
+	}
+	return resp
 }
 
 func mustJSON(v interface{}) string {
 	b, _ := json.Marshal(v)
 	return string(b)
+}
+
+func detectRuntimeFromTree(tree []githubsvc.GitHubTreeEntry, repo *storage.GitHubRepo) string {
+	hasFile := func(names ...string) bool {
+		for _, entry := range tree {
+			if entry.Type != "blob" {
+				continue
+			}
+			for _, name := range names {
+				if strings.HasSuffix(entry.Path, "/"+name) || entry.Path == name {
+					return true
+				}
+			}
+		}
+		return false
+	}
+
+	if hasFile("package.json", "tsconfig.json") {
+		if hasFile("tsconfig.json") {
+			return "node18-typescript"
+		}
+		return "node18"
+	}
+	if hasFile("requirements.txt", "pyproject.toml", "setup.py", "Pipfile") {
+		return "python3.11"
+	}
+	if hasFile("go.mod") {
+		return "go1.22"
+	}
+	if hasFile("Cargo.toml") {
+		return "rust1.75"
+	}
+
+	if repo != nil && repo.DetectedRuntime != nil && *repo.DetectedRuntime != "" {
+		return *repo.DetectedRuntime
+	}
+
+	return "node18"
+}
+
+func calculateImportCost(sourceFileCount int, totalSizeBytes int64, runtime string) float64 {
+	baseCost := 0.01
+
+	perFileCost := 0.002
+	fileCost := float64(sourceFileCount) * perFileCost
+
+	sizeMB := float64(totalSizeBytes) / (1024 * 1024)
+	var sizeCost float64
+	switch {
+	case sizeMB <= 1:
+		sizeCost = 0.0
+	case sizeMB <= 10:
+		sizeCost = 0.005
+	case sizeMB <= 50:
+		sizeCost = 0.015
+	default:
+		sizeCost = 0.03
+	}
+
+	var runtimeCost float64
+	switch runtime {
+	case "python3.11", "node18", "node18-typescript":
+		runtimeCost = 0.0
+	case "go1.22":
+		runtimeCost = 0.002
+	case "rust1.75":
+		runtimeCost = 0.003
+	default:
+		runtimeCost = 0.001
+	}
+
+	return baseCost + fileCost + sizeCost + runtimeCost
 }

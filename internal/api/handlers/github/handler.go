@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage"
+	storageregistry "github.com/functionfly/functionfly/internal/storage/registry"
 	githubsvc "github.com/functionfly/functionfly/internal/services/github"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -18,31 +20,38 @@ import (
 )
 
 type Handler struct {
-	repo       storage.Repository
-	githubRepo *storage.GitHubRepository
-	logger     *logrus.Logger
-	vaultKey   string
-	baseURL    string
-	authSvc    *auth.AuthService
-	progressCh sync.Map
-	importSem  sync.Map // tenant UUID -> *int32 (atomic concurrent import count)
+	repo        storage.Repository
+	githubRepo  *storage.GitHubRepository
+	registryRepo *storageregistry.RegistryRepository
+	logger      *logrus.Logger
+	vaultKey    string
+	baseURL     string
+	authSvc     *auth.AuthService
+	progressCh  sync.Map
+	importSem   sync.Map // tenant UUID -> *int32 (atomic concurrent import count)
 }
 
 const maxConcurrentImportsPerTenant = 10
 
-func NewHandler(repo storage.Repository, githubRepo *storage.GitHubRepository, logger *logrus.Logger, vaultKey, baseURL string) *Handler {
+func NewHandler(repo storage.Repository, githubRepo *storage.GitHubRepository, registryRepo *storageregistry.RegistryRepository, logger *logrus.Logger, vaultKey, baseURL string) *Handler {
 	return &Handler{
-		repo:       repo,
-		githubRepo: githubRepo,
-		logger:     logger,
-		vaultKey:   vaultKey,
-		baseURL:    baseURL,
+		repo:        repo,
+		githubRepo:  githubRepo,
+		registryRepo: registryRepo,
+		logger:      logger,
+		vaultKey:    vaultKey,
+		baseURL:     baseURL,
 	}
 }
 
 // SetAuthService sets the auth service for SSE token validation.
 func (h *Handler) SetAuthService(svc *auth.AuthService) {
 	h.authSvc = svc
+}
+
+// SetRegistryRepo sets the registry repository for function creation during import.
+func (h *Handler) SetRegistryRepo(repo *storageregistry.RegistryRepository) {
+	h.registryRepo = repo
 }
 
 func (h *Handler) respondJSON(w http.ResponseWriter, status int, data interface{}) {
@@ -104,6 +113,27 @@ func (h *Handler) requireAuthOrToken(w http.ResponseWriter, r *http.Request) *au
 	return parsedClaims
 }
 
+// resolveAuthorUsername fetches the username for a user ID, required for proper registry authorship.
+// Returns the username string or an error if the user cannot be found.
+func (h *Handler) resolveAuthorUsername(ctx context.Context, userID uuid.UUID) (string, error) {
+	user, err := h.repo.GetUserByID(userID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get user by ID: %w", err)
+	}
+	if user == nil {
+		return "", fmt.Errorf("user not found: %s", userID)
+	}
+	if user.Username != nil && *user.Username != "" {
+		return *user.Username, nil
+	}
+	// Fallback to email local part if username is not set
+	atIdx := strings.Index(user.Email, "@")
+	if atIdx > 0 {
+		return user.Email[:atIdx], nil
+	}
+	return user.Email, nil
+}
+
 func (h *Handler) getGitHubClient(ctx context.Context, userID uuid.UUID) (*githubsvc.Client, error) {
 	conn, err := h.githubRepo.GetConnectionByUserID(ctx, userID)
 	if err != nil {
@@ -120,9 +150,15 @@ func (h *Handler) getGitHubClient(ctx context.Context, userID uuid.UUID) (*githu
 
 	token, err := vault.Decrypt(conn.EncryptedToken, conn.TokenIV, conn.TokenTag)
 	if err != nil {
+		h.logger.WithError(err).WithFields(logrus.Fields{
+			"encrypted_len": len(conn.EncryptedToken),
+			"iv_len":        len(conn.TokenIV),
+			"tag_len":       len(conn.TokenTag),
+		}).Error("getGitHubClient: token decrypt failed")
 		return nil, fmt.Errorf("decrypt token: %w", err)
 	}
 
+	h.logger.WithField("token_prefix", token[:min(10, len(token))]).Info("getGitHubClient: token decrypted")
 	client := githubsvc.NewClient(token, githubsvc.WithLogger(h.logger))
 	return client, nil
 }

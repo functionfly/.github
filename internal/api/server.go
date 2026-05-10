@@ -33,6 +33,7 @@ import (
 	"github.com/functionfly/functionfly/internal/health"
 	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/notification"
+	"github.com/functionfly/functionfly/internal/provisioning"
 	"github.com/functionfly/functionfly/internal/recommendations"
 	"github.com/functionfly/functionfly/internal/routing"
 	"github.com/functionfly/functionfly/internal/services"
@@ -130,6 +131,10 @@ type Server struct {
 		ProcessPayoutPaid(ctx context.Context, stripePayoutID, stripeAccountID string) error
 		RefreshAccountStatus(ctx context.Context, stripeAccountID string) error
 	}
+
+	// Bundle provisioning
+	bundleProvisioner    *provisioning.BundleProvisioner
+	provisioningHandler  *provisioning.Handler
 }
 
 func NewServer(db *storage.PostgresDB) *Server {
@@ -242,6 +247,16 @@ func NewServer(db *storage.PostgresDB) *Server {
 	if baseURL := os.Getenv("BASE_URL"); baseURL != "" {
 		authSvc.SetBaseURL(baseURL)
 	}
+
+	// Initialize bundle provisioning infrastructure
+	tenantDBConfig := storage.LoadTenantDatabaseConfig()
+	dbProvisioner, err := storage.NewTenantDBProvisioner(tenantDBConfig, db)
+	if err != nil {
+		logrus.WithError(err).Warn("TenantDBProvisioner: failed to initialize, bundle provisioning may not work")
+		dbProvisioner = nil
+	}
+	bundleProvisioner := provisioning.NewBundleProvisioner(db.DB, repo, dbProvisioner, emailSvc)
+	provisioningHandler := provisioning.NewHandler(bundleProvisioner, repo)
 
 	// Initialize monitoring services
 	monitoringSvc := monitoring.NewService(repo)
@@ -402,6 +417,8 @@ func NewServer(db *storage.PostgresDB) *Server {
 		usageReportingRepo:     usageReportingRepo,
 		dunningManager:         dunningManager,
 		trustBillingService:    trustBillingService,
+		bundleProvisioner:       bundleProvisioner,
+		provisioningHandler:    provisioningHandler,
 		httpServer: &http.Server{
 			Handler:      router,
 			ReadTimeout:  15 * time.Second,
@@ -686,6 +703,13 @@ func (s *Server) ListenAndServe(addr string) error {
 	// Wait for interrupt signal
 	<-done
 	logrus.Info("Server is shutting down...")
+
+	// On second signal, force exit immediately (in case graceful shutdown hangs)
+	go func() {
+		<-done
+		logrus.Warn("Second interrupt received, forcing immediate shutdown")
+		os.Exit(1)
+	}()
 
 	// Stop health monitor first
 	s.healthMonitor.Stop()

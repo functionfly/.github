@@ -2,8 +2,10 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -52,6 +54,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/function_webhooks"
 	"github.com/functionfly/functionfly/internal/api/handlers/functions"
 	githubhandler "github.com/functionfly/functionfly/internal/api/handlers/github"
+	"github.com/functionfly/functionfly/internal/manifest"
 	mfaHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/mfa"
 	"github.com/functionfly/functionfly/internal/api/handlers/monitoring"
 	"github.com/functionfly/functionfly/internal/api/handlers/newsletter"
@@ -76,6 +79,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/apikey"
 	"github.com/functionfly/functionfly/internal/billing"
+	"github.com/functionfly/functionfly/internal/bundler"
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/captcha"
 	"github.com/functionfly/functionfly/internal/currency"
@@ -94,6 +98,8 @@ import (
 	vaultstorage "github.com/functionfly/functionfly/internal/storage/vault"
 	"github.com/functionfly/functionfly/internal/support"
 	"github.com/functionfly/functionfly/internal/versioning"
+	"github.com/functionfly/functionfly/internal/wallet"
+	"github.com/functionfly/functionfly/internal/wasm"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -115,17 +121,26 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	usersHandler := usersHandlerPkg.NewHandler(s.repo, s.authSvc)
 	favoritesHandler := usersHandlerPkg.NewFavoritesHandler(s.repo)
 	presenceHandler := usersHandlerPkg.NewPresenceHandler(s.repo, s.authSvc, s.redisClient, logrus.New())
+	// ── Wallet Service Initialization ────────────────────────────────────────────
+	// Initialize the unified wallet system (replaces user_wallets and agent_billing_controls)
+	walletRepo := wallet.NewRepository(s.postgresDB.GORM)
+	walletService := wallet.NewService(walletRepo, s.redisClient)
+	_ = walletService // Used by admin handlers and webhooks
+
+	// Legacy platform fee repository (still used by registry handlers during migration)
 	platformFeeRepo := registry.NewPlatformFeeRepository(s.postgresDB.GORM)
 	sfAddonRepo := statefabricaddons.NewRepository(s.postgresDB.GORM)
 	billingHandler := billinghandler.NewHandler(s.repo, platformFeeRepo, sfAddonRepo, s.redisClient)
+	billingHandler.SetWalletService(walletService)
 	tenantWebhookHandler := billinghandler.NewTenantWebhookHandler(s.repo)
-appsHandler := apps.NewHandler(s.repo)
+	appsHandler := apps.NewHandler(s.repo)
 	backendsHandler := backends.NewHandler(s.repo, s.routingSvc)
 	deploymentsHandler := deployments.NewHandler(s.repo, s.deploySvc)
 	pasteHandler := functions.NewPasteHandler(s.repo)
 	functionsHandler := functions.NewHandler(s.repo, s.deploySvc, pasteHandler)
 	unifiedAnalyticsSvc := unified.NewService(s.postgresDB.GORM, s.usageMetricsAgg)
 	adminHandler := admin.NewHandler(s.repo, s.postgresDB.LoginAttemptRepository(), s.postgresDB.AnalyticsRepository(), s.authSvc, unifiedAnalyticsSvc, sfAddonRepo)
+	adminHandler.SetWalletService(walletService)
 
 	// Initialize billing operational repository for webhook replay and tax exemption management
 	billingOperationalRepo := storage.NewBillingOperationalRepository(s.postgresDB.GORM)
@@ -196,7 +211,7 @@ appsHandler := apps.NewHandler(s.repo)
 	if githubBaseURL == "" {
 		githubBaseURL = "http://localhost:3000"
 	}
-	githubHandler := githubhandler.NewHandler(s.repo, githubRepo, logrus.New(), githubVaultKey, githubBaseURL)
+	githubHandler := githubhandler.NewHandler(s.repo, githubRepo, nil, logrus.New(), githubVaultKey, githubBaseURL)
 	githubHandler.SetAuthService(s.authSvc)
 
 	// ── Real-time Usage Tracking ─────────────────────────────────────────────
@@ -321,6 +336,7 @@ appsHandler := apps.NewHandler(s.repo)
 	functionRepo := storage.NewFunctionRepository(s.postgresDB.DB)
 
 	registryHandler := registryhandler.NewHandler(registryRepo, s.repo, functionRepo, cacheService, cdnService, edgeCache, s.realtimeMonitor, platformFeeRepo, s.recommendationSvc, realtimeUsageTracker)
+	registryHandler.SetWalletService(walletService)
 
 	// Initialize privacy service and wire it into the registry handler
 	privacyRepo := privacy.NewRepository(s.postgresDB)
@@ -330,6 +346,53 @@ appsHandler := apps.NewHandler(s.repo)
 	}
 	privacyService := privacy.NewService(privacyRepo, privacySalt)
 	registryHandler.SetPrivacyService(privacyService)
+
+	// Wire up billing controller for paid function execution using the unified wallet system
+	registryHandler.SetBillingController(wallet.NewBillingControllerWrapper(walletService))
+
+	// ---------------------------------------------------------------------------
+	// RuntimeRouter + eager bundling wiring
+	// ---------------------------------------------------------------------------
+	// BundleService: compile source → WASM at publish time (eliminates cold-start).
+	bundleSvc, _ := bundler.NewBundleService(os.Getenv("REDIS_ADDR"))
+	if bundleSvc != nil {
+		// Register Python WASM compiler for eager bundling.
+		bundleSvc.RegisterCompiler("python3.11", &pythonWasmCompiler{})
+		bundleSvc.RegisterCompiler("python3.12", &pythonWasmCompiler{})
+		bundleSvc.RegisterCompiler("python3.13", &pythonWasmCompiler{})
+		registryHandler.SetBundleService(bundleSvc)
+	}
+
+	// ---------------------------------------------------------------------------
+	// WASM instance pool: pre-warms MicroPython runtime cells for fast Python exec.
+	// ---------------------------------------------------------------------------
+	micropythonPath := "internal/bundler/python/micropython.wasm"
+	if _, err := os.Stat(micropythonPath); os.IsNotExist(err) {
+		micropythonPath = "bundler/python/micropython.wasm"
+	}
+	var wasmPool *wasm.InstancePool
+	if _, err := os.Stat(micropythonPath); err == nil {
+		factory := func() (*wasm.PythonRuntime, error) {
+			return wasm.NewPythonRuntime(micropythonPath, nil, nil, nil)
+		}
+		poolSize := 4
+		if ps := os.Getenv("WASM_POOL_SIZE"); ps != "" {
+			if n, _ := strconv.Atoi(ps); n > 0 {
+				poolSize = n
+			}
+		}
+		wasm.InitPoolsWithConfig(factory, poolSize, 30*time.Minute)
+		wasmPool = wasm.PerTenantPools
+		logrus.WithField("pool_size", poolSize).Info("WASM instance pool initialized")
+	} else {
+		logrus.Warn("MicroPython WASM not found, skipping instance pool initialization")
+	}
+
+	// RuntimeRouter: selects engine by runtime + tier, with fallback to legacy sandbox.
+	runtimeRouter := registryexecution.BuildRuntimeRouter(wasmPool, cacheService, bundleSvc, micropythonPath)
+	registryHandler.SetRuntimeRouter(runtimeRouter)
+	// ---------------------------------------------------------------------------
+	// ---------------------------------------------------------------------------
 
 	// Initialize privacy handler for API routes
 	privacyHandler := privacyhandler.NewHandler(privacyService, s.authSvc)
@@ -1012,8 +1075,13 @@ appsHandler := apps.NewHandler(s.repo)
 	s.router.Handle("/swagger/index.html", middleware.RequireAuthInProduction(authMiddleware)(http.HandlerFunc(docs.ServeSwaggerUI))).Methods("GET", "OPTIONS")
 
 	// ── SPA catch-all routes ──────────────────────────────────────────────────
-	// Serve index.html for /fx/*, /run/*, /replay/* (playground SPA paths)
+	// Serve index.html for /fx/*, /run/*, /replay/* (playground SPA paths).
+	// Only match GET/HEAD/OPTIONS so POST/PUT/PATCH/DELETE API calls are not
+	// shadowed by the SPA catch-all.
 	s.router.MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) bool {
+		if r.Method != "GET" && r.Method != "HEAD" && r.Method != "OPTIONS" {
+			return false
+		}
 		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/v1/") ||
 			strings.HasPrefix(r.URL.Path, "/content/") || strings.HasPrefix(r.URL.Path, "/admin/") ||
 			r.URL.Path == "/health" || r.URL.Path == "/healthz" {
@@ -1068,4 +1136,41 @@ func initializeGenerationServiceWithCache(db *gorm.DB, redisClient *redis.Client
 	}
 
 	return generation.NewServiceWithGenerator(db, codeGen)
+}
+
+// pythonWasmCompiler implements bundler.RuntimeCompiler for Python → WASM.
+// It writes source to a temp file and delegates to the existing bundler.
+type pythonWasmCompiler struct{}
+
+func (c *pythonWasmCompiler) Compile(ctx context.Context, sourceCode string, m *manifest.Manifest) (*bundler.CompiledBundle, error) {
+	// Write source to a temp entry file so the bundler can read it.
+	tmpDir, err := os.MkdirTemp("", "py-wasm-compile-*")
+	if err != nil {
+		return nil, fmt.Errorf("create temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	entry := filepath.Join(tmpDir, "main.py")
+	if err := os.WriteFile(entry, []byte(sourceCode), 0600); err != nil {
+		return nil, fmt.Errorf("write source: %w", err)
+	}
+
+	bm := &manifest.Manifest{
+		Name:      m.Name,
+		Version:   m.Version,
+		Runtime:   m.Runtime,
+		TimeoutMS: m.TimeoutMS,
+		MemoryMB:  m.MemoryMB,
+		Entry:     entry,
+	}
+
+	wasmBytes, err := bundler.Bundle(bm)
+	if err != nil {
+		return nil, err
+	}
+	return &bundler.CompiledBundle{
+		Bytes:   wasmBytes,
+		Runtime: m.Runtime,
+		IsValid: true,
+	}, nil
 }
