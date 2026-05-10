@@ -113,7 +113,7 @@ export function GitHubSettingsPage() {
                 <div>
                   <p className="font-medium text-text-primary">{connection.github_username}</p>
                   <p className="text-xs text-text-muted">
-                    Connected {new Date(connection.created_at).toLocaleDateString()}
+                    Connected {new Date(connection.connected_at).toLocaleDateString()}
                   </p>
                 </div>
               </div>

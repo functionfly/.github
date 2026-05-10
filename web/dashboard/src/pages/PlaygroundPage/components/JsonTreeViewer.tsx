@@ -76,14 +76,14 @@ function JsonNode({
   const typeColorClass = getTypeColor(valueType);
 
   const renderPrimitive = () => {
-    if (value === null) return <span className="text-gray-400">null</span>;
-    if (value === undefined) return <span className="text-gray-400">undefined</span>;
+    if (value === null) return <span className="text-text-muted">null</span>;
+    if (value === undefined) return <span className="text-text-muted">undefined</span>;
     if (typeof value === 'string')
-      return <span className="text-green-400">"{value}"</span>;
+      return <span className="text-green-500 dark:text-green-400">"{value}"</span>;
     if (typeof value === 'number')
-      return <span className="text-blue-400">{value}</span>;
+      return <span className="text-blue-500 dark:text-blue-400">{value}</span>;
     if (typeof value === 'boolean')
-      return <span className="text-yellow-400">{value.toString()}</span>;
+      return <span className="text-yellow-500 dark:text-yellow-400">{value.toString()}</span>;
     return <span className={typeColorClass}>{String(value)}</span>;
   };
 
@@ -125,7 +125,7 @@ function JsonNode({
         {/* Key */}
         {keyName !== null && (
           <>
-            <span className="text-purple-300 shrink-0">{keyName}</span>
+            <span className="text-purple-500 dark:text-purple-300 shrink-0">{keyName}</span>
             <span className="text-text-muted shrink-0">:</span>
           </>
         )}

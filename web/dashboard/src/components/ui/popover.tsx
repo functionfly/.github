@@ -23,9 +23,9 @@ const PopoverContent = React.forwardRef<
         className
       )}
       style={{
-        borderColor: 'var(--border-default)',
-        backgroundColor: 'var(--card)',
-        color: 'var(--card-foreground)'
+        borderColor: 'var(--ff-border-default)',
+        backgroundColor: 'var(--ff-bg-secondary)',
+        color: 'var(--ff-text-primary)'
       }}
       {...props}
     />

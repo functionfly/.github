@@ -129,7 +129,7 @@ export function GitHubConnectionCard({ className }: GitHubConnectionCardProps) {
                   </Badge>
                 </CardTitle>
                 <p className="text-xs text-text-muted mt-0.5">
-                  Connected {formatDistanceToNow(connection.created_at, { addSuffix: true })}
+                  Connected {formatDistanceToNow(connection.connected_at, { addSuffix: true })}
                 </p>
               </div>
             </div>

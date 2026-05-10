@@ -3,10 +3,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PageLayout } from '@/components/layout/PageLayout';
-import { useGitHubConnection, useGitHubConnect } from '@/hooks/useGitHubConnection';
+import { useGitHubConnection, useGitHubConnect, useGitHubDisconnect } from '@/hooks/useGitHubConnection';
 import { useGitHubStore } from '@/stores/githubStore';
 import { motion } from 'framer-motion';
-import { GitFork, Import, LayoutTemplate, RefreshCw } from 'lucide-react';
+import { GitFork, Import, LayoutTemplate, RefreshCw, Unlink } from 'lucide-react';
 import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { GitHubReposTab } from './GitHubReposTab';
@@ -43,8 +43,26 @@ function NoGitHubConnection() {
   );
 }
 
+function GitHubDisconnectButton() {
+  const disconnect = useGitHubDisconnect();
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => disconnect.mutate()}
+      disabled={disconnect.isPending}
+      className="gap-2 text-destructive border-destructive/50 hover:bg-destructive/10"
+    >
+      <Unlink className="h-4 w-4" />
+      {disconnect.isPending ? 'Disconnecting...' : 'Disconnect'}
+    </Button>
+  );
+}
+
 export default function GitHubPage() {
   const { data: connection, isLoading } = useGitHubConnection();
+  const disconnect = useGitHubDisconnect();
   const setConnection = useGitHubStore((s) => s.setConnection);
   const [searchParams] = useSearchParams();
 
@@ -82,6 +100,7 @@ export default function GitHubPage() {
         title="GitHub Integration"
         subtitle="Import and sync functions from your GitHub repositories"
         badges={[{ label: 'Connected', variant: 'new' }]}
+        actions={[{ label: 'Disconnect', onClick: () => disconnect.mutate(), variant: 'outline', size: 'sm' }]}
       />
 
       <Tabs defaultValue={defaultTab} className="space-y-6">

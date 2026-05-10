@@ -7,6 +7,7 @@ import type {
   ListImportsParams,
   StartImportRequest,
   BulkImportRequest,
+  BulkImportResult,
   ImportProgressEvent,
   ImportCompleteEvent,
   ImportErrorEvent,
@@ -28,7 +29,7 @@ export function useGitHubImports(params?: ListImportsParams) {
       );
       return hasInProgress ? 3000 : false;
     },
-    staleTime: 1000 * 30,
+    staleTime: 0,
   });
 }
 
@@ -58,7 +59,7 @@ export function useStartImport() {
   return useMutation({
     mutationFn: (data: StartImportRequest) => githubApi.startImport(data),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: githubKeys.imports() });
+      queryClient.invalidateQueries({ queryKey: ['github', 'imports'] });
       toast.success(`Import started: ${data.function_name}`);
     },
     onError: (error: Error) => {
@@ -71,6 +72,11 @@ export function usePreviewImport() {
   return useMutation({
     mutationFn: (data: StartImportRequest) => githubApi.previewImport(data),
     onError: (error: Error) => {
+      console.error('[usePreviewImport] Error details:', {
+        message: error.message,
+        cause: (error as unknown as { cause?: unknown }).cause,
+        stack: error.stack,
+      });
       toast.error(`Preview failed: ${error.message}`);
     },
   });
@@ -82,7 +88,7 @@ export function useBulkImport() {
   return useMutation({
     mutationFn: (data: BulkImportRequest) => githubApi.bulkImport(data),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: githubKeys.imports() });
+      queryClient.invalidateQueries({ queryKey: ['github', 'imports'] });
       toast.success(`Started ${data.length} imports`);
     },
     onError: (error: Error) => {
@@ -97,7 +103,7 @@ export function useCancelImport() {
   return useMutation({
     mutationFn: (importId: string) => githubApi.cancelImport(importId),
     onSuccess: (_data, importId) => {
-      queryClient.invalidateQueries({ queryKey: githubKeys.imports() });
+      queryClient.invalidateQueries({ queryKey: ['github', 'imports'] });
       queryClient.invalidateQueries({ queryKey: githubKeys.importItem(importId) });
       toast.success('Import cancelled');
     },
@@ -113,7 +119,7 @@ export function useRetryImport() {
   return useMutation({
     mutationFn: (importId: string) => githubApi.retryImport(importId),
     onSuccess: (_data, importId) => {
-      queryClient.invalidateQueries({ queryKey: githubKeys.imports() });
+      queryClient.invalidateQueries({ queryKey: ['github', 'imports'] });
       queryClient.invalidateQueries({ queryKey: githubKeys.importItem(importId) });
       toast.success('Import restarted');
     },
@@ -129,7 +135,7 @@ export function useResyncImport() {
   return useMutation({
     mutationFn: (importId: string) => githubApi.resyncImport(importId),
     onSuccess: (_data, importId) => {
-      queryClient.invalidateQueries({ queryKey: githubKeys.imports() });
+      queryClient.invalidateQueries({ queryKey: ['github', 'imports'] });
       queryClient.invalidateQueries({ queryKey: githubKeys.importItem(importId) });
       toast.success('Resync started');
     },
@@ -162,6 +168,12 @@ export function useImportProgress(importId: string | null) {
 
   const connect = useCallback(() => {
     if (!importId) return;
+
+    const token = localStorage.getItem('ff-access-token');
+    if (!token) {
+      setStatus('idle');
+      return;
+    }
 
     setStatus('connecting');
 
@@ -213,7 +225,7 @@ export function useImportProgress(importId: string | null) {
         setStatus('failed');
       }
     };
-  }, [importId, cleanup, status, progress?.progress]);
+  }, [importId, cleanup]);
 
   useEffect(() => {
     if (!importId) {

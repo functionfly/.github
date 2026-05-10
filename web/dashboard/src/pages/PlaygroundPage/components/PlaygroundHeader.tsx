@@ -11,21 +11,21 @@ interface PlaygroundHeaderProps {
 }
 
 const runtimeColors: Record<string, string> = {
-  python: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  python3: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  'python3.11': 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  node: 'bg-green-500/10 text-green-400 border-green-500/20',
-  node20: 'bg-green-500/10 text-green-400 border-green-500/20',
-  javascript: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-  rust: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-  wasm: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  python: 'bg-blue-500/10 dark:bg-blue-500/20 text-blue-500 dark:text-blue-400 border-blue-500/20 dark:border-blue-500/30',
+  python3: 'bg-blue-500/10 dark:bg-blue-500/20 text-blue-500 dark:text-blue-400 border-blue-500/20 dark:border-blue-500/30',
+  'python3.11': 'bg-blue-500/10 dark:bg-blue-500/20 text-blue-500 dark:text-blue-400 border-blue-500/20 dark:border-blue-500/30',
+  node: 'bg-green-500/10 dark:bg-green-500/20 text-green-500 dark:text-green-400 border-green-500/20 dark:border-green-500/30',
+  node20: 'bg-green-500/10 dark:bg-green-500/20 text-green-500 dark:text-green-400 border-green-500/20 dark:border-green-500/30',
+  javascript: 'bg-yellow-500/10 dark:bg-yellow-500/20 text-yellow-500 dark:text-yellow-400 border-yellow-500/20 dark:border-yellow-500/30',
+  rust: 'bg-orange-500/10 dark:bg-orange-500/20 text-orange-500 dark:text-orange-400 border-orange-500/20 dark:border-orange-500/30',
+  wasm: 'bg-purple-500/10 dark:bg-purple-500/20 text-purple-500 dark:text-purple-400 border-purple-500/20 dark:border-purple-500/30',
 };
 
 export function PlaygroundHeader({ functionInfo }: PlaygroundHeaderProps) {
   const { t } = useTranslation();
   const runtimeColor =
     runtimeColors[functionInfo.runtime?.toLowerCase() || ''] ||
-    'bg-gray-500/10 text-gray-400 border-gray-500/20';
+    'bg-gray-500/10 dark:bg-gray-500/20 text-gray-500 dark:text-gray-400 border-gray-500/20 dark:border-gray-500/30';
 
   return (
     <motion.div
@@ -96,7 +96,7 @@ export function PlaygroundHeader({ functionInfo }: PlaygroundHeaderProps) {
           {functionInfo.cache_ttl && functionInfo.cache_ttl > 0 && (
             <Badge
               variant="outline"
-              className="text-xs border bg-amber-500/10 text-amber-400 border-amber-500/20 gap-1"
+              className="text-xs border bg-amber-500/10 dark:bg-amber-500/20 text-amber-500 dark:text-amber-400 border-amber-500/20 dark:border-amber-500/30 gap-1"
             >
               <Clock className="w-3 h-3" />
               {t('playground.cached')}
@@ -106,7 +106,7 @@ export function PlaygroundHeader({ functionInfo }: PlaygroundHeaderProps) {
           {functionInfo.reliability_score && functionInfo.reliability_score >= 99 && (
             <Badge
               variant="outline"
-              className="text-xs border bg-green-500/10 text-green-400 border-green-500/20 gap-1"
+              className="text-xs border bg-green-500/10 dark:bg-green-500/20 text-green-500 dark:text-green-400 border-green-500/20 dark:border-green-500/30 gap-1"
             >
               <Shield className="w-3 h-3" />
               {functionInfo.reliability_score}%
@@ -115,7 +115,7 @@ export function PlaygroundHeader({ functionInfo }: PlaygroundHeaderProps) {
 
           <Badge
             variant="outline"
-            className="text-xs border bg-indigo-500/10 text-indigo-400 border-indigo-500/20 gap-1"
+            className="text-xs border bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-500 dark:text-indigo-400 border-indigo-500/20 dark:border-indigo-500/30 gap-1"
           >
             <Zap className="w-3 h-3" />
             {t('playground.playground')}

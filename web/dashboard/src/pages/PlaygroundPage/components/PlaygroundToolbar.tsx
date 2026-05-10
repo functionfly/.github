@@ -19,10 +19,15 @@ import {
   Loader2,
   PanelRightOpen,
   PanelRightClose,
+  Sun,
+  Moon,
+  ChevronDown,
+  GitBranch,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { usePlaygroundStore } from '../store/playgroundStore';
 import { usePlaygroundState } from '../hooks/usePlaygroundState';
+import { useThemeStore } from '@/stores/themeStore';
 
 interface PlaygroundToolbarProps {
   author: string;
@@ -40,9 +45,13 @@ export function PlaygroundToolbar({ author, name }: PlaygroundToolbarProps) {
     sidebarOpen,
     setSidebarOpen,
     isExecuting,
+    functionInfo,
+    selectedVersion,
+    setSelectedVersion,
   } = usePlaygroundStore();
 
   const { shareableUrl, isInputValid } = usePlaygroundState();
+  const { theme, toggleTheme, resolvedTheme } = useThemeStore();
   const [copiedLink, setCopiedLink] = useState(false);
 
   const handleRun = () => execute(author, name);
@@ -57,6 +66,10 @@ export function PlaygroundToolbar({ author, name }: PlaygroundToolbarProps) {
     }
   };
 
+  const availableVersions = functionInfo?.available_versions || [];
+  const hasVersions = availableVersions.length > 0;
+  const currentVersion = selectedVersion || functionInfo?.version || 'latest';
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -69,7 +82,7 @@ export function PlaygroundToolbar({ author, name }: PlaygroundToolbarProps) {
         onClick={handleRun}
         disabled={isExecuting || !isInputValid}
         size="sm"
-        className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white h-8"
+        className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white dark:text-white h-8"
       >
         {isExecuting ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -128,6 +141,65 @@ export function PlaygroundToolbar({ author, name }: PlaygroundToolbarProps) {
 
       <div className="flex-1" />
 
+      {/* Version Selector */}
+      {hasVersions && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 h-8 text-text-secondary hover:text-text-primary"
+            >
+              <GitBranch className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline text-xs">
+                v{currentVersion}
+              </span>
+              <ChevronDown className="w-3 h-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuLabel className="text-xs">{t('playground.selectVersion')}</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => setSelectedVersion(null)}
+              className="flex items-center justify-between text-xs"
+            >
+              <span>{t('playground.latest')}</span>
+              {selectedVersion === null && (
+                <Check className="w-3 h-3 text-indigo-500" />
+              )}
+            </DropdownMenuItem>
+            {availableVersions.map((version) => (
+              <DropdownMenuItem
+                key={version}
+                onClick={() => setSelectedVersion(version)}
+                className="flex items-center justify-between text-xs"
+              >
+                <span>v{version}</span>
+                {selectedVersion === version && (
+                  <Check className="w-3 h-3 text-indigo-500" />
+                )}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+
+      {/* Theme Toggle */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={toggleTheme}
+        className="gap-1.5 h-8 text-text-secondary hover:text-text-primary"
+        title={t('playground.toggleTheme') + ` (${resolvedTheme === 'dark' ? 'light' : 'dark'} mode)`}
+      >
+        {resolvedTheme === 'dark' ? (
+          <Sun className="w-3.5 h-3.5" />
+        ) : (
+          <Moon className="w-3.5 h-3.5" />
+        )}
+      </Button>
+
       {/* Settings dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -154,7 +226,7 @@ export function PlaygroundToolbar({ author, name }: PlaygroundToolbarProps) {
               }`}
             >
               <div
-                className={`w-3 h-3 rounded-full bg-white mt-0.5 transition-transform ${
+                className={`w-3 h-3 rounded-full bg-white dark:bg-gray-200 mt-0.5 transition-transform ${
                   settings.autoRun ? 'translate-x-4' : 'translate-x-0.5'
                 }`}
               />
@@ -171,7 +243,7 @@ export function PlaygroundToolbar({ author, name }: PlaygroundToolbarProps) {
               }`}
             >
               <div
-                className={`w-3 h-3 rounded-full bg-white mt-0.5 transition-transform ${
+                className={`w-3 h-3 rounded-full bg-white dark:bg-gray-200 mt-0.5 transition-transform ${
                   settings.showTimeline ? 'translate-x-4' : 'translate-x-0.5'
                 }`}
               />
@@ -188,11 +260,31 @@ export function PlaygroundToolbar({ author, name }: PlaygroundToolbarProps) {
               }`}
             >
               <div
-                className={`w-3 h-3 rounded-full bg-white mt-0.5 transition-transform ${
+                className={`w-3 h-3 rounded-full bg-white dark:bg-gray-200 mt-0.5 transition-transform ${
                   settings.showHeaders ? 'translate-x-4' : 'translate-x-0.5'
                 }`}
               />
             </div>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel className="text-xs">{t('playground.diffViewMode')}</DropdownMenuLabel>
+          <DropdownMenuItem
+            onClick={() => updateSettings({ diffViewMode: 'output' })}
+            className="flex items-center justify-between text-xs"
+          >
+            <span>{t('playground.outputOnly')}</span>
+            {settings.diffViewMode === 'output' && (
+              <Check className="w-3 h-3 text-indigo-500" />
+            )}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => updateSettings({ diffViewMode: 'input-output' })}
+            className="flex items-center justify-between text-xs"
+          >
+            <span>{t('playground.inputToOutput')}</span>
+            {settings.diffViewMode === 'input-output' && (
+              <Check className="w-3 h-3 text-indigo-500" />
+            )}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

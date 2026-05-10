@@ -23,9 +23,12 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { useGitHubRepo, useScanGitHubRepo, useGitHubBranches } from '@/hooks/useGitHubRepos';
-import { usePreviewImport, useStartImport, useImportProgress } from '@/hooks/useGitHubImport';
+import { usePreviewImport, useStartImport, useImportProgress, useBulkImport, useGitHubImports } from '@/hooks/useGitHubImport';
+import { getWalletInfo } from '@/api/billing';
 import { useGitHubStore } from '@/stores/githubStore';
-import type { DetectedFunction, ScanResult, ImportPreview, StartImportRequest, Branch, GitHubRepo, ImportProgressEvent, ImportCompleteEvent, ImportErrorEvent } from '@/types/github';
+import { ConflictResolutionDialog } from '@/components/github';
+import { useAuthStore } from '@/stores/authStore';
+import type { DetectedFunction, ScanResult, ImportPreview, StartImportRequest, Branch, GitHubRepo, GitHubImport, ImportProgressEvent, ImportCompleteEvent, ImportErrorEvent, ImportConflict } from '@/types/github';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertTriangle,
@@ -50,7 +53,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -87,13 +90,23 @@ export default function GitHubRepoImportPage() {
   );
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [fetchingWallet, setFetchingWallet] = useState(false);
+  const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
+  const [currentConflict, setCurrentConflict] = useState<ImportConflict | null>(null);
+  const [conflictResolutions, setConflictResolutions] = useState<Record<string, string>>({});
+  const [bulkImportIds, setBulkImportIds] = useState<string[]>([]);
 
   const { data: repo, isLoading: repoLoading } = useGitHubRepo(repoId || '');
   const { data: branches } = useGitHubBranches(repoId || '');
   const scanMutation = useScanGitHubRepo(repoId || '');
   const previewMutation = usePreviewImport();
   const startImportMutation = useStartImport();
+  const bulkImportMutation = useBulkImport();
   const { progress, complete, error: progressError, status: progressStatus } = useImportProgress(activeImportId);
+  const { data: allImportsData } = useGitHubImports({ per_page: 100 });
+  const { user } = useAuthStore();
+  const billingUrl = user?.username ? `/u/${user.username}/settings#billing` : '/settings#billing';
 
   useEffect(() => {
     if (!repoId) {
@@ -128,10 +141,16 @@ export default function GitHubRepoImportPage() {
 
   const handlePreview = useCallback(() => {
     if (!repoId || !scanResult) return;
-    const primaryFunction = scanResult.functions.find((f) =>
-      importConfig.selectedFunctions.includes(f.name)
-    );
-    if (!primaryFunction) return;
+    const seen = new Set<string>();
+    const selected = scanResult.functions?.filter((f) => {
+      if (!importConfig.selectedFunctions.includes(f.name)) return false;
+      if (seen.has(f.name)) return false;
+      seen.add(f.name);
+      return true;
+    });
+    if (!selected || selected.length === 0) return;
+
+    const primaryFunction = selected[0];
 
     const request: StartImportRequest = {
       connection_id: '',
@@ -139,6 +158,7 @@ export default function GitHubRepoImportPage() {
       source_branch: repo?.default_branch || 'main',
       source_path: primaryFunction.sub_directory || '/',
       function_name: primaryFunction.name,
+      function_names: selected.map((f) => f.name),
       visibility: importConfig.globalVisibility,
       auto_sync_enabled: importConfig.autoSync,
       sync_branches: importConfig.syncBranches.length > 0 ? importConfig.syncBranches : undefined,
@@ -149,49 +169,135 @@ export default function GitHubRepoImportPage() {
     };
 
     previewMutation.mutate(request, {
-      onSuccess: (data) => {
+      onSuccess: async (data) => {
         setPreview(data);
         setCurrentStep(3);
+        setFetchingWallet(true);
+        try {
+          const wallet = await getWalletInfo();
+          setWalletBalance(wallet.balance_usd);
+        } catch {
+          setWalletBalance(null);
+        } finally {
+          setFetchingWallet(false);
+        }
       },
     });
   }, [repoId, scanResult, importConfig, repo, previewMutation]);
 
   const handleStartImport = useCallback(() => {
     if (!repoId || !scanResult) return;
-    const primaryFunction = scanResult.functions.find((f) =>
-      importConfig.selectedFunctions.includes(f.name)
-    );
-    if (!primaryFunction) return;
-
-    const request: StartImportRequest = {
-      connection_id: '',
-      repo_id: repoId,
-      source_branch: repo?.default_branch || 'main',
-      source_path: primaryFunction.sub_directory || '/',
-      function_name: primaryFunction.name,
-      visibility: importConfig.globalVisibility,
-      auto_sync_enabled: importConfig.autoSync,
-      sync_branches: importConfig.syncBranches.length > 0 ? importConfig.syncBranches : undefined,
-      environment_mappings:
-        Object.keys(importConfig.environmentMappings).length > 0
-          ? importConfig.environmentMappings
-          : undefined,
-    };
-
-    startImportMutation.mutate(request, {
-      onSuccess: (data) => {
-        setActiveImportId(data.id);
-        setCurrentStep(4);
-      },
+    const seen = new Set<string>();
+    const selected = scanResult.functions?.filter((f) => {
+      if (!importConfig.selectedFunctions.includes(f.name)) return false;
+      if (seen.has(f.name)) return false;
+      seen.add(f.name);
+      return true;
     });
-  }, [repoId, scanResult, importConfig, repo, startImportMutation, setActiveImportId]);
+    if (!selected || selected.length === 0) return;
+
+    if (selected.length === 1) {
+      const primaryFunction = selected[0];
+      const request: StartImportRequest = {
+        connection_id: '',
+        repo_id: repoId,
+        source_branch: repo?.default_branch || 'main',
+        source_path: primaryFunction.sub_directory || '/',
+        function_name: primaryFunction.name,
+        visibility: importConfig.globalVisibility,
+        auto_sync_enabled: importConfig.autoSync,
+        sync_branches: importConfig.syncBranches.length > 0 ? importConfig.syncBranches : undefined,
+        environment_mappings:
+          Object.keys(importConfig.environmentMappings).length > 0
+            ? importConfig.environmentMappings
+            : undefined,
+      };
+
+      startImportMutation.mutate(request, {
+        onSuccess: (data) => {
+          setActiveImportId(data.id);
+          setBulkImportIds([]);
+          setCurrentStep(4);
+        },
+      });
+    } else {
+      const requests: StartImportRequest[] = selected.map((fn) => ({
+        connection_id: '',
+        repo_id: repoId,
+        source_branch: repo?.default_branch || 'main',
+        source_path: fn.sub_directory || '/',
+        function_name: fn.name,
+        visibility: importConfig.globalVisibility,
+        auto_sync_enabled: importConfig.autoSync,
+        sync_branches: importConfig.syncBranches.length > 0 ? importConfig.syncBranches : undefined,
+        environment_mappings:
+          Object.keys(importConfig.environmentMappings).length > 0
+            ? importConfig.environmentMappings
+            : undefined,
+      }));
+
+      bulkImportMutation.mutate({ imports: requests }, {
+        onSuccess: (data) => {
+          setActiveImportId(null);
+          setBulkImportIds(data.map((d) => d.import_id));
+          setCurrentStep(4);
+        },
+      });
+    }
+  }, [repoId, scanResult, importConfig, repo, startImportMutation, setActiveImportId, bulkImportMutation]);
 
   const handleCancel = useCallback(() => {
     resetImportConfig();
     setScanResult(null);
     setActiveImportId(null);
+    setBulkImportIds([]);
     navigate('/github');
   }, [resetImportConfig, setScanResult, setActiveImportId, navigate]);
+
+  const handleResolveConflict = useCallback((conflict: ImportConflict, resolution: string) => {
+    setConflictResolutions((prev) => ({
+      ...prev,
+      [conflict.function_name]: resolution,
+    }));
+    setConflictDialogOpen(false);
+    setCurrentConflict(null);
+  }, []);
+
+  const handleOpenConflictDialog = useCallback((conflict: ImportConflict) => {
+    setCurrentConflict(conflict);
+    setConflictDialogOpen(true);
+  }, []);
+
+  const allConflictsResolved = useCallback(() => {
+    if (!preview?.conflicts || preview.conflicts.length === 0) return true;
+    return preview.conflicts.every((c) => conflictResolutions[c.function_name] !== undefined);
+  }, [preview, conflictResolutions]);
+
+  const bulkImports = useMemo(() => {
+    if (bulkImportIds.length === 0) return [];
+    return (allImportsData?.imports ?? []).filter((imp) => bulkImportIds.includes(imp.id));
+  }, [allImportsData, bulkImportIds]);
+
+  const bulkProgressPercent = useMemo(() => {
+    if (bulkImports.length === 0) return 0;
+    const total = bulkImports.reduce((sum, imp) => sum + imp.progress, 0);
+    return Math.round(total / bulkImports.length);
+  }, [bulkImports]);
+
+  const bulkComplete = useMemo(() => {
+    if (bulkImports.length === 0) return false;
+    return bulkImports.every((imp) => imp.status === 'completed' || imp.status === 'failed' || imp.status === 'cancelled');
+  }, [bulkImports]);
+
+  const bulkAllCompleted = useMemo(() => {
+    if (bulkImports.length === 0) return false;
+    return bulkImports.every((imp) => imp.status === 'completed');
+  }, [bulkImports]);
+
+  const bulkAnyFailed = useMemo(() => {
+    if (bulkImports.length === 0) return false;
+    return bulkImports.some((imp) => imp.status === 'failed');
+  }, [bulkImports]);
 
   const progressPercent = progress?.progress ?? 0;
 
@@ -297,8 +403,13 @@ export default function GitHubRepoImportPage() {
                 preview={preview}
                 selectedFunctions={importConfig.selectedFunctions}
                 onStartImport={handleStartImport}
-                isStarting={startImportMutation.isPending}
+                isStarting={startImportMutation.isPending || bulkImportMutation.isPending}
                 onBack={() => setCurrentStep(2)}
+                walletBalance={walletBalance}
+                fetchingWallet={fetchingWallet}
+                conflictResolutions={conflictResolutions}
+                onOpenConflictDialog={handleOpenConflictDialog}
+                billingUrl={billingUrl}
               />
             )}
             {currentStep === 4 && (
@@ -308,19 +419,31 @@ export default function GitHubRepoImportPage() {
                 progressError={progressError}
                 progressStatus={progressStatus}
                 progressPercent={progressPercent}
+                bulkImportIds={bulkImportIds}
+                bulkImports={bulkImports}
+                bulkComplete={bulkComplete}
+                bulkAllCompleted={bulkAllCompleted}
+                bulkAnyFailed={bulkAnyFailed}
                 onViewFunction={() => {
-                  if (complete?.function_id) {
+                  if (complete?.author && complete?.function_name) {
+                    navigate(`/functions/${complete.author}/${complete.function_name}`);
+                  } else if (complete?.function_id) {
                     navigate(`/functions/${complete.function_id}`);
                   }
+                }}
+                onViewImports={() => {
+                  navigate('/github?tab=imports');
                 }}
                 onImportAnother={() => {
                   resetImportConfig();
                   setScanResult(null);
                   setActiveImportId(null);
+                  setBulkImportIds([]);
                   setCurrentStep(1);
                 }}
                 onRetry={() => {
                   setActiveImportId(null);
+                  setBulkImportIds([]);
                   setCurrentStep(1);
                 }}
               />
@@ -344,6 +467,16 @@ export default function GitHubRepoImportPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Conflict Resolution Dialog */}
+        {currentConflict && (
+          <ConflictResolutionDialog
+            open={conflictDialogOpen}
+            onOpenChange={setConflictDialogOpen}
+            conflict={currentConflict}
+            onResolve={handleResolveConflict}
+          />
+        )}
       </div>
     </div>
   );
@@ -448,12 +581,12 @@ function StepScan({
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Detection Results</CardTitle>
               <CardDescription>
-                Found {scanResult.functions.length} function{scanResult.functions.length !== 1 ? 's' : ''} using{' '}
+                Found {scanResult.functions?.length ?? 0} function{(scanResult.functions?.length ?? 0) !== 1 ? 's' : ''} using{' '}
                 {scanResult.strategy_used} strategy
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {scanResult.functions.map((fn) => (
+              {(scanResult.functions ?? []).map((fn) => (
                 <div
                   key={fn.name}
                   className="flex items-center justify-between p-3 rounded-lg bg-bg-secondary border border-border-default"
@@ -484,9 +617,9 @@ function StepScan({
                 </div>
               ))}
 
-              {scanResult.warnings.length > 0 && (
+              {(scanResult.warnings ?? []).length > 0 && (
                 <div className="mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                  {scanResult.warnings.map((warning, i) => (
+                  {(scanResult.warnings ?? []).map((warning, i) => (
                     <div key={i} className="flex items-start gap-2 text-sm text-amber-500">
                       <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                       <span>{warning}</span>
@@ -557,11 +690,11 @@ function StepConfigure({
         <CardHeader>
           <CardTitle className="text-base">Select Functions</CardTitle>
           <CardDescription>
-            {importConfig.selectedFunctions.length} of {scanResult.functions.length} selected
+            {importConfig.selectedFunctions.length} of {scanResult.functions?.length ?? 0} selected
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
-          {scanResult.functions.map((fn) => {
+          {scanResult.functions?.map((fn) => {
             const isSelected = importConfig.selectedFunctions.includes(fn.name);
             return (
               <div
@@ -734,84 +867,226 @@ function StepConfirm({
   onStartImport,
   isStarting,
   onBack,
+  walletBalance,
+  fetchingWallet,
+  conflictResolutions,
+  onOpenConflictDialog,
+  billingUrl,
 }: {
   preview: ImportPreview | null;
   selectedFunctions: string[];
   onStartImport: () => void;
   isStarting: boolean;
   onBack: () => void;
+  walletBalance: number | null;
+  fetchingWallet: boolean;
+  conflictResolutions: Record<string, string>;
+  onOpenConflictDialog: (conflict: ImportConflict) => void;
+  billingUrl: string;
 }) {
+  const hasConflicts = (preview?.conflicts ?? []).length > 0;
+  const estimatedCost = preview?.total_estimated_cost_usd ?? 0;
+  const insufficientBalance = walletBalance !== null && estimatedCost > walletBalance;
+  const allConflictsResolved = (preview?.conflicts ?? []).every(
+    (c) => conflictResolutions[c.function_name] !== undefined
+  );
+
   return (
     <div className="space-y-6">
       {preview ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Import Preview</CardTitle>
-            <CardDescription>
-              Review what will be created before starting the import
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Functions to import */}
-            <div className="space-y-2">
-              <Label>Functions ({preview.functions.length})</Label>
-              {preview.functions.map((fn) => (
+        <>
+          {/* Repo Summary */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Import Summary</CardTitle>
+              <CardDescription>{preview.repo_full_name}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="flex flex-col">
+                  <span className="text-xs text-text-muted uppercase tracking-wide">Functions</span>
+                  <span className="text-lg font-semibold">{preview.functions?.length ?? 0}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-text-muted uppercase tracking-wide">Files</span>
+                  <span className="text-lg font-semibold">{preview.total_file_count?.toLocaleString()}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-text-muted uppercase tracking-wide">Total Size</span>
+                  <span className="text-lg font-semibold">{formatBytes(preview.total_size_bytes ?? 0)}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-text-muted uppercase tracking-wide">Est. Cost</span>
+                  <span className="text-lg font-semibold">${(preview.total_estimated_cost_usd ?? 0).toFixed(4)}</span>
+                </div>
+              </div>
+              {preview.sync_branches && preview.sync_branches.length > 0 && (
+                <div className="mt-3 flex items-center gap-2">
+                  <GitBranch className="w-4 h-4 text-text-muted" />
+                  <span className="text-xs text-text-muted">
+                    Branches: {preview.sync_branches.join(', ')}
+                  </span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Functions to import */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Functions</CardTitle>
+              <CardDescription>
+                {(preview.functions ?? []).length} function{(preview.functions ?? []).length !== 1 ? 's' : ''} will be imported
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {(preview.functions ?? []).map((fn) => (
                 <div
                   key={fn.name}
-                  className="flex items-center justify-between p-3 rounded-lg bg-bg-secondary border border-border-default"
+                  className={`p-3 rounded-lg border ${
+                    fn.has_conflict
+                      ? 'bg-red-500/5 border-red-500/20'
+                      : 'bg-bg-secondary border-border-default'
+                  }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <FileCode className="w-4 h-4 text-brand-500" />
-                    <span className="text-sm font-medium">{fn.name}</span>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <FileCode className="w-4 h-4 text-brand-500" />
+                      <span className="text-sm font-medium">{fn.name}</span>
+                      {fn.has_conflict && (
+                        <Badge variant="destructive" className="text-xs">
+                          Conflict
+                        </Badge>
+                      )}
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {fn.runtime}
+                    </Badge>
                   </div>
-                  <Badge variant="outline" className="text-xs">
-                    {fn.runtime}
-                  </Badge>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-text-muted">
+                    <span>Entry: {fn.entry_point}</span>
+                    <span>Files: {fn.file_count}</span>
+                    <span>Size: {formatBytes(fn.estimated_size_bytes ?? 0)}</span>
+                    <span>Confidence: {Math.round((fn.confidence ?? 0) * 100)}%</span>
+                  </div>
+                  {fn.warnings && fn.warnings.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {fn.warnings.map((warning, i) => (
+                        <div key={i} className="flex items-start gap-2 text-xs text-amber-500">
+                          <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
+                          <span>{warning}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Cost */}
+          {preview.total_estimated_cost_usd && preview.total_estimated_cost_usd > 0 && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-brand-500" />
+                    <span className="text-sm text-text-secondary">Estimated Cost</span>
+                  </div>
+                  <span className="font-mono font-semibold text-text-primary">
+                    ${preview.total_estimated_cost_usd.toFixed(4)}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Warnings */}
+          {(preview.warnings ?? []).length > 0 && (
+            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 space-y-2">
+              <div className="flex items-center gap-2 text-sm text-amber-500 font-medium">
+                <AlertTriangle className="w-4 h-4" />
+                Warnings
+              </div>
+              {(preview.warnings ?? []).map((warning, i) => (
+                <div key={i} className="flex items-start gap-2 text-sm text-amber-500">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{warning}</span>
                 </div>
               ))}
             </div>
+          )}
 
-            {/* Cost */}
-            {preview.total_estimated_cost_usd > 0 && (
-              <div className="flex items-center justify-between p-3 rounded-lg bg-bg-secondary border border-border-default">
-                <span className="text-sm text-text-secondary">Estimated Cost</span>
-                <span className="font-mono font-semibold text-text-primary">
-                  ${preview.total_estimated_cost_usd.toFixed(4)}
-                </span>
+          {/* Conflicts */}
+          {hasConflicts && (
+            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 space-y-3">
+              <div className="flex items-center gap-2 text-sm text-red-500 font-medium">
+                <AlertTriangle className="w-4 h-4" />
+                Conflicts Detected ({preview.conflicts?.length})
               </div>
-            )}
-
-            {/* Warnings */}
-            {preview.warnings.length > 0 && (
-              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 space-y-2">
-                {preview.warnings.map((warning, i) => (
-                  <div key={i} className="flex items-start gap-2 text-sm text-amber-500">
-                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>{warning}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Conflicts */}
-            {preview.conflicts.length > 0 && (
-              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 space-y-2">
-                <Label className="text-red-500">Conflicts Detected</Label>
-                {preview.conflicts.map((conflict, i) => (
+              <p className="text-xs text-text-secondary">
+                Choose how to resolve each conflict before importing.
+              </p>
+              {(preview.conflicts ?? []).map((conflict, i) => {
+                const resolution = conflictResolutions[conflict.function_name];
+                return (
                   <div key={i} className="flex items-center justify-between text-sm">
                     <span className="text-text-primary">{conflict.function_name}</span>
-                    <Badge variant="destructive" className="text-xs">
-                      {conflict.existing_version}
-                    </Badge>
+                    {resolution ? (
+                      <Badge variant="outline" className="text-xs bg-green-500/10 border-green-500/20 text-green-500">
+                        {resolution}
+                      </Badge>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onOpenConflictDialog(conflict)}
+                        className="text-xs h-6 px-2"
+                      >
+                        Resolve
+                      </Button>
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                );
+              })}
+            </div>
+          )}
+        </>
       ) : (
         <div className="text-center py-8">
           <p className="text-text-secondary">No preview available</p>
+        </div>
+      )}
+
+      {fetchingWallet && (
+        <div className="flex items-center gap-2 text-sm text-text-muted">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Checking wallet balance...
+        </div>
+      )}
+      {walletBalance !== null && insufficientBalance && (
+        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-red-500">Insufficient wallet balance</p>
+            <p className="text-xs text-text-secondary mt-1">
+              Estimated cost: ${estimatedCost.toFixed(4)} | Your balance: ${walletBalance.toFixed(4)}
+            </p>
+            <p className="text-xs text-text-secondary">
+              Please{' '}
+              <a href={billingUrl} className="text-brand-500 hover:underline">
+                add funds to your wallet
+              </a>{' '}
+              to continue.
+            </p>
+          </div>
+        </div>
+      )}
+      {walletBalance !== null && !insufficientBalance && estimatedCost > 0 && (
+        <div className="p-2 rounded-lg bg-green-500/10 border border-green-500/20">
+          <p className="text-xs text-green-500">
+            Your balance (${walletBalance.toFixed(4)}) covers the estimated cost (${estimatedCost.toFixed(4)})
+          </p>
         </div>
       )}
 
@@ -822,7 +1097,7 @@ function StepConfirm({
         </Button>
         <Button
           onClick={onStartImport}
-          disabled={isStarting}
+          disabled={isStarting || insufficientBalance || (hasConflicts && !allConflictsResolved)}
           size="lg"
           className="gap-2"
         >
@@ -830,6 +1105,11 @@ function StepConfirm({
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
               Starting Import...
+            </>
+          ) : hasConflicts && !allConflictsResolved ? (
+            <>
+              <AlertTriangle className="w-4 h-4" />
+              Resolve Conflicts First
             </>
           ) : (
             <>
@@ -843,6 +1123,14 @@ function StepConfirm({
   );
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
+
 // ============================================================================
 // Step 4: Progress
 // ============================================================================
@@ -852,7 +1140,13 @@ function StepProgress({
   progressError,
   progressStatus,
   progressPercent,
+  bulkImportIds,
+  bulkImports,
+  bulkComplete,
+  bulkAllCompleted,
+  bulkAnyFailed,
   onViewFunction,
+  onViewImports,
   onImportAnother,
   onRetry,
 }: {
@@ -861,10 +1155,144 @@ function StepProgress({
   progressError: ImportErrorEvent | null;
   progressStatus: string;
   progressPercent: number;
+  bulkImportIds: string[];
+  bulkImports: GitHubImport[];
+  bulkComplete: boolean;
+  bulkAllCompleted: boolean;
+  bulkAnyFailed: boolean;
   onViewFunction: () => void;
+  onViewImports: () => void;
   onImportAnother: () => void;
   onRetry: () => void;
 }) {
+  const isBulk = bulkImportIds.length > 0;
+
+  if (isBulk) {
+    // If imports haven't loaded yet from the list query, show loading state
+    if (bulkImports.length === 0) {
+      return (
+        <div className="space-y-6 py-8">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 text-brand-500 animate-spin mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-text-primary mb-1">
+              Importing {bulkImportIds.length} functions...
+            </h3>
+            <p className="text-sm text-text-muted">Starting imports, please wait</p>
+          </div>
+          <div className="w-full h-2 bg-bg-secondary rounded-full overflow-hidden">
+            <motion.div
+              className="h-full bg-gradient-to-r from-brand-500 to-brand-600 rounded-full"
+              initial={{ width: 0 }}
+              animate={{ width: '5%' }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    const completedCount = bulkImports.filter((imp) => imp.status === 'completed').length;
+    const failedCount = bulkImports.filter((imp) => imp.status === 'failed').length;
+    const totalCount = bulkImports.length;
+
+    if (bulkComplete) {
+      return (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center py-12"
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: 'spring', bounce: 0.5, delay: 0.1 }}
+            className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${
+              bulkAllCompleted
+                ? 'bg-green-500/20 border border-green-500/30'
+                : 'bg-amber-500/20 border border-amber-500/30'
+            }`}
+          >
+            {bulkAllCompleted ? (
+              <CheckCircle className="w-10 h-10 text-green-500" />
+            ) : (
+              <AlertTriangle className="w-10 h-10 text-amber-500" />
+            )}
+          </motion.div>
+          <h2 className="text-2xl font-bold text-text-primary mb-2">
+            {bulkAllCompleted ? 'All Imports Complete!' : 'Imports Finished'}
+          </h2>
+          <p className="text-text-secondary mb-2">
+            {completedCount} of {totalCount} imports succeeded
+            {failedCount > 0 && ` (${failedCount} failed)`}
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <Button onClick={onViewImports} className="gap-2">
+              <Eye className="w-4 h-4" />
+              View Imports
+            </Button>
+            <Button variant="outline" onClick={onImportAnother} className="gap-2">
+              <RefreshCw className="w-4 h-4" />
+              Import Another
+            </Button>
+          </div>
+        </motion.div>
+      );
+    }
+
+    return (
+      <div className="space-y-6 py-8">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-brand-500 animate-spin mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-text-primary mb-1">
+            Importing {totalCount} functions...
+          </h3>
+          <p className="text-sm text-text-muted">
+            {completedCount} completed, {failedCount} failed, {totalCount - completedCount - failedCount} in progress
+          </p>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="w-full h-2 bg-bg-secondary rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-gradient-to-r from-brand-500 to-brand-600 rounded-full"
+            initial={{ width: 0 }}
+            animate={{ width: `${Math.round((completedCount / totalCount) * 100)}%` }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+          />
+        </div>
+
+        <div className="space-y-2 max-w-md mx-auto">
+          {bulkImports.map((imp) => (
+            <div
+              key={imp.id}
+              className="flex items-center justify-between p-2 rounded-lg bg-bg-secondary border border-border-default text-sm"
+            >
+              <span className="text-text-primary truncate max-w-[200px]">{imp.function_name}</span>
+              <span
+                className={`text-xs font-medium ${
+                  imp.status === 'completed'
+                    ? 'text-green-500'
+                    : imp.status === 'failed'
+                      ? 'text-red-500'
+                      : 'text-brand-500'
+                }`}
+              >
+                {imp.status === 'pending' || imp.status === 'scanning' || imp.status === 'configuring' || imp.status === 'fetching' || imp.status === 'building' || imp.status === 'publishing' ? (
+                  <span className="flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    {imp.progress}%
+                  </span>
+                ) : (
+                  imp.status
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   if (progressStatus === 'completed' || complete) {
     return (
       <motion.div

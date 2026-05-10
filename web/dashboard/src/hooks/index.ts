@@ -1,5 +1,18 @@
 // Auth & User Hooks
 export {
+  dnaKeys,
+  useDNAProfile,
+  useDNAMutations,
+  useDNAMutation,
+  useDNAInsights,
+  useEnterpriseDNAInsights,
+  useAcceptDNAVariant,
+  useRejectDNAVariant,
+  useTriggerDNAAnalysis,
+  useToggleDNAEvolution,
+} from './useFunctionDNA';
+
+export {
   useAddSkill,
   useChangePassword,
   useChangeUsername,
@@ -434,6 +447,7 @@ export {
 } from './useFollow';
 export { useNewsletter } from './useNewsletter';
 export { usePlan } from './usePlan';
+export { useProvisioningStatus, useProvisionBundle, useRetryProvisioning, useIsProvisioned, useProvisionedBundle } from './useProvisioning';
 export { useSignupConfig } from './useSignupConfig';
 export { useStatus } from './useStatus';
 export { useStatusCheck, useStatusHealthCheck, useStatusWebSocket } from './useStatusWebSocket';

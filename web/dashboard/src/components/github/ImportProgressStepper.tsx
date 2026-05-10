@@ -201,14 +201,21 @@ export function ImportProgressStepper({
                     <p className="font-semibold text-text-primary font-mono">{complete.commit_sha?.slice(0, 8) ?? '—'}</p>
                   </div>
                 </div>
-                {functionId && (
+                {(complete?.author && complete?.function_name) || functionId ? (
                   <Button variant="outline" size="sm" className="w-full" asChild>
-                    <a href={`/functions/${functionId}`} aria-label="View imported function">
+                    <a
+                      href={
+                        complete?.author && complete?.function_name
+                          ? `/functions/${complete.author}/${complete.function_name}`
+                          : `/functions/${functionId}`
+                      }
+                      aria-label="View imported function"
+                    >
                       <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
                       View Function
                     </a>
                   </Button>
-                )}
+                ) : null}
               </motion.div>
             )}
           </AnimatePresence>

@@ -15,7 +15,7 @@ export function DeferredBillingSelector({ mode, onModeChange }: DeferredBillingS
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3 }}
-      className="max-w-2xl mx-auto mb-10"
+      className="sticky top-16 z-30 max-w-2xl mx-auto mb-10 py-3 bg-bg-primary/80 backdrop-blur-lg -mx-4 px-4 border-b border-border/50"
     >
       <div className="bg-bg-secondary rounded-xl shadow-sm border border-border p-2">
         <div className="flex flex-col sm:flex-row gap-2">

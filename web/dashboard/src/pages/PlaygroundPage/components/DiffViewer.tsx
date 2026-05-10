@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Plus, Minus, Equal, GitCompare } from 'lucide-react';
+import { Plus, Minus, Equal, GitCompare, ArrowRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { usePlaygroundStore, ExecutionHistoryItem } from '../store/playgroundStore';
@@ -16,16 +16,16 @@ function DiffNodeRow({ node, depth }: { node: DiffNode; depth: number }) {
   const [isExpanded, setIsExpanded] = useState(true);
 
   const typeStyles = {
-    added: 'bg-green-500/10 border-l-2 border-green-500',
-    removed: 'bg-red-500/10 border-l-2 border-red-500',
-    changed: 'bg-yellow-500/10 border-l-2 border-yellow-500',
+    added: 'bg-green-500/10 dark:bg-green-500/20 border-l-2 border-green-500 text-green-600 dark:text-green-400',
+    removed: 'bg-red-500/10 dark:bg-red-500/20 border-l-2 border-red-500 text-red-600 dark:text-red-400',
+    changed: 'bg-yellow-500/10 dark:bg-yellow-500/20 border-l-2 border-yellow-500 text-yellow-600 dark:text-yellow-400',
     unchanged: '',
   };
 
   const typeIcons = {
-    added: <Plus className="w-3 h-3 text-green-400 shrink-0" />,
-    removed: <Minus className="w-3 h-3 text-red-400 shrink-0" />,
-    changed: <Equal className="w-3 h-3 text-yellow-400 shrink-0" />,
+    added: <Plus className="w-3 h-3 text-green-600 dark:text-green-400 shrink-0" />,
+    removed: <Minus className="w-3 h-3 text-red-600 dark:text-red-400 shrink-0" />,
+    changed: <Equal className="w-3 h-3 text-yellow-600 dark:text-yellow-400 shrink-0" />,
     unchanged: <span className="w-3 h-3 shrink-0" />,
   };
 
@@ -44,25 +44,25 @@ function DiffNodeRow({ node, depth }: { node: DiffNode; depth: number }) {
       >
         {typeIcons[node.type]}
 
-        <span className="text-purple-300">{node.key}</span>
+        <span className="text-purple-500 dark:text-purple-300 shrink-0">{node.key}</span>
         <span className="text-text-muted">:</span>
 
         {node.type === 'changed' && !hasChildren && (
           <span className="flex items-center gap-1.5">
-            <span className="text-red-400 line-through">
+            <span className="text-red-600 dark:text-red-400 line-through">
               {JSON.stringify(node.leftValue)}
             </span>
             <span className="text-text-muted">→</span>
-            <span className="text-green-400">{JSON.stringify(node.rightValue)}</span>
+            <span className="text-green-600 dark:text-green-400">{JSON.stringify(node.rightValue)}</span>
           </span>
         )}
 
         {node.type === 'added' && (
-          <span className="text-green-400">{JSON.stringify(node.rightValue)}</span>
+          <span className="text-green-600 dark:text-green-400">{JSON.stringify(node.rightValue)}</span>
         )}
 
         {node.type === 'removed' && (
-          <span className="text-red-400 line-through">
+          <span className="text-red-600 dark:text-red-400 line-through">
             {JSON.stringify(node.leftValue)}
           </span>
         )}
@@ -89,8 +89,12 @@ function DiffNodeRow({ node, depth }: { node: DiffNode; depth: number }) {
 
 export function DiffViewer({ className }: DiffViewerProps) {
   const { t } = useTranslation();
-  const { executionHistory, executionResult, diffBaseItem, setDiffBaseItem } =
+  const { executionHistory, executionResult, diffBaseItem, setDiffBaseItem, settings } =
     usePlaygroundStore();
+
+  const [compareMode, setCompareMode] = useState<'output' | 'input-output'>(
+    settings.diffViewMode || 'output'
+  );
 
   const currentResult = executionResult;
 
@@ -103,7 +107,7 @@ export function DiffViewer({ className }: DiffViewerProps) {
     );
   }
 
-  if (executionHistory.length < 2) {
+  if (executionHistory.length < 2 && compareMode === 'output') {
     return (
       <div className={cn('flex flex-col items-center justify-center py-12 text-center', className)}>
         <GitCompare className="w-10 h-10 text-text-muted mb-3" />
@@ -112,8 +116,37 @@ export function DiffViewer({ className }: DiffViewerProps) {
     );
   }
 
-  const baseItem = diffBaseItem || executionHistory[1]; // Default to second-most-recent
-  const diffNodes = diffJson(baseItem.result.data, currentResult.data);
+  // Build diff based on mode
+  let baseItem: ExecutionHistoryItem | null = null;
+  let diffNodes: DiffNode[] = [];
+  let leftLabel = '';
+  let rightLabel = '';
+
+  if (compareMode === 'input-output') {
+    // Compare input → output transformation
+    // Use current execution's input and output
+    const currentInput = currentResult; // Not actually used, we show input→output
+    if (currentResult) {
+      leftLabel = t('playground.input');
+      rightLabel = t('playground.output');
+      diffNodes = diffJson(executionHistory[0]?.input, currentResult.data);
+    }
+  } else {
+    // Output-only diff
+    baseItem = diffBaseItem || (executionHistory.length > 1 ? executionHistory[1] : null);
+    if (!baseItem) {
+      return (
+        <div className={cn('flex flex-col items-center justify-center py-12 text-center', className)}>
+          <GitCompare className="w-10 h-10 text-text-muted mb-3" />
+          <p className="text-sm text-text-muted">{t('playground.runTwiceToCompare')}</p>
+        </div>
+      );
+    }
+    leftLabel = new Date(baseItem.timestamp).toLocaleTimeString();
+    rightLabel = t('playground.current');
+    diffNodes = diffJson(baseItem.result.data, currentResult.data);
+  }
+
   const { added, removed, changed } = countDiffChanges(diffNodes);
 
   return (
@@ -121,22 +154,50 @@ export function DiffViewer({ className }: DiffViewerProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-text-muted">{t('playground.comparingWith')}</span>
-          <select
-            className="text-xs bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-text-primary"
-            value={baseItem.id}
-            onChange={(e) => {
-              const item = executionHistory.find((h) => h.id === e.target.value);
-              if (item) setDiffBaseItem(item);
-            }}
-          >
-            {executionHistory.slice(1).map((item) => (
-              <option key={item.id} value={item.id}>
-                {new Date(item.timestamp).toLocaleTimeString()} —{' '}
-                {item.result.ok ? '✓' : '✗'} {item.result.duration_ms}ms
-              </option>
-            ))}
-          </select>
+          {/* Compare mode toggle */}
+          <div className="flex items-center gap-1 bg-bg-tertiary rounded-lg p-0.5">
+            <button
+              onClick={() => setCompareMode('output')}
+              className={cn(
+                'px-2 py-0.5 text-[10px] rounded transition-colors',
+                compareMode === 'output'
+                  ? 'bg-indigo-600 text-white'
+                  : 'text-text-muted hover:text-text-secondary'
+              )}
+            >
+              {t('playground.outputDiff')}
+            </button>
+            <button
+              onClick={() => setCompareMode('input-output')}
+              className={cn(
+                'px-2 py-0.5 text-[10px] rounded transition-colors flex items-center gap-1',
+                compareMode === 'input-output'
+                  ? 'bg-indigo-600 text-white'
+                  : 'text-text-muted hover:text-text-secondary'
+              )}
+            >
+              <ArrowRight className="w-3 h-3" />
+              {t('playground.inputToOutput')}
+            </button>
+          </div>
+
+          {compareMode === 'output' && baseItem && (
+            <select
+              className="text-xs bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-text-primary"
+              value={baseItem.id}
+              onChange={(e) => {
+                const item = executionHistory.find((h) => h.id === e.target.value);
+                if (item) setDiffBaseItem(item);
+              }}
+            >
+              {executionHistory.slice(1).map((item) => (
+                <option key={item.id} value={item.id}>
+                  {new Date(item.timestamp).toLocaleTimeString()} —{' '}
+                  {item.result.ok ? '✓' : '✗'} {item.result.duration_ms}ms
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Change summary */}
@@ -162,6 +223,19 @@ export function DiffViewer({ className }: DiffViewerProps) {
             </Badge>
           )}
         </div>
+      </div>
+
+      {/* Diff labels */}
+      <div className="flex items-center gap-2 text-xs text-text-muted">
+        <span className="flex items-center gap-1">
+          <Minus className="w-3 h-3 text-red-400" />
+          {leftLabel}
+        </span>
+        <ArrowRight className="w-3 h-3" />
+        <span className="flex items-center gap-1">
+          <Plus className="w-3 h-3 text-green-400" />
+          {rightLabel}
+        </span>
       </div>
 
       {/* Diff tree */}

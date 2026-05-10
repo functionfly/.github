@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { deployBundle, getDeploymentStatus, type Bundle, type DeploymentStep, type DeploymentStatusResponse } from '@/api/billing';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, XCircle, Loader2, Rocket, Server, Shield, Sparkles, ChevronRight, ArrowRight, Home, Settings, Mail } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, Rocket, Server, Shield, Sparkles, ChevronRight, ArrowRight, Home, Settings, Mail, Package } from 'lucide-react';
 
 interface DeployWizardProps {
   open: boolean;
@@ -43,6 +44,7 @@ export function DeployWizard({ open, onOpenChange, bundle, pricingMode, onDeploy
   const [backendId, setBackendId] = useState<string | null>(null);
   const [selectedRegion, setSelectedRegion] = useState('us-east-1');
   const [isDeploying, setIsDeploying] = useState(false);
+  const navigate = useNavigate();
 
   const pollDeploymentStatus = useCallback(async (id: string) => {
     try {
@@ -448,6 +450,16 @@ export function DeployWizard({ open, onOpenChange, bundle, pricingMode, onDeploy
               <Button onClick={handleViewBackend} variant="outline">
                 <Settings className="w-4 h-4 mr-2" />
                 View Backend
+              </Button>
+              <Button
+                onClick={() => {
+                  handleClose();
+                  navigate(`/bundles/provisioning?bundle=${bundle.slug}`);
+                }}
+                variant="outline"
+              >
+                <Package className="w-4 h-4 mr-2" />
+                View Provisioning
               </Button>
               <Button
                 onClick={handleGoToDashboard}

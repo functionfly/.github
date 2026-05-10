@@ -89,12 +89,13 @@ export function FunctionPlanCard({
           'border border-white/10 hover:border-white/20',
           'hover:shadow-2xl hover:shadow-[#6366f1]/10',
           plan.id === 'professional' &&
-            'border-[#6366f1]/50 ring-1 ring-[#6366f1]/20 hover:ring-[#6366f1]/40'
+            'border-[#6366f1]/50 ring-1 ring-[#6366f1]/20 hover:ring-[#6366f1]/40',
+          plan.comingSoon && 'opacity-60'
         )}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-        {plan.id === 'professional' && (
+        {plan.id === 'professional' && !plan.comingSoon && (
           <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
             <motion.div
               initial={{ scale: 0, opacity: 0 }}
@@ -133,14 +134,22 @@ export function FunctionPlanCard({
               className="mb-4"
             >
               <div className="flex items-baseline gap-2">
-                <span className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-white to-text-secondary bg-clip-text text-transparent">
-                  {typeof displayPrice === 'string' ? displayPrice : `$${displayPrice}`}
-                </span>
-                {typeof displayPrice === 'number' && (
-                  <span className="text-text-secondary text-lg">/month</span>
+                {plan.comingSoon ? (
+                  <span className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-white to-text-secondary bg-clip-text text-transparent">
+                    Coming Soon
+                  </span>
+                ) : (
+                  <>
+                    <span className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-white to-text-secondary bg-clip-text text-transparent">
+                      {typeof displayPrice === 'string' ? displayPrice : `$${displayPrice}`}
+                    </span>
+                    {typeof displayPrice === 'number' && (
+                      <span className="text-text-secondary text-lg">/month</span>
+                    )}
+                  </>
                 )}
               </div>
-              {billingCycle === 'annual' && plan.id !== 'free' && plan.id !== 'enterprise' && annualPrice > 0 && (
+              {billingCycle === 'annual' && plan.id !== 'free' && plan.id !== 'enterprise' && annualPrice > 0 && !plan.comingSoon && (
                 <div className="flex items-center gap-2 mt-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                   <p className="text-emerald-400 text-sm font-medium">
@@ -198,40 +207,51 @@ export function FunctionPlanCard({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 + index * 0.1 }}
           >
-            <Link
-              to={plan.id === 'enterprise' ? '/contact' : '/signup'}
-              className="block group"
-              onClick={() => !disabled && !isLoading && onPlanSelect(plan.id, billingCycle === 'annual' && plan.priceIdAnnual ? plan.priceIdAnnual : plan.priceId)}
-            >
+            {plan.comingSoon ? (
               <Button
-                variant={plan.id === 'free' ? 'outline' : 'default'}
+                variant="outline"
                 size="lg"
-                disabled={disabled || isLoading}
-                className={cn(
-                  'w-full py-4 text-base font-semibold transition-all duration-300 transform hover:scale-105',
-                  plan.id === 'free' &&
-                    'border-2 border-white/30 hover:border-white/50 hover:bg-white/10',
-                  plan.id === 'professional' &&
-                    'bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] hover:from-[#6366f1]/90 hover:to-[#8b5cf6]/90 shadow-lg shadow-[#6366f1]/25 hover:shadow-[#6366f1]/40',
-                  plan.id !== 'free' &&
-                    plan.id !== 'professional' &&
-                    'bg-gradient-to-r from-white/10 to-white/5 hover:from-white/20 hover:to-white/10 border border-white/20'
-                )}
+                disabled={true}
+                className="w-full py-4 text-base font-semibold transition-all duration-300 border-2 border-white/20 text-text-muted cursor-not-allowed"
               >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Starting Checkout...
-                  </>
-                ) : plan.id === 'enterprise' ? (
-                  'Contact Sales'
-                ) : plan.id === 'free' ? (
-                  'Start Free'
-                ) : (
-                  'Start Free Trial'
-                )}
+                Coming Soon
               </Button>
-            </Link>
+            ) : (
+              <Link
+                to={plan.id === 'enterprise' ? '/contact' : '/signup'}
+                className="block group"
+                onClick={() => !disabled && !isLoading && onPlanSelect(plan.id, billingCycle === 'annual' && plan.priceIdAnnual ? plan.priceIdAnnual : plan.priceId)}
+              >
+                <Button
+                  variant={plan.id === 'free' ? 'outline' : 'default'}
+                  size="lg"
+                  disabled={disabled || isLoading}
+                  className={cn(
+                    'w-full py-4 text-base font-semibold transition-all duration-300 transform hover:scale-105',
+                    plan.id === 'free' &&
+                      'border-2 border-white/30 hover:border-white/50 hover:bg-white/10',
+                    plan.id === 'professional' &&
+                      'bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] hover:from-[#6366f1]/90 hover:to-[#8b5cf6]/90 shadow-lg shadow-[#6366f1]/25 hover:shadow-[#6366f1]/40',
+                    plan.id !== 'free' &&
+                      plan.id !== 'professional' &&
+                      'bg-gradient-to-r from-white/10 to-white/5 hover:from-white/20 hover:to-white/10 border border-white/20'
+                  )}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Starting Checkout...
+                    </>
+                  ) : plan.id === 'enterprise' ? (
+                    'Contact Sales'
+                  ) : plan.id === 'free' ? (
+                    'Start Free'
+                  ) : (
+                    'Start Free Trial'
+                  )}
+                </Button>
+              </Link>
+            )}
           </motion.div>
         </CardContent>
       </Card>

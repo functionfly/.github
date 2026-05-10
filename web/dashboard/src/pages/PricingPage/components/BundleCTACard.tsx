@@ -49,7 +49,7 @@ export function BundleCTACard() {
           {/* CTA */}
           <div className="flex-shrink-0">
             <Link
-              to="/pricing/bundles"
+              to="/bundles"
               className="group inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white font-semibold rounded-xl transition-all shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40"
             >
               <Zap className="w-5 h-5" />

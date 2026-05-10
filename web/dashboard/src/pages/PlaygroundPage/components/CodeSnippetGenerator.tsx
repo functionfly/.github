@@ -46,7 +46,7 @@ export function CodeSnippetGenerator({ className }: CodeSnippetGeneratorProps) {
             className={cn(
               'px-2.5 py-1 text-xs rounded-md transition-colors',
               activeLanguage === lang.id
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-indigo-600 text-white dark:text-white'
                 : 'bg-bg-tertiary text-text-secondary hover:text-text-primary hover:bg-bg-secondary'
             )}
           >

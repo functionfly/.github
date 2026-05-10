@@ -35,6 +35,12 @@ import { AuthCallbackPage } from '@/pages/AuthCallbackPage';
 import { MagicLinkVerifyPage } from '@/pages/AuthPage/MagicLinkVerifyPage';
 import { BrowseFunctionsPage } from '@/pages/BrowseFunctionsPage';
 import { BundlePricingPage } from '@/pages/BundlePricingPage';
+import BundleProvisioningPage from '@/pages/BundleProvisioningPage';
+import { CertificationPage } from '@/pages/CertificationPage';
+import { ExamPage } from '@/pages/ExamPage';
+import { ExamResultsPage } from '@/pages/ExamResultsPage';
+import { CredentialsPage } from '@/pages/CredentialsPage';
+import { VerifyPage } from '@/pages/VerifyPage';
 import ChangelogPage from '@/pages/ChangelogPage';
 import { ContactPage } from '@/pages/ContactPage';
 import ConversationsPage from '@/pages/ConversationsPage';
@@ -77,6 +83,9 @@ import { ProfileSettingsPage } from '@/pages/ProfileSettingsPage';
 import { ProvidersPage } from '@/pages/ProvidersPage';
 import RegistryDeployPage from '@/pages/RegistryDeployPage';
 import { ReplayPage } from '@/pages/ReplayPage';
+import { TimeMachinePage } from '@/pages/TimeMachinePage';
+import { NewReplayPage } from '@/pages/TimeMachinePage/NewReplayPage';
+import { ReplayDetailPage } from '@/pages/TimeMachinePage/ReplayDetailPage';
 import { SecretsPage } from '@/pages/SecretsPage';
 import { SecurityPage } from '@/pages/SecurityPage';
 import { ServerErrorPage } from '@/pages/ServerErrorPage';
@@ -93,6 +102,8 @@ import { TeamsPage } from '@/pages/TeamsPage';
 import { UserDashboardFunctionsPage } from '@/pages/UserDashboardFunctionsPage';
 import { UserDashboardSettingsPage } from '@/pages/UserDashboardSettingsPage';
 import WalletPage from '@/pages/WalletPage';
+import FunctionDNAPage from '@/pages/FunctionDNAPage';
+import DNAOverviewPage from '@/pages/DNAOverviewPage';
 import { useAuthStore } from '@/stores/authStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useOnboardingStore } from '@/stores/onboardingStore';
@@ -460,7 +471,6 @@ function AppContent() {
         <Route path="/coming-soon" element={<LaunchPage />} />
         <Route path="/status" element={<StatusPage />} />
         <Route path="/pricing" element={<MarketingPricingRedirect />} />
-        <Route path="/pricing/bundles" element={<BundlePricingPage />} />
         <Route path="/features" element={<FeaturesPage />} />
         <Route path="/integrations" element={<IntegrationsPage />} />
         {/* /teams is the dashboard-protected route inside DashboardLayout */}
@@ -489,6 +499,9 @@ function AppContent() {
         {/* Public user profile pages */}
         <Route path="/u/:username" element={<ProfilePage />} />
         <Route path="/profile/:username" element={<ProfilePage />} />
+
+        {/* Public credential verification */}
+        <Route path="/verify/:username" element={<VerifyPage />} />
 
         {/* Standalone Playground (Public) */}
         <Route path="/playground" element={<StandalonePlaygroundPage />} />
@@ -549,10 +562,13 @@ function AppContent() {
           <Route path="functions/new" element={<FunctionEditorPage />} />
           <Route path="functions/paste" element={<PasteCodePage />} />
           <Route path="functions/deploy" element={<RegistryDeployPage />} />
-          <Route path="functions/:id" element={<FunctionDetailPage />} />
-          <Route path="functions/:id/edit" element={<FunctionEditorPage />} />
+          <Route path="functions/:author/:name" element={<FunctionPage />} />
           <Route path="functions/:author/:name/settings" element={<FunctionSettingsPage />} />
           <Route path="functions/:author/:name/logs" element={<FunctionLogsPage />} />
+          <Route path="functions/:id" element={<FunctionDetailPage />} />
+          <Route path="functions/:id/edit" element={<FunctionEditorPage />} />
+          <Route path="functions/:id/dna" element={<FunctionDNAPage />} />
+          <Route path="dna/overview" element={<DNAOverviewPage />} />
           {/* AI Composer Routes - Multiple aliases for flexibility */}
           <Route path="ai-composer" element={<AIComposerPage />} />
           <Route path="composer" element={<AIComposerPage />} />
@@ -569,7 +585,7 @@ function AppContent() {
 
           {/* GitHub Integration Routes */}
           <Route path="github" element={<GitHubPage />} />
-          <Route path="github/repos/:repoId/import" element={<GitHubRepoImportPage />} />
+          <Route path="github/import/:repoId" element={<GitHubRepoImportPage />} />
 
           <Route path="providers" element={<ProvidersPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
@@ -579,6 +595,19 @@ function AppContent() {
           <Route path="state-fabric/:id" element={<StateFabricDetailPage />} />
           <Route path="state-fabric/:id/edit" element={<StateFabricDetailPage />} />
           <Route path="backends" element={<BundlePricingPage />} />
+          <Route path="bundles" element={<BundlePricingPage />} />
+          <Route path="bundles/provisioning" element={<BundleProvisioningPage />} />
+
+          {/* Time Machine Routes */}
+          <Route path="time-machine" element={<TimeMachinePage />} />
+          <Route path="time-machine/new" element={<NewReplayPage />} />
+          <Route path="time-machine/:id" element={<ReplayDetailPage />} />
+
+          {/* Certification Routes */}
+          <Route path="certification" element={<CertificationPage />} />
+          <Route path="certification/exam/:examId" element={<ExamPage />} />
+          <Route path="certification/exam/:examId/results" element={<ExamResultsPage />} />
+          <Route path="credentials" element={<CredentialsPage />} />
 
           <Route path="state" element={<StatePage />} />
           <Route path="state/new" element={<StateDetailPage />} />

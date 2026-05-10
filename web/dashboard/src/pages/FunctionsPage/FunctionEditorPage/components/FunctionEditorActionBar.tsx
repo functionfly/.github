@@ -36,7 +36,7 @@ export function FunctionEditorActionBar({ editor }: Props) {
           </Button>
           <nav className="flex items-center gap-1 text-sm min-w-0" aria-label="Breadcrumb">
           <Link
-            to="/functions"
+            to="/functions/my"
             className="text-text-muted hover:text-[#FF6B35] transition-colors truncate"
           >
             Functions

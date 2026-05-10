@@ -257,6 +257,18 @@ export const FEATURES: Record<string, readonly PlanTier[]> = {
   PRIORITY_SUPPORT: ['professional', 'enterprise'],
   /** Enterprise sidebar section with SLA, Audit, Support */
   ENTERPRISE_SECTION: ['professional', 'enterprise'],
+  /** Time Machine: 24h replay, basic diff — available on all plans */
+  TIME_MACHINE_BASIC: ['free', 'starter', 'professional', 'enterprise', 'agent_enterprise'],
+  /** Time Machine: 72h replay window */
+  TIME_MACHINE_EXTENDED: ['starter', 'professional', 'enterprise', 'agent_enterprise'],
+  /** Time Machine: 30-day replay, full diffs, dry-run reconciliation */
+  TIME_MACHINE_PRO: ['professional', 'enterprise', 'agent_enterprise'],
+  /** Time Machine: 90-day replay, live reconciliation, audit certificates */
+  TIME_MACHINE_ENTERPRISE: ['enterprise', 'agent_enterprise'],
+  /** Time Machine: unlimited replay, custom rules, legal-grade certs */
+  TIME_MACHINE_UNLIMITED: ['agent_enterprise'],
+  /** Incident Insurance: dedicated engineer during critical incidents */
+  TIME_MACHINE_INSURANCE: ['agent_enterprise'],
 } as const;
 
 export type FeatureKey = keyof typeof FEATURES;
@@ -371,4 +383,38 @@ export const formatOverageRate = (plan?: string): string => {
   if (rate === null) return 'Hard stop';
   if (rate === 0) return 'Included';
   return `$${(rate / 1000).toFixed(4)}/req`;
+};
+
+/**
+ * Check if the plan has Function Consciousness (basic insights, daily digest)
+ * Available on Professional and above
+ */
+export const hasConsciousness = (plan?: string): boolean => {
+  return hasMinPlan(plan as PlanTier, 'professional');
+};
+
+/**
+ * Check if the plan has Advanced Consciousness (real-time, predictive, auto-fix)
+ * Available on Enterprise and above
+ */
+export const hasAdvancedConsciousness = (plan?: string): boolean => {
+  return hasMinPlan(plan as PlanTier, 'enterprise');
+};
+
+/**
+ * Check if the plan has Autonomous Consciousness (self-healing, unlimited lookback)
+ * Available on Agent Enterprise only
+ */
+export const hasAutonomousConsciousness = (plan?: string): boolean => {
+  return plan?.toLowerCase() === 'agent_enterprise';
+};
+
+/**
+ * Get consciousness lookback days for the plan
+ */
+export const getConsciousnessLookbackDays = (plan?: string): number => {
+  if (hasAutonomousConsciousness(plan)) return -1; // Unlimited
+  if (hasAdvancedConsciousness(plan)) return 30;
+  if (hasConsciousness(plan)) return 7;
+  return 0;
 };

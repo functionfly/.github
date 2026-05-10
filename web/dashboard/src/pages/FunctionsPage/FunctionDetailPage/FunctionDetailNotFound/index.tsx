@@ -86,7 +86,7 @@ export function FunctionDetailNotFound({ id, errorMessage }: FunctionDetailNotFo
               Go Back
             </Button>
             <Button asChild className="gap-2" size="lg">
-              <Link to="/functions">
+              <Link to="/functions/my">
                 <Search className="w-4 h-4" />
                 My Functions
               </Link>

@@ -5,17 +5,27 @@ import { AviationEmptyState } from '@/components/functions/AviationEmptyState';
 import { AviationFunctionCard } from '@/components/functions/AviationFunctionCard';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from 'sonner';
-import { Flame, Sparkles, Star, TrendingUp, User, Zap } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { FunctionConfig } from '@/types';
+import { Flame, Loader2, Sparkles, Star, TrendingUp, Trash2, User, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface FunctionSummary {
   id: string;
   name: string;
   description?: string;
-  runtime: string;
+  runtime?: string;
   created_at: string;
   updated_at: string;
   execution_count?: number;
@@ -28,7 +38,7 @@ interface FunctionSummary {
   env_vars?: Array<{ key: string; value: string; isSecret?: boolean }>;
   tenant_id?: string;
   version?: string;
-  status?: 'draft' | 'deploying' | 'deployed' | 'failed';
+  status?: 'draft' | 'deploying' | 'deployed' | 'failed' | 'active' | 'suspended';
 }
 
 type FilterType = 'hot' | 'trending' | 'new' | 'popular' | 'favorites' | 'my';
@@ -79,8 +89,26 @@ function getFilterFromPath(pathname: string): FilterType {
 export function FunctionsDiscoveryPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [functions, setFunctions] = useState<FunctionSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [functionToDelete, setFunctionToDelete] = useState<FunctionSummary | null>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => functionsApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['functions'] });
+      toast.success('Function deleted successfully');
+      setDeleteDialogOpen(false);
+      setFunctionToDelete(null);
+      loadFunctions();
+    },
+    onError: () => {
+      toast.error('Failed to delete function');
+      setDeleteDialogOpen(false);
+    },
+  });
 
   const filter = getFilterFromPath(location.pathname);
   const config = FILTER_CONFIG[filter] || FILTER_CONFIG.hot;
@@ -96,15 +124,17 @@ export function FunctionsDiscoveryPage() {
 
       // Fetch user's functions and public registry functions (except for 'favorites' and 'my' which have different sources)
       const needsRegistry = filter !== 'my' && filter !== 'favorites';
-      const [userRes, registryRes, favoritesRes] = await Promise.allSettled([
+      const [userRes, registryRes, favoritesRes, myRegistryRes] = await Promise.allSettled([
         functionsApi.list(),
         needsRegistry ? registryApi.getFunctions({ visibility: 'public', limit: 100 }) : Promise.resolve({ functions: [] }),
         filter === 'favorites' ? favoritesApi.list(1, 50) : Promise.resolve({ favorites: [], total: 0 }),
+        filter === 'my' ? registryApi.getMyFunctions({ limit: 100 }) : Promise.resolve({ functions: [] }),
       ]);
 
       const userFunctionsRaw = userRes.status === 'fulfilled' ? (userRes.value.functions || []) : [];
       const publicFunctions: RegistryFunction[] = registryRes.status === 'fulfilled' ? (registryRes.value.functions || []) : [];
       const userFavorites = favoritesRes.status === 'fulfilled' ? (favoritesRes.value.favorites || []) : [];
+      const myRegistryFunctions: RegistryFunction[] = myRegistryRes.status === 'fulfilled' ? (myRegistryRes.value.functions || []) : [];
 
       // Convert user functions to FunctionSummary format (camelCase -> snake_case)
       const userFunctions: FunctionSummary[] = userFunctionsRaw.map((f) => ({
@@ -132,6 +162,19 @@ export function FunctionsDiscoveryPage() {
         isPublic: true,
       }));
 
+      // Convert user's own registry functions (from GitHub import etc.)
+      const mappedMyRegistryFunctions: FunctionSummary[] = myRegistryFunctions.map((f) => ({
+        id: f.id,
+        name: `${f.author}/${f.name}`,
+        description: f.description,
+        runtime: f.latest_version?.split('@')[0] || 'unknown',
+        created_at: f.created_at,
+        updated_at: f.created_at,
+        execution_count: Math.floor(f.popularity_score * 100),
+        author: f.author,
+        isPublic: f.visibility === 'public',
+      }));
+
       // Build a map of favorite function IDs for quick lookup
       const favoriteIds = new Set(userFavorites.map((fav) => fav.function_id));
 
@@ -157,9 +200,22 @@ export function FunctionsDiscoveryPage() {
         case 'favorites':
           data = allFunctions.filter((f) => favoriteIds.has(f.id));
           break;
-        case 'my':
-          data = userFunctions;
+        case 'my': {
+          // Merge platform functions with user's registry functions (deduplicate by name)
+          // Registry functions use "author/name" format, platform functions use just "name"
+          const seenNames = new Set(userFunctions.map((f) => f.name.toLowerCase()));
+          const merged = [...userFunctions];
+          for (const fn of mappedMyRegistryFunctions) {
+            // Extract the base name from "author/name" format
+            const baseName = (fn.name.split('/')[1] || fn.name).toLowerCase();
+            if (!seenNames.has(baseName)) {
+              seenNames.add(baseName);
+              merged.push(fn);
+            }
+          }
+          data = merged;
           break;
+        }
         default:
           data = allFunctions;
       }
@@ -176,7 +232,29 @@ export function FunctionsDiscoveryPage() {
     navigate('/functions/new');
   };
 
-  // Check if we're on the special /functions/discovery/new page
+  const handleDeleteClick = (fn: FunctionConfig) => {
+    const summary: FunctionSummary = {
+      ...fn,
+      created_at: fn.createdAt,
+      updated_at: fn.updatedAt,
+    };
+    setFunctionToDelete(summary);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (functionToDelete) {
+      deleteMutation.mutate(functionToDelete.id);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setFunctionToDelete(null);
+  };
+
+  const isMyFunctionsPage = filter === 'my';
+
   const isNewDiscoveryPage = location.pathname === '/functions/discovery/new';
 
   return (
@@ -265,29 +343,85 @@ export function FunctionsDiscoveryPage() {
                   avgDurationMs: fn.avg_duration_ms,
                 }}
                 onView={(id) => {
-                  if (fn.isPublic && fn.author) {
-                    // Navigate to public registry function
+                  if (fn.author) {
+                    // Navigate to registry function (public or private)
                     const funcName = fn.name.split('/')[1] || fn.name;
                     navigate(`/fx/${fn.author}/${funcName}`);
                   } else {
-                    // Navigate to user's function
+                    // Navigate to user's platform function
                     navigate(`/functions/${id}`);
                   }
                 }}
                 onEdit={(id) => {
-                  if (fn.isPublic && fn.author) {
+                  if (fn.author) {
                     const funcName = fn.name.split('/')[1] || fn.name;
                     navigate(`/fx/${fn.author}/${funcName}`);
                   } else {
                     navigate(`/functions/${id}/edit`);
                   }
                 }}
+                onDelete={isMyFunctionsPage ? handleDeleteClick : undefined}
               />
             ))}
           </div>
           )}
         </main>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent
+          style={{
+            background: 'var(--color-aviation-bg-secondary)',
+            borderColor: 'var(--color-aviation-red-dim, rgba(239,68,68,0.3))',
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle
+              className="flex items-center gap-2"
+              style={{ color: 'var(--color-aviation-text-primary)' }}
+            >
+              <Trash2 className="w-5 h-5" style={{ color: 'var(--color-aviation-red)' }} />
+              Delete Function
+            </DialogTitle>
+            <DialogDescription
+              style={{ color: 'var(--color-aviation-text-secondary)' }}
+            >
+              Are you sure you want to delete "{functionToDelete?.name}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={handleCancelDelete}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deleteMutation.isPending}
+              style={{
+                background: 'var(--color-aviation-red)',
+                color: 'white',
+              }}
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

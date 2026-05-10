@@ -269,14 +269,18 @@ export function GitHubImportsTab() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {imp.function_id && (
+                          {(imp.function_author && imp.function_name) || imp.function_id ? (
                             <DropdownMenuItem
-                              onClick={() => navigate(`/functions/${imp.function_id}`)}
+                              onClick={() =>
+                                imp.function_author && imp.function_name
+                                  ? navigate(`/functions/${imp.function_author}/${imp.function_name}`)
+                                  : navigate(`/functions/${imp.function_id}`)
+                              }
                             >
                               <Eye className="w-4 h-4 mr-2" />
                               View Function
                             </DropdownMenuItem>
-                          )}
+                          ) : null}
                           <DropdownMenuItem
                             onClick={() => navigate(`/github?tab=imports&sync=${imp.id}`)}
                           >

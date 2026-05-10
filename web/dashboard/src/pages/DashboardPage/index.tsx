@@ -78,19 +78,17 @@ export function DashboardPage() {
   const apps = appsData ?? [];
 
   useEffect(() => {
-    if (bundleSuccess && apps.length > 0) {
-      // Find the app matching the bundle slug (e.g., "saas-starter", "marketplace", "ai-app")
-      const bundleApp = apps.find(app => app.slug === bundleSuccess);
-      if (bundleApp) {
-        // Clean URL and navigate to the app
-        navigate(`/apps/${bundleApp.id}`, { replace: true });
-      }
+    if (bundleSuccess) {
+      // Redirect to provisioning page — it handles one-click provisioning automatically
+      navigate(`/bundles/provisioning?bundle=${bundleSuccess}&success=true`, { replace: true });
+      return;
     }
     if (founderMode === 'true') {
-      // Founder mode success - show a toast or banner
-      // The user should see their new bundle resources
+      // Founder mode success — show provisioning for the founder bundle
+      const founderBundle = searchParams.get('plan') || 'saas-starter';
+      navigate(`/bundles/provisioning?bundle=${founderBundle}&success=true`, { replace: true });
     }
-  }, [bundleSuccess, founderMode, apps, navigate]);
+  }, [bundleSuccess, founderMode, navigate]);
 
   const { data: functionsData, isLoading: functionsLoading } = useQuery({
     queryKey: ['functions'],

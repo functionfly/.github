@@ -180,11 +180,10 @@ export function AviationFunctionCard({
                         e.stopPropagation();
                         onDelete(fn);
                       }}
-                      className="cursor-pointer font-mono text-xs flex items-center gap-2"
-                      style={{ color: 'var(--color-aviation-red)' }}
+                      className="cursor-pointer font-mono text-xs flex items-center gap-2 focus!bg-red-500/30"
                     >
                       <Trash2 className="w-3 h-3" />
-                      TERMINATE
+                      <span style={{ color: '#ef4444' }} className="focus:!text-white">TERMINATE</span>
                     </DropdownMenuItem>
                   </>
                 )}

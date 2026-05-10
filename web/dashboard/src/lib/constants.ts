@@ -36,6 +36,8 @@ export const ROUTES = {
   STATE_FABRIC: '/state-fabric',
   SECRETS: '/secrets',
   API_KEYS: '/api-keys',
+  CERTIFICATION: '/certification',
+  CREDENTIALS: '/credentials',
   SETTINGS: '/settings',
   BILLING: '/settings', // Billing tab lives on Settings page
   TEAMS: '/teams',
@@ -74,6 +76,12 @@ export const ROUTES = {
   AGENT_MEMORIES: '/agent-memories',
   CONVERSATIONS: '/conversations',
   STATE: '/state',
+  // Time Machine routes
+  TIME_MACHINE: '/time-machine',
+  TIME_MACHINE_NEW: '/time-machine/new',
+  TIME_MACHINE_DETAIL: '/time-machine/:id',
+  TIME_MACHINE_SCHEDULES: '/time-machine/schedules',
+  TIME_MACHINE_AUDIT: '/time-machine/audit',
 } as const;
 
 /**
@@ -306,9 +314,10 @@ export const PLANS = {
     priceId: '',
     priceIdAnnual: '',
     description: 'Perfect for getting started with FunctionFly',
-    features: ['1 function', '2 providers', '100,000 requests/month', 'Community support'],
+    features: ['1 function', '2 providers', '100,000 requests/month', 'Community support', '24h Time Machine replay'],
     overageRate: null, // Hard stop at limit
     annualDiscount: 0,
+    comingSoon: false,
     limits: {
       functions: 1,
       providers: 2,
@@ -321,6 +330,9 @@ export const PLANS = {
       tokensPerSecret: 0,
       apiKeyBudgets: false,
       perKeyCostAttribution: false,
+      replayWindowHours: 24,
+      maxExecutionsPerReplay: 100,
+      maxConcurrentReplays: 1,
     },
   },
   STARTER: {
@@ -342,9 +354,11 @@ export const PLANS = {
       'Basic analytics',
       '10 agents included',
       '100 state writes/hour',
+      '72h Time Machine replay',
     ],
     overageRate: 15, // $0.15 per 1000 calls
     annualDiscount: 0.17, // 17% off (2 months free)
+    comingSoon: false,
     limits: {
       functions: 5,
       providers: 3,
@@ -360,6 +374,9 @@ export const PLANS = {
       aiCallsPerMonth: 100000,
       agentConcurrency: 10,
       agentCallsPerMinute: 100,
+      replayWindowHours: 72,
+      maxExecutionsPerReplay: 1000,
+      maxConcurrentReplays: 1,
     },
   },
   PROFESSIONAL: {
@@ -385,9 +402,11 @@ export const PLANS = {
       'Custom routing rules',
       '100 agents included',
       '10K state writes/hour',
+      '30-day Time Machine replay + reconciliation',
     ],
     overageRate: 8, // $0.08 per 1000 calls
     annualDiscount: 0.17, // 17% off
+    comingSoon: false,
     limits: {
       functions: 25,
       providers: 5,
@@ -404,6 +423,9 @@ export const PLANS = {
       aiCallsPerMonth: 1000000,
       agentConcurrency: 100,
       agentCallsPerMinute: 500,
+      replayWindowHours: 720,
+      maxExecutionsPerReplay: 10000,
+      maxConcurrentReplays: 3,
     },
   },
   ENTERPRISE: {
@@ -429,9 +451,11 @@ export const PLANS = {
       'On-premise deployment',
       '500 agents included',
       '50K state writes/hour',
+      '90-day Time Machine + live reconciliation + audit certificates',
     ],
     overageRate: 5, // $0.05 per 1000 calls
     annualDiscount: 0.17, // 17% off
+    comingSoon: false,
     limits: {
       functions: Infinity,
       providers: Infinity,
@@ -449,6 +473,9 @@ export const PLANS = {
       aiCallsPerMonth: 5000000,
       agentConcurrency: 500,
       agentCallsPerMinute: 2000,
+      replayWindowHours: 2160,
+      maxExecutionsPerReplay: 100000,
+      maxConcurrentReplays: 10,
     },
   },
 } as const;
@@ -478,6 +505,7 @@ export const AGENT_ENTERPRISE = {
     '24/7 support',
     'Volume discounts',
     'On-premise deployment',
+    'Unlimited Time Machine + incident insurance',
   ],
   overageRate: 0, // No overage (unlimited)
   annualDiscount: 0.17, // 17% off
@@ -498,6 +526,9 @@ export const AGENT_ENTERPRISE = {
     aiCallsPerMonth: -1, // Unlimited
     agentConcurrency: -1, // Unlimited
     agentCallsPerMinute: -1, // Unlimited
+    replayWindowHours: Infinity,
+    maxExecutionsPerReplay: Infinity,
+    maxConcurrentReplays: Infinity,
   },
 } as const;
 
@@ -831,4 +862,4 @@ function validateStripePriceIds() {
 }
 
 // Run validation at module load time
-validateStripePriceIds();
+validateStripePriceIds()

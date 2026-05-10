@@ -123,18 +123,66 @@ class ApiClient {
     localStorage.removeItem('ff-refresh-token');
   }
 
+  clearCSRFToken() {
+    localStorage.removeItem('ff-csrf-token');
+  }
+
+  private _csrfTokenPromise: Promise<string | null> | null = null;
+
   /**
    * Fetch a CSRF token for protected routes (billing, admin, etc.)
    * The backend stores CSRF tokens in Redis keyed by session ID.
    */
   async fetchCSRFToken(): Promise<string | null> {
+    if (this._csrfTokenPromise) {
+      return this._csrfTokenPromise;
+    }
+    this._csrfTokenPromise = this._doFetchCSRFToken();
     try {
-      const response = await this.client.get<{ token: string; expires_at: string }>('/v1/admin/csrf');
+      const token = await this._csrfTokenPromise;
+      return token;
+    } finally {
+      this._csrfTokenPromise = null;
+    }
+  }
+
+  private async _doFetchCSRFToken(): Promise<string | null> {
+    try {
+      const response = await this.client.get<{ token: string; expires_at: string }>('/v1/csrf');
       return response.data.token;
     } catch (error) {
       console.warn('Failed to fetch CSRF token:', error);
       return null;
     }
+  }
+
+  /**
+   * Fetch CSRF token with automatic retry on auth failure.
+   * If the first attempt fails with 401 (e.g. token was invalidated),
+   * we retry once after token refresh.
+   */
+  async fetchCSRFTokenWithRetry(): Promise<string | null> {
+    const refreshToken = localStorage.getItem('ff-refresh-token');
+    if (!refreshToken) {
+      return this.fetchCSRFToken();
+    }
+
+    try {
+      const token = await this._doFetchCSRFToken();
+      if (token) {
+        return token;
+      }
+
+      // Token might be invalid (401 from token refresh) - try refreshing
+      const newToken = await this._doRefresh(refreshToken);
+      if (newToken) {
+        // Token refreshed, retry fetching CSRF
+        return this._doFetchCSRFToken();
+      }
+    } catch (e) {
+      console.warn('CSRF token fetch with retry failed:', e);
+    }
+    return null;
   }
 
   loadToken() {
@@ -175,6 +223,7 @@ class ApiClient {
           localStorage.setItem('ff-access-token', refreshData.token);
           localStorage.setItem('ff-refresh-token', refreshData.refresh_token);
           this.token = refreshData.token;
+          this.clearCSRFToken();
           return refreshData.token;
         }
 

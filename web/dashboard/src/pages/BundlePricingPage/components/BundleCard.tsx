@@ -26,6 +26,7 @@ interface BundleCardProps {
   icon: LucideIcon;
   colorClass: string;
   onSelect: (bundle: Bundle) => void;
+  onViewDetails: (bundle: Bundle) => void;
   delay?: number;
 }
 
@@ -44,7 +45,10 @@ const featureLabels: Record<string, string> = {
   memory: 'Memory system',
 };
 
-export function BundleCard({ bundle, icon: Icon, colorClass, onSelect, delay = 0 }: BundleCardProps) {
+// Sentinel value for unlimited resources
+const UNLIMITED = -1;
+
+export function BundleCard({ bundle, icon: Icon, colorClass, onSelect, onViewDetails, delay = 0 }: BundleCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -56,11 +60,16 @@ export function BundleCard({ bundle, icon: Icon, colorClass, onSelect, delay = 0
         {/* Most Popular Badge - floats above card */}
         {bundle.is_popular && (
           <div className="absolute -top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
-            <div className="bg-gradient-to-r from-amber-400 via-orange-500 to-amber-400 bg-[length:200%_100%] animate-shimmer text-white text-xs font-bold px-5 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg border border-white/30 whitespace-nowrap">
+            <div className="most-popular-badge text-white text-xs font-bold px-5 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg border border-white/30 whitespace-nowrap animate-pulse-glow">
               <Sparkles className="w-3.5 h-3.5" />
               Most Popular
             </div>
           </div>
+        )}
+
+        {/* Popular glow effect */}
+        {bundle.is_popular && (
+          <div className="absolute inset-0 bg-gradient-to-br from-brand-500/5 via-transparent to-transparent pointer-events-none" />
         )}
 
         {/* Header with gradient */}
@@ -116,7 +125,7 @@ export function BundleCard({ bundle, icon: Icon, colorClass, onSelect, delay = 0
                   key={key}
                   className="text-xs bg-bg-primary px-2 py-1 rounded"
                 >
-                  {value === -1 || value === 999999999 ? 'Unlimited' : value.toLocaleString()} {key}
+                  {value === UNLIMITED ? 'Unlimited' : value.toLocaleString()} {key}
                 </span>
               ))}
             </div>
@@ -134,7 +143,7 @@ export function BundleCard({ bundle, icon: Icon, colorClass, onSelect, delay = 0
 
             <Button
               variant="ghost"
-              onClick={() => onSelect(bundle)}
+              onClick={() => onViewDetails(bundle)}
               className="w-full text-text-secondary hover:text-ff-flame hover:bg-ff-flame/5 transition-all"
             >
               View Details

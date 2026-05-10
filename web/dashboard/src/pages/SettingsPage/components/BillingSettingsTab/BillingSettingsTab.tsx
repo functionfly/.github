@@ -39,6 +39,7 @@ import { formatCurrency, formatDate } from '../../settings-utils';
 import { CurrentPlanSection } from './CurrentPlanSection';
 import { FreeTierSection } from './FreeTierSection';
 import { InvoicesSection } from './InvoicesSection';
+import { BundleStatusSection } from './BundleStatusSection';
 import { MAX_WALLET_TOP_UP_USD, MIN_WALLET_TOP_UP_USD, WalletSection } from './WalletSection';
 
 export interface BillingSettingsTabProps {
@@ -338,6 +339,7 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
   return (
     <div className="space-y-6">
       <EnterpriseSettingsSection />
+      <BundleStatusSection />
       <Card className="ff-card-velocity">
         <CardHeader>
           <CardTitle className="font-display">Current Plan</CardTitle>

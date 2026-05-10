@@ -25,7 +25,7 @@ import { useApiReachableStore } from '@/stores/apiReachableStore';
 import { useAuthStore } from '@/stores/authStore';
 import type { UserProfile } from '@/types';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, CreditCard, Code, Key, Shield, ShieldCheck, User } from 'lucide-react';
+import { Bell, CreditCard, Code, Dna, Key, Shield, ShieldCheck, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -35,6 +35,7 @@ import {
   BillingSettingsTab,
   DeveloperSettingsTab,
   NotificationsSettingsTab,
+  PlatformSettingsTab,
   SecuritySettingsTab,
 } from './components';
 import { VALID_TABS, type SettingsTabValue } from './settings-utils';
@@ -214,6 +215,13 @@ export function SettingsContent({
             {t('settings.privacy')}
           </TabsTrigger>
           <TabsTrigger
+            value="platform"
+            className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500 data-[state=active]:shadow-glow-sm"
+          >
+            <Dna className="h-4 w-4 shrink-0" />
+            Platform
+          </TabsTrigger>
+          <TabsTrigger
             value="github"
             className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500 data-[state=active]:shadow-glow-sm"
           >
@@ -244,6 +252,10 @@ export function SettingsContent({
 
         <TabsContent value="privacy" className="space-y-6">
           <PrivacySettingsTab profile={profile ?? undefined} />
+        </TabsContent>
+
+        <TabsContent value="platform" className="space-y-6">
+          <PlatformSettingsTab />
         </TabsContent>
 
         <TabsContent value="github" className="space-y-6">

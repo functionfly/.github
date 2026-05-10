@@ -33,3 +33,9 @@ export {
 // Aviation-themed Components
 export { AviationEmptyState } from './AviationEmptyState';
 export { AviationFunctionCard } from './AviationFunctionCard';
+
+// Function Code Viewer
+export { FunctionCodeViewer } from './FunctionCodeViewer';
+
+// Function Embed Section (public page)
+export { FunctionEmbedSection } from "./FunctionEmbedSection";

@@ -59,11 +59,11 @@ export function ExampleSelector({ className }: ExampleSelectorProps) {
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-text-primary">{example.name}</p>
+                  <p className="text-sm font-medium text-text-primary dark:text-text-primary">{example.name}</p>
                 {example.description && (
-                  <p className="text-xs text-text-muted mt-0.5">{example.description}</p>
+                  <p className="text-xs text-text-secondary dark:text-text-secondary mt-0.5">{example.description}</p>
                 )}
-                <pre className="text-xs font-mono text-text-secondary mt-2 bg-bg-tertiary rounded p-2 overflow-auto max-h-24">
+                  <pre className="text-xs font-mono text-green-500 dark:text-green-400 mt-2 bg-bg-secondary dark:bg-bg-tertiary rounded p-2 overflow-auto max-h-24">
                   {JSON.stringify(example.input, null, 2)}
                 </pre>
               </div>

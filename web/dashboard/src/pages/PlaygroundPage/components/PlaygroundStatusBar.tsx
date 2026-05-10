@@ -21,7 +21,7 @@ export function PlaygroundStatusBar() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.2, delay: 0.2 }}
-      className="flex items-center gap-4 px-4 py-1.5 border-t border-border-subtle bg-bg-tertiary text-xs text-text-muted"
+      className="flex items-center gap-4 px-4 py-1.5 border-t border-border-subtle bg-bg-secondary dark:bg-bg-tertiary text-xs text-text-muted"
     >
       {/* Last run time */}
       {executionResult && (
@@ -31,7 +31,7 @@ export function PlaygroundStatusBar() {
             {t('playground.lastRun')}{' '}
             <span
               className={
-                executionResult.ok ? 'text-green-400' : 'text-red-400'
+                executionResult.ok ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'
               }
             >
               {executionResult.duration_ms}ms
@@ -54,10 +54,10 @@ export function PlaygroundStatusBar() {
           <span
             className={
               successRate >= 90
-                ? 'text-green-400'
+                ? 'text-green-500 dark:text-green-400'
                 : successRate >= 70
-                ? 'text-yellow-400'
-                : 'text-red-400'
+                ? 'text-yellow-500 dark:text-yellow-400'
+                : 'text-red-500 dark:text-red-400'
             }
             >
               {t('playground.successRate', { rate: successRate })}
@@ -67,7 +67,7 @@ export function PlaygroundStatusBar() {
 
       {/* Cache status */}
       {executionResult?.cached && (
-        <div className="flex items-center gap-1.5 text-amber-400">
+        <div className="flex items-center gap-1.5 text-amber-500 dark:text-amber-400">
           <Database className="w-3 h-3" />
           <span>{t('playground.cached')}</span>
         </div>

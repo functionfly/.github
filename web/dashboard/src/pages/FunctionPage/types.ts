@@ -1,0 +1,37 @@
+export interface FunctionInfo {
+  id: string;
+  author: string;
+  name: string;
+  version: string;
+  title?: string;
+  description?: string;
+  runtime: string;
+  category?: string;
+  tags: string[];
+  price_per_call: number;
+  reliability: number;
+  deterministic: boolean;
+  cache_ttl: number;
+  input_type?: string;
+  output_type?: string;
+  input_example?: any;
+  output_example?: any;
+  manifest?: any;
+  stars?: number;
+  executions?: number;
+  created_at?: string;
+  updated_at?: string;
+  popularity_score?: number;
+  readme?: string;
+  documentation_url?: string;
+  repo_url?: string;
+  trust_score?: number;
+  trust_level?: string;
+  verified?: boolean;
+  capabilities?: string[];
+  source_hash?: string;
+  dna_generation?: number;
+  dna_fitness_score?: number;
+  dna_total_mutations?: number;
+  dna_total_executions?: number;
+}

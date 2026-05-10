@@ -424,7 +424,7 @@ export async function topUpWallet(
   if (cancelUrl) body.cancel_url = cancelUrl;
 
   // Fetch CSRF token for protected billing endpoint
-  const csrfToken = await apiClient.fetchCSRFToken();
+  const csrfToken = await apiClient.fetchCSRFTokenWithRetry();
   const headers: Record<string, string> = {};
   if (csrfToken) {
     headers['X-CSRF-Token'] = csrfToken;
@@ -571,6 +571,19 @@ export interface FounderModeRequest {
  */
 export async function getBundles(): Promise<{ bundles: Bundle[] }> {
   return apiClient.get<{ bundles: Bundle[] }>('/v1/billing/bundles');
+}
+
+export interface BundleStats {
+  active_founders: number;
+  recent_deployments: number;
+}
+
+/**
+ * Get public stats about bundles (founder count, deployments).
+ * GET /v1/billing/bundles/stats
+ */
+export async function getBundleStats(): Promise<BundleStats> {
+  return apiClient.get<BundleStats>('/v1/billing/bundles/stats');
 }
 
 /**

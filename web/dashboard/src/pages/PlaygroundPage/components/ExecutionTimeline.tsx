@@ -34,24 +34,24 @@ function getPhases(result: ExecutionResult, t: TFunction): Phase[] {
     {
       label: t('playground.network'),
       shortLabel: 'Net',
-      color: 'text-blue-400',
-      bgColor: 'bg-blue-500',
+      color: 'text-blue-500 dark:text-blue-400',
+      bgColor: 'bg-blue-500 dark:bg-blue-600',
       estimatedPercent: networkPercent,
       description: t('playground.networkDescription', { ms: Math.round((networkPercent / 100) * total) }),
     },
     {
       label: t('playground.queue'),
       shortLabel: 'Q',
-      color: 'text-yellow-400',
-      bgColor: 'bg-yellow-500',
+      color: 'text-yellow-500 dark:text-yellow-400',
+      bgColor: 'bg-yellow-500 dark:bg-yellow-600',
       estimatedPercent: queuePercent,
       description: t('playground.queueDescription', { ms: Math.round((queuePercent / 100) * total) }),
     },
     {
       label: t('playground.execute'),
       shortLabel: 'Exec',
-      color: result.ok ? 'text-green-400' : 'text-red-400',
-      bgColor: result.ok ? 'bg-green-500' : 'bg-red-500',
+      color: result.ok ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400',
+      bgColor: result.ok ? 'bg-green-500 dark:bg-green-600' : 'bg-red-500 dark:bg-red-600',
       estimatedPercent: executePercent,
       description: t('playground.executeDescription', { ms: Math.round((executePercent / 100) * total) }),
     },
@@ -90,7 +90,7 @@ export function ExecutionTimeline({ result }: ExecutionTimelineProps) {
                   style={{ minWidth: '2px' }}
                 >
                   {phase.estimatedPercent > 8 && (
-                    <span className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-white">
+                    <span className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-white dark:text-gray-100">
                       {phase.shortLabel}
                     </span>
                   )}

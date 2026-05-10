@@ -15,6 +15,8 @@ import {
   Copy,
   Check,
   Search,
+  Loader2,
+  ArrowRight,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -36,8 +38,8 @@ function EmptyState() {
       animate={{ opacity: 1, scale: 1 }}
       className="flex flex-col items-center justify-center h-full py-16 text-center"
     >
-      <div className="w-16 h-16 rounded-full bg-indigo-500/10 flex items-center justify-center mb-4">
-        <Play className="w-7 h-7 text-indigo-400" />
+      <div className="w-16 h-16 rounded-full bg-indigo-500/10 dark:bg-indigo-500/20 flex items-center justify-center mb-4">
+        <Play className="w-7 h-7 text-indigo-500 dark:text-indigo-400" />
       </div>
       <p className="text-sm font-medium text-text-secondary">{t('playground.runFunctionToSeeResults')}</p>
       <p className="text-xs text-text-muted mt-1">
@@ -66,6 +68,35 @@ function LoadingState() {
   );
 }
 
+function StreamingState() {
+  const { t } = useTranslation();
+  const { streaming } = usePlaygroundStore();
+
+  return (
+    <div className="flex flex-col items-center justify-center h-full py-16">
+      <div className="w-full max-w-xs space-y-3">
+        <div className="flex items-center justify-center gap-2">
+          <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
+          <span className="text-xs text-text-muted">{t('playground.streaming')}</span>
+        </div>
+        <div className="h-2 bg-bg-tertiary rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-indigo-500 rounded-full"
+            initial={{ width: '0%' }}
+            animate={{ width: '100%' }}
+            transition={{ duration: 1.5, ease: 'easeInOut', repeat: Infinity }}
+          />
+        </div>
+        {streaming.chunks.length > 0 && (
+          <p className="text-[10px] text-text-muted text-center font-mono">
+            {streaming.chunks.length} chunks received
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function PlaygroundOutputPanel({ className }: PlaygroundOutputPanelProps) {
   const { t } = useTranslation();
   const {
@@ -74,6 +105,7 @@ export function PlaygroundOutputPanel({ className }: PlaygroundOutputPanelProps)
     activeOutputTab,
     setActiveOutputTab,
     settings,
+    streaming,
   } = usePlaygroundStore();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -90,6 +122,8 @@ export function PlaygroundOutputPanel({ className }: PlaygroundOutputPanelProps)
     }
   };
 
+  const isStreaming = streaming.isStreaming || (isExecuting && streaming.chunks.length > 0);
+
   return (
     <div className={cn('flex flex-col h-full', className)}>
       <Tabs
@@ -104,11 +138,11 @@ export function PlaygroundOutputPanel({ className }: PlaygroundOutputPanelProps)
               value="response"
               className="h-8 px-3 text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:text-indigo-400 data-[state=active]:bg-transparent gap-1.5"
             >
-              {executionResult ? (
-                executionResult.ok ? (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+              {executionResult || streaming.partialData ? (
+                executionResult?.ok !== false ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-500 dark:text-green-400" />
                 ) : (
-                  <XCircle className="w-3.5 h-3.5 text-red-400" />
+                  <XCircle className="w-3.5 h-3.5 text-red-500 dark:text-red-400" />
                 )
               ) : null}
               {t('playground.response')}
@@ -151,8 +185,8 @@ export function PlaygroundOutputPanel({ className }: PlaygroundOutputPanelProps)
                 className={cn(
                   'text-[10px] px-1.5 py-0 h-5 border',
                   executionResult.ok
-                    ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                    : 'bg-red-500/10 text-red-400 border-red-500/20'
+                    ? 'bg-green-500/10 dark:bg-green-500/20 text-green-500 dark:text-green-400 border-green-500/20 dark:border-green-500/30'
+                    : 'bg-red-500/10 dark:bg-red-500/20 text-red-500 dark:text-red-400 border-red-500/20 dark:border-red-500/30'
                 )}
               >
                 {executionResult.ok ? '200 OK' : t('playground.error')}
@@ -164,7 +198,7 @@ export function PlaygroundOutputPanel({ className }: PlaygroundOutputPanelProps)
               {executionResult.cached && (
                 <Badge
                   variant="outline"
-                  className="text-[10px] px-1.5 py-0 h-5 border bg-amber-500/10 text-amber-400 border-amber-500/20"
+                  className="text-[10px] px-1.5 py-0 h-5 border bg-amber-500/10 dark:bg-amber-500/20 text-amber-500 dark:text-amber-400 border-amber-500/20 dark:border-amber-500/30"
                 >
                   {t('playground.cached')}
                 </Badge>
@@ -179,11 +213,13 @@ export function PlaygroundOutputPanel({ className }: PlaygroundOutputPanelProps)
         <div className="flex-1 overflow-hidden">
           {/* Response tab */}
           <TabsContent value="response" className="h-full m-0 flex flex-col" forceMount hidden={activeOutputTab !== 'response'}>
-            {isExecuting ? (
+            {isStreaming ? (
+              <StreamingState />
+            ) : isExecuting && !streaming.chunks.length ? (
               <LoadingState />
-            ) : !executionResult ? (
+            ) : !executionResult && !streaming.partialData ? (
               <EmptyState />
-            ) : executionResult.ok ? (
+            ) : executionResult?.ok ? (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -218,7 +254,7 @@ export function PlaygroundOutputPanel({ className }: PlaygroundOutputPanelProps)
                 {/* JSON tree */}
                 <div className="flex-1 overflow-auto p-2">
                   <JsonTreeViewer
-                    data={executionResult.data}
+                    data={streaming.partialData || executionResult?.data}
                     searchQuery={searchQuery}
                     className="min-h-full"
                   />
@@ -235,15 +271,15 @@ export function PlaygroundOutputPanel({ className }: PlaygroundOutputPanelProps)
                 animate={{ opacity: 1 }}
                 className="p-4"
               >
-                <div className="border border-red-500/20 bg-red-500/5 rounded-lg p-4">
+                <div className="border border-red-500/20 dark:border-red-500/30 bg-red-500/5 dark:bg-red-500/10 rounded-lg p-4">
                   <div className="flex items-start gap-3">
-                    <XCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                    <XCircle className="w-5 h-5 text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-red-400">
-                        {executionResult.error?.code || t('playground.executionFailed')}
+                      <p className="text-sm font-medium text-red-500 dark:text-red-400">
+                        {executionResult?.error?.code || t('playground.executionFailed')}
                       </p>
-                      <p className="text-sm text-red-300/80 mt-1">
-                        {executionResult.error?.message || t('playground.unknownError')}
+                      <p className="text-sm text-red-300/80 dark:text-red-400/80 mt-1">
+                        {executionResult?.error?.message || t('playground.unknownError')}
                       </p>
                     </div>
                   </div>
@@ -264,9 +300,9 @@ export function PlaygroundOutputPanel({ className }: PlaygroundOutputPanelProps)
               >
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { label: t('playground.status'), value: executionResult.ok ? t('playground.success') : t('playground.error'), color: executionResult.ok ? 'text-green-400' : 'text-red-400' },
+                    { label: t('playground.status'), value: executionResult.ok ? t('playground.success') : t('playground.error'), color: executionResult.ok ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400' },
                     { label: t('playground.duration'), value: `${executionResult.duration_ms}ms`, color: 'text-text-primary' },
-                    { label: t('playground.cache'), value: executionResult.cached ? t('playground.hit') : t('playground.miss'), color: executionResult.cached ? 'text-amber-400' : 'text-text-secondary' },
+                    { label: t('playground.cache'), value: executionResult.cached ? t('playground.hit') : t('playground.miss'), color: executionResult.cached ? 'text-amber-500 dark:text-amber-400' : 'text-text-secondary' },
                     { label: t('playground.version'), value: `v${executionResult.version}`, color: 'text-text-primary' },
                   ].map((item) => (
                     <div key={item.label} className="bg-bg-tertiary rounded-lg p-3">

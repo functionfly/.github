@@ -6,6 +6,201 @@
    Primary: Flame Orange (#FF6B35) | Altitude Cyan (#00D4FF)
    ========================================================================== */
 
+/* Theme Variables - Base (Dark Mode Default) */
+:root {
+  --background: #0a0a0f;
+  --foreground: #ffffff;
+  --muted-foreground: #6b6b7b;
+
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #12121a;
+  --bg-tertiary: #1a1a25;
+  --bg-hover: #252535;
+  --bg-glass: rgba(26, 26, 37, 0.6);
+
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0b0;
+  --text-muted: #6b6b7b;
+  --text-accent: #f97316;
+
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border: rgba(255, 255, 255, 0.12);
+  --border-default: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.2);
+  --border-focus: rgba(249, 115, 22, 0.5);
+
+  --card: #1a1a25;
+  --card-foreground: #ffffff;
+
+  --button-primary: #f97316;
+  --button-primary-hover: #ea580c;
+  --button-secondary: #12121a;
+  --button-secondary-hover: #252535;
+  --button-ghost: transparent;
+  --button-ghost-hover: #252535;
+  --button-outline: transparent;
+  --button-outline-hover: #252535;
+  --button-destructive: #ef4444;
+  --button-destructive-hover: #dc2626;
+
+  --input: #12121a;
+  --input-foreground: #ffffff;
+
+  --popover: #1a1a25;
+  --popover-foreground: #ffffff;
+
+  --ring: rgba(249, 115, 22, 0.5);
+  --ring-offset: #0a0a0f;
+}
+
+[data-theme='light'] {
+  --background: #fafafa;
+  --foreground: #0a0a0a;
+  --muted-foreground: #737373;
+
+  --bg-primary: #fafafa;
+  --bg-secondary: #f5f5f5;
+  --bg-tertiary: #ebebeb;
+  --bg-hover: #e0e0e0;
+  --bg-glass: rgba(255, 255, 255, 0.9);
+
+  --text-primary: #0a0a0a;
+  --text-secondary: #404040;
+  --text-muted: #737373;
+  --text-accent: #ea580c;
+
+  --border-subtle: rgba(0, 0, 0, 0.12);
+  --border: rgba(0, 0, 0, 0.18);
+  --border-default: rgba(0, 0, 0, 0.18);
+  --border-strong: rgba(0, 0, 0, 0.25);
+  --border-focus: rgba(234, 88, 12, 0.4);
+
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+
+  --button-primary: #f97316;
+  --button-primary-hover: #ea580c;
+  --button-secondary: #f5f5f5;
+  --button-secondary-hover: #e0e0e0;
+  --button-ghost: transparent;
+  --button-ghost-hover: #ebebeb;
+  --button-outline: transparent;
+  --button-outline-hover: #f5f5f5;
+  --button-destructive: #ef4444;
+  --button-destructive-hover: #dc2626;
+
+  --input: #ffffff;
+  --input-foreground: #0a0a0a;
+
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+
+  --ring: rgba(234, 88, 12, 0.4);
+  --ring-offset: #ffffff;
+}
+
+/* Tailwind CSS v4 Theme - Maps CSS variables to utility classes */
+@theme {
+  /* shadcn/ui semantic colors */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+
+  /* Background Colors */
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-tertiary: var(--bg-tertiary);
+  --color-bg-hover: var(--bg-hover);
+  --color-bg-glass: var(--bg-glass);
+
+  /* Text Colors */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-accent: var(--text-accent);
+
+  /* Border Colors */
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+  --color-border-focus: var(--border-focus);
+
+  /* Card Colors */
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  /* Button Colors */
+  --color-button-primary: var(--button-primary);
+  --color-button-primary-hover: var(--button-primary-hover);
+  --color-button-secondary: var(--button-secondary);
+  --color-button-secondary-hover: var(--button-secondary-hover);
+  --color-button-ghost: var(--button-ghost);
+  --color-button-ghost-hover: var(--button-ghost-hover);
+  --color-button-outline: var(--button-outline);
+  --color-button-outline-hover: var(--button-outline-hover);
+  --color-button-destructive: var(--button-destructive);
+  --color-button-destructive-hover: var(--button-destructive-hover);
+
+  /* Input Colors */
+  --color-input: var(--input);
+  --color-input-foreground: var(--input-foreground);
+
+  /* Popover Colors */
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  /* Hover color for focus states */
+  --color-hover: var(--bg-hover);
+
+  /* Status Colors */
+  --color-success: #10b981;
+  --color-error: #ef4444;
+  --color-warning: #f59e0b;
+  --color-info: #3b82f6;
+
+  /* Brand Colors - Velocity Orange */
+  --color-brand-50: #fff7ed;
+  --color-brand-100: #ffedd5;
+  --color-brand-200: #fed7aa;
+  --color-brand-300: #fdba74;
+  --color-brand-400: #fb923c;
+  --color-brand-500: #f97316;
+  --color-brand-600: #ea580c;
+  --color-brand-700: #c2410c;
+  --color-brand-800: #9a3412;
+  --color-brand-900: #7c2d12;
+
+  /* Velocity Orange Accent */
+  --color-velocity-50: #fff7ed;
+  --color-velocity-100: #ffedd5;
+  --color-velocity-200: #fed7aa;
+  --color-velocity-300: #fdba74;
+  --color-velocity-400: #fb923c;
+  --color-velocity-500: #f97316;
+  --color-velocity-600: #ea580c;
+  --color-velocity-700: #c2410c;
+  --color-velocity-800: #9a3412;
+  --color-velocity-900: #7c2d12;
+
+  /* Font Family - 2026 Velocity Brand Stack */
+  --font-sans: 'Instrument Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Ranade', 'Instrument Sans', system-ui, sans-serif;
+  --font-mono: 'Commit Mono', 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Status indicator colors */
+  --color-status-pending: #6b7280;
+}
+
+/* Base body styles */
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 @import 'tailwindcss';
 @plugin "@tailwindcss/typography";
 

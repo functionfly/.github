@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   History,
   TreePine,
@@ -21,10 +22,14 @@ import {
   DollarSign,
   Shield,
   Database,
+  Variable,
+  Plus,
+  X,
+  Edit3,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
-import { usePlaygroundStore, SidebarPanel, ExecutionHistoryItem } from '../store/playgroundStore';
+import { usePlaygroundStore, SidebarPanel, ExecutionHistoryItem, PlaygroundVariable } from '../store/playgroundStore';
 import { usePlaygroundState } from '../hooks/usePlaygroundState';
 import { SchemaExplorer } from './SchemaExplorer';
 import { CodeSnippetGenerator } from './CodeSnippetGenerator';
@@ -57,9 +62,9 @@ function HistoryItem({
     >
       <div className="shrink-0 mt-0.5">
         {item.result.ok ? (
-          <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+          <CheckCircle2 className="w-3.5 h-3.5 text-green-500 dark:text-green-400" />
         ) : (
-          <XCircle className="w-3.5 h-3.5 text-red-400" />
+          <XCircle className="w-3.5 h-3.5 text-red-500 dark:text-red-400" />
         )}
       </div>
 
@@ -130,7 +135,7 @@ function HistoryPanel() {
               className={cn(
                 'px-2 py-0.5 text-[10px] rounded transition-colors capitalize',
                 filter === f
-                  ? 'bg-indigo-600 text-white'
+                  ? 'bg-indigo-600 text-white dark:text-white'
                   : 'text-text-muted hover:text-text-secondary'
               )}
             >
@@ -198,7 +203,7 @@ function SchemaPanel() {
             className={cn(
               'px-2 py-0.5 text-[10px] rounded transition-colors capitalize',
               activeSchema === s
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-indigo-600 text-white dark:text-white'
                 : 'text-text-muted hover:text-text-secondary'
             )}
           >
@@ -217,6 +222,205 @@ function SchemaPanel() {
           <SchemaExplorer schema={outputSchema} />
         ) : (
           <p className="text-xs text-text-muted text-center py-8">{t('playground.noOutputSchema')}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Variables Panel ─────────────────────────────────────────────────────────
+
+interface VariableItemProps {
+  variable: PlaygroundVariable;
+  onUpdate: (id: string, updates: Partial<PlaygroundVariable>) => void;
+  onDelete: (id: string) => void;
+}
+
+function VariableItem({ variable, onUpdate, onDelete }: VariableItemProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(variable.name);
+  const [editValue, setEditValue] = useState(variable.value);
+
+  const handleSave = () => {
+    if (editName.trim() && editValue.trim()) {
+      onUpdate(variable.id, { name: editName.trim(), value: editValue.trim() });
+      setIsEditing(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditName(variable.name);
+    setEditValue(variable.value);
+    setIsEditing(false);
+  };
+
+  if (isEditing) {
+    return (
+      <div className="p-2 bg-bg-tertiary rounded-lg space-y-2">
+        <Input
+          value={editName}
+          onChange={(e) => setEditName(e.target.value)}
+          placeholder="name"
+          className="h-7 text-xs font-mono"
+        />
+        <Input
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          placeholder="value"
+          className="h-7 text-xs font-mono"
+        />
+        <div className="flex gap-1">
+          <Button size="sm" variant="ghost" onClick={handleSave} className="h-6 text-xs gap-1 px-1.5">
+            <Check className="w-3 h-3" />
+            Save
+          </Button>
+          <Button size="sm" variant="ghost" onClick={handleCancel} className="h-6 text-xs gap-1 px-1.5">
+            <X className="w-3 h-3" />
+            Cancel
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="group flex items-start gap-2 p-2 rounded-lg hover:bg-bg-tertiary transition-colors">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-purple-500 dark:text-purple-300 font-mono">
+            {`{{${variable.name}}}`}
+          </span>
+        </div>
+        <p className="text-xs text-text-muted font-mono truncate mt-0.5" title={variable.value}>
+          {variable.value.length > 40 ? variable.value.slice(0, 40) + '...' : variable.value}
+        </p>
+        {variable.description && (
+          <p className="text-[10px] text-text-muted mt-0.5">{variable.description}</p>
+        )}
+      </div>
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          onClick={() => setIsEditing(true)}
+          className="p-0.5 rounded hover:bg-bg-secondary transition-all"
+          title="Edit variable"
+        >
+          <Edit3 className="w-3 h-3 text-text-muted hover:text-text-secondary" />
+        </button>
+        <button
+          onClick={() => onDelete(variable.id)}
+          className="p-0.5 rounded hover:bg-bg-secondary transition-all"
+          title="Delete variable"
+        >
+          <Trash2 className="w-3 h-3 text-text-muted hover:text-red-400" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function VariablesPanel() {
+  const { t } = useTranslation();
+  const { variables, addVariable, updateVariable, removeVariable, clearVariables } = usePlaygroundStore();
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newValue, setNewValue] = useState('');
+  const [newDescription, setNewDescription] = useState('');
+
+  const handleAdd = () => {
+    if (newName.trim() && newValue.trim()) {
+      addVariable({
+        id: crypto.randomUUID(),
+        name: newName.trim(),
+        value: newValue.trim(),
+        description: newDescription.trim() || undefined,
+      });
+      setNewName('');
+      setNewValue('');
+      setNewDescription('');
+      setShowAddForm(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Toolbar */}
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-border-subtle shrink-0">
+        <div className="flex-1 text-xs text-text-muted">
+          {t('playground.variablesTooltip')}
+        </div>
+        <button
+          onClick={() => setShowAddForm(true)}
+          className="p-1 rounded hover:bg-bg-tertiary text-text-muted hover:text-text-secondary transition-colors"
+          title={t('playground.addVariable')}
+        >
+          <Plus className="w-3.5 h-3.5" />
+        </button>
+        {variables.length > 0 && (
+          <button
+            onClick={clearVariables}
+            className="p-1 rounded hover:bg-bg-tertiary text-text-muted hover:text-red-400 transition-colors"
+            title={t('playground.clearVariables')}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
+      {/* Add form */}
+      {showAddForm && (
+        <div className="p-2 border-b border-border-subtle bg-bg-tertiary/50">
+          <div className="space-y-2">
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="variable_name"
+              className="h-7 text-xs font-mono"
+            />
+            <Input
+              value={newValue}
+              onChange={(e) => setNewValue(e.target.value)}
+              placeholder="value"
+              className="h-7 text-xs font-mono"
+            />
+            <Input
+              value={newDescription}
+              onChange={(e) => setNewDescription(e.target.value)}
+              placeholder="description (optional)"
+              className="h-7 text-xs"
+            />
+            <div className="flex gap-1">
+              <Button size="sm" variant="ghost" onClick={handleAdd} className="h-6 text-xs gap-1 px-1.5">
+                <Check className="w-3 h-3" />
+                Add
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setShowAddForm(false)} className="h-6 text-xs gap-1 px-1.5">
+                <X className="w-3 h-3" />
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* List */}
+      <div className="flex-1 overflow-auto p-2">
+        {variables.length === 0 && !showAddForm ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <Variable className="w-8 h-8 text-text-muted mb-2" />
+            <p className="text-xs text-text-muted">{t('playground.noVariables')}</p>
+            <p className="text-[10px] text-text-muted mt-1">{t('playground.variablesHint')}</p>
+          </div>
+        ) : (
+          <AnimatePresence>
+            {variables.map((variable) => (
+              <VariableItem
+                key={variable.id}
+                variable={variable}
+                onUpdate={updateVariable}
+                onDelete={removeVariable}
+              />
+            ))}
+          </AnimatePresence>
         )}
       </div>
     </div>
@@ -269,7 +473,7 @@ function SharePanel() {
       {/* QR Code */}
       <div>
         <p className="text-xs font-medium text-text-secondary mb-2">{t('playground.qrCode')}</p>
-        <div className="flex justify-center p-3 bg-white rounded-lg">
+        <div className="flex justify-center p-3 bg-bg-tertiary rounded-lg">
           <QRCodeSVG value={shareableUrl} size={120} />
         </div>
       </div>
@@ -372,10 +576,10 @@ function InfoPanel() {
               className={cn(
                 'font-mono',
                 functionInfo.reliability_score >= 99
-                  ? 'text-green-400'
+                  ? 'text-green-500 dark:text-green-400'
                   : functionInfo.reliability_score >= 95
-                  ? 'text-yellow-400'
-                  : 'text-red-400'
+                  ? 'text-yellow-500 dark:text-yellow-400'
+                  : 'text-red-500 dark:text-red-400'
               )}
             >
               {functionInfo.reliability_score}%
@@ -417,6 +621,7 @@ export function PlaygroundSidebar({ className }: PlaygroundSidebarProps) {
 
   const PANELS: Array<{ id: SidebarPanel; icon: React.ReactNode; label: string }> = [
     { id: 'history', icon: <History className="w-4 h-4" />, label: t('playground.history') },
+    { id: 'variables', icon: <Variable className="w-4 h-4" />, label: t('playground.variables') },
     { id: 'schema', icon: <TreePine className="w-4 h-4" />, label: t('playground.schema') },
     { id: 'snippets', icon: <Code2 className="w-4 h-4" />, label: t('playground.snippets') },
     { id: 'share', icon: <Share2 className="w-4 h-4" />, label: t('playground.share') },
@@ -435,7 +640,7 @@ export function PlaygroundSidebar({ className }: PlaygroundSidebarProps) {
             className={cn(
               'w-8 h-8 flex items-center justify-center rounded-md transition-colors',
               activeSidebarPanel === panel.id
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-indigo-600 text-white dark:text-white'
                 : 'text-text-muted hover:text-text-secondary hover:bg-bg-tertiary'
             )}
           >
@@ -462,6 +667,7 @@ export function PlaygroundSidebar({ className }: PlaygroundSidebarProps) {
             className="h-[calc(100%-36px)] overflow-hidden"
           >
             {activeSidebarPanel === 'history' && <HistoryPanel />}
+            {activeSidebarPanel === 'variables' && <VariablesPanel />}
             {activeSidebarPanel === 'schema' && <SchemaPanel />}
             {activeSidebarPanel === 'snippets' && (
               <div className="p-3 overflow-auto h-full">

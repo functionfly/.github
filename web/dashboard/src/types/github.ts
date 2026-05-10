@@ -5,105 +5,138 @@ import { z } from 'zod';
 // ============================================================================
 
 export const githubConnectionSchema = z.object({
-  id: z.string().uuid(),
-  user_id: z.string().uuid(),
-  tenant_id: z.string().uuid(),
-  github_user_id: z.number(),
+  id: z.uuid(),
   github_username: z.string(),
-  github_avatar_url: z.string().nullable(),
-  github_profile_url: z.string().nullable(),
-  token_scope: z.string().nullable(),
-  token_expires_at: z.string().nullable(),
-  github_app_install: z.boolean(),
+  github_avatar_url: z.string().nullable().optional(),
+  github_profile_url: z.string().nullable().optional(),
+  token_scope: z.string().nullable().optional(),
+  token_expires_at: z.string().nullable().optional(),
   status: z.enum(['active', 'expired', 'revoked', 'error']),
-  last_synced_at: z.string().nullable(),
-  created_at: z.string(),
-  updated_at: z.string(),
+  connected_at: z.string(),
+  last_synced_at: z.string().nullable().optional(),
 });
 
 export const detectedFunctionSchema = z.object({
   name: z.string(),
   entry_point: z.string(),
   runtime: z.string(),
-  sub_directory: z.string().nullable(),
+  sub_directory: z.string().nullish(),
   confidence: z.number(),
   strategy: z.string(),
-  manifest: z.record(z.string(), z.unknown()).nullable(),
-  dependencies: z.array(z.string()).nullable(),
+  manifest: z.record(z.string(), z.unknown()).nullish(),
+  dependencies: z.union([z.array(z.string()), z.record(z.string(), z.unknown())]).nullish(),
 });
 
 export const githubRepoSchema = z.object({
-  id: z.string().uuid(),
-  github_repo_id: z.number(),
+  id: z.uuid(),
   full_name: z.string(),
   name: z.string(),
   owner: z.string(),
-  description: z.string().nullable(),
+  description: z.string().nullish(),
   default_branch: z.string(),
   language: z.string().nullable(),
-  languages: z.record(z.string(), z.number()).nullable(),
+  languages: z
+    .record(z.string(), z.number())
+    .nullish()
+    .transform((v) => v ?? {}),
   is_private: z.boolean(),
   is_fork: z.boolean(),
   is_archived: z.boolean(),
-  topics: z.array(z.string()).nullable(),
+  topics: z
+    .array(z.string())
+    .nullish()
+    .transform((v) => v ?? []),
   stars_count: z.number(),
   forks_count: z.number(),
-  size_kb: z.number(),
-  pushed_at: z.string().nullable(),
+  size_kb: z.number().nullish(),
+  pushed_at: z.string().nullish(),
   html_url: z.string(),
-  detected_functions: z.array(detectedFunctionSchema).nullable(),
-  detected_runtime: z.string().nullable(),
+  clone_url: z.string().nullish(),
+  ssh_url: z.string().nullish(),
+  detected_functions: z
+    .array(detectedFunctionSchema)
+    .nullish()
+    .transform((v) => v ?? []),
+  detected_runtime: z.string().nullish(),
   has_functionfly_json: z.boolean(),
-  import_status: z.enum(['not_imported', 'importing', 'imported', 'partial', 'error']).nullable(),
-  last_scanned_at: z.string().nullable(),
-  created_at: z.string(),
+  import_status: z
+    .enum(['not_imported', 'importing', 'imported', 'partial', 'error', 'available'])
+    .nullish(),
+  last_scanned_at: z.string().nullish(),
+  created_at: z.string().nullish(),
 });
 
 export const scanResultSchema = z.object({
-  repo_id: z.string().uuid(),
+  repo_id: z.uuid().nullish(),
   functions: z.array(detectedFunctionSchema),
   primary_runtime: z.string(),
   overall_confidence: z.number(),
   strategy_used: z.string(),
-  warnings: z.array(z.string()),
+  warnings: z.array(z.string()).nullish(),
   estimated_import_time_seconds: z.number(),
   estimated_cost_usd: z.number(),
 });
 
 export const githubImportSchema = z.object({
-  id: z.string().uuid(),
-  user_id: z.string().uuid(),
-  tenant_id: z.string().uuid(),
-  connection_id: z.string().uuid(),
-  repo_id: z.string().uuid(),
+  id: z.uuid(),
+  user_id: z.uuid().nullish(),
+  tenant_id: z.uuid().nullish(),
+  connection_id: z.uuid().nullish(),
+  repo_id: z.uuid(),
   source_branch: z.string(),
   source_path: z.string(),
   function_name: z.string(),
-  function_id: z.string().uuid().nullable(),
-  function_version_id: z.string().uuid().nullable(),
+  function_id: z.uuid().nullish(),
+  function_author: z.string().nullish(),
+  function_version_id: z.uuid().nullish(),
   visibility: z.enum(['public', 'private', 'unlisted']),
-  runtime_override: z.string().nullable(),
-  manifest_overrides: z.record(z.string(), z.unknown()).nullable(),
+  runtime_override: z.string().nullish(),
+  manifest_overrides: z.record(z.string(), z.unknown()).nullish(),
   auto_sync_enabled: z.boolean(),
-  sync_branches: z.array(z.string()).nullable(),
-  environment_mappings: z.record(z.string(), z.string()).nullable(),
-  status: z.enum(['pending', 'scanning', 'configuring', 'fetching', 'building', 'publishing', 'completed', 'failed', 'cancelled']),
+  sync_branches: z.array(z.string()).nullish(),
+  environment_mappings: z.record(z.string(), z.string()).nullish(),
+  status: z.enum([
+    'pending',
+    'scanning',
+    'configuring',
+    'fetching',
+    'building',
+    'publishing',
+    'completed',
+    'failed',
+    'cancelled',
+  ]),
   progress: z.number(),
-  error_message: z.string().nullable(),
-  error_details: z.record(z.string(), z.unknown()).nullable(),
-  content_hash: z.string().nullable(),
-  commit_sha: z.string().nullable(),
+  error_message: z.string().nullish(),
+  error_details: z.record(z.string(), z.unknown()).nullish(),
+  content_hash: z.string().nullish(),
+  commit_sha: z.string().nullish(),
   files_imported: z.number(),
   total_size_bytes: z.number(),
   created_at: z.string(),
   updated_at: z.string(),
-  completed_at: z.string().nullable(),
+  completed_at: z.string().nullish(),
+});
+
+export const bulkImportResultSchema = z.object({
+  import_id: z.uuid(),
+  status: z.enum([
+    'pending',
+    'scanning',
+    'configuring',
+    'fetching',
+    'building',
+    'publishing',
+    'completed',
+    'failed',
+    'cancelled',
+  ]),
 });
 
 export const githubSyncLogSchema = z.object({
-  id: z.string().uuid(),
-  import_id: z.string().uuid(),
-  function_id: z.string().uuid(),
+  id: z.uuid(),
+  import_id: z.uuid(),
+  function_id: z.uuid(),
   trigger_type: z.enum(['push', 'pr_open', 'pr_sync', 'pr_close', 'manual']),
   trigger_branch: z.string().nullable(),
   trigger_commit_sha: z.string().nullable(),
@@ -117,9 +150,9 @@ export const githubSyncLogSchema = z.object({
 });
 
 export const githubTemplateSchema = z.object({
-  id: z.string().uuid(),
-  tenant_id: z.string().uuid(),
-  user_id: z.string().uuid(),
+  id: z.uuid(),
+  tenant_id: z.uuid().optional(),
+  user_id: z.uuid().optional(),
   name: z.string(),
   description: z.string().nullable(),
   config: z.record(z.string(), z.unknown()),
@@ -132,16 +165,41 @@ export const githubTemplateSchema = z.object({
 
 export const importConflictSchema = z.object({
   function_name: z.string(),
-  existing_function_id: z.string().uuid(),
-  existing_version: z.string(),
-  resolution: z.enum(['overwrite', 'skip', 'rename']).optional(),
+  existing_function_id: z.uuid().nullish(),
+  existing_version: z.string().nullish(),
+  resolution: z.enum(['overwrite', 'skip', 'rename', 'new_version']).optional(),
+});
+
+export const functionPreviewSchema = z.object({
+  name: z.string(),
+  entry_point: z.string(),
+  runtime: z.string(),
+  visibility: z.string(),
+  source_path: z.string().nullish(),
+  confidence: z.number(),
+  strategy: z.string(),
+  estimated_size_bytes: z.number(),
+  estimated_cost_usd: z.number(),
+  file_count: z.number(),
+  has_conflict: z.boolean(),
+  conflict_type: z.string(),
+  warnings: z.array(z.string()).nullish(),
+  branch: z.string(),
+  commit_sha: z.string().nullish(),
 });
 
 export const importPreviewSchema = z.object({
-  functions: z.array(detectedFunctionSchema),
+  repo_id: z.string(),
+  repo_full_name: z.string(),
+  functions: z.array(functionPreviewSchema),
+  total_file_count: z.number(),
+  total_size_bytes: z.number(),
   total_estimated_cost_usd: z.number(),
-  warnings: z.array(z.string()),
-  conflicts: z.array(importConflictSchema),
+  warnings: z.array(z.string()).nullish().default([]),
+  conflicts: z.array(importConflictSchema).nullish().default([]),
+  required_scopes: z.array(z.string()).nullish().default([]),
+  auto_sync_enabled: z.boolean().nullish(),
+  sync_branches: z.array(z.string()).nullish().default([]),
 });
 
 export const githubConnectionListSchema = z.array(githubConnectionSchema);
@@ -180,9 +238,11 @@ export type DetectedFunction = z.infer<typeof detectedFunctionSchema>;
 export type GitHubRepo = z.infer<typeof githubRepoSchema>;
 export type ScanResult = z.infer<typeof scanResultSchema>;
 export type GitHubImport = z.infer<typeof githubImportSchema>;
+export type BulkImportResult = z.infer<typeof bulkImportResultSchema>;
 export type GitHubSyncLog = z.infer<typeof githubSyncLogSchema>;
 export type GitHubTemplate = z.infer<typeof githubTemplateSchema>;
 export type ImportConflict = z.infer<typeof importConflictSchema>;
+export type FunctionPreview = z.infer<typeof functionPreviewSchema>;
 export type ImportPreview = z.infer<typeof importPreviewSchema>;
 export type TreeEntry = z.infer<typeof treeEntrySchema>;
 export type TreeResponse = z.infer<typeof treeResponseSchema>;
@@ -203,6 +263,7 @@ export interface ImportCompleteEvent {
   progress: number;
   function_id?: string | null;
   function_name?: string;
+  author?: string;
   commit_sha?: string | null;
   files_imported?: number;
 }
@@ -234,6 +295,7 @@ export interface StartImportRequest {
   source_branch: string;
   source_path: string;
   function_name: string;
+  function_names?: string[];
   visibility?: 'public' | 'private' | 'unlisted';
   runtime_override?: string;
   manifest_overrides?: Record<string, unknown>;

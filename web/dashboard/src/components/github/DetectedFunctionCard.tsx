@@ -70,6 +70,8 @@ export function DetectedFunctionCard({
     }
   }, [localName, fn.name, onNameChange]);
 
+  const deps = (fn.dependencies as string[] | null) ?? null;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -155,17 +157,17 @@ export function DetectedFunctionCard({
             />
           </div>
 
-          {fn.dependencies && fn.dependencies.length > 0 && (
+          {deps && deps.length > 0 && (
             <div className="flex items-center gap-1.5 flex-wrap">
               <Package className="h-3 w-3 text-text-muted shrink-0" />
-              {fn.dependencies.slice(0, 3).map((dep) => (
+              {deps.slice(0, 3).map((dep) => (
                 <Badge key={dep} variant="secondary" className="text-[10px] font-mono">
                   {dep}
                 </Badge>
               ))}
-              {fn.dependencies.length > 3 && (
+              {deps.length > 3 && (
                 <Badge variant="secondary" className="text-[10px]">
-                  +{fn.dependencies.length - 3} more
+                  +{deps.length - 3} more
                 </Badge>
               )}
             </div>

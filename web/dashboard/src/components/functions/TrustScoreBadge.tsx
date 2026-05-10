@@ -7,6 +7,7 @@ import {
   Users,
   AlertTriangle,
   CheckCircle,
+  HelpCircle,
   Info,
   TrendingUp,
   Activity,
@@ -78,7 +79,15 @@ export function getTrustColorConfig(band: TrustScoreBand) {
 /**
  * Get fraud risk configuration
  */
-function getFraudRiskConfig(risk: FraudRiskLevel) {
+function getFraudRiskConfig(risk: FraudRiskLevel | undefined) {
+  if (!risk) {
+    return {
+      icon: HelpCircle,
+      color: "text-text-muted",
+      bgColor: "bg-text-muted/10",
+      label: "N/A",
+    };
+  }
   const configs = {
     low: {
       icon: CheckCircle,
@@ -107,7 +116,7 @@ function getFraudRiskConfig(risk: FraudRiskLevel) {
  */
 interface MetricItemProps {
   label: string;
-  value: number;
+  value: number | undefined;
   icon: React.ElementType;
   colorClass: string;
   description?: string;
@@ -122,12 +131,12 @@ function MetricItem({ label, value, icon: Icon, colorClass, description }: Metri
           <IconComponent className={cn("h-3.5 w-3.5", colorClass)} />
           <span className="text-text-secondary">{label}</span>
         </div>
-        <span className={cn("font-semibold", colorClass)}>{Math.round(value)}%</span>
+        <span className={cn("font-semibold", colorClass)}>{value != null ? `${Math.round(value)}%` : 'N/A'}</span>
       </div>
       <div className="h-1.5 bg-bg-secondary rounded-full overflow-hidden">
         <div
           className={cn("h-full rounded-full transition-all duration-700 ease-out", colorClass.replace("text-", "bg-"))}
-          style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
+          style={{ width: value != null ? `${Math.max(0, Math.min(100, value))}%` : '0%' }}
         />
       </div>
       {description && (
@@ -275,7 +284,8 @@ function ExpandedVariant({
   const fraudConfig = getFraudRiskConfig(metrics.fraudRisk);
   const FraudIcon = fraudConfig.icon;
 
-  const getScoreColor = (score: number): string => {
+  const getScoreColor = (score: number | undefined): string => {
+    if (score == null) return "text-text-muted";
     if (score >= 90) return "text-emerald-500";
     if (score >= 70) return "text-blue-500";
     if (score >= 50) return "text-amber-500";
@@ -327,7 +337,7 @@ function ExpandedVariant({
         />
         <MetricItem
           label="Latency"
-          value={metrics.latency}
+          value={metrics.latency ?? undefined}
           icon={Zap}
           colorClass={getScoreColor(metrics.latency)}
           description="Response time performance"
@@ -374,7 +384,8 @@ function TooltipContentDetailed({ metrics }: { metrics: TrustMetrics }) {
   const fraudConfig = getFraudRiskConfig(metrics.fraudRisk);
   const FraudIcon = fraudConfig.icon;
 
-  const getScoreColor = (score: number): string => {
+  const getScoreColor = (score: number | undefined): string => {
+    if (score == null) return "text-text-muted";
     if (score >= 90) return "text-emerald-500";
     if (score >= 70) return "text-blue-500";
     if (score >= 50) return "text-amber-500";
@@ -401,7 +412,7 @@ function TooltipContentDetailed({ metrics }: { metrics: TrustMetrics }) {
         />
         <TooltipMetricRow
           label="Latency"
-          value={metrics.latency}
+          value={metrics.latency ?? undefined}
           icon={Zap}
           colorClass={getScoreColor(metrics.latency)}
         />
@@ -456,7 +467,7 @@ function TooltipMetricRow({
   colorClass,
 }: {
   label: string;
-  value: number;
+  value: number | undefined;
   icon: React.ElementType;
   colorClass: string;
 }) {
@@ -467,7 +478,7 @@ function TooltipMetricRow({
         <IconComponent className={cn("h-3.5 w-3.5", colorClass)} />
         <span className="text-text-secondary">{label}</span>
       </div>
-      <span className={cn("font-medium", colorClass)}>{Math.round(value)}%</span>
+      <span className={cn("font-medium", colorClass)}>{value != null ? `${Math.round(value)}%` : 'N/A'}</span>
     </div>
   );
 }

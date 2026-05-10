@@ -1,4 +1,5 @@
 import { registryApi, type RegistryFunction, type RegistrySearchParams } from '@/api/registry';
+import { DNATrustBadge } from '@/components/dna';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -374,6 +375,16 @@ function GridCard({
           </div>
         )}
 
+        {fn.dna_generation != null && fn.dna_generation > 0 && (
+          <DNATrustBadge
+            generation={fn.dna_generation}
+            fitnessScore={fn.dna_fitness_score ?? 0}
+            totalMutations={fn.dna_total_mutations ?? 0}
+            totalExecutions={fn.dna_total_executions}
+            variant="micro"
+          />
+        )}
+
         <div className="flex items-center justify-between pt-1 border-t border-border-subtle/70">
           <div className="flex items-center gap-1.5">
             <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" />
@@ -481,6 +492,14 @@ function ListCard({
               <span className="registry-cat-dot" />
               {fn.category}
             </span>
+          )}
+          {fn.dna_generation != null && fn.dna_generation > 0 && (
+            <DNATrustBadge
+              generation={fn.dna_generation}
+              fitnessScore={fn.dna_fitness_score ?? 0}
+              totalMutations={fn.dna_total_mutations ?? 0}
+              variant="micro"
+            />
           )}
         </div>
         <p className="text-xs text-text-secondary line-clamp-1 mt-0.5">

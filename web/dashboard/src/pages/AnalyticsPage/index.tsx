@@ -136,7 +136,7 @@ export function AnalyticsPage() {
           description={t('analytics.noFunctionsDescription')}
           action={
             <Button asChild>
-              <a href="/functions">{t('analytics.deployFunction')}</a>
+              <a href="/functions/new">{t('analytics.deployFunction')}</a>
             </Button>
           }
         />

@@ -234,7 +234,7 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                         )}
                       </Link>
                       <Link
-                        to="/functions"
+                        to="/functions/my"
                         className={cn(
                           'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
                           (location.pathname === '/functions' || location.pathname.startsWith('/functions/')) && 'text-text-primary'
@@ -504,15 +504,15 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                             <div className="text-sm font-semibold text-text-primary px-2">
                               Products
                             </div>
-                            <Link
-                              to="/functions"
-                              onClick={() => setIsMobileMenuOpen(false)}
-                              className={cn(
-                                'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
-                                location.pathname === '/functions' &&
-                                  'text-text-primary bg-bg-secondary'
-                              )}
-                            >
+<Link
+                        to="/functions/my"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className={cn(
+                          'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
+                          location.pathname === '/functions' &&
+                            'text-text-primary bg-bg-secondary'
+                        )}
+                      >
                               <FunctionSquare className="w-4 h-4" /> Functions
                             </Link>
                             <Link

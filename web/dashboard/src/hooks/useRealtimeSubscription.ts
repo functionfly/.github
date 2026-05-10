@@ -171,23 +171,16 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
         // Don't retry on authentication failures (close codes that indicate auth issues)
         const isAuthFailure =
           event.code === 1008 || event.code === 1011 || event.reason?.includes('Authentication');
-        
-        // 1006 is abnormal closure - could be network, server crash, or proxy issue
-        // Don't count 1006 as a failed attempt if it's the first try (common on HMR refresh)
         const isAbnormalClosure = event.code === 1006;
-        const shouldCountAsFailedAttempt = isAbnormalClosure && connectionRef.current.reconnectAttempts > 0;
-        
+
         const shouldRetry =
           !isAuthFailure &&
           !event.wasClean &&
-          (connectionRef.current.reconnectAttempts < connectionRef.current.maxReconnectAttempts || isAbnormalClosure);
+          connectionRef.current.reconnectAttempts < connectionRef.current.maxReconnectAttempts;
 
         if (shouldRetry) {
-          // Only increment counter for non-1006 codes or if we've already retried
-          if (!isAbnormalClosure || shouldCountAsFailedAttempt) {
-            connectionRef.current.reconnectAttempts++;
-          }
-          
+          connectionRef.current.reconnectAttempts++;
+
           const delay =
             connectionRef.current.reconnectDelay *
             Math.pow(2, Math.min(connectionRef.current.reconnectAttempts - 1, 4)); // Cap at 16x delay
@@ -213,7 +206,7 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
             errorSetForAttemptRef.current = true;
             setError('Authentication failed - please log in again');
           }
-        } else if (isAbnormalClosure && !event.wasClean) {
+        } else if (isAbnormalClosure) {
           // Set error once per abnormal close to avoid update storm (onerror + onclose both fire)
           if (!errorSetForAttemptRef.current) {
             errorSetForAttemptRef.current = true;

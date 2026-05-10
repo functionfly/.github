@@ -104,7 +104,9 @@ export function FunctionsPage() {
     },
   });
 
-  const functions = data?.functions ?? [];
+  const functions = (data?.functions ?? []).filter(
+    (fn, index, self) => self.findIndex((f) => f.id === fn.id) === index
+  );
 
   // Define table columns for list view
   const columns = useMemo<ColumnDef<FunctionConfig>[]>(() => [

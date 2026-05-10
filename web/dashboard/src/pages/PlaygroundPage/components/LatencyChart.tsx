@@ -66,18 +66,18 @@ export function LatencyChart({ className }: LatencyChartProps) {
         <AreaChart data={latencyHistory} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
           <defs>
             <linearGradient id="latencyGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+              <stop offset="5%" stopColor="var(--color-brand-500)" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="var(--color-brand-500)" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+          <CartesianGrid strokeDasharray="3 3" className="stroke-border-subtle" />
           <XAxis dataKey="index" hide />
           <YAxis hide />
           <Tooltip content={<CustomTooltip />} />
           <Area
             type="monotone"
             dataKey="duration_ms"
-            stroke="#6366f1"
+            stroke="var(--color-brand-500)"
             strokeWidth={1.5}
             fill="url(#latencyGradient)"
             isAnimationActive={false}
@@ -89,7 +89,7 @@ export function LatencyChart({ className }: LatencyChartProps) {
                   cx={cx}
                   cy={cy}
                   r={3}
-                  fill={payload.ok ? '#22c55e' : '#ef4444'}
+                  fill={payload.ok ? 'var(--color-success)' : 'var(--color-error)'}
                   stroke="none"
                 />
               );

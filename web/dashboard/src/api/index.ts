@@ -1,3 +1,4 @@
+export { dnaApi } from './dna';
 export {
   analyticsApi,
   auditApi,

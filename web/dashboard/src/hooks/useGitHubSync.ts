@@ -11,7 +11,7 @@ export function useUpdateSync(importId: string) {
     mutationFn: (data: UpdateSyncRequest) => githubApi.updateSync(importId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: githubKeys.importItem(importId) });
-      queryClient.invalidateQueries({ queryKey: githubKeys.imports() });
+      queryClient.invalidateQueries({ queryKey: ['github', 'imports'] });
       toast.success('Sync settings updated');
     },
     onError: (error: Error) => {

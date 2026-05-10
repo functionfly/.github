@@ -5,7 +5,8 @@ import { LineChart } from '@/components/common/LineChart';
 import { PieChart } from '@/components/common/PieChart';
 import { ProviderIcon } from '@/components/common/ProviderIcon';
 import { StatCard } from '@/components/common/StatCard';
-import { FunctionHeader } from '@/components/functions';
+import { DNAHelix, DNATrustBadge } from '@/components/dna';
+import { FunctionCodeViewer, FunctionHeader } from '@/components/functions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,8 +18,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useDNAProfile, useToggleDNAEvolution, useTriggerDNAAnalysis } from '@/hooks/useFunctionDNA';
 import '@/styles/components.css';
 import type { FunctionHeaderData, TrustTier } from '@/types';
 import {
@@ -26,6 +29,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
+  Code2,
+  Dna,
   Globe,
   RotateCcw,
   XCircle,
@@ -45,6 +50,7 @@ interface FunctionData {
   createdAt: string;
   version: string;
   runtime: string;
+  code: string;
   requests: number;
   avgLatency: number;
   errorRate: number;
@@ -134,6 +140,7 @@ function mapApiFunctionToFunctionData(raw: unknown): FunctionData | null {
     createdAt,
     version,
     runtime: asStr(api.runtime, '—'),
+    code: asStr(api.code, ''),
     requests: asNum(api.requests, 0),
     avgLatency: asNum(api.avg_latency ?? api.avgLatency, 0),
     errorRate: asNum(api.error_rate ?? api.errorRate, 0),
@@ -266,6 +273,11 @@ export function FunctionDetailPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // DNA hooks
+  const { data: dnaProfile, isLoading: dnaLoading } = useDNAProfile(id || '');
+  const toggleEvolution = useToggleDNAEvolution(id || '');
+  const triggerAnalysis = useTriggerDNAAnalysis(id || '');
 
   // Fetch function data
   useEffect(() => {
@@ -460,11 +472,19 @@ export function FunctionDetailPage() {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview">{t('functionDetail.overview')}</TabsTrigger>
+          <TabsTrigger value="code" className="gap-1.5">
+            <Code2 className="h-3.5 w-3.5" />
+            {t('functionDetail.code')}
+          </TabsTrigger>
           <TabsTrigger value="deployments">{t('functionDetail.deployments')}</TabsTrigger>
           <TabsTrigger value="logs">{t('functionDetail.logs')}</TabsTrigger>
           <TabsTrigger value="analytics">{t('functionDetail.analytics')}</TabsTrigger>
+          <TabsTrigger value="dna" className="gap-1.5">
+            <Dna className="h-3.5 w-3.5" />
+            DNA
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -486,6 +506,17 @@ export function FunctionDetailPage() {
               height={300}
             />
           </div>
+        </TabsContent>
+
+        <TabsContent value="code" className="space-y-4">
+          <FunctionCodeViewer
+            code={functionData.code || '// No source code available for this function.'}
+            runtime={functionData.runtime}
+            functionName={functionData.name}
+            version={functionData.version}
+            lastModified={functionData.lastDeployed}
+            onEdit={() => navigate(`/functions/${id}/edit`)}
+          />
         </TabsContent>
 
         <TabsContent value="deployments" className="space-y-4">
@@ -607,6 +638,61 @@ export function FunctionDetailPage() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="dna" className="space-y-6">
+          {dnaLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <LoadingSpinner />
+            </div>
+          ) : dnaProfile ? (
+            <>
+              {dnaProfile.generation > 1 && (
+                <DNATrustBadge
+                  generation={dnaProfile.generation}
+                  fitnessScore={dnaProfile.fitness_score}
+                  totalMutations={dnaProfile.total_mutations}
+                  totalExecutions={dnaProfile.total_executions}
+                  variant="full"
+                />
+              )}
+              <DNAHelix
+                profile={dnaProfile}
+                onToggleEvolution={(enabled) => toggleEvolution.mutate(enabled)}
+                onTriggerAnalysis={() => triggerAnalysis.mutate()}
+                isToggling={toggleEvolution.isPending}
+                isAnalyzing={triggerAnalysis.isPending}
+              />
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate(`/functions/${id}/dna`)}
+                  className="gap-1.5"
+                >
+                  <Dna className="h-3.5 w-3.5" />
+                  Full DNA View
+                </Button>
+              </div>
+            </>
+          ) : (
+            <Card className="card">
+              <CardContent className="card-content flex flex-col items-center justify-center py-12">
+                <Dna className="h-10 w-10 text-text-muted mb-4" />
+                <h3 className="text-lg font-semibold text-text-primary mb-2">DNA Not Enabled</h3>
+                <p className="text-sm text-text-secondary mb-4 text-center max-w-md">
+                  Enable Function DNA to track execution patterns and receive AI-powered evolution suggestions.
+                </p>
+                <Button
+                  onClick={() => navigate(`/functions/${id}/dna`)}
+                  className="gap-1.5"
+                >
+                  <Dna className="h-4 w-4" />
+                  Enable DNA
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
 

@@ -28,18 +28,27 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const LANGUAGE_OPTIONS = [
-  'All',
+const SUPPORTED_LANGUAGES = [
   'TypeScript',
   'JavaScript',
   'Python',
   'Go',
   'Rust',
-  'Java',
-  'C#',
-  'Ruby',
-  'PHP',
 ];
+
+const LANGUAGE_OPTIONS = ['All', ...SUPPORTED_LANGUAGES];
+
+const SUPPORTED_RUNTIMES = new Set([
+  'typescript',
+  'javascript',
+  'python',
+  'python-wasm',
+  'rust-wasm',
+  'go',
+  'deno',
+  'bun',
+  'browser-wasm',
+]);
 
 const VISIBILITY_OPTIONS = ['all', 'public', 'private'] as const;
 
@@ -83,6 +92,11 @@ export function GitHubReposTab() {
 
   const filteredRepos = useMemo(() => {
     return repos.filter((repo) => {
+      const isSupported =
+        SUPPORTED_LANGUAGES.includes(repo.language ?? '') ||
+        (repo.detected_runtime != null &&
+          SUPPORTED_RUNTIMES.has(repo.detected_runtime));
+      if (!isSupported) return false;
       if (language !== 'All' && repo.language !== language) return false;
       if (visibility === 'public' && repo.is_private) return false;
       if (visibility === 'private' && !repo.is_private) return false;
@@ -92,7 +106,7 @@ export function GitHubReposTab() {
 
   const handleRepoClick = useCallback(
     (repoId: string) => {
-      navigate(`/github/repos/${repoId}/import`);
+      navigate(`/github/import/${repoId}`);
     },
     [navigate]
   );
@@ -100,11 +114,11 @@ export function GitHubReposTab() {
   const stats = useMemo(() => {
     if (!data) return null;
     return {
-      total: data.total,
-      languages: new Set(repos.map((r) => r.language).filter(Boolean)).size,
-      private: repos.filter((r) => r.is_private).length,
+      total: filteredRepos.length,
+      languages: new Set(filteredRepos.map((r) => r.language).filter(Boolean)).size,
+      private: filteredRepos.filter((r) => r.is_private).length,
     };
-  }, [data, repos]);
+  }, [data, filteredRepos]);
 
   if (error) {
     return (

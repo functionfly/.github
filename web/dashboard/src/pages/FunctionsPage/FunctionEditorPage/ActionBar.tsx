@@ -128,7 +128,7 @@ export function ActionBar({ editor }: Props) {
               </Button>
             <nav className="flex items-center gap-1 text-sm min-w-0" aria-label="Breadcrumb">
               <Link
-                to="/functions"
+                to="/functions/my"
                 className="text-text-muted hover:text-text-primary transition-colors truncate"
               >
                 {t('funcEditor.breadcrumbFunctions')}

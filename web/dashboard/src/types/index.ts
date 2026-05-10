@@ -1487,3 +1487,6 @@ export interface TenantAuthAuditLog {
   error_message?: string;
   created_at: string;
 }
+
+// Function DNA types
+export * from './dna';

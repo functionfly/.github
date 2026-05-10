@@ -402,6 +402,12 @@ export const usersApi = {
       data
     ),
 
+  /**
+   * Update current user platform settings (DNA, runtime defaults, canary, etc).
+   */
+  updateMyPlatformSettings: (data: Record<string, unknown>) =>
+    apiClient.patch<{ message: string }>(`/v1/users/me/settings/platform`, data),
+
   // ============================================================================
   // User Profile Analytics
   // ============================================================================

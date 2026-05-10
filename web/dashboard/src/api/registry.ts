@@ -23,6 +23,14 @@ export interface RegistryFunction {
   trust_tier?: 'critical' | 'high' | 'medium' | 'low' | 'untrusted';
   /** Verification status */
   verification_status?: 'verified' | 'pending' | 'unverified';
+  /** DNA generation (0 = no DNA data) */
+  dna_generation?: number;
+  /** DNA fitness score (0-100) */
+  dna_fitness_score?: number;
+  /** Total DNA mutations */
+  dna_total_mutations?: number;
+  /** Total executions tracked by DNA */
+  dna_total_executions?: number;
 }
 
 export interface RegistryFunctionVersion {
@@ -93,6 +101,16 @@ class RegistryApi {
     if (params?.offset) queryParams.append('offset', params.offset.toString());
 
     const url = `/v2/functions${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return apiClient.get<{ functions: RegistryFunction[] }>(url);
+  }
+
+  // Get registry functions owned by the authenticated user
+  async getMyFunctions(params?: { limit?: number; offset?: number }) {
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.offset) queryParams.append('offset', params.offset.toString());
+
+    const url = `/v2/functions/mine${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     return apiClient.get<{ functions: RegistryFunction[] }>(url);
   }
 

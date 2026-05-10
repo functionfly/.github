@@ -49,7 +49,7 @@ export function FunctionsComparisonTable() {
                     animate={inView ? { opacity: 1, x: 0 } : { opacity: 0, x: -10 }}
                     transition={{ delay: index * 0.03 }}
                   >
-                    <td className="p-5 text-white font-medium text-base">{row.feature}</td>
+                    <td className="p-5 text-white font-medium text-base" style={{ fontWeight: row.feature.startsWith('⏱️') ? 700 : 400 }}>{row.feature}</td>
                     <td className="p-5 text-center text-base">
                       <span className={getValueColor(row.free)}>{row.free}</span>
                     </td>

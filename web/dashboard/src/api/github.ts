@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { apiClient } from './client';
 import {
   githubConnectionSchema,
@@ -6,6 +7,7 @@ import {
   scanResultSchema,
   githubImportSchema,
   githubImportListSchema,
+  bulkImportResultSchema,
   githubSyncLogListSchema,
   githubTemplateSchema,
   githubTemplateListSchema,
@@ -19,6 +21,7 @@ import type {
   Branch,
   ScanResult,
   GitHubImport,
+  BulkImportResult,
   GitHubSyncLog,
   GitHubTemplate,
   ImportPreview,
@@ -50,11 +53,23 @@ export const githubApi = {
     return apiClient.get<{ url: string }>('/v1/github/connect');
   },
 
-  getConnection: async (): Promise<GitHubConnection> => {
-    return apiClient.getValidatedData<GitHubConnection>(
-      githubConnectionSchema,
-      '/v1/github/connection'
-    );
+  getConnection: async (): Promise<GitHubConnection | null> => {
+    try {
+      return await apiClient.getValidatedData<GitHubConnection>(
+        githubConnectionSchema,
+        '/v1/github/connection'
+      );
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      if (
+        errorMsg.includes('not_found') ||
+        errorMsg.includes('No GitHub') ||
+        errorMsg.includes('404')
+      ) {
+        return null;
+      }
+      throw error;
+    }
   },
 
   disconnect: async (): Promise<void> => {
@@ -73,18 +88,28 @@ export const githubApi = {
   // ==========================================================================
 
   listRepos: async (params?: ListReposParams): Promise<PaginatedReposResponse> => {
+    console.debug('[githubApi] listRepos params:', params);
     const response = await apiClient.get<{
       repos: unknown[];
       total: number;
       page: number;
       per_page: number;
     }>('/v1/github/repos', { params });
-    return {
-      repos: githubRepoListSchema.parse(response.repos),
-      total: response.total,
-      page: response.page,
-      per_page: response.per_page,
-    };
+    console.debug('[githubApi] listRepos raw response:', { total: response.total, page: response.page, per_page: response.per_page, repoCount: response.repos?.length });
+    try {
+      const parsed = githubRepoListSchema.parse(response.repos);
+      console.debug('[githubApi] listRepos parse OK, returning', parsed.length, 'repos');
+      return {
+        repos: parsed,
+        total: response.total,
+        page: response.page,
+        per_page: response.per_page,
+      };
+    } catch (parseErr) {
+      console.error('[githubApi] listRepos ZOD PARSE ERROR:', parseErr);
+      console.error('[githubApi] First repo sample that failed:', response.repos?.[0]);
+      throw parseErr;
+    }
   },
 
   refreshRepos: async (): Promise<{ refreshed: number }> => {
@@ -134,19 +159,27 @@ export const githubApi = {
   },
 
   previewImport: async (data: StartImportRequest): Promise<ImportPreview> => {
-    return apiClient.postValidatedData<ImportPreview>(
-      importPreviewSchema,
+    const response = await apiClient.post<ImportPreview>(
       '/v1/github/imports/preview',
       data
     );
+    return importPreviewSchema.parse(response);
   },
 
-  bulkImport: async (data: BulkImportRequest): Promise<GitHubImport[]> => {
-    return apiClient.postValidatedData<GitHubImport[]>(
-      githubImportListSchema,
+  previewBulkImport: async (data: BulkImportRequest): Promise<ImportPreview[]> => {
+    const response = await apiClient.post<ImportPreview[]>(
+      '/v1/github/imports/preview/bulk',
+      data
+    );
+    return (response as ImportPreview[]).map((p) => importPreviewSchema.parse(p));
+  },
+
+  bulkImport: async (data: BulkImportRequest): Promise<BulkImportResult[]> => {
+    const response = await apiClient.post<{ imports: unknown[] }>(
       '/v1/github/imports/bulk',
       data
     );
+    return z.array(bulkImportResultSchema).parse(response.imports);
   },
 
   listImports: async (params?: ListImportsParams): Promise<PaginatedImportsResponse> => {
