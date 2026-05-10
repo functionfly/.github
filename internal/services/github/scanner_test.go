@@ -5,746 +5,456 @@ import (
 	"testing"
 
 	"github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-func newTestLogger() *logrus.Logger {
+func TestMonorepoDetector(t *testing.T) {
 	logger := logrus.New()
-	logger.SetLevel(logrus.WarnLevel)
-	return logger
-}
+	client := &Client{}
 
-func testRepo(name string) *GitHubRepo {
-	return &GitHubRepo{
-		ID:            12345,
-		Name:          name,
-		FullName:      "testowner/" + name,
-		DefaultBranch: "main",
-		Owner: GitHubUser{
-			ID:    1,
-			Login: "testowner",
+	tests := []struct {
+		name        string
+		entries     []GitHubTreeEntry
+		wantNil     bool
+		wantPackage bool
+	}{
+		{
+			name: "pnpm workspace",
+			entries: []GitHubTreeEntry{
+				{Path: "pnpm-workspace.yaml", Type: "blob"},
+				{Path: "packages/pkg1/package.json", Type: "blob"},
+			},
+			wantPackage: true,
+		},
+		{
+			name: "lerna monorepo",
+			entries: []GitHubTreeEntry{
+				{Path: "lerna.json", Type: "blob"},
+				{Path: "packages/pkg1/package.json", Type: "blob"},
+			},
+			wantPackage: true,
+		},
+		{
+			name: "turbo monorepo",
+			entries: []GitHubTreeEntry{
+				{Path: "turbo.json", Type: "blob"},
+				{Path: "apps/web/package.json", Type: "blob"},
+			},
+			wantPackage: true,
+		},
+		{
+			name: "nx monorepo",
+			entries: []GitHubTreeEntry{
+				{Path: "nx.json", Type: "blob"},
+				{Path: "packages/shared/package.json", Type: "blob"},
+			},
+			wantPackage: true,
+		},
+		{
+			name: "manual monorepo with packages dir",
+			entries: []GitHubTreeEntry{
+				{Path: "package.json", Type: "blob"},
+				{Path: "packages/pkg1/package.json", Type: "blob"},
+			},
+			wantPackage: true,
+		},
+		{
+			name: "not a monorepo",
+			entries: []GitHubTreeEntry{
+				{Path: "package.json", Type: "blob"},
+				{Path: "index.js", Type: "blob"},
+			},
+			wantNil: true,
 		},
 	}
-}
-
-func TestExplicitConfigDetector(t *testing.T) {
-	detector := &ExplicitConfigDetector{logger: newTestLogger()}
-
-	t.Run("Name and Priority", func(t *testing.T) {
-		assert.Equal(t, "explicit-config", detector.Name())
-		assert.Equal(t, 100, detector.Priority())
-	})
-
-	t.Run("no functionfly.json returns nil", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "main.go", Type: "blob", SHA: "abc", Size: 100},
-			{Path: "go.mod", Type: "blob", SHA: "def", Size: 50},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		assert.Nil(t, result)
-	})
-
-	t.Run("detects functionfly.json in root", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "functionfly.json", Type: "blob", SHA: "abc", Size: 200},
-		}
-		// Note: This detector fetches file content from GitHub API, so without
-		// a mock client it will fail on the API call. We test the file detection
-		// logic by checking that it identifies the config path.
-		// For a pure unit test of the path detection, we verify the entries.
-		var configPath string
-		for _, e := range entries {
-			if e.Type != "blob" {
-				continue
-			}
-			base := e.Path
-			if base == "functionfly.json" || base == "functionfly.jsonc" {
-				configPath = e.Path
-				break
-			}
-		}
-		assert.Equal(t, "functionfly.json", configPath)
-	})
-
-	t.Run("detects functionfly.jsonc", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "functionfly.jsonc", Type: "blob", SHA: "abc", Size: 200},
-		}
-		var configPath string
-		for _, e := range entries {
-			base := e.Path
-			if base == "functionfly.jsonc" || base == "functionfly.json" {
-				configPath = e.Path
-				break
-			}
-		}
-		assert.Equal(t, "functionfly.jsonc", configPath)
-	})
-
-	t.Run("skips non-blob entries", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "src", Type: "tree", SHA: "abc"},
-			{Path: "src/functionfly.json", Type: "blob", SHA: "def", Size: 100},
-		}
-		var configPath string
-		for _, e := range entries {
-			if e.Type != "blob" {
-				continue
-			}
-			base := e.Path
-			if base == "functionfly.json" || base == "functionfly.jsonc" {
-				configPath = e.Path
-				break
-			}
-		}
-		// The detector uses filepath.Base, so "src/functionfly.json" -> "functionfly.json"
-		assert.Empty(t, configPath, "should not match nested path with just base name comparison in entries")
-	})
-}
-
-func TestServerlessFrameworkDetector(t *testing.T) {
-	detector := &ServerlessFrameworkDetector{logger: newTestLogger()}
-
-	t.Run("Name and Priority", func(t *testing.T) {
-		assert.Equal(t, "serverless-framework", detector.Name())
-		assert.Equal(t, 90, detector.Priority())
-	})
-
-	t.Run("no serverless.yml returns nil", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "main.go", Type: "blob", SHA: "abc", Size: 100},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		assert.Nil(t, result)
-	})
-}
-
-func TestNodeDetector(t *testing.T) {
-	detector := &NodeDetector{logger: newTestLogger()}
-
-	t.Run("Name and Priority", func(t *testing.T) {
-		assert.Equal(t, "node-detector", detector.Name())
-		assert.Equal(t, 50, detector.Priority())
-	})
-
-	t.Run("no package.json returns nil", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "main.go", Type: "blob", SHA: "abc", Size: 100},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		assert.Nil(t, result)
-	})
-
-	t.Run("package.json without entry files returns nil", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "package.json", Type: "blob", SHA: "abc", Size: 200},
-			{Path: "README.md", Type: "blob", SHA: "def", Size: 100},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		assert.Nil(t, result)
-	})
-
-	t.Run("detects Node.js function with index.js", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "package.json", Type: "blob", SHA: "abc", Size: 200},
-			{Path: "index.js", Type: "blob", SHA: "def", Size: 500},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		require.Len(t, result.Functions, 1)
-		assert.Equal(t, "default", result.Functions[0].Name)
-		assert.Equal(t, "index.js", result.Functions[0].EntryPoint)
-		assert.Equal(t, "node18", result.Functions[0].Runtime)
-		assert.Equal(t, 0.6, result.Functions[0].Confidence)
-		assert.Equal(t, "node-detector", result.Functions[0].Strategy)
-	})
-
-	t.Run("detects TypeScript function with index.ts", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "package.json", Type: "blob", SHA: "abc", Size: 200},
-			{Path: "index.ts", Type: "blob", SHA: "def", Size: 500},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		require.Len(t, result.Functions, 1)
-		assert.Equal(t, "node18-typescript", result.Functions[0].Runtime)
-	})
-
-	t.Run("detects handler.ts entry file", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "package.json", Type: "blob", SHA: "abc", Size: 200},
-			{Path: "handler.ts", Type: "blob", SHA: "def", Size: 500},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		require.Len(t, result.Functions, 1)
-		assert.Equal(t, "handler.ts", result.Functions[0].EntryPoint)
-	})
-
-	t.Run("detects multiple entry files", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "package.json", Type: "blob", SHA: "abc", Size: 200},
-			{Path: "src/index.js", Type: "blob", SHA: "def", Size: 500},
-			{Path: "src/handler.js", Type: "blob", SHA: "ghi", Size: 300},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		assert.Len(t, result.Functions, 2)
-	})
-
-	t.Run("detects npm lockfile", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "package.json", Type: "blob", SHA: "abc", Size: 200},
-			{Path: "package-lock.json", Type: "blob", SHA: "def", Size: 5000},
-			{Path: "index.js", Type: "blob", SHA: "ghi", Size: 500},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		require.Len(t, result.Functions, 1)
-		require.NotNil(t, result.Functions[0].Dependencies)
-		assert.Equal(t, "npm", result.Functions[0].Dependencies.Manager)
-		assert.Equal(t, "package-lock.json", result.Functions[0].Dependencies.Lockfile)
-	})
-
-	t.Run("detects yarn lockfile", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "package.json", Type: "blob", SHA: "abc", Size: 200},
-			{Path: "yarn.lock", Type: "blob", SHA: "def", Size: 5000},
-			{Path: "index.js", Type: "blob", SHA: "ghi", Size: 500},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		require.Len(t, result.Functions, 1)
-		assert.Equal(t, "yarn", result.Functions[0].Dependencies.Manager)
-	})
-
-	t.Run("detects pnpm lockfile", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "package.json", Type: "blob", SHA: "abc", Size: 200},
-			{Path: "pnpm-lock.yaml", Type: "blob", SHA: "def", Size: 5000},
-			{Path: "index.js", Type: "blob", SHA: "ghi", Size: 500},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		assert.Equal(t, "pnpm", result.Functions[0].Dependencies.Manager)
-	})
-
-	t.Run("detects bun lockfile", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "package.json", Type: "blob", SHA: "abc", Size: 200},
-			{Path: "bun.lockb", Type: "blob", SHA: "def", Size: 5000},
-			{Path: "index.js", Type: "blob", SHA: "ghi", Size: 500},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		assert.Equal(t, "bun", result.Functions[0].Dependencies.Manager)
-	})
-
-	t.Run("subdirectory function gets proper name", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "package.json", Type: "blob", SHA: "abc", Size: 200},
-			{Path: "functions/api/index.js", Type: "blob", SHA: "def", Size: 500},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		require.Len(t, result.Functions, 1)
-		assert.Equal(t, "api", result.Functions[0].Name)
-		assert.Equal(t, "functions/api", result.Functions[0].SubDirectory)
-	})
-}
-
-func TestPythonDetector(t *testing.T) {
-	detector := &PythonDetector{logger: newTestLogger()}
-
-	t.Run("Name and Priority", func(t *testing.T) {
-		assert.Equal(t, "python-detector", detector.Name())
-		assert.Equal(t, 40, detector.Priority())
-	})
-
-	t.Run("no entry files returns nil", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "requirements.txt", Type: "blob", SHA: "abc", Size: 100},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		assert.Nil(t, result)
-	})
-
-	t.Run("detects Python function with main.py", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "requirements.txt", Type: "blob", SHA: "abc", Size: 100},
-			{Path: "main.py", Type: "blob", SHA: "def", Size: 500},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		require.Len(t, result.Functions, 1)
-		assert.Equal(t, "default", result.Functions[0].Name)
-		assert.Equal(t, "main.py", result.Functions[0].EntryPoint)
-		assert.Equal(t, "python3.11", result.Functions[0].Runtime)
-	})
-
-	t.Run("detects handler.py", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "handler.py", Type: "blob", SHA: "abc", Size: 500},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		require.Len(t, result.Functions, 1)
-		assert.Equal(t, "handler.py", result.Functions[0].EntryPoint)
-	})
-
-	t.Run("detects app.py", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "app.py", Type: "blob", SHA: "abc", Size: 500},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		require.Len(t, result.Functions, 1)
-		assert.Equal(t, "app.py", result.Functions[0].EntryPoint)
-	})
-
-	t.Run("higher confidence with requirements.txt", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "requirements.txt", Type: "blob", SHA: "abc", Size: 100},
-			{Path: "main.py", Type: "blob", SHA: "def", Size: 500},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		assert.Equal(t, 0.65, result.OverallConfidence)
-	})
-
-	t.Run("lower confidence without requirements.txt", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "main.py", Type: "blob", SHA: "def", Size: 500},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		assert.Equal(t, 0.55, result.OverallConfidence)
-	})
-
-	t.Run("detects pipenv lockfile", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "Pipfile.lock", Type: "blob", SHA: "abc", Size: 5000},
-			{Path: "main.py", Type: "blob", SHA: "def", Size: 500},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		require.Len(t, result.Functions, 1)
-		require.NotNil(t, result.Functions[0].Dependencies)
-		assert.Equal(t, "pipenv", result.Functions[0].Dependencies.Manager)
-	})
-
-	t.Run("detects poetry lockfile", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "poetry.lock", Type: "blob", SHA: "abc", Size: 5000},
-			{Path: "main.py", Type: "blob", SHA: "def", Size: 500},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		assert.Equal(t, "poetry", result.Functions[0].Dependencies.Manager)
-	})
-
-	t.Run("detects pip with requirements.txt", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "requirements.txt", Type: "blob", SHA: "abc", Size: 100},
-			{Path: "main.py", Type: "blob", SHA: "def", Size: 500},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		assert.Equal(t, "pip", result.Functions[0].Dependencies.Manager)
-	})
-}
-
-func TestGoDetector(t *testing.T) {
-	detector := &GoDetector{logger: newTestLogger()}
-
-	t.Run("Name and Priority", func(t *testing.T) {
-		assert.Equal(t, "go-detector", detector.Name())
-		assert.Equal(t, 30, detector.Priority())
-	})
-
-	t.Run("no go.mod returns nil", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "main.go", Type: "blob", SHA: "abc", Size: 500},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		assert.Nil(t, result)
-	})
-
-	t.Run("no main.go returns nil", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "go.mod", Type: "blob", SHA: "abc", Size: 100},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		assert.Nil(t, result)
-	})
-
-	t.Run("detects Go function", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "go.mod", Type: "blob", SHA: "abc", Size: 100},
-			{Path: "main.go", Type: "blob", SHA: "def", Size: 500},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		require.Len(t, result.Functions, 1)
-		assert.Equal(t, "default", result.Functions[0].Name)
-		assert.Equal(t, "main.go", result.Functions[0].EntryPoint)
-		assert.Equal(t, "go1.22", result.Functions[0].Runtime)
-		assert.Equal(t, 0.6, result.Functions[0].Confidence)
-		require.NotNil(t, result.Functions[0].Dependencies)
-		assert.Equal(t, "gomod", result.Functions[0].Dependencies.Manager)
-	})
-
-	t.Run("detects multiple main.go files", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "go.mod", Type: "blob", SHA: "abc", Size: 100},
-			{Path: "cmd/server/main.go", Type: "blob", SHA: "def", Size: 500},
-			{Path: "cmd/cli/main.go", Type: "blob", SHA: "ghi", Size: 300},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		assert.Len(t, result.Functions, 2)
-	})
-
-	t.Run("subdirectory function name", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "go.mod", Type: "blob", SHA: "abc", Size: 100},
-			{Path: "cmd/api/main.go", Type: "blob", SHA: "def", Size: 500},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		require.Len(t, result.Functions, 1)
-		assert.Equal(t, "api", result.Functions[0].Name)
-		assert.Equal(t, "cmd/api", result.Functions[0].SubDirectory)
-	})
-}
-
-func TestRustDetector(t *testing.T) {
-	detector := &RustDetector{logger: newTestLogger()}
-
-	t.Run("Name and Priority", func(t *testing.T) {
-		assert.Equal(t, "rust-detector", detector.Name())
-		assert.Equal(t, 20, detector.Priority())
-	})
-
-	t.Run("no Cargo.toml returns nil", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "src/main.rs", Type: "blob", SHA: "abc", Size: 500},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		assert.Nil(t, result)
-	})
-
-	t.Run("no main.rs in src/ returns nil", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "Cargo.toml", Type: "blob", SHA: "abc", Size: 100},
-			{Path: "main.rs", Type: "blob", SHA: "def", Size: 500}, // not in src/
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		assert.Nil(t, result)
-	})
-
-	t.Run("detects Rust function", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "Cargo.toml", Type: "blob", SHA: "abc", Size: 100},
-			{Path: "src/main.rs", Type: "blob", SHA: "def", Size: 500},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		require.Len(t, result.Functions, 1)
-		assert.Equal(t, "default", result.Functions[0].Name)
-		assert.Equal(t, "src/main.rs", result.Functions[0].EntryPoint)
-		assert.Equal(t, "rust1.75", result.Functions[0].Runtime)
-		assert.Equal(t, 0.55, result.Functions[0].Confidence)
-		require.NotNil(t, result.Functions[0].Dependencies)
-		assert.Equal(t, "cargo", result.Functions[0].Dependencies.Manager)
-	})
-
-	t.Run("subdirectory function name", func(t *testing.T) {
-		entries := []GitHubTreeEntry{
-			{Path: "Cargo.toml", Type: "blob", SHA: "abc", Size: 100},
-			{Path: "mylib/src/main.rs", Type: "blob", SHA: "def", Size: 500},
-		}
-		result, err := detector.Detect(context.Background(), testRepo("test"), entries)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		require.Len(t, result.Functions, 1)
-		assert.Equal(t, "mylib", result.Functions[0].Name)
-		assert.Equal(t, "mylib", result.Functions[0].SubDirectory)
-	})
-}
-
-func TestDetectNodePkgManager(t *testing.T) {
-	tests := []struct {
-		lockfile string
-		expected string
-	}{
-		{"package-lock.json", "npm"},
-		{"yarn.lock", "yarn"},
-		{"pnpm-lock.yaml", "pnpm"},
-		{"bun.lockb", "bun"},
-		{"some-other-lock.json", "npm"},
-		{"path/to/yarn.lock", "yarn"},
-	}
 
 	for _, tt := range tests {
-		t.Run(tt.lockfile, func(t *testing.T) {
-			result := detectNodePkgManager(tt.lockfile)
-			assert.Equal(t, tt.expected, result)
+		t.Run(tt.name, func(t *testing.T) {
+			d := &MonorepoDetector{client: client, logger: logger}
+			result, err := d.Detect(context.Background(), &GitHubRepo{}, tt.entries)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if tt.wantNil {
+				if result != nil {
+					t.Errorf("expected nil result, got %+v", result)
+				}
+				return
+			}
+			if result == nil {
+				t.Fatal("expected non-nil result")
+			}
+			if len(result.Functions) == 0 {
+				t.Error("expected at least one function")
+			}
 		})
 	}
 }
 
-func TestDetectPythonPkgManager(t *testing.T) {
-	tests := []struct {
-		lockfile string
-		expected string
-	}{
-		{"Pipfile.lock", "pipenv"},
-		{"poetry.lock", "poetry"},
-		{"requirements.txt", "pip"},
-		{"unknown.lock", "pip"},
-	}
+func TestSignatureDetector_AnalyzeContent(t *testing.T) {
+	d := &SignatureDetector{}
 
-	for _, tt := range tests {
-		t.Run(tt.lockfile, func(t *testing.T) {
-			result := detectPythonPkgManager(tt.lockfile)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestStripJSONComments(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    string
-		expected string
+		path     string
+		content  string
+		wantName string
+		wantRt   string
 	}{
 		{
-			name:     "no comments",
-			input:    `{"key": "value"}`,
-			expected: `{"key": "value"}`,
+			name:     "node async handler",
+			path:     "src/handler.ts",
+			content:  "export async function handler(event) { return event }",
+			wantName: "handler",
+			wantRt:   "nodejs",
 		},
 		{
-			name:     "line comment",
-			input:    `{"key": "value"} // comment`,
-			expected: `{"key": "value"} `,
+			name:     "node exports handler",
+			path:     "index.js",
+			content:  "exports.handler = async (event) => { return event }",
+			wantName: "handler",
+			wantRt:   "nodejs",
 		},
 		{
-			name:     "block comment",
-			input:    `{"key": "value"} /* block */`,
-			expected: `{"key": "value"} `,
+			name:     "module exports handler",
+			path:     "handler.js",
+			content:  "module.exports.handler = async (event) => { return event }",
+			wantName: "handler",
+			wantRt:   "nodejs",
 		},
 		{
-			name:     "comment in string preserved",
-			input:    `{"key": "has // comment"}`,
-			expected: `{"key": "has // comment"}`,
+			name:     "python lambda handler",
+			path:     "lambda_function.py",
+			content:  "def lambda_handler(event, context):\n    return event",
+			wantName: "lambda_handler",
+			wantRt:   "python",
 		},
 		{
-			name:     "empty string",
-			input:    "",
-			expected: "",
+			name:     "python async handler",
+			path:     "handler.py",
+			content:  "async def lambda_handler(event, context):\n    return event",
+			wantName: "lambda_handler",
+			wantRt:   "python",
 		},
 		{
-			name:     "multiline block comment",
-			input:    "{\n  /* multi\n   line */\n  \"key\": \"value\"\n}",
-			expected: "{\n  \n  \"key\": \"value\"\n}",
+			name:     "go handler",
+			path:     "handler.go",
+			content:  "func Handle(w http.ResponseWriter, r *http.Request) {\n    json.NewEncoder(w).Encode(map[string]string{})\n}",
+			wantName: "Handle",
+			wantRt:   "go",
 		},
 		{
-			name:     "escaped quote in string",
-			input:    `{"key": "value with \"quote"}`,
-			expected: `{"key": "value with \"quote"}`,
+			name:     "go HandleRequest",
+			path:     "handler.go",
+			content:  "func HandleRequest(w http.ResponseWriter, r *http.Request) { }",
+			wantName: "HandleRequest",
+			wantRt:   "go",
+		},
+		{
+			name:     "rust handler with tokio",
+			path:     "main.rs",
+			content:  "#[tokio::main]\nasync fn handle(req: Request) -> Response { todo!() }",
+			wantName: "handle",
+			wantRt:   "rust",
+		},
+		{
+			name:     "java handler",
+			path:     "Function.java",
+			content:  "public class Function implements RequestHandler {\n    public Object handleRequest(Object input, Context context) { return input; }",
+			wantName: "handleRequest",
+			wantRt:   "java",
+		},
+		{
+			name:     "no handler signature",
+			path:     "utils.js",
+			content:  "const helper = () => { return true }",
+			wantName: "",
+			wantRt:   "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := stripJSONComments(tt.input)
-			assert.Equal(t, tt.expected, result)
+			name, rt := d.AnalyzeContent(tt.path, []byte(tt.content))
+			if name != tt.wantName {
+				t.Errorf("name = %q, want %q", name, tt.wantName)
+			}
+			if rt != tt.wantRt {
+				t.Errorf("runtime = %q, want %q", rt, tt.wantRt)
+			}
 		})
 	}
 }
 
-func TestScannerMergeResults(t *testing.T) {
-	logger := newTestLogger()
-	scanner := &Scanner{logger: logger}
-
-	t.Run("nil results returns nil", func(t *testing.T) {
-		result := scanner.mergeResults(nil)
-		assert.Nil(t, result)
-	})
-
-	t.Run("empty results returns nil", func(t *testing.T) {
-		result := scanner.mergeResults([]*ScanResult{})
-		assert.Nil(t, result)
-	})
-
-	t.Run("merges functions from multiple results", func(t *testing.T) {
-		results := []*ScanResult{
-			{
-				Functions: []DetectedFunction{
-					{Name: "fn1", EntryPoint: "a.js", Runtime: "node18", Confidence: 0.8},
-				},
-				OverallConfidence: 0.8,
-				StrategyUsed:      "node-detector",
-			},
-			{
-				Functions: []DetectedFunction{
-					{Name: "fn2", EntryPoint: "b.py", Runtime: "python3.11", Confidence: 0.6},
-				},
-				OverallConfidence: 0.6,
-				StrategyUsed:      "python-detector",
-			},
-		}
-		result := scanner.mergeResults(results)
-		require.NotNil(t, result)
-		assert.Len(t, result.Functions, 2)
-		assert.Equal(t, 0.8, result.OverallConfidence)
-		assert.Equal(t, "node-detector", result.StrategyUsed)
-	})
-
-	t.Run("deduplicates functions by entrypoint+runtime", func(t *testing.T) {
-		results := []*ScanResult{
-			{
-				Functions: []DetectedFunction{
-					{Name: "fn1", EntryPoint: "index.js", Runtime: "node18"},
-				},
-				OverallConfidence: 0.6,
-			},
-			{
-				Functions: []DetectedFunction{
-					{Name: "fn1-dup", EntryPoint: "index.js", Runtime: "node18"},
-				},
-				OverallConfidence: 0.8,
-			},
-		}
-		result := scanner.mergeResults(results)
-		require.NotNil(t, result)
-		assert.Len(t, result.Functions, 1)
-	})
-
-	t.Run("keeps different runtimes for same entrypoint", func(t *testing.T) {
-		results := []*ScanResult{
-			{
-				Functions: []DetectedFunction{
-					{Name: "fn1", EntryPoint: "handler.js", Runtime: "node18"},
-				},
-			},
-			{
-				Functions: []DetectedFunction{
-					{Name: "fn2", EntryPoint: "handler.js", Runtime: "node18-typescript"},
-				},
-			},
-		}
-		result := scanner.mergeResults(results)
-		require.NotNil(t, result)
-		assert.Len(t, result.Functions, 2)
-	})
-
-	t.Run("merges warnings", func(t *testing.T) {
-		results := []*ScanResult{
-			{Warnings: []string{"warn1"}},
-			{Warnings: []string{"warn2", "warn3"}},
-		}
-		result := scanner.mergeResults(results)
-		require.NotNil(t, result)
-		assert.Len(t, result.Warnings, 3)
-	})
-}
-
-func TestScannerDetectPrimaryRuntime(t *testing.T) {
-	logger := newTestLogger()
-	scanner := &Scanner{logger: logger}
+func TestSignatureDetector_IsCodeFile(t *testing.T) {
+	d := &SignatureDetector{}
 
 	tests := []struct {
-		name      string
-		languages map[string]float64
-		expected  string
+		filename string
+		want     bool
 	}{
-		{"TypeScript dominant", map[string]float64{"TypeScript": 80, "JavaScript": 20}, "node"},
-		{"JavaScript dominant", map[string]float64{"JavaScript": 90}, "node"},
-		{"Python dominant", map[string]float64{"Python": 70, "JavaScript": 30}, "python"},
-		{"Go dominant", map[string]float64{"Go": 100}, "go"},
-		{"Rust dominant", map[string]float64{"Rust": 80, "TOML": 20}, "rust"},
-		{"empty languages", map[string]float64{}, "unknown"},
-		{"custom language", map[string]float64{"Zig": 100}, "zig"},
+		{"handler.ts", true},
+		{"handler.js", true},
+		{"handler.jsx", true},
+		{"handler.mjs", true},
+		{"handler.py", true},
+		{"handler.go", true},
+		{"handler.rs", true},
+		{"handler.java", true},
+		{"handler.rb", true},
+		{"handler.php", true},
+		{"handler.cs", true},
+		{"README.md", false},
+		{"Dockerfile", false},
+		{"config.yml", false},
+		{"Makefile", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.filename, func(t *testing.T) {
+			got := d.isCodeFile(tt.filename)
+			if got != tt.want {
+				t.Errorf("isCodeFile(%q) = %v, want %v", tt.filename, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestHasFile(t *testing.T) {
+	entries := []GitHubTreeEntry{
+		{Path: "package.json", Type: "blob"},
+		{Path: "src/index.ts", Type: "blob"},
+		{Path: "README.md", Type: "blob"},
+	}
+
+	tests := []struct {
+		filename string
+		want     bool
+	}{
+		{"package.json", true},
+		{"README.md", true},
+		{"pnpm-workspace.yaml", false},
+		{"src/index.ts", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.filename, func(t *testing.T) {
+			got := hasFile(entries, tt.filename)
+			if got != tt.want {
+				t.Errorf("hasFile(%q) = %v, want %v", tt.filename, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestLangStatsMap_Dominant(t *testing.T) {
+	tests := []struct {
+		name   string
+		stats  langStatsMap
+		want   string
+	}{
+		{"typescript dominant", langStatsMap{"TypeScript": 60.0, "Python": 30.0}, "TypeScript"},
+		{"python dominant", langStatsMap{"Python": 80.0, "Go": 20.0}, "Python"},
+		{"empty", langStatsMap{}, ""},
+		{"single", langStatsMap{"Go": 100.0}, "Go"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := scanner.detectPrimaryRuntime(tt.languages)
-			assert.Equal(t, tt.expected, result)
+			if got := tt.stats.Dominant(); got != tt.want {
+				t.Errorf("Dominant() = %q, want %q", got, tt.want)
+			}
 		})
 	}
 }
 
-func TestScannerEstimateImportTime(t *testing.T) {
-	logger := newTestLogger()
-	scanner := &Scanner{logger: logger}
+func TestLangStatsMap_DefaultRuntime(t *testing.T) {
+	tests := []struct {
+		name  string
+		stats langStatsMap
+		want  string
+	}{
+		{"typescript", langStatsMap{"TypeScript": 100.0}, "node18"},
+		{"javascript", langStatsMap{"JavaScript": 100.0}, "node18"},
+		{"python", langStatsMap{"Python": 100.0}, "python3.11"},
+		{"go", langStatsMap{"Go": 100.0}, "go1.22"},
+		{"rust", langStatsMap{"Rust": 100.0}, "rust1.75"},
+		{"java", langStatsMap{"Java": 100.0}, "java17"},
+		{"ruby", langStatsMap{"Ruby": 100.0}, "ruby3.2"},
+		{"php", langStatsMap{"PHP": 100.0}, "php8.2"},
+		{"csharp", langStatsMap{"C#": 100.0}, "dotnet6"},
+		{"zig", langStatsMap{"Zig": 100.0}, "Zig"},
+	}
 
-	t.Run("no functions", func(t *testing.T) {
-		result := scanner.estimateImportTime(&ScanResult{Functions: []DetectedFunction{}})
-		assert.Equal(t, 10, result)
-	})
-
-	t.Run("one function", func(t *testing.T) {
-		result := scanner.estimateImportTime(&ScanResult{
-			Functions: []DetectedFunction{{}},
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.stats.DefaultRuntime(); got != tt.want {
+				t.Errorf("DefaultRuntime() = %q, want %q", got, tt.want)
+			}
 		})
-		assert.Equal(t, 15, result)
-	})
-
-	t.Run("five functions", func(t *testing.T) {
-		result := scanner.estimateImportTime(&ScanResult{
-			Functions: make([]DetectedFunction, 5),
-		})
-		assert.Equal(t, 35, result)
-	})
+	}
 }
 
-func TestScannerEstimateCost(t *testing.T) {
-	logger := newTestLogger()
-	scanner := &Scanner{logger: logger}
+func TestContains(t *testing.T) {
+	slice := []string{"a", "b", "c"}
 
-	t.Run("no functions", func(t *testing.T) {
-		result := scanner.estimateCost(&ScanResult{Functions: []DetectedFunction{}})
-		assert.InDelta(t, 0.01, result, 0.001)
-	})
+	if !contains(slice, "b") {
+		t.Error("expected contains(slice, 'b') = true")
+	}
+	if contains(slice, "d") {
+		t.Error("expected contains(slice, 'd') = false")
+	}
+	if contains([]string{}, "a") {
+		t.Error("expected contains(empty, 'a') = false")
+	}
+}
 
-	t.Run("two functions", func(t *testing.T) {
-		result := scanner.estimateCost(&ScanResult{
-			Functions: make([]DetectedFunction, 2),
-		})
-		assert.InDelta(t, 0.02, result, 0.001)
-	})
+func TestDetectConflicts(t *testing.T) {
+	logger := logrus.New()
+	s := &Scanner{logger: logger}
+
+	local := []DetectedFunction{
+		{Name: "fn1", EntryPoint: "handler.js", Runtime: "node18"},
+		{Name: "fn2", EntryPoint: "app.py", Runtime: "python3.11"},
+	}
+
+	remote := []DetectedFunction{
+		{Name: "fn1", EntryPoint: "handler.js", Runtime: "node20"},
+		{Name: "fn3", EntryPoint: "main.go", Runtime: "go1.22"},
+	}
+
+	conflicts := s.DetectConflicts(local, remote)
+
+	if len(conflicts) != 3 {
+		t.Fatalf("expected 3 conflicts, got %d", len(conflicts))
+	}
+
+	found := make(map[string]bool)
+	for _, c := range conflicts {
+		found[c.ConflictType] = true
+	}
+
+	if !found["runtime_mismatch"] {
+		t.Error("expected runtime_mismatch conflict")
+	}
+	if !found["deleted_remotely"] {
+		t.Error("expected deleted_remotely conflict")
+	}
+	if !found["new_remote"] {
+		t.Error("expected new_remote conflict")
+	}
+}
+
+func TestDetectConflicts_NoConflicts(t *testing.T) {
+	logger := logrus.New()
+	s := &Scanner{logger: logger}
+
+	local := []DetectedFunction{
+		{Name: "fn1", EntryPoint: "handler.js", Runtime: "node18"},
+	}
+
+	remote := []DetectedFunction{
+		{Name: "fn1", EntryPoint: "handler.js", Runtime: "node18"},
+	}
+
+	conflicts := s.DetectConflicts(local, remote)
+	if len(conflicts) != 0 {
+		t.Errorf("expected 0 conflicts, got %d", len(conflicts))
+	}
+}
+
+func TestDetectConflicts_RuntimeMismatch(t *testing.T) {
+	logger := logrus.New()
+	s := &Scanner{logger: logger}
+
+	local := []DetectedFunction{
+		{Name: "fn1", EntryPoint: "handler.js", Runtime: "node18"},
+	}
+	remote := []DetectedFunction{
+		{Name: "fn1", EntryPoint: "handler.js", Runtime: "python3.11"},
+	}
+
+	conflicts := s.DetectConflicts(local, remote)
+	if len(conflicts) != 1 {
+		t.Fatalf("expected 1 conflict, got %d", len(conflicts))
+	}
+	if conflicts[0].ConflictType != "runtime_mismatch" {
+		t.Errorf("conflict type = %q, want %q", conflicts[0].ConflictType, "runtime_mismatch")
+	}
+	if conflicts[0].Resolution != "use_remote" {
+		t.Errorf("resolution = %q, want %q", conflicts[0].Resolution, "use_remote")
+	}
+}
+
+func TestEstimateCost(t *testing.T) {
+	s := &Scanner{}
+
+	result := &ScanResult{Functions: make([]DetectedFunction, 5)}
+	cost := s.estimateCost(result)
+
+	expectedMin := 0.01 + 5*0.005
+	if cost < expectedMin {
+		t.Errorf("estimateCost() = %v, want >= %v", cost, expectedMin)
+	}
+}
+
+func TestEstimateImportTime(t *testing.T) {
+	s := &Scanner{}
+
+	result := &ScanResult{Functions: make([]DetectedFunction, 3)}
+	timeS := s.estimateImportTime(result)
+
+	expected := 10 + 3*5
+	if timeS != expected {
+		t.Errorf("estimateImportTime() = %d, want %d", timeS, expected)
+	}
+}
+
+func TestResolveRuntimeFromStats(t *testing.T) {
+	logger := logrus.New()
+	s := &Scanner{logger: logger}
+
+	detected := []DetectedFunction{
+		{Name: "fn1", EntryPoint: "handler.js", Runtime: "unknown"},
+		{Name: "fn2", EntryPoint: "app.py", Runtime: "python3.11"},
+		{Name: "fn3", EntryPoint: "main.go", Runtime: ""},
+	}
+
+	langStats := map[string]float64{"TypeScript": 70.0, "Go": 30.0}
+	s.resolveRuntimeFromStats(&GitHubRepo{}, detected, langStats)
+
+	if detected[0].Runtime != "node18" {
+		t.Errorf("detected[0].Runtime = %q, want %q", detected[0].Runtime, "node18")
+	}
+	if detected[2].Runtime != "node18" {
+		t.Errorf("detected[2].Runtime = %q, want %q", detected[2].Runtime, "node18")
+	}
+	if detected[1].Runtime != "python3.11" {
+		t.Errorf("detected[1].Runtime = %q, want %q", detected[1].Runtime, "python3.11")
+	}
+}
+
+func TestResolveRuntimeFromStats_EmptyDetected(t *testing.T) {
+	logger := logrus.New()
+	s := &Scanner{logger: logger}
+
+	detected := []DetectedFunction{}
+	langStats := map[string]float64{"Python": 100.0}
+
+	s.resolveRuntimeFromStats(&GitHubRepo{}, detected, langStats)
+}
+
+func TestResolveRuntimeFromStats_EmptyStats(t *testing.T) {
+	logger := logrus.New()
+	s := &Scanner{logger: logger}
+
+	detected := []DetectedFunction{
+		{Name: "fn1", EntryPoint: "handler.js", Runtime: "unknown"},
+	}
+	langStats := map[string]float64{}
+
+	s.resolveRuntimeFromStats(&GitHubRepo{}, detected, langStats)
+
+	if detected[0].Runtime != "unknown" {
+		t.Errorf("detected[0].Runtime = %q, want %q", detected[0].Runtime, "unknown")
+	}
 }

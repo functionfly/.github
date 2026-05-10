@@ -42,6 +42,29 @@ func (h *Handler) HandleGetBundles(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// HandleGetBundleStats returns public stats about bundles (founder count, deployments)
+// GET /v1/billing/bundles/stats
+func (h *Handler) HandleGetBundleStats(w http.ResponseWriter, r *http.Request) {
+	founderCount, err := h.repo.CountActiveFounderModeRegistrations(r.Context())
+	if err != nil {
+		logrus.WithError(err).Warn("billing bundles: failed to count founder mode registrations")
+		founderCount = 0
+	}
+
+	deploymentsCount, err := h.repo.CountRecentSuccessfulDeployments(r.Context())
+	if err != nil {
+		logrus.WithError(err).Warn("billing bundles: failed to count recent deployments")
+		deploymentsCount = 0
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"active_founders":        founderCount,
+		"recent_deployments":     deploymentsCount,
+	})
+}
+
 // HandleGetBundle returns details for a specific bundle
 // GET /v1/billing/bundles/:slug
 func (h *Handler) HandleGetBundle(w http.ResponseWriter, r *http.Request) {
@@ -728,9 +751,10 @@ func (h *Handler) HandleConvertToPaid(w http.ResponseWriter, r *http.Request) {
 		user.Email,
 		name,
 		payment.CreateCheckoutSessionRequest{
-			PriceID:    bundle.StripePriceID,
-			SuccessURL: "/dashboard?converted=true",
-			CancelURL:  "/pricing",
+			PriceID:      bundle.StripePriceID,
+			SuccessURL:   "/dashboard?converted=true",
+			CancelURL:    "/pricing",
+			FounderModeID: reg.ID.String(), // Track for webhook processing
 		},
 	)
 	if err != nil {

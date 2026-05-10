@@ -18,12 +18,39 @@ import (
 
 // HandleGetWallet returns the authenticated user's registry wallet (platform fee balance).
 // GET /v1/billing/wallet
+// After unified wallet migration, this reads from the wallets table via walletService.
 func (h *Handler) HandleGetWallet(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
 		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
+
+	// Try unified wallet service first, fall back to legacy platformFees
+	if h.walletService != nil {
+		walletInfo, err := h.walletService.GetUserWallet(r.Context(), claims.UserID)
+		if err != nil {
+			logrus.WithError(err).WithField("user_id", claims.UserID).Warn("billing: get wallet failed")
+			writeJSONError(w, http.StatusInternalServerError, "Failed to load wallet")
+			return
+		}
+		if walletInfo == nil {
+			writeJSONError(w, http.StatusNotFound, "Wallet not found")
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"user_id":               walletInfo.UserID,
+			"balance_usd":           walletInfo.BalanceUSD,
+			"lifetime_earnings_usd": walletInfo.LifetimeEarningsUSD,
+			"lifetime_fees_usd":     walletInfo.LifetimeSpentUSD,
+		})
+		return
+	}
+
+	// Legacy fallback: use platformFees repository
 	if h.platformFees == nil {
 		writeJSONError(w, http.StatusServiceUnavailable, "Wallet is unavailable")
 		return

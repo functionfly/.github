@@ -85,7 +85,6 @@ func (r *BillingRepository) CreatePaidInvoiceForStripeCheckoutSession(ctx contex
 func (r *BillingRepository) ListInvoicesByTenant(tenantID uuid.UUID, limit, offset int) ([]*Invoice, error) {
 	query := `
 		SELECT id, tenant_id, subscription_id, status, amount_due_cents, amount_paid_cents, currency,
-			   stripe_invoice_id, external_reference,
 			   invoice_pdf_url, hosted_invoice_url, period_start, period_end, due_date, paid_at, created_at, updated_at
 		FROM invoices
 		WHERE tenant_id = $1
@@ -101,17 +100,13 @@ func (r *BillingRepository) ListInvoicesByTenant(tenantID uuid.UUID, limit, offs
 	var invoices []*Invoice
 	for rows.Next() {
 		invoice := &Invoice{}
-		var stripeInvID, extRef sql.NullString
 		err := rows.Scan(&invoice.ID, &invoice.TenantID, &invoice.SubscriptionID, &invoice.Status,
 			&invoice.AmountDueCents, &invoice.AmountPaidCents, &invoice.Currency,
-			&stripeInvID, &extRef,
 			&invoice.InvoicePdfURL, &invoice.HostedInvoiceURL, &invoice.PeriodStart,
 			&invoice.PeriodEnd, &invoice.DueDate, &invoice.PaidAt, &invoice.CreatedAt, &invoice.UpdatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan invoice: %w", err)
 		}
-		invoice.StripeInvoiceID = nullStringPtr(stripeInvID)
-		invoice.ExternalReference = nullStringPtr(extRef)
 		invoices = append(invoices, invoice)
 	}
 
@@ -132,7 +127,6 @@ func (r *BillingRepository) CountInvoicesByTenant(tenantID uuid.UUID) (int, erro
 func (r *BillingRepository) ListAllInvoices(limit, offset int) ([]*Invoice, error) {
 	query := `
 		SELECT id, tenant_id, subscription_id, status, amount_due_cents, amount_paid_cents, currency,
-			   stripe_invoice_id, external_reference,
 			   invoice_pdf_url, hosted_invoice_url, period_start, period_end, due_date, paid_at, created_at, updated_at
 		FROM invoices
 		ORDER BY created_at DESC
@@ -147,17 +141,13 @@ func (r *BillingRepository) ListAllInvoices(limit, offset int) ([]*Invoice, erro
 	var invoices []*Invoice
 	for rows.Next() {
 		invoice := &Invoice{}
-		var stripeInvID, extRef sql.NullString
 		err := rows.Scan(&invoice.ID, &invoice.TenantID, &invoice.SubscriptionID, &invoice.Status,
 			&invoice.AmountDueCents, &invoice.AmountPaidCents, &invoice.Currency,
-			&stripeInvID, &extRef,
 			&invoice.InvoicePdfURL, &invoice.HostedInvoiceURL, &invoice.PeriodStart,
 			&invoice.PeriodEnd, &invoice.DueDate, &invoice.PaidAt, &invoice.CreatedAt, &invoice.UpdatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan invoice: %w", err)
 		}
-		invoice.StripeInvoiceID = nullStringPtr(stripeInvID)
-		invoice.ExternalReference = nullStringPtr(extRef)
 		invoices = append(invoices, invoice)
 	}
 
@@ -168,15 +158,12 @@ func (r *BillingRepository) ListAllInvoices(limit, offset int) ([]*Invoice, erro
 func (r *BillingRepository) GetInvoiceByID(id uuid.UUID) (*Invoice, error) {
 	query := `
 		SELECT id, tenant_id, subscription_id, status, amount_due_cents, amount_paid_cents, currency,
-			   stripe_invoice_id, external_reference,
 			   invoice_pdf_url, hosted_invoice_url, period_start, period_end, due_date, paid_at, created_at, updated_at
 		FROM invoices WHERE id = $1`
 
 	invoice := &Invoice{}
-	var stripeInvID, extRef sql.NullString
 	err := r.db.QueryRow(query, id).Scan(&invoice.ID, &invoice.TenantID, &invoice.SubscriptionID, &invoice.Status,
 		&invoice.AmountDueCents, &invoice.AmountPaidCents, &invoice.Currency,
-		&stripeInvID, &extRef,
 		&invoice.InvoicePdfURL, &invoice.HostedInvoiceURL, &invoice.PeriodStart,
 		&invoice.PeriodEnd, &invoice.DueDate, &invoice.PaidAt, &invoice.CreatedAt, &invoice.UpdatedAt)
 
@@ -186,8 +173,6 @@ func (r *BillingRepository) GetInvoiceByID(id uuid.UUID) (*Invoice, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get invoice: %w", err)
 	}
-	invoice.StripeInvoiceID = nullStringPtr(stripeInvID)
-	invoice.ExternalReference = nullStringPtr(extRef)
 
 	return invoice, nil
 }
@@ -196,7 +181,7 @@ func (r *BillingRepository) GetInvoiceByID(id uuid.UUID) (*Invoice, error) {
 func (r *BillingRepository) GetInvoiceByPeriod(ctx context.Context, tenantID uuid.UUID, periodStart, periodEnd time.Time) (*Invoice, error) {
 	query := `
 		SELECT id, tenant_id, subscription_id, status, amount_due_cents, amount_paid_cents, currency,
-			stripe_invoice_id, external_reference, invoice_pdf_url, hosted_invoice_url,
+			invoice_pdf_url, hosted_invoice_url,
 			period_start, period_end, due_date, paid_at, created_at, updated_at
 		FROM invoices
 		WHERE tenant_id = $1
@@ -207,11 +192,9 @@ func (r *BillingRepository) GetInvoiceByPeriod(ctx context.Context, tenantID uui
 	`
 
 	invoice := &Invoice{}
-	var stripeInvID, extRef sql.NullString
 	err := r.db.QueryRowContext(ctx, query, tenantID, periodStart, periodEnd).Scan(
 		&invoice.ID, &invoice.TenantID, &invoice.SubscriptionID, &invoice.Status,
 		&invoice.AmountDueCents, &invoice.AmountPaidCents, &invoice.Currency,
-		&stripeInvID, &extRef,
 		&invoice.InvoicePdfURL, &invoice.HostedInvoiceURL, &invoice.PeriodStart,
 		&invoice.PeriodEnd, &invoice.DueDate, &invoice.PaidAt, &invoice.CreatedAt, &invoice.UpdatedAt,
 	)
@@ -222,9 +205,6 @@ func (r *BillingRepository) GetInvoiceByPeriod(ctx context.Context, tenantID uui
 	if err != nil {
 		return nil, fmt.Errorf("failed to get invoice by period: %w", err)
 	}
-
-	invoice.StripeInvoiceID = nullStringPtr(stripeInvID)
-	invoice.ExternalReference = nullStringPtr(extRef)
 
 	return invoice, nil
 }
@@ -266,23 +246,16 @@ func (r *BillingRepository) UpdateInvoice(ctx context.Context, id uuid.UUID, upd
 
 	setParts = append(setParts, "updated_at = NOW()")
 
-	query := fmt.Sprintf("UPDATE invoices SET %s WHERE id = $%d RETURNING id, tenant_id, subscription_id, status, amount_due_cents, amount_paid_cents, currency, stripe_invoice_id, external_reference, invoice_pdf_url, hosted_invoice_url, period_start, period_end, due_date, paid_at, created_at, updated_at",
+	query := fmt.Sprintf("UPDATE invoices SET %s WHERE id = $%d RETURNING id, tenant_id, subscription_id, status, amount_due_cents, amount_paid_cents, currency, invoice_pdf_url, hosted_invoice_url, period_start, period_end, due_date, paid_at, created_at, updated_at",
 		strings.Join(setParts, ", "), argIndex)
 
 	args = append(args, id)
 
 	updated := &Invoice{}
-	var stripeInvID, extRef sql.NullString
 	err = r.db.QueryRow(query, args...).Scan(&updated.ID, &updated.TenantID, &updated.SubscriptionID, &updated.Status,
 		&updated.AmountDueCents, &updated.AmountPaidCents, &updated.Currency,
-		&stripeInvID, &extRef,
 		&updated.InvoicePdfURL, &updated.HostedInvoiceURL, &updated.PeriodStart,
 		&updated.PeriodEnd, &updated.DueDate, &updated.PaidAt, &updated.CreatedAt, &updated.UpdatedAt)
-	if err == nil {
-		updated.StripeInvoiceID = nullStringPtr(stripeInvID)
-		updated.ExternalReference = nullStringPtr(extRef)
-	}
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to update invoice: %w", err)
 	}

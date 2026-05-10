@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/functionfly/functionfly/internal/agent/identity"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
@@ -65,6 +64,13 @@ const (
 	BillingModePerTenant = "per_tenant"
 	BillingModePerTeam   = "per_team"
 )
+
+// ControllerInterface defines the interface for billing controller operations.
+// This is implemented by *Controller and *BillingControllerWrapper for flexibility.
+type ControllerInterface interface {
+	GetOrCreateControls(ctx context.Context, agentID string) (*AgentBillingControls, error)
+	ConsumeCredits(ctx context.Context, agentID string, amount float64) (*CreditBalanceUpdate, error)
+}
 
 // Controller manages economic controls for agents
 type Controller struct {
@@ -145,7 +151,6 @@ func (c *Controller) ConsumeCredits(ctx context.Context, agentID string, amount 
 
 	var update CreditBalanceUpdate
 	update.AgentID = agentID
-	update.AmountUSD = amount
 
 	err := c.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var controls AgentBillingControls
@@ -160,12 +165,12 @@ func (c *Controller) ConsumeCredits(ctx context.Context, agentID string, amount 
 
 		update.PreviousUSD = controls.CreditBalanceUSD
 		if controls.CreditBalanceUSD < amount {
-			return fmt.Errorf("insufficient credit balance for agent %s (required: $%.6f)", agentID, amount)
+			return fmt.Errorf("insufficient credit balance for %s (required: $%.6f, have: $%.6f)", agentID, amount, controls.CreditBalanceUSD)
 		}
 
 		newBalance := controls.CreditBalanceUSD - amount
 		if err := tx.Model(&AgentBillingControls{}).
-			Where("agent_id = ?", agentID).
+			Where("id = ?", controls.ID).
 			Update("credit_balance_usd", newBalance).Error; err != nil {
 			return fmt.Errorf("failed to consume credits: %w", err)
 		}
@@ -181,70 +186,48 @@ func (c *Controller) ConsumeCredits(ctx context.Context, agentID string, amount 
 }
 
 // AddCredits adds to the agent's credit balance (after purchase).
-// If no billing controls record exists yet for the agent, one is created with this
-// amount as the initial balance so that a first-ever top-up always succeeds.
-// This also updates the agent_wallets table to keep the two balance stores in sync.
 func (c *Controller) AddCredits(ctx context.Context, agentID string, amount float64) error {
 	if amount <= 0 {
 		return fmt.Errorf("credit amount must be positive")
 	}
 
-	// Update billing controls
-	result := c.db.WithContext(ctx).Model(&AgentBillingControls{}).
-		Where("agent_id = ?", agentID).
-		Update("credit_balance_usd", gorm.Expr("credit_balance_usd + ?", amount))
-
-	if result.Error != nil {
-		return fmt.Errorf("failed to add credits: %w", result.Error)
-	}
-	if result.RowsAffected == 0 {
-		// No controls row exists yet — create one with this amount as the opening balance.
-		controls := AgentBillingControls{
-			ID:               uuid.New(),
-			AgentID:          agentID,
-			CreditBalanceUSD: amount,
-			BillingMode:      BillingModePerAgent,
-			AlertThresholds:  pq.Float64Array{0.5, 0.8, 0.95},
-		}
-		if err := c.db.WithContext(ctx).Create(&controls).Error; err != nil {
-			return fmt.Errorf("failed to create billing controls with initial credits: %w", err)
-		}
-	}
-
-	// Sync to agent_wallets table (used by economy service for escrow/revenue)
-	// Use a transaction to ensure consistency
 	err := c.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var wallet identity.AgentWallet
-		walletResult := tx.Where("agent_id = ?", agentID).First(&wallet)
+		var controls AgentBillingControls
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("agent_id = ?", agentID).
+			First(&controls).Error
 
-		if walletResult.Error == gorm.ErrRecordNotFound {
-			// Create new wallet
-			wallet = identity.AgentWallet{
-				ID:         uuid.New(),
-				AgentID:    agentID,
-				BalanceUSD: amount,
+		if err == gorm.ErrRecordNotFound {
+			// No controls exist - create new
+			controls = AgentBillingControls{
+				ID:              uuid.New(),
+				AgentID:         agentID,
+				CreditBalanceUSD: amount,
+				BillingMode:     BillingModePerAgent,
 			}
-			if err := tx.Create(&wallet).Error; err != nil {
-				return fmt.Errorf("failed to create agent wallet: %w", err)
+			if err := tx.Create(&controls).Error; err != nil {
+				return fmt.Errorf("failed to create billing controls for agent: %w", err)
 			}
-		} else if walletResult.Error != nil {
-			return fmt.Errorf("failed to get agent wallet: %w", walletResult.Error)
-		} else {
-			// Update existing wallet
-			if err := tx.Model(&identity.AgentWallet{}).
-				Where("agent_id = ?", agentID).
-				Update("balance_usd", gorm.Expr("balance_usd + ?", amount)).Error; err != nil {
-				return fmt.Errorf("failed to update agent wallet balance: %w", err)
-			}
+			return nil
 		}
+		if err != nil {
+			return fmt.Errorf("failed to get billing controls: %w", err)
+		}
+
+		// Update existing
+		if err := tx.Model(&AgentBillingControls{}).
+			Where("id = ?", controls.ID).
+			Updates(map[string]interface{}{
+				"credit_balance_usd": gorm.Expr("credit_balance_usd + ?", amount),
+				"updated_at":         time.Now(),
+			}).Error; err != nil {
+			return fmt.Errorf("failed to add credits: %w", err)
+		}
+
 		return nil
 	})
 
-	if err != nil {
-		return fmt.Errorf("failed to sync credits to agent_wallets: %w", err)
-	}
-
-	return nil
+	return err
 }
 
 // GetAgentSpend returns the spend summary for an agent for a given period

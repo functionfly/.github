@@ -241,12 +241,32 @@ func (h *Handler) provisionVectorCollections(ctx context.Context, tenantID uuid.
 }
 
 // provisionSaaSStarter creates SaaS starter pack function templates
+// and delegates to the isolated BundleProvisioner for full production provisioning.
 // 3. Create workflow templates for payments/email (SaaS Starter)
 func (h *Handler) provisionSaaSStarter(tenantID uuid.UUID) {
 	logrus.WithField("tenant_id", tenantID).Info("Provisioning SaaS Starter Pack resources")
 
 	ctx := context.Background()
 	now := time.Now()
+
+	// If isolated provisioning is available, delegate to the BundleProvisioner.
+	// This creates a dedicated database with isolated Auth, Payments, Email, and Analytics.
+	// The function templates below are still created in the platform registry as convenience
+	// entry points that bridge into the tenant's isolated data.
+	if h.provisionBundleFn != nil {
+		go func() {
+			status, count, err := h.provisionBundleFn(ctx, tenantID, "saas-starter")
+			if err != nil {
+				logrus.WithError(err).WithField("tenant_id", tenantID).Error("Isolated bundle provisioning failed")
+			} else {
+				logrus.WithFields(logrus.Fields{
+					"tenant_id":  tenantID,
+					"status":     status,
+					"components": count,
+				}).Info("Isolated SaaS Starter provisioning complete")
+			}
+		}()
+	}
 
 	templates := []struct {
 		name   string
@@ -326,11 +346,29 @@ func (h *Handler) provisionSaaSStarter(tenantID uuid.UUID) {
 }
 
 // provisionMarketplace creates marketplace function templates
+// and delegates to the isolated BundleProvisioner for full production provisioning.
 func (h *Handler) provisionMarketplace(tenantID uuid.UUID) {
 	logrus.WithField("tenant_id", tenantID).Info("Provisioning Marketplace Pack resources")
 
 	ctx := context.Background()
 	now := time.Now()
+
+	// If isolated provisioning is available, delegate to the BundleProvisioner.
+	// This creates a dedicated database with isolated Listings, Payments, Messaging, and Notifications.
+	if h.provisionBundleFn != nil {
+		go func() {
+			status, count, err := h.provisionBundleFn(ctx, tenantID, "marketplace")
+			if err != nil {
+				logrus.WithError(err).WithField("tenant_id", tenantID).Error("Isolated marketplace provisioning failed")
+			} else {
+				logrus.WithFields(logrus.Fields{
+					"tenant_id":  tenantID,
+					"status":     status,
+					"components": count,
+				}).Info("Isolated Marketplace provisioning complete")
+			}
+		}()
+	}
 
 	templates := []struct {
 		name   string
@@ -405,11 +443,28 @@ func (h *Handler) provisionMarketplace(tenantID uuid.UUID) {
 }
 
 // provisionAIApp creates AI app function templates
+// and delegates to the isolated BundleProvisioner for full production provisioning.
 func (h *Handler) provisionAIApp(tenantID uuid.UUID) {
 	logrus.WithField("tenant_id", tenantID).Info("Provisioning AI App Pack resources")
 
 	ctx := context.Background()
 	now := time.Now()
+
+	// If isolated provisioning is available, delegate to the BundleProvisioner.
+	if h.provisionBundleFn != nil {
+		go func() {
+			status, count, err := h.provisionBundleFn(ctx, tenantID, "ai-app")
+			if err != nil {
+				logrus.WithError(err).WithField("tenant_id", tenantID).Error("Isolated AI App provisioning failed")
+			} else {
+				logrus.WithFields(logrus.Fields{
+					"tenant_id":  tenantID,
+					"status":     status,
+					"components": count,
+				}).Info("Isolated AI App provisioning complete")
+			}
+		}()
+	}
 
 	templates := []struct {
 		name   string

@@ -47,7 +47,7 @@ func (r *BillingRepository) CreateSubscription(ctx context.Context, sub *Subscri
 // GetSubscriptionByTenantID retrieves a subscription by tenant ID
 func (r *BillingRepository) GetSubscriptionByTenantID(tenantID uuid.UUID) (*Subscription, error) {
 	query := `
-		SELECT s.id, s.tenant_id, s.pricing_tier_id, s.status, s.stripe_subscription_id, s.current_period_start, s.current_period_end,
+		SELECT s.id, s.tenant_id, s.pricing_tier_id, s.status, s.current_period_start, s.current_period_end,
 			   s.trial_end, s.cancel_at_period_end, s.canceled_at, s.created_at, s.updated_at,
 			   t.id, t.name, t.description, t.price_cents, t.currency, t.features, t.is_active, t.created_at, t.updated_at
 		FROM subscriptions s
@@ -57,16 +57,12 @@ func (r *BillingRepository) GetSubscriptionByTenantID(tenantID uuid.UUID) (*Subs
 	sub := &Subscription{}
 	tier := &PricingTier{}
 	var features []byte
-	var stripeSubID *string
 
 	err := r.db.QueryRow(query, tenantID).Scan(
-		&sub.ID, &sub.TenantID, &sub.PricingTierID, &sub.Status, &stripeSubID, &sub.CurrentPeriodStart, &sub.CurrentPeriodEnd,
+		&sub.ID, &sub.TenantID, &sub.PricingTierID, &sub.Status, &sub.CurrentPeriodStart, &sub.CurrentPeriodEnd,
 		&sub.TrialEnd, &sub.CancelAtPeriodEnd, &sub.CanceledAt, &sub.CreatedAt, &sub.UpdatedAt,
 		&tier.ID, &tier.Name, &tier.Description, &tier.PriceCents, &tier.Currency, &features,
 		&tier.IsActive, &tier.CreatedAt, &tier.UpdatedAt)
-	if err == nil && stripeSubID != nil {
-		sub.StripeSubscriptionID = *stripeSubID
-	}
 
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -86,7 +82,7 @@ func (r *BillingRepository) GetSubscriptionByTenantID(tenantID uuid.UUID) (*Subs
 // GetSubscriptionByID retrieves a subscription by its ID with pricing tier information
 func (r *BillingRepository) GetSubscriptionByID(ctx context.Context, id uuid.UUID) (*Subscription, error) {
 	query := `
-		SELECT s.id, s.tenant_id, s.pricing_tier_id, s.status, s.stripe_subscription_id, s.current_period_start, s.current_period_end,
+		SELECT s.id, s.tenant_id, s.pricing_tier_id, s.status, s.current_period_start, s.current_period_end,
 			   s.trial_end, s.cancel_at_period_end, s.canceled_at, s.created_at, s.updated_at,
 			   t.id, t.name, t.description, t.price_cents, t.currency, t.features, t.is_active, t.created_at, t.updated_at
 		FROM subscriptions s
@@ -96,10 +92,9 @@ func (r *BillingRepository) GetSubscriptionByID(ctx context.Context, id uuid.UUI
 	sub := &Subscription{}
 	tier := &PricingTier{}
 	var features []byte
-	var stripeSubID *string
 
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
-		&sub.ID, &sub.TenantID, &sub.PricingTierID, &sub.Status, &stripeSubID, &sub.CurrentPeriodStart, &sub.CurrentPeriodEnd,
+		&sub.ID, &sub.TenantID, &sub.PricingTierID, &sub.Status, &sub.CurrentPeriodStart, &sub.CurrentPeriodEnd,
 		&sub.TrialEnd, &sub.CancelAtPeriodEnd, &sub.CanceledAt, &sub.CreatedAt, &sub.UpdatedAt,
 		&tier.ID, &tier.Name, &tier.Description, &tier.PriceCents, &tier.Currency, &features,
 		&tier.IsActive, &tier.CreatedAt, &tier.UpdatedAt)
@@ -109,9 +104,6 @@ func (r *BillingRepository) GetSubscriptionByID(ctx context.Context, id uuid.UUI
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get subscription: %w", err)
-	}
-	if stripeSubID != nil {
-		sub.StripeSubscriptionID = *stripeSubID
 	}
 
 	if len(features) > 0 {
@@ -237,7 +229,7 @@ func (r *BillingRepository) UpdateSubscription(ctx context.Context, id uuid.UUID
 // GetSubscriptionByStripeID retrieves a subscription by its Stripe subscription ID
 func (r *BillingRepository) GetSubscriptionByStripeID(ctx context.Context, stripeSubscriptionID string) (*Subscription, error) {
 	query := `
-		SELECT s.id, s.tenant_id, s.pricing_tier_id, s.status, s.stripe_subscription_id, s.current_period_start, s.current_period_end,
+		SELECT s.id, s.tenant_id, s.pricing_tier_id, s.status, s.current_period_start, s.current_period_end,
 			   s.trial_end, s.cancel_at_period_end, s.canceled_at, s.created_at, s.updated_at,
 			   t.id, t.name, t.description, t.price_cents, t.currency, t.features, t.is_active, t.created_at, t.updated_at
 		FROM subscriptions s
@@ -247,10 +239,9 @@ func (r *BillingRepository) GetSubscriptionByStripeID(ctx context.Context, strip
 	sub := &Subscription{}
 	tier := &PricingTier{}
 	var features []byte
-	var stripeSubID *string
 
 	err := r.db.QueryRowContext(ctx, query, stripeSubscriptionID).Scan(
-		&sub.ID, &sub.TenantID, &sub.PricingTierID, &sub.Status, &stripeSubID, &sub.CurrentPeriodStart, &sub.CurrentPeriodEnd,
+		&sub.ID, &sub.TenantID, &sub.PricingTierID, &sub.Status, &sub.CurrentPeriodStart, &sub.CurrentPeriodEnd,
 		&sub.TrialEnd, &sub.CancelAtPeriodEnd, &sub.CanceledAt, &sub.CreatedAt, &sub.UpdatedAt,
 		&tier.ID, &tier.Name, &tier.Description, &tier.PriceCents, &tier.Currency, &features,
 		&tier.IsActive, &tier.CreatedAt, &tier.UpdatedAt)
@@ -260,9 +251,6 @@ func (r *BillingRepository) GetSubscriptionByStripeID(ctx context.Context, strip
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get subscription by stripe id: %w", err)
-	}
-	if stripeSubID != nil {
-		sub.StripeSubscriptionID = *stripeSubID
 	}
 
 	if len(features) > 0 {

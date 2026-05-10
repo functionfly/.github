@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"github.com/functionfly/functionfly/internal/statefabricaddons"
 	"github.com/functionfly/functionfly/internal/storage"
 	storageregistry "github.com/functionfly/functionfly/internal/storage/registry"
+	"github.com/functionfly/functionfly/internal/wallet"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
@@ -67,15 +69,34 @@ type Handler struct {
 	repo storage.Repository
 	// Platform-fee wallet (registry credits balance for publish fees, etc.)
 	platformFees *storageregistry.PlatformFeeRepository
+	// Wallet service for unified wallet operations
+	walletService *wallet.Service
 	// State Fabric add-on entitlements (optional; nil returns empty entitlements).
 	sfAddons *statefabricaddons.Repository
 	// Redis client for rate limiting
 	redisClient *redis.Client
+	// Isolated bundle provisioner callback for one-click SaaS Starter provisioning (optional).
+	// Returns (status, componentCount, error). Set via SetBundleProvisioner during server init.
+	provisionBundleFn func(ctx context.Context, tenantID uuid.UUID, bundleSlug string) (string, int, error)
+}
+
+// SetWalletService injects the unified wallet service into the billing handler.
+// This allows the billing handler to read wallet info from the unified wallets table
+// instead of the legacy user_wallets table.
+func (h *Handler) SetWalletService(walletSvc *wallet.Service) {
+	h.walletService = walletSvc
 }
 
 // NewHandler creates a new billing handler.
 func NewHandler(repo storage.Repository, platformFees *storageregistry.PlatformFeeRepository, sfAddons *statefabricaddons.Repository, redisClient *redis.Client) *Handler {
 	return &Handler{repo: repo, platformFees: platformFees, sfAddons: sfAddons, redisClient: redisClient}
+}
+
+// SetBundleProvisioner injects the isolated bundle provisioner into the billing handler.
+// The provisioner function is called asynchronously during bundle signup/checkout.
+// This is called during server initialization when TENANT_DB_ENABLED=true.
+func (h *Handler) SetBundleProvisioner(fn func(ctx context.Context, tenantID uuid.UUID, bundleSlug string) (string, int, error)) {
+	h.provisionBundleFn = fn
 }
 
 // CreatePortalSessionRequest is the request body for creating a billing portal session.

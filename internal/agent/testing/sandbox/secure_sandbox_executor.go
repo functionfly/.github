@@ -368,7 +368,6 @@ func (e *SecureSandboxExecutor) runWithDocker(ctx context.Context, imageName, wo
 		"--workdir", "/workspace",
 		"-v", workDir + ":/workspace:ro",           // Mount code as read-only
 		"--no-new-privileges",                      // No privilege escalation
-		"--security-opt", "seccomp=unconfined",     // Keep default seccomp but allow some syscalls
 		"--cap-drop=ALL",                           // Drop all capabilities
 		"--label", "functionfly.sandbox=true",
 		"--label", "functionfly.runtime=" + runtime,

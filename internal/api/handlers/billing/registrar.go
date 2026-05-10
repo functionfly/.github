@@ -91,7 +91,7 @@ func (r *RouteRegistrar) Register(router *mux.Router, api *mux.Router, protected
 	// Wallet
 	billingRouter.HandleFunc("/wallet", r.handler.HandleGetWallet).Methods("GET", "OPTIONS")
 	billingRouter.HandleFunc("/wallet/fees", r.handler.HandleListPlatformFees).Methods("GET", "OPTIONS")
-	billingRouter.HandleFunc("/wallet/topup", r.handler.HandleWalletTopUp).Methods("POST", "OPTIONS")
+	billingRouter.HandleFunc("/wallet/top-up", r.handler.HandleWalletTopUp).Methods("POST", "OPTIONS")
 
 	// State Fabric addons
 	billingRouter.HandleFunc("/state-fabric-addons", r.handler.HandleListStateFabricAddOnCatalog).Methods("GET", "OPTIONS")

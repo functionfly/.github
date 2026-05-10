@@ -59,7 +59,7 @@ func (r *BillingRepository) CreatePricingBundle(ctx context.Context, bundle *Pri
 // ListPricingBundles returns all pricing bundles, optionally filtering by active status
 func (r *BillingRepository) ListPricingBundles(ctx context.Context, activeOnly bool) ([]*PricingBundle, error) {
 	query := `SELECT id, slug, name, display_name, description, short_description,
-		display_price_cents, billing_interval, stripe_price_id, icon, color,
+		display_price_cents, billing_interval, COALESCE(stripe_price_id, '') as stripe_price_id, icon, color,
 		features_included, feature_limits, provisioning_templates,
 		sort_order, is_active, is_popular, created_at, updated_at
 		FROM pricing_bundles `
@@ -103,7 +103,7 @@ func (r *BillingRepository) ListPricingBundles(ctx context.Context, activeOnly b
 // GetPricingBundleBySlug retrieves a pricing bundle by its slug
 func (r *BillingRepository) GetPricingBundleBySlug(ctx context.Context, slug string) (*PricingBundle, error) {
 	query := `SELECT id, slug, name, display_name, description, short_description,
-		display_price_cents, billing_interval, stripe_price_id, icon, color,
+		display_price_cents, billing_interval, COALESCE(stripe_price_id, '') as stripe_price_id, icon, color,
 		features_included, feature_limits, provisioning_templates,
 		sort_order, is_active, is_popular, created_at, updated_at
 		FROM pricing_bundles WHERE slug = $1`
@@ -135,7 +135,7 @@ func (r *BillingRepository) GetPricingBundleBySlug(ctx context.Context, slug str
 // GetPricingBundleByID retrieves a pricing bundle by ID
 func (r *BillingRepository) GetPricingBundleByID(ctx context.Context, id uuid.UUID) (*PricingBundle, error) {
 	query := `SELECT id, slug, name, display_name, description, short_description,
-		display_price_cents, billing_interval, stripe_price_id, icon, color,
+		display_price_cents, billing_interval, COALESCE(stripe_price_id, '') as stripe_price_id, icon, color,
 		features_included, feature_limits, provisioning_templates,
 		sort_order, is_active, is_popular, created_at, updated_at
 		FROM pricing_bundles WHERE id = $1`
@@ -184,7 +184,7 @@ func (r *BillingRepository) UpdatePricingBundleStripePrice(ctx context.Context, 
 // This is used when processing plan changes from Stripe webhooks
 func (r *BillingRepository) GetPricingBundleByStripePriceID(ctx context.Context, stripePriceID string) (*PricingBundle, error) {
 	query := `SELECT id, slug, name, display_name, description, short_description,
-		display_price_cents, billing_interval, stripe_price_id, icon, color,
+		display_price_cents, billing_interval, COALESCE(stripe_price_id, '') as stripe_price_id, icon, color,
 		features_included, feature_limits, provisioning_templates,
 		sort_order, is_active, is_popular, created_at, updated_at
 		FROM pricing_bundles WHERE stripe_price_id = $1 AND is_active = true`
@@ -475,6 +475,46 @@ func (r *BillingRepository) GetBundleSubscriptionByTenant(ctx context.Context, t
 	return sub, nil
 }
 
+// GetBundleSubscriptionByStripeID retrieves a bundle subscription by Stripe subscription ID
+func (r *BillingRepository) GetBundleSubscriptionByStripeID(ctx context.Context, stripeSubID string) (*BundleSubscription, error) {
+	query := `SELECT id, tenant_id, bundle_id, founder_mode_id, converted_from_founder_mode,
+		status, stripe_subscription_id, default_app_id, current_period_start, current_period_end,
+		cancel_at_period_end, canceled_at, created_at, updated_at
+		FROM bundle_subscriptions
+		WHERE stripe_subscription_id = $1 AND status IN ('active', 'deferred')`
+
+	sub := &BundleSubscription{}
+	var founderModeID sql.NullString
+	var canceledAt sql.NullTime
+	var defaultAppID sql.NullString
+
+	err := r.db.QueryRow(query, stripeSubID).Scan(
+		&sub.ID, &sub.TenantID, &sub.BundleID, &founderModeID, &sub.ConvertedFromFounderMode,
+		&sub.Status, &sub.StripeSubscriptionID, &defaultAppID, &sub.CurrentPeriodStart, &sub.CurrentPeriodEnd,
+		&sub.CancelAtPeriodEnd, &canceledAt, &sub.CreatedAt, &sub.UpdatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get bundle subscription by stripe id: %w", err)
+	}
+
+	if founderModeID.Valid {
+		id, _ := uuid.Parse(founderModeID.String)
+		sub.FounderModeID = &id
+	}
+	if defaultAppID.Valid {
+		id, _ := uuid.Parse(defaultAppID.String)
+		sub.DefaultAppID = &id
+	}
+	if canceledAt.Valid {
+		sub.CanceledAt = &canceledAt.Time
+	}
+
+	return sub, nil
+}
+
 // UpdateBundleSubscription updates an existing bundle subscription
 func (r *BillingRepository) UpdateBundleSubscription(ctx context.Context, sub *BundleSubscription) error {
 	query := `
@@ -665,4 +705,30 @@ func (r *BillingRepository) GetDeferredBillingConfig(ctx context.Context, bundle
 	config.TriggerDaysElapsed = daysElapsed
 
 	return config, nil
+}
+
+// CountActiveFounderModeRegistrations counts founder mode registrations with active or grace_period status
+func (r *BillingRepository) CountActiveFounderModeRegistrations(ctx context.Context) (int, error) {
+	var count int
+	query := `SELECT COUNT(*) FROM founder_mode_registrations WHERE status IN ('active', 'grace_period')`
+	err := r.db.QueryRowContext(ctx, query).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count active founder mode registrations: %w", err)
+	}
+	return count, nil
+}
+
+// CountRecentSuccessfulDeployments counts deployments from the past week with success status
+func (r *BillingRepository) CountRecentSuccessfulDeployments(ctx context.Context) (int, error) {
+	var count int
+	query := `
+		SELECT COUNT(*) FROM deployments
+		WHERE status = 'success'
+		AND created_at >= NOW() - INTERVAL '7 days'
+	`
+	err := r.db.QueryRowContext(ctx, query).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count recent deployments: %w", err)
+	}
+	return count, nil
 }
