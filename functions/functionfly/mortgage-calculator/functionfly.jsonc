@@ -1,0 +1,39 @@
+{
+  "author": "functionfly",
+  "cache_ttl": 0,
+  "category": "business",
+  "description": "Calculate mortgage payments",
+  "deterministic": true,
+  "idempotent": true,
+  "input": {
+    "properties": {
+      "data": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "memory_mb": 128,
+  "name": "mortgage-calculator",
+  "output": {
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "price_per_call": 0.04,
+  "runtime": "python3.12",
+  "tags": [
+    "finance",
+    "mortgage"
+  ],
+  "tier": "pro",
+  "timeout_ms": 5000,
+  "title": "Mortgage Calculator",
+  "version": "1.0.0"
+}

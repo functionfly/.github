@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "cache_ttl": 0,
+  "category": "business",
+  "description": "Generate performance reviews",
+  "deterministic": true,
+  "idempotent": true,
+  "input": {
+    "properties": {
+      "data": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "memory_mb": 128,
+  "name": "performance-review",
+  "output": {
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "price_per_call": 0.05,
+  "runtime": "python3.12",
+  "tags": [
+    "review",
+    "performance",
+    "hr"
+  ],
+  "tier": "pro",
+  "timeout_ms": 5000,
+  "title": "Performance Review Generator",
+  "version": "1.0.0"
+}
