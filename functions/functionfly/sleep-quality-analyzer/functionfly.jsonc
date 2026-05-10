@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "cache_ttl": 0,
+  "category": "health",
+  "description": "Analyze sleep quality",
+  "deterministic": true,
+  "idempotent": true,
+  "input": {
+    "properties": {
+      "data": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "memory_mb": 128,
+  "name": "sleep-quality-analyzer",
+  "output": {
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "price_per_call": 0.02,
+  "runtime": "python3.12",
+  "tags": [
+    "health",
+    "sleep",
+    "analyze"
+  ],
+  "tier": "pro",
+  "timeout_ms": 5000,
+  "title": "Sleep Quality Analyzer",
+  "version": "1.0.0"
+}

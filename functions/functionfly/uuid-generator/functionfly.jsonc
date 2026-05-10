@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "cache_ttl": 0,
+  "category": "dev",
+  "description": "Generate unique UUIDs",
+  "deterministic": true,
+  "idempotent": true,
+  "input": {
+    "properties": {
+      "data": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "memory_mb": 128,
+  "name": "uuid-generator",
+  "output": {
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "price_per_call": 0.01,
+  "runtime": "python3.12",
+  "tags": [
+    "uuid",
+    "generate",
+    "dev"
+  ],
+  "tier": "pro",
+  "timeout_ms": 5000,
+  "title": "UUID Generator",
+  "version": "1.0.0"
+}
