@@ -6,15 +6,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
+	"github.com/functionfly/functionfly/internal/bundler"
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/dre"
 	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/functionfly/functionfly/internal/storage/registry"
+	"github.com/functionfly/functionfly/internal/wallet"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -30,6 +33,7 @@ type Handler struct {
 	edgeCache         *cache.EdgeCacheService
 	realtimeMonitor   *monitoring.RealtimeMonitor
 	platformFeeRepo   *registry.PlatformFeeRepository
+	walletSvc         *wallet.Service
 	recommendationSvc interface {
 		EmbedFunctionViaAIService(ctx context.Context, functionID uuid.UUID, name, title, description, category string, tags []string, manifest map[string]interface{}, sourceCode, runtime string, capabilities []string) error
 	}
@@ -42,6 +46,24 @@ type Handler struct {
 	drePlatformKey ed25519.PrivateKey
 	dreNodeID      string
 	dreRegion      string
+	// DNA recorder for execution pipeline (optional)
+	dnaRecorder execution.DNARecorder
+	// BillingController handles wallet operations for paid function execution (optional)
+	billingCtrl execution.BillingController
+	// RuntimeRouter routes execution to the appropriate engine (optional; wired at startup)
+	runtimeRouter *execution.RuntimeRouter
+	// BundleService provides eager bundling at publish time (optional)
+	bundleService *bundler.BundleService
+	// AutoReadmeService generates README docs for functions
+	autoReadmeSvc interface {
+		GenerateForVersion(ctx context.Context, functionID uuid.UUID, version string, force bool) (string, error)
+		BackfillAll(ctx context.Context, batchSize int, force bool) (int, error)
+	}
+}
+
+// SetWalletService sets the wallet service for unified wallet operations
+func (h *Handler) SetWalletService(walletSvc *wallet.Service) {
+	h.walletSvc = walletSvc
 }
 
 // NewHandler creates a new registry handler.
@@ -97,6 +119,34 @@ func NewHandler(
 // SetPrivacyService sets the privacy service for compliance features
 func (h *Handler) SetPrivacyService(svc execution.PrivacyService) {
 	h.privacySvc = svc
+}
+
+// SetDNARecorder sets the DNA recorder for execution pipeline integration
+func (h *Handler) SetDNARecorder(recorder execution.DNARecorder) {
+	h.dnaRecorder = recorder
+}
+
+// SetBillingController sets the billing controller for paid function execution
+func (h *Handler) SetBillingController(ctrl execution.BillingController) {
+	h.billingCtrl = ctrl
+}
+
+// SetRuntimeRouter wires the runtime router into the execution pipeline.
+func (h *Handler) SetRuntimeRouter(router *execution.RuntimeRouter) {
+	h.runtimeRouter = router
+}
+
+// SetBundleService wires the eager-bundling service for publish-time compilation.
+func (h *Handler) SetBundleService(svc *bundler.BundleService) {
+	h.bundleService = svc
+}
+
+// SetAutoReadmeService sets the auto-README generator service.
+func (h *Handler) SetAutoReadmeService(svc interface {
+	GenerateForVersion(ctx context.Context, functionID uuid.UUID, version string, force bool) (string, error)
+	BackfillAll(ctx context.Context, batchSize int, force bool) (int, error)
+}) {
+	h.autoReadmeSvc = svc
 }
 
 // getClientIP extracts the client IP address from the request
@@ -374,5 +424,53 @@ func (h *Handler) HandleRegenerateBootstrap(w http.ResponseWriter, r *http.Reque
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"regenerated": regenerated,
 		"message":     fmt.Sprintf("regenerated %d bootstrap FXCERT(s)", regenerated),
+	})
+}
+
+// HandleBackfillReadmes auto-generates READMEs for functions that are missing them.
+// POST /v1/admin/registry/readmes/backfill?batch_size=100&force=false
+func (h *Handler) HandleBackfillReadmes(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]string{"error": "method not allowed"})
+		return
+	}
+
+	if h.autoReadmeSvc == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]string{"error": "auto-readme service not available"})
+		return
+	}
+
+	batchSize := 100
+	if bs := r.URL.Query().Get("batch_size"); bs != "" {
+		if v, err := strconv.Atoi(bs); err == nil && v > 0 && v <= 1000 {
+			batchSize = v
+		}
+	}
+	force := r.URL.Query().Get("force") == "true"
+
+	ctx := r.Context()
+	total, err := h.autoReadmeSvc.BackfillAll(ctx, batchSize, force)
+	if err != nil {
+		logrus.WithError(err).Error("Auto-readme backfill failed")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error":   err.Error(),
+			"success": false,
+		})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":        true,
+		"total_versions": total,
+		"batch_size":     batchSize,
+		"force":          force,
+		"message":        fmt.Sprintf("Backfilled %d version(s)", total),
 	})
 }

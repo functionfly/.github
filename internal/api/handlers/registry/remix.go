@@ -89,38 +89,62 @@ func (h *Handler) HandleRemix(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check wallet balance and charge for remix
-	if h.platformFeeRepo == nil {
+	// Check wallet balance and charge for remix using unified wallet if available
+	var walletBalance float64
+	var walletID uuid.UUID
+
+	// Try unified wallet service first, fall back to legacy
+	if h.walletSvc != nil {
+		userWallet, err := h.walletSvc.GetOrCreateUserWallet(r.Context(), user.UserID)
+		if err != nil {
+			logrus.WithError(err).Error("Failed to get user wallet for remix")
+			http.Error(w, "Failed to check wallet balance", http.StatusInternalServerError)
+			return
+		}
+		walletID = userWallet.ID
+		walletBalance = userWallet.BalanceUSD
+	} else if h.platformFeeRepo != nil {
+		wallet, err := h.platformFeeRepo.GetOrCreateWallet(r.Context(), user.UserID)
+		if err != nil {
+			logrus.WithError(err).Error("Failed to get user wallet for remix")
+			http.Error(w, "Failed to check wallet balance", http.StatusInternalServerError)
+			return
+		}
+		walletBalance = wallet.BalanceUSD
+	} else {
 		http.Error(w, "Billing system unavailable", http.StatusServiceUnavailable)
 		return
 	}
 
-	wallet, err := h.platformFeeRepo.GetOrCreateWallet(r.Context(), user.UserID)
-	if err != nil {
-		logrus.WithError(err).Error("Failed to get user wallet for remix")
-		http.Error(w, "Failed to check wallet balance", http.StatusInternalServerError)
-		return
-	}
-
-	if wallet.BalanceUSD < RemixCostUSD {
+	if walletBalance < RemixCostUSD {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusPaymentRequired)
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"error":        "Insufficient balance",
-			"message":      fmt.Sprintf("Remixing costs $%.2f. Your balance is $%.2f. Please add funds to your wallet.", RemixCostUSD, wallet.BalanceUSD),
+			"message":      fmt.Sprintf("Remixing costs $%.2f. Your balance is $%.2f. Please add funds to your wallet.", RemixCostUSD, walletBalance),
 			"cost_usd":     RemixCostUSD,
-			"balance_usd":  wallet.BalanceUSD,
-			"required_usd": RemixCostUSD - wallet.BalanceUSD,
+			"balance_usd":  walletBalance,
+			"required_usd": RemixCostUSD - walletBalance,
 		})
 		return
 	}
 
-	// Charge for the remix
-	if err := h.platformFeeRepo.DebitWallet(r.Context(), user.UserID, RemixCostUSD,
-		fmt.Sprintf("Remix of %s/%s", req.SourceAuthor, req.SourceName)); err != nil {
-		logrus.WithError(err).Error("Failed to charge wallet for remix")
-		http.Error(w, "Failed to process payment for remix", http.StatusInternalServerError)
-		return
+	// Charge for the remix using unified wallet or legacy
+	if h.walletSvc != nil && walletID != uuid.Nil {
+		_, err := h.walletSvc.DebitForFeePayment(r.Context(), walletID, RemixCostUSD, "remix",
+			fmt.Sprintf("Remix of %s/%s", req.SourceAuthor, req.SourceName))
+		if err != nil {
+			logrus.WithError(err).Error("Failed to charge wallet for remix")
+			http.Error(w, "Failed to process payment for remix", http.StatusInternalServerError)
+			return
+		}
+	} else if h.platformFeeRepo != nil {
+		if err := h.platformFeeRepo.DebitWallet(r.Context(), user.UserID, RemixCostUSD,
+			fmt.Sprintf("Remix of %s/%s", req.SourceAuthor, req.SourceName)); err != nil {
+			logrus.WithError(err).Error("Failed to charge wallet for remix")
+			http.Error(w, "Failed to process payment for remix", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	// Record the platform fee
@@ -278,10 +302,28 @@ func (h *Handler) HandleRemix(w http.ResponseWriter, r *http.Request) {
 			PublishedAt:   now,
 		}
 
+		// Carry over readme from source if present, otherwise auto-generate later
+		if sourceVersion.Readme.Valid && sourceVersion.Readme.String != "" {
+			version.Readme = sourceVersion.Readme
+		}
+
 		if err := h.repo.CreateFunctionVersion(version); err != nil {
 			logrus.WithError(err).Error("Failed to create function version")
 			http.Error(w, "Failed to create function version", http.StatusInternalServerError)
 			return
+		}
+
+		// Auto-generate README if not copied from source (async)
+		if h.autoReadmeSvc != nil && (!version.Readme.Valid || version.Readme.String == "") {
+			go func() {
+				_, err := h.autoReadmeSvc.GenerateForVersion(r.Context(), newFnID, version.Version, false)
+				if err != nil {
+					logrus.WithError(err).WithFields(logrus.Fields{
+						"function_id": newFnID,
+						"version":     version.Version,
+					}).Warn("Auto-readme generation failed for remix")
+				}
+			}()
 		}
 	}
 
@@ -311,11 +353,17 @@ func (h *Handler) HandleRemix(w http.ResponseWriter, r *http.Request) {
 		newAuthor = user.Username
 	}
 
-	// Get updated wallet balance
-	updatedWallet, _ := h.platformFeeRepo.GetWallet(r.Context(), user.UserID)
-	newBalance := wallet.BalanceUSD - RemixCostUSD
-	if updatedWallet != nil {
-		newBalance = updatedWallet.BalanceUSD
+	// Get updated wallet balance (from unified wallet service or legacy)
+	newBalance := walletBalance - RemixCostUSD
+	if h.walletSvc != nil {
+		// Use unified wallet service
+		if updatedWallet, err := h.walletSvc.GetOrCreateUserWallet(r.Context(), user.UserID); err == nil {
+			newBalance = updatedWallet.BalanceUSD
+		}
+	} else if h.platformFeeRepo != nil {
+		if updatedWallet, err := h.platformFeeRepo.GetWallet(r.Context(), user.UserID); err == nil && updatedWallet != nil {
+			newBalance = updatedWallet.BalanceUSD
+		}
 	}
 
 	response := RemixResponse{
@@ -451,9 +499,13 @@ func (h *Handler) HandleGetRemixCost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get wallet balance
+	// Get wallet balance (using unified wallet service or legacy)
 	balance := 0.0
-	if h.platformFeeRepo != nil {
+	if h.walletSvc != nil {
+		if walletBalance, err := h.walletSvc.GetUserBalance(r.Context(), user.UserID); err == nil {
+			balance = walletBalance
+		}
+	} else if h.platformFeeRepo != nil {
 		wallet, err := h.platformFeeRepo.GetWallet(r.Context(), user.UserID)
 		if err == nil && wallet != nil {
 			balance = wallet.BalanceUSD

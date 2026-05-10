@@ -53,16 +53,27 @@ func generateEmbedScript(fn *registry.RegistryFunction, fnVersion *registry.Regi
 	}
 
 	publicURL := getPublicSiteURL()
-	return fmt.Sprintf(`/**
- * FunctionFly Embed — %s/%s@%s
- * %s
- *
- * Usage:
- *   <script src="%s/embed/%s/%s.js"></script>
- *   <script>
- *     const result = await %s.run({ key: "value" });
- *   </script>
- */
+
+	// SECURITY: Sanitize values used in JavaScript block comment.
+	// If author, name, or description contain "*/", it would break out of the
+	// block comment and allow arbitrary JS injection.
+	safeAuthor := strings.ReplaceAll(fn.Author, "*/", "* /")
+	safeName := strings.ReplaceAll(fn.Name, "*/", "* /")
+	safeDesc := strings.ReplaceAll(description, "*/", "* /")
+	safeVersion := strings.ReplaceAll(resolvedVersion, "*/", "* /")
+
+	return fmt.Sprintf(`// FunctionFly Embed — %s/%s@%s
+// %s
+//
+// Usage:
+//   <script src="%s/embed/%s/%s.js"></script>
+//   <script>
+//     const result = await %s.run({ key: "value" });
+//   </script>
+//
+// Security: data-api-key is visible in page source. This is acceptable for
+// public embeds with rate-limited keys. For sensitive operations, use
+// server-side execution via the FunctionFly REST API instead of embeds.
 (function (global, config) {
   "use strict";
 
@@ -71,6 +82,21 @@ func generateEmbedScript(fn *registry.RegistryFunction, fnVersion *registry.Regi
   var NAME      = %q;
   var VERSION   = %q;
   var NAMESPACE = %q;
+
+  // ── Security warning ──────────────────────────────────────────────────────
+  // Warn if API key is exposed on a non-HTTPS page
+  (function () {
+    var scriptEl = document.currentScript ||
+      (function () {
+        var scripts = document.getElementsByTagName("script");
+        return scripts[scripts.length - 1];
+      })();
+    var apiKey = scriptEl && scriptEl.getAttribute("data-api-key");
+    if (apiKey && window.location.protocol !== "https:") {
+      console.warn("[FunctionFly] data-api-key is exposed on a non-HTTPS page. " +
+        "Use HTTPS to prevent key interception, or use server-side execution.");
+    }
+  })();
 
   // ── Event system ──────────────────────────────────────────────────────────
   var _handlers = {};
@@ -298,7 +324,9 @@ func generateEmbedScript(fn *registry.RegistryFunction, fnVersion *registry.Regi
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+      .replace(/`+"`"+`/g, '&#96;');
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
@@ -323,13 +351,13 @@ func generateEmbedScript(fn *registry.RegistryFunction, fnVersion *registry.Regi
 
 })(window, { autoload: %s, ui: %s, theme: %q });
 `,
-		fn.Author, fn.Name, resolvedVersion,
-		description,
-		publicURL, fn.Author, fn.Name,
+		safeAuthor, safeName, safeVersion,
+		safeDesc,
+		publicURL, safeAuthor, safeName,
 		opts.Namespace,
 		baseURL,
-		fn.Author,
-		fn.Name,
+		safeAuthor,
+		safeName,
 		resolvedVersion,
 		opts.Namespace,
 		autoloadStr,

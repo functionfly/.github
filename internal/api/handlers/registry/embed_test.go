@@ -2,6 +2,7 @@ package registry
 
 import (
 	"database/sql"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -388,8 +389,127 @@ func TestGenerateEmbedScript_HTMLEntityEscaping(t *testing.T) {
 	if !strings.Contains(script, "function escHtml") {
 		t.Error("expected escHtml function for XSS prevention")
 	}
-	// escHtml should escape common XSS vectors
+	// escHtml should escape common XSS entities
 	if !strings.Contains(script, "&lt;") || !strings.Contains(script, "&gt;") {
 		t.Error("expected escHtml to escape HTML entities")
+	}
+}
+
+// ── Phase 4: Security Hardening Tests ───────────────────────────────────────
+
+// TestValidateAllowedOrigins_Wildcard validates that wildcard is accepted.
+func TestValidateAllowedOrigins_Wildcard(t *testing.T) {
+	if err := validateAllowedOrigins([]string{"*"}); err != nil {
+		t.Errorf("wildcard should be valid, got: %v", err)
+	}
+}
+
+// TestValidateAllowedOrigins_ValidOrigins validates proper origin format.
+func TestValidateAllowedOrigins_ValidOrigins(t *testing.T) {
+	valid := []string{"https://example.com", "http://localhost:3000", "*"}
+	if err := validateAllowedOrigins(valid); err != nil {
+		t.Errorf("valid origins should pass, got: %v", err)
+	}
+}
+
+// TestValidateAllowedOrigins_MissingScheme rejects origins without scheme.
+func TestValidateAllowedOrigins_MissingScheme(t *testing.T) {
+	invalid := []string{"example.com"}
+	if err := validateAllowedOrigins(invalid); err == nil {
+		t.Error("origin without scheme should be rejected")
+	}
+}
+
+// TestValidateAllowedOrigins_WithPath rejects origins containing a path.
+func TestValidateAllowedOrigins_WithPath(t *testing.T) {
+	invalid := []string{"https://example.com/path"}
+	if err := validateAllowedOrigins(invalid); err == nil {
+		t.Error("origin with path should be rejected")
+	}
+}
+
+// TestValidateAllowedOrigins_InvalidScheme rejects non-http(s) schemes.
+func TestValidateAllowedOrigins_InvalidScheme(t *testing.T) {
+	invalid := []string{"ftp://example.com"}
+	if err := validateAllowedOrigins(invalid); err == nil {
+		t.Error("non-http(s) scheme should be rejected")
+	}
+}
+
+// TestValidateAllowedOrigins_EmptyString rejects empty entries.
+func TestValidateAllowedOrigins_EmptyString(t *testing.T) {
+	invalid := []string{""}
+	if err := validateAllowedOrigins(invalid); err == nil {
+		t.Error("empty origin string should be rejected")
+	}
+}
+
+// TestGenerateEmbedScript_SanitizesBlockComment validates that */
+// in metadata cannot break out of the JS block comment.
+func TestGenerateEmbedScript_SanitizesBlockComment(t *testing.T) {
+	// An attacker could set the function name/description to contain "*/"
+	// which would break out of the block comment and inject JS code.
+	fn := makeTestFunction("acme", "evil*/=alert(1)//", "")
+	fn.Description = sql.NullString{String: "*/=alert(2)", Valid: true}
+	ver := makeTestVersion("1.0.0")
+	opts := EmbedOptions{Namespace: "ff", Autoload: true, UI: false, Theme: "auto"}
+
+	script := generateEmbedScript(fn, ver, "", opts)
+
+	// The generated script must NOT contain raw "*/" in the comment block.
+	// It should have been sanitized to "* /".
+	if strings.Contains(script, "evil*/=alert") {
+		t.Error("block comment breakout was not sanitized in author/name field")
+	}
+	if strings.Contains(script, "*/=alert(2)") {
+		t.Error("block comment breakout was not sanitized in description field")
+	}
+	// Verify that the sanitized form exists instead
+	if !strings.Contains(script, "evil* /=alert") {
+		t.Error("sanitized comment not found in script")
+	}
+}
+
+// TestResolveRequestOrigin_PreferReferer validates Referer is preferred over
+// spoofable X-Embed-Origin.
+func TestResolveRequestOrigin_PreferReferer(t *testing.T) {
+	req := &http.Request{Header: http.Header{}}
+	req.Header.Set("Referer", "https://trusted-site.com/page")
+	req.Header.Set("X-Embed-Origin", "https://attacker.com")
+
+	origin := resolveRequestOrigin(req)
+	if origin != "https://trusted-site.com" {
+		t.Errorf("expected Referer-based origin, got %q", origin)
+	}
+}
+
+// TestResolveRequestOrigin_FallsBackToOriginHeader validates Origin header fallback.
+func TestResolveRequestOrigin_FallsBackToOriginHeader(t *testing.T) {
+	req := &http.Request{Header: http.Header{}}
+	req.Header.Set("Origin", "https://example.com")
+
+	origin := resolveRequestOrigin(req)
+	if origin != "https://example.com" {
+		t.Errorf("expected Origin-based origin, got %q", origin)
+	}
+}
+
+// TestResolveRequestOrigin_LastResortXEmbedOrigin validates X-Embed-Origin as last resort.
+func TestResolveRequestOrigin_LastResortXEmbedOrigin(t *testing.T) {
+	req := &http.Request{Header: http.Header{}}
+	req.Header.Set("X-Embed-Origin", "https://embed-source.com")
+
+	origin := resolveRequestOrigin(req)
+	if origin != "https://embed-source.com" {
+		t.Errorf("expected X-Embed-Origin fallback, got %q", origin)
+	}
+}
+
+// TestResolveRequestOrigin_EmptyRequest returns empty string.
+func TestResolveRequestOrigin_EmptyRequest(t *testing.T) {
+	req := &http.Request{Header: http.Header{}}
+	origin := resolveRequestOrigin(req)
+	if origin != "" {
+		t.Errorf("expected empty origin, got %q", origin)
 	}
 }

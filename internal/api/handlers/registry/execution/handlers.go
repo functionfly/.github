@@ -63,6 +63,49 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if this is a paid function and process payment
+	if fn.PricePerCall > 0 && h.BillingController != nil {
+		// Require authentication for paid functions
+		userID := getUserIDFromRequest(r)
+		if userID == "" {
+			h.writeError(w, http.StatusUnauthorized, functionregistry.ErrCodeUnauthorized,
+				"Authentication required for paid function execution")
+			return
+		}
+
+		// Check credit balance and charge
+		controls, err := h.BillingController.GetOrCreateControls(r.Context(), userID)
+		if err != nil {
+			logrus.WithError(err).WithField("user_id", userID).Error("Failed to get billing controls")
+			h.writeError(w, http.StatusInternalServerError, functionregistry.ErrCodeInternalError,
+				"Failed to process payment")
+			return
+		}
+
+		if controls.CreditBalanceUSD < fn.PricePerCall {
+			h.writeError(w, http.StatusPaymentRequired, functionregistry.ErrCodePaymentRequired,
+				fmt.Sprintf("Insufficient balance: need $%.4f, have $%.4f", fn.PricePerCall, controls.CreditBalanceUSD))
+			return
+		}
+
+		// Deduct payment
+		update, err := h.BillingController.ConsumeCredits(r.Context(), userID, fn.PricePerCall)
+		if err != nil {
+			logrus.WithError(err).WithField("user_id", userID).Error("Failed to consume credits")
+			h.writeError(w, http.StatusPaymentRequired, functionregistry.ErrCodePaymentRequired,
+				fmt.Sprintf("Payment failed: %s", err.Error()))
+			return
+		}
+
+		logrus.WithFields(logrus.Fields{
+			"user_id":          userID,
+			"function":         fmt.Sprintf("%s/%s", author, name),
+			"amount_usd":       fn.PricePerCall,
+			"previous_balance": update.PreviousUSD,
+			"new_balance":      update.CurrentUSD,
+		}).Info("Charged for paid function execution")
+	}
+
 	// Get function version
 	var fnVersion *storage.RegistryFunctionVersion
 	if execReq.Version == "" {
@@ -141,6 +184,31 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("X-Quota-Executions-Percent", fmt.Sprintf("%.1f", quotaResult.Status.ExecutionsPercent))
 			w.Header().Set("X-Quota-Compute-Percent", fmt.Sprintf("%.1f", quotaResult.Status.ComputeMsPercent))
 			w.Header().Set("X-Quota-Status", quotaResult.Status.Status)
+		}
+	}
+
+	// Embed origin rate limiting — enforce at execution time, not just script serve time.
+	// A malicious actor could cache the embed script and call ff.run() without limit.
+	if embedOrigin := r.Header.Get("X-Embed-Origin"); embedOrigin != "" {
+		embedCfg, err := h.Repo.GetFunctionEmbedConfig(fn.ID)
+		if err == nil && embedCfg != nil && embedCfg.Enabled && embedCfg.RateLimitPerHour > 0 {
+			since := time.Now().Add(-time.Hour)
+			count, rlErr := h.Repo.GetEmbedExecutionCountByOrigin(fn.ID, embedOrigin, since)
+			if rlErr == nil && count >= int64(embedCfg.RateLimitPerHour) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Retry-After", "3600")
+				w.WriteHeader(http.StatusTooManyRequests)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error": map[string]interface{}{
+						"code":    "EMBED_RATE_LIMITED",
+						"message": "Embed rate limit exceeded for this origin",
+						"type":    "rate_limit",
+					},
+					"retry_after": 3600,
+					"origin":      embedOrigin,
+				})
+				return
+			}
 		}
 	}
 
@@ -251,6 +319,19 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 		go h.updateFunctionPopularity(fn.ID)
 		go h.recordBillingUsageEvent(fn, execRecord, resourceUsage)
 		go h.syncRealtimeUsage(fn, resourceUsage)
+
+		// Record execution for DNA analysis pipeline (fire-and-forget)
+		if h.DNARecorder != nil {
+			go h.DNARecorder.RecordExecutionFromPipeline(
+				context.Background(),
+				fn.ID.String(),
+				"registry",
+				durationMs,
+				statusCode,
+				false, // coldStart detection would require runtime metadata
+				h.Region,
+			)
+		}
 	}
 
 	// Record resource usage if available
@@ -511,12 +592,22 @@ func (h *Handler) generateExecutionID(
 
 	nanoID := gen()
 
+	// Ensure input/output are never nil (which would become NULL in DB)
+	inputJSON := sanitizedInput
+	if inputJSON == nil || len(inputJSON) == 0 {
+		inputJSON = []byte("null")
+	}
+	outputJSON := sanitizedOutput
+	if outputJSON == nil || len(outputJSON) == 0 {
+		outputJSON = []byte("null")
+	}
+
 	publicExec := &storage.RegistryExecutionPublic{
 		PublicID:   nanoID,
 		FunctionID: fn.ID,
 		Version:    fnVersion.Version,
-		InputJSON:  sanitizedInput,
-		OutputJSON: sanitizedOutput,
+		InputJSON:  inputJSON,
+		OutputJSON: outputJSON,
 		DurationMs: durationMs,
 		Cached:     cached,
 		Shareable:  true,
@@ -597,9 +688,15 @@ func (h *Handler) writeSuccessResponse(
 		"version":    version,
 	}).Info("Writing success response")
 
+	// Ensure Data always serializes to valid JSON (null when empty, not an omission).
+	data := result
+	if len(data) == 0 {
+		data = json.RawMessage("null")
+	}
+
 	successResp := functionregistry.ExecutionResponse{
 		OK:          true,
-		Data:        result,
+		Data:        data,
 		Cached:      cached,
 		DurationMs:  durationMs,
 		Version:     version,

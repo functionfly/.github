@@ -200,26 +200,54 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if feeAmountUSD > 0 {
-			// Get or create wallet
-			wallet, err := h.platformFeeRepo.GetOrCreateWallet(r.Context(), user.UserID)
-			if err != nil {
-				logrus.WithError(err).Error("Failed to get or create wallet for platform fee")
-				http.Error(w, "Failed to process payment: "+err.Error(), http.StatusInternalServerError)
-				return
+			// Get or create wallet and check balance using unified wallet service if available
+			var walletBalance float64
+			var walletID uuid.UUID
+
+			if h.walletSvc != nil {
+				// Use unified wallet service
+				userWallet, err := h.walletSvc.GetOrCreateUserWallet(r.Context(), user.UserID)
+				if err != nil {
+					logrus.WithError(err).Error("Failed to get or create wallet for platform fee")
+					http.Error(w, "Failed to process payment: "+err.Error(), http.StatusInternalServerError)
+					return
+				}
+				walletID = userWallet.ID
+				walletBalance = userWallet.BalanceUSD
+			} else {
+				// Fall back to legacy platform fee repo
+				wallet, err := h.platformFeeRepo.GetOrCreateWallet(r.Context(), user.UserID)
+				if err != nil {
+					logrus.WithError(err).Error("Failed to get or create wallet for platform fee")
+					http.Error(w, "Failed to process payment: "+err.Error(), http.StatusInternalServerError)
+					return
+				}
+				walletBalance = wallet.BalanceUSD
 			}
 
 			// Check sufficient balance
-			if wallet.BalanceUSD < feeAmountUSD {
-				http.Error(w, fmt.Sprintf("Insufficient wallet balance. Required: $%.2f, Available: $%.2f", feeAmountUSD, wallet.BalanceUSD), 402)
+			if walletBalance < feeAmountUSD {
+				http.Error(w, fmt.Sprintf("Insufficient wallet balance. Required: $%.2f, Available: $%.2f", feeAmountUSD, walletBalance), 402)
 				return
 			}
 
 			// Debit wallet (atomic transaction)
 			description := fmt.Sprintf("FunctionFly registry publish: %s/%s v%s", req.Author, req.Name, req.Version)
-			if err := h.platformFeeRepo.DebitWallet(r.Context(), user.UserID, feeAmountUSD, description); err != nil {
-				logrus.WithError(err).Error("Failed to debit wallet for platform fee")
-				http.Error(w, "Failed to process payment: "+err.Error(), http.StatusInternalServerError)
-				return
+			if h.walletSvc != nil {
+				// Use unified wallet service for debit
+				_, err := h.walletSvc.DebitForFeePayment(r.Context(), walletID, feeAmountUSD, feeType, description)
+				if err != nil {
+					logrus.WithError(err).Error("Failed to debit wallet for platform fee")
+					http.Error(w, "Failed to process payment: "+err.Error(), http.StatusInternalServerError)
+					return
+				}
+			} else {
+				// Fall back to legacy platform fee repo
+				if err := h.platformFeeRepo.DebitWallet(r.Context(), user.UserID, feeAmountUSD, description); err != nil {
+					logrus.WithError(err).Error("Failed to debit wallet for platform fee")
+					http.Error(w, "Failed to process payment: "+err.Error(), http.StatusInternalServerError)
+					return
+				}
 			}
 
 			// Record platform fee
@@ -336,6 +364,8 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		BundleSize:    sql.NullInt32{Int32: int32(len(wasmBinary)), Valid: true},
 		// Store source code for lazy bundling if no WASM binary
 		SourceCode: sql.NullString{String: req.Source.Code, Valid: req.Source.Code != ""},
+		// Store readme for function page documentation
+		Readme: sql.NullString{String: req.Source.Readme, Valid: req.Source.Readme != ""},
 	}
 
 	// Link to deployment if provided
@@ -360,9 +390,46 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Eager bundling: compile Python source → WASM at publish time.
+	// This eliminates the cold-start penalty and surfaces compilation errors early.
+	if h.bundleService != nil && version.SourceCode.Valid && version.SourceCode.String != "" {
+		if strings.HasPrefix(version.Runtime, "python") {
+			go func(v *storage.RegistryFunctionVersion) {
+				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+				defer cancel()
+				if _, err := h.bundleService.Bundle(ctx, v); err != nil {
+					logrus.WithError(err).WithFields(logrus.Fields{
+						"function_id": v.FunctionID,
+						"version":     v.Version,
+						"runtime":     v.Runtime,
+					}).Warn("Eager bundling failed — will retry at execution time")
+				} else {
+					logrus.WithFields(logrus.Fields{
+						"function_id": v.FunctionID,
+						"version":     v.Version,
+						"runtime":     v.Runtime,
+					}).Info("Eager bundling completed")
+				}
+			}(version)
+		}
+	}
+
 	// Update latest version pointer
 	if err := h.repo.UpdateFunctionLatestVersion(fnID, req.Version); err != nil {
 		logrus.WithError(err).Error("Failed to update latest version")
+	}
+
+	// Auto-generate README if not provided (async, don't block publish response)
+	if h.autoReadmeSvc != nil && (!version.Readme.Valid || version.Readme.String == "") {
+		go func() {
+			_, err := h.autoReadmeSvc.GenerateForVersion(r.Context(), fnID, req.Version, false)
+			if err != nil {
+				logrus.WithError(err).WithFields(logrus.Fields{
+					"function_id": fnID,
+					"version":     req.Version,
+				}).Warn("Auto-readme generation failed")
+			}
+		}()
 	}
 
 	// Initialize rating
@@ -493,6 +560,33 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 
 		if err := h.repo.CreateOrUpdateVerificationStatus(status); err != nil {
 			logrus.WithError(err).WithField("function_version_id", version.ID).Warn("Failed to set baseline verification status")
+		}
+	}
+
+	// Auto-generate a permissive input schema if the manifest didn't provide one.
+	// This ensures the function_cache and validation pipeline have a schema to work with.
+	var inputSchema json.RawMessage
+	var isStrict bool
+	if m.Input != nil && m.Input.Schema != nil && len(m.Input.Schema) > 0 {
+		inputSchema = m.Input.Schema
+	}
+
+	if inputSchema == nil || len(inputSchema) == 0 {
+		permissiveSchema, schemaErr := json.Marshal(map[string]interface{}{
+			"type":                 "object",
+			"additionalProperties": true,
+			"properties":           map[string]interface{}{},
+		})
+		if schemaErr == nil {
+			inputSchema = permissiveSchema
+		}
+	}
+
+	if inputSchema != nil && len(inputSchema) > 0 {
+		if err := h.repo.UpsertFunctionInputSchema(version.ID, inputSchema, isStrict); err != nil {
+			logrus.WithError(err).WithField("function_version_id", version.ID).Warn("Failed to save input schema")
+		} else {
+			logrus.WithField("function_version_id", version.ID).Info("Saved input schema for published function")
 		}
 	}
 

@@ -3,13 +3,24 @@ package execution
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
+
+// getUserIDFromRequest extracts user ID from request context or returns empty string if not authenticated
+func getUserIDFromRequest(r *http.Request) string {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		return ""
+	}
+	return claims.UserID.String()
+}
 
 // validateRuntimeForPlan checks if the requested runtime is allowed for the tenant's plan
 func validateRuntimeForPlan(tenantPlan string, runtime string) error {

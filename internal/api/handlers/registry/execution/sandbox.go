@@ -248,6 +248,7 @@ func (se *SandboxExecutor) ensureRuntimeRunning(ctx context.Context, wasmPath st
 	}
 
 	// Build command arguments
+	cpythonPath, stdlibPath := resolveCPythonPaths()
 	args := []string{
 		"--port", fmt.Sprintf("%d", port),
 		"--wasm", wasmPath,
@@ -256,6 +257,8 @@ func (se *SandboxExecutor) ensureRuntimeRunning(ctx context.Context, wasmPath st
 		"--memory-mb", fmt.Sprintf("%d", maxMemoryMB),
 		"--function", fnVersion.FunctionID.String(),
 		"--version", fnVersion.Version,
+		"--cpython-wasm-path", cpythonPath,
+		"--cpython-stdlib-path", stdlibPath,
 	}
 
 	// Add tenant-id for KV namespace isolation when available.
@@ -691,6 +694,18 @@ func findLocalRuntime() (string, error) {
 	return "", fmt.Errorf("local runtime not found, searched: %v", paths)
 }
 
+// resolveCPythonPaths returns absolute paths to the CPython-WASI binary and
+// stdlib directory, derived from the current working directory (repo root).
+func resolveCPythonPaths() (wasmPath string, stdlibPath string) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		cwd = "."
+	}
+	wasmPath = filepath.Join(cwd, "runtimes", "cpython.wasm")
+	stdlibPath = filepath.Join(cwd, "runtimes", "cpython-wasi", "lib")
+	return
+}
+
 // ---------------------------------------------------------------------------
 // Global SandboxClient for daemon mode (Phase 3.1)
 //
@@ -721,7 +736,52 @@ func InitSandboxClient() error {
 	}
 	globalSandboxClient = client
 	logrus.Info("SandboxClient daemon initialized successfully")
+
+	// Start a background watchdog goroutine that monitors daemon health
+	// and restarts it if it crashes.
+	go sandboxWatchdog()
+
 	return nil
+}
+
+// sandboxWatchdog monitors the daemon process and restarts it if it dies.
+// Runs in a goroutine until the daemon is shut down via ShutdownSandboxClient.
+func sandboxWatchdog() {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			globalClientMu.Lock()
+			client := globalSandboxClient
+			globalClientMu.Unlock()
+
+			if client == nil {
+				// Shutdown was called, exit watchdog
+				return
+			}
+
+			if !client.IsRunning() {
+				logrus.Warn("SandboxClient daemon has died, restarting...")
+				client.Close() // clean up stale resources
+
+				newClient, err := NewSandboxClient("")
+				if err != nil {
+					logrus.WithError(err).Error("Failed to restart sandbox daemon, will retry on next tick")
+					globalClientMu.Lock()
+					globalSandboxClient = nil // prevent further watchdog attempts until re-init
+					globalClientMu.Unlock()
+					return
+				}
+
+				globalClientMu.Lock()
+				globalSandboxClient = newClient
+				globalClientMu.Unlock()
+				logrus.Info("SandboxClient daemon restarted successfully")
+			}
+		}
+	}
 }
 
 // ShutdownSandboxClient stops the persistent runtime daemon.
@@ -754,19 +814,53 @@ func ExecuteLocally(fnVersion *storage.RegistryFunctionVersion, input json.RawMe
 // executeLocallyWithLimits executes a function locally with specific resource limits.
 // fn and backendRepo are optional; when provided and tenant has enterprise plan, enables MicroVM for python-microvm runtime.
 func executeLocallyWithLimits(fnVersion *storage.RegistryFunctionVersion, input json.RawMessage, maxMemoryMB, maxCPUTimeMs int, fn *storage.RegistryFunction, backendRepo storage.Repository) (json.RawMessage, error) {
+	logrus.WithFields(logrus.Fields{
+		"input_len": len(input),
+		"input":     string(input),
+		"function_id": fnVersion.FunctionID,
+	}).Debug("executeLocallyWithLimits: input received")
+	start := time.Now()
+	execPath := "unknown"
+	var outputSize int
+
+	defer func() {
+		logrus.WithFields(logrus.Fields{
+			"function_id":   fnVersion.FunctionID,
+			"version":         fnVersion.Version,
+			"runtime":         fnVersion.Runtime,
+			"execution_path":  execPath,
+			"input_size":      len(input),
+			"output_size":     outputSize,
+			"duration_ms":     time.Since(start).Milliseconds(),
+			"max_memory_mb":   maxMemoryMB,
+			"max_cpu_ms":      maxCPUTimeMs,
+		}).Info("Local execution completed")
+	}()
+
+	// Auto-populate WasmBinary from SourceCode for Python runtimes when no WASM binary exists.
+	// This eliminates the "function version has no WASM binary" error for source-only functions.
+	if len(fnVersion.WasmBinary) == 0 && fnVersion.SourceCode.Valid && fnVersion.SourceCode.String != "" {
+		if strings.HasPrefix(fnVersion.Runtime, "python") {
+			logrus.WithFields(logrus.Fields{
+				"function_id": fnVersion.FunctionID,
+				"version":     fnVersion.Version,
+				"runtime":     fnVersion.Runtime,
+			}).Info("executeLocallyWithLimits: auto-populating WasmBinary from SourceCode for Python")
+			fnVersionCopy := *fnVersion
+			fnVersionCopy.WasmBinary = []byte(fnVersion.SourceCode.String)
+			return executeLocallyWithLimits(&fnVersionCopy, input, maxMemoryMB, maxCPUTimeMs, fn, backendRepo)
+		}
+	}
+
 	// Try the persistent daemon client first (Phase 3.1)
 	if client := getGlobalSandboxClient(); client != nil && len(fnVersion.WasmBinary) > 0 {
-		inputBytes, err := json.Marshal(input)
-		if err != nil {
-			return nil, &ExecutionError{
-				Err: fmt.Errorf("failed to marshal input: %w", err),
-				ResourceUsage: &ResourceUsage{
-					MaxMemoryMB:  maxMemoryMB,
-					MaxCPUTimeMs: maxCPUTimeMs,
-				},
-				TerminatedBy: "error",
-			}
-		}
+		logrus.WithFields(logrus.Fields{
+			"function_id":   fnVersion.FunctionID,
+			"version":       fnVersion.Version,
+			"wasm_binary_len": len(fnVersion.WasmBinary),
+		}).Info("executeLocallyWithLimits: using DAEMON path")
+		execPath = "daemon"
+		inputBytes := input
 		// Extract tenant ID for KV namespace isolation in daemon mode.
 		tenantID := ""
 		if fn != nil && fn.TenantID != nil {
@@ -785,11 +879,13 @@ func executeLocallyWithLimits(fnVersion *storage.RegistryFunctionVersion, input 
 				}
 			}
 		} else {
+			outputSize = len(output)
 			return json.RawMessage(output), nil
 		}
 	}
 
 	// Legacy: per-request sandbox executor
+	execPath = "per-request"
 	executor, err := NewSandboxExecutor()
 	if err != nil {
 		return nil, &ExecutionError{
@@ -804,17 +900,8 @@ func executeLocallyWithLimits(fnVersion *storage.RegistryFunctionVersion, input 
 	defer executor.Close()
 
 	// Execute the function with resource limits
-	inputBytes, err := json.Marshal(input)
-	if err != nil {
-		return nil, &ExecutionError{
-			Err: fmt.Errorf("failed to marshal input: %w", err),
-			ResourceUsage: &ResourceUsage{
-				MaxMemoryMB:  maxMemoryMB,
-				MaxCPUTimeMs: maxCPUTimeMs,
-			},
-			TerminatedBy: "error",
-		}
-	}
+	// input is json.RawMessage ([]byte) — don't re-marshal or it becomes a JSON array of byte values
+	inputBytes := []byte(input)
 
 	enterpriseConf := buildEnterpriseConfig(fnVersion, fn, backendRepo)
 
@@ -838,6 +925,7 @@ func executeLocallyWithLimits(fnVersion *storage.RegistryFunctionVersion, input 
 		}
 	}
 
+	outputSize = len(output)
 	return json.RawMessage(output), nil
 }
 
@@ -954,13 +1042,15 @@ func executeWithLazyBundling(fnVersion *storage.RegistryFunctionVersion, input j
 		return nil, fmt.Errorf("failed to parse manifest: %w", err)
 	}
 
-	// python-microvm: use Python source directly (no WASM compilation); CPython runs in Firecracker
-	if fnVersion.Runtime == plans.RuntimePythonMicroVM {
+	// python-microvm and other Python runtimes: use Python source directly.
+	// The engine detects Python source code and routes to RustPython or MicroPython executor.
+	// Bundling to WASM is not needed for daemon-mode execution.
+	if fnVersion.Runtime == plans.RuntimePythonMicroVM || strings.HasPrefix(fnVersion.Runtime, "python") {
 		logrus.WithFields(logrus.Fields{
 			"function_id": fnVersion.FunctionID,
 			"version":     fnVersion.Version,
 			"runtime":     fnVersion.Runtime,
-		}).Info("Using Python source for MicroVM (no WASM bundle)")
+		}).Info("Using Python source directly for runtime (no WASM bundle)")
 
 		bundledFnVersion := *fnVersion
 		bundledFnVersion.WasmBinary = []byte(sourceCode) // Python source as "binary" for runtime
@@ -1138,10 +1228,13 @@ func NewSandboxClient(runtimePath string) (*SandboxClient, error) {
 	daemonURL := fmt.Sprintf("http://127.0.0.1:%d", port)
 
 	// Build daemon command — enable daemon mode and AOT cache
+	cpythonPath, stdlibPath := resolveCPythonPaths()
 	args := []string{
 		"--port", fmt.Sprintf("%d", port),
 		"--daemon-mode",
 		"--aot-cache-enabled",
+		"--cpython-wasm-path", cpythonPath,
+		"--cpython-stdlib-path", stdlibPath,
 	}
 
 	cmd := exec.Command(runtimePath, args...)
@@ -1212,10 +1305,44 @@ func (sc *SandboxClient) Close() {
 }
 
 // IsRunning reports whether the daemon process is still alive.
+// It pings the daemon's health endpoint to detect externally-killed processes
+// that the process-level check would miss.
 func (sc *SandboxClient) IsRunning() bool {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
-	return sc.isRunning
+
+	if !sc.isRunning {
+		return false
+	}
+
+	// Check if the process is actually alive at the OS level
+	if sc.daemonCmd != nil && sc.daemonCmd.Process != nil {
+		if err := sc.daemonCmd.Process.Signal(syscall.Signal(0)); err != nil {
+			sc.isRunning = false
+			return false
+		}
+	}
+
+	// Ping the daemon's health endpoint to detect zombie/unresponsive processes
+	healthURL := sc.daemonURL + "/health"
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "GET", healthURL, nil)
+	if err != nil {
+		return sc.isRunning
+	}
+	client := &http.Client{Timeout: 500 * time.Millisecond}
+	resp, err := client.Do(req)
+	if err != nil {
+		sc.isRunning = false
+		return false
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		sc.isRunning = false
+		return false
+	}
+	return true
 }
 
 // Execute sends a function execution request to the persistent daemon.
@@ -1223,6 +1350,10 @@ func (sc *SandboxClient) IsRunning() bool {
 // returning the result without spawning a new process.
 // tenantID is used for KV namespace isolation in the daemon's per-tenant store.
 func (sc *SandboxClient) Execute(fnVersion *storage.RegistryFunctionVersion, input []byte, timeoutMs int, tenantID string) ([]byte, error) {
+	logrus.WithFields(logrus.Fields{
+		"input_len": len(input),
+		"input":     string(input),
+	}).Debug("SandboxClient.Execute: input received")
 	if len(fnVersion.WasmBinary) == 0 {
 		return nil, fmt.Errorf("function version has no WASM binary")
 	}
@@ -1264,6 +1395,8 @@ func (sc *SandboxClient) Execute(fnVersion *storage.RegistryFunctionVersion, inp
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal execution request: %w", err)
 	}
+
+	logrus.WithField("request_json", string(jsonBody)).Debug("SandboxClient: sending execution request to daemon")
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutMs+5000)*time.Millisecond)
 	defer cancel()

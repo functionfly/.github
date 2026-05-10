@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/agent/billing"
+	"github.com/functionfly/functionfly/internal/bundler"
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/dre/capsule"
 	drecrypto "github.com/functionfly/functionfly/internal/dre/crypto"
@@ -15,6 +17,20 @@ import (
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 )
+
+// DNARecorder records execution metrics for the DNA analysis pipeline.
+type DNARecorder interface {
+	RecordExecutionFromPipeline(ctx context.Context, functionID, functionType string, durationMs int, statusCode int, coldStart bool, region string)
+}
+
+// BillingController interface for wallet operations
+type BillingController = billing.ControllerInterface
+
+// AgentBillingControls holds the economic controls for an agent
+type AgentBillingControls = billing.AgentBillingControls
+
+// CreditBalanceUpdate captures a credit balance mutation.
+type CreditBalanceUpdate = billing.CreditBalanceUpdate
 
 // Handler contains dependencies for execution handlers
 type Handler struct {
@@ -26,6 +42,8 @@ type Handler struct {
 	UsageTracker UsageTracker
 	// PrivacyService provides privacy and compliance features
 	PrivacyService PrivacyService
+	// DNARecorder records execution metrics for DNA analysis (optional)
+	DNARecorder DNARecorder
 	// NodeID is the identifier of this execution node (used in MEG records and certificates)
 	NodeID string
 	// Region is the geographic region of this node
@@ -34,6 +52,13 @@ type Handler struct {
 	NodeKey ed25519.PrivateKey
 	// PlatformKey is the optional Ed25519 platform key; when set, certs include a platform signature (Platform Key ID in UI).
 	PlatformKey ed25519.PrivateKey
+	// BillingController handles wallet operations for paid function execution (optional)
+	BillingController BillingController
+	// RuntimeRouter routes execution to the appropriate engine based on runtime + tier.
+	// When nil, execution falls back to the legacy direct path.
+	RuntimeRouter *RuntimeRouter
+	// BundleService provides eager bundling at publish time (optional).
+	BundleService *bundler.BundleService
 }
 
 // PrivacyService interface for privacy and compliance features

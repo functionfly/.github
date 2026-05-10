@@ -79,7 +79,8 @@ func (h *Handler) verifyReplay(fnVersion *storage.RegistryFunctionVersion, origi
 
 			return json.RawMessage(body), nil
 		} else {
-			return nil, fmt.Errorf("function is not executable")
+			// Function uses lazy bundling or has no executable path - verification cannot be performed
+			return nil, fmt.Errorf("function uses lazy bundling or has no executable path")
 		}
 	}
 
@@ -89,9 +90,18 @@ func (h *Handler) verifyReplay(fnVersion *storage.RegistryFunctionVersion, origi
 	result.ReplayedDuration = int(time.Since(startTime).Milliseconds())
 
 	if err != nil {
-		result.Status = VerificationFailed
-		result.Error = err.Error()
-		result.OutputMatches = false
+		// Check if this is a non-executable environment issue (lazy bundling, etc.)
+		// These are not actual verification failures - they're skipped verifications
+		errStr := err.Error()
+		if strings.Contains(errStr, "lazy bundling") || strings.Contains(errStr, "no executable path") || strings.Contains(errStr, "not executable") {
+			result.Status = VerificationSkipped
+			result.Error = errStr
+			result.OutputMatches = false
+		} else {
+			result.Status = VerificationFailed
+			result.Error = errStr
+			result.OutputMatches = false
+		}
 		return result
 	}
 

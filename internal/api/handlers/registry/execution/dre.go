@@ -81,6 +81,11 @@ func (h *Handler) buildAndStoreMEG(
 	resourceUsage *ResourceUsage,
 	durationMs int,
 ) {
+	// Handle empty/nil output - use empty JSON object as default for MEG hashing
+	if output == nil || len(output) == 0 {
+		output = []byte("{}")
+	}
+
 	// Generate a nonce for this MEG construction
 	nonce := fmt.Sprintf("%d", time.Now().UnixNano())
 

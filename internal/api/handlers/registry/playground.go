@@ -105,9 +105,13 @@ func (h *PlaygroundHandler) HandlePlaygroundExecute(w http.ResponseWriter, r *ht
 	// Use the actual server port from the request or environment
 	serverPort := os.Getenv("PORT")
 	if serverPort == "" {
-		serverPort = "8090" // Default to 8090 since that's what we're running on
+		serverPort = "8080" // Default to 8080 (orchestrator API listen port)
 	}
-	targetURL := fmt.Sprintf("http://localhost:%s/v1/fx/%s/%s@%s", serverPort, author, name, fnVersion.Version)
+	// Proxy to the execution endpoint without @version in the path.
+	// Version is already included in execRequest.Version; gorilla/mux
+	// does not support two variables in a single path segment (e.g.
+	// {name}@{version}), so the @version suffix would 404.
+	targetURL := fmt.Sprintf("http://localhost:%s/v1/fx/%s/%s", serverPort, author, name)
 
 	proxyReq, err := http.NewRequestWithContext(r.Context(), "POST", targetURL, bytes.NewReader(reqBytes))
 	if err != nil {
@@ -182,11 +186,148 @@ func (h *PlaygroundHandler) HandlePlaygroundExecute(w http.ResponseWriter, r *ht
 	if execResponse.Data != nil {
 		outputJSON, _ = json.Marshal(execResponse.Data)
 	}
-	executionID := h.recordPlaygroundExecution(fn.ID.String(), fnVersion.ID.String(), execReq.Input, outputJSON, resp.StatusCode, int(latencyMs))
+	executionID := h.recordPlaygroundExecution(fn.ID.String(), fnVersion.Version, execReq.Input, outputJSON, resp.StatusCode, int(latencyMs))
 	response.ExecutionID = executionID
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+// HandlePlaygroundExecuteStream executes a function and streams progress via SSE.
+// Event types: compilation:start, compilation:complete, execution:start, execution:progress,
+// execution:complete, execution:error.
+func (h *PlaygroundHandler) HandlePlaygroundExecuteStream(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	author := vars["author"]
+	name := vars["name"]
+
+	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	if err != nil {
+		http.Error(w, "Function not found", http.StatusNotFound)
+		return
+	}
+
+	fnVersion, err := h.repo.GetLatestFunctionVersion(fn.ID)
+	if err != nil {
+		http.Error(w, "Function version not found", http.StatusNotFound)
+		return
+	}
+
+	var execReq struct {
+		Input json.RawMessage `json:"input"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&execReq); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// SSE headers
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming not supported", http.StatusInternalServerError)
+		return
+	}
+
+	sendEvent := func(eventType string, payload interface{}) {
+		data, _ := json.Marshal(map[string]interface{}{
+			"event": eventType,
+			"data":  payload,
+			"ts":    time.Now().UnixMilli(),
+		})
+		fmt.Fprintf(w, "data: %s\n\n", data)
+		flusher.Flush()
+	}
+
+	start := time.Now()
+
+	// 1. compilation:start
+	sendEvent("compilation:start", map[string]string{
+		"runtime": fnVersion.Runtime,
+		"version": fnVersion.Version,
+	})
+
+	// Create execution request
+	execRequest := functionregistry.ExecutionRequest{
+		Author:  author,
+		Name:    name,
+		Version: fnVersion.Version,
+		Input:   execReq.Input,
+	}
+
+	reqBytes, err := json.Marshal(execRequest)
+	if err != nil {
+		sendEvent("execution:error", map[string]string{"message": "failed to marshal request"})
+		return
+	}
+
+	// 2. compilation:complete (proxy to local execution endpoint)
+	sendEvent("compilation:complete", map[string]interface{}{
+		"compilation_ms": time.Since(start).Milliseconds(),
+	})
+
+	serverPort := os.Getenv("PORT")
+	if serverPort == "" {
+		serverPort = "8080"
+	}
+	targetURL := fmt.Sprintf("http://localhost:%s/v1/fx/%s/%s@%s", serverPort, author, name, fnVersion.Version)
+
+	proxyReq, err := http.NewRequestWithContext(r.Context(), "POST", targetURL, bytes.NewReader(reqBytes))
+	if err != nil {
+		sendEvent("execution:error", map[string]string{"message": "failed to create proxy request"})
+		return
+	}
+	proxyReq.Header.Set("Content-Type", "application/json")
+	proxyReq.Header.Set("X-FunctionFly-Playground", "true")
+
+	// 3. execution:start
+	sendEvent("execution:start", map[string]string{
+		"execution_id": "",
+		"target_url":   targetURL,
+	})
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(proxyReq)
+	latencyMs := time.Since(start).Milliseconds()
+
+	if err != nil {
+		sendEvent("execution:error", map[string]string{
+			"message": err.Error(),
+			"phase":   "proxy",
+		})
+		return
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+
+	var execResponse functionregistry.ExecutionResponse
+	if err := json.Unmarshal(body, &execResponse); err != nil {
+		sendEvent("execution:error", map[string]string{
+			"message": "failed to parse execution response",
+			"raw":     string(body),
+		})
+		return
+	}
+
+	// 4. execution:complete
+	var outputJSON json.RawMessage
+	if execResponse.Data != nil {
+		outputJSON, _ = json.Marshal(execResponse.Data)
+	}
+	executionID := h.recordPlaygroundExecution(fn.ID.String(), fnVersion.Version, execReq.Input, outputJSON, resp.StatusCode, int(latencyMs))
+
+	sendEvent("execution:complete", map[string]interface{}{
+		"success":      execResponse.OK,
+		"output":       execResponse.Data,
+		"latency_ms":   latencyMs,
+		"version":      execResponse.Version,
+		"execution_id": executionID,
+		"cached":       false,
+	})
 }
 
 // HandlePlaygroundShare creates a shareable playground URL
@@ -232,7 +373,7 @@ type PlaygroundExecuteResponse struct {
 }
 
 // recordPlaygroundExecution records a playground execution to the database and returns the public ID
-func (h *PlaygroundHandler) recordPlaygroundExecution(functionID, versionID string, input, output json.RawMessage, statusCode, durationMs int) string {
+func (h *PlaygroundHandler) recordPlaygroundExecution(functionID, version string, input, output json.RawMessage, statusCode, durationMs int) string {
 	// Generate a short public ID
 	publicID := generatePublicID()
 
@@ -247,7 +388,7 @@ func (h *PlaygroundHandler) recordPlaygroundExecution(functionID, versionID stri
 	exec := &registry.RegistryExecutionPublic{
 		PublicID:   publicID,
 		FunctionID: fnID,
-		Version:    versionID,
+		Version:    version,
 		InputJSON:  input,
 		OutputJSON: output,
 		DurationMs: durationMs,
@@ -271,7 +412,7 @@ func (h *PlaygroundHandler) recordPlaygroundExecution(functionID, versionID stri
 
 // generatePublicID generates a short, URL-friendly public ID
 func generatePublicID() string {
-	b := make([]byte, 6)
+	b := make([]byte, 8)
 	rand.Read(b)
 	return "exec_" + base64.URLEncoding.EncodeToString(b)[:10]
 }
@@ -768,7 +909,7 @@ func (h *PlaygroundHandler) HandleExecuteAt(w http.ResponseWriter, r *http.Reque
 	}
 	serverPort := os.Getenv("PORT")
 	if serverPort == "" {
-		serverPort = "8090"
+		serverPort = "8080" // Default to 8080 (orchestrator API listen port)
 	}
 	targetURL := fmt.Sprintf("http://localhost:%s/v1/fx/%s/%s@%s", serverPort, username, functionName, fnVersion.Version)
 	proxyReq, err := http.NewRequestWithContext(r.Context(), "POST", targetURL, bytes.NewReader(reqBytes))

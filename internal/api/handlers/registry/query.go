@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/functionregistry"
 	storageregistry "github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
@@ -193,6 +194,48 @@ func (h *Handler) HandleListFunctions(w http.ResponseWriter, r *http.Request) {
 	funcInfos, err := h.buildRegistryFunctionInfos(functions)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to enrich function list")
+		http.Error(w, "Failed to list functions", http.StatusInternalServerError)
+		return
+	}
+
+	response := functionregistry.ListFunctionsResponse{
+		Functions: convertToFunctionInfos(funcInfos),
+		Total:     total,
+		Limit:     limit,
+		Offset:    offset,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// HandleListMyFunctions handles GET /v2/functions/mine — returns registry functions owned by the authenticated user.
+func (h *Handler) HandleListMyFunctions(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit == 0 {
+		limit = DefaultLimit
+	}
+	if limit > MaxLimit {
+		limit = MaxLimit
+	}
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+
+	functions, total, err := h.repo.ListFunctionsByOwner(user.UserID, limit, offset)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list user's registry functions")
+		http.Error(w, "Failed to list functions", http.StatusInternalServerError)
+		return
+	}
+
+	funcInfos, err := h.buildRegistryFunctionInfos(functions)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to enrich user's function list")
 		http.Error(w, "Failed to list functions", http.StatusInternalServerError)
 		return
 	}

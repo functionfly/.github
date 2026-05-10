@@ -3,6 +3,7 @@ package execution
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage"
@@ -79,11 +80,21 @@ func (h *Handler) loadPricingConfig(ctx context.Context, tenantID uuid.UUID) (*E
 
 // recordBillingUsageEvent records a usage event for billing purposes
 func (h *Handler) recordBillingUsageEvent(fn *storage.RegistryFunction, exec *storage.RegistryFunctionExecution, resourceUsage *ResourceUsage) error {
-	// Only record billing events for tenant-owned functions (public functions don't bill the publisher)
-	if fn.TenantID == nil {
-		return nil // Public/unowned functions don't generate billing events
+	// Record billing events for tenant-owned functions
+	if fn.TenantID != nil {
+		return h.recordTenantBillingEvent(fn, exec, resourceUsage)
 	}
 
+	// For public functions, record revenue distribution to function author
+	if fn.PricePerCall > 0 {
+		return h.recordPaidFunctionRevenue(fn, exec)
+	}
+
+	return nil
+}
+
+// recordTenantBillingEvent records billing events for tenant-owned functions
+func (h *Handler) recordTenantBillingEvent(fn *storage.RegistryFunction, exec *storage.RegistryFunctionExecution, resourceUsage *ResourceUsage) error {
 	// Create usage event for this execution
 	usageEvent := &storage.UsageEvent{
 		TenantID:  *fn.TenantID,
@@ -133,6 +144,26 @@ func (h *Handler) recordBillingUsageEvent(fn *storage.RegistryFunction, exec *st
 		// Log but don't fail - cost allocation is not critical for execution
 		// This ensures execution continues even if cost tracking fails
 	}
+
+	return nil
+}
+
+// recordPaidFunctionRevenue records revenue distribution for paid public functions
+func (h *Handler) recordPaidFunctionRevenue(fn *storage.RegistryFunction, exec *storage.RegistryFunctionExecution) error {
+	if fn.PricePerCall <= 0 {
+		return nil
+	}
+
+	// Record the revenue event for the function author
+	// This tracks how much money was collected for this function execution
+	logrus.WithFields(logrus.Fields{
+		"function": fmt.Sprintf("%s/%s", fn.Author, fn.Name),
+		"price_usd": fn.PricePerCall,
+		"execution_id": exec.ID,
+	}).Info("Paid function execution - revenue to be distributed")
+
+	// TODO: If BackendRepo has a revenue tracking method, use it here
+	// For now, we log the revenue event which can be aggregated later
 
 	return nil
 }
