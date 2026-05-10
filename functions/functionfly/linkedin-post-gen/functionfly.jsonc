@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "cache_ttl": 0,
+  "category": "social",
+  "description": "Generate LinkedIn posts",
+  "deterministic": true,
+  "idempotent": true,
+  "input": {
+    "properties": {
+      "data": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "memory_mb": 128,
+  "name": "linkedin-post-gen",
+  "output": {
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "price_per_call": 0.02,
+  "runtime": "python3.12",
+  "tags": [
+    "social",
+    "linkedin",
+    "content"
+  ],
+  "tier": "pro",
+  "timeout_ms": 5000,
+  "title": "LinkedIn Post Generator",
+  "version": "1.0.0"
+}
