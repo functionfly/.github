@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "cache_ttl": 0,
+  "category": "data",
+  "description": "Validate data against schemas",
+  "deterministic": true,
+  "idempotent": true,
+  "input": {
+    "properties": {
+      "data": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "memory_mb": 128,
+  "name": "data-validator",
+  "output": {
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "price_per_call": 0.03,
+  "runtime": "python3.12",
+  "tags": [
+    "validate",
+    "data",
+    "schema"
+  ],
+  "tier": "pro",
+  "timeout_ms": 5000,
+  "title": "Data Validator",
+  "version": "1.0.0"
+}
