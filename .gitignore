@@ -17,6 +17,7 @@ fly
 /functionfly
 health-monitor
 migrate
+fix_user_tenants
 
 # Test binary, built with `go test -c`
 *.test
@@ -205,3 +206,19 @@ security-audit-simple.go.disabled
 .nx/
 .vercel
 .env*.local
+
+# Astro build output (generated)
+web/site/dist/
+web/docs/dist/
+
+# Playwright test artifacts
+.playwright-mcp/
+
+# Kilo CLI agent plans and state
+.kilo/plans/
+.kilo/package-lock.json
+.kilocode/
+.kilocode/package-lock.json
+
+# OpenCode state
+.opencode/
