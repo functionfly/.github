@@ -262,10 +262,66 @@ func (m *MockService) SendUsageExportReady(email, exportID, downloadURL string, 
 	return m.sendEmail(email, subject, text, html)
 }
 
+func (m *MockService) SendExecutionFailed(email, functionName, version, errorMsg string, failedAt time.Time) error {
+	subject := fmt.Sprintf("[TEST] Execution Failed: %s — FunctionFly", functionName)
+	tpl := ExecutionFailedTemplate(functionName, version, errorMsg, failedAt)
+	html := TestBannerHTML(tpl.HTML)
+	text := TestBannerText(tpl.Text)
+	return m.sendEmail(email, subject, text, html)
+}
+
+func (m *MockService) SendRateLimitExceeded(email string, limitType string, currentUsage, limit int64, windowDescription string, upgradeURL string) error {
+	subject := "[TEST] Rate Limit Exceeded — FunctionFly"
+	tpl := RateLimitExceededTemplate(limitType, currentUsage, limit, windowDescription, upgradeURL)
+	html := TestBannerHTML(tpl.HTML)
+	text := TestBannerText(tpl.Text)
+	return m.sendEmail(email, subject, text, html)
+}
+
+func (m *MockService) SendFunctionDeleted(email, functionName string, deletedAt time.Time, restoreURL string) error {
+	subject := fmt.Sprintf("[TEST] Function Deleted: %s — FunctionFly", functionName)
+	tpl := FunctionDeletedTemplate(functionName, deletedAt, restoreURL)
+	html := TestBannerHTML(tpl.HTML)
+	text := TestBannerText(tpl.Text)
+	return m.sendEmail(email, subject, text, html)
+}
+
 // Billing & Payments
 func (m *MockService) SendPaymentFailed(email string, amount float64, dueDate time.Time, retryURL string) error {
 	subject := "[TEST] Payment Failed — FunctionFly"
 	tpl := PaymentFailedTemplate(amount, dueDate, retryURL)
+	html := TestBannerHTML(tpl.HTML)
+	text := TestBannerText(tpl.Text)
+	return m.sendEmail(email, subject, text, html)
+}
+
+func (m *MockService) SendPaymentSuccess(email string, amount float64, description string, chargedAt time.Time, receiptURL string) error {
+	subject := "[TEST] Payment Successful — FunctionFly"
+	tpl := PaymentSuccessTemplate(amount, description, chargedAt, receiptURL)
+	html := TestBannerHTML(tpl.HTML)
+	text := TestBannerText(tpl.Text)
+	return m.sendEmail(email, subject, text, html)
+}
+
+func (m *MockService) SendTrialExpiring(email string, daysRemaining int, upgradeURL string) error {
+	subject := "[TEST] Trial Ending Soon — FunctionFly"
+	tpl := TrialExpiringTemplate(daysRemaining, upgradeURL)
+	html := TestBannerHTML(tpl.HTML)
+	text := TestBannerText(tpl.Text)
+	return m.sendEmail(email, subject, text, html)
+}
+
+func (m *MockService) SendSubscriptionChange(email, changeType, oldPlan, newPlan string, effectiveDate time.Time, manageURL string) error {
+	subject := "[TEST] Subscription Changed — FunctionFly"
+	tpl := SubscriptionChangeTemplate(changeType, oldPlan, newPlan, effectiveDate, manageURL)
+	html := TestBannerHTML(tpl.HTML)
+	text := TestBannerText(tpl.Text)
+	return m.sendEmail(email, subject, text, html)
+}
+
+func (m *MockService) SendUsageAlert(email string, usageType string, currentUsage, limit int64, percentageUsed int, resetDate string, upgradeURL string) error {
+	subject := fmt.Sprintf("[TEST] Usage Alert: %d%% — FunctionFly", percentageUsed)
+	tpl := UsageAlertTemplate(usageType, currentUsage, limit, percentageUsed, resetDate, upgradeURL)
 	html := TestBannerHTML(tpl.HTML)
 	text := TestBannerText(tpl.Text)
 	return m.sendEmail(email, subject, text, html)
@@ -349,6 +405,22 @@ func (m *MockService) SendAPIKeyRotationReminder(email, keyName, keyID string, e
 func (m *MockService) SendMaintenanceNotice(email string, windowStart, windowEnd time.Time, affectedServices []string) error {
 	subject := "[TEST] Scheduled Maintenance Notice — FunctionFly"
 	tpl := MaintenanceNoticeTemplate(windowStart, windowEnd, affectedServices)
+	html := TestBannerHTML(tpl.HTML)
+	text := TestBannerText(tpl.Text)
+	return m.sendEmail(email, subject, text, html)
+}
+
+func (m *MockService) SendReferralInvite(email, referrerName, inviteURL, rewardDescription string, expiresAt time.Time) error {
+	subject := "[TEST] You've Been Invited! — FunctionFly"
+	tpl := ReferralInviteTemplate(referrerName, inviteURL, rewardDescription, expiresAt)
+	html := TestBannerHTML(tpl.HTML)
+	text := TestBannerText(tpl.Text)
+	return m.sendEmail(email, subject, text, html)
+}
+
+func (m *MockService) SendReferralReward(email, rewardType, rewardValue, claimURL string, expiryDate time.Time) error {
+	subject := "[TEST] You Earned a Reward! — FunctionFly"
+	tpl := ReferralRewardTemplate(rewardType, rewardValue, claimURL, expiryDate)
 	html := TestBannerHTML(tpl.HTML)
 	text := TestBannerText(tpl.Text)
 	return m.sendEmail(email, subject, text, html)

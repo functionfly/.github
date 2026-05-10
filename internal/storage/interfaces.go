@@ -246,6 +246,8 @@ type Repository interface {
 	GetPricingBundleByID(ctx context.Context, id uuid.UUID) (*PricingBundle, error)
 	GetPricingBundleByStripePriceID(ctx context.Context, stripePriceID string) (*PricingBundle, error)
 	UpdatePricingBundleStripePrice(ctx context.Context, slug, stripePriceID string) error
+	CountActiveFounderModeRegistrations(ctx context.Context) (int, error)
+	CountRecentSuccessfulDeployments(ctx context.Context) (int, error)
 
 	// Database-Driven Agent Tier Pricing (replaces hardcoded constants)
 	GetAgentTierPricingBySlug(ctx context.Context, slug string) (*AgentTierPricing, error)
@@ -274,6 +276,7 @@ type Repository interface {
 	CreateBundleSubscription(ctx context.Context, sub *BundleSubscription) error
 	UpdateBundleSubscription(ctx context.Context, sub *BundleSubscription) error
 	GetBundleSubscriptionByTenant(ctx context.Context, tenantID uuid.UUID) (*BundleSubscription, error)
+	GetBundleSubscriptionByStripeID(ctx context.Context, stripeSubID string) (*BundleSubscription, error)
 	ListBundleSubscriptionsByTenant(ctx context.Context, tenantID uuid.UUID) ([]*BundleSubscription, error)
 
 	// App operations

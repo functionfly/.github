@@ -234,6 +234,24 @@ func (s *SMTPService) SendUsageExportReady(email, exportID, downloadURL string, 
 	return s.sendEmail(email, subject, tpl.Text, tpl.HTML)
 }
 
+func (s *SMTPService) SendExecutionFailed(email, functionName, version, errorMsg string, failedAt time.Time) error {
+	subject := fmt.Sprintf("Execution Failed: %s — FunctionFly", functionName)
+	tpl := ExecutionFailedTemplate(functionName, version, errorMsg, failedAt)
+	return s.sendEmail(email, subject, tpl.Text, tpl.HTML)
+}
+
+func (s *SMTPService) SendRateLimitExceeded(email string, limitType string, currentUsage, limit int64, windowDescription string, upgradeURL string) error {
+	subject := "Rate Limit Exceeded — FunctionFly"
+	tpl := RateLimitExceededTemplate(limitType, currentUsage, limit, windowDescription, upgradeURL)
+	return s.sendEmail(email, subject, tpl.Text, tpl.HTML)
+}
+
+func (s *SMTPService) SendFunctionDeleted(email, functionName string, deletedAt time.Time, restoreURL string) error {
+	subject := fmt.Sprintf("Function Deleted: %s — FunctionFly", functionName)
+	tpl := FunctionDeletedTemplate(functionName, deletedAt, restoreURL)
+	return s.sendEmail(email, subject, tpl.Text, tpl.HTML)
+}
+
 // Billing & Payments
 func (s *SMTPService) SendPaymentFailed(email string, amount float64, dueDate time.Time, retryURL string) error {
 	subject := "Payment Failed — FunctionFly"
@@ -244,6 +262,30 @@ func (s *SMTPService) SendPaymentFailed(email string, amount float64, dueDate ti
 func (s *SMTPService) SendInvoiceReady(email, period string, amount float64, invoiceURL string) error {
 	subject := fmt.Sprintf("Invoice Ready: %s — FunctionFly", period)
 	tpl := InvoiceReadyTemplate(period, amount, invoiceURL)
+	return s.sendEmail(email, subject, tpl.Text, tpl.HTML)
+}
+
+func (s *SMTPService) SendPaymentSuccess(email string, amount float64, description string, chargedAt time.Time, receiptURL string) error {
+	subject := "Payment Successful — FunctionFly"
+	tpl := PaymentSuccessTemplate(amount, description, chargedAt, receiptURL)
+	return s.sendEmail(email, subject, tpl.Text, tpl.HTML)
+}
+
+func (s *SMTPService) SendTrialExpiring(email string, daysRemaining int, upgradeURL string) error {
+	subject := "Trial Ending Soon — FunctionFly"
+	tpl := TrialExpiringTemplate(daysRemaining, upgradeURL)
+	return s.sendEmail(email, subject, tpl.Text, tpl.HTML)
+}
+
+func (s *SMTPService) SendSubscriptionChange(email, changeType, oldPlan, newPlan string, effectiveDate time.Time, manageURL string) error {
+	subject := "Subscription Changed — FunctionFly"
+	tpl := SubscriptionChangeTemplate(changeType, oldPlan, newPlan, effectiveDate, manageURL)
+	return s.sendEmail(email, subject, tpl.Text, tpl.HTML)
+}
+
+func (s *SMTPService) SendUsageAlert(email string, usageType string, currentUsage, limit int64, percentageUsed int, resetDate string, upgradeURL string) error {
+	subject := fmt.Sprintf("Usage Alert: %d%% — FunctionFly", percentageUsed)
+	tpl := UsageAlertTemplate(usageType, currentUsage, limit, percentageUsed, resetDate, upgradeURL)
 	return s.sendEmail(email, subject, tpl.Text, tpl.HTML)
 }
 
@@ -301,5 +343,17 @@ func (s *SMTPService) SendAPIKeyRotationReminder(email, keyName, keyID string, e
 func (s *SMTPService) SendMaintenanceNotice(email string, windowStart, windowEnd time.Time, affectedServices []string) error {
 	subject := "Scheduled Maintenance Notice — FunctionFly"
 	tpl := MaintenanceNoticeTemplate(windowStart, windowEnd, affectedServices)
+	return s.sendEmail(email, subject, tpl.Text, tpl.HTML)
+}
+
+func (s *SMTPService) SendReferralInvite(email, referrerName, inviteURL, rewardDescription string, expiresAt time.Time) error {
+	subject := "You've Been Invited! — FunctionFly"
+	tpl := ReferralInviteTemplate(referrerName, inviteURL, rewardDescription, expiresAt)
+	return s.sendEmail(email, subject, tpl.Text, tpl.HTML)
+}
+
+func (s *SMTPService) SendReferralReward(email, rewardType, rewardValue, claimURL string, expiryDate time.Time) error {
+	subject := "You Earned a Reward! — FunctionFly"
+	tpl := ReferralRewardTemplate(rewardType, rewardValue, claimURL, expiryDate)
 	return s.sendEmail(email, subject, tpl.Text, tpl.HTML)
 }

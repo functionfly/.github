@@ -44,6 +44,25 @@ const (
 	FeatureAdvancedAnalytics = "advanced_analytics"
 	FeatureTeamRBAC        = "team_rbac"
 	FeatureSecretRotation  = "secret_rotation"
+	// Playground features
+	FeatureCollaborativeSessions = "collaborative_sessions"
+)
+
+// Function Consciousness features
+const (
+	FeatureConsciousnessBasic      = "consciousness_basic"      // Pro+: system awareness score, daily digest, basic insights
+	FeatureConsciousnessAdvanced   = "consciousness_advanced"   // Enterprise+: real-time, predictive, auto-fix proposals
+	FeatureConsciousnessAutonomous = "consciousness_autonomous" // Agent Enterprise: fully autonomous actions
+)
+
+// Time Machine features
+const (
+	FeatureTimeMachineBasic      = "time_machine_basic"      // Free+: 24h window, basic diff
+	FeatureTimeMachineExtended   = "time_machine_extended"   // Starter+: 72h window
+	FeatureTimeMachinePro        = "time_machine_pro"        // Pro+: 30d window, full diffs, dry-run reconciliation
+	FeatureTimeMachineEnterprise = "time_machine_enterprise"  // Enterprise+: 90d window, live reconciliation, audit certs
+	FeatureTimeMachineUnlimited  = "time_machine_unlimited"   // Agent Enterprise: unlimited everything
+	FeatureTimeMachineInsurance  = "time_machine_insurance"   // Agent Enterprise: dedicated incident engineer
 )
 
 // Pro-only features
@@ -193,6 +212,40 @@ var featureDefinitions = map[string]Feature{
 		Type:        FeatureTypeBoolean,
 		Default:     false,
 	},
+	FeatureCollaborativeSessions: {
+		Key:         FeatureCollaborativeSessions,
+		Name:        "Collaborative Playground Sessions",
+		Description: "Real-time collaborative editing in function playground",
+		Category:    CategoryCore,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
+
+	// Function Consciousness features
+	FeatureConsciousnessBasic: {
+		Key:         FeatureConsciousnessBasic,
+		Name:        "Function Consciousness",
+		Description: "System awareness score, daily insight digest, basic cost and health insights",
+		Category:    CategoryAnalytics,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
+	FeatureConsciousnessAdvanced: {
+		Key:         FeatureConsciousnessAdvanced,
+		Name:        "Advanced Consciousness",
+		Description: "Real-time insights, predictive alerts, marketplace recommendations, auto-fix proposals",
+		Category:    CategoryAnalytics,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
+	FeatureConsciousnessAutonomous: {
+		Key:         FeatureConsciousnessAutonomous,
+		Name:        "Autonomous Consciousness",
+		Description: "Autonomous fix deployment, unlimited lookback, priority insight queue",
+		Category:    CategoryAnalytics,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
 
 	// Pro features
 	FeatureExtendedProviders: {
@@ -325,6 +378,56 @@ var featureDefinitions = map[string]Feature{
 		Type:        FeatureTypeBoolean,
 		Default:     true,
 	},
+
+	// Time Machine features
+	FeatureTimeMachineBasic: {
+		Key:         FeatureTimeMachineBasic,
+		Name:        "Time Machine Basic",
+		Description: "24-hour replay window, basic text diff reports",
+		Category:    CategoryCore,
+		Type:        FeatureTypeBoolean,
+		Default:     true,
+	},
+	FeatureTimeMachineExtended: {
+		Key:         FeatureTimeMachineExtended,
+		Name:        "Time Machine Extended",
+		Description: "72-hour replay window, up to 1,000 executions per replay",
+		Category:    CategoryCore,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
+	FeatureTimeMachinePro: {
+		Key:         FeatureTimeMachinePro,
+		Name:        "Time Machine Pro",
+		Description: "30-day replay window, full structured diff reports, dry-run reconciliation",
+		Category:    CategoryCore,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
+	FeatureTimeMachineEnterprise: {
+		Key:         FeatureTimeMachineEnterprise,
+		Name:        "Time Machine Enterprise",
+		Description: "90-day replay window, live reconciliation, SOC2/HIPAA audit certificates",
+		Category:    CategorySecurity,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
+	FeatureTimeMachineUnlimited: {
+		Key:         FeatureTimeMachineUnlimited,
+		Name:        "Time Machine Unlimited",
+		Description: "Unlimited replay history, custom reconciliation rules, legal-grade audit certificates",
+		Category:    CategorySecurity,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
+	FeatureTimeMachineInsurance: {
+		Key:         FeatureTimeMachineInsurance,
+		Name:        "Incident Insurance",
+		Description: "Dedicated engineer support during critical production incidents",
+		Category:    CategorySupport,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
 }
 
 // Feature sets per plan - 2026 unified structure
@@ -362,6 +465,13 @@ var (
 		FeatureStandardSLA,
 		FeaturePublishFunctions,
 		FeatureAgents, // Bundled agent capability
+		FeatureTimeMachineBasic,
+		FeatureTimeMachineExtended,
+		FeatureTimeMachinePro,
+		FeatureTimeMachineEnterprise,
+		FeatureConsciousnessBasic,
+		FeatureConsciousnessAdvanced,
+		FeatureCollaborativeSessions,
 	}
 
 	proFeatures = []string{
@@ -381,6 +491,10 @@ var (
 		FeatureStandardSLA,
 		FeaturePublishFunctions,
 		FeatureAgents, // Bundled agent capability (Agent Scale level)
+		FeatureTimeMachineBasic,
+		FeatureTimeMachineExtended,
+		FeatureTimeMachinePro,
+		FeatureConsciousnessBasic,
 	}
 
 	starterFeatures = []string{
@@ -391,6 +505,8 @@ var (
 		FeatureBasicLogging,
 		FeatureStandardSLA,
 		FeaturePublishFunctions,
+		FeatureTimeMachineBasic,
+		FeatureTimeMachineExtended,
 	}
 
 	freeFeatures = []string{
@@ -400,6 +516,7 @@ var (
 		FeatureBasicLogging,
 		FeatureStandardSLA,
 		FeaturePublishFunctions,
+		FeatureTimeMachineBasic,
 	}
 
 	agentEnterpriseFeatures = []string{
@@ -411,6 +528,15 @@ var (
 		FeatureSecretRotation,
 		FeatureBasicProviders,
 		FeatureBaseRequests,
+		FeatureTimeMachineBasic,
+		FeatureTimeMachineExtended,
+		FeatureTimeMachinePro,
+		FeatureTimeMachineEnterprise,
+		FeatureTimeMachineUnlimited,
+		FeatureTimeMachineInsurance,
+		FeatureConsciousnessBasic,
+		FeatureConsciousnessAdvanced,
+		FeatureConsciousnessAutonomous,
 	}
 
 	agentProFeatures = []string{

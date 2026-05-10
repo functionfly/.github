@@ -521,6 +521,10 @@ func (db *PostgresDB) GetBundleSubscriptionByTenant(ctx context.Context, tenantI
 	return db.billingRepository.GetBundleSubscriptionByTenant(ctx, tenantID)
 }
 
+func (db *PostgresDB) GetBundleSubscriptionByStripeID(ctx context.Context, stripeSubID string) (*BundleSubscription, error) {
+	return db.billingRepository.GetBundleSubscriptionByStripeID(ctx, stripeSubID)
+}
+
 func (db *PostgresDB) ListBundleSubscriptionsByTenant(ctx context.Context, tenantID uuid.UUID) ([]*BundleSubscription, error) {
 	return db.billingRepository.ListBundleSubscriptionsByTenant(ctx, tenantID)
 }

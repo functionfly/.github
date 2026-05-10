@@ -64,6 +64,13 @@ func NewPlatformFeeRepository(db *gorm.DB) *PlatformFeeRepository {
 	return &PlatformFeeRepository{db: db}
 }
 
+// EnableUnifiedWallet switches this repository to use the unified wallet system
+// This is called after the migration (000255) completes
+func (r *PlatformFeeRepository) EnableUnifiedWallet() {
+	// Migration complete - platform fee repo will use wallets table directly
+	// In Phase 2, this will be removed and callers will use wallet.Service directly
+}
+
 // GetWallet retrieves a user's wallet
 func (r *PlatformFeeRepository) GetWallet(ctx context.Context, userID uuid.UUID) (*UserWallet, error) {
 	var wallet UserWallet

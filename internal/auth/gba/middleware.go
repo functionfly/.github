@@ -198,12 +198,51 @@ func GetSession(ctx context.Context) (*Session, bool) {
 }
 
 // extractTenantID extracts tenant ID from request
+// For existing authenticated requests, we check X-Tenant-ID header only if:
+// 1. The request has a valid session (proving the user belongs to that tenant)
+// 2. The X-Tenant-ID matches the user's own tenant (prevents tenant hijacking)
+//
+// For unauthenticated requests (like OAuth callbacks), X-Tenant-ID is never trusted.
 func (m *Middleware) extractTenantID(r *http.Request) uuid.UUID {
-	// Check header first
+	// First try to get tenant from authenticated session
+	if session, ok := GetSession(r.Context()); ok && session != nil {
+		// User is authenticated - return their actual tenant from session
+		// This is the most trustworthy source
+		return session.TenantID
+	}
+
+	// For unauthenticated requests, only use X-Tenant-ID if it points to a
+	// valid subdomain-based tenant. Never trust X-Tenant-ID header for
+	// new user registration flows.
 	tenantHeader := r.Header.Get("X-Tenant-ID")
 	if tenantHeader != "" {
+		// Don't parse and return directly - this would allow tenant hijacking
+		// Instead, only use it to lookup if the subdomain also matches
 		if id, err := uuid.Parse(tenantHeader); err == nil {
-			return id
+			// Header is present - verify it against subdomain if available
+			// This is a defense-in-depth measure, not a primary check
+			host := r.Host
+			if host == "" {
+				host = r.Header.Get("Host")
+			}
+			parts := strings.Split(host, ".")
+			if len(parts) >= 3 {
+				subdomain := parts[0]
+				reserved := []string{"www", "api", "auth", "admin", "app", "staging", "dev"}
+				for _, r := range reserved {
+					if strings.EqualFold(subdomain, r) {
+						return uuid.Nil
+					}
+				}
+				// Both header AND subdomain present - verify they match
+				var tenant Tenant
+				if err := m.auth.GetDB().Where("subdomain = ? AND id = ? AND status = ?", subdomain, id, "active").First(&tenant).Error; err == nil {
+					return tenant.ID
+				}
+				// Mismatch - someone trying to inject different tenant via header
+				// Fall through to subdomain-based lookup only
+				return uuid.Nil
+			}
 		}
 	}
 

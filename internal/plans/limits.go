@@ -53,6 +53,50 @@ const (
 	EnterpriseRequestsPer10K   = 5000  // $0.50 per 10K requests (cents)
 	EnterpriseMicroVMCpuSecond = 2     // $0.02 per vCPU-second (cents)
 	EnterpriseMemoryGbSecond   = 2     // $0.002 per GB-second (cents)
+
+	// Time Machine replay window limits
+	FreeReplayWindowHours              = 24
+	StarterReplayWindowHours           = 72
+	ProReplayWindowDays                = 30
+	EnterpriseReplayWindowDays         = 90
+	AgentEnterpriseReplayWindowDays    = -1 // Unlimited
+
+	// Time Machine max executions per replay
+	FreeMaxExecutionsPerReplay              = 100
+	StarterMaxExecutionsPerReplay           = 1_000
+	ProMaxExecutionsPerReplay               = 10_000
+	EnterpriseMaxExecutionsPerReplay        = 100_000
+	AgentEnterpriseMaxExecutionsPerReplay   = -1 // Unlimited
+
+	// Time Machine concurrent replay jobs
+	FreeMaxConcurrentReplays              = 1
+	StarterMaxConcurrentReplays           = 1
+	ProMaxConcurrentReplays               = 3
+	EnterpriseMaxConcurrentReplays        = 10
+	AgentEnterpriseMaxConcurrentReplays   = -1 // Unlimited
+
+	// Time Machine replay data retention (days)
+	FreeReplayDataRetentionDays           = 7
+	StarterReplayDataRetentionDays        = 30
+	ProReplayDataRetentionDays            = 90
+	EnterpriseReplayDataRetentionDays     = 365
+	AgentEnterpriseReplayDataRetentionDays = -1 // Unlimited
+
+	// Function Consciousness lookback (days)
+	FreeConsciousnessLookbackDays              = 0   // Not available
+	StarterConsciousnessLookbackDays           = 0   // Not available
+	ProConsciousnessLookbackDays               = 7
+	EnterpriseConsciousnessLookbackDays        = 30
+	AgentEnterpriseConsciousnessLookbackDays   = -1 // Unlimited
+
+	// Function Consciousness analysis frequency (hours)
+	ProConsciousnessFrequencyHours              = 24 // Daily digest
+	EnterpriseConsciousnessFrequencyHours       = 1  // Hourly
+	AgentEnterpriseConsciousnessFrequencyHours  = 0  // Real-time (5-min scheduler)
+
+	// Function Consciousness max auto-fixes per day
+	EnterpriseMaxAutoFixesPerDay        = 5
+	AgentEnterpriseMaxAutoFixesPerDay   = -1 // Unlimited
 )
 
 // Plan type constants
@@ -811,4 +855,131 @@ func (t *UsagePricingTier) GetOverageRateDisplay() string {
 		return "Hard stop"
 	}
 	return fmt.Sprintf("$%.4f/request", float64(t.OveragePricePer1000)/1000)
+}
+
+// ==================== Time Machine Limits ====================
+
+// GetReplayWindowHours returns the maximum replay window in hours for a plan.
+// Returns -1 for unlimited (agent enterprise).
+func GetReplayWindowHours(plan string) int {
+	switch plan {
+	case PlanAgentEnterprise:
+		return -1 // Unlimited
+	case PlanEnterprise, PlanAgentPro:
+		return EnterpriseReplayWindowDays * 24
+	case PlanPro, PlanAgentScale:
+		return ProReplayWindowDays * 24
+	case PlanStarter, PlanAgentStarter:
+		return StarterReplayWindowHours
+	default: // Free
+		return FreeReplayWindowHours
+	}
+}
+
+// GetMaxExecutionsPerReplay returns the maximum number of executions per replay job.
+// Returns -1 for unlimited.
+func GetMaxExecutionsPerReplay(plan string) int {
+	switch plan {
+	case PlanAgentEnterprise:
+		return -1
+	case PlanEnterprise, PlanAgentPro:
+		return EnterpriseMaxExecutionsPerReplay
+	case PlanPro, PlanAgentScale:
+		return ProMaxExecutionsPerReplay
+	case PlanStarter, PlanAgentStarter:
+		return StarterMaxExecutionsPerReplay
+	default:
+		return FreeMaxExecutionsPerReplay
+	}
+}
+
+// GetMaxConcurrentReplays returns the maximum concurrent replay jobs per tenant.
+// Returns -1 for unlimited.
+func GetMaxConcurrentReplays(plan string) int {
+	switch plan {
+	case PlanAgentEnterprise:
+		return -1
+	case PlanEnterprise, PlanAgentPro:
+		return EnterpriseMaxConcurrentReplays
+	case PlanPro, PlanAgentScale:
+		return ProMaxConcurrentReplays
+	case PlanStarter, PlanAgentStarter:
+		return StarterMaxConcurrentReplays
+	default:
+		return FreeMaxConcurrentReplays
+	}
+}
+
+// GetReplayDataRetentionDays returns how long replay data is retained.
+// Returns -1 for unlimited.
+func GetReplayDataRetentionDays(plan string) int {
+	switch plan {
+	case PlanAgentEnterprise:
+		return -1
+	case PlanEnterprise, PlanAgentPro:
+		return EnterpriseReplayDataRetentionDays
+	case PlanPro, PlanAgentScale:
+		return ProReplayDataRetentionDays
+	case PlanStarter, PlanAgentStarter:
+		return StarterReplayDataRetentionDays
+	default:
+		return FreeReplayDataRetentionDays
+	}
+}
+
+// SupportsLiveReconciliation returns true if the plan supports live (non-dry-run) reconciliation.
+func SupportsLiveReconciliation(plan string) bool {
+	return plan == PlanEnterprise || plan == PlanAgentPro || plan == PlanAgentEnterprise
+}
+
+// SupportsAuditCertificates returns true if the plan supports audit certificate generation.
+func SupportsAuditCertificates(plan string) bool {
+	return plan == PlanEnterprise || plan == PlanAgentPro || plan == PlanAgentEnterprise
+}
+
+// SupportsReplayScheduling returns true if the plan supports scheduled replays.
+func SupportsReplayScheduling(plan string) bool {
+	return plan == PlanEnterprise || plan == PlanAgentPro || plan == PlanAgentEnterprise
+}
+
+// SupportsFullDiffReport returns true if the plan supports structured diff reports.
+func SupportsFullDiffReport(plan string) bool {
+	switch plan {
+	case PlanPro, PlanAgentScale, PlanEnterprise, PlanAgentPro, PlanAgentEnterprise:
+		return true
+	default:
+		return false
+	}
+}
+
+// TimeMachineLimits provides a snapshot of all Time Machine limits for a plan.
+type TimeMachineLimits struct {
+	ReplayWindowHours      int  `json:"replay_window_hours"`
+	MaxExecutionsPerReplay int  `json:"max_executions_per_replay"`
+	MaxConcurrentReplays   int  `json:"max_concurrent_replays"`
+	DataRetentionDays      int  `json:"data_retention_days"`
+	AutoReconciliation     bool `json:"auto_reconciliation"`
+	LiveReconciliation     bool `json:"live_reconciliation"`
+	AuditCertificates      bool `json:"audit_certificates"`
+	ReplayScheduling       bool `json:"replay_scheduling"`
+	FullDiffReports        bool `json:"full_diff_reports"`
+	IncidentInsurance      bool `json:"incident_insurance"`
+	Unlimited              bool `json:"unlimited"`
+}
+
+// GetTimeMachineLimits returns all Time Machine limits for a plan.
+func GetTimeMachineLimits(plan string) TimeMachineLimits {
+	return TimeMachineLimits{
+		ReplayWindowHours:      GetReplayWindowHours(plan),
+		MaxExecutionsPerReplay: GetMaxExecutionsPerReplay(plan),
+		MaxConcurrentReplays:   GetMaxConcurrentReplays(plan),
+		DataRetentionDays:      GetReplayDataRetentionDays(plan),
+		AutoReconciliation:     SupportsLiveReconciliation(plan),
+		LiveReconciliation:     SupportsLiveReconciliation(plan),
+		AuditCertificates:      SupportsAuditCertificates(plan),
+		ReplayScheduling:       SupportsReplayScheduling(plan),
+		FullDiffReports:        SupportsFullDiffReport(plan),
+		IncidentInsurance:      plan == PlanAgentEnterprise,
+		Unlimited:              plan == PlanAgentEnterprise,
+	}
 }

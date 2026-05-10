@@ -23,8 +23,12 @@ const (
 
 // CreateFunctionVersion creates a new function version
 func (r *RegistryRepository) CreateFunctionVersion(v *RegistryFunctionVersion) error {
-	v.ID = uuid.New()
-	v.PublishedAt = time.Now()
+	if v.ID == uuid.Nil {
+		v.ID = uuid.New()
+	}
+	if v.PublishedAt.IsZero() {
+		v.PublishedAt = time.Now()
+	}
 
 	if err := r.db.Create(v).Error; err != nil {
 		return fmt.Errorf("failed to create function version: %w", err)

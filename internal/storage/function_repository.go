@@ -89,14 +89,14 @@ func (r *FunctionRepository) GetFunctionByID(ctx context.Context, functionID uui
 // ListFunctionsByTenant retrieves all functions for a tenant
 func (r *FunctionRepository) ListFunctionsByTenant(ctx context.Context, tenantID uuid.UUID) ([]*FunctionConfig, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, tenant_id, app_id, name, providers, region, code, env_vars, version, status, created_at, updated_at
-		FROM functions 
-		WHERE tenant_id = $1 
-		  AND name NOT ILIKE '%demo%' 
-		  AND name NOT ILIKE '%test%' 
+		SELECT DISTINCT ON (id) id, tenant_id, app_id, name, providers, region, code, env_vars, version, status, created_at, updated_at
+		FROM functions
+		WHERE tenant_id = $1
+		  AND name NOT ILIKE '%demo%'
+		  AND name NOT ILIKE '%test%'
 		  AND name NOT ILIKE 'my-demo%'
 		  AND name NOT ILIKE 'my_demo%'
-		ORDER BY created_at DESC`, tenantID)
+		ORDER BY id, created_at DESC`, tenantID)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to list functions: %w", err)

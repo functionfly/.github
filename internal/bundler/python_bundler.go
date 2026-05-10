@@ -1,6 +1,7 @@
 package bundler
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -264,20 +265,45 @@ func createPythonBundle(sourceCode string, deps []PythonDependency, manifest *ma
 		"source_hash": HashContent([]byte(sourceCode)),
 	}
 
-	// Convert metadata to JSON
+	// Convert metadata to JSON, then translate JSON literals to Python literals
+	// so the metadata line is valid Python when embedded in the bundle.
 	metadataJSON, _ := json.Marshal(metadata)
+	metadataPy := strings.ReplaceAll(string(metadataJSON), "null", "None")
+	metadataPy = strings.ReplaceAll(metadataPy, "true", "True")
+	metadataPy = strings.ReplaceAll(metadataPy, "false", "False")
+
+	// Choose a triple-quote delimiter that does NOT appear in the source code.
+	// Inside a Python triple-quoted string, only the matching triple quote
+	// terminates the string.  Backslash-escaping does NOT help because
+	// \"\"\" is still interpreted as \"\"\" inside triple quotes.
+	var openQuote, closeQuote string
+	if !strings.Contains(sourceCode, "'''") {
+		openQuote = "'''"
+		closeQuote = "'''"
+	} else if !strings.Contains(sourceCode, `"""`) {
+		openQuote = `"""`
+		closeQuote = `"""`
+	} else {
+		// Source contains both ''' and """.  Use base64 encoding for the
+		// source code string so no quote characters appear at all.
+		encoded := base64.StdEncoding.EncodeToString([]byte(sourceCode))
+		openQuote = "base64.b64decode(\"" + encoded + "\").decode('utf-8')"
+		closeQuote = ""
+	}
 
 	// Create the bundle format
-	bundle := fmt.Sprintf(`# FunctionFly Python Bundle
+	var bundle string
+	if closeQuote == "" {
+		// base64-encoded source
+		bundle = fmt.Sprintf(`# FunctionFly Python Bundle
 # Generated for %s@%s
 
 # Metadata
 __functionfly_metadata__ = %s
 
-# Source code
-__functionfly_source__ = """
-%s
-"""
+# Source code (base64-encoded to avoid quote conflicts)
+import base64
+__functionfly_source__ = %s
 
 # Dependencies (for runtime resolution)
 __functionfly_dependencies__ = %s
@@ -286,8 +312,9 @@ __functionfly_dependencies__ = %s
 def __functionfly_main__(input_data=None):
     # This will be executed by the Python runtime
     try:
-        # Execute the source code in a controlled environment
-        exec(__functionfly_source__)
+        # Execute the source code in the global scope so handler/main
+        # are visible to the caller
+        exec(__functionfly_source__, globals())
 
         # Try to find and call main function
         if 'main' in globals():
@@ -312,13 +339,67 @@ if __name__ == "__main__":
 
     result = __functionfly_main__(input_data)
     print(json.dumps(result))
-`, manifest.Name, manifest.Version, string(metadataJSON), sourceCode, func() string {
-		if deps == nil {
-			return "[]"
-		}
-		depsJSON, _ := json.Marshal(deps)
-		return string(depsJSON)
-	}())
+`, manifest.Name, manifest.Version, metadataPy, openQuote, func() string {
+			if deps == nil {
+				return "[]"
+			}
+			depsJSON, _ := json.Marshal(deps)
+			return string(depsJSON)
+		}())
+	} else {
+		bundle = fmt.Sprintf(`# FunctionFly Python Bundle
+# Generated for %s@%s
+
+# Metadata
+__functionfly_metadata__ = %s
+
+# Source code
+__functionfly_source__ = %s
+%s
+%s
+
+# Dependencies (for runtime resolution)
+__functionfly_dependencies__ = %s
+
+# Main execution function
+def __functionfly_main__(input_data=None):
+    # This will be executed by the Python runtime
+    try:
+        # Execute the source code in the global scope so handler/main
+        # are visible to the caller
+        exec(__functionfly_source__, globals())
+
+        # Try to find and call main function
+        if 'main' in globals():
+            return globals()['main'](input_data)
+        elif 'handler' in globals():
+            return globals()['handler'](input_data)
+        else:
+            return {"status": "ok", "input": input_data}
+    except Exception as e:
+        return {"error": str(e), "status": "failed"}
+
+if __name__ == "__main__":
+    import sys
+    import json
+
+    input_data = None
+    if len(sys.argv) > 1:
+        try:
+            input_data = json.loads(sys.argv[1])
+        except:
+            input_data = sys.argv[1]
+
+    result = __functionfly_main__(input_data)
+    print(json.dumps(result))
+`, manifest.Name, manifest.Version, metadataPy, openQuote, sourceCode, closeQuote, func() string {
+			if deps == nil {
+				return "[]"
+			}
+			depsJSON, _ := json.Marshal(deps)
+			return string(depsJSON)
+		}())
+	}
 
 	return []byte(bundle)
 }

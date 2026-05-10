@@ -392,3 +392,57 @@ func (s *ResendService) SendMaintenanceNotice(email string, windowStart, windowE
 	tpl := MaintenanceNoticeTemplate(windowStart, windowEnd, affectedServices)
 	return s.SendEmail(email, subject, tpl.Text, tpl.HTML)
 }
+
+func (s *ResendService) SendUsageAlert(email string, usageType string, currentUsage, limit int64, percentageUsed int, resetDate string, upgradeURL string) error {
+	subject := fmt.Sprintf("Usage Alert: %d%% — FunctionFly", percentageUsed)
+	tpl := UsageAlertTemplate(usageType, currentUsage, limit, percentageUsed, resetDate, upgradeURL)
+	return s.SendEmail(email, subject, tpl.Text, tpl.HTML)
+}
+
+func (s *ResendService) SendPaymentSuccess(email string, amount float64, description string, chargedAt time.Time, receiptURL string) error {
+	subject := "Payment Successful — FunctionFly"
+	tpl := PaymentSuccessTemplate(amount, description, chargedAt, receiptURL)
+	return s.SendEmail(email, subject, tpl.Text, tpl.HTML)
+}
+
+func (s *ResendService) SendTrialExpiring(email string, daysRemaining int, upgradeURL string) error {
+	subject := "Trial Ending Soon — FunctionFly"
+	tpl := TrialExpiringTemplate(daysRemaining, upgradeURL)
+	return s.SendEmail(email, subject, tpl.Text, tpl.HTML)
+}
+
+func (s *ResendService) SendSubscriptionChange(email, changeType, oldPlan, newPlan string, effectiveDate time.Time, manageURL string) error {
+	subject := "Subscription Changed — FunctionFly"
+	tpl := SubscriptionChangeTemplate(changeType, oldPlan, newPlan, effectiveDate, manageURL)
+	return s.SendEmail(email, subject, tpl.Text, tpl.HTML)
+}
+
+func (s *ResendService) SendExecutionFailed(email, functionName, version, errorMsg string, failedAt time.Time) error {
+	subject := fmt.Sprintf("Execution Failed: %s — FunctionFly", functionName)
+	tpl := ExecutionFailedTemplate(functionName, version, errorMsg, failedAt)
+	return s.SendEmail(email, subject, tpl.Text, tpl.HTML)
+}
+
+func (s *ResendService) SendRateLimitExceeded(email string, limitType string, currentUsage, limit int64, windowDescription string, upgradeURL string) error {
+	subject := "Rate Limit Exceeded — FunctionFly"
+	tpl := RateLimitExceededTemplate(limitType, currentUsage, limit, windowDescription, upgradeURL)
+	return s.SendEmail(email, subject, tpl.Text, tpl.HTML)
+}
+
+func (s *ResendService) SendFunctionDeleted(email, functionName string, deletedAt time.Time, restoreURL string) error {
+	subject := fmt.Sprintf("Function Deleted: %s — FunctionFly", functionName)
+	tpl := FunctionDeletedTemplate(functionName, deletedAt, restoreURL)
+	return s.SendEmail(email, subject, tpl.Text, tpl.HTML)
+}
+
+func (s *ResendService) SendReferralInvite(email, referrerName, inviteURL, rewardDescription string, expiresAt time.Time) error {
+	subject := "You've Been Invited! — FunctionFly"
+	tpl := ReferralInviteTemplate(referrerName, inviteURL, rewardDescription, expiresAt)
+	return s.SendEmail(email, subject, tpl.Text, tpl.HTML)
+}
+
+func (s *ResendService) SendReferralReward(email, rewardType, rewardValue, claimURL string, expiryDate time.Time) error {
+	subject := "You Earned a Reward! — FunctionFly"
+	tpl := ReferralRewardTemplate(rewardType, rewardValue, claimURL, expiryDate)
+	return s.SendEmail(email, subject, tpl.Text, tpl.HTML)
+}

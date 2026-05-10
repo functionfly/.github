@@ -16,9 +16,10 @@ import (
 
 // CreateCheckoutSessionRequest contains the parameters for creating a checkout session.
 type CreateCheckoutSessionRequest struct {
-	PriceID    string `json:"price_id"`
-	SuccessURL string `json:"success_url"`
-	CancelURL  string `json:"cancel_url"`
+	PriceID      string `json:"price_id"`
+	SuccessURL   string `json:"success_url"`
+	CancelURL    string `json:"cancel_url"`
+	FounderModeID string `json:"founder_mode_id"` // Passed through to Stripe metadata for conversion tracking
 }
 
 // IsValidStripePriceID validates that the ID is a valid Stripe price ID (starts with "price_").

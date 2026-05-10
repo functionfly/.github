@@ -3,21 +3,53 @@ package registry
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 )
+
+// FunctionInputSchema represents JSON schema for input validation
+type FunctionInputSchema struct {
+	ID                uuid.UUID       `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	FunctionVersionID uuid.UUID       `json:"function_version_id" gorm:"type:uuid;not null;uniqueIndex"`
+	Schema            json.RawMessage `json:"schema" gorm:"type:jsonb;not null"`
+	IsStrict          bool            `json:"is_strict" gorm:"default:false"`
+	CreatedAt         time.Time       `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt         time.Time       `json:"updated_at" gorm:"autoUpdateTime"`
+}
 
 // CreateFunction creates a new function in the registry
 func (r *RegistryRepository) CreateFunction(fn *RegistryFunction) error {
-	fn.ID = uuid.New()
-	fn.CreatedAt = time.Now()
-	fn.UpdatedAt = time.Now()
+	if fn.ID == uuid.Nil {
+		fn.ID = uuid.New()
+	}
+	now := time.Now()
+	if fn.CreatedAt.IsZero() {
+		fn.CreatedAt = now
+	}
+	if fn.UpdatedAt.IsZero() {
+		fn.UpdatedAt = now
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"function_id": fn.ID,
+		"author":      fn.Author,
+		"name":        fn.Name,
+	}).Debug("CreateFunction: about to insert")
 
 	if err := r.db.Create(fn).Error; err != nil {
 		return fmt.Errorf("failed to create function: %w", err)
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function_id": fn.ID,
+		"author":      fn.Author,
+		"name":        fn.Name,
+	}).Debug("CreateFunction: inserted successfully")
 
 	// Invalidate list and search caches so new function appears in registry list
 	if r.cache != nil {
@@ -55,9 +87,20 @@ func (r *RegistryRepository) GetFunctionByAuthorName(author, name string) (*Regi
 	}
 
 	var fn RegistryFunction
-	if err := r.db.Where("author = ? AND name = ?", author, name).First(&fn).Error; err != nil {
+	var err error
+	err = r.db.Where("author = ? AND name = ?", author, name).First(&fn).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, gorm.ErrRecordNotFound
+		}
 		return nil, fmt.Errorf("failed to get function by author/name: %w", err)
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"author":      fn.Author,
+		"name":        fn.Name,
+		"function_id": fn.ID,
+	}).Debug("GetFunctionByAuthorName found function")
 
 	// Cache the result if cache is available (best-effort, async)
 	if r.cache != nil && r.keyGen != nil {
@@ -223,4 +266,84 @@ func (r *RegistryRepository) GetWasmCompiled(functionID uuid.UUID, version strin
 		return nil, fmt.Errorf("failed to get wasm_compiled: %w", err)
 	}
 	return fnVersion.WasmCompiled, nil
+}
+
+// CheckFunctionConflicts checks if any of the proposed function names already exist
+// for the given tenant. Returns a map of function name -> existing function info.
+func (r *RegistryRepository) CheckFunctionConflicts(ctx context.Context, tenantID uuid.UUID, functionNames []string) (map[string]RegistryFunction, error) {
+	if len(functionNames) == 0 {
+		return nil, nil
+	}
+
+	var conflicts []RegistryFunction
+	if err := r.db.WithContext(ctx).
+		Where("tenant_id = ? AND name IN ?", tenantID, functionNames).
+		Find(&conflicts).Error; err != nil {
+		return nil, fmt.Errorf("failed to check function conflicts: %w", err)
+	}
+
+	result := make(map[string]RegistryFunction, len(conflicts))
+	for _, fn := range conflicts {
+		result[fn.Name] = fn
+	}
+	return result, nil
+}
+
+// GetFunctionByTenantAndName retrieves a function by tenant and name for conflict checking.
+func (r *RegistryRepository) GetFunctionByTenantAndName(ctx context.Context, tenantID uuid.UUID, name string) (*RegistryFunction, error) {
+	var fn RegistryFunction
+	if err := r.db.WithContext(ctx).
+		Where("tenant_id = ? AND name = ?", tenantID, name).
+		First(&fn).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get function by tenant and name: %w", err)
+	}
+	return &fn, nil
+}
+
+// UpsertFunctionInputSchema creates or updates the input JSON schema for a function version.
+// This auto-generates a permissive schema from the function's source code when none is provided.
+func (r *RegistryRepository) UpsertFunctionInputSchema(functionVersionID uuid.UUID, schema json.RawMessage, isStrict bool) error {
+	now := time.Now()
+
+	// Try to find existing schema
+	var existing FunctionInputSchema
+	err := r.db.Where("function_version_id = ?", functionVersionID).First(&existing).Error
+	if err == nil {
+		// Update existing
+		existing.Schema = schema
+		existing.IsStrict = isStrict
+		existing.UpdatedAt = now
+		return r.db.Save(&existing).Error
+	}
+
+	// Check if it's a not-found error vs other error
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("failed to check input schema: %w", err)
+	}
+
+	// Create new
+	newSchema := FunctionInputSchema{
+		FunctionVersionID: functionVersionID,
+		Schema:            schema,
+		IsStrict:          isStrict,
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+	return r.db.Create(&newSchema).Error
+}
+
+// GetFunctionInputSchema retrieves the input schema for a function version.
+func (r *RegistryRepository) GetFunctionInputSchema(functionVersionID uuid.UUID) (*FunctionInputSchema, error) {
+	var schema FunctionInputSchema
+	err := r.db.Where("function_version_id = ?", functionVersionID).First(&schema).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get input schema: %w", err)
+	}
+	return &schema, nil
 }

@@ -118,9 +118,15 @@ func NewBillingControllerWrapper(service *Service) *BillingControllerWrapper {
 
 // GetOrCreateControls retrieves or creates billing controls (backward compatible)
 func (w *BillingControllerWrapper) GetOrCreateControls(ctx context.Context, agentID string) (*billing.AgentBillingControls, error) {
-	wallet, err := w.service.GetOrCreateAgentWallet(ctx, agentID)
-	if err != nil {
-		return nil, err
+	wallet, err := w.service.GetWalletByOwner(ctx, OwnerTypeUser, agentID)
+	if err != nil || wallet == nil {
+		wallet, err = w.service.GetWalletByOwner(ctx, OwnerTypeAgent, agentID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if wallet == nil {
+		return nil, fmt.Errorf("wallet not found for owner: %s", agentID)
 	}
 
 	return walletToBillingControls(wallet), nil
@@ -133,7 +139,7 @@ func (w *BillingControllerWrapper) CheckSpendCap(ctx context.Context, agentID st
 
 // ConsumeCredits consumes credits from an agent's wallet (backward compatible)
 func (w *BillingControllerWrapper) ConsumeCredits(ctx context.Context, agentID string, amount float64) (*billing.CreditBalanceUpdate, error) {
-	update, err := w.service.ConsumeAgentCredits(ctx, agentID, amount)
+	update, err := w.service.ConsumeUserOrAgentCredits(ctx, agentID, amount)
 	if err != nil {
 		return nil, err
 	}

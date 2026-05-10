@@ -20,8 +20,12 @@ const (
 
 // CreateFunctionVersion creates a new function version
 func (r *RegistryRepository) CreateFunctionVersion(v *RegistryFunctionVersion) error {
-	v.ID = uuid.New()
-	v.PublishedAt = time.Now()
+	if v.ID == uuid.Nil {
+		v.ID = uuid.New()
+	}
+	if v.PublishedAt.IsZero() {
+		v.PublishedAt = time.Now()
+	}
 
 	if err := r.db.Create(v).Error; err != nil {
 		return fmt.Errorf("failed to create function version: %w", err)
@@ -150,11 +154,12 @@ func (r *RegistryRepository) UpsertFunctionVersion(v *RegistryFunctionVersion, s
 				"idempotent":    v.Idempotent,
 				"cache_ttl":     v.CacheTTL,
 				"capabilities":  v.Capabilities,
-				"wasm_binary":   v.WasmBinary,
-				"source_hash":   v.SourceHash,
-				"bundle_size":   v.BundleSize,
-				"source_code":   v.SourceCode,
-				"updated_at":    v.UpdatedAt,
+			"wasm_binary":   v.WasmBinary,
+			"source_hash":   v.SourceHash,
+			"bundle_size":   v.BundleSize,
+			"source_code":   v.SourceCode,
+			"readme":        v.Readme,
+			"updated_at":    v.UpdatedAt,
 			}).Error; err != nil {
 				return false, fmt.Errorf("failed to overwrite function version: %w", err)
 			}
@@ -258,4 +263,12 @@ func (r *RegistryRepository) GetPreviousVersion(functionID uuid.UUID, currentVer
 	}
 
 	return &version, nil
+}
+
+// UpdateFunctionVersionField updates a single field on a function version.
+func (r *RegistryRepository) UpdateFunctionVersionField(id uuid.UUID, field string, value interface{}) error {
+	if err := r.db.Model(&RegistryFunctionVersion{}).Where("id = ?", id).Update(field, value).Error; err != nil {
+		return fmt.Errorf("failed to update %s on function version: %w", field, err)
+	}
+	return nil
 }

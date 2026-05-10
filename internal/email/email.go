@@ -31,10 +31,17 @@ type Service interface {
 	SendFunctionDeploySuccess(email, functionName, version, runtime string, deployTime time.Time) error
 	SendFunctionDeployFailure(email, functionName, errorMsg string, retryCount int) error
 	SendUsageExportReady(email, exportID, downloadURL string, expiresAt time.Time, sizeBytes int64) error
+	SendExecutionFailed(email, functionName, version, errorMsg string, failedAt time.Time) error
+	SendRateLimitExceeded(email string, limitType string, currentUsage, limit int64, windowDescription string, upgradeURL string) error
+	SendFunctionDeleted(email, functionName string, deletedAt time.Time, restoreURL string) error
 
 	// Billing & Payments
 	SendPaymentFailed(email string, amount float64, dueDate time.Time, retryURL string) error
+	SendPaymentSuccess(email string, amount float64, description string, chargedAt time.Time, receiptURL string) error
 	SendInvoiceReady(email, period string, amount float64, invoiceURL string) error
+	SendTrialExpiring(email string, daysRemaining int, upgradeURL string) error
+	SendSubscriptionChange(email, changeType, oldPlan, newPlan string, effectiveDate time.Time, manageURL string) error
+	SendUsageAlert(email string, usageType string, currentUsage, limit int64, percentageUsed int, resetDate string, upgradeURL string) error
 
 	// Trust & Compliance
 	SendTrustRevocationAlert(email, functionName, reason string, revokedAt time.Time) error
@@ -50,6 +57,10 @@ type Service interface {
 	// Maintenance & Reminders
 	SendAPIKeyRotationReminder(email, keyName, keyID string, expiresAt time.Time, rotationURL string) error
 	SendMaintenanceNotice(email string, windowStart, windowEnd time.Time, affectedServices []string) error
+
+	// Referrals
+	SendReferralInvite(email, referrerName, inviteURL, rewardDescription string, expiresAt time.Time) error
+	SendReferralReward(email, rewardType, rewardValue, claimURL string, expiryDate time.Time) error
 
 	// Generic
 	SendEmail(to, subject, textBody, htmlBody string) error

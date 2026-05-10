@@ -106,6 +106,11 @@ func (f *RegistryFunction) ToInfoWithRating(version *RegistryFunctionVersion, ra
 			info["source_hash"] = version.SourceHash.String
 		}
 
+		// Add readme if present
+		if version.Readme.Valid && version.Readme.String != "" {
+			info["readme"] = version.Readme.String
+		}
+
 		// Add deployment ID if present
 		if version.DeploymentID != nil {
 			info["deployment_id"] = version.DeploymentID.String()

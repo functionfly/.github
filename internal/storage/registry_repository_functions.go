@@ -10,9 +10,16 @@ import (
 
 // CreateFunction creates a new function in the registry
 func (r *RegistryRepository) CreateFunction(fn *RegistryFunction) error {
-	fn.ID = uuid.New()
-	fn.CreatedAt = time.Now()
-	fn.UpdatedAt = time.Now()
+	if fn.ID == uuid.Nil {
+		fn.ID = uuid.New()
+	}
+	now := time.Now()
+	if fn.CreatedAt.IsZero() {
+		fn.CreatedAt = now
+	}
+	if fn.UpdatedAt.IsZero() {
+		fn.UpdatedAt = now
+	}
 
 	if err := r.db.Create(fn).Error; err != nil {
 		return fmt.Errorf("failed to create function: %w", err)

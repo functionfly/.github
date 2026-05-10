@@ -69,6 +69,7 @@ type PostgresDB struct {
 	teamMemoryRepository     TeamMemoryRepository
 	creditNoteRepository     *CreditNoteRepository
 	tenantStripeConfigRepository *TenantStripeConfigRepository
+	certificationRepository  *CertificationRepository
 
 	// Read replica connections
 	readReplicas       []ReadReplicaConnection
@@ -286,6 +287,7 @@ func NewPostgresDBWithOptions(skipPreparedStatements bool) (*PostgresDB, error) 
 	postgresDB.teamMemoryRepository = NewTeamMemoryRepository(postgresDB.GORM, nil)
 	postgresDB.creditNoteRepository = NewCreditNoteRepositorySQL(postgresDB)
 	postgresDB.tenantStripeConfigRepository = NewTenantStripeConfigRepository(postgresDB.DB)
+	postgresDB.certificationRepository = NewCertificationRepository(postgresDB)
 
 	// Initialize encryption manager
 	encryptionManager, err := NewDatabaseEncryptionManager(postgresDB)
@@ -382,6 +384,11 @@ func (db *PostgresDB) DeleteExpiredAdminSessions() (int64, error) {
 
 func (db *PostgresDB) AnalyticsRepository() *AnalyticsRepository {
 	return db.analyticsRepository
+}
+
+// CertificationRepository accessor
+func (db *PostgresDB) CertificationRepository() *CertificationRepository {
+	return db.certificationRepository
 }
 
 // InitializeTenantAnalytics creates default analytics tracking for a tenant
@@ -725,6 +732,14 @@ func (db *PostgresDB) CountMembershipsByTenant(ctx context.Context, tenantID uui
 
 func (db *PostgresDB) CountMembershipsByRole(ctx context.Context, tenantID uuid.UUID, role string) (int, error) {
 	return db.billingRepository.CountMembershipsByRole(ctx, tenantID, role)
+}
+
+func (db *PostgresDB) CountActiveFounderModeRegistrations(ctx context.Context) (int, error) {
+	return db.billingRepository.CountActiveFounderModeRegistrations(ctx)
+}
+
+func (db *PostgresDB) CountRecentSuccessfulDeployments(ctx context.Context) (int, error) {
+	return db.billingRepository.CountRecentSuccessfulDeployments(ctx)
 }
 
 func (db *PostgresDB) CreateAuthAuditLog(ctx context.Context, log *TenantAuthAuditLog) error {

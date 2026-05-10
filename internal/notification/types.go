@@ -58,6 +58,7 @@ const (
 	CategoryRegistry   = "registry"
 	CategoryFailover   = "failover"
 	CategoryProvider   = "provider"
+	CategoryConsciousness = "consciousness"
 )
 
 // Frequencies
@@ -156,6 +157,13 @@ const (
 	TypeFollowStarted         = "follow.started"
 	TypeFollowFunctionUpdated = "follow.function_updated"
 	TypeFollowNewVersion      = "follow.function_new_version"
+
+	// Function Consciousness notifications
+	TypeConsciousnessInsight     = "consciousness.insight"
+	TypeConsciousnessDigest      = "consciousness.digest"
+	TypeConsciousnessCritical    = "consciousness.critical"
+	TypeConsciousnessAutoApplied = "consciousness.auto_applied"
+	TypeConsciousnessScoreChanged = "consciousness.score_changed"
 )
 
 // Analytics status values

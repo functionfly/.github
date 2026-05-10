@@ -222,6 +222,42 @@ func (s *Service) DebitForExecution(ctx context.Context, walletID uuid.UUID, amo
 	return update, nil
 }
 
+// ConsumeUserOrAgentCredits debits wallet for execution, supporting both user and agent wallets
+func (s *Service) ConsumeUserOrAgentCredits(ctx context.Context, ownerID string, amountUSD float64) (*BalanceUpdate, error) {
+	wallet, err := s.repo.GetWalletByOwner(ctx, OwnerTypeUser, ownerID)
+	if err != nil || wallet == nil {
+		wallet, err = s.repo.GetWalletByOwner(ctx, OwnerTypeAgent, ownerID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if wallet == nil {
+		return nil, fmt.Errorf("wallet not found for owner: %s", ownerID)
+	}
+
+	req := DebitRequest{
+		WalletID:        wallet.ID,
+		AmountUSD:       amountUSD,
+		TransactionType: TransactionTypeExecutionCharge,
+		TriggeredBy: TriggeredByInfo{
+			Type: "user",
+			ID:   ownerID,
+		},
+		Metadata: map[string]interface{}{
+			"owner_id": ownerID,
+		},
+	}
+
+	update, err := s.repo.Debit(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	s.invalidateWalletCache(ctx, wallet.ID)
+
+	return update, nil
+}
+
 // ConsumeAgentCredits debits agent wallet for execution (backward compatible with old billing.Controller)
 func (s *Service) ConsumeAgentCredits(ctx context.Context, agentID string, amountUSD float64) (*BalanceUpdate, error) {
 	wallet, err := s.GetOrCreateAgentWallet(ctx, agentID)

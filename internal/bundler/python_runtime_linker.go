@@ -27,33 +27,64 @@ func NewMicropythonLinker(userCode string, manifest *manifest.Manifest) *Micropy
 	}
 }
 
-// findMicropythonRuntimePath locates the micropython.wasm file using the source file location
-// This works regardless of the current working directory
+// findMicropythonRuntimePath locates the micropython.wasm file using multiple strategies
+// This works regardless of the current working directory or how the binary is invoked
 func findMicropythonRuntimePath() string {
-	// Get the directory of this source file for reliable path resolution
+	// Strategy 1: Try executable-relative paths (most reliable for deployed binaries)
+	if execPath, err := os.Executable(); err == nil {
+		execDir := filepath.Dir(execPath)
+		for _, name := range []string{"micropython.wasm", "micropython-full.wasm"} {
+			// Check various relative positions from executable
+			for _, rel := range []string{
+				filepath.Join("internal", "bundler", "python", name),
+				filepath.Join("..", "internal", "bundler", "python", name),
+				filepath.Join("..", "..", "internal", "bundler", "python", name),
+				filepath.Join(".", "internal", "bundler", "python", name),
+			} {
+				p := filepath.Join(execDir, rel)
+				if info, err := os.Stat(p); err == nil && !info.IsDir() && info.Size() > 100000 {
+					return p
+				}
+			}
+		}
+	}
+
+	// Strategy 2: Use source file location (works during development)
 	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		// Fallback to relative paths if runtime.Caller fails
-		return findMicropythonRuntimePathFallback()
-	}
-	sourceDir := filepath.Dir(filename)
-
-	// Try paths relative to source file (most reliable)
-	paths := []string{
-		filepath.Join(sourceDir, "python", "micropython.wasm"),
-		filepath.Join(sourceDir, "python", "micropython-full.wasm"),
-	}
-
-	for _, p := range paths {
-		if info, err := os.Stat(p); err == nil && !info.IsDir() {
-			// Validate it's a real WASM file (>100KB, not a stub)
-			if info.Size() > 100000 {
+	if ok {
+		sourceDir := filepath.Dir(filename)
+		for _, name := range []string{"micropython.wasm", "micropython-full.wasm"} {
+			p := filepath.Join(sourceDir, "python", name)
+			if info, err := os.Stat(p); err == nil && !info.IsDir() && info.Size() > 100000 {
 				return p
 			}
 		}
 	}
 
-	// Fallback to relative paths
+	// Strategy 3: Search common project locations
+	searchPaths := []string{
+		"/home/micro/projects/functionfly/internal/bundler/python/micropython.wasm",
+		filepath.Join(os.Getenv("PWD"), "internal", "bundler", "python", "micropython.wasm"),
+	}
+	for _, p := range searchPaths {
+		if info, err := os.Stat(p); err == nil && !info.IsDir() && info.Size() > 100000 {
+			return p
+		}
+	}
+
+	// Strategy 4: Walk up from current directory looking for the project
+	cwd, _ := os.Getwd()
+	for depth := 0; depth < 6; depth++ {
+		p := filepath.Join(cwd, "internal", "bundler", "python", "micropython.wasm")
+		if info, err := os.Stat(p); err == nil && !info.IsDir() && info.Size() > 100000 {
+			return p
+		}
+		cwd = filepath.Dir(cwd)
+		if cwd == "/" {
+			break
+		}
+	}
+
 	return findMicropythonRuntimePathFallback()
 }
 

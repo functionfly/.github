@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"time"
@@ -79,6 +80,50 @@ func NewCacheService(db *gorm.DB, redisClient *redis.Client, config *CacheConfig
 		redisRegistry: redisRegistry,
 		config:        config,
 	}, nil
+}
+
+// GetDeterministicResult retrieves a deterministic execution result from L1/L2 cache.
+// Returns the cached output and true if found.
+func (c *CacheService) GetDeterministicResult(ctx context.Context, key string) (json.RawMessage, bool) {
+	// L1: Memory cache
+	if cached, found := c.memory.Get(key); found {
+		RecordCacheHit("memory")
+		return cached, true
+	}
+	// L2: Disk cache
+	if c.disk != nil {
+		record, err := c.disk.Get(key)
+		if err == nil && record != nil {
+			// Populate L1
+			c.memory.Set(key, record.OutputJSON, 5*time.Minute)
+			RecordCacheHit("disk")
+			return record.OutputJSON, true
+		}
+	}
+	// L3: Redis cache
+	if c.redisRegistry != nil {
+		data, err := c.redisRegistry.Get(ctx, key)
+		if err == nil && len(data) > 0 {
+			c.memory.Set(key, data, 5*time.Minute)
+			RecordCacheHit("redis")
+			return data, true
+		}
+	}
+	return nil, false
+}
+
+// SetDeterministicResult stores a deterministic execution result in all cache layers.
+func (c *CacheService) SetDeterministicResult(ctx context.Context, key string, value json.RawMessage, ttl time.Duration) {
+	// L1: Memory
+	c.memory.Set(key, value, ttl)
+	// L2: Disk
+	if c.disk != nil {
+		_ = c.disk.SetWithExpiry(key, "", "", "", value, int(ttl.Seconds()))
+	}
+	// L3: Redis
+	if c.redisRegistry != nil {
+		_ = c.redisRegistry.SetWithTTL(ctx, key, value, ttl)
+	}
 }
 
 // GetOrExecute checks the cache and executes the function if needed

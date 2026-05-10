@@ -51,6 +51,7 @@ const (
 	ErrCodeRuntimeError     = "RUNTIME_ERROR"
 	ErrCodeNotFound         = "NOT_FOUND"
 	ErrCodeUnauthorized     = "UNAUTHORIZED"
+	ErrCodePaymentRequired  = "PAYMENT_REQUIRED"
 	ErrCodeRateLimited      = "RATE_LIMITED"
 	ErrCodeInternalError    = "INTERNAL_ERROR"
 	ErrCodeCapabilityDenied = "CAPABILITY_DENIED"
@@ -241,7 +242,7 @@ type ExecutionRequest struct {
 // ExecutionResponse is the standard success response format
 type ExecutionResponse struct {
 	OK          bool            `json:"ok"`
-	Data        json.RawMessage `json:"data,omitempty"`
+	Data        json.RawMessage `json:"data"`
 	Cached      bool            `json:"cached"`
 	DurationMs  int             `json:"duration_ms"`
 	Version     string          `json:"version"`
@@ -297,6 +298,7 @@ type FunctionSource struct {
 	Files      map[string]string `json:"files,omitempty"`             // Additional files (package.json, etc.)
 	Runtime    string            `json:"runtime" validate:"required"` // Runtime type (node18, python3.11, wasm, etc.)
 	WasmBinary string            `json:"wasm_binary,omitempty"`       // Base64-encoded pre-compiled WASM (for "wasm" runtime)
+	Readme     string            `json:"readme,omitempty"`            // README documentation for function page
 }
 
 // DeploymentRef references an existing deployment

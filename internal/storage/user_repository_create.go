@@ -17,8 +17,8 @@ func (r *UserRepository) CreateUser(email, passwordHash string, tenantID uuid.UU
 		TenantID:      tenantID,
 		Email:         email,
 		PasswordHash:  passwordHash,
-		Role:          "user", // Default role for new users
-		EmailVerified: true,   // Auto-verify for setup
+		Role:          "user",
+		EmailVerified: false,
 		MFAEnabled:    false,
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),

@@ -2,7 +2,10 @@ package registry
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"encoding/json"
+	"strings"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,17 +21,20 @@ type EmbedConfig struct {
 	RateLimitPerHour int      `json:"rate_limit_per_hour"`
 }
 
-// RegistryFunction represents a function in the public registry
+// RegistryFunction represents a function in the public registry OR tenant-private function
+// This unified model supports both public marketplace functions and tenant-owned functions.
+// Public functions: author = "functionfly" or other public namespace, tenant_id = NULL
+// Tenant functions: author = tenant_id (as string), tenant_id = UUID, visibility = "private"
 type RegistryFunction struct {
 	ID                   uuid.UUID       `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	Author               string          `json:"author" gorm:"not null;index"`
+	Author               string          `json:"author" gorm:"not null;index"` // "functionfly" for public, tenant_id for private
 	Name                 string          `json:"name" gorm:"not null;index"`
 	LatestVersion        sql.NullString  `json:"latest_version" gorm:"type:text"`
 	Title                sql.NullString  `json:"title" gorm:"type:text"`
 	Description          sql.NullString  `json:"description" gorm:"type:text"`
 	Category             sql.NullString  `json:"category" gorm:"type:text"`
 	Tags                 json.RawMessage `json:"tags" gorm:"type:jsonb"`
-	Visibility           string          `json:"visibility" gorm:"not null;default:'public'"`
+	Visibility           string          `json:"visibility" gorm:"not null;default:'public'"` // "public", "private", "unlisted"
 	PricePerCall         float64         `json:"price_per_call" gorm:"default:0"`
 	PopularityScore      int             `json:"popularity_score" gorm:"default:0;index"`
 	ReliabilityScore     float64         `json:"reliability_score" gorm:"default:0"`
@@ -36,7 +42,7 @@ type RegistryFunction struct {
 	Capabilities         json.RawMessage `json:"capabilities" gorm:"type:jsonb"`           // Declared capabilities for sandbox enforcement
 	EmbedConfig          json.RawMessage `json:"embed_config,omitempty" gorm:"type:jsonb"` // Per-function embed configuration
 	Settings             json.RawMessage `json:"settings,omitempty" gorm:"type:jsonb"`     // Per-function settings (custom_domains, etc.)
-	TenantID             *uuid.UUID      `json:"tenant_id,omitempty" gorm:"type:uuid"`
+	TenantID             *uuid.UUID      `json:"tenant_id,omitempty" gorm:"type:uuid;index"` // NULL for public functions
 	OwnerUserID          *uuid.UUID      `json:"owner_user_id,omitempty" gorm:"type:uuid"`
 	PlatformFeePaid      bool            `json:"platform_fee_paid" gorm:"default:false"`
 	PlatformFeeAmountUSD float64         `json:"platform_fee_amount_usd" gorm:"default:0"`
@@ -50,9 +56,76 @@ type RegistryFunction struct {
 	TrustUpdatedAt          *time.Time `json:"trust_updated_at,omitempty" gorm:"type:timestamptz"`
 	TrustCalculationVersion int        `json:"trust_calculation_version" gorm:"default:0"`
 
+	// ── Tenant Function Fields (unified from functions table) ──────────────────
+	Providers         StringArray        `json:"providers" gorm:"type:text[]"`         // Deployment providers
+	Region            string                `json:"region" gorm:"type:varchar(100)"`      // Deployment region
+	Code              string                `json:"code" gorm:"type:text"`               // Function source code
+	EnvVars           JSONRawMessage        `json:"env_vars" gorm:"type:jsonb"`           // Environment variables
+	Schedule          JSONRawMessage        `json:"schedule,omitempty" gorm:"type:jsonb"` // Cron schedule config
+	PlaygroundEnabled bool                  `json:"playground_enabled" gorm:"default:false"`
+	PlaygroundConfig  JSONRawMessage        `json:"playground_config,omitempty" gorm:"type:jsonb"`
+	Status            string                `json:"status" gorm:"type:varchar(50);default:'draft'"` // "draft", "deploying", "deployed", "failed"
+	AppID             *uuid.UUID            `json:"app_id,omitempty" gorm:"type:uuid"`    // Associated app
+
 	// Relationships
 	Versions []RegistryFunctionVersion `json:"versions,omitempty" gorm:"foreignKey:FunctionID;references:ID"`
 	Rating   *RegistryFunctionRating   `json:"rating,omitempty" gorm:"foreignKey:FunctionID;references:ID"`
+}
+
+// JSONRawMessage is a helper type for JSONB columns that may be null
+type JSONRawMessage json.RawMessage
+
+// Value implements driver.Valuer for JSONRawMessage
+func (j JSONRawMessage) Value() (driver.Value, error) {
+	if j == nil {
+		return nil, nil
+	}
+	return json.Marshal(j)
+}
+
+
+// Scan implements sql.Scanner for JSONRawMessage - handles pgx JSONB mode
+// pgx driver sends JSONB as map[string]interface{} for objects
+func (j *JSONRawMessage) Scan(value interface{}) error {
+	if value == nil {
+		*j = nil
+		return nil
+	}
+	switch v := value.(type) {
+	case []byte:
+		*j = v
+		return nil
+	case string:
+		*j = []byte(v)
+		return nil
+	case map[string]interface{}:
+		// Handle JSONB objects from pgx - marshal to JSON bytes
+		b, err := json.Marshal(v)
+		if err != nil {
+			return fmt.Errorf("cannot marshal map to JSONRawMessage: %w", err)
+		}
+		*j = b
+		return nil
+	case []interface{}:
+		// Handle JSONB arrays from pgx
+		b, err := json.Marshal(v)
+		if err != nil {
+			return fmt.Errorf("cannot marshal array to JSONRawMessage: %w", err)
+		}
+		*j = b
+		return nil
+	default:
+		return fmt.Errorf("cannot scan %T into JSONRawMessage", value)
+	}
+}
+// IsTenantFunction returns true if this is a tenant-private function
+func (f *RegistryFunction) IsTenantFunction() bool {
+	return f.TenantID != nil
+}
+
+// IsPublic returns true if this is a public registry function
+func (f *RegistryFunction) IsPublic() bool {
+	return f.Visibility == "public"
 }
 
 // TableName returns the database table name for RegistryFunction.
@@ -123,6 +196,7 @@ type RegistryFunctionVersion struct {
 	WasmBinary   []byte         `json:"wasm_binary,omitempty" gorm:"type:bytea"`
 	SourceHash   sql.NullString `json:"source_hash" gorm:"type:text"`
 	SourceCode   sql.NullString `json:"source_code,omitempty" gorm:"type:text"` // Source code for lazy bundling
+	Readme       sql.NullString `json:"readme,omitempty" gorm:"type:text"`         // README documentation
 	BundleSize   sql.NullInt32  `json:"bundle_size"`
 	WasmCompiled []byte         `json:"wasm_compiled,omitempty" gorm:"type:bytea"` // AOT-compiled module bytes (.cwasm)
 	PublishedAt  time.Time      `json:"published_at" gorm:"autoCreateTime"`
@@ -185,6 +259,10 @@ type RegistryExecutionPublic struct {
 	VerificationError  sql.NullString  `json:"verification_error" gorm:"type:text"`
 	ReplayedOutputJSON json.RawMessage `json:"replayed_output_json" gorm:"type:jsonb"`
 	ReplayedDurationMs sql.NullInt32   `json:"replayed_duration_ms"`
+}
+
+func (RegistryExecutionPublic) TableName() string {
+	return "registry_executions_public"
 }
 
 // ExecutionResourceUsage represents resource usage for an execution
@@ -1081,4 +1159,63 @@ type VerificationSchedule struct {
 // TableName returns the database table name for VerificationSchedule.
 func (VerificationSchedule) TableName() string {
 	return "verification_schedule"
+}
+
+// StringArray is a custom type for PostgreSQL text[] columns that properly handles array scanning
+//pq.StringArray has a broken Scan implementation that doesn't handle the pgx driver behavior
+type StringArray []string
+
+// Scan implements sql.Scanner for StringArray
+func (a *StringArray) Scan(value interface{}) error {
+	if value == nil {
+		*a = nil
+		return nil
+	}
+	switch v := value.(type) {
+	case []byte:
+		return a.scanString(string(v))
+	case string:
+		return a.scanString(v)
+	}
+	return fmt.Errorf("cannot scan type %T into StringArray", value)
+}
+
+// scanString parses a PostgreSQL array string like {foo,bar,"baz,qux"} into a slice
+func (a *StringArray) scanString(s string) error {
+	if s == "" || s == "{}" {
+		*a = []string{}
+		return nil
+	}
+	// Remove surrounding braces
+	s = strings.TrimPrefix(strings.TrimSuffix(s, "}"), "{")
+	if s == "" {
+		*a = []string{}
+		return nil
+	}
+	
+	var result []string
+	var current strings.Builder
+	inQuote := false
+	
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c == '"' {
+			if inQuote && i+1 < len(s) && s[i+1] == '"' {
+				current.WriteByte('"')
+				i++
+			} else {
+				inQuote = !inQuote
+			}
+		} else if c == ',' && !inQuote {
+			result = append(result, current.String())
+			current.Reset()
+		} else {
+			current.WriteByte(c)
+		}
+	}
+	if current.Len() > 0 {
+		result = append(result, current.String())
+	}
+	*a = result
+	return nil
 }

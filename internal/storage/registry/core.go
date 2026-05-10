@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -74,6 +75,27 @@ func (r *RegistryRepository) GetRecentPublicExecutions(functionID uuid.UUID, lim
 		Limit(limit).
 		Find(&executions).Error
 	return executions, err
+}
+
+// GetPublicExecutionsInWindow retrieves public executions for a function within a time window.
+// Used by the Time Machine to scan historical executions for replay.
+func (r *RegistryRepository) GetPublicExecutionsInWindow(functionID uuid.UUID, from, to time.Time, limit int) ([]RegistryExecutionPublic, error) {
+	var executions []RegistryExecutionPublic
+	err := r.db.Where("function_id = ? AND created_at >= ? AND created_at <= ?", functionID, from, to).
+		Order("created_at ASC").
+		Limit(limit).
+		Find(&executions).Error
+	return executions, err
+}
+
+// UpdateExecutionPublicOutput updates the output JSON for a public execution record.
+// Used by the Time Machine reconciliation engine to apply corrected outputs.
+func (r *RegistryRepository) UpdateExecutionPublicOutput(executionID uuid.UUID, newOutput json.RawMessage) error {
+	return r.db.Model(&RegistryExecutionPublic{}).
+		Where("id = ?", executionID).
+		Updates(map[string]interface{}{
+			"output_json": newOutput,
+		}).Error
 }
 
 // CreateExecutionPublic creates a new shareable execution record for playground/replay

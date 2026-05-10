@@ -193,6 +193,383 @@ https://dashboard.functionfly.com/functions/%s/logs
 	return EmailTemplate{HTML: html, Text: text}
 }
 
+func ExecutionFailedTemplate(functionName, version, errorMsg string, failedAt time.Time) EmailTemplate {
+	timeStr := failedAt.Format("Jan 2, 2006 at 3:04 PM MST")
+
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Execution Failed — FunctionFly</title>
+  <!--[if mso]><style>table,td{font-family:Arial,sans-serif!important}</style><![endif]-->
+</head>
+<body style="margin:0;padding:0;background-color:#0a0a0b;font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;">
+  <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background-color:#0a0a0b;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%%;">
+        <tr><td align="center" style="padding-bottom:32px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding-right:10px;vertical-align:middle;">
+                <table role="presentation" width="32" height="32" cellpadding="0" cellspacing="0">
+                  <tr><td style="background:#7c2d12;border-radius:6px;width:32px;height:32px;text-align:center;vertical-align:middle;">
+                    <div style="width:14px;height:14px;background:#f97316;transform:rotate(45deg);margin:0 auto;"></div>
+                  </td></tr>
+                </table>
+              </td>
+              <td style="vertical-align:middle;font-size:18px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">FunctionFly</td>
+            </tr>
+          </table>
+        </td></tr>
+        <tr><td>
+          <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
+            <tr><td style="padding:40px 40px 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="width:56px;height:56px;background:rgba(220,38,38,0.1);border-radius:50%%;text-align:center;vertical-align:middle;">
+                    <div style="font-size:24px;line-height:56px;">&#10060;</div>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+            <tr><td style="padding:24px 40px 0;">
+              <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">Execution Failed</h1>
+              <p style="margin:0;font-size:15px;color:#a1a1aa;line-height:1.6;">
+                An async function execution encountered an error and was marked as failed.
+              </p>
+            </td></tr>
+            <tr><td style="padding:24px 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%%">
+                <tr><td style="background:#111113;border:1px solid #27272a;border-radius:8px;padding:20px;">
+                  <p style="margin:0 0 12px;font-size:13px;color:#71717a;"><strong style="color:#a1a1aa;">Function:</strong> %s</p>
+                  <p style="margin:0 0 12px;font-size:13px;color:#71717a;"><strong style="color:#a1a1aa;">Version:</strong> %s</p>
+                  <p style="margin:0 0 12px;font-size:13px;color:#ef4444;"><strong style="color:#a1a1aa;">Error:</strong> %s</p>
+                  <p style="margin:0;font-size:13px;color:#71717a;"><strong style="color:#a1a1aa;">Failed At:</strong> %s</p>
+                </td></tr>
+              </table>
+            </td></tr>
+            <tr><td style="padding:0 40px 28px;">
+              <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="background:#f97316;border-radius:8px;">
+                <a href="https://dashboard.functionfly.com/functions/%s/executions" target="_blank" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;font-family:inherit;">View Execution Logs</a>
+              </td></tr></table>
+            </td></tr>
+            <tr><td style="padding:0 40px 40px;">
+              <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;">
+                Check the execution logs to investigate the failure and determine if a retry or code fix is needed.
+              </p>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:24px 16px;text-align:center;">
+          <div style="margin:0;font-size:12px;color:#52525b;line-height:1.6;">%s</div>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`, functionName, version, errorMsg, timeStr, functionName, functionName, TransactionalEmailCopyrightOrangeHTML())
+
+	text := fmt.Sprintf(`Execution Failed — FunctionFly
+
+An async function execution encountered an error.
+
+Function: %s
+Version: %s
+Error: %s
+Failed At: %s
+
+View execution logs:
+https://dashboard.functionfly.com/functions/%s/executions
+
+--
+%s`, functionName, version, errorMsg, timeStr, functionName, TransactionalEmailCopyrightOrangePlain())
+
+	return EmailTemplate{HTML: html, Text: text}
+}
+
+func RateLimitExceededTemplate(limitType string, currentUsage, limit int64, windowDescription string, upgradeURL string) EmailTemplate {
+	percentUsed := 0
+	if limit > 0 {
+		percentUsed = int(float64(currentUsage) / float64(limit) * 100)
+	}
+
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Rate Limit Exceeded — FunctionFly</title>
+  <!--[if mso]><style>table,td{font-family:Arial,sans-serif!important}</style><![endif]-->
+</head>
+<body style="margin:0;padding:0;background-color:#0a0a0b;font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;">
+  <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background-color:#0a0a0b;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%%;">
+        <tr><td align="center" style="padding-bottom:32px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding-right:10px;vertical-align:middle;">
+                <table role="presentation" width="32" height="32" cellpadding="0" cellspacing="0">
+                  <tr><td style="background:#7c2d12;border-radius:6px;width:32px;height:32px;text-align:center;vertical-align:middle;">
+                    <div style="width:14px;height:14px;background:#f97316;transform:rotate(45deg);margin:0 auto;"></div>
+                  </td></tr>
+                </table>
+              </td>
+              <td style="vertical-align:middle;font-size:18px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">FunctionFly</td>
+            </tr>
+          </table>
+        </td></tr>
+        <tr><td>
+          <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
+            <tr><td style="padding:40px 40px 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0>
+                <tr>
+                  <td style="width:56px;height:56px;background:rgba(249,115,22,0.1);border-radius:50%%;text-align:center;vertical-align:middle;">
+                    <div style="font-size:24px;line-height:56px;">&#9888;&#65039;</div>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+            <tr><td style="padding:24px 40px 0;">
+              <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">Rate Limit Exceeded</h1>
+              <p style="margin:0;font-size:15px;color:#a1a1aa;line-height:1.6;">
+                You've reached the %s rate limit for your current billing period.
+              </p>
+            </td></tr>
+            <tr><td style="padding:24px 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%%">
+                <tr><td style="background:#111113;border:1px solid #27272a;border-radius:8px;padding:20px;">
+                  <p style="margin:0 0 12px;font-size:13px;color:#71717a;"><strong style="color:#a1a1aa;">Limit Type:</strong> %s</p>
+                  <p style="margin:0 0 12px;font-size:13px;color:#71717a;"><strong style="color:#a1a1aa;">Usage:</strong> %d / %d (%d%%)</p>
+                  <p style="margin:0;font-size:13px;color:#71717a;"><strong style="color:#a1a1aa;">Window:</strong> %s</p>
+                </td></tr>
+              </table>
+            </td></tr>
+            <tr><td style="padding:0 40px 28px;">
+              <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="background:#f97316;border-radius:8px;">
+                <a href="%s" target="_blank" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;font-family:inherit;">Upgrade Plan</a>
+              </td></tr></table>
+            </td></tr>
+            <tr><td style="padding:0 40px 40px;">
+              <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;">
+                Requests exceeding the limit will return 429 until the window resets. Upgrade to a higher tier for more capacity.
+              </p>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:24px 16px;text-align:center;">
+          <div style="margin:0;font-size:12px;color:#52525b;line-height:1.6;">%s</div>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`, limitType, limitType, currentUsage, limit, percentUsed, windowDescription, upgradeURL, upgradeURL, TransactionalEmailCopyrightOrangeHTML())
+
+	text := fmt.Sprintf(`Rate Limit Exceeded — FunctionFly
+
+You've reached the %s rate limit.
+
+Limit Type: %s
+Usage: %d / %d (%d%%)
+Window: %s
+
+Upgrade your plan:
+%s
+
+--
+%s`, limitType, limitType, currentUsage, limit, percentUsed, windowDescription, upgradeURL, TransactionalEmailCopyrightOrangePlain())
+
+	return EmailTemplate{HTML: html, Text: text}
+}
+
+func FunctionDeletedTemplate(functionName string, deletedAt time.Time, restoreURL string) EmailTemplate {
+	timeStr := deletedAt.Format("Jan 2, 2006 at 3:04 PM MST")
+
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Function Deleted — FunctionFly</title>
+  <!--[if mso]><style>table,td{font-family:Arial,sans-serif!important}</style><![endif]-->
+</head>
+<body style="margin:0;padding:0;background-color:#0a0a0b;font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;">
+  <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background-color:#0a0a0b;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%%;">
+        <tr><td align="center" style="padding-bottom:32px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding-right:10px;vertical-align:middle;">
+                <table role="presentation" width="32" height="32" cellpadding="0" cellspacing="0">
+                  <tr><td style="background:#7c2d12;border-radius:6px;width:32px;height:32px;text-align:center;vertical-align:middle;">
+                    <div style="width:14px;height:14px;background:#f97316;transform:rotate(45deg);margin:0 auto;"></div>
+                  </td></tr>
+                </table>
+              </td>
+              <td style="vertical-align:middle;font-size:18px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">FunctionFly</td>
+            </tr>
+          </table>
+        </td></tr>
+        <tr><td>
+          <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
+            <tr><td style="padding:40px 40px 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0>
+                <tr>
+                  <td style="width:56px;height:56px;background:rgba(220,38,38,0.1);border-radius:50%%;text-align:center;vertical-align:middle;">
+                    <div style="font-size:24px;line-height:56px;">&#128465;</div>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+            <tr><td style="padding:24px 40px 0;">
+              <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">Function Deleted</h1>
+              <p style="margin:0;font-size:15px;color:#a1a1aa;line-height:1.6;">
+                <strong style="color:#fafafa;">%s</strong> has been permanently deleted.
+              </p>
+            </td></tr>
+            <tr><td style="padding:24px 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%%">
+                <tr><td style="background:#111113;border:1px solid #27272a;border-radius:8px;padding:20px;">
+                  <p style="margin:0 0 12px;font-size:13px;color:#71717a;"><strong style="color:#a1a1aa;">Function:</strong> %s</p>
+                  <p style="margin:0;font-size:13px;color:#71717a;"><strong style="color:#a1a1aa;">Deleted:</strong> %s</p>
+                </td></tr>
+              </table>
+            </td></tr>
+            <tr><td style="padding:0 40px 28px;">
+              <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="background:#52525b;border-radius:8px;">
+                <a href="%s" target="_blank" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;font-family:inherit;">Restore Function</a>
+              </td></tr></table>
+            </td></tr>
+            <tr><td style="padding:0 40px 40px;">
+              <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;">
+                If you have a backup, you can redeploy. All execution history and metrics for this function have been removed.
+              </p>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:24px 16px;text-align:center;">
+          <div style="margin:0;font-size:12px;color:#52525b;line-height:1.6;">%s</div>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`, functionName, functionName, timeStr, restoreURL, restoreURL, TransactionalEmailCopyrightOrangeHTML())
+
+	text := fmt.Sprintf(`Function Deleted — FunctionFly
+
+%s has been permanently deleted.
+
+Function: %s
+Deleted: %s
+
+Restore (if you have a backup):
+%s
+
+--
+%s`, functionName, functionName, timeStr, restoreURL, TransactionalEmailCopyrightOrangePlain())
+
+	return EmailTemplate{HTML: html, Text: text}
+}
+
+func UsageAlertTemplate(usageType string, currentUsage, limit int64, percentageUsed int, resetDate string, upgradeURL string) EmailTemplate {
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Usage Alert — FunctionFly</title>
+  <!--[if mso]><style>table,td{font-family:Arial,sans-serif!important}</style><![endif]-->
+</head>
+<body style="margin:0;padding:0;background-color:#0a0a0b;font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;">
+  <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background-color:#0a0a0b;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%%;">
+        <tr><td align="center" style="padding-bottom:32px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding-right:10px;vertical-align:middle;">
+                <table role="presentation" width="32" height="32" cellpadding="0" cellspacing="0">
+                  <tr><td style="background:#7c2d12;border-radius:6px;width:32px;height:32px;text-align:center;vertical-align:middle;">
+                    <div style="width:14px;height:14px;background:#f97316;transform:rotate(45deg);margin:0 auto;"></div>
+                  </td></tr>
+                </table>
+              </td>
+              <td style="vertical-align:middle;font-size:18px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">FunctionFly</td>
+            </tr>
+          </table>
+        </td></tr>
+        <tr><td>
+          <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
+            <tr><td style="padding:40px 40px 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0>
+                <tr>
+                  <td style="width:56px;height:56px;background:rgba(249,115,22,0.1);border-radius:50%%;text-align:center;vertical-align:middle;">
+                    <div style="font-size:24px;line-height:56px;">&#9888;&#65039;</div>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+            <tr><td style="padding:24px 40px 0;">
+              <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">Usage Alert: %s%% Used</h1>
+              <p style="margin:0;font-size:15px;color:#a1a1aa;line-height:1.6;">
+                Your <strong style="color:#fafafa;">%s</strong> usage has reached %d%% of your plan limit. Consider upgrading to avoid service interruption.
+              </p>
+            </td></tr>
+            <tr><td style="padding:24px 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%%">
+                <tr><td style="background:#111113;border:1px solid #27272a;border-radius:8px;padding:20px;">
+                  <p style="margin:0 0 12px;font-size:13px;color:#71717a;"><strong style="color:#a1a1aa;">Usage Type:</strong> %s</p>
+                  <p style="margin:0 0 12px;font-size:13px;color:#71717a;"><strong style="color:#a1a1aa;">Usage:</strong> %d / %d</p>
+                  <p style="margin:0;font-size:13px;color:#71717a;"><strong style="color:#a1a1aa;">Resets:</strong> %s</p>
+                </td></tr>
+              </table>
+            </td></tr>
+            <tr><td style="padding:0 40px 28px;">
+              <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="background:#f97316;border-radius:8px;">
+                <a href="%s" target="_blank" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;font-family:inherit;">Upgrade Plan</a>
+              </td></tr></table>
+            </td></tr>
+            <tr><td style="padding:0 40px 40px;">
+              <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;">
+                When usage reaches 100%%, new requests may be rejected. Upgrade before your reset date to maintain service continuity.
+              </p>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:24px 16px;text-align:center;">
+          <div style="margin:0;font-size:12px;color:#52525b;line-height:1.6;">%s</div>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`, percentageUsed, usageType, percentageUsed, usageType, currentUsage, limit, resetDate, upgradeURL, upgradeURL, TransactionalEmailCopyrightOrangeHTML())
+
+	text := fmt.Sprintf(`Usage Alert: %d%% Used — FunctionFly
+
+Your %s usage has reached %d%% of your plan limit.
+
+Usage Type: %s
+Usage: %d / %d
+Resets: %s
+
+Upgrade your plan:
+%s
+
+--
+%s`, percentageUsed, usageType, percentageUsed, usageType, currentUsage, limit, resetDate, upgradeURL, TransactionalEmailCopyrightOrangePlain())
+
+	return EmailTemplate{HTML: html, Text: text}
+}
+
 func UsageExportReadyTemplate(exportID, downloadURL string, expiresAt time.Time, sizeBytes int64) EmailTemplate {
 	expiresStr := expiresAt.Format("Jan 2, 2006 at 3:04 PM MST")
 	sizeMB := float64(sizeBytes) / 1024 / 1024

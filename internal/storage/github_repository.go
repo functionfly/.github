@@ -446,13 +446,13 @@ func (r *GitHubRepository) ListReposByConnection(ctx context.Context, connection
 	switch params.Sort {
 	case "stars":
 		sortCol = "stars_count"
-	case "updated":
+	case "updated", "updated_at":
 		sortCol = "updated_at"
-	case "pushed":
+	case "pushed", "pushed_at":
 		sortCol = "pushed_at"
-	case "created":
+	case "created", "created_at":
 		sortCol = "created_at"
-	case "name":
+	case "name", "full_name":
 		sortCol = "full_name"
 	}
 	sortDir := "ASC"
@@ -537,6 +537,17 @@ func (r *GitHubRepository) UpdateRepoImportStatus(ctx context.Context, id uuid.U
 		status, time.Now().UTC(), id)
 	if err != nil {
 		return fmt.Errorf("failed to update repo import status: %w", err)
+	}
+	return nil
+}
+
+// UpdateRepoFullName updates the full_name field for a repo (e.g., after rename).
+func (r *GitHubRepository) UpdateRepoFullName(ctx context.Context, id uuid.UUID, fullName string) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE github_repos SET full_name = $1, updated_at = $2 WHERE id = $3`,
+		fullName, time.Now().UTC(), id)
+	if err != nil {
+		return fmt.Errorf("failed to update repo full name: %w", err)
 	}
 	return nil
 }

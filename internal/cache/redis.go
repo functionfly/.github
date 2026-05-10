@@ -117,6 +117,11 @@ func (k *RegistryCacheKey) ExecutionResultTTL(functionID, version, inputHash str
 	return fmt.Sprintf("registry:execution:ttl:%s:%s:%s", functionID, version, inputHash)
 }
 
+// EmbedScript generates cache key for generated embed scripts
+func (k *RegistryCacheKey) EmbedScript(author, name, version, optsHash string) string {
+	return fmt.Sprintf("registry:embed:script:%s/%s@%s:%s", author, name, version, optsHash)
+}
+
 // FunctionDeterministic generates cache key to check if function is deterministic
 func (k *RegistryCacheKey) FunctionDeterministic(functionID, version string) string {
 	return fmt.Sprintf("registry:function:deterministic:%s:%s", functionID, version)

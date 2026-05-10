@@ -91,6 +91,13 @@ func (r *CanaryConfigRepository) GetAllByFunctionID(functionID uuid.UUID) ([]*Ca
 	return configs, err
 }
 
+// GetAllActive returns all active canary configurations.
+func (r *CanaryConfigRepository) GetAllActive() ([]*CanaryConfig, error) {
+	var configs []*CanaryConfig
+	err := r.db.Where("status = ?", "active").Order("created_at DESC").Find(&configs).Error
+	return configs, err
+}
+
 // Update updates a canary configuration
 func (r *CanaryConfigRepository) Update(config *CanaryConfig) error {
 	return r.db.Save(config).Error

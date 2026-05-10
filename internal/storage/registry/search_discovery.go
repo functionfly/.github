@@ -243,6 +243,22 @@ func (r *RegistryRepository) UpdateFunctionPopularityScore(ctx context.Context, 
 	return nil
 }
 
+// ListFunctionsByOwner lists registry functions owned by a specific user (all visibilities)
+func (r *RegistryRepository) ListFunctionsByOwner(ownerUserID uuid.UUID, limit, offset int) ([]RegistryFunction, int, error) {
+	var total int64
+	if err := r.db.Model(&RegistryFunction{}).Where("owner_user_id = ?", ownerUserID).Count(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to count functions by owner: %w", err)
+	}
+
+	var functions []RegistryFunction
+	if err := r.db.Where("owner_user_id = ?", ownerUserID).
+		Order("created_at DESC").Limit(limit).Offset(offset).Find(&functions).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to list functions by owner: %w", err)
+	}
+
+	return functions, int(total), nil
+}
+
 // GetPopularFunctionsByCategory gets popular functions in a specific category
 func (r *RegistryRepository) GetPopularFunctionsByCategory(ctx context.Context, category string, limit int) ([]*cache.EdgeCacheCandidate, error) {
 	// Query popular functions in a category

@@ -433,11 +433,24 @@ func (h *Handler) HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Extract tenant context
-	tenantID := h.extractTenantID(r)
+	// Extract tenant context - but do NOT trust X-Tenant-ID header for new signups
+	// This prevents a security vulnerability where an attacker could inject a tenant ID
+	// via the X-Tenant-ID header to get assigned to an enterprise tenant
+	tenantID := h.extractTenantIDForExistingUser(r, userInfo, provider)
 	if tenantID == uuid.Nil {
-		http.Error(w, `{"message": "Tenant context is required"}`, http.StatusBadRequest)
+	// No existing user found - this is a new signup, create a fresh tenant
+	// We create a new tenant directly with the default "free" plan
+	newTenant := &Tenant{
+		ID:     uuid.New(),
+		Name:   "Default Tenant",
+		Status: "active",
+	}
+	if err := h.db.Create(newTenant).Error; err != nil {
+		h.logger.WithError(err).Error("Failed to create tenant for new OAuth user")
+		http.Error(w, `{"message": "Failed to create tenant"}`, http.StatusInternalServerError)
 		return
+	}
+	tenantID = newTenant.ID
 	}
 
 	// Find or create user
@@ -509,6 +522,32 @@ func (h *Handler) extractTenantID(r *http.Request) uuid.UUID {
 		}
 	}
 
+	return uuid.Nil
+}
+
+// extractTenantIDForExistingUser safely extracts tenant ID for OAuth callbacks
+// It NEVER allows X-Tenant-ID header to assign a new user to an existing tenant.
+// Instead, it checks if the user already exists via OAuth provider+email, and if so,
+// uses their existing tenant. If the user doesn't exist, it returns uuid.Nil so
+// a fresh tenant will be created for them.
+func (h *Handler) extractTenantIDForExistingUser(r *http.Request, userInfo *OAuthUserInfo, provider string) uuid.UUID {
+	// First, check if user already exists with this OAuth provider
+	var account Account
+	err := h.db.Where("provider = ? AND provider_account_id = ?", provider, userInfo.ID).First(&account).Error
+	if err == nil {
+		// User exists via OAuth - return their existing tenant
+		return account.TenantID
+	}
+
+	// Check if user exists by email
+	var existingUser User
+	err = h.db.Where("email = ?", userInfo.Email).First(&existingUser).Error
+	if err == nil {
+		// User exists with this email - return their tenant
+		return existingUser.TenantID
+	}
+
+	// User doesn't exist - return uuid.Nil to signal a new tenant should be created
 	return uuid.Nil
 }
 

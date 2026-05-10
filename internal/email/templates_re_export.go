@@ -108,6 +108,42 @@ func InvoiceReadyTemplate(period string, amount float64, invoiceURL string) Emai
 	return templates.InvoiceReadyTemplate(period, amount, invoiceURL)
 }
 
+func PaymentSuccessTemplate(amount float64, description string, chargedAt time.Time, receiptURL string) EmailTemplate {
+	return templates.PaymentSuccessTemplate(amount, description, chargedAt, receiptURL)
+}
+
+func TrialExpiringTemplate(daysRemaining int, upgradeURL string) EmailTemplate {
+	return templates.TrialExpiringTemplate(daysRemaining, upgradeURL)
+}
+
+func SubscriptionChangeTemplate(changeType string, oldPlan, newPlan string, effectiveDate time.Time, manageURL string) EmailTemplate {
+	return templates.SubscriptionChangeTemplate(changeType, oldPlan, newPlan, effectiveDate, manageURL)
+}
+
+func UsageAlertTemplate(usageType string, currentUsage, limit int64, percentageUsed int, resetDate string, upgradeURL string) EmailTemplate {
+	return templates.UsageAlertTemplate(usageType, currentUsage, limit, percentageUsed, resetDate, upgradeURL)
+}
+
+func ExecutionFailedTemplate(functionName, version, errorMsg string, failedAt time.Time) EmailTemplate {
+	return templates.ExecutionFailedTemplate(functionName, version, errorMsg, failedAt)
+}
+
+func RateLimitExceededTemplate(limitType string, currentUsage, limit int64, windowDescription string, upgradeURL string) EmailTemplate {
+	return templates.RateLimitExceededTemplate(limitType, currentUsage, limit, windowDescription, upgradeURL)
+}
+
+func FunctionDeletedTemplate(functionName string, deletedAt time.Time, restoreURL string) EmailTemplate {
+	return templates.FunctionDeletedTemplate(functionName, deletedAt, restoreURL)
+}
+
+func ReferralInviteTemplate(referrerName string, inviteURL string, rewardDescription string, expiresAt time.Time) EmailTemplate {
+	return templates.ReferralInviteTemplate(referrerName, inviteURL, rewardDescription, expiresAt)
+}
+
+func ReferralRewardTemplate(rewardType string, rewardValue string, claimURL string, expiryDate time.Time) EmailTemplate {
+	return templates.ReferralRewardTemplate(rewardType, rewardValue, claimURL, expiryDate)
+}
+
 func TrustRevocationTemplate(functionName, reason string, revokedAt time.Time) EmailTemplate {
 	return templates.TrustRevocationTemplate(functionName, reason, revokedAt)
 }
