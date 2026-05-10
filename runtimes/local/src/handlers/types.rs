@@ -202,7 +202,7 @@ pub struct ErrorResponse {
 
 impl IntoResponse for ErrorResponse {
     fn into_response(self) -> axum::response::Response {
-        axum::Json(self).into_response()
+        (axum::http::StatusCode::INTERNAL_SERVER_ERROR, axum::Json(self)).into_response()
     }
 }
 

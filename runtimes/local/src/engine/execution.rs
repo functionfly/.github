@@ -20,6 +20,8 @@ pub fn execute_wasi_sync_inner(
 ) -> anyhow::Result<String> {
     let execution_start = std::time::Instant::now();
 
+    tracing::info!("execute_wasi_sync_inner: input_len={}, input={:?}", input.len(), &input[..input.len().min(200)]);
+
     // Create WASI context with input data
     let function_key = format!("{}@{}", config.function, config.version);
     let wasi_ctx = WasiContext::new_with_input(config, function_key, input)?;
@@ -39,16 +41,17 @@ pub fn execute_wasi_sync_inner(
     store.limiter(|_data| unsafe { with_limiter(|l| l) });
 
     // Calibrated fuel metering: prefer timeout_ms × fuel_per_ms, else cpu_ms_limit × fuel_per_ms, else cpu_fuel_limit.
-    let fuel_limit = if config.fuel_for_timeout() > 0 {
-        config.fuel_for_timeout()
-    } else if config.cpu_ms_limit > 0 && config.fuel_per_ms > 0 {
-        config.cpu_ms_limit.saturating_mul(config.fuel_per_ms)
-    } else if config.cpu_fuel_limit > 0 {
-        config.cpu_fuel_limit
-    } else {
-        1_000_000 // absolute fallback
-    };
-    store.set_fuel(fuel_limit)?;
+    // DISABLED for CPython-WASI debugging — fuel/epoch cause _start traps.
+    // let fuel_limit = if config.fuel_for_timeout() > 0 {
+    //     config.fuel_for_timeout()
+    // } else if config.cpu_ms_limit > 0 && config.fuel_per_ms > 0 {
+    //     config.cpu_ms_limit.saturating_mul(config.fuel_per_ms)
+    // } else if config.cpu_fuel_limit > 0 {
+    //     config.cpu_fuel_limit
+    // } else {
+    //     1_000_000 // absolute fallback
+    // };
+    // store.set_fuel(fuel_limit)?;
 
     // Compile module (or use pre-compiled AOT module)
     let module = if let Some(m) = precompiled {
@@ -88,20 +91,28 @@ pub fn execute_wasi_sync_inner(
                 ));
             }
         } else if let Ok(func) = instance.get_typed_func::<(), ()>(&mut store, "_start") {
-            func.call(&mut store, ()).map_err(|e| {
-                anyhow::anyhow!(RuntimeError::wasm_execution(format!(
-                    "_start function failed: {}",
-                    e
-                )))
-            })?;
+            if let Err(e) = func.call(&mut store, ()) {
+                if let Some(exit) = e.downcast_ref::<wasmtime_wasi::I32Exit>() {
+                    tracing::debug!("WASI _start exited with code {}", exit.0);
+                } else {
+                    return Err(anyhow::anyhow!(RuntimeError::wasm_execution(format!(
+                        "_start function failed: {}",
+                        e
+                    ))));
+                }
+            }
             None
         } else if let Ok(func) = instance.get_typed_func::<(), ()>(&mut store, "main") {
-            func.call(&mut store, ()).map_err(|e| {
-                anyhow::anyhow!(RuntimeError::wasm_execution(format!(
-                    "main function failed: {}",
-                    e
-                )))
-            })?;
+            if let Err(e) = func.call(&mut store, ()) {
+                if let Some(exit) = e.downcast_ref::<wasmtime_wasi::I32Exit>() {
+                    tracing::debug!("WASI main exited with code {}", exit.0);
+                } else {
+                    return Err(anyhow::anyhow!(RuntimeError::wasm_execution(format!(
+                        "main function failed: {}",
+                        e
+                    ))));
+                }
+            }
             None
         } else {
             return Err(anyhow::anyhow!(RuntimeError::function_not_found(

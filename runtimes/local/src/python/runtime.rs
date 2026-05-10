@@ -6,6 +6,7 @@
 
 use anyhow::Context;
 use rustpython_vm as vm;
+use rustpython_vm::AsObject;
 use tokio::sync::oneshot;
 
 /// Message sent to the Python runtime worker
@@ -28,22 +29,16 @@ fn execute_on_interpreter(
         scope.globals.set_item("input_data", input_value.into(), vm)
             .map_err(|e| anyhow::anyhow!("Failed to set input variable: {:?}", e))?;
 
-        let wrapper_code = format!(r#"
-import json
-
-try:
-    _parsed_input = json.loads(input_data)
-except (json.JSONDecodeError, TypeError):
-    _parsed_input = input_data
-
-input_data = _parsed_input
-
+            let wrapper_code = format!(r#"
 def _truncate_output(s, limit):
     if len(s) > limit:
         return s[:limit] + "...[truncated]"
     return s
 
 {}
+
+# Call the handler function and return its result
+handler(input_data)
 "#, python_code);
 
         let code_obj = vm
@@ -52,7 +47,11 @@ def _truncate_output(s, limit):
             .map_err(|e| anyhow::anyhow!("Failed to compile Python code: {:?}", e))?;
 
         let result = vm.run_code_obj(code_obj, scope)
-            .map_err(|e| anyhow::anyhow!("Failed to execute Python code: {:?}", e))?;
+            .map_err(|e| {
+                let exc_name = e.as_object().class().name().to_string();
+                let exc_msg = e.as_object().str(vm).map(|s| s.to_string()).unwrap_or_else(|_| "<no message>".to_string());
+                anyhow::anyhow!("Failed to execute Python code: {}: {}", exc_name, exc_msg)
+            })?;
 
         let result_str = result.str(vm)
             .map_err(|e| anyhow::anyhow!("Failed to convert result to string: {:?}", e))?;
@@ -89,7 +88,10 @@ impl PythonRuntime {
         std::thread::Builder::new()
             .name("python-runtime-worker".to_string())
             .spawn(move || {
-                let interpreter = vm::Interpreter::without_stdlib(Default::default());
+                let stdlib_defs = rustpython_stdlib::stdlib_module_defs(&vm::Context::genesis());
+                let interpreter = vm::Interpreter::builder(Default::default())
+                    .add_native_modules(&stdlib_defs)
+                    .build();
                 let rt = tokio::runtime::Builder::new_current_thread()
                     .enable_all()
                     .build()
@@ -162,7 +164,10 @@ impl PythonRuntime {
         python_code: &str,
         input: &str,
     ) -> anyhow::Result<String> {
-        let interpreter = vm::Interpreter::without_stdlib(Default::default());
+        let stdlib_defs = rustpython_stdlib::stdlib_module_defs(&vm::Context::genesis());
+        let interpreter = vm::Interpreter::builder(Default::default())
+            .add_native_modules(&stdlib_defs)
+            .build();
         let max_output = self.config.max_output_bytes;
         interpreter.enter(|vm| -> anyhow::Result<String> {
             let scope = vm.new_scope_with_builtins();
@@ -171,22 +176,16 @@ impl PythonRuntime {
             scope.globals.set_item("input_data", input_value.into(), vm)
                 .map_err(|e| anyhow::anyhow!("Failed to set input variable: {:?}", e))?;
 
-            let wrapper_code = format!(r#"
-import json
-
-try:
-    _parsed_input = json.loads(input_data)
-except (json.JSONDecodeError, TypeError):
-    _parsed_input = input_data
-
-input_data = _parsed_input
-
+        let wrapper_code = format!(r#"
 def _truncate_output(s, limit):
     if len(s) > limit:
         return s[:limit] + "...[truncated]"
     return s
 
 {}
+
+# Call the handler function and return its result
+handler(input_data)
 "#, python_code);
 
             let code_obj = vm
@@ -242,7 +241,10 @@ def _truncate_output(s, limit):
             let max_output = self.config.max_output_bytes;
 
             let handle = tokio::task::spawn_blocking(move || -> anyhow::Result<String> {
-                let interpreter = vm::Interpreter::without_stdlib(Default::default());
+                let stdlib_defs = rustpython_stdlib::stdlib_module_defs(&vm::Context::genesis());
+                let interpreter = vm::Interpreter::builder(Default::default())
+                    .add_native_modules(&stdlib_defs)
+                    .build();
                 interpreter.enter(|vm| -> anyhow::Result<String> {
                     let scope = vm.new_scope_with_builtins();
                     let input_value = vm.ctx.new_str(input_data);
@@ -250,21 +252,15 @@ def _truncate_output(s, limit):
                         .map_err(|e| anyhow::anyhow!("Failed to set input variable: {:?}", e))?;
 
                     let wrapper_code = format!(r#"
-import json
-
-try:
-    _parsed_input = json.loads(input_data)
-except (json.JSONDecodeError, TypeError):
-    _parsed_input = input_data
-
-input_data = _parsed_input
-
 def _truncate_output(s, limit):
     if len(s) > limit:
         return s[:limit] + "...[truncated]"
     return s
 
 {}
+
+# Call the handler function and return its result
+handler(input_data)
 "#, code);
 
                     let code_obj = vm
@@ -273,7 +269,11 @@ def _truncate_output(s, limit):
                         .map_err(|e| anyhow::anyhow!("Failed to compile Python code: {:?}", e))?;
 
                     let result = vm.run_code_obj(code_obj, scope)
-                        .map_err(|e| anyhow::anyhow!("Failed to execute Python code: {:?}", e))?;
+                        .map_err(|e| {
+                            let exc_name = e.as_object().class().name().to_string();
+                            let exc_msg = e.as_object().str(vm).map(|s| s.to_string()).unwrap_or_else(|_| "<no message>".to_string());
+                            anyhow::anyhow!("Failed to execute Python code: {}: {}", exc_name, exc_msg)
+                        })?;
 
                     let result_str = result.str(vm)
                         .map_err(|e| anyhow::anyhow!("Failed to convert result to string: {:?}", e))?;

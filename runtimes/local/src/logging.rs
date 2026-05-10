@@ -366,7 +366,8 @@ pub fn init_structured_logging(verbose: bool) -> StructuredLogger {
         tracing_subscriber::registry()
             .with(filter)
             .with(console_layer)
-            .init();
+            .try_init()
+            .ok(); // ok if already initialized
     });
 
     logger

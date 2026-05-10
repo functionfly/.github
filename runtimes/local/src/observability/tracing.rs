@@ -49,11 +49,14 @@ pub fn init_tracing() -> anyhow::Result<()> {
     }
 
     // JSON-only fallback (or when observability feature is disabled)
-    tracing_subscriber::registry()
-        .with(filter)
-        .with(fmt_layer)
-        .try_init()
-        .ok(); // ok if already initialized
+    static INIT: std::sync::Once = std::sync::Once::new();
+    INIT.call_once(|| {
+        tracing_subscriber::registry()
+            .with(filter)
+            .with(fmt_layer)
+            .try_init()
+            .ok(); // ok if already initialized
+    });
     Ok(())
 }
 
@@ -109,12 +112,15 @@ fn init_otlp_tracing(
         .with_file(true)
         .with_line_number(true);
 
-    tracing_subscriber::registry()
-        .with(filter)
-        .with(fmt_layer)
-        .with(otlp_layer)
-        .try_init()
-        .ok();
+    static INIT: std::sync::Once = std::sync::Once::new();
+    INIT.call_once(|| {
+        tracing_subscriber::registry()
+            .with(filter)
+            .with(fmt_layer)
+            .with(otlp_layer)
+            .try_init()
+            .ok(); // ok if already initialized
+    });
 
     Ok(())
 }

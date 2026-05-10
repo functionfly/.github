@@ -94,6 +94,7 @@ impl WasiContext {
         let stdout_pipe = MemoryOutputPipe::new(pipe_capacity);
         let stderr_pipe = MemoryOutputPipe::new(pipe_capacity);
         let input_pipe = MemoryInputPipe::new(input.as_bytes().to_vec()); // Input pipe with data
+        tracing::info!("WasiContext::new_with_input: input_len={}, input_pipe.is_empty={}", input.len(), input_pipe.is_empty());
 
         let mut builder = WasiCtxBuilder::new();
 

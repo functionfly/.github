@@ -21,6 +21,8 @@ pub async fn execute_function_daemon(
 ) -> axum::response::Response {
     let correlation_id = state.logger.generate_correlation_id().await;
 
+    tracing::info!("DEBUG_DAEMON: input_len={}, input={:?}", payload.input.len(), &payload.input[..payload.input.len().min(200)]);
+
     // Use pre-compiled WASM if available, otherwise decode the WASM binary
     let wasm_bytes = if let Some(ref compiled) = payload.wasm_compiled {
         match base64_decode(compiled) {

@@ -477,20 +477,46 @@ impl IsolationUtils {
     pub fn is_safe_path(base_path: &std::path::Path, requested_path: &str) -> bool {
         let requested = std::path::Path::new(requested_path);
 
-        // Try to resolve the path to prevent traversal
-        if let Ok(resolved) = std::fs::canonicalize(requested) {
-            resolved.starts_with(base_path)
-        } else {
-            // If canonicalize fails (e.g., file doesn't exist), check path components
-            // This is less secure but allows testing with non-existent files
-            if let Ok(resolved) = requested.canonicalize() {
-                resolved.starts_with(base_path)
-            } else {
-                // Fallback: check if the path starts with the base path as strings
-                // This is the least secure but works for testing
-                requested_path.starts_with(base_path.to_string_lossy().as_ref())
-            }
+        // Reject paths with null bytes
+        if requested_path.contains('\0') {
+            return false;
         }
+
+        // Reject paths with obvious traversal attempts before canonicalization
+        if requested_path.contains("..\\") || requested_path.contains("../") {
+            // Only reject if the resolved path would escape base_path
+            // Some legitimate paths may contain .. but still resolve safely
+        }
+
+        // Try to resolve the base path first
+        let resolved_base = std::fs::canonicalize(base_path).unwrap_or_else(|_| base_path.to_path_buf());
+
+        // For the requested path, we must canonicalize to resolve symlinks and ..
+        // If the file doesn't exist yet, we check the parent directory
+        let resolved_requested = if requested.exists() {
+            match std::fs::canonicalize(requested) {
+                Ok(p) => p,
+                Err(_) => return false, // Cannot resolve path — reject for safety
+            }
+        } else {
+            // File doesn't exist — resolve parent directory and append filename
+            if let Some(parent) = requested.parent() {
+                let resolved_parent = match std::fs::canonicalize(parent) {
+                    Ok(p) => p,
+                    Err(_) => return false, // Cannot resolve parent — reject for safety
+                };
+                if let Some(file_name) = requested.file_name() {
+                    resolved_parent.join(file_name)
+                } else {
+                    return false; // No filename component
+                }
+            } else {
+                return false; // No parent directory
+            }
+        };
+
+        // Verify the resolved path is within the base path
+        resolved_requested.starts_with(&resolved_base)
     }
 
     /// Sanitize environment variables to prevent injection

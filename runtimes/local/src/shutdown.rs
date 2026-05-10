@@ -298,11 +298,15 @@ impl ManagedResource {
     pub fn cleanup(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         match tokio::runtime::Handle::try_current() {
             Ok(handle) => {
-                // We're in an async context - use the current runtime to block on the cleanup
-                handle.block_on((self.cleanup_fn)())
+                let cleanup_fn = self.cleanup_fn.clone();
+                handle.spawn(async move {
+                    if let Err(e) = cleanup_fn().await {
+                        tracing::warn!("Async resource cleanup failed: {}", e);
+                    }
+                });
+                Ok(())
             }
             Err(_) => {
-                // No runtime available - create a new one for the cleanup
                 let runtime = tokio::runtime::Runtime::new()?;
                 runtime.block_on(async { (self.cleanup_fn)().await })
             }

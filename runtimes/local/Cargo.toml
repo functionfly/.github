@@ -39,8 +39,9 @@ lru = "0.17.0"
 dashmap = "6.1.0"
 futures = "0.3.31"
 rustpython-vm = "0.5.0"
+rustpython-stdlib = "0.5.0"
 lettre = { version = "0.11.14", features = ["tokio1", "tokio1-native-tls"] }
-thiserror = "1.0"   # For scheduler error types
+thiserror = "2.0.18"   # For scheduler error types
 tract-onnx = "0.22.0"
 once_cell = "1.21.3"
 governor = "0.10.4"  # For rate limiting external API calls

@@ -94,8 +94,8 @@ pub struct Config {
     pub wasi_allow_network: bool,
 
     /// Allow system time access in WASI
-    /// Default: false (opt-in for security-sensitive environments)
-    #[arg(long, default_value = "false")]
+    /// Default: true (required for CPython-WASI stdlib imports)
+    #[arg(long, default_value = "true")]
     pub wasi_allow_time: bool,
 
     /// Shutdown timeout in seconds (for graceful shutdown)
@@ -253,12 +253,16 @@ pub struct Config {
     pub cpu_ms_limit: u64,
 
     /// Use CPython compiled to WASM instead of RustPython for Python functions.
-    #[arg(long, default_value = "false")]
+    #[arg(long, default_value = "true")]
     pub use_cpython_wasm: bool,
 
     /// Path to the CPython-WASM binary used when use_cpython_wasm is true.
     #[arg(long, default_value = "./runtimes/cpython.wasm")]
     pub cpython_wasm_path: String,
+
+    /// Path to the CPython-WASI stdlib directory (contains lib/python3.xx/ or python3xx.zip).
+    #[arg(long, default_value = "./runtimes/cpython-wasi/lib")]
+    pub cpython_stdlib_path: String,
 
     /// Enable persistent daemon mode.
     #[arg(long, default_value = "false")]
@@ -287,6 +291,10 @@ pub struct Config {
     /// Maximum number of idle Python runtimes to keep warm in the pool.
     #[arg(long, default_value = "4")]
     pub python_pool_max_idle: usize,
+
+    /// Maximum number of times a Python runtime can be reused before being recycled.
+    #[arg(long, default_value = "100")]
+    pub python_pool_max_reuse: usize,
 
     /// Path to a JSON file containing secrets (key-value pairs).
     /// Environment variables prefixed with SECRET_ take precedence over file entries.
@@ -452,7 +460,7 @@ impl Default for Config {
             wasi_env: Vec::new(),
             wasi_args: Vec::new(),
             wasi_allow_network: false,
-            wasi_allow_time: false,
+            wasi_allow_time: true,
             shutdown_timeout_secs: 30,
             python_runtime: "rustpython-0.4".to_string(),
             capabilities: "".to_string(),
@@ -487,8 +495,9 @@ impl Default for Config {
             aot_cache_memory_capacity: 64,
             fuel_per_ms: 10_000_000,
             cpu_ms_limit: 0,
-            use_cpython_wasm: false,
+            use_cpython_wasm: true,
             cpython_wasm_path: "./runtimes/cpython.wasm".to_string(),
+            cpython_stdlib_path: "./runtimes/cpython-wasi/lib".to_string(),
             daemon_mode: false,
             yara_scan_enabled: false,
             yara_service_url: "http://localhost:5000".to_string(),
@@ -496,6 +505,7 @@ impl Default for Config {
             yara_fail_open: true,
             python_pool_max_concurrent: 8,
             python_pool_max_idle: 4,
+            python_pool_max_reuse: 100,
             secrets_file: None,
             queue_max_len: 1000,
             queue_max_queues: 16,

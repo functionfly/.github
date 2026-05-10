@@ -4,7 +4,7 @@
 
 # Faster linker configuration (only use if lld or mold is installed)
 # For systems without lld/mold, use default
-rustflags = ["-C", "prefer-dynamic"]
+rustflags = ["-C", "lto=no"]
 
 # Note: profile-specific rustflags require unstable cargo feature
 # For now, use RUSTFLAGS environment variable if needed:

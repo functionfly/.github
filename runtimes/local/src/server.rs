@@ -269,6 +269,7 @@ pub async fn run_server(
         let pool = crate::python_pool::PythonRuntimePool::new(
             config.python_pool_max_concurrent,
             config.python_pool_max_idle,
+            config.python_pool_max_reuse,
             python_config,
         );
         tracing::info!("Python runtime pool created (max_concurrent={}, max_idle={})",
