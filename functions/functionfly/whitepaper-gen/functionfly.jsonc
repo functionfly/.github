@@ -1,8 +1,8 @@
 {
   "author": "functionfly",
   "cache_ttl": 0,
-  "category": "data",
-  "description": "Convert CSV files to JSON",
+  "category": "content",
+  "description": "Generate whitepaper content",
   "deterministic": true,
   "idempotent": true,
   "input": {
@@ -14,7 +14,7 @@
     "type": "object"
   },
   "memory_mb": 128,
-  "name": "csv-to-json",
+  "name": "whitepaper-gen",
   "output": {
     "properties": {
       "ok": {
@@ -26,15 +26,15 @@
     },
     "type": "object"
   },
-  "price_per_call": 0.02,
+  "price_per_call": 0.08,
   "runtime": "python3.12",
   "tags": [
-    "csv",
-    "json",
-    "converter"
+    "whitepaper",
+    "content",
+    "business"
   ],
   "tier": "pro",
   "timeout_ms": 5000,
-  "title": "CSV to JSON Converter",
+  "title": "Whitepaper Generator",
   "version": "1.0.0"
 }

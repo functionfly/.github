@@ -6,6 +6,6 @@ def handler(event):
     else:
         data = ""
     
-    # TODO: Implement JSON to CSV Converter logic
+    # TODO: Implement XML to JSON Converter logic
     result = {"ok": True, "result": data, "tier": "pro"}
     return result

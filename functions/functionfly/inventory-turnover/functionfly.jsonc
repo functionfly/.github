@@ -1,60 +1,39 @@
 {
   "author": "functionfly",
-  "name": "inventory-turnover",
-  "version": "1.0.0",
-  "runtime": "python3.12",
-  "title": "Inventory Turnover Calculate",
-  "description": "Calculate inventory turnover ratio (COGS / average inventory).",
-  "category": "finance",
-  "tags": [
-    "inventory-turnover",
-    "efficiency",
-    "finance",
-    "accounting"
-  ],
+  "cache_ttl": 0,
+  "category": "ecommerce",
+  "description": "Calculate inventory turnover",
+  "deterministic": true,
+  "idempotent": true,
   "input": {
-    "type": "object",
     "properties": {
-      "cost_of_goods_sold": {
-        "type": "number",
-        "description": "Cost of goods sold"
-      },
-      "average_inventory": {
-        "type": "number",
-        "description": "Average inventory value"
+      "data": {
+        "type": "string"
       }
     },
-    "required": [
-      "cost_of_goods_sold",
-      "average_inventory"
-    ]
+    "type": "object"
   },
+  "memory_mb": 128,
+  "name": "inventory-turnover",
   "output": {
-    "type": "object",
     "properties": {
       "ok": {
         "type": "boolean"
       },
-      "result": {},
-      "error": {
+      "result": {
         "type": "string"
       }
-    }
-  },
-  "deterministic": true,
-  "idempotent": true,
-  "cache_ttl": 3600,
-  "timeout_ms": 1000,
-  "memory_mb": 128,
-  "example": {
-    "input": {
-      "cost_of_goods_sold": 500000,
-      "average_inventory": 100000
     },
-    "output": {
-      "ok": true,
-      "result": 5.0,
-      "days_in_inventory": 73.0
-    }
-  }
+    "type": "object"
+  },
+  "price_per_call": 0.03,
+  "runtime": "python3.12",
+  "tags": [
+    "ecommerce",
+    "inventory"
+  ],
+  "tier": "pro",
+  "timeout_ms": 5000,
+  "title": "Inventory Turnover Calculator",
+  "version": "1.0.0"
 }

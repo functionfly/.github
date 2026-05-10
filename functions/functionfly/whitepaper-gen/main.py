@@ -6,6 +6,6 @@ def handler(event):
     else:
         data = ""
     
-    # TODO: Implement JSON to CSV Converter logic
+    # TODO: Implement Whitepaper Generator logic
     result = {"ok": True, "result": data, "tier": "pro"}
     return result

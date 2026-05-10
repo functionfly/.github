@@ -2,7 +2,7 @@
   "author": "functionfly",
   "cache_ttl": 0,
   "category": "data",
-  "description": "Convert CSV files to JSON",
+  "description": "Convert XML to JSON",
   "deterministic": true,
   "idempotent": true,
   "input": {
@@ -14,7 +14,7 @@
     "type": "object"
   },
   "memory_mb": 128,
-  "name": "csv-to-json",
+  "name": "xml-to-json",
   "output": {
     "properties": {
       "ok": {
@@ -29,12 +29,12 @@
   "price_per_call": 0.02,
   "runtime": "python3.12",
   "tags": [
-    "csv",
+    "xml",
     "json",
     "converter"
   ],
   "tier": "pro",
   "timeout_ms": 5000,
-  "title": "CSV to JSON Converter",
+  "title": "XML to JSON Converter",
   "version": "1.0.0"
 }
