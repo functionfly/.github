@@ -360,6 +360,43 @@
   transform: scale(1.1);
 }
 
+.tm-feature {
+  margin-top: 0.5rem;
+  padding-top: 0.75rem !important;
+  border-top: 1px dashed rgba(0, 212, 255, 0.3) !important;
+  color: var(--ff-cyan) !important;
+  font-size: 0.8125rem !important;
+}
+
+.tm-feature .check {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.25), rgba(0, 212, 255, 0.15)) !important;
+  border-color: rgba(0, 212, 255, 0.4) !important;
+  color: var(--ff-cyan) !important;
+}
+
+.tm-feature strong {
+  color: var(--ff-cyan);
+}
+
+/* Function Consciousness feature row (purple accent) */
+.consciousness-feature {
+  margin-top: 0.5rem;
+  padding-top: 0.75rem !important;
+  border-top: 1px dashed rgba(168, 85, 247, 0.3) !important;
+  color: #c084fc !important;
+  font-size: 0.8125rem !important;
+}
+
+.consciousness-feature .check {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(168, 85, 247, 0.15)) !important;
+  border-color: rgba(168, 85, 247, 0.4) !important;
+  color: #c084fc !important;
+}
+
+.consciousness-feature strong {
+  color: #c084fc;
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;

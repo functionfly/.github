@@ -1,0 +1,363 @@
+---
+title: Features by Tier
+description: Everything FunctionFly offers, organized by plan tier. Find what fits you—from free hobby projects to enterprise scale.
+sidebar:
+  order: 2
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Not sure which plan fits your project? This page lists **everything** FunctionFly offers, organized by product area and tier. Start free and upgrade only when you need more.
+
+<CardGrid>
+  <Card title="Functions" icon="rocket">
+    Deploy serverless code to the edge
+  </Card>
+  <Card title="StateFabric" icon="database">
+    Durable state for stateless functions
+  </Card>
+  <Card title="Agents" icon="seti:custom">
+    Autonomous AI with memory and policies
+  </Card>
+  <Card title="Bundles" icon="box">
+    Pre-built backends in one click
+  </Card>
+</CardGrid>
+
+---
+
+## Serverless Functions
+
+Deploy code in Python, JavaScript, TypeScript, Go, Rust, and more to 35+ edge locations worldwide.
+
+| Feature | Free | Starter ($24/mo) | Professional ($79/mo) | Enterprise ($299/mo) |
+|---------|------|------------------|----------------------|----------------------|
+| **Functions** | 1 | 5 | 25 | Unlimited |
+| **Cloud Providers** | 2 | 3 | 5 | All (Cloudflare, Vercel, Fly.io, AWS Lambda, Deno, etc.) |
+| **Monthly Requests** | 100,000 | 1 million | 10 million | 100 million+ |
+| **Overage Billing** | Hard stop | $0.15 per 1K calls | $0.08 per 1K calls | $0.05 per 1K calls |
+| **Custom Domains** | — | 1 | 5 | Unlimited |
+| **SLA Uptime** | Best effort | Best effort | 99.9% | 99.99% |
+| **Team Collaboration** | — | — | Included | Included |
+| **Analytics** | Basic usage | Basic usage | Advanced | Custom dashboards |
+| **Support** | Community (Discord/GitHub) | Email | Priority | Dedicated |
+| **Annual Discount** | — | 20% off | 20% off | 30% off + volume pricing |
+
+**Also included on all tiers:**
+- **Multi-Provider Deployment** — Deploy to multiple cloud providers with intelligent failover
+- **Edge Functions** — Ultra-low latency execution at the edge via WASM runtime
+- **AI Composer** — Generate functions with AI (all tiers, usage-based limits)
+- **Function Remix** — Fork and remix community functions from the registry
+- **GitHub Import** — Import functions directly from GitHub repositories
+- **Deploy Keys** — Secure automated deployments without passwords
+- **CI/CD Integration** — GitHub Actions and pipeline automation
+
+**Free tier best for:** Personal demos, learning, small side projects.  
+**Starter best for:** Side projects and MVPs that need a few functions.  
+**Professional best for:** Growing SaaS apps and teams.  
+**Enterprise best for:** Large-scale apps needing custom SLAs and dedicated support.
+
+---
+
+## StateFabric
+
+Add durable state to your serverless functions—shopping carts, sessions, configs, and more.
+
+| Feature | Sandbox (Free) | Starter ($19/mo) | Pro ($99/mo) | Business ($499/mo) | Enterprise (Custom) |
+|---------|---------------|------------------|--------------|--------------------|---------------------|
+| **State Objects** | 1 | 5 | 50 | 500 | Unlimited |
+| **Event Storage** | 1 GB | 10 GB | 100 GB | 1 TB | Unlimited |
+| **State Operations** | 10,000/mo | 100,000/mo | 1 million/mo | 10 million/mo | Unlimited |
+| **Snapshot Retention** | 7 days | 30 days | 90 days | 180 days | 365 days |
+| **Replay Engine** | — | Limited | Fast + API | Full | Export + custom |
+| **Multi-Region** | — | — | — | Yes | Yes + edge replication |
+| **Hot Cache Tier** | — | — | Included | Dedicated | Dedicated |
+| **Support** | Community | Email | Priority | SLA | Dedicated |
+
+**Add-ons available on paid plans:**
+- Hot Cache Booster — $49/mo per 5 GB (faster reads/replay)
+- Advanced Security Pack — $99/mo (SOC2 logs, key rotation, audit streams)
+- AI Memory Pack — $149/mo (vector index, embeddings storage)
+- Advanced Insights — $79/mo (cost forecasting, anomaly detection)
+
+---
+
+## Agents
+
+Autonomous AI agents that can execute tasks, remember context, and follow safety policies.
+
+| Feature | Free | Starter ($24/mo) | Scale ($79/mo) | Enterprise ($499/mo) |
+|---------|------|------------------|----------------|----------------------|
+| **Agents** | — | 10 | 100 | 500+ |
+| **AI / Tool Calls** | Limited discovery | 100,000/mo | 1 million/mo | 5 million/mo+ |
+| **Concurrent Agents** | — | 10 | 100 | 500+ |
+| **Calls per Minute** | — | 100 | 500 | 2,000+ |
+| **State Writes / Hour** | — | 100 | 10,000 | 50,000+ |
+| **Trust Verification** | Basic scores + trust levels | Verification + signing gates | Advanced trust routing | Custom certification flows |
+| **Audit Trail** | Limited | Extended | 90 days | Configurable (compliance) |
+| **Policy Templates** | Basic filters | Starter pack | Org policy packs | Custom trust policies |
+| **Memory Storage** | — | 10 GB | 100 GB | 500 GB+ |
+| **Log Retention** | — | 30 days | 90 days | 1 year |
+| **Support** | Community | Email | Priority | Dedicated + 24/7 |
+
+**Advanced agent capabilities (paid tiers):**
+- **Agent Swarm** — Coordinate multiple agents working together
+- **Agent Evolution** — Self-improving agents that learn from execution
+- **SEBG (Self-Evolving Behavior Graph)** — Dynamic behavior evolution
+- **Daemon Mode** — Background agents that run continuously
+
+**Agent Enterprise (Ultimate tier — Custom pricing):**
+- Unlimited AI calls, agents, and concurrency
+- Unlimited state writes and memory storage
+- 1-year log retention
+- Dedicated infrastructure
+- Custom SLA + 24/7 support
+- On-premise deployment option
+
+---
+
+## Backend-in-a-Box Bundles
+
+Pre-configured backends for common app types. One click deploys Auth, Payments, Database, and more.
+
+| Bundle | Price | Best For | What's Inside |
+|--------|-------|----------|---------------|
+| **SaaS Starter** | $29/mo | Launching a SaaS product | Auth, User DB, Stripe payments, Email workflows, Analytics |
+| **Marketplace** | $49/mo | Multi-vendor platforms | Seller profiles, Listings, Payments split, Reviews, Admin tools |
+| **AI App** | $39/mo | AI-powered applications | LLM integrations, Vector DB, Prompt management, Usage tracking |
+
+**Founder Mode — Build free for 3 months:**
+- No credit card required to start
+- Free until you hit **100 users** or **$1K MRR**
+- 7-day grace period to add payment info after hitting the limit
+- Your data is never deleted
+
+---
+
+## Platform-Wide Features
+
+Tools and capabilities available across the entire platform.
+
+### Secrets Vault (Zero-Knowledge)
+
+Your secrets are encrypted **in your browser** before they ever reach our servers. We cannot read them.
+
+| Feature | Free | Starter | Professional | Enterprise |
+|---------|------|---------|--------------|------------|
+| **Secrets** | — | 10 | 50 | 10,000+ |
+| **Tokens per Secret** | — | 5 | 20 | 100+ |
+| **Zero-Knowledge Encryption** | — | Yes | Yes | Yes |
+
+### Time Machine (Execution Replay)
+
+Replay past function executions to debug issues, verify behavior, and reconcile state.
+
+| Feature | Free | Starter | Professional | Enterprise |
+|---------|------|---------|--------------|------------|
+| **Replay Window** | 24 hours | 72 hours | 30 days | 90 days |
+| **Executions per Replay** | 100 | 1,000 | 10,000 | 100,000 |
+| **Concurrent Replays** | 1 | 1 | 3 | 10 |
+| **Diff Reports** | Basic text | Text diffs | Full structured | Full structured |
+| **Auto Reconciliation** | — | — | Dry-run only | Dry-run + Live |
+| **Audit Certificates** | — | — | — | SOC2 / HIPAA ready |
+
+### Registry & Marketplace
+
+Publish, share, and discover serverless functions and agents.
+
+| Feature | Free | Paid Tiers |
+|---------|------|------------|
+| **Browse Registry** | Yes | Yes |
+| **Publish Functions** | Yes | Yes |
+| **Verified Publisher Badge** | — | Available with verification |
+| **Trust Tiers** | Basic | Basic, High, Enterprise |
+| **Function Remix** | Yes | Yes |
+| **Ratings & Reviews** | Yes | Yes |
+
+### Trust & Verification
+
+Security and trust layers for production deployments.
+
+| Feature | Free | Starter | Professional | Enterprise |
+|---------|------|---------|--------------|------------|
+| **Malware Scanning** | Yes | Yes | Yes | Yes |
+| **Signature Verification** | Yes | Yes | Yes | Yes |
+| **Trust Scores** | Yes | Yes | Yes | Yes |
+| **Trust API Access** | Basic | Usage-based | Higher limits | Enterprise scale |
+| **HMAC Request Signing** | — | Yes | Yes | Yes |
+| **Per-API-Key Cost Tracking** | — | — | Yes | Yes + budgets & alerts |
+
+### Function DNA (Evolution Engine)
+
+Your functions can evolve automatically. The DNA engine analyzes execution patterns, proposes AI-generated mutations, and deploys improvements via canary releases.
+
+| Feature | Free | Starter | Professional | Enterprise |
+|---------|------|---------|--------------|------------|
+| **DNA Profile & Insights** | Basic | Full | Full + predictive | Full + custom rules |
+| **Auto-Evolution** | — | Yes | Yes | Yes |
+| **Mutation Proposals** | — | Up to 5/day | Up to 10/day | Unlimited |
+| **Canary Deployments** | — | 10% default | Custom % | Custom % + auto-rollback |
+| **Mutation Cost** | — | 50 credits each | 50 credits each | 50 credits each |
+| **Accept/Reject Variants** | — | Yes | Yes | Yes |
+
+**How it works:**
+1. The DNA engine monitors your function's execution
+2. AI proposes code mutations (optimizations, bug fixes, features)
+3. You review diffs and accept or reject each variant
+4. Accepted mutations deploy via canary with automatic rollback on errors
+
+### Function Runtime Graph (FRG)
+
+Build complex workflows by visually connecting functions in a drag-and-drop graph editor. No code required.
+
+| Feature | Free | Starter | Professional | Enterprise |
+|---------|------|---------|--------------|------------|
+| **Visual Graph Editor** | Yes | Yes | Yes | Yes |
+| **3D Graph View** | Yes | Yes | Yes | Yes |
+| **AI Workflow Assistant** | Limited | Full | Full | Full |
+| **Test Runner** | Yes | Yes | Yes | Yes |
+| **Version Control** | Yes | Yes | Yes | Yes |
+| **Live Collaboration** | — | — | Yes | Yes |
+| **Execution Monitoring** | Basic | Basic | Advanced | Real-time |
+
+### Apps Platform
+
+Build and deploy full applications composed of functions, state, and integrations.
+
+| Feature | Free | Starter | Professional | Enterprise |
+|---------|------|---------|--------------|------------|
+| **Apps** | — | 3 | 10 | Unlimited |
+| **Custom Domains per App** | — | 1 | 5 | Unlimited |
+| **App Analytics** | — | Basic | Advanced | Custom |
+
+### Developer Certification
+
+Earn verifiable credentials that prove your serverless expertise. Certified developers can charge premium pricing in the marketplace.
+
+| Tier | Price | What You Get |
+|------|-------|--------------|
+| **Associate** | Free | Entry-level certification with knowledge test |
+| **Professional** | $49 | Advanced exam with practical challenges (Coming Soon) |
+| **Architect** | $99 | Expert-level certification with design challenges (Coming Soon) |
+
+**Benefits of certification:**
+- Verifiable LinkedIn-ready credentials
+- Up to 40% more pricing power in the marketplace
+- Industry recognition
+- Public credential verification page
+
+### Wallet & Credits
+
+A platform wallet for paying per-use features like DNA mutations, function remixes, and premium API calls.
+
+| Feature | All Tiers |
+|---------|-----------|
+| **Wallet** | Yes (add funds anytime) |
+| **Credit Purchases** | Yes ($1 = 100 credits) |
+| **DNA Mutations** | 50 credits each |
+| **Function Remixes** | Varies by function |
+| **Premium API Calls** | Usage-based |
+
+### Publisher Payouts & Affiliate
+
+Monetize your functions and earn from referrals.
+
+| Feature | Free | Paid Tiers |
+|---------|------|------------|
+| **Publish Paid Functions** | — | Yes (set price per call) |
+| **Publisher Revenue Share** | — | 70% of call revenue |
+| **Affiliate Program** | — | Yes (referral commissions) |
+| **Stripe Connect Payouts** | — | Yes (direct bank deposits) |
+| **Payout Scheduling** | — | Weekly / Monthly |
+
+### Team & Collaboration
+
+Invite team members and manage access across your organization.
+
+| Feature | Free | Starter | Professional | Enterprise |
+|---------|------|---------|--------------|------------|
+| **Team Members** | 1 (solo) | 3 | 10 | Unlimited |
+| **Role-Based Access** | — | Basic | Advanced | Custom roles |
+| **Member Invites** | — | Email invites | Email invites | SSO + SAML |
+| **MFA Enforcement** | — | — | Optional | Required |
+| **Audit Logs** | — | — | 90 days | 1 year+ |
+
+**Roles available:** Owner, Admin, Member, Viewer
+
+### Function Consciousness
+
+AI-powered insights that monitor your functions and suggest improvements automatically.
+
+| Feature | Free | Starter | Professional | Enterprise | Agent Enterprise |
+|---------|------|---------|--------------|------------|------------------|
+| **Basic Consciousness** | — | — | Yes | Yes | Yes |
+| **Advanced Consciousness** | — | — | — | Yes | Yes |
+| **Autonomous Consciousness** | — | — | — | — | Yes |
+| **Lookback Window** | — | — | 7 days | 30 days | Unlimited |
+| **Daily Digest** | — | — | Yes | Yes | Yes |
+| **Real-time Alerts** | — | — | — | Yes | Yes |
+| **Predictive Fixes** | — | — | — | Yes | Yes |
+| **Self-Healing** | — | — | — | — | Yes |
+
+**Consciousness tiers explained:**
+- **Basic** (Professional+): Daily digest of function health, basic insights, 7-day lookback
+- **Advanced** (Enterprise+): Real-time monitoring, predictive failure detection, auto-fix suggestions, 30-day lookback
+- **Autonomous** (Agent Enterprise): Self-healing functions, unlimited lookback, automatic remediation
+
+### Notifications & System Status
+
+| Feature | All Tiers |
+|---------|-----------|
+| **In-App Notifications** | Yes |
+| **Email Alerts** | Yes |
+| **System Status Page** | Yes (public) |
+| **Incident Alerts** | Yes |
+| **Webhook Notifications** | Professional+ |
+
+---
+
+## Quick Comparison: Which Tier Is Right for You?
+
+| If you are... | Start with | Upgrade when... |
+|---------------|------------|-----------------|
+| Learning or building a personal demo | **Free** | You need more than 1 function or 100K requests |
+| Building a side project or MVP | **Starter** | You need team collaboration or 99.9% SLA |
+| Running a growing SaaS or business | **Professional** | You need unlimited scale, custom SLAs, or dedicated support |
+| A large company with compliance needs | **Enterprise** | — |
+| Building a SaaS, marketplace, or AI app fast | **Backend-in-a-Box Bundle** | You outgrow the pre-configured setup |
+
+---
+
+## Common Questions
+
+**Do all paid plans have a free trial?**  
+Yes. Every paid plan includes a 14-day free trial. No credit card required to start.
+
+**Can I change plans later?**  
+Yes. Upgrade or downgrade anytime. Upgrades apply immediately; downgrades take effect at the end of your billing cycle.
+
+**What happens if I exceed my limits?**  
+We notify you before you hit limits. Free plans have a hard stop. Paid plans include generous allowances with overage billing—you only pay for what you use beyond your quota.
+
+**Is there a pay-as-you-go option?**  
+Yes. You can use the Pay-as-you-go tier with no monthly commitment. You pay a slightly higher per-request rate but only for what you use.
+
+**Do you offer annual discounts?**  
+Yes. Starter and Professional plans save 20% when billed annually. Enterprise plans save 30% and include volume-based pricing.
+
+**What is Founder Mode?**  
+Founder Mode lets you use Backend-in-a-Box bundles free for 3 months (or until you hit 100 users / $1K MRR). It is designed to help early-stage startups launch with zero upfront cost.
+
+**How do DNA mutation credits work?**  
+Each accepted mutation costs 50 credits from your wallet. Rejected mutations are free. You can buy credits starting at $1 for 100 credits.
+
+**Are certifications free?**  
+The Associate certification is free. Professional and Architect tiers have exam fees ($49 and $99).
+
+---
+
+## Need Help Choosing?
+
+- [Pricing Overview](/pricing/) — See plan cards and start a trial
+- [Contact Sales](https://functionfly.com/contact) — Talk to our team about Enterprise or custom needs
+- [GitHub Discussions](https://github.com/functionfly/functionfly/discussions) — Ask the community
