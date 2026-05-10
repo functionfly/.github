@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "cache_ttl": 0,
+  "category": "marketing",
+  "description": "Generate email templates",
+  "deterministic": true,
+  "idempotent": true,
+  "input": {
+    "properties": {
+      "data": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "memory_mb": 128,
+  "name": "email-template-gen",
+  "output": {
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "price_per_call": 0.03,
+  "runtime": "python3.12",
+  "tags": [
+    "email",
+    "template",
+    "marketing"
+  ],
+  "tier": "pro",
+  "timeout_ms": 5000,
+  "title": "Email Template Generator",
+  "version": "1.0.0"
+}

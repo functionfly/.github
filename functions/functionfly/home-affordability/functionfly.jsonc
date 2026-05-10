@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "cache_ttl": 0,
+  "category": "realestate",
+  "description": "Calculate affordable home prices",
+  "deterministic": true,
+  "idempotent": true,
+  "input": {
+    "properties": {
+      "data": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "memory_mb": 128,
+  "name": "home-affordability",
+  "output": {
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "price_per_call": 0.04,
+  "runtime": "python3.12",
+  "tags": [
+    "realestate",
+    "afford",
+    "calculator"
+  ],
+  "tier": "pro",
+  "timeout_ms": 5000,
+  "title": "Home Affordability Calculator",
+  "version": "1.0.0"
+}

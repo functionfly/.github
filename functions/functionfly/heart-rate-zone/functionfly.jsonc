@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "cache_ttl": 0,
+  "category": "health",
+  "description": "Calculate heart rate zones",
+  "deterministic": true,
+  "idempotent": true,
+  "input": {
+    "properties": {
+      "data": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "memory_mb": 128,
+  "name": "heart-rate-zone",
+  "output": {
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "price_per_call": 0.01,
+  "runtime": "python3.12",
+  "tags": [
+    "health",
+    "fitness",
+    "heart"
+  ],
+  "tier": "pro",
+  "timeout_ms": 5000,
+  "title": "Heart Rate Zone Calculator",
+  "version": "1.0.0"
+}
