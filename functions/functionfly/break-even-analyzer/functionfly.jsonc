@@ -1,0 +1,39 @@
+{
+  "author": "functionfly",
+  "cache_ttl": 0,
+  "category": "business",
+  "description": "Analyze break-even point",
+  "deterministic": true,
+  "idempotent": true,
+  "input": {
+    "properties": {
+      "data": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "memory_mb": 128,
+  "name": "break-even-analyzer",
+  "output": {
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "price_per_call": 0.04,
+  "runtime": "python3.12",
+  "tags": [
+    "business",
+    "finance"
+  ],
+  "tier": "pro",
+  "timeout_ms": 5000,
+  "title": "Break Even Analyzer",
+  "version": "1.0.0"
+}

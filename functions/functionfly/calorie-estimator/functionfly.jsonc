@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "cache_ttl": 0,
+  "category": "health",
+  "description": "Estimate daily calorie needs",
+  "deterministic": true,
+  "idempotent": true,
+  "input": {
+    "properties": {
+      "data": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "memory_mb": 128,
+  "name": "calorie-estimator",
+  "output": {
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "price_per_call": 0.02,
+  "runtime": "python3.12",
+  "tags": [
+    "health",
+    "calorie",
+    "fitness"
+  ],
+  "tier": "pro",
+  "timeout_ms": 5000,
+  "title": "Calorie Estimator",
+  "version": "1.0.0"
+}

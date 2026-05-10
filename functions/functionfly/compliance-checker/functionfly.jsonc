@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "cache_ttl": 0,
+  "category": "legal",
+  "description": "Check regulatory compliance",
+  "deterministic": true,
+  "idempotent": true,
+  "input": {
+    "properties": {
+      "data": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "memory_mb": 128,
+  "name": "compliance-checker",
+  "output": {
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "price_per_call": 0.06,
+  "runtime": "python3.12",
+  "tags": [
+    "legal",
+    "compliance",
+    "gdpr"
+  ],
+  "tier": "pro",
+  "timeout_ms": 5000,
+  "title": "Compliance Checker",
+  "version": "1.0.0"
+}

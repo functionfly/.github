@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "cache_ttl": 0,
+  "category": "marketing",
+  "description": "Check backlinks for domains",
+  "deterministic": true,
+  "idempotent": true,
+  "input": {
+    "properties": {
+      "data": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "memory_mb": 128,
+  "name": "backlink-checker",
+  "output": {
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "price_per_call": 0.03,
+  "runtime": "python3.12",
+  "tags": [
+    "seo",
+    "backlink",
+    "marketing"
+  ],
+  "tier": "pro",
+  "timeout_ms": 5000,
+  "title": "Backlink Checker",
+  "version": "1.0.0"
+}

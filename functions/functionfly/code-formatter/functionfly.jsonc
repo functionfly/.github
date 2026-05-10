@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "cache_ttl": 0,
+  "category": "dev",
+  "description": "Format code in various languages",
+  "deterministic": true,
+  "idempotent": true,
+  "input": {
+    "properties": {
+      "data": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "memory_mb": 128,
+  "name": "code-formatter",
+  "output": {
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "price_per_call": 0.02,
+  "runtime": "python3.12",
+  "tags": [
+    "code",
+    "format",
+    "dev"
+  ],
+  "tier": "pro",
+  "timeout_ms": 5000,
+  "title": "Code Formatter",
+  "version": "1.0.0"
+}

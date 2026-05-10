@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "cache_ttl": 0,
+  "category": "ecommerce",
+  "description": "Analyze cart abandonment",
+  "deterministic": true,
+  "idempotent": true,
+  "input": {
+    "properties": {
+      "data": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "memory_mb": 128,
+  "name": "cart-abandonment",
+  "output": {
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "price_per_call": 0.04,
+  "runtime": "python3.12",
+  "tags": [
+    "ecommerce",
+    "cart",
+    "analyze"
+  ],
+  "tier": "pro",
+  "timeout_ms": 5000,
+  "title": "Cart Abandonment Analyzer",
+  "version": "1.0.0"
+}
