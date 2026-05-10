@@ -65,10 +65,13 @@ trap cleanup EXIT INT TERM
 
 # Do not use exec when we started FlyMind — otherwise EXIT trap never runs and the child keeps running orphaned.
 if [ -n "$AI_PID" ]; then
+  # Remove INT trap so the orchestrator child receives Ctrl+C directly for graceful shutdown.
+  # EXIT trap still runs to clean up FlyMind when the orchestrator exits.
+  trap - INT
   "$@"
   STATUS=$?
   cleanup
-  trap - EXIT INT TERM
+  trap - EXIT TERM
   exit "$STATUS"
 fi
 

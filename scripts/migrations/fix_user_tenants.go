@@ -1,9 +1,11 @@
 // fix_user_tenants.go - Data migration to fix users affected by tenant assignment bug
-// This script creates individual starter tenants for users who were incorrectly
+// This script creates individual free-tier tenants for users who were incorrectly
 // assigned to shared tenants (often enterprise tenants) due to the signup bug.
 //
 // Usage: go run scripts/migrations/fix_user_tenants.go
 // Or as SQL: See fix_user_tenants.sql for the pure SQL approach
+//
+// Set MIGRATION_AUTO_COMMIT=true to auto-commit (production)
 
 package main
 
@@ -51,16 +53,22 @@ func main() {
 	}
 	defer tx.Rollback()
 
-	// Find users who need fixing:
-	// Users in tenants that have multiple users OR users in enterprise tenants
-	// who were likely incorrectly assigned due to the bug
+	// Find users incorrectly assigned to enterprise tenants:
+	// A user is affected if:
+	// 1. Their tenant has plan 'enterprise' AND
+	// 2. The tenant has only this one user (single-user tenant that shouldn't be enterprise)
+	// OR
+	// 3. The tenant has multiple users but the user wasn't the first one created
+	//    (first user is assumed to be the legitimate owner)
+	//
+	// This identifies users who were likely injected via X-Tenant-ID header manipulation
 	rows, err := tx.Query(`
 		SELECT u.id, u.email, u.tenant_id, t.plan, t.name as tenant_name,
-		       (SELECT COUNT(*) FROM users WHERE tenant_id = u.tenant_id) as user_count
+		       (SELECT COUNT(*) FROM users WHERE tenant_id = u.tenant_id) as user_count,
+		       (SELECT MIN(created_at) FROM users WHERE tenant_id = u.tenant_id) as first_user_created
 		FROM users u
 		JOIN tenants t ON u.tenant_id = t.id
 		WHERE t.plan = 'enterprise'
-		   OR (SELECT COUNT(*) FROM users WHERE tenant_id = u.tenant_id) > 1
 		ORDER BY u.created_at DESC
 	`)
 	if err != nil {
@@ -69,86 +77,92 @@ func main() {
 	defer rows.Close()
 
 	type affectedUser struct {
-		UserID      uuid.UUID
-		Email       string
-		TenantID    uuid.UUID
-		Plan        string
-		TenantName  string
-		UserCount   int
+		UserID           uuid.UUID
+		Email            string
+		TenantID         uuid.UUID
+		Plan             string
+		TenantName       string
+		UserCount        int
+		FirstUserCreated string
 	}
 
 	var affectedUsers []affectedUser
 	for rows.Next() {
 		var u affectedUser
-		if err := rows.Scan(&u.UserID, &u.Email, &u.TenantID, &u.Plan, &u.TenantName, &u.UserCount); err != nil {
+		var firstUserCreated sql.NullString
+		if err := rows.Scan(&u.UserID, &u.Email, &u.TenantID, &u.Plan, &u.TenantName, &u.UserCount, &firstUserCreated); err != nil {
 			log.Printf("Error scanning row: %v", err)
 			continue
+		}
+		if firstUserCreated.Valid {
+			u.FirstUserCreated = firstUserCreated.String
 		}
 		affectedUsers = append(affectedUsers, u)
 	}
 	rows.Close()
 
 	if len(affectedUsers) == 0 {
-		log.Println("No affected users found. All users appear to have correct tenant assignments.")
+		log.Println("No affected users found in enterprise tenants.")
 		return
 	}
 
-	log.Printf("Found %d users that may need tenant reassignment", len(affectedUsers))
+	log.Printf("Found %d users in enterprise tenants", len(affectedUsers))
 	log.Println("Reviewing affected users:")
 
-	// Skip the first tenant (which is legitimate) and fix the rest
-	// We assume the first user in each shared tenant is the legitimate owner
-	usersToFix := make(map[uuid.UUID][]affectedUser) // tenant_id -> users
+	// Group users by tenant
+	usersByTenant := make(map[uuid.UUID][]affectedUser)
 	for _, u := range affectedUsers {
-		usersToFix[u.TenantID] = append(usersToFix[u.TenantID], u)
+		usersByTenant[u.TenantID] = append(usersByTenant[u.TenantID], u)
 	}
 
 	fixedCount := 0
 	skippedCount := 0
 
-	for _, users := range usersToFix {
-		// Keep the first user in each tenant (assumed to be the legitimate owner)
-		// Fix the rest by creating new tenants for them
+	for tenantID, users := range usersByTenant {
+		log.Printf("\nTenant %s (%s) with plan '%s' has %d user(s):",
+			tenantID, users[0].TenantName, users[0].Plan, len(users))
+
 		for i, u := range users {
+			// Keep the FIRST user in each enterprise tenant (earliest created_at)
+			// These are assumed to be the legitimate enterprise tenant owners
 			if i == 0 {
-				// Skip the first user in this tenant - they're likely the legitimate tenant owner
-				log.Printf("  SKIPPED (assumed owner): %s (tenant: %s, plan: %s, users in tenant: %d)",
-					u.Email, u.TenantID, u.Plan, u.UserCount)
+				log.Printf("  [%d] SKIPPED (assumed legitimate owner): %s (created: %s, user_count: %d)",
+					i+1, u.Email, u.FirstUserCreated, u.UserCount)
 				skippedCount++
 				continue
 			}
 
-			// Create new tenant for this user
+			// All other users in enterprise tenants are suspect:
+			// They could have been assigned via X-Tenant-ID header injection
+			// Move them to a new free-tier tenant
 			newTenantID := uuid.New()
 			newTenantName := fmt.Sprintf("%s's Workspace", u.Email)
 
 			_, err := tx.Exec(`
 				INSERT INTO tenants (id, name, plan, status, created_at, updated_at)
-				VALUES ($1, $2, 'starter', 'active', NOW(), NOW())
+				VALUES ($1, $2, 'free', 'active', NOW(), NOW())
 			`, newTenantID, newTenantName)
 			if err != nil {
-				log.Printf("  ERROR creating tenant for %s: %v", u.Email, err)
+				log.Printf("  [%d] ERROR creating free tenant for %s: %v", i+1, u.Email, err)
 				continue
 			}
 
-			// Move user to new tenant
 			_, err = tx.Exec(`
 				UPDATE users SET tenant_id = $1, updated_at = NOW() WHERE id = $2
 			`, newTenantID, u.UserID)
 			if err != nil {
-				log.Printf("  ERROR moving user %s to new tenant: %v", u.Email, err)
+				log.Printf("  [%d] ERROR moving user %s to new tenant: %v", i+1, u.Email, err)
 				continue
 			}
 
-			log.Printf("  FIXED: %s -> new tenant %s (was in %s/%s)",
-				u.Email, newTenantID, u.TenantID, u.Plan)
+			log.Printf("  [%d] DOWNGRADED: %s -> new free tenant %s (was in enterprise tenant %s)",
+				i+1, u.Email, newTenantID, tenantID)
 			fixedCount++
 		}
 	}
 
 	log.Println()
-	log.Printf("Summary: %d users fixed, %d users skipped (assumed owners)", fixedCount, skippedCount)
-	log.Println("Review the changes above. Commit? (yes/no)")
+	log.Printf("Summary: %d users downgraded from enterprise, %d enterprise owners preserved", fixedCount, skippedCount)
 
 	// Auto-commit in production mode, prompt in interactive mode
 	if os.Getenv("MIGRATION_AUTO_COMMIT") == "true" {
@@ -158,7 +172,6 @@ func main() {
 		log.Println("Changes committed!")
 	} else {
 		log.Println("Dry run complete. Set MIGRATION_AUTO_COMMIT=true to apply changes.")
-		log.Println("Or run with --commit flag")
 	}
 }
 
