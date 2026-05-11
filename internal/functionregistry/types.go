@@ -102,6 +102,7 @@ type FunctionManifest struct {
 	Description          string   `json:"description,omitempty"`
 	Input                *IOType  `json:"input,omitempty"`
 	Output               *IOType  `json:"output,omitempty"`
+	Examples             []Example `json:"examples,omitempty"`
 	TimeoutMs            int      `json:"timeout_ms,omitempty" validate:"min=100,max=30000"`
 	MemoryMB             int      `json:"memory_mb,omitempty" validate:"min=32,max=1024"`
 	Deterministic        bool     `json:"deterministic,omitempty"`
@@ -123,6 +124,12 @@ type IOType struct {
 	Example    json.RawMessage `json:"example,omitempty"`
 	Schema     json.RawMessage `json:"schema,omitempty"`
 	Required   RequiredField   `json:"required,omitempty"` // bool or JSON Schema "required" array of property names
+}
+
+type Example struct {
+	Name        string          `json:"name"`
+	Input       json.RawMessage `json:"input"`
+	Description string          `json:"description,omitempty"`
 }
 
 // RequiredField accepts either a bool (body required) or []string (required property names) in JSON
@@ -353,6 +360,7 @@ type FunctionInfo struct {
 	OutputType    string          `json:"output_type,omitempty"`
 	InputExample  json.RawMessage `json:"input_example,omitempty"`
 	OutputExample json.RawMessage `json:"output_example,omitempty"`
+	Examples      []interface{}   `json:"examples,omitempty"`
 	// Trust Score fields
 	TrustScore        float64 `json:"trust_score"`
 	TrustLevel        string  `json:"trust_level"`

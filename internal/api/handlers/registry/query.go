@@ -128,11 +128,38 @@ func (h *Handler) HandleGetFunction(w http.ResponseWriter, r *http.Request) {
 	_ = errVer
 
 	// Expand manifest if requested
+	logrus.WithField("expand", r.URL.Query().Get("expand")).Info("HandleGetFunction: expand parameter value")
 	if r.URL.Query().Get("expand") == "manifest" {
 		var manifest functionregistry.FunctionManifest
 		if err := json.Unmarshal(fnVersion.Manifest, &manifest); err == nil {
-			info["manifest"] = manifest
+			// Transform manifest for frontend compatibility:
+			// - Frontend expects input.schema.properties but manifest has input.properties
+			// - Frontend expects output.schema.properties but manifest has output.properties
+			// - Frontend expects examples array but manifest doesn't have it
+			transformedManifest := transformManifestForFrontend(manifest)
+			info["manifest"] = transformedManifest
+			logrus.WithFields(logrus.Fields{
+				"author": author,
+				"name":   name,
+				"manifest_input_type": func() string {
+					if manifest.Input != nil {
+						return manifest.Input.Type
+					}
+					return "nil"
+				}(),
+				"manifest_input_props_len": func() int {
+					if manifest.Input != nil {
+						return len(manifest.Input.Properties)
+					}
+					return 0
+				}(),
+			}).Info("Manifest expanded and transformed")
+		} else {
+			logrus.WithError(err).Warn("Failed to unmarshal manifest for expand=manifest")
 		}
+	} else {
+		// Debug: log when expand != manifest
+		logrus.WithField("expand", r.URL.Query().Get("expand")).Debug("Manifest expand not requested")
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -511,4 +538,100 @@ func (h *Handler) HandleGetSimilarFunctions(w http.ResponseWriter, r *http.Reque
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+// transformManifestForFrontend converts the backend FunctionManifest format
+// to the format expected by the frontend playground components.
+//
+// Backend IOType has:
+//   - Properties: json.RawMessage (directly contains { "field": { type, description, ... } })
+//   - Schema: json.RawMessage (may contain nested schema with properties)
+//   - Example: json.RawMessage (opaque bytes)
+//
+// Frontend FunctionInfo.manifest expects:
+//   - input/output.schema: { type, properties: { ... }, required: [...], example: ... }
+//   - input/output.example: fully deserialized value
+//   - examples: [{ name, input, description }] array derived from input.example
+func transformManifestForFrontend(m functionregistry.FunctionManifest) map[string]interface{} {
+	result := make(map[string]interface{})
+
+	if m.Input != nil {
+		result["input"] = transformIOTypeForFrontend(*m.Input)
+	}
+	if m.Output != nil {
+		result["output"] = transformIOTypeForFrontend(*m.Output)
+	}
+	if len(m.Examples) > 0 {
+		result["examples"] = m.Examples
+	}
+
+	return result
+}
+
+// transformIOTypeForFrontend transforms a single IOType to frontend format.
+func transformIOTypeForFrontend(io functionregistry.IOType) map[string]interface{} {
+	result := map[string]interface{}{
+		"type": io.Type,
+	}
+
+	// Handle properties - backend stores this as json.RawMessage containing the properties object
+	if len(io.Properties) > 0 {
+		var props map[string]interface{}
+		if err := json.Unmarshal(io.Properties, &props); err == nil {
+			result["schema"] = map[string]interface{}{
+				"type":       io.Type,
+				"properties": props,
+			}
+		} else {
+			logrus.WithError(err).Warn("Failed to unmarshal IOType.Properties")
+		}
+	}
+
+	// Handle schema field if present (may be nested)
+	if len(io.Schema) > 0 {
+		var schema map[string]interface{}
+		if err := json.Unmarshal(io.Schema, &schema); err == nil {
+			// If we don't already have schema from properties, use this one
+			if _, ok := result["schema"]; !ok {
+				result["schema"] = schema
+			}
+		} else {
+			logrus.WithError(err).Warn("Failed to unmarshal IOType.Schema")
+		}
+	}
+
+	// Handle example
+	if len(io.Example) > 0 {
+		var example interface{}
+		if err := json.Unmarshal(io.Example, &example); err == nil {
+			result["example"] = example
+		} else {
+			logrus.WithError(err).Warn("Failed to unmarshal IOType.Example")
+		}
+	}
+
+	// Handle required field
+	if io.Required.IsRequired() {
+		if len(io.Required.Array) > 0 {
+			result["required"] = io.Required.Array
+		} else if io.Required.Bool {
+			result["required"] = true
+		}
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"type":       io.Type,
+		"props_len":  len(io.Properties),
+		"schema_len": len(io.Schema),
+		"example_len": len(io.Example),
+		"result_keys": func() []string {
+			keys := make([]string, 0, len(result))
+			for k := range result {
+				keys = append(keys, k)
+			}
+			return keys
+		}(),
+	}).Info("Transformed IOType")
+
+	return result
 }

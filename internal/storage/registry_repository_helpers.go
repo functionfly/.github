@@ -63,6 +63,9 @@ func ToInfoWithRating(f *RegistryFunction, version *RegistryFunctionVersion, rat
 			info["output_type"] = output["type"]
 			info["output_example"] = output["example"]
 		}
+		if examples, ok := manifest["examples"].([]interface{}); ok {
+			info["examples"] = examples
+		}
 	}
 
 	// Add trust score from rating if available

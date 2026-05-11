@@ -132,6 +132,9 @@ func (f *RegistryFunction) ToInfoWithRating(version *RegistryFunctionVersion, ra
 			info["output_type"] = output["type"]
 			info["output_example"] = output["example"]
 		}
+		if examples, ok := manifest["examples"].([]interface{}); ok {
+			info["examples"] = examples
+		}
 		// Backfill description from manifest when DB has none
 		if !f.Description.Valid {
 			if desc, ok := manifest["description"].(string); ok && desc != "" {

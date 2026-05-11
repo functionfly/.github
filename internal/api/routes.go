@@ -96,6 +96,7 @@ import (
 	trustapirepo "github.com/functionfly/functionfly/internal/storage/trustapi"
 	decisionsrepo "github.com/functionfly/functionfly/internal/storage/trustapi/decisions"
 	vaultstorage "github.com/functionfly/functionfly/internal/storage/vault"
+	timemachine "github.com/functionfly/functionfly/internal/storage/timemachine"
 	"github.com/functionfly/functionfly/internal/support"
 	"github.com/functionfly/functionfly/internal/versioning"
 	"github.com/functionfly/functionfly/internal/wallet"
@@ -995,6 +996,11 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// Privacy API routes (GDPR compliance, data export/deletion, consent management)
 	registerPrivacyRoutes(api, authMiddleware, privacyHandler)
+
+	// ── Time Machine ──────────────────────────────────────────────────────
+	tmRepo := timemachine.NewRepository(s.postgresDB.GORM)
+	tmHandler := newTimeMachineHandler(tmRepo, s.repo, s.redisClient, realtimeUsageTracker, s.notificationSvc, s.authSvc)
+	registerTimeMachineRoutes(api, tmHandler, authMiddleware)
 
 	// ── Payout System (Stripe Connect) ───────────────────────────────────────
 	payoutRepo := storage.NewPayoutRepository(s.postgresDB.DB)

@@ -203,6 +203,10 @@ func convertToFunctionInfos(infos []map[string]interface{}) []functionregistry.F
 				fi.OutputExample = exampleBytes
 			}
 		}
+		// Examples
+		if v, ok := info["examples"].([]interface{}); ok {
+			fi.Examples = v
+		}
 		// Documentation and Playground URLs
 		if v, ok := info["documentation_url"].(string); ok {
 			fi.DocumentationURL = v
