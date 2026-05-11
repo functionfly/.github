@@ -52,6 +52,8 @@ export function PlaygroundPage() {
       return response.json();
     },
     enabled: !!author && !!name,
+    staleTime: 0,
+    cacheTime: 0,
   });
 
   // Sync function info into store

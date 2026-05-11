@@ -1,6 +1,6 @@
 import { Logo } from '@/components/common/Logo';
 import { MarketplaceDropdown } from '@/components/common/MarketplaceDropdown';
-import { ProductsDropdown } from '@/components/common/ProductsDropdown';
+import { ProvidersDropdown } from '@/components/common/ProvidersDropdown';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { UserMenu } from '@/components/layout/UserMenu';
 import { NotificationBell } from '@/components/notifications';
@@ -12,7 +12,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { AnimatePresence, motion } from 'framer-motion';
-import { BarChart3, Bot, Cloud, Command, FunctionSquare, Home, Menu, MessageCircle, Sparkles, X, Zap } from 'lucide-react';
+import { Bot, Cloud, Command, CreditCard, FunctionSquare, Home, Menu, MessageCircle, ShoppingBag, Sparkles, X, Zap } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
@@ -75,27 +75,6 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
     window.addEventListener('scroll', handler);
     return () => window.removeEventListener('scroll', handler);
   }, []);
-
-  const settingsPath = user?.username ? `/u/${user.username}/settings` : '/settings';
-  const navigationItems = isAuthenticated
-    ? [
-        { path: '/dashboard', label: 'Marketplace' },
-        { path: '/overview', label: 'Overview' },
-        { path: '/functions', label: 'Functions' },
-        { path: '/providers', label: 'Providers' },
-        { path: '/analytics', label: 'Analytics' },
-        { path: settingsPath, label: 'Settings' },
-      ]
-    : [
-        {
-          path: marketingHomeUrl,
-          label: 'Home',
-          external: true,
-        },
-        { path: '/registry', label: 'Functions' },
-        { path: '/pricing', label: 'Pricing' },
-        { path: DOCS_SITE_URL, label: 'Docs', external: true },
-      ];
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
@@ -197,97 +176,47 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
               )}
             </div>
 
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-6">
+            {/* Desktop Navigation - Authenticated */}
+            <div className="hidden md:flex items-center gap-5">
               {isAuthenticated ? (
                 <>
-                  {variant !== 'dashboard' && (
-                    <>
-                      <ProductsDropdown />
-                      <MarketplaceDropdown />
-                    </>
-                  )}
-                  {variant === 'dashboard' && (
-                    <>
-                      <Link
-                        to="/dashboard"
-                        className={cn(
-                          'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
-                          location.pathname === '/dashboard' && 'text-text-primary'
-                        )}
-                      >
-                        Marketplace
-                        {location.pathname === '/dashboard' && (
-                          <span className="absolute left-0 -bottom-0.5 w-full h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
-                        )}
-                      </Link>
-                      <Link
-                        to="/overview"
-                        className={cn(
-                          'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
-                          location.pathname === '/overview' && 'text-text-primary'
-                        )}
-                      >
-                        Overview
-                        {location.pathname === '/overview' && (
-                          <span className="absolute left-0 -bottom-0.5 w-full h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
-                        )}
-                      </Link>
-                      <Link
-                        to="/functions/my"
-                        className={cn(
-                          'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
-                          (location.pathname === '/functions' || location.pathname.startsWith('/functions/')) && 'text-text-primary'
-                        )}
-                      >
-                        Functions
-                        {(location.pathname === '/functions' || location.pathname.startsWith('/functions/')) && (
-                          <span className="absolute left-0 -bottom-0.5 w-full h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
-                        )}
-                      </Link>
-                      <Link
-                        to="/providers"
-                        className={cn(
-                          'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
-                          location.pathname === '/providers' && 'text-text-primary'
-                        )}
-                      >
-                        Providers
-                        {location.pathname === '/providers' && (
-                          <span className="absolute left-0 -bottom-0.5 w-full h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
-                        )}
-                      </Link>
-                      <Link
-                        to="/analytics"
-                        className={cn(
-                          'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
-                          location.pathname === '/analytics' && 'text-text-primary'
-                        )}
-                      >
-                        Analytics
-                        {location.pathname === '/analytics' && (
-                          <span className="absolute left-0 -bottom-0.5 w-full h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
-                        )}
-                      </Link>
-                    </>
-                  )}
+                  {/* Dashboard - direct link */}
                   <Link
-                    to={settingsPath}
+                    to="/dashboard"
                     className={cn(
                       'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
-                      (location.pathname === '/settings' ||
-                        location.pathname.match(/^\/u\/[^/]+\/settings$/)) &&
-                        'text-text-primary'
+                      location.pathname === '/dashboard' && 'text-text-primary'
                     )}
                   >
-                    Settings
-                    {(location.pathname === '/settings' || location.pathname.match(/^\/u\/[^/]+\/settings$/)) && (
+                    Dashboard
+                    {location.pathname === '/dashboard' && (
                       <span className="absolute left-0 -bottom-0.5 w-full h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
                     )}
                   </Link>
+
+                  {/* Functions - direct link */}
+                  <Link
+                    to="/functions/my"
+                    className={cn(
+                      'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
+                      (location.pathname === '/functions' || location.pathname.startsWith('/functions/')) && 'text-text-primary'
+                    )}
+                  >
+                    Functions
+                    {(location.pathname === '/functions' || location.pathname.startsWith('/functions/')) && (
+                      <span className="absolute left-0 -bottom-0.5 w-full h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
+                    )}
+                  </Link>
+
+                  {/* Marketplace - dropdown */}
+                  <MarketplaceDropdown />
+
+                  {/* Providers - dropdown */}
+                  <ProvidersDropdown />
                 </>
               ) : (
                 <>
+                  {/* Unauthenticated nav */}
                   <Link
                     to="/"
                     className={cn(
@@ -300,20 +229,24 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                       <span className="absolute left-0 -bottom-0.5 w-full h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
                     )}
                   </Link>
-                  <ProductsDropdown />
+
+                  {/* Functions - direct link */}
                   <Link
-                    to="/registry"
+                    to="/functions/discovery"
                     className={cn(
                       'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
-                      location.pathname === '/registry' && 'text-text-primary'
+                      location.pathname === '/functions/discovery' && 'text-text-primary'
                     )}
                   >
                     Functions
-                    {location.pathname === '/registry' && (
+                    {location.pathname === '/functions/discovery' && (
                       <span className="absolute left-0 -bottom-0.5 w-full h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
                     )}
                   </Link>
+
+                  {/* Marketplace - dropdown */}
                   <MarketplaceDropdown />
+
                   <Link
                     to="/pricing"
                     className={cn(
@@ -419,7 +352,7 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                     />
                   )}
 
-                  {/* User Menu */}
+                  {/* User Menu - includes Settings */}
                   <UserMenu />
                 </>
               ) : (
@@ -497,92 +430,93 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
 
                   {isAuthenticated ? (
                     <>
-                      {variant !== 'dashboard' && (
-                        <>
-                          {/* Products Section */}
-                          <div className="space-y-2">
-                            <div className="text-sm font-semibold text-text-primary px-2">
-                              Products
-                            </div>
-<Link
+                      {/* Dashboard Section */}
+                      <Link
+                        to="/dashboard"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className={cn(
+                          'flex items-center gap-2 py-2 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
+                          location.pathname === '/dashboard' && 'text-text-primary bg-bg-secondary'
+                        )}
+                      >
+                        <Home className="w-4 h-4" /> Dashboard
+                      </Link>
+
+                      {/* Functions */}
+                      <Link
                         to="/functions/my"
                         onClick={() => setIsMobileMenuOpen(false)}
                         className={cn(
-                          'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
-                          location.pathname === '/functions' &&
-                            'text-text-primary bg-bg-secondary'
+                          'flex items-center gap-2 py-2 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
+                          location.pathname.startsWith('/functions') && 'text-text-primary bg-bg-secondary'
                         )}
                       >
-                              <FunctionSquare className="w-4 h-4" /> Functions
-                            </Link>
-                            <Link
-                              to="/providers"
-                              onClick={() => setIsMobileMenuOpen(false)}
-                              className={cn(
-                                'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
-                                location.pathname === '/providers' &&
-                                  'text-text-primary bg-bg-secondary'
-                              )}
-                            >
-                              <Cloud className="w-4 h-4" /> Providers
-                            </Link>
-                            <Link
-                              to="/analytics"
-                              onClick={() => setIsMobileMenuOpen(false)}
-                              className={cn(
-                                'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
-                                location.pathname === '/analytics' &&
-                                  'text-text-primary bg-bg-secondary'
-                              )}
-                            >
-                              <BarChart3 className="w-4 h-4" /> Analytics
-                            </Link>
-                          </div>
-
-                          {/* Marketplace Section */}
-                          <div className="space-y-2">
-                            <div className="text-sm font-semibold text-text-primary px-2">
-                              Marketplace
-                            </div>
-                            <Link
-                              to="/dashboard"
-                              onClick={() => setIsMobileMenuOpen(false)}
-                              className={cn(
-                                'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
-                                (location.pathname === '/dashboard' ||
-                                  location.pathname.startsWith('/marketplace')) &&
-                                  'text-text-primary bg-bg-secondary'
-                              )}
-                            >
-                              <Home className="w-4 h-4" /> Function Marketplace
-                            </Link>
-                            <Link
-                              to="/marketplace/agents"
-                              onClick={() => setIsMobileMenuOpen(false)}
-                              className={cn(
-                                'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
-                                location.pathname === '/marketplace/agents' &&
-                                  'text-text-primary bg-bg-secondary'
-                              )}
-                            >
-                              <Bot className="w-4 h-4" /> Agent Marketplace
-                            </Link>
-                          </div>
-                        </>
-                      )}
-
-                      <Link
-                        to={settingsPath}
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={cn(
-                          'block py-2 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
-                          (location.pathname === '/settings' ||
-                            location.pathname.match(/^\/u\/[^/]+\/settings$/)) &&
-                            'text-text-primary bg-bg-secondary'
-                        )}
-                      >
-                        Settings
+                        <FunctionSquare className="w-4 h-4" /> Functions
                       </Link>
+
+                      {/* Marketplace Section */}
+                      <div className="space-y-2">
+                        <div className="text-sm font-semibold text-text-primary px-2">
+                          Marketplace
+                        </div>
+                        <Link
+                          to="/functions/discovery"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={cn(
+                            'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
+                            location.pathname === '/functions/discovery' && 'text-text-primary bg-bg-secondary'
+                          )}
+                        >
+                          <FunctionSquare className="w-4 h-4" /> Browse Functions
+                        </Link>
+                        <Link
+                          to="/marketplace/agents"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={cn(
+                            'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
+                            location.pathname === '/marketplace/agents' && 'text-text-primary bg-bg-secondary'
+                          )}
+                        >
+                          <Bot className="w-4 h-4" /> Browse Agents
+                        </Link>
+                        <Link
+                          to="/marketplace/purchases"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={cn(
+                            'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
+                            location.pathname === '/marketplace/purchases' && 'text-text-primary bg-bg-secondary'
+                          )}
+                        >
+                          <ShoppingBag className="w-4 h-4" /> My Purchases
+                        </Link>
+                      </div>
+
+                      {/* Providers Section */}
+                      <div className="space-y-2">
+                        <div className="text-sm font-semibold text-text-primary px-2">
+                          Providers
+                        </div>
+                        <Link
+                          to="/providers"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={cn(
+                            'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
+                            location.pathname === '/providers' && 'text-text-primary bg-bg-secondary'
+                          )}
+                        >
+                          <Cloud className="w-4 h-4" /> Connected Providers
+                        </Link>
+                        <Link
+                          to="/providers/billing"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={cn(
+                            'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
+                            location.pathname === '/providers/billing' && 'text-text-primary bg-bg-secondary'
+                          )}
+                        >
+                          <CreditCard className="w-4 h-4" /> Usage & Billing
+                        </Link>
+                      </div>
                     </>
                   ) : (
                     <>
@@ -594,53 +528,21 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                         Home
                       </a>
                       <Link
-                        to="/registry"
+                        to="/functions/discovery"
                         onClick={() => setIsMobileMenuOpen(false)}
                         className={cn(
                           'flex items-center gap-2 py-2 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
-                          location.pathname === '/registry' &&
-                            'text-text-primary bg-bg-secondary'
+                          location.pathname === '/functions/discovery' && 'text-text-primary bg-bg-secondary'
                         )}
                       >
-                        <FunctionSquare className="w-4 h-4" /> Browse Functions
+                        <FunctionSquare className="w-4 h-4" /> Functions
                       </Link>
-                      {/* Marketplace Section */}
-                      <div className="space-y-2">
-                        <div className="text-sm font-semibold text-text-primary px-2">
-                          Marketplace
-                        </div>
-                        <Link
-                          to="/dashboard"
-                          onClick={() => setIsMobileMenuOpen(false)}
-                          className={cn(
-                            'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
-                            (location.pathname === '/dashboard' ||
-                              location.pathname.startsWith('/marketplace')) &&
-                              'text-text-primary bg-bg-secondary'
-                          )}
-                        >
-                          <Home className="w-4 h-4" /> Function Marketplace
-                        </Link>
-                        <Link
-                          to="/marketplace/agents"
-                          onClick={() => setIsMobileMenuOpen(false)}
-                          className={cn(
-                            'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
-                            location.pathname === '/marketplace/agents' &&
-                              'text-text-primary bg-bg-secondary'
-                          )}
-                        >
-                          <Bot className="w-4 h-4" /> Agent Marketplace
-                        </Link>
-                      </div>
-
                       <Link
                         to="/pricing"
                         onClick={() => setIsMobileMenuOpen(false)}
                         className={cn(
                           'block py-2 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
-                          location.pathname === '/pricing' &&
-                            'text-text-primary bg-bg-secondary'
+                          location.pathname === '/pricing' && 'text-text-primary bg-bg-secondary'
                         )}
                       >
                         Pricing

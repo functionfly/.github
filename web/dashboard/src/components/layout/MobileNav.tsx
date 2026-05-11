@@ -8,13 +8,16 @@ import {
   LayoutDashboard,
   FunctionSquare,
   Cloud,
-  BarChart3,
+  Store,
+  Bot,
+  CreditCard,
+  ShoppingBag,
   Settings,
   Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
-import { ADMIN_DASHBOARD_URL, ROUTES } from "@/lib/constants";
+import { ADMIN_DASHBOARD_URL, DOCS_SITE_URL, ROUTES } from "@/lib/constants";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useKeyboardNavigation } from "@/hooks/useKeyboardNavigation";
@@ -23,19 +26,32 @@ interface NavItem {
   path: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
+  section?: string;
+  external?: boolean;
 }
 
 interface MobileNavProps {
   className?: string;
 }
 
+// Main nav items for authenticated users
 const mainNavItems: NavItem[] = [
-  { path: ROUTES.DASHBOARD, label: "Marketplace", icon: Home },
-  { path: ROUTES.OVERVIEW, label: "Overview", icon: LayoutDashboard },
-  { path: ROUTES.FUNCTIONS, label: "Functions", icon: FunctionSquare },
-  { path: ROUTES.PROVIDERS, label: "Providers", icon: Cloud },
-  { path: ROUTES.ANALYTICS, label: "Analytics", icon: BarChart3 },
-  { path: ROUTES.SETTINGS, label: "Settings", icon: Settings },
+  { path: ROUTES.DASHBOARD, label: "Dashboard", icon: LayoutDashboard, section: "main" },
+  { path: "/functions/my", label: "Functions", icon: FunctionSquare, section: "main" },
+  { path: "/functions/discovery", label: "Browse Functions", icon: Store, section: "marketplace" },
+  { path: "/marketplace/agents", label: "Browse Agents", icon: Bot, section: "marketplace" },
+  { path: "/marketplace/purchases", label: "My Purchases", icon: ShoppingBag, section: "marketplace" },
+  { path: ROUTES.PROVIDERS, label: "Connected Providers", icon: Cloud, section: "providers" },
+  { path: "/providers/billing", label: "Usage & Billing", icon: CreditCard, section: "providers" },
+  { path: ROUTES.SETTINGS, label: "Settings", icon: Settings, section: "settings" },
+];
+
+// Unauthenticated nav items
+const unauthNavItems: NavItem[] = [
+  { path: ROUTES.HOME, label: "Home", icon: Home, external: true },
+  { path: "/functions/discovery", label: "Functions", icon: FunctionSquare },
+  { path: "/pricing", label: "Pricing", icon: LayoutDashboard },
+  { path: DOCS_SITE_URL, label: "Docs", icon: FunctionSquare, external: true },
 ];
 
 export function MobileNav({ className }: MobileNavProps) {
@@ -49,7 +65,10 @@ export function MobileNav({ className }: MobileNavProps) {
       ? [{ path: ADMIN_DASHBOARD_URL, label: "Admin Panel", icon: Shield }]
       : [];
 
-  const allNavItems = [...mainNavItems, ...adminNavItems];
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const allNavItems = isAuthenticated 
+    ? [...mainNavItems, ...adminNavItems] 
+    : unauthNavItems;
 
   // Swipe gesture for closing
   const { gestureHandlers } = useSwipeGesture({
@@ -74,7 +93,11 @@ export function MobileNav({ className }: MobileNavProps) {
     const item = allNavItems[focusedIndex];
     if (item) {
       setIsOpen(false);
-      window.location.href = item.path;
+      if (item.external) {
+        window.open(item.path, '_blank');
+      } else {
+        window.location.href = item.path;
+      }
     }
   }, [isOpen, focusedIndex, allNavItems]);
 
@@ -99,6 +122,12 @@ export function MobileNav({ className }: MobileNavProps) {
       setFocusedIndex(-1);
     }
   };
+
+  // Group items by section
+  const mainItems = allNavItems.filter(item => !item.section || item.section === "main");
+  const marketplaceItems = allNavItems.filter(item => item.section === "marketplace");
+  const providerItems = allNavItems.filter(item => item.section === "providers");
+  const settingsItems = allNavItems.filter(item => item.section === "settings");
 
   return (
     <>
@@ -155,41 +184,161 @@ export function MobileNav({ className }: MobileNavProps) {
               </div>
 
               {/* Navigation Items */}
-              <div className="py-4">
-                {allNavItems.map((item, index) => {
-                  const isExternal = item.path.startsWith('http');
-                  const isActive =
-                    !isExternal &&
-                    (location.pathname === item.path ||
-                      (item.path !== ROUTES.DASHBOARD &&
-                        item.path !== ROUTES.OVERVIEW &&
-                        location.pathname.startsWith(item.path)));
-                  const isFocused = focusedIndex === index;
-                  const Icon = item.icon;
+              <div className="py-4 overflow-y-auto">
+                {/* Main Section */}
+                {mainItems.length > 0 && (
+                  <div className="px-3 mb-4">
+                    <p className="text-xs font-semibold text-text-muted uppercase tracking-wider px-3 mb-2">
+                      Menu
+                    </p>
+                    {mainItems.map((item) => {
+                      const isActive = location.pathname === item.path ||
+                        (item.path !== ROUTES.DASHBOARD && location.pathname.startsWith(item.path));
+                      const absoluteIndex = allNavItems.indexOf(item);
+                      const isFocused = focusedIndex === absoluteIndex;
+                      const Icon = item.icon;
 
-                  return (
-                    <NavLink
-                      key={item.path}
-                      to={item.path}
-                      onClick={() => setIsOpen(false)}
-                      className={cn(
-                        "flex items-center gap-3 px-4 py-3 mx-2 rounded-lg text-sm font-medium transition-all duration-200",
-                        "hover:bg-bg-hover",
-                        isActive
-                          ? "text-brand-500 bg-brand-500/10 border-l-3 border-brand-500"
-                          : isFocused
-                          ? "text-text-primary bg-bg-hover ring-2 ring-border-focus"
-                          : "text-text-secondary hover:text-text-primary"
-                      )}
-                    >
-                      <Icon className={cn(
-                        "w-5 h-5",
-                        isActive ? "text-brand-500" : "text-text-muted"
-                      )} />
-                      <span>{item.label}</span>
-                    </NavLink>
-                  );
-                })}
+                      return (
+                        <NavLink
+                          key={item.path}
+                          to={item.external ? '#' : item.path}
+                          onClick={(e) => {
+                            if (item.external) {
+                              e.preventDefault();
+                              window.open(item.path, '_blank');
+                            }
+                            setIsOpen(false);
+                          }}
+                          className={cn(
+                            "flex items-center gap-3 px-3 py-3 mx-2 rounded-lg text-sm font-medium transition-all duration-200",
+                            "hover:bg-bg-hover",
+                            isActive
+                              ? "text-brand-500 bg-brand-500/10 border-l-3 border-brand-500"
+                              : isFocused
+                              ? "text-text-primary bg-bg-hover ring-2 ring-border-focus"
+                              : "text-text-secondary hover:text-text-primary"
+                          )}
+                        >
+                          <Icon className={cn(
+                            "w-5 h-5",
+                            isActive ? "text-brand-500" : "text-text-muted"
+                          )} />
+                          <span>{item.label}</span>
+                        </NavLink>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Marketplace Section */}
+                {marketplaceItems.length > 0 && (
+                  <div className="px-3 mb-4">
+                    <p className="text-xs font-semibold text-text-muted uppercase tracking-wider px-3 mb-2">
+                      Marketplace
+                    </p>
+                    {marketplaceItems.map((item) => {
+                      const isActive = location.pathname === item.path;
+                      const absoluteIndex = allNavItems.indexOf(item);
+                      const isFocused = focusedIndex === absoluteIndex;
+                      const Icon = item.icon;
+
+                      return (
+                        <NavLink
+                          key={item.path}
+                          to={item.path}
+                          onClick={() => setIsOpen(false)}
+                          className={cn(
+                            "flex items-center gap-3 px-3 py-3 mx-2 rounded-lg text-sm font-medium transition-all duration-200",
+                            "hover:bg-bg-hover",
+                            isActive
+                              ? "text-brand-500 bg-brand-500/10 border-l-3 border-brand-500"
+                              : isFocused
+                              ? "text-text-primary bg-bg-hover ring-2 ring-border-focus"
+                              : "text-text-secondary hover:text-text-primary"
+                          )}
+                        >
+                          <Icon className={cn(
+                            "w-5 h-5",
+                            isActive ? "text-brand-500" : "text-text-muted"
+                          )} />
+                          <span>{item.label}</span>
+                        </NavLink>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Providers Section */}
+                {providerItems.length > 0 && (
+                  <div className="px-3 mb-4">
+                    <p className="text-xs font-semibold text-text-muted uppercase tracking-wider px-3 mb-2">
+                      Providers
+                    </p>
+                    {providerItems.map((item) => {
+                      const isActive = location.pathname === item.path;
+                      const absoluteIndex = allNavItems.indexOf(item);
+                      const isFocused = focusedIndex === absoluteIndex;
+                      const Icon = item.icon;
+
+                      return (
+                        <NavLink
+                          key={item.path}
+                          to={item.path}
+                          onClick={() => setIsOpen(false)}
+                          className={cn(
+                            "flex items-center gap-3 px-3 py-3 mx-2 rounded-lg text-sm font-medium transition-all duration-200",
+                            "hover:bg-bg-hover",
+                            isActive
+                              ? "text-brand-500 bg-brand-500/10 border-l-3 border-brand-500"
+                              : isFocused
+                              ? "text-text-primary bg-bg-hover ring-2 ring-border-focus"
+                              : "text-text-secondary hover:text-text-primary"
+                          )}
+                        >
+                          <Icon className={cn(
+                            "w-5 h-5",
+                            isActive ? "text-brand-500" : "text-text-muted"
+                          )} />
+                          <span>{item.label}</span>
+                        </NavLink>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Settings Section */}
+                {settingsItems.length > 0 && (
+                  <div className="px-3">
+                    <p className="text-xs font-semibold text-text-muted uppercase tracking-wider px-3 mb-2">
+                      Account
+                    </p>
+                    {settingsItems.map((item) => {
+                      const isActive = location.pathname === item.path;
+                      const Icon = item.icon;
+
+                      return (
+                        <NavLink
+                          key={item.path}
+                          to={item.path}
+                          onClick={() => setIsOpen(false)}
+                          className={cn(
+                            "flex items-center gap-3 px-3 py-3 mx-2 rounded-lg text-sm font-medium transition-all duration-200",
+                            "hover:bg-bg-hover",
+                            isActive
+                              ? "text-brand-500 bg-brand-500/10 border-l-3 border-brand-500"
+                              : "text-text-secondary hover:text-text-primary"
+                          )}
+                        >
+                          <Icon className={cn(
+                            "w-5 h-5",
+                            isActive ? "text-brand-500" : "text-text-muted"
+                          )} />
+                          <span>{item.label}</span>
+                        </NavLink>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </motion.nav>
           </>

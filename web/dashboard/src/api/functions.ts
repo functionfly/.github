@@ -26,19 +26,29 @@ import {
 import { apiClient } from './client';
 
 export const functionsApi = {
-  // List all functions for the current tenant
   list: async (): Promise<{ functions: FunctionConfig[] }> => {
-    const response = await apiClient.get('/v1/functions');
-    // Validate the response structure
+    const response = await apiClient.get('/v2/functions/mine');
     if (
       response &&
       typeof response === 'object' &&
       'functions' in response &&
       Array.isArray((response as any).functions)
     ) {
-      return {
-        functions: validateFunctionConfigs((response as any).functions) as FunctionConfig[],
-      };
+      const funcs = (response as any).functions.map((f: any) => ({
+        id: f.id,
+        name: f.name,
+        version: f.version || '1.0.0',
+        status: 'active' as const,
+        providers: [],
+        region: f.region || 'us-east-1',
+        code: f.code || '',
+        envVars: [],
+        tenantId: f.tenant_id || f.tenantId || '',
+        createdAt: f.created_at || f.createdAt || new Date().toISOString(),
+        updatedAt: f.updated_at || f.updatedAt || new Date().toISOString(),
+        trustScore: f.trust_score || f.trustScore,
+      }));
+      return { functions: funcs };
     }
     return { functions: [] };
   },

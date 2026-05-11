@@ -1,3 +1,41 @@
+export interface FunctionManifest {
+  input?: {
+    type?: string;
+    properties?: Record<string, ManifestProperty>;
+    required?: string[];
+    description?: string;
+    schema?: Record<string, unknown>;
+    example?: unknown;
+  };
+  output?: {
+    type?: string;
+    properties?: Record<string, ManifestProperty>;
+    required?: string[];
+    description?: string;
+    schema?: Record<string, unknown>;
+    example?: unknown;
+  };
+  deterministic?: boolean;
+  deprecated?: boolean;
+  successor?: string;
+  rate_limit?: number;
+  auth?: string;
+  endpoint?: string;
+}
+
+export interface ManifestProperty {
+  type?: string;
+  description?: string;
+  default?: unknown;
+  example?: unknown;
+  title?: string;
+  enum?: string[];
+  properties?: Record<string, ManifestProperty>;
+  required?: string[];
+  items?: ManifestProperty;
+  [key: string]: unknown;
+}
+
 export interface FunctionInfo {
   id: string;
   author: string;
@@ -14,9 +52,9 @@ export interface FunctionInfo {
   cache_ttl: number;
   input_type?: string;
   output_type?: string;
-  input_example?: any;
-  output_example?: any;
-  manifest?: any;
+  input_example?: unknown;
+  output_example?: unknown;
+  manifest?: FunctionManifest;
   stars?: number;
   executions?: number;
   created_at?: string;

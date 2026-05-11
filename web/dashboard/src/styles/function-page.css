@@ -402,6 +402,170 @@
   color: var(--ff-flame);
 }
 
+/* ==========================================================================
+   API TRY IT PANEL
+   ========================================================================== */
+
+.api-try-it-panel {
+  border-bottom: 1px solid var(--ff-border-subtle);
+  background: linear-gradient(to bottom, var(--ff-bg-primary), var(--ff-bg-secondary) 100%);
+}
+
+.api-try-it-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.5rem;
+  background-color: var(--ff-bg-tertiary);
+  border-bottom: 1px solid var(--ff-border-subtle);
+}
+
+.api-try-it-content {
+  padding: 1rem 1.5rem;
+}
+
+.api-try-it-content textarea {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid var(--ff-border-default);
+  padding: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  background: var(--ff-bg-primary);
+  color: var(--ff-text-primary);
+  resize: vertical;
+}
+
+.api-try-it-content textarea:focus {
+  outline: none;
+  border-color: var(--ff-flame);
+  box-shadow: 0 0 0 2px rgba(var(--ff-flame-rgb), 0.1);
+}
+
+/* ==========================================================================
+   DEPRECATION BANNER
+   ========================================================================== */
+
+.api-deprecation-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: rgba(245, 158, 11, 0.1);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+[data-theme='light'] .api-deprecation-banner {
+  background: #fef3c7;
+  border-color: #fcd34d;
+  color: #92400e;
+}
+
+/* ==========================================================================
+   ENDPOINT SECTION
+   ========================================================================== */
+
+.function-page-api-endpoint {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--ff-border-subtle);
+}
+
+.api-endpoint-url {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--ff-bg-tertiary);
+  border-radius: 0.5rem;
+  border: 1px solid var(--ff-border-subtle);
+}
+
+.api-endpoint-url code {
+  color: var(--ff-flame);
+}
+
+/* ==========================================================================
+   VERIFIED BADGE
+   ========================================================================== */
+
+.api-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #22c55e;
+}
+
+[data-theme='light'] .api-verified-badge {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
+}
+
+/* ==========================================================================
+   TABLE COLUMN - DEFAULT VALUE
+   ========================================================================== */
+
+.function-page-api-table td:nth-child(4) {
+  font-size: 0.8125rem;
+}
+
+/* ==========================================================================
+   NESTED PROPERTY EXPANSION
+   ========================================================================== */
+
+.nested-property-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.nested-property-toggle:hover {
+  background-color: var(--ff-bg-tertiary);
+}
+
+/* ==========================================================================
+   CODE EXAMPLES SECTION
+   ========================================================================== */
+
+.function-page-api-examples-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .function-page-api-examples-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ==========================================================================
+   SCROLL ACTIVE STATE (handled via JS)
+   ========================================================================== */
+
+.function-page-api-nav-link {
+  scroll-margin-top: 1.5rem;
+}
+
+.function-page-api-section section {
+  scroll-margin-top: 1.5rem;
+}
+
 .function-page-api-content {
   max-height: 70vh;
   overflow-y: auto;
