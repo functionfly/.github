@@ -116,6 +116,8 @@ const description = profile?.bio || `View @${username}'s FunctionFly profile and
                     <span>v{func.version || '1.0.0'}</span>
                     <span class="mx-2">•</span>
                     <span>{func.totalCalls?.toLocaleString() || 0} calls</span>
+                    <span class="mx-2">•</span>
+                    <a href={`/playground/${profile.username}/${func.name}`} class="text-indigo-600 hover:text-indigo-500" onclick="event.stopPropagation()">Try in Playground</a>
                   </div>
                 </a>
               ))}
