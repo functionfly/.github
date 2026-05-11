@@ -12,6 +12,7 @@ Domain routers:
   - routes_composer:   /api/composer/*, /api/ai/composer/*
   - routes_routing:    /api/route/*, /api/prewarm/*, /api/anomalies/*
   - routes_composition: /api/composition/*
+  - routes_dna:        /api/dna/*
 """
 
 import asyncio
@@ -33,6 +34,7 @@ from .routes_flyembed import router as flyembed_router
 from .routes_composer import router as composer_router
 from .routes_routing import router as routing_router
 from .routes_composition import router as composition_router
+from .routes_dna import router as dna_router
 
 from ..security.auth import (
     require_api_key,
@@ -80,6 +82,7 @@ router.include_router(flyembed_router)
 router.include_router(composer_router)
 router.include_router(routing_router)
 router.include_router(composition_router)
+router.include_router(dna_router)
 
 
 # =============================================================================
