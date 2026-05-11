@@ -44,6 +44,10 @@ Content-Type: application/json
 GET /v1/executions/{id}
 ```
 
+## Testing in the Playground
+
+For interactive testing, use the [Function Playground](/guides/playground/) instead of curl. It provides a visual interface to execute functions, inspect responses, compare outputs across versions, and debug execution issues.
+
 ## Response Format
 
 ```json

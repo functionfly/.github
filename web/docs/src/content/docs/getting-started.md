@@ -24,6 +24,8 @@ ffly dev
 
 # Publish to registry
 ffly publish
+
+# Or test your function instantly in the [Playground](/guides/playground/)
 ```
 
 ## Installation
@@ -75,4 +77,5 @@ ffly publish  # Deploy to production
 - [Functions Guide](/docs/functions) - Learn about writing functions
 - [Deployment](/docs/deployment) - Deploy to production
 - [API Reference](/docs/api) - Full API documentation
+- [Function Playground](/guides/playground/) - Test functions interactively
 - [Examples](/docs/examples) - Sample functions

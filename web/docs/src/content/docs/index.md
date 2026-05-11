@@ -13,6 +13,10 @@ hero:
       link: https://github.com/functionfly
       icon: github
       variant: secondary
+    - text: Try the Playground
+      link: /guides/playground/
+      icon: open-book
+      variant: secondary
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';

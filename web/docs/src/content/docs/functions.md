@@ -15,6 +15,15 @@ FunctionFly supports multiple languages and runtime environments for your server
 | Node.js | 18+ | JavaScript/TypeScript functions |
 | Local/WASM | Latest | WASM-based execution |
 
+## Testing Functions
+
+Use the [Function Playground](/guides/playground/) to test functions interactively:
+
+- Execute with custom inputs
+- View streaming responses
+- Compare outputs across versions
+- Debug with detailed execution history
+
 ## Function Structure
 
 ### Python

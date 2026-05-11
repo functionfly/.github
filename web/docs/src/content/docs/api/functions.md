@@ -73,3 +73,7 @@ GET /v1/functions/{id}/stats
   "created_at": "2024-01-01T00:00:00Z"
 }
 ```
+
+## Try It Out
+
+Use the [Function Playground](/guides/playground/) to test any function directly from the browser without writing code.

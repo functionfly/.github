@@ -68,6 +68,10 @@ const result = await invoke('author/function-name', {
 });
 ```
 
+## Testing in the Playground
+
+Before invoking via code, use the [Function Playground](/guides/playground/) to test functions from the registry. Enter any function URL like `/playground/{author}/{function-name}` to experiment with inputs and see example responses.
+
 ## Publishing Functions
 
 Share your functions with the community:

@@ -125,7 +125,10 @@ curl https://api.functionfly.com/v1/execute/<function-id> \
 
 # Or using the CLI
 ffly invoke my-function --data '{"name": "FunctionFly"}'
-```
+
+## Testing with the Playground
+
+After deploying, use the [Function Playground](/guides/playground/) to test your function interactively with different inputs, view execution history, and debug responses before going to production.
 
 ## Next Steps
 
@@ -133,3 +136,4 @@ ffly invoke my-function --data '{"name": "FunctionFly"}'
 - Set up [authentication](/guides/authentication/) for your function
 - Explore the [registry](/guides/using-registry/) to find reusable functions
 - Read about [secrets and vault](/guides/secrets-vault/) for sensitive data
+- Test with the [Playground](/guides/playground/) before going live

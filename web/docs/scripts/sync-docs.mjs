@@ -23,6 +23,7 @@ const HAND_WRITTEN_SLUGS = new Set([
   "functions",
   "getting-started",
   "index",
+  "playground",
   "trust-and-verification",
 ]);
 

@@ -19,6 +19,9 @@ Welcome to the FunctionFly guides. These step-by-step tutorials will help you le
   <Card title="Using the Registry" icon="external" href="/guides/using-registry/">
     Browse, install, and publish functions to the public FunctionFly registry.
   </Card>
+  <Card title="Function Playground" icon="seti:play" href="/guides/playground/">
+    Test and debug your functions interactively before deploying.
+  </Card>
   <Card title="Authentication" icon="seti:lock" href="/guides/authentication/">
     Set up authentication for your functions and manage API keys securely.
   </Card>
