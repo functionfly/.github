@@ -1,0 +1,82 @@
+[package]
+name = "statefabric"
+version = "0.1.0"
+edition = "2021"
+description = "Deterministic state management for AI agents"
+
+[dependencies]
+# Web framework
+axum = { version = "0.8.8", features = ["macros"] }
+tower = "0.5.3"
+tower-http = { version = "0.6.8", features = ["trace", "cors"] }
+
+# Async runtime
+tokio = { version = "1.49.0", features = ["full"] }
+
+# Serialization
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+
+# Database
+sqlx = { version = "0.8.6", features = ["runtime-tokio-native-tls", "postgres", "uuid", "json", "chrono"] }
+
+# Hashing (Blake3 for deterministic replay)
+blake3 = "1.8.3"
+
+# UUID
+uuid = { version = "1.21.0", features = ["v4", "serde"] }
+
+# Time
+chrono = { version = "0.4.43", features = ["serde"] }
+
+# Error handling
+thiserror = "2.0.18"
+anyhow = "1.0.102"
+
+# Logging
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.22", features = ["env-filter", "json"] }
+
+# Object storage
+aws-config = "1.8.14"
+aws-sdk-s3 = "1.124.0"
+aws-smithy-runtime = "1.10.2"
+
+# Redis
+redis = { version = "1.0.4", features = ["tokio-comp", "connection-manager"] }
+
+# Async trait support
+async-trait = "0.1.89"
+
+# Config
+config = "0.15.19"
+
+# HMAC for request signing
+hmac = "0.12.1"
+
+# WASM runtime
+wasmtime = "41.0.3"
+wasmtime-wasi = "41.0.3"
+wasi-common = "41.0.3"
+
+# WASM utilities
+wasmparser = "0.245.1"
+
+[dev-dependencies]
+criterion = "0.8.2"
+tokio-test = "0.4.5"
+mockall = "0.14.0"
+
+[lib]
+name = "statefabric"
+path = "src/lib.rs"
+
+[[bin]]
+name = "statefabric"
+path = "src/main.rs"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

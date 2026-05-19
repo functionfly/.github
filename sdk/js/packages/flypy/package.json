@@ -1,0 +1,39 @@
+{
+  "name": "@functionfly/flypy",
+  "version": "1.1.0",
+  "description": "FunctionFly JavaScript/TypeScript SDK",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "prepublishOnly": "tsc",
+    "dev": "tsc --watch",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "functionfly",
+    "serverless",
+    "wasm",
+    "deterministic"
+  ],
+  "author": "FunctionFly",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.0.0"
+  },
+  "bun": {
+    "registry": "https://registry.npmjs.org/",
+    "install": {
+      "production": false,
+      "frozenLockfile": false
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "name": "@functionfly/crewai",
+  "version": "1.0.0",
+  "description": "FunctionFly toolkit for CrewAI agents",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "prepublishOnly": "tsc",
+    "dev": "tsc --watch",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "functionfly",
+    "crewai",
+    "ai",
+    "agents",
+    "tools"
+  ],
+  "author": "FunctionFly",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.0.0"
+  },
+  "peerDependencies": {
+    "@functionfly/langchain": "^1.0.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@functionfly/langchain": {
+      "optional": true
+    }
+  },
+  "bun": {
+    "registry": "https://registry.npmjs.org/",
+    "install": {
+      "production": false,
+      "frozenLockfile": false
+    }
+  }
+}

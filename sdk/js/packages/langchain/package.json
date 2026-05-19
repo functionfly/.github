@@ -1,0 +1,46 @@
+{
+  "name": "@functionfly/langchain",
+  "version": "1.0.0",
+  "description": "FunctionFly Tool integration for LangChain",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "prepublishOnly": "tsc",
+    "dev": "tsc --watch",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "functionfly",
+    "langchain",
+    "ai",
+    "agents",
+    "tools"
+  ],
+  "author": "FunctionFly",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.0.0"
+  },
+  "peerDependencies": {
+    "@langchain/core": "^0.1.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@langchain/core": {
+      "optional": true
+    }
+  },
+  "bun": {
+    "registry": "https://registry.npmjs.org/",
+    "install": {
+      "production": false,
+      "frozenLockfile": false
+    }
+  }
+}
