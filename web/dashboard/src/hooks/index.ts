@@ -499,3 +499,239 @@ export {
   useEnvironmentSelectorVisibility,
   type Environment,
 } from './useActiveEnvironment';
+
+// AI Command System Hooks
+export {
+  useAICommandSystem,
+  useAIConfidence,
+  useActiveAgents,
+  useToolInvocations,
+  useGoalProgress,
+} from './useAICommandSystem'
+
+// Graph Runtime Hooks
+export {
+  useGraphRuntime,
+  useNodeSelection,
+  useExecutionReplay,
+  useRuntimeMetrics,
+  useNodeInspector,
+  useResourceConsumption,
+  useDistributedRuntime,
+  useFailurePropagation,
+  useLoopVisualization,
+  useNodeVersions,
+} from './useGraphRuntime'
+
+// Registry Hooks
+export {
+  useRegistryStore,
+  selectFilteredFunctions,
+  selectSortedFunctions,
+} from '@/stores/registryStore'
+
+// Observability Hooks
+export {
+  useObservabilityStore,
+  selectCriticalMetrics,
+  selectRecentLogs,
+  selectActiveIncidents,
+} from '@/stores/observabilityStore'
+
+// Visualization Hooks
+export {
+  useVisualizationStore,
+  selectActiveNodes,
+  selectCriticalNodes,
+  selectHealthyRegions,
+} from '@/stores/visualizationStore'
+
+// Code Intelligence Hooks
+export {
+  useCodeIntelligence,
+  useCodeEditor,
+  useASTExplorer,
+  useDependencies,
+  useDiffViewer,
+  useArchitectureMap,
+  useSmartRefactor,
+  useCodeGeneration,
+  useInlineAI,
+  useIntentExplorer,
+  useSemanticSearch,
+  useCodeLineage,
+  useRiskAnalyzer,
+  useImportGraph,
+  useExecutionEditor,
+  useCompletionInspector,
+  useRefactorSimulation,
+  useArchitectureConstraints,
+  useCodeOwnership,
+  useCodeIntelligenceUI,
+} from './useCodeIntelligence'
+
+// DevOps Hooks
+export {
+  useDevOpsStore,
+  usePipeline,
+  useEnvironments,
+  useCloudRegions,
+  useRuntimeTargets,
+  useKubernetes,
+  useEdgeLocations,
+  useContainers,
+  useVaults,
+  useScalableResources,
+  useTrafficBalancer,
+  useRollbackManager,
+  useBuildArtifacts,
+  useClusterHealth,
+  useColdStartAnalyzer,
+  useServerlessExecutionMap,
+  useDevOpsUI,
+} from './useDevOps'
+
+// Security Hooks
+export {
+  useSecurityStore,
+  usePermissionMatrix,
+  useThreats,
+  useSecurityTimeline,
+  useSandboxBoundaries,
+  useAPIExposure,
+  useCredentialAccess,
+  useRuntimeIsolation,
+  useCompliance,
+  useZeroTrust,
+  useMaliciousExecutions,
+  useAuditTrail,
+  useEncryptionStatus,
+  useSuspiciousBehavior,
+  useVulnerabilities,
+  useSecurityPolicies,
+  useSecurityUI,
+} from '@/stores/securityStore'
+
+// Collaboration Hooks
+export {
+  useCollaborationStore,
+  selectActivePresences,
+  selectSpeakingParticipants,
+  selectUnresolvedConflicts,
+} from '@/stores/collaborationStore'
+
+export type {
+  CollaboratorPresence,
+  VoiceSession,
+  VoiceParticipant,
+  ExecutionBookmark,
+  GraphNode,
+  GraphEdge,
+  GraphOperation,
+  Annotation,
+  SessionRecording,
+  SessionEvent,
+  ActivityItem,
+  MemoryCard,
+  ConflictResolution,
+  ConflictMarker,
+  ReviewSession,
+  ReviewComment,
+  PromptSegment,
+  PairProgrammingSession,
+  DriverNavigator,
+  TaskAssignment,
+  TaskAssignee,
+  CodePosition,
+  CodeRange,
+} from '@/stores/collaborationStore'
+
+// Robotics Hooks
+export {
+  useRoboticsStore,
+  useRoboticsFleet,
+  useRobotTelemetry,
+  useRobotCommands,
+  useEnvironmentMap,
+  useDroneFlight,
+  useVisionStream,
+  useDeviceMesh,
+  useActuatorControl,
+  useEdgeMonitor,
+  useWorkflowDesigner,
+} from '@/stores/roboticsStore'
+
+// Marketplace Economy Hooks
+export {
+  useMarketplaceEconomyStore,
+  useRevenueAnalytics,
+  useSubscriptions,
+  useUsageBilling,
+  useLicenses,
+  useCreatorProfile,
+  useLeaderboard,
+  useRoyalties,
+  useAssetPricing,
+  useConversionAnalytics,
+  useOptimizer,
+  useTrendRadar,
+} from '@/stores/marketplaceEconomyStore'
+
+// Adaptive UX Hooks
+export {
+  useAdaptiveUXStore,
+  useComplexityLayers,
+  useContextToolbar,
+  usePredictiveActions,
+  useWorkspaceRecommendations,
+  useLearningMode,
+  useBeginnerView,
+  useExpertView,
+  useCognitiveLoad,
+  useAttentionFocus,
+  useWorkflowHints,
+} from '@/stores/adaptiveUXStore'
+
+// Universal Runtime Hooks
+export {
+  useUniversalRuntimeStore,
+  useWasmExecution,
+  useGPUKernel,
+  useServerlessRuntime,
+  useBrowserAgent,
+  useEdgeRuntime,
+  useHybridOrchestrator,
+  useCrossCloudTopology,
+  useModelRouting,
+  useInferenceSelector,
+  useCapabilityMatrix,
+} from '@/stores/universalRuntimeStore'
+
+// Data Visualization Hooks
+export {
+  useDataVisualizationStore,
+  useStreamingLineChart,
+  useRealtimeScatterPlot,
+  use3DTopologyChart,
+  useExecutionSunburst,
+  useDependencyTreemap,
+  useCircularFlow,
+  useWaterfallChart,
+  useCostDistribution,
+  useSemanticCluster,
+  useAgentInteractionGraph,
+} from '@/stores/dataVisualizationStore'
+
+// Futuristic Hooks
+export {
+  useFuturisticStore,
+  useOrbitCommand,
+  useQuantumTransition,
+  useHolographic,
+  useCinematicFocus,
+  useAIThoughtWave,
+  useTokenStorm,
+  useSwarmMind,
+  useAmbientTelemetry,
+  useDigitalTwin,
+} from '@/stores/futuristicStore'

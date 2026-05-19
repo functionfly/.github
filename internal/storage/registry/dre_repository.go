@@ -571,3 +571,19 @@ func (r *RegistryRepository) GetResourceHashHistory(functionID uuid.UUID) ([]str
 
 	return hashes, nil
 }
+
+// UpdateCertificateAnchored updates the anchoring fields of an execution certificate.
+func (r *RegistryRepository) UpdateCertificateAnchored(certID string, anchored bool, anchorChain, anchorTxHash, anchorMerkleRoot string, anchorBlockNumber int64, anchoredAt *time.Time) error {
+	updates := map[string]interface{}{
+		"anchored":           anchored,
+		"anchor_chain":       anchorChain,
+		"anchor_tx_hash":     anchorTxHash,
+		"anchor_merkle_root": anchorMerkleRoot,
+		"anchor_block_number": anchorBlockNumber,
+		"anchored_at":        anchoredAt,
+	}
+	if err := r.db.Model(&ExecutionCertificate{}).Where("certificate_id = ?", certID).Updates(updates).Error; err != nil {
+		return fmt.Errorf("dre: update certificate anchored: %w", err)
+	}
+	return nil
+}

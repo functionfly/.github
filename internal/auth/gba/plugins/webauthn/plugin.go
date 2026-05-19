@@ -86,10 +86,10 @@ func New(db *gorm.DB, config *WebAuthnConfig, logger *logrus.Logger, userGetter 
 		config.RPDisplayName = getEnvOrDefault("WEBAUTHN_RP_DISPLAY_NAME", "FunctionFly")
 	}
 	if config.RPID == "" {
-		config.RPID = getEnvOrDefault("WEBAUTHN_RP_ID", "localhost")
+		config.RPID = getEnvOrDefault("WEBAUTHN_RP_ID", "") // Must be set explicitly (e.g. functionfly.com)
 	}
 	if config.RPOrigin == "" {
-		config.RPOrigin = getEnvOrDefault("WEBAUTHN_RP_ORIGIN", "http://localhost:3000")
+		config.RPOrigin = getEnvOrDefault("WEBAUTHN_RP_ORIGIN", "") // Must be set explicitly (e.g. https://functionfly.com)
 	}
 
 	wconfig := &webauthn.Config{

@@ -1,0 +1,126 @@
+{
+  "name": "github-integration",
+  "version": "1.0.0",
+  "display_name": "GitHub Integration",
+  "description": "Connect your FunctionFly workflows to GitHub repositories. Sync commits, create issues, manage pull requests, and trigger deployments from GitHub Actions webhooks.",
+  "author": {
+    "name": "FunctionFly Team",
+    "email": "plugins@functionfly.com",
+    "website": "https://functionfly.com"
+  },
+  "license": "MIT",
+  "runtime": "nodejs",
+  "entry_point": "index.js",
+  "icon": "icon.svg",
+  "category": "integration",
+  "tags": ["github", "integration", "vcs", "ci/cd", "automation"],
+  "homepage": "https://functionfly.com/plugins/github",
+  "repository": "https://github.com/functionfly/plugins",
+
+  "permissions": [
+    {
+      "type": "webhook",
+      "action": "send",
+      "resource": "github.com",
+      "description": "Send webhook events to GitHub"
+    },
+    {
+      "type": "api",
+      "action": "read",
+      "resource": "repositories",
+      "description": "Read repository metadata"
+    },
+    {
+      "type": "api",
+      "action": "write",
+      "resource": "issues",
+      "description": "Create and update GitHub issues"
+    },
+    {
+      "type": "api",
+      "action": "write",
+      "resource": "pull_requests",
+      "description": "Manage pull requests"
+    },
+    {
+      "type": "api",
+      "action": "read",
+      "resource": "workflows",
+      "description": "Read GitHub Actions workflows"
+    },
+    {
+      "type": "api",
+      "action": "trigger",
+      "resource": "workflows",
+      "description": "Trigger workflow dispatches"
+    }
+  ],
+
+  "hooks": {
+    "pre_deploy": "hooks/pre-deploy.js",
+    "post_deploy": "hooks/post-deploy.js",
+    "on_error": "hooks/on-error.js"
+  },
+
+  "endpoints": [
+    {
+      "path": "/webhook/github",
+      "method": "POST",
+      "handler": "webhookHandler",
+      "description": "Receive GitHub webhooks"
+    },
+    {
+      "path": "/sync/repos",
+      "method": "GET",
+      "handler": "syncReposHandler",
+      "description": "Sync repository list"
+    },
+    {
+      "path": "/create/issue",
+      "method": "POST",
+      "handler": "createIssueHandler",
+      "description": "Create GitHub issue"
+    }
+  ],
+
+  "config_schema": {
+    "github_token": {
+      "type": "string",
+      "required": true,
+      "secret": true,
+      "description": "GitHub Personal Access Token"
+    },
+    "webhook_secret": {
+      "type": "string",
+      "required": true,
+      "secret": true,
+      "description": "Webhook secret for signature verification"
+    },
+    "default_repo": {
+      "type": "string",
+      "required": false,
+      "description": "Default repository (owner/repo format)"
+    },
+    "auto_sync": {
+      "type": "boolean",
+      "default": false,
+      "description": "Automatically sync on repository events"
+    }
+  },
+
+  "sandbox": {
+    "tier": "worker",
+    "cpu_limit": 10,
+    "memory_limit_mb": 256,
+    "timeout_seconds": 300,
+    "max_instances": 3,
+    "allowed_domains": ["github.com", "api.github.com"]
+  },
+
+  "ui": {
+    "dashboard_component": "GitHubDashboard",
+    "settings_component": "GitHubSettings",
+    "color": "#24292e",
+    "icon": "github"
+  }
+}

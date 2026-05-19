@@ -27,7 +27,10 @@ import {
   Zap,
   Bot,
   Bug,
+  Rocket,
   Wrench,
+  Brain,
+  Users,
   DollarSign,
   Shield,
   Building2,
@@ -192,6 +195,54 @@ export function GlobalCommandPalette({ open, onOpenChange }: GlobalCommandPalett
               <CommandItem onSelect={() => goTo(ROUTES.ANALYTICS)}>
                 <BarChart3 className="mr-2 h-4 w-4" />
                 <span>Analytics</span>
+              </CommandItem>
+              <CommandItem onSelect={() => goTo('/devops')}>
+                <Rocket className="mr-2 h-4 w-4" />
+                <span>DevOps</span>
+              </CommandItem>
+              <CommandItem onSelect={() => goTo('/security')}>
+                <Shield className="mr-2 h-4 w-4" />
+                <span>Security</span>
+              </CommandItem>
+              <CommandItem onSelect={() => goTo('/code-intelligence')}>
+                <Brain className="mr-2 h-4 w-4" />
+                <span>Code Intelligence</span>
+              </CommandItem>
+              <CommandItem onSelect={() => goTo('/collaboration')}>
+                <Users className="mr-2 h-4 w-4" />
+                <span>Collaboration</span>
+              </CommandItem>
+              <CommandItem onSelect={() => goTo('/memory')}>
+                <Brain className="mr-2 h-4 w-4" />
+                <span>Memory</span>
+              </CommandItem>
+              <CommandItem onSelect={() => goTo('/simulation')}>
+                <Gauge className="mr-2 h-4 w-4" />
+                <span>R-Sim</span>
+              </CommandItem>
+              <CommandItem onSelect={() => goTo('/robotics')}>
+                <Bot className="mr-2 h-4 w-4" />
+                <span>Robotics</span>
+              </CommandItem>
+              <CommandItem onSelect={() => goTo('/marketplace-economy')}>
+                <DollarSign className="mr-2 h-4 w-4" />
+                <span>Marketplace Economy</span>
+              </CommandItem>
+              <CommandItem onSelect={() => goTo('/adaptive-ux')}>
+                <Brain className="mr-2 h-4 w-4" />
+                <span>Adaptive UX</span>
+              </CommandItem>
+              <CommandItem onSelect={() => goTo('/universal-runtime')}>
+                <Boxes className="mr-2 h-4 w-4" />
+                <span>Universal Runtime</span>
+              </CommandItem>
+              <CommandItem onSelect={() => goTo("/data-visualization")}>
+                <BarChart3 className="mr-2 h-4 w-4" />
+                <span>Data Visualization</span>
+              </CommandItem>
+              <CommandItem onSelect={() => goTo('/futuristic')}>
+                <Sparkles className="mr-2 h-4 w-4" />
+                <span>Futuristic</span>
               </CommandItem>
               <CommandItem
                 onSelect={() =>

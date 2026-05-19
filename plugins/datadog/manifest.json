@@ -1,0 +1,83 @@
+{
+  "name": "datadog-monitoring",
+  "version": "1.4.0",
+  "display_name": "Datadog Monitoring",
+  "description": "Send metrics, traces, and logs to Datadog. Monitor your FunctionFly workflows in real-time with custom dashboards, set up alerts for workflow failures, and correlate events across your infrastructure.",
+  "author": {
+    "name": "FunctionFly Team",
+    "email": "plugins@functionfly.com",
+    "website": "https://functionfly.com"
+  },
+  "license": "MIT",
+  "runtime": "nodejs",
+  "entry_point": "index.js",
+  "category": "ai_tool",
+  "tags": ["datadog", "monitoring", "metrics", "observability", "logs"],
+  "homepage": "https://functionfly.com/plugins/datadog",
+  "repository": "https://github.com/functionfly/plugins",
+
+  "permissions": [
+    {
+      "type": "api",
+      "action": "write",
+      "resource": "metrics",
+      "description": "Send metrics to Datadog"
+    },
+    {
+      "type": "api",
+      "action": "write",
+      "resource": "logs",
+      "description": "Send logs to Datadog"
+    },
+    {
+      "type": "api",
+      "action": "write",
+      "resource": "traces",
+      "description": "Send traces to Datadog"
+    }
+  ],
+
+  "hooks": {
+    "on_workflow_start": "hooks/on-workflow-start.js",
+    "on_workflow_end": "hooks/on-workflow-end.js",
+    "on_error": "hooks/on-error.js"
+  },
+
+  "endpoints": [
+    {
+      "path": "/metric",
+      "method": "POST",
+      "handler": "metricHandler",
+      "description": "Submit a custom metric"
+    }
+  ],
+
+  "config_schema": {
+    "api_key": {
+      "type": "string",
+      "required": true,
+      "secret": true,
+      "description": "Datadog API Key"
+    },
+    "app_key": {
+      "type": "string",
+      "required": true,
+      "secret": true,
+      "description": "Datadog Application Key"
+    },
+    "site": {
+      "type": "string",
+      "default": "datadoghq.com",
+      "description": "Datadog site (e.g., datadoghq.com, datadoghq.eu)"
+    }
+  },
+
+  "sandbox": {
+    "tier": "worker",
+    "cpu_limit": 0.5,
+    "memory_limit_mb": 128,
+    "timeout_seconds": 30,
+    "max_instances": 3,
+    "allowed_domains": ["api.datadoghq.com"]
+  }
+}

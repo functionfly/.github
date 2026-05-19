@@ -1,0 +1,105 @@
+{
+  "name": "aws-s3-storage",
+  "version": "1.1.0",
+  "display_name": "AWS S3 Storage",
+  "description": "Interact with AWS S3 buckets from your workflows. Upload and download files, manage object lifecycle, generate signed URLs, and trigger workflows on S3 events.",
+  "author": {
+    "name": "FunctionFly Team",
+    "email": "plugins@functionfly.com",
+    "website": "https://functionfly.com"
+  },
+  "license": "MIT",
+  "runtime": "nodejs",
+  "entry_point": "index.js",
+  "category": "infrastructure",
+  "tags": ["aws", "s3", "storage", "infrastructure", "cloud"],
+  "homepage": "https://functionfly.com/plugins/aws-s3",
+  "repository": "https://github.com/functionfly/plugins",
+
+  "permissions": [
+    {
+      "type": "api",
+      "action": "write",
+      "resource": "s3",
+      "description": "Upload objects to S3"
+    },
+    {
+      "type": "api",
+      "action": "read",
+      "resource": "s3",
+      "description": "Download objects from S3"
+    },
+    {
+      "type": "api",
+      "action": "write",
+      "resource": "s3",
+      "description": "Delete objects from S3"
+    },
+    {
+      "type": "webhook",
+      "action": "receive",
+      "resource": "s3",
+      "description": "Receive S3 event notifications"
+    }
+  ],
+
+  "hooks": {
+    "on_s3_upload": "hooks/on-s3-upload.js",
+    "on_s3_delete": "hooks/on-s3-delete.js"
+  },
+
+  "endpoints": [
+    {
+      "path": "/upload",
+      "method": "POST",
+      "handler": "uploadHandler",
+      "description": "Upload file to S3"
+    },
+    {
+      "path": "/download",
+      "method": "GET",
+      "handler": "downloadHandler",
+      "description": "Download file from S3"
+    },
+    {
+      "path": "/signed-url",
+      "method": "GET",
+      "handler": "signedUrlHandler",
+      "description": "Generate signed URL"
+    }
+  ],
+
+  "config_schema": {
+    "aws_access_key_id": {
+      "type": "string",
+      "required": true,
+      "secret": true,
+      "description": "AWS Access Key ID"
+    },
+    "aws_secret_access_key": {
+      "type": "string",
+      "required": true,
+      "secret": true,
+      "description": "AWS Secret Access Key"
+    },
+    "region": {
+      "type": "string",
+      "default": "us-east-1",
+      "description": "AWS region"
+    },
+    "bucket_name": {
+      "type": "string",
+      "required": false,
+      "description": "Default S3 bucket name"
+    }
+  },
+
+  "sandbox": {
+    "tier": "worker",
+    "cpu_limit": 1,
+    "memory_limit_mb": 256,
+    "timeout_seconds": 60,
+    "max_instances": 2,
+    "allowed_domains": ["s3.amazonaws.com"]
+  }
+}

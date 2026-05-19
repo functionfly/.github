@@ -219,8 +219,8 @@ ${ns}.run(${inputExample}, {
 
 <script>
 ${ns}.form(document.getElementById("myForm"), {
-  onSuccess: (data) => alert("Result: " + JSON.stringify(data)),
-  onError: (err) => alert("Error: " + err.message),
+  onSuccess: (data) => toast.success("Result: " + JSON.stringify(data)),
+  onError: (err) => toast.error("Error: " + err.message),
 });
 </script>`;
 

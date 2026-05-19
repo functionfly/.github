@@ -8,6 +8,21 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+func GetFrontendURL() string {
+	return getEnvOrDefault("FRONTEND_URL", "http://localhost:3000")
+}
+
+func GetBaseURL() string {
+	return getEnvOrDefault("BASE_URL", "http://localhost:8080")
+}
+
 // RequiredEnvVars lists environment variables that must be set for the server to start.
 var RequiredEnvVars = []struct {
 	Name    string
@@ -21,17 +36,17 @@ var RequiredEnvVars = []struct {
 	{"Database Name", "DB_NAME", "functionfly"},
 }
 
-// OptionalEnvVars lists environment variables with recommended defaults.
+// OptionalEnvVars lists environment variables that should be set for full functionality.
 var OptionalEnvVars = []struct {
 	Name         string
 	EnvVar       string
 	DefaultValue string
 }{
-	{"Database Port", "DB_PORT", "5432"},
-	{"Database SSL Mode", "DB_SSLMODE", "disable"},
-	{"Redis Address", "REDIS_ADDR", "localhost:6379"},
-	{"Base URL", "BASE_URL", "http://localhost:8080"},
-	{"Shutdown Timeout", "SHUTDOWN_TIMEOUT", "30s"},
+	{"Database Port", "DB_PORT", ""},
+	{"Database SSL Mode", "DB_SSLMODE", ""},
+	{"Redis Address", "REDIS_ADDR", ""},
+	{"Base URL", "BASE_URL", ""},
+	{"Shutdown Timeout", "SHUTDOWN_TIMEOUT", ""},
 }
 
 // GitHubEnvVars lists GitHub-specific environment variables.
@@ -51,9 +66,9 @@ var GitHubOptionalEnvVars = []struct {
 	EnvVar       string
 	DefaultValue string
 }{
-	{"GitHub Vault Key", "GITHUB_VAULT_KEY", "(auto-generated dev key)"},
-	{"GitHub Redirect URL", "GITHUB_REDIRECT_URL", "{BASE_URL}/api/v1/github/callback"},
-	{"Frontend URL", "FRONTEND_URL", "http://localhost:3000"},
+	{"GitHub Vault Key", "GITHUB_VAULT_KEY", ""},
+	{"GitHub Redirect URL", "GITHUB_REDIRECT_URL", ""},
+	{"Frontend URL", "FRONTEND_URL", ""},
 }
 
 // ValidateEnv checks that all required environment variables are set.

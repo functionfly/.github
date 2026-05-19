@@ -375,6 +375,34 @@ export interface TopUpResponse {
   session_id: string;
 }
 
+export interface WalletTransaction {
+  id: string;
+  type: 'credit' | 'debit' | 'top_up' | 'refund' | 'payout';
+  amount: number;
+  description: string;
+  timestamp: string;
+  status: 'completed' | 'pending' | 'failed';
+}
+
+export interface WalletTransactionsResponse {
+  transactions: WalletTransaction[];
+  total: number;
+}
+
+/**
+ * Get wallet transaction history.
+ */
+export async function getWalletTransactions(limit = 50): Promise<WalletTransactionsResponse> {
+  try {
+    const params = new URLSearchParams({ limit: String(limit) });
+    const response = await apiClient.get<WalletTransactionsResponse>(`/v1/billing/wallet/transactions?${params}`);
+    return response;
+  } catch {
+    return { transactions: [], total: 0 };
+  }
+}
+
+
 /**
  * Get the current user's wallet information.
  * Returns balance and lifetime earnings/fees.

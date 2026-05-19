@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/functionfly/functionfly/internal/config"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/stripe/stripe-go/v83"
@@ -48,7 +49,7 @@ func CreateVerificationCheckoutSession(
 
 	appURL := os.Getenv("APP_URL")
 	if appURL == "" {
-		appURL = "http://localhost:3000"
+		appURL = config.GetFrontendURL()
 	}
 
 	if successURL == "" {

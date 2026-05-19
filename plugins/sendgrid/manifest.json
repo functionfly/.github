@@ -1,0 +1,80 @@
+{
+  "name": "sendgrid-email",
+  "version": "1.2.0",
+  "display_name": "SendGrid Email",
+  "description": "Send transactional emails through SendGrid. Supports templates, dynamic content, attachments, and scheduled delivery. Track opens and clicks with detailed analytics.",
+  "author": {
+    "name": "FunctionFly Team",
+    "email": "plugins@functionfly.com",
+    "website": "https://functionfly.com"
+  },
+  "license": "MIT",
+  "runtime": "nodejs",
+  "entry_point": "index.js",
+  "category": "integration",
+  "tags": ["sendgrid", "email", "notifications", "transactional"],
+  "homepage": "https://functionfly.com/plugins/sendgrid",
+  "repository": "https://github.com/functionfly/plugins",
+
+  "permissions": [
+    {
+      "type": "api",
+      "action": "write",
+      "resource": "email",
+      "description": "Send emails via SendGrid"
+    },
+    {
+      "type": "api",
+      "action": "read",
+      "resource": "templates",
+      "description": "Read email templates"
+    }
+  ],
+
+  "hooks": {
+    "on_workflow_complete": "hooks/on-workflow-complete.js"
+  },
+
+  "endpoints": [
+    {
+      "path": "/send",
+      "method": "POST",
+      "handler": "sendHandler",
+      "description": "Send an email"
+    },
+    {
+      "path": "/template/:templateId",
+      "method": "GET",
+      "handler": "templateHandler",
+      "description": "Get email template"
+    }
+  ],
+
+  "config_schema": {
+    "sendgrid_api_key": {
+      "type": "string",
+      "required": true,
+      "secret": true,
+      "description": "SendGrid API Key"
+    },
+    "from_email": {
+      "type": "string",
+      "required": true,
+      "description": "Default sender email"
+    },
+    "from_name": {
+      "type": "string",
+      "required": false,
+      "description": "Default sender name"
+    }
+  },
+
+  "sandbox": {
+    "tier": "worker",
+    "cpu_limit": 0.5,
+    "memory_limit_mb": 128,
+    "timeout_seconds": 30,
+    "max_instances": 3,
+    "allowed_domains": ["api.sendgrid.com"]
+  }
+}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
+	"github.com/sirupsen/logrus"
 )
 
 // RecordCostAllocationEntry records a detailed cost allocation entry for an execution
@@ -639,9 +640,9 @@ func (r *BillingRepository) CleanupFinancialAggregatesAfterRetention(ctx context
 	// (optional - depends on compliance requirements)
 	_, err := r.createRetentionAuditLog(ctx, cutoff)
 	if err != nil {
-		// Log but continue - don't fail cleanup due to audit logging issues
-		// In production, you might want to alert on this
-		_ = err
+		// For SOX compliance, audit logging failures must not be silently ignored.
+		// Log the error and alert in production.
+		logrus.WithError(err).Error("SOX compliance: failed to create retention audit log during data purge. This may indicate an audit trail gap.")
 	}
 
 	// Delete entries older than the retention period

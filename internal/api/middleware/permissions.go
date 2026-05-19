@@ -3,7 +3,6 @@ package middleware
 import (
 	"net"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/functionfly/functionfly/internal/auth"
@@ -36,20 +35,6 @@ func (m *AuthMiddleware) RequirePermission(permission string) func(http.HandlerF
 
 			// Allow super_admin and admin users to bypass permission checks
 			if claims.Role == "super_admin" || claims.Role == "admin" {
-				next.ServeHTTP(w, r)
-				return
-			}
-
-			// TEMPORARY: Bypass permission checks in development mode ONLY for localhost requests
-			// This prevents accidental permission bypass if DEVELOPMENT=true is set in production
-			isDevelopment := os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development"
-			isLocalhostRequest := isLocalhost(r)
-			if isDevelopment && isLocalhostRequest {
-				logrus.WithFields(logrus.Fields{
-					"user_id":   claims.UserID,
-					"email":     claims.Email,
-					"client_ip": getClientIP(r),
-				}).Info("Permission checks bypassed for development environment (localhost only)")
 				next.ServeHTTP(w, r)
 				return
 			}

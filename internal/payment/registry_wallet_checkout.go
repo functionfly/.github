@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/functionfly/functionfly/internal/config"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/stripe/stripe-go/v83"
@@ -55,14 +56,14 @@ func CreateRegistryWalletCheckoutSession(
 	if successURL == "" {
 		successURL = os.Getenv("APP_URL")
 		if successURL == "" {
-			successURL = "http://localhost:3000"
+			successURL = config.GetFrontendURL()
 		}
 		successURL = strings.TrimSuffix(successURL, "/") + "/settings?walletTopUp=success"
 	}
 	if cancelURL == "" {
 		cancelURL = os.Getenv("APP_URL")
 		if cancelURL == "" {
-			cancelURL = "http://localhost:3000"
+			cancelURL = config.GetFrontendURL()
 		}
 		cancelURL = strings.TrimSuffix(cancelURL, "/") + "/settings?walletTopUp=cancel"
 	}

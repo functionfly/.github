@@ -1,0 +1,97 @@
+{
+  "name": "ai-context-manager",
+  "version": "2.0.0",
+  "display_name": "AI Context Manager",
+  "description": "Enhanced AI context management for LLM-powered workflows. Provides smarter context window optimization, conversation history management, and semantic caching for reduced token costs.",
+  "author": {
+    "name": "FunctionFly Team",
+    "email": "plugins@functionfly.com",
+    "website": "https://functionfly.com"
+  },
+  "license": "MIT",
+  "runtime": "nodejs",
+  "entry_point": "index.js",
+  "category": "ai_tool",
+  "tags": ["ai", "llm", "context", "openai", "anthropic", "gpt"],
+  "homepage": "https://functionfly.com/plugins/ai-context",
+  "repository": "https://github.com/functionfly/plugins",
+
+  "permissions": [
+    {
+      "type": "api",
+      "action": "write",
+      "resource": "context",
+      "description": "Manage context cache"
+    },
+    {
+      "type": "api",
+      "action": "read",
+      "resource": "context",
+      "description": "Read context cache"
+    },
+    {
+      "type": "api",
+      "action": "write",
+      "resource": "memory",
+      "description": "Store conversation memory"
+    }
+  ],
+
+  "hooks": {
+    "pre_ai_call": "hooks/pre-ai-call.js",
+    "post_ai_call": "hooks/post-ai-call.js"
+  },
+
+  "endpoints": [
+    {
+      "path": "/context/compress",
+      "method": "POST",
+      "handler": "compressHandler",
+      "description": "Compress context window"
+    },
+    {
+      "path": "/context/cache",
+      "method": "GET",
+      "handler": "cacheHandler",
+      "description": "Get cached context"
+    },
+    {
+      "path": "/memory/store",
+      "method": "POST",
+      "handler": "storeMemoryHandler",
+      "description": "Store conversation memory"
+    }
+  ],
+
+  "config_schema": {
+    "cache_ttl": {
+      "type": "number",
+      "default": 3600,
+      "description": "Context cache TTL in seconds"
+    },
+    "max_context_tokens": {
+      "type": "number",
+      "default": 4096,
+      "description": "Maximum context tokens"
+    },
+    "compression_threshold": {
+      "type": "number",
+      "default": 0.8,
+      "description": "Compression threshold (0-1)"
+    },
+    "semantic_cache_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Enable semantic caching"
+    }
+  },
+
+  "sandbox": {
+    "tier": "wasm",
+    "cpu_limit": 0.5,
+    "memory_limit_mb": 128,
+    "timeout_seconds": 30,
+    "max_instances": 5,
+    "allowed_domains": []
+  }
+}

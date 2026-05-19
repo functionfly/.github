@@ -17,7 +17,7 @@ TEST_COUNT := -count=1
 # Detect available CPUs for parallel builds
 NCPU := $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
-.PHONY: help build build-fast build-ci build-local-runtime build-microvm-orchestrator test test-short test-parallel test-fast test-changed test-watch clean docker-up docker-down dev dev-neon api api-local health-monitor migrate migrate-local migrate-down migrate-status migrate-version wasm-bundle staging-up staging-down staging-logs staging-migrate staging-api staging-health-monitor test-db-setup test-db-up test-db-migrate test-db-status test-api-cmds load-test-init load-test-tpcb load-test-mixed load-test-custom load-test-stress bench bench-db bench-db-profile db-maintenance venv build-fly build-fly-release release-dry-run release release-snapshot install-locally dist build-coming-soon deploy-coming-soon deploy-admin-dashboard
+.PHONY: help build build-fast build-ci build-local-runtime build-microvm-orchestrator build-python-runtime test test-short test-parallel test-fast test-changed test-watch clean docker-up docker-down dev dev-neon api api-local health-monitor migrate migrate-local migrate-down migrate-status migrate-version wasm-bundle staging-up staging-down staging-logs staging-migrate staging-api staging-health-monitor test-db-setup test-db-up test-db-migrate test-db-status test-api-cmds load-test-init load-test-tpcb load-test-mixed load-test-custom load-test-stress bench bench-db bench-db-profile db-maintenance venv build-fly build-fly-release release-dry-run release release-snapshot install-locally dist build-coming-soon deploy-coming-soon deploy-admin-dashboard
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -58,6 +58,12 @@ build-microvm-rootfs: ## Build CPython 3.11 ext4 rootfs for Firecracker (require
 	cd runtimes/microvm/images && bash build-rootfs.sh $${PYTHON_VER:-3.11} $(CURDIR)/bin/vmimages
 	@echo "Rootfs ready: bin/vmimages/python$${PYTHON_VER:-3.11}.ext4"
 	@echo "Next: copy a Firecracker-compatible vmlinux kernel to bin/vmimages/"
+
+build-python-runtime: ## Build the Python WASM runtime service (requires CGO for wasmtime)
+	@echo "Building Python WASM runtime service..."
+	CGO_ENABLED=1 go build $(BUILD_FLAGS) -o bin/python-runtime ./cmd/python-runtime
+	@echo "Python WASM runtime built: bin/python-runtime"
+	@echo "Start with: ./bin/python-runtime [--port 8083]"
 
 dev-microvm: build-microvm-orchestrator ## Run MicroVM orchestrator in dev mode (host CPython, no Firecracker)
 	FUNCTIONFLY_MICROVM_DEV_MODE=1 ./bin/functionfly-microvm \
@@ -317,293 +323,43 @@ health-monitor: ## Run health monitor service (local DB/Redis). Set DB_PORT=5434
 	SKIP_MIGRATION_VALIDATION=true \
 	go run ./cmd/health-monitor
 
-migrate: ## Run database migrations (up). Uses local DB by default (DB_PORT=5432). Set DB_PORT=5434 for Docker Postgres.
-	@DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
-	DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
-	go run ./cmd/migrate up
+dev-python-runtime: build-python-runtime ## Start Python WASM runtime service (requires CGO for wasmtime)
+	@echo "Starting Python WASM runtime on port $${PYTHON_RUNTIME_PORT:-8083}..."
+	@CPYTHON_WASM_PATH=./runtimes/cpython-wasi/python.wasm \
+	PYTHON_RUNTIME_PORT=$${PYTHON_RUNTIME_PORT:-8083} \
+	POOL_SIZE=$${POOL_SIZE:-4} \
+	MAX_MEMORY_MB=$${MAX_MEMORY_MB:-512} \
+	./bin/python-runtime
 
-migrate-local: ## Run database migrations (up) without Infisical. Use when Infisical returns 403 or is unavailable.
-	@DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} go run ./cmd/migrate up
-
-migrate-down: ## Rollback database migrations
-	@DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
-	DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
-	go run ./cmd/migrate down
-
-migrate-status: ## Show migration status
-	@DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
-	DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
-	go run ./cmd/migrate status
-
-migrate-version: ## Show current migration version
-	@DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
-	DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
-	go run ./cmd/migrate version
-
-migrate-neon: ## Run database migrations (up) on Neon PostgreSQL. Requires DATABASE_URL env var.
-	@if [ -z "$${DATABASE_URL:-}" ]; then \
-		echo "Error: DATABASE_URL not set. Please set it to your Neon connection string."; \
-		echo "Example: export DATABASE_URL=postgresql://user:pass@host.neon.tech/dbname?sslmode=require"; \
-		exit 1; \
+dev: ## Start development environment (Orchestrator + SAR + NATS + Python Runtime). Set DB_PORT=5434 for Docker Postgres.
+	@echo "Using local services: DB_PORT=$${DB_PORT:-5432}, REDIS_ADDR=$${REDIS_ADDR:-localhost:6379}"
+	@# Start NATS if not already running
+	@if ! pgrep -x nats-server > /dev/null 2>&1; then \
+		echo "Starting NATS on port 4222..."; \
+		nohup nats-server -p 4222 > /tmp/nats.log 2>&1 & \
+		sleep 1; \
 	fi
-	@echo "Running migrations on Neon PostgreSQL..."
-	@unset DB_HOST DB_PORT DB_USER DB_PASSWORD DB_NAME DB_SSLMODE; \
-	go run ./cmd/migrate up
-
-migrate-neon-status: ## Show migration status on Neon PostgreSQL. Requires DATABASE_URL env var.
-	@if [ -z "$${DATABASE_URL:-}" ]; then \
-		echo "Error: DATABASE_URL not set."; \
-		exit 1; \
+	@# Start SAR in background
+	@echo "Starting SAR (Stateful Agent Runtime) on port $${SAR_PORT:-8082}..."
+	@NATS_URL="$${NATS_URL:-nats://localhost:4222}" nohup cargo run --manifest-path runtimes/sar/Cargo.toml > /tmp/sar.log 2>&1 & echo "SAR PID: $$!"
+	@# Start Python WASM runtime in background (requires CGO)
+	@if [ "$${SKIP_PYTHON_RUNTIME:-0}" != "1" ]; then \
+		echo "Starting Python WASM runtime on port $${PYTHON_RUNTIME_PORT:-8083}..."; \
+		mkdir -p bin && \
+		CGO_ENABLED=1 go build $(BUILD_FLAGS) -o bin/python-runtime ./cmd/python-runtime 2>/dev/null && \
+		CPYTHON_WASM_PATH=./runtimes/cpython-wasi/python.wasm \
+		PYTHON_RUNTIME_PORT=$${PYTHON_RUNTIME_PORT:-8083} \
+		POOL_SIZE=4 \
+		MAX_MEMORY_MB=512 \
+		nohup ./bin/python-runtime > /tmp/python-runtime.log 2>&1 & \
+		echo "Python Runtime PID: $$!"; \
 	fi
-	@unset DB_HOST DB_PORT DB_USER DB_PASSWORD DB_NAME DB_SSLMODE; \
-	go run ./cmd/migrate status
-
-migrate-all: ## Run migrations on both local and Neon (if DATABASE_URL is set)
-	@echo "========================================"
-	@echo "Running migrations on LOCAL PostgreSQL"
-	@echo "========================================"
+	@# Start Orchestrator API (foreground)
 	@DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
 	DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
-	go run ./cmd/migrate up
-	@echo ""
-	@if [ -n "$${DATABASE_URL:-}" ]; then \
-		echo "========================================"; \
-		echo "Running migrations on NEON PostgreSQL"; \
-		echo "========================================"; \
-		unset DB_HOST DB_PORT DB_USER DB_PASSWORD DB_NAME DB_SSLMODE; \
-		go run ./cmd/migrate up; \
-	else \
-		echo "Skipping Neon migrations (DATABASE_URL not set)"; \
-	fi
-
-migrate-dry-run: ## Show what migrations would be applied without running them (local DB)
-	@DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
-	DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
-	go run ./cmd/apply-migrations -dry-run -target=local
-
-reset-db: ## Drop DB, recreate, and run migrations (clean slate). Use when DB is dirty or inconsistent.
-	@./scripts/reset-db.sh
-
-setup: ## Setup initial data (tenant, user). Tries Infisical dev, then falls back to .env / DB_* (see scripts/run-setup.sh).
-	@./scripts/run-setup.sh
-
-setup-local: ## Setup initial data without Infisical (same DB_* resolution as SKIP_INFISICAL=1 make setup).
-	@SKIP_INFISICAL=1 ./scripts/run-setup.sh
-
-seed-blog: ## Seed default blog post (State Fabric) into DB. Uses DB_* from env or defaults (load .env first if needed).
-	@test -f scripts/seed-blog-post-state-fabric.sql || (echo "Missing scripts/seed-blog-post-state-fabric.sql"; exit 1)
-	@PGPASSWORD=$${DB_PASSWORD:-postgres} psql -h $${DB_HOST:-localhost} -p $${DB_PORT:-5432} -U $${DB_USER:-postgres} -d $${DB_NAME:-functionfly} -f scripts/seed-blog-post-state-fabric.sql
-
-seed-blog-docker: ## Seed blog post using Docker Postgres (port 5434). Use if your app runs with docker compose and DB_PORT=5434.
-	@test -f scripts/seed-blog-post-state-fabric.sql || (echo "Missing scripts/seed-blog-post-state-fabric.sql"; exit 1)
-	@PGPASSWORD=$${DB_PASSWORD:-postgres} psql -h $${DB_HOST:-localhost} -p 5434 -U $${DB_USER:-postgres} -d $${DB_NAME:-functionfly} -f scripts/seed-blog-post-state-fabric.sql
-
-update-blog-from-md: ## Update State Fabric blog post content from content/blog/introducing-state-fabric.md. Run after seed-blog. Uses DB_* from env.
-	@./scripts/update-blog-post-from-markdown.sh
-
-update-blog-from-md-docker: ## Same as update-blog-from-md but for Docker Postgres (port 5434).
-	@DB_PORT=5434 ./scripts/update-blog-post-from-markdown.sh
-
-fmt: ## Format Go code
-	go fmt ./...
-
-deps: ## Download and verify dependencies
-	go mod download
-	go mod verify
-	go mod tidy
-
-deps-vendor: ## Vendor dependencies for offline/air-gapped builds
-	go mod vendor
-
-cache-info: ## Show Go build cache information
-	@echo "Build cache: $(GOCACHE)"
-	@echo "Module cache: $(GOMODCACHE)"
-	@go env GOCACHE GOMODCACHE
-
-cache-clean: ## Clean Go build cache
-	go clean -cache
-
-cache-stats: ## Show build cache disk usage
-	@echo "Build cache size:"
-	@du -sh $(GOCACHE) 2>/dev/null || echo "Cache not found at $(GOCACHE)"
-	@echo "Module cache size:"
-	@du -sh $(GOMODCACHE) 2>/dev/null || echo "Module cache not found at $(GOMODCACHE)"
-
-monitoring-up: ## Start monitoring stack
-	docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d prometheus grafana node-exporter postgres-exporter redis-exporter
-
-monitoring-down: ## Stop monitoring stack
-	docker compose -f docker-compose.monitoring.yml down
-
-monitoring-logs: ## Show monitoring logs
-	docker compose -f docker-compose.monitoring.yml logs -f
-
-monitoring-restart: ## Restart monitoring stack
-	docker compose -f docker-compose.monitoring.yml restart
-
-grafana-init: ## Initialize Grafana with default dashboard
-	@echo "Grafana will be available at http://localhost:3000"
-	@echo "Default credentials: admin/admin"
-	@echo "Dashboard will be automatically provisioned"
-
-prometheus-init: ## Show Prometheus configuration
-	@echo "Prometheus configuration:"
-	@cat deploy/monitoring/prometheus.yml
-
-# Database commands
-db-prod-up: ## Start production database stack (primary + replica + pgbouncer)
-	docker compose -f docker-compose.production.yml up -d postgres postgres-replica pgbouncer
-
-db-prod-down: ## Stop production database stack
-	docker compose -f docker-compose.production.yml down
-
-db-replica-setup: ## Setup and configure read replica
-	@echo "Setting up PostgreSQL read replica..."
-	./scripts/setup-read-replica.sh
-
-db-replica-status: ## Check read replica status and lag
-	@echo "=== Primary Replication Status ==="
-	@docker compose -f docker-compose.production.yml exec postgres psql -U functionfly_prod -d functionfly_prod -c "SELECT * FROM pg_stat_replication;" 2>/dev/null || echo "Primary not accessible"
-	@echo ""
-	@echo "=== Replica Lag Status ==="
-	@docker compose -f docker-compose.production.yml exec postgres-replica psql -U functionfly_prod -d functionfly_prod -c "SELECT now() - pg_last_xact_replay_timestamp() AS replication_lag;" 2>/dev/null || echo "Replica not accessible"
-
-db-prod-logs: ## Show production database logs
-	docker compose -f docker-compose.production.yml logs -f
-
-db-prod-backup: ## Create database backup
-	./scripts/backup-database.sh production
-
-db-prod-restore: ## Restore database from backup (requires BACKUP_FILE env var)
-	@echo "Restoring from: $$BACKUP_FILE"
-	@PGPASSWORD=$$DB_PASSWORD pg_restore \
-		--host=localhost \
-		--port=6432 \
-		--username=functionfly_prod \
-		--dbname=functionfly_prod \
-		--verbose \
-		$$BACKUP_FILE
-
-db-restore: ## Restore database using the enhanced script (BACKUP_SPEC defaults to 'latest')
-	./scripts/restore-database.sh production $(BACKUP_SPEC)
-
-db-backup-list: ## List available backups
-	@echo "Local backups:"
-	@ls -la /var/backups/functionfly/ 2>/dev/null || echo "No local backups found"
-	@echo ""
-	@echo "Remote backups (configure DB_BACKUP_STORAGE_BACKEND):"
-	@case "$$DB_BACKUP_STORAGE_BACKEND" in \
-		"s3") aws s3 ls s3://$$DB_BACKUP_S3_BUCKET/$$DB_BACKUP_S3_PREFIX --recursive | grep functionfly || echo "No S3 backups found" ;; \
-		"b2") b2 ls $$DB_BACKUP_B2_BUCKET $$DB_BACKUP_S3_PREFIX | grep functionfly || echo "No B2 backups found" ;; \
-		*) echo "Configure DB_BACKUP_STORAGE_BACKEND to list remote backups" ;; \
-	esac
-
-db-maintenance: ## Run database maintenance (analyze/vacuum) to optimize performance
-	@echo "Running database maintenance..."
-	@./scripts/db-maintenance.sh
-
-db-migrate-prod: ## Run migrations on production DB via Infisical prod (requires INFISICAL_TOKEN + infisical CLI)
-	@echo "Running migrations on production database..."
-	@if command -v infisical >/dev/null 2>&1 && [ -n "$${INFISICAL_TOKEN:-}" ]; then \
-		infisical run --env=prod -- go run ./cmd/migrate up; \
-	else \
-		echo "Infisical not configured (install CLI and set INFISICAL_TOKEN), or run: make db-migrate-prod-local" >&2; \
-		exit 1; \
-	fi
-
-db-migrate-prod-local: ## Run migrations using DATABASE_URL or DB_* from env (sources .env if present)
-	@( set -a; [ -f .env ] && . ./.env; set +a; go run ./cmd/migrate up )
-
-# Neon CLI (neonctl). Install: make neon-install. Auth: make neon-auth. Set NEON_API_KEY or NEON_PROJECT_ID as needed.
-neon-install: ## Install Neon CLI (neonctl) via npm if 'neon' not in PATH
-	@command -v neon >/dev/null 2>&1 && echo "Neon CLI already installed: $$(neon --version)" || npm install -g neonctl
-
-neon-auth: ## Authenticate Neon CLI (opens browser). Or set NEON_API_KEY for CI.
-	neon auth
-
-backup-neon: ## Logical pg_dump to ./backups via Neon CLI (NEON_BRANCH=production NEON_DATABASE_NAME=functionfly NEON_PROJECT_ID optional)
-	@./scripts/backup-neon.sh
-
-neon-cs: ## Print primary connection string. Optionally set NEON_PROJECT_ID, NEON_BRANCH.
-	neon connection-string $${NEON_BRANCH:+$$NEON_BRANCH} $${NEON_PROJECT_ID:+--project-id $$NEON_PROJECT_ID}
-
-neon-cs-pooled: ## Print pooled connection string (for app). Optionally set NEON_PROJECT_ID, NEON_BRANCH.
-	neon connection-string $${NEON_BRANCH:+$$NEON_BRANCH} --pooled $${NEON_PROJECT_ID:+--project-id $$NEON_PROJECT_ID}
-
-neon-cs-replica: ## Print read replica connection string. Set NEON_BRANCH (e.g. main). Optionally NEON_PROJECT_ID.
-	@test -n "$$NEON_BRANCH" || (echo "Set NEON_BRANCH (e.g. NEON_BRANCH=main make neon-cs-replica)"; exit 1)
-	neon connection-string $$NEON_BRANCH --endpoint-type read_only --pooled $${NEON_PROJECT_ID:+--project-id $$NEON_PROJECT_ID}
-
-neon-branches: ## List Neon branches. Optionally set NEON_PROJECT_ID.
-	neon branches list $${NEON_PROJECT_ID:+--project-id $$NEON_PROJECT_ID}
-
-neon-replica-add: ## Add a read replica to a branch. Set NEON_BRANCH (e.g. main). Optionally NEON_PROJECT_ID.
-	@test -n "$$NEON_BRANCH" || (echo "Set NEON_BRANCH (e.g. NEON_BRANCH=main make neon-replica-add)"; exit 1)
-	neon branches add-compute $$NEON_BRANCH --type read_only $${NEON_PROJECT_ID:+--project-id $$NEON_PROJECT_ID}
-
-neon-psql: ## Open psql to default branch using Neon connection string. Optionally NEON_PROJECT_ID, NEON_BRANCH.
-	neon connection-string $${NEON_BRANCH:+$$NEON_BRANCH} --psql $${NEON_PROJECT_ID:+--project-id $$NEON_PROJECT_ID}
-
-# Run migrations on Neon (production branch, functionfly DB). Uses direct connection (no pooler) for compatibility.
-# Set NEON_BRANCH=production (default) or staging. Requires: neon auth or NEON_API_KEY.
-migrate-neon: ## Run migrations on Neon. Set NEON_BRANCH (default production), NEON_PROJECT_ID optional.
-	@DATABASE_URL=$$(neon connection-string $${NEON_BRANCH:-production} --database-name functionfly 2>/dev/null) && \
-	export DATABASE_URL && \
-	echo "Running migrations on Neon (branch: $${NEON_BRANCH:-production}, DB: functionfly)..." && \
-	go run ./cmd/migrate up
-
-# Logging commands
-logging-up: ## Start logging stack (Loki, Elasticsearch, Kibana, Fluent Bit)
-	docker compose -f docker-compose.monitoring.yml up -d loki promtail elasticsearch kibana fluent-bit
-
-logging-down: ## Stop logging stack
-	docker compose -f docker-compose.monitoring.yml down
-
-logging-logs: ## Show logging stack logs
-	docker compose -f docker-compose.monitoring.yml logs -f loki promtail elasticsearch kibana fluent-bit
-
-logs-view: ## View application logs
-	tail -f logs/*.log
-
-logs-clean: ## Clean old log files (older than 7 days)
-	find logs/ -name "*.log" -mtime +7 -delete
-
-# Staging environment commands
-staging-up: ## Start staging environment
-	docker compose -f docker-compose.staging.yml --env-file .env.staging up -d
-
-staging-down: ## Stop staging environment
-	docker compose -f docker-compose.staging.yml --env-file .env.staging down
-
-staging-logs: ## Show staging environment logs
-	docker compose -f docker-compose.staging.yml --env-file .env.staging logs -f
-
-staging-restart: ## Restart staging environment
-	docker compose -f docker-compose.staging.yml --env-file .env.staging restart
-
-staging-build: ## Build staging containers
-	docker compose -f docker-compose.staging.yml --env-file .env.staging build
-
-staging-migrate: ## Run migrations on staging database
-	@echo "Running migrations on staging database..."
-	DB_HOST=$$(grep DB_HOST .env.staging | cut -d '=' -f2) \
-	DB_PORT=$$(grep DB_PORT .env.staging | cut -d '=' -f2) \
-	DB_USER=$$(grep DB_USER .env.staging | cut -d '=' -f2) \
-	DB_PASSWORD=$$(grep DB_PASSWORD .env.staging | cut -d '=' -f2) \
-	DB_NAME=$$(grep DB_NAME .env.staging | cut -d '=' -f2) \
-	DB_SSLMODE=$$(grep DB_SSLMODE .env.staging | cut -d '=' -f2) \
-	go run ./cmd/migrate run
-
-staging-api: ## Run staging API server locally (not in Docker)
-	@echo "Starting staging API server..."
-	DB_HOST=$$(grep DB_HOST .env.staging | cut -d '=' -f2) \
-	DB_PORT=$$(grep DB_PORT .env.staging | cut -d '=' -f2) \
-	DB_USER=$$(grep DB_USER .env.staging | cut -d '=' -f2) \
-	DB_PASSWORD=$$(grep DB_PASSWORD .env.staging | cut -d '=' -f2) \
-	DB_NAME=$$(grep DB_NAME .env.staging | cut -d '=' -f2) \
-	DB_SSLMODE=$$(grep DB_SSLMODE .env.staging | cut -d '=' -f2) \
-	USE_SUPABASE=false \
-	REDIS_ADDR=$$(grep REDIS_ADDR .env.staging | cut -d '=' -f2) \
+	REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} PROMETHEUS_URL=$${PROMETHEUS_URL:-http://127.0.0.1:9091} DEVELOPMENT=true \
+	PYTHON_RUNTIME_URL=$${PYTHON_RUNTIME_URL:-http://localhost:8083} \
+	SKIP_MIGRATION_VALIDATION=true \
 	go run ./cmd/orchestrator-api
 
 staging-health-monitor: ## Run staging health monitor locally

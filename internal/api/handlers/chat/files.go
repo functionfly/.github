@@ -2,6 +2,7 @@ package chat
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -84,7 +85,41 @@ func (c *FilesConnector) Search(ctx context.Context, query string, config map[st
 }
 
 func parseCSV(data string) ([]map[string]interface{}, error) {
-	return nil, fmt.Errorf("CSV parsing not implemented - use a proper CSV library")
+	reader := csv.NewReader(strings.NewReader(data))
+	records, err := reader.ReadAll()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse CSV: %w", err)
+	}
+
+	if len(records) == 0 {
+		return nil, fmt.Errorf("empty CSV data")
+	}
+
+	headers := records[0]
+	result := make([]map[string]interface{}, 0, len(records)-1)
+
+	for i, record := range records[1:] {
+		if len(record) == 0 {
+			continue
+		}
+		row := make(map[string]interface{})
+		for j, value := range record {
+			key := headers[j]
+			if j >= len(headers) {
+				key = fmt.Sprintf("column%d", j)
+			}
+			row[key] = value
+		}
+		if len(headers) > len(record) {
+			for j := len(record); j < len(headers); j++ {
+				row[headers[j]] = ""
+			}
+		}
+		result = append(result, row)
+		_ = i
+	}
+
+	return result, nil
 }
 
 func handleFileUpload(r *http.Request) (map[string]interface{}, error) {

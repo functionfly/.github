@@ -62,8 +62,8 @@ export const useThemeStore = create<ThemeStoreState>()((set, get) => {
   let initialized = false;
 
   const handleExternalChange = (state: ThemeState) => {
-    const resolved = getResolvedTheme(state.mode);
-    set({ theme: state.mode, resolvedTheme: resolved });
+    const resolved = getResolvedTheme(state.theme);
+    set({ theme: state.theme, resolvedTheme: resolved });
     applyThemeToDocument(resolved);
   };
 
@@ -72,7 +72,7 @@ export const useThemeStore = create<ThemeStoreState>()((set, get) => {
     initialized = true;
 
     const initial = initTheme();
-    applyThemeToDocument(initial.resolved);
+    applyThemeToDocument(initial.resolvedTheme);
     subscribe(handleExternalChange);
   };
 

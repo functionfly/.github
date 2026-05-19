@@ -1,0 +1,8 @@
+# Cargo configuration for WasmEdge runtime
+#
+# Note: WasmEdge works best with the system LLVM. Uncomment the following
+# if you need to specify a specific clang/LLVM version for WASI compilation.
+
+# [build]
+# target = "wasm32-wasi"
+# linker = "clang"

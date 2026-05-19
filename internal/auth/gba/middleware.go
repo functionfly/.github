@@ -148,7 +148,10 @@ func (m *Middleware) nextWithLegacyAuth(w http.ResponseWriter, r *http.Request, 
 	}
 	isDevelopment := os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development"
 	isLocalhostRequest := m.isLocalhostRequest(r)
-	if isDevelopment && isLocalhostRequest && os.Getenv("PRODUCTION_ENV") != "true" {
+	// Only bypass in development if explicitly enabled AND not in production
+	// This ensures the bypass cannot be triggered by setting DEVELOPMENT=true in production
+	productionEnv := os.Getenv("PRODUCTION_ENV")
+	if isDevelopment && isLocalhostRequest && productionEnv != "true" && os.Getenv("GBA_DEV_BYPASS") == "true" {
 		m.logger.WithFields(logrus.Fields{"user_id": claims.UserID, "email": claims.Email}).
 			Debug("Legacy permission check bypassed for development (localhost only)")
 		next.ServeHTTP(w, r)

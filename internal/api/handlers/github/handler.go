@@ -85,6 +85,11 @@ func (h *Handler) requireAuth(w http.ResponseWriter, r *http.Request) *auth.Clai
 
 // requireAuthOrToken checks Authorization header first, then falls back to ?token= query param.
 // This is needed for SSE (EventSource) which cannot set custom headers.
+//
+// SECURE SSE PATTERN: For production, use cookie-based auth instead of query params.
+// 1. Client calls /imports/{importId}/progress-auth to get a short-lived token in a HttpOnly cookie
+// 2. SSE connection automatically sends the cookie
+// 3. Query param remains as fallback but tokens should be short-lived (<5 min) and single-use
 func (h *Handler) requireAuthOrToken(w http.ResponseWriter, r *http.Request) *auth.Claims {
 	// Try standard auth first (from middleware)
 	claims := middleware.GetUserFromContext(r)
@@ -92,7 +97,16 @@ func (h *Handler) requireAuthOrToken(w http.ResponseWriter, r *http.Request) *au
 		return claims
 	}
 
-	// Fall back to token query param for SSE
+	// Try HttpOnly cookie first (secure SSE pattern)
+	if cookie, err := r.Cookie("sse_token"); err == nil && cookie.Value != "" {
+		if h.authSvc != nil {
+			if parsedClaims, err := h.authSvc.ValidateToken(cookie.Value); err == nil {
+				return parsedClaims
+			}
+		}
+	}
+
+	// Fall back to token query param for SSE (legacy support)
 	token := r.URL.Query().Get("token")
 	if token == "" {
 		h.respondError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")

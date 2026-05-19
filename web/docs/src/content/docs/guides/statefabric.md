@@ -3,8 +3,6 @@ title: StateFabric & Edge State
 description: Durable state management for stateless functions at the edge
 ---
 
-# StateFabric & Edge State
-
 StateFabric provides durable, distributed state management for your serverless functions. It enables stateful patterns like shopping carts, session management, and user preferences while maintaining the scalability benefits of stateless architectures.
 
 ## Overview

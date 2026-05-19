@@ -1,0 +1,29 @@
+{
+  "name": "@functionfly/studio-tauri",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FunctionFly Studio - Tauri Desktop Application",
+  "type": "module",
+  "scripts": {
+    "dev:frontend": "cd frontend && bun run vite",
+    "dev:tauri": "cd src-tauri && cargo run",
+    "dev": "bun run dev:tauri",
+    "build:studio": "cd frontend && bun run vite build",
+    "build:dashboard": "cd ../dashboard && bun run build",
+    "bundle:dashboard": "cp -r ../dashboard/dist/* src-tauri/dist/",
+    "build:tauri": "cd src-tauri && cargo build --release",
+    "build": "bun run build:studio && bun run build:dashboard && bun run bundle:dashboard && bun run build:tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.5.0",
+    "@tauri-apps/plugin-deep-link": "^2.4.0",
+    "@tauri-apps/plugin-shell": "^2.2.0",
+    "@tauri-apps/plugin-window-state": "^2.2.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.5.0",
+    "bun": "^1.0.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.0"
+  }
+}

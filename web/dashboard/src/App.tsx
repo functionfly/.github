@@ -127,8 +127,20 @@ import { NuqsAdapter } from 'nuqs/adapters/react-router/v7';
 
 import { NotificationsPage } from '@/pages/NotificationsPage';
 import StatusPage from '@/pages/StatusPage';
+import { StudioPage } from '@/pages/StudioPage'
+import { DevOpsPage } from '@/pages/DevOpsPage';
 import { UsagePage } from '@/pages/UsagePage';
 import { PasteCodePage } from '@/pages/PasteCodePage';
+import { CodeIntelligencePage } from '@/pages/CodeIntelligencePage';
+import CollaborationPage from '@/pages/CollaborationPage';
+import { MemoryPage } from '@/pages/MemoryPage';
+import SimulationPage from '@/pages/SimulationPage';
+import { RoboticsPage } from '@/pages/RoboticsPage';
+import { MarketplaceEconomyPage } from '@/pages/MarketplaceEconomyPage';
+import { AdaptiveUXPage } from '@/pages/AdaptiveUXPage';
+import { UniversalRuntimePage } from '@/pages/UniversalRuntimePage';
+import { DataVisualizationPage } from '@/pages/DataVisualizationPage';
+import FuturisticPage from '@/pages/FuturisticPage';
 
 function RegistryFunctionRedirect() {
   const { author, name } = useParams<{ author: string; name: string }>();
@@ -475,7 +487,7 @@ function AppContent() {
         <Route path="/integrations" element={<IntegrationsPage />} />
         {/* /teams is the dashboard-protected route inside DashboardLayout */}
         <Route path="/privacy" element={<MarketingLegalRedirect page="privacy" />} />
-        <Route path="/security" element={<SecurityPage />} />
+        {/* SecurityPage is routed inside DashboardLayout */}
         <Route path="/terms" element={<MarketingLegalRedirect page="terms" />} />
         <Route path="/changelog" element={<ChangelogPage />} />
         <Route path="/feedback" element={<FeedbackPage />} />
@@ -578,6 +590,10 @@ function AppContent() {
           <Route path="ai/composer" element={<AIComposerPage />} />
           <Route path="ai/chat" element={<AIComposerPage />} />
           <Route path="ai/suggest" element={<AIComposerPage />} />
+          {/* Code Intelligence Routes */}
+          <Route path="code-intelligence" element={<CodeIntelligencePage />} />
+          <Route path="code-intelligence/:panel" element={<CodeIntelligencePage />} />
+          <Route path="studio/code" element={<CodeIntelligencePage />} />
           {/* FRG (Function Runtime Graph) Routes */}
           <Route path="frg" element={<FRGGraphsPage />} />
           <Route path="frg/new" element={<FRGEditorPage />} />
@@ -650,15 +666,163 @@ function AppContent() {
           <Route path="sdk-integrations" element={<AgentSDKIntegrationsPage />} />
           <Route path="marketplace" element={<AgentsMarketplacePage />} />
           <Route path="marketplace/agents" element={<AgentsMarketplacePage />} />
-          <Route path="evolution" element={<EvolutionPage />} />
-          <Route path="evolution/:slug" element={<EvolutionPage />} />
           <Route path="wallet" element={<WalletPage />} />
           <Route path="wallet/:slug" element={<WalletPage />} />
-
-          <Route path="u/:username/agents" element={<AgentsPage />} />
-          <Route path="u/:username/conversations" element={<ConversationsPage />} />
-          <Route path="u/:username/conversations/:id" element={<ConversationsPage />} />
+          <Route path="evolution" element={<EvolutionPage />} />
+          <Route path="evolution/:slug" element={<EvolutionPage />} />
         </Route>
+
+        {/* Studio Route - Outside DashboardLayout for fullscreen */}
+        <Route
+          path="studio"
+          element={
+            <ProtectedRoute>
+              <StudioPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="studio/:environment"
+          element={
+            <ProtectedRoute>
+              <StudioPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="devops"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<DevOpsPage />} />
+          <Route path=":panel" element={<DevOpsPage />} />
+        </Route>
+
+        <Route
+          path="security"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<SecurityPage />} />
+          <Route path=":panel" element={<SecurityPage />} />
+        </Route>
+
+        <Route
+          path="collaboration"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<CollaborationPage />} />
+          <Route path=":panel" element={<CollaborationPage />} />
+        </Route>
+        <Route
+          path="memory"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<MemoryPage />} />
+          <Route path=":panel" element={<MemoryPage />} />
+        <Route
+          path="simulation"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<SimulationPage />} />
+          <Route path=":panel" element={<SimulationPage />} />
+        </Route>
+        </Route>
+
+        <Route
+          path="robotics"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<RoboticsPage />} />
+          <Route path=":panel" element={<RoboticsPage />} />
+        </Route>
+
+        <Route
+          path="marketplace-economy"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<MarketplaceEconomyPage />} />
+          <Route path=":panel" element={<MarketplaceEconomyPage />} />
+        </Route>
+
+        <Route
+          path="adaptive-ux"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<AdaptiveUXPage />} />
+          <Route path=":panel" element={<AdaptiveUXPage />} />
+        </Route>
+
+        <Route
+          path="universal-runtime"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<UniversalRuntimePage />} />
+          <Route path=":panel" element={<UniversalRuntimePage />} />
+        </Route>
+
+        <Route
+          path="data-visualization"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<DataVisualizationPage />} />
+          <Route path=":panel" element={<DataVisualizationPage />} />
+        </Route>
+
+
+        <Route
+          path="futuristic"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<FuturisticPage />} />
+          <Route path=":panel" element={<FuturisticPage />} />
+        </Route>
+        <Route path="u/:username/agents" element={<AgentsPage />} />
+        <Route path="u/:username/conversations" element={<ConversationsPage />} />
+        <Route path="u/:username/conversations/:id" element={<ConversationsPage />} />
 
         {/* 404 - Not Found */}
         <Route path="*" element={<NotFoundPage />} />

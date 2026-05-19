@@ -1,0 +1,97 @@
+{
+  "name": "workflow-scheduler",
+  "version": "1.3.0",
+  "display_name": "Workflow Scheduler",
+  "description": "Schedule workflows to run at specific times or intervals. Supports cron expressions, calendar-based scheduling, and complex recurrence patterns. Includes timezone support and daylight saving handling.",
+  "author": {
+    "name": "FunctionFly Team",
+    "email": "plugins@functionfly.com",
+    "website": "https://functionfly.com"
+  },
+  "license": "MIT",
+  "runtime": "nodejs",
+  "entry_point": "index.js",
+  "category": "runtime",
+  "tags": ["scheduler", "cron", "automation", "scheduling", "time"],
+  "homepage": "https://functionfly.com/plugins/scheduler",
+  "repository": "https://github.com/functionfly/plugins",
+
+  "permissions": [
+    {
+      "type": "api",
+      "action": "write",
+      "resource": "schedules",
+      "description": "Create and manage schedules"
+    },
+    {
+      "type": "api",
+      "action": "read",
+      "resource": "schedules",
+      "description": "Read schedule status"
+    },
+    {
+      "type": "api",
+      "action": "trigger",
+      "resource": "workflows",
+      "description": "Trigger workflow executions"
+    }
+  ],
+
+  "hooks": {
+    "on_schedule_trigger": "hooks/on-schedule-trigger.js"
+  },
+
+  "endpoints": [
+    {
+      "path": "/schedule",
+      "method": "POST",
+      "handler": "createScheduleHandler",
+      "description": "Create a new schedule"
+    },
+    {
+      "path": "/schedule/:scheduleId",
+      "method": "GET",
+      "handler": "getScheduleHandler",
+      "description": "Get schedule details"
+    },
+    {
+      "path": "/schedule/:scheduleId",
+      "method": "DELETE",
+      "handler": "deleteScheduleHandler",
+      "description": "Delete a schedule"
+    },
+    {
+      "path": "/schedules",
+      "method": "GET",
+      "handler": "listSchedulesHandler",
+      "description": "List all schedules"
+    }
+  ],
+
+  "config_schema": {
+    "default_timezone": {
+      "type": "string",
+      "default": "UTC",
+      "description": "Default timezone for schedules"
+    },
+    "max_concurrent_jobs": {
+      "type": "number",
+      "default": 10,
+      "description": "Maximum concurrent scheduled jobs"
+    },
+    "misfire_grace_seconds": {
+      "type": "number",
+      "default": 300,
+      "description": "Grace period for missed jobs"
+    }
+  },
+
+  "sandbox": {
+    "tier": "worker",
+    "cpu_limit": 0.5,
+    "memory_limit_mb": 128,
+    "timeout_seconds": 60,
+    "max_instances": 2,
+    "allowed_domains": []
+  }
+}

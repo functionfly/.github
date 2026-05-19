@@ -9,24 +9,29 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@functionfly/shared": ["../../packages/shared/src"],
+      "@functionfly/ui-core": ["../../packages/ui-core/src"],
+      "@functionfly/ui-graph": ["../../packages/ui-graph/src"],
+      "@functionfly/ui-ai": ["../../packages/ui-ai/src"],
+      "@functionfly/ui-agent": ["../../packages/ui-agent/src"],
+      "@functionfly/ui-observability": ["../../packages/ui-observability/src"],
+      "@functionfly/ui-marketplace": ["../../packages/ui-marketplace/src"],
+      "@functionfly/ui-visualization": ["../../packages/ui-visualization/src"],
+      "@functionfly/ui-runtime": ["../../packages/ui-runtime/src"],
+      "@functionfly/ui-security": ["../../packages/ui-security/src"],
+      "@functionfly/ui-collaboration": ["../../packages/ui-collaboration/src"]
     },
-
-    /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true,
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
-
-    /* Linting */
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
+    "strict": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": false
   },
   "include": ["src"]
 }

@@ -61,11 +61,10 @@ var (
 func getWalletAuditHMACKey() []byte {
 	key := os.Getenv("WALLET_AUDIT_HMAC_KEY")
 	if key == "" {
-		// Check if we're in production mode
 		if os.Getenv("DEVELOPMENT") != "true" && os.Getenv("NODE_ENV") != "development" {
-			logrus.Error("WALLET_AUDIT_HMAC_KEY not set - using insecure default in production")
-			// Return a placeholder that will cause HMAC verification to fail if used
-			return []byte("INSECURE-DEFAULT-KEY-DO-NOT-USE-IN-PRODUCTION")
+			logrus.Error("WALLET_AUDIT_HMAC_KEY not set in production - refusing to start with insecure default")
+			os.Exit(1)
+			return nil
 		}
 		logrus.Warn("WALLET_AUDIT_HMAC_KEY not set - using default (development only)")
 		return []byte("default-audit-key-change-in-production")
@@ -103,9 +102,10 @@ func getEnvFloat64Safe(key string, defaultVal float64) float64 {
 func initWalletEncryption() *WalletEncryption {
 	keyStr := os.Getenv("WALLET_ENCRYPTION_KEY")
 	if keyStr == "" {
-		// Check if we're in production - encryption is mandatory in prod
 		if os.Getenv("PRODUCTION") == "true" || os.Getenv("ENVIRONMENT") == "production" {
-			logrus.Error("WALLET_ENCRYPTION_KEY not set in production - wallet encryption disabled but this is a security risk!")
+			logrus.Error("WALLET_ENCRYPTION_KEY not set in production - refusing to start without encryption key")
+			os.Exit(1)
+			return nil
 		}
 		logrus.Warn("WALLET_ENCRYPTION_KEY not set - wallet data will be stored unencrypted")
 		return &WalletEncryption{enabled: false, keyVersion: 0}

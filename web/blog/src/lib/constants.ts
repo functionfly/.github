@@ -3,11 +3,14 @@
  */
 
 export const BLOG_API_URL =
-  import.meta.env.PUBLIC_BLOG_API_URL || "http://localhost:3000/api/v1";
+  import.meta.env.PUBLIC_BLOG_API_URL ||
+  (() => { throw new Error('PUBLIC_BLOG_API_URL environment variable is required'); })();
 export const BLOG_SITE_URL =
-  import.meta.env.PUBLIC_BLOG_SITE_URL || "http://localhost:4327";
+  import.meta.env.PUBLIC_BLOG_SITE_URL ||
+  (() => { throw new Error('PUBLIC_BLOG_SITE_URL environment variable is required'); })();
 export const BLOG_DOMAIN =
-  import.meta.env.PUBLIC_BLOG_DOMAIN || "blog.functionfly.local";
+  import.meta.env.PUBLIC_BLOG_DOMAIN ||
+  (() => { throw new Error('PUBLIC_BLOG_DOMAIN environment variable is required'); })();
 
 export const SITE_NAME = import.meta.env.PUBLIC_SITE_NAME || "FunctionFly Blog";
 export const SITE_DESCRIPTION =

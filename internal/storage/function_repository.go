@@ -787,36 +787,85 @@ func (r *FunctionRepository) GetDashboardMetrics(ctx context.Context, tenantID u
 		out.UptimePrevPct = &pct
 	}
 
-	// Uptime sparkline: 7 days, each day success rate
-	for i := 0; i < 7; i++ {
-		dayStart := now.AddDate(0, 0, -7+i).Truncate(24 * time.Hour)
-		dayEnd := dayStart.Add(24*time.Hour - time.Nanosecond)
-		var dayTotal, dayErrors int64
-		dayQuery := `
-			SELECT COUNT(*)::bigint, COUNT(*) FILTER (WHERE fl.level = 'error')::bigint
-			FROM function_logs fl INNER JOIN functions f ON f.id = fl.function_id
-			WHERE f.tenant_id = $1 AND fl.timestamp >= $2 AND fl.timestamp <= $3`
-		if err := r.db.QueryRowContext(ctx, dayQuery, tenantID, dayStart, dayEnd).Scan(&dayTotal, &dayErrors); err != nil {
-			out.UptimeSparkline[i] = 100
-			continue
+	// Uptime sparkline: 7 days, each day success rate - batched single query
+	uptimeSparkQuery := `
+		WITH days AS (
+			SELECT generate_series(
+				$2::timestamp,
+				$2::timestamp + interval '6 days',
+				interval '1 day'
+			) AS day
+		)
+		SELECT
+			d.day,
+			COUNT(*)::bigint AS total,
+			COUNT(*) FILTER (WHERE fl.level = 'error')::bigint AS errors
+		FROM days d
+		LEFT JOIN function_logs fl ON fl.timestamp >= d.day AND fl.timestamp < d.day + interval '1 day'
+			AND f.tenant_id = $1
+		GROUP BY d.day
+		ORDER BY d.day`
+	rows, err := r.db.QueryContext(ctx, uptimeSparkQuery, tenantID, now.AddDate(0, 0, -7).Truncate(24*time.Hour))
+	if err == nil {
+		defer rows.Close()
+		dayResults := make(map[time.Time]struct{ total, errors int64 })
+		for rows.Next() {
+			var day time.Time
+			var total, errors int64
+			if err := rows.Scan(&day, &total, &errors); err == nil {
+				dayResults[day] = struct{ total, errors int64 }{total, errors}
+			}
 		}
-		if dayTotal == 0 {
+		for i := 0; i < 7; i++ {
+			dayStart := now.AddDate(0, 0, -7+i).Truncate(24 * time.Hour)
+			if r, ok := dayResults[dayStart]; ok {
+				if r.total == 0 {
+					out.UptimeSparkline[i] = 100
+				} else {
+					out.UptimeSparkline[i] = 100.0 * (float64(r.total-r.errors) / float64(r.total))
+				}
+			} else {
+				out.UptimeSparkline[i] = 100
+			}
+		}
+	} else {
+		for i := 0; i < 7; i++ {
 			out.UptimeSparkline[i] = 100
-		} else {
-			out.UptimeSparkline[i] = 100.0 * (float64(dayTotal-dayErrors) / float64(dayTotal))
 		}
 	}
 
-	// Requests sparkline: last 7 days daily counts
-	for i := 0; i < 7; i++ {
-		dayStart := now.AddDate(0, 0, -7+i).Truncate(24 * time.Hour)
-		dayEnd := dayStart.Add(24*time.Hour - time.Nanosecond)
-		var c int64
-		sparkQuery := `SELECT COUNT(*)::bigint FROM function_logs fl INNER JOIN functions f ON f.id = fl.function_id WHERE f.tenant_id = $1 AND fl.timestamp >= $2 AND fl.timestamp <= $3`
-		if err := r.db.QueryRowContext(ctx, sparkQuery, tenantID, dayStart, dayEnd).Scan(&c); err != nil {
-			continue
+	// Requests sparkline: last 7 days daily counts - batched single query
+	requestsSparkQuery := `
+		WITH days AS (
+			SELECT generate_series(
+				$2::timestamp,
+				$2::timestamp + interval '6 days',
+				interval '1 day'
+			) AS day
+		)
+		SELECT
+			d.day,
+			COUNT(fl.id)::bigint AS count
+		FROM days d
+		LEFT JOIN function_logs fl ON fl.timestamp >= d.day AND fl.timestamp < d.day + interval '1 day'
+			AND f.tenant_id = $1
+		GROUP BY d.day
+		ORDER BY d.day`
+	rows2, err := r.db.QueryContext(ctx, requestsSparkQuery, tenantID, now.AddDate(0, 0, -7).Truncate(24*time.Hour))
+	if err == nil {
+		defer rows2.Close()
+		dayCounts := make(map[time.Time]int64)
+		for rows2.Next() {
+			var day time.Time
+			var count int64
+			if err := rows2.Scan(&day, &count); err == nil {
+				dayCounts[day] = count
+			}
 		}
-		out.RequestsSparkline[i] = c
+		for i := 0; i < 7; i++ {
+			dayStart := now.AddDate(0, 0, -7+i).Truncate(24 * time.Hour)
+			out.RequestsSparkline[i] = dayCounts[dayStart]
+		}
 	}
 
 	return out, nil

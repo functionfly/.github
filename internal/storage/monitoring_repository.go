@@ -403,7 +403,7 @@ func (r *MonitoringRepository) PgNotify(channel, payload string) error {
 // PgListen starts listening on a PostgreSQL channel for notifications
 func (r *MonitoringRepository) PgListen(ctx context.Context, channel string) error {
 	query := "LISTEN " + channel
-	_, err := r.db.ExecContext(ctx, query)
+	_, err := r.db.Exec(query)
 	return err
 }
 

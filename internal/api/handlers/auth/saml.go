@@ -6,11 +6,11 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/auth"
+	"github.com/functionfly/functionfly/internal/config"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -79,11 +79,7 @@ func (h *SAMLHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 // getSAMLFrontendURL returns the SAML callback URL for redirects
 func getSAMLFrontendURL() string {
-	frontendURL := os.Getenv("FRONTEND_URL")
-	if frontendURL == "" {
-		frontendURL = "http://localhost:3000"
-	}
-	return frontendURL + "/auth/saml/callback"
+	return config.GetFrontendURL() + "/auth/saml/callback"
 }
 
 // buildSAMLRedirectURL builds the redirect URL for SAML callbacks with unified result structure

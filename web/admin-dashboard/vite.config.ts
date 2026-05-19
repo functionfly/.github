@@ -16,12 +16,14 @@ export default defineConfig({
     strictPort: false,
     proxy: {
       '/api': {
-        target: process.env.VITE_API_BASE_URL || 'http://localhost:8080',
+        target: process.env.VITE_API_BASE_URL ||
+          (() => { throw new Error('VITE_API_BASE_URL environment variable is required'); })(),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '/v1'),
       },
       '/v1/admin': {
-        target: process.env.VITE_API_BASE_URL || 'http://localhost:8080',
+        target: process.env.VITE_API_BASE_URL ||
+          (() => { throw new Error('VITE_API_BASE_URL environment variable is required'); })(),
         changeOrigin: true,
       },
     },

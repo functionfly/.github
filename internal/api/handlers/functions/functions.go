@@ -836,7 +836,7 @@ func (h *Handler) HandleParseCode(w http.ResponseWriter, r *http.Request) {
 		h.pasteHandler.HandleParseCode(w, r)
 		return
 	}
-	http.Error(w, "Not implemented", http.StatusNotFound)
+	http.Error(w, "Paste handler not available", http.StatusServiceUnavailable)
 }
 
 func (h *Handler) HandleCreateFromCode(w http.ResponseWriter, r *http.Request) {
@@ -844,5 +844,5 @@ func (h *Handler) HandleCreateFromCode(w http.ResponseWriter, r *http.Request) {
 		h.pasteHandler.HandleCreateFromCode(w, r)
 		return
 	}
-	http.Error(w, "Not implemented", http.StatusNotFound)
+	http.Error(w, "Paste handler not available", http.StatusServiceUnavailable)
 }

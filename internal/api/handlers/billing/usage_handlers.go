@@ -206,12 +206,36 @@ func (h *UsageHandler) GetUsageByFunction(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// This would require a new repository method for function-level aggregation
-	// For now, return a placeholder
+	start, end := h.parseStartEndDates(r)
+	if start.IsZero() || end.IsZero() {
+		now := time.Now().UTC()
+		start = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+		end = now
+	}
+
+	functions, err := h.repo.GetUsageByTenantByFunction(tenantID, start, end)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get usage by function")
+		h.writeError(w, http.StatusInternalServerError, "Internal Error", "Failed to retrieve function usage")
+		return
+	}
+
+	functionList := make([]map[string]interface{}, 0, len(functions))
+	for _, f := range functions {
+		functionList = append(functionList, map[string]interface{}{
+			"function_id":       f.FunctionID.String(),
+			"function_name":     f.FunctionName,
+			"total_executions":  f.TotalExecutions,
+			"total_duration_ms": f.TotalDurationMs,
+			"total_cost_cents":  f.TotalCostCents,
+		})
+	}
+
 	response := map[string]interface{}{
 		"tenant_id": tenantID.String(),
-		"functions": []interface{}{},
-		"note":      "Function-level usage aggregation coming soon",
+		"functions": functionList,
+		"start":      start.Format(time.RFC3339),
+		"end":        end.Format(time.RFC3339),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -356,6 +380,28 @@ func (h *UsageHandler) extractTenantID(r *http.Request) uuid.UUID {
 	}
 
 	return uuid.Nil
+}
+
+func (h *UsageHandler) parseStartEndDates(r *http.Request) (time.Time, time.Time) {
+	startStr := r.URL.Query().Get("start")
+	endStr := r.URL.Query().Get("end")
+
+	var start, end time.Time
+	var err error
+
+	if startStr != "" {
+		start, err = time.Parse(time.RFC3339, startStr)
+		if err != nil {
+			start = time.Time{}
+		}
+	}
+	if endStr != "" {
+		end, err = time.Parse(time.RFC3339, endStr)
+		if err != nil {
+			end = time.Time{}
+		}
+	}
+	return start, end
 }
 
 func (h *UsageHandler) parseDateRange(r *http.Request) (time.Time, time.Time, error) {

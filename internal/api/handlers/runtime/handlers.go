@@ -18,12 +18,9 @@ type Handler struct {
 }
 
 // New creates a new runtime handler
-func New(registry interface {
-	GetFunction(id string) (*FunctionConfig, error)
-	UpdateFunction(fn *FunctionConfig) error
-}) *Handler {
+func New() *Handler {
 	return &Handler{
-		registry: registry,
+		registry: nil,
 	}
 }
 
@@ -96,12 +93,33 @@ type PerformanceData struct {
 // ListRuntimes returns a list of available runtimes
 func (h *Handler) ListRuntimes(w http.ResponseWriter, r *http.Request) {
 	runtimes := []RuntimeInfo{
+		// SAR Runtime - Stateful Agent Runtime for AI agent execution
 		{
-			ID:          "nodejs20",
+			ID:          "sar",
+			Name:        "SAR Runtime",
+			Version:     "1.0",
+			Status:      "stable",
+			Features:    []string{"Stateful AI Agents", "Event-driven NATS", "WASM sandbox", "Multi-tier memory", "gRPC API", "Prometheus metrics"},
+			MemoryLimit: 4096,
+			Timeout:     300000,
+		},
+		// Prism - Universal Adaptive WASM Execution Fabric
+		{
+			ID:          "prism",
+			Name:        "Prism",
+			Version:     "2.0",
+			Status:      "stable",
+			Features:    []string{"Adaptive Execution Cells", "HyperCore scheduler", "WASM Fusion Engine", "Quantum snapshotting", "Neural optimization", "Autonomous swarms"},
+			MemoryLimit: 4096,
+			Timeout:     300000,
+		},
+		// Node.js - QuickJS WASM-based JavaScript execution
+		{
+			ID:          "nodejs",
 			Name:        "Node.js",
 			Version:     "20.x LTS",
 			Status:      "stable",
-			Features:    []string{"async/await", "ES Modules", "fetch API", "Worker Threads"},
+			Features:    []string{"async/await", "ES Modules", "fetch API", "Worker Threads", "QuickJS WASM", "Prometheus metrics"},
 			MemoryLimit: 2048,
 			Timeout:     300000,
 		},
@@ -114,30 +132,63 @@ func (h *Handler) ListRuntimes(w http.ResponseWriter, r *http.Request) {
 			MemoryLimit: 2048,
 			Timeout:     300000,
 		},
+		// Deno - Secure JavaScript/TypeScript execution
 		{
 			ID:          "deno",
 			Name:        "Deno",
-			Version:     "latest",
-			Status:      "beta",
-			Features:    []string{"TypeScript", "Built-in formatting", "Secure by default"},
+			Version:     "2.x",
+			Status:      "stable",
+			Features:    []string{"TypeScript", "Built-in formatting", "Secure by default", "Deno Deploy", "Web APIs", "Node.js compatibility", "NPM compatibility", "WASM support", "WASM sandbox", "seccomp/landlock"},
 			MemoryLimit: 2048,
 			Timeout:     300000,
 		},
+		// Bun - Fast JavaScript/TypeScript runtime
 		{
 			ID:          "bun",
 			Name:        "Bun",
-			Version:     "latest",
-			Status:      "beta",
-			Features:    []string{"TypeScript", "Built-in bundler", "Fast startup", "Web APIs"},
+			Version:     "1.x",
+			Status:      "stable",
+			Features:    []string{"TypeScript", "Built-in bundler", "Fast startup", "Web APIs", "Node.js compatibility", "Native Bun runtime", "React Server Components", "WASM sandbox", "seccomp/landlock"},
 			MemoryLimit: 2048,
 			Timeout:     300000,
 		},
+		// Ruby - Secure Ruby execution via mruby/WASM
+		{
+			ID:          "ruby",
+			Name:        "Ruby",
+			Version:     "3.3 (mruby)",
+			Status:      "stable",
+			Features:    []string{"mruby interpreter", "WASM", "Dynamic typing", "WASM sandbox", "seccomp/landlock", "NATS client"},
+			MemoryLimit: 2048,
+			Timeout:     300000,
+		},
+		// Kotlin - Secure Kotlin/JVM execution
+		{
+			ID:          "kotlin",
+			Name:        "Kotlin",
+			Version:     "1.9+",
+			Status:      "stable",
+			Features:    []string{"Kotlin/WASM", "wasmWasi target", "Null safety", "Coroutines", "JVM execution", "WASM sandbox", "seccomp/landlock", "NATS client"},
+			MemoryLimit: 4096,
+			Timeout:     300000,
+		},
+		// WasmEdge - C/C++ and WASM execution
+		{
+			ID:          "wasmedge",
+			Name:        "WasmEdge",
+			Version:     "0.14+",
+			Status:      "stable",
+			Features:    []string{"C/C++", "WASI", "wasmedge-sdk", "Fuel metering", "Secure execution", "seccomp/landlock", "NATS client"},
+			MemoryLimit: 2048,
+			Timeout:     300000,
+		},
+		// Python 3.12
 		{
 			ID:          "python3.12",
 			Name:        "Python",
 			Version:     "3.12",
 			Status:      "stable",
-			Features:    []string{"async/await", "Type hints", "Better errors"},
+			Features:    []string{"async/await", "Type hints", "Better errors", "MicroPython WASM", "WASM sandbox"},
 			MemoryLimit: 2048,
 			Timeout:     300000,
 		},
@@ -146,19 +197,21 @@ func (h *Handler) ListRuntimes(w http.ResponseWriter, r *http.Request) {
 			Name:        "Python",
 			Version:     "3.11",
 			Status:      "stable",
-			Features:    []string{"async/await", "Type hints"},
+			Features:    []string{"async/await", "Type hints", "f-strings"},
 			MemoryLimit: 2048,
 			Timeout:     300000,
 		},
+		// Python MicroVM - Enterprise tier
 		{
 			ID:          "python-microvm",
 			Name:        "Python (MicroVM)",
 			Version:     "Enterprise",
 			Status:      "beta",
 			Features:    []string{"CPython 3.11+", "NumPy/Pandas", "C extensions", "Firecracker isolation"},
-			MemoryLimit: 2048,
-			Timeout:     300000,
+			MemoryLimit: 8192,
+			Timeout:     600000,
 		},
+		// Rust - WASM compilation
 		{
 			ID:          "rust",
 			Name:        "Rust",
@@ -168,6 +221,7 @@ func (h *Handler) ListRuntimes(w http.ResponseWriter, r *http.Request) {
 			MemoryLimit: 2048,
 			Timeout:     300000,
 		},
+		// Go - WASM compilation
 		{
 			ID:          "go",
 			Name:        "Go",
@@ -177,6 +231,7 @@ func (h *Handler) ListRuntimes(w http.ResponseWriter, r *http.Request) {
 			MemoryLimit: 2048,
 			Timeout:     300000,
 		},
+		// C - WASM compilation
 		{
 			ID:          "c",
 			Name:        "C",
@@ -186,6 +241,7 @@ func (h *Handler) ListRuntimes(w http.ResponseWriter, r *http.Request) {
 			MemoryLimit: 2048,
 			Timeout:     300000,
 		},
+		// C++ - WASM compilation
 		{
 			ID:          "cpp",
 			Name:        "C++",
@@ -195,24 +251,7 @@ func (h *Handler) ListRuntimes(w http.ResponseWriter, r *http.Request) {
 			MemoryLimit: 2048,
 			Timeout:     300000,
 		},
-		{
-			ID:          "ruby",
-			Name:        "Ruby",
-			Version:     "3.3 (mruby)",
-			Status:      "beta",
-			Features:    []string{"mruby interpreter", "WASM", "Dynamic typing"},
-			MemoryLimit: 2048,
-			Timeout:     300000,
-		},
-		{
-			ID:          "kotlin",
-			Name:        "Kotlin",
-			Version:     "1.9+",
-			Status:      "beta",
-			Features:    []string{"Kotlin/WASM", "wasmWasi target", "Null safety", "Coroutines"},
-			MemoryLimit: 2048,
-			Timeout:     300000,
-		},
+		// Swift - Experimental WASM support
 		{
 			ID:          "swift",
 			Name:        "Swift",
@@ -257,9 +296,18 @@ func (h *Handler) GetRuntimeInfo(w http.ResponseWriter, r *http.Request) {
 		"deno": {
 			ID:          "deno",
 			Name:        "Deno",
+			Version:     "2.x",
+			Status:      "stable",
+			Features:    []string{"TypeScript", "Built-in formatting", "Secure by default", "Deno Deploy", "Web APIs", "Node.js compatibility", "NPM compatibility", "WASM support"},
+			MemoryLimit: 2048,
+			Timeout:     300000,
+		},
+		"bun": {
+			ID:          "bun",
+			Name:        "Bun",
 			Version:     "1.x",
-			Status:      "beta",
-			Features:    []string{"TypeScript", "Built-in formatting", "Secure by default", "Deno Deploy"},
+			Status:      "stable",
+			Features:    []string{"TypeScript", "Built-in bundler", "Fast startup", "Web APIs", "Node.js compatibility", "Native Bun runtime", "React Server Components"},
 			MemoryLimit: 2048,
 			Timeout:     300000,
 		},
@@ -427,9 +475,9 @@ func (h *Handler) ListToolchains(w http.ResponseWriter, r *http.Request) {
 
 // RegisterRoutes registers runtime routes
 func (h *Handler) RegisterRoutes(router *mux.Router) {
-	router.HandleFunc("/api/v1/runtimes", h.ListRuntimes).Methods("GET")
-	router.HandleFunc("/api/v1/runtimes/{id}", h.GetRuntimeInfo).Methods("GET")
-	router.HandleFunc("/api/v1/runtimes/toolchains", h.ListToolchains).Methods("GET")
-	router.HandleFunc("/api/v1/functions/{function_id}/diagnostics", h.GetDiagnostics).Methods("GET")
-	router.HandleFunc("/api/v1/functions/{function_id}/runtime", h.UpdateRuntimeConfig).Methods("PUT", "POST")
+	router.HandleFunc("/runtimes", h.ListRuntimes).Methods("GET")
+	router.HandleFunc("/runtimes/{id}", h.GetRuntimeInfo).Methods("GET")
+	router.HandleFunc("/runtimes/toolchains", h.ListToolchains).Methods("GET")
+	router.HandleFunc("/functions/{function_id}/diagnostics", h.GetDiagnostics).Methods("GET")
+	router.HandleFunc("/functions/{function_id}/runtime", h.UpdateRuntimeConfig).Methods("PUT", "POST")
 }

@@ -54,10 +54,44 @@ func registerFRGRoutes(
 	}
 	drePlatformKey, _ := dre.LoadPlatformKeyFromEnv()
 
-	// Initialize event bus (in-memory for Fly.io/Upstack stack)
-	// For NATS support, build with: go build -tags nats
-	eventBus := frg.NewInMemoryEventStream()
-	logrus.Info("In-memory event stream initialized")
+	// Initialize event bus — try NATS first, fall back to in-memory
+	var eventBus frg.EventStream
+	natsStream, err := frg.TryCreateNATSEventStream()
+	if err != nil {
+		logrus.WithError(err).Warn("NATS unavailable, using in-memory event stream")
+	}
+	if natsStream != nil {
+		eventBus = natsStream
+		logrus.Info("NATS event stream active")
+	} else {
+		eventBus = frg.NewInMemoryEventStream()
+		logrus.Info("In-memory event stream initialized")
+	}
+
+	// Start NATS runtime subscriber (listens for runtime registrations,
+	// heartbeats, and execution results from Prism/SAR/Kotlin runtimes)
+	_ = frg.TryCreateRuntimeSubscriber(frg.RuntimeEventHandlers{
+		OnRegistration: func(reg frg.RuntimeRegistration) {
+			logrus.WithFields(logrus.Fields{
+				"cell_id": reg.CellID,
+				"name":    reg.Name,
+			}).Info("Runtime registered via NATS")
+		},
+		OnHeartbeat: func(hb frg.RuntimeHeartbeat) {
+			logrus.WithFields(logrus.Fields{
+				"cell_id":           hb.CellID,
+				"status":            hb.Status,
+				"active_executions": hb.ActiveExecutions,
+			}).Debug("Runtime heartbeat via NATS")
+		},
+		OnExecutionResult: func(result frg.RuntimeExecutionResult) {
+			logrus.WithFields(logrus.Fields{
+				"execution_id": result.ExecutionID,
+				"cell_id":      result.CellID,
+				"status":       result.Status,
+			}).Info("Execution result received via NATS")
+		},
+	})
 
 	// Initialize execution engine
 	engine, err := frg.NewExecutionEngine(
@@ -184,8 +218,17 @@ func registerFRGRoutesOnRoot(
 	}
 	drePlatformKey, _ := dre.LoadPlatformKeyFromEnv()
 
-	// Initialize event bus
-	eventBus := frg.NewInMemoryEventStream()
+	// Initialize event bus — try NATS first, fall back to in-memory
+	var eventBus frg.EventStream
+	natsStream2, err := frg.TryCreateNATSEventStream()
+	if err != nil {
+		logrus.WithError(err).Warn("NATS unavailable (root routes), using in-memory event stream")
+	}
+	if natsStream2 != nil {
+		eventBus = natsStream2
+	} else {
+		eventBus = frg.NewInMemoryEventStream()
+	}
 
 	// Initialize execution engine
 	engine, err := frg.NewExecutionEngine(

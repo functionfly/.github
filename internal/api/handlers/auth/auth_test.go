@@ -41,7 +41,10 @@ func (s *AuthHandlerTestSuite) SetupTest() {
 	s.repo = db.Repository()
 
 	// Create auth service
-	authSvc := auth.NewAuthService(s.repo, "test-secret-key")
+	authSvc, err := auth.NewAuthService(s.repo, "test-secret-key")
+	if err != nil {
+		t.Fatalf("Failed to create auth service: %v", err)
+	}
 
 	// Create handler
 	s.handler = NewHandler(authSvc)

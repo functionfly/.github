@@ -3,7 +3,8 @@
  * Uses the Go backend at /v1/blog/*
  */
 
-const BLOG_API_URL = import.meta.env.PUBLIC_MAIN_API_URL || 'http://localhost:8080/api/v1';
+const BLOG_API_URL = import.meta.env.PUBLIC_MAIN_API_URL ||
+  (() => { throw new Error('PUBLIC_MAIN_API_URL environment variable is required'); })();
 
 // Types matching the Go backend API response
 export interface BlogPost {

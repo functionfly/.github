@@ -648,6 +648,26 @@ export const agentApi = {
   getParent: (agentId: string) =>
     apiClient.get<{ ok: boolean; parent: AgentIdentity }>(`/v1/agent/${agentId}/parent`),
 
+  /**
+   * Reassign an agent's swarm role.
+   * PUT /v1/agent/{id}/role
+   */
+  reassignRole: (agentId: string, swarmRole: string) =>
+    apiClient.put<{ ok: boolean; agent_id: string; swarm_role: string }>(
+      `/v1/agent/${agentId}/role`,
+      { swarm_role: swarmRole }
+    ),
+
+  /**
+   * Update an agent's swarm topology.
+   * PUT /v1/agent/{id}/topology
+   */
+  updateTopology: (agentId: string, topology: string) =>
+    apiClient.put<{ ok: boolean; agent_id: string; topology: string }>(
+      `/v1/agent/${agentId}/topology`,
+      { topology }
+    ),
+
   // ---------------------------------------------------------------------------
   // Messaging
   // ---------------------------------------------------------------------------

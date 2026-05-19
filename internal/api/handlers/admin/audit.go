@@ -34,9 +34,9 @@ func (h *AdminAuditHandler) HandleListAuditLogs(w http.ResponseWriter, r *http.R
 
 	defer func() {
 		if rec := recover(); rec != nil {
-			logrus.WithField("panic", rec).Warn("HandleListAuditLogs panic; returning empty list")
-			events = []*storage.AuditEvent{}
-			filters = make(map[string]interface{})
+			logrus.WithField("panic", rec).Error("HandleListAuditLogs panic")
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
 		}
 		writeAuditLogsResponse(w, events, limit, offset, filters)
 	}()

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/config"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -92,7 +93,7 @@ func CreateTenantCheckoutSession(
 
 	appURL := os.Getenv("APP_URL")
 	if appURL == "" {
-		appURL = "http://localhost:3000"
+		appURL = config.GetFrontendURL()
 	}
 
 	// Use origin for return URLs if provided (for tenant branding)

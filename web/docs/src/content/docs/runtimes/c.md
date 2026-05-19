@@ -1,29 +1,65 @@
 ---
-title: C/C++ via WASM Runtime
+title: C/C++ via WasmEdge Runtime
 description: C and C++ WebAssembly runtime environment for FunctionFly functions
 ---
 
-# C/C++ via WASM Runtime
+# C/C++ via WasmEdge Runtime
 
-FunctionFly's C/C++ runtime compiles your code to WebAssembly (WASM) using Emscripten or WASI-SDK for efficient, sandboxed execution.
+FunctionFly's C/C++ runtime compiles your code to WebAssembly (WASM) and executes it using the WasmEdge runtime with full WASI 0.2 support for secure, sandboxed execution.
 
 ## Overview
 
-C and C++ functions are compiled to WebAssembly and run in a secure, lightweight WASM runtime. This provides:
+C and C++ functions are compiled to WebAssembly and run in the WasmEdge runtime. This provides:
 
 - **Fast cold starts** - WASM modules initialize quickly
 - **Small footprint** - Compact binary sizes
 - **Sandboxed** - Memory-safe, isolated execution
 - **Portable** - Same binary runs on any platform
 - **Native performance** - Near-native speed for compute-heavy workloads
+- **WASI 0.2** - Full WebAssembly System Interface support
 
-## Supported Toolchains
+## Runtime
 
-| Toolchain | Status | Notes |
-|-----------|--------|-------|
-| Emscripten | Supported | Recommended; full libc support |
-| WASI-SDK | Supported | Lightweight alternative |
-| Clang + wasm32 target | Supported | Requires manual sysroot setup |
+| Component | Details |
+|-----------|---------|
+| Runtime | WasmEdge 0.14+ |
+| Execution Mode | Embedded (not subprocess) |
+| WASI Support | WASI 0.2 |
+| Security | Syscall filtering, network controls, env sanitization |
+| Resource Limits | Memory, CPU time, wall time, fuel metering |
+
+## Compilation
+
+### Simple Compilation with Clang
+
+The recommended way to compile C/C++ for FunctionFly is using `clang` with the wasm32-wasi target:
+
+```bash
+# Compile to WASM with WASI 0.2 support
+clang --target=wasm32-wasi -o function.wasm function.c -lc
+```
+
+Required exports (automatically available with `-lc`):
+
+- `init` - Called once at cold start
+- `execute` - Main execution entry point
+- `alloc` / `dealloc` - Memory management
+- `metadata` - Function metadata
+
+### Alternative: Emscripten (Optional)
+
+Emscripten can be used as an alternative toolchain:
+
+```bash
+# Activate Emscripten SDK
+source emsdk/emsdk_env.sh
+
+# Compile to WASM
+emcc src/main.c -o function.js \
+    -s EXPORTED_FUNCTIONS='["_init", "_execute", "_alloc", "_dealloc", "_metadata", "_malloc", "_free"]' \
+    -s EXPORTED_RUNTIME_METHODS='["ccall", "cwrap"]' \
+    -O3
+```
 
 ## Project Structure
 
@@ -44,19 +80,14 @@ A C function uses the standard FunctionFly entry points:
 #include <stdio.h>
 #include <string.h>
 
-// Called once at cold start
 void init(void) {
-    // Optional initialization
 }
 
-// Main execution: receives input, returns output
 const char* execute(const char* input, int32_t input_len) {
-    // Process input (JSON string) and return output (JSON string)
     const char* response = "{\"message\": \"Hello from C!\"}";
     return ff_strdup(response);
 }
 
-// Memory management
 void* alloc(int32_t size) {
     return malloc(size);
 }
@@ -65,7 +96,6 @@ void dealloc(void* ptr) {
     free(ptr);
 }
 
-// Function metadata
 const char* metadata(void) {
     return "{\"name\": \"my-function\", \"runtime\": \"c\", \"version\": \"1.0.0\"}";
 }
@@ -84,8 +114,6 @@ const char* metadata(void) {
 void init(void) {}
 
 const char* execute(const char* input, int32_t input_len) {
-    // In a real implementation, parse the JSON input
-    // This example returns a simple JSON response
     const char* response =
         "{\"status\": 200, "
         "\"body\": {\"users\": ["
@@ -116,7 +144,6 @@ const char* metadata(void) {
 void init(void) {}
 
 const char* execute(const char* input, int32_t input_len) {
-    // Read webhook secret from environment
     char secret_buf[256];
     int32_t secret_len = functionfly_get_env(
         "WEBHOOK_SECRET", 13,
@@ -127,8 +154,6 @@ const char* execute(const char* input, int32_t input_len) {
         return ff_strdup("{\"status\": 401, \"body\": {\"error\": \"Missing secret\"}}");
     }
 
-    // In production: verify HMAC signature from headers
-    // For now, acknowledge receipt
     return ff_strdup("{\"status\": 200, \"body\": {\"received\": true}}");
 }
 
@@ -151,11 +176,8 @@ const char* metadata(void) {
 void init(void) {}
 
 const char* execute(const char* input, int32_t input_len) {
-    // Use host function for logging
     ff_log("Processing data transformation");
 
-    // In a real implementation, parse input JSON and transform
-    // This example returns a transformed structure
     const char* response =
         "{\"status\": 200, "
         "\"body\": {"
@@ -202,40 +224,35 @@ if (len > 0) {
 }
 ```
 
-## Building for WASM
+## Security Features
 
-### Using Emscripten
+The WasmEdge runtime provides multiple layers of security:
 
-```bash
-# Activate Emscripten SDK
-source emsdk/emsdk_env.sh
+### Syscall Filtering
+- Only whitelisted WASI syscalls are allowed
+- Blocked syscalls return errors instead of executing
 
-# Compile to WASM
-emcc src/main.c -o function.js \
-    -s EXPORTED_FUNCTIONS='["_init", "_execute", "_alloc", "_dealloc", "_metadata", "_malloc", "_free"]' \
-    -s EXPORTED_RUNTIME_METHODS='["ccall", "cwrap"]' \
-    -O3
+### Network Controls
+- Outbound network access can be restricted
+- Configurable per-function network policy
 
-# The .wasm file is the deployable artifact
-```
+### Environment Sanitization
+- Environment variables are sanitized before passing to functions
+- Sensitive variables can be blocked or redacted
 
-### Using WASI-SDK
+### Fuel Metering
+- Fuel is consumed for each WASM instruction executed
+- Prevents infinite loops and resource exhaustion
+- Configurable fuel limits per invocation
 
-```bash
-# Set WASI-SDK path
-export WASI_SDK_PATH=/opt/wasi-sdk
+## Resource Limits
 
-# Compile to WASM
-$WASI_SDK_PATH/bin/clang src/main.c -o function.wasm \
-    --target=wasm32-wasi \
-    -O3 \
-    -nostartfiles \
-    -Wl,--export=init \
-    -Wl,--export=execute \
-    -Wl,--export=alloc \
-    -Wl,--export=dealloc \
-    -Wl,--export=metadata
-```
+| Resource | Default | Maximum |
+|----------|---------|---------|
+| Timeout | 30s | 300s (5 min) |
+| Memory | 128 MB | 1024 MB |
+| CPU | 1 vCPU | 4 vCPU |
+| Fuel | 10M units | 100M units |
 
 ## functionfly.jsonc Configuration
 
@@ -253,14 +270,6 @@ $WASI_SDK_PATH/bin/clang src/main.c -o function.wasm \
   }
 }
 ```
-
-## Timeout and Limits
-
-| Resource | Default | Maximum |
-|----------|---------|---------|
-| Timeout | 30s | 300s (5 min) |
-| Memory | 128 MB | 1024 MB |
-| CPU | 1 vCPU | 4 vCPU |
 
 ## Cold Start
 

@@ -1,0 +1,10 @@
+export { StudioSettingsCenter } from "./StudioSettingsCenter";
+export { ThemeEngine } from "./ThemeEngine";
+export { WorkspaceSnapshotManager } from "./WorkspaceSnapshotManager";
+export { KeyboardShortcutVisualizer } from "./KeyboardShortcutVisualizer";
+export { StudioPerformanceProfiler } from "./StudioPerformanceProfiler";
+export { CrashRecoveryManager } from "./CrashRecoveryManager";
+export { ExperimentalFeatureLab } from "./ExperimentalFeatureLab";
+export { UniversalSearchEngine } from "./UniversalSearchEngine";
+export { GlobalNotificationCenter } from "./GlobalNotificationCenter";
+export { StudioUpdateManager } from "./StudioUpdateManager";

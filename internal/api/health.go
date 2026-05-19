@@ -78,14 +78,19 @@ func (s *Server) handleDetailedHealth(w http.ResponseWriter, r *http.Request) {
 
 	// Check database connectivity
 	dbHealthy := s.checkDatabaseHealth(ctx)
-	health["services"].(map[string]interface{})["database"] = map[string]interface{}{
+	servicesMap, ok := health["services"].(map[string]interface{})
+	if !ok {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+	servicesMap["database"] = map[string]interface{}{
 		"status":    dbHealthy,
 		"timestamp": time.Now().Format(time.RFC3339),
 	}
 
 	// Check monitoring service
 	monitoringHealthy := s.checkMonitoringHealth(ctx)
-	health["services"].(map[string]interface{})["monitoring"] = map[string]interface{}{
+	servicesMap["monitoring"] = map[string]interface{}{
 		"status":    monitoringHealthy,
 		"message":   "monitoring disabled",
 		"timestamp": time.Now().Format(time.RFC3339),

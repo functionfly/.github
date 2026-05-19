@@ -150,7 +150,7 @@ func (s *SignatureService) calculateContentHash(version *registry.RegistryFuncti
 	return hasher.Sum(nil), nil
 }
 
-// parsePrivateKey parses a private key from PEM format
+// parsePrivateKey parses a private key from PEM format and validates key strength
 func (s *SignatureService) parsePrivateKey(pemData, algorithm string) (interface{}, error) {
 	block, _ := pem.Decode([]byte(pemData))
 	if block == nil {
@@ -159,9 +159,39 @@ func (s *SignatureService) parsePrivateKey(pemData, algorithm string) (interface
 
 	switch algorithm {
 	case "rsa-sha256", "rsa-sha384", "rsa-sha512":
-		return x509.ParsePKCS1PrivateKey(block.Bytes)
+		rsaKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse RSA private key: %w", err)
+		}
+		// Validate RSA key strength
+		bits := rsaKey.N.BitLen()
+		if bits < 2048 {
+			return nil, fmt.Errorf("RSA key strength insufficient: %d bits (minimum 2048 required)", bits)
+		}
+		return rsaKey, nil
 	case "ecdsa-p256-sha256", "ecdsa-p384-sha384", "ecdsa-p521-sha512":
-		return x509.ParseECPrivateKey(block.Bytes)
+		ecdsaKey, err := x509.ParseECPrivateKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse ECDSA private key: %w", err)
+		}
+		// Validate ECDSA key curve
+		switch ecdsaKey.Curve {
+		case elliptic.P256():
+			if algorithm != "ecdsa-p256-sha256" {
+				return nil, fmt.Errorf("key curve P-256 does not match algorithm %s", algorithm)
+			}
+		case elliptic.P384():
+			if algorithm != "ecdsa-p384-sha384" {
+				return nil, fmt.Errorf("key curve P-384 does not match algorithm %s", algorithm)
+			}
+		case elliptic.P521():
+			if algorithm != "ecdsa-p521-sha512" {
+				return nil, fmt.Errorf("key curve P-521 does not match algorithm %s", algorithm)
+			}
+		default:
+			return nil, fmt.Errorf("unsupported ECDSA curve: %s", ecdsaKey.Curve.Params().Name)
+		}
+		return ecdsaKey, nil
 	default:
 		return nil, fmt.Errorf("unsupported algorithm: %s", algorithm)
 	}

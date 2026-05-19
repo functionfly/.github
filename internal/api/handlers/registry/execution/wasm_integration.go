@@ -41,7 +41,6 @@ type WASMExecutor struct {
 	pool        *wasm.InstancePool
 	router      *wasm.RuntimeRouter
 	auditLogger wasm.AuditLogger
-	metrics     *wasm.MetricsRecorder
 	config      *WASMExecutionConfig
 }
 
@@ -101,7 +100,7 @@ func (e *WASMExecutor) Execute(ctx context.Context, tenantID, functionID uuid.UU
 	memoryUsed := inst.Instance.GetMemoryUsage()
 
 	// Return instance to pool
-	e.pool.Put(inst)
+	_ = e.pool.Put(inst)
 
 	// Handle execution error
 	if execErr != nil {
@@ -133,7 +132,7 @@ func (e *WASMExecutor) Execute(ctx context.Context, tenantID, functionID uuid.UU
 			MemoryUsed:      memoryUsed,
 			CreatedAt:       time.Now(),
 		}
-		e.auditLogger.LogExecution(ctx, audit)
+		_ = e.auditLogger.LogExecution(ctx, audit)
 	}
 
 	return &ExecuteResult{
@@ -210,7 +209,7 @@ func (e *WASMExecutor) ExecuteStreaming(ctx context.Context, tenantID, functionI
 	// Execute with large input handling
 	result, execErr := inst.Instance.ExecuteLargeInput(ctx, input, streamingConfig)
 
-	e.pool.Put(inst)
+	_ = e.pool.Put(inst)
 
 	if execErr != nil {
 		return nil, fmt.Errorf("streaming execution failed: %w", execErr)
@@ -246,7 +245,7 @@ func (e *WASMExecutor) handleError(ctx context.Context, tenantID, functionID uui
 			ErrorMessage:    err.Error(),
 			CreatedAt:       time.Now(),
 		}
-		e.auditLogger.LogExecution(ctx, audit)
+		_ = e.auditLogger.LogExecution(ctx, audit)
 	}
 
 	return &ExecuteResult{

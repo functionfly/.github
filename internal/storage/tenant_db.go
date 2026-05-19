@@ -530,21 +530,38 @@ func (p *TenantDBProvisioner) encryptPassword(password string) (string, error) {
 }
 
 // encryptPasswordFallback provides encryption when the encryption manager is not available
-// Uses a key derived from a fixed service identifier rather than the password itself
-// so that decryption is possible without storing the plaintext password
+// Uses a key derived from a service identifier that can be configured via environment variable
+// WARNING: This is NOT zero-knowledge - it's service-level encryption for DB credentials
+// In production, proper KMS/HSM-backed encryption MUST be used instead
 func encryptPasswordFallback(password string) (string, error) {
 	if password == "" {
 		return "", nil
 	}
 
-	// Use a static salt and service key for fallback encryption
-	// This is NOT zero-knowledge - it's a service-level encryption for DB credentials
-	// In production, use proper KMS/HSM-backed encryption
-	salt := []byte("functionfly-tenant-db-key-v1")
-	serviceKey := []byte("functionfly-dedicated-db-encryption-key-v1") // Service identifier, not secret
+	// Allow environment variable override for salt to support multi-region deployments
+	// with different encryption keys. If not set, uses the default (which should only
+	// be used in development/local setups).
+	salt := os.Getenv("TENANT_DB_FALLBACK_SALT")
+	if salt == "" {
+		logrus.Warn("TENANT_DB_FALLBACK_SALT not set - using default salt. This is INSECURE for production use.")
+		salt = "functionfly-tenant-db-key-v1-fallback-only"
+	}
+
+	serviceKey := os.Getenv("TENANT_DB_FALLBACK_SERVICE_KEY")
+	if serviceKey == "" {
+		logrus.Warn("TENANT_DB_FALLBACK_SERVICE_KEY not set - using default key. This is INSECURE for production use.")
+		serviceKey = "functionfly-dedicated-db-encryption-key-v1"
+	}
+
+	if p := os.Getenv("PRODUCTION"); p == "true" || p == "production" {
+		logrus.Error("CRITICAL: Using fallback encryption in production - set TENANT_DB_ENCRYPTION_KEY or use proper KMS encryption")
+	}
+
+	scryptSalt := []byte(salt)
+	scryptKey := []byte(serviceKey)
 
 	// Derive key using scrypt with service key
-	key, err := scrypt.Key(serviceKey, salt, 32768, 8, 1, 32)
+	key, err := scrypt.Key(scryptKey, scryptSalt, 32768, 8, 1, 32)
 	if err != nil {
 		return "", fmt.Errorf("failed to derive key: %w", err)
 	}

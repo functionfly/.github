@@ -88,7 +88,7 @@ pub struct YaraScannerConfig {
 impl Default for YaraScannerConfig {
     fn default() -> Self {
         Self {
-            service_url: "http://localhost:5000".to_string(),
+            service_url: std::env::var("YARA_SERVICE_URL").unwrap_or_default(),
             timeout: Duration::from_secs(5),
             fail_open: true,
             enabled: false, // Disabled by default; opt-in

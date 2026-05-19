@@ -1,0 +1,230 @@
+name: SAR Runtime CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'runtimes/sar/**'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'runtimes/sar/**'
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache target directory
+        uses: actions/cache@v4
+        with:
+          path: runtimes/sar/target
+          key: ${{ runner.os }}-sar-target-${{ hashFiles('runtimes/sar/Cargo.lock') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-sar-target-${{ hashFiles('runtimes/sar/Cargo.lock') }}-
+            ${{ runner.os }}-sar-target-
+
+      - name: Check formatting
+        working-directory: runtimes/sar
+        run: cargo fmt --check
+
+      - name: Clippy lints
+        working-directory: runtimes/sar
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Build
+        working-directory: runtimes/sar
+        run: cargo build --all-features
+
+      - name: Run tests
+        working-directory: runtimes/sar
+        run: cargo test --all-features --lib
+
+      - name: Build release
+        working-directory: runtimes/sar
+        run: cargo build --release --all-features
+        env:
+          RUSTFLAGS: "-C opt-level=3 -C lto=true"
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run security audit
+        uses: rustsec/audit-check@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  wasm-test:
+    name: WASM Sandbox Tests
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache target directory
+        uses: actions/cache@v4
+        with:
+          path: runtimes/sar/target
+          key: ${{ runner.os }}-sar-wasm-target-${{ hashFiles('runtimes/sar/Cargo.lock') }}-${{ github.sha }}
+
+      - name: Run WASM-specific tests
+        working-directory: runtimes/sar
+        run: cargo test --all-features --lib wasm::tests
+
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    services:
+      nats:
+        image: nats:latest
+        ports:
+          - 4222:4222
+
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: functionfly_sar_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache target directory
+        uses: actions/cache@v4
+        with:
+          path: runtimes/sar/target
+          key: ${{ runner.os }}-sar-integration-target-${{ hashFiles('runtimes/sar/Cargo.lock') }}-${{ github.sha }}
+
+      - name: Run integration tests
+        working-directory: runtimes/sar
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/functionfly_sar_test
+          NATS_URL: nats://localhost:4222
+        run: cargo test --all-features --test '*' -- --test-threads=4
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Generate coverage report
+        working-directory: runtimes/sar
+        run: cargo llvm-cov --all-features --lcov --output-path lcov.info
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: runtimes/sar/lcov.info
+          flags: unittests
+          name: sar-runtime
+
+      - name: Upload coverage to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: runtimes/sar/lcov.info
+
+  release:
+    name: Release Build
+    runs-on: ubuntu-latest
+    needs: [build-and-test, integration-test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache target directory
+        uses: actions/cache@v4
+        with:
+          path: runtimes/sar/target
+          key: ${{ runner.os }}-sar-release-target-${{ hashFiles('runtimes/sar/Cargo.lock') }}-${{ github.sha }}
+
+      - name: Build release binary
+        working-directory: runtimes/sar
+        run: |
+          cargo build --release --all-features --bin functionfly-sar
+          mkdir -p dist
+          cp target/release/functionfly-sar dist/
+
+      - name: Create tarball
+        working-directory: runtimes/sar
+        run: |
+          tar -czvf functionfly-sar.tar.gz dist/
+          echo "$(sha256sum functionfly-sar.tar.gz | awk '{print $1}')  functionfly-sar.tar.gz" > checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            runtimes/sar/functionfly-sar.tar.gz
+            runtimes/sar/checksums.txt
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

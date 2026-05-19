@@ -81,7 +81,7 @@ export function CookiePreferencesModal({ isOpen, onClose }: CookiePreferencesMod
     <AnimatePresence>
       {isOpen && (
         <Dialog open={isOpen} onOpenChange={onClose}>
-          <DialogContent className="max-w-2xl max-h-[90vh] bg-[var(--bg-secondary)] border border-[var(--border-subtle)] backdrop-blur-xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] bg-[var(--bg-primary)] dark:bg-[#0f0f14] border border-[var(--border-subtle)] dark:border-[var(--border-default)] backdrop-blur-xl shadow-2xl dark:shadow-black/50">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -109,7 +109,7 @@ export function CookiePreferencesModal({ isOpen, onClose }: CookiePreferencesMod
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="p-4 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-subtle)]"
+                    className="p-4 rounded-xl bg-[var(--bg-tertiary)] dark:bg-[#1a1a24] border border-[var(--border-subtle)] dark:border-[var(--border-default)]"
                   >
                     <div className="flex items-start gap-3">
                       <Cookie className="w-5 h-5 text-[#6366f1] mt-0.5 flex-shrink-0" />
@@ -148,7 +148,7 @@ export function CookiePreferencesModal({ isOpen, onClose }: CookiePreferencesMod
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6 }}
-                    className="pt-4 border-t border-[var(--border-subtle)]"
+                    className="pt-4 border-t border-[var(--border-subtle)] dark:border-[var(--border-default)]"
                   >
                     <div className="flex items-start gap-3">
                       <Shield className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
@@ -180,7 +180,7 @@ export function CookiePreferencesModal({ isOpen, onClose }: CookiePreferencesMod
                   <Button
                     variant="outline"
                     onClick={handleAcceptNecessary}
-                    className="flex-1 sm:flex-none border-red-500/30 text-red-500 hover:bg-red-500/10 hover:border-red-500/50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:border-red-500/50"
+                    className="flex-1 sm:flex-none border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500/50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:border-red-500/50"
                   >
                     {t('cookieConsent.rejectAll')}
                   </Button>

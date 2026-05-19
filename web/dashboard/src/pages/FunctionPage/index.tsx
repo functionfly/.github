@@ -132,13 +132,13 @@ export default function FunctionPage() {
       { id: '1', name: 'Container Start', durationMs: 150, startTime: 0, endTime: 150, status: 'completed' as const },
       { id: '2', name: 'Runtime Init', durationMs: 80, startTime: 150, endTime: phase3End, status: 'completed' as const },
       { id: '3', name: 'Function Execution', durationMs: execMs, startTime: phase3End, endTime: phase4End, status: 'completed' as const, metadata: { 'avg_latency_ms': execMs, determinism_tier: exec.determinism_tier ?? 'full' } },
-      { id: '4', name: 'Verification', durationMs: 40, startTime: phase4End, endTime: phase5End, status: exec.replay_verified ? 'completed' as const : 'failed' as const, metadata: { verified: exec.replay_verified, deterministic: exec.roots_match ?? false } },
+      { id: '4', name: 'Verification', durationMs: 40, startTime: phase4End, endTime: phase5End, status: exec.replay_verified ? 'completed' as const : 'failed' as const, metadata: { verified: exec.replay_verified ? 1 : 0, deterministic: (exec.roots_match ?? false) ? 1 : 0 } },
       { id: '5', name: 'Response', durationMs: 15, startTime: phase5End, endTime: phase6End, status: 'completed' as const },
     ];
   };
 
   if (isLoading) {
-    const isNotFound = error != null && error instanceof Error && error.message === 'Function not found';
+    const isNotFound = error != null && (error as any) instanceof Error && (error as Error).message === 'Function not found';
     if (isNotFound || !functionInfo) {
       return (
         <div className="function-page">

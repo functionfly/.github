@@ -54,7 +54,7 @@ from functools import wraps
 
 
 # Configuration
-DEFAULT_API_URL = os.environ.get("FLYPY_API_URL", "http://localhost:8080/api")
+DEFAULT_API_URL = os.environ.get("FLYPY_API_URL", "")  # Must be set explicitly
 DEFAULT_TENANT_ID = os.environ.get("FLYPY_TENANT_ID", "")
 
 

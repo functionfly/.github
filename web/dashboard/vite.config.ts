@@ -122,7 +122,8 @@ function sitemapPlugin() {
 // When dashboard runs in Docker, set API_PROXY_TARGET=http://orchestrator-api:8080.
 // On host, use localhost for WebSocket compatibility
 const apiProxyTarget =
-  process.env.VITE_PROXY_API_TARGET || process.env.API_PROXY_TARGET || 'http://127.0.0.1:8080';
+  process.env.VITE_PROXY_API_TARGET || process.env.API_PROXY_TARGET ||
+  (() => { throw new Error('VITE_PROXY_API_TARGET or API_PROXY_TARGET environment variable is required'); })();
 
 function proxyConfigure(proxy: any) {
   proxy.on('error', (err: Error, _req: any, res: any) => {
@@ -185,8 +186,42 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      '@functionfly/shared': path.resolve(__dirname, '../shared'),
-
+      // Bare module aliases for packages outside node_modules tree
+      'react': path.resolve(__dirname, './node_modules/react'),
+      'react-dom': path.resolve(__dirname, './node_modules/react-dom'),
+      'lucide-react': path.resolve(__dirname, './node_modules/lucide-react'),
+      'clsx': path.resolve(__dirname, './node_modules/clsx'),
+      'tailwind-merge': path.resolve(__dirname, './node_modules/tailwind-merge'),
+      'recharts': path.resolve(__dirname, './node_modules/recharts'),
+      'three': path.resolve(__dirname, './node_modules/three'),
+      '@react-three/fiber': path.resolve(__dirname, './node_modules/@react-three/fiber'),
+      '@react-three/drei': path.resolve(__dirname, './node_modules/@react-three/drei'),
+      '@react-three/postprocessing': path.resolve(__dirname, './node_modules/@react-three/postprocessing'),
+      // Package source aliases
+      '@functionfly/shared': path.resolve(__dirname, '../../packages/shared/src'),
+      '@functionfly/ui-core': path.resolve(__dirname, '../../packages/ui-core/src'),
+      '@functionfly/ui-graph': path.resolve(__dirname, '../../packages/ui-graph/src'),
+      '@functionfly/ui-ai': path.resolve(__dirname, '../../packages/ui-ai/src'),
+      '@functionfly/ui-agent': path.resolve(__dirname, '../../packages/ui-agent/src'),
+      '@functionfly/ui-observability': path.resolve(__dirname, '../../packages/ui-observability/src'),
+      '@functionfly/ui-marketplace': path.resolve(__dirname, '../../packages/ui-marketplace/src'),
+      '@functionfly/ui-visualization': path.resolve(__dirname, '../../packages/ui-visualization/src'),
+      '@functionfly/ui-runtime': path.resolve(__dirname, '../../packages/ui-runtime/src'),
+      '@functionfly/ui-security': path.resolve(__dirname, '../../packages/ui-security/src'),
+      '@functionfly/ui-collaboration': path.resolve(__dirname, '../../packages/ui-collaboration/src'),
+      '@functionfly/ui-editor': path.resolve(__dirname, '../../packages/ui-editor/src'),
+      '@functionfly/ui-simulation': path.resolve(__dirname, '../../packages/ui-simulation/src'),
+      '@functionfly/ui-ghost': path.resolve(__dirname, '../../packages/ui-ghost/src'),
+      '@functionfly/ui-extensibility': path.resolve(__dirname, '../../packages/ui-extensibility/src'),
+      '@functionfly/ui-universal-runtime': path.resolve(__dirname, '../../packages/ui-universal-runtime/src'),
+      '@functionfly/ui-robotics': path.resolve(__dirname, '../../packages/ui-robotics/src'),
+      '@functionfly/ui-memory': path.resolve(__dirname, '../../packages/ui-memory/src'),
+      '@functionfly/ui-marketplace-economy': path.resolve(__dirname, '../../packages/ui-marketplace-economy/src'),
+      '@functionfly/ui-futuristic': path.resolve(__dirname, '../../packages/ui-futuristic/src'),
+      '@functionfly/ui-devops': path.resolve(__dirname, '../../packages/ui-devops/src'),
+      '@functionfly/ui-code-intelligence': path.resolve(__dirname, '../../packages/ui-code-intelligence/src'),
+      '@functionfly/ui-data-visualization': path.resolve(__dirname, '../../packages/ui-data-visualization/src'),
+      '@functionfly/ui-adaptive-ux': path.resolve(__dirname, '../../packages/ui-adaptive-ux/src'),
     },
     // Prefer ESM builds to avoid CJS/scheduler issues
     conditions: ['import', 'module', 'es2020', 'es2015', 'require'],
@@ -197,6 +232,7 @@ export default defineConfig({
     esbuildOptions: {
       target: 'es2020',
     },
+    dedupe: ['react', 'react-dom'],
   },
   build: {
     rollupOptions: {
@@ -297,6 +333,13 @@ export default defineConfig({
         target: apiProxyTarget,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/v1/, '/v1'),
+        configure: proxyConfigure,
+      },
+      // /api/marketplace/... -> backend /v1/marketplace/... (marketplace API)
+      '/api/marketplace': {
+        target: apiProxyTarget,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/marketplace/, '/v1/marketplace'),
         configure: proxyConfigure,
       },
       // /api/frg/... -> backend /frg/... (FRG routes from apiClient with /api prefix)

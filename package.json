@@ -4,14 +4,22 @@
   "private": true,
   "description": "FunctionFly™ - Serverless Function Platform",
   "workspaces": [
-    "web/*"
+    "web/*",
+    "packages/*",
+    "!packages/shared"
   ],
   "scripts": {
     "dev": "nx run-many -t dev -p dashboard,functionfly-marketing,functionfly-blog,docs,admin-dashboard,functionfly-auth --parallel=6",
     "dev:all": "nx run-many -t dev --all --parallel=4",
     "dev:admin": "nx run admin-dashboard -t dev",
     "dev:blog": "nx run functionfly-blog -t dev",
+    "dev:studio": "cd studio && bun run dev",
     "build": "nx run-many --target=build --all",
+    "build:studio": "cd studio && bun run build",
+    "build:studio:win": "cd studio && bun run build:win",
+    "build:studio:mac": "cd studio && bun run build:mac",
+    "build:studio:linux": "cd studio && bun run build:linux",
+    "build:studio:all": "cd studio && bun run build:all",
     "build:affected": "nx affected --target=build",
     "test": "nx run-many --target=test --all",
     "test:affected": "nx affected --target=test",

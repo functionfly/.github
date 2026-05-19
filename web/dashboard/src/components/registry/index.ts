@@ -1,2 +1,8 @@
-export { AgentRegistry, type AgentRegistryProps } from './AgentRegistry';
-export { default } from './AgentRegistry';
+/**
+ * Registry Components
+ * Function marketplace and registry UI components
+ */
+
+export { RegistryIntegration } from "./RegistryIntegration"
+
+export type { RegistryFunction } from "@/stores/registryStore"

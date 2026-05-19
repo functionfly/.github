@@ -23,7 +23,7 @@ export function DeferredBillingSelector({ mode, onModeChange }: DeferredBillingS
             onClick={() => onModeChange('immediate')}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-all duration-300 ${
               mode === 'immediate'
-                ? 'bg-text-primary text-white shadow-md'
+                ? 'bg-zinc-800 text-white shadow-md'
                 : 'hover:bg-ff-flame/10 text-text-secondary hover:text-ff-flame'
             }`}
           >

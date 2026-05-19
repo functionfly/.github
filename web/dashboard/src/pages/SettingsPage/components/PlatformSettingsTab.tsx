@@ -475,8 +475,8 @@ export function PlatformSettingsTab() {
         </CardHeader>
         <CardContent className="space-y-2">
           {[
-            { label: 'View Function DNA Dashboard', href: '/functions/my', icon: Dna },
-            { label: 'Evolution History', href: '/functions/my', icon: GitBranch },
+            { label: 'View Function DNA Dashboard', href: '/dna/overview', icon: Dna },
+            { label: 'Evolution History', href: '/dna/overview', icon: GitBranch },
             { label: 'Performance Analytics', href: '/analytics', icon: Gauge },
           ].map(({ label, href, icon: Icon }) => (
             <Link

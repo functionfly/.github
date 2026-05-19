@@ -110,13 +110,15 @@ export default defineConfig({
     proxy: {
       // /api/v1/... -> backend /v1/... (matches dashboard; avoids /api + /v1/... -> /v1/v1/...)
       '/api': {
-        target: 'http://127.0.0.1:8080',
+        target: process.env.VITE_API_TARGET ||
+          (() => { throw new Error('VITE_API_TARGET environment variable is required'); })(),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
         ws: true,
       },
       '/ws': {
-        target: 'http://127.0.0.1:8080',
+        target: process.env.VITE_API_TARGET ||
+          (() => { throw new Error('VITE_API_TARGET environment variable is required'); })(),
         changeOrigin: true,
         ws: true,
       },

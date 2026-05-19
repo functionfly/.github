@@ -325,7 +325,8 @@ func (g *Generator) generateWithLLM(ctx context.Context, req *GenerationRequest)
 
 	if resp.StatusCode != http.StatusOK {
 		const maxBody = 4 << 10
-		snippet, _ := io.ReadAll(io.LimitReader(resp.Body, maxBody))
+		snippet := make([]byte, maxBody)
+		_, _ = io.ReadAll(io.LimitReader(resp.Body, maxBody))
 		return "", "", fmt.Errorf("OpenRouter returned non-200 status %d: %s", resp.StatusCode, strings.TrimSpace(string(snippet)))
 	}
 

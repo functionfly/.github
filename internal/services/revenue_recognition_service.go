@@ -57,20 +57,20 @@ func (s *RevenueRecognitionService) AllocateAndSchedule(ctx context.Context, req
 		allocatedPrice := (req.InvoiceAmountCents * item.SSPCents) / totalSSP
 
 		po := &storage.PerformanceObligation{
-			ID:                      uuid.New(),
-			TenantID:                req.TenantID,
-			InvoiceID:               req.InvoiceID,
-			Name:                    item.Description,
-			Type:                    s.mapRevenueTypeToObligationType(item.RevenueType),
-			TransactionPriceCents:   req.InvoiceAmountCents,
-			AllocatedPriceCents:     allocatedPrice,
-			SSPCents:               item.SSPCents,
-			SSPCurrency:             req.Currency,
-			SSPBasis:                "total",
-			RecognitionMethod:       item.RecognitionMethod,
-			RecognitionStartDate:    item.RecognitionStartDate,
-			RecognitionEndDate:      item.RecognitionEndDate,
-			DeliveryPattern:         item.DeliveryPattern,
+			ID:                    uuid.New(),
+			TenantID:              req.TenantID,
+			InvoiceID:             req.InvoiceID,
+			Name:                  item.Description,
+			Type:                  s.mapRevenueTypeToObligationType(item.RevenueType),
+			TransactionPriceCents: req.InvoiceAmountCents,
+			AllocatedPriceCents:   allocatedPrice,
+			SSPCents:              item.SSPCents,
+			SSPCurrency:           req.Currency,
+			SSPBasis:              "total",
+			RecognitionMethod:     item.RecognitionMethod,
+			RecognitionStartDate:  item.RecognitionStartDate,
+			RecognitionEndDate:    item.RecognitionEndDate,
+			DeliveryPattern:       item.DeliveryPattern,
 		}
 
 		if err := s.repo.CreatePerformanceObligation(ctx, po); err != nil {
@@ -254,9 +254,9 @@ func (s *RevenueRecognitionService) ProcessRecognition(ctx context.Context, tena
 	}
 
 	report := &storage.RevenueRecognitionReport{
-		ReportID:         uuid.New(),
-		GeneratedAt:      time.Now(),
-		ReportingPeriod:  period,
+		ReportID:        uuid.New(),
+		GeneratedAt:     time.Now(),
+		ReportingPeriod: period,
 	}
 
 	periodStart, _ := time.Parse("2006-01", period)
@@ -367,6 +367,18 @@ func (s *RevenueRecognitionService) GetUnbilledRevenue(ctx context.Context, tena
 	return s.repo.GetUnbilledRevenue(ctx, tenantID)
 }
 
+func (s *RevenueRecognitionService) GetPerformanceObligationIDsByInvoice(ctx context.Context, invoiceID uuid.UUID) ([]uuid.UUID, error) {
+	obligations, err := s.repo.GetPerformanceObligationsByInvoice(ctx, invoiceID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]uuid.UUID, 0, len(obligations))
+	for _, po := range obligations {
+		ids = append(ids, po.ID)
+	}
+	return ids, nil
+}
+
 func (s *RevenueRecognitionService) RecordInvoicePaid(ctx context.Context, invoiceID, tenantID uuid.UUID, amountCents int, currency string) error {
 	event := &storage.RevenueRecognitionEvent{
 		ID:                    uuid.New(),
@@ -379,7 +391,7 @@ func (s *RevenueRecognitionService) RecordInvoicePaid(ctx context.Context, invoi
 		RecognizedAmountCents: 0,
 		EventDate:             time.Now(),
 		ReportingPeriod:       time.Now().Format("2006-01"),
-		Description:            fmt.Sprintf("Invoice paid: %d %s", amountCents, currency),
+		Description:           fmt.Sprintf("Invoice paid: %d %s", amountCents, currency),
 	}
 
 	return s.repo.CreateRecognitionEvent(ctx, event)
@@ -391,18 +403,18 @@ func (s *RevenueRecognitionService) RecordDeliveryCompleted(ctx context.Context,
 	}
 
 	event := &storage.RevenueRecognitionEvent{
-		ID:                    uuid.New(),
-		TenantID:              tenantID,
-		InvoiceID:             uuid.Nil,
-		EventType:             "delivery_completed",
-		RevenueType:           "subscription",
-		GrossAmountCents:      0,
-		DeferredAmountCents:   0,
-		RecognizedAmountCents: 0,
-		EventDate:             time.Now(),
-		ReportingPeriod:       time.Now().Format("2006-01"),
+		ID:                      uuid.New(),
+		TenantID:                tenantID,
+		InvoiceID:               uuid.Nil,
+		EventType:               "delivery_completed",
+		RevenueType:             "subscription",
+		GrossAmountCents:        0,
+		DeferredAmountCents:     0,
+		RecognizedAmountCents:   0,
+		EventDate:               time.Now(),
+		ReportingPeriod:         time.Now().Format("2006-01"),
 		PerformanceObligationID: &poID,
-		Description:            "Performance obligation delivery completed",
+		Description:             "Performance obligation delivery completed",
 	}
 
 	return s.repo.CreateRecognitionEvent(ctx, event)

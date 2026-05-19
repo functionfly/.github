@@ -60,6 +60,7 @@ export const ROUTES = {
   MARKETPLACE_AGENTS: '/marketplace',
   MARKETPLACE_FUNCTIONS: '/functions/discovery',
   EVOLUTION: '/evolution',
+  STUDIO: '/studio',
   // FRG - Function Runtime Graph
   FRG: '/frg',
   FRG_NEW: '/frg/new',
@@ -775,9 +776,9 @@ export function getApiBaseUrl(): string {
     }
     return base;
   }
-  // Production: Use configured URL or default to localhost:3000
+  // Production: Use configured URL or fail - no localhost fallback
   if (env) return env.replace(/\/$/, '');
-  return 'http://localhost:3000';
+  throw new Error('VITE_API_URL environment variable is required in production');
 }
 
 export const API_BASE_URL = getApiBaseUrl();

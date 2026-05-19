@@ -13,6 +13,13 @@ import (
 	"github.com/google/uuid"
 )
 
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
 // WelcomeNotifier is implemented by the notification service to send welcome notifications to new users.
 type WelcomeNotifier interface {
 	SendWelcome(ctx context.Context, userID uuid.UUID) error
@@ -33,10 +40,10 @@ type AuthService struct {
 
 // NewAuthService creates a new auth service
 // JWT secret must be at least 32 bytes (256 bits) for HS256 security
-func NewAuthService(repo storage.Repository, jwtSecret string) *AuthService {
+func NewAuthService(repo storage.Repository, jwtSecret string) (*AuthService, error) {
 	// Validate JWT secret minimum length (32 bytes = 256 bits for HS256)
 	if len(jwtSecret) < 32 {
-		panic(fmt.Sprintf("JWT_SECRET must be at least 32 bytes (256 bits) for HS256 security, got %d bytes. Generate a secure secret with: openssl rand -hex 32", len(jwtSecret)))
+		return nil, fmt.Errorf("JWT_SECRET must be at least 32 bytes (256 bits) for HS256 security, got %d bytes. Generate a secure secret with: openssl rand -hex 32", len(jwtSecret))
 	}
 
 	// Default email config for testing/development
@@ -47,7 +54,7 @@ func NewAuthService(repo storage.Repository, jwtSecret string) *AuthService {
 		SMTPPassword: "",
 		FromEmail:    "noreply@functionfly.com",
 		FromName:     "FunctionFly",
-		BaseURL:      "http://localhost:8080",
+		BaseURL:      getEnvOrDefault("BASE_URL", "https://api.functionfly.com"),
 	}
 
 	// In production, require Resend or SMTP (mock is not allowed)
@@ -55,21 +62,25 @@ func NewAuthService(repo storage.Repository, jwtSecret string) *AuthService {
 	if os.Getenv("PRODUCTION_ENV") == "true" {
 		svc, ok := email.NewServiceFromEnv()
 		if !ok {
-			panic("PRODUCTION_ENV=true requires RESEND_API_KEY or SMTP_HOST. Mock email service is not allowed in production.")
+			return nil, fmt.Errorf("PRODUCTION_ENV=true requires RESEND_API_KEY or SMTP_HOST. Mock email service is not allowed in production")
 		}
 		emailSvc = svc
 	} else {
 		emailSvc = email.NewMockService(emailConfig)
 	}
 
+jwtDuration := 24 * time.Hour
+	if d, err := time.ParseDuration(getEnvOrDefault("JWT_EXPIRATION", "24h")); err == nil {
+		jwtDuration = d
+	}
 	service := &AuthService{
 		repo:           repo,
 		emailSvc:       emailSvc,
 		jwtSecret:      []byte(jwtSecret),
-		jwtDuration:    30 * time.Minute, // 30 minutes - short lived access tokens
+		jwtDuration:    jwtDuration,
 		oauthProviders: make(map[string]*OAuthProvider),
-		baseURL:        "http://localhost:8080", // Default, can be overridden
-		authURL:        "http://localhost:4321", // Auth frontend URL for waitlist/emails
+		baseURL:        getEnvOrDefault("BASE_URL", "https://api.functionfly.com"),
+		authURL:        getEnvOrDefault("AUTH_FRONTEND_URL", "https://auth.functionfly.com"),
 	}
 
 	// Initialize MFA service
@@ -78,7 +89,7 @@ func NewAuthService(repo storage.Repository, jwtSecret string) *AuthService {
 	// Initialize OAuth providers (will be configured with environment variables)
 	service.initOAuthProviders()
 
-	return service
+	return service, nil
 }
 
 // GenerateToken creates a JWT token for a user (for debugging)

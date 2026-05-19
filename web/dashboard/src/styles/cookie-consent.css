@@ -1,172 +1,408 @@
 /* Custom Cookie Consent Styling - FunctionFly™ Velocity Theme */
-/* These styles use direct element targeting to override vanilla-cookieconsent */
+/* Overrides for vanilla-cookieconsent v3.x */
 
 /* ============================================
-   BASE OVERRIDES - Target library elements directly
+   CSS VARIABLES
    ============================================ */
-
-/* Force light mode variables on html element */
 html {
-  --cc-font-family: var(--ff-font-sans) !important;
-  --cc-modal-border-radius: var(--ff-radius-xl) !important;
-  --cc-btn-border-radius: var(--ff-radius-md) !important;
+  --cc-font-family: var(--ff-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif) !important;
+  --cc-modal-border-radius: 16px !important;
+  --cc-btn-border-radius: 10px !important;
+  --cc-pm-toggle-border-radius: 4em !important;
 }
 
-/* ============================================
-   DARK MODE (default) - our dark theme
-   ============================================ */
+/* Dark mode (default) */
 html:not([data-theme='light']) {
-  --cc-bg: #0D1117 !important;
-  --cc-primary-color: #F0F6FC !important;
-  --cc-secondary-color: #8B949E !important;
-  --cc-btn-primary-bg: #FF6B35 !important;
+  --cc-bg: #12121a !important;
+  --cc-primary-color: #f0f6fc !important;
+  --cc-secondary-color: #8b949e !important;
+  --cc-btn-primary-bg: #ff6b35 !important;
   --cc-btn-primary-color: #ffffff !important;
-  --cc-btn-primary-border-color: #FF6B35 !important;
-  --cc-btn-secondary-bg: #21262D !important;
-  --cc-btn-secondary-color: #F0F6FC !important;
-  --cc-cookie-category-block-bg: #21262D !important;
+  --cc-btn-primary-border-color: #ff6b35 !important;
+  --cc-btn-primary-hover-bg: #ff8555 !important;
+  --cc-btn-primary-hover-color: #ffffff !important;
+  --cc-btn-secondary-bg: #1a1a24 !important;
+  --cc-btn-secondary-color: #f0f6fc !important;
+  --cc-btn-secondary-border-color: rgba(255, 255, 255, 0.08) !important;
+  --cc-btn-secondary-hover-bg: #252532 !important;
+  --cc-btn-secondary-hover-color: #ffffff !important;
+  --cc-cookie-category-block-bg: #16161e !important;
   --cc-cookie-category-block-border: rgba(255, 255, 255, 0.08) !important;
+  --cc-cookie-category-block-hover-bg: #1e1e2d !important;
+  --cc-cookie-category-block-hover-border: rgba(255, 255, 255, 0.12) !important;
+  --cc-separator-border-color: rgba(255, 255, 255, 0.08) !important;
+  --cc-footer-bg: #0f0f14 !important;
+  --cc-footer-border-color: rgba(255, 255, 255, 0.08) !important;
+  --cc-overlay-bg: rgba(0, 0, 0, 0.75) !important;
+  --cc-toggle-on-bg: #ff6b35 !important;
+  --cc-toggle-off-bg: #2a2a3a !important;
+  --cc-toggle-on-knob-bg: #ffffff !important;
+  --cc-toggle-off-knob-bg: #ffffff !important;
+  --cc-toggle-readonly-bg: #3a3a4a !important;
+  --cc-toggle-readonly-knob-bg: #8b949e !important;
 }
 
-/* ============================================
-   LIGHT MODE - use body.light class for higher specificity
-   ============================================ */
+/* Light mode */
+[data-theme='light'],
 body.light {
-  --cc-bg: #FFFFFF !important;
-  --cc-primary-color: #0D1117 !important;
-  --cc-secondary-color: #6B7280 !important;
-  --cc-btn-primary-bg: #E85A2A !important;
+  --cc-bg: #ffffff !important;
+  --cc-primary-color: #0d1117 !important;
+  --cc-secondary-color: #6b7280 !important;
+  --cc-btn-primary-bg: #e85a2a !important;
   --cc-btn-primary-color: #ffffff !important;
-  --cc-btn-primary-border-color: #E85A2A !important;
-  --cc-btn-secondary-bg: #F6F8FA !important;
-  --cc-btn-secondary-color: #0D1117 !important;
-  --cc-cookie-category-block-bg: #F6F8FA !important;
-  --cc-cookie-category-block-border: rgba(0, 0, 0, 0.08) !important;
-  --cc-cookie-category-block-hover-bg: #EEF1F5 !important;
-  --cc-separator-border-color: rgba(0, 0, 0, 0.08) !important;
-  --cc-footer-bg: #F6F8FA !important;
-}
-
-/* Also target cm and pm directly when light mode is active */
-body.light #cc-main .cm,
-body.light #cc-main .pm {
-  background: #FFFFFF !important;
-}
-
-/* Target when data-theme is set */
-[data-theme='light'] {
-  --cc-bg: #FFFFFF !important;
-  --cc-primary-color: #0D1117 !important;
-  --cc-secondary-color: #6B7280 !important;
-  --cc-btn-primary-bg: #E85A2A !important;
-  --cc-btn-primary-color: #ffffff !important;
-  --cc-btn-primary-border-color: #E85A2A !important;
-  --cc-btn-secondary-bg: #F6F8FA !important;
-  --cc-btn-secondary-color: #0D1117 !important;
-  --cc-cookie-category-block-bg: #F6F8FA !important;
-  --cc-cookie-category-block-border: rgba(0, 0, 0, 0.08) !important;
-  --cc-cookie-category-block-hover-bg: #EEF1F5 !important;
-  --cc-separator-border-color: rgba(0, 0, 0, 0.08) !important;
-  --cc-footer-bg: #F6F8FA !important;
-}
-
-[data-theme='light'] #cc-main .cm,
-[data-theme='light'] #cc-main .pm {
-  background: #FFFFFF !important;
+  --cc-btn-primary-border-color: #e85a2a !important;
+  --cc-btn-secondary-bg: #f6f8fa !important;
+  --cc-btn-secondary-color: #0d1117 !important;
+  --cc-btn-secondary-border-color: #e4eaed !important;
+  --cc-cookie-category-block-bg: #f6f8fa !important;
+  --cc-cookie-category-block-border: #f0f4f7 !important;
+  --cc-separator-border-color: #f0f4f7 !important;
+  --cc-footer-bg: #f6f8fa !important;
+  --cc-overlay-bg: rgba(0, 0, 0, 0.65) !important;
 }
 
 /* ============================================
-   MODAL CONTAINERS - Target directly by element
+   MAIN MODAL
    ============================================ */
-#cc-main .cm,
 #cc-main .pm {
   background: var(--cc-bg) !important;
   border: 1px solid var(--cc-cookie-category-block-border) !important;
   border-radius: var(--cc-modal-border-radius) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+  max-width: 640px !important;
+  font-family: var(--cc-font-family) !important;
 }
 
 /* ============================================
-   TYPOGRAPHY
+   HEADER
    ============================================ */
-#cc-main .cm__title,
+#cc-main .pm__header {
+  background: transparent !important;
+  border-bottom: 1px solid var(--cc-separator-border-color) !important;
+  padding: 24px 24px 16px !important;
+}
+
 #cc-main .pm__title {
   color: var(--cc-primary-color) !important;
-}
-
-#cc-main .cm__desc,
-#cc-main .pm__section-desc {
-  color: var(--cc-secondary-color) !important;
-}
-
-/* ============================================
-   BUTTONS - Flame gradient for primary
-   ============================================ */
-#cc-main .cm__btn,
-#cc-main .pm__btn {
-  background: linear-gradient(135deg, var(--ff-flame, #FF6B35) 0%, var(--ff-afterburner, #FF4F5E) 100%) !important;
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  background: none !important;
   border: none !important;
-  border-radius: var(--cc-btn-border-radius, 8px) !important;
-  color: #ffffff !important;
-  font-weight: 500 !important;
-  box-shadow: 0 4px 14px rgba(255, 107, 53, 0.35) !important;
+  box-shadow: none !important;
 }
 
-#cc-main .cm__btn:hover,
-#cc-main .pm__btn:hover {
-  transform: translateY(-1px) !important;
-  box-shadow: 0 6px 20px rgba(255, 107, 53, 0.45) !important;
-}
-
-/* Secondary buttons */
-#cc-main .cm__btn--secondary,
-#cc-main .pm__btn--secondary {
+/* Close button */
+#cc-main .pm__close-btn {
   background: var(--cc-btn-secondary-bg) !important;
-  border: 1px solid var(--cc-cookie-category-block-border) !important;
-  color: var(--cc-btn-secondary-color) !important;
+  border: 1px solid var(--cc-btn-secondary-border-color) !important;
+  border-radius: 8px !important;
+  width: 36px !important;
+  height: 36px !important;
+  opacity: 0.7 !important;
+  transition: all 0.2s ease !important;
+}
+
+#cc-main .pm__close-btn:hover {
+  opacity: 1 !important;
+  background: var(--cc-btn-secondary-hover-bg) !important;
+  transform: rotate(90deg) !important;
+}
+
+#cc-main .pm__close-btn svg {
+  stroke: var(--cc-btn-secondary-color) !important;
 }
 
 /* ============================================
-   SECTIONS / CARDS
+   BODY & SECTIONS
    ============================================ */
+#cc-main .pm__body {
+  padding: 16px 24px !important;
+  background: transparent !important;
+}
+
+/* Section blocks */
 #cc-main .pm__section {
   background: var(--cc-cookie-category-block-bg) !important;
   border: 1px solid var(--cc-cookie-category-block-border) !important;
   border-radius: 12px !important;
+  margin-bottom: 12px !important;
+  padding: 1.5em !important;
 }
 
-#cc-main .pm__section--toggle .pm__section-title {
+#cc-main .pm__section:first-child {
+  border: 1px solid var(--cc-cookie-category-block-border) !important;
+  margin-bottom: 12px !important;
+  padding: 1.5em !important;
+}
+
+#cc-main .pm__section:not(:first-child):hover {
+  background: var(--cc-cookie-category-block-hover-bg) !important;
+  border-color: var(--cc-cookie-category-block-hover-border) !important;
+}
+
+/* Toggle sections */
+#cc-main .pm__section--toggle {
   background: var(--cc-cookie-category-block-bg) !important;
-  border-color: var(--cc-cookie-category-block-border) !important;
-  color: var(--cc-primary-color) !important;
+  border: 1px solid var(--cc-cookie-category-block-border) !important;
+  border-radius: 12px !important;
+  margin-bottom: 12px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
 }
 
-/* Badge */
-#cc-main .pm__badge {
-  background: rgba(255, 107, 53, 0.15) !important;
-  color: var(--ff-flame, #FF6B35) !important;
-  border: 1px solid rgba(255, 107, 53, 0.3) !important;
+/* Section title bar in toggle */
+#cc-main .pm__section--toggle .pm__section-title {
+  align-items: center !important;
+  background: transparent !important;
+  border: none !important;
+  color: var(--cc-primary-color) !important;
+  display: flex !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  justify-content: space-between !important;
+  min-height: 58px !important;
+  padding: 1.25em 5.4em 1.25em 1.5em !important;
+  position: relative !important;
+  width: 100% !important;
+}
+
+#cc-main .pm__section--toggle .pm__section-title:hover {
+  background: var(--cc-cookie-category-block-hover-bg) !important;
 }
 
 /* ============================================
-   TOGGLE SWITCHES
+   HIDE EXPANDABLE ARROWS (clean look)
    ============================================ */
-#cc-main .section__toggle:checked ~ .toggle__icon {
-  background: var(--ff-flame, #FF6B35) !important;
+#cc-main .pm__section-arrow,
+#cc-main .pm__section--expandable .pm__section-arrow {
+  display: none !important;
+}
+
+#cc-main .pm__section--expandable .pm__section-title {
+  padding-left: 1.5em !important;
+}
+
+/* ============================================
+   SECTION DESCRIPTIONS
+   ============================================ */
+#cc-main .pm__section-desc {
+  color: var(--cc-secondary-color) !important;
+  font-size: 0.85rem !important;
+  line-height: 1.5 !important;
+  margin-top: 0 !important;
+  padding: 1em 1.5em 1.5em !important;
+}
+
+#cc-main .pm__section--toggle .pm__section-desc-wrapper {
+  border: none !important;
+  border-top: 1px solid var(--cc-cookie-category-block-border) !important;
+}
+
+/* ============================================
+   TOGGLE SWITCHES (.toggle__icon is the switch)
+   ============================================ */
+#cc-main .section__toggle-wrapper {
+  position: absolute !important;
+  right: 18px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  z-index: 1 !important;
+}
+
+#cc-main .toggle__icon {
+  background: var(--cc-toggle-off-bg) !important;
+  border: none !important;
+  border-radius: var(--cc-pm-toggle-border-radius) !important;
+  box-shadow: none !important;
+  display: flex !important;
+  height: 26px !important;
+  pointer-events: none !important;
+  position: relative !important;
+  width: 48px !important;
 }
 
 #cc-main .toggle__icon-circle {
-  background: #ffffff !important;
+  background: var(--cc-toggle-off-knob-bg) !important;
+  border-radius: var(--cc-pm-toggle-border-radius) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  display: block !important;
+  height: 22px !important;
+  left: 2px !important;
+  position: absolute !important;
+  top: 2px !important;
+  transition: transform 0.25s ease, background-color 0.25s ease !important;
+  width: 22px !important;
+}
+
+/* Toggle ON state */
+#cc-main .section__toggle:checked ~ .toggle__icon {
+  background: var(--cc-toggle-on-bg) !important;
+  box-shadow: none !important;
+}
+
+#cc-main .section__toggle:checked ~ .toggle__icon .toggle__icon-circle {
+  background: var(--cc-toggle-on-knob-bg) !important;
+  transform: translateX(22px) !important;
+}
+
+/* Toggle disabled (readonly) state */
+#cc-main .section__toggle:disabled ~ .toggle__icon {
+  background: var(--cc-toggle-readonly-bg) !important;
+  box-shadow: none !important;
+}
+
+#cc-main .section__toggle:disabled ~ .toggle__icon .toggle__icon-circle {
+  background: var(--cc-toggle-readonly-knob-bg) !important;
+  box-shadow: none !important;
+}
+
+/* Hide default X/check SVGs inside toggle */
+#cc-main .toggle__icon-off,
+#cc-main .toggle__icon-on,
+#cc-main .toggle__icon-off svg,
+#cc-main .toggle__icon-on svg {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* ============================================
+   BADGES
+   ============================================ */
+#cc-main .pm__badge {
+  background: rgba(255, 107, 53, 0.15) !important;
+  color: #ff6b35 !important;
+  border: 1px solid rgba(255, 107, 53, 0.3) !important;
+  border-radius: 6px !important;
+  font-size: 0.7rem !important;
+  font-weight: 600 !important;
+  padding: 2px 8px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  margin-left: 1em !important;
+}
+
+#cc-main .pm__service-counter {
+  background: #ff6b35 !important;
+  color: #ffffff !important;
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+#cc-main .pm__btn {
+  border-radius: var(--cc-btn-border-radius) !important;
+  font-weight: 600 !important;
+  font-size: 0.9rem !important;
+  padding: 10px 20px !important;
+  transition: all 0.2s ease !important;
+  min-height: 42px !important;
+  min-width: 110px !important;
+}
+
+/* Primary / Accept All */
+#cc-main .pm__btn--accept-all,
+#cc-main .cm__btn--accept-all {
+  background: linear-gradient(135deg, #ff6b35 0%, #ff4f5e 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(255, 107, 53, 0.35) !important;
+}
+
+#cc-main .pm__btn--accept-all:hover,
+#cc-main .cm__btn--accept-all:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 20px rgba(255, 107, 53, 0.45) !important;
+}
+
+/* Save preferences */
+#cc-main .pm__btn--save {
+  background: linear-gradient(135deg, #ff6b35 0%, #ff4f5e 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(255, 107, 53, 0.35) !important;
+}
+
+#cc-main .pm__btn--save:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 20px rgba(255, 107, 53, 0.45) !important;
+}
+
+/* Secondary / Reject */
+#cc-main .pm__btn--secondary,
+#cc-main .pm__btn--reject {
+  background: var(--cc-btn-secondary-bg) !important;
+  border: 1px solid var(--cc-btn-secondary-border-color) !important;
+  color: var(--cc-btn-secondary-color) !important;
+  box-shadow: none !important;
+}
+
+#cc-main .pm__btn--secondary:hover,
+#cc-main .pm__btn--reject:hover {
+  background: var(--cc-btn-secondary-hover-bg) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: var(--cc-btn-secondary-hover-color) !important;
 }
 
 /* ============================================
    FOOTER
    ============================================ */
-#cc-main .pm__footer,
-#cc-main .cm__footer {
+#cc-main .pm__footer {
   background: var(--cc-footer-bg) !important;
-  border-color: var(--cc-separator-border-color) !important;
+  border-top: 1px solid var(--cc-footer-border-color) !important;
+  padding: 16px 24px !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+  justify-content: space-between !important;
+}
+
+#cc-main .pm__btn-group {
+  display: flex !important;
+  gap: 0.375rem !important;
+}
+
+/* ============================================
+   OVERLAY
+   ============================================ */
+#cc-main .pm-overlay {
+  background: var(--cc-overlay-bg) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+/* ============================================
+   CONSENT BANNER (.cm)
+   ============================================ */
+#cc-main .cm {
+  background: var(--cc-bg) !important;
+  border: 1px solid var(--cc-cookie-category-block-border) !important;
+  border-radius: var(--cc-modal-border-radius) !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3) !important;
+}
+
+#cc-main .cm__title {
+  color: var(--cc-primary-color) !important;
+  font-size: 1.1rem !important;
+  font-weight: 700 !important;
+}
+
+#cc-main .cm__desc {
+  color: var(--cc-secondary-color) !important;
+  font-size: 0.9rem !important;
+  line-height: 1.5 !important;
+}
+
+/* ============================================
+   LINKS
+   ============================================ */
+#cc-main .cc__link {
+  color: #00d4ff !important;
+  text-decoration: underline !important;
+  text-underline-offset: 2px !important;
+}
+
+#cc-main .cc__link:hover {
+  color: #33ddff !important;
 }
 
 /* ============================================
@@ -175,38 +411,62 @@ body.light #cc-main .pm {
 #cc-main .pm__table {
   background: var(--cc-cookie-category-block-bg) !important;
   border: 1px solid var(--cc-cookie-category-block-border) !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+#cc-main .pm__table th,
+#cc-main .pm__table td {
+  padding: 0.75em 1.25em !important;
+  vertical-align: top !important;
 }
 
 #cc-main .pm__table th {
   background: var(--cc-cookie-category-block-hover-bg) !important;
+  color: var(--cc-primary-color) !important;
+  font-weight: 600 !important;
+}
+
+#cc-main .pm__table td {
+  color: var(--cc-secondary-color) !important;
+  border-top: 1px solid var(--cc-separator-border-color) !important;
+}
+
+#cc-main .pm__table-caption {
+  padding: 0.75em 1.25em !important;
 }
 
 /* ============================================
-   OVERLAY
+   SCROLLBAR
    ============================================ */
-#cc-main .pm-overlay {
-  background: rgba(0, 0, 0, 0.5) !important;
+#cc-main .pm__body::-webkit-scrollbar {
+  width: 6px !important;
+}
+
+#cc-main .pm__body::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+#cc-main .pm__body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-radius: 3px !important;
 }
 
 /* ============================================
-   LINKS
+   ANIMATIONS
    ============================================ */
-#cc-main .cc__link {
-  color: var(--ff-cyan, #00D4FF) !important;
+#cc-main .pm-wrapper,
+#cc-main .cm-wrapper {
+  animation: cc-fade-in 0.3s ease-out !important;
 }
 
-/* ============================================
-   CLOSE BUTTON
-   ============================================ */
-#cc-main .pm__close-btn {
-  background: var(--cc-btn-secondary-bg) !important;
-  border: 1px solid var(--cc-cookie-category-block-border) !important;
-}
-
-/* ============================================
-   SERVICE COUNTER
-   ============================================ */
-#cc-main .pm__service-counter {
-  background: var(--ff-flame, #FF6B35) !important;
-  color: #ffffff !important;
+@keyframes cc-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

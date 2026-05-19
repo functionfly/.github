@@ -99,7 +99,7 @@ func (h *Handler) HandleGetFunction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Include verification status so UI can show Verified for functionfly / approved functions
-	verStatus, errVer := h.repo.GetVerificationStatus(fnVersion.ID)
+	verStatus, _ := h.repo.GetVerificationStatus(fnVersion.ID)
 	verified := verStatus != nil && verStatus.OverallStatus == "verified"
 	if !verified && strings.EqualFold(fn.Author, "functionfly") {
 		// Optimistically mark as verified in response
@@ -125,7 +125,11 @@ func (h *Handler) HandleGetFunction(w http.ResponseWriter, r *http.Request) {
 		}()
 	}
 	info["verified"] = verified
-	_ = errVer
+
+	likeCount, _ := h.repo.CountLikesForFunction(fn.ID)
+	info["like_count"] = likeCount
+	remixCount, _ := h.repo.CountRemixesForFunction(fn.ID)
+	info["remix_count"] = remixCount
 
 	// Expand manifest if requested
 	logrus.WithField("expand", r.URL.Query().Get("expand")).Info("HandleGetFunction: expand parameter value")
@@ -183,11 +187,22 @@ func (h *Handler) buildRegistryFunctionInfos(functions []storageregistry.Registr
 	if err != nil {
 		return nil, err
 	}
+	likeCounts, err := h.repo.CountLikesForFunctions(ids)
+	if err != nil {
+		logrus.WithError(err).Debug("Failed to batch load like counts")
+	}
+	remixCounts, err := h.repo.CountRemixesForFunctions(ids)
+	if err != nil {
+		logrus.WithError(err).Debug("Failed to batch load remix counts")
+	}
 	out := make([]map[string]interface{}, len(functions))
 	for i, fn := range functions {
 		v := versions[fn.ID]
 		rating := ratings[fn.ID]
-		out[i] = fn.ToInfoWithRating(v, rating)
+		info := fn.ToInfoWithRating(v, rating)
+		info["like_count"] = likeCounts[fn.ID]
+		info["remix_count"] = remixCounts[fn.ID]
+		out[i] = info
 	}
 	return out, nil
 }
@@ -414,7 +429,35 @@ func (h *Handler) HandleDeleteFunction(w http.ResponseWriter, r *http.Request) {
 	author := vars["author"]
 	name := vars["name"]
 
-	err := h.repo.DeleteFunction(author, name)
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	if err != nil {
+		if strings.Contains(err.Error(), "record not found") || strings.Contains(err.Error(), "failed to find function") {
+			http.Error(w, "Function not found", http.StatusNotFound)
+			return
+		}
+		logrus.WithError(err).Error("Failed to get function")
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	if fn.OwnerUserID == nil || *fn.OwnerUserID != user.UserID {
+		logrus.WithFields(logrus.Fields{
+			"user_id":   user.UserID,
+			"author":    author,
+			"name":      name,
+			"owner_id":  fn.OwnerUserID,
+		}).Warn("Delete function ownership check failed")
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	err = h.repo.DeleteFunction(author, name)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to delete function")
 		// Check if it's a "not found" type error

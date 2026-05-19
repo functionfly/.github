@@ -3,6 +3,7 @@
 package dre
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -52,16 +53,37 @@ type DRERepository interface {
 	GetLatestFunctionVersion(functionID uuid.UUID) (*registry.RegistryFunctionVersion, error)
 	GetFunctionVersion(functionID uuid.UUID, version string) (*registry.RegistryFunctionVersion, error)
 	GetExecutionTimelineBuckets(functionID uuid.UUID, from, to time.Time, metric string) ([]registry.ExecutionTimelineBucket, error)
+	UpdateCertificateAnchored(certID string, anchored bool, anchorChain, anchorTxHash, anchorMerkleRoot string, anchorBlockNumber int64, anchoredAt *time.Time) error
 }
 
 // Handler contains dependencies for DRE API handlers.
 type Handler struct {
-	repo DRERepository
+	repo              DRERepository
+	anchoringService  AnchorServicer
+}
+
+// AnchorServicer defines the interface for blockchain anchoring operations.
+type AnchorServicer interface {
+	Anchor(ctx context.Context, req *drecert.AnchorRequest) (*drecert.AnchorReceipt, error)
+	IsConfigured() bool
+}
+
+// EthereumAnchoringService exposes the Ethereum anchoring service for route initialization.
+type EthereumAnchoringService = drecert.EthereumAnchoringService
+
+// NewEthereumAnchoringService creates a new Ethereum anchoring service.
+func NewEthereumAnchoringService() *EthereumAnchoringService {
+	return drecert.NewEthereumAnchoringService(nil)
 }
 
 // NewHandler creates a new DRE handler.
 func NewHandler(repo *registry.RegistryRepository) *Handler {
 	return &Handler{repo: repo}
+}
+
+// NewHandlerWithAnchoring creates a new DRE handler with an anchoring service.
+func NewHandlerWithAnchoring(repo DRERepository, anchoring AnchorServicer) *Handler {
+	return &Handler{repo: repo, anchoringService: anchoring}
 }
 
 // NewHandlerFromRepo creates a new DRE handler from a DRERepository (for testing).
@@ -176,9 +198,10 @@ func (h *Handler) HandleVerifyCertificate(w http.ResponseWriter, r *http.Request
 	})
 }
 
-// HandleAnchorCertificate anchors a certificate to the blockchain (simulated).
+// HandleAnchorCertificate anchors a certificate to the blockchain.
 //
 // POST /registry/{author}/{name}/cert/{cert_id}/anchor
+// Body: {"chain": "base"} (optional, defaults to "base")
 func (h *Handler) HandleAnchorCertificate(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	certID := vars["cert_id"]
@@ -201,21 +224,71 @@ func (h *Handler) HandleAnchorCertificate(w http.ResponseWriter, r *http.Request
 	if cert.Anchored {
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"certificate_id": cert.CertificateID,
-			"anchored":      true,
-			"message":       "certificate is already anchored",
+			"anchored":       true,
+			"message":        "certificate is already anchored",
 		})
 		return
 	}
 
-	// Simulate anchoring (update anchored status)
-	cert.Anchored = true
-	// Note: In a real implementation, this would submit to a blockchain
+	// Check if anchoring service is configured
+	if h.anchoringService == nil || !h.anchoringService.IsConfigured() {
+		writeError(w, http.StatusNotImplemented, "anchoring is not configured on this server (no signing key set)")
+		return
+	}
+
+	// Parse chain from request body (optional, defaults to "base")
+	chain := drecert.DefaultChain
+	if r.ContentLength > 0 {
+		var reqBody struct {
+			Chain string `json:"chain"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&reqBody); err == nil && reqBody.Chain != "" {
+			chain = reqBody.Chain
+		}
+	}
+
+	// Validate chain
+	if !drecert.IsChainSupported(chain) {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("unsupported chain: %s", chain))
+		return
+	}
+
+	// Submit to blockchain
+	ctx := r.Context()
+	receipt, err := h.anchoringService.Anchor(ctx, &drecert.AnchorRequest{
+		CertificateID:     certID,
+		ExecutionRootHash: cert.ExecutionRootHash,
+		Chain:             chain,
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("anchoring failed: %v", err))
+		return
+	}
+
+	// Persist anchoring state to DB
+	now := time.Now()
+	upErr := h.repo.UpdateCertificateAnchored(
+		certID,
+		true,
+		receipt.Chain,
+		receipt.TxHash,
+		receipt.MerkleRoot,
+		receipt.BlockNumber,
+		&now,
+	)
+	if upErr != nil {
+		// Log but don't fail - anchoring succeeded on chain
+		fmt.Printf("dre: failed to persist anchoring state: %v\n", upErr)
+	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"certificate_id": cert.CertificateID,
-		"anchored":      true,
-		"anchor_tx_id":   fmt.Sprintf("simulated-anchor-%s", cert.CertificateID),
-		"anchored_at":   time.Now().UTC().Format(time.RFC3339),
+		"certificate_id":   cert.CertificateID,
+		"anchored":         true,
+		"anchor_chain":     receipt.Chain,
+		"anchor_tx_hash":   receipt.TxHash,
+		"anchor_block":     receipt.BlockNumber,
+		"anchor_merkle_root": receipt.MerkleRoot,
+		"anchored_at":      receipt.AnchoredAt.Format(time.RFC3339),
 	})
 }
 

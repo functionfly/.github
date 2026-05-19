@@ -38,7 +38,8 @@ type AICompositionClient struct {
 func NewAICompositionClient() *AICompositionClient {
 	baseURL := os.Getenv("AI_SERVICE_URL")
 	if baseURL == "" {
-		baseURL = "http://localhost:18081"
+		logrus.Warn("AI_SERVICE_URL not set for AICompositionClient")
+		baseURL = "" // Must be set explicitly
 	}
 
 	return &AICompositionClient{
@@ -61,7 +62,8 @@ type EmbeddingServiceClient struct {
 func NewEmbeddingServiceClient() *EmbeddingServiceClient {
 	baseURL := os.Getenv("AI_SERVICE_URL")
 	if baseURL == "" {
-		baseURL = "http://localhost:18081"
+		logrus.Warn("AI_SERVICE_URL not set for EmbeddingServiceClient")
+		baseURL = "" // Must be set explicitly
 	}
 
 	return &EmbeddingServiceClient{

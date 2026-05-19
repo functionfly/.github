@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage/registry"
@@ -13,6 +14,13 @@ import (
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
+
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
 
 // Service provides recommendation functionality
 type Service struct {
@@ -34,7 +42,7 @@ func NewService(db *gorm.DB, registryRepo *registry.RegistryRepository, config *
 		repo:           NewRepository(db),
 		registry:       registryRepo,
 		config:         config,
-		flyEmbedSvcURL: "http://localhost:18081",
+		flyEmbedSvcURL: getEnvOrDefault("FLYEMBED_SVC_URL", ""), // Must be set explicitly
 		flyEmbedAPIKey: "",
 		httpClient:     &http.Client{Timeout: 30 * time.Second},
 	}

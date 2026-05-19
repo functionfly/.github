@@ -33,6 +33,292 @@
         "typescript": "^6.0.3",
       },
     },
+    "packages/ui-adaptive-ux": {
+      "name": "@functionfly/ui-adaptive-ux",
+      "version": "0.1.0",
+      "dependencies": {
+        "@functionfly/ui-core": "file:../ui-core",
+        "lucide-react": "^1.14.0",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+      },
+    },
+    "packages/ui-agent": {
+      "name": "@functionfly/ui-agent",
+      "version": "0.1.0",
+      "dependencies": {
+        "lucide-react": "^1.14.0",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+      },
+    },
+    "packages/ui-ai": {
+      "name": "@functionfly/ui-ai",
+      "version": "0.1.0",
+      "dependencies": {
+        "@functionfly/ui-core": "file:../ui-core",
+        "lucide-react": "^1.14.0",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+      },
+    },
+    "packages/ui-code-intelligence": {
+      "name": "@functionfly/ui-code-intelligence",
+      "version": "0.1.0",
+      "dependencies": {
+        "@functionfly/ui-core": "file:../ui-core",
+        "lucide-react": "^1.14.0",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+      },
+    },
+    "packages/ui-collaboration": {
+      "name": "@functionfly/ui-collaboration",
+      "version": "0.1.0",
+      "dependencies": {
+        "@functionfly/ui-core": "file:../ui-core",
+        "lucide-react": "^1.14.0",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+      },
+    },
+    "packages/ui-core": {
+      "name": "@functionfly/ui-core",
+      "version": "0.1.0",
+      "dependencies": {
+        "@radix-ui/react-dialog": "^1.1.0",
+        "clsx": "^2.1.1",
+        "lucide-react": "^1.14.0",
+        "tailwind-merge": "^2.6.0",
+      },
+      "devDependencies": {
+        "@types/react": "^19.2.14",
+        "@types/react-dom": "^19.2.3",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+        "tailwindcss": "^4.0.0",
+      },
+    },
+    "packages/ui-data-visualization": {
+      "name": "@functionfly/ui-data-visualization",
+      "version": "0.1.0",
+      "dependencies": {
+        "@functionfly/ui-core": "file:../ui-core",
+        "lucide-react": "^1.14.0",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+      },
+    },
+    "packages/ui-devops": {
+      "name": "@functionfly/ui-devops",
+      "version": "0.1.0",
+      "dependencies": {
+        "@functionfly/ui-core": "file:../ui-core",
+        "lucide-react": "^1.14.0",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+      },
+    },
+    "packages/ui-editor": {
+      "name": "@functionfly/ui-editor",
+      "version": "0.1.0",
+      "dependencies": {
+        "@monaco-editor/react": "^4.7.0",
+        "lucide-react": "^1.14.0",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+      },
+    },
+    "packages/ui-extensibility": {
+      "name": "@functionfly/ui-extensibility",
+      "version": "0.1.0",
+      "dependencies": {
+        "lucide-react": "^1.14.0",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+      },
+    },
+    "packages/ui-futuristic": {
+      "name": "@functionfly/ui-futuristic",
+      "version": "0.1.0",
+      "dependencies": {
+        "@functionfly/ui-core": "file:../ui-core",
+        "lucide-react": "^1.14.0",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+      },
+    },
+    "packages/ui-ghost": {
+      "name": "@functionfly/ui-ghost",
+      "version": "0.1.0",
+      "dependencies": {
+        "lucide-react": "^1.14.0",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+      },
+    },
+    "packages/ui-graph": {
+      "name": "@functionfly/ui-graph",
+      "version": "0.1.0",
+      "dependencies": {
+        "@react-three/drei": "^10.7.7",
+        "@react-three/fiber": "^9.5.0",
+        "clsx": "^2.1.1",
+        "lucide-react": "^1.14.0",
+        "tailwind-merge": "^2.6.1",
+        "three": "^0.183.2",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+      },
+    },
+    "packages/ui-marketplace": {
+      "name": "@functionfly/ui-marketplace",
+      "version": "0.1.0",
+      "dependencies": {
+        "@functionfly/ui-core": "file:../ui-core",
+        "lucide-react": "^1.14.0",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+      },
+    },
+    "packages/ui-marketplace-economy": {
+      "name": "@functionfly/ui-marketplace-economy",
+      "version": "0.1.0",
+      "dependencies": {
+        "@functionfly/ui-core": "file:../ui-core",
+        "lucide-react": "^1.14.0",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+      },
+    },
+    "packages/ui-memory": {
+      "name": "@functionfly/ui-memory",
+      "version": "0.1.0",
+      "dependencies": {
+        "@functionfly/ui-core": "file:../ui-core",
+        "lucide-react": "^1.14.0",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+      },
+    },
+    "packages/ui-observability": {
+      "name": "@functionfly/ui-observability",
+      "version": "0.1.0",
+      "dependencies": {
+        "lucide-react": "^1.14.0",
+        "recharts": "^3.8.1",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+      },
+    },
+    "packages/ui-robotics": {
+      "name": "@functionfly/ui-robotics",
+      "version": "0.1.0",
+      "dependencies": {
+        "@functionfly/ui-core": "file:../ui-core",
+        "lucide-react": "^1.14.0",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+      },
+    },
+    "packages/ui-runtime": {
+      "name": "@functionfly/ui-runtime",
+      "version": "0.1.0",
+      "dependencies": {
+        "lucide-react": "^1.14.0",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+      },
+    },
+    "packages/ui-security": {
+      "name": "@functionfly/ui-security",
+      "version": "0.1.0",
+      "dependencies": {
+        "@functionfly/ui-core": "file:../ui-core",
+        "lucide-react": "^1.14.0",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+      },
+    },
+    "packages/ui-simulation": {
+      "name": "@functionfly/ui-simulation",
+      "version": "0.1.0",
+      "dependencies": {
+        "@functionfly/ui-core": "file:../ui-core",
+        "lucide-react": "^1.14.0",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+      },
+    },
+    "packages/ui-universal-runtime": {
+      "name": "@functionfly/ui-universal-runtime",
+      "version": "0.1.0",
+      "dependencies": {
+        "@functionfly/ui-core": "file:../ui-core",
+        "lucide-react": "^1.14.0",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+      },
+    },
+    "packages/ui-visualization": {
+      "name": "@functionfly/ui-visualization",
+      "version": "0.1.0",
+      "dependencies": {
+        "@react-spring/three": "^10.0.3",
+        "@react-three/drei": "^10.7.7",
+        "@react-three/fiber": "^9.5.0",
+        "lucide-react": "^1.14.0",
+        "three": "^0.183.2",
+      },
+      "peerDependencies": {
+        "react": "^19.2.5",
+        "react-dom": "^19.2.5",
+      },
+    },
     "web/admin-dashboard": {
       "name": "@functionfly/admin-dashboard",
       "version": "1.0.0",
@@ -148,6 +434,7 @@
         "@dnd-kit/sortable": "^10.0.0",
         "@dnd-kit/utilities": "^3.2.2",
         "@formkit/auto-animate": "^0.9.0",
+        "@functionfly/ui-futuristic": "file:../../packages/ui-futuristic",
         "@headlessui/react": "^2.2.10",
         "@hookform/resolvers": "^5.2.2",
         "@iconify/react": "^6.0.2",
@@ -268,6 +555,29 @@
         "tailwind-merge": "^3.5.0",
         "tar": "^7.5.13",
         "three": "^0.183.2",
+        "ui-adaptive-ux": "file:../../packages/ui-adaptive-ux",
+        "ui-agent": "file:../../packages/ui-agent",
+        "ui-ai": "file:../../packages/ui-ai",
+        "ui-code-intelligence": "file:../../packages/ui-code-intelligence",
+        "ui-collaboration": "file:../../packages/ui-collaboration",
+        "ui-core": "file:../../packages/ui-core",
+        "ui-data-visualization": "file:../../packages/ui-data-visualization",
+        "ui-devops": "file:../../packages/ui-devops",
+        "ui-editor": "file:../../packages/ui-editor",
+        "ui-extensibility": "file:../../packages/ui-extensibility",
+        "ui-futuristic": "file:../../packages/ui-futuristic",
+        "ui-ghost": "file:../../packages/ui-ghost",
+        "ui-graph": "file:../../packages/ui-graph",
+        "ui-marketplace": "file:../../packages/ui-marketplace",
+        "ui-marketplace-economy": "file:../../packages/ui-marketplace-economy",
+        "ui-memory": "file:../../packages/ui-memory",
+        "ui-observability": "file:../../packages/ui-observability",
+        "ui-robotics": "file:../../packages/ui-robotics",
+        "ui-runtime": "file:../../packages/ui-runtime",
+        "ui-security": "file:../../packages/ui-security",
+        "ui-simulation": "file:../../packages/ui-simulation",
+        "ui-universal-runtime": "file:../../packages/ui-universal-runtime",
+        "ui-visualization": "file:../../packages/ui-visualization",
         "undici": "^8.0.3",
         "use-local-storage-state": "^19.5.0",
         "use-sound": "^5.0.0",
@@ -425,6 +735,22 @@
         "typescript-eslint": "^8.58.0",
         "vite": "^8.0.3",
         "vitest": "^4.1.2",
+      },
+    },
+    "web/studio": {
+      "name": "@functionfly/studio-tauri",
+      "version": "1.0.0",
+      "dependencies": {
+        "@tauri-apps/api": "^2.5.0",
+        "@tauri-apps/plugin-deep-link": "^2.4.0",
+        "@tauri-apps/plugin-shell": "^2.2.0",
+        "@tauri-apps/plugin-window-state": "^2.2.0",
+      },
+      "devDependencies": {
+        "@tauri-apps/cli": "^2.5.0",
+        "bun": "^1.0.0",
+        "typescript": "^5.8.3",
+        "vite": "^6.3.0",
       },
     },
   },
@@ -987,6 +1313,54 @@
     "@functionfly/admin-dashboard": ["@functionfly/admin-dashboard@workspace:web/admin-dashboard"],
 
     "@functionfly/shared": ["@functionfly/shared@workspace:web/shared"],
+
+    "@functionfly/studio-tauri": ["@functionfly/studio-tauri@workspace:web/studio"],
+
+    "@functionfly/ui-adaptive-ux": ["@functionfly/ui-adaptive-ux@workspace:packages/ui-adaptive-ux"],
+
+    "@functionfly/ui-agent": ["@functionfly/ui-agent@workspace:packages/ui-agent"],
+
+    "@functionfly/ui-ai": ["@functionfly/ui-ai@workspace:packages/ui-ai"],
+
+    "@functionfly/ui-code-intelligence": ["@functionfly/ui-code-intelligence@workspace:packages/ui-code-intelligence"],
+
+    "@functionfly/ui-collaboration": ["@functionfly/ui-collaboration@workspace:packages/ui-collaboration"],
+
+    "@functionfly/ui-core": ["@functionfly/ui-core@workspace:packages/ui-core"],
+
+    "@functionfly/ui-data-visualization": ["@functionfly/ui-data-visualization@workspace:packages/ui-data-visualization"],
+
+    "@functionfly/ui-devops": ["@functionfly/ui-devops@workspace:packages/ui-devops"],
+
+    "@functionfly/ui-editor": ["@functionfly/ui-editor@workspace:packages/ui-editor"],
+
+    "@functionfly/ui-extensibility": ["@functionfly/ui-extensibility@workspace:packages/ui-extensibility"],
+
+    "@functionfly/ui-futuristic": ["@functionfly/ui-futuristic@workspace:packages/ui-futuristic"],
+
+    "@functionfly/ui-ghost": ["@functionfly/ui-ghost@workspace:packages/ui-ghost"],
+
+    "@functionfly/ui-graph": ["@functionfly/ui-graph@workspace:packages/ui-graph"],
+
+    "@functionfly/ui-marketplace": ["@functionfly/ui-marketplace@workspace:packages/ui-marketplace"],
+
+    "@functionfly/ui-marketplace-economy": ["@functionfly/ui-marketplace-economy@workspace:packages/ui-marketplace-economy"],
+
+    "@functionfly/ui-memory": ["@functionfly/ui-memory@workspace:packages/ui-memory"],
+
+    "@functionfly/ui-observability": ["@functionfly/ui-observability@workspace:packages/ui-observability"],
+
+    "@functionfly/ui-robotics": ["@functionfly/ui-robotics@workspace:packages/ui-robotics"],
+
+    "@functionfly/ui-runtime": ["@functionfly/ui-runtime@workspace:packages/ui-runtime"],
+
+    "@functionfly/ui-security": ["@functionfly/ui-security@workspace:packages/ui-security"],
+
+    "@functionfly/ui-simulation": ["@functionfly/ui-simulation@workspace:packages/ui-simulation"],
+
+    "@functionfly/ui-universal-runtime": ["@functionfly/ui-universal-runtime@workspace:packages/ui-universal-runtime"],
+
+    "@functionfly/ui-visualization": ["@functionfly/ui-visualization@workspace:packages/ui-visualization"],
 
     "@hcaptcha/loader": ["@hcaptcha/loader@2.3.0", "", {}, "sha512-i4lnNxKBe+COf3R1nFZEWaZoHIoJjvDgWqvcNrdZq8ehoSNMN6KVZ56dcQ02qKie2h3+BkbkwlJA9DOIuLlK/g=="],
 
@@ -1947,6 +2321,38 @@
     "@tanstack/table-core": ["@tanstack/table-core@8.21.3", "", {}, "sha512-ldZXEhOBb8Is7xLs01fR3YEc3DERiz5silj8tnGkFZytt1abEvl/GhUmCE0PMLaMPTa3Jk4HbKmRlHmu+gCftg=="],
 
     "@tanstack/virtual-core": ["@tanstack/virtual-core@3.13.23", "", {}, "sha512-zSz2Z2HNyLjCplANTDyl3BcdQJc2k1+yyFoKhNRmCr7V7dY8o8q5m8uFTI1/Pg1kL+Hgrz6u3Xo6eFUB7l66cg=="],
+
+    "@tauri-apps/api": ["@tauri-apps/api@2.11.0", "", {}, "sha512-7CinYODhky9lmO23xHnUFv0Xt43fbtWMyxZcLcRBlFkcgXKuEirBvHpmtJ89YMhyeGcq20Wuc47Fa4XjyniywA=="],
+
+    "@tauri-apps/cli": ["@tauri-apps/cli@2.11.2", "", { "optionalDependencies": { "@tauri-apps/cli-darwin-arm64": "2.11.2", "@tauri-apps/cli-darwin-x64": "2.11.2", "@tauri-apps/cli-linux-arm-gnueabihf": "2.11.2", "@tauri-apps/cli-linux-arm64-gnu": "2.11.2", "@tauri-apps/cli-linux-arm64-musl": "2.11.2", "@tauri-apps/cli-linux-riscv64-gnu": "2.11.2", "@tauri-apps/cli-linux-x64-gnu": "2.11.2", "@tauri-apps/cli-linux-x64-musl": "2.11.2", "@tauri-apps/cli-win32-arm64-msvc": "2.11.2", "@tauri-apps/cli-win32-ia32-msvc": "2.11.2", "@tauri-apps/cli-win32-x64-msvc": "2.11.2" }, "bin": { "tauri": "tauri.js" } }, "sha512-bk3HemqvGRoy+5D/dVMUQHKMYLglD0jVnMm/0iGMH6ufZ+p8r14m6BpIixwij3PBvZdvORUp1YifTD8QxVZ1Nw=="],
+
+    "@tauri-apps/cli-darwin-arm64": ["@tauri-apps/cli-darwin-arm64@2.11.2", "", { "os": "darwin", "cpu": "arm64" }, "sha512-+4UZzLt+eOAEQCwgd+TqKgyUJMrvx+BgdXLLaqJYmPqzP+nE6YZr/hY6CWLYGQb8jFn99jEkmC6uA3tNvamA1w=="],
+
+    "@tauri-apps/cli-darwin-x64": ["@tauri-apps/cli-darwin-x64@2.11.2", "", { "os": "darwin", "cpu": "x64" }, "sha512-VjYYtZUPqDMLutSfJEyxFE3Bz+DPi7c8wC3imckgvciLDZLq4qwKJxBicg0BXGhXjJsl8vKWgWRFNMPELQ+Xyg=="],
+
+    "@tauri-apps/cli-linux-arm-gnueabihf": ["@tauri-apps/cli-linux-arm-gnueabihf@2.11.2", "", { "os": "linux", "cpu": "arm" }, "sha512-yMemD6f4i95AQriS8EazyOFzbE34yjnP16i3IOzpHGQvBoy2DjypFMFBq0NtPuITURv/cOGguRtHR5d79/9CSA=="],
+
+    "@tauri-apps/cli-linux-arm64-gnu": ["@tauri-apps/cli-linux-arm64-gnu@2.11.2", "", { "os": "linux", "cpu": "arm64" }, "sha512-cgI91D2wL8GSgoWwZXDqt+DwnuZCP2/bz03QAE4TrhgAKIsrB4hX26W/H1EONPUUNkqrsgeCD0wU6pcNjV/5kw=="],
+
+    "@tauri-apps/cli-linux-arm64-musl": ["@tauri-apps/cli-linux-arm64-musl@2.11.2", "", { "os": "linux", "cpu": "arm64" }, "sha512-X1rm0BERqAAggtYTESSgXrS3sz4Sb/OiPiz54UqISlXW+GkR3vNIGnsy/lejNmoXGVqri3Q53BCfQiclOIyRPw=="],
+
+    "@tauri-apps/cli-linux-riscv64-gnu": ["@tauri-apps/cli-linux-riscv64-gnu@2.11.2", "", { "os": "linux", "cpu": "none" }, "sha512-usbMLJbT3KtkOrBMDVeGYNM35aTHXx38SJSzTMSqqjeUIOQ+iVPjb2yAGNAE+KqmBbAx4FOFIyMeKXx2M/JKGQ=="],
+
+    "@tauri-apps/cli-linux-x64-gnu": ["@tauri-apps/cli-linux-x64-gnu@2.11.2", "", { "os": "linux", "cpu": "x64" }, "sha512-Ru4gwJKPG0ctVGchRGpRup4Y4lW2SSfFnrbQcyHhCliKy4g8Qz97TrUgCur4CbWyAgKxvGh3SjrkA0LDYzDGiw=="],
+
+    "@tauri-apps/cli-linux-x64-musl": ["@tauri-apps/cli-linux-x64-musl@2.11.2", "", { "os": "linux", "cpu": "x64" }, "sha512-eUm7T6clN1MMmNSRQ9gaWsQdyehQx2Gmn5hht/QUlqZQI/qcP2OJK5dnaxqwFzCr2HdsEo9ydxaqcS1oJzMvUw=="],
+
+    "@tauri-apps/cli-win32-arm64-msvc": ["@tauri-apps/cli-win32-arm64-msvc@2.11.2", "", { "os": "win32", "cpu": "arm64" }, "sha512-HeeZW80jU+gVTOEX4X/hC6NVSAdDVXajwP5fxIZ/3z9WvUC7qrudX2GMTilYq6Dg0e0sk0XgsAJD1hZ5wPBXUA=="],
+
+    "@tauri-apps/cli-win32-ia32-msvc": ["@tauri-apps/cli-win32-ia32-msvc@2.11.2", "", { "os": "win32", "cpu": "ia32" }, "sha512-YhjQNZcXfbkCLyazSv1nPnJ9iRFE1wm6kc51FDbU10/Dk09io+6PAGMLjkxnX2GdM0qMnDmTjstY8mTDVvtKeA=="],
+
+    "@tauri-apps/cli-win32-x64-msvc": ["@tauri-apps/cli-win32-x64-msvc@2.11.2", "", { "os": "win32", "cpu": "x64" }, "sha512-d2JchlFIpZevZVReyqhQOekJmb1UH3rhZ5VX6sH3ty9ETE0TKQavpihvoScUXfKKpW6HZC0MrFGRU0ZtD+w3gA=="],
+
+    "@tauri-apps/plugin-deep-link": ["@tauri-apps/plugin-deep-link@2.4.9", "", { "dependencies": { "@tauri-apps/api": "^2.11.0" } }, "sha512-u0SKOUHnJ1wqeqXsDFq2+kASCBj9xxbG0g9XZWPy9SOmU4wXtp6b/wiYpm6oH6/5fBTQsLqnLhIvqLBRpgHJlA=="],
+
+    "@tauri-apps/plugin-shell": ["@tauri-apps/plugin-shell@2.3.5", "", { "dependencies": { "@tauri-apps/api": "^2.10.1" } }, "sha512-jewtULhiQ7lI7+owCKAjc8tYLJr92U16bPOeAa472LHJdgaibLP83NcfAF2e+wkEcA53FxKQAZ7byDzs2eeizg=="],
+
+    "@tauri-apps/plugin-window-state": ["@tauri-apps/plugin-window-state@2.4.1", "", { "dependencies": { "@tauri-apps/api": "^2.8.0" } }, "sha512-OuvdrzyY8Q5Dbzpj+GcrnV1iCeoZbcFdzMjanZMMcAEUNy/6PH5pxZPXpaZLOR7whlzXiuzx0L9EKZbH7zpdRw=="],
 
     "@testing-library/dom": ["@testing-library/dom@10.4.1", "", { "dependencies": { "@babel/code-frame": "^7.10.4", "@babel/runtime": "^7.12.5", "@types/aria-query": "^5.0.1", "aria-query": "5.3.0", "dom-accessibility-api": "^0.5.9", "lz-string": "^1.5.0", "picocolors": "1.1.1", "pretty-format": "^27.0.2" } }, "sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg=="],
 
@@ -4390,7 +4796,7 @@
 
     "react-redux": ["react-redux@9.2.0", "", { "dependencies": { "@types/use-sync-external-store": "^0.0.6", "use-sync-external-store": "^1.4.0" }, "peerDependencies": { "@types/react": "^18.2.25 || ^19", "react": "^18.0 || ^19", "redux": "^5.0.0" }, "optionalPeers": ["@types/react", "redux"] }, "sha512-ROY9fvHhwOD9ySfrF0wmvu//bKCQ6AeZZq1nJNtbDC+kk5DuSuNX/n6YWYF/SYy7bSba4D4FSz8DJeKY/S/r+g=="],
 
-    "react-refresh": ["react-refresh@0.18.0", "", {}, "sha512-QgT5//D3jfjJb6Gsjxv0Slpj23ip+HtOpnNgnb2S5zU3CB26G/IDPGoy4RJB42wzFE46DRsstbW6tKHoKbhAxw=="],
+    "react-refresh": ["react-refresh@0.14.2", "", {}, "sha512-jCvmsr+1IUSMUyzOkRcvnVbX3ZYC6g9TDrDbFuFmRDq7PD4yaGbLKNQL6k2jnArV8hjYxh7hVhAZB6s9HDGpZA=="],
 
     "react-remove-scroll": ["react-remove-scroll@2.7.2", "", { "dependencies": { "react-remove-scroll-bar": "^2.3.7", "react-style-singleton": "^2.2.3", "tslib": "^2.1.0", "use-callback-ref": "^1.3.3", "use-sidecar": "^1.1.3" }, "peerDependencies": { "@types/react": "*", "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc" }, "optionalPeers": ["@types/react"] }, "sha512-Iqb9NjCCTt6Hf+vOdNIZGdTiH1QSqr27H/Ek9sv/a97gfueI/5h1s3yRi1nngzMUaOOToin5dI1dXKdXiF+u0Q=="],
 
@@ -5274,6 +5680,88 @@
 
     "@functionfly/admin-dashboard/typescript": ["typescript@6.0.2", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-bGdAIrZ0wiGDo5l8c++HWtbaNCWTS4UTv7RaTH/ThVIgjkveJt83m74bBHMJkuCbslY8ixgLBVZJIOiQlQTjfQ=="],
 
+    "@functionfly/studio-tauri/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+
+    "@functionfly/studio-tauri/vite": ["vite@6.4.2", "", { "dependencies": { "esbuild": "^0.25.0", "fdir": "^6.4.4", "picomatch": "^4.0.2", "postcss": "^8.5.3", "rollup": "^4.34.9", "tinyglobby": "^0.2.13" }, "optionalDependencies": { "fsevents": "~2.3.3" }, "peerDependencies": { "@types/node": "^18.0.0 || ^20.0.0 || >=22.0.0", "jiti": ">=1.21.0", "less": "*", "lightningcss": "^1.21.0", "sass": "*", "sass-embedded": "*", "stylus": "*", "sugarss": "*", "terser": "^5.16.0", "tsx": "^4.8.1", "yaml": "^2.4.2" }, "optionalPeers": ["@types/node", "jiti", "less", "lightningcss", "sass", "sass-embedded", "stylus", "sugarss", "terser", "tsx", "yaml"], "bin": { "vite": "bin/vite.js" } }, "sha512-2N/55r4JDJ4gdrCvGgINMy+HH3iRpNIz8K6SFwVsA+JbQScLiC+clmAxBgwiSPgcG9U15QmvqCGWzMbqda5zGQ=="],
+
+    "@functionfly/ui-adaptive-ux/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", { "dependencies": { "@radix-ui/react-dialog": "^1.1.0", "clsx": "^2.1.1", "lucide-react": "^1.14.0", "tailwind-merge": "^2.6.0" }, "devDependencies": { "@types/react": "^19.2.14", "@types/react-dom": "^19.2.3" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5", "tailwindcss": "^4.0.0" } }],
+
+    "@functionfly/ui-adaptive-ux/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
+
+    "@functionfly/ui-agent/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
+
+    "@functionfly/ui-ai/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", { "dependencies": { "@radix-ui/react-dialog": "^1.1.0", "clsx": "^2.1.1", "lucide-react": "^1.14.0", "tailwind-merge": "^2.6.0" }, "devDependencies": { "@types/react": "^19.2.14", "@types/react-dom": "^19.2.3" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5", "tailwindcss": "^4.0.0" } }],
+
+    "@functionfly/ui-ai/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
+
+    "@functionfly/ui-code-intelligence/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", { "dependencies": { "@radix-ui/react-dialog": "^1.1.0", "clsx": "^2.1.1", "lucide-react": "^1.14.0", "tailwind-merge": "^2.6.0" }, "devDependencies": { "@types/react": "^19.2.14", "@types/react-dom": "^19.2.3" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5", "tailwindcss": "^4.0.0" } }],
+
+    "@functionfly/ui-code-intelligence/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
+
+    "@functionfly/ui-collaboration/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", { "dependencies": { "@radix-ui/react-dialog": "^1.1.0", "clsx": "^2.1.1", "lucide-react": "^1.14.0", "tailwind-merge": "^2.6.0" }, "devDependencies": { "@types/react": "^19.2.14", "@types/react-dom": "^19.2.3" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5", "tailwindcss": "^4.0.0" } }],
+
+    "@functionfly/ui-collaboration/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
+
+    "@functionfly/ui-core/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
+
+    "@functionfly/ui-core/tailwind-merge": ["tailwind-merge@2.6.1", "", {}, "sha512-Oo6tHdpZsGpkKG88HJ8RR1rg/RdnEkQEfMoEk2x1XRI3F1AxeU+ijRXpiVUF4UbLfcxxRGw6TbUINKYdWVsQTQ=="],
+
+    "@functionfly/ui-data-visualization/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", { "dependencies": { "@radix-ui/react-dialog": "^1.1.0", "clsx": "^2.1.1", "lucide-react": "^1.14.0", "tailwind-merge": "^2.6.0" }, "devDependencies": { "@types/react": "^19.2.14", "@types/react-dom": "^19.2.3" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5", "tailwindcss": "^4.0.0" } }],
+
+    "@functionfly/ui-data-visualization/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
+
+    "@functionfly/ui-devops/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", { "dependencies": { "@radix-ui/react-dialog": "^1.1.0", "clsx": "^2.1.1", "lucide-react": "^1.14.0", "tailwind-merge": "^2.6.0" }, "devDependencies": { "@types/react": "^19.2.14", "@types/react-dom": "^19.2.3" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5", "tailwindcss": "^4.0.0" } }],
+
+    "@functionfly/ui-devops/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
+
+    "@functionfly/ui-editor/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
+
+    "@functionfly/ui-extensibility/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
+
+    "@functionfly/ui-futuristic/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", { "dependencies": { "@radix-ui/react-dialog": "^1.1.0", "clsx": "^2.1.1", "lucide-react": "^1.14.0", "tailwind-merge": "^2.6.0" }, "devDependencies": { "@types/react": "^19.2.14", "@types/react-dom": "^19.2.3" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5", "tailwindcss": "^4.0.0" } }],
+
+    "@functionfly/ui-futuristic/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
+
+    "@functionfly/ui-ghost/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
+
+    "@functionfly/ui-graph/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
+
+    "@functionfly/ui-graph/tailwind-merge": ["tailwind-merge@2.6.1", "", {}, "sha512-Oo6tHdpZsGpkKG88HJ8RR1rg/RdnEkQEfMoEk2x1XRI3F1AxeU+ijRXpiVUF4UbLfcxxRGw6TbUINKYdWVsQTQ=="],
+
+    "@functionfly/ui-marketplace/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", { "dependencies": { "@radix-ui/react-dialog": "^1.1.0", "clsx": "^2.1.1", "lucide-react": "^1.14.0", "tailwind-merge": "^2.6.0" }, "devDependencies": { "@types/react": "^19.2.14", "@types/react-dom": "^19.2.3" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5", "tailwindcss": "^4.0.0" } }],
+
+    "@functionfly/ui-marketplace/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
+
+    "@functionfly/ui-marketplace-economy/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", { "dependencies": { "@radix-ui/react-dialog": "^1.1.0", "clsx": "^2.1.1", "lucide-react": "^1.14.0", "tailwind-merge": "^2.6.0" }, "devDependencies": { "@types/react": "^19.2.14", "@types/react-dom": "^19.2.3" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5", "tailwindcss": "^4.0.0" } }],
+
+    "@functionfly/ui-marketplace-economy/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
+
+    "@functionfly/ui-memory/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", { "dependencies": { "@radix-ui/react-dialog": "^1.1.0", "clsx": "^2.1.1", "lucide-react": "^1.14.0", "tailwind-merge": "^2.6.0" }, "devDependencies": { "@types/react": "^19.2.14", "@types/react-dom": "^19.2.3" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5", "tailwindcss": "^4.0.0" } }],
+
+    "@functionfly/ui-memory/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
+
+    "@functionfly/ui-observability/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
+
+    "@functionfly/ui-robotics/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", { "dependencies": { "@radix-ui/react-dialog": "^1.1.0", "clsx": "^2.1.1", "lucide-react": "^1.14.0", "tailwind-merge": "^2.6.0" }, "devDependencies": { "@types/react": "^19.2.14", "@types/react-dom": "^19.2.3" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5", "tailwindcss": "^4.0.0" } }],
+
+    "@functionfly/ui-robotics/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
+
+    "@functionfly/ui-runtime/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
+
+    "@functionfly/ui-security/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", { "dependencies": { "@radix-ui/react-dialog": "^1.1.0", "clsx": "^2.1.1", "lucide-react": "^1.14.0", "tailwind-merge": "^2.6.0" }, "devDependencies": { "@types/react": "^19.2.14", "@types/react-dom": "^19.2.3" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5", "tailwindcss": "^4.0.0" } }],
+
+    "@functionfly/ui-security/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
+
+    "@functionfly/ui-simulation/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", { "dependencies": { "@radix-ui/react-dialog": "^1.1.0", "clsx": "^2.1.1", "lucide-react": "^1.14.0", "tailwind-merge": "^2.6.0" }, "devDependencies": { "@types/react": "^19.2.14", "@types/react-dom": "^19.2.3" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5", "tailwindcss": "^4.0.0" } }],
+
+    "@functionfly/ui-simulation/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
+
+    "@functionfly/ui-universal-runtime/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", { "dependencies": { "@radix-ui/react-dialog": "^1.1.0", "clsx": "^2.1.1", "lucide-react": "^1.14.0", "tailwind-merge": "^2.6.0" }, "devDependencies": { "@types/react": "^19.2.14", "@types/react-dom": "^19.2.3" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5", "tailwindcss": "^4.0.0" } }],
+
+    "@functionfly/ui-universal-runtime/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
+
+    "@functionfly/ui-visualization/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
+
     "@hcaptcha/react-hcaptcha/@babel/runtime": ["@babel/runtime@7.28.6", "", {}, "sha512-05WQkdpL9COIMz4LjTxGpPNCdlpyimKppYNoJ5Di5EUObifl8t4tuLuUBBZEpoLYOmfvIWrsp9fCl0HoPRVTdA=="],
 
     "@isaacs/cliui/string-width": ["string-width@5.1.2", "", { "dependencies": { "eastasianwidth": "^0.2.0", "emoji-regex": "^9.2.2", "strip-ansi": "^7.0.1" } }, "sha512-HnLOCR3vjcY8beoNLtcjZ5/nxn2afmME6lhrDrebokqMap+XbeW8n9TXpPDOqdGK5qcI3oT0GKTW6wC7EMiVqA=="],
@@ -5774,9 +6262,57 @@
 
     "functionfly-blog/typescript": ["typescript@6.0.2", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-bGdAIrZ0wiGDo5l8c++HWtbaNCWTS4UTv7RaTH/ThVIgjkveJt83m74bBHMJkuCbslY8ixgLBVZJIOiQlQTjfQ=="],
 
+    "functionfly-dashboard/@functionfly/ui-futuristic": ["@functionfly/ui-futuristic@file:packages/ui-futuristic", { "dependencies": { "@functionfly/ui-core": "file:../ui-core", "lucide-react": "^1.14.0" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5" } }],
+
     "functionfly-dashboard/lucide-react": ["lucide-react@1.14.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA=="],
 
     "functionfly-dashboard/typescript": ["typescript@6.0.2", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-bGdAIrZ0wiGDo5l8c++HWtbaNCWTS4UTv7RaTH/ThVIgjkveJt83m74bBHMJkuCbslY8ixgLBVZJIOiQlQTjfQ=="],
+
+    "functionfly-dashboard/ui-adaptive-ux": ["@functionfly/ui-adaptive-ux@file:packages/ui-adaptive-ux", { "dependencies": { "@functionfly/ui-core": "file:../ui-core", "lucide-react": "^1.14.0" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5" } }],
+
+    "functionfly-dashboard/ui-agent": ["@functionfly/ui-agent@file:packages/ui-agent", { "dependencies": { "lucide-react": "^1.14.0" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5" } }],
+
+    "functionfly-dashboard/ui-ai": ["@functionfly/ui-ai@file:packages/ui-ai", { "dependencies": { "@functionfly/ui-core": "file:../ui-core", "lucide-react": "^1.14.0" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5" } }],
+
+    "functionfly-dashboard/ui-code-intelligence": ["@functionfly/ui-code-intelligence@file:packages/ui-code-intelligence", { "dependencies": { "@functionfly/ui-core": "file:../ui-core", "lucide-react": "^1.14.0" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5" } }],
+
+    "functionfly-dashboard/ui-collaboration": ["@functionfly/ui-collaboration@file:packages/ui-collaboration", { "dependencies": { "@functionfly/ui-core": "file:../ui-core", "lucide-react": "^1.14.0" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5" } }],
+
+    "functionfly-dashboard/ui-core": ["@functionfly/ui-core@file:packages/ui-core", { "dependencies": { "@radix-ui/react-dialog": "^1.1.0", "clsx": "^2.1.1", "lucide-react": "^1.14.0", "tailwind-merge": "^2.6.0" }, "devDependencies": { "@types/react": "^19.2.14", "@types/react-dom": "^19.2.3" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5", "tailwindcss": "^4.0.0" } }],
+
+    "functionfly-dashboard/ui-data-visualization": ["@functionfly/ui-data-visualization@file:packages/ui-data-visualization", { "dependencies": { "@functionfly/ui-core": "file:../ui-core", "lucide-react": "^1.14.0" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5" } }],
+
+    "functionfly-dashboard/ui-devops": ["@functionfly/ui-devops@file:packages/ui-devops", { "dependencies": { "@functionfly/ui-core": "file:../ui-core", "lucide-react": "^1.14.0" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5" } }],
+
+    "functionfly-dashboard/ui-editor": ["@functionfly/ui-editor@file:packages/ui-editor", { "dependencies": { "@monaco-editor/react": "^4.7.0", "lucide-react": "^1.14.0" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5" } }],
+
+    "functionfly-dashboard/ui-extensibility": ["@functionfly/ui-extensibility@file:packages/ui-extensibility", { "dependencies": { "lucide-react": "^1.14.0" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5" } }],
+
+    "functionfly-dashboard/ui-futuristic": ["@functionfly/ui-futuristic@file:packages/ui-futuristic", { "dependencies": { "@functionfly/ui-core": "file:../ui-core", "lucide-react": "^1.14.0" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5" } }],
+
+    "functionfly-dashboard/ui-ghost": ["@functionfly/ui-ghost@file:packages/ui-ghost", { "dependencies": { "lucide-react": "^1.14.0" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5" } }],
+
+    "functionfly-dashboard/ui-graph": ["@functionfly/ui-graph@file:packages/ui-graph", { "dependencies": { "@react-three/drei": "^10.7.7", "@react-three/fiber": "^9.5.0", "clsx": "^2.1.1", "lucide-react": "^1.14.0", "tailwind-merge": "^2.6.1", "three": "^0.183.2" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5" } }],
+
+    "functionfly-dashboard/ui-marketplace": ["@functionfly/ui-marketplace@file:packages/ui-marketplace", { "dependencies": { "@functionfly/ui-core": "file:../ui-core", "lucide-react": "^1.14.0" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5" } }],
+
+    "functionfly-dashboard/ui-marketplace-economy": ["@functionfly/ui-marketplace-economy@file:packages/ui-marketplace-economy", { "dependencies": { "@functionfly/ui-core": "file:../ui-core", "lucide-react": "^1.14.0" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5" } }],
+
+    "functionfly-dashboard/ui-memory": ["@functionfly/ui-memory@file:packages/ui-memory", { "dependencies": { "@functionfly/ui-core": "file:../ui-core", "lucide-react": "^1.14.0" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5" } }],
+
+    "functionfly-dashboard/ui-observability": ["@functionfly/ui-observability@file:packages/ui-observability", { "dependencies": { "lucide-react": "^1.14.0", "recharts": "^3.8.1" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5" } }],
+
+    "functionfly-dashboard/ui-robotics": ["@functionfly/ui-robotics@file:packages/ui-robotics", { "dependencies": { "@functionfly/ui-core": "file:../ui-core", "lucide-react": "^1.14.0" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5" } }],
+
+    "functionfly-dashboard/ui-runtime": ["@functionfly/ui-runtime@file:packages/ui-runtime", { "dependencies": { "lucide-react": "^1.14.0" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5" } }],
+
+    "functionfly-dashboard/ui-security": ["@functionfly/ui-security@file:packages/ui-security", { "dependencies": { "@functionfly/ui-core": "file:../ui-core", "lucide-react": "^1.14.0" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5" } }],
+
+    "functionfly-dashboard/ui-simulation": ["@functionfly/ui-simulation@file:packages/ui-simulation", { "dependencies": { "@functionfly/ui-core": "file:../ui-core", "lucide-react": "^1.14.0" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5" } }],
+
+    "functionfly-dashboard/ui-universal-runtime": ["@functionfly/ui-universal-runtime@file:packages/ui-universal-runtime", { "dependencies": { "@functionfly/ui-core": "file:../ui-core", "lucide-react": "^1.14.0" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5" } }],
+
+    "functionfly-dashboard/ui-visualization": ["@functionfly/ui-visualization@file:packages/ui-visualization", { "dependencies": { "@react-spring/three": "^10.0.3", "@react-three/drei": "^10.7.7", "@react-three/fiber": "^9.5.0", "lucide-react": "^1.14.0", "three": "^0.183.2" }, "peerDependencies": { "react": "^19.2.5", "react-dom": "^19.2.5" } }],
 
     "functionfly-docs/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 
@@ -5974,8 +6510,6 @@
 
     "react-native/pretty-format": ["pretty-format@29.7.0", "", { "dependencies": { "@jest/schemas": "^29.6.3", "ansi-styles": "^5.0.0", "react-is": "^18.0.0" } }, "sha512-Pdlw/oPxN+aXdmM9R00JVC9WVFoCLTKJvDVLgmJ+qAffBMxsV85l/Lu7sNx4zSzPyoL2euImuEwHhOXdEgNFZQ=="],
 
-    "react-native/react-refresh": ["react-refresh@0.14.2", "", {}, "sha512-jCvmsr+1IUSMUyzOkRcvnVbX3ZYC6g9TDrDbFuFmRDq7PD4yaGbLKNQL6k2jnArV8hjYxh7hVhAZB6s9HDGpZA=="],
-
     "react-native/ws": ["ws@7.5.10", "", { "peerDependencies": { "bufferutil": "^4.0.1", "utf-8-validate": "^5.0.2" }, "optionalPeers": ["bufferutil", "utf-8-validate"] }, "sha512-+dbF1tHwZpXcbOJdVOkzLDxZP1ailvSxM6ZweXTegylPny803bFhA+vqBYw4s31NSAk4S2Qz+AKXK9a4wkdjcQ=="],
 
     "react-oauth2-hook/immutable": ["immutable@4.3.8", "", {}, "sha512-d/Ld9aLbKpNwyl0KiM2CT1WYvkitQ1TSvmRtkcV8FKStiDoA7Slzgjmb/1G2yhKM1p0XeNOieaTbFZmU1d3Xuw=="],
@@ -6096,6 +6630,8 @@
 
     "@astrojs/react/@vitejs/plugin-react/@rolldown/pluginutils": ["@rolldown/pluginutils@1.0.0-rc.3", "", {}, "sha512-eybk3TjzzzV97Dlj5c+XrBFW57eTNhzod66y9HrBlzJ6NsCrWCp/2kaPS3K9wJmurBC0Tdw4yPjXKZqlznim3Q=="],
 
+    "@astrojs/react/@vitejs/plugin-react/react-refresh": ["react-refresh@0.18.0", "", {}, "sha512-QgT5//D3jfjJb6Gsjxv0Slpj23ip+HtOpnNgnb2S5zU3CB26G/IDPGoy4RJB42wzFE46DRsstbW6tKHoKbhAxw=="],
+
     "@astrojs/react/vite/postcss": ["postcss@8.5.8", "", { "dependencies": { "nanoid": "^3.3.11", "picocolors": "^1.1.1", "source-map-js": "^1.2.1" } }, "sha512-OW/rX8O/jXnm82Ey1k44pObPtdblfiuWnrd8X7GJ7emImCOstunGbXUpp7HdBrFQX6rJzn3sPT397Wp5aCwCHg=="],
 
     "@babel/helper-compilation-targets/lru-cache/yallist": ["yallist@3.1.1", "", {}, "sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g=="],
@@ -6131,6 +6667,34 @@
     "@expressive-code/plugin-shiki/shiki/@shikijs/themes": ["@shikijs/themes@3.23.0", "", { "dependencies": { "@shikijs/types": "3.23.0" } }, "sha512-5qySYa1ZgAT18HR/ypENL9cUSGOeI2x+4IvYJu4JgVJdizn6kG4ia5Q1jDEOi7gTbN4RbuYtmHh0W3eccOrjMA=="],
 
     "@expressive-code/plugin-shiki/shiki/@shikijs/types": ["@shikijs/types@3.23.0", "", { "dependencies": { "@shikijs/vscode-textmate": "^10.0.2", "@types/hast": "^3.0.4" } }, "sha512-3JZ5HXOZfYjsYSk0yPwBrkupyYSLpAE26Qc0HLghhZNGTZg/SKxXIIgoxOpmmeQP0RRSDJTk1/vPfw9tbw+jSQ=="],
+
+    "@functionfly/ui-adaptive-ux/@functionfly/ui-core/tailwind-merge": ["tailwind-merge@2.6.1", "", {}, "sha512-Oo6tHdpZsGpkKG88HJ8RR1rg/RdnEkQEfMoEk2x1XRI3F1AxeU+ijRXpiVUF4UbLfcxxRGw6TbUINKYdWVsQTQ=="],
+
+    "@functionfly/ui-ai/@functionfly/ui-core/tailwind-merge": ["tailwind-merge@2.6.1", "", {}, "sha512-Oo6tHdpZsGpkKG88HJ8RR1rg/RdnEkQEfMoEk2x1XRI3F1AxeU+ijRXpiVUF4UbLfcxxRGw6TbUINKYdWVsQTQ=="],
+
+    "@functionfly/ui-code-intelligence/@functionfly/ui-core/tailwind-merge": ["tailwind-merge@2.6.1", "", {}, "sha512-Oo6tHdpZsGpkKG88HJ8RR1rg/RdnEkQEfMoEk2x1XRI3F1AxeU+ijRXpiVUF4UbLfcxxRGw6TbUINKYdWVsQTQ=="],
+
+    "@functionfly/ui-collaboration/@functionfly/ui-core/tailwind-merge": ["tailwind-merge@2.6.1", "", {}, "sha512-Oo6tHdpZsGpkKG88HJ8RR1rg/RdnEkQEfMoEk2x1XRI3F1AxeU+ijRXpiVUF4UbLfcxxRGw6TbUINKYdWVsQTQ=="],
+
+    "@functionfly/ui-data-visualization/@functionfly/ui-core/tailwind-merge": ["tailwind-merge@2.6.1", "", {}, "sha512-Oo6tHdpZsGpkKG88HJ8RR1rg/RdnEkQEfMoEk2x1XRI3F1AxeU+ijRXpiVUF4UbLfcxxRGw6TbUINKYdWVsQTQ=="],
+
+    "@functionfly/ui-devops/@functionfly/ui-core/tailwind-merge": ["tailwind-merge@2.6.1", "", {}, "sha512-Oo6tHdpZsGpkKG88HJ8RR1rg/RdnEkQEfMoEk2x1XRI3F1AxeU+ijRXpiVUF4UbLfcxxRGw6TbUINKYdWVsQTQ=="],
+
+    "@functionfly/ui-futuristic/@functionfly/ui-core/tailwind-merge": ["tailwind-merge@2.6.1", "", {}, "sha512-Oo6tHdpZsGpkKG88HJ8RR1rg/RdnEkQEfMoEk2x1XRI3F1AxeU+ijRXpiVUF4UbLfcxxRGw6TbUINKYdWVsQTQ=="],
+
+    "@functionfly/ui-marketplace-economy/@functionfly/ui-core/tailwind-merge": ["tailwind-merge@2.6.1", "", {}, "sha512-Oo6tHdpZsGpkKG88HJ8RR1rg/RdnEkQEfMoEk2x1XRI3F1AxeU+ijRXpiVUF4UbLfcxxRGw6TbUINKYdWVsQTQ=="],
+
+    "@functionfly/ui-marketplace/@functionfly/ui-core/tailwind-merge": ["tailwind-merge@2.6.1", "", {}, "sha512-Oo6tHdpZsGpkKG88HJ8RR1rg/RdnEkQEfMoEk2x1XRI3F1AxeU+ijRXpiVUF4UbLfcxxRGw6TbUINKYdWVsQTQ=="],
+
+    "@functionfly/ui-memory/@functionfly/ui-core/tailwind-merge": ["tailwind-merge@2.6.1", "", {}, "sha512-Oo6tHdpZsGpkKG88HJ8RR1rg/RdnEkQEfMoEk2x1XRI3F1AxeU+ijRXpiVUF4UbLfcxxRGw6TbUINKYdWVsQTQ=="],
+
+    "@functionfly/ui-robotics/@functionfly/ui-core/tailwind-merge": ["tailwind-merge@2.6.1", "", {}, "sha512-Oo6tHdpZsGpkKG88HJ8RR1rg/RdnEkQEfMoEk2x1XRI3F1AxeU+ijRXpiVUF4UbLfcxxRGw6TbUINKYdWVsQTQ=="],
+
+    "@functionfly/ui-security/@functionfly/ui-core/tailwind-merge": ["tailwind-merge@2.6.1", "", {}, "sha512-Oo6tHdpZsGpkKG88HJ8RR1rg/RdnEkQEfMoEk2x1XRI3F1AxeU+ijRXpiVUF4UbLfcxxRGw6TbUINKYdWVsQTQ=="],
+
+    "@functionfly/ui-simulation/@functionfly/ui-core/tailwind-merge": ["tailwind-merge@2.6.1", "", {}, "sha512-Oo6tHdpZsGpkKG88HJ8RR1rg/RdnEkQEfMoEk2x1XRI3F1AxeU+ijRXpiVUF4UbLfcxxRGw6TbUINKYdWVsQTQ=="],
+
+    "@functionfly/ui-universal-runtime/@functionfly/ui-core/tailwind-merge": ["tailwind-merge@2.6.1", "", {}, "sha512-Oo6tHdpZsGpkKG88HJ8RR1rg/RdnEkQEfMoEk2x1XRI3F1AxeU+ijRXpiVUF4UbLfcxxRGw6TbUINKYdWVsQTQ=="],
 
     "@isaacs/cliui/string-width/emoji-regex": ["emoji-regex@9.2.2", "", {}, "sha512-L18DaJsXSUk2+42pv8mLs5jJT2hqFkFE4j21wOmgbUqsZ2hL72NsUU785g9RXgo3s0ZNgVl42TiHp3ZtOv/Vyg=="],
 
@@ -6339,6 +6903,40 @@
     "functionfly-blog/astro/vite": ["vite@7.3.1", "", { "dependencies": { "esbuild": "^0.27.0", "fdir": "^6.5.0", "picomatch": "^4.0.3", "postcss": "^8.5.6", "rollup": "^4.43.0", "tinyglobby": "^0.2.15" }, "optionalDependencies": { "fsevents": "~2.3.3" }, "peerDependencies": { "@types/node": "^20.19.0 || >=22.12.0", "jiti": ">=1.21.0", "less": "^4.0.0", "lightningcss": "^1.21.0", "sass": "^1.70.0", "sass-embedded": "^1.70.0", "stylus": ">=0.54.8", "sugarss": "^5.0.0", "terser": "^5.16.0", "tsx": "^4.8.1", "yaml": "^2.4.2" }, "optionalPeers": ["@types/node", "jiti", "less", "lightningcss", "sass", "sass-embedded", "stylus", "sugarss", "terser", "tsx", "yaml"], "bin": { "vite": "bin/vite.js" } }, "sha512-w+N7Hifpc3gRjZ63vYBXA56dvvRlNWRczTdmCBBa+CotUzAPf5b7YMdMR/8CQoeYE5LX3W4wj6RYTgonm1b9DA=="],
 
     "functionfly-blog/astro/yargs-parser": ["yargs-parser@22.0.0", "", {}, "sha512-rwu/ClNdSMpkSrUb+d6BRsSkLUq1fmfsY6TOpYzTwvwkg1/NRG85KBy3kq++A8LKQwX6lsu+aWad+2khvuXrqw=="],
+
+    "functionfly-dashboard/@functionfly/ui-futuristic/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", {}],
+
+    "functionfly-dashboard/ui-adaptive-ux/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", {}],
+
+    "functionfly-dashboard/ui-ai/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", {}],
+
+    "functionfly-dashboard/ui-code-intelligence/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", {}],
+
+    "functionfly-dashboard/ui-collaboration/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", {}],
+
+    "functionfly-dashboard/ui-core/tailwind-merge": ["tailwind-merge@2.6.1", "", {}, "sha512-Oo6tHdpZsGpkKG88HJ8RR1rg/RdnEkQEfMoEk2x1XRI3F1AxeU+ijRXpiVUF4UbLfcxxRGw6TbUINKYdWVsQTQ=="],
+
+    "functionfly-dashboard/ui-data-visualization/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", {}],
+
+    "functionfly-dashboard/ui-devops/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", {}],
+
+    "functionfly-dashboard/ui-futuristic/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", {}],
+
+    "functionfly-dashboard/ui-graph/tailwind-merge": ["tailwind-merge@2.6.1", "", {}, "sha512-Oo6tHdpZsGpkKG88HJ8RR1rg/RdnEkQEfMoEk2x1XRI3F1AxeU+ijRXpiVUF4UbLfcxxRGw6TbUINKYdWVsQTQ=="],
+
+    "functionfly-dashboard/ui-marketplace/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", {}],
+
+    "functionfly-dashboard/ui-marketplace-economy/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", {}],
+
+    "functionfly-dashboard/ui-memory/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", {}],
+
+    "functionfly-dashboard/ui-robotics/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", {}],
+
+    "functionfly-dashboard/ui-security/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", {}],
+
+    "functionfly-dashboard/ui-simulation/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", {}],
+
+    "functionfly-dashboard/ui-universal-runtime/@functionfly/ui-core": ["@functionfly/ui-core@file:packages/ui-core", {}],
 
     "functionfly-status/eslint/@eslint/config-array": ["@eslint/config-array@0.21.2", "", { "dependencies": { "@eslint/object-schema": "^2.1.7", "debug": "^4.3.1", "minimatch": "^3.1.5" } }, "sha512-nJl2KGTlrf9GjLimgIru+V/mzgSK0ABCDQRvxw5BjURL7WfH5uoWmizbH7QB6MmnMBd8cIC9uceWnezL1VZWWw=="],
 

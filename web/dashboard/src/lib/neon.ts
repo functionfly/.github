@@ -5,7 +5,8 @@ import { getApiBaseUrl } from '@/lib/constants';
 function resolveAuthUrl(): string {
   const raw = getApiBaseUrl();
   if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-  const origin = typeof window !== 'undefined' ? window.location.origin : (import.meta.env.VITE_APP_ORIGIN || 'http://localhost:5173');
+  const origin = typeof window !== 'undefined' ? window.location.origin : (import.meta.env.VITE_APP_ORIGIN ||
+    (() => { throw new Error('VITE_APP_ORIGIN environment variable is required'); })());
   return `${origin}${raw.startsWith('/') ? raw : `/${raw}`}`;
 }
 

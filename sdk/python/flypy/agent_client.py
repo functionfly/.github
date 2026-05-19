@@ -24,7 +24,7 @@ from .agent_types import (
 )
 
 
-DEFAULT_API_BASE = os.environ.get("FUNCTIONFLY_API_BASE", "http://localhost:8080")
+DEFAULT_API_BASE = os.environ.get("FUNCTIONFLY_API_BASE", "")  # Must be set explicitly
 
 
 def _is_local_host(hostname: str) -> bool:

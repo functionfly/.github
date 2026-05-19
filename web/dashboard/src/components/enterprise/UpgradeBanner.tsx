@@ -29,6 +29,7 @@ import {
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { useLocalStorage } from '@/hooks/useInfiniteScroll';
 
 interface UpgradeBannerProps {
   /** Where the banner is displayed - affects styling */
@@ -65,7 +66,7 @@ export function UpgradeBanner({
 
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [bannerCollapsed, setBannerCollapsed] = useLocalStorage('ff-upgrade-banner-collapsed', false);
 
   // Don't show for enterprise users
   if (plan?.toLowerCase() === 'enterprise') {
@@ -167,14 +168,14 @@ export function UpgradeBanner({
         animate={{ opacity: 1, y: 0 }}
         className={cn('px-3 pb-3', className)}
       >
-        <div className={cn('aviation-upgrade-banner aviation-upgrade-collapsible', isCollapsed && 'collapsed')}>
+        <div className={cn('aviation-upgrade-banner aviation-upgrade-collapsible', bannerCollapsed && 'collapsed')}>
           {/* Collapsible Header / Toggle */}
           <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
+            onClick={() => setBannerCollapsed(!bannerCollapsed)}
             className="aviation-upgrade-toggle"
-            aria-label={isCollapsed ? 'Expand upgrade banner' : 'Collapse upgrade banner'}
+            aria-label={bannerCollapsed ? 'Expand upgrade banner' : 'Collapse upgrade banner'}
           >
-            {isCollapsed ? (
+            {bannerCollapsed ? (
               <div className="aviation-upgrade-compact">
                 <div className="aviation-upgrade-compact-icon">
                   {isFree ? <Rocket /> : <Crown />}

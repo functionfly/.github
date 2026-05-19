@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 // defaultTenantID is a fixed UUID so setup is idempotent (same tenant every run).
@@ -16,9 +18,30 @@ var defaultTenantID = uuid.MustParse("a5eb0001-0000-4000-8000-000000000001")
 
 const (
 	adminEmail    = "admin@example.com"
-	adminPassword = "admin123"
 	adminUsername = "functionfly"
 )
+
+func getAdminPassword() string {
+	if pw, ok := os.LookupEnv("SETUP_ADMIN_PASSWORD"); ok && pw != "" {
+		return pw
+	}
+	logrus.Fatal("SETUP_ADMIN_PASSWORD environment variable must be set - using weak defaults is not allowed")
+	return ""
+}
+
+var jwtSecretFromEnv = os.Getenv("JWT_SECRET")
+var setupJWTSecret   string
+
+func getSetupJWTSecret() string {
+	if setupJWTSecret != "" {
+		return setupJWTSecret
+	}
+	setupJWTSecret = jwtSecretFromEnv
+	if setupJWTSecret == "" {
+		logrus.Fatal("JWT_SECRET environment variable must be set - using weak defaults is not allowed")
+	}
+	return setupJWTSecret
+}
 
 func main() {
 	ctx := context.Background()
@@ -58,7 +81,11 @@ func main() {
 		fmt.Printf("Updated existing admin user:\n")
 	} else {
 		// Create new admin user
-		authSvc := auth.NewAuthService(repo, "default-secret-key-change-in-production")
+		authSvc, err := auth.NewAuthService(repo, getSetupJWTSecret())
+		if err != nil {
+			log.Fatalf("Failed to create auth service: %v", err)
+		}
+		adminPassword := getAdminPassword()
 		hash, err := authSvc.HashPassword(adminPassword)
 		if err != nil {
 			log.Fatalf("Failed to hash password: %v", err)
@@ -83,6 +110,5 @@ func main() {
 	fmt.Printf("  Username: %s\n", adminUsername)
 	fmt.Printf("  Email: %s\n", user.Email)
 	fmt.Printf("  Tenant ID: %s\n", user.TenantID)
-	fmt.Println("\nSetup complete! You can now login with:")
-	fmt.Printf("  curl -X POST http://localhost:8080/v1/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"%s\",\"password\":\"%s\"}'\n", adminEmail, adminPassword)
+	fmt.Println("\nSetup complete! You can now login.")
 }

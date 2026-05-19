@@ -346,10 +346,10 @@ func (h *PlaygroundHandler) HandlePlaygroundShare(w http.ResponseWriter, r *http
 	}
 
 	// Create shareable URL
-	shareURL := fmt.Sprintf("/playground/%s/%s", author, name)
+	shareURL := fmt.Sprintf("/playground/%s/%s", url.PathEscape(author), url.PathEscape(name))
 	if req.Input != "" {
-		// URL encode the input
-		shareURL += "?input=" + req.Input
+		// URL encode the input to prevent XSS and parameter pollution
+		shareURL += "?input=" + url.PathEscape(req.Input)
 	}
 
 	response := map[string]interface{}{

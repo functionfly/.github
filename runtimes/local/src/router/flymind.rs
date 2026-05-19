@@ -28,8 +28,7 @@ pub struct FlyMindConfig {
 impl Default for FlyMindConfig {
     fn default() -> Self {
         Self {
-            base_url: std::env::var("FLYMIND_URL")
-                .unwrap_or_else(|_| "http://localhost:8081".to_string()),
+            base_url: std::env::var("FLYMIND_URL").unwrap_or_default(),
             timeout: Duration::from_secs(120),
             api_key: std::env::var("FLYMIND_API_KEY").ok(),
         }

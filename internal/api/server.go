@@ -239,7 +239,10 @@ func NewServer(db *storage.PostgresDB) *Server {
 		logrus.Info("Email service configuration validated successfully")
 	}
 
-	authSvc := auth.NewAuthService(repo, jwtSecret)
+	authSvc, err := auth.NewAuthService(repo, jwtSecret)
+	if err != nil {
+		logrus.Fatal("Failed to initialize auth service: ", err)
+	}
 	authSvc.SetEmailService(emailSvc)
 	// Notification service is set below after it is created
 
@@ -433,7 +436,7 @@ func NewServer(db *storage.PostgresDB) *Server {
 	metricsHandler := monitoring.Handler()
 	// Gate localhost CORS behind development mode: in production, only explicitly configured CORS_ALLOWED_ORIGINS apply.
 	var mainHandler http.Handler
-	if os.Getenv("DEVELOPMENT") == "true" || os.Getenv("PRODUCTION_ENV") != "true" {
+	if os.Getenv("DEVELOPMENT") == "true" {
 		mainHandler = localhostCORSWrapper(s.router)
 	} else {
 		mainHandler = s.router
@@ -483,14 +486,22 @@ func (w *corsResponseWriter) Write(b []byte) (int, error) {
 
 // localhostCORSWrapper ensures CORS headers are set for localhost origins on every response.
 // This guarantees the dashboard at :3000 can call the API at :8080 even when the route returns 404.
+// SECURITY: Only active in DEVELOPMENT mode - production must use explicit CORS_ALLOWED_ORIGINS.
 func localhostCORSWrapper(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
+		isDev := os.Getenv("DEVELOPMENT") == "true"
 		isLocalhost := origin != "" && (strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://127.0.0.1:"))
+
+		// SECURITY: Reject localhost origins in production even via this wrapper
+		if !isDev && origin != "" {
+			next.ServeHTTP(w, r)
+			return
+		}
 
 		// Handle preflight first so the browser always gets CORS headers on OPTIONS.
 		if r.Method == "OPTIONS" {
-			if origin != "" {
+			if origin != "" && isLocalhost {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 				w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, x-device-fingerprint, X-Environment")
@@ -504,7 +515,7 @@ func localhostCORSWrapper(next http.Handler) http.Handler {
 
 		// For WebSocket upgrades, use the original response writer to preserve Hijacker interface
 		if r.Header.Get("Upgrade") == "websocket" {
-			if isLocalhost {
+			if isLocalhost && isDev {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 				w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, x-device-fingerprint, X-Environment")
@@ -514,8 +525,8 @@ func localhostCORSWrapper(next http.Handler) http.Handler {
 			return
 		}
 
-		// Wrap the response writer for regular HTTP requests
-		if isLocalhost {
+		// Wrap the response writer for regular HTTP requests only in dev mode with localhost
+		if isLocalhost && isDev {
 			w = &corsResponseWriter{ResponseWriter: w, origin: origin}
 		}
 

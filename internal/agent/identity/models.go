@@ -110,6 +110,7 @@ type AgentIdentity struct {
 	SigningKeyHash    string    `json:"-" gorm:"column:signing_key_hash"`        // hashed signing key for A2A messages
 	ParentAgentID     *string   `json:"parent_agent_id" gorm:"column:parent_agent_id"`
 	SwarmRole         string    `json:"swarm_role" gorm:"not null;default:'worker'"` // worker | manager | infrastructure
+	SwarmTopology     string    `json:"swarm_topology" gorm:"not null;default:'chain'"` // chain | star | mesh | tree
 	MaxChildAgents    int       `json:"max_child_agents" gorm:"not null;default:0"`
 	Capabilities      JSONBMap  `json:"capabilities" gorm:"type:jsonb;default:'{}'"`
 	AutonomousEnabled bool      `json:"autonomous_enabled" gorm:"not null;default:false"`
@@ -182,6 +183,14 @@ const (
 	SwarmRoleWorker         = "worker"
 	SwarmRoleManager        = "manager"
 	SwarmRoleInfrastructure = "infrastructure"
+)
+
+// SwarmTopology constants
+const (
+	SwarmTopologyChain = "chain"
+	SwarmTopologyStar   = "star"
+	SwarmTopologyMesh   = "mesh"
+	SwarmTopologyTree   = "tree"
 )
 
 // MessageType constants for A2A communication

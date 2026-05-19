@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/config"
 	"github.com/functionfly/functionfly/internal/storage"
 	storagetrustapi "github.com/functionfly/functionfly/internal/storage/trustapi"
 	"github.com/google/uuid"
@@ -280,10 +281,10 @@ func (s *BillingService) CreateCheckoutSession(ctx context.Context, partnerID uu
 	}
 
 	if successURL == "" {
-		successURL = fmt.Sprintf("http://localhost:3000/partners/%s/billing?success=true", partnerID)
+		successURL = fmt.Sprintf("%s/partners/%s/billing?success=true", config.GetFrontendURL(), partnerID)
 	}
 	if cancelURL == "" {
-		cancelURL = fmt.Sprintf("http://localhost:3000/partners/%s/billing?canceled=true", partnerID)
+		cancelURL = fmt.Sprintf("%s/partners/%s/billing?canceled=true", config.GetFrontendURL(), partnerID)
 	}
 
 	params := &stripe.CheckoutSessionParams{

@@ -106,6 +106,7 @@ type MFAChallengeResponse struct {
 type MFADisableRequest struct {
 	Code       string `json:"code,omitempty"`
 	BackupCode string `json:"backup_code,omitempty"`
+	Password   string `json:"password"` // Required for security
 }
 
 // MFADisableResponse represents an MFA disable response

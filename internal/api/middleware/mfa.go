@@ -92,9 +92,10 @@ func (m *MFARequiredMiddleware) RequireMFA(next http.HandlerFunc) http.HandlerFu
 			return
 		}
 
-		// Allow admin access in development without MFA (before session/DB calls so dev works without sessions table)
-		if os.Getenv("NODE_ENV") == "development" || os.Getenv("DEVELOPMENT") == "true" {
-			m.logger.WithFields(logrus.Fields{"user_id": claims.UserID, "email": claims.Email}).Debug("MFA bypassed for development")
+		// MFA_BYPASS_ENABLED is only for emergency access when MFA system is down
+		// It requires a separate secret to be set along with the flag
+		if os.Getenv("MFA_BYPASS_ENABLED") == "true" && os.Getenv("MFA_BYPASS_SECRET") != "" {
+			m.logger.WithFields(logrus.Fields{"user_id": claims.UserID, "email": claims.Email}).Warn("MFA bypassed via MFA_BYPASS_ENABLED - emergency access only")
 			next.ServeHTTP(w, r)
 			return
 		}

@@ -167,7 +167,7 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 			}).Warn("Quota exceeded, blocking execution")
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusPaymentRequired) // 402
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"error": map[string]interface{}{
 					"code":    "QUOTA_EXCEEDED",
 					"message": quotaResult.Reason,
@@ -198,7 +198,7 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				w.Header().Set("Retry-After", "3600")
 				w.WriteHeader(http.StatusTooManyRequests)
-				json.NewEncoder(w).Encode(map[string]interface{}{
+				_ = json.NewEncoder(w).Encode(map[string]interface{}{
 					"error": map[string]interface{}{
 						"code":    "EMBED_RATE_LIMITED",
 						"message": "Embed rate limit exceeded for this origin",
@@ -223,7 +223,7 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 		// Return accepted response for queued execution
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":     "queued",
 			"message":    "Execution queued due to high load",
 			"request_id": r.Header.Get("X-Request-ID"),
@@ -316,8 +316,8 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 		logrus.WithError(err).Error("Failed to record execution")
 	} else {
 		// Async updates
-		go h.updateFunctionPopularity(fn.ID)
-		go h.recordBillingUsageEvent(fn, execRecord, resourceUsage)
+		go func() { _ = h.updateFunctionPopularity(fn.ID) }()
+		go func() { _ = h.recordBillingUsageEvent(fn, execRecord, resourceUsage) }()
 		go h.syncRealtimeUsage(fn, resourceUsage)
 
 		// Record execution for DNA analysis pipeline (fire-and-forget)
@@ -594,11 +594,11 @@ func (h *Handler) generateExecutionID(
 
 	// Ensure input/output are never nil (which would become NULL in DB)
 	inputJSON := sanitizedInput
-	if inputJSON == nil || len(inputJSON) == 0 {
+	if len(inputJSON) == 0 {
 		inputJSON = []byte("null")
 	}
 	outputJSON := sanitizedOutput
-	if outputJSON == nil || len(outputJSON) == 0 {
+	if len(outputJSON) == 0 {
 		outputJSON = []byte("null")
 	}
 
@@ -666,7 +666,7 @@ func (h *Handler) writeErrorResponse(w http.ResponseWriter, executionErr error, 
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(errorResp)
+	_ = json.NewEncoder(w).Encode(errorResp)
 }
 
 // writeSuccessResponse writes a success response for successful executions
@@ -731,7 +731,7 @@ func (h *Handler) writeSuccessResponse(
 		cache.SetNoCacheHeaders(w)
 	}
 
-	json.NewEncoder(w).Encode(successResp)
+	_ = json.NewEncoder(w).Encode(successResp)
 }
 
 // HandleTest handles testing a function with validation data
@@ -845,7 +845,7 @@ func (h *Handler) HandleTest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // HandleGetReplay handles retrieving a shareable execution replay
@@ -888,7 +888,7 @@ func (h *Handler) HandleGetReplay(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // HandleVerifyReplay handles manual verification of a specific execution replay
@@ -942,5 +942,5 @@ func (h *Handler) HandleVerifyReplay(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }

@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, field_validator
 
 from ..providers.manager import get_provider_manager
-from ..providers.base import Message, Role
+from ..models.schemas import ChatMessage as Message, MessageRole as Role
 from ..security.auth import require_api_key, APIKeyInfo
 
 logger = logging.getLogger(__name__)

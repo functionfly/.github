@@ -1,0 +1,63 @@
+{
+  "name": "@functionfly/studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FunctionFly Studio - Electron Desktop App",
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "bun run build && env -u ELECTRON_RUN_AS_NODE xvfb-run -a electron . --disable-gpu --no-sandbox",
+    "build": "bunx tsc",
+    "build:win": "bun run build && bunx electron-builder --win",
+    "build:mac": "bun run build && bunx electron-builder --mac",
+    "build:linux": "bun run build && bunx electron-builder --linux",
+    "build:all": "bun run build && bunx electron-builder -mwl"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "bun": "^1.0.0",
+    "electron": "^42.1.0",
+    "electron-builder": "^26.0.0",
+    "typescript": "^5.8.3"
+  },
+  "build": {
+    "appId": "com.functionfly.studio",
+    "productName": "FunctionFly Studio",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*"
+    ],
+    "extraMetadata": {
+      "main": "dist/main.js"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

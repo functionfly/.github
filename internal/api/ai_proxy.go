@@ -24,7 +24,8 @@ type AIProxyHandler struct {
 func NewAIProxyHandler() *AIProxyHandler {
 	aiURL := os.Getenv("AI_SERVICE_URL")
 	if aiURL == "" {
-		aiURL = "http://localhost:18081" // Default AI service URL
+		logrus.Warn("AI_SERVICE_URL not set - AI proxy will not be available")
+		aiURL = "" // Must be set explicitly
 	}
 
 	return &AIProxyHandler{

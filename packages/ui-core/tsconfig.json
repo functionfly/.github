@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "lib": ["2020", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "strict": false,
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "baseUrl": ".",
+    "paths": {
+      "@functionfly/ui-core": ["./src"],
+      "@functionfly/ui-core/*": ["./src/*"],
+      "@functionfly/ui-graph": ["../ui-graph/src"],
+      "@functionfly/ui-graph/*": ["../ui-graph/src/*"],
+      "@functionfly/ui-agent": ["../ui-agent/src"],
+      "@functionfly/ui-agent/*": ["../ui-agent/src/*"]
+    }
+  },
+  "include": ["src"]
+}

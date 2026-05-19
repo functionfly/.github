@@ -23,7 +23,7 @@ func NewAIServiceClient(baseURL, apiKey string, logger *logrus.Logger) *AIServic
 		logger = logrus.New()
 	}
 	if baseURL == "" {
-		baseURL = "http://localhost:18081"
+		logger.Warn("AI service baseURL is empty - set AI_SERVICE_URL")
 	}
 	return &AIServiceClient{
 		baseURL: baseURL,

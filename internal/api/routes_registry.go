@@ -37,6 +37,7 @@ func registerRegistryRoutes(
 	contentHandler *content.Handler,
 	feedbackHandler *feedbackHandlerPkg.Handler,
 	recommendationHandler *recommendations.Handler,
+	anchoringService drehandler.AnchorServicer,
 ) {
 	// Inline init for registry-specific sub-handlers
 	canaryHandler := registryhandler.NewCanaryHandler(
@@ -46,7 +47,12 @@ func registerRegistryRoutes(
 	versionManager := middleware.NewVersionManager()
 	deprecationHandler := registryhandler.NewDeprecationHandler(versionManager)
 	migrationHandler := registryhandler.NewMigrationHandler()
-	dreHandler := drehandler.NewHandler(registryRepo)
+	var dreHandler *drehandler.Handler
+	if anchoringService != nil {
+		dreHandler = drehandler.NewHandlerWithAnchoring(registryRepo, anchoringService)
+	} else {
+		dreHandler = drehandler.NewHandler(registryRepo)
+	}
 
 	// ── App-based Playground (public) ───────────────────────────────────────
 	// NOTE: uses /app-run/ prefix to avoid collision with registry playground /run/ routes.

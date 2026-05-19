@@ -40,6 +40,11 @@ func (s *EthereumAnchoringService) SetSigningKey(hexKey string) {
 	s.privateKey = hexKey
 }
 
+// IsConfigured returns true if the signing key is set (anchoring is ready).
+func (s *EthereumAnchoringService) IsConfigured() bool {
+	return s.privateKey != ""
+}
+
 // clientForChain returns a cached ethclient for the given chain, dialing if necessary.
 func (s *EthereumAnchoringService) clientForChain(ctx context.Context, chain string) (*ethclient.Client, error) {
 	rpcURL := s.rpcEndpoints[chain]

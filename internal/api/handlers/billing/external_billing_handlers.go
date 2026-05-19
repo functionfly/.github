@@ -645,6 +645,20 @@ func (h *ExternalBillingHandler) GetBillingSystemTypes(w http.ResponseWriter, r 
 			"features":    []string{"invoicing", "subscriptions"},
 		},
 		{
+			"id":          "quickbooks",
+			"name":        "QuickBooks Online",
+			"description": "QuickBooks Online accounting and billing integration",
+			"auth_types":  []string{"oauth2"},
+			"features":    []string{"invoicing", "subscriptions"},
+		},
+		{
+			"id":          "xero",
+			"name":        "Xero",
+			"description": "Xero accounting and billing platform",
+			"auth_types":  []string{"oauth2"},
+			"features":    []string{"invoicing", "subscriptions"},
+		},
+		{
 			"id":          "custom",
 			"name":        "Custom API",
 			"description": "Custom REST API integration",
@@ -706,8 +720,27 @@ func (h *ExternalBillingHandler) testConnection(system *storage.ExternalBillingS
 	case "custom":
 		return h.testCustomConnection(ctx, system.APIEndpoint, apiKey, oauthToken)
 	default:
+		return h.testConnectionWithExporter(ctx, system, oauthToken)
+	}
+}
+
+// testConnectionWithExporter attempts to test connection using the registered exporter
+func (h *ExternalBillingHandler) testConnectionWithExporter(ctx context.Context, system *storage.ExternalBillingSystem, oauthToken string) ConnectionTestResult {
+	if oauthToken == "" && system.APICredentialKey == "" {
+		return ConnectionTestResult{Success: false, Message: "OAuth token or API key is required for connection testing"}
+	}
+
+	exporter, ok := billing.GetExporter(storage.BillingSystemType(system.SystemType))
+	if !ok {
 		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Connection test not implemented for system type: %s", system.SystemType)}
 	}
+
+	system.OAuthToken = oauthToken
+	err := exporter.TestConnection(ctx, system)
+	if err != nil {
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Connection failed: %v", err)}
+	}
+	return ConnectionTestResult{Success: true, Message: fmt.Sprintf("Successfully connected to %s API", system.SystemType)}
 }
 
 // testStripeConnection tests Stripe API connectivity using the balance endpoint
@@ -863,16 +896,42 @@ func (h *ExternalBillingHandler) testZuoraConnection(ctx context.Context, endpoi
 
 // testNetSuiteConnection tests NetSuite connectivity via RESTlet or SOAP
 func (h *ExternalBillingHandler) testNetSuiteConnection(ctx context.Context, endpoint, token, tokenSecret string) ConnectionTestResult {
-	if token == "" {
-		return ConnectionTestResult{Success: false, Message: "Token is required for NetSuite"}
+	if token == "" && tokenSecret == "" {
+		return ConnectionTestResult{Success: false, Message: "Token and secret are required for NetSuite"}
 	}
 	if endpoint == "" {
-		return ConnectionTestResult{Success: false, Message: "Account ID is required for NetSuite"}
+		return ConnectionTestResult{Success: false, Message: "API endpoint is required for NetSuite (e.g., https://account123.suitetalk.api.netsuite.com)"}
 	}
 
-	// NetSuite REST API requires OAuth1 or Token-based authentication
-	// This is a simplified check - full implementation would require OAuth1 signature
-	return ConnectionTestResult{Success: true, Message: "NetSuite configuration validated (full connection test requires OAuth1 implementation)"}
+	testURL := endpoint + "/rest/roles"
+	req, err := http.NewRequestWithContext(ctx, "GET", testURL, nil)
+	if err != nil {
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Failed to create request: %v", err)}
+	}
+
+	req.Header.Set("Authorization", "Bearer "+token+":"+tokenSecret)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Connection failed: %v", err)}
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+
+	switch resp.StatusCode {
+	case 200:
+		return ConnectionTestResult{Success: true, Message: "Successfully connected to NetSuite API"}
+	case 401:
+		return ConnectionTestResult{Success: false, Message: "Authentication failed: Invalid NetSuite credentials"}
+	case 403:
+		return ConnectionTestResult{Success: false, Message: "Access denied: Insufficient permissions for NetSuite"}
+	default:
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("NetSuite API returned HTTP %d: %s", resp.StatusCode, string(body))}
+	}
 }
 
 // testSalesforceConnection tests Salesforce Billing API connectivity

@@ -1,6 +1,5 @@
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -150,7 +149,6 @@ export function LoginForm({
         ...data,
         ...(import.meta.env.PROD && recaptchaToken ? { recaptchaToken } : {}),
       };
-      console.log('[debug] loginData type:', typeof loginData, loginData.constructor.name, JSON.stringify(loginData));
       await login(loginData);
 
       // Check if MFA is required
@@ -259,10 +257,15 @@ export function LoginForm({
         {authMode === 'email' && (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {error && (
-              <FormError
-                error={error}
-                className="animate-in fade-in slide-in-from-top-2 duration-200"
-              />
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="mt-0.5 p-1 rounded-full bg-red-500/20 shrink-0">
+                  <AlertCircle className="w-4 h-4 text-red-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-red-300">Authentication failed</p>
+                  <p className="text-sm text-red-200/80 mt-0.5 break-words">{error}</p>
+                </div>
+              </div>
             )}
 
             {/* Rate Limited Warning */}

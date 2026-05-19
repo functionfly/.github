@@ -459,9 +459,21 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		verificationStatusStr = "pending"
 	}
 
-	// Auto-verify official FunctionFly functions so they are always verified and get FXCERTs
+	// Auto-verify only if the function author is a verified internal namespace
+	// This requires proper authorization check - author must match a verified internal account
+	isVerifiedNamespace := false
 	if strings.EqualFold(req.Author, "functionfly") {
-		// Keep the official registry behavior: always verified on publish.
+		// Only auto-verify if the authenticated user is authorized for this namespace
+		// The user from the authenticated request should match or have admin role
+		if user != nil && (user.Role == "admin" || user.Role == "super_admin" ||
+			strings.EqualFold(user.Email, "functionfly@functionfly.io") ||
+			strings.EqualFold(user.Email, "system@functionfly.io")) {
+			isVerifiedNamespace = true
+		}
+	}
+
+	// Only auto-verify for explicitly authorized namespaces
+	if isVerifiedNamespace {
 		verificationStatusStr = "verified"
 
 		now := time.Now()
@@ -478,12 +490,12 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 			LastVerifiedAt:      &now,
 		}
 		if err := h.repo.CreateOrUpdateVerificationStatus(verifiedStatus); err != nil {
-			logrus.WithError(err).WithField("function_version_id", version.ID).Warn("Failed to auto-verify FunctionFly function")
+			logrus.WithError(err).WithField("function_version_id", version.ID).Warn("Failed to auto-verify internal function")
 		} else {
 			logrus.WithFields(logrus.Fields{
 				"function": fmt.Sprintf("%s/%s", req.Author, req.Name),
 				"version":  req.Version,
-			}).Info("Auto-verified FunctionFly function with FXCERT status")
+			}).Info("Auto-verified internal function with FXCERT status")
 		}
 		// Generate bootstrap FXCERT so History and Certificates show a cert after publish
 		go func() {

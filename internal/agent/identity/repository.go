@@ -301,3 +301,37 @@ func (r *Repository) CreateFunctionPurchase(ctx context.Context, purchase *Funct
 	purchase.UpdatedAt = time.Now()
 	return r.db.WithContext(ctx).Create(purchase).Error
 }
+
+// UpdateSwarmRole updates the swarm role of an agent
+func (r *Repository) UpdateSwarmRole(ctx context.Context, agentID string, swarmRole string) error {
+	result := r.db.WithContext(ctx).Model(&AgentIdentity{}).
+		Where("agent_id = ?", agentID).
+		Updates(map[string]interface{}{
+			"swarm_role": swarmRole,
+			"updated_at":  time.Now(),
+		})
+	if result.Error != nil {
+		return fmt.Errorf("failed to update swarm role: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("agent not found: %s", agentID)
+	}
+	return nil
+}
+
+// UpdateSwarmTopology updates the swarm topology of an agent
+func (r *Repository) UpdateSwarmTopology(ctx context.Context, agentID string, topology string) error {
+	result := r.db.WithContext(ctx).Model(&AgentIdentity{}).
+		Where("agent_id = ?", agentID).
+		Updates(map[string]interface{}{
+			"swarm_topology": topology,
+			"updated_at":      time.Now(),
+		})
+	if result.Error != nil {
+		return fmt.Errorf("failed to update swarm topology: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("agent not found: %s", agentID)
+	}
+	return nil
+}

@@ -255,3 +255,50 @@ func (s *Service) GetDelegationDepth(ctx context.Context, agentID string) (int, 
 
 	return depth, nil
 }
+
+// ReassignRole updates the swarm role of an agent
+func (s *Service) ReassignRole(ctx context.Context, agentID string, newRole string) error {
+	validRoles := map[string]bool{
+		identity.SwarmRoleWorker:         true,
+		identity.SwarmRoleManager:        true,
+		identity.SwarmRoleInfrastructure: true,
+	}
+	if !validRoles[newRole] {
+		return fmt.Errorf("invalid swarm role: %s (must be worker, manager, or infrastructure)", newRole)
+	}
+
+	agent, err := s.identityRepo.GetAgent(ctx, agentID)
+	if err != nil {
+		return fmt.Errorf("agent not found: %w", err)
+	}
+
+	if agent.SwarmRole == newRole {
+		return nil // No change needed
+	}
+
+	return s.identityRepo.UpdateSwarmRole(ctx, agentID, newRole)
+}
+
+// ReshapeSwarm updates the swarm topology of an agent
+func (s *Service) ReshapeSwarm(ctx context.Context, agentID string, newTopology string) error {
+	validTopologies := map[string]bool{
+		identity.SwarmTopologyChain: true,
+		identity.SwarmTopologyStar:  true,
+		identity.SwarmTopologyMesh:  true,
+		identity.SwarmTopologyTree:  true,
+	}
+	if !validTopologies[newTopology] {
+		return fmt.Errorf("invalid swarm topology: %s (must be chain, star, mesh, or tree)", newTopology)
+	}
+
+	agent, err := s.identityRepo.GetAgent(ctx, agentID)
+	if err != nil {
+		return fmt.Errorf("agent not found: %w", err)
+	}
+
+	if agent.SwarmTopology == newTopology {
+		return nil // No change needed
+	}
+
+	return s.identityRepo.UpdateSwarmTopology(ctx, agentID, newTopology)
+}

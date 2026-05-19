@@ -1,0 +1,108 @@
+{
+  "name": "postgres-connector",
+  "version": "1.6.0",
+  "display_name": "PostgreSQL Connector",
+  "description": "Connect to PostgreSQL databases directly from your workflows. Execute queries, manage transactions, and sync data between services. Supports connection pooling and query caching.",
+  "author": {
+    "name": "FunctionFly Team",
+    "email": "plugins@functionfly.com",
+    "website": "https://functionfly.com"
+  },
+  "license": "MIT",
+  "runtime": "nodejs",
+  "entry_point": "index.js",
+  "category": "infrastructure",
+  "tags": ["postgresql", "database", "sql", "infrastructure", "data"],
+  "homepage": "https://functionfly.com/plugins/postgres",
+  "repository": "https://github.com/functionfly/plugins",
+
+  "permissions": [
+    {
+      "type": "api",
+      "action": "write",
+      "resource": "database",
+      "description": "Execute write queries"
+    },
+    {
+      "type": "api",
+      "action": "read",
+      "resource": "database",
+      "description": "Execute read queries"
+    },
+    {
+      "type": "api",
+      "action": "write",
+      "resource": "database",
+      "description": "Execute transaction commands"
+    }
+  ],
+
+  "endpoints": [
+    {
+      "path": "/query",
+      "method": "POST",
+      "handler": "queryHandler",
+      "description": "Execute a SQL query"
+    },
+    {
+      "path": "/transaction",
+      "method": "POST",
+      "handler": "transactionHandler",
+      "description": "Execute a transaction"
+    },
+    {
+      "path": "/pool/status",
+      "method": "GET",
+      "handler": "poolStatusHandler",
+      "description": "Get connection pool status"
+    }
+  ],
+
+  "config_schema": {
+    "host": {
+      "type": "string",
+      "required": true,
+      "description": "PostgreSQL host"
+    },
+    "port": {
+      "type": "number",
+      "default": 5432,
+      "description": "PostgreSQL port"
+    },
+    "database": {
+      "type": "string",
+      "required": true,
+      "description": "Database name"
+    },
+    "username": {
+      "type": "string",
+      "required": true,
+      "description": "Database username"
+    },
+    "password": {
+      "type": "string",
+      "required": true,
+      "secret": true,
+      "description": "Database password"
+    },
+    "pool_size": {
+      "type": "number",
+      "default": 10,
+      "description": "Connection pool size"
+    },
+    "ssl_mode": {
+      "type": "string",
+      "default": "require",
+      "description": "SSL mode"
+    }
+  },
+
+  "sandbox": {
+    "tier": "worker",
+    "cpu_limit": 1,
+    "memory_limit_mb": 512,
+    "timeout_seconds": 60,
+    "max_instances": 2,
+    "allowed_domains": []
+  }
+}

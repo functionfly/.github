@@ -9,6 +9,8 @@ import (
 	"context"
 	"sync"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 // PooledInstance stub (returned by pool.Get in cgo build; stub Get returns error).
@@ -53,6 +55,11 @@ func (p *InstancePool) Put(pi *PooledInstance) error {
 	return nil
 }
 
+// Close is a no-op for the stub pool.
+func (p *InstancePool) Close() error {
+	return nil
+}
+
 // SimpleInstancePool stub when built without CGO.
 type SimpleInstancePool struct {
 	mu sync.Mutex
@@ -61,6 +68,11 @@ type SimpleInstancePool struct {
 // NewSimpleInstancePool returns a stub simple pool when CGO is disabled.
 func NewSimpleInstancePool(factory InstanceFactory, maxSize int) *SimpleInstancePool {
 	return &SimpleInstancePool{}
+}
+
+// Close is a no-op for the stub simple pool.
+func (p *SimpleInstancePool) Close() error {
+	return nil
 }
 
 // DeterministicConfig stub (same shape as cgo version).
@@ -111,4 +123,13 @@ func NewDeterministicExecutor(pool *InstancePool, config *DeterministicConfig) *
 // Execute returns an error when CGO is disabled (WASM execution not available).
 func (e *DeterministicExecutor) Execute(ctx context.Context, tenantID, functionID, executionID string, runtimeType string, input []byte) (*DeterministicResult, error) {
 	return nil, errWasmNotAvailable
+}
+
+// PerTenantPools stub - not available without CGO
+var PerTenantPools *InstancePool
+
+// InitPoolsWithConfig is a no-op stub for non-CGO builds.
+func InitPoolsWithConfig(factory InstanceFactory, poolSize int, maxInstanceAge time.Duration) {
+	// No-op: WASM pools not available without CGO
+	logrus.Warn("InitPoolsWithConfig: WASM pools not available without CGO")
 }

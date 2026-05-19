@@ -23,14 +23,14 @@ type DeferredRevenueResponse struct {
 	TenantID            uuid.UUID `json:"tenant_id"`
 	Period              string    `json:"period"`
 	OpeningBalanceCents int       `json:"opening_balance_cents"`
-	NewDeferredCents     int       `json:"new_deferred_cents"`
+	NewDeferredCents    int       `json:"new_deferred_cents"`
 	RecognizedCents     int       `json:"recognized_cents"`
 	ClosingBalanceCents int       `json:"closing_balance_cents"`
 }
 
 type RecognizedRevenueResponse struct {
 	TenantID          uuid.UUID `json:"tenant_id"`
-	Period           string    `json:"period"`
+	Period            string    `json:"period"`
 	SubscriptionCents int       `json:"subscription_revenue_cents"`
 	UsageCents        int       `json:"usage_revenue_cents"`
 	OneTimeCents      int       `json:"one_time_revenue_cents"`
@@ -56,7 +56,7 @@ type RecognizeScheduleRequest struct {
 }
 
 type AllocationRequestInput struct {
-	InvoiceID          string           `json:"invoice_id"`
+	InvoiceID          string          `json:"invoice_id"`
 	InvoiceAmountCents int             `json:"invoice_amount_cents"`
 	Currency           string          `json:"currency"`
 	LineItems          []LineItemInput `json:"line_items"`
@@ -75,7 +75,7 @@ type LineItemInput struct {
 
 type AllocationResponse struct {
 	PerformanceObligationIDs []uuid.UUID `json:"performance_obligation_ids"`
-	ScheduleCount           int         `json:"schedule_count"`
+	ScheduleCount            int         `json:"schedule_count"`
 }
 
 func (h *RevenueRecognitionHandler) HandleGetDeferredRevenue(w http.ResponseWriter, r *http.Request) {
@@ -130,7 +130,7 @@ func (h *RevenueRecognitionHandler) HandleGetRecognizedRevenue(w http.ResponseWr
 
 	response := RecognizedRevenueResponse{
 		TenantID:          claims.TenantID,
-		Period:           period,
+		Period:            period,
 		SubscriptionCents: summary.SubscriptionRevenueCents,
 		UsageCents:        summary.UsageRevenueCents,
 		OneTimeCents:      summary.OneTimeRevenueCents,
@@ -284,10 +284,16 @@ func (h *RevenueRecognitionHandler) HandleAllocateRevenue(w http.ResponseWriter,
 		return
 	}
 
+	obligationIDs, err := h.svc.GetPerformanceObligationIDsByInvoice(r.Context(), invoiceID)
+	if err != nil {
+		obligationIDs = []uuid.UUID{}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(AllocationResponse{
-		ScheduleCount: len(lineItems),
+		PerformanceObligationIDs: obligationIDs,
+		ScheduleCount:            len(lineItems),
 	})
 }
 
@@ -307,7 +313,7 @@ func (h *RevenueRecognitionHandler) HandleGetUnbilledRevenue(w http.ResponseWrit
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"tenant_id":             claims.TenantID,
+		"tenant_id":              claims.TenantID,
 		"unbilled_revenue_cents": unbilled,
 	})
 }

@@ -78,3 +78,41 @@ type CreateBundleCheckoutRequest struct {
 type ConvertToPaidRequest struct {
 	BundleID string `json:"bundle_id"`
 }
+
+// DeployBundleRequest for initiating a bundle deployment
+type DeployBundleRequest struct {
+	BundleSlug string `json:"bundle_slug"`
+	Region     string `json:"region"`
+}
+
+// DeploymentStepResponse represents a single step in the deployment pipeline
+type DeploymentStepResponse struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Status      string `json:"status"` // 'pending', 'in_progress', 'completed', 'failed'
+	Error       string `json:"error,omitempty"`
+}
+
+// DeploymentResponse is the response for bundle deployment operations
+type DeploymentResponse struct {
+	DeploymentID string                  `json:"deployment_id"`
+	Status       string                  `json:"status"` // 'pending', 'in_progress', 'completed', 'failed'
+	Message      string                  `json:"message,omitempty"`
+	AppID       string                  `json:"app_id,omitempty"`
+	BackendID   string                  `json:"backend_id,omitempty"`
+	Steps       []DeploymentStepResponse `json:"steps,omitempty"`
+}
+
+// DeploymentStatusResponse is the response for deployment status queries
+type DeploymentStatusResponse struct {
+	DeploymentID string                  `json:"deployment_id"`
+	Status       string                  `json:"status"` // 'pending', 'in_progress', 'completed', 'failed'
+	Message      string                  `json:"message,omitempty"`
+	Progress     int                     `json:"progress"`
+	CurrentStep  string                  `json:"current_step,omitempty"`
+	Steps        []DeploymentStepResponse `json:"steps,omitempty"`
+	Error        string                  `json:"error,omitempty"`
+	AppID        string                  `json:"app_id,omitempty"`
+	BackendID    string                  `json:"backend_id,omitempty"`
+}

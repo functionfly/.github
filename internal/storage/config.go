@@ -369,7 +369,7 @@ func LoadTenantDatabaseConfig() *TenantDatabaseConfig {
 
 	cfg := &TenantDatabaseConfig{
 		Enabled:         enabled,
-		Host:            getEnvOrDefault("TENANT_DB_HOST", "localhost"),
+		Host:            getEnvOrDefault("TENANT_DB_HOST", ""), // Must be set explicitly in production
 		Port:            parseEnvInt("TENANT_DB_PORT", 5432),
 		User:            getEnvOrDefault("TENANT_DB_USER", "postgres"),
 		Password:        os.Getenv("TENANT_DB_PASSWORD"),

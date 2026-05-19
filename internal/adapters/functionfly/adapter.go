@@ -145,7 +145,13 @@ func (a *FunctionFlyAdapter) HealthCheck(ctx context.Context, backend *storage.B
 		if attempt == 0 && (strings.Contains(errStr, "EOF") || strings.Contains(errStr, "connection reset") || strings.Contains(errStr, "broken pipe")) {
 			time.Sleep(100 * time.Millisecond)
 			// Recreate request for retry (body is nil for GET, so safe to reuse)
-			req, _ = http.NewRequestWithContext(ctx, http.MethodGet, healthURL, nil)
+			newReq, newReqErr := http.NewRequestWithContext(ctx, http.MethodGet, healthURL, nil)
+			if newReqErr != nil {
+				// If we can't create a new request, return the original error
+				doErr = newReqErr
+				break
+			}
+			req = newReq
 			if signErr := a.SignRequest(req, backend, time.Now()); signErr != nil {
 				return &common.HealthCheckResult{
 					OK:           false,
@@ -343,10 +349,17 @@ func (a *FunctionFlyAdapter) BindRoutes(ctx context.Context, deploymentID string
 	return nil
 }
 
-// GetDeploymentStatus returns success for any non-empty deploymentID (edge serves by app name).
+// GetDeploymentStatus validates the deployment ID format.
+// For FunctionFly Edge, deployment is instant so any valid app-name deploymentID succeeds.
 func (a *FunctionFlyAdapter) GetDeploymentStatus(ctx context.Context, deploymentID string, providerConfig map[string]interface{}) (common.DeploymentStatus, error) {
 	if deploymentID == "" {
 		return common.DeploymentStatusFailed, fmt.Errorf("deployment ID is required")
+	}
+	if len(deploymentID) > AppNameMaxLen {
+		return common.DeploymentStatusFailed, fmt.Errorf("deployment ID exceeds maximum length of %d", AppNameMaxLen)
+	}
+	if !appNameRegex.MatchString(deploymentID) {
+		return common.DeploymentStatusFailed, fmt.Errorf("deployment ID contains invalid characters (must match %s)", appNamePatternStr)
 	}
 	return common.DeploymentStatusSuccess, nil
 }

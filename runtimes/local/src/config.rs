@@ -156,8 +156,8 @@ pub struct Config {
     #[arg(long, default_value = "30")]
     pub external_api_timeout_secs: u64,
 
-    /// MicroVM orchestrator URL (for Enterprise tier; default port 9091)
-    #[arg(long, default_value = "http://localhost:9091")]
+    /// MicroVM orchestrator URL (for Enterprise tier; must be set explicitly)
+    #[arg(long)]
     pub orchestrator_url: String,
 
     /// Tenant UUID forwarded to the MicroVM orchestrator for isolation and billing.
@@ -272,8 +272,8 @@ pub struct Config {
     #[arg(long, default_value = "false")]
     pub yara_scan_enabled: bool,
 
-    /// URL of the YARA service.
-    #[arg(long, default_value = "http://localhost:5000")]
+    /// URL of the YARA service (must be set explicitly when yara_scan_enabled=true)
+    #[arg(long)]
     pub yara_service_url: String,
 
     /// YARA scanner timeout in seconds.
@@ -475,7 +475,7 @@ impl Default for Config {
             ai_models_dir: "./models".to_string(),
             external_api_rate_limit: 60,
             external_api_timeout_secs: 30,
-            orchestrator_url: "http://localhost:9091".to_string(),
+            orchestrator_url: String::new(), // Must be set explicitly
             orchestrator_timeout_secs: 60,
             enterprise_enabled: false,
             tenant_id: None,
@@ -500,7 +500,7 @@ impl Default for Config {
             cpython_stdlib_path: "./runtimes/cpython-wasi/lib".to_string(),
             daemon_mode: false,
             yara_scan_enabled: false,
-            yara_service_url: "http://localhost:5000".to_string(),
+            yara_service_url: String::new(), // Must be set explicitly when yara_scan_enabled=true
             yara_timeout_secs: 5,
             yara_fail_open: true,
             python_pool_max_concurrent: 8,

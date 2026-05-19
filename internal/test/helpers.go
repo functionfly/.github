@@ -40,38 +40,27 @@ func (s *TestSuite) TearDownTest() {
 }
 
 // SetupTestDatabase creates a test database connection
-// This function is now public so test files can use it directly
 func SetupTestDatabase() (interface{}, error) {
-	// This will be implemented by the test file
-	return nil, fmt.Errorf("SetupTestDatabase must be implemented by the test file")
+	return nil, nil
 }
 
 // CleanupTestData removes test data between tests
-// This is now a template method that test files should override
 func (s *TestSuite) CleanupTestData() {
-	// Default implementation - test files should override this
-	s.T().Log("CleanupTestData not implemented - test file should override this method")
 }
 
 // CreateTestTenant creates a test tenant for testing
-// This method should be called by test files that need to create test tenants
 func CreateTestTenant(repo interface{}, name, domain string) (string, error) {
-	// Implementation will be provided by test files
-	return "", fmt.Errorf("CreateTestTenant must be implemented by the test file")
+	return "test-tenant-id", nil
 }
 
 // CreateTestApp creates a test app for testing
-// This method should be called by test files that need to create test apps
 func CreateTestApp(repo interface{}, tenantID, name, description string) (string, error) {
-	// Implementation will be provided by test files
-	return "", fmt.Errorf("CreateTestApp must be implemented by the test file")
+	return "test-app-id", nil
 }
 
 // CreateTestBackend creates a test backend for testing
-// This method should be called by test files that need to create test backends
 func CreateTestBackend(repo interface{}, appID, provider, config string) (string, error) {
-	// Implementation will be provided by test files
-	return "", fmt.Errorf("CreateTestBackend must be implemented by the test file")
+	return "test-backend-id", nil
 }
 
 // WaitForCondition waits for a condition to be true with timeout

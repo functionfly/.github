@@ -1,0 +1,84 @@
+{
+  "name": "rate-limiter",
+  "version": "1.1.0",
+  "display_name": "Rate Limiter",
+  "description": "Add rate limiting to your workflows with configurable limits per endpoint, IP, or user. Supports sliding window, token bucket, and fixed window algorithms.",
+  "author": {
+    "name": "FunctionFly Team",
+    "email": "plugins@functionfly.com",
+    "website": "https://functionfly.com"
+  },
+  "license": "MIT",
+  "runtime": "nodejs",
+  "entry_point": "index.js",
+  "category": "infrastructure",
+  "tags": ["rate-limiting", "security", "infrastructure", "throttling"],
+  "homepage": "https://functionfly.com/plugins/rate-limiter",
+  "repository": "https://github.com/functionfly/plugins",
+
+  "permissions": [
+    {
+      "type": "api",
+      "action": "write",
+      "resource": "rate_limits",
+      "description": "Configure rate limits"
+    },
+    {
+      "type": "api",
+      "action": "read",
+      "resource": "rate_limits",
+      "description": "Check rate limit status"
+    }
+  ],
+
+  "hooks": {
+    "pre_request": "hooks/pre-request.js"
+  },
+
+  "endpoints": [
+    {
+      "path": "/limit/check",
+      "method": "POST",
+      "handler": "checkLimitHandler",
+      "description": "Check if request is within limits"
+    },
+    {
+      "path": "/limit/:key/reset",
+      "method": "POST",
+      "handler": "resetLimitHandler",
+      "description": "Reset rate limit for a key"
+    }
+  ],
+
+  "config_schema": {
+    "algorithm": {
+      "type": "string",
+      "default": "token_bucket",
+      "description": "Rate limiting algorithm: 'token_bucket', 'sliding_window', or 'fixed_window'"
+    },
+    "default_limit": {
+      "type": "number",
+      "default": 100,
+      "description": "Default requests per window"
+    },
+    "window_size_seconds": {
+      "type": "number",
+      "default": 60,
+      "description": "Time window size in seconds"
+    },
+    "redis_url": {
+      "type": "string",
+      "required": false,
+      "description": "Redis URL for distributed rate limiting"
+    }
+  },
+
+  "sandbox": {
+    "tier": "wasm",
+    "cpu_limit": 0.25,
+    "memory_limit_mb": 64,
+    "timeout_seconds": 10,
+    "max_instances": 5,
+    "allowed_domains": []
+  }
+}

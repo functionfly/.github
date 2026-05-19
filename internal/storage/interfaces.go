@@ -166,6 +166,7 @@ type Repository interface {
 
 	RecordUsageEvent(ctx context.Context, event *UsageEvent) error
 	GetUsageByTenant(tenantID uuid.UUID, eventType string, start, end time.Time) ([]*UsageRollup, error)
+	GetUsageByTenantByFunction(tenantID uuid.UUID, start, end time.Time) ([]*FunctionUsageRollup, error)
 
 	CreateCoupon(ctx context.Context, coupon *Coupon) (*Coupon, error)
 	ListCoupons() ([]*Coupon, error)

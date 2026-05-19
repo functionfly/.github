@@ -1,6 +1,7 @@
 package functions
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"regexp"
@@ -9,17 +10,27 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/codeparser"
 	"github.com/functionfly/functionfly/internal/storage"
+	registryrepo "github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
-type PasteHandler struct {
-	repo storage.Repository
+func nullString(s string) sql.NullString {
+	if s == "" {
+		return sql.NullString{Valid: false}
+	}
+	return sql.NullString{String: s, Valid: true}
 }
 
-func NewPasteHandler(repo storage.Repository) *PasteHandler {
+type PasteHandler struct {
+	repo        storage.Repository
+	registryRepo *registryrepo.RegistryRepository
+}
+
+func NewPasteHandler(repo storage.Repository, registryRepo *registryrepo.RegistryRepository) *PasteHandler {
 	return &PasteHandler{
-		repo: repo,
+		repo:        repo,
+		registryRepo: registryRepo,
 	}
 }
 
@@ -45,9 +56,10 @@ type CreateFromCodeRequest struct {
 }
 
 type CreateFunctionInput struct {
-	Name     string `json:"name" validate:"required,min=1,max=100"`
-	Code     string `json:"code" validate:"required"`
-	Language string `json:"language" validate:"required"`
+	Name        string `json:"name" validate:"required,min=1,max=100"`
+	Code        string `json:"code" validate:"required"`
+	Language    string `json:"language" validate:"required"`
+	Description string `json:"description,omitempty"`
 }
 
 type CreateFromCodeResponse struct {
@@ -266,15 +278,51 @@ func (h *PasteHandler) HandleCreateFromCode(w http.ResponseWriter, r *http.Reque
 				Status: createdFn.Status,
 			})
 		} else {
-			failed = append(failed, FailedFunction{
-				Name:  sanitizedName,
-				Error: "Public registry functions are not yet available via API",
-			})
+			function := &registryrepo.RegistryFunction{
+				Author:       tenantID.String(),
+				Name:         sanitizedName,
+				Title:        nullString(fn.Name),
+				Description:  nullString(fn.Description),
+				Visibility:   "public",
+				Providers:    providers,
+				Region:       region,
+				Code:         fn.Code,
+				Status:       "draft",
+				TenantID:     &tenantID,
+				OwnerUserID:  &user.UserID,
+				Capabilities: json.RawMessage(`["code_execution"]`),
+			}
+
+			if fn.Language != "" {
+				function.Tags = json.RawMessage(`["` + fn.Language + `"]`)
+			}
+
+			err := h.registryRepo.CreateFunction(function)
+			if err != nil {
+				logrus.WithFields(logrus.Fields{
+					"name":      sanitizedName,
+					"tenant_id": tenantID,
+					"error":     err.Error(),
+				}).Error("Failed to create public function")
+				failed = append(failed, FailedFunction{
+					Name:  sanitizedName,
+					Error: "Failed to create public function",
+				})
+				continue
+			}
+
 			logrus.WithFields(logrus.Fields{
-				"name":      sanitizedName,
-				"tenant_id": tenantID,
-				"reason":    "public_not_implemented",
-			}).Warn("Public function creation attempted but not implemented")
+				"function_id": function.ID,
+				"name":       sanitizedName,
+				"tenant_id":  tenantID,
+				"language":   fn.Language,
+			}).Info("Public function created from code paste")
+
+			created = append(created, CreatedFunction{
+				ID:     function.ID.String(),
+				Name:   function.Name,
+				Status: function.Status,
+			})
 		}
 	}
 

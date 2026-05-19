@@ -193,6 +193,76 @@ func (h *SwarmHandler) GetParent(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ReassignRoleRequest represents a request to reassign an agent's swarm role
+type ReassignRoleRequest struct {
+	SwarmRole string `json:"swarm_role" validate:"required"`
+}
+
+// ReassignRole handles PUT /v1/agent/:id/role
+func (h *SwarmHandler) ReassignRole(w http.ResponseWriter, r *http.Request) {
+	agentID := mux.Vars(r)["id"]
+	if !h.requireAgentTenant(w, r, agentID) {
+		return
+	}
+
+	var req ReassignRoleRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		return
+	}
+
+	if req.SwarmRole == "" {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "swarm_role is required")
+		return
+	}
+
+	if err := h.swarmService.ReassignRole(r.Context(), agentID, req.SwarmRole); err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok":        true,
+		"agent_id":  agentID,
+		"swarm_role": req.SwarmRole,
+	})
+}
+
+// ReshapeSwarmRequest represents a request to reshape the swarm topology
+type ReshapeSwarmRequest struct {
+	Topology string `json:"topology" validate:"required"`
+}
+
+// ReshapeSwarm handles PUT /v1/agent/:id/topology
+func (h *SwarmHandler) ReshapeSwarm(w http.ResponseWriter, r *http.Request) {
+	agentID := mux.Vars(r)["id"]
+	if !h.requireAgentTenant(w, r, agentID) {
+		return
+	}
+
+	var req ReshapeSwarmRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		return
+	}
+
+	if req.Topology == "" {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "topology is required")
+		return
+	}
+
+	if err := h.swarmService.ReshapeSwarm(r.Context(), agentID, req.Topology); err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok":        true,
+		"agent_id":  agentID,
+		"topology":  req.Topology,
+	})
+}
+
 // SendMessage handles POST /v1/agent/:id/message
 // Requires X-Agent-Signing-Key header for message authentication
 func (h *SwarmHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
@@ -1098,6 +1168,10 @@ func (h *SwarmHandler) RegisterRoutes(router *mux.Router, basePath string, authM
 	logrus.Infof("SwarmHandler: Registered route POST %s/agent/{id}/spawn", basePath)
 	agent.HandleFunc("/{id}/children", auth(h.GetChildren)).Methods(http.MethodGet)
 	agent.HandleFunc("/{id}/parent", auth(h.GetParent)).Methods(http.MethodGet)
+	agent.HandleFunc("/{id}/role", auth(h.ReassignRole)).Methods(http.MethodPut)
+	logrus.Infof("SwarmHandler: Registered route PUT %s/agent/{id}/role", basePath)
+	agent.HandleFunc("/{id}/topology", auth(h.ReshapeSwarm)).Methods(http.MethodPut)
+	logrus.Infof("SwarmHandler: Registered route PUT %s/agent/{id}/topology", basePath)
 	agent.HandleFunc("/{id}/message", auth(h.SendMessage)).Methods(http.MethodPost)
 	agent.HandleFunc("/{id}/inbox", auth(h.GetInbox)).Methods(http.MethodGet)
 	agent.HandleFunc("/{id}/wallet", auth(h.GetWallet)).Methods(http.MethodGet)

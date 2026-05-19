@@ -203,26 +203,29 @@ func (s *UpcomingRenewalScheduler) isRenewalOnDate(sub *storage.Subscription, ta
 
 // calculateRenewalAmount calculates the renewal amount in USD
 func (s *UpcomingRenewalScheduler) calculateRenewalAmount(sub *storage.Subscription, tenant *storage.Tenant) float64 {
-	// If subscription has a pricing tier, get the price from that
-	if sub.PricingTierID != uuid.Nil && sub.PricingTier != nil {
-		return float64(sub.PricingTier.PriceCents) / 100.0
+	if sub.PricingTierID != uuid.Nil {
+		if sub.PricingTier != nil {
+			return float64(sub.PricingTier.PriceCents) / 100.0
+		}
+		tier, err := s.getPricingTier(sub.PricingTierID)
+		if err == nil && tier != nil {
+			return float64(tier.PriceCents) / 100.0
+		}
 	}
 
-	// Default to checking Stripe subscription if available
 	if sub.StripeSubscriptionID != "" {
-		// In a real implementation, you might want to fetch from Stripe API
-		// For now, return a placeholder that will be resolved at billing time
-		return 0.0 // Unknown - will be resolved by Stripe
+		return 0.0
 	}
 
 	return 0.0
 }
 
-// getPricingTier retrieves a pricing tier by ID (helper to avoid import cycles)
+// getPricingTier retrieves a pricing tier by ID
 func (s *UpcomingRenewalScheduler) getPricingTier(tierID uuid.UUID) (*storage.PricingTier, error) {
-	// This is a simplified implementation
-	// In production, you'd use a proper repository method
-	return nil, fmt.Errorf("not implemented")
+	if tierID == uuid.Nil {
+		return nil, fmt.Errorf("tier ID is nil")
+	}
+	return s.repo.GetPricingTierByID(tierID)
 }
 
 // SendImmediateRenewalNotice sends an immediate renewal notice for a specific subscription

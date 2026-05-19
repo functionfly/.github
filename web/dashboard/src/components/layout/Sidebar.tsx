@@ -24,6 +24,7 @@ import { useOnboardingStore } from '@/stores/onboardingStore';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Activity,
+  Brain,
   ArrowRight,
   Award,
   BarChart3,
@@ -40,6 +41,7 @@ import {
   Code,
   Command,
   Database,
+  DollarSign,
   Dna,
   Flame,
   GitFork,
@@ -65,6 +67,7 @@ import {
   TrendingUp,
   Users,
   Wallet,
+  Wand,
   Workflow,
   X,
   Zap,
@@ -180,6 +183,14 @@ const navigationSections: NavSection[] = [
         description: 'AI-powered function generation',
       },
       {
+        path: '/studio',
+        label: 'Studio',
+        icon: Wand,
+        badge: 'beta',
+        shortcut: 'S',
+        description: 'AI-powered code & function studio',
+      },
+      {
         path: '/frg',
         label: 'Graph Editor',
         icon: Network,
@@ -282,6 +293,13 @@ const navigationSections: NavSection[] = [
         label: 'Usage',
         icon: PieChart,
         description: 'Resource usage & cost analytics',
+      },
+      {
+        path: '/memory',
+        label: 'Memory',
+        icon: Brain,
+        badge: 'new',
+        description: 'AI memory & knowledge systems',
       },
       {
         path: '/wallet',

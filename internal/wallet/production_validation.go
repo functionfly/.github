@@ -7,10 +7,26 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const defaultJWTSecret = "functionfly-jwt-secret-key-2026"
+
+var jwtSecretFromEnv = os.Getenv("JWT_SECRET")
+
+func getDefaultJWTSecret() string {
+	if jwtSecretFromEnv != "" {
+		return jwtSecretFromEnv
+	}
+	return defaultJWTSecret
+}
+
+// InProduction returns true if running in production mode
+func InProduction() bool {
+	return os.Getenv("PRODUCTION") == "true" || os.Getenv("ENVIRONMENT") == "production"
+}
+
 // ProductionSecurityValidation validates all security-related environment variables
 // and configuration for production deployment
 func ProductionSecurityValidation() error {
-	isProd := os.Getenv("PRODUCTION") == "true" || os.Getenv("ENVIRONMENT") == "production"
+	isProd := InProduction()
 
 	if !isProd {
 		logrus.Info("Running in non-production mode - security validations relaxed")
@@ -40,7 +56,7 @@ func ProductionSecurityValidation() error {
 
 	// 4. JWT_SECRET should be strong (not default)
 	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" || jwtSecret == "functionfly-jwt-secret-key-2026" {
+	if jwtSecret == "" || jwtSecret == getDefaultJWTSecret() {
 		errors = append(errors, "JWT_SECRET must be set to a strong random value in production (not the default)")
 	}
 
@@ -120,9 +136,9 @@ func SecurityChecklist() map[string]bool {
 		"API_SHARED_SECRET_set":     os.Getenv("API_SHARED_SECRET") != "",
 		"WALLET_ENCRYPTION_KEY_set": GetWalletEncryption().IsEnabled(),
 		"STRIPE_WEBHOOK_SECRET_set": os.Getenv("STRIPE_WEBHOOK_SECRET") != "",
-		"JWT_SECRET_set":            os.Getenv("JWT_SECRET") != "" && os.Getenv("JWT_SECRET") != "functionfly-jwt-secret-key-2026",
+		"JWT_SECRET_set":            os.Getenv("JWT_SECRET") != "" && os.Getenv("JWT_SECRET") != getDefaultJWTSecret(),
 		"DATABASE_SSL_configured":   contains(os.Getenv("DATABASE_URL"), "sslmode=require") || contains(os.Getenv("DATABASE_URL"), "sslmode=verify"),
 		"CORS_ORIGINS_set":          os.Getenv("CORS_ALLOWED_ORIGINS") != "" && os.Getenv("CORS_ALLOWED_ORIGINS") != "*",
-		"PRODUCTION_flag_set":       os.Getenv("PRODUCTION") == "true" || os.Getenv("ENVIRONMENT") == "production",
+		"PRODUCTION_flag_set":       InProduction(),
 	}
 }

@@ -33,14 +33,45 @@ type RateLimiter struct {
 	requests map[string][]time.Time
 	window   time.Duration
 	limit    int
+	lastCleanup time.Time
 }
 
 // NewRateLimiter creates a new rate limiter
 func NewRateLimiter(window time.Duration, limit int) *RateLimiter {
-	return &RateLimiter{
-		requests: make(map[string][]time.Time),
-		window:   window,
-		limit:    limit,
+	rl := &RateLimiter{
+		requests:    make(map[string][]time.Time),
+		window:      window,
+		limit:       limit,
+		lastCleanup: time.Now(),
+	}
+	go rl.cleanupLoop()
+	return rl
+}
+
+func (rl *RateLimiter) cleanupLoop() {
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+	for {
+		<-ticker.C
+		rl.cleanup()
+	}
+}
+
+func (rl *RateLimiter) cleanup() {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	now := time.Now()
+	windowStart := now.Add(-rl.window)
+	for key, timestamps := range rl.requests {
+		validCount := 0
+		for _, ts := range timestamps {
+			if ts.After(windowStart) {
+				validCount++
+			}
+		}
+		if validCount == 0 {
+			delete(rl.requests, key)
+		}
 	}
 }
 
@@ -52,9 +83,8 @@ func (rl *RateLimiter) Allow(key string) bool {
 	now := time.Now()
 	windowStart := now.Add(-rl.window)
 
-	// Clean up old entries
+	// Clean up old entries for this key
 	if timestamps, exists := rl.requests[key]; exists {
-		// Filter out timestamps outside the window
 		validTimestamps := make([]time.Time, 0, len(timestamps))
 		for _, ts := range timestamps {
 			if ts.After(windowStart) {
@@ -106,15 +136,8 @@ func (sm *SecurityMiddleware) RequireHMACSignature(next http.HandlerFunc) http.H
 		// Get the shared secret from environment
 		sharedSecret := os.Getenv("API_SHARED_SECRET")
 		if sharedSecret == "" {
-			// Development: allow and log; production: reject (missing secret is a misconfiguration).
-			isDev := os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development"
-			if isDev {
-				logrus.Warn("API_SHARED_SECRET not configured — HMAC verification skipped (development only)")
-				next.ServeHTTP(w, r)
-				return
-			}
-			logrus.Error("API_SHARED_SECRET not configured — rejecting HMAC-required request in production")
-			http.Error(w, "Service misconfigured", http.StatusInternalServerError)
+			logrus.Error("API_SHARED_SECRET not configured — rejecting HMAC-required request")
+			http.Error(w, "Service misconfigured: API_SHARED_SECRET required", http.StatusInternalServerError)
 			return
 		}
 
@@ -513,13 +536,19 @@ func (sm *SecurityMiddleware) validateHeaderValue(value string) error {
 	return nil
 }
 
-// getClientIP extracts the client IP address from the request (host only, no port).
-// The result is safe for INET columns and rate-limit keys.
+// getClientIP extracts the client IP address from the request.
+// SECURITY: For rate limiting and security purposes, X-Forwarded-For is NOT trusted
+// because it can be easily spoofed by attackers. Only trust proxy headers when the
+// connection comes from a known trusted proxy (127.0.0.1 or configured proxy IPs).
 func getClientIP(r *http.Request) string {
-	// Check X-Forwarded-For header first (for requests behind proxy/load balancer)
+	// Always validate against trusted proxy list for forwarded headers
+	remoteAddr := r.RemoteAddr
 	xff := r.Header.Get("X-Forwarded-For")
-	if xff != "" {
-		// X-Forwarded-For can contain multiple IPs, take the first one
+
+	// Only trust X-Forwarded-For from known trusted proxies
+	// In production, this should be configured to only trust your load balancer/CDN IPs
+	if xff != "" && isTrustedProxy(r) {
+		// X-Forwarded-For can contain multiple IPs, take the first one (original client)
 		s := strings.TrimSpace(xff)
 		if idx := strings.Index(s, ","); idx > 0 {
 			s = strings.TrimSpace(s[:idx])
@@ -527,14 +556,40 @@ func getClientIP(r *http.Request) string {
 		return stripPortFromHost(s)
 	}
 
-	// Check X-Real-IP header
+	// Check X-Real-IP header only from trusted proxy
 	xri := r.Header.Get("X-Real-IP")
-	if xri != "" {
+	if xri != "" && isTrustedProxy(r) {
 		return stripPortFromHost(strings.TrimSpace(xri))
 	}
 
 	// Fall back to RemoteAddr (e.g. "127.0.0.1:50286") — must strip port for INET
-	return stripPortFromHost(r.RemoteAddr)
+	return stripPortFromHost(remoteAddr)
+}
+
+// isTrustedProxy checks if the request comes from a known trusted proxy
+func isTrustedProxy(r *http.Request) bool {
+	remoteHost, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		remoteHost = r.RemoteAddr
+	}
+
+	// Trust loopback addresses (localhost connections from nginx, apache, etc.)
+	if remoteHost == "127.0.0.1" || remoteHost == "::1" || remoteHost == "localhost" {
+		return true
+	}
+
+	// Check for explicitly configured trusted proxies
+	trustedProxies := os.Getenv("TRUSTED_PROXY_IPS")
+	if trustedProxies != "" {
+		for _, proxy := range strings.Split(trustedProxies, ",") {
+			proxy = strings.TrimSpace(proxy)
+			if remoteHost == proxy {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // stripPortFromHost returns the host part of "host:port", or s unchanged if no port.

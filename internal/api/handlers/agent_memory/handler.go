@@ -401,6 +401,15 @@ func (h *AgentMemoryHandler) HandleRebuildIndex(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	if req.AgentID == "" {
+		http.Error(w, "agent_id is required", http.StatusBadRequest)
+		return
+	}
+	if req.MemoryType == "" {
+		http.Error(w, "memory_type is required", http.StatusBadRequest)
+		return
+	}
+
 	// For now, we just update the index record with the current timestamp
 	// In a production system, this would rebuild the actual pgvector index
 	index, err := h.rebuildIndex(r.Context(), claims.TenantID, req.AgentID, req.MemoryType)
@@ -640,6 +649,15 @@ func (h *AgentMemoryHandler) searchMemoriesByFilter(ctx context.Context, tenantI
 }
 
 func (h *AgentMemoryHandler) rebuildIndex(ctx context.Context, tenantID uuid.UUID, agentID, memoryType string) (*storage.AgentMemoryIndex, error) {
+	// Don't create index with empty memory_type - it's an enum and '' is invalid
+	if memoryType == "" {
+		return nil, fmt.Errorf("memory_type is required for index operation")
+	}
+	// Don't create index with empty agent_id - it's NOT NULL in the schema
+	if agentID == "" {
+		return nil, fmt.Errorf("agent_id is required for index operation")
+	}
+
 	// Count memories for the index
 	var count int64
 	query := h.db.WithContext(ctx).Model(&statestorage.AgentMemory{}).

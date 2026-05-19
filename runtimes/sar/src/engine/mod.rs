@@ -523,15 +523,17 @@ pub struct ExecutionContext {
     pub execution_id: Uuid,
     pub graph_id: Uuid,
     pub tenant_id: Option<String>,
+    pub isolated_agent_id: Option<String>,
     pub shared: Arc<RwLock<HashMap<NodeId, NodeResult>>>,
 }
 
 impl ExecutionContext {
-    pub fn new(execution_id: Uuid, tenant_id: Option<String>) -> Self {
+    pub fn new(execution_id: Uuid, tenant_id: Option<String>, isolated_agent_id: Option<String>) -> Self {
         Self {
             execution_id,
             graph_id: Uuid::nil(),
             tenant_id,
+            isolated_agent_id,
             shared: Arc::new(RwLock::new(HashMap::new())),
         }
     }
@@ -726,7 +728,8 @@ impl<E: NodeExecutor> GraphExecutor<E> {
             }
         }
 
-        Err(last_err.unwrap_or_else(|| NodeExecutionError::new(node.id, "Node execution failed".to_string())))
+        let err = last_err.unwrap_or_else(|| NodeExecutionError::new(node.id, "Node execution failed".to_string()));
+        Err(err)
     }
 }
 
@@ -823,7 +826,7 @@ mod tests {
     async fn test_graph_executor_chain() {
         let graph = make_chain_graph();
         let executor = GraphExecutor::new(DefaultNodeExecutor);
-        let ctx = Arc::new(ExecutionContext::new(Uuid::new_v4(), None));
+        let ctx = Arc::new(ExecutionContext::new(Uuid::new_v4(), None, None));
         let input = GraphExecutionInput {
             graph_id: graph.id,
             initial_input: [("x".to_string(), serde_json::json!("hello"))].into(),

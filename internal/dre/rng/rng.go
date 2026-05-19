@@ -7,6 +7,7 @@ import (
 	"crypto/cipher"
 	"crypto/sha256"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"sync"
 
@@ -25,40 +26,53 @@ type DeterministicRNG struct {
 
 // New creates a new DeterministicRNG with the given seed.
 // The seed should be derived from H(InputHash || EnvironmentHash) per DCC spec.
-func New(seed []byte) *DeterministicRNG {
+func New(seed []byte) (*DeterministicRNG, error) {
 	// ChaCha20 requires a 32-byte key and 12-byte nonce
-	key := deriveKey(seed)
-	nonce := deriveNonce(seed)
+	key, err := deriveKey(seed)
+	if err != nil {
+		return nil, err
+	}
+	nonce, err := deriveNonce(seed)
+	if err != nil {
+		return nil, err
+	}
 
 	c, err := chacha20.NewUnauthenticatedCipher(key, nonce)
 	if err != nil {
 		// This should never happen with valid inputs
-		panic("rng: failed to create ChaCha20 cipher: " + err.Error())
+		return nil, fmt.Errorf("rng: failed to create ChaCha20 cipher: %w", err)
 	}
 
 	return &DeterministicRNG{
 		cipher:  c,
 		seed:    seed,
 		counter: 0,
-	}
+	}, nil
 }
 
 // Seed reinitializes the RNG with a new seed (for fresh execution, not replay).
-func (r *DeterministicRNG) Seed(seed []byte) {
+func (r *DeterministicRNG) Seed(seed []byte) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	key := deriveKey(seed)
-	nonce := deriveNonce(seed)
+	key, err := deriveKey(seed)
+	if err != nil {
+		return err
+	}
+	nonce, err := deriveNonce(seed)
+	if err != nil {
+		return err
+	}
 
 	c, err := chacha20.NewUnauthenticatedCipher(key, nonce)
 	if err != nil {
-		panic("rng: failed to reinitialize ChaCha20 cipher: " + err.Error())
+		return fmt.Errorf("rng: failed to reinitialize ChaCha20 cipher: %w", err)
 	}
 
 	r.cipher = c
 	r.seed = seed
 	r.counter = 0
+	return nil
 }
 
 // Next returns the next deterministic uint32 value.
@@ -132,22 +146,22 @@ var kdfSalt = []byte("DCC-RNG-v1")
 
 // deriveKey derives a 32-byte ChaCha20 key from the seed using HKDF-SHA256.
 // Deterministic and suitable for production; same seed always yields the same key.
-func deriveKey(seed []byte) []byte {
+func deriveKey(seed []byte) ([]byte, error) {
 	h := hkdf.New(sha256.New, seed, kdfSalt, []byte("rng-key"))
 	key := make([]byte, 32)
 	if _, err := io.ReadFull(h, key); err != nil {
-		panic("rng: deriveKey: " + err.Error())
+		return nil, fmt.Errorf("rng: deriveKey: %w", err)
 	}
-	return key
+	return key, nil
 }
 
 // deriveNonce derives a 12-byte ChaCha20 nonce from the seed using HKDF-SHA256.
 // Uses different info than deriveKey to avoid correlation.
-func deriveNonce(seed []byte) []byte {
+func deriveNonce(seed []byte) ([]byte, error) {
 	h := hkdf.New(sha256.New, seed, kdfSalt, []byte("rng-nonce"))
 	nonce := make([]byte, 12)
 	if _, err := io.ReadFull(h, nonce); err != nil {
-		panic("rng: deriveNonce: " + err.Error())
+		return nil, fmt.Errorf("rng: deriveNonce: %w", err)
 	}
-	return nonce
+	return nonce, nil
 }

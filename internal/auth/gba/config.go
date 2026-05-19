@@ -145,7 +145,7 @@ func ConfigFromEnv(db *gorm.DB) (*Config, error) {
 		Session: SessionConfig{
 			MaxAge:         parseDuration(getEnv("SESSION_MAX_AGE", "168h")),
 			CookieName:     getEnv("SESSION_COOKIE_NAME", "ff_session"),
-			CookieSecure:   getEnvBool("SESSION_COOKIE_SECURE", false),
+			CookieSecure:   getEnvBool("SESSION_COOKIE_SECURE", true),
 			CookieHTTPOnly: getEnvBool("SESSION_COOKIE_HTTPONLY", true),
 			CookieSameSite: getEnv("SESSION_COOKIE_SAMESITE", "Lax"),
 		},

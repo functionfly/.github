@@ -1,0 +1,93 @@
+{
+  "name": "vercel-deployments",
+  "version": "1.3.0",
+  "display_name": "Vercel Deployments",
+  "description": "Deploy your applications to Vercel directly from FunctionFly workflows. Trigger builds, monitor deployments, manage environments, and roll back failed deployments—all from a unified dashboard.",
+  "author": {
+    "name": "FunctionFly Team",
+    "email": "plugins@functionfly.com",
+    "website": "https://functionfly.com"
+  },
+  "license": "MIT",
+  "runtime": "nodejs",
+  "entry_point": "index.js",
+  "category": "infrastructure",
+  "tags": ["vercel", "deployment", "infrastructure", "hosting", "serverless"],
+  "homepage": "https://functionfly.com/plugins/vercel",
+  "repository": "https://github.com/functionfly/plugins",
+
+  "permissions": [
+    {
+      "type": "api",
+      "action": "write",
+      "resource": "deployments",
+      "description": "Create and manage deployments"
+    },
+    {
+      "type": "api",
+      "action": "read",
+      "resource": "deployments",
+      "description": "Read deployment status"
+    },
+    {
+      "type": "api",
+      "action": "trigger",
+      "resource": "builds",
+      "description": "Trigger new builds"
+    }
+  ],
+
+  "hooks": {
+    "pre_deploy": "hooks/pre-deploy.js",
+    "post_deploy": "hooks/post-deploy.js"
+  },
+
+  "endpoints": [
+    {
+      "path": "/deploy",
+      "method": "POST",
+      "handler": "deployHandler",
+      "description": "Trigger a new deployment"
+    },
+    {
+      "path": "/deployments",
+      "method": "GET",
+      "handler": "listDeploymentsHandler",
+      "description": "List all deployments"
+    },
+    {
+      "path": "/rollback",
+      "method": "POST",
+      "handler": "rollbackHandler",
+      "description": "Rollback a deployment"
+    }
+  ],
+
+  "config_schema": {
+    "vercel_token": {
+      "type": "string",
+      "required": true,
+      "secret": true,
+      "description": "Vercel API Token"
+    },
+    "team_id": {
+      "type": "string",
+      "required": false,
+      "description": "Vercel Team ID"
+    },
+    "project_name": {
+      "type": "string",
+      "required": false,
+      "description": "Default project name"
+    }
+  },
+
+  "sandbox": {
+    "tier": "worker",
+    "cpu_limit": 1,
+    "memory_limit_mb": 256,
+    "timeout_seconds": 120,
+    "max_instances": 2,
+    "allowed_domains": ["api.vercel.com", "vercel.com"]
+  }
+}

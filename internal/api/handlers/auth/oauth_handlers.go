@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/auth"
+	"github.com/functionfly/functionfly/internal/config"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -263,11 +264,7 @@ func (h *Handler) HandleConfirmAccountLinking(w http.ResponseWriter, r *http.Req
 
 // getOAuthFrontendURL returns the frontend URL for OAuth redirects
 func getOAuthFrontendURL() string {
-	frontendURL := os.Getenv("FRONTEND_URL")
-	if frontendURL == "" {
-		frontendURL = "http://localhost:3000"
-	}
-	return frontendURL + "/auth/oauth/callback"
+	return config.GetFrontendURL() + "/auth/oauth/callback"
 }
 
 // buildOAuthRedirectURL builds the redirect URL for OAuth callbacks with unified result structure
@@ -330,7 +327,7 @@ func buildTenantRedirectURL(loginHint string) string {
 
 	baseFrontend := os.Getenv("FRONTEND_URL")
 	if baseFrontend == "" {
-		baseFrontend = "http://localhost:3000"
+		baseFrontend = config.GetFrontendURL()
 	}
 
 	baseURL, err := url.Parse(baseFrontend)

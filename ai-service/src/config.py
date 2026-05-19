@@ -44,7 +44,9 @@ class Settings(BaseSettings):
     )
 
     # Ollama configuration (local/development)
-    ollama_base_url: str = "http://localhost:11434"
+    ollama_base_url: str = Field(
+        default="", description="Ollama base URL - must be set explicitly"
+    )
     # Smaller default so local dev fits typical RAM; override with OLLAMA_MODEL (e.g. llama3.3 when you have headroom)
     ollama_model: str = "llama3.2:3b"
     ollama_embedding_model: str = "nomic-embed-text"
@@ -76,10 +78,14 @@ class Settings(BaseSettings):
     use_upstash_redis: bool = False
 
     # Database configuration
-    database_url: str = "postgresql://postgres:postgres@localhost:5432/functionfly"
+    database_url: str = Field(
+        default="", description="Database connection string - must be set explicitly"
+    )
 
     # CORS settings
-    cors_origins: list[str] = ["http://localhost:3000"]
+    cors_origins: list[str] = Field(
+        default=[], description="CORS allowed origins - must be set explicitly"
+    )
     cors_allow_credentials: bool = True
     cors_allow_methods: list[str] = ["*"]
     cors_allow_headers: list[str] = ["*"]

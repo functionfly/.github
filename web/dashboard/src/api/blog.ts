@@ -98,7 +98,10 @@ class BlogApiClient {
   private client: AxiosInstance;
 
   constructor() {
-    const mainApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+    const mainApiUrl = import.meta.env.VITE_API_URL;
+    if (!mainApiUrl) {
+      throw new Error('VITE_API_URL environment variable is required');
+    }
     this.client = axios.create({
       baseURL: mainApiUrl,
       headers: {

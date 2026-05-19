@@ -169,7 +169,10 @@ func main() {
 		log.Fatalf("Failed to check existing user: %v", err)
 	}
 
-	authSvc := auth.NewAuthService(nil, "default-secret-key-change-in-production")
+	authSvc, err := auth.NewAuthService(nil, "default-secret-key-change-in-production")
+	if err != nil {
+		log.Fatalf("Failed to create auth service: %v", err)
+	}
 	hashedPassword, err := authSvc.HashPassword(password)
 	if err != nil {
 		log.Fatalf("Failed to hash password: %v", err)

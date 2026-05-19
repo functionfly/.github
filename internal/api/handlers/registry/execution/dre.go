@@ -82,7 +82,7 @@ func (h *Handler) buildAndStoreMEG(
 	durationMs int,
 ) {
 	// Handle empty/nil output - use empty JSON object as default for MEG hashing
-	if output == nil || len(output) == 0 {
+	if len(output) == 0 {
 		output = []byte("{}")
 	}
 

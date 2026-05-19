@@ -1,0 +1,75 @@
+{
+  "name": "slack-alerts",
+  "version": "1.8.0",
+  "display_name": "Slack Alerts",
+  "description": "Send notifications and alerts to Slack channels. Get real-time updates on workflow executions, errors, and deployment events. Supports rich formatting, interactive blocks, and thread replies.",
+  "author": {
+    "name": "FunctionFly Team",
+    "email": "plugins@functionfly.com",
+    "website": "https://functionfly.com"
+  },
+  "license": "MIT",
+  "runtime": "nodejs",
+  "entry_point": "index.js",
+  "category": "integration",
+  "tags": ["slack", "notifications", "alerts", "messaging"],
+  "homepage": "https://functionfly.com/plugins/slack",
+  "repository": "https://github.com/functionfly/plugins",
+
+  "permissions": [
+    {
+      "type": "webhook",
+      "action": "send",
+      "resource": "slack.com",
+      "description": "Send messages to Slack channels"
+    },
+    {
+      "type": "api",
+      "action": "write",
+      "resource": "chat",
+      "description": "Post messages to Slack"
+    }
+  ],
+
+  "hooks": {
+    "on_error": "hooks/on-error.js",
+    "post_deploy": "hooks/post-deploy.js"
+  },
+
+  "endpoints": [
+    {
+      "path": "/webhook/slack",
+      "method": "POST",
+      "handler": "webhookHandler",
+      "description": "Receive Slack outgoing webhooks"
+    }
+  ],
+
+  "config_schema": {
+    "slack_token": {
+      "type": "string",
+      "required": true,
+      "secret": true,
+      "description": "Slack Bot User OAuth Token"
+    },
+    "default_channel": {
+      "type": "string",
+      "required": true,
+      "description": "Default channel for alerts (e.g., #alerts)"
+    },
+    "format": {
+      "type": "string",
+      "default": "rich",
+      "description": "Message format: 'rich' or 'simple'"
+    }
+  },
+
+  "sandbox": {
+    "tier": "worker",
+    "cpu_limit": 0.5,
+    "memory_limit_mb": 128,
+    "timeout_seconds": 30,
+    "max_instances": 3,
+    "allowed_domains": ["slack.com", "api.slack.com"]
+  }
+}

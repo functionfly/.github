@@ -209,8 +209,14 @@ func (h *Handler) HandleDisable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Password is required for security
+	if req.Password == "" {
+		h.respondError(w, http.StatusBadRequest, "Password is required")
+		return
+	}
+
 	// Disable MFA
-	if err := h.plugin.Disable(r.Context(), userID, code); err != nil {
+	if err := h.plugin.Disable(r.Context(), userID, code, req.Password); err != nil {
 		h.logger.WithError(err).Warn("MFA disable failed")
 		h.respondError(w, http.StatusBadRequest, "Invalid verification code")
 		return

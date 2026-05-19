@@ -74,6 +74,7 @@ pub struct AgentState {
     pub current_cell: Option<CellId>,
     pub memory_snapshot: HashMap<String, serde_json::Value>,
     pub metrics: AgentMetrics,
+    pub isolation_enabled: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -169,6 +170,7 @@ impl StatefulAgentRuntime {
             current_cell: None,
             memory_snapshot: HashMap::new(),
             metrics: AgentMetrics::default(),
+            isolation_enabled: agent.isolation_enabled,
         };
 
         {
@@ -189,31 +191,30 @@ impl StatefulAgentRuntime {
         agent_id: AgentId,
         input: HashMap<String, serde_json::Value>,
     ) -> anyhow::Result<GraphExecutionResult> {
-        let agent_state = {
+        let agent_config = {
             let states = self.agent_states.read();
             states.get(&agent_id).cloned()
         };
 
-        let _agent_state = agent_state.ok_or_else(|| anyhow::anyhow!("Agent {} not found", agent_id))?;
+        let agent_config = agent_config.ok_or_else(|| anyhow::anyhow!("Agent {} not found", agent_id))?;
+
+        if agent_config.isolation_enabled {
+            tracing::debug!(agent_id = %agent_id, "Executing agent with isolation ENABLED");
+        }
 
         self.update_agent_status(agent_id, AgentStatus::Running);
 
         let executor = GraphExecutor::new(DefaultNodeExecutor);
-        let ctx = Arc::new(ExecutionContext::new(Uuid::new_v4(), None));
+        let isolated = if agent_config.isolation_enabled { Some(agent_id.0.to_string()) } else { None };
+        let ctx = Arc::new(ExecutionContext::new(Uuid::new_v4(), None, isolated));
+
         let graph_input = GraphExecutionInput {
             graph_id: Uuid::new_v4(),
             initial_input: input,
             tenant_id: None,
         };
 
-        let graph = {
-            let states = self.agent_states.read();
-            if let Some(_state) = states.get(&agent_id) {
-                Graph::new(Uuid::new_v4(), "execution".to_string())
-            } else {
-                return Err(anyhow::anyhow!("Agent not found"));
-            }
-        };
+        let graph = Graph::new(Uuid::new_v4(), "execution".to_string());
 
         let result = executor.execute(&graph, graph_input, ctx).await;
 
@@ -278,19 +279,17 @@ impl StatefulAgentRuntime {
         info!("SAR runtime shutting down");
     }
 
-    pub fn get_agent_state(&self, agent_id: AgentId) -> Option<AgentState> {
-        self.agent_states.read().get(&agent_id).cloned()
-    }
-
     pub fn save_checkpoint(&self, agent_id: AgentId) -> Option<AgentState> {
         let states = self.agent_states.read();
         states.get(&agent_id).cloned()
     }
 
-    pub fn restore_from_checkpoint(&self, state: AgentState) {
+    pub fn restore_from_checkpoint(&self, state: AgentState) -> Option<AgentId> {
+        let agent_id = state.agent_id;
         let mut states = self.agent_states.write();
-        states.insert(state.agent_id, state);
-        info!(agent_id = %state.agent_id, "Agent state restored from checkpoint");
+        states.insert(agent_id, state);
+        info!(agent_id = %agent_id, "Agent state restored from checkpoint");
+        Some(agent_id)
     }
 
     pub async fn graceful_shutdown_agent(&self, agent_id: AgentId, grace_period: Duration) -> bool {

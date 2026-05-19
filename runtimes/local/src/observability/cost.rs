@@ -39,7 +39,10 @@ impl Default for CostAttributorConfig {
     fn default() -> Self {
         Self {
             go_endpoint: std::env::var("ORCHESTRATOR_COST_URL")
-                .unwrap_or_else(|_| "http://localhost:8080/api/costs".to_string()),
+                .unwrap_or_else(|_| {
+                    eprintln!("Warning: ORCHESTRATOR_COST_URL not set - cost attribution disabled");
+                    String::new()
+                }),
             max_buffer: 100,
             flush_interval: Duration::from_secs(5),
             enabled: true,

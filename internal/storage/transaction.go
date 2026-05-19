@@ -187,20 +187,13 @@ func (tm *TransactionManager) ExecuteSaga(ctx context.Context, opts *Transaction
 			}).Error("Saga step failed, starting compensation")
 
 			// Compensate completed steps in reverse order
-			for j := len(completedSteps) - 1; j >= 0; j-- {
-				compStep := completedSteps[j]
+			compensationFailures := tm.compensateWithRetry(ctx, opts, sagaID, completedSteps)
+			if len(compensationFailures) > 0 {
 				logrus.WithFields(logrus.Fields{
-					"saga_id":      sagaID,
-					"compensating": compStep.Name,
-				}).Info("Compensating saga step")
-
-				if compErr := tm.ExecuteInTransaction(ctx, opts, compStep.Compensate); compErr != nil {
-					logrus.WithFields(logrus.Fields{
-						"saga_id":      sagaID,
-						"step_name":     compStep.Name,
-						"compensation_error": compErr,
-					}).Error("Compensation failed")
-				}
+					"saga_id":                   sagaID,
+					"compensation_failure_count": len(compensationFailures),
+					"original_error":             err,
+				}).Error("CRITICAL: Saga compensation failed - manual intervention required")
 			}
 
 			return fmt.Errorf("saga failed at step %d (%s): %w", i+1, step.Name, err)
@@ -213,7 +206,7 @@ func (tm *TransactionManager) ExecuteSaga(ctx context.Context, opts *Transaction
 			"saga_id":  sagaID,
 			"step":     i + 1,
 			"step_name": step.Name,
-			"duration":  time.Since(stepStart),
+			"duration": time.Since(stepStart),
 		}).Debug("Saga step completed")
 	}
 
@@ -225,6 +218,75 @@ func (tm *TransactionManager) ExecuteSaga(ctx context.Context, opts *Transaction
 	}).Info("Saga transaction completed successfully")
 
 	return nil
+}
+
+// compensationFailure records a compensation step that failed
+type compensationFailure struct {
+	StepName         string
+	CompensationErr  error
+	Attempts         int
+}
+
+// compensateWithRetry compensates all completed steps with retry logic
+// Returns list of steps that failed even after retries (requires manual intervention)
+func (tm *TransactionManager) compensateWithRetry(ctx context.Context, opts *TransactionOptions, sagaID uuid.UUID, completedSteps []SagaStep) []compensationFailure {
+	const maxRetries = 3
+	failures := make([]compensationFailure, 0)
+
+	for j := len(completedSteps) - 1; j >= 0; j-- {
+		compStep := completedSteps[j]
+		var lastErr error
+		attempts := 0
+
+		for attempt := 0; attempt <= maxRetries; attempt++ {
+			attempts = attempt + 1
+			logrus.WithFields(logrus.Fields{
+				"saga_id":      sagaID,
+				"compensating": compStep.Name,
+				"attempt":      attempt + 1,
+				"max_retries":  maxRetries,
+			}).Info("Compensating saga step")
+
+			if compErr := tm.ExecuteInTransaction(ctx, opts, compStep.Compensate); compErr != nil {
+				lastErr = compErr
+				if attempt < maxRetries {
+					backoff := time.Duration(attempt+1) * 500 * time.Millisecond
+					logrus.WithFields(logrus.Fields{
+						"saga_id":      sagaID,
+						"step_name":    compStep.Name,
+						"attempt":      attempt + 1,
+						"backoff":      backoff,
+						"error":        compErr,
+					}).Warn("Compensation failed, retrying")
+
+					select {
+					case <-time.After(backoff):
+					case <-ctx.Done():
+						failures = append(failures, compensationFailure{
+							StepName:        compStep.Name,
+							CompensationErr: ctx.Err(),
+							Attempts:        attempts,
+						})
+						break
+					}
+					continue
+				}
+			} else {
+				lastErr = nil
+				break
+			}
+		}
+
+		if lastErr != nil {
+			failures = append(failures, compensationFailure{
+				StepName:        compStep.Name,
+				CompensationErr: lastErr,
+				Attempts:        attempts,
+			})
+		}
+	}
+
+	return failures
 }
 
 // ExecuteInReadTransaction executes read-only operations with snapshot isolation

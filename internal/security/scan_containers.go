@@ -1,9 +1,12 @@
 package security
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"regexp"
@@ -471,8 +474,9 @@ func (t *TrivyScanner) parseTrivyOutput(data []byte) ([]Vulnerability, error) {
 
 // ClairScanner implements Clair integration via local scanner or API
 type ClairScanner struct {
-	endpoint string
-	useLocal bool
+	endpoint   string
+	useLocal   bool
+	httpClient *http.Client
 }
 
 // NewClairScanner creates a new Clair scanner instance
@@ -482,8 +486,9 @@ func NewClairScanner() *ClairScanner {
 		endpoint = "http://localhost:6060"
 	}
 	return &ClairScanner{
-		endpoint: endpoint,
-		useLocal: os.Getenv("CLAIR_USE_LOCAL") == "true",
+		endpoint:   endpoint,
+		useLocal:   os.Getenv("CLAIR_USE_LOCAL") == "true",
+		httpClient: &http.Client{Timeout: 60 * time.Second},
 	}
 }
 
@@ -493,8 +498,12 @@ func (c *ClairScanner) IsAvailable() bool {
 		_, err := exec.LookPath("clairctl")
 		return err == nil
 	}
-	// Try to ping the Clair API
-	return false // Would require HTTP client check
+	resp, err := c.httpClient.Get(c.endpoint + "/health")
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode == http.StatusOK
 }
 
 // GetName returns the scanner name
@@ -517,7 +526,101 @@ func (c *ClairScanner) ScanImage(ctx context.Context, imageName string) ([]Vulne
 		return c.parseClairOutput(output)
 	}
 
-	return nil, fmt.Errorf("clair API mode not yet implemented")
+	return c.scanImageViaAPI(ctx, imageName)
+}
+
+// scanImageViaAPI scans an image using the Clair REST API
+func (c *ClairScanner) scanImageViaAPI(ctx context.Context, imageName string) ([]Vulnerability, error) {
+	namespace := "default"
+	manifest := fmt.Sprintf(`{"docker":{"reference":"%s"}}`, imageName)
+
+	req, err := http.NewRequestWithContext(ctx, "POST", c.endpoint+"/api/v1/namespaces/"+namespace+"/artifacts", bytes.NewReader([]byte(manifest)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Clair API request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to submit image to Clair: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("Clair API returned status %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var scanResult struct {
+		Features []struct {
+			Name             string `json:"Name"`
+			NamespaceName    string `json:"NamespaceName"`
+			Version          string `json:"Version"`
+			FixedByVersion   string `json:"FixedByVersion"`
+			Vulnerabilities []struct {
+				Name        string `json:"Name"`
+				Description string `json:"Description"`
+				Link        string `json:"Link"`
+				Severity    string `json:"Severity"`
+				FixedBy     string `json:"FixedBy"`
+			} `json:"Vulnerabilities"`
+		} `json:"features"`
+	}
+
+	reportURL := c.endpoint + "/api/v1/namespaces/" + namespace + "/artifacts/" + imageName + "/report"
+	reportReq, err := http.NewRequestWithContext(ctx, "GET", reportURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create report request: %w", err)
+	}
+
+	maxWait := 120 * time.Second
+	deadline := time.Now().Add(maxWait)
+	for time.Now().Before(deadline) {
+		reportResp, err := c.httpClient.Do(reportReq)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get Clair report: %w", err)
+		}
+
+		if reportResp.StatusCode == http.StatusOK {
+			defer reportResp.Body.Close()
+			bodyBytes, err := io.ReadAll(reportResp.Body)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read Clair report: %w", err)
+			}
+			if err := json.Unmarshal(bodyBytes, &scanResult); err != nil {
+				return nil, fmt.Errorf("failed to parse Clair report: %w", err)
+			}
+			break
+		}
+		if reportResp.StatusCode == http.StatusAccepted {
+			reportResp.Body.Close()
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		reportResp.Body.Close()
+		return nil, fmt.Errorf("Clair report request returned status %d", reportResp.StatusCode)
+	}
+
+	var vulnerabilities []Vulnerability
+	for _, feature := range scanResult.Features {
+		for _, vuln := range feature.Vulnerabilities {
+			vulnerabilities = append(vulnerabilities, Vulnerability{
+				ID:          generateVulnID(),
+				Title:       vuln.Name,
+				Description: vuln.Description,
+				Severity:    strings.ToLower(vuln.Severity),
+				CVE:         vuln.Name,
+				Category:    "container",
+				Component:   feature.Name,
+				Status:      "open",
+				Remediation: fmt.Sprintf("Update %s to version %s", feature.Name, vuln.FixedBy),
+				ReferenceUrls: []string{vuln.Link},
+				Discovered:  time.Now(),
+				Updated:     time.Now(),
+			})
+		}
+	}
+	return vulnerabilities, nil
 }
 
 // ScanFilesystem scans a filesystem using Clair

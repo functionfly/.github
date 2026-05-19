@@ -1,0 +1,55 @@
+[package]
+name = "functionfly-deno-runtime"
+version = "0.1.0"
+edition = "2021"
+description = "FunctionFly Deno Runtime - Secure production-ready JavaScript/TypeScript execution"
+authors = ["FunctionFly Team"]
+license = "MIT"
+
+[features]
+default = ["wasm-sandbox", "secure-execution", "resource-limits", "js-engine"]
+secure-execution = ["dep:seccomp", "dep:landlock"]
+wasm-sandbox = ["dep:wasmtime", "dep:wasmtime-wasi", "dep:regex"]
+js-engine = ["dep:rquickjs"]
+resource-limits = []
+nats-client = ["dep:nats"]
+
+[dependencies]
+tokio = { version = "1.49", features = ["full"] }
+axum = { version = "0.8", features = ["macros"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0"
+async-trait = "0.1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+anyhow = "1.0"
+uuid = { version = "1.21", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+futures = "0.3"
+dashmap = "6.1"
+parking_lot = "0.12"
+thiserror = "2.0"
+once_cell = "1.21"
+
+# NATS client for orchestrator communication
+nats = { version = "0.26", optional = true }
+
+# Security
+seccomp = { version = "0.1", optional = true }
+landlock = { version = "0.3", optional = true }
+
+# WASM sandbox
+wasmtime = { version = "44.0", optional = true }
+wasmtime-wasi = { version = "44.0", optional = true, features = ["p1"] }
+
+# Code security verification (used by wasm-sandbox)
+regex = { version = "1.11", optional = true }
+
+# JavaScript engine (QuickJS bindings)
+rquickjs = { version = "0.11", optional = true, features = ["futures", "loader"] }
+
+# Rate limiting
+governor = "0.7"
+
+[dev-dependencies]
+mockall = "0.13"

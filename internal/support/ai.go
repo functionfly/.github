@@ -160,8 +160,8 @@ func generateOpenAIReply(ctx context.Context, req *AIReplyRequest, cfg *AIConfig
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		return nil, fmt.Errorf("OpenAI returned %d: %s", resp.StatusCode, string(respBody))
+		errBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return nil, fmt.Errorf("OpenAI returned %d: %s", resp.StatusCode, string(errBody))
 	}
 
 	var openAIResp struct {
@@ -222,8 +222,8 @@ func generateAnthropicReply(ctx context.Context, req *AIReplyRequest, cfg *AICon
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		return nil, fmt.Errorf("Anthropic returned %d: %s", resp.StatusCode, string(respBody))
+		errBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return nil, fmt.Errorf("Anthropic returned %d: %s", resp.StatusCode, string(errBody))
 	}
 
 	var anthropicResp struct {

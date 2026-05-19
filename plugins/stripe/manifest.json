@@ -1,0 +1,89 @@
+{
+  "name": "stripe-billing",
+  "version": "1.5.0",
+  "display_name": "Stripe Billing",
+  "description": "Integrate Stripe payments into your workflows. Handle subscriptions, one-time payments, invoices, and customer management. Automatically sync payment events with your FunctionFly billing data.",
+  "author": {
+    "name": "FunctionFly Team",
+    "email": "plugins@functionfly.com",
+    "website": "https://functionfly.com"
+  },
+  "license": "MIT",
+  "runtime": "nodejs",
+  "entry_point": "index.js",
+  "category": "integration",
+  "tags": ["stripe", "payments", "billing", "subscriptions", "commerce"],
+  "homepage": "https://functionfly.com/plugins/stripe",
+  "repository": "https://github.com/functionfly/plugins",
+
+  "permissions": [
+    {
+      "type": "api",
+      "action": "write",
+      "resource": "payments",
+      "description": "Create and process payments"
+    },
+    {
+      "type": "api",
+      "action": "read",
+      "resource": "customers",
+      "description": "Read customer data"
+    },
+    {
+      "type": "api",
+      "action": "write",
+      "resource": "subscriptions",
+      "description": "Manage subscriptions"
+    },
+    {
+      "type": "webhook",
+      "action": "receive",
+      "resource": "stripe.com",
+      "description": "Receive Stripe webhook events"
+    }
+  ],
+
+  "hooks": {
+    "on_payment_success": "hooks/on-payment-success.js",
+    "on_payment_failed": "hooks/on-payment-failed.js",
+    "on_subscription_updated": "hooks/on-subscription.js"
+  },
+
+  "endpoints": [
+    {
+      "path": "/webhook/stripe",
+      "method": "POST",
+      "handler": "webhookHandler",
+      "description": "Receive Stripe webhooks"
+    }
+  ],
+
+  "config_schema": {
+    "stripe_secret_key": {
+      "type": "string",
+      "required": true,
+      "secret": true,
+      "description": "Stripe Secret Key"
+    },
+    "webhook_secret": {
+      "type": "string",
+      "required": true,
+      "secret": true,
+      "description": "Webhook signing secret"
+    },
+    "currency": {
+      "type": "string",
+      "default": "usd",
+      "description": "Default currency for payments"
+    }
+  },
+
+  "sandbox": {
+    "tier": "worker",
+    "cpu_limit": 1,
+    "memory_limit_mb": 256,
+    "timeout_seconds": 60,
+    "max_instances": 2,
+    "allowed_domains": ["api.stripe.com", "stripe.com"]
+  }
+}

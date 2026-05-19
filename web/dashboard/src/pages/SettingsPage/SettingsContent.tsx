@@ -32,6 +32,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import {
   AccountSettingsTab,
+  AuthSettingsTab,
   BillingSettingsTab,
   DeveloperSettingsTab,
   NotificationsSettingsTab,
@@ -240,6 +241,7 @@ export function SettingsContent({
 
         <TabsContent value="developer" className="space-y-6">
           <DeveloperSettingsTab />
+          <AuthSettingsTab />
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-6">

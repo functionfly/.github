@@ -1,82 +1,67 @@
 ---
-title: Kotlin via WASM Runtime
-description: Kotlin WebAssembly runtime environment for FunctionFly functions
+title: Kotlin/JVM Runtime
+description: Kotlin/JVM runtime environment for FunctionFly functions
 ---
 
-# Kotlin via WASM Runtime
+FunctionFly's Kotlin/JVM runtime provides a secure, production-ready environment for executing Kotlin code with WASM sandbox isolation and comprehensive security controls.
 
-FunctionFly's Kotlin runtime compiles your Kotlin code to WebAssembly using Kotlin/WASM for type-safe, sandboxed execution.
+## Supported Versions
 
-## Overview
+| Version | Status | Notes |
+|---------|--------|-------|
+| Kotlin 1.9+ | Supported | Recommended |
+| Java 17+ | Supported | JVM runtime |
+| Kotlin/WASM | Supported | Via WASM sandbox |
 
-Kotlin functions are compiled to WebAssembly using JetBrains' Kotlin/WASM compiler. This provides:
+## Architecture
 
-- **Type safety** - Full Kotlin type system with null safety
-- **Fast cold starts** - WASM modules initialize quickly
-- **Sandboxed** - Memory-safe, isolated execution
-- **Coroutines support** - Async operations via Kotlin coroutines
-- **Familiar ecosystem** - Standard Kotlin tooling and IDE support
+The Kotlin runtime is built in Rust with the following components:
 
-## Supported Toolchains
-
-| Toolchain | Status | Notes |
-|-----------|--------|-------|
-| Kotlin/WASM (wasmWasi) | Supported | Recommended; direct compilation |
-| Kotlin → JS → Javy | Supported | Fallback; via Javy WASM runtime |
-
-## Project Structure
-
-```
-my-function/
-├── build.gradle.kts        # Gradle build config
-├── settings.gradle.kts     # Project settings
-├── src/
-│   └── wasmWasiMain/
-│       └── kotlin/
-│           └── Main.kt     # Entry point
-└── functionfly.jsonc       # Function config
-```
-
-## Build Configuration
-
-```kotlin
-// build.gradle.kts
-plugins {
-    kotlin("multiplatform") version "2.1.0"
-}
-
-kotlin {
-    wasmWasi {
-        binaries {
-            executable()
-        }
-    }
-}
-```
+- **WASM Sandbox** - Code isolation via wasmtime
+- **Security Manager** - Package/class blocking, host restrictions
+- **Resource Limits** - Memory, CPU, wall time enforcement
+- **Metrics Collection** - Prometheus-compatible observability
+- **NATS Integration** - Orchestrator communication
 
 ## Function Structure
 
-A Kotlin function implements the `FunctionFly.Function` interface:
+A Kotlin function must define a `main` function:
 
 ```kotlin
-package functionfly
+fun main() {
+    val handler = Function { input ->
+        """{"message": "Hello from Kotlin!"}"""
+    }
+    FunctionFly.run(handler)
+}
 
 fun interface Function {
     fun handle(input: String): String
 }
 ```
 
-Basic example:
+## Request/Response Format
+
+### Request
 
 ```kotlin
-import functionfly.*
+data class Request(
+    val body: String,           // JSON body
+    val headers: Map<String, String>, // HTTP headers
+    val method: String,         // GET, POST, etc.
+    val path: String,           // URL path
+    val params: Map<String, String> // Query params
+)
+```
 
-fun main() {
-    val myFunction = Function { input ->
-        """{"message": "Hello from Kotlin!"}"""
-    }
-    FunctionFly.run(myFunction)
-}
+### Response
+
+```kotlin
+data class Response(
+    val status: Int,                    // HTTP status code
+    val body: String,                  // Response body (JSON string)
+    val headers: Map<String, String>?  // Optional headers
+)
 ```
 
 ## Example Functions
@@ -84,157 +69,142 @@ fun main() {
 ### HTTP API Handler
 
 ```kotlin
-import functionfly.*
-import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 
 fun main() {
     val api = Function { input ->
-        val request = Json.parseToJsonElement(input).jsonObject
-        val method = request["method"]?.jsonPrimitive?.content ?: "GET"
-
-        when (method) {
-            "GET" -> {
-                val users = buildJsonArray {
-                    addJsonObject {
-                        put("id", "1")
-                        put("name", "Alice")
-                        put("email", "alice@example.com")
-                    }
-                    addJsonObject {
-                        put("id", "2")
-                        put("name", "Bob")
-                        put("email", "bob@example.com")
-                    }
-                }
-                buildJsonObject {
-                    put("status", 200)
-                    put("body", buildJsonObject { put("users", users) })
-                }.toString()
-            }
-            "POST" -> {
-                val body = request["body"]?.jsonObject
-                val name = body?.get("name")?.jsonPrimitive?.content ?: ""
-                val email = body?.get("email")?.jsonPrimitive?.content ?: ""
-                buildJsonObject {
-                    put("status", 201)
-                    put("body", buildJsonObject {
-                        put("id", "3")
-                        put("name", name)
-                        put("email", email)
-                    })
-                }.toString()
-            }
-            else -> """{"status": 405, "body": {"error": "Method not allowed"}}"""
+        val request = parseRequest(input)
+        val response = when (request.method) {
+            "GET" -> handleGet(request)
+            "POST" -> handlePost(request)
+            else -> createError(405, "Method not allowed")
         }
+        serializeResponse(response)
     }
-
     FunctionFly.run(api)
+}
+
+fun handleGet(req: Request): Response {
+    val users = """
+        [{"id": "1", "name": "Alice"}, {"id": "2", "name": "Bob"}]
+    """.trimIndent()
+    return Response(
+        status = 200,
+        body = """{"users": $users}"""
+    )
+}
+
+fun handlePost(req: Request): Response {
+    val body = parseJson(req.body)
+    val name = body["name"]?.toString() ?: ""
+    return Response(
+        status = 201,
+        body = """{"id": "3", "name": $name}"""
+    )
 }
 ```
 
 ### Webhook Processor
 
 ```kotlin
-import functionfly.*
+import java.security.MessageDigest
 
 fun main() {
     val webhook = Function { input ->
-        val request = parseJson(input)
-        val secret = FunctionFly.getEnv("WEBHOOK_SECRET")
-        val signature = request["headers"]?.get("x-signature") ?: ""
+        val req = parseRequest(input)
+        val signature = req.headers["x-signature"] ?: ""
+        val secret = FunctionFly.getenv("WEBHOOK_SECRET")
 
-        if (!verifySignature(request["body"].toString(), signature, secret)) {
-            return@Function """{"status": 401, "body": {"error": "Invalid signature"}}"""
+        if (!verifySignature(req.body, signature, secret)) {
+            return@Function serializeResponse(Response(401, """{"error": "Invalid signature"}"""))
         }
 
-        FunctionFly.log("Webhook received")
-        """{"status": 200, "body": {"received": true}}"""
+        FunctionFly.log("Webhook received: ${req.body}")
+        serializeResponse(Response(200, """{"received": true}"""))
     }
-
     FunctionFly.run(webhook)
 }
 
 fun verifySignature(body: String, signature: String, secret: String): Boolean {
     if (!signature.startsWith("sha256=")) return false
-    // In production, compute HMAC-SHA256 and compare
-    return true
+    val expected = hmacSHA256(body, secret)
+    return signature.substring(7) == expected
 }
 ```
 
 ### Data Transformation
 
 ```kotlin
-import functionfly.*
 import kotlinx.serialization.json.*
 
 fun main() {
     val transformer = Function { input ->
-        val request = Json.parseToJsonElement(input).jsonObject
-        val body = request["body"]?.jsonObject ?: return@Function """{"status": 400}"""
+        val req = parseRequest(input)
+        val body = parseJson(req.body)
 
-        val firstName = body["first_name"]?.jsonPrimitive?.content ?: ""
-        val lastName = body["last_name"]?.jsonPrimitive?.content ?: ""
+        val firstName = body["first_name"]?.toString() ?: ""
+        val lastName = body["last_name"]?.toString() ?: ""
         val name = "$firstName $lastName".trim()
 
-        buildJsonObject {
-            put("status", 200)
-            put("body", buildJsonObject {
-                put("id", body["id"]?.jsonPrimitive?.content ?: "")
-                put("name", name)
-                put("email", body["email"]?.jsonPrimitive?.content?.lowercase() ?: "")
-                put("timestamp", body["created_at"]?.jsonPrimitive?.content ?: "")
-            })
-        }.toString()
-    }
+        val result = buildJsonObject {
+            put("id", body["id"]?.toString() ?: "")
+            put("name", name)
+            put("email", body["email"]?.toString()?.lowercase() ?: "")
+        }
 
+        serializeResponse(Response(200, result.toString()))
+    }
     FunctionFly.run(transformer)
 }
 ```
 
 ## Environment Variables
 
-Access environment variables using `FunctionFly.getEnv`:
+Access environment variables using `FunctionFly.getenv`:
 
 ```kotlin
-val apiKey = FunctionFly.getEnv("API_KEY")
-val dbUrl = FunctionFly.getEnv("DATABASE_URL")
-val debug = FunctionFly.getEnv("DEBUG") == "true"
+val apiKey = FunctionFly.getenv("API_KEY")
+val dbUrl = FunctionFly.getenv("DATABASE_URL")
+val debug = FunctionFly.getenv("DEBUG") == "true"
 ```
 
-## Error Handling
+## Security
 
-```kotlin
-val safeFunction = Function { input ->
-    try {
-        val request = Json.parseToJsonElement(input).jsonObject
-        val result = processRequest(request)
-        """{"status": 200, "body": $result}"""
-    } catch (e: IllegalArgumentException) {
-        """{"status": 400, "body": {"error": "${e.message}"}}"""
-    } catch (e: Exception) {
-        FunctionFly.log("Error: ${e.message}")
-        """{"status": 500, "body": {"error": "${e.message}"}}"""
-    }
-}
-```
+The Kotlin runtime implements multiple security layers:
 
-## functionfly.jsonc Configuration
+### Blocked Packages
 
-```jsonc
-{
-  "name": "my-kotlin-function",
-  "runtime": "kotlin-wasm",
-  "wasm": {
-    "entrypoint": "main",
-    "wasi": true
-  },
-  "limits": {
-    "timeout": 30,
-    "memory": 256
-  }
-}
-```
+The following packages are blocked by default:
+
+| Package | Reason |
+|---------|--------|
+| `java.lang.Process` | Process execution |
+| `java.lang.Runtime` | JVM control |
+| `java.lang.System` | System access (exit, etc.) |
+| `java.io.File` | File system access |
+| `java.nio.file` | Advanced file ops |
+| `java.net.Socket` | Network sockets |
+| `java.net.ServerSocket` | Server sockets |
+| `java.lang.ClassLoader` | Class loading |
+| `sun.misc` | Internal APIs |
+| `jdk.internal` | Internal APIs |
+
+### Blocked Hosts
+
+Cloud metadata endpoints are blocked:
+
+- `169.254.169.254` (AWS)
+- `metadata.google.internal` (GCP)
+- `metadata.azure.com` (Azure)
+- `100.100.100.200` (Alibaba Cloud)
+
+### Environment Variable Restrictions
+
+Sensitive variables are blocked:
+
+- Variables containing `PASSWORD`, `SECRET`, `TOKEN`, `API_KEY`
+- Variables with prefix `AWS_`, `GCP_`, `AZURE_`
+- Variables like `LD_LIBRARY_PATH`, `DYLD_`, `LD_PRELOAD`
 
 ## Timeout and Limits
 
@@ -242,22 +212,94 @@ val safeFunction = Function { input ->
 |----------|---------|---------|
 | Timeout | 30s | 300s (5 min) |
 | Memory | 256 MB | 1024 MB |
-| CPU | 1 vCPU | 4 vCPU |
+| CPU | 10s | 60s |
+| Output Size | 1 MB | 10 MB |
+| Threads | 4 | 16 |
 
-Kotlin/WASM functions may use more memory than C/Rust due to the Kotlin runtime.
+Configure in `functionfly.jsonc`:
+
+```jsonc
+{
+  "runtime": "kotlin-jvm",
+  "limits": {
+    "timeout": 60,
+    "memory": 512,
+    "maxThreads": 8
+  },
+  "security": {
+    "allowDiskIo": false,
+    "allowNet": true
+  }
+}
+```
+
+## API Endpoints
+
+The runtime exposes the following HTTP endpoints:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check |
+| `/ready` | GET | Readiness check |
+| `/metrics` | GET | Metrics (JSON) |
+| `/metrics/prom` | GET | Prometheus format |
+| `/execute` | POST | Execute Kotlin code |
+| `/validate` | POST | Validate code |
+
+### Execute Request
+
+```json
+{
+  "id": "uuid",
+  "code": "fun main() { ... }",
+  "entry": "main",
+  "input": {"key": "value"},
+  "timeout": 30000
+}
+```
+
+### Execute Response
+
+```json
+{
+  "id": "uuid",
+  "success": true,
+  "output": {"result": "data"},
+  "execution_time_ms": 45,
+  "memory_used_mb": 128,
+  "terminated": false
+}
+```
 
 ## Cold Start
 
-Kotlin/WASM functions have moderate cold starts:
-- First invocation after deployment: ~30-100ms
-- Subsequent invocations: ~3-10ms
+Kotlin/JVM functions have moderate cold starts:
+
+- First invocation: ~100-500ms (JVM startup)
+- Subsequent invocations: ~5-50ms
+- Warm instances stay ready for faster responses
+
+## Metrics
+
+The runtime exports Prometheus metrics:
+
+- `kotlin_runtime_total_executions` - Total executions
+- `kotlin_runtime_successful_executions` - Successful executions
+- `kotlin_runtime_failed_executions` - Failed executions
+- `kotlin_runtime_timed_out_executions` - Timeouts
+- `kotlin_runtime_security_violations_total` - Blocked security violations
+- `kotlin_runtime_current_memory_mb` - Current memory usage
+- `kotlin_runtime_peak_memory_mb` - Peak memory usage
+- `kotlin_runtime_currently_executing` - Active executions
+- `kotlin_runtime_uptime_seconds` - Runtime uptime
 
 ## Best Practices
 
-1. **Use `kotlinx.serialization`** - For JSON parsing and generation
-2. **Keep the runtime small** - Avoid unnecessary dependencies
-3. **Handle nulls safely** - Use Kotlin's null safety features
-4. **Use `buildJsonObject`** - For constructing JSON responses
-5. **Log errors** - Use `FunctionFly.log` for debugging
-6. **Return valid JSON** - Always return a JSON string from the function
-7. **Optimize binary size** - Enable R8/ProGuard shrinking in release builds
+1. **Keep functions small** - Reduce cold start time
+2. **Avoid heavy dependencies** - Minimize JAR size
+3. **Use `kotlinx.serialization`** - For JSON handling
+4. **Handle exceptions gracefully** - Return appropriate status codes
+5. **Set appropriate timeouts** - Match your function's needs
+6. **Monitor memory usage** - Stay within limits
+7. **Use environment variables** - For configuration, not secrets
+8. **Return valid JSON** - Always serialize responses properly

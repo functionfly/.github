@@ -7,8 +7,66 @@ import { persist } from 'zustand/middleware';
 // Extend window interface
 declare global {
   interface Window {
-    hasAuthLogoutListener?: boolean;
+    hasAuthSyncListener?: boolean;
   }
+}
+
+const AUTH_CHANNEL_NAME = 'ff-auth-sync';
+let authChannel: BroadcastChannel | null = null;
+
+function getAuthChannel(): BroadcastChannel | null {
+  if (typeof BroadcastChannel === 'undefined') return null;
+  if (!authChannel) {
+    authChannel = new BroadcastChannel(AUTH_CHANNEL_NAME);
+  }
+  return authChannel;
+}
+
+type AuthSyncEvent = {
+  type: 'login' | 'logout' | 'token_updated';
+  timestamp: number;
+  userId?: string;
+};
+
+function broadcastAuthEvent(event: AuthSyncEvent) {
+  const channel = getAuthChannel();
+  if (channel) {
+    channel.postMessage(event);
+  }
+  localStorage.setItem('ff-auth-event', JSON.stringify(event));
+}
+
+function setupAuthSyncListener(store: ReturnType<typeof authStore>) {
+  if (typeof window === 'undefined' || window.hasAuthSyncListener) return;
+  window.hasAuthSyncListener = true;
+
+  const handleAuthEvent = (event: AuthSyncEvent) => {
+    if (event.type === 'logout') {
+      store.getState().logout(false);
+      return;
+    }
+    if (event.type === 'login' || event.type === 'token_updated') {
+      store.getState().initialize();
+    }
+  };
+
+  const broadcastChannel = getAuthChannel();
+  if (broadcastChannel) {
+    broadcastChannel.onmessage = (e: MessageEvent<AuthSyncEvent>) => {
+      handleAuthEvent(e.data);
+    };
+  }
+
+  window.addEventListener('storage', (e: StorageEvent) => {
+    if (e.key === 'ff-auth-event' && e.newValue) {
+      try {
+        const event: AuthSyncEvent = JSON.parse(e.newValue);
+        handleAuthEvent(event);
+      } catch {
+        // Ignore parse errors
+      }
+    }
+  });
 }
 
 interface AuthState {
@@ -80,6 +138,8 @@ const authStore = create<AuthState>()(
       mfaRequired: false,
 
       initialize: async () => {
+        setupAuthSyncListener(authStore);
+
         const jwtToken = localStorage.getItem('ff-access-token');
         const refreshToken = localStorage.getItem('ff-refresh-token');
 
@@ -178,6 +238,7 @@ const authStore = create<AuthState>()(
                   isAuthenticated: true,
                   authChecked: true,
                 });
+                broadcastAuthEvent({ type: 'token_updated', timestamp: Date.now(), userId: user.id });
                 return;
               }
             }
@@ -246,6 +307,7 @@ const authStore = create<AuthState>()(
                   isAuthenticated: true,
                   authChecked: true,
                 });
+                broadcastAuthEvent({ type: 'token_updated', timestamp: Date.now(), userId: user.id });
                 return;
               }
             }
@@ -294,8 +356,15 @@ const authStore = create<AuthState>()(
             authChecked: true,
             mfaRequired: false,
           });
+          broadcastAuthEvent({ type: 'login', timestamp: Date.now(), userId: user.id });
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Login failed';
+          const axiosData =
+            error && typeof error === 'object' && 'response' in error
+              ? (error as { response?: { data?: { message?: string } } }).response?.data
+              : null;
+          const message =
+            axiosData?.message ||
+            (error instanceof Error ? error.message : 'Login failed');
           set({ error: message, isLoading: false });
           throw error;
         }
@@ -323,6 +392,7 @@ const authStore = create<AuthState>()(
           localStorage.removeItem('ff-access-token');
           localStorage.removeItem('ff-refresh-token');
           localStorage.removeItem('ff-last-wallet-agent-id');
+          broadcastAuthEvent({ type: 'logout', timestamp: Date.now() });
           set({
             user: null,
             session: null,
@@ -443,6 +513,7 @@ const authStore = create<AuthState>()(
             mfaRequired: false,
             authChecked: true,
           });
+          broadcastAuthEvent({ type: 'login', timestamp: Date.now(), userId: user.id });
         } catch (error) {
           const message = error instanceof Error ? error.message : 'MFA verification failed';
           set({ error: message, isLoading: false });

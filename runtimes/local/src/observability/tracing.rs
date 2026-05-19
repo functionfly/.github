@@ -237,7 +237,10 @@ impl SpanBatch {
         });
 
         let go_endpoint = std::env::var("ORCHESTRATOR_TRACE_URL")
-            .unwrap_or_else(|_| "http://localhost:8080/api/traces".to_string());
+            .unwrap_or_else(|_| {
+                tracing::warn!("ORCHESTRATOR_TRACE_URL not set - trace export disabled");
+                String::new()
+            });
 
         match reqwest::Client::new()
             .post(&go_endpoint)

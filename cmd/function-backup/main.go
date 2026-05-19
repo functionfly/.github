@@ -48,6 +48,7 @@ type BackupConfig struct {
 	RetentionDays   int
 	CompressLevel   int
 	Encrypt         bool
+	GPGRecipient    string
 	DryRun          bool
 	Tables          []string
 	BackupBucket    string
@@ -136,6 +137,7 @@ func parseFlags() *BackupConfig {
 	flag.IntVar(&config.RetentionDays, "retention", 30, "Days to retain backups")
 	flag.IntVar(&config.CompressLevel, "compress", 6, "Gzip compression level (0-9)")
 	flag.BoolVar(&config.Encrypt, "encrypt", false, "Encrypt backup with GPG")
+	flag.StringVar(&config.GPGRecipient, "gpg-recipient", "", "GPG recipient (email or key ID) for encryption")
 	flag.BoolVar(&config.DryRun, "dry-run", false, "Show what would be backed up without uploading")
 
 	var tablesStr string
@@ -301,10 +303,23 @@ func runBackup(ctx context.Context, client *s3.Client, config *BackupConfig) err
 
 	// Encrypt if requested
 	if config.Encrypt {
-		// Note: GPG encryption would require CGO or external binary
-		// For now, log a warning
-		log.Printf("Warning: GPG encryption requires external gpg binary (not implemented in Go version)")
-		log.Printf("Use --encrypt flag with the shell script for GPG support")
+		gpgPath, err := findGPGBinary()
+		if err != nil {
+			return fmt.Errorf("GPG encryption requested but gpg binary not found in PATH: %w", err)
+		}
+		log.Printf("Using GPG binary: %s", gpgPath)
+
+		// Encrypt using the provided recipient
+		if config.GPGRecipient == "" {
+			return fmt.Errorf("GPG encryption requested but --gpg-recipient not provided")
+		}
+
+		encryptedFile := tempFile + ".gpg"
+		if err := runGPGEncrypt(tempFile, encryptedFile, config.GPGRecipient); err != nil {
+			return fmt.Errorf("GPG encryption failed: %w", err)
+		}
+		tempFile = encryptedFile
+		log.Printf("Encrypted backup to: %s", encryptedFile)
 	}
 
 	if config.DryRun {
@@ -581,3 +596,15 @@ var execCommand = func(name string, arg ...string) *exec.Cmd {
 	return exec.Command(name, arg...)
 }
 var execLookPath = exec.LookPath
+
+func findGPGBinary() (string, error) {
+	return execLookPath("gpg")
+}
+
+func runGPGEncrypt(inputPath, outputPath, recipient string) error {
+	cmd := execCommand("gpg", "--encrypt", "--recipient", recipient, "--output", outputPath, inputPath)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("gpg encryption failed: %w", err)
+	}
+	return nil
+}

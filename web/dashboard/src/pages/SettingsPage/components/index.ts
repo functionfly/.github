@@ -1,6 +1,8 @@
 export { AccountSettingsTab } from './AccountSettingsTab';
+export { AuthSettingsTab } from './AuthSettingsTab';
 export { BillingSettingsTab } from './BillingSettingsTab';
 export { DeveloperSettingsTab } from './DeveloperSettingsTab';
 export { NotificationsSettingsTab } from './NotificationsSettingsTab';
 export { PrivacySettingsTab } from './PrivacySettingsTab';
-export { SecuritySettingsTab } from './SecuritySettingsTab';export { PlatformSettingsTab } from './PlatformSettingsTab';
+export { SecuritySettingsTab } from './SecuritySettingsTab';
+export { PlatformSettingsTab } from './PlatformSettingsTab';

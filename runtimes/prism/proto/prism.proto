@@ -1,0 +1,757 @@
+syntax = "proto3";
+
+package prism.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/any.proto";
+
+// =============================================================================
+// Adaptive Execution Cell (AEC) Messages
+// =============================================================================
+
+/// Represents a single Adaptive Execution Cell - the fundamental unit of execution
+message ExecutionCell {
+  string id = 1;                    // Unique identifier (UUID)
+  string tenant_id = 2;             // Tenant isolation
+  CellStatus status = 3;            // Current cell status
+  CellConfig config = 4;            // Cell configuration
+  CellResources resources = 5;       // Resource allocation
+  CellMetadata metadata = 6;         // Metadata and tags
+
+  // Execution state
+  string wasm_module_id = 10;       // Reference to WASM module
+  bytes serialized_state = 11;     // Frozen execution state for migration
+  uint64 checkpoint_epoch = 12;      // Quantum snapshot epoch
+
+  // Streaming state
+  repeated StateSlice state_slices = 13;  // Live state partitions
+  StateStreamConfig stream_config = 14;   // Streaming configuration
+
+  google.protobuf.Timestamp created_at = 20;
+  google.protobuf.Timestamp last_executed_at = 21;
+  google.protobuf.Timestamp expires_at = 22;
+}
+
+message CellConfig {
+  uint64 memory_limit_mb = 1;
+  uint32 timeout_ms = 2;
+  uint32 max_instances = 3;
+  bool isolation_enabled = 4;
+  repeated string capabilities = 5;     // Required capabilities
+  map<string, string> env_vars = 6;      // Environment variables
+  string execution_target = 7;          // "cloud", "edge", "browser", "robotic"
+  PlacementHint placement_hint = 8;     // Scheduling hint
+}
+
+message CellResources {
+  uint32 vcpus = 1;
+  uint64 memory_bytes = 2;
+  bool gpu_required = 3;
+  uint32 gpu_memory_mb = 4;
+  ExecutionLocation location = 5;        // Where it's actually running
+  float cost_weight = 6;                 // Cost optimization weight
+}
+
+message CellMetadata {
+  string name = 1;
+  string version = 2;
+  string runtime = 3;                    // "wasm", "python", "rust", etc.
+  map<string, string> tags = 4;
+  repeated string languages = 5;         // Supported languages
+  string description = 6;
+}
+
+enum CellStatus {
+  CELL_STATUS_UNSPECIFIED = 0;
+  CELL_STATUS_PENDING = 1;
+  CELL_STATUS_INITIALIZING = 2;
+  CELL_STATUS_RUNNING = 3;
+  CELL_STATUS_WAITING = 4;
+  CELL_STATUS_MIGRATING = 5;
+  CELL_STATUS_FROZEN = 6;
+  CELL_STATUS_FAILED = 7;
+  CELL_STATUS_TERMINATED = 8;
+}
+
+enum ExecutionStatus {
+  EXECUTION_STATUS_UNSPECIFIED = 0;
+  EXECUTION_STATUS_PENDING = 1;
+  EXECUTION_STATUS_RUNNING = 2;
+  EXECUTION_STATUS_COMPLETED = 3;
+  EXECUTION_STATUS_FAILED = 4;
+  EXECUTION_STATUS_CANCELLED = 5;
+}
+
+enum ExecutionLocation {
+  EXECUTION_LOCATION_UNSPECIFIED = 0;
+  EXECUTION_LOCATION_CLOUD = 1;
+  EXECUTION_LOCATION_EDGE = 2;
+  EXECUTION_LOCATION_BROWSER = 3;
+  EXECUTION_LOCATION_ROBOTIC = 4;
+  EXECUTION_LOCATION_MOBILE = 5;
+  EXECUTION_LOCATION_IOT = 6;
+}
+
+message PlacementHint {
+  ExecutionLocation preferred_location = 1;
+  repeated string preferred_regions = 2;
+  float latency_sensitivity = 3;        // 0.0 to 1.0
+  float cost_sensitivity = 4;            // 0.0 to 1.0
+  bool gpu_required = 5;
+  string model_affinity = 6;            // For AI model routing
+}
+
+// =============================================================================
+// State Stream Messages
+// =============================================================================
+
+/// A slice of distributed state
+message StateSlice {
+  string slice_id = 1;
+  string cell_id = 2;
+  string key = 3;
+  bytes value = 4;                       // Serialized value (JSON, msgpack, etc.)
+  ValueEncoding encoding = 5;
+  uint64 version = 6;                    // Vector clock version
+  uint64 logical_timestamp = 7;          // For CRDT ordering
+  bool is_final = 8;                    // No more updates coming
+  google.protobuf.Timestamp timestamp = 9;
+}
+
+enum ValueEncoding {
+  VALUE_ENCODING_UNSPECIFIED = 0;
+  VALUE_ENCODING_JSON = 1;
+  VALUE_ENCODING_MSGPACK = 2;
+  VALUE_ENCODING_CBOR = 3;
+  VALUE_ENCODING_PROST = 4;
+  VALUE_ENCODING_RAW = 5;
+}
+
+message StateStreamConfig {
+  string stream_id = 1;
+  StreamStrategy strategy = 2;
+  uint32 buffer_size = 3;
+  bool resumable = 4;
+  RetentionPolicy retention = 5;
+}
+
+enum StreamStrategy {
+  STREAM_STRATEGY_UNSPECIFIED = 0;
+  STREAM_STRATEGY_REALTIME = 1;         // Immediate updates
+  STREAM_STRATEGY_BATCH = 2;            // Batch updates
+  STREAM_STRATEGY_ADAPTIVE = 3;         // Adaptive based on load
+}
+
+message RetentionPolicy {
+  uint32 max_age_seconds = 1;
+  uint64 max_items = 2;
+  bool persist_to_cold_storage = 3;
+}
+
+// =============================================================================
+// Capability Messages (Universal Capability Layer)
+// =============================================================================
+
+/// A discoverable capability in the mesh
+message Capability {
+  string capability_id = 1;
+  string name = 2;                       // e.g., "vision.detect", "speech.synthesize"
+  CapabilityCategory category = 3;
+  CapabilityMetadata metadata = 4;
+  PerformanceProfile performance = 5;
+  TrustLevel trust = 6;
+  repeated string runtimes = 7;         // Supported runtimes
+  repeated string languages = 8;        // Supported languages
+  bytes wasm_bundle = 9;                  // Capability WASM module (optional)
+  bool is_remote = 10;                   // Requires network call
+  string endpoint = 11;                  // If is_remote, the endpoint URL
+}
+
+message CapabilityMetadata {
+  string description = 1;
+  string version = 2;
+  map<string, string> tags = 3;
+  string provider = 4;                   // Who provides this capability
+  string documentation_url = 5;
+  repeated string dependencies = 6;       // Other capabilities this depends on
+}
+
+message PerformanceProfile {
+  uint32 avg_latency_ms = 1;
+  uint32 p99_latency_ms = 2;
+  uint32 throughput_rps = 3;
+  float trust_score = 4;                 // 0.0 to 1.0
+  CostProfile cost = 5;
+}
+
+message CostProfile {
+  double per_call_usd = 1;
+  double per_mb_usd = 2;
+  bool is_free = 3;
+}
+
+message TrustLevel {
+  float score = 1;                       // 0.0 to 1.0
+  string attestation = 2;                 // Remote attestation quote
+  bool is_verified = 3;
+  google.protobuf.Timestamp last_verified_at = 4;
+  repeated string trust_anchors = 5;      // Root certificates
+}
+
+enum CapabilityCategory {
+  CAPABILITY_CATEGORY_UNSPECIFIED = 0;
+  CAPABILITY_CATEGORY_AI = 1;            // ML inference, LLM, vision, audio
+  CAPABILITY_CATEGORY_COMPUTE = 2;       // General computation
+  CAPABILITY_CATEGORY_STORAGE = 3;       // Database, file, cache
+  CAPABILITY_CATEGORY_NETWORK = 4;       // HTTP, websockets, NATS
+  CAPABILITY_CATEGORY_CRYPTO = 5;        // Encryption, signing, hashing
+  CAPABILITY_CATEGORY_SENSORS = 6;       // IoT, robotics, hardware
+  CAPABILITY_CATEGORY_SYSTEM = 7;        // OS-level operations
+}
+
+/// Discovery request for finding capabilities
+message CapabilityDiscoveryRequest {
+  string query = 1;                      // Natural language query
+  CapabilityCategory category = 2;
+  repeated string required_tags = 3;
+  PerformanceRequirements requirements = 4;
+  TrustRequirements trust_requirements = 5;
+}
+
+message PerformanceRequirements {
+  uint32 max_latency_ms = 1;
+  uint32 min_throughput_rps = 2;
+  bool gpu_required = 3;
+  repeated string preferred_runtimes = 4;
+}
+
+message TrustRequirements {
+  float min_trust_score = 1;
+  bool require_attestation = 2;
+  bool require_verification = 3;
+}
+
+message CapabilityDiscoveryResponse {
+  repeated CapabilityMatch matches = 1;
+  string query_id = 2;
+}
+
+message CapabilityMatch {
+  Capability capability = 1;
+  float relevance_score = 2;             // How well it matches the query
+  repeated string matched_tags = 3;
+  string recommendation_reason = 4;
+}
+
+// =============================================================================
+// HyperCore Scheduler Messages
+// =============================================================================
+
+message ScheduleRequest {
+  string request_id = 1;
+  CellRequirements requirements = 2;
+  PlacementHint preference = 3;
+  string tenant_id = 4;
+  google.protobuf.Struct input = 5;       // Initial input for the cell
+}
+
+message CellRequirements {
+  string runtime = 1;                    // "wasm", "python", etc.
+  repeated string languages = 2;
+  uint32 vcpus = 3;
+  uint64 memory_bytes = 4;
+  bool gpu_required = 5;
+  uint32 gpu_memory_mb = 6;
+  uint32 timeout_ms = 7;
+  bool needs_state_stream = 8;
+  repeated string required_capabilities = 9;
+}
+
+message ScheduleResponse {
+  string request_id = 1;
+  string cell_id = 2;
+  ExecutionLocation assigned_location = 3;
+  string assigned_node_id = 4;
+  uint64 estimated_start_time_ms = 5;
+  float cost_estimate_usd = 6;
+}
+
+message PlacementDecision {
+  string cell_id = 1;
+  ExecutionLocation location = 2;
+  string node_id = 3;
+  map<string, string> config_overrides = 4;
+  string scheduling_reason = 5;
+}
+
+// =============================================================================
+// WASM Fusion Engine Messages
+// =============================================================================
+
+message FusionGraph {
+  string graph_id = 1;
+  repeated FusionNode nodes = 2;
+  repeated FusionEdge edges = 3;
+  FusionConfig config = 4;
+}
+
+message FusionNode {
+  string node_id = 1;
+  string name = 2;
+  FusionNodeType node_type = 3;
+  oneof definition {
+    WasmModuleDefinition wasm_module = 10;
+    FunctionChainDefinition function_chain = 11;
+    StreamProcessorDefinition stream_processor = 12;
+  }
+}
+
+enum FusionNodeType {
+  FUSION_NODE_TYPE_UNSPECIFIED = 0;
+  FUSION_NODE_TYPE_WASM = 1;
+  FUSION_NODE_TYPE_PYTHON = 2;
+  FUSION_NODE_TYPE_FUNCTION_CHAIN = 3;
+  FUSION_NODE_TYPE_STREAM_MAP = 4;
+  FUSION_NODE_TYPE_STREAM_FILTER = 5;
+  FUSION_NODE_TYPE_STREAM_REDUCE = 6;
+}
+
+message WasmModuleDefinition {
+  string module_id = 1;
+  bytes wasm_bytes = 2;
+  string entry_function = 3;
+  repeated string imports = 4;           // Required host functions
+}
+
+message FunctionChainDefinition {
+  repeated string function_ids = 1;
+  ChainStrategy strategy = 2;
+}
+
+enum ChainStrategy {
+  CHAIN_STRATEGY_UNSPECIFIED = 0;
+  CHAIN_STRATEGY_SEQUENTIAL = 1;
+  CHAIN_STRATEGY_PARALLEL = 2;
+  CHAIN_STRATEGY_CONDITIONAL = 3;
+}
+
+message StreamProcessorDefinition {
+  string processor_type = 1;              // "map", "filter", "reduce", "window"
+  google.protobuf.Struct config = 2;
+}
+
+message FusionEdge {
+  string edge_id = 1;
+  string source = 2;
+  string target = 3;
+  EdgeKind kind = 4;
+  string output_mapping = 5;
+}
+
+enum EdgeKind {
+  EDGE_KIND_UNSPECIFIED = 0;
+  EDGE_KIND_DATA_FLOW = 1;
+  EDGE_KIND_CONTROL_FLOW = 2;
+  EDGE_KIND_STREAM = 3;
+}
+
+message FusionConfig {
+  bool enable_streaming = 1;
+  bool enable_module_merging = 2;
+  bool enable_live_patch = 3;
+  uint32 max_fusion_modules = 4;
+}
+
+// =============================================================================
+// Quantum Snapshotting Messages
+// =============================================================================
+
+message SnapshotRequest {
+  string cell_id = 1;
+  SnapshotType snapshot_type = 2;
+  SnapshotOptions options = 3;
+}
+
+message SnapshotOptions {
+  bool include_memory = 1;
+  bool include_cpu_state = 2;
+  bool include_open_handles = 3;
+  bool compress = 4;
+  CompressionAlgorithm compression = 5;
+}
+
+message SnapshotResponse {
+  string snapshot_id = 1;
+  string cell_id = 2;
+  uint64 size_bytes = 3;
+  uint64 checkpoint_epoch = 4;
+  bytes serialized_state = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+enum SnapshotType {
+  SNAPSHOT_TYPE_UNSPECIFIED = 0;
+  SNAPSHOT_TYPE_FRESH = 1;               // Clean snapshot
+  SNAPSHOT_TYPE_INCREMENTAL = 2;         // Delta from last snapshot
+  SNAPSHOT_TYPE_FULL = 3;                // Complete state
+}
+
+enum CompressionAlgorithm {
+  COMPRESSION_UNSPECIFIED = 0;
+  COMPRESSION_NONE = 1;
+  COMPRESSION_ZSTD = 2;
+  COMPRESSION_LZ4 = 3;
+}
+
+message MigrationRequest {
+  string cell_id = 1;
+  string target_node_id = 2;
+  MigrationStrategy strategy = 3;
+}
+
+message MigrationResponse {
+  string migration_id = 1;
+  string cell_id = 2;
+  bool success = 3;
+  string error = 4;
+  uint64 downtime_ms = 5;
+}
+
+enum MigrationStrategy {
+  MIGRATION_STRATEGY_UNSPECIFIED = 0;
+  MIGRATION_STRATEGY_PRE_COPY = 1;       // Pre-copy memory pages
+  MIGRATION_STRATEGY_STOP_COPY = 2;     // Stop, copy, resume
+  MIGRATION_STRATEGY_LIVE = 3;          // Live migration
+}
+
+// =============================================================================
+// Swarm Coordination Messages
+// =============================================================================
+
+message SwarmCommand {
+  string swarm_id = 1;
+  string command_id = 2;
+  SwarmCommandType command_type = 3;
+  google.protobuf.Struct payload = 4;
+  map<string, string> metadata = 5;
+}
+
+enum SwarmCommandType {
+  SWARM_COMMAND_UNSPECIFIED = 0;
+  SWARM_COMMAND_SPAWN = 1;              // Spawn new cell
+  SWARM_COMMAND_DELEGATE = 2;           // Delegate work
+  SWARM_COMMAND_COORDINATE = 3;         // Coordinate with peers
+  SWARM_COMMAND_MIGRATE = 4;            // Migrate to different node
+  SWARM_COMMAND_TERMINATE = 5;          // Graceful shutdown
+  SWARM_COMMAND_HEAL = 6;               // Self-heal
+}
+
+message SwarmState {
+  string swarm_id = 1;
+  repeated string active_cells = 2;
+  repeated string completed_cells = 3;
+  map<string, string> peer_nodes = 4;
+  SwarmHealth health = 5;
+}
+
+message SwarmHealth {
+  bool is_healthy = 1;
+  uint32 active_count = 2;
+  uint32 total_count = 3;
+  repeated string failed_cells = 4;
+}
+
+// =============================================================================
+// Mesh Networking Messages
+// =============================================================================
+
+message MeshNodeInfo {
+  string node_id = 1;
+  string node_type = 2;                  // "cloud", "edge", "browser"
+  repeated string regions = 3;
+  NodeResources resources = 4;
+  repeated Capability advertised_capabilities = 5;
+  bool is_available = 6;
+}
+
+message NodeResources {
+  uint32 vcpus = 1;
+  uint64 memory_bytes = 2;
+  uint32 gpu_count = 3;
+  uint32 gpu_memory_mb = 4;
+}
+
+// =============================================================================
+// Neural Execution Optimization Messages
+// =============================================================================
+
+message OptimizationFeedback {
+  string cell_id = 1;
+  ExecutionMetrics metrics = 2;
+  bool was_successful = 3;
+  string suggestion_id = 4;
+}
+
+message ExecutionMetrics {
+  uint64 duration_ms = 1;
+  uint64 memory_used_bytes = 2;
+  double cpu_usage_percent = 3;
+  double cost_usd = 4;
+  uint32 cache_hit_rate = 5;
+  uint64 bytes_transferred = 6;
+}
+
+// =============================================================================
+// FunctionFly Package (.ffpkg) Messages
+// =============================================================================
+
+message FunctionPackage {
+  string manifest_version = 1;
+  PackageMetadata metadata = 2;
+  repeated PackageModule modules = 3;
+  repeated PackageResource resources = 4;
+  PackageSignature signature = 5;
+}
+
+message PackageMetadata {
+  string name = 1;
+  string version = 2;
+  string description = 3;
+  string runtime = 4;                    // Primary runtime
+  repeated string languages = 5;        // Supported languages
+  map<string, string> capabilities = 6; // Required capabilities
+  PackageBuildInfo build_info = 7;
+}
+
+message PackageBuildInfo {
+  string compiler = 1;
+  string compiler_version = 2;
+  repeated string build_flags = 3;
+  google.protobuf.Timestamp built_at = 4;
+  string architecture = 5;               // "x86_64", "aarch64", "wasm32"
+}
+
+message PackageModule {
+  string module_id = 1;
+  string name = 2;
+  string language = 3;                   // "rust", "python", "typescript"
+  bytes bytecode = 4;                     // Compiled bytecode
+  string entry_point = 5;               // "main", "handler", etc.
+  repeated ModuleDependency dependencies = 6;
+}
+
+message ModuleDependency {
+  string module_id = 1;
+  string version_constraint = 2;
+}
+
+message PackageResource {
+  string resource_id = 1;
+  string name = 2;
+  string resource_type = 3;              // "config", "data", "model"
+  bytes content = 4;
+  map<string, string> metadata = 5;
+}
+
+message PackageSignature {
+  string algorithm = 1;                  // "ed25519", "rsa4096"
+  bytes signature = 2;
+  string public_key = 3;                 // Base64 encoded
+  google.protobuf.Timestamp signed_at = 4;
+  string certificate_chain = 5;         // PEM encoded
+}
+
+// =============================================================================
+// Service Definitions
+// =============================================================================
+
+service PrismRuntime {
+  // Cell Lifecycle
+  rpc CreateCell(CreateCellRequest) returns (CreateCellResponse);
+  rpc GetCell(GetCellRequest) returns (GetCellResponse);
+  rpc ExecuteCell(ExecuteCellRequest) returns (ExecuteCellResponse);
+  rpc TerminateCell(TerminateCellRequest) returns (TerminateCellResponse);
+
+  // State Streaming
+  rpc StreamState(stream StateUpdate) returns (stream StateSlice);
+  rpc GetStateSnapshot(GetStateSnapshotRequest) returns (GetStateSnapshotResponse);
+
+  // Capability Discovery
+  rpc DiscoverCapabilities(CapabilityDiscoveryRequest) returns (CapabilityDiscoveryResponse);
+  rpc RegisterCapability(RegisterCapabilityRequest) returns (RegisterCapabilityResponse);
+  rpc InvokeCapability(InvokeCapabilityRequest) returns (InvokeCapabilityResponse);
+
+  // Scheduling
+  rpc ScheduleCell(ScheduleRequest) returns (ScheduleResponse);
+  rpc GetPlacementSuggestions(GetPlacementSuggestionsRequest) returns (GetPlacementSuggestionsResponse);
+
+  // WASM Fusion
+  rpc CreateFusionGraph(CreateFusionGraphRequest) returns (CreateFusionGraphResponse);
+  rpc ExecuteFusionGraph(ExecuteFusionGraphRequest) returns (ExecuteFusionGraphResponse);
+
+  // Quantum Snapshotting
+  rpc CreateSnapshot(SnapshotRequest) returns (SnapshotResponse);
+  rpc RestoreSnapshot(RestoreSnapshotRequest) returns (RestoreSnapshotResponse);
+  rpc MigrateCell(MigrationRequest) returns (MigrationResponse);
+
+  // Swarm Coordination
+  rpc CreateSwarm(CreateSwarmRequest) returns (CreateSwarmResponse);
+  rpc SendSwarmCommand(SwarmCommand) returns (SwarmCommandResponse);
+  rpc GetSwarmState(GetSwarmStateRequest) returns (GetSwarmStateResponse);
+
+  // Mesh
+  rpc RegisterNode(MeshNodeInfo) returns (RegisterNodeResponse);
+  rpc DiscoverNodes(DiscoverNodesRequest) returns (DiscoverNodesResponse);
+}
+
+message CreateCellRequest {
+  string tenant_id = 1;
+  CellConfig config = 2;
+  bytes wasm_bytes = 3;
+  google.protobuf.Struct initial_state = 4;
+}
+
+message CreateCellResponse {
+  ExecutionCell cell = 1;
+}
+
+message GetCellRequest {
+  string cell_id = 1;
+}
+
+message GetCellResponse {
+  ExecutionCell cell = 1;
+}
+
+message ExecuteCellRequest {
+  string cell_id = 1;
+  google.protobuf.Struct input = 2;
+  ExecuteCellOptions options = 3;
+}
+
+message ExecuteCellOptions {
+  uint32 timeout_ms = 1;
+  bool enable_streaming = 2;
+  map<string, string> execution_context = 3;
+}
+
+message ExecuteCellResponse {
+  string execution_id = 1;
+  google.protobuf.Struct output = 2;
+  ExecutionStatus status = 3;
+  string error = 4;
+  ExecutionMetrics metrics = 5;
+}
+
+message TerminateCellRequest {
+  string cell_id = 1;
+  bool force = 2;
+}
+
+message TerminateCellResponse {
+  bool success = 1;
+}
+
+message StateUpdate {
+  string cell_id = 1;
+  string key = 2;
+  bytes value = 3;
+  ValueEncoding encoding = 4;
+}
+
+message GetStateSnapshotRequest {
+  string cell_id = 1;
+}
+
+message GetStateSnapshotResponse {
+  repeated StateSlice slices = 1;
+}
+
+message RegisterCapabilityRequest {
+  Capability capability = 1;
+}
+
+message RegisterCapabilityResponse {
+  string capability_id = 1;
+}
+
+message InvokeCapabilityRequest {
+  string capability_id = 1;
+  google.protobuf.Struct parameters = 2;
+}
+
+message InvokeCapabilityResponse {
+  google.protobuf.Struct result = 1;
+  ExecutionMetrics metrics = 2;
+}
+
+message GetPlacementSuggestionsRequest {
+  CellRequirements requirements = 1;
+}
+
+message GetPlacementSuggestionsResponse {
+  repeated PlacementDecision suggestions = 1;
+}
+
+message CreateFusionGraphRequest {
+  FusionGraph graph = 1;
+}
+
+message CreateFusionGraphResponse {
+  string graph_id = 1;
+}
+
+message ExecuteFusionGraphRequest {
+  string graph_id = 1;
+  google.protobuf.Struct input = 2;
+}
+
+message ExecuteFusionGraphResponse {
+  google.protobuf.Struct output = 1;
+  ExecutionMetrics metrics = 2;
+}
+
+message RestoreSnapshotRequest {
+  string cell_id = 1;
+  string snapshot_id = 2;
+}
+
+message RestoreSnapshotResponse {
+  bool success = 1;
+}
+
+message CreateSwarmRequest {
+  string swarm_id = 1;
+  repeated string initial_cell_ids = 2;
+}
+
+message CreateSwarmResponse {
+  SwarmState state = 1;
+}
+
+message SwarmCommandResponse {
+  bool success = 1;
+  google.protobuf.Struct result = 2;
+}
+
+message GetSwarmStateRequest {
+  string swarm_id = 1;
+}
+
+message GetSwarmStateResponse {
+  SwarmState state = 1;
+}
+
+message RegisterNodeResponse {
+  bool success = 1;
+}
+
+message DiscoverNodesRequest {
+  ExecutionLocation location = 1;
+  repeated string regions = 2;
+}
+
+message DiscoverNodesResponse {
+  repeated MeshNodeInfo nodes = 1;
+}

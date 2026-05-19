@@ -60,6 +60,47 @@ func (r *BillingRepository) GetUsageByTenant(tenantID uuid.UUID, eventType strin
 	return rollups, nil
 }
 
+// FunctionUsageRollup represents usage aggregated by function
+type FunctionUsageRollup struct {
+	FunctionID       uuid.UUID `json:"function_id"`
+	FunctionName     string    `json:"function_name"`
+	TotalExecutions  int64     `json:"total_executions"`
+	TotalDurationMs  int64     `json:"total_duration_ms"`
+	TotalCostCents   int64     `json:"total_cost_cents"`
+}
+
+// GetUsageByTenantByFunction returns usage aggregated by function for a tenant within a time range
+func (r *BillingRepository) GetUsageByTenantByFunction(tenantID uuid.UUID, start, end time.Time) ([]*FunctionUsageRollup, error) {
+	query := `
+		SELECT
+			cae.function_id,
+			cae.function_name,
+			COUNT(*) as total_executions,
+			COALESCE(SUM(cae.duration_ms), 0) as total_duration_ms,
+			COALESCE(SUM(cae.total_cost_cents), 0) as total_cost_cents
+		FROM cost_allocation_entries cae
+		WHERE cae.tenant_id = $1 AND cae.timestamp >= $2 AND cae.timestamp <= $3
+		GROUP BY cae.function_id, cae.function_name
+		ORDER BY total_cost_cents DESC`
+
+	rows, err := r.db.Query(query, tenantID, start, end)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get usage by function: %w", err)
+	}
+	defer rows.Close()
+
+	var results []*FunctionUsageRollup
+	for rows.Next() {
+		rollup := &FunctionUsageRollup{}
+		err := rows.Scan(&rollup.FunctionID, &rollup.FunctionName, &rollup.TotalExecutions, &rollup.TotalDurationMs, &rollup.TotalCostCents)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan function usage rollup: %w", err)
+		}
+		results = append(results, rollup)
+	}
+	return results, nil
+}
+
 // CreateOrUpdateUsageRollup creates or updates a usage rollup for a tenant/event_type/date
 func (r *BillingRepository) CreateOrUpdateUsageRollup(ctx context.Context, rollup *UsageRollup) error {
 	rollup.ID = uuid.New()

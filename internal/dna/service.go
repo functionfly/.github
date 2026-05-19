@@ -64,7 +64,7 @@ func NewService(repo *dna.Repository, logger *logrus.Logger) *Service {
 	return &Service{
 		repo:      repo,
 		logger:    logger,
-		aiBaseURL: getEnvOrDefault("AI_SERVICE_URL", "http://localhost:8081"),
+		aiBaseURL: getEnvOrDefault("AI_SERVICE_URL", ""), // Must be set explicitly
 		aiAPIKey:  os.Getenv("AI_SERVICE_API_KEY"),
 		httpClient: &http.Client{Timeout: 2 * time.Minute},
 		aiCircuitBreaker: newCircuitBreaker(5, 2*time.Minute),

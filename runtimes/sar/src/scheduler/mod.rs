@@ -119,7 +119,7 @@ impl AgentScheduler {
                     m.write().running_tasks += 1;
                 }
 
-                let ctx = Arc::new(ExecutionContext::new(execution.execution_id, None));
+                let ctx = Arc::new(ExecutionContext::new(execution.execution_id, None, None));
                 let graph_input = GraphExecutionInput {
                     graph_id: execution.execution_id,
                     initial_input: execution.input,

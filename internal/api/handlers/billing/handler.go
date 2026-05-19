@@ -181,7 +181,8 @@ func (h *Handler) HandleCreatePortalSession(w http.ResponseWriter, r *http.Reque
 	// Validate return URL for security (prevent open redirect)
 	appURL := os.Getenv("APP_URL")
 	if appURL == "" {
-		appURL = "http://localhost:3000"
+		logrus.Warn("APP_URL not set - using default app URL")
+		appURL = "https://app.functionfly.com" // Must be set explicitly in production
 	}
 	returnURL = payment.SanitizeReturnURL(returnURL, appURL+"/settings")
 

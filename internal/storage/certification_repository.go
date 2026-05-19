@@ -1045,6 +1045,9 @@ func (r *CertificationRepository) RevokeCredential(ctx context.Context, id uuid.
 
 // NextCredentialNumber generates the next sequential credential number for a tier
 func (r *CertificationRepository) NextCredentialNumber(ctx context.Context, tierSlug string) (string, error) {
+	if !isValidTierSlug(tierSlug) {
+		return "", fmt.Errorf("invalid tier slug: %s", tierSlug)
+	}
 	var seq int
 	err := r.db.QueryRowContext(ctx,
 		fmt.Sprintf(`SELECT nextval('cert_credential_seq_%s')`, tierSlug)).Scan(&seq)
@@ -1052,6 +1055,18 @@ func (r *CertificationRepository) NextCredentialNumber(ctx context.Context, tier
 		return "", fmt.Errorf("failed to get next credential number: %w", err)
 	}
 	return fmt.Sprintf("FFC-%d-%06d", time.Now().Year(), seq), nil
+}
+
+func isValidTierSlug(slug string) bool {
+	if len(slug) == 0 || len(slug) > 64 {
+		return false
+	}
+	for _, c := range slug {
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_') {
+			return false
+		}
+	}
+	return true
 }
 
 func scanCertCredentials(rows *sql.Rows) ([]*CertCredential, error) {

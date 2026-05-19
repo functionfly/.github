@@ -15,13 +15,14 @@ import (
 // It processes pending sync records from billing_integration_syncs table
 // and executes the actual data synchronization with external billing systems.
 type BillingSyncJob struct {
-	exportRepo   *storage.ExportRepository
-	exporters    map[storage.BillingSystemType]func() ExternalExporter
-	stopCh       chan struct{}
-	stopOnce     sync.Once
-	log          *logrus.Logger
-	workerCount  int
-	pollInterval time.Duration
+	exportRepo    *storage.ExportRepository
+	billingRepo   *storage.BillingRepository
+	exporters     map[storage.BillingSystemType]func() ExternalExporter
+	stopCh        chan struct{}
+	stopOnce      sync.Once
+	log           *logrus.Logger
+	workerCount   int
+	pollInterval  time.Duration
 }
 
 // BillingSyncJobConfig configures the billing sync job.
@@ -31,7 +32,7 @@ type BillingSyncJobConfig struct {
 }
 
 // NewBillingSyncJob creates a new billing sync job.
-func NewBillingSyncJob(exportRepo *storage.ExportRepository, config ...BillingSyncJobConfig) *BillingSyncJob {
+func NewBillingSyncJob(exportRepo *storage.ExportRepository, billingRepo *storage.BillingRepository, config ...BillingSyncJobConfig) *BillingSyncJob {
 	cfg := BillingSyncJobConfig{
 		WorkerCount:  2,
 		PollInterval: 5 * time.Second,
@@ -47,12 +48,13 @@ func NewBillingSyncJob(exportRepo *storage.ExportRepository, config ...BillingSy
 	}
 
 	return &BillingSyncJob{
-		exportRepo:   exportRepo,
-		exporters:    ExporterRegistry,
-		stopCh:       make(chan struct{}),
-		log:          logrus.New(),
-		workerCount:  cfg.WorkerCount,
-		pollInterval: cfg.PollInterval,
+		exportRepo:    exportRepo,
+		billingRepo:   billingRepo,
+		exporters:     ExporterRegistry,
+		stopCh:        make(chan struct{}),
+		log:           logrus.New(),
+		workerCount:   cfg.WorkerCount,
+		pollInterval:  cfg.PollInterval,
 	}
 }
 
@@ -243,14 +245,42 @@ func (j *BillingSyncJob) syncCustomers(ctx context.Context, exporter ExternalExp
 // syncInvoices syncs invoices to the external billing system
 func (j *BillingSyncJob) syncInvoices(ctx context.Context, exporter ExternalExporter,
 	system *storage.ExternalBillingSystem, sync *storage.BillingIntegrationSync) (*ExportResult, error) {
-	// Get invoices for the tenant
-	// For now, return a placeholder result
-	return &ExportResult{
-		RecordsProcessed: 0,
-		RecordsCreated:   0,
-		RecordsUpdated:   0,
-		RecordsFailed:    0,
-	}, nil
+
+	invoices, err := j.billingRepo.ListInvoicesByTenant(sync.TenantID, 100, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get invoices for tenant: %w", err)
+	}
+
+	if len(invoices) == 0 {
+		return &ExportResult{
+			RecordsProcessed: 0,
+			RecordsCreated:   0,
+			RecordsUpdated:   0,
+			RecordsFailed:    0,
+		}, nil
+	}
+
+	exportInvoices := make([]InvoiceExport, 0, len(invoices))
+	for _, inv := range invoices {
+		exportInv := InvoiceExport{
+			ExternalID:      inv.ID.String(),
+			TenantID:        inv.TenantID,
+			TenantName:      inv.TenantID.String(),
+			InvoiceNumber:   inv.ID.String()[:8],
+			Status:          inv.Status,
+			AmountDueCents:  int64(inv.AmountDueCents),
+			AmountPaidCents: int64(inv.AmountPaidCents),
+			Currency:        inv.Currency,
+			Description:     fmt.Sprintf("FunctionFly Invoice %s", inv.ID.String()[:8]),
+			PeriodStart:     *inv.PeriodStart,
+			PeriodEnd:       *inv.PeriodEnd,
+			DueDate:         *inv.DueDate,
+			PaidDate:        inv.PaidAt,
+		}
+		exportInvoices = append(exportInvoices, exportInv)
+	}
+
+	return exporter.SyncInvoices(ctx, system, exportInvoices)
 }
 
 // syncUsage syncs usage data to the external billing system
@@ -277,14 +307,44 @@ func (j *BillingSyncJob) syncUsage(ctx context.Context, exporter ExternalExporte
 // syncPayments syncs payment data to the external billing system
 func (j *BillingSyncJob) syncPayments(ctx context.Context, exporter ExternalExporter,
 	system *storage.ExternalBillingSystem, sync *storage.BillingIntegrationSync) (*ExportResult, error) {
-	// Payment sync would typically involve syncing payment transactions
-	// For now, return a placeholder result
-	return &ExportResult{
-		RecordsProcessed: 0,
-		RecordsCreated:   0,
-		RecordsUpdated:   0,
-		RecordsFailed:    0,
-	}, nil
+
+	invoices, err := j.billingRepo.ListInvoicesByTenant(sync.TenantID, 100, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get invoices for tenant: %w", err)
+	}
+
+	payments := []PaymentExport{}
+	for _, inv := range invoices {
+		if inv.AmountPaidCents > 0 && inv.PaidAt != nil {
+			var refNum string
+			if inv.StripeInvoiceID != nil {
+				refNum = *inv.StripeInvoiceID
+			}
+			payments = append(payments, PaymentExport{
+				ExternalID:      inv.ID.String() + "-payment",
+				TenantID:        inv.TenantID,
+				TenantName:      inv.TenantID.String(),
+				InvoiceNumber:   inv.ID.String()[:8],
+				AmountCents:     int64(inv.AmountPaidCents),
+				Currency:        inv.Currency,
+				Status:          "completed",
+				PaymentDate:     *inv.PaidAt,
+				Description:     fmt.Sprintf("Payment for Invoice %s", inv.ID.String()[:8]),
+				ReferenceNumber: refNum,
+			})
+		}
+	}
+
+	if len(payments) == 0 {
+		return &ExportResult{
+			RecordsProcessed: 0,
+			RecordsCreated:   0,
+			RecordsUpdated:   0,
+			RecordsFailed:    0,
+		}, nil
+	}
+
+	return exporter.SyncPayments(ctx, system, payments)
 }
 
 // syncAll syncs all billing data types

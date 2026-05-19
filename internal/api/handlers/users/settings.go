@@ -822,7 +822,11 @@ func (h *Handler) HandlePatchUserSettingsPlatformMe(w http.ResponseWriter, r *ht
 	if currentSettings["platform"] == nil {
 		currentSettings["platform"] = map[string]interface{}{}
 	}
-	platform := currentSettings["platform"].(map[string]interface{})
+	platform, ok := currentSettings["platform"].(map[string]interface{})
+	if !ok {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
 
 	// Apply valid fields
 	if req.AutoEvolve != nil {

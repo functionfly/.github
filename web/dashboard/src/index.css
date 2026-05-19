@@ -73,6 +73,18 @@
   --color-status-degraded: #f59e0b;
   --color-status-pending: #6b7280;
 
+  /* Aviation Theme (for @functionfly/ui-* packages) - mapped to dashboard theme */
+  --color-aviation-bg-panel: var(--bg-secondary);
+  --color-aviation-bg-secondary: var(--bg-primary);
+  --color-aviation-bg-instrument: var(--bg-tertiary);
+  --color-aviation-text-primary: var(--text-primary);
+  --color-aviation-text-secondary: var(--text-secondary);
+  --color-aviation-text-muted: var(--text-muted);
+  --color-aviation-text-dim: var(--text-muted);
+  --color-aviation-border-panel: var(--border-subtle);
+  --color-aviation-cyan: #06b6d4;
+  --color-aviation-amber: #f59e0b;
+
   /* Semantic Colors */
   --color-success: #10b981;
   --color-error: #ef4444;
@@ -133,6 +145,38 @@
   --spacing-18: 4.5rem;
   --spacing-88: 22rem;
   --spacing-128: 32rem;
+}
+
+/* Studio root container - applies settings globally to studio */
+.studio-root,
+.studio-root * {
+  font-size: var(--studio-font-size) !important;
+}
+
+/* Studio brand color overrides using CSS variables */
+.studio-root .text-brand-400,
+.studio-root .text-brand-300,
+.studio-root .text-brand-500 {
+  color: var(--studio-brand-primary) !important;
+}
+
+.studio-root .bg-brand-500,
+.studio-root .bg-brand-500\/20,
+.studio-root .bg-brand-500\/10 {
+  background-color: var(--studio-brand-primary) !important;
+}
+
+.studio-root .border-brand-500 {
+  border-color: var(--studio-brand-primary) !important;
+}
+
+/* Hover states */
+.studio-root .hover\:bg-brand-500:hover {
+  background-color: var(--studio-brand-primary) !important;
+}
+
+.studio-root .hover\:text-brand-300:hover {
+  color: var(--studio-brand-secondary) !important;
 }
 
 /* Base Styles */

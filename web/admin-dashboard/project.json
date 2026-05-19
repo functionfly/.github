@@ -21,7 +21,10 @@
       "executor": "nx:run-commands",
       "options": {
         "command": "vite --host 0.0.0.0 --port 3002",
-        "cwd": "web/admin-dashboard"
+        "cwd": "web/admin-dashboard",
+        "env": {
+          "VITE_API_BASE_URL": "http://localhost:8080"
+        }
       }
     },
     "preview": {

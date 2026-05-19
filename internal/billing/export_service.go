@@ -27,6 +27,41 @@ type ExternalExporter interface {
 	ExportLineItems(ctx context.Context, system *storage.ExternalBillingSystem, items []LineItemExport) (*ExportResult, error)
 	// SyncCustomers syncs tenant users as customers in the external system.
 	SyncCustomers(ctx context.Context, system *storage.ExternalBillingSystem, customers []CustomerExport) (*ExportResult, error)
+	// SyncInvoices syncs invoices to the external system.
+	SyncInvoices(ctx context.Context, system *storage.ExternalBillingSystem, invoices []InvoiceExport) (*ExportResult, error)
+	// SyncPayments syncs payments to the external system.
+	SyncPayments(ctx context.Context, system *storage.ExternalBillingSystem, payments []PaymentExport) (*ExportResult, error)
+}
+
+// InvoiceExport represents an invoice for external export.
+type InvoiceExport struct {
+	ExternalID      string     `json:"external_id,omitempty"`
+	TenantID        uuid.UUID  `json:"tenant_id"`
+	TenantName      string     `json:"tenant_name"`
+	InvoiceNumber   string     `json:"invoice_number"`
+	Status          string     `json:"status"`
+	AmountDueCents  int64      `json:"amount_due_cents"`
+	AmountPaidCents int64      `json:"amount_paid_cents"`
+	Currency        string     `json:"currency"`
+	Description     string     `json:"description"`
+	PeriodStart     time.Time  `json:"period_start"`
+	PeriodEnd       time.Time  `json:"period_end"`
+	DueDate         time.Time  `json:"due_date"`
+	PaidDate        *time.Time `json:"paid_date,omitempty"`
+}
+
+// PaymentExport represents a payment for external export.
+type PaymentExport struct {
+	ExternalID      string    `json:"external_id,omitempty"`
+	TenantID        uuid.UUID `json:"tenant_id"`
+	TenantName      string    `json:"tenant_name"`
+	InvoiceNumber   string    `json:"invoice_number"`
+	AmountCents     int64     `json:"amount_cents"`
+	Currency        string    `json:"currency"`
+	Status          string    `json:"status"`
+	PaymentDate     time.Time `json:"payment_date"`
+	Description     string    `json:"description"`
+	ReferenceNumber string    `json:"reference_number,omitempty"`
 }
 
 // LineItemExport represents a single billable line item for external export.
@@ -278,6 +313,127 @@ func (e *QuickBooksExporter) SyncCustomers(
 	return result, nil
 }
 
+// SyncInvoices creates or updates invoices in QuickBooks.
+func (e *QuickBooksExporter) SyncInvoices(
+	ctx context.Context,
+	system *storage.ExternalBillingSystem,
+	invoices []InvoiceExport,
+) (*ExportResult, error) {
+	if len(invoices) == 0 {
+		return &ExportResult{}, nil
+	}
+
+	result := &ExportResult{RecordsProcessed: int64(len(invoices))}
+
+	for _, inv := range invoices {
+		payload := map[string]interface{}{
+			"DocNumber": inv.InvoiceNumber,
+			"TxnDate":   inv.PeriodEnd.Format("2006-01-02"),
+			"DueDate":   inv.DueDate.Format("2006-01-02"),
+			"Currency":  inv.Currency,
+			"Line": []map[string]interface{}{
+				{
+					"Amount":      float64(inv.AmountDueCents) / 100,
+					"Description": inv.Description,
+					"DetailType":  "SalesItemLineDetail",
+					"SalesItemLineDetail": map[string]interface{}{
+						"ItemRef": map[string]interface{}{
+							"value": getMappedValue(system.FieldMappings, "revenue_account", "200"),
+						},
+					},
+				},
+			},
+		}
+
+		body, err := json.Marshal(payload)
+		if err != nil {
+			result.RecordsFailed++
+			result.Errors = append(result.Errors, fmt.Sprintf("invoice %s: %v", inv.InvoiceNumber, err))
+			continue
+		}
+
+		req, err := http.NewRequestWithContext(ctx, "POST", system.APIEndpoint+"/invoice", bytes.NewReader(body))
+		if err != nil {
+			result.RecordsFailed++
+			result.Errors = append(result.Errors, fmt.Sprintf("invoice %s: %v", inv.InvoiceNumber, err))
+			continue
+		}
+		req.Header.Set("Authorization", "Bearer "+system.OAuthToken)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Accept", "application/json")
+
+		resp, err := e.client.Do(req)
+		if err != nil {
+			result.RecordsFailed++
+			result.Errors = append(result.Errors, fmt.Sprintf("invoice %s: %v", inv.InvoiceNumber, err))
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode >= 400 {
+			result.RecordsFailed++
+			continue
+		}
+		result.RecordsCreated++
+	}
+
+	return result, nil
+}
+
+// SyncPayments creates or updates payments in QuickBooks.
+func (e *QuickBooksExporter) SyncPayments(
+	ctx context.Context,
+	system *storage.ExternalBillingSystem,
+	payments []PaymentExport,
+) (*ExportResult, error) {
+	if len(payments) == 0 {
+		return &ExportResult{}, nil
+	}
+
+	result := &ExportResult{RecordsProcessed: int64(len(payments))}
+
+	for _, p := range payments {
+		payload := map[string]interface{}{
+			"TxnDate":  p.PaymentDate.Format("2006-01-02"),
+			"TotalAmt": float64(p.AmountCents) / 100,
+			"DocNumber": p.ReferenceNumber,
+		}
+
+		body, err := json.Marshal(payload)
+		if err != nil {
+			result.RecordsFailed++
+			result.Errors = append(result.Errors, fmt.Sprintf("payment %s: %v", p.ReferenceNumber, err))
+			continue
+		}
+
+		req, err := http.NewRequestWithContext(ctx, "POST", system.APIEndpoint+"/payment", bytes.NewReader(body))
+		if err != nil {
+			result.RecordsFailed++
+			result.Errors = append(result.Errors, fmt.Sprintf("payment %s: %v", p.ReferenceNumber, err))
+			continue
+		}
+		req.Header.Set("Authorization", "Bearer "+system.OAuthToken)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Accept", "application/json")
+
+		resp, err := e.client.Do(req)
+		if err != nil {
+			result.RecordsFailed++
+			result.Errors = append(result.Errors, fmt.Sprintf("payment %s: %v", p.ReferenceNumber, err))
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode >= 400 {
+			result.RecordsFailed++
+			continue
+		}
+		result.RecordsCreated++
+	}
+
+	return result, nil
+}
+
 // XeroExporter implements ExternalExporter for Xero.
 type XeroExporter struct {
 	client *http.Client
@@ -445,6 +601,191 @@ func (e *XeroExporter) SyncCustomers(
 	}
 
 	return result, nil
+}
+
+// SyncInvoices syncs invoices to Xero.
+func (e *XeroExporter) SyncInvoices(
+	ctx context.Context,
+	system *storage.ExternalBillingSystem,
+	invoices []InvoiceExport,
+) (*ExportResult, error) {
+	if len(invoices) == 0 {
+		return &ExportResult{}, nil
+	}
+
+	result := &ExportResult{RecordsProcessed: int64(len(invoices))}
+	tenantID := extractXeroTenantID(system.APIEndpoint)
+
+	for _, inv := range invoices {
+		invoice := map[string]interface{}{
+			"Type":            "ACCREC",
+			"Contact":         map[string]string{"Name": inv.TenantName},
+			"Date":            inv.PeriodEnd.Format("2006-01-02"),
+			"DueDate":         inv.DueDate.Format("2006-01-02"),
+			"Status":          mapInvoiceStatusToXero(inv.Status),
+			"LineAmountTypes": "Exclusive",
+			"Reference":       inv.InvoiceNumber,
+			"LineItems": []map[string]interface{}{
+				{
+					"Description": inv.Description,
+					"Quantity":    1,
+					"UnitAmount":  float64(inv.AmountDueCents) / 100,
+					"AccountCode": getMappedValue(system.FieldMappings, "revenue_account", "200"),
+					"TaxType":     "NONE",
+				},
+			},
+		}
+
+		if inv.PaidDate != nil {
+			invoice["Payments"] = []map[string]interface{}{
+				{
+					"Date":   inv.PaidDate.Format("2006-01-02"),
+					"Amount": float64(inv.AmountPaidCents) / 100,
+				},
+			}
+		}
+
+		body, err := json.Marshal([]map[string]interface{}{invoice})
+		if err != nil {
+			result.RecordsFailed++
+			result.Errors = append(result.Errors, fmt.Sprintf("invoice %s: %v", inv.InvoiceNumber, err))
+			continue
+		}
+
+		req, err := http.NewRequestWithContext(ctx, "POST", system.APIEndpoint+"/invoices", bytes.NewReader(body))
+		if err != nil {
+			result.RecordsFailed++
+			result.Errors = append(result.Errors, fmt.Sprintf("invoice %s: %v", inv.InvoiceNumber, err))
+			continue
+		}
+		req.Header.Set("Authorization", "Bearer "+system.OAuthToken)
+		req.Header.Set("xero-tenant-id", tenantID)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Accept", "application/json")
+
+		resp, err := e.client.Do(req)
+		if err != nil {
+			result.RecordsFailed++
+			result.Errors = append(result.Errors, fmt.Sprintf("invoice %s: %v", inv.InvoiceNumber, err))
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode >= 400 {
+			errBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+			result.RecordsFailed++
+			result.Errors = append(result.Errors, fmt.Sprintf("invoice %s: Xero returned %d: %s", inv.InvoiceNumber, resp.StatusCode, string(errBody)))
+			continue
+		}
+		result.RecordsCreated++
+	}
+
+	return result, nil
+}
+
+// SyncPayments syncs payments to Xero.
+func (e *XeroExporter) SyncPayments(
+	ctx context.Context,
+	system *storage.ExternalBillingSystem,
+	payments []PaymentExport,
+) (*ExportResult, error) {
+	if len(payments) == 0 {
+		return &ExportResult{}, nil
+	}
+
+	result := &ExportResult{RecordsProcessed: int64(len(payments))}
+	tenantID := extractXeroTenantID(system.APIEndpoint)
+
+	for _, p := range payments {
+		payment := map[string]interface{}{
+			"Type:":      "ACCREC",
+			"Invoice":    map[string]string{"InvoiceNumber": p.InvoiceNumber},
+			"Date":       p.PaymentDate.Format("2006-01-02"),
+			"Amount":     float64(p.AmountCents) / 100,
+			"Reference":  p.ReferenceNumber,
+			"Status":     mapPaymentStatusToXero(p.Status),
+		}
+
+		body, err := json.Marshal([]map[string]interface{}{payment})
+		if err != nil {
+			result.RecordsFailed++
+			result.Errors = append(result.Errors, fmt.Sprintf("payment %s: %v", p.ReferenceNumber, err))
+			continue
+		}
+
+		req, err := http.NewRequestWithContext(ctx, "POST", system.APIEndpoint+"/payments", bytes.NewReader(body))
+		if err != nil {
+			result.RecordsFailed++
+			result.Errors = append(result.Errors, fmt.Sprintf("payment %s: %v", p.ReferenceNumber, err))
+			continue
+		}
+		req.Header.Set("Authorization", "Bearer "+system.OAuthToken)
+		req.Header.Set("xero-tenant-id", tenantID)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Accept", "application/json")
+
+		resp, err := e.client.Do(req)
+		if err != nil {
+			result.RecordsFailed++
+			result.Errors = append(result.Errors, fmt.Sprintf("payment %s: %v", p.ReferenceNumber, err))
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode >= 400 {
+			errBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+			result.RecordsFailed++
+			result.Errors = append(result.Errors, fmt.Sprintf("payment %s: Xero returned %d: %s", p.ReferenceNumber, resp.StatusCode, string(errBody)))
+			continue
+		}
+		result.RecordsCreated++
+	}
+
+	return result, nil
+}
+
+// extractXeroTenantID extracts the tenant ID from the Xero API endpoint.
+// The tenant ID is stored in the APIEndpoint field after the first "/" following "xero.com".
+func extractXeroTenantID(apiEndpoint string) string {
+	if idx := strings.Index(apiEndpoint, "xero.com"); idx != -1 {
+		remaining := apiEndpoint[idx+9:]
+		if slashIdx := strings.Index(remaining, "/"); slashIdx != -1 {
+			return remaining[slashIdx+1:]
+		}
+	}
+	return apiEndpoint
+}
+
+// mapInvoiceStatusToXero maps internal invoice status to Xero invoice status.
+func mapInvoiceStatusToXero(status string) string {
+	switch status {
+	case "paid", "Paid", "PAID":
+		return "PAID"
+	case "due", "Due", "DUE":
+		return "AUTHORISED"
+	case "overdue", "Overdue", "OVERDUE":
+		return "AUTHORISED"
+	case "draft", "Draft", "DRAFT":
+		return "DRAFT"
+	case "cancelled", "Cancelled", "CANCELLED", "void", "Void", "VOID":
+		return "VOIDED"
+	default:
+		return "AUTHORISED"
+	}
+}
+
+// mapPaymentStatusToXero maps internal payment status to Xero payment status.
+func mapPaymentStatusToXero(status string) string {
+	switch status {
+	case "completed", "Completed", "COMPLETED":
+		return "AUTHORISED"
+	case "pending", "Pending", "PENDING":
+		return "PENDING"
+	case "failed", "Failed", "FAILED":
+		return "DECLINED"
+	default:
+		return "AUTHORISED"
+	}
 }
 
 // getMappedValue returns the mapped value from field mappings or a default.

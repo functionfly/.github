@@ -35,7 +35,10 @@ impl WarmMemory {
         Self {
             redis_url: redis_url
                 .map(|s| s.to_string())
-                .unwrap_or_else(|| "redis://localhost:6379".to_string()),
+                .unwrap_or_else(|| {
+                    eprintln!("Warning: REDIS_URL not set for warm memory tier");
+                    String::new() // Empty means unavailable
+                }),
             client: Arc::new(RwLock::new(None)),
             default_ttl: Duration::from_secs(3600), // 1 hour default
         }

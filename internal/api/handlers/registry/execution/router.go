@@ -48,7 +48,8 @@ type RuntimeEngine interface {
 // RuntimeRouter selects the appropriate engine based on runtime and tier.
 type RuntimeRouter struct {
 	wasmEngine    RuntimeEngine // Wasmtime pool (Rust, Go, C, C++)
-	pythonEngine  RuntimeEngine // Firecracker MicroVM or CPython-WASM
+	pythonEngine  RuntimeEngine // Firecracker MicroVM for enterprise Python
+	cpythonEngine RuntimeEngine // In-process CPython-WASM for business Python
 	nodeEngine    RuntimeEngine // Deno/Node V8 isolates
 	fallback      RuntimeEngine // Legacy executor (RustPython / per-request sandbox)
 	cacheL1       *cache.CacheService // deterministic result cache
@@ -57,13 +58,14 @@ type RuntimeRouter struct {
 
 // NewRuntimeRouter creates a router with the given engines.
 func NewRuntimeRouter(
-	wasm, python, node, fallback RuntimeEngine,
+	wasm, python, cpython, node, fallback RuntimeEngine,
 	cacheL1 *cache.CacheService,
 	bundleSvc *bundler.BundleService,
 ) *RuntimeRouter {
 	return &RuntimeRouter{
 		wasmEngine:    wasm,
 		pythonEngine:  python,
+		cpythonEngine: cpython,
 		nodeEngine:    node,
 		fallback:      fallback,
 		cacheL1:       cacheL1,
@@ -105,7 +107,7 @@ func (r *RuntimeRouter) Execute(ctx context.Context, req ExecutionRequest) (Exec
 
 // IsHealthy returns true if at least one engine is healthy.
 func (r *RuntimeRouter) IsHealthy() bool {
-	for _, e := range []RuntimeEngine{r.wasmEngine, r.pythonEngine, r.nodeEngine, r.fallback} {
+	for _, e := range []RuntimeEngine{r.wasmEngine, r.pythonEngine, r.cpythonEngine, r.nodeEngine, r.fallback} {
 		if e != nil && e.Healthy(context.Background()) {
 			return true
 		}
@@ -134,29 +136,28 @@ func (r *RuntimeRouter) selectEngine(req ExecutionRequest) RuntimeEngine {
 }
 
 func (r *RuntimeRouter) selectPythonEngine(tier string) RuntimeEngine {
-	// The in-process wasmEngine uses a placeholder micropython-core.wasm
-	// stub (~935 bytes) that returns hardcoded dummy responses. Real Python
-	// execution is provided by the fallback sandboxEngine which routes to
-	// the persistent CPython-WASI daemon.  Route all tiers through the
-	// daemon until the in-process runtime is fully implemented.
-	//
-	// TODO(carlan): Once micropython-core.wasm is replaced with a full
-	// CPython-WASM runtime, we can tier-route here again:
+	// Tier-aware Python routing:
 	//   - enterprise → Firecracker MicroVM (r.pythonEngine)
-	//   - business   → in-process CPython-WASM (r.wasmEngine)
-	//   - free/pro   → daemon / sandboxEngine (r.fallback)
-	return r.fallback
-
-	// Dead code below, kept for reference when the in-process runtime lands:
+	//   - business/pro → in-process CPython-WASM (r.cpythonEngine)
+	//   - free/starter → daemon / sandboxEngine (r.fallback)
+	//
+	// Note: In-process CPython-WASM uses the official CPython 3.13 WASI build
+	// with full stdlib support. It requires python.wasm at ./runtimes/cpython.wasm
+	// and stdlib at ./runtimes/cpython-wasi/lib.
+	//
+	// "business" is the product tier name; internally it maps to "pro" plan
+	// in resolveTierFromRequest(). Both strings are accepted for safety.
 	switch tier {
 	case "enterprise":
 		if r.pythonEngine != nil {
-			return r.pythonEngine // Firecracker MicroVM
+			return r.pythonEngine
 		}
-		return r.fallback
-	default:
-		return r.fallback
+	case "pro", "business":
+		if r.cpythonEngine != nil && r.cpythonEngine.Healthy(context.Background()) {
+			return r.cpythonEngine
+		}
 	}
+	return r.fallback
 }
 
 func (r *RuntimeRouter) checkCache(ctx context.Context, req ExecutionRequest) (ExecutionResult, bool) {
@@ -199,7 +200,7 @@ func (r *RuntimeRouter) cacheKey(req ExecutionRequest) string {
 // Close shuts down all engines.
 func (r *RuntimeRouter) Close() error {
 	var firstErr error
-	for _, e := range []RuntimeEngine{r.wasmEngine, r.pythonEngine, r.nodeEngine, r.fallback} {
+	for _, e := range []RuntimeEngine{r.wasmEngine, r.pythonEngine, r.cpythonEngine, r.nodeEngine, r.fallback} {
 		if e != nil {
 			if err := e.Close(); err != nil && firstErr == nil {
 				firstErr = err

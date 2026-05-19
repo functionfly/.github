@@ -1,0 +1,1 @@
+export { WorkspaceSnapshotManager } from "./WorkspaceSnapshotManager";

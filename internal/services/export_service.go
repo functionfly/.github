@@ -6,6 +6,8 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -29,6 +31,7 @@ type ExportService struct {
 	exportRepo     *storage.ExportRepository
 	billingRepo    storage.Repository
 	emailSvc       email.Service
+	httpClient     *http.Client
 	baseURL        string
 	exportBasePath string
 	logger         *logrus.Logger
@@ -40,6 +43,7 @@ func NewExportService(exportRepo *storage.ExportRepository, billingRepo storage.
 		exportRepo:     exportRepo,
 		billingRepo:    billingRepo,
 		emailSvc:       emailSvc,
+		httpClient:     &http.Client{Timeout: 60 * time.Second},
 		baseURL:        baseURL,
 		exportBasePath: "./exports",
 		logger:         logrus.New(),
@@ -727,9 +731,60 @@ func (s *ExportService) deliverViaEmail(ctx context.Context, job *storage.UsageE
 
 // deliverViaWebhook delivers the export via webhook
 func (s *ExportService) deliverViaWebhook(ctx context.Context, job *storage.UsageExportJob, filePath, fileName string) error {
-	// Note: Webhook URL is not part of UsageExportJob, it's part of the config
-	// This would need to be passed differently or fetched from config
-	s.logger.Infof("Webhook delivery not yet implemented for job %s", job.ID.String())
+	config, err := s.exportRepo.GetUsageExportConfiguration(ctx, job.ConfigurationID)
+	if err != nil {
+		return fmt.Errorf("failed to get export configuration for webhook delivery: %w", err)
+	}
+
+	webhookURL := config.WebhookURL
+	if webhookURL == "" {
+		return fmt.Errorf("webhook URL not configured for export job")
+	}
+
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read file: %w", err)
+	}
+
+	payload := map[string]interface{}{
+		"job_id":      job.ID.String(),
+		"tenant_id":   job.TenantID.String(),
+		"format":      string(job.Format),
+		"file_name":   fileName,
+		"file_size":   job.FileSizeBytes,
+		"storage_url": job.StorageURL,
+		"timestamp":   time.Now().UTC().Format(time.RFC3339),
+		"data":        string(content),
+	}
+
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal webhook payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", webhookURL, bytes.NewReader(payloadBytes))
+	if err != nil {
+		return fmt.Errorf("failed to create webhook request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Export-Job-ID", job.ID.String())
+
+	if secret := os.Getenv("EXPORT_WEBHOOK_SECRET"); secret != "" {
+		req.Header.Set("X-Webhook-Secret", secret)
+	}
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("webhook request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("webhook returned status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	s.logger.Infof("Webhook delivery successful for job %s to %s", job.ID.String(), webhookURL)
 	return nil
 }
 

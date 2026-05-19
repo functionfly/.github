@@ -1,0 +1,98 @@
+{
+  "name": "webhook-builder",
+  "version": "1.4.0",
+  "display_name": "Webhook Builder",
+  "description": "Build and manage custom webhooks with visual tools. Define request/response transformations, set up authentication, and monitor webhook activity with built-in logging.",
+  "author": {
+    "name": "FunctionFly Team",
+    "email": "plugins@functionfly.com",
+    "website": "https://functionfly.com"
+  },
+  "license": "MIT",
+  "runtime": "nodejs",
+  "entry_point": "index.js",
+  "category": "ui",
+  "tags": ["webhook", "api", "integration", "http", "automation"],
+  "homepage": "https://functionfly.com/plugins/webhook",
+  "repository": "https://github.com/functionfly/plugins",
+
+  "permissions": [
+    {
+      "type": "webhook",
+      "action": "receive",
+      "resource": "self",
+      "description": "Receive incoming webhooks"
+    },
+    {
+      "type": "webhook",
+      "action": "send",
+      "resource": "custom",
+      "description": "Send outgoing webhooks"
+    },
+    {
+      "type": "api",
+      "action": "write",
+      "resource": "transform",
+      "description": "Transform webhook payloads"
+    }
+  ],
+
+  "hooks": {
+    "pre_webhook_send": "hooks/pre-webhook-send.js",
+    "post_webhook_receive": "hooks/post-webhook-receive.js"
+  },
+
+  "endpoints": [
+    {
+      "path": "/webhook/:webhookId/ receive",
+      "method": "POST",
+      "handler": "receiveHandler",
+      "description": "Receive webhook"
+    },
+    {
+      "path": "/webhook/:webhookId/send",
+      "method": "POST",
+      "handler": "sendHandler",
+      "description": "Send webhook"
+    },
+    {
+      "path": "/webhook/:webhookId/logs",
+      "method": "GET",
+      "handler": "logsHandler",
+      "description": "Get webhook activity logs"
+    }
+  ],
+
+  "config_schema": {
+    "signature_secret": {
+      "type": "string",
+      "required": false,
+      "secret": true,
+      "description": "HMAC signature secret for verification"
+    },
+    "retry_count": {
+      "type": "number",
+      "default": 3,
+      "description": "Number of retry attempts on failure"
+    },
+    "timeout_seconds": {
+      "type": "number",
+      "default": 30,
+      "description": "Webhook timeout"
+    },
+    "log_retention_days": {
+      "type": "number",
+      "default": 7,
+      "description": "Log retention period in days"
+    }
+  },
+
+  "sandbox": {
+    "tier": "wasm",
+    "cpu_limit": 0.25,
+    "memory_limit_mb": 64,
+    "timeout_seconds": 30,
+    "max_instances": 10,
+    "allowed_domains": []
+  }
+}

@@ -263,7 +263,10 @@ impl GraphOptimizer {
         );
 
         let go_endpoint = std::env::var("ORCHESTRATOR_OPTIMIZE_URL")
-            .unwrap_or_else(|_| "http://localhost:8080/api/optimizations".to_string());
+            .unwrap_or_else(|_| {
+                warn!("ORCHESTRATOR_OPTIMIZE_URL not set - optimization suggestions disabled");
+                String::new()
+            });
 
         let payload = serde_json::json!({
             "id": suggestion.id.to_string(),

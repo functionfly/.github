@@ -2,8 +2,12 @@ package certification
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage"
@@ -17,6 +21,7 @@ type GradingWorker struct {
 	workerID     string
 	pollInterval time.Duration
 	logger       *logrus.Entry
+	httpClient   *http.Client
 }
 
 // NewGradingWorker creates a new grading worker
@@ -29,6 +34,7 @@ func NewGradingWorker(certRepo *storage.CertificationRepository) *GradingWorker 
 		workerID:     workerID,
 		pollInterval: 10 * time.Second,
 		logger:       logrus.WithField("component", "cert_grading_worker").WithField("worker_id", workerID),
+		httpClient:   &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
@@ -69,7 +75,9 @@ func (w *GradingWorker) processNext(ctx context.Context) {
 	challenge, err := w.certRepo.GetChallengeByID(ctx, item.ChallengeID)
 	if err != nil || challenge == nil {
 		w.logger.WithError(err).Error("Failed to get challenge for grading")
-		_ = w.certRepo.FailGrading(ctx, item.ID, "challenge not found")
+		if failErr := w.certRepo.FailGrading(ctx, item.ID, "challenge not found"); failErr != nil {
+			w.logger.WithError(failErr).Error("Failed to mark grading as failed")
+		}
 		return
 	}
 
@@ -77,7 +85,9 @@ func (w *GradingWorker) processNext(ctx context.Context) {
 	exam, err := w.certRepo.GetExamByID(ctx, item.ExamID)
 	if err != nil || exam == nil {
 		w.logger.WithError(err).Error("Failed to get exam for grading")
-		_ = w.certRepo.FailGrading(ctx, item.ID, "exam not found")
+		if failErr := w.certRepo.FailGrading(ctx, item.ID, "exam not found"); failErr != nil {
+			w.logger.WithError(failErr).Error("Failed to mark grading as failed")
+		}
 		return
 	}
 
@@ -85,11 +95,16 @@ func (w *GradingWorker) processNext(ctx context.Context) {
 	result, err := w.gradeChallenge(ctx, challenge, exam)
 	if err != nil {
 		w.logger.WithError(err).Error("Grading failed")
+		failMsg := err.Error()
 		if item.Attempts >= item.MaxAttempts {
-			_ = w.certRepo.FailGrading(ctx, item.ID, err.Error())
+			if failErr := w.certRepo.FailGrading(ctx, item.ID, failMsg); failErr != nil {
+				w.logger.WithError(failErr).Error("Failed to mark grading as permanently failed")
+			}
 		} else {
 			// Re-queue by resetting status to pending
-			_ = w.certRepo.FailGrading(ctx, item.ID, fmt.Sprintf("attempt %d failed: %s", item.Attempts, err.Error()))
+			if failErr := w.certRepo.FailGrading(ctx, item.ID, fmt.Sprintf("attempt %d failed: %s", item.Attempts, failMsg)); failErr != nil {
+				w.logger.WithError(failErr).Error("Failed to mark grading as failed")
+			}
 		}
 		return
 	}
@@ -146,18 +161,189 @@ func (w *GradingWorker) gradeDeploymentCheck(ctx context.Context, config storage
 
 // gradeHTTPResponse calls an endpoint and verifies the response
 func (w *GradingWorker) gradeHTTPResponse(ctx context.Context, config storage.JSONMap) (storage.JSONMap, error) {
-	// Will be implemented with HTTP client for automated function testing
+	url, ok := config["url"].(string)
+	if !ok || url == "" {
+		return storage.JSONMap{"score": 0, "feedback": "HTTP response grading requires 'url' in config"}, nil
+	}
+
+	method := "GET"
+	if m, ok := config["method"].(string); ok && m != "" {
+		method = strings.ToUpper(m)
+	}
+
+	expectedStatus, ok := config["expected_status"].(float64)
+	if !ok {
+		expectedStatus = 200
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, url, nil)
+	if err != nil {
+		return storage.JSONMap{"score": 0, "feedback": fmt.Sprintf("Failed to create request: %v", err)}, nil
+	}
+
+	if headers, ok := config["headers"].(map[string]interface{}); ok {
+		for k, v := range headers {
+			if vs, ok := v.(string); ok {
+				req.Header.Set(k, vs)
+			}
+		}
+	}
+
+	if body, ok := config["body"].(string); ok && body != "" {
+		req.Header.Set("Content-Type", "application/json")
+		req.Body = io.NopCloser(strings.NewReader(body))
+	}
+
+	resp, err := w.httpClient.Do(req)
+	if err != nil {
+		return storage.JSONMap{"score": 0, "feedback": fmt.Sprintf("Request failed: %v", err)}, nil
+	}
+	defer resp.Body.Close()
+
+	if int(resp.StatusCode) != int(expectedStatus) {
+		return storage.JSONMap{
+			"score":    0,
+			"feedback": fmt.Sprintf("Expected status %d, got %d", int(expectedStatus), resp.StatusCode),
+		}, nil
+	}
+
+	if expectedBody, ok := config["expected_body"].(string); ok && expectedBody != "" {
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return storage.JSONMap{"score": 0, "feedback": fmt.Sprintf("Failed to read response body: %v", err)}, nil
+		}
+		bodyStr := string(bodyBytes)
+		if !strings.Contains(bodyStr, expectedBody) {
+			return storage.JSONMap{
+				"score":    0,
+				"feedback": fmt.Sprintf("Response body does not contain expected text: %s", expectedBody),
+			}, nil
+		}
+	}
+
+	if expectedJSON, ok := config["expected_json"].(map[string]interface{}); ok {
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return storage.JSONMap{"score": 0, "feedback": fmt.Sprintf("Failed to read response body: %v", err)}, nil
+		}
+		var responseJSON map[string]interface{}
+		if err := json.Unmarshal(bodyBytes, &responseJSON); err != nil {
+			return storage.JSONMap{"score": 0, "feedback": fmt.Sprintf("Response is not valid JSON: %v", err)}, nil
+		}
+		for k, expected := range expectedJSON {
+			actual, ok := responseJSON[k]
+			if !ok {
+				return storage.JSONMap{
+					"score":    0,
+					"feedback": fmt.Sprintf("Expected JSON key '%s' not found in response", k),
+				}, nil
+			}
+			if actual != expected {
+				return storage.JSONMap{
+					"score":    0,
+					"feedback": fmt.Sprintf("JSON key '%s': expected %v, got %v", k, expected, actual),
+				}, nil
+			}
+		}
+	}
+
 	return storage.JSONMap{
-		"score":    0,
-		"feedback": "HTTP response grading not yet implemented",
+		"score":    100,
+		"feedback": fmt.Sprintf("HTTP response verified (status %d)", resp.StatusCode),
 	}, nil
 }
 
 // gradeStateCheck verifies state was written correctly
 func (w *GradingWorker) gradeStateCheck(ctx context.Context, config storage.JSONMap) (storage.JSONMap, error) {
-	// Will be implemented with state store verification
+	stateChecksRaw, ok := config["state_checks"].([]interface{})
+	if !ok || len(stateChecksRaw) == 0 {
+		return storage.JSONMap{"score": 0, "feedback": "State check grading requires 'state_checks' in config"}, nil
+	}
+
+	stateAPIURL, _ := config["state_api_url"].(string)
+	if stateAPIURL == "" {
+		stateAPIURL = os.Getenv("STATE_API_URL")
+		if stateAPIURL == "" {
+			return storage.JSONMap{"score": 0, "feedback": "State check grading requires 'state_api_url' in config or STATE_API_URL env var"}, nil
+		}
+	}
+
+	for _, checkRaw := range stateChecksRaw {
+		check, ok := checkRaw.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		store, _ := check["store"].(string)
+		key, _ := check["key"].(string)
+		operator, _ := check["operator"].(string)
+		expectedValue := check["value"]
+
+		if store == "" || key == "" {
+			return storage.JSONMap{"score": 0, "feedback": "State check requires 'store' and 'key'"}, nil
+		}
+
+		stateURL := fmt.Sprintf("%s/%s/%s", strings.TrimSuffix(stateAPIURL, "/"), store, key)
+		req, err := http.NewRequestWithContext(ctx, "GET", stateURL, nil)
+		if err != nil {
+			return storage.JSONMap{"score": 0, "feedback": fmt.Sprintf("Failed to create state request: %v", err)}, nil
+		}
+
+		resp, err := w.httpClient.Do(req)
+		if err != nil {
+			return storage.JSONMap{"score": 0, "feedback": fmt.Sprintf("State request failed: %v", err)}, nil
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return storage.JSONMap{
+				"score":    0,
+				"feedback": fmt.Sprintf("State key '%s' returned status %d", key, resp.StatusCode),
+			}, nil
+		}
+
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return storage.JSONMap{"score": 0, "feedback": fmt.Sprintf("Failed to read state response: %v", err)}, nil
+		}
+
+		switch operator {
+		case "eq":
+			if !jsonEqual(string(bodyBytes), expectedValue) {
+				return storage.JSONMap{
+					"score":    0,
+					"feedback": fmt.Sprintf("State key '%s': value mismatch (expected %v)", key, expectedValue),
+				}, nil
+			}
+		case "exists":
+		case "contains":
+			if !strings.Contains(string(bodyBytes), fmt.Sprintf("%v", expectedValue)) {
+				return storage.JSONMap{
+					"score":    0,
+					"feedback": fmt.Sprintf("State key '%s' does not contain '%v'", key, expectedValue),
+				}, nil
+			}
+		default:
+		}
+	}
+
 	return storage.JSONMap{
-		"score":    0,
-		"feedback": "State check grading not yet implemented",
+		"score":    100,
+		"feedback": fmt.Sprintf("State check verified (%d rules)", len(stateChecksRaw)),
 	}, nil
+}
+
+func jsonEqual(a string, b interface{}) bool {
+	var aVal, bVal interface{}
+	if err := json.Unmarshal([]byte(a), &aVal); err != nil {
+		aVal = a
+	}
+	if mb, ok := b.(string); ok {
+		if err := json.Unmarshal([]byte(mb), &bVal); err != nil {
+			bVal = mb
+		}
+	} else {
+		bVal = b
+	}
+	return fmt.Sprintf("%v", aVal) == fmt.Sprintf("%v", bVal)
 }

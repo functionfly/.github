@@ -1,6 +1,7 @@
 package dre
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -10,7 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/functionfly/functionfly/internal/dre/cert"
+	cert "github.com/functionfly/functionfly/internal/dre/cert"
+	drecert "github.com/functionfly/functionfly/internal/dre/cert"
 	drecrypto "github.com/functionfly/functionfly/internal/dre/crypto"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
@@ -157,6 +159,42 @@ func (m *mockDRERepo) GetFunctionVersion(functionID uuid.UUID, version string) (
 
 func (m *mockDRERepo) GetExecutionTimelineBuckets(functionID uuid.UUID, from, to time.Time, metric string) ([]registry.ExecutionTimelineBucket, error) {
 	return []registry.ExecutionTimelineBucket{}, nil
+}
+
+func (m *mockDRERepo) UpdateCertificateAnchored(certID string, anchored bool, anchorChain, anchorTxHash, anchorMerkleRoot string, anchorBlockNumber int64, anchoredAt *time.Time) error {
+	if cert, ok := m.certificates[certID]; ok {
+		cert.Anchored = anchored
+		cert.AnchorChain = anchorChain
+		cert.AnchorTxHash = anchorTxHash
+		cert.AnchorMerkleRoot = anchorMerkleRoot
+		cert.AnchorBlockNumber = anchorBlockNumber
+		cert.AnchoredAt = anchoredAt
+	}
+	return nil
+}
+
+// mockAnchoringService is a mock AnchoringService for testing.
+type mockAnchoringService struct {
+	configured bool
+	shouldFail bool
+}
+
+func (m *mockAnchoringService) Anchor(ctx context.Context, req *drecert.AnchorRequest) (*drecert.AnchorReceipt, error) {
+	if m.shouldFail {
+		return nil, fmt.Errorf("anchoring failed")
+	}
+	return &drecert.AnchorReceipt{
+		Chain:       req.Chain,
+		BlockNumber: 12345678,
+		TxHash:      "0xmocktxhash",
+		MerkleRoot:  req.ExecutionRootHash,
+		AnchorHash:  "mock_anchor_hash",
+		AnchoredAt:  time.Now(),
+	}, nil
+}
+
+func (m *mockAnchoringService) IsConfigured() bool {
+	return m.configured
 }
 
 // ─── Hex helpers ─────────────────────────────────────────────────────────────
@@ -882,7 +920,9 @@ func TestHandleAnchorCertificate_UnsupportedChain(t *testing.T) {
 		CertLevel:        "standard",
 	}
 
-	h := NewHandlerFromRepo(repo)
+	// Use a mock anchoring service that is configured but will reject unsupported chain
+	mockAnchoring := &mockAnchoringService{configured: true}
+	h := NewHandlerWithAnchoring(repo, mockAnchoring)
 	router := mux.NewRouter()
 	router.HandleFunc("/registry/{author}/{name}/cert/{cert_id}/anchor", h.HandleAnchorCertificate)
 

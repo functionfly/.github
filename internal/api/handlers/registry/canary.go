@@ -57,11 +57,22 @@ func (h *CanaryHandler) HandleCreateCanary(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	// Get function from repository
 	fn, err := h.functionRepo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		logrus.WithError(err).Warn("Function not found for canary deployment")
 		http.Error(w, "Function not found", http.StatusNotFound)
+		return
+	}
+
+	if fn.OwnerUserID == nil || *fn.OwnerUserID != user.UserID {
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
@@ -173,10 +184,21 @@ func (h *CanaryHandler) HandleUpdateCanary(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	// Get function
 	fn, err := h.functionRepo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		http.Error(w, "Function not found", http.StatusNotFound)
+		return
+	}
+
+	if fn.OwnerUserID == nil || *fn.OwnerUserID != user.UserID {
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
@@ -240,10 +262,21 @@ func (h *CanaryHandler) HandleCancelCanary(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	// Get function
 	fn, err := h.functionRepo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		http.Error(w, "Function not found", http.StatusNotFound)
+		return
+	}
+
+	if fn.OwnerUserID == nil || *fn.OwnerUserID != user.UserID {
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
@@ -280,10 +313,21 @@ func (h *CanaryHandler) HandlePromoteCanary(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	// Get function
 	fn, err := h.functionRepo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		http.Error(w, "Function not found", http.StatusNotFound)
+		return
+	}
+
+	if fn.OwnerUserID == nil || *fn.OwnerUserID != user.UserID {
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
@@ -330,10 +374,21 @@ func (h *CanaryHandler) HandleRollbackCanary(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	// Get function
 	fn, err := h.functionRepo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		http.Error(w, "Function not found", http.StatusNotFound)
+		return
+	}
+
+	if fn.OwnerUserID == nil || *fn.OwnerUserID != user.UserID {
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 

@@ -181,7 +181,6 @@ impl LifecycleManager {
             states.iter()
                 .filter(|(_, s)| s.is_orphaned())
                 .map(|(id, _)| *id)
-                .cloned()
                 .collect()
         };
 

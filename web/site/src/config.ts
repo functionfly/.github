@@ -29,7 +29,8 @@ export const BLOG_API_ORIGIN =
   (import.meta.env.PUBLIC_BLOG_API_URL as string | undefined)?.replace(
     /\/$/,
     "",
-  ) || "http://localhost:3000";
+  ) || (import.meta.env.DEV ? "http://localhost:3000" : undefined) ||
+  (() => { throw new Error('PUBLIC_BLOG_API_URL environment variable is required in production'); })();
 
 /**
  * Main API origin for newsletter and other public endpoints.
@@ -37,4 +38,5 @@ export const BLOG_API_ORIGIN =
  */
 export const API_ORIGIN =
   (import.meta.env.PUBLIC_API_URL as string | undefined)?.replace(/\/$/, "") ||
-  (import.meta.env.DEV ? "http://localhost:8080" : "https://api.functionfly.com");
+  (import.meta.env.DEV ? "http://localhost:8080" : undefined) ||
+  (() => { throw new Error('PUBLIC_API_URL environment variable is required in production'); })();

@@ -94,6 +94,10 @@ func (db *PostgresDB) GetUsageByTenant(tenantID uuid.UUID, eventType string, sta
 	return db.billingRepository.GetUsageByTenant(tenantID, eventType, start, end)
 }
 
+func (db *PostgresDB) GetUsageByTenantByFunction(tenantID uuid.UUID, start, end time.Time) ([]*FunctionUsageRollup, error) {
+	return db.billingRepository.GetUsageByTenantByFunction(tenantID, start, end)
+}
+
 func (db *PostgresDB) CreateCoupon(ctx context.Context, coupon *Coupon) (*Coupon, error) {
 	return db.billingRepository.CreateCoupon(ctx, coupon)
 }

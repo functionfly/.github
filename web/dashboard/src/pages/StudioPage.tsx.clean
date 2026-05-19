@@ -1,0 +1,1547 @@
+/**
+ * FunctionFly Studio - Main Studio Page
+ * The "Mission Control" for autonomous software creation
+ */
+
+import * as React from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  StudioShell,
+  LeftSidebar,
+  RightPanel,
+  PanelConfig,
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+  THEME_CONFIG,
+  Tooltip,
+  Badge,
+  cn,
+  GlassCard,
+} from "@functionfly/ui-core";
+import { FunctionCanvas, ExecutionTimeline, generateSampleGraph, GraphContext } from "@functionfly/ui-graph";
+import { AICommandPalette, AgentChatPanel, ReasoningStream } from "@functionfly/ui-ai";
+import { AgentDock, AgentCard, AgentLifecyclePanel, SwarmCoordinator, AgentSkillGraph, AutonomousTaskBoard, AgentConsensusViewer, AgentConflictResolver } from "@functionfly/ui-agent";
+import { LiveTelemetryPanel, MetricCard, LatencyGraph, ExecutionProfiler } from "@functionfly/ui-observability";
+import { FunctionMarketplace, FunctionCard, VerifiedBadge, TrustScoreMeter } from "@functionfly/ui-marketplace";
+import { NeuralExecutionMap } from "@functionfly/ui-visualization";
+import {
+  RuntimeTargetSelector,
+  WasmExecutionPanel,
+  ServerlessRuntimeViewer,
+  EdgeRuntimeMap,
+} from "@functionfly/ui-runtime";
+import {
+  SimulationControlCenter,
+  ExecutionForecastPanel,
+  FailureProbabilityMap,
+  LatencyPredictionGraph,
+  HallucinationRiskAnalyzer,
+  CostSimulationChart,
+  StressTestRunner,
+  ScalingForecastMap,
+  AgentBehaviorPredictor,
+  WorkflowOutcomeSimulator,
+  ResourceCollisionDetector,
+} from "@functionfly/ui-simulation";
+import {
+  GhostModeOrchestrator,
+  AgentConversationTimeline,
+  MultiAgentConversationView,
+} from "@functionfly/ui-ghost";
+import {
+  ExtensionManager,
+  ExtensionDetailPanel,
+  HookSystemVisualizer,
+  SandboxMonitor,
+  ExtensionSDKDebugger,
+} from "@functionfly/ui-extensibility";
+import {
+  SharedExecutionView,
+  CollaborativeGraphEditor,
+  RealtimeAnnotationSystem,
+  AsyncReviewTimeline,
+  CollaborativePromptEditor,
+  LivePairProgrammingView,
+} from "@functionfly/ui-collaboration";
+import {
+  RevenueAnalytics,
+  SubscriptionManager,
+  UsageBillingPanel,
+  CreatorProfile,
+  MarketplaceLeaderboard,
+  FunctionRoyaltiesPanel,
+  AssetPricingEditor,
+} from "@functionfly/ui-marketplace";
+import {
+  GPUKernelInspector,
+  CrossCloudTopologyMap,
+  ModelRoutingVisualizer,
+  InferenceProviderSelector,
+} from "@functionfly/ui-runtime";
+import { PermissionMatrix, ThreatDetectionRadar, SecurityTimeline } from "@functionfly/ui-security";
+import { LivePresence, CollaboratorCursor, TeamActivityFeed, AIHumanTaskBoard, VoiceSessionPanel } from "@functionfly/ui-collaboration";
+import {
+  Zap,
+  Bot,
+  Activity,
+  BarChart2,
+  Server,
+  Shield,
+  Users,
+  LayoutDashboard,
+  Eye,
+  GitBranch,
+  Brain,
+  Terminal,
+  Network,
+  Ghost,
+  Package,
+  Plug,
+  Code2,
+  Menu,
+  XCircle,
+  Maximize2,
+  AlertTriangle,
+} from "lucide-react";
+
+// Generate sample graph data
+const { nodes: sampleNodes, edges: sampleEdges } = generateSampleGraph();
+
+// Sample agents data
+const sampleAgents: any[] = [
+  {
+    id: "agent-1",
+    name: "Code Architect",
+    role: "Architecture Design",
+    status: "running",
+    memoryUsage: 256,
+    memoryLimit: 1024,
+    executionBudget: 50,
+    executionBudgetUsed: 12.50,
+    permissions: [],
+    tools: [],
+    runtime: "wasm",
+    model: "claude-sonnet-4",
+    description: "Designs system architectures and API contracts",
+    avgLatency: 45,
+    tasksCompleted: 128,
+    tasksFailed: 3,
+    lastHeartbeat: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    tags: ["architecture", "api", "design"],
+  },
+  {
+    id: "agent-2",
+    name: "Security Auditor",
+    role: "Security Analysis",
+    status: "running",
+    memoryUsage: 128,
+    memoryLimit: 512,
+    executionBudget: 25,
+    executionBudgetUsed: 8.75,
+    permissions: [],
+    tools: [],
+    runtime: "wasm",
+    model: "claude-sonnet-4",
+    description: "Scans for vulnerabilities and security issues",
+    avgLatency: 120,
+    tasksCompleted: 64,
+    tasksFailed: 1,
+    lastHeartbeat: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    tags: ["security", "audit", "vulnerability"],
+  },
+  {
+    id: "agent-3",
+    name: "UI Designer",
+    role: "Interface Generation",
+    status: "idle",
+    memoryUsage: 64,
+    memoryLimit: 256,
+    executionBudget: 20,
+    executionBudgetUsed: 2.00,
+    permissions: [],
+    tools: [],
+    runtime: "browser",
+    model: "gpt-4o",
+    description: "Generates UI components from design specs",
+    avgLatency: 80,
+    tasksCompleted: 32,
+    tasksFailed: 5,
+    lastHeartbeat: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    tags: ["ui", "design", "frontend"],
+  },
+  {
+    id: "agent-4",
+    name: "Infra Agent",
+    role: "Infrastructure",
+    status: "paused",
+    memoryUsage: 192,
+    memoryLimit: 768,
+    executionBudget: 30,
+    executionBudgetUsed: 15.20,
+    permissions: [],
+    tools: [],
+    runtime: "docker",
+    model: "claude-sonnet-4",
+    description: "Manages deployments and infrastructure",
+    avgLatency: 200,
+    tasksCompleted: 45,
+    tasksFailed: 2,
+    lastHeartbeat: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    tags: ["infrastructure", "deploy", "docker"],
+  },
+  {
+    id: "agent-5",
+    name: "Bug Hunter",
+    role: "Testing & Debug",
+    status: "error",
+    memoryUsage: 256,
+    memoryLimit: 512,
+    executionBudget: 15,
+    executionBudgetUsed: 14.80,
+    permissions: [],
+    tools: [],
+    runtime: "wasm",
+    model: "claude-sonnet-4",
+    description: "Finds and reproduces bugs automatically",
+    avgLatency: 350,
+    tasksCompleted: 89,
+    tasksFailed: 12,
+    lastHeartbeat: new Date(Date.now() - 60000).toISOString(),
+    createdAt: new Date().toISOString(),
+    error: "Memory limit exceeded",
+    tags: ["testing", "debugging", "qa"],
+  },
+];
+
+// Sample telemetry data
+const sampleMetrics = [
+  { id: "m1", label: "Requests/min", value: 1247, unit: "req/min", timestamp: Date.now(), status: "ok" as const, trend: "up" as const, delta: 8 },
+  { id: "m2", label: "Avg Latency", value: 42, unit: "ms", timestamp: Date.now(), status: "ok" as const, trend: "down" as const, delta: -3 },
+  { id: "m3", label: "Error Rate", value: 0.2, unit: "%", timestamp: Date.now(), status: "ok" as const, trend: "stable" as const },
+  { id: "m4", label: "Active Agents", value: 3, unit: "agents", timestamp: Date.now(), status: "ok" as const },
+  { id: "m5", label: "Token Usage", value: 45230, unit: "tokens/min", timestamp: Date.now(), status: "warning" as const, trend: "up" as const, delta: 15 },
+  { id: "m6", label: "Cost/hr", value: 0.85, unit: "$/hr", timestamp: Date.now(), status: "ok" as const, trend: "down" as const, delta: -5 },
+];
+
+const sampleTokenUsage = {
+  inputTokens: 22000,
+  outputTokens: 23230,
+  totalTokens: 45230,
+  costUSD: 0.023,
+  models: {
+    "claude-sonnet-4": { calls: 156, tokens: 28000, cost: 0.018 },
+    "gpt-4o": { calls: 89, tokens: 12230, cost: 0.005 },
+  },
+  timeRange: { start: "2026-05-14T00:00:00Z", end: "2026-05-14T23:59:59Z" },
+};
+
+const sampleLatencyData = [
+  { timestamp: Date.now() - 3600000, p50: 35, p95: 120, p99: 280 },
+  { timestamp: Date.now() - 3300000, p50: 38, p95: 115, p99: 260 },
+  { timestamp: Date.now() - 3000000, p50: 42, p95: 130, p99: 310 },
+  { timestamp: Date.now() - 2700000, p50: 31, p95: 100, p99: 220 },
+  { timestamp: Date.now() - 2400000, p50: 45, p95: 145, p99: 350 },
+  { timestamp: Date.now() - 2100000, p50: 50, p95: 160, p99: 380 },
+  { timestamp: Date.now() - 1800000, p50: 38, p95: 125, p99: 290 },
+  { timestamp: Date.now() - 1500000, p50: 44, p95: 140, p99: 330 },
+  { timestamp: Date.now() - 1200000, p50: 40, p95: 118, p99: 270 },
+  { timestamp: Date.now() - 900000, p50: 55, p95: 180, p99: 420 },
+  { timestamp: Date.now() - 600000, p50: 42, p95: 135, p99: 310 },
+  { timestamp: Date.now() - 300000, p50: 36, p95: 110, p99: 250 },
+  { timestamp: Date.now(), p50: 42, p95: 130, p99: 300 },
+];
+
+const sampleExecutions = [
+  { id: "e1", name: "Data Processor", duration: 145, tokens: 1200, cost: 0.003, timestamp: "2:30 PM", status: "success" as const, retries: 0 },
+  { id: "e2", name: "Auth Validator", duration: 32, tokens: 450, cost: 0.001, timestamp: "2:28 PM", status: "success" as const, retries: 0 },
+  { id: "e3", name: "Query Optimizer", duration: 890, tokens: 3400, cost: 0.012, timestamp: "2:25 PM", status: "timeout" as const, retries: 2 },
+  { id: "e4", name: "Image Generator", duration: 2340, tokens: 8900, cost: 0.045, timestamp: "2:22 PM", status: "success" as const, retries: 0 },
+  { id: "e5", name: "Code Review Agent", duration: 560, tokens: 2100, cost: 0.008, timestamp: "2:20 PM", status: "error" as const, retries: 1 },
+  { id: "e6", name: "Cache Warmer", duration: 12, tokens: 120, cost: 0.0002, timestamp: "2:18 PM", status: "success" as const, retries: 0 },
+];
+
+// Runtime data
+const sampleRuntimes: any[] = [
+  { id: "rt-1", name: "AWS us-east-1", type: "serverless", provider: "AWS", region: "us-east-1", status: "online", latency: 28, costPerExecution: 0.0000002, supportedLanguages: ["js", "ts", "py"], maxMemory: 1024, maxTimeout: 900, features: ["auto-scale", "cold-start-opt"], reliabilityScore: 99.9, currentLoad: 45 },
+  { id: "rt-2", name: "Vercel Edge", type: "edge", provider: "Vercel", region: "global", status: "online", latency: 8, costPerExecution: 0.0000001, supportedLanguages: ["js", "ts"], maxMemory: 512, maxTimeout: 30, features: ["edge-caching", "instant-cold-start"], reliabilityScore: 99.5, currentLoad: 62 },
+  { id: "rt-3", name: "Cloudflare Workers", type: "wasm", provider: "Cloudflare", region: "global", status: "online", latency: 5, costPerExecution: 0.00000005, supportedLanguages: ["js", "ts", "rust"], maxMemory: 256, maxTimeout: 30, features: ["wasm-native", "kv-storage"], reliabilityScore: 99.8, currentLoad: 38 },
+  { id: "rt-4", name: "Docker GCP", type: "docker", provider: "GCP", region: "us-central1", status: "online", latency: 45, costPerExecution: 0.001, supportedLanguages: ["py", "js", "ts", "go", "rust"], maxMemory: 8192, maxTimeout: 3600, features: ["custom-runtime", "gpu-support"], reliabilityScore: 98.5, currentLoad: 22 },
+  { id: "rt-5", name: "Local Dev", type: "local", provider: "local", region: "local", status: "online", latency: 2, costPerExecution: 0, supportedLanguages: ["js", "ts", "py", "go", "rust"], maxMemory: 4096, maxTimeout: 0, features: ["debug-mode", "hot-reload"], reliabilityScore: 100, currentLoad: 15 },
+  { id: "rt-6", name: "Azure West US", type: "serverless", provider: "Azure", region: "westus", status: "degraded", latency: 120, costPerExecution: 0.0000003, supportedLanguages: ["js", "ts", "c#", "py"], maxMemory: 1536, maxTimeout: 600, features: ["durable-functions", "event-grid"], reliabilityScore: 95.2, currentLoad: 78 },
+];
+
+// Sample security alerts
+const sampleAlerts: any[] = [
+  { id: "a1", severity: "critical", type: "Unauthorized Access Attempt", description: "Multiple failed auth attempts from 192.168.1.100 targeting admin endpoints", timestamp: "2:45 PM", source: "API Gateway", status: "active", affectedResources: ["auth-service", "admin-api"] },
+  { id: "a2", severity: "high", type: "Rate Limit Exceeded", description: "Agent 'Code Architect' exceeded API rate limit by 300%", timestamp: "2:30 PM", source: "Rate Limiter", status: "investigating", affectedResources: ["agent-1", "external-api"] },
+  { id: "a3", severity: "medium", type: "Expired Certificate", description: "TLS certificate for dev.functions.internal expiring in 3 days", timestamp: "1:00 PM", source: "Cert Manager", status: "resolved", affectedResources: ["dev-portal"] },
+  { id: "a4", severity: "low", type: "Unusual Pattern", description: "Unusual spike in function invocations during off-hours", timestamp: "3:15 AM", source: "Anomaly Detection", status: "resolved", affectedResources: ["batch-processor"] },
+];
+
+// Sample security events
+const sampleSecurityEvents: any[] = [
+  { id: "se1", timestamp: "2:45 PM", type: "auth", action: "Login attempt", actor: "unknown-ip", resource: "admin-api", result: "failure", details: "Invalid credentials" },
+  { id: "se2", timestamp: "2:44 PM", type: "auth", action: "MFA verification", actor: "admin@functionfly.com", resource: "admin-portal", result: "success" },
+  { id: "se3", timestamp: "2:30 PM", type: "permission", action: "API key created", actor: "dev-team", resource: "external-integrations", result: "success" },
+  { id: "se4", timestamp: "2:15 PM", type: "access", action: "Secret accessed", actor: "infra-agent", resource: "db-connection-string", result: "allowed" },
+  { id: "se5", timestamp: "1:45 PM", type: "threat", action: "DDoS mitigation", actor: "auto-defend", resource: "api-gateway", result: "blocked", details: "Blocked 15,000 requests/min" },
+  { id: "se6", timestamp: "1:30 PM", type: "compliance", action: "Audit log export", actor: "compliance-bot", resource: "audit-trail", result: "success" },
+];
+
+// Sample collaborators
+const sampleCollaborators: any[] = [
+  { id: "u1", name: "Alice Chen", color: "#f97316", status: "online", role: "Developer", lastActive: "now" },
+  { id: "u2", name: "Bob Smith", color: "#3b82f6", status: "online", role: "Reviewer", lastActive: "2 min ago" },
+  { id: "u3", name: "Carol Davis", color: "#10b981", status: "away", role: "Designer", lastActive: "15 min ago" },
+  { id: "a1", name: "CodeGPT", color: "#8b5cf6", status: "online", isAI: true, role: "Assistant", lastActive: "now" },
+  { id: "a2", name: "SecBot", color: "#ec4899", status: "online", isAI: true, role: "Security", lastActive: "now" },
+];
+
+// Sample swarm agents
+const sampleSwarmAgents: any[] = [
+  { ...sampleAgents[0], swarmRole: "planner", dependencies: [], communicationPattern: "chain" },
+  { ...sampleAgents[1], swarmRole: "executor", dependencies: ["planner"], communicationPattern: "star" },
+  { ...sampleAgents[3], swarmRole: "reviewer", dependencies: ["executor"], communicationPattern: "peer" },
+];
+
+// Sample activities
+const sampleActivities = [
+  { id: "act1", user: { name: "Alice Chen", isAI: false }, action: "deployed", target: "Data Processor v2.3", icon: "🚀", timestamp: "2:45 PM" },
+  { id: "act2", user: { name: "CodeGPT", isAI: true }, action: "refactored", target: "Auth Module", icon: "🔄", timestamp: "2:40 PM" },
+  { id: "act3", user: { name: "Bob Smith", isAI: false }, action: "reviewed", target: "Payment Service", icon: "👁️", timestamp: "2:35 PM" },
+  { id: "act4", user: { name: "SecBot", isAI: true }, action: "detected vulnerability", target: "Upload Handler", icon: "⚠️", timestamp: "2:30 PM" },
+  { id: "act5", user: { name: "Carol Davis", isAI: false }, action: "published", target: "UI Component Library v3.0", icon: "📦", timestamp: "2:15 PM" },
+];
+
+// Sample tasks
+const sampleTasks = [
+  { id: "t1", title: "Refactor auth middleware", assignedTo: { name: "CodeGPT", isAI: true }, status: "in-progress", priority: "high" },
+  { id: "t2", title: "Review payment integration", assignedTo: { name: "Bob Smith", isAI: false }, status: "review", priority: "high" },
+  { id: "t3", title: "Optimize DB queries", assignedTo: { name: "Infra Agent", isAI: true }, status: "todo", priority: "medium" },
+  { id: "t4", title: "Update API docs", assignedTo: { name: "Carol Davis", isAI: false }, status: "done", priority: "low" },
+  { id: "t5", title: "Fix memory leak in processor", assignedTo: { name: "Bug Hunter", isAI: true }, status: "in-progress", priority: "high" },
+  { id: "t6", title: "Add rate limiting", assignedTo: { name: "SecBot", isAI: true }, status: "todo", priority: "medium" },
+];
+
+// Sample wasm logs
+const sampleLogs: Array<{ timestamp: string; level: "info" | "warn" | "error" | "debug"; message: string }> = [
+  { timestamp: "14:30:12", level: "info", message: "Initializing WASM runtime..." },
+  { timestamp: "14:30:12", level: "info", message: "Loading function module..." },
+  { timestamp: "14:30:13", level: "debug", message: "Module loaded: 2.4MB" },
+  { timestamp: "14:30:13", level: "info", message: "Executing function main()..." },
+  { timestamp: "14:30:14", level: "warn", message: "Memory usage at 78% threshold" },
+  { timestamp: "14:30:14", level: "error", message: "Execution failed: out of memory" },
+  { timestamp: "14:30:14", level: "info", message: "Tokens consumed: 1,200 | Cost: $0.003" },
+];
+
+// ============================
+// STUDIO VIEW MODES
+// ============================
+
+// Design Mode - Graph-centric workspace
+function DesignView() {
+  const [neuralMapOpen, setNeuralMapOpen] = React.useState(false);
+
+  // Sample neural nodes derived from the function graph
+  const neuralNodes = sampleNodes.map((n, i) => ({
+    id: n.id,
+    label: n.label || n.id,
+    type: (n.type || "function") as "agent" | "function" | "api" | "memory" | "database" | "input" | "output",
+    position: [
+      (i % 5) * 6 - 12,
+      Math.floor(i / 5) * -5 + 5,
+      Math.random() * 2,
+    ] as [number, number, number],
+    status: (n.status || "idle") as "idle" | "active" | "error" | "processing",
+    connections: sampleEdges.filter(e => e.from === n.id || e.to === n.id).map(e => e.from === n.id ? e.to : e.from),
+    load: Math.random() * 0.8 + 0.1,
+    size: 0.8 + Math.random() * 0.4,
+  }));
+
+  const neuralConnections = sampleEdges.map(e => ({
+    from: e.from,
+    to: e.to,
+    type: "data" as const,
+    strength: 0.6 + Math.random() * 0.4,
+    active: Math.random() > 0.3,
+  }));
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Top section: Function Canvas */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Panel - Function Canvas */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="px-4 py-2 border-b border-border-subtle bg-bg-secondary flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <GitBranch className="size-4 text-brand-400" />
+              <span className="text-sm font-medium text-text-primary">Function Canvas</span>
+              <Badge variant="brand" size="sm">Design Mode</Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setNeuralMapOpen(!neuralMapOpen)}
+                className={cn(
+                  "px-2 py-1 text-[10px] border rounded font-medium transition-colors flex items-center gap-1.5",
+                  neuralMapOpen
+                    ? "bg-purple-500/20 text-purple-400 border-purple-500/30"
+                    : "bg-bg-primary text-text-muted border-border-subtle hover:text-text-primary"
+                )}
+              >
+                <Brain className="size-3" /> Neural Map
+              </button>
+              <button className="px-2 py-1 text-[10px] bg-bg-primary border border-border-subtle rounded text-text-muted hover:text-text-primary transition-colors">
+                Auto Layout
+              </button>
+              <button className="px-2 py-1 text-[10px] bg-brand-500/10 text-brand-400 border border-brand-500/30 rounded font-medium transition-colors">
+                Add Node +
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 relative overflow-hidden">
+            <FunctionCanvas
+              nodes={sampleNodes}
+              edges={sampleEdges}
+              viewMode="design"
+              showGrid={true}
+              showMinimap={true}
+              enableConnect={true}
+              enableDrag={true}
+              enablePan={true}
+              enableZoom={true}
+              animateTokenFlow={false}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Right Panel - Node Inspector */}
+      <div className="w-80 border-l border-border-subtle bg-bg-secondary flex flex-col">
+        <div className="px-4 py-2 border-b border-border-subtle">
+          <span className="text-sm font-medium text-text-primary">Node Inspector</span>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Selected node info */}
+          <GlassCard intensity="medium" glowColor="#f97316">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">⚡</span>
+                <div>
+                  <div className="font-semibold text-text-primary">Processor Node</div>
+                  <div className="text-[11px] text-text-muted">function · v2.1</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div>
+                  <span className="text-text-muted">Status</span>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <div className="size-2 rounded-full bg-success" />
+                    <span className="text-success font-medium">Active</span>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-text-muted">Latency</span>
+                  <div className="font-mono mt-0.5">45ms avg</div>
+                </div>
+                <div>
+                  <span className="text-text-muted">Cost</span>
+                  <div className="font-mono mt-0.5">$0.002/call</div>
+                </div>
+                <div>
+                  <span className="text-text-muted">Reliability</span>
+                  <div className="mt-0.5"><TrustScoreMeter score={92} size="sm" /></div>
+                </div>
+              </div>
+            </div>
+          </GlassCard>
+
+          {/* Code Preview */}
+          <div>
+            <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Source Code</h4>
+            <pre className="text-[11px] font-mono bg-bg-primary rounded-lg p-3 border border-border-subtle overflow-x-auto" style={{ maxHeight: 200 }}>
+{`export async function handler(event, context) {
+  const data = await fetchData(event);
+  const result = await process(data);
+  return {
+    statusCode: 200,
+    body: JSON.stringify(result)
+  };
+}`}
+            </pre>
+          </div>
+
+          {/* Ports */}
+          <div>
+            <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Connections</h4>
+            <div className="space-y-1 text-[11px]">
+              <div className="flex items-center gap-2 py-1">
+                <div className="size-2 rounded-full bg-[#3b82f6] border-2 border-border-subtle" />
+                <span className="text-text-secondary">Input: HTTP Trigger</span>
+              </div>
+              <div className="flex items-center gap-2 py-1">
+                <div className="size-2 rounded-full bg-[#10b981] border-2 border-border-subtle" />
+                <span className="text-text-secondary">Output → LLM Agent</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Neural Execution Map - 3D visualization */}
+          {neuralMapOpen && (
+            <div>
+              <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Brain className="size-3 text-purple-400" /> Neural Execution Map
+              </h4>
+              <div className="rounded-lg overflow-hidden border border-purple-500/20" style={{ height: 280 }}>
+                <NeuralExecutionMap
+                  nodes={neuralNodes}
+                  connections={neuralConnections}
+                  showLabels={true}
+                  showConnections={true}
+                  interactive={true}
+                  autoRotate={false}
+                  style="dark"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+  );
+}
+function ExecuteView() {
+  return (
+    <div className="flex-1 flex overflow-hidden">
+      {/* Main Canvas with live execution */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="px-4 py-2 border-b border-border-subtle bg-bg-secondary flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Activity className="size-4 text-success" />
+            <span className="text-sm font-medium text-text-primary">Live Execution Monitor</span>
+            <Badge variant="success" size="sm" dot pulse>Running</Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            <button className="px-3 py-1.5 text-[11px] bg-error/10 text-error border border-error/30 rounded-lg hover:bg-error/20 transition-colors flex items-center gap-1.5">
+              <XCircle className="size-3.5" /> Stop Execution
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 relative overflow-hidden">
+          <FunctionCanvas
+            nodes={sampleNodes.map((n) => ({
+              ...n,
+              status: Math.random() > 0.3 ? "running" : "completed",
+              executionTime: Math.floor(Math.random() * 200 + 20),
+              tokenCost: parseFloat((Math.random() * 0.005).toFixed(4)),
+              errorRate: parseFloat((Math.random() * 2).toFixed(1)),
+              reliabilityScore: Math.floor(Math.random() * 30 + 70),
+            }))}
+            edges={sampleEdges.map((e) => ({ ...e, status: "active" as const }))}
+            viewMode="execute"
+            showGrid={false}
+            showMinimap={true}
+            enableConnect={false}
+            enableDrag={false}
+            enablePan={true}
+            enableZoom={true}
+            animateTokenFlow={true}
+            tokenFlowSpeed={1.5}
+          />
+        </div>
+      </div>
+
+      {/* Right Panel - Execution Timeline */}
+      <div className="w-96 border-l border-border-subtle bg-bg-secondary flex flex-col">
+        <div className="px-4 py-2 border-b border-border-subtle">
+          <span className="text-sm font-medium text-text-primary">Execution Timeline</span>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+          <ExecutionTimeline
+            events={[
+              { id: "ev1", timestamp: Date.now() - 5000, type: "node_start", nodeId: "trigger-1", nodeLabel: "HTTP Trigger", result: "success", duration: 5 },
+              { id: "ev2", timestamp: Date.now() - 4990, type: "edge_traversal", edgeId: "e1", result: "success" },
+              { id: "ev3", timestamp: Date.now() - 4900, type: "node_start", nodeId: "auth-agent", nodeLabel: "Auth Agent", result: "success" },
+              { id: "ev4", timestamp: Date.now() - 4800, type: "node_end", nodeId: "auth-agent", result: "success", duration: 45 },
+              { id: "ev5", timestamp: Date.now() - 4790, type: "fork", result: "success" },
+              { id: "ev6", timestamp: Date.now() - 4700, type: "node_start", nodeId: "vector-memory", nodeLabel: "Vector Memory", result: "success" },
+              { id: "ev7", timestamp: Date.now() - 4600, type: "node_start", nodeId: "processor-fn", nodeLabel: "Data Processor", result: "partial" },
+              { id: "ev8", timestamp: Date.now() - 4450, type: "node_end", nodeId: "vector-memory", result: "success", duration: 150 },
+              { id: "ev9", timestamp: Date.now() - 4200, type: "node_end", nodeId: "processor-fn", result: "success", duration: 550 },
+              { id: "ev10", timestamp: Date.now() - 4190, type: "node_start", nodeId: "llm-agent", nodeLabel: "LLM Agent", result: "success" },
+              { id: "ev11", timestamp: Date.now() - 3500, type: "node_end", nodeId: "llm-agent", result: "success", duration: 690 },
+              { id: "ev12", timestamp: Date.now() - 3490, type: "join", result: "success" },
+              { id: "ev13", timestamp: Date.now() - 3400, type: "node_start", nodeId: "output-1", nodeLabel: "Response", result: "success" },
+              { id: "ev14", timestamp: Date.now() - 3350, type: "node_end", nodeId: "output-1", result: "success", duration: 50 },
+            ]}
+            currentTime={Date.now() - 3000}
+            onTimeChange={(time) => console.log("Time:", time)}
+          />
+        </div>
+        <div className="px-4 py-3 border-t border-border-subtle bg-bg-tertiary">
+          <div className="flex items-center justify-between text-[10px] text-text-muted">
+            <span>Last 30s of execution</span>
+            <span>Paused at breakpoint</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Monitor Mode - Observability dashboard
+function MonitorView() {
+  return (
+    <div className="flex-1 p-6 overflow-y-auto">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Alert banner */}
+        <div className="flex items-center gap-2 px-4 py-2 bg-error/10 border border-error/30 rounded-lg text-sm text-error">
+          <AlertTriangle className="size-4 shrink-0" />
+          <span>1 agent in error state · Average latency increased by 12% in the last hour</span>
+        </div>
+
+        {/* Key metrics */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <MetricCard label="Total Requests" value={12453} unit="req" trend="up" delta={8} sparkline={[0.3, 0.5, 0.8, 0.6, 0.9, 1, 0.7, 0.85, 0.6, 0.95]} />
+          <MetricCard label="Avg Latency" value={42} unit="ms" status="ok" trend="down" delta={-5} sparkline={[0.6, 0.5, 0.4, 0.3, 0.4, 0.3, 0.5, 0.4, 0.3, 0.4]} />
+          <MetricCard label="Error Rate" value={0.2} unit="%" status="ok" trend="down" delta={-15} sparkline={[0.3, 0.2, 0.1, 0.2, 0.1, 0.1, 0.2, 0.1, 0.1, 0.2]} />
+          <MetricCard label="Active Agents" value={3} unit="agents" status="warning" trend="down" delta={-1} sparkline={[0.8, 0.9, 1, 0.9, 0.8, 0.9, 0.8, 0.7, 0.8, 0.75]} />
+          <MetricCard label="Token Usage" value={45.2} unit="K/min" trend="up" delta={15} sparkline={[0.4, 0.5, 0.6, 0.5, 0.7, 0.6, 0.8, 0.7, 0.9, 0.85]} />
+          <MetricCard label="Cost/hr" value={0.85} unit="$" status="warning" trend="up" delta={12} sparkline={[0.3, 0.4, 0.3, 0.5, 0.4, 0.5, 0.6, 0.5, 0.7, 0.6]} />
+        </div>
+
+        {/* Latency Graph + Token Usage side by side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <LatencyGraph data={sampleLatencyData} timeRange="24h" />
+          <LiveTelemetryPanel metrics={sampleMetrics} tokenUsage={sampleTokenUsage} showTokenUsage={true} showAlerts={true} />
+        </div>
+
+        {/* Execution Profiler */}
+        <ExecutionProfiler executions={sampleExecutions} />
+      </div>
+    </div>
+  );
+}
+
+// Simulate Mode - Pre-deployment simulation (R-Sim)
+function SimulateView() {
+  const [simulationConfig, setSimulationConfig] = React.useState({
+    workflowId: "wf-001",
+    duration: 60,
+    parallelism: 10,
+    iterations: 1000,
+    confidenceLevel: 0.95,
+    failureInjection: false,
+    stressMode: false,
+  });
+
+  const [simulationResult, setSimulationResult] = React.useState<any>(null);
+
+  const handleStart = () => {
+    setSimulationResult({
+      id: "sim-001",
+      status: "running" as const,
+      progress: 0,
+      startedAt: new Date().toISOString(),
+      iteration: 0,
+      totalIterations: 1000,
+      currentMetrics: { throughput: 847, errorRate: 0.4, avgLatency: 38, p99Latency: 185 },
+    });
+    // Simulate progress
+    let iter = 0;
+    const interval = setInterval(() => {
+      iter += 50;
+      setSimulationResult((r: any) => ({
+        ...r,
+        iteration: iter,
+        progress: iter / 1000,
+        currentMetrics: {
+          throughput: 800 + Math.random() * 100,
+          errorRate: Math.random() * 1,
+          avgLatency: 35 + Math.random() * 10,
+          p99Latency: 180 + Math.random() * 20,
+        },
+      }));
+      if (iter >= 1000) clearInterval(interval);
+    }, 100);
+  };
+
+  const sampleForecasts = [
+    { timestamp: Date.now() - 3600000, value: 850, lower: 780, upper: 920, confidence: 0.92 },
+    { timestamp: Date.now() - 2700000, value: 920, lower: 840, upper: 1000, confidence: 0.94 },
+    { timestamp: Date.now() - 1800000, value: 1100, lower: 1000, upper: 1200, confidence: 0.89 },
+    { timestamp: Date.now() - 900000, value: 980, lower: 900, upper: 1060, confidence: 0.91 },
+    { timestamp: Date.now(), value: 1050, lower: 970, upper: 1130, confidence: 0.93 },
+  ];
+
+  const sampleOutcome = {
+    outcome: "success" as const,
+    probability: 94.2,
+    expectedDuration: 45200,
+    costEstimate: 0.087,
+    riskFactors: ["Network latency variance", "External API rate limits", "Memory pressure at scale"],
+  };
+
+  const sampleFailureNodes = [
+    { nodeId: "auth-agent", nodeName: "Auth Agent", probability: 0.15, factors: [{ name: "Token expiry", contribution: 0.6 }, { name: "Rate limiting", contribution: 0.4 }], trend: "stable" as const },
+    { nodeId: "llm-agent", nodeName: "LLM Agent", probability: 0.08, factors: [{ name: "Model timeout", contribution: 0.7 }, { name: "Context length", contribution: 0.3 }], trend: "decreasing" as const },
+    { nodeId: "processor", nodeName: "Data Processor", probability: 0.03, factors: [{ name: "Schema mismatch", contribution: 0.5 }, { name: "Null handling", contribution: 0.5 }], trend: "decreasing" as const },
+    { nodeId: "vector-db", nodeName: "Vector Memory", probability: 0.22, factors: [{ name: "Index rebuild", contribution: 0.8 }, { name: "Query timeout", contribution: 0.2 }], trend: "increasing" as const },
+    { nodeId: "output-fn", nodeName: "Output Fn", probability: 0.01, factors: [{ name: "Serialization", contribution: 1.0 }], trend: "stable" as const },
+  ];
+
+  const sampleLatencyPredictions = Array.from({ length: 20 }, (_, i) => ({
+    timestamp: Date.now() - (20 - i) * 300000,
+    p50: 35 + Math.random() * 15,
+    p95: 120 + Math.random() * 40,
+    p99: 280 + Math.random() * 80,
+    samples: 1000 + i * 50,
+  }));
+
+  const sampleHallucinationRisks = [
+    { score: 0.18, factors: [{ name: "Context length", weight: 0.3, description: "Long context increases confusion" }, { name: "Temperature", weight: 0.2, description: "Higher temp = more creative but less precise" }], model: "claude-sonnet-4", confidence: 0.89, recommendations: ["Reduce temperature", "Add validation layer"] },
+    { score: 0.42, factors: [{ name: "Model size", weight: 0.5, description: "Larger models hallucinate more" }, { name: "Training data", weight: 0.3, description: "Outdated knowledge cutoff" }], model: "gpt-4o", confidence: 0.75, recommendations: ["Add fact-checking agent", "Use retrieval augmentation"] },
+  ];
+
+  const sampleCostEstimate = {
+    totalTokens: 4523000,
+    inputTokens: 3200000,
+    outputTokens: 1323000,
+    computeCost: 0.042,
+    apiCost: 0.045,
+    totalCost: 0.087,
+    hourlyBreakdown: Array.from({ length: 24 }, (_, h) => ({ hour: h, cost: 0.003 + Math.random() * 0.008, tokens: 150000 + Math.random() * 100000 })),
+  };
+
+  const sampleScalingRecs = [
+    { component: "LLM Agent", currentCapacity: 75, bottleneckThreshold: 100, recommendedScale: 150, reason: "P99 latency exceeds SLA at current load", estimatedCostIncrease: 0.12, urgency: "high" as const },
+    { component: "Vector Memory", currentCapacity: 88, bottleneckThreshold: 100, recommendedScale: 200, reason: "Memory usage approaching limits", estimatedCostIncrease: 0.08, urgency: "critical" as const },
+    { component: "Data Processor", currentCapacity: 45, bottleneckThreshold: 100, recommendedScale: 80, reason: "Queue depth growing steadily", estimatedCostIncrease: 0.05, urgency: "medium" as const },
+  ];
+
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="p-4 space-y-4 max-w-7xl mx-auto">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="size-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
+              <Brain className="size-4 text-purple-400" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-text-primary">R-Sim Simulation Engine</h2>
+              <p className="text-xs text-text-muted">Predict outcomes before deployment</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="info" size="sm">1,000 iterations</Badge>
+            <Badge variant="brand" size="sm">95% confidence</Badge>
+          </div>
+        </div>
+
+        {/* Simulation Control + Forecast */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-1">
+            <SimulationControlCenter
+              config={simulationConfig}
+              result={simulationResult}
+              onConfigChange={setSimulationConfig}
+              onStart={handleStart}
+              onStop={() => setSimulationResult(null)}
+              onReset={() => setSimulationResult(null)}
+            />
+          </div>
+          <div className="lg:col-span-2">
+            <ExecutionForecastPanel forecasts={sampleForecasts} outcome={sampleOutcome} />
+          </div>
+        </div>
+
+        {/* Failure Probability + Latency */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <FailureProbabilityMap nodes={sampleFailureNodes} />
+          <LatencyPredictionGraph predictions={sampleLatencyPredictions} />
+        </div>
+
+        {/* Hallucination Risk + Cost */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <HallucinationRiskAnalyzer risks={sampleHallucinationRisks} />
+          <CostSimulationChart estimate={sampleCostEstimate} />
+        </div>
+
+        {/* Scaling Forecast + Agent Behavior */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <ScalingForecastMap recommendations={sampleScalingRecs} />
+          <AgentBehaviorPredictor
+            predictions={[
+              {
+                agentId: "Code Architect",
+                likelyActions: [
+                  { action: "Design API schema", probability: 0.72, expectedOutcome: "OpenAPI 3.1 spec" },
+                  { action: "Generate unit tests", probability: 0.58, expectedOutcome: "85% coverage" },
+                  { action: "Optimize queries", probability: 0.45, expectedOutcome: "50% latency reduction" },
+                ],
+                confidence: 0.88,
+                basedOnSamples: 342,
+              },
+              {
+                agentId: "Security Auditor",
+                likelyActions: [
+                  { action: "Scan for vulnerabilities", probability: 0.85, expectedOutcome: "Risk assessment report" },
+                  { action: "Validate auth flows", probability: 0.67, expectedOutcome: "Security clearance" },
+                ],
+                confidence: 0.92,
+                basedOnSamples: 128,
+              },
+            ]}
+          />
+        </div>
+
+        {/* Workflow Outcome + Resource Collision */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <WorkflowOutcomeSimulator
+            iterations={1000}
+            outcomes={Array.from({ length: 1000 }, () => {
+              const r = Math.random();
+              return {
+                outcome: r > 0.94 ? "failed" : r > 0.88 ? "partial" : "success",
+                probability: r,
+                expectedDuration: 45000 + Math.random() * 10000,
+                costEstimate: 0.08 + Math.random() * 0.02,
+                riskFactors: [],
+              };
+            })}
+          />
+          <ResourceCollisionDetector
+            collisions={[
+              {
+                resourceId: "gpu-0",
+                resourceName: "GPU Cluster us-east-1",
+                severity: "high",
+                conflictingTasks: [
+                  { taskId: "task-342", startTime: Date.now() + 60000, endTime: Date.now() + 180000 },
+                  { taskId: "task-343", startTime: Date.now() + 90000, endTime: Date.now() + 150000 },
+                ],
+                resolution: "Reschedule task-343 to GPU cluster us-west-2",
+              },
+            ]}
+          />
+        </div>
+
+        {/* Stress Test Runner */}
+        <StressTestRunner
+          isRunning={simulationResult?.status === "running"}
+          config={{ iterations: 1000, parallelism: 10 }}
+          result={simulationResult ? {
+            iterations: simulationResult.iteration,
+            totalExecutions: simulationResult.iteration,
+            successRate: 99.1,
+            throughput: 847,
+            latencyP50: 38,
+            latencyP95: 142,
+            latencyP99: 285,
+            errors: [
+              { type: "Timeout", count: 5, percentage: 0.5 },
+              { type: "Rate Limit", count: 3, percentage: 0.3 },
+              { type: "Auth Failure", count: 2, percentage: 0.2 },
+            ],
+            timeline: [],
+          } : undefined}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Ghost Mode View - Autonomous building
+function GhostModeView() {
+  const [build, setBuild] = React.useState<any>({
+    id: "build-001",
+    goal: "Build a REST API for user management with auth, CRUD operations, and rate limiting",
+    description: "Auto-generating full-stack user management microservice",
+    phase: "building",
+    progress: 0.67,
+    startedAt: new Date(Date.now() - 300000).toISOString(),
+    updatedAt: new Date().toISOString(),
+    estimatedCompletion: new Date(Date.now() + 180000).toISOString(),
+    currentTaskId: "task-4",
+    humanApprovalRequired: true,
+    approvalType: "schema",
+    tasks: [
+      { id: "task-1", title: "Design database schema", description: "Create user table with roles and permissions", status: "completed", phase: "planning", startedAt: new Date(Date.now() - 280000).toISOString(), completedAt: new Date(Date.now() - 240000).toISOString(), duration: 40000, logs: [], agentId: "arch-agent" },
+      { id: "task-2", title: "Provision infrastructure", description: "Create Docker containers and networking", status: "completed", phase: "provisioning", startedAt: new Date(Date.now() - 230000).toISOString(), completedAt: new Date(Date.now() - 180000).toISOString(), duration: 50000, logs: [], agentId: "infra-agent" },
+      { id: "task-3", title: "Implement auth endpoints", description: "JWT-based authentication with refresh tokens", status: "completed", phase: "building", startedAt: new Date(Date.now() - 170000).toISOString(), completedAt: new Date(Date.now() - 100000).toISOString(), duration: 70000, logs: [], agentId: "backend-agent" },
+      { id: "task-4", title: "Generate CRUD handlers", description: "User create/read/update/delete operations", status: "in_progress", phase: "building", startedAt: new Date(Date.now() - 90000).toISOString(), logs: [{ timestamp: new Date().toISOString(), level: "info", message: "Parsing OpenAPI spec..." }, { timestamp: new Date().toISOString(), level: "info", message: "Generating handler code..." }], agentId: "backend-agent" },
+      { id: "task-5", title: "Add rate limiting middleware", description: "Token bucket algorithm for API protection", status: "pending", phase: "building", dependencies: ["task-4"] },
+      { id: "task-6", title: "Write unit tests", description: "80% code coverage requirement", status: "pending", phase: "building", dependencies: ["task-4"] },
+      { id: "task-7", title: "Deploy to staging", description: "Blue-green deployment to staging environment", status: "pending", phase: "deploying", dependencies: ["task-5", "task-6"] },
+    ],
+  });
+
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <GhostModeOrchestrator build={build} onApproval={(type) => console.log("Approve:", type)} />
+    </div>
+  );
+}
+
+// Agents View - Full agent lifecycle management
+function AgentsView() {
+  return (
+    <div className="flex-1 overflow-y-auto p-4">
+      <div className="max-w-6xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="size-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+              <Bot className="size-4 text-emerald-400" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-text-primary">Agent OS</h2>
+              <p className="text-xs text-text-muted">Autonomous agents, swarms & consensus</p>
+            </div>
+          </div>
+          <button className="px-3 py-1.5 text-xs bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg flex items-center gap-1.5">
+            <Zap className="size-3" /> Spawn Agent
+          </button>
+        </div>
+
+        {/* Agent Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {sampleAgents.map((agent) => (
+            <AgentCard
+              key={agent.id}
+              agent={agent}
+              onClick={() => console.log("Agent:", agent.id)}
+            />
+          ))}
+        </div>
+
+        {/* Autonomous Task Board */}
+        <AutonomousTaskBoard
+          agents={sampleAgents}
+          tasks={[
+            { id: "t1", title: "Refactor auth middleware", status: "in-progress" as const, priority: "high" as const, assignedAgentId: "agent-1", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), tags: ["auth", "security"], progress: 65, executionTrace: [{ timestamp: Date.now() - 30000, action: "Analyzing middleware chain", agent: "Code Architect" }, { timestamp: Date.now() - 20000, action: "Identifying bottleneck", agent: "Code Architect" }, { timestamp: Date.now() - 5000, action: "Implementing optimizations", agent: "Code Architect" }] },
+            { id: "t2", title: "Add WebSocket support", status: "todo" as const, priority: "medium" as const, assignedAgentId: "agent-3", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), tags: ["realtime", "websocket"], progress: 0 },
+            { id: "t3", title: "Review API contracts", status: "review" as const, priority: "high" as const, assignedAgentId: "agent-2", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), tags: ["api", "review"], progress: 90 },
+            { id: "t4", title: "Optimize DB queries", status: "done" as const, priority: "medium" as const, assignedAgentId: "agent-4", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), tags: ["database", "performance"], progress: 100 },
+          ]}
+          onTaskCreate={(task) => console.log("Create task:", task)}
+          onTaskUpdate={(id, updates) => console.log("Update task:", id, updates)}
+          onTaskAssign={(id, agentId) => console.log("Assign:", id, agentId)}
+        />
+
+        {/* Agent Consensus + Conflict */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <AgentConsensusViewer
+            consensus={{
+              id: "consensus-1",
+              topic: "Architecture Decision: REST vs GraphQL",
+              status: "voting",
+              votes: [
+                { id: "v1", agentId: "agent-1", agentName: "Code Architect", vote: "approve", rationale: "REST is simpler and better for our use case", timestamp: new Date().toISOString() },
+                { id: "v2", agentId: "agent-2", agentName: "Security Auditor", vote: "reject", rationale: "GraphQL provides better type safety", timestamp: new Date().toISOString() },
+                { id: "v3", agentId: "agent-3", agentName: "UI Designer", vote: "approve", rationale: "REST is easier to cache", timestamp: new Date().toISOString() },
+                { id: "v4", agentId: "agent-4", agentName: "Infra Agent", vote: "abstain", rationale: "Both options are viable", timestamp: new Date().toISOString() },
+              ],
+              approvalRate: 0.6,
+              createdAt: new Date(Date.now() - 600000).toISOString(),
+              expiresAt: new Date(Date.now() + 600000).toISOString(),
+            }}
+          />
+          <AgentConflictResolver
+            conflicts={[
+              { id: "cf1", severity: "medium", type: "Resource Contention", description: "Code Architect and Infra Agent both need GPU access", agents: [{ id: "agent-1", name: "Code Architect" }, { id: "agent-4", name: "Infra Agent" }], status: "mediating", createdAt: new Date(Date.now() - 300000).toISOString(), mediationRequests: [{ agentId: "agent-1", request: "GPU priority for ML inference", priority: "high" as const }] },
+              { id: "cf2", severity: "low", type: "Style Conflict", description: "Two agents generated conflicting code formatting", agents: [{ id: "agent-1", name: "Code Architect" }, { id: "agent-3", name: "UI Designer" }], status: "resolved", createdAt: new Date(Date.now() - 600000).toISOString(), resolution: "Applied project-wide Prettier config" },
+            ]}
+          />
+        </div>
+
+        {/* Agent Skill Graph */}
+        <AgentSkillGraph
+          agents={sampleAgents.map((a) => ({ ...a, skills: [{ name: "code", level: 0.9 }, { name: "security", level: 0.7 }, { name: "design", level: 0.6 }] }))}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Marketplace View - Function marketplace & billing
+function MarketplaceView() {
+  return (
+    <div className="flex-1 overflow-y-auto p-4">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="size-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
+              <Package className="size-4 text-amber-400" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-text-primary">Function Marketplace</h2>
+              <p className="text-xs text-text-muted">Discover, publish, and monetize functions</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button className="px-3 py-1.5 text-xs bg-amber-500 hover:bg-amber-600 text-white rounded-lg flex items-center gap-1.5">
+              <Zap className="size-3" /> Publish Function
+            </button>
+          </div>
+        </div>
+
+        {/* Revenue Analytics + Leaderboard */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2">
+            <RevenueAnalytics
+              revenue={{
+                totalRevenue: 12847.52,
+                monthlyRevenue: 2340.18,
+                revenueGrowth: 0.18,
+                byFunction: [
+                  { functionId: "fn-1", functionName: "Auth Sentinel", revenue: 4230.00, installs: 1247, avgRating: 4.8 },
+                  { functionId: "fn-2", functionName: "Data Pipeline", revenue: 3180.50, installs: 892, avgRating: 4.6 },
+                  { functionId: "fn-3", functionName: "Image Processor", revenue: 2150.75, installs: 654, avgRating: 4.9 },
+                ],
+                periodBreakdown: [
+                  { period: "Jan", revenue: 1200 }, { period: "Feb", revenue: 1450 }, { period: "Mar", revenue: 1380 },
+                  { period: "Apr", revenue: 1620 }, { period: "May", revenue: 1890 }, { period: "Jun", revenue: 2340 },
+                ],
+              }}
+            />
+          </div>
+          <MarketplaceLeaderboard
+            entries={[
+              { rank: 1, functionId: "fn-1", functionName: "Auth Sentinel", installs: 1247, revenue: 4230, trending: "up", rating: 4.8 },
+              { rank: 2, functionId: "fn-2", functionName: "Data Pipeline", installs: 892, revenue: 3180, trending: "up", rating: 4.6 },
+              { rank: 3, functionId: "fn-3", functionName: "Image Processor", installs: 654, revenue: 2150, trending: "stable", rating: 4.9 },
+              { rank: 4, functionId: "fn-4", functionName: "Cache Optimizer", installs: 423, revenue: 980, trending: "down", rating: 4.3 },
+            ]}
+          />
+        </div>
+
+        {/* Subscription + Usage */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <SubscriptionManager
+            plans={[
+              { id: "free", name: "Free", price: 0, features: ["5 functions", "100 calls/month", "Community support"], current: false },
+              { id: "pro", name: "Pro", price: 29, features: ["50 functions", "10K calls/month", "Priority support"], current: true },
+              { id: "team", name: "Team", price: 99, features: ["Unlimited functions", "100K calls/month", "Team collaboration"], current: false },
+            ]}
+          />
+          <UsageBillingPanel
+            entries={[
+              { id: "b1", description: "Auth Sentinel - 1,247 calls", amount: 42.30, type: "function_call", timestamp: new Date().toISOString(), status: "completed" },
+              { id: "b2", description: "Data Pipeline - 892 calls", amount: 31.80, type: "function_call", timestamp: new Date().toISOString(), status: "completed" },
+              { id: "b3", description: "Compute usage - 45 GPU hours", amount: 15.20, type: "compute", timestamp: new Date().toISOString(), status: "completed" },
+              { id: "b4", description: "Storage - 128 GB", amount: 8.50, type: "storage", timestamp: new Date().toISOString(), status: "completed" },
+            ]}
+          />
+        </div>
+
+        {/* Creator Profile + Royalties */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <CreatorProfile
+            profile={{
+              id: "user-1",
+              name: "Alice Chen",
+              avatar: "AC",
+              bio: "Full-stack developer specializing in API design and security",
+              functionsPublished: 12,
+              totalInstalls: 4230,
+              avgRating: 4.7,
+              totalRevenue: 12847.52,
+              memberSince: "2025-03-15",
+            }}
+          />
+          <FunctionRoyaltiesPanel
+            earnings={{
+              totalEarnings: 12847.52,
+              pendingPayout: 2340.18,
+              currency: "USD",
+              breakdown: [
+                { type: "function_call", amount: 9800.00, count: 45230 },
+                { type: "subscription", amount: 2340.00, count: 78 },
+                { type: "referral", amount: 707.52, count: 156 },
+              ],
+            }}
+            onRequestPayout={() => console.log("Request payout")}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Collaboration View - Multiplayer, shared editing, async review
+function CollaborationView() {
+  return (
+    <div className="flex-1 overflow-y-auto p-4">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="size-8 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+              <Users className="size-4 text-cyan-400" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-text-primary">Multiplayer & Collaboration</h2>
+              <p className="text-xs text-text-muted">Real-time collaboration, shared sessions, async review</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="success" size="sm" dot>3 collaborators online</Badge>
+          </div>
+        </div>
+
+        {/* Live Presence + Pair Programming */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <LivePresence
+            collaborators={sampleCollaborators}
+            currentUser={{ name: "You", color: "#f97316" }}
+          />
+          <LivePairProgrammingView
+            session={{
+              id: "session-1",
+              hostId: "user-1",
+              guestId: "user-2",
+              status: "active",
+              currentFile: "src/handlers/auth.go",
+              currentLine: 42,
+              startedAt: new Date(Date.now() - 1200000).toISOString(),
+            }}
+            host={{ id: "user-1", name: "Alice Chen", color: "#f97316" }}
+            guest={{ id: "user-2", name: "Bob Smith", color: "#3b82f6" }}
+            onEnd={() => console.log("End session")}
+          />
+        </div>
+
+        {/* Shared Execution + Graph Editor */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <SharedExecutionView
+            executions={sampleExecutions.map((e, i) => ({ ...e, participantId: sampleCollaborators[i % sampleCollaborators.length].id }))}
+            participants={sampleCollaborators}
+          />
+          <CollaborativeGraphEditor
+            graph={{ nodes: sampleNodes, edges: sampleEdges }}
+            collaborators={sampleCollaborators}
+            onNodeUpdate={(nodeId, updates) => console.log("Node update:", nodeId, updates)}
+          />
+        </div>
+
+        {/* Annotations + Async Review */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <RealtimeAnnotationSystem
+            annotations={[
+              { id: "a1", nodeId: "trigger-1", type: "comment", content: "Consider adding rate limiting here", author: { name: "Bob Smith", color: "#3b82f6" }, resolved: false, createdAt: new Date().toISOString() },
+              { id: "a2", nodeId: "llm-agent", type: "suggestion", content: "Use streaming for better UX", author: { name: "Carol Davis", color: "#10b981" }, resolved: true, createdAt: new Date(Date.now() - 3600000).toISOString() },
+            ]}
+            onResolve={(id) => console.log("Resolve:", id)}
+          />
+          <AsyncReviewTimeline
+            reviews={[
+              { id: "r1", author: { name: "Bob Smith", color: "#3b82f6" }, file: "src/handlers/auth.go", line: 42, content: "Consider using a constant for the max retry count", status: "resolved", timestamp: new Date(Date.now() - 1800000).toISOString() },
+              { id: "r2", author: { name: "Alice Chen", color: "#f97316" }, file: "src/middleware/ratelimit.go", line: 15, content: "This logic looks correct", status: "pending", timestamp: new Date(Date.now() - 600000).toISOString() },
+            ]}
+            onResolve={(id) => console.log("Resolve review:", id)}
+          />
+        </div>
+
+        {/* Collaborative Prompt Editor */}
+        <CollaborativePromptEditor
+          prompt="You are a security auditor. Review the following code for vulnerabilities and suggest fixes. Focus on: SQL injection, XSS, authentication bypass, and improper error handling."
+          onSave={(prompt) => console.log("Save prompt:", prompt)}
+          onVersionSelect={(v) => console.log("Version:", v)}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Extensions View - Extension SDK, hooks, sandbox
+function ExtensionsView() {
+  return (
+    <div className="flex-1 overflow-y-auto p-4">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="size-8 rounded-lg bg-pink-500/20 flex items-center justify-center">
+              <Plug className="size-4 text-pink-400" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-text-primary">Extensions & SDK</h2>
+              <p className="text-xs text-text-muted">Plugin system, hooks, sandbox management</p>
+            </div>
+          </div>
+          <button className="px-3 py-1.5 text-xs bg-pink-500 hover:bg-pink-600 text-white rounded-lg flex items-center gap-1.5">
+            <Plug className="size-3" /> Install Extension
+          </button>
+        </div>
+
+        {/* Extension Manager + Hook Visualizer */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <ExtensionManager
+            extensions={[
+              { id: "ext-1", name: "GitHub Integration", description: "Sync functions with GitHub repos", version: "1.2.0", author: "FunctionFly", category: "integration", enabled: true, installDate: new Date(Date.now() - 86400000 * 30).toISOString(), lastUsed: new Date().toISOString(), config: {} },
+              { id: "ext-2", name: "Slack Notifier", description: "Send alerts to Slack channels", version: "0.9.1", author: "FunctionFly", category: "notifications", enabled: true, installDate: new Date(Date.now() - 86400000 * 15).toISOString(), lastUsed: new Date(Date.now() - 86400000).toISOString(), config: { webhookUrl: "https://hooks.slack.com/..." } },
+              { id: "ext-3", name: "DataDog Monitor", description: "Export metrics to DataDog", version: "2.0.0", author: "DataDog Inc", category: "monitoring", enabled: false, installDate: new Date(Date.now() - 86400000 * 5).toISOString(), lastUsed: new Date(Date.now() - 86400000 * 2).toISOString(), config: {} },
+            ]}
+            onEnable={(id) => console.log("Enable:", id)}
+            onDisable={(id) => console.log("Disable:", id)}
+            onConfigure={(id) => console.log("Configure:", id)}
+            onUninstall={(id) => console.log("Uninstall:", id)}
+          />
+          <HookSystemVisualizer
+            events={["onFunctionExecute", "onAgentSpawn", "onWorkflowDeploy", "onErrorOccurred"]}
+            hooks={[
+              { id: "h1", event: "onFunctionExecute", pluginId: "ext-1", enabled: true, handler: "logExecution" },
+              { id: "h2", event: "onAgentSpawn", pluginId: "ext-2", enabled: true, handler: "notifySlack" },
+              { id: "h3", event: "onErrorOccurred", pluginId: "ext-2", enabled: false, handler: "alertTeam" },
+            ]}
+            onToggle={(id, enabled) => console.log("Toggle hook:", id, enabled)}
+          />
+        </div>
+
+        {/* Sandbox Monitor + SDK Debugger */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <SandboxMonitor
+            sandboxes={[
+              { id: "sbox-1", extensionId: "ext-1", status: "running", createdAt: new Date(Date.now() - 3600000).toISOString(), memoryUsage: 128, cpuUsage: 0.15 },
+              { id: "sbox-2", extensionId: "ext-2", status: "suspended", createdAt: new Date(Date.now() - 7200000).toISOString(), memoryUsage: 0, cpuUsage: 0 },
+            ]}
+            onSuspend={(id) => console.log("Suspend:", id)}
+            onResume={(id) => console.log("Resume:", id)}
+            onTerminate={(id) => console.log("Terminate:", id)}
+          />
+          <ExtensionSDKDebugger
+            logs={[
+              { timestamp: "14:30:12", level: "info", message: "Extension 'GitHub Integration' initialized" },
+              { timestamp: "14:30:13", level: "debug", message: "Hook 'onFunctionExecute' registered" },
+              { timestamp: "14:30:14", level: "warn", message: "Rate limit approaching for webhook" },
+              { timestamp: "14:30:15", level: "error", message: "Failed to sync repo: timeout" },
+            ]}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================
+// MAIN STUDIO VIEW
+// ============================
+export default function StudioPage() {
+  const [viewMode, setViewMode] = React.useState<"design" | "execute" | "debug" | "monitor" | "simulate" | "agents" | "ghost" | "marketplace" | "collaborate" | "extensions">("design");
+  const [selectedAgentId, setSelectedAgentId] = React.useState<string | null>(null);
+  const [commandPaletteOpen, setCommandPaletteOpen] = React.useState(false);
+
+  // Side panel configs
+  const leftPanels: PanelConfig[] = [
+    { id: "nodes", title: "Nodes", icon: <GitBranch className="size-4" />, component: <NodePanel />, defaultOpen: true },
+    { id: "templates", title: "Templates", icon: <Code2 className="size-4" />, component: <TemplatePanel />, defaultOpen: false },
+  ];
+
+  const rightPanels: PanelConfig[] = [
+    { id: "telemetry", title: "Telemetry", icon: <Activity className="size-4" />, component: <RightTelemetryPanel />, defaultOpen: true },
+    { id: "agents", title: "Agents", icon: <Bot className="size-4" />, component: <RightAgentPanel />, defaultOpen: true },
+    { id: "collaborators", title: "Collaborators", icon: <Users className="size-4" />, component: <RightCollaboratorPanel />, defaultOpen: false },
+    { id: "security", title: "Security", icon: <Shield className="size-4" />, component: <RightSecurityPanel />, defaultOpen: false },
+  ];
+
+  return (
+    <StudioShell>
+      {/* AI Command Palette */}
+      <AICommandPalette
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        onToggle={() => setCommandPaletteOpen(!commandPaletteOpen)}
+        commands={[
+          { id: "deploy", label: "Deploy Workflow", description: "Deploy current workflow to production", category: "Deployment", shortcut: "⌘D", icon: <Zap className="size-4" />, action: () => console.log("Deploy") },
+          { id: "simulate", label: "Run Simulation", description: "Simulate workflow with 10,000 executions", category: "Simulation", shortcut: "⌘S", icon: <Zap className="size-4" />, action: () => setViewMode("simulate") },
+          { id: "add-node", label: "Add Node", description: "Add a new node to the canvas", category: "Canvas", shortcut: "⌘N", icon: <GitBranch className="size-4" />, action: () => console.log("Add node") },
+          { id: "fork", label: "Fork Workflow", description: "Create a fork of the current workflow", category: "Workflow", shortcut: "⌘F", icon: <GitBranch className="size-4" />, action: () => console.log("Fork") },
+          { id: "clear", label: "Clear Canvas", description: "Remove all nodes from canvas", category: "Canvas", shortcut: "⌘⌫", icon: <XCircle className="size-4" />, action: () => console.log("Clear") },
+          { id: "export", label: "Export as JSON", description: "Export workflow configuration", category: "Export", shortcut: "⌘E", icon: <Eye className="size-4" />, action: () => console.log("Export") },
+        ]}
+        promptTemplates={[]}
+        placeholder="Type a command or search nodes..."
+      />
+
+      {/* Title Bar */}
+      <div className="h-10 flex items-center justify-between px-4 bg-bg-secondary border-b border-border-subtle shrink-0">
+        <div className="flex items-center gap-3">
+          <button className="p-1.5 rounded-md text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors md:hidden" onClick={() => {}}>
+            <Menu className="size-4" />
+          </button>
+
+          {/* View Mode Tabs */}
+          <div className="flex items-center gap-1">
+            <button onClick={() => setViewMode("design")} className={cn(
+              "px-3 py-1.5 text-[11px] rounded-lg transition-all flex items-center gap-1.5",
+              viewMode === "design"
+                ? "bg-brand-500/20 text-brand-400 border border-brand-500/30 font-medium"
+                : "text-text-muted hover:text-text-secondary"
+            )}>
+              <GitBranch className="size-3" /> Design
+            </button>
+            <button onClick={() => setViewMode("execute")} className={cn(
+              "px-3 py-1.5 text-[11px] rounded-lg transition-all flex items-center gap-1.5",
+              viewMode === "execute"
+                ? "bg-brand-500/20 text-brand-400 border border-brand-500/30 font-medium"
+                : "text-text-muted hover:text-text-secondary"
+            )}>
+              <Activity className="size-3" /> Execute
+            </button>
+            <button onClick={() => setViewMode("debug")} className={cn(
+              "px-3 py-1.5 text-[11px] rounded-lg transition-all flex items-center gap-1.5",
+              viewMode === "debug"
+                ? "bg-brand-500/20 text-brand-400 border border-brand-500/30 font-medium"
+                : "text-text-muted hover:text-text-secondary"
+            )}>
+              <Terminal className="size-3" /> Debug
+            </button>
+            <button onClick={() => setViewMode("monitor")} className={cn(
+              "px-3 py-1.5 text-[11px] rounded-lg transition-all flex items-center gap-1.5",
+              viewMode === "monitor"
+                ? "bg-brand-500/20 text-brand-400 border border-brand-500/30 font-medium"
+                : "text-text-muted hover:text-text-secondary"
+            )}>
+              <BarChart2 className="size-3" /> Monitor
+            </button>
+            <button onClick={() => setViewMode("simulate")} className={cn(
+              "px-3 py-1.5 text-[11px] rounded-lg transition-all flex items-center gap-1.5",
+              viewMode === "simulate"
+                ? "bg-brand-500/20 text-brand-400 border border-brand-500/30 font-medium"
+                : "text-text-muted hover:text-text-secondary"
+            )}>
+              <Brain className="size-3" /> Simulate
+            </button>
+            <button onClick={() => setViewMode("agents")} className={cn(
+              "px-3 py-1.5 text-[11px] rounded-lg transition-all flex items-center gap-1.5",
+              viewMode === "agents"
+                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-medium"
+                : "text-text-muted hover:text-text-secondary"
+            )}>
+              <Bot className="size-3" /> Agents
+            </button>
+            <button onClick={() => setViewMode("ghost")} className={cn(
+              "px-3 py-1.5 text-[11px] rounded-lg transition-all flex items-center gap-1.5",
+              viewMode === "ghost"
+                ? "bg-purple-500/20 text-purple-400 border border-purple-500/30 font-medium"
+                : "text-text-muted hover:text-text-secondary"
+            )}>
+              <Ghost className="size-3" /> Ghost
+            </button>
+            <button onClick={() => setViewMode("marketplace")} className={cn(
+              "px-3 py-1.5 text-[11px] rounded-lg transition-all flex items-center gap-1.5",
+              viewMode === "marketplace"
+                ? "bg-amber-500/20 text-amber-400 border border-amber-500/30 font-medium"
+                : "text-text-muted hover:text-text-secondary"
+            )}>
+              <Package className="size-3" /> Market
+            </button>
+            <button onClick={() => setViewMode("collaborate")} className={cn(
+              "px-3 py-1.5 text-[11px] rounded-lg transition-all flex items-center gap-1.5",
+              viewMode === "collaborate"
+                ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-medium"
+                : "text-text-muted hover:text-text-secondary"
+            )}>
+              <Users className="size-3" /> Collab
+            </button>
+            <button onClick={() => setViewMode("extensions")} className={cn(
+              "px-3 py-1.5 text-[11px] rounded-lg transition-all flex items-center gap-1.5",
+              viewMode === "extensions"
+                ? "bg-pink-500/20 text-pink-400 border border-pink-500/30 font-medium"
+                : "text-text-muted hover:text-text-secondary"
+            )}>
+              <Plug className="size-3" /> Extensions
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Tooltip content="Orbit Command Layer (⌘K)">
+            <button onClick={() => setCommandPaletteOpen(true)} className="p-2 rounded-lg bg-brand-500/10 hover:bg-brand-500/20 text-brand-400 transition-colors flex items-center gap-1.5">
+              <Zap className="size-4" />
+              <span className="text-[11px] font-medium hidden md:inline">Command Palette</span>
+              <kbd className="ml-1 text-[10px] bg-brand-500/20 px-1.5 py-0.5 rounded text-brand-400">⌘K</kbd>
+            </button>
+          </Tooltip>
+          <button className="p-2 rounded-lg bg-bg-tertiary hover:bg-bg-hover text-text-muted hover:text-text-primary transition-colors">
+            <Maximize2 className="size-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Main Workspace */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Sidebar */}
+        <LeftSidebar panels={leftPanels} />
+
+        {/* Main Content */}
+        <div className="flex-1 overflow-hidden">
+          {viewMode === "design" && <DesignView />}
+          {viewMode === "execute" && <ExecuteView />}
+          {viewMode === "monitor" && <MonitorView />}
+          {viewMode === "simulate" && <SimulateView />}
+          {viewMode === "agents" && <AgentsView />}
+          {viewMode === "ghost" && <GhostModeView />}
+          {viewMode === "marketplace" && <MarketplaceView />}
+          {viewMode === "collaborate" && <CollaborationView />}
+          {viewMode === "extensions" && <ExtensionsView />}
+          {viewMode === "debug" && (
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="px-4 py-2 border-b border-border-subtle bg-bg-secondary flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Terminal className="size-4 text-brand-400" />
+                  <span className="text-sm font-medium text-text-primary">Debug Console</span>
+                </div>
+                <button className="px-3 py-1 text-[11px] bg-bg-primary border border-border-subtle rounded text-text-muted hover:text-text-primary transition-colors">
+                  Clear
+                </button>
+              </div>
+              <div className="flex-1 font-mono text-[12px] p-4 overflow-y-auto bg-[#0a0a0f]">
+                {sampleLogs.map((log, i) => (
+                  <div key={i} className="py-0.5" style={{ color: log.level === "error" ? "#ef4444" : log.level === "warn" ? "#f59e0b" : log.level === "debug" ? "#6b7280" : "#a0a0b0" }}>
+                    <span className="text-text-muted">[{log.timestamp}]</span>{" "}
+                    <span className="uppercase font-bold">[{log.level}]</span> {log.message}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right Panel */}
+        <RightPanel panels={rightPanels} />
+      </div>
+    </StudioShell>
+  );
+}
+
+// --- Right Panel Sub-components ---
+function RightTelemetryPanel() {
+  return (
+    <div className="h-full overflow-y-auto">
+      <LiveTelemetryPanel
+        metrics={sampleMetrics}
+        tokenUsage={sampleTokenUsage}
+        showTokenUsage
+        showAlerts
+        timeRange="24h"
+      />
+    </div>
+  );
+}
+
+function RightAgentPanel() {
+  const selectedAgent = sampleAgents.find((a) => a.id === "agent-1");
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-4 py-2 border-b border-border-subtle shrink-0">
+        <span className="text-sm font-medium text-text-primary">Agents</span>
+      </div>
+      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+        <AgentDock
+          agents={sampleAgents}
+          selectedAgentId={selectedAgent?.id}
+          onAgentSelect={(id) => console.log("Select agent:", id)}
+          onAgentCreate={() => console.log("Create agent")}
+          onAgentTerminate={(id) => console.log("Terminate:", id)}
+        />
+      </div>
+      <div className="px-3 py-3 border-t border-border-subtle shrink-0">
+        <SwarmCoordinator
+          agents={sampleSwarmAgents as any}
+          onReassign={(id, role) => console.log("Reassign:", id, role)}
+          onReshape={(shape) => console.log("Reshape:", shape)}
+        />
+      </div>
+    </div>
+  );
+}
+
+function RightCollaboratorPanel() {
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-4 py-2 border-b border-border-subtle shrink-0">
+        <span className="text-sm font-medium text-text-primary">Collaboration</span>
+      </div>
+      <div className="flex-1 overflow-y-auto p-3 space-y-4">
+        <LivePresence collaborators={sampleCollaborators} currentUser={{ name: "You", color: "#f97316" }} />
+        <VoiceSessionPanel
+          participants={sampleCollaborators.slice(0, 3)}
+          isActive={true}
+          onToggleMute={() => {}}
+          onToggleVideo={() => {}}
+          onEndCall={() => {}}
+        />
+        <AIHumanTaskBoard tasks={sampleTasks} />
+        <TeamActivityFeed activities={sampleActivities} />
+      </div>
+    </div>
+  );
+}
+
+function RightSecurityPanel() {
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-4 py-2 border-b border-border-subtle shrink-0">
+        <span className="text-sm font-medium text-text-primary">Security</span>
+      </div>
+      <div className="flex-1 overflow-y-auto p-3 space-y-4">
+        <ThreatDetectionRadar alerts={sampleAlerts} onAlertClick={(a) => console.log("Alert:", a)} />
+        <ExecutionProfiler executions={sampleExecutions} />
+      </div>
+    </div>
+  );
+}
+
+// --- Left Panel Sub-components ---
+function NodePanel() {
+  return (
+    <div className="p-3 space-y-2">
+      <h4 className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">Node Library</h4>
+      <div className="space-y-1">
+        {[
+          { type: "trigger" as const, label: "Trigger", icon: "🎯" },
+          { type: "function" as const, label: "Function", icon: "⚡" },
+          { type: "agent" as const, label: "Agent", icon: "🤖" },
+          { type: "api" as const, label: "API", icon: "🔌" },
+          { type: "memory" as const, label: "Memory", icon: "🧠" },
+          { type: "database" as const, label: "Database", icon: "🗄️" },
+          { type: "browser" as const, label: "Browser", icon: "🌐" },
+          { type: "gpu" as const, label: "GPU", icon: "🖥️" },
+          { type: "output" as const, label: "Output", icon: "📤" },
+        ].map((node) => (
+          <button
+            key={node.type}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary rounded-lg transition-colors"
+          >
+            <span>{node.icon}</span>
+            <span>{node.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TemplatePanel() {
+  return (
+    <div className="p-3 space-y-2">
+      <h4 className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">Templates</h4>
+      <div className="space-y-2">
+        {[
+          { name: "REST API", desc: "Basic API with auth" },
+          { name: "Data Pipeline", desc: "ETL workflow" },
+          { name: "AI Agent", desc: "Multi-step reasoning" },
+          { name: "Web Scraper", desc: "Browser automation" },
+        ].map((t, i) => (
+          <div key={i} className="p-2.5 bg-bg-primary rounded-lg border border-border-subtle hover:border-border-default cursor-pointer transition-colors">
+            <div className="text-sm font-medium text-text-primary">{t.name}</div>
+            <div className="text-[11px] text-text-muted">{t.desc}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

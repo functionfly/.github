@@ -104,7 +104,7 @@ export function useSpawnChildAgent() {
 
 /**
  * Send message to an agent
- * POST /v1/agent/{agent_id}/message
+ * POST /v1/agent/{id}/message
  */
 export function useSendAgentMessage() {
   const queryClient = useQueryClient();
@@ -127,6 +127,46 @@ export function useSendAgentMessage() {
     },
     onError: (error: Error) => {
       toast.error(`Failed to send message: ${error.message}`);
+    },
+  });
+}
+
+/**
+ * Reassign an agent's swarm role.
+ * PUT /v1/agent/{id}/role
+ */
+export function useReassignAgentRole() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: { agentId: string; swarmRole: string }) =>
+      agentApi.reassignRole(params.agentId, params.swarmRole),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: swarmKeys.children(variables.agentId) });
+      queryClient.invalidateQueries({ queryKey: swarmKeys.stats(variables.agentId) });
+      toast.success("Agent role updated successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to reassign role: ${error.message}`);
+    },
+  });
+}
+
+/**
+ * Reshape swarm topology.
+ * PUT /v1/agent/{id}/topology
+ */
+export function useReshapeSwarm() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: { agentId: string; topology: string }) =>
+      agentApi.updateTopology(params.agentId, params.topology),
+    onSuccess: () => {
+      toast.success("Swarm topology updated");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to reshape swarm: ${error.message}`);
     },
   });
 }

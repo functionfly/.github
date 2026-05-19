@@ -24,6 +24,9 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/security"
 	"github.com/functionfly/functionfly/internal/api/handlers/state"
 	"github.com/functionfly/functionfly/internal/api/handlers/statefabric"
+	"github.com/functionfly/functionfly/internal/api/handlers/studio"
+	"github.com/functionfly/functionfly/internal/api/handlers/plugin"
+	runtimehandler "github.com/functionfly/functionfly/internal/api/handlers/runtime"
 	statushandler "github.com/functionfly/functionfly/internal/api/handlers/status"
 	"github.com/functionfly/functionfly/internal/api/handlers/support"
 	teammemoryhandler "github.com/functionfly/functionfly/internal/api/handlers/team_memory"
@@ -80,6 +83,13 @@ func registerPlatformRoutes(
 	chatHandler *chat.Handler,
 	chatConnectorHandler *chat.ConnectorHandler,
 	chatWSHub *chat.WebSocketHub,
+	studioCollabHandler *studio.Handler,
+	studioTasksHandler *studio.TasksHandler,
+	studioExtensionsHandler *studio.ExtensionsHandler,
+	studioMarketplaceHandler *studio.MarketplaceHandler,
+	studioSettingsHandler *studio.SettingsHandler,
+	pluginHandler *plugin.Handler,
+	runtimeHandler *runtimehandler.Handler,
 ) {
 	// ── Metrics (public) ─────────────────────────────────────────────────────
 	api.HandleFunc("/metrics/global", s.handleGlobalMetrics).Methods("GET", "OPTIONS")
@@ -258,6 +268,67 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/dashboard/activity", authMiddleware.RequireAuth(dashboardHandler.HandleGetActivity)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/dashboard/metrics", authMiddleware.RequireAuth(dashboardHandler.HandleGetMetrics)).Methods("GET", "OPTIONS")
 
+	// ── Studio Collaboration (protected, tenant-scoped) ───────────────────────
+	protected.HandleFunc("/studio/collab/events", authMiddleware.RequireAuth(studioCollabHandler.HandleListEvents)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/studio/collab/events", authMiddleware.RequireAuth(studioCollabHandler.HandleCreateEvent)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/studio/collab/events/{id}", authMiddleware.RequireAuth(studioCollabHandler.HandleGetEvent)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/studio/collab/events/{id}", authMiddleware.RequireAuth(studioCollabHandler.HandleUpdateEvent)).Methods("PATCH", "OPTIONS")
+	protected.HandleFunc("/studio/collab/events/{id}", authMiddleware.RequireAuth(studioCollabHandler.HandleDeleteEvent)).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/studio/collab/activity", authMiddleware.RequireAuth(studioCollabHandler.HandleGetActivityFeed)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/studio/collab/activity", authMiddleware.RequireAuth(studioCollabHandler.HandleCreateActivity)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/studio/telemetry", authMiddleware.RequireAuth(studioCollabHandler.HandleGetTelemetry)).Methods("GET", "OPTIONS")
+
+	// ── Studio Tasks (protected, tenant-scoped) ────────────────────────────
+	protected.HandleFunc("/studio/tasks", authMiddleware.RequireAuth(studioTasksHandler.HandleListTasks)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/studio/tasks", authMiddleware.RequireAuth(studioTasksHandler.HandleCreateTask)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/studio/tasks/{id}", authMiddleware.RequireAuth(studioTasksHandler.HandleGetTask)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/studio/tasks/{id}", authMiddleware.RequireAuth(studioTasksHandler.HandleUpdateTask)).Methods("PATCH", "OPTIONS")
+	protected.HandleFunc("/studio/tasks/{id}", authMiddleware.RequireAuth(studioTasksHandler.HandleDeleteTask)).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/studio/tasks/{id}/assign", authMiddleware.RequireAuth(studioTasksHandler.HandleAssignTask)).Methods("POST", "OPTIONS")
+
+	// ── Studio Extensions (protected, tenant-scoped) ───────────────────────
+	protected.HandleFunc("/extensions", authMiddleware.RequireAuth(studioExtensionsHandler.HandleListExtensions)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/extensions/{id}/install", authMiddleware.RequireAuth(studioExtensionsHandler.HandleInstallExtension)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/extensions/{id}", authMiddleware.RequireAuth(studioExtensionsHandler.HandleUninstallExtension)).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/extensions/{id}/enable", authMiddleware.RequireAuth(studioExtensionsHandler.HandleEnableExtension)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/extensions/{id}/disable", authMiddleware.RequireAuth(studioExtensionsHandler.HandleDisableExtension)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/extensions/{id}/config", authMiddleware.RequireAuth(studioExtensionsHandler.HandleConfigureExtension)).Methods("PUT", "OPTIONS")
+	protected.HandleFunc("/extensions/hooks", authMiddleware.RequireAuth(studioExtensionsHandler.HandleListHooks)).Methods("GET", "OPTIONS")
+
+	// ── Studio Settings (protected, tenant-scoped) ──────────────────────────────
+	protected.HandleFunc("/studio/settings", authMiddleware.RequireAuth(studioSettingsHandler.HandleGetSettings)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/studio/settings", authMiddleware.RequireAuth(studioSettingsHandler.HandleSaveSettings)).Methods("PUT", "OPTIONS")
+	protected.HandleFunc("/studio/settings", authMiddleware.RequireAuth(studioSettingsHandler.HandleResetSettings)).Methods("DELETE", "OPTIONS")
+
+	// ── Studio Marketplace (protected, tenant-scoped) ────────────────────────
+	protected.HandleFunc("/marketplace/functions", authMiddleware.RequireAuth(studioMarketplaceHandler.HandleListFunctions)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/marketplace/functions/{id}/execute", authMiddleware.RequireAuth(studioMarketplaceHandler.HandleExecuteFunction)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/marketplace/functions/{id}/favorite", authMiddleware.RequireAuth(studioMarketplaceHandler.HandleFavoriteFunction)).Methods("POST", "DELETE", "OPTIONS")
+	protected.HandleFunc("/marketplace/functions/{id}/license", authMiddleware.RequireAuth(studioMarketplaceHandler.HandleUpdateLicense)).Methods("PUT", "OPTIONS")
+	protected.HandleFunc("/marketplace/functions/{id}/pricing", authMiddleware.RequireAuth(studioMarketplaceHandler.HandleUpdatePricing)).Methods("PUT", "OPTIONS")
+	protected.HandleFunc("/marketplace/plans", authMiddleware.RequireAuth(studioMarketplaceHandler.HandleListPlans)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/marketplace/plans", authMiddleware.RequireAuth(studioMarketplaceHandler.HandleCreatePlan)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/marketplace/plans/{id}", authMiddleware.RequireAuth(studioMarketplaceHandler.HandleUpdatePlan)).Methods("PUT", "OPTIONS")
+	protected.HandleFunc("/marketplace/royalties", authMiddleware.RequireAuth(studioMarketplaceHandler.HandleListRoyalties)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/marketplace/royalties/payout", authMiddleware.RequireAuth(studioMarketplaceHandler.HandleRequestPayout)).Methods("POST", "OPTIONS")
+
+	// ── Plugin Manager (protected, tenant-scoped) ──────────────────────────
+	protected.HandleFunc("/plugins", authMiddleware.RequireAuth(pluginHandler.HandleListPlugins)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/plugins", authMiddleware.RequireAuth(pluginHandler.HandleInstallPlugin)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/plugins/{id}", authMiddleware.RequireAuth(pluginHandler.HandleGetPlugin)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/plugins/{id}", authMiddleware.RequireAuth(pluginHandler.HandleUpdatePlugin)).Methods("PUT", "OPTIONS")
+	protected.HandleFunc("/plugins/{id}", authMiddleware.RequireAuth(pluginHandler.HandleUninstallPlugin)).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/plugins/{id}/enable", authMiddleware.RequireAuth(pluginHandler.HandleEnablePlugin)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/plugins/{id}/disable", authMiddleware.RequireAuth(pluginHandler.HandleDisablePlugin)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/plugins/{id}/pause", authMiddleware.RequireAuth(pluginHandler.HandlePausePlugin)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/plugins/{id}/rollback", authMiddleware.RequireAuth(pluginHandler.HandleRollbackPlugin)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/plugins/{id}/config", authMiddleware.RequireAuth(pluginHandler.HandleConfigurePlugin)).Methods("PUT", "OPTIONS")
+	protected.HandleFunc("/plugins/{id}/sandbox", authMiddleware.RequireAuth(pluginHandler.HandleGetSandbox)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/plugins/{id}/sandbox", authMiddleware.RequireAuth(pluginHandler.HandleUpdateSandbox)).Methods("PUT", "OPTIONS")
+	protected.HandleFunc("/plugins/{id}/permissions", authMiddleware.RequireAuth(pluginHandler.HandleGetPermissions)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/plugins/{id}/permissions", authMiddleware.RequireAuth(pluginHandler.HandleSetPermission)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/plugins/{id}/versions", authMiddleware.RequireAuth(pluginHandler.HandleListVersions)).Methods("GET", "OPTIONS")
+
 	// ── State Usage (billing/quota integration) ─────────────────────────────
 	protected.HandleFunc("/usage/state", authMiddleware.RequireAuth(stateUsageHandler.GetCurrentStateUsage)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/usage/state/history", authMiddleware.RequireAuth(stateUsageHandler.GetStateUsageHistory)).Methods("GET", "OPTIONS")
@@ -401,4 +472,7 @@ func registerPlatformRoutes(
 	chatHandler.RegisterRoutes(api, authMiddleware)
 	chatConnectorHandler.RegisterRoutes(api, authMiddleware)
 	api.HandleFunc("/chat/ws", chatWSHub.HandleWebSocket).Methods("GET")
+
+	// ── Runtime (execution environments for agents) ───────────────────────────
+	runtimeHandler.RegisterRoutes(api)
 }

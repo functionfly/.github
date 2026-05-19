@@ -2,8 +2,7 @@ package trustapi
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/binary"
+	crand "crypto/rand"
 	"fmt"
 	"net/http"
 	"strings"
@@ -320,22 +319,26 @@ func getClientIP(r *http.Request) string {
 
 // generateRequestID generates a unique request ID
 func generateRequestID() string {
-	return fmt.Sprintf("req_%d_%s", time.Now().UnixNano(), randomString(8))
+	id, err := randomString(8)
+	if err != nil {
+		// Fallback to non-cryptographic random if crypto/rand fails
+		return fmt.Sprintf("req_%d_%x", time.Now().UnixNano(), time.Now().UnixNano()%0xFFFFFFFF)
+	}
+	return fmt.Sprintf("req_%d_%s", time.Now().UnixNano(), id)
 }
 
 // randomString generates a cryptographically random string of given length
-func randomString(n int) string {
+func randomString(n int) (string, error) {
 	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
 	b := make([]byte, n)
-	for i := range b {
-		var randByte byte
-		if err := binary.Read(rand.Reader, binary.BigEndian, &randByte); err != nil {
-			// Fallback to nanoseconds if crypto/rand fails (should never happen)
-			randByte = byte(time.Now().UnixNano() & 0xFF)
-		}
-		b[i] = letters[int(randByte)%len(letters)]
+	randBytes := make([]byte, n)
+	if _, err := crand.Read(randBytes); err != nil {
+		return "", fmt.Errorf("crypto/rand unavailable: %w", err)
 	}
-	return string(b)
+	for i := range b {
+		b[i] = letters[int(randBytes[i])%len(letters)]
+	}
+	return string(b), nil
 }
 
 // writeError writes a JSON error response

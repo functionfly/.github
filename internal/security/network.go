@@ -34,9 +34,11 @@ func (sas *SecurityAuditService) scanNetworkSecurity(ctx context.Context, target
 func (sas *SecurityAuditService) checkSSLConfiguration(target string) ([]Vulnerability, error) {
 	vulnerabilities := []Vulnerability{}
 
-	// Attempt TLS connection
+	// Security audit tool intentionally skips verification to inspect certificate properties.
+	// This is standard practice for TLS security scanners - it never makes real connections
+	// to serve application traffic.
 	conn, err := tls.Dial("tcp", target+":443", &tls.Config{
-		InsecureSkipVerify: true, // We want to check cert even if invalid
+		InsecureSkipVerify: true, // Intentional: security audit needs to inspect cert validity
 	})
 	if err != nil {
 		return vulnerabilities, err

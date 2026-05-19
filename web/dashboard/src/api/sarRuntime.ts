@@ -5,7 +5,10 @@
 
 import axios from 'axios';
 
-const SAR_RUNTIME_URL = import.meta.env.VITE_SAR_RUNTIME_URL || 'http://localhost:8082';
+const SAR_RUNTIME_URL = import.meta.env.VITE_SAR_RUNTIME_URL;
+if (!SAR_RUNTIME_URL) {
+  throw new Error('VITE_SAR_RUNTIME_URL environment variable is required');
+}
 
 // Create a separate axios instance for SAR runtime (no auth required, direct connection)
 const sarClient = axios.create({

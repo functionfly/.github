@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -142,9 +143,20 @@ func (p *MFAPlugin) VerifyCode(ctx context.Context, userID uuid.UUID, code strin
 }
 
 // Disable disables MFA for a user
-// Requires either a valid TOTP code or backup code for verification
-func (p *MFAPlugin) Disable(ctx context.Context, userID uuid.UUID, code string) error {
-	// Verify the code first
+// Requires either a valid TOTP code or backup code AND the user's password for verification
+func (p *MFAPlugin) Disable(ctx context.Context, userID uuid.UUID, code string, password string) error {
+	// Fetch user to get password hash for verification
+	var user User
+	if err := p.db.WithContext(ctx).Where("id = ?", userID).First(&user).Error; err != nil {
+		return fmt.Errorf("user not found")
+	}
+
+	// Verify password first - this is required to prevent account takeover via email compromise
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		return fmt.Errorf("invalid password")
+	}
+
+	// Verify the MFA code
 	if err := p.VerifyCode(ctx, userID, code); err != nil {
 		return fmt.Errorf("invalid verification code")
 	}
@@ -181,7 +193,8 @@ func getEnvOrDefault(key, defaultValue string) string {
 // This avoids circular imports
 type User struct {
 	ID         uuid.UUID
-	MFAEnabled bool `gorm:"default:false"`
+	MFAEnabled bool   `gorm:"default:false"`
+	Password   string // Hashed password - required for Disable verification
 }
 
 // TableName returns the table name

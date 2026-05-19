@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
@@ -375,19 +376,100 @@ func (r *RegistryRepository) AggregateHourlyMetrics(hour time.Time) error {
 		return fmt.Errorf("failed to get functions with executions: %w", err)
 	}
 
-	for _, functionID := range functionIDs {
-		metrics, err := r.calculateMetricsFromExecutions(functionID, windowStart, windowEnd)
-		if err != nil {
-			logrus.Errorf("Failed to calculate metrics for function %s: %v", functionID, err)
-			continue
-		}
+	if len(functionIDs) == 0 {
+		return nil
+	}
 
+	// Batch calculate all metrics in a single query
+	allMetrics, err := r.batchCalculateMetricsFromExecutions(functionIDs, windowStart, windowEnd)
+	if err != nil {
+		return fmt.Errorf("failed to batch calculate metrics: %w", err)
+	}
+
+	for _, metrics := range allMetrics {
 		if err := r.CreateOrUpdateExecutionMetrics(metrics); err != nil {
-			logrus.Errorf("Failed to save metrics for function %s: %v", functionID, err)
+			logrus.WithError(err).WithField("function_id", metrics.FunctionID).Error("Failed to save metrics")
 		}
 	}
 
 	return nil
+}
+
+// batchCalculateMetricsFromExecutions calculates metrics for multiple functions in a single query
+func (r *RegistryRepository) batchCalculateMetricsFromExecutions(functionIDs []uuid.UUID, windowStart, windowEnd time.Time) (map[uuid.UUID]*ExecutionMetrics, error) {
+	results := make(map[uuid.UUID]*ExecutionMetrics, len(functionIDs))
+
+	query := `
+		SELECT
+			function_id,
+			COUNT(*) as total_calls,
+			COALESCE(SUM(CASE WHEN outcome = 'success' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 0) as success_rate,
+			COALESCE(AVG(duration_ms), 0) as avg_latency,
+			COALESCE(PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY duration_ms)::INTEGER, 0) as p50_latency,
+			COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms)::INTEGER, 0) as p95_latency,
+			COALESCE(PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY duration_ms)::INTEGER, 0) as p99_latency,
+			COALESCE(SUM(CASE WHEN outcome = 'timeout' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 0) as timeout_rate,
+			COALESCE(SUM(CASE WHEN outcome = 'error' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 0) as error_rate,
+			COUNT(DISTINCT caller_ip) as unique_ips,
+			COUNT(DISTINCT tenant_id) as unique_tenants,
+			COUNT(DISTINCT user_id) as unique_users
+		FROM registry_function_executions
+		WHERE function_id = ANY($1) AND timestamp >= $2 AND timestamp <= $3
+		GROUP BY function_id
+	`
+
+	rows, err := r.db.Raw(query, pq.Array(functionIDs), windowStart, windowEnd).Rows()
+	if err != nil {
+		return nil, fmt.Errorf("failed to batch calculate metrics: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var functionID uuid.UUID
+		var result struct {
+			TotalCalls    int     `json:"total_calls"`
+			SuccessRate   float64 `json:"success_rate"`
+			AvgLatency    float64 `json:"avg_latency"`
+			P50Latency    int     `json:"p50_latency"`
+			P95Latency    int     `json:"p95_latency"`
+			P99Latency    int     `json:"p99_latency"`
+			TimeoutRate   float64 `json:"timeout_rate"`
+			ErrorRate     float64 `json:"error_rate"`
+			UniqueIPs     int     `json:"unique_ips"`
+			UniqueTenants int     `json:"unique_tenants"`
+			UniqueUsers   int     `json:"unique_users"`
+		}
+
+		if err := rows.Scan(&functionID, &result.TotalCalls, &result.SuccessRate, &result.AvgLatency, &result.P50Latency, &result.P95Latency, &result.P99Latency, &result.TimeoutRate, &result.ErrorRate, &result.UniqueIPs, &result.UniqueTenants, &result.UniqueUsers); err != nil {
+			logrus.WithError(err).Warn("Failed to scan batch metrics row")
+			continue
+		}
+
+		results[functionID] = &ExecutionMetrics{
+			ID:              uuid.New(),
+			FunctionID:      functionID,
+			WindowStart:     windowStart,
+			WindowEnd:       windowEnd,
+			WindowType:      "hourly",
+			TotalCalls:      result.TotalCalls,
+			SuccessfulCalls: int(float64(result.TotalCalls) * result.SuccessRate / 100),
+			SuccessRate:     result.SuccessRate,
+			LatencyAvg:      result.AvgLatency,
+			LatencyP50:      result.P50Latency,
+			LatencyP95:      result.P95Latency,
+			LatencyP99:      result.P99Latency,
+			TimeoutRate:     result.TimeoutRate,
+			TimeoutCalls:    int(float64(result.TotalCalls) * result.TimeoutRate / 100),
+			ErrorRate:       result.ErrorRate,
+			ErrorCalls:      int(float64(result.TotalCalls) * result.ErrorRate / 100),
+			UniqueIPs:       result.UniqueIPs,
+			UniqueTenants:   result.UniqueTenants,
+			UniqueUsers:     result.UniqueUsers,
+			CreatedAt:       time.Now(),
+		}
+	}
+
+	return results, nil
 }
 
 // ============================================
@@ -690,6 +772,10 @@ func (r *RegistryRepository) UpdateSlidingWindowScores(config SlidingWindowConfi
 		return nil, fmt.Errorf("failed to get functions: %w", err)
 	}
 
+	if len(functions) == 0 {
+		return nil, nil
+	}
+
 	var deltas []TrustScoreDelta
 
 	for _, fn := range functions {
@@ -930,6 +1016,48 @@ func (r *RegistryRepository) CountLikesForFunction(functionID uuid.UUID) (int64,
 		return 0, fmt.Errorf("failed to count likes: %w", err)
 	}
 	return count, nil
+}
+
+// CountLikesForFunctions returns a map of function IDs to their like counts
+func (r *RegistryRepository) CountLikesForFunctions(functionIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+	type result struct {
+		FunctionID uuid.UUID
+		Count     int64
+	}
+	var results []result
+	if err := r.db.Model(&FunctionLike{}).
+		Select("function_id, COUNT(*) as count").
+		Where("function_id IN ?", functionIDs).
+		Group("function_id").
+		Find(&results).Error; err != nil {
+		return nil, fmt.Errorf("failed to count likes for functions: %w", err)
+	}
+	m := make(map[uuid.UUID]int64, len(results))
+	for _, r := range results {
+		m[r.FunctionID] = r.Count
+	}
+	return m, nil
+}
+
+// CountRemixesForFunctions returns a map of function IDs to their remix counts
+func (r *RegistryRepository) CountRemixesForFunctions(functionIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+	type result struct {
+		SourceFunctionID uuid.UUID
+		Count            int64
+	}
+	var results []result
+	if err := r.db.Model(&RemixHistory{}).
+		Select("source_function_id, COUNT(*) as count").
+		Where("source_function_id IN ?", functionIDs).
+		Group("source_function_id").
+		Find(&results).Error; err != nil {
+		return nil, fmt.Errorf("failed to count remixes for functions: %w", err)
+	}
+	m := make(map[uuid.UUID]int64, len(results))
+	for _, r := range results {
+		m[r.SourceFunctionID] = r.Count
+	}
+	return m, nil
 }
 
 // GetLikesForFunction returns the list of users who liked a function (with pagination)

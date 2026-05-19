@@ -60,15 +60,23 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/newsletter"
 	notificationHandlerPkg 	"github.com/functionfly/functionfly/internal/api/handlers/notifications"
 	payoutsHandler "github.com/functionfly/functionfly/internal/api/handlers/payouts"
+	"github.com/functionfly/functionfly/internal/api/handlers/simulation"
 	"github.com/functionfly/functionfly/internal/api/handlers/playground"
 	privacyhandler "github.com/functionfly/functionfly/internal/api/handlers/privacy"
 	"github.com/functionfly/functionfly/internal/api/handlers/providers"
 	"github.com/functionfly/functionfly/internal/api/handlers/recommendations"
 	registryhandler "github.com/functionfly/functionfly/internal/api/handlers/registry"
 	registryexecution "github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
+	drehandler "github.com/functionfly/functionfly/internal/api/handlers/registry/dre"
 	"github.com/functionfly/functionfly/internal/api/handlers/security"
+	"github.com/functionfly/functionfly/internal/api/handlers/ghost"
 	"github.com/functionfly/functionfly/internal/api/handlers/state"
+	"github.com/functionfly/functionfly/internal/api/handlers/studio"
+	"github.com/functionfly/functionfly/internal/api/handlers/plugin"
+	runtimehandler "github.com/functionfly/functionfly/internal/api/handlers/runtime"
+	marketplacehandler "github.com/functionfly/functionfly/internal/api/handlers/marketplace"
 	"github.com/functionfly/functionfly/internal/api/handlers/statefabric"
+	"github.com/functionfly/functionfly/internal/api/handlers/workflow"
 	statushandler "github.com/functionfly/functionfly/internal/api/handlers/status"
 	supportHandler "github.com/functionfly/functionfly/internal/api/handlers/support"
 	"github.com/functionfly/functionfly/internal/api/handlers/teams"
@@ -85,6 +93,7 @@ import (
 	"github.com/functionfly/functionfly/internal/currency"
 	monitoringPkg "github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/privacy"
+	"github.com/functionfly/functionfly/internal/provisioning"
 	paymentPkg "github.com/functionfly/functionfly/internal/payment"
 	"github.com/functionfly/functionfly/internal/scheduler"
 	"github.com/functionfly/functionfly/internal/services"
@@ -137,7 +146,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	appsHandler := apps.NewHandler(s.repo)
 	backendsHandler := backends.NewHandler(s.repo, s.routingSvc)
 	deploymentsHandler := deployments.NewHandler(s.repo, s.deploySvc)
-	pasteHandler := functions.NewPasteHandler(s.repo)
+	pasteHandler := functions.NewPasteHandler(s.repo, nil)
 	functionsHandler := functions.NewHandler(s.repo, s.deploySvc, pasteHandler)
 	unifiedAnalyticsSvc := unified.NewService(s.postgresDB.GORM, s.usageMetricsAgg)
 	adminHandler := admin.NewHandler(s.repo, s.postgresDB.LoginAttemptRepository(), s.postgresDB.AnalyticsRepository(), s.authSvc, unifiedAnalyticsSvc, sfAddonRepo)
@@ -250,7 +259,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	exportHandler := billinghandler.NewExportHandler(exportRepo, exportService, s.repo)
 
 	// Initialize billing sync job for external billing integrations
-	s.billingSyncJob = billing.NewBillingSyncJob(exportRepo)
+	billingRepo := storage.NewBillingRepository(s.postgresDB)
+	s.billingSyncJob = billing.NewBillingSyncJob(exportRepo, billingRepo)
 	s.billingSyncJob.Start(context.Background())
 	logrus.Info("Billing sync job initialized")
 
@@ -366,15 +376,24 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// ---------------------------------------------------------------------------
 	// WASM instance pool: pre-warms MicroPython runtime cells for fast Python exec.
+	// Falls back gracefully when CGO is disabled (uses external Python service + sandbox).
 	// ---------------------------------------------------------------------------
 	micropythonPath := "internal/bundler/python/micropython.wasm"
 	if _, err := os.Stat(micropythonPath); os.IsNotExist(err) {
 		micropythonPath = "bundler/python/micropython.wasm"
 	}
+	cpythonPath := "runtimes/cpython-wasi/python.wasm"
+	cpythonLibPath := "runtimes/cpython-wasi/lib"
 	var wasmPool *wasm.InstancePool
+
 	if _, err := os.Stat(micropythonPath); err == nil {
 		factory := func() (*wasm.PythonRuntime, error) {
-			return wasm.NewPythonRuntime(micropythonPath, nil, nil, nil)
+			rt, err := wasm.NewPythonRuntime(micropythonPath, nil, nil, nil)
+			if err != nil {
+				logrus.WithError(err).Warn("Failed to create PythonRuntime (CGO disabled?)")
+				return nil, err
+			}
+			return rt, nil
 		}
 		poolSize := 4
 		if ps := os.Getenv("WASM_POOL_SIZE"); ps != "" {
@@ -382,15 +401,20 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 				poolSize = n
 			}
 		}
+		// InitPoolsWithConfig will log a warning if CGO is disabled but won't fail
 		wasm.InitPoolsWithConfig(factory, poolSize, 30*time.Minute)
 		wasmPool = wasm.PerTenantPools
-		logrus.WithField("pool_size", poolSize).Info("WASM instance pool initialized")
+		if wasmPool != nil {
+			logrus.WithField("pool_size", poolSize).Info("WASM instance pool initialized")
+		} else {
+			logrus.Warn("WASM pool is nil (CGO disabled) - Python execution will use external service")
+		}
 	} else {
-		logrus.Warn("MicroPython WASM not found, skipping instance pool initialization")
+		logrus.WithField("path", micropythonPath).Warn("MicroPython WASM not found, skipping instance pool")
 	}
 
 	// RuntimeRouter: selects engine by runtime + tier, with fallback to legacy sandbox.
-	runtimeRouter := registryexecution.BuildRuntimeRouter(wasmPool, cacheService, bundleSvc, micropythonPath)
+	runtimeRouter := registryexecution.BuildRuntimeRouter(wasmPool, cacheService, bundleSvc, micropythonPath, cpythonPath, cpythonLibPath)
 	registryHandler.SetRuntimeRouter(runtimeRouter)
 	// ---------------------------------------------------------------------------
 	// ---------------------------------------------------------------------------
@@ -407,6 +431,23 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	teamHandler := teams.NewHandler(s.repo, s.notificationSvc, nil)
 	providersHandler := providers.NewHandler(s.repo, s.notificationSvc)
 	dashboardHandler := dashboard.NewHandler(s.repo)
+	studioCollabRepo := studio.NewCollabRepository(s.postgresDB.DB)
+	studioCollabHandler := studio.NewHandler(studioCollabRepo)
+	studioTaskRepo := studio.NewTaskRepository(s.postgresDB.DB)
+	studioTasksHandler := studio.NewTasksHandler(studioTaskRepo)
+	studioExtRepo := studio.NewExtensionRepository(s.postgresDB.DB)
+	studioExtensionsHandler := studio.NewExtensionsHandler(studioExtRepo)
+	studioMarketplaceRepo := studio.NewMarketplaceRepository(s.postgresDB.DB)
+	studioMarketplaceHandler := studio.NewMarketplaceHandler(studioMarketplaceRepo)
+	studioSettingsRepo := storage.NewStudioSettingsRepository(s.postgresDB.DB)
+	studioSettingsHandler := studio.NewSettingsHandler(studioSettingsRepo)
+	pluginRepo := storage.NewPluginRepository(s.postgresDB.DB)
+	pluginStorageAdapter := plugin.NewStorageAdapter(pluginRepo)
+	pluginHandler := plugin.NewHandler(pluginStorageAdapter)
+	runtimeHandler := runtimehandler.New()
+	marketplaceRepo := storage.NewMarketplaceRepository(s.postgresDB.DB)
+	marketplaceStorageAdapter := marketplacehandler.NewStorageAdapter(marketplaceRepo)
+	marketplaceHandler := marketplacehandler.NewHandler(marketplaceStorageAdapter)
 	enterpriseSLAHandler := enterprisePkg.NewSLAHandler(s.repo)
 	decisionsRepo := decisionsrepo.NewRepository(s.postgresDB.GORM)
 	decisionsHandler := decisions.NewHandler(decisionsRepo)
@@ -510,6 +551,16 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	chatConnectorHandler := chat.NewConnectorHandler(chatRepo, chatConnectorRegistry, logrus.New())
 
 	aepHandler := agenthandler.NewHandler(s.postgresDB.GORM, s.redisClient, registryRepo, s.repo, s.notificationSvc)
+
+	// R-Sim simulation engine handler
+	simHandler := simulation.NewHandler()
+
+	// Ghost Mode orchestration engine handler
+	ghostHandler := ghost.NewHandler(nil, nil)
+
+	// Studio workflow handler
+	workflowRepo := workflow.NewRepository(s.postgresDB.DB)
+	workflowHandler := workflow.NewHandler(workflowRepo)
 
 	agentIdentityRepo := identity.NewRepository(s.postgresDB.GORM)
 	agentGraphSvc := graph.NewService(s.postgresDB.GORM)
@@ -904,12 +955,30 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		presenceHandler,
 	)
 
+	// Wire billing handler to bundle provisioner for isolated auto-provisioning
+	billingHandler.SetBundleProvisioner(provisioning.ProvisionBundleForBilling(s.bundleProvisioner))
+
+	// Register provisioning routes (Backend-in-a-Box one-click provisioning)
+	if s.provisioningHandler != nil {
+		s.provisioningHandler.RegisterRoutes(api)
+	}
+
+	// ── DRE Anchoring Service (blockchain anchoring for execution certificates) ──
+	var anchoringService drehandler.AnchorServicer
+	if signingKey := os.Getenv("ANCHOR_SIGNING_KEY"); signingKey != "" {
+		ethSvc := drehandler.NewEthereumAnchoringService()
+		ethSvc.SetSigningKey(signingKey)
+		anchoringService = ethSvc
+		logrus.Info("DRE anchoring service initialized (blockchain anchoring enabled)")
+	}
+
 	registerRegistryRoutes(
 		s, api, apiV2,
 		authMiddleware, executionSecurityMW, verificationMiddleware,
 		registryRepo, registryHandler, registryPlaygroundHandler,
 		appPlaygroundHandler, docsHandler, tutorialsHandler,
 		versionHandler, blogHandler, contentHandler, feedbackHandler, recommendationHandler,
+		anchoringService,
 	)
 
 	// ── FRG (Function Registry + Live Runtime Graph) ─────────────────────────
@@ -949,7 +1018,16 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		swarmControllerHandler,
 		unfairAdvantageHandler,
 		chatHandler, chatConnectorHandler, chatWSHub,
+		studioCollabHandler,
+		studioTasksHandler,
+		studioExtensionsHandler,
+		studioMarketplaceHandler,
+		studioSettingsHandler,
+		pluginHandler,
+		runtimeHandler,
 	)
+
+	registerMarketplaceRoutes(api, protected, authMiddleware, marketplaceHandler)
 
 	agentRateLimiter := middleware.NewAgentRateLimiter(s.redisClient)
 
@@ -962,6 +1040,15 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		platformFeeRepo,
 		billingOperationalRepo,
 	)
+
+	// R-Sim simulation engine routes
+	registerSimulationRoutes(api, authMiddleware, simHandler)
+
+	// Ghost Mode autonomous building routes
+	registerGhostRoutes(api, authMiddleware, ghostHandler)
+
+	// Studio workflow routes
+	registerWorkflowRoutes(api, protected, authMiddleware, workflowHandler)
 
 	// Initialize admin security middleware (csrfMiddleware already initialized above for billing)
 	adminRateLimiter := middleware.NewAdminRateLimiter(s.redisClient)
@@ -1105,7 +1192,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 			r.URL.Path == "/waitlist" ||
 			strings.HasPrefix(r.URL.Path, "/frg/") || r.URL.Path == "/frg" ||
 			strings.HasPrefix(r.URL.Path, "/gx/") || r.URL.Path == "/gx" ||
-			strings.HasPrefix(r.URL.Path, "/webhook/") {
+			strings.HasPrefix(r.URL.Path, "/webhook/") || strings.HasPrefix(r.URL.Path, "/marketplace/") {
 			return false
 		}
 		pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")

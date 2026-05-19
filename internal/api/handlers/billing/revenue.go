@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/config"
 	"github.com/functionfly/functionfly/internal/payment"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
@@ -339,10 +340,10 @@ func (h *Handler) HandleVerifyFunction(w http.ResponseWriter, r *http.Request) {
 	successURL := req.SuccessURL
 	cancelURL := req.CancelURL
 	if successURL == "" {
-		successURL = "http://localhost:3000/functions/" + req.FunctionID.String() + "/verification?success=true"
+		successURL = config.GetFrontendURL() + "/functions/" + req.FunctionID.String() + "/verification?success=true"
 	}
 	if cancelURL == "" {
-		cancelURL = "http://localhost:3000/functions/" + req.FunctionID.String() + "/verification?canceled=true"
+		cancelURL = config.GetFrontendURL() + "/functions/" + req.FunctionID.String() + "/verification?canceled=true"
 	}
 
 	// Create a pending payment record first

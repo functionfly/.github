@@ -117,7 +117,7 @@ func (se *SandboxExecutor) stopRuntime() {
 		defer cancel()
 
 		// Send interrupt signal
-		se.runtimeCmd.Process.Signal(os.Interrupt)
+		_ = se.runtimeCmd.Process.Signal(os.Interrupt)
 
 		// Wait for process to exit or kill after timeout
 		done := make(chan error, 1)
@@ -130,7 +130,7 @@ func (se *SandboxExecutor) stopRuntime() {
 			logrus.Debug("Runtime stopped gracefully")
 		case <-ctx.Done():
 			logrus.Warn("Runtime did not stop gracefully, killing...")
-			se.runtimeCmd.Process.Kill()
+			_ = se.runtimeCmd.Process.Kill()
 			<-done
 		}
 
@@ -368,7 +368,7 @@ func (se *SandboxExecutor) ensureRuntimeRunning(ctx context.Context, wasmPath st
 	if err := se.waitForServerReady(ctx); err != nil {
 		// Kill the process if it didn't start properly
 		if se.runtimeCmd.Process != nil {
-			se.runtimeCmd.Process.Kill()
+			_ = se.runtimeCmd.Process.Kill()
 		}
 		return fmt.Errorf("runtime server did not become ready: %w", err)
 	}
@@ -750,6 +750,7 @@ func sandboxWatchdog() {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
+	//nolint:gosimple // ticker.C is never closed (Stop() doesn't close it), explicit return needed
 	for {
 		select {
 		case <-ticker.C:
@@ -1285,13 +1286,13 @@ func (sc *SandboxClient) Close() {
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 
-		sc.daemonCmd.Process.Signal(os.Interrupt)
+		_ = sc.daemonCmd.Process.Signal(os.Interrupt)
 		done := make(chan error, 1)
 		go func() { done <- sc.daemonCmd.Wait() }()
 		select {
 		case <-done:
 		case <-ctx.Done():
-			sc.daemonCmd.Process.Kill()
+			_ = sc.daemonCmd.Process.Kill()
 			<-done
 		}
 		sc.isRunning = false

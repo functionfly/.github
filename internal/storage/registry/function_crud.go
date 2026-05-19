@@ -54,10 +54,11 @@ func (r *RegistryRepository) CreateFunction(fn *RegistryFunction) error {
 	// Invalidate list and search caches so new function appears in registry list
 	if r.cache != nil {
 		go func() {
-			// Cache invalidation is best-effort; failures are logged but don't fail the operation
-			_ = r.cache.InvalidateFunction(context.Background(), fn.ID.String())
-			_ = r.cache.InvalidateSearchResults(context.Background())
-			_ = r.cache.InvalidateListResults(context.Background())
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = r.cache.InvalidateFunction(ctx, fn.ID.String())
+			_ = r.cache.InvalidateSearchResults(ctx)
+			_ = r.cache.InvalidateListResults(ctx)
 		}()
 	}
 
@@ -106,7 +107,9 @@ func (r *RegistryRepository) GetFunctionByAuthorName(author, name string) (*Regi
 	if r.cache != nil && r.keyGen != nil {
 		cacheKey := r.keyGen.FunctionInfo(author, name)
 		go func() {
-			_ = r.cache.SetJSON(context.Background(), cacheKey, fn)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = r.cache.SetJSON(ctx, cacheKey, fn)
 		}()
 	}
 

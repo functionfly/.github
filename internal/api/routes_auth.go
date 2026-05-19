@@ -61,8 +61,8 @@ func registerAuthRoutes(
 	// with or without the prefix.
 	router.HandleFunc("/auth/login", authRateLimiter.Limit(authHandler.HandleLogin)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/login", authRateLimiter.Limit(authHandler.HandleLogin)).Methods("POST", "OPTIONS")
-	router.HandleFunc("/auth/refresh", authHandler.HandleRefreshToken).Methods("POST", "OPTIONS")
-	api.HandleFunc("/auth/refresh", authHandler.HandleRefreshToken).Methods("POST", "OPTIONS")
+	router.HandleFunc("/auth/refresh", authRateLimiter.Limit(authHandler.HandleRefreshToken)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/auth/refresh", authRateLimiter.Limit(authHandler.HandleRefreshToken)).Methods("POST", "OPTIONS")
 	router.HandleFunc("/auth/signup", authRateLimiter.Limit(authHandler.HandleSignup)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/signup", authRateLimiter.Limit(authHandler.HandleSignup)).Methods("POST", "OPTIONS")
 	router.HandleFunc("/auth/signup-config", authHandler.HandleSignupConfig).Methods("GET", "OPTIONS")
@@ -71,8 +71,8 @@ func registerAuthRoutes(
 	api.HandleFunc("/auth/check-invite-code", authHandler.HandleCheckInviteCode).Methods("GET", "OPTIONS")
 	router.HandleFunc("/waitlist", authHandler.HandleWaitlist).Methods("POST", "OPTIONS")
 	api.HandleFunc("/waitlist", authHandler.HandleWaitlist).Methods("POST", "OPTIONS")
-	router.HandleFunc("/auth/check-username", authHandler.HandleCheckUsernameAvailability).Methods("GET", "OPTIONS")
-	router.HandleFunc("/auth/verify-email", authHandler.HandleVerifyEmail).Methods("GET", "OPTIONS")
+	router.HandleFunc("/auth/check-username", authRateLimiter.Limit(authHandler.HandleCheckUsernameAvailability)).Methods("GET", "OPTIONS")
+	router.HandleFunc("/auth/verify-email", authRateLimiter.Limit(authHandler.HandleVerifyEmail)).Methods("GET", "OPTIONS")
 	router.HandleFunc("/auth/resend-verification", authRateLimiter.Limit(authHandler.HandleResendVerification)).Methods("POST", "OPTIONS")
 	router.HandleFunc("/auth/get-session", authHandler.HandleGetSession).Methods("GET", "OPTIONS")
 	// Supabase-compatible path used by @neondatabase/neon-js (auth.url + /api/auth/get-session)
@@ -269,6 +269,10 @@ func registerAuthRoutes(
 	api.HandleFunc("/billing/bundle/usage", authMiddleware.RequireAuth(billingHandler.HandleGetBundleUsageStatus)).Methods("GET", "OPTIONS")
 	// Bundle upgrade/downgrade (change to different bundle plan)
 	api.HandleFunc("/billing/bundle/change", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleChangeBundle))).Methods("POST", "OPTIONS")
+	// Bundle deployment (one-click deploy)
+	api.HandleFunc("/billing/bundles/{slug}/deploy", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleDeployBundle))).Methods("POST", "OPTIONS")
+	// Deployment status polling
+	api.HandleFunc("/billing/deployments/{deploymentId}/status", authMiddleware.RequireAuth(billingHandler.HandleGetDeploymentStatus)).Methods("GET", "OPTIONS")
 
 	// ── Affiliate / Referral Commission System (user-facing) ─────────────
 	api.HandleFunc("/affiliate/my-codes", authMiddleware.RequireAuth(billingHandler.HandleGetMyAffiliateCodes)).Methods("GET", "OPTIONS")

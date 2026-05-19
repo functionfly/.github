@@ -141,8 +141,7 @@ func (h *Handler) recordTenantBillingEvent(fn *storage.RegistryFunction, exec *s
 
 	// Record detailed cost allocation entry for transparency and chargebacks
 	if err := h.recordCostAllocationEntry(fn, exec, resourceUsage); err != nil {
-		// Log but don't fail - cost allocation is not critical for execution
-		// This ensures execution continues even if cost tracking fails
+		logrus.WithError(err).Warn("cost allocation record failed — continuing without chargeback entry")
 	}
 
 	return nil
@@ -154,16 +153,57 @@ func (h *Handler) recordPaidFunctionRevenue(fn *storage.RegistryFunction, exec *
 		return nil
 	}
 
-	// Record the revenue event for the function author
-	// This tracks how much money was collected for this function execution
-	logrus.WithFields(logrus.Fields{
-		"function": fmt.Sprintf("%s/%s", fn.Author, fn.Name),
-		"price_usd": fn.PricePerCall,
-		"execution_id": exec.ID,
-	}).Info("Paid function execution - revenue to be distributed")
+	priceCents := int64(fn.PricePerCall * 100)
+	if priceCents <= 0 {
+		return nil
+	}
 
-	// TODO: If BackendRepo has a revenue tracking method, use it here
-	// For now, we log the revenue event which can be aggregated later
+	platformFeePercent := storage.DefaultPlatformFeePercent
+	platformFeeCents := int64(float64(priceCents) * platformFeePercent / 100.0)
+	netAmountCents := priceCents - platformFeeCents
+
+	now := time.Now().UTC()
+	periodMonth := int(now.Month())
+	periodYear := now.Year()
+
+	authorUUID, err := uuid.Parse(fn.Author)
+	if err != nil {
+		logrus.WithError(err).Warn("Failed to parse function author as UUID, using zero UUID")
+		authorUUID = uuid.Nil
+	}
+
+	earning := &storage.PublisherEarning{
+		ID:                 uuid.New(),
+		TenantID:           uuid.Nil,
+		PublisherUserID:    authorUUID,
+		FunctionID:         &fn.ID,
+		FunctionName:       fn.Name,
+		TransactionType:    "sale",
+		AmountCents:        int(priceCents),
+		Currency:           "usd",
+		GrossAmountCents:   int(priceCents),
+		PlatformFeeCents:   int(platformFeeCents),
+		NetAmountCents:     int(netAmountCents),
+		PlatformFeePercent: platformFeePercent,
+		Status:             "pending",
+		PeriodMonth:        &periodMonth,
+		PeriodYear:         &periodYear,
+		EarnedAt:           now,
+	}
+
+	if err := h.BackendRepo.CreatePublisherEarning(context.Background(), earning); err != nil {
+		logrus.WithError(err).Error("Failed to create publisher earning record")
+		return err
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"function":          fmt.Sprintf("%s/%s", fn.Author, fn.Name),
+		"price_usd":         fn.PricePerCall,
+		"platform_fee_usd":  float64(platformFeeCents) / 100.0,
+		"net_earnings_usd": float64(netAmountCents) / 100.0,
+		"execution_id":     exec.ID,
+		"earning_id":       earning.ID,
+	}).Info("Paid function execution - revenue recorded")
 
 	return nil
 }
