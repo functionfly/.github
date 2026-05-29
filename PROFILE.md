@@ -4,7 +4,9 @@
 
 ![FunctionFly Logo](https://functionfly.com/logo.png)
 
-**A production-ready serverless function platform built for high-performance execution at the edge.**
+**We think you're gonna like it here.**
+
+A production-ready serverless function platform built for high-performance execution at the edge.
 
 [![Discord](https://img.shields.io/discord/123456789?label=Discord)](https://discord.gg/functionfly)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -13,27 +15,27 @@
 
 ---
 
-## What is FunctionFly?
-
-FunctionFly™ is a comprehensive serverless platform that enables developers to deploy and run functions in multiple languages with automatic scaling, built-in monitoring, and a pay-per-use pricing model.
-
 ## Projects
 
 | Repository | Description |
 |------------|-------------|
-| [fly](https://github.com/functionfly/fly) | Official CLI for FunctionFly |
-| [homebrew-tap](https://github.com/functionfly/homebrew-tap) | Homebrew tap for macOS/Linux installation |
+| [fly](https://github.com/functionfly/fly) | Official CLI — `ffly` |
+| [homebrew-tap](https://github.com/functionfly/homebrew-tap) | Homebrew tap for macOS/Linux |
 
-## Getting Started
+---
+
+## Quick Start
 
 ```bash
-# Install the CLI
+# Install ffly CLI
 curl -fsSL https://raw.githubusercontent.com/functionfly/fly/main/scripts/install.sh | bash
 
-# Login and deploy your first function
-fly login
-fly deploy --path ./my-function
+# Login and deploy
+ffly login
+ffly deploy --path ./my-function
 ```
+
+---
 
 ## Features
 
@@ -44,12 +46,14 @@ fly deploy --path ./my-function
 - **Pay-per-use Pricing** — Pay only for what you use
 - **Secure by Default** — Isolated execution with secrets management
 
+---
+
 ## Resources
 
 - [Documentation](https://docs.functionfly.com)
-- [Discord Community](https://discord.gg/functionfly)
-- [GitHub Issues](https://github.com/functionfly/fly/issues)
+- [Discord](https://discord.gg/functionfly)
+- [Issues](https://github.com/functionfly/fly/issues)
 
-## License
+---
 
 MIT License © 2024 FunctionFly
