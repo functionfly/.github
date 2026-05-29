@@ -52,4 +52,4 @@ ffly deploy --path ./my-function
 
 ## License
 
-MIT License © 2024 FunctionFly
+MIT License © 2026 FunctionFly
