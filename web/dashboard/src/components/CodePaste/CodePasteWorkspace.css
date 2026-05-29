@@ -1,0 +1,107 @@
+.code-paste-workspace {
+  width: 100%;
+  background: var(--ff-bg-primary);
+  border: 1px solid var(--ff-border-subtle);
+  border-radius: 16px;
+  box-shadow: var(--ff-shadow-xl);
+  overflow: hidden;
+}
+
+.code-paste-workspace__body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.code-paste-workspace__input-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  border-right: 1px solid var(--ff-border-subtle);
+  background: var(--ff-bg-primary);
+}
+
+.code-paste-workspace__results-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--ff-bg-secondary);
+  padding: 20px;
+}
+
+.code-paste-workspace__editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.code-paste-workspace__examples {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ff-text-secondary);
+}
+
+.code-paste-workspace__editor {
+  flex: 1;
+  min-height: 200px;
+  max-height: 350px;
+  border: 1px solid var(--ff-border-default);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.code-paste-workspace__editor > * {
+  height: 100%;
+}
+
+.code-paste-workspace__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.code-paste-workspace__shortcut-hint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--ff-text-secondary);
+  text-align: right;
+}
+
+.code-paste-workspace__shortcut-hint kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--ff-border-default);
+  background: var(--ff-bg-tertiary);
+  font-size: 11px;
+  font-family: inherit;
+}
+
+.code-paste-workspace__error {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: rgba(var(--ff-emergency-rgb), 0.1);
+  color: var(--ff-error);
+  border: 1px solid rgba(var(--ff-emergency-rgb), 0.3);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+@media (max-width: 900px) {
+  .code-paste-workspace__body {
+    grid-template-columns: 1fr;
+  }
+
+  .code-paste-workspace__input-panel {
+    border-right: none;
+    border-bottom: 1px solid var(--ff-border-subtle);
+  }
+}

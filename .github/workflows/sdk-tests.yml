@@ -1,0 +1,172 @@
+name: SDK Tests
+
+on:
+  push:
+    branches: [master, main, develop]
+    paths:
+      - "sdk/**"
+  pull_request:
+    branches: [master, main, develop]
+    paths:
+      - "sdk/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-sdk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install flypy (editable) with test deps
+        working-directory: sdk/python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run Python SDK tests
+        working-directory: sdk/python
+        run: pytest test_basic.py test_agent_sdk_integrations.py -q
+
+  python-sdk-live:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install flypy (editable) with test deps
+        working-directory: sdk/python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run live Python SDK tests
+        working-directory: sdk/python
+        env:
+          FUNCTIONFLY_INTEGRATION_TESTS: "true"
+          FUNCTIONFLY_API_BASE: ${{ secrets.FUNCTIONFLY_API_BASE }}
+          FUNCTIONFLY_API_KEY: ${{ secrets.FUNCTIONFLY_API_KEY }}
+          FUNCTIONFLY_TEST_FUNCTION_ID: ${{ secrets.FUNCTIONFLY_TEST_FUNCTION_ID }}
+        run: pytest test_agent_sdk_live.py -q
+
+  js-agent-sdk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Lint and test @functionfly/agent
+        working-directory: sdk/js/packages/agent
+        run: |
+          bun install
+          bun run lint
+          bun test
+
+  js-agent-sdk-live:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Run live @functionfly/agent tests
+        working-directory: sdk/js/packages/agent
+        env:
+          FUNCTIONFLY_INTEGRATION_TESTS: "true"
+          FUNCTIONFLY_API_BASE: ${{ secrets.FUNCTIONFLY_API_BASE }}
+          FUNCTIONFLY_API_KEY: ${{ secrets.FUNCTIONFLY_API_KEY }}
+          FUNCTIONFLY_TEST_FUNCTION_ID: ${{ secrets.FUNCTIONFLY_TEST_FUNCTION_ID }}
+        run: |
+          bun install
+          bun test src/client.live.test.ts
+
+  js-langchain-sdk:
+    runs-on: ubuntu-latest
+    needs: js-agent-sdk
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Build agent dependency
+        working-directory: sdk/js/packages/agent
+        run: |
+          bun install
+          bun run build
+
+      - name: Lint and test @functionfly/langchain
+        working-directory: sdk/js/packages/langchain
+        run: |
+          bun install
+          bun run lint
+          bun test
+
+  js-autogen-sdk:
+    runs-on: ubuntu-latest
+    needs: js-langchain-sdk
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Lint and test @functionfly/autogen
+        working-directory: sdk/js/packages/autogen
+        run: |
+          bun install
+          bun run lint
+          bun test
+
+  js-crewai-sdk:
+    runs-on: ubuntu-latest
+    needs: js-langchain-sdk
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Lint and test @functionfly/crewai
+        working-directory: sdk/js/packages/crewai
+        run: |
+          bun install
+          bun run lint
+          bun test
+
+  edge-sdk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Lint and test @functionfly/edge-sdk
+        working-directory: sdk/edge
+        run: |
+          bun install
+          bun run lint
+          bun test

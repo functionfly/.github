@@ -1,0 +1,114 @@
+name: Studio Build
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'web/studio/**'
+  pull_request:
+    paths:
+      - 'web/studio/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libappindicator3-dev
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install Node dependencies
+        run: |
+          cd web/studio
+          bun install
+
+      - name: Build Tauri (Linux)
+        run: |
+          cd web/studio
+          ./node_modules/.bin/tauri build --target x86_64-unknown-linux-gnu
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-linux
+          path: web/studio/src-tauri/target/release/bundle/**/*
+          retention-days: 7
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Bun
+        run: npm install -g bun
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Tauri CLI
+        run: bun add -g @tauri-apps/cli
+
+      - name: Install Node dependencies
+        run: |
+          cd web/studio
+          bun install
+
+      - name: Build Tauri (Windows)
+        run: |
+          cd web/studio
+          $env:TAURI_SIGNING_PRIVATE_KEY = "${{ secrets.TAURI_WINDOWS_SIGNING_KEY }}"
+          $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = "${{ secrets.TAURI_WINDOWS_SIGNING_KEY_PASSWORD }}"
+          npm run build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-windows
+          path: web/studio/src-tauri/target/release/bundle/**/*
+          retention-days: 7
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install Node dependencies
+        run: |
+          cd web/studio
+          bun install
+
+      - name: Build Tauri (macOS)
+        run: |
+          cd web/studio
+          export TAURI_SIGNING_PRIVATE_KEY="${{ secrets.TAURI_MACOS_SIGNING_KEY }}"
+          export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${{ secrets.TAURI_MACOS_SIGNING_KEY_PASSWORD }}"
+          ./node_modules/.bin/tauri build --target aarch64-apple-darwin
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-macos
+          path: web/studio/src-tauri/target/release/bundle/**/*
+          retention-days: 7

@@ -1,0 +1,12 @@
+# Pre-commit hooks for FunctionFly
+# Install: pip install pre-commit && pre-commit install
+
+repos:
+  - repo: local
+    hooks:
+      - id: validate-migrations
+        name: Validate Migrations
+        entry: ./scripts/validate-migrations.sh
+        language: script
+        files: ^migrations/
+        types: [sql]

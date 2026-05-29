@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS idx_registry_functions_public_latest_version;
+DROP INDEX IF EXISTS idx_registry_function_versions_latest_listing;

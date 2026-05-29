@@ -1,0 +1,36 @@
+.code-size-indicator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.code-size-indicator__bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--ff-bg-tertiary);
+  overflow: hidden;
+}
+
+.code-size-indicator__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ff-gradient-cta);
+  transition: width 0.2s ease;
+}
+
+.code-size-indicator--over .code-size-indicator__fill {
+  background: var(--ff-error);
+}
+
+.code-size-indicator__label {
+  font-size: 12px;
+  color: var(--ff-text-secondary);
+  white-space: nowrap;
+}
+
+.code-size-indicator--over .code-size-indicator__label {
+  color: var(--ff-error);
+  font-weight: 600;
+}

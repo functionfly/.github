@@ -1,0 +1,709 @@
+/* ==========================================================================
+   FunctionFly Gallery — The Flyway Registry
+   Aviation cockpit aesthetic for curated function discovery
+   ========================================================================== */
+
+.flyway-gallery {
+  --flyway-flame: var(--ff-flame, #ff6b35);
+  --flyway-cyan: var(--ff-cyan, #00d4ff);
+  --flyway-afterburner: var(--ff-afterburner, #ff4f5e);
+  --flyway-panel: rgba(13, 13, 20, 0.85);
+  --flyway-border: rgba(255, 107, 53, 0.15);
+  --flyway-glow: rgba(0, 212, 255, 0.12);
+
+  position: relative;
+  min-height: calc(100vh - 12rem);
+  background:
+    radial-gradient(ellipse 100% 60% at 50% -20%, rgba(255, 107, 53, 0.18) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 90% 80%, rgba(0, 212, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 40% 30% at 5% 60%, rgba(255, 79, 94, 0.06) 0%, transparent 50%),
+    var(--color-bg-primary, #08080c);
+  overflow-x: clip;
+}
+
+.flyway-gallery-runway-mode {
+  overflow-x: visible;
+}
+
+.flyway-gallery::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='0.02'%3E%3Cpath d='M0 20h40M20 0v40'/%3E%3C/g%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+.flyway-gallery > * {
+  position: relative;
+  z-index: 1;
+}
+
+.flyway-hero {
+  position: relative;
+  padding: 2rem 1.5rem 1.5rem;
+  border-bottom: 1px solid var(--flyway-border);
+  overflow: hidden;
+}
+
+.flyway-hero::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--flyway-flame),
+    var(--flyway-cyan),
+    transparent
+  );
+  opacity: 0.6;
+}
+
+.flyway-hero-radar {
+  position: absolute;
+  top: -60px;
+  right: -40px;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.flyway-hero-radar::before {
+  content: '';
+  position: absolute;
+  inset: 20%;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 212, 255, 0.1);
+}
+
+.flyway-hero-radar-sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(0, 212, 255, 0.25) 30deg,
+    transparent 60deg
+  );
+  animation: flyway-radar-sweep 4s linear infinite;
+}
+
+@keyframes flyway-radar-sweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.flyway-title {
+  font-family: var(--font-display, 'Instrument Sans', system-ui, sans-serif);
+  font-size: clamp(1.75rem, 4vw, 2.75rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  background: linear-gradient(135deg, #fff 0%, var(--flyway-flame) 40%, var(--flyway-cyan) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.flyway-subtitle {
+  color: var(--color-text-secondary, rgba(255, 255, 255, 0.55));
+  font-size: 0.9375rem;
+  max-width: 36rem;
+  line-height: 1.6;
+  margin-top: 0.5rem;
+}
+
+.flyway-hud-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.flyway-hud-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  background: var(--flyway-panel);
+  border: 1px solid var(--flyway-border);
+  border-radius: 0.5rem;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.75rem;
+  backdrop-filter: blur(12px);
+}
+
+.flyway-hud-stat-value {
+  color: var(--flyway-cyan);
+  font-weight: 600;
+}
+
+.flyway-hud-stat-label {
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.625rem;
+}
+
+.flyway-runway {
+  position: relative;
+  padding: 1.5rem 0 2rem;
+}
+
+.flyway-runway-full {
+  min-height: min(70vh, 640px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.flyway-runway-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 1.5rem 0.75rem;
+}
+
+.flyway-runway-scroll-controls {
+  display: flex;
+  gap: 0.375rem;
+  shrink: 0;
+}
+
+.flyway-runway-track {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 1.5rem;
+  padding: 0.5rem 1.5rem 1.25rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 107, 53, 0.35) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.flyway-runway-track:focus-visible {
+  outline: 2px solid rgba(255, 107, 53, 0.45);
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}
+
+.flyway-runway-track::-webkit-scrollbar {
+  height: 6px;
+}
+
+.flyway-runway-track::-webkit-scrollbar-thumb {
+  background: rgba(255, 107, 53, 0.35);
+  border-radius: 999px;
+}
+
+.flyway-runway-lights {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  padding: 0 2rem;
+}
+
+.flyway-runway-light {
+  width: 8px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--flyway-flame);
+  opacity: 0.3;
+  animation: flyway-runway-pulse 1.5s ease-in-out infinite;
+}
+
+.flyway-runway-light:nth-child(odd) {
+  animation-delay: 0.75s;
+}
+
+@keyframes flyway-runway-pulse {
+  0%,
+  100% {
+    opacity: 0.2;
+    box-shadow: none;
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 8px var(--flyway-flame);
+  }
+}
+
+.flyway-tile {
+  position: relative;
+  border-radius: 1rem;
+  background: var(--flyway-panel);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.flyway-tile:hover {
+  transform: translateY(-3px);
+  border-color: var(--flyway-border);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 107, 53, 0.1);
+}
+
+.flyway-tile-livery {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+
+.flyway-tile-featured {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+
+.flyway-tile-glow {
+  position: absolute;
+  top: -50%;
+  right: -30%;
+  width: 60%;
+  height: 60%;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.15;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.flyway-tile:hover .flyway-tile-glow {
+  opacity: 0.3;
+}
+
+.flyway-trust-ring {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.flyway-trust-ring svg {
+  transform: rotate(-90deg);
+}
+
+.flyway-trust-ring-value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.flyway-bento {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  padding: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .flyway-bento {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.flyway-runway-card {
+  flex: 0 0 320px;
+  scroll-snap-align: start;
+  position: relative;
+  border-radius: 1rem;
+  background: var(--flyway-panel);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.flyway-runway-card:hover {
+  border-color: var(--flyway-border);
+  transform: scale(1.02);
+}
+
+.flyway-runway-card-rank {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 2rem;
+  font-weight: 800;
+  opacity: 0.08;
+  line-height: 1;
+}
+
+.flyway-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(8, 8, 12, 0.6);
+  backdrop-filter: blur(16px);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.flyway-pagination {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem 1rem 0.5rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.flyway-pagination-summary {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  text-align: center;
+}
+
+.flyway-search {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+  max-width: 400px;
+}
+
+.flyway-search input {
+  width: 100%;
+  padding: 0.5rem 0.875rem 0.5rem 2.25rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.5rem;
+  color: inherit;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.flyway-search input:focus {
+  border-color: rgba(255, 107, 53, 0.4);
+}
+
+.flyway-search-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1rem;
+  height: 1rem;
+  opacity: 0.4;
+}
+
+.flyway-category-pill {
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.flyway-category-pill:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.flyway-category-pill.active {
+  background: rgba(255, 107, 53, 0.15);
+  border-color: rgba(255, 107, 53, 0.4);
+  color: var(--flyway-flame);
+}
+
+.flyway-view-toggle {
+  display: flex;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 0.5rem;
+  padding: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.flyway-view-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.flyway-view-btn.active {
+  background: rgba(255, 107, 53, 0.2);
+  color: var(--flyway-flame);
+}
+
+.flyway-showcase-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  margin: 0 1.5rem;
+  background: rgba(255, 184, 0, 0.08);
+  border: 1px solid rgba(255, 184, 0, 0.2);
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  color: rgba(255, 184, 0, 0.9);
+}
+
+.flyway-radar-container {
+  position: relative;
+  flex: 1;
+  min-height: 480px;
+  height: 100%;
+}
+
+.flyway-radar-hud {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--flyway-panel);
+  border: 1px solid var(--flyway-border);
+  border-radius: 0.5rem;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.6875rem;
+  color: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(12px);
+  pointer-events: none;
+}
+
+.flyway-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.flyway-empty-icon {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background: rgba(255, 107, 53, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+[data-theme='light'] .flyway-gallery {
+  background:
+    radial-gradient(ellipse 100% 60% at 50% -20%, rgba(255, 107, 53, 0.08) 0%, transparent 55%),
+    #f8fafc;
+}
+
+[data-theme='light'] .flyway-tile,
+[data-theme='light'] .flyway-runway-card,
+[data-theme='light'] .flyway-hud-stat {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='light'] .flyway-title {
+  background: linear-gradient(135deg, #1a1a2e 0%, var(--flyway-flame) 50%, #0891b2 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* Detail page */
+.flyway-detail-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  font-size: 0.875rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.flyway-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--flyway-flame);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  padding: 0;
+}
+
+.flyway-back-link:hover {
+  text-decoration: underline;
+}
+
+.flyway-detail-hero {
+  position: relative;
+  padding: 2rem 1.5rem;
+  border-bottom: 1px solid var(--flyway-border);
+  overflow: hidden;
+}
+
+.flyway-detail-hero-glow {
+  position: absolute;
+  top: -40%;
+  right: -10%;
+  width: 50%;
+  height: 80%;
+  pointer-events: none;
+  filter: blur(80px);
+  opacity: 0.5;
+}
+
+.flyway-detail-title {
+  font-family: var(--font-display, 'Instrument Sans', system-ui, sans-serif);
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.flyway-detail-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.flyway-detail-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.flyway-detail-stat-value {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+
+.flyway-detail-stat-label {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.flyway-detail-tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(8, 8, 12, 0.5);
+}
+
+.flyway-detail-tab {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  text-transform: capitalize;
+  transition: all 0.2s;
+}
+
+.flyway-detail-tab:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.flyway-detail-tab.active {
+  background: rgba(255, 107, 53, 0.15);
+  color: var(--flyway-flame);
+}
+
+.flyway-detail-content {
+  padding: 1.5rem;
+}
+
+.flyway-detail-card {
+  padding: 1.25rem;
+  border-radius: 1rem;
+  background: var(--flyway-panel);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.flyway-detail-code-panel {
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.flyway-detail-related {
+  padding: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.flyway-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.flyway-code-preview {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background: rgba(0, 0, 0, 0.4);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  overflow-x: auto;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+[data-theme='light'] .flyway-detail-card {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(0, 0, 0, 0.08);
+}
