@@ -21,14 +21,14 @@ FunctionFly™ is a comprehensive serverless platform that enables developers to
 
 | Repository | Description |
 |------------|-------------|
-| [ffly](https://github.com/functionfly/ffly) | Official CLI for FunctionFly |
+| [fly](https://github.com/functionfly/fly) | Official CLI (`ffly`) for FunctionFly |
 | [homebrew-tap](https://github.com/functionfly/homebrew-tap) | Homebrew tap for macOS/Linux installation |
 
 ## Getting Started
 
 ```bash
 # Install the CLI
-curl -fsSL https://raw.githubusercontent.com/functionfly/ffly/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/functionfly/fly/main/scripts/install.sh | bash
 
 # Login and deploy your first function
 ffly login
@@ -48,7 +48,7 @@ ffly deploy --path ./my-function
 
 - [Documentation](https://docs.functionfly.com)
 - [Discord Community](https://discord.gg/functionfly)
-- [GitHub Issues](https://github.com/functionfly/ffly/issues)
+- [GitHub Issues](https://github.com/functionfly/fly/issues)
 
 ## License
 
