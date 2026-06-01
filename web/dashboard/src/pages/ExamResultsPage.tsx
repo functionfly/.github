@@ -101,14 +101,14 @@ export function ExamResultsPage() {
 
           {/* Actions */}
           <div className="flex items-center justify-center gap-3">
-            <Button variant="outline" onClick={() => navigate('/certification')}>
-              <ArrowLeft className="h-4 w-4" />
-              Back to Certification
-            </Button>
+<Button variant="outline" onClick={() => navigate('/certification')} className="border-brand-500 text-brand-500 hover:bg-brand-500/10 hover:scale-105 transition-all duration-200">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Certification
+          </Button>
             {isPassed && (
               <Button
                 onClick={() => navigate('/credentials')}
-                className="bg-gradient-to-r from-brand-500 to-purple-500 text-white"
+                className="bg-gradient-to-r from-brand-500 to-purple-500 text-white hover:from-brand-600 hover:to-purple-600 hover:scale-105 hover:shadow-lg hover:shadow-brand-500/25 transition-all duration-200"
               >
                 <Award className="h-4 w-4" />
                 View Credentials
@@ -117,7 +117,7 @@ export function ExamResultsPage() {
             {!isPassed && isGraded && (
               <Button
                 onClick={() => navigate('/certification')}
-                className="bg-gradient-to-r from-brand-500 to-purple-500 text-white"
+                className="bg-gradient-to-r from-brand-500 to-purple-500 text-white hover:from-brand-600 hover:to-purple-600 hover:scale-105 hover:shadow-lg hover:shadow-brand-500/25 transition-all duration-200"
               >
                 Try Again
               </Button>

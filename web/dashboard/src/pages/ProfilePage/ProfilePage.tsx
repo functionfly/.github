@@ -46,6 +46,7 @@ import { toast } from 'sonner';
 
 import { registryApi } from '@/api/registry';
 import { usePlan } from '@/hooks/usePlan';
+import { usePublicBadges } from '@/hooks/useCertification';
 import { SettingsContent } from '@/pages/SettingsPage/SettingsContent';
 import { ProfileHeader } from './components/ProfileHeader';
 import {
@@ -238,6 +239,24 @@ export function ProfilePage({
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: certificatesResponse } = useQuery({ queryKey: ['profile-certifications', username],
+    queryFn: async () => {
+      if (!username) throw new Error('Username is required');
+      try {
+        const { certificationApi } = await import('@/api/certification');
+        return certificationApi.getPublicBadges(username);
+      } catch (err: unknown) {
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status === 404) return { badges: [], count: 0, username: '' };
+        throw err;
+      }
+    },
+    enabled: !!username,
+    staleTime: 1000 * 60 * 2,
+  });
+
+  const certificationsData = (certificatesResponse as { badges?: import('@/api/certification').PublicBadge[] } | undefined)?.badges || [];
+
   const { data: activityResponse } = useQuery<UserActivityResponse>({
     queryKey: ['profile-activity', username],
     queryFn: async () => {
@@ -360,6 +379,7 @@ export function ProfilePage({
   const mergedProfile: UserProfile | undefined = profile
     ? {
         ...profile,
+        certifications: certificationsData,
         achievements: achievementsData.length > 0 ? achievementsData : profile.achievements,
         recentActivity: activityData.length > 0 ? activityData : profile.recentActivity,
         skills: skillsData.length > 0 ? skillsData : profile.skills,

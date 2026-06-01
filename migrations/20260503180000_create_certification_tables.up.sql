@@ -196,17 +196,17 @@ CREATE INDEX IF NOT EXISTS idx_cert_grading_queue_status ON cert_grading_queue(s
 CREATE INDEX IF NOT EXISTS idx_cert_grading_queue_exam ON cert_grading_queue(exam_id);
 
 -- Seed the three certification tiers
-INSERT INTO cert_tiers (slug, name, description, icon, color, sort_order, price_cents, pass_threshold, time_limit_minutes, question_count, practical_count, validity_months)
+INSERT INTO cert_tiers (slug, name, description, icon, color, sort_order, price_cents, pass_threshold, time_limit_minutes, question_count, practical_count, validity_months, is_active, is_coming_soon)
 VALUES
     ('associate', 'FunctionFly Associate',
      'Demonstrates foundational knowledge of the FunctionFly platform: deploying functions, using the CLI, navigating the marketplace, and understanding core concepts.',
-     'Award', 'blue', 1, 5000, 70.00, 60, 40, 2, 24),
+     'Award', 'blue', 1, 5000, 70.00, 60, 40, 2, 24, true, false),
     ('professional', 'FunctionFly Professional',
      'Demonstrates proficiency in orchestration, agent management, state fabric, security best practices, and production deployment patterns on FunctionFly.',
-     'Shield', 'purple', 2, 15000, 70.00, 90, 50, 3, 24),
+     'Shield', 'purple', 2, 15000, 70.00, 90, 50, 3, 24, true, false),
     ('architect', 'FunctionFly Architect',
      'Demonstrates expert-level skills in graph design, swarm agent coordination, enterprise architecture patterns, performance optimization, and platform extension.',
-     'Crown', 'gold', 3, 20000, 75.00, 120, 60, 4, 24)
+     'Crown', 'gold', 3, 20000, 75.00, 120, 60, 4, 24, true, false)
 ON CONFLICT (slug) DO NOTHING;
 
 -- Seed Associate knowledge questions (batch 1 — core concepts)
@@ -215,13 +215,13 @@ SELECT t.id, q.category, q.difficulty, q.question_text, q.question_format,
        q.options::jsonb, q.correct_answers::jsonb, q.explanation, q.points
 FROM cert_tiers t
 CROSS JOIN (VALUES
-     ('deployment', 'easy',
-      'What command deploys a function to FunctionFly?',
-      'multiple_choice',
-      '[{"id":"a","text":"fly deploy"},{"id":"b","text":"ff deploy"},{"id":"c","text":"functionfly push"},{"id":"d","text":"ffly up"}]',
-      '["d"]',
-      'The CLI command is "ffly up" which builds and deploys your function to the FunctionFly cloud. The CLI was renamed from "ff" to "ffly" to avoid confusion with the fly.io CLI.',
-      1),
+('deployment', 'easy',
+       'What command deploys a function to FunctionFly?',
+       'multiple_choice',
+       '[{"id":"a","text":"fly deploy"},{"id":"b","text":"ff deploy"},{"id":"c","text":"functionfly push"},{"id":"d","text":"ffly up"}]',
+       '["b"]',
+       'The CLI command is "ff deploy" which builds and deploys your function to the FunctionFly cloud.',
+       1),
     ('sandboxing', 'medium',
      'What isolation mechanism does FunctionFly use to execute untrusted function code?',
      'multiple_choice',

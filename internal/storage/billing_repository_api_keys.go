@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -15,6 +16,16 @@ func (r *BillingRepository) RecordAPIKeyCostEntry(ctx context.Context, entry *Co
 	entry.ID = uuid.New()
 	entry.CreatedAt = time.Now().UTC()
 
+	tagsJSON, err := json.Marshal(entry.Tags)
+	if err != nil {
+		return fmt.Errorf("failed to marshal tags: %w", err)
+	}
+
+	metadataJSON, err := json.Marshal(entry.Metadata)
+	if err != nil {
+		return fmt.Errorf("failed to marshal metadata: %w", err)
+	}
+
 	query := `
 		INSERT INTO cost_allocation_entries (
 			id, tenant_id, api_key_id, function_id, function_name, function_author,
@@ -27,14 +38,14 @@ func (r *BillingRepository) RecordAPIKeyCostEntry(ctx context.Context, entry *Co
 			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25
 		)`
 
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		entry.ID, entry.TenantID, entry.APIKeyID, entry.FunctionID, entry.FunctionName, entry.FunctionAuthor,
 		entry.ExecutionID, entry.ExecutionOutcome, entry.Cached,
 		entry.DurationMs, entry.CPUTimeMs, entry.MemoryUsedMB, entry.WallTimeMs,
 		entry.ExecutionCostCents, entry.ComputeCostCents, entry.PlatformFeeCents,
 		entry.DataTransferCents, entry.TotalCostCents,
 		entry.Region, entry.Timestamp, entry.PeriodStart, entry.PeriodEnd,
-		entry.Tags, entry.Metadata, entry.CreatedAt,
+		tagsJSON, metadataJSON, entry.CreatedAt,
 	)
 
 	if err != nil {

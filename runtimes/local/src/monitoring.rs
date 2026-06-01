@@ -5,6 +5,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
 use serde::{Deserialize, Serialize};
@@ -325,13 +326,20 @@ impl ResourceMonitor {
     ///
     /// Runs every 60 seconds, removing metrics older than 1 hour.
     /// Returns the `JoinHandle` so the caller can abort the task on shutdown.
-    pub fn start_background_cleanup(monitor: Arc<Self>) -> tokio::task::JoinHandle<()> {
+    pub fn start_background_cleanup(monitor: Arc<Self>, shutdown_flag: Arc<AtomicBool>) -> tokio::task::JoinHandle<()> {
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60));
             loop {
-                interval.tick().await;
-                monitor.cleanup().await;
-                tracing::debug!("ResourceMonitor: completed periodic metrics cleanup");
+                tokio::select! {
+                    _ = interval.tick() => {
+                        if shutdown_flag.load(Ordering::Relaxed) {
+                            tracing::debug!("ResourceMonitor: shutdown requested, stopping cleanup");
+                            break;
+                        }
+                        monitor.cleanup().await;
+                        tracing::debug!("ResourceMonitor: completed periodic metrics cleanup");
+                    }
+                }
             }
         })
     }

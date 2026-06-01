@@ -23,12 +23,19 @@ interface TierCardProps {
   isLoading?: boolean;
   activeExamId?: string;
   onResume?: () => void;
+  pendingExamId?: string;
+  onBuyNow?: () => void;
+  paymentConfirmed?: boolean;
 }
 
-export function TierCard({ tier, onStart, isLoading, activeExamId, onResume }: TierCardProps) {
+export function TierCard({ tier, onStart, isLoading, activeExamId, onResume, pendingExamId, onBuyNow, paymentConfirmed }: TierCardProps) {
   const Icon = tierIcons[tier.icon] || Award;
   const gradient = tierGradients[tier.color] || tierGradients.blue;
   const hasActive = !!activeExamId;
+  const hasPending = !!pendingExamId;
+
+  // DEBUG: Log props received by TierCard
+  console.log('[TierCard]', tier.slug, { activeExamId, pendingExamId, hasActive, hasPending, paymentConfirmed });
 
   return (
     <motion.div
@@ -111,6 +118,18 @@ export function TierCard({ tier, onStart, isLoading, activeExamId, onResume }: T
               <Shield className="h-4 w-4" />
             </Button>
           </>
+        ) : hasPending ? (
+          <Button
+            onClick={paymentConfirmed ? onStart : onBuyNow}
+            disabled={isLoading}
+            className={cn(
+              'w-full bg-gradient-to-r text-white',
+              gradient,
+              'hover:opacity-90 disabled:opacity-50'
+            )}
+          >
+            {isLoading ? 'Redirecting...' : paymentConfirmed ? 'Start Exam' : 'Complete Payment'}
+          </Button>
         ) : tier.slug === 'professional' || tier.slug === 'architect' ? (
           <Button
             disabled={true}
@@ -123,7 +142,7 @@ export function TierCard({ tier, onStart, isLoading, activeExamId, onResume }: T
           </Button>
         ) : (
           <Button
-            onClick={onStart}
+            onClick={onBuyNow || onStart}
             disabled={isLoading}
             className={cn(
               'w-full bg-gradient-to-r text-white',
@@ -131,7 +150,7 @@ export function TierCard({ tier, onStart, isLoading, activeExamId, onResume }: T
               'hover:opacity-90 disabled:opacity-50'
             )}
           >
-            {isLoading ? 'Starting...' : 'Start Exam'}
+            {isLoading ? 'Redirecting...' : 'Buy Now'}
           </Button>
         )}
       </div>

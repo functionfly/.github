@@ -4,16 +4,21 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage"
+	storageregistry "github.com/functionfly/functionfly/internal/storage/registry"
 	githubsvc "github.com/functionfly/functionfly/internal/services/github"
+	"github.com/google/uuid"
 )
 
 // HandleWebhook receives GitHub webhook events.
@@ -253,22 +258,241 @@ func (h *Handler) runSyncPipeline(ctx context.Context, imp *storage.GitHubImport
 
 	_ = h.githubRepo.UpdateImportStatus(ctx, imp.ID, "syncing", 10, "Fetching latest code")
 
-	_, err := h.getGitHubClient(ctx, imp.UserID)
+	repo, err := h.githubRepo.GetRepoByID(ctx, imp.RepoID)
+	if err != nil || repo == nil {
+		h.finishSyncWithError(ctx, syncLog, imp, "Repository not found")
+		return
+	}
+
+	ghClient, err := h.getGitHubClient(ctx, imp.UserID)
 	if err != nil {
 		h.finishSyncWithError(ctx, syncLog, imp, fmt.Sprintf("Failed to create GitHub client: %v", err))
 		return
 	}
 
-	_ = h.githubRepo.UpdateImportStatus(ctx, imp.ID, "syncing", 50, "Building and publishing")
+	_ = h.githubRepo.UpdateImportStatus(ctx, imp.ID, "syncing", 30, "Fetching file tree")
 
-	if imp.FunctionID != nil {
-		_ = h.githubRepo.UpdateImportStatus(ctx, imp.ID, "completed", 100, "")
-
-		durationMs := int(time.Since(startTime).Milliseconds())
-		_ = h.githubRepo.UpdateSyncLogStatus(ctx, syncLog.ID, "success", "", "", durationMs)
-	} else {
-		h.finishSyncWithError(ctx, syncLog, imp, "No function associated with import")
+	tree, err := ghClient.GetTree(ctx, repo.Owner, repo.Name, commitSHA, true)
+	if err != nil {
+		h.finishSyncWithError(ctx, syncLog, imp, fmt.Sprintf("Failed to fetch tree: %v", err))
+		return
 	}
+
+	_ = h.githubRepo.UpdateImportStatus(ctx, imp.ID, "syncing", 50, "Analyzing changes")
+
+	contentHash := computeContentHash(tree.Tree)
+
+	if imp.FunctionID == nil {
+		h.finishSyncWithError(ctx, syncLog, imp, "No function associated with import")
+		return
+	}
+
+	if h.registryRepo == nil {
+		h.finishSyncWithError(ctx, syncLog, imp, "Registry repository not configured")
+		return
+	}
+
+	fn, err := h.registryRepo.GetFunctionByID(*imp.FunctionID)
+	if err != nil || fn == nil {
+		h.finishSyncWithError(ctx, syncLog, imp, "Function not found in registry")
+		return
+	}
+
+	_ = h.githubRepo.UpdateImportStatus(ctx, imp.ID, "syncing", 60, "Creating new version")
+
+	latestVersion, err := h.registryRepo.GetLatestFunctionVersion(*imp.FunctionID)
+	if err != nil {
+		h.logger.WithError(err).Warn("Failed to get latest version, proceeding with default")
+	}
+
+	nextVersion := "1.0.0"
+	if latestVersion != nil {
+		nextVersion = incrementVersion(latestVersion.Version)
+	}
+
+	manifestConfig := map[string]interface{}{
+		"name":       imp.FunctionName,
+		"runtime":    detectRuntimeFromTreeForSync(tree.Tree, repo),
+		"source":     fmt.Sprintf("github:%s", repo.FullName),
+		"branch":     branch,
+		"commit":     commitSHA,
+		"visibility": imp.Visibility,
+		"synced_from": "webhook",
+	}
+
+	if imp.ManifestOverrides != nil {
+		var overrides map[string]interface{}
+		if err := json.Unmarshal(imp.ManifestOverrides, &overrides); err == nil {
+			for k, v := range overrides {
+				manifestConfig[k] = v
+			}
+		}
+	}
+
+	manifestJSON, _ := json.Marshal(manifestConfig)
+
+	runtimeStr := "node18"
+	if rt, ok := manifestConfig["runtime"].(string); ok && rt != "" {
+		runtimeStr = rt
+	}
+
+	versionID := uuid.New()
+	version := &storageregistry.RegistryFunctionVersion{
+		ID:          versionID,
+		FunctionID:  *imp.FunctionID,
+		Version:     nextVersion,
+		Manifest:    manifestJSON,
+		Runtime:     runtimeStr,
+		MemoryMB:    256,
+		TimeoutMs:   30000,
+		ContentHash: sql.NullString{String: contentHash, Valid: true},
+	}
+
+	if len(tree.Tree) > 0 {
+		var sourceFiles []string
+		for _, entry := range tree.Tree {
+			if entry.Type != "blob" {
+				continue
+			}
+			ext := strings.ToLower(filepath.Ext(entry.Path))
+			if ext == ".js" || ext == ".ts" || ext == ".mjs" || ext == ".cjs" ||
+				ext == ".jsx" || ext == ".tsx" || ext == ".py" || ext == ".go" ||
+				ext == ".rs" || ext == ".java" || ext == ".rb" || ext == ".php" {
+				sourceFiles = append(sourceFiles, entry.Path)
+			}
+		}
+
+		if len(sourceFiles) > 0 {
+			_ = h.githubRepo.UpdateImportStatus(ctx, imp.ID, "syncing", 70, "Fetching source code")
+
+			var sourceCode strings.Builder
+			maxFiles := 20
+			maxFileSize := 50 * 1024
+			totalFetched := 0
+			totalSize := 0
+
+			for _, filePath := range sourceFiles {
+				if totalFetched >= maxFiles {
+					fmt.Fprintf(&sourceCode, "\n// ... and %d more files\n", len(sourceFiles)-maxFiles)
+					break
+				}
+
+				content, err := ghClient.GetFileContent(ctx, repo.Owner, repo.Name, filePath, commitSHA)
+				if err != nil {
+					h.logger.WithError(err).WithField("file", filePath).Warn("Failed to fetch source file during sync")
+					fmt.Fprintf(&sourceCode, "// %s (failed to fetch)\n", filePath)
+					continue
+				}
+
+				if totalSize+len(content) > maxFileSize {
+					fmt.Fprintf(&sourceCode, "\n// %s (truncated, total size exceeded)\n", filePath)
+					continue
+				}
+
+				totalSize += len(content)
+				totalFetched++
+				fmt.Fprintf(&sourceCode, "// %s\n%s\n\n", filePath, string(content))
+			}
+
+			if sourceCode.Len() > 0 {
+				version.SourceCode = sql.NullString{String: sourceCode.String(), Valid: true}
+			}
+		}
+	}
+
+	_ = h.githubRepo.UpdateImportStatus(ctx, imp.ID, "syncing", 80, "Publishing version")
+
+	if err := h.registryRepo.CreateFunctionVersion(version); err != nil {
+		h.finishSyncWithError(ctx, syncLog, imp, fmt.Sprintf("Failed to create function version: %v", err))
+		return
+	}
+
+	filesImported := len(tree.Tree)
+	var totalSize int64
+	for _, entry := range tree.Tree {
+		totalSize += int64(entry.Size)
+	}
+
+	_ = h.githubRepo.UpdateImportStatus(ctx, imp.ID, "syncing", 90, "Updating import record")
+
+	if err := h.githubRepo.UpdateImportResult(ctx, imp.ID, *imp.FunctionID, versionID, commitSHA, contentHash, filesImported, totalSize); err != nil {
+		h.logger.WithError(err).Warn("Failed to update import result during sync")
+	}
+
+	_ = h.githubRepo.UpdateImportStatus(ctx, imp.ID, "completed", 100, "")
+
+	durationMs := int(time.Since(startTime).Milliseconds())
+	_ = h.githubRepo.UpdateSyncLogStatus(ctx, syncLog.ID, "success", nextVersion, "", durationMs)
+
+	if err := ghClient.CreateCommitStatus(ctx, repo.Owner, repo.Name, commitSHA, &githubsvc.CommitStatusRequest{
+		State:       "success",
+		Description: fmt.Sprintf("Synced %s to v%s", imp.FunctionName, nextVersion),
+		Context:     "functionfly/sync",
+	}); err != nil {
+		h.logger.WithError(err).Warn("Failed to set commit status on GitHub")
+	}
+
+	h.logger.WithFields(map[string]interface{}{
+		"import_id":     imp.ID,
+		"function_id":   *imp.FunctionID,
+		"version_id":    versionID,
+		"version":       nextVersion,
+		"commit":        commitSHA,
+		"duration_ms":   durationMs,
+	}).Info("Sync pipeline completed successfully")
+}
+
+func detectRuntimeFromTreeForSync(tree []githubsvc.GitHubTreeEntry, repo *storage.GitHubRepo) string {
+	hasFile := func(names ...string) bool {
+		for _, entry := range tree {
+			if entry.Type != "blob" {
+				continue
+			}
+			for _, name := range names {
+				if strings.HasSuffix(entry.Path, "/"+name) || entry.Path == name {
+					return true
+				}
+			}
+		}
+		return false
+	}
+
+	if hasFile("package.json", "tsconfig.json") {
+		if hasFile("tsconfig.json") {
+			return "node18-typescript"
+		}
+		return "node18"
+	}
+	if hasFile("requirements.txt", "pyproject.toml", "setup.py", "Pipfile") {
+		return "python3.11"
+	}
+	if hasFile("go.mod") {
+		return "go1.22"
+	}
+	if hasFile("Cargo.toml") {
+		return "rust1.75"
+	}
+
+	if repo != nil && repo.DetectedRuntime != nil && *repo.DetectedRuntime != "" {
+		return *repo.DetectedRuntime
+	}
+
+	return "node18"
+}
+
+func incrementVersion(current string) string {
+	parts := strings.Split(current, ".")
+	if len(parts) != 3 {
+		return "1.0.0"
+	}
+
+	major, _ := strconv.Atoi(parts[0])
+	minor, _ := strconv.Atoi(parts[1])
+	patch, _ := strconv.Atoi(parts[2])
+
+	patch++
+
+	return fmt.Sprintf("%d.%d.%d", major, minor, patch)
 }
 
 func (h *Handler) finishSyncWithError(ctx context.Context, syncLog *storage.GitHubSyncLog, imp *storage.GitHubImport, errMsg string) {

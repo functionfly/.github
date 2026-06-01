@@ -51,6 +51,7 @@ interface OnboardingState {
   skipOnboarding: () => void;
   resetOnboarding: () => void;
   goToNextStep: () => void;
+  goToPrevStep: () => void;
   canResume: () => boolean;
 
   // New actions
@@ -130,6 +131,14 @@ export const useOnboardingStore = create<OnboardingState>()(
       goToNextStep: () => {
         const { currentStep, completeStep } = get();
         completeStep(currentStep);
+      },
+
+      goToPrevStep: () => {
+        const { currentStep } = get();
+        const currentIndex = steps.indexOf(currentStep);
+        if (currentIndex > 0) {
+          set({ currentStep: steps[currentIndex - 1], lastUpdated: Date.now() });
+        }
       },
 
       canResume: () => {

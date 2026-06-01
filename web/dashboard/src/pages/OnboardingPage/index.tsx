@@ -23,7 +23,7 @@ import {
   Users,
   Zap,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Confetti from 'react-confetti';
 import { useNavigate } from 'react-router-dom';
 // import { useAuthStore } from "@/stores/authStore";
@@ -84,11 +84,24 @@ export function OnboardingPage() {
   const [showSkipDialog, setShowSkipDialog] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
 
-  // Determine steps based on user role
   const steps = userRole === 'admin' ? [...baseSteps, ...adminSteps] : baseSteps;
-
   const currentStepIndex = steps.findIndex((s) => s.id === currentStep);
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (showSkipDialog || isCompleting) return;
+
+      if (e.key === 'ArrowRight' && currentStepIndex < steps.length - 1) {
+        handleNext();
+      } else if (e.key === 'ArrowLeft' && currentStepIndex > 0) {
+        handleBack();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentStepIndex, steps.length, showSkipDialog, isCompleting]);
 
   const handleNext = async () => {
     // Special handling for team-setup step - this might change the steps shown
@@ -134,9 +147,7 @@ export function OnboardingPage() {
 
   const handleBack = () => {
     if (currentStepIndex > 0) {
-      // Allow going back to welcome step
-      const prevStep = steps[currentStepIndex - 1].id;
-      useOnboardingStore.setState({ currentStep: prevStep as OnboardingStep });
+      useOnboardingStore.getState().goToPrevStep();
     }
   };
 
@@ -188,6 +199,16 @@ export function OnboardingPage() {
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-2xl">
+          {/* ARIA live region for step changes */}
+          <div
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            className="sr-only"
+          >
+            {`Step ${currentStepIndex + 1} of ${steps.length}: ${steps[currentStepIndex]?.title || ''}`}
+          </div>
+
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
@@ -422,13 +443,19 @@ export function OnboardingPage() {
                 return (
                   <div
                     key={step.id}
+                    role="listitem"
+                    aria-current={isActive ? 'step' : undefined}
                     className={`onboarding-stepper-item ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}
                   >
                     <div className="onboarding-stepper-icon">
                       {isCompleted ? (
                         <CheckCircle className="w-5 h-5" />
                       ) : (
-                        Icon ? <Icon className="w-5 h-5" /> : null
+                        Icon ? (
+                          <HelpTooltip content={`${step.title}: ${step.description}`}>
+                            <Icon className="w-5 h-5 cursor-help" />
+                          </HelpTooltip>
+                        ) : null
                       )}
                     </div>
                     <div className="onboarding-stepper-content">
@@ -495,10 +522,18 @@ export function OnboardingPage() {
             </div>
           </div>
           <DialogFooter className="onboarding-skip-dialog-footer">
-            <button onClick={() => setShowSkipDialog(false)} className="onboarding-skip-btn-continue">
+            <button
+              onClick={() => setShowSkipDialog(false)}
+              className="onboarding-skip-btn-continue"
+              aria-label="Continue onboarding"
+            >
               Continue Onboarding
             </button>
-            <button onClick={confirmSkip} className="onboarding-skip-btn-skip">
+            <button
+              onClick={confirmSkip}
+              className="onboarding-skip-btn-skip"
+              aria-label="Skip onboarding"
+            >
               Skip Anyway
             </button>
           </DialogFooter>
@@ -531,12 +566,12 @@ export function OnboardingPage() {
             >
               {/* Celebration particles */}
               <div className="absolute inset-0 pointer-events-none">
-                {[...Array(50)].map((_, i) => (
+                {[...Array(20)].map((_, i) => (
                   <motion.div
                     key={i}
                     className="absolute w-3 h-3 rounded-full"
                     style={{
-                      background: `linear-gradient(45deg, ${['#FF6B35', '#FF4F5E', '#00D4FF', '#FFB800', '#5B7CF5'][Math.floor(Math.random() * 5)]}, transparent)`,
+                      background: ['var(--ff-flame)', 'var(--ff-cyan)', 'var(--ff-taxiway)', 'var(--ff-stratosphere)', 'var(--ff-afterburner)'][i % 5],
                       left: `${Math.random() * 100}%`,
                       top: `${Math.random() * 100}%`,
                     }}

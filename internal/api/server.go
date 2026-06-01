@@ -36,6 +36,7 @@ import (
 	"github.com/functionfly/functionfly/internal/provisioning"
 	"github.com/functionfly/functionfly/internal/recommendations"
 	"github.com/functionfly/functionfly/internal/routing"
+	"github.com/functionfly/functionfly/internal/scheduler"
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/storage"
 	staterepo "github.com/functionfly/functionfly/internal/storage/state"
@@ -135,6 +136,10 @@ type Server struct {
 	// Bundle provisioning
 	bundleProvisioner    *provisioning.BundleProvisioner
 	provisioningHandler  *provisioning.Handler
+
+	// Certification schedulers (use repo directly, not handler)
+	certExamExpiryScheduler *scheduler.CertExamExpiryScheduler
+	certCredExpiryScheduler *scheduler.CertCredentialExpiryScheduler
 }
 
 func NewServer(db *storage.PostgresDB) *Server {

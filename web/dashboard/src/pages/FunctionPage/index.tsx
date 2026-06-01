@@ -75,7 +75,7 @@ export default function FunctionPage() {
     queryKey: ['function-trust-history', functionInfo?.id],
     queryFn: async () => {
       if (!functionInfo?.id) return null;
-      const response = await fetch(`/v1/platform/functions/${functionInfo.id}/trust/history?page_size=30`);
+      const response = await fetch(`/v1/functions/${functionInfo.id}/trust/history?page_size=30`);
       if (!response.ok) return null;
       return response.json();
     },

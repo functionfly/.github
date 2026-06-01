@@ -42,6 +42,16 @@ func providerResponse(p *storage.Provider) map[string]interface{} {
 	return result
 }
 
+// listProviderFromStorage maps a storage.Provider to the list view format.
+func listProviderFromStorage(p *storage.Provider) map[string]interface{} {
+	return providerResponse(p)
+}
+
+// connectedProviderResponse is an alias for providerResponse.
+func connectedProviderResponse(p *storage.Provider) map[string]interface{} {
+	return providerResponse(p)
+}
+
 // maskAPIKey returns a masked version of an API key showing first 4 and last 4 characters.
 // For pipe-delimited AWS credentials, masks each field individually.
 func maskAPIKey(key string) string {

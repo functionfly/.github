@@ -8,7 +8,6 @@
     "description": {
       "type": "string"
     },
-<<<<<<< Updated upstream
     "editUrl": {
       "default": true,
       "anyOf": [
@@ -618,10 +617,6 @@
     "draft": {
       "default": false,
       "type": "boolean"
-=======
-    "order": {
-      "type": "number"
->>>>>>> Stashed changes
     },
     "$schema": {
       "type": "string"

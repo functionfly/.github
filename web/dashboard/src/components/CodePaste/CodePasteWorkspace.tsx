@@ -166,39 +166,26 @@ export function CodePasteWorkspace({
   }, [parseCode]);
 
   const handleImport = useCallback(async () => {
-    const result = await importFunctions(functions, selectedIds, importConfig);
+    const success = await importFunctions(functions, selectedIds, importConfig);
 
-    if (result.errors.length > 0) {
-      setImportErrors(result.errors);
-    } else {
-      setImportErrors([]);
-    }
-
-    if (result.success && result.created.length > 0) {
-      const failedCount = result.errors.length;
-      if (failedCount > 0) {
-        toast.success(
-          `Imported ${result.created.length} function${result.created.length !== 1 ? 's' : ''}, ${failedCount} failed`
-        );
-        return;
-      }
-
+    if (success && createdFunctions.length > 0) {
       toast.success(
-        `Successfully imported ${result.created.length} function${result.created.length !== 1 ? 's' : ''}`
+        `Successfully imported ${createdFunctions.length} function${createdFunctions.length !== 1 ? 's' : ''}`
       );
-      onImportComplete?.(result.created);
+      onImportComplete?.(createdFunctions);
       resetWorkspace();
       return;
     }
 
-    if (result.errors.length > 0) {
+    if (importErrors.length > 0) {
+      setImportErrors(importErrors);
       toast.error(
-        result.errors.length === 1
-          ? `Import failed: ${result.errors[0].error}`
-          : `${result.errors.length} functions failed to import`
+        importErrors.length === 1
+          ? `Import failed: ${importErrors[0].error}`
+          : `${importErrors.length} functions failed to import`
       );
     }
-  }, [functions, selectedIds, importConfig, importFunctions, onImportComplete, resetWorkspace]);
+  }, [functions, selectedIds, importConfig, importFunctions, createdFunctions, importErrors, onImportComplete, resetWorkspace]);
 
   const handleFunctionPreview = useCallback((func: ParsedFunction) => {
     setPreviewFunction(func);

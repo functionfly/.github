@@ -610,7 +610,6 @@ function AppContent() {
           <Route path="state-fabric/new" element={<StateFabricDetailPage />} />
           <Route path="state-fabric/:id" element={<StateFabricDetailPage />} />
           <Route path="state-fabric/:id/edit" element={<StateFabricDetailPage />} />
-          <Route path="backends" element={<BundlePricingPage />} />
           <Route path="bundles" element={<BundlePricingPage />} />
           <Route path="bundles/provisioning" element={<BundleProvisioningPage />} />
 

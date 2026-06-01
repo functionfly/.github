@@ -15,6 +15,7 @@
 use anyhow::Result;
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 
@@ -193,17 +194,24 @@ pub type SharedKVStore = Arc<RwLock<KVStore>>;
 /// every 30 seconds and is the only place that scans the full store.
 ///
 /// Returns the `JoinHandle` so the caller can abort the task on shutdown.
-pub fn start_background_cleanup(store: SharedKVStore) -> tokio::task::JoinHandle<()> {
+pub fn start_background_cleanup(store: SharedKVStore, shutdown_flag: Arc<AtomicBool>) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(30));
         loop {
-            interval.tick().await;
-            let mut kv = store.write().await;
-            let before = kv.store.len();
-            kv.cleanup_expired();
-            let after = kv.store.len();
-            if before != after {
-                tracing::debug!("KV background cleanup: removed {} expired entries", before - after);
+            tokio::select! {
+                _ = interval.tick() => {
+                    if shutdown_flag.load(Ordering::Relaxed) {
+                        tracing::debug!("KV cleanup: shutdown requested, stopping");
+                        break;
+                    }
+                    let mut kv = store.write().await;
+                    let before = kv.store.len();
+                    kv.cleanup_expired();
+                    let after = kv.store.len();
+                    if before != after {
+                        tracing::debug!("KV background cleanup: removed {} expired entries", before - after);
+                    }
+                }
             }
         }
     })

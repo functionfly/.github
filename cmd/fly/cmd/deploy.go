@@ -25,10 +25,10 @@ Supports multi-environment deployment, rollback capabilities, and deployment pip
 Automatically handles bundling, artifact creation, and infrastructure provisioning.
 
 Examples:
-  fly deploy
-  fly deploy --env=staging
-  fly deploy --preview
-  fly deploy --force`,
+  ff deploy
+  ff deploy --env=staging
+  ff deploy --preview
+  ff deploy --force`,
 	Run: deployRun,
 }
 

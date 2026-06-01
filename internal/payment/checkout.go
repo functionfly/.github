@@ -6,12 +6,15 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/functionfly/functionfly/internal/config"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"github.com/stripe/stripe-go/v83"
 	"github.com/stripe/stripe-go/v83/checkout/session"
+	"github.com/stripe/stripe-go/v83/customer"
 	stripeSub "github.com/stripe/stripe-go/v83/subscription"
 )
 
@@ -509,4 +512,143 @@ func UpdateBundleSubscription(ctx context.Context, req UpdateBundleSubscriptionR
 	}
 
 	return nil
+}
+
+func GetOrCreateStripeCustomerForTenant(ctx context.Context, tenantID uuid.UUID, email, name string) (string, error) {
+	if stripeKey() == "" {
+		return "", fmt.Errorf("STRIPE_SECRET_KEY is not set")
+	}
+
+	if tenantID == uuid.Nil {
+		return "", fmt.Errorf("tenant_id is required")
+	}
+	if email == "" {
+		return "", fmt.Errorf("email is required")
+	}
+
+	params := &stripe.CustomerParams{
+		Email: stripe.String(email),
+		Name:  stripe.String(name),
+		Metadata: map[string]string{
+			"tenant_id": tenantID.String(),
+		},
+	}
+
+	c, err := customer.New(params)
+	if err != nil {
+		return "", fmt.Errorf("failed to create stripe customer: %w", err)
+	}
+
+	return c.ID, nil
+}
+
+type CreateCertExamCheckoutSessionRequest struct {
+	SuccessURL  string
+	CancelURL   string
+	TenantID    uuid.UUID
+	UserID      uuid.UUID
+	TierSlug    string
+	ExamID      uuid.UUID
+	PriceCents  int
+	ProductName string
+	ProductDesc string
+}
+
+func CreateCertExamCheckoutSessionSimple(
+	ctx context.Context,
+	customerID string,
+	email string,
+	req CreateCertExamCheckoutSessionRequest,
+) (*CreateCheckoutSessionResponse, error) {
+	if stripeKey() == "" {
+		return nil, fmt.Errorf("STRIPE_SECRET_KEY is not set")
+	}
+
+	if req.PriceCents <= 0 {
+		return nil, fmt.Errorf("price must be greater than 0")
+	}
+
+	if req.ExamID == uuid.Nil {
+		return nil, fmt.Errorf("exam_id is required")
+	}
+
+	frontendURL := config.GetFrontendURL()
+
+	successURL := req.SuccessURL
+	cancelURL := req.CancelURL
+	if successURL == "" {
+		successURL = frontendURL + "/certification?exam=" + req.ExamID.String() + "&paid=true"
+	}
+	if cancelURL == "" {
+		cancelURL = frontendURL + "/certification"
+	}
+
+	successURL = SanitizeReturnURL(successURL, frontendURL+"/certification")
+	cancelURL = SanitizeReturnURL(cancelURL, frontendURL+"/certification")
+
+	metadata := map[string]string{
+		"purpose":   "cert_exam",
+		"tenant_id": req.TenantID.String(),
+		"user_id":   req.UserID.String(),
+		"tier_slug": req.TierSlug,
+		"exam_id":   req.ExamID.String(),
+	}
+
+	params := &stripe.CheckoutSessionParams{
+		Customer: stripe.String(customerID),
+		Mode:     stripe.String(string(stripe.CheckoutSessionModePayment)),
+		LineItems: []*stripe.CheckoutSessionLineItemParams{
+			{
+				PriceData: &stripe.CheckoutSessionLineItemPriceDataParams{
+					Currency: stripe.String("usd"),
+					UnitAmount: stripe.Int64(int64(req.PriceCents)),
+					ProductData: &stripe.CheckoutSessionLineItemPriceDataProductDataParams{
+						Name:        stripe.String(req.ProductName),
+						Description: stripe.String(req.ProductDesc),
+					},
+				},
+				Quantity: stripe.Int64(1),
+			},
+		},
+		SuccessURL: stripe.String(successURL),
+		CancelURL:  stripe.String(cancelURL),
+		PaymentIntentData: &stripe.CheckoutSessionPaymentIntentDataParams{
+			Metadata: metadata,
+		},
+		Metadata: metadata,
+	}
+
+	sess, err := session.New(params)
+	logrus.WithFields(logrus.Fields{
+		"stripe_key_set": stripe.Key != "",
+		"stripe_key_prefix": func() string { if len(stripe.Key) > 10 { return stripe.Key[:10] }; return "empty" }(),
+		"session_id_after_new": func() string { if sess != nil { return sess.ID }; return "nil" }(),
+		"session_url_after_new": func() string { if sess != nil { return sess.URL }; return "nil" }(),
+		"err_after_new": err,
+		"params_customer": params.Customer,
+		"params_mode": params.Mode,
+	}).Info("CreateCertExamCheckoutSessionSimple: after session.New")
+	if err != nil {
+		return nil, fmt.Errorf("create cert exam checkout session: %w", err)
+	}
+	if sess.URL == "" {
+		return nil, fmt.Errorf("checkout session has no URL")
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"session_id": sess.ID,
+		"session_url": sess.URL,
+		"error": err,
+		"mode": "payment",
+		"price_cents": req.PriceCents,
+		"metadata": metadata,
+		"customer_id": customerID,
+		"email": email,
+		"time": time.Now(),
+	}).Info("CreateCertExamCheckoutSessionSimple: created session")
+
+	return &CreateCheckoutSessionResponse{
+		SessionID: sess.ID,
+		URL:       sess.URL,
+	}, nil
 }

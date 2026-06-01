@@ -154,7 +154,7 @@ CREATE TABLE IF NOT EXISTS cert_practical_challenges (
     -- Grading config (JSONB for flexibility — DRY with execution patterns)
     grading_config  JSONB NOT NULL,                 -- see GradingConfig struct below
     -- Validation function (deployed by FunctionFly for auto-grading)
-    validator_function_id UUID,                     -- optional: links to a platform function
+    validator_function_id UUID,                     -- optional: links to a registry function
     is_active       BOOLEAN NOT NULL DEFAULT true,
     metadata        JSONB DEFAULT '{}',
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),

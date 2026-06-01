@@ -3,11 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "description": "FunctionFly™ - Serverless Function Platform",
-  "workspaces": [
-    "web/*",
-    "packages/*",
-    "!packages/shared"
-  ],
   "scripts": {
     "dev": "nx run-many -t dev -p dashboard,functionfly-marketing,functionfly-blog,docs,admin-dashboard,functionfly-auth --parallel=6",
     "dev:all": "nx run-many -t dev --all --parallel=4",

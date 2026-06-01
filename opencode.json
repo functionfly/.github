@@ -1,28 +1,27 @@
 {
-  "$schema": "https://opencode.ai/config.json",
-  "plugin": ["@daytona/opencode"],
-  "provider": {},
-  "shell": "zsh",
-  "permission": {
-    "bash": "allow",
-    "edit": "allow",
-    "write": "allow",
-    "read": "allow",
-    "grep": "allow",
-    "glob": "allow",
-    "webfetch": "allow",
-    "websearch": "allow",
-    "lsp": "allow"
-  },
-  "watcher": {
-    "ignore": [
-      "node_modules/**",
-      "dist/**",
-      "build/**",
-      ".git/**",
-      "**/node_modules/**",
-      "**/dist/**",
-      "**/build/**"
-    ]
-  }
+    "$schema": "https://opencode.ai/config.json",
+    "provider": {},
+    "shell": "zsh",
+    "permission": {
+        "bash": "allow",
+        "edit": "allow",
+        "write": "allow",
+        "read": "allow",
+        "grep": "allow",
+        "glob": "allow",
+        "webfetch": "allow",
+        "websearch": "allow",
+        "lsp": "allow"
+    },
+    "watcher": {
+        "ignore": [
+            "node_modules/**",
+            "dist/**",
+            "build/**",
+            ".git/**",
+            "**/node_modules/**",
+            "**/dist/**",
+            "**/build/**"
+        ]
+    }
 }

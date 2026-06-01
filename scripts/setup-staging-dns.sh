@@ -165,7 +165,7 @@ declare -a DNS_RECORDS=(
 check_cloudflare_cli() {
     if ! command -v cloudflare &> /dev/null; then
         log_warning "Cloudflare CLI not found. Install with:"
-        log_info "  npm install -g cloudflared"
+        log_info "  npm install -g cloudflare"
         log_info "  or"
         log_info "  brew install cloudflared"
         log_info ""
@@ -230,7 +230,9 @@ print_cloudflare_cli_commands() {
         local proxied_flag="--proxied"
         [ "$proxied" = "false" ] && proxied_flag=""
 
-        log_cmd "cloudflared tunnel route dns $name $content"
+        # Use Cloudflare dashboard or API to create DNS records
+        # API: cloudflare api zones/_zone_ID_/dns_records POST \
+        #   -d '{"type":"CNAME","name":"'"$name"'","content":"'"$content"'","ttl":'"$ttl"',"proxied":'"$proxied_json"'}'
         echo "# $comment"
         echo
     done

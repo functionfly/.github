@@ -21,18 +21,19 @@ type StudioSettings struct {
 }
 
 type Settings struct {
-	Theme             string   `json:"theme"`
-	PrimaryColor      string   `json:"primary_color"`
-	FontSize          int      `json:"font_size"`
-	SidebarPosition   string   `json:"sidebar_position"`
-	CompactMode       bool     `json:"compact_mode"`
-	AnimationsEnabled bool     `json:"animations_enabled"`
-	Transparency      bool     `json:"transparency_enabled"`
-	NotificationLevel string   `json:"notification_level"`
-	SoundEnabled      bool     `json:"sound_enabled"`
-	AutoSave          bool     `json:"auto_save"`
-	AutoSaveInterval  int      `json:"auto_save_interval"`
-	EditorFeatures    EditorFeatures `json:"editor_features"`
+	Theme               string               `json:"theme"`
+	PrimaryColor        string               `json:"primary_color"`
+	FontSize            int                  `json:"font_size"`
+	SidebarPosition     string               `json:"sidebar_position"`
+	CompactMode         bool                 `json:"compact_mode"`
+	AnimationsEnabled   bool                 `json:"animations_enabled"`
+	Transparency        bool                 `json:"transparency_enabled"`
+	NotificationLevel   string               `json:"notification_level"`
+	SoundEnabled        bool                 `json:"sound_enabled"`
+	AutoSave            bool                 `json:"auto_save"`
+	AutoSaveInterval    int                  `json:"auto_save_interval"`
+	EditorFeatures      EditorFeatures       `json:"editor_features"`
+	AccountPreferences  *AccountPreferences `json:"account_preferences,omitempty"`
 }
 
 type EditorFeatures struct {
@@ -40,6 +41,87 @@ type EditorFeatures struct {
 	Minimap         bool `json:"minimap"`
 	LineNumbers     bool `json:"line_numbers"`
 	WordWrap        bool `json:"word_wrap"`
+}
+
+type LastWorkspaceState struct {
+	Route string `json:"route"`
+}
+
+type AccountPreferences struct {
+	LaunchAtLogin           bool                `json:"launch_at_login"`
+	MinimizeToTrayOnClose   bool                `json:"minimize_to_tray_on_close"`
+	RestoreLastWorkspace    bool                `json:"restore_last_workspace"`
+	OpenLinksExternally     bool                `json:"open_links_externally"`
+	LastWorkspace           *LastWorkspaceState `json:"last_workspace,omitempty"`
+}
+
+type AccountPreferencesPatch struct {
+	LaunchAtLogin         *bool `json:"launch_at_login,omitempty"`
+	MinimizeToTrayOnClose *bool `json:"minimize_to_tray_on_close,omitempty"`
+	RestoreLastWorkspace  *bool `json:"restore_last_workspace,omitempty"`
+	OpenLinksExternally   *bool `json:"open_links_externally,omitempty"`
+	LastWorkspace         *LastWorkspaceState `json:"last_workspace,omitempty"`
+}
+
+func DefaultAccountPreferences() *AccountPreferences {
+	return&AccountPreferences{
+		LaunchAtLogin:         false,
+		MinimizeToTrayOnClose: true,
+		RestoreLastWorkspace:  true,
+		OpenLinksExternally:   true,
+		LastWorkspace:         nil,
+	}
+}
+
+func ApplyAccountPreferencesPatch(current *AccountPreferences, patch AccountPreferencesPatch) *AccountPreferences {
+	result := *current
+	if patch.LaunchAtLogin != nil {
+		result.LaunchAtLogin = *patch.LaunchAtLogin
+	}
+	if patch.MinimizeToTrayOnClose != nil {
+		result.MinimizeToTrayOnClose = *patch.MinimizeToTrayOnClose
+	}
+	if patch.RestoreLastWorkspace != nil {
+		result.RestoreLastWorkspace = *patch.RestoreLastWorkspace
+	}
+	if patch.OpenLinksExternally != nil {
+		result.OpenLinksExternally = *patch.OpenLinksExternally
+	}
+	if patch.LastWorkspace != nil {
+		result.LastWorkspace = patch.LastWorkspace
+	}
+	return &result
+}
+
+func MergeAccountPreferences(existing, incoming *AccountPreferences) *AccountPreferences {
+	result := *incoming
+	if result.LastWorkspace == nil && existing.LastWorkspace != nil {
+		result.LastWorkspace = existing.LastWorkspace
+	}
+	return &result
+}
+
+func DefaultSettings() *Settings {
+	return&Settings{
+		Theme:               "dark",
+		PrimaryColor:        "#6366f1",
+		FontSize:            14,
+		SidebarPosition:     "left",
+		CompactMode:         false,
+		AnimationsEnabled:   true,
+		Transparency:        false,
+		NotificationLevel:   "all",
+		SoundEnabled:        true,
+		AutoSave:            true,
+		AutoSaveInterval:    30,
+		EditorFeatures: EditorFeatures{
+			BracketMatching: true,
+			Minimap:         true,
+			LineNumbers:     true,
+			WordWrap:        false,
+		},
+		AccountPreferences: DefaultAccountPreferences(),
+	}
 }
 
 type StudioSettingsRepository struct {

@@ -31,7 +31,7 @@ Then in another terminal: `curl http://localhost:8080/api/health`
 | **Marketing site (Astro)** | `web/site/` | Static landing, trust, legal, blog shell; `bun run dev` → port **4321**; `bun run build` → `dist/` |
 | **Public docs (Astro)** | `web/docs/` | User-facing guides (synced Markdown); separate from dashboard; `bun run dev` → port **4322**; dashboard `/docs` redirects here |
 | **Deploy / edge** | `deploy/`, `deploy/edge/` | Caddy, DNS, VPS/edge scripts |
-| **Cloudflare** | `docs/CLOUDFLARE.md`, `deploy/cloudflare/`, `deploy/dns/` | DNS, CDN, R2, Workers, Tunnel, Pages |
+| **Cloudflare** | `docs/CLOUDFLARE.md`, `deploy/dns/` | DNS, CDN, R2, Workers, Tunnel, Pages |
 | **Repo docs (Markdown)** | `docs/` | Design, ops, internal guides (not the public docs site) |
 | **Local PG 17 + pgvector** | `docs/LOCAL_POSTGRES_17.md` | PostgreSQL 17 with pgvector and extensions for local dev |
 | **Go modules** | `go.work`, `go.mod` | Workspace with main module + `cmd/flypy-go/` + `cmd/delete-functions/` for incremental builds |

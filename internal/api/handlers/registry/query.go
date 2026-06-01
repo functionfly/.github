@@ -16,20 +16,17 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Trust score constants for functionfly trusted author backfill
 const (
 	TrustedAuthorTrustScore    = 0.9
 	TrustedAuthorTrustScorePct = 90.0
 	TrustedAuthorDriftScore    = 1.0
 )
 
-// Pagination defaults
 const (
 	DefaultLimit = 20
 	MaxLimit     = 100
 )
 
-// HandleGetFunction handles getting function info
 func (h *Handler) HandleGetFunction(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	author := vars["author"]
@@ -47,19 +44,15 @@ func (h *Handler) HandleGetFunction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get latest version
 	fnVersion, err := h.repo.GetLatestFunctionVersion(fn.ID)
 	if err != nil {
 		http.Error(w, "No versions available", http.StatusNotFound)
 		return
 	}
 
-	// Include rating for trust_score and trust_level on function profile
 	rating, _ := h.repo.GetRatingByFunctionID(fn.ID)
 	info := fn.ToInfoWithRating(fnVersion, rating)
 
-	// Backfill high trust for functionfly when rating is missing or still at default 0 (e.g. published before we set defaults)
-	// This runs async to not block the response
 	if strings.EqualFold(fn.Author, "functionfly") {
 		go func() {
 			localRating := rating
@@ -67,7 +60,7 @@ func (h *Handler) HandleGetFunction(w http.ResponseWriter, r *http.Request) {
 				localRating, _ = h.repo.GetOrCreateRating(fn.ID)
 			}
 			if localRating != nil && localRating.TrustScore == 0 {
-				localRating.TrustScore = TrustedAuthorTrustScore // DB stores 0-1; API response will send 90 for frontend
+				localRating.TrustScore = TrustedAuthorTrustScore
 				localRating.ReliabilityScore = TrustedAuthorTrustScore
 				localRating.SuccessRate = TrustedAuthorTrustScore
 				if err := h.repo.UpdateTrustScore(localRating); err != nil {
@@ -82,7 +75,6 @@ func (h *Handler) HandleGetFunction(w http.ResponseWriter, r *http.Request) {
 					_ = h.repo.UpdateTrustScoreV2(fn.ID, dreScores, TrustedAuthorTrustScore)
 				}
 			}
-			// Ensure function-level scores are high for display (reliability_score, deterministic_score)
 			if fn.ReliabilityScore == 0 && fn.DeterministicScore == 0 {
 				_, _ = h.repo.UpdateRegistryFunction(fn.ID, map[string]interface{}{
 					"reliability_score":   TrustedAuthorTrustScorePct,
@@ -91,20 +83,16 @@ func (h *Handler) HandleGetFunction(w http.ResponseWriter, r *http.Request) {
 			}
 		}()
 
-		// Set response values immediately (optimistic)
-		info["trust_score"] = int(TrustedAuthorTrustScorePct) // 0-100 scale for frontend
+		info["trust_score"] = int(TrustedAuthorTrustScorePct)
 		info["trust_level"] = "high"
 		info["success_rate"] = TrustedAuthorTrustScore
 		info["reliability"] = int(TrustedAuthorTrustScorePct)
 	}
 
-	// Include verification status so UI can show Verified for functionfly / approved functions
 	verStatus, _ := h.repo.GetVerificationStatus(fnVersion.ID)
 	verified := verStatus != nil && verStatus.OverallStatus == "verified"
 	if !verified && strings.EqualFold(fn.Author, "functionfly") {
-		// Optimistically mark as verified in response
 		verified = true
-		// Backfill verification row async so future requests don't hit "record not found"
 		go func() {
 			now := time.Now()
 			status := &storageregistry.RegistryFunctionVerificationStatus{
@@ -131,46 +119,52 @@ func (h *Handler) HandleGetFunction(w http.ResponseWriter, r *http.Request) {
 	remixCount, _ := h.repo.CountRemixesForFunction(fn.ID)
 	info["remix_count"] = remixCount
 
-	// Expand manifest if requested
-	logrus.WithField("expand", r.URL.Query().Get("expand")).Info("HandleGetFunction: expand parameter value")
 	if r.URL.Query().Get("expand") == "manifest" {
 		var manifest functionregistry.FunctionManifest
 		if err := json.Unmarshal(fnVersion.Manifest, &manifest); err == nil {
-			// Transform manifest for frontend compatibility:
-			// - Frontend expects input.schema.properties but manifest has input.properties
-			// - Frontend expects output.schema.properties but manifest has output.properties
-			// - Frontend expects examples array but manifest doesn't have it
 			transformedManifest := transformManifestForFrontend(manifest)
 			info["manifest"] = transformedManifest
-			logrus.WithFields(logrus.Fields{
-				"author": author,
-				"name":   name,
-				"manifest_input_type": func() string {
-					if manifest.Input != nil {
-						return manifest.Input.Type
-					}
-					return "nil"
-				}(),
-				"manifest_input_props_len": func() int {
-					if manifest.Input != nil {
-						return len(manifest.Input.Properties)
-					}
-					return 0
-				}(),
-			}).Info("Manifest expanded and transformed")
-		} else {
-			logrus.WithError(err).Warn("Failed to unmarshal manifest for expand=manifest")
 		}
-	} else {
-		// Debug: log when expand != manifest
-		logrus.WithField("expand", r.URL.Query().Get("expand")).Debug("Manifest expand not requested")
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(info)
 }
 
-// buildRegistryFunctionInfos loads latest versions and ratings in two queries instead of 2N per-function calls.
+func (h *Handler) HandleGetFunctionByID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	idStr := vars["functionId"]
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		return
+	}
+
+	fn, err := h.repo.GetFunctionByID(id)
+	if err != nil {
+		errStr := err.Error()
+		if strings.Contains(errStr, "record not found") || strings.Contains(errStr, "sql: no rows in result set") {
+			http.Error(w, "Function not found", http.StatusNotFound)
+			return
+		}
+		logrus.WithError(err).Error("Failed to get function by ID")
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	fnVersion, err := h.repo.GetLatestFunctionVersion(fn.ID)
+	if err != nil {
+		http.Error(w, "No versions available", http.StatusNotFound)
+		return
+	}
+
+	rating, _ := h.repo.GetRatingByFunctionID(fn.ID)
+	info := fn.ToInfoWithRating(fnVersion, rating)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(info)
+}
+
 func (h *Handler) buildRegistryFunctionInfos(functions []storageregistry.RegistryFunction) ([]map[string]interface{}, error) {
 	if len(functions) == 0 {
 		return make([]map[string]interface{}, 0), nil
@@ -187,14 +181,8 @@ func (h *Handler) buildRegistryFunctionInfos(functions []storageregistry.Registr
 	if err != nil {
 		return nil, err
 	}
-	likeCounts, err := h.repo.CountLikesForFunctions(ids)
-	if err != nil {
-		logrus.WithError(err).Debug("Failed to batch load like counts")
-	}
-	remixCounts, err := h.repo.CountRemixesForFunctions(ids)
-	if err != nil {
-		logrus.WithError(err).Debug("Failed to batch load remix counts")
-	}
+	likeCounts, _ := h.repo.CountLikesForFunctions(ids)
+	remixCounts, _ := h.repo.CountRemixesForFunctions(ids)
 	out := make([]map[string]interface{}, len(functions))
 	for i, fn := range functions {
 		v := versions[fn.ID]
@@ -207,7 +195,6 @@ func (h *Handler) buildRegistryFunctionInfos(functions []storageregistry.Registr
 	return out, nil
 }
 
-// HandleListFunctions handles listing functions
 func (h *Handler) HandleListFunctions(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	author := r.URL.Query().Get("author")
@@ -251,7 +238,6 @@ func (h *Handler) HandleListFunctions(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-// HandleListMyFunctions handles GET /v2/functions/mine — returns registry functions owned by the authenticated user.
 func (h *Handler) HandleListMyFunctions(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
@@ -293,7 +279,6 @@ func (h *Handler) HandleListMyFunctions(w http.ResponseWriter, r *http.Request) 
 	json.NewEncoder(w).Encode(response)
 }
 
-// HandleSearchFunctions handles searching functions
 func (h *Handler) HandleSearchFunctions(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 
@@ -335,7 +320,6 @@ func (h *Handler) HandleSearchFunctions(w http.ResponseWriter, r *http.Request) 
 	json.NewEncoder(w).Encode(response)
 }
 
-// HandleListVersions handles listing function versions
 func (h *Handler) HandleListVersions(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	author := vars["author"]
@@ -358,8 +342,6 @@ func (h *Handler) HandleListVersions(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(versions)
 }
 
-// HandleGetFunctionSource handles getting the source code for a function version
-// URL: /functions/{author}/{name}/source
 func (h *Handler) HandleGetFunctionSource(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	author := vars["author"]
@@ -394,14 +376,11 @@ func (h *Handler) HandleGetFunctionSource(w http.ResponseWriter, r *http.Request
 	})
 }
 
-// HandleListVersionsAt handles listing function versions using @username URL structure
-// URL: /@/{username}/v1/fx/{functionName}/versions
 func (h *Handler) HandleListVersionsAt(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	username := vars["username"]
 	functionName := vars["functionName"]
 
-	// Remove @ prefix if present
 	if len(username) > 0 && username[0] == '@' {
 		username = username[1:]
 	}
@@ -423,7 +402,6 @@ func (h *Handler) HandleListVersionsAt(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(versions)
 }
 
-// HandleDeleteFunction handles deleting a function
 func (h *Handler) HandleDeleteFunction(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	author := vars["author"]
@@ -447,12 +425,6 @@ func (h *Handler) HandleDeleteFunction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if fn.OwnerUserID == nil || *fn.OwnerUserID != user.UserID {
-		logrus.WithFields(logrus.Fields{
-			"user_id":   user.UserID,
-			"author":    author,
-			"name":      name,
-			"owner_id":  fn.OwnerUserID,
-		}).Warn("Delete function ownership check failed")
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -460,7 +432,6 @@ func (h *Handler) HandleDeleteFunction(w http.ResponseWriter, r *http.Request) {
 	err = h.repo.DeleteFunction(author, name)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to delete function")
-		// Check if it's a "not found" type error
 		if strings.Contains(err.Error(), "record not found") || strings.Contains(err.Error(), "failed to find function") {
 			response := map[string]string{
 				"message": "Function not found",
@@ -485,7 +456,6 @@ func (h *Handler) HandleDeleteFunction(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-// HandleDeleteAllFunctions handles deleting all functions (for reset)
 func (h *Handler) HandleDeleteAllFunctions(w http.ResponseWriter, r *http.Request) {
 	err := h.repo.DeleteAllFunctions()
 	if err != nil {
@@ -502,16 +472,13 @@ func (h *Handler) HandleDeleteAllFunctions(w http.ResponseWriter, r *http.Reques
 	json.NewEncoder(w).Encode(response)
 }
 
-// buildSimilarFunctionInfos efficiently loads function infos using batch queries
 func (h *Handler) buildSimilarFunctionInfos(functions []storageregistry.RegistryFunction, excludeAuthor, excludeName string, maxResults int) []map[string]interface{} {
 	if len(functions) == 0 {
 		return nil
 	}
 
-	// Collect function IDs for batch lookup
 	ids := make([]uuid.UUID, 0, len(functions))
 	for _, f := range functions {
-		// Skip the original function
 		if f.Author == excludeAuthor && f.Name == excludeName {
 			continue
 		}
@@ -522,14 +489,12 @@ func (h *Handler) buildSimilarFunctionInfos(functions []storageregistry.Registry
 		return nil
 	}
 
-	// Batch fetch latest versions
 	versions, err := h.repo.ListLatestVersionsForFunctions(ids)
 	if err != nil {
 		logrus.WithError(err).Debug("Failed to batch load latest versions for similar functions")
 		return nil
 	}
 
-	// Build result list
 	out := make([]map[string]interface{}, 0, maxResults)
 	for _, f := range functions {
 		if f.Author == excludeAuthor && f.Name == excludeName {
@@ -545,7 +510,6 @@ func (h *Handler) buildSimilarFunctionInfos(functions []storageregistry.Registry
 	return out
 }
 
-// HandleGetSimilarFunctions handles getting similar functions
 func (h *Handler) HandleGetSimilarFunctions(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	author := vars["author"]
@@ -557,7 +521,6 @@ func (h *Handler) HandleGetSimilarFunctions(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Search for functions in the same category
 	var similar []map[string]interface{}
 	if fn.Category.Valid && fn.Category.String != "" {
 		functions, _, err := h.repo.SearchFunctions("", fn.Category.String, "", 0, 5, 0)
@@ -566,7 +529,6 @@ func (h *Handler) HandleGetSimilarFunctions(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	// If no similar found by category, return popular functions
 	if len(similar) == 0 {
 		functions, _, err := h.repo.SearchFunctions("", "", "", 50, 5, 0)
 		if err == nil {
@@ -583,18 +545,6 @@ func (h *Handler) HandleGetSimilarFunctions(w http.ResponseWriter, r *http.Reque
 	json.NewEncoder(w).Encode(response)
 }
 
-// transformManifestForFrontend converts the backend FunctionManifest format
-// to the format expected by the frontend playground components.
-//
-// Backend IOType has:
-//   - Properties: json.RawMessage (directly contains { "field": { type, description, ... } })
-//   - Schema: json.RawMessage (may contain nested schema with properties)
-//   - Example: json.RawMessage (opaque bytes)
-//
-// Frontend FunctionInfo.manifest expects:
-//   - input/output.schema: { type, properties: { ... }, required: [...], example: ... }
-//   - input/output.example: fully deserialized value
-//   - examples: [{ name, input, description }] array derived from input.example
 func transformManifestForFrontend(m functionregistry.FunctionManifest) map[string]interface{} {
 	result := make(map[string]interface{})
 
@@ -611,13 +561,11 @@ func transformManifestForFrontend(m functionregistry.FunctionManifest) map[strin
 	return result
 }
 
-// transformIOTypeForFrontend transforms a single IOType to frontend format.
 func transformIOTypeForFrontend(io functionregistry.IOType) map[string]interface{} {
 	result := map[string]interface{}{
 		"type": io.Type,
 	}
 
-	// Handle properties - backend stores this as json.RawMessage containing the properties object
 	if len(io.Properties) > 0 {
 		var props map[string]interface{}
 		if err := json.Unmarshal(io.Properties, &props); err == nil {
@@ -625,35 +573,25 @@ func transformIOTypeForFrontend(io functionregistry.IOType) map[string]interface
 				"type":       io.Type,
 				"properties": props,
 			}
-		} else {
-			logrus.WithError(err).Warn("Failed to unmarshal IOType.Properties")
 		}
 	}
 
-	// Handle schema field if present (may be nested)
 	if len(io.Schema) > 0 {
 		var schema map[string]interface{}
 		if err := json.Unmarshal(io.Schema, &schema); err == nil {
-			// If we don't already have schema from properties, use this one
 			if _, ok := result["schema"]; !ok {
 				result["schema"] = schema
 			}
-		} else {
-			logrus.WithError(err).Warn("Failed to unmarshal IOType.Schema")
 		}
 	}
 
-	// Handle example
 	if len(io.Example) > 0 {
 		var example interface{}
 		if err := json.Unmarshal(io.Example, &example); err == nil {
 			result["example"] = example
-		} else {
-			logrus.WithError(err).Warn("Failed to unmarshal IOType.Example")
 		}
 	}
 
-	// Handle required field
 	if io.Required.IsRequired() {
 		if len(io.Required.Array) > 0 {
 			result["required"] = io.Required.Array
@@ -661,20 +599,6 @@ func transformIOTypeForFrontend(io functionregistry.IOType) map[string]interface
 			result["required"] = true
 		}
 	}
-
-	logrus.WithFields(logrus.Fields{
-		"type":       io.Type,
-		"props_len":  len(io.Properties),
-		"schema_len": len(io.Schema),
-		"example_len": len(io.Example),
-		"result_keys": func() []string {
-			keys := make([]string, 0, len(result))
-			for k := range result {
-				keys = append(keys, k)
-			}
-			return keys
-		}(),
-	}).Info("Transformed IOType")
 
 	return result
 }

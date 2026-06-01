@@ -21,9 +21,10 @@
     "dev": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "VITE_API_URL=/api vite --host 0.0.0.0 --port 3000",
+        "command": "vite --host 0.0.0.0 --port 3000",
         "cwd": "web/dashboard",
         "env": {
+          "VITE_API_URL": "http://localhost:8080",
           "VITE_PROXY_API_TARGET": "http://localhost:8080"
         }
       }

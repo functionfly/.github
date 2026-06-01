@@ -1,7 +1,6 @@
 package statefabric
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -10,11 +9,6 @@ import (
 	"github.com/functionfly/functionfly/internal/plans"
 	statestore "github.com/functionfly/functionfly/internal/storage/state"
 )
-
-// PlanResolver resolves a tenant's billing plan for quota enforcement.
-type PlanResolver interface {
-	GetTenantPlan(ctx context.Context, tenantID uuid.UUID) string
-}
 
 func (h *Handler) requireFabricPermission(
 	w http.ResponseWriter,

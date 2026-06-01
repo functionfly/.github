@@ -95,6 +95,10 @@ func sanitizeFunctionName(name string) string {
 	return name
 }
 
+func sanitizeCode(code string) string {
+	return codeSanitizer.ReplaceAllString(code, "")
+}
+
 func validateFunctionName(name string) error {
 	if name == "" {
 		return &ValidationError{Field: "name", Message: "Function name is required"}
@@ -115,6 +119,39 @@ type ValidationError struct {
 
 func (e *ValidationError) Error() string {
 	return e.Message
+}
+
+var validProviders = map[string]bool{"cloud": true, "edge": true, "local": true}
+var validRegions = map[string]bool{
+	"us-east-1": true, "us-west-1": true, "us-west-2": true,
+	"eu-west-1": true, "eu-central-1": true,
+	"ap-northeast-1": true, "ap-southeast-1": true,
+}
+
+func validateProviders(providers []string) error {
+	if len(providers) == 0 {
+		return &ValidationError{Field: "providers", Message: "At least one provider is required"}
+	}
+	for _, p := range providers {
+		if !validProviders[p] {
+			return &ValidationError{Field: "providers", Message: "Invalid provider: " + p}
+		}
+	}
+	return nil
+}
+
+func validateRegion(region string) error {
+	if region == "" {
+		return nil
+	}
+	if !validRegions[region] {
+		return &ValidationError{Field: "region", Message: "Invalid region: " + region}
+	}
+	return nil
+}
+
+func languageTags(language string) ([]byte, error) {
+	return json.Marshal([]string{language})
 }
 
 func (h *PasteHandler) HandleParseCode(w http.ResponseWriter, r *http.Request) {

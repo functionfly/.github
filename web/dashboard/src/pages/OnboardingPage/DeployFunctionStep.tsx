@@ -221,9 +221,9 @@ export function DeployFunctionStep() {
             width={window.innerWidth}
             height={window.innerHeight}
             recycle={false}
-            numberOfPieces={100}
+            numberOfPieces={50}
             gravity={0.3}
-            colors={['#FF6B35', '#FFB800', '#00D4FF', '#5B7CF5', '#10b981', '#FF4F5E']}
+            colors={['#FF6B35', '#FFB800', '#00D4FF', '#5B7CF5', '#10b981']}
           />
         )}
 
@@ -253,7 +253,7 @@ export function DeployFunctionStep() {
             <div className="text-center py-4 relative">
               {/* Celebration particles */}
               <div className="absolute inset-0 pointer-events-none">
-                {[...Array(20)].map((_, i) => (
+                {[...Array(10)].map((_, i) => (
                   <motion.div
                     key={i}
                     className="absolute w-2 h-2 bg-gradient-to-r from-ff-flame to-ff-cyan rounded-full"

@@ -12,6 +12,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/versioning"
+	storageregistry "github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -19,13 +20,15 @@ import (
 
 // Handler contains version management handlers
 type Handler struct {
-	repo *versioning.Repository
+	repo          *versioning.Repository
+	registryRepo  *storageregistry.RegistryRepository
 }
 
 // NewHandler creates a new version handler
-func NewHandler(repo *versioning.Repository) *Handler {
+func NewHandler(repo *versioning.Repository, registryRepo *storageregistry.RegistryRepository) *Handler {
 	return &Handler{
-		repo: repo,
+		repo:         repo,
+		registryRepo: registryRepo,
 	}
 }
 
@@ -493,14 +496,17 @@ func (h *Handler) HandlePublishVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, _, ok := h.requireFunctionOwner(w, r, functionID)
+	if !ok {
+		return
+	}
+
 	var req versioning.PublishVersionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		// Use defaults if no body
 		req.Version = versionStr
 		req.SetAsLatest = true
 	}
 
-	// Get the function version
 	version, err := h.repo.GetFunctionVersionByVersion(r.Context(), functionID, versionStr)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get function version")

@@ -2,7 +2,7 @@ import { apiClient } from './client';
 
 export type FunctionVersionStatus = 'draft' | 'published' | 'deprecated' | 'archived' | string;
 
-export interface PlatformFunctionVersion {
+export interface RegistryFunctionVersion {
   id: string;
   functionId: string;
   version: string;
@@ -53,19 +53,19 @@ export interface CanaryConfig {
   status?: string;
 }
 
-const platformBase = (functionId: string) => `/v1/platform/functions/${functionId}`;
+const registryBase = (functionId: string) => `/v1/functions/${functionId}`;
 
 export const versionsApi = {
   list(functionId: string, status?: string) {
     const q = status ? `?status=${encodeURIComponent(status)}` : '';
-    return apiClient.get<{ versions: PlatformFunctionVersion[] }>(
-      `${platformBase(functionId)}/versions${q}`
+    return apiClient.get<{ versions: RegistryFunctionVersion[] }>(
+      `${registryBase(functionId)}/versions${q}`
     );
   },
 
   get(functionId: string, version: string) {
-    return apiClient.get<PlatformFunctionVersion>(
-      `${platformBase(functionId)}/versions/${encodeURIComponent(version)}`
+    return apiClient.get<RegistryFunctionVersion>(
+      `${registryBase(functionId)}/versions/${encodeURIComponent(version)}`
     );
   },
 
@@ -74,8 +74,8 @@ export const versionsApi = {
     version: string,
     body?: { setAsLatest?: boolean; setAsStable?: boolean }
   ) {
-    return apiClient.post<PlatformFunctionVersion>(
-      `${platformBase(functionId)}/versions/${encodeURIComponent(version)}/publish`,
+    return apiClient.post<RegistryFunctionVersion>(
+      `${registryBase(functionId)}/versions/${encodeURIComponent(version)}/publish`,
       {
         version,
         setAsLatest: body?.setAsLatest ?? true,
@@ -86,7 +86,7 @@ export const versionsApi = {
 
   archive(functionId: string, version: string, reason?: string) {
     return apiClient.post<{ version: string; status: string; archivedAt?: string }>(
-      `${platformBase(functionId)}/versions/${encodeURIComponent(version)}/archive`,
+      `${registryBase(functionId)}/versions/${encodeURIComponent(version)}/archive`,
       { reason: reason ?? '' }
     );
   },
@@ -97,14 +97,14 @@ export const versionsApi = {
     body: { reason: string; replacedBy?: string; migrationGuide?: string; gracePeriodDays?: number }
   ) {
     return apiClient.post<Record<string, unknown>>(
-      `${platformBase(functionId)}/versions/${encodeURIComponent(version)}/deprecate`,
+      `${registryBase(functionId)}/versions/${encodeURIComponent(version)}/deprecate`,
       body
     );
   },
 
   setAlias(functionId: string, version: string, alias: 'latest' | 'stable') {
     return apiClient.post<{ alias: string; version: string }>(
-      `${platformBase(functionId)}/versions/${encodeURIComponent(version)}/alias/${alias}`,
+      `${registryBase(functionId)}/versions/${encodeURIComponent(version)}/alias/${alias}`,
       {}
     );
   },
@@ -115,7 +115,7 @@ export const versionsApi = {
       fromVersion: string;
       toVersion: string;
       status: string;
-    }>(`${platformBase(functionId)}/versions/${encodeURIComponent(version)}/rollback`, {
+    }>(`${registryBase(functionId)}/versions/${encodeURIComponent(version)}/rollback`, {
       toVersion: version,
       strategy,
     });
@@ -127,18 +127,18 @@ export const versionsApi = {
       fromVersion: string;
       toVersion: string;
       status: string;
-    }>(`${platformBase(functionId)}/rollback`, { strategy });
+    }>(`${registryBase(functionId)}/rollback`, { strategy });
   },
 
   rollbackHistory(functionId: string, limit = 20) {
     return apiClient.get<{ rollbacks: RollbackRecord[] }>(
-      `${platformBase(functionId)}/rollbacks?limit=${limit}`
+      `${registryBase(functionId)}/rollbacks?limit=${limit}`
     );
   },
 
   compare(functionId: string, v1: string, v2: string) {
     return apiClient.get<VersionDiffResponse>(
-      `${platformBase(functionId)}/versions/compare?v1=${encodeURIComponent(v1)}&v2=${encodeURIComponent(v2)}`
+      `${registryBase(functionId)}/versions/compare?v1=${encodeURIComponent(v1)}&v2=${encodeURIComponent(v2)}`
     );
   },
 
@@ -154,7 +154,7 @@ export const versionsApi = {
     }
   ) {
     return apiClient.post<Record<string, unknown>>(
-      `${platformBase(functionId)}/versions/${encodeURIComponent(version)}/changelog`,
+      `${registryBase(functionId)}/versions/${encodeURIComponent(version)}/changelog`,
       body
     );
   },

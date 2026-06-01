@@ -1,6 +1,7 @@
 package statefabric
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -16,9 +17,14 @@ import (
 )
 
 type Handler struct {
-	repo       *repo.Repository
-	sfAddons   *statefabricaddons.Repository
-	cleanupSvc *repo.CleanupService
+	repo         *repo.Repository
+	sfAddons     *statefabricaddons.Repository
+	cleanupSvc   *repo.CleanupService
+	planResolver  PlanResolver
+}
+
+type PlanResolver interface {
+	GetTenantPlan(ctx context.Context, tenantID uuid.UUID) string
 }
 
 func NewHandler(r *repo.Repository, sfAddons *statefabricaddons.Repository) *Handler {
@@ -27,6 +33,10 @@ func NewHandler(r *repo.Repository, sfAddons *statefabricaddons.Repository) *Han
 
 func NewHandlerWithCleanup(r *repo.Repository, sfAddons *statefabricaddons.Repository, cleanupSvc *repo.CleanupService) *Handler {
 	return &Handler{repo: r, sfAddons: sfAddons, cleanupSvc: cleanupSvc}
+}
+
+func NewHandlerWithPlanResolver(r *repo.Repository, sfAddons *statefabricaddons.Repository, pr PlanResolver) *Handler {
+	return &Handler{repo: r, sfAddons: sfAddons, planResolver: pr}
 }
 
 type createFabricRequest struct {

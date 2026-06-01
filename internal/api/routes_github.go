@@ -29,6 +29,7 @@ func registerGitHubRoutes(api *mux.Router, authMiddleware *middleware.AuthMiddle
 	// ── Import operations ─────────────────────────────────────────────────
 	gh.HandleFunc("/imports", authMiddleware.RequireAuth(githubHandler.HandleImport)).Methods("POST")
 	gh.HandleFunc("/imports/preview", authMiddleware.RequireAuth(githubHandler.HandlePreviewImport)).Methods("POST")
+	gh.HandleFunc("/imports/preview/bulk", authMiddleware.RequireAuth(githubHandler.HandlePreviewBulkImport)).Methods("POST")
 	gh.HandleFunc("/imports/bulk", authMiddleware.RequireAuth(githubHandler.HandleBulkImport)).Methods("POST")
 	gh.HandleFunc("/imports", authMiddleware.RequireAuth(githubHandler.HandleListImports)).Methods("GET")
 	gh.HandleFunc("/imports/{importId}", authMiddleware.RequireAuth(githubHandler.HandleGetImport)).Methods("GET")

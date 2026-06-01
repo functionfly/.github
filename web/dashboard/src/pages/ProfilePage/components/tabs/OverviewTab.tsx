@@ -14,6 +14,7 @@ import { AchievementsSection } from '../AchievementsSection';
 import { ContributionActivity } from '../ContributionActivity';
 import { SkillsSection } from '../SkillsSection';
 import { TrustMetricsSection } from '../TrustMetricsSection';
+import { CertificationsSection } from '../CertificationsSection';
 
 export interface OverviewTabProps {
   profile: UserProfile;
@@ -66,6 +67,7 @@ export function OverviewTab({ profile }: OverviewTabProps) {
         {/* Right Column - Achievements, Skills, Trust */}
         <div className="space-y-6">
           <AchievementsSection achievements={profile.achievements} />
+          <CertificationsSection badges={profile.certifications} username={profile.username} />
           <TrustMetricsSection trustScore={profile.stats.trustScore} />
           <SkillsSection skills={profile.skills} />
         </div>

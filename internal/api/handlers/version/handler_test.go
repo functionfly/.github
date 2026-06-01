@@ -12,17 +12,21 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	storageregistry "github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/functionfly/functionfly/internal/versioning"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 // ==================== Test Setup ====================
 
 type handlerTestSuite struct {
 	db      *sql.DB
+	gormDB  *gorm.DB
 	mock    sqlmock.Sqlmock
 	repo    *versioning.Repository
 	handler *Handler
@@ -33,13 +37,18 @@ func setupHandlerTest(t *testing.T) *handlerTestSuite {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 
+	gormDB, err := gorm.Open(postgres.New(postgres.Config{Conn: db}), &gorm.Config{})
+	require.NoError(t, err)
+
 	repo := versioning.NewRepository(db)
-	handler := NewHandler(repo)
+	registryRepo := storageregistry.NewRegistryRepository(gormDB, nil)
+	handler := NewHandler(repo, registryRepo)
 
 	router := mux.NewRouter()
 
 	return &handlerTestSuite{
 		db:      db,
+		gormDB:  gormDB,
 		mock:    mock,
 		repo:    repo,
 		handler: handler,

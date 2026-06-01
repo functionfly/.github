@@ -652,7 +652,7 @@ type InternalFunction struct {
 	EstimatedValue  float64    `json:"estimated_value" gorm:"type:decimal(12,2)"`
 	TimeToValue     string     `json:"time_to_value"`
 	PrivacyLevel    string     `json:"privacy_level" gorm:"default:'internal_team_only'"`
-	CompetitiveEdge any        `json:"competitive_edge"`
+	CompetitiveEdge any        `json:"competitive_edge" gorm:"serializer:json"`
 	RDPhase         string     `json:"rd_phase" gorm:"default:'prototype'"`
 	CreatedAt       time.Time  `json:"created_at" gorm:"autoCreateTime"`
 }

@@ -7,6 +7,7 @@
 
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use tokio::sync::RwLock;
@@ -87,31 +88,38 @@ impl InstancePool {
     /// calling this method. Pass the shared reference so the pruning task
     /// operates on the *same* pool instance that is used by the server, not a
     /// detached clone.
-    pub fn start_background_pruning_shared(shared_pool: Arc<RwLock<InstancePool>>) -> tokio::task::JoinHandle<()> {
+    pub fn start_background_pruning_shared(shared_pool: Arc<RwLock<InstancePool>>, shutdown_flag: Arc<AtomicBool>) -> tokio::task::JoinHandle<()> {
         tokio::spawn(async move {
             let mut interval = interval(TokioDuration::from_secs(60)); // Prune every minute
 
             loop {
-                interval.tick().await;
-                let mut pool_guard = shared_pool.write().await;
+                tokio::select! {
+                    _ = interval.tick() => {
+                        if shutdown_flag.load(Ordering::Relaxed) {
+                            tracing::debug!("InstancePool pruning: shutdown requested, stopping");
+                            break;
+                        }
+                        let mut pool_guard = shared_pool.write().await;
 
-                // Extract logger reference to avoid borrow checker issues
-                let logger_option = pool_guard.logger.clone();
+                        // Extract logger reference to avoid borrow checker issues
+                        let logger_option = pool_guard.logger.clone();
 
-                if let Some(logger) = logger_option {
-                    let correlation_id = logger.generate_correlation_id().await;
-                    let pruned = pool_guard.prune_with_memory_optimization(&correlation_id).await;
-                    if pruned > 0 {
-                        let stats = pool_guard.stats();
-                        logger.log_pool_stats(
-                            &correlation_id,
-                            stats.total_instances,
-                            stats.functions_in_pool,
-                            pruned,
-                        );
+                        if let Some(logger) = logger_option {
+                            let correlation_id = logger.generate_correlation_id().await;
+                            let pruned = pool_guard.prune_with_memory_optimization(&correlation_id).await;
+                            if pruned > 0 {
+                                let stats = pool_guard.stats();
+                                logger.log_pool_stats(
+                                    &correlation_id,
+                                    stats.total_instances,
+                                    stats.functions_in_pool,
+                                    pruned,
+                                );
+                            }
+                        } else {
+                            let _ = pool_guard.prune_with_memory_optimization_simple().await;
+                        }
                     }
-                } else {
-                    let _ = pool_guard.prune_with_memory_optimization_simple().await;
                 }
             }
         })

@@ -18,6 +18,45 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// registerPublicWebhookRoutes registers public webhook endpoints (Paperclip, Stripe).
+// These must be registered BEFORE registerRegistryRoutes to ensure /webhooks/stripe
+// takes precedence over /{author}/{name} pattern matching.
+func registerPublicWebhookRoutes(
+	s *Server,
+	api *mux.Router,
+	registryRepo *storageregistry.RegistryRepository,
+	platformFeeRepo *storageregistry.PlatformFeeRepository,
+	billingOperationalRepo *storage.BillingOperationalRepository,
+) {
+	// ── Paperclip (public webhook) ────────────────────────────────────────────
+	paperclipAdapter := papercliphandler.NewAdapter(logrus.New())
+	papercliphandler.RegisterRoutes(api, paperclipAdapter)
+
+	// ── Stripe Webhook (public — no auth) ─────────────────────────────────────
+	// Initialize dispute and refund repositories for chargeback/refund handling
+	disputeRepo := storage.NewDisputeRepository(s.postgresDB.GORM)
+	refundRepo := storage.NewRefundRepository(s.postgresDB.GORM)
+	stripeWebhookHandler := webhooks.NewStripeWebhookHandler(
+		storage.NewFinancialTransactionRepository(s.postgresDB.GORM),
+		agentbilling.NewController(s.postgresDB.GORM, s.redisClient),
+		s.notificationSvc,
+		s.repo,
+		platformFeeRepo,
+		statefabricaddons.NewRepository(s.postgresDB.GORM),
+		disputeRepo,
+		refundRepo,
+		registryRepo,
+		s.emailSvc,
+		s.postgresDB.CertificationRepository(),
+	)
+	stripeWebhookHandler.SetDunningManager(s.dunningManager)
+	stripeWebhookHandler.SetOperationalRepository(billingOperationalRepo)
+	if s.payoutWebhookProcessor != nil {
+		stripeWebhookHandler.SetPayoutService(s.payoutWebhookProcessor)
+	}
+	stripeWebhookHandler.RegisterRoutes(api)
+}
+
 // registerAgentRoutes wires AEP (Agent Execution Plan), swarm/marketplace/evolution,
 // executable conversations, Paperclip, and Stripe webhook endpoints.
 func registerAgentRoutes(
@@ -33,8 +72,6 @@ func registerAgentRoutes(
 	daemonHandler *agenthandler.DaemonHandler,
 	registryRepo *storageregistry.RegistryRepository,
 	cacheService *cache.CacheService,
-	platformFeeRepo *storageregistry.PlatformFeeRepository,
-	billingOperationalRepo *storage.BillingOperationalRepository,
 ) {
 	// ── AEP Discovery (public) ───────────────────────────────────────────────
 	api.HandleFunc("/agent/discover", aepHandler.HandleDiscover).Methods("GET", "OPTIONS")
@@ -111,36 +148,6 @@ func registerAgentRoutes(
 	// ── Agent Daemon (Always-On) API ─────────────────────────────────────────
 	// Daemon exposes: /agents/{id}/daemon/start, /daemon/stop, /daemon/status, /daemon/config
 	daemonHandler.RegisterDaemonRoutes(protected, "", authMiddleware)
-
-	// ── Paperclip (public webhook) ────────────────────────────────────────────
-	paperclipAdapter := papercliphandler.NewAdapter(logrus.New())
-	papercliphandler.RegisterRoutes(api, paperclipAdapter)
-
-	// ── Stripe Webhook (public — no auth) ─────────────────────────────────────
-	// Initialize dispute and refund repositories for chargeback/refund handling
-	disputeRepo := storage.NewDisputeRepository(s.postgresDB.GORM)
-	refundRepo := storage.NewRefundRepository(s.postgresDB.GORM)
-	stripeWebhookHandler := webhooks.NewStripeWebhookHandler(
-		storage.NewFinancialTransactionRepository(s.postgresDB.GORM),
-		agentbilling.NewController(s.postgresDB.GORM, s.redisClient),
-		s.notificationSvc,
-		s.repo,
-		platformFeeRepo,
-		statefabricaddons.NewRepository(s.postgresDB.GORM),
-		disputeRepo,
-		refundRepo,
-		registryRepo,
-		s.emailSvc,
-	)
-	// Wire up dunning manager for automated payment retry
-	stripeWebhookHandler.SetDunningManager(s.dunningManager)
-	// Wire up operational repository for webhook payload storage and replay
-	stripeWebhookHandler.SetOperationalRepository(billingOperationalRepo)
-	// Wire up payout service for Stripe Connect payout webhook events
-	if s.payoutWebhookProcessor != nil {
-		stripeWebhookHandler.SetPayoutService(s.payoutWebhookProcessor)
-	}
-	stripeWebhookHandler.RegisterRoutes(api)
 
 	// ── Executable Conversations ──────────────────────────────────────────────
 	conversationRepo := storage.NewConversationRepository(s.postgresDB.GORM)

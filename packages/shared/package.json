@@ -1,5 +1,5 @@
 {
-  "name": "@functionfly/shared",
+  "name": "@functionfly/shared-pkg",
   "version": "0.1.0",
   "private": true,
   "type": "module",

@@ -28,17 +28,17 @@ help: ## Show this help message
 build: ## Build all services (optimized with trimpath)
 	go build $(BUILD_FLAGS) -o bin/orchestrator-api ./cmd/orchestrator-api
 	go build $(BUILD_FLAGS) -o bin/health-monitor ./cmd/health-monitor
-	go build $(BUILD_FLAGS) -o bin/ffly ./cmd/ffly
+	go build $(BUILD_FLAGS) -o bin/ff ./cmd/fly
 
 build-fast: ## Fast build for development (allows multiple errors, smaller binaries)
 	go build $(BUILD_FLAGS) $(GC_FLAGS) -o bin/orchestrator-api ./cmd/orchestrator-api
 	go build $(BUILD_FLAGS) $(GC_FLAGS) -o bin/health-monitor ./cmd/health-monitor
-	go build $(BUILD_FLAGS) $(GC_FLAGS) -o bin/ffly ./cmd/ffly
+	go build $(BUILD_FLAGS) $(GC_FLAGS) -o bin/ff ./cmd/fly
 
 build-ci: ## CI-optimized build (cached, parallel, no cgo)
 	CGO_ENABLED=0 go build $(BUILD_FLAGS) $(LD_FLAGS) -o bin/orchestrator-api ./cmd/orchestrator-api
 	CGO_ENABLED=0 go build $(BUILD_FLAGS) $(LD_FLAGS) -o bin/health-monitor ./cmd/health-monitor
-	CGO_ENABLED=0 go build $(BUILD_FLAGS) $(LD_FLAGS) -o bin/ffly ./cmd/ffly
+	CGO_ENABLED=0 go build $(BUILD_FLAGS) $(LD_FLAGS) -o bin/ff ./cmd/fly
 
 build-local-runtime: ## Build the local Rust runtime
 	cd runtimes/local && cargo build --release
@@ -105,15 +105,15 @@ run-microvm: build-microvm-orchestrator ## Run MicroVM orchestrator in productio
 		--port "$${MICROVM_PORT:-9091}" \
 		--max-vms "$${MICROVM_MAX_VMS:-20}"
 
-build-fly: ## Build the fly CLI (bin/fly)
-	go build $(BUILD_FLAGS) -o bin/fly ./cmd/fly
+build-ff: ## Build the ff CLI (bin/ff)
+	go build $(BUILD_FLAGS) -o bin/ff ./cmd/fly
 
-build-fly-fast: ## Fast build of fly CLI for development
-	go build $(BUILD_FLAGS) $(GC_FLAGS) -o bin/fly ./cmd/fly
+build-ff-fast: ## Fast build of ff CLI for development
+	go build $(BUILD_FLAGS) $(GC_FLAGS) -o bin/ff ./cmd/fly
 
-build-fly-release: ## Build the fly CLI with version ldflags (for release-like local binary)
-	@v=$$(git describe --tags --always --dirty 2>/dev/null || echo "dev"); \
-	c=$$(git rev-parse --short HEAD 2>/dev/null || echo ""); \
+build-ff-release: ## Build the ff CLI with version ldflags (for release-like local binary)
+	@v=$$(git describe --tags --always 2>/dev/null || echo "0.0.0"); \
+	c=$$(git rev-parse --short HEAD 2>/dev/null || echo "unknown"); \
 	d=$$(date -u +%Y-%m-%dT%H:%M:%SZ); \
 	go build $(BUILD_FLAGS) -ldflags "-s -w -X github.com/functionfly/functionfly/internal/version.Version=$$v -X github.com/functionfly/functionfly/internal/version.Commit=$$c -X github.com/functionfly/functionfly/internal/version.Date=$$d" ./cmd/fly
 
@@ -126,7 +126,7 @@ release: ## Create and publish a CLI release (requires GITHUB_TOKEN, tag e.g. v1
 release-snapshot: ## Create a snapshot release (no tag required)
 	goreleaser release --clean --snapshot
 
-install-locally: ## Install fly CLI to GOPATH/bin (optimized)
+install-locally: ## Install ff CLI to GOPATH/bin (optimized)
 	go install $(BUILD_FLAGS) ./cmd/fly
 
 dist: ## Build distribution packages for current platform only (no publish)

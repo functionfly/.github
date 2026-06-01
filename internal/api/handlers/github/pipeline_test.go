@@ -178,3 +178,105 @@ func TestMustJSON(t *testing.T) {
 		assert.Equal(t, `["a","b"]`, result)
 	})
 }
+
+func TestIncrementVersion(t *testing.T) {
+	t.Run("increments patch version", func(t *testing.T) {
+		assert.Equal(t, "1.0.1", incrementVersion("1.0.0"))
+		assert.Equal(t, "1.0.2", incrementVersion("1.0.1"))
+		assert.Equal(t, "2.3.9", incrementVersion("2.3.8"))
+	})
+
+	t.Run("handles major versions", func(t *testing.T) {
+		assert.Equal(t, "2.0.0", incrementVersion("1.9.9"))
+		assert.Equal(t, "10.0.0", incrementVersion("9.9.9"))
+	})
+
+	t.Run("returns default for invalid version", func(t *testing.T) {
+		assert.Equal(t, "1.0.0", incrementVersion("invalid"))
+		assert.Equal(t, "1.0.0", incrementVersion("1.0"))
+		assert.Equal(t, "1.0.0", incrementVersion(""))
+	})
+
+	t.Run("handles many increments", func(t *testing.T) {
+		version := "1.0.0"
+		for i := 1; i <= 100; i++ {
+			version = incrementVersion(version)
+		}
+		assert.Equal(t, "1.0.101", version)
+	})
+}
+
+func TestDetectRuntimeFromTreeForSync(t *testing.T) {
+	t.Run("node18 with package.json", func(t *testing.T) {
+		tree := []github.GitHubTreeEntry{
+			{Path: "package.json", Type: "blob"},
+			{Path: "index.js", Type: "blob"},
+		}
+		repo := &storage.GitHubRepo{}
+		assert.Equal(t, "node18", detectRuntimeFromTreeForSync(tree, repo))
+	})
+
+	t.Run("node18-typescript with tsconfig.json", func(t *testing.T) {
+		tree := []github.GitHubTreeEntry{
+			{Path: "package.json", Type: "blob"},
+			{Path: "tsconfig.json", Type: "blob"},
+			{Path: "index.ts", Type: "blob"},
+		}
+		repo := &storage.GitHubRepo{}
+		assert.Equal(t, "node18-typescript", detectRuntimeFromTreeForSync(tree, repo))
+	})
+
+	t.Run("python3.11 with requirements.txt", func(t *testing.T) {
+		tree := []github.GitHubTreeEntry{
+			{Path: "requirements.txt", Type: "blob"},
+			{Path: "main.py", Type: "blob"},
+		}
+		repo := &storage.GitHubRepo{}
+		assert.Equal(t, "python3.11", detectRuntimeFromTreeForSync(tree, repo))
+	})
+
+	t.Run("go1.22 with go.mod", func(t *testing.T) {
+		tree := []github.GitHubTreeEntry{
+			{Path: "go.mod", Type: "blob"},
+			{Path: "main.go", Type: "blob"},
+		}
+		repo := &storage.GitHubRepo{}
+		assert.Equal(t, "go1.22", detectRuntimeFromTreeForSync(tree, repo))
+	})
+
+	t.Run("rust1.75 with Cargo.toml", func(t *testing.T) {
+		tree := []github.GitHubTreeEntry{
+			{Path: "Cargo.toml", Type: "blob"},
+			{Path: "src/main.rs", Type: "blob"},
+		}
+		repo := &storage.GitHubRepo{}
+		assert.Equal(t, "rust1.75", detectRuntimeFromTreeForSync(tree, repo))
+	})
+
+	t.Run("defaults to node18 for unknown", func(t *testing.T) {
+		tree := []github.GitHubTreeEntry{
+			{Path: "README.md", Type: "blob"},
+			{Path: "Makefile", Type: "blob"},
+		}
+		repo := &storage.GitHubRepo{}
+		assert.Equal(t, "node18", detectRuntimeFromTreeForSync(tree, repo))
+	})
+
+	t.Run("uses repo detected runtime when available", func(t *testing.T) {
+		tree := []github.GitHubTreeEntry{
+			{Path: "README.md", Type: "blob"},
+		}
+		detected := "python3.11"
+		repo := &storage.GitHubRepo{DetectedRuntime: &detected}
+		assert.Equal(t, "python3.11", detectRuntimeFromTreeForSync(tree, repo))
+	})
+
+	t.Run("skips non-blob entries", func(t *testing.T) {
+		tree := []github.GitHubTreeEntry{
+			{Path: "src", Type: "tree"},
+			{Path: "src/package.json", Type: "blob"},
+		}
+		repo := &storage.GitHubRepo{}
+		assert.Equal(t, "node18", detectRuntimeFromTreeForSync(tree, repo))
+	})
+}

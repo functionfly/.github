@@ -10,7 +10,7 @@
 | Layer | Storage | Primary API | Who uses it |
 |-------|---------|-------------|-------------|
 | **Registry publish** | `registry_function_versions` | `POST /functions/publish` (auth) | Studio, CLI, publish flow — creates/updates version **rows** + WASM/source |
-| **Platform lifecycle** | Same table + `version_state`, aliases, rollbacks | `/v1/platform/functions/{functionId}/versions/*` | Dashboard owner UI, automation — publish/archive/deprecate/alias/rollback **state** |
+| **Registry lifecycle** | Same table + `version_state`, aliases, rollbacks | `/v1/functions/{functionId}/versions/*` | Dashboard owner UI, automation — publish/archive/deprecate/alias/rollback **state** |
 
 Publishing code goes through **registry publish**. Promoting a draft to `published`, setting `latest`/`stable`, rollbacks, and deprecation use the **platform** routes (by `functionId` UUID).
 
@@ -32,20 +32,20 @@ Code: `internal/api/handlers/registry/authz.go`, `internal/api/handlers/version/
 ### What requires ownership (403 if not owner)
 
 - `POST /functions/publish` when the function **already exists**
-- All mutating `/v1/platform/functions/{functionId}/versions/*` (publish, archive, deprecate, alias, changelog)
-- `POST /v1/platform/functions/{functionId}/rollback` and `.../versions/{version}/rollback`
+- All mutating `/v1/functions/{functionId}/versions/*` (publish, archive, deprecate, alias, changelog)
+- `POST /v1/functions/{functionId}/rollback` and `.../versions/{version}/rollback`
 - Registry canary: `POST/PATCH/DELETE /functions/{author}/{name}/canary*` (handler checks owner)
 
 ### What requires view access (403 on private for strangers)
 
-- `GET /v1/platform/functions/{functionId}/versions` (list)
-- `GET /v1/platform/functions/{functionId}/versions/{version}`
+- `GET /v1/functions/{functionId}/versions` (list)
+- `GET /v1/functions/{functionId}/versions/{version}`
 - `GET /functions/{author}/{name}/source` — **full source** gated by visibility
 - `GET .../versions/compare`, `.../lineage`
 
 ### Owner-only reads (auth required)
 
-- `GET /v1/platform/functions/{functionId}/rollbacks`
+- `GET /v1/functions/{functionId}/rollbacks`
 - `GET .../versions/{version}/deployments` (+ single deployment must belong to that function)
 
 ### Platform API version admin (not function versions)
@@ -67,8 +67,8 @@ Routes: `/internal/contracts`, `/internal/contracts/{service}`, `/internal/contr
 
 ## Rollback behavior
 
-- `POST /v1/platform/functions/{functionId}/rollback` — rolls back to **previous** published version.
-- `POST /v1/platform/functions/{functionId}/versions/{version}/rollback` — rolls back **to** `{version}` (path wins unless body sets `toVersion`).
+- `POST /v1/functions/{functionId}/rollback` — rolls back to **previous** published version.
+- `POST /v1/functions/{functionId}/versions/{version}/rollback` — rolls back **to** `{version}` (path wins unless body sets `toVersion`).
 - Implementation sets `latest` alias to the target version and records a row in `rollback_records`.
 - Strategies are accepted in the API; handler effectively performs **immediate** alias swap today.
 

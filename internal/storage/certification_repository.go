@@ -537,12 +537,14 @@ func (r *CertificationRepository) GetExamByID(ctx context.Context, examID uuid.U
 	}
 
 	// Unmarshal JSONB fields
+	// Special handling for QuestionIDs and PracticalIDs which are []uuid.UUID not JSONMap
+	// Use jsonMapToUUIDs to handle both plain arrays and wrapped {"_ids": [...]} formats
+	exam.QuestionIDs = jsonMapToUUIDs(questionIDsJSON)
+	exam.PracticalIDs = jsonMapToUUIDs(practicalIDsJSON)
 	for _, item := range []struct {
 		data []byte
 		dest *JSONMap
 	}{
-		{questionIDsJSON, &exam.QuestionIDs},
-		{practicalIDsJSON, &exam.PracticalIDs},
 		{answersJSON, &exam.Answers},
 		{practicalResultsJSON, &exam.PracticalResults},
 		{metadataJSON, &exam.Metadata},
@@ -557,13 +559,18 @@ func (r *CertificationRepository) GetExamByID(ctx context.Context, examID uuid.U
 
 // UpdateExamAnswer upserts a single answer in the exam's answers JSONB
 func (r *CertificationRepository) UpdateExamAnswer(ctx context.Context, examID uuid.UUID, questionID uuid.UUID, answer interface{}) error {
-	now := time.Now()
-	_, err := r.db.ExecContext(ctx, `
+	answerJSON, err := json.Marshal(answer)
+	if err != nil {
+		return fmt.Errorf("failed to marshal answer: %w", err)
+	}
+
+	// Use raw SQL with explicit JSON path to avoid pq driver []string limitation
+	_, err = r.db.ExecContext(ctx, `
 		UPDATE cert_exams
-		SET answers = jsonb_set(COALESCE(answers, '{}'), $1, $2::jsonb, true),
+		SET answers = jsonb_set(COALESCE(answers, '{}'), ARRAY[$1], $2::jsonb, true),
 		    updated_at = $3
 		WHERE id = $4 AND status = 'in_progress'`,
-		[]string{questionID.String()}, mustJSON(answer), now, examID)
+		questionID.String(), string(answerJSON), time.Now(), examID)
 	if err != nil {
 		return fmt.Errorf("failed to update exam answer: %w", err)
 	}
@@ -622,16 +629,23 @@ func (r *CertificationRepository) AbandonExam(ctx context.Context, examID uuid.U
 	now := time.Now()
 	result, err := r.db.ExecContext(ctx, `
 		UPDATE cert_exams
-		SET status = $1, updated_at = $2
-		WHERE id = $3 AND status = 'in_progress'`,
+		SET status = $1, updated_at = $2, attempts = attempts + 1
+		WHERE id = $3 AND status IN ('in_progress', 'pending_payment')`,
 		CertExamStatusAbandoned, now, examID)
 	if err != nil {
 		return fmt.Errorf("failed to abandon exam: %w", err)
 	}
 	rows, _ := result.RowsAffected()
 	if rows == 0 {
-		return fmt.Errorf("exam not found or already submitted")
+		return fmt.Errorf("exam not found or already completed")
 	}
+
+	// Clean up any pending grading queue items so they don't leak
+	_, _ = r.db.ExecContext(ctx, `
+		DELETE FROM cert_grading_queue
+		WHERE exam_id = $1 AND status IN ('pending', 'processing')`,
+		examID)
+
 	return nil
 }
 
@@ -663,6 +677,26 @@ func (r *CertificationRepository) ListExamsByUser(ctx context.Context, userID uu
 		return nil, 0, err
 	}
 	return exams, total, nil
+}
+
+// GetCompletedExamCountForUserTier returns how many times the user has completed an exam for the given tier.
+// Completed means status in (passed, failed, expired, abandoned).
+func (r *CertificationRepository) GetCompletedExamCountForUserTier(ctx context.Context, userID, tierID uuid.UUID) (int, error) {
+    var count int64
+    err := r.db.GORM.WithContext(ctx).
+        Model(&CertExam{}).
+        Where("user_id = ? AND tier_id = ? AND status IN (?, ?, ?, ?)",
+            userID, tierID,
+            CertExamStatusPassed,
+            CertExamStatusFailed,
+            CertExamStatusExpired,
+            CertExamStatusAbandoned,
+        ).
+        Count(&count).Error
+    if err != nil {
+        return 0, fmt.Errorf("failed to count completed exams: %w", err)
+    }
+    return int(count), nil
 }
 
 // GetActiveExamForUserTier returns an in-progress exam for a user+tier (if any)
@@ -700,12 +734,14 @@ func (r *CertificationRepository) GetActiveExamForUserTier(ctx context.Context, 
 	// Populate nullable fields (DRY: reuse same pattern)
 	populateExamNullables(exam, stripePaymentID, submittedAt, gradedAt,
 		knowledgeScore, practicalScore, totalScore, passed, ipAddress, userAgent)
+	// Special handling for QuestionIDs and PracticalIDs which are []uuid.UUID not JSONMap
+	// Use jsonMapToUUIDs to handle both plain arrays and wrapped {"_ids": [...]} formats
+	exam.QuestionIDs = jsonMapToUUIDs(questionIDsJSON)
+	exam.PracticalIDs = jsonMapToUUIDs(practicalIDsJSON)
 	for _, item := range []struct {
 		data []byte
 		dest *JSONMap
 	}{
-		{questionIDsJSON, &exam.QuestionIDs},
-		{practicalIDsJSON, &exam.PracticalIDs},
 		{answersJSON, &exam.Answers},
 		{practicalResultsJSON, &exam.PracticalResults},
 		{metadataJSON, &exam.Metadata},
@@ -715,6 +751,183 @@ func (r *CertificationRepository) GetActiveExamForUserTier(ctx context.Context, 
 		}
 	}
 	return exam, nil
+}
+
+// GetPaidExamForUserTier returns an exam that has been paid (pending_payment or in_progress) for a user+tier
+func (r *CertificationRepository) GetPaidExamForUserTier(ctx context.Context, userID, tierID uuid.UUID) (*CertExam, error) {
+	exam := &CertExam{}
+	var stripePaymentID, ipAddress, userAgent sql.NullString
+	var submittedAt, gradedAt sql.NullTime
+	var knowledgeScore, practicalScore, totalScore sql.NullFloat64
+	var passed sql.NullBool
+	var questionIDsJSON, practicalIDsJSON, answersJSON, practicalResultsJSON, metadataJSON []byte
+
+	err := r.db.QueryRowContext(ctx, `
+		SELECT id, user_id, tier_id, status, stripe_payment_id, amount_cents, currency,
+		       started_at, submitted_at, graded_at, expires_at,
+		       knowledge_score, practical_score, total_score, passed,
+		       question_ids, practical_ids, answers, practical_results,
+		       ip_address, user_agent, metadata, created_at, updated_at
+		FROM cert_exams
+		WHERE user_id = $1 AND tier_id = $2 AND status IN ('pending_payment', 'in_progress')
+		ORDER BY created_at DESC LIMIT 1`, userID, tierID).Scan(
+		&exam.ID, &exam.UserID, &exam.TierID, &exam.Status,
+		&stripePaymentID, &exam.AmountCents, &exam.Currency,
+		&exam.StartedAt, &submittedAt, &gradedAt, &exam.ExpiresAt,
+		&knowledgeScore, &practicalScore, &totalScore, &passed,
+		&questionIDsJSON, &practicalIDsJSON, &answersJSON, &practicalResultsJSON,
+		&ipAddress, &userAgent, &metadataJSON,
+		&exam.CreatedAt, &exam.UpdatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get paid exam: %w", err)
+	}
+
+	populateExamNullables(exam, stripePaymentID, submittedAt, gradedAt,
+		knowledgeScore, practicalScore, totalScore, passed, ipAddress, userAgent)
+	// Special handling for QuestionIDs and PracticalIDs which are []uuid.UUID not JSONMap
+	// Use jsonMapToUUIDs to handle both plain arrays and wrapped {"_ids": [...]} formats
+	exam.QuestionIDs = jsonMapToUUIDs(questionIDsJSON)
+	exam.PracticalIDs = jsonMapToUUIDs(practicalIDsJSON)
+	for _, item := range []struct {
+		data []byte
+		dest *JSONMap
+	}{
+		{answersJSON, &exam.Answers},
+		{practicalResultsJSON, &exam.PracticalResults},
+		{metadataJSON, &exam.Metadata},
+	} {
+		if err := json.Unmarshal(item.data, item.dest); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal exam JSONB: %w", err)
+		}
+	}
+	return exam, nil
+}
+
+// ActivateExamFromPaymentWithUser upgrades a pending_payment exam to in_progress status with actual questions
+// and verifies that the exam belongs to the specified user.
+func (r *CertificationRepository) ActivateExamFromPaymentWithUser(ctx context.Context, examID, userID uuid.UUID) error {
+	exam, err := r.GetExamByID(ctx, examID)
+	if err != nil || exam == nil {
+		return fmt.Errorf("exam not found: %w", err)
+	}
+	if exam.UserID != userID {
+		return fmt.Errorf("exam does not belong to the authenticated user")
+	}
+	if exam.Status != CertExamStatusPendingPayment {
+		return fmt.Errorf("exam is not pending payment: %s", exam.Status)
+	}
+
+	tier, err := r.GetTierByID(ctx, exam.TierID)
+	if err != nil || tier == nil {
+		return fmt.Errorf("tier not found: %w", err)
+	}
+
+	if tier.PriceCents > exam.AmountCents {
+		return fmt.Errorf("exam amount_cents (%d) does not match tier price (%d)", exam.AmountCents, tier.PriceCents)
+	}
+
+	questionIDs, err := r.SelectRandomQuestions(ctx, tier.ID, tier.QuestionCount)
+	if err != nil || len(questionIDs) < tier.QuestionCount {
+		return fmt.Errorf("failed to select questions: %w", err)
+	}
+
+	practicalIDs, err := r.SelectRandomChallenges(ctx, tier.ID, tier.PracticalCount)
+	if err != nil {
+		return fmt.Errorf("failed to select challenges: %w", err)
+	}
+
+	_, err = r.db.ExecContext(ctx, `
+		UPDATE cert_exams
+		SET status = 'in_progress',
+		    question_ids = $1,
+		    practical_ids = $2,
+		    expires_at = now() + interval '1 minute' * $3,
+		    updated_at = now()
+		WHERE id = $4`,
+		MustJSON(uuidsToInterface(questionIDs)),
+		MustJSON(uuidsToInterface(practicalIDs)),
+		tier.TimeLimitMinutes,
+		examID)
+	if err != nil {
+		return fmt.Errorf("failed to activate exam: %w", err)
+	}
+
+	_ = r.db.PgNotify("cert_exam_updates", fmt.Sprintf(`{"type":"cert_exam_status","user_id":"%s","exam_id":"%s","status":"in_progress"}`, exam.UserID.String(), examID.String()))
+
+	return nil
+}
+
+// ActivateExamFromPayment upgrades a pending_payment exam to in_progress status with actual questions.
+// For new code, prefer ActivateExamFromPaymentWithUser to enforce ownership checks.
+// Kept for backward compatibility with existing callers.
+func (r *CertificationRepository) ActivateExamFromPayment(ctx context.Context, examID uuid.UUID) error {
+	exam, err := r.GetExamByID(ctx, examID)
+	if err != nil || exam == nil {
+		return fmt.Errorf("exam not found: %w", err)
+	}
+	if exam.Status != CertExamStatusPendingPayment {
+		return fmt.Errorf("exam is not pending payment: %s", exam.Status)
+	}
+
+	tier, err := r.GetTierByID(ctx, exam.TierID)
+	if err != nil || tier == nil {
+		return fmt.Errorf("tier not found: %w", err)
+	}
+
+	questionIDs, err := r.SelectRandomQuestions(ctx, tier.ID, tier.QuestionCount)
+	if err != nil || len(questionIDs) < tier.QuestionCount {
+		return fmt.Errorf("failed to select questions: %w", err)
+	}
+
+	practicalIDs, err := r.SelectRandomChallenges(ctx, tier.ID, tier.PracticalCount)
+	if err != nil {
+		return fmt.Errorf("failed to select challenges: %w", err)
+	}
+
+	_, err = r.db.ExecContext(ctx, `
+		UPDATE cert_exams
+		SET status = 'in_progress',
+		    question_ids = $1,
+		    practical_ids = $2,
+		    expires_at = now() + interval '1 minute' * $3,
+		    updated_at = now()
+		WHERE id = $4`,
+		MustJSON(uuidsToInterface(questionIDs)),
+		MustJSON(uuidsToInterface(practicalIDs)),
+		tier.TimeLimitMinutes,
+		examID)
+	if err != nil {
+		return fmt.Errorf("failed to activate exam: %w", err)
+	}
+
+	_ = r.db.PgNotify("cert_exam_updates", fmt.Sprintf(`{"type":"cert_exam_status","user_id":"%s","exam_id":"%s","status":"in_progress"}`, exam.UserID.String(), examID.String()))
+
+	return nil
+}
+
+func MustJSON(v interface{}) []byte {
+	data, _ := json.Marshal(v)
+	return data
+}
+
+func uuidsToInterface(ids []uuid.UUID) []interface{} {
+	result := make([]interface{}, len(ids))
+	for i, id := range ids {
+		result[i] = id.String()
+	}
+	return result
+}
+
+// UpdateExamStripePaymentID updates an exam with the Stripe payment ID after successful payment
+func (r *CertificationRepository) UpdateExamStripePaymentID(ctx context.Context, examID uuid.UUID, stripePaymentID string) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE cert_exams
+		SET stripe_payment_id = $1, updated_at = now()
+		WHERE id = $2`, stripePaymentID, examID)
+	return err
 }
 
 // ExpireStaleExams marks all in_progress exams past their expiry as 'expired'
@@ -752,12 +965,13 @@ func scanCertExams(rows *sql.Rows) ([]*CertExam, error) {
 		}
 		populateExamNullables(exam, stripePaymentID, submittedAt, gradedAt,
 			knowledgeScore, practicalScore, totalScore, passed, ipAddress, userAgent)
+		// QuestionIDs and PracticalIDs are stored as either {"_ids": [...]} or plain [...]
+		exam.QuestionIDs = jsonMapToUUIDs(questionIDsJSON)
+		exam.PracticalIDs = jsonMapToUUIDs(practicalIDsJSON)
 		for _, item := range []struct {
 			data []byte
 			dest *JSONMap
 		}{
-			{questionIDsJSON, &exam.QuestionIDs},
-			{practicalIDsJSON, &exam.PracticalIDs},
 			{answersJSON, &exam.Answers},
 			{practicalResultsJSON, &exam.PracticalResults},
 			{metadataJSON, &exam.Metadata},
@@ -1196,6 +1410,38 @@ func (r *CertificationRepository) CompleteGrading(ctx context.Context, id uuid.U
 	return nil
 }
 
+// GetGradingResult returns the completed grading result for a specific exam+challenge.
+func (r *CertificationRepository) GetGradingResult(ctx context.Context, examID, challengeID uuid.UUID) (JSONMap, error) {
+	var resultJSON []byte
+	err := r.db.QueryRowContext(ctx, `
+		SELECT result FROM cert_grading_queue
+		WHERE exam_id = $1 AND challenge_id = $2 AND status = 'completed'
+		ORDER BY updated_at DESC LIMIT 1`, examID, challengeID).Scan(&resultJSON)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get grading result: %w", err)
+	}
+	var result JSONMap
+	if err := json.Unmarshal(resultJSON, &result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal grading result: %w", err)
+	}
+	return result, nil
+}
+
+// CountPendingGrading returns the number of pending/processing grading queue items for an exam.
+func (r *CertificationRepository) CountPendingGrading(ctx context.Context, examID uuid.UUID) (int, error) {
+	var count int
+	err := r.db.QueryRowContext(ctx, `
+		SELECT count(*) FROM cert_grading_queue
+		WHERE exam_id = $1 AND status IN ('pending', 'processing')`, examID).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count pending grading: %w", err)
+	}
+	return count, nil
+}
+
 // FailGrading marks a grading task as failed
 func (r *CertificationRepository) FailGrading(ctx context.Context, id uuid.UUID, errMsg string) error {
 	_, err := r.db.ExecContext(ctx, `
@@ -1298,4 +1544,200 @@ func joinStrings(strs []string, sep string) string {
 		result += s
 	}
 	return result
+}
+
+// jsonMapToUUIDs converts a JSONB value to []uuid.UUID
+// Handles both wrapped format {"_ids": [...]} and plain array [...]
+func jsonMapToUUIDs(data []byte) []uuid.UUID {
+	if data == nil || len(data) == 0 {
+		return nil
+	}
+
+	// Try to detect format and unmarshal accordingly
+	var ids []uuid.UUID
+
+	// First try: check if it's a wrapped format {"_ids": [...]} by unmarshaling to map
+	var wrapped map[string]interface{}
+	if err := json.Unmarshal(data, &wrapped); err == nil {
+		if raw, ok := wrapped["_ids"]; ok {
+			if arr, ok := raw.([]interface{}); ok {
+				for _, v := range arr {
+					if s, ok := v.(string); ok {
+						if uid, err := uuid.Parse(s); err == nil {
+							ids = append(ids, uid)
+						}
+					}
+				}
+				return ids
+			}
+		}
+	}
+
+	// Second try: it's a plain array [...]
+	var plainArr []interface{}
+	if err := json.Unmarshal(data, &plainArr); err == nil {
+		for _, v := range plainArr {
+			if s, ok := v.(string); ok {
+				if uid, err := uuid.Parse(s); err == nil {
+					ids = append(ids, uid)
+				}
+			}
+		}
+		return ids
+	}
+
+	return ids
+}
+
+// CreateTier inserts a new certification tier.
+func (r *CertificationRepository) CreateTier(ctx context.Context, tier *CertTier) error {
+	if err := r.db.GORM.Create(tier).Error; err != nil {
+		return fmt.Errorf("failed to create tier: %w", err)
+	}
+	return nil
+}
+
+// UpdateTier updates allowed fields on a certification tier.
+func (r *CertificationRepository) UpdateTier(ctx context.Context, tierID uuid.UUID, updates map[string]interface{}) error {
+	if err := r.db.GORM.Model(&CertTier{}).Where("id = ?", tierID).Updates(updates).Error; err != nil {
+		return fmt.Errorf("failed to update tier: %w", err)
+	}
+	return nil
+}
+
+// GetQuestionsByTier returns non-deleted questions for a tier.
+func (r *CertificationRepository) GetQuestionsByTier(ctx context.Context, tierID uuid.UUID, limit int) ([]*CertQuestion, error) {
+	var questions []*CertQuestion
+	err := r.db.GORM.WithContext(ctx).
+		Where("tier_id = ? AND is_active = true", tierID).
+		Limit(limit).
+		Find(&questions).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get questions: %w", err)
+	}
+	return questions, nil
+}
+
+// CreateQuestion inserts a new certification question.
+func (r *CertificationRepository) CreateQuestion(ctx context.Context, question *CertQuestion) error {
+	if err := r.db.GORM.Create(question).Error; err != nil {
+		return fmt.Errorf("failed to create question: %w", err)
+	}
+	return nil
+}
+
+// UpdateQuestion updates allowed fields on a question.
+func (r *CertificationRepository) UpdateQuestion(ctx context.Context, questionID uuid.UUID, updates map[string]interface{}) error {
+	if err := r.db.GORM.Model(&CertQuestion{}).Where("id = ?", questionID).Updates(updates).Error; err != nil {
+		return fmt.Errorf("failed to update question: %w", err)
+	}
+	return nil
+}
+
+// DeleteQuestion hard-deletes a question.
+func (r *CertificationRepository) DeleteQuestion(ctx context.Context, questionID uuid.UUID) error {
+	if err := r.db.GORM.Delete(&CertQuestion{}, questionID).Error; err != nil {
+		return fmt.Errorf("failed to delete question: %w", err)
+	}
+	return nil
+}
+
+// CertExamListFilter filters for listing exams.
+type CertExamListFilter struct {
+	Limit  int
+	Offset int
+	Status string
+	TierID *uuid.UUID
+	UserID *uuid.UUID
+}
+
+// ListExams returns exams matching the filter, plus total count.
+func (r *CertificationRepository) ListExams(ctx context.Context, filter CertExamListFilter) ([]*CertExam, int64, error) {
+	query := r.db.GORM.WithContext(ctx).Model(&CertExam{})
+	if filter.Status != "" {
+		query = query.Where("status = ?", filter.Status)
+	}
+	if filter.TierID != nil {
+		query = query.Where("tier_id = ?", *filter.TierID)
+	}
+	if filter.UserID != nil {
+		query = query.Where("user_id = ?", *filter.UserID)
+	}
+
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to count exams: %w", err)
+	}
+
+	var exams []*CertExam
+	if err := query.Order("created_at DESC").Limit(filter.Limit).Offset(filter.Offset).Find(&exams).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to list exams: %w", err)
+	}
+	return exams, total, nil
+}
+
+// CertCredentialListFilter filters for listing credentials.
+type CertCredentialListFilter struct {
+	Limit  int
+	Offset int
+	Status string
+	TierID *uuid.UUID
+	UserID *uuid.UUID
+}
+
+// ListCredentials returns credentials matching the filter.
+func (r *CertificationRepository) ListCredentials(ctx context.Context, filter CertCredentialListFilter) ([]*CertCredential, error) {
+	query := r.db.GORM.WithContext(ctx).Preload("Tier").Preload("User").
+		Model(&CertCredential{})
+	if filter.Status != "" {
+		query = query.Where("status = ?", filter.Status)
+	}
+	if filter.TierID != nil {
+		query = query.Where("tier_id = ?", *filter.TierID)
+	}
+	if filter.UserID != nil {
+		query = query.Where("user_id = ?", *filter.UserID)
+	}
+	var creds []*CertCredential
+	if err := query.Order("created_at DESC").Limit(filter.Limit).Offset(filter.Offset).Find(&creds).Error; err != nil {
+		return nil, fmt.Errorf("failed to list credentials: %w", err)
+	}
+	return creds, nil
+}
+
+// UpdateCredential updates credential fields in the database.
+func (r *CertificationRepository) UpdateCredential(ctx context.Context, credID uuid.UUID, updates map[string]interface{}) error {
+	if err := r.db.GORM.WithContext(ctx).Model(&CertCredential{}).Where("id = ?", credID).Updates(updates).Error; err != nil {
+		return fmt.Errorf("failed to update credential: %w", err)
+	}
+	return nil
+}
+
+// UpdateExamStatus updates an exam's status directly.
+func (r *CertificationRepository) UpdateExamStatus(ctx context.Context, examID uuid.UUID, status string) error {
+	result, err := r.db.ExecContext(ctx, `
+		UPDATE cert_exams
+		SET status = $1, updated_at = now()
+		WHERE id = $2`, status, examID)
+	if err != nil {
+		return fmt.Errorf("failed to update exam status: %w", err)
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("exam not found")
+	}
+	return nil
+}
+
+// ResetUserTierExamAttempts resets all non-passed exams for a user+tier to abandoned status.
+func (r *CertificationRepository) ResetUserTierExamAttempts(ctx context.Context, userID, tierID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE cert_exams
+		SET status = $1, updated_at = now()
+		WHERE user_id = $2 AND tier_id = $3 AND status NOT IN ($4)`,
+		CertExamStatusAbandoned, userID, tierID, CertExamStatusPassed)
+	if err != nil {
+		return fmt.Errorf("failed to reset exam attempts: %w", err)
+	}
+	return nil
 }

@@ -41,6 +41,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/backends"
 	billinghandler "github.com/functionfly/functionfly/internal/api/handlers/billing"
 	categorizationhandler "github.com/functionfly/functionfly/internal/api/handlers/categorization"
+	"github.com/functionfly/functionfly/internal/api/handlers/certification"
 	"github.com/functionfly/functionfly/internal/api/handlers/chat"
 	"github.com/functionfly/functionfly/internal/api/handlers/content"
 	"github.com/functionfly/functionfly/internal/api/handlers/dashboard"
@@ -280,11 +281,6 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Initialize forecast handler for usage forecasting and alerts
 	forecastHandler := billinghandler.NewUsageForecastHandler(alertRepo, s.repo, usageForecaster, usageAlerter)
 
-	versionRepo := versioning.NewRepository(s.postgresDB.DB)
-	versionHandler := versionhandler.NewHandler(versionRepo)
-
-	appPlaygroundHandler := playground.NewHandler(s.repo)
-
 	cacheConfiguration := cache.LoadCacheConfiguration()
 	if err := cacheConfiguration.Validate(); err != nil {
 		logrus.WithError(err).Error("Invalid cache configuration, disabling all caching features")
@@ -329,6 +325,12 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		registryCache = cacheService.GetRegistryCache()
 	}
 	registryRepo := registry.NewRegistryRepository(s.postgresDB.GORM, registryCache)
+	githubHandler.SetRegistryRepo(registryRepo)
+
+	versionRepo := versioning.NewRepository(s.postgresDB.DB)
+	versionHandler := versionhandler.NewHandler(versionRepo, registryRepo)
+
+	appPlaygroundHandler := playground.NewHandler(s.repo)
 
 	// Initialize the persistent SandboxClient daemon for function execution.
 	// This replaces per-request process spawning with a single long-lived runtime.
@@ -437,8 +439,6 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	studioTasksHandler := studio.NewTasksHandler(studioTaskRepo)
 	studioExtRepo := studio.NewExtensionRepository(s.postgresDB.DB)
 	studioExtensionsHandler := studio.NewExtensionsHandler(studioExtRepo)
-	studioMarketplaceRepo := studio.NewMarketplaceRepository(s.postgresDB.DB)
-	studioMarketplaceHandler := studio.NewMarketplaceHandler(studioMarketplaceRepo)
 	studioSettingsRepo := storage.NewStudioSettingsRepository(s.postgresDB.DB)
 	studioSettingsHandler := studio.NewSettingsHandler(studioSettingsRepo)
 	pluginRepo := storage.NewPluginRepository(s.postgresDB.DB)
@@ -972,6 +972,11 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		logrus.Info("DRE anchoring service initialized (blockchain anchoring enabled)")
 	}
 
+	registerPublicWebhookRoutes(
+		s, api, registryRepo, platformFeeRepo, billingOperationalRepo,
+	)
+
+	// ── Registry routes (must be AFTER public webhooks for /{author}/{name} pattern) ──
 	registerRegistryRoutes(
 		s, api, apiV2,
 		authMiddleware, executionSecurityMW, verificationMiddleware,
@@ -1021,7 +1026,6 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		studioCollabHandler,
 		studioTasksHandler,
 		studioExtensionsHandler,
-		studioMarketplaceHandler,
 		studioSettingsHandler,
 		pluginHandler,
 		runtimeHandler,
@@ -1037,8 +1041,6 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		agentRateLimiter,
 		aepHandler, swarmHandler, sebgHandler, evolutionHandler, daemonHandler,
 		registryRepo, cacheService,
-		platformFeeRepo,
-		billingOperationalRepo,
 	)
 
 	// R-Sim simulation engine routes
@@ -1063,6 +1065,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Initialize retention handler with cleanup service for admin management
 	retentionHandler := admin.NewRetentionHandler(s.postgresDB, s.executionLogCleanup)
 
+	certRepo := s.postgresDB.CertificationRepository()
+	certHandler := certification.NewHandler(certRepo, storage.NewUserRepository(s.postgresDB))
 	registerAdminRoutes(
 		s, api, authMiddleware, advancedSecurityMiddleware,
 		adminHandler, adminBackendsHandler, adminProvidersHandler,
@@ -1076,6 +1080,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		retentionHandler, disputesHandler,
 		stateUsageHandler,
 		unfairAdvantageHandler,
+		certHandler,
 	)
 
 	// Trust API for external platform partners
@@ -1094,6 +1099,25 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	payoutServiceExtended := paymentPkg.NewPayoutServiceExtended(payoutRepo, s.notificationSvc)
 	payoutExtendedHandler := payoutsHandler.NewExtendedHandler(payoutServiceExtended, payoutRepo, s.repo)
 	payoutLegacyHandler := payoutsHandler.NewHandler(payoutServiceExtended.PayoutService, payoutRepo, s.repo)
+
+	// ── Developer Certification ────────────────────────────────────────────
+	certHandler.RegisterRoutes(api, authMiddleware)
+
+	s.certExamExpiryScheduler = scheduler.NewCertExamExpiryScheduler(certRepo)
+	if err := s.certExamExpiryScheduler.Start(context.Background()); err != nil {
+		logrus.WithError(err).Error("failed to start cert exam expiry scheduler")
+	}
+
+	s.certCredExpiryScheduler = scheduler.NewCertCredentialExpiryScheduler(certRepo)
+	if err := s.certCredExpiryScheduler.Start(context.Background()); err != nil {
+		logrus.WithError(err).Error("failed to start cert credential expiry scheduler")
+	}
+
+	{
+		gradingWorker := certification.NewGradingWorker(certRepo)
+		go gradingWorker.Start(context.Background())
+		logrus.Info("Cert grading worker started")
+	}
 
 	// Payout scheduler for auto-payouts
 	payoutSchedulerConfig := scheduler.EnvPayoutScheduleConfig()

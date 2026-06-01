@@ -1,4 +1,4 @@
-import { versionsApi, type PlatformFunctionVersion } from '@/api/versions';
+import { versionsApi, type RegistryFunctionVersion } from '@/api/versions';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,11 +55,11 @@ export function FunctionVersionsSection({
 }: FunctionVersionsSectionProps) {
   const queryClient = useQueryClient();
   const [comparePair, setComparePair] = useState<[string, string] | null>(null);
-  const [deprecateTarget, setDeprecateTarget] = useState<PlatformFunctionVersion | null>(null);
+  const [deprecateTarget, setDeprecateTarget] = useState<RegistryFunctionVersion | null>(null);
   const [deprecateReason, setDeprecateReason] = useState('');
   const [rollbackTarget, setRollbackTarget] = useState<string | null>(null);
 
-  const versionsKey = ['platform-versions', functionId];
+  const versionsKey = ['registry-versions', functionId];
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: versionsKey,
@@ -68,13 +68,13 @@ export function FunctionVersionsSection({
   });
 
   const { data: rollbackData } = useQuery({
-    queryKey: ['platform-rollbacks', functionId],
+    queryKey: ['registry-rollbacks', functionId],
     queryFn: () => versionsApi.rollbackHistory(functionId),
     enabled: !!functionId,
   });
 
   const { data: compareData, isLoading: compareLoading } = useQuery({
-    queryKey: ['platform-version-compare', functionId, comparePair?.[0], comparePair?.[1]],
+    queryKey: ['registry-version-compare', functionId, comparePair?.[0], comparePair?.[1]],
     queryFn: () => versionsApi.compare(functionId, comparePair![0], comparePair![1]),
     enabled: !!comparePair,
   });
@@ -88,7 +88,7 @@ export function FunctionVersionsSection({
     queryClient.invalidateQueries({ queryKey: versionsKey });
     queryClient.invalidateQueries({ queryKey: ['function-versions', author, name] });
     queryClient.invalidateQueries({ queryKey: ['function', author, name] });
-    queryClient.invalidateQueries({ queryKey: ['platform-rollbacks', functionId] });
+    queryClient.invalidateQueries({ queryKey: ['registry-rollbacks', functionId] });
   };
 
   const publishMutation = useMutation({

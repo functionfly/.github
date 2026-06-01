@@ -76,6 +76,6 @@ func TestGitHubRepositoryModels(t *testing.T) {
 		assert.Nil(t, nullIfEmpty(""))
 		s := nullIfEmpty("hello")
 		assert.NotNil(t, s)
-		assert.Equal(t, "hello", *s)
+		assert.Equal(t, "hello", s)
 	})
 }

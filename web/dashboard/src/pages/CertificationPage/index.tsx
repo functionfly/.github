@@ -1,17 +1,37 @@
 import { motion } from 'framer-motion';
 import { Award, TrendingUp, Users, BookOpen } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { TierCard } from '@/components/certification/TierCard';
-import { useCertTiers, useStartExam, useMyExams } from '@/hooks/useCertification';
+import { certificationKeys, useCertTiers, useStartExam, useMyExams, useExam } from '@/hooks/useCertification';
+import { useExamStatusStream } from '@/hooks/useExamStatusStream';
+import { useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
+import { useEffect } from 'react';
 
 export function CertificationPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const queryClient = useQueryClient();
   const { data: tiersData, isLoading: tiersLoading } = useCertTiers();
   const { data: examsData } = useMyExams();
   const startExam = useStartExam();
+
+  const paidExamId = searchParams.get('exam');
+  const isPaidRedirect = searchParams.get('paid') === 'true';
+
+  const { data: paidExamData } = useExam(paidExamId || '');
+
+  useExamStatusStream(isPaidRedirect ? paidExamId || undefined : undefined);
+
+  const paidExam = isPaidRedirect && paidExamId && paidExamData?.exam ? paidExamData.exam : null;
+
+  useEffect(() => {
+    if (paidExam?.id && paidExam.status === 'in_progress') {
+      navigate(`/certification/exam/${paidExam.id}`);
+    }
+  }, [paidExam, navigate]);
 
   const activeExamsByTierId = (examsData?.exams || [])
     .filter((e) => e.status === 'in_progress')
@@ -20,18 +40,35 @@ export function CertificationPage() {
       return acc;
     }, {});
 
+  const pendingExamsByTierId = (examsData?.exams || [])
+    .filter((e) => e.status === 'pending_payment')
+    .reduce<Record<string, string>>((acc, e) => {
+      if (e.tier_id) acc[e.tier_id] = e.id;
+      return acc;
+    }, {});
+
   const handleStartExam = (tierSlug: string) => {
     startExam.mutate(tierSlug, {
       onSuccess: (data) => {
-        if (!data.checkout_url) {
+        const checkoutUrl = typeof data === 'object' && data && 'checkout_url' in (data as Record<string, unknown>) ? (data as Record<string, string>).checkout_url : undefined;
+        if (checkoutUrl) {
+          window.location.href = checkoutUrl;
+        } else {
           navigate(`/certification/exam/${data.exam.id}`);
         }
       },
     });
   };
 
-  const handleResumeExam = (examId: string) => {
-    navigate(`/certification/exam/${examId}`);
+  const handleContinueToCheckout = (tierSlug: string) => {
+    startExam.mutate(tierSlug, {
+      onSuccess: (data) => {
+        const checkoutUrl = typeof data === 'object' && data && 'checkout_url' in (data as Record<string, unknown>) ? (data as Record<string, string>).checkout_url : undefined;
+        if (checkoutUrl) {
+          window.location.href = checkoutUrl;
+        }
+      },
+    });
   };
 
   return (
@@ -72,16 +109,29 @@ export function CertificationPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {(tiersData?.tiers || []).map((tier) => (
-            <TierCard
-              key={tier.id}
-              tier={tier}
-              onStart={() => handleStartExam(tier.slug)}
-              isLoading={startExam.isPending}
-              activeExamId={activeExamsByTierId[tier.id]}
-              onResume={() => handleResumeExam(activeExamsByTierId[tier.id])}
-            />
-          ))}
+          {(tiersData?.tiers || []).map((tier) => {
+            const pendingId = pendingExamsByTierId[tier.id] || (isPaidRedirect ? paidExamId || undefined : undefined);
+            const hasPending = !!pendingId;
+            return (
+              <TierCard
+                key={tier.id}
+                tier={tier}
+                onStart={() => handleStartExam(tier.slug)}
+                isLoading={startExam.isPending}
+                activeExamId={activeExamsByTierId[tier.id]}
+                onResume={() => navigate(`/certification/exam/${activeExamsByTierId[tier.id]}`)}
+                pendingExamId={pendingId}
+                onBuyNow={() => {
+                  if (hasPending) {
+                    handleContinueToCheckout(tier.slug);
+                  } else {
+                    handleStartExam(tier.slug);
+                  }
+                }}
+                paymentConfirmed={isPaidRedirect}
+              />
+            );
+          })}
         </div>
       )}
 

@@ -38,6 +38,7 @@ export interface CertPracticalChallengePublic {
   difficulty: string;
   points: number;
   time_limit_minutes: number;
+  environment_url?: string;
 }
 
 export interface CertExam {

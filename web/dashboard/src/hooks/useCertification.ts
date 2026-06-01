@@ -35,9 +35,10 @@ export function useStartExam() {
     mutationFn: (tierSlug: string) => certificationApi.startExam(tierSlug),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: certificationKeys.exams() });
-      if (data.checkout_url) {
+      const checkoutUrl = data.checkout_url || data.exam?.checkout_url;
+      if (checkoutUrl) {
         // Redirect to Stripe checkout
-        window.location.href = data.checkout_url;
+        window.location.href = checkoutUrl;
       } else {
         toast.success('Exam session started!');
       }

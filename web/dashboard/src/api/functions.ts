@@ -37,8 +37,8 @@ export const functionsApi = {
       const funcs = (response as any).functions.map((f: any) => ({
         id: f.id,
         name: f.name,
-        version: f.version || '1.0.0',
-        status: 'active' as const,
+        version: f.version || f.latest_version?.split('@')[0] || '1.0.0',
+        status: f.version ? 'deployed' as const : 'draft' as const,
         providers: [],
         region: f.region || 'us-east-1',
         code: f.code || '',

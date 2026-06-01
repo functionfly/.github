@@ -49,9 +49,6 @@ export function WelcomeStep() {
         <div className="w-20 h-20 bg-gradient-to-br from-ff-flame to-ff-afterburner rounded-full flex items-center justify-center mx-auto">
           <Zap className="w-10 h-10 text-white" fill="currentColor" />
         </div>
-        <h2 className="text-3xl font-bold text-ff-cyan">
-          Welcome to FunctionFly
-        </h2>
         <p className="text-lg text-text-secondary max-w-2xl mx-auto leading-relaxed">
           Deploy serverless functions with automatic failover across multiple cloud providers.
           Built for reliability, speed, and simplicity.

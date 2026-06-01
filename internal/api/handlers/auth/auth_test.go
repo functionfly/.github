@@ -42,9 +42,7 @@ func (s *AuthHandlerTestSuite) SetupTest() {
 
 	// Create auth service
 	authSvc, err := auth.NewAuthService(s.repo, "test-secret-key")
-	if err != nil {
-		t.Fatalf("Failed to create auth service: %v", err)
-	}
+	require.NoError(s.T(), err)
 
 	// Create handler
 	s.handler = NewHandler(authSvc)

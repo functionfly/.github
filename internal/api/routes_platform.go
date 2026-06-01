@@ -86,7 +86,6 @@ func registerPlatformRoutes(
 	studioCollabHandler *studio.Handler,
 	studioTasksHandler *studio.TasksHandler,
 	studioExtensionsHandler *studio.ExtensionsHandler,
-	studioMarketplaceHandler *studio.MarketplaceHandler,
 	studioSettingsHandler *studio.SettingsHandler,
 	pluginHandler *plugin.Handler,
 	runtimeHandler *runtimehandler.Handler,
@@ -299,18 +298,6 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/studio/settings", authMiddleware.RequireAuth(studioSettingsHandler.HandleGetSettings)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/studio/settings", authMiddleware.RequireAuth(studioSettingsHandler.HandleSaveSettings)).Methods("PUT", "OPTIONS")
 	protected.HandleFunc("/studio/settings", authMiddleware.RequireAuth(studioSettingsHandler.HandleResetSettings)).Methods("DELETE", "OPTIONS")
-
-	// ── Studio Marketplace (protected, tenant-scoped) ────────────────────────
-	protected.HandleFunc("/marketplace/functions", authMiddleware.RequireAuth(studioMarketplaceHandler.HandleListFunctions)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/marketplace/functions/{id}/execute", authMiddleware.RequireAuth(studioMarketplaceHandler.HandleExecuteFunction)).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/marketplace/functions/{id}/favorite", authMiddleware.RequireAuth(studioMarketplaceHandler.HandleFavoriteFunction)).Methods("POST", "DELETE", "OPTIONS")
-	protected.HandleFunc("/marketplace/functions/{id}/license", authMiddleware.RequireAuth(studioMarketplaceHandler.HandleUpdateLicense)).Methods("PUT", "OPTIONS")
-	protected.HandleFunc("/marketplace/functions/{id}/pricing", authMiddleware.RequireAuth(studioMarketplaceHandler.HandleUpdatePricing)).Methods("PUT", "OPTIONS")
-	protected.HandleFunc("/marketplace/plans", authMiddleware.RequireAuth(studioMarketplaceHandler.HandleListPlans)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/marketplace/plans", authMiddleware.RequireAuth(studioMarketplaceHandler.HandleCreatePlan)).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/marketplace/plans/{id}", authMiddleware.RequireAuth(studioMarketplaceHandler.HandleUpdatePlan)).Methods("PUT", "OPTIONS")
-	protected.HandleFunc("/marketplace/royalties", authMiddleware.RequireAuth(studioMarketplaceHandler.HandleListRoyalties)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/marketplace/royalties/payout", authMiddleware.RequireAuth(studioMarketplaceHandler.HandleRequestPayout)).Methods("POST", "OPTIONS")
 
 	// ── Plugin Manager (protected, tenant-scoped) ──────────────────────────
 	protected.HandleFunc("/plugins", authMiddleware.RequireAuth(pluginHandler.HandleListPlugins)).Methods("GET", "OPTIONS")

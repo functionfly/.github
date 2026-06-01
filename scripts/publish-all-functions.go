@@ -13,26 +13,26 @@ import (
 )
 
 const (
-	APIURL  = "http://localhost:8080"
-	Email   = "admin@functionfly.local"
+	APIURL   = "http://localhost:8080"
+	Email    = "admin@functionfly.local"
 	Password = "admin123"
-	Author  = "functionfly"
+	Author   = "functionfly"
 )
 
 type Manifest struct {
-	Name        string   `json:"name"`
-	Version     string   `json:"version"`
-	Runtime     string   `json:"runtime"`
-	Title       string   `json:"title,omitempty"`
+	Name         string   `json:"name"`
+	Version      string   `json:"version"`
+	Runtime      string   `json:"runtime"`
+	Title        string   `json:"title,omitempty"`
 	Description string   `json:"description,omitempty"`
-	Category    string   `json:"category,omitempty"`
-	Tags        []string `json:"tags,omitempty"`
-	Input       any      `json:"input,omitempty"`
-	Output      any      `json:"output,omitempty"`
-	TimeoutMs   int      `json:"timeout_ms,omitempty"`
-	MemoryMB    int      `json:"memory_mb,omitempty"`
-	Tier        string   `json:"tier,omitempty"`
-	PricePerCall float64 `json:"price_per_call,omitempty"`
+	Category     string   `json:"category,omitempty"`
+	Tags         []string `json:"tags,omitempty"`
+	Input        any      `json:"input,omitempty"`
+	Output       any      `json:"output,omitempty"`
+	TimeoutMs    int      `json:"timeout_ms,omitempty"`
+	MemoryMB     int      `json:"memory_mb,omitempty"`
+	Tier         string   `json:"tier,omitempty"`
+	PricePerCall float64  `json:"price_per_call,omitempty"`
 }
 
 func readFunction(dir string) (string, string, string, error) {
@@ -51,7 +51,6 @@ func readFunction(dir string) (string, string, string, error) {
 		return "", "", "", fmt.Errorf("unmarshal manifest: %w", err)
 	}
 
-	// Only process functions with tier field (paid functions)
 	if m.Tier == "" {
 		return "", "", "", fmt.Errorf("skipping non-paid function (no tier field)")
 	}
@@ -178,4 +177,40 @@ func main() {
 
 	elapsed := time.Since(start).Seconds()
 	fmt.Printf("\n✅ Published: %d, ❌ Failed: %d (%.1fs total)\n", success, failed, elapsed)
+}
+
+func stripJSONCComments(data []byte) []byte {
+	var result []byte
+	inComment := false
+	inBlockComment := false
+	for i := 0; i < len(data); i++ {
+		c := data[i]
+		if inBlockComment {
+			if i+1 < len(data) && data[i] == '*' && data[i+1] == '/' {
+				inBlockComment = false
+				i++
+				continue
+			}
+			continue
+		}
+		if inComment {
+			if c == '\n' {
+				inComment = false
+				result = append(result, c)
+			}
+			continue
+		}
+		if i+1 < len(data) && data[i] == '/' && data[i+1] == '/' {
+			inComment = true
+			i++
+			continue
+		}
+		if i+1 < len(data) && data[i] == '/' && data[i+1] == '*' {
+			inBlockComment = true
+			i++
+			continue
+		}
+		result = append(result, c)
+	}
+	return result
 }

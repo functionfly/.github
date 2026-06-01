@@ -99,6 +99,14 @@ const (
 	AgentEnterpriseMaxAutoFixesPerDay   = -1 // Unlimited
 )
 
+// StateFabric limits
+const (
+	FreeMaxStateFabrics       = 0
+	StarterMaxStateFabrics    = 3
+	ProMaxStateFabrics         = 10
+	EnterpriseMaxStateFabrics  = -1 // Unlimited
+)
+
 // Plan type constants
 // NOTE: "professional" must match frontend plan-utils.ts PlanTier type
 const (
@@ -982,4 +990,23 @@ func GetTimeMachineLimits(plan string) TimeMachineLimits {
 		IncidentInsurance:      plan == PlanAgentEnterprise,
 		Unlimited:              plan == PlanAgentEnterprise,
 	}
+}
+
+// MaxStateFabricsPerPlan returns the maximum number of state fabrics allowed for a plan
+func MaxStateFabricsPerPlan(plan string) int {
+	switch plan {
+	case PlanEnterprise:
+		return EnterpriseMaxStateFabrics
+	case PlanPro:
+		return ProMaxStateFabrics
+	case PlanStarter:
+		return StarterMaxStateFabrics
+	default:
+		return FreeMaxStateFabrics
+	}
+}
+
+// PlanHasStateFabricFeature returns true if the plan includes the State Fabric feature
+func PlanHasStateFabricFeature(plan string) bool {
+	return MaxStateFabricsPerPlan(plan) > 0
 }

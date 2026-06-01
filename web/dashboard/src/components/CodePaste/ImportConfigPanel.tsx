@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { clsx } from 'clsx';
 import type { ImportConfig } from '../../types/codePaste';
+import { ImportErrorsList } from './ImportErrorsList';
 import './ImportConfigPanel.css';
 
 interface ImportConfigPanelProps {
@@ -11,6 +12,7 @@ interface ImportConfigPanelProps {
   onCancel: () => void;
   isImporting?: boolean;
   disabled?: boolean;
+  importErrors?: Array<{ name: string; error: string }>;
 }
 
 const REGIONS = [
@@ -36,6 +38,7 @@ export function ImportConfigPanel({
   onCancel,
   isImporting = false,
   disabled = false,
+  importErrors = [],
 }: ImportConfigPanelProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -165,6 +168,9 @@ export function ImportConfigPanel({
       </div>
 
       <div className="import-config-panel__footer">
+        {importErrors.length > 0 && (
+          <ImportErrorsList errors={importErrors} />
+        )}
         <button
           className="import-config-panel__cancel-btn"
           onClick={onCancel}

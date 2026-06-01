@@ -2,6 +2,7 @@ import { Wrench, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import type { CertPracticalChallengePublic } from '@/api/certification';
 
 interface PracticalChallengeProps {
@@ -16,6 +17,18 @@ const difficultyColors: Record<string, string> = {
 };
 
 export function PracticalChallenge({ challenge, examId }: PracticalChallengeProps) {
+  const handleOpenEnvironment = () => {
+    // Check if there's an environment URL available
+    const envUrl = (challenge as any).environment_url;
+    if (envUrl) {
+      window.open(envUrl, '_blank');
+    } else {
+      toast.info('Challenge environment will open when the exam starts', {
+        description: 'Complete this challenge when your environment is ready.',
+      });
+    }
+  };
+
   return (
     <div className="rounded-xl border border-theme bg-card p-6">
       <div className="flex items-start justify-between mb-3">
@@ -46,7 +59,7 @@ export function PracticalChallenge({ challenge, examId }: PracticalChallengeProp
         {challenge.description}
       </p>
 
-      <Button variant="outline" size="sm">
+      <Button variant="outline" size="sm" onClick={handleOpenEnvironment}>
         <ExternalLink className="h-4 w-4" />
         Open Challenge Environment
       </Button>

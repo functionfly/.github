@@ -1,0 +1,9 @@
+{
+  "name": "@functionfly/shared-pkg",
+  "root": "packages/shared",
+  "targets": {
+    "build": {
+      "executor": "nx:noop"
+    }
+  }
+}

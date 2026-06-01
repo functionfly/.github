@@ -266,12 +266,11 @@ const navigationSections: NavSection[] = [
         description: 'API key management',
       },
       {
-        path: '/backends',
-        label: 'One-Click Backends',
-        icon: Boxes,
+        path: '/bundles',
+        label: 'Bundles',
+        icon: LayoutGrid,
         badge: 'new',
-        shortcut: 'B',
-        description: 'Deploy backends with one click',
+        description: 'Backend-in-a-Box pricing bundles',
       },
     ],
   },
@@ -307,13 +306,7 @@ const navigationSections: NavSection[] = [
         icon: Wallet,
         description: 'Platform wallet & credits',
       },
-      {
-        path: '/bundles',
-        label: 'Bundles',
-        icon: LayoutGrid,
-        badge: 'new',
-        description: 'Backend-in-a-Box pricing bundles',
-      },
+      
       {
         path: '/status',
         label: 'Status',
@@ -440,11 +433,10 @@ const NAV_LABEL_KEYS: Record<string, string> = {
   'SDK': 'nav.sdk',
   'Secrets': 'nav.secrets',
   'API Keys': 'nav.apiKeys',
-  'One-Click Backends': 'nav.oneClickBackends',
+  'Bundles': 'nav.bundles',
   'Analytics': 'nav.analytics',
   'Usage': 'nav.usage',
   'Wallet': 'nav.wallet',
-  'Bundles': 'nav.bundles',
   'Status': 'nav.status',
   'Time Machine': 'nav.timeMachine',
   'Evolution': 'nav.evolution',
@@ -1064,7 +1056,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
           }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
           className={cn(
-            'fixed left-0 top-0 z-50 h-screen flex flex-col',
+            'fixed left-0 top-0 z-50 min-h-screen flex flex-col',
             'aviation-sidebar',
             isCollapsed && 'aviation-sidebar-collapsed',
             !isLg && 'aviation-sidebar-mobile-sheet',

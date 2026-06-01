@@ -1,11 +1,24 @@
 package certification
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
+
+// logCertVerificationAudit records a public verification lookup for compliance/forensics.
+func (h *Handler) logCertVerificationAudit(ctx context.Context, ip, userAgent, eventType, target string) {
+	logrus.WithFields(logrus.Fields{
+		"event_type":  eventType,
+		"target":      target,
+		"ip":          ip,
+		"user_agent":  userAgent,
+		"timestamp":   time.Now().UTC(),
+	}).Info("cert_verification_audit")
+}
 
 // VerifyCredential handles GET /v1/certification/verify/{username}
 // Public endpoint — returns a user's active credentials for verification
@@ -16,7 +29,8 @@ func (h *Handler) VerifyCredential(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get user by username to verify they exist
+	h.logCertVerificationAudit(r.Context(), getClientIP(r), r.UserAgent(), "verify_by_username", username)
+
 	user, err := h.userRepo.GetUserByUsername(username)
 	if err != nil {
 		logrus.WithError(err).WithField("username", username).Error("Failed to get user for verification")
@@ -78,6 +92,8 @@ func (h *Handler) VerifyByNumber(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.logCertVerificationAudit(r.Context(), getClientIP(r), r.UserAgent(), "verify_by_number", number)
+
 	cred, err := h.repo.GetCredentialByNumber(r.Context(), number)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get credential by number")
@@ -124,6 +140,8 @@ func (h *Handler) PublicBadges(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "Username is required")
 		return
 	}
+
+	h.logCertVerificationAudit(r.Context(), getClientIP(r), r.UserAgent(), "public_badges", username)
 
 	user, err := h.userRepo.GetUserByUsername(username)
 	if err != nil || user == nil {

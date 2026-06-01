@@ -21,12 +21,12 @@ Create a new function using the CLI:
 
 ```bash
 # Create a new function directory
-ffly init my-function
+ff init my-function
 
 # Or specify a runtime
-ffly init my-function --runtime python
-ffly init my-function --runtime javascript
-ffly init my-function --runtime go
+ff init my-function --runtime python
+ff init my-function --runtime javascript
+ff init my-function --runtime go
 ```
 
 ## Step 2: Write Your Function
@@ -91,7 +91,7 @@ Test your function locally before deploying:
 
 ```bash
 # Start the local development server
-ffly dev
+ff dev
 
 # In another terminal, test your function
 curl http://localhost:8080 \
@@ -106,10 +106,10 @@ Deploy your function to FunctionFly's global edge network:
 
 ```bash
 # Deploy the function
-ffly deploy
+ff deploy
 
 # Get the deployment URL
-ffly info
+ff info
 ```
 
 ## Step 5: Invoke Your Function

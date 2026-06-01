@@ -78,12 +78,6 @@ pub async fn run_server(
             .allow_headers(Any)
     };
 
-    // Create KV store and start background cleanup task.
-    // The background task removes expired entries every 30 seconds, replacing
-    // the previous O(n) per-operation cleanup.
-    let kv_store_for_cleanup: SharedKVStore = Arc::new(RwLock::new(crate::kv::KVStore::new(10000))); // Max 10k entries
-    let _kv_cleanup_handle = crate::kv::start_background_cleanup(kv_store_for_cleanup);
-
     // Create security monitor (single instance shared across all components)
     let security_monitor = Arc::new(SecurityMonitor::new());
 
@@ -114,6 +108,9 @@ pub async fn run_server(
 
     // Create resource manager for tracking and cleaning up resources during shutdown
     let resource_manager = Arc::new(ResourceManager::new(logger.clone()));
+
+    // Get shutdown flag to pass to background cleanup tasks
+    let shutdown_flag = resource_manager.shutdown_flag();
 
     // Create instance pool
     let pool = InstancePool::new(10, 60);
@@ -153,13 +150,24 @@ pub async fn run_server(
     // Use the KV store from SharedState for AppState
     let kv_store = shared_state.kv.clone();
 
+    // Create KV store and start background cleanup task.
+    // The background task removes expired entries every 30 seconds, replacing
+    // the previous O(n) per-operation cleanup.
+    let kv_store_for_cleanup: SharedKVStore = Arc::new(RwLock::new(crate::kv::KVStore::new(10000))); // Max 10k entries
+    let kv_cleanup_handle = crate::kv::start_background_cleanup(kv_store_for_cleanup, shutdown_flag.clone());
+
     // Start background pool pruning on the *shared* pool reference so the
     // pruning task operates on the same pool used by the server (fix for the
     // detached-clone bug in the old start_background_pruning() method).
-    let _pool_pruning_handle = InstancePool::start_background_pruning_shared(shared_state.pool.clone());
+    let pool_pruning_handle = InstancePool::start_background_pruning_shared(shared_state.pool.clone(), shutdown_flag.clone());
 
     // Start background metrics cleanup to remove old entries (older than 1 hour)
-    let _monitor_cleanup_handle = ResourceMonitor::start_background_cleanup(shared_state.monitor.clone());
+    let monitor_cleanup_handle = ResourceMonitor::start_background_cleanup(shared_state.monitor.clone(), shutdown_flag.clone());
+
+    // Register background task handles with resource manager for shutdown
+    resource_manager.register_task_handle(kv_cleanup_handle).await;
+    resource_manager.register_task_handle(pool_pruning_handle).await;
+    resource_manager.register_task_handle(monitor_cleanup_handle).await;
 
     // Create package manager for Enterprise tier
     let package_manager = if config.enterprise_enabled && config.package_caching_enabled {
@@ -196,15 +204,30 @@ pub async fn run_server(
     };
 
     // Start background cleanup task for enterprise security (clears stale rate limit data)
-    if let Some(ref es) = enterprise_security {
+    let enterprise_cleanup_handle = if let Some(ref es) = enterprise_security {
         let es_clone = es.clone();
-        tokio::spawn(async move {
+        let sf = shutdown_flag.clone();
+        Some(tokio::spawn(async move {
             let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(300)); // Every 5 minutes
             loop {
-                interval.tick().await;
-                es_clone.cleanup_old_data().await;
+                tokio::select! {
+                    _ = interval.tick() => {
+                        if sf.load(std::sync::atomic::Ordering::Relaxed) {
+                            tracing::debug!("Enterprise security cleanup: shutdown requested, stopping");
+                            break;
+                        }
+                        es_clone.cleanup_old_data().await;
+                    }
+                }
             }
-        });
+        }))
+    } else {
+        None
+    };
+
+    // Register enterprise cleanup task handle if enabled
+    if let Some(handle) = enterprise_cleanup_handle {
+        resource_manager.register_task_handle(handle).await;
     }
 
     // Create YARA scanner for WASM artifact validation (Phase 2)

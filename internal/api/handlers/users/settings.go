@@ -235,6 +235,7 @@ func (h *Handler) HandlePatchUserSettingsPrivacy(w http.ResponseWriter, r *http.
 	privacyFields := []string{
 		"allowTagging",
 		"allowIndexing",
+		"showCertificationBadges",
 		"showLastActive",
 	}
 
@@ -497,6 +498,7 @@ func (h *Handler) HandlePatchUserSettingsPrivacyMe(w http.ResponseWriter, r *htt
 	privacyFields := []string{
 		"allowTagging",
 		"allowIndexing",
+		"showCertificationBadges",
 		"showLastActive",
 	}
 

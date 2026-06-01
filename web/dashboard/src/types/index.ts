@@ -1100,6 +1100,7 @@ export interface UserProfile {
   stats: UserStats;
   achievements: Achievement[];
   recentActivity: UserActivity[];
+  certifications: import("@/api/certification").PublicBadge[];
   publishedFunctions: FunctionCardData[];
 }
 
@@ -1490,3 +1491,18 @@ export interface TenantAuthAuditLog {
 
 // Function DNA types
 export * from './dna';
+
+/** User certification badge */
+export interface UserCertification extends Omit<PublicBadge, 'tier'> {
+  id: string;
+  tier_slug: string;
+  tier_name: string;
+  tier_color: string;
+  tier_icon: string;
+  credential_number: string;
+  issued_at: string;
+  expires_at: string;
+  status: string;
+  verification_hash: string;
+  verification_url?: string;
+}

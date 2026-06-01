@@ -1,6 +1,7 @@
 //! Graceful shutdown handling for the local runtime.
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tokio::signal;
 use tokio::sync::{broadcast, RwLock};
@@ -194,6 +195,8 @@ impl ComponentShutdown {
 /// Resource manager for tracking and cleaning up resources
 pub struct ResourceManager {
     resources: RwLock<Vec<ManagedResource>>,
+    task_handles: RwLock<Vec<tokio::task::JoinHandle<()>>>,
+    shutdown_flag: Arc<AtomicBool>,
     logger: Arc<StructuredLogger>,
 }
 
@@ -202,8 +205,15 @@ impl ResourceManager {
     pub fn new(logger: Arc<StructuredLogger>) -> Self {
         Self {
             resources: RwLock::new(Vec::new()),
+            task_handles: RwLock::new(Vec::new()),
+            shutdown_flag: Arc::new(AtomicBool::new(false)),
             logger,
         }
+    }
+
+    /// Get a clone of the shutdown flag for passing to background tasks
+    pub fn shutdown_flag(&self) -> Arc<AtomicBool> {
+        self.shutdown_flag.clone()
     }
 
     /// Register a resource for cleanup
@@ -219,9 +229,46 @@ impl ResourceManager {
         );
     }
 
-    /// Cleanup all registered resources
+    /// Register a background task handle for cleanup (aborts on shutdown)
+    pub async fn register_task_handle(&self, handle: tokio::task::JoinHandle<()>) {
+        let mut task_handles = self.task_handles.write().await;
+        task_handles.push(handle);
+
+        let correlation_id = self.logger.generate_correlation_id().await;
+        self.logger.log_with_correlation(
+            crate::logging::LogLevel::Debug,
+            format!("Registered task handle for cleanup: {}", task_handles.len()),
+            &correlation_id,
+        );
+    }
+
+    /// Cleanup all registered resources and abort background tasks
     pub async fn cleanup_all(&self) -> RuntimeResult<()> {
         let correlation_id = self.logger.generate_correlation_id().await;
+
+        // Signal shutdown first - tasks will check this flag and exit their loops
+        self.shutdown_flag.store(true, Ordering::Relaxed);
+
+        self.logger.log_with_correlation(
+            crate::logging::LogLevel::Info,
+            "Shutdown flag set for background tasks",
+            &correlation_id,
+        );
+
+        // Give tasks a moment to exit cooperatively
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        // Force abort any remaining tasks
+        let task_handles = self.task_handles.write().await;
+        for handle in task_handles.iter() {
+            handle.abort();
+        }
+
+        self.logger.log_with_correlation(
+            crate::logging::LogLevel::Info,
+            "Aborted all background tasks",
+            &correlation_id,
+        );
 
         self.logger.log_with_correlation(
             crate::logging::LogLevel::Info,

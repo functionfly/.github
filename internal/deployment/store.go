@@ -59,11 +59,13 @@ func (s *MemoryArtifactStore) Delete(ctx context.Context, key string) error {
 
 // RedisArtifactStore is a Redis-based implementation of ArtifactStore for production use
 type RedisArtifactStore struct {
-	client           *redis.Client
-	ttl              time.Duration // Optional TTL for stored artifacts
-	archiver         *R2ArtifactStore // Optional R2 archiver for durable backup
-	archiveAsync     bool           // Whether to archive asynchronously (non-blocking)
-	archiveEnabled   bool           // Whether archiving is enabled
+	client *redis.Client
+	clusterClient  *redis.ClusterClient // Redis Cluster client (if using cluster mode)
+	ttl            time.Duration        // Optional TTL for stored artifacts
+	archiver       *R2ArtifactStore    // Optional R2 archiver for durable backup
+	archiveAsync   bool                // Whether to archive asynchronously (non-blocking)
+	archiveEnabled bool                // Whether archiving is enabled
+	isCluster      bool                // Whether using Redis Cluster
 }
 
 // RedisStoreOption configures a RedisArtifactStore
@@ -80,6 +82,11 @@ func WithR2Archiver(archiver *R2ArtifactStore, async bool) RedisStoreOption {
 
 // NewRedisArtifactStore creates a new Redis-based artifact store
 func NewRedisArtifactStore(addr, password string, db int, ttl time.Duration, opts ...RedisStoreOption) *RedisArtifactStore {
+	// Check if Redis Cluster mode is enabled via environment variable
+	if os.Getenv("REDIS_CLUSTER_ENABLED") == "true" {
+		return newRedisClusterArtifactStore(ttl, opts...)
+	}
+
 	var tlsCfg *tls.Config
 	if strings.Contains(addr, "upstash.io") {
 		tlsCfg = &tls.Config{}
@@ -119,6 +126,75 @@ func NewRedisArtifactStore(addr, password string, db int, ttl time.Duration, opt
 	return store
 }
 
+// newRedisClusterArtifactStore creates a Redis Cluster-based artifact store for horizontal scaling
+func newRedisClusterArtifactStore(ttl time.Duration, opts ...RedisStoreOption) *RedisArtifactStore {
+	clusterNodes := os.Getenv("REDIS_CLUSTER_NODES")
+	if clusterNodes == "" {
+		logrus.Warn("REDIS_CLUSTER_ENABLED=true but REDIS_CLUSTER_NODES is not set, falling back to single node")
+		return newRedisArtifactStoreFromEnv(ttl, opts...)
+	}
+
+	var tlsCfg *tls.Config
+	// Check if any node uses TLS
+	if strings.Contains(clusterNodes, "upstash.io") {
+		tlsCfg =&tls.Config{}
+	}
+
+	// Parse cluster nodes (format: node1:port,node2:port,node3:port)
+	nodes := strings.Split(clusterNodes, ",")
+	clusterOptions := &redis.ClusterOptions{
+		Addrs:     nodes,
+		TLSConfig: tlsCfg,
+	}
+
+	// Optional password for cluster auth
+	if password := os.Getenv("REDIS_CLUSTER_PASSWORD"); password != "" {
+		clusterOptions.Password = password
+	}
+
+	clusterClient := redis.NewClusterClient(clusterOptions)
+
+	store :=&RedisArtifactStore{
+		clusterClient:  clusterClient,
+		ttl:            ttl,
+		archiveEnabled: false,
+		archiveAsync:   true,
+		isCluster:      true,
+	}
+
+	// Apply options
+	for _, opt := range opts {
+		opt(store)
+	}
+
+	// Auto-enable R2 archiver if environment variables are set
+	if !store.archiveEnabled && os.Getenv("R2_AUTO_ARCHIVE_ENABLED") == "true" {
+		if archiver, err := NewR2ArtifactStore(); err == nil {
+			store.archiver = archiver
+			store.archiveEnabled = true
+			store.archiveAsync = os.Getenv("R2_ARCHIVE_SYNC") != "true"
+			logrus.Info("R2 auto-archiving enabled for RedisArtifactStore (Cluster mode)")
+		} else {
+			logrus.Warnf("R2 auto-archive configured but failed to initialize: %v", err)
+		}
+	}
+
+	logrus.Infof("RedisArtifactStore initialized in Cluster mode with %d nodes", len(nodes))
+	return store
+}
+
+// newRedisArtifactStoreFromEnv creates a single-node Redis store from environment variables (fallback)
+func newRedisArtifactStoreFromEnv(ttl time.Duration, opts ...RedisStoreOption) *RedisArtifactStore {
+	addr := os.Getenv("REDIS_ADDR")
+	password := os.Getenv("REDIS_PASSWORD")
+	db := 0
+	if redisDB := os.Getenv("REDIS_DB"); redisDB != "" {
+		fmt.Sscanf(redisDB, "%d",&db)
+	}
+
+	return NewRedisArtifactStore(addr, password, db, ttl, opts...)
+}
+
 // NewRedisArtifactStoreFromClient creates a Redis artifact store using an existing Redis client
 func NewRedisArtifactStoreFromClient(client *redis.Client, ttl time.Duration, opts ...RedisStoreOption) *RedisArtifactStore {
 	store := &RedisArtifactStore{
@@ -152,7 +228,9 @@ func NewRedisArtifactStoreFromClient(client *redis.Client, ttl time.Duration, op
 func (s *RedisArtifactStore) Store(ctx context.Context, key string, data []byte) error {
 	// Store in Redis (primary, fast access)
 	var err error
-	if s.ttl > 0 {
+	if s.isCluster {
+		err = s.clusterClient.Set(ctx, key, data, s.ttl).Err()
+	} else if s.ttl > 0 {
 		err = s.client.Set(ctx, key, data, s.ttl).Err()
 	} else {
 		err = s.client.Set(ctx, key, data, 0).Err()
@@ -221,7 +299,15 @@ func (s *RedisArtifactStore) IsArchiveEnabled() bool {
 
 // Retrieve retrieves an artifact by key from Redis
 func (s *RedisArtifactStore) Retrieve(ctx context.Context, key string) ([]byte, error) {
-	result, err := s.client.Get(ctx, key).Result()
+	var result string
+	var err error
+
+	if s.isCluster {
+		result, err = s.clusterClient.Get(ctx, key).Result()
+	} else {
+		result, err = s.client.Get(ctx, key).Result()
+	}
+
 	if err != nil {
 		if err == redis.Nil {
 			return nil, fmt.Errorf("artifact not found: %s", key)
@@ -233,15 +319,28 @@ func (s *RedisArtifactStore) Retrieve(ctx context.Context, key string) ([]byte, 
 
 // Delete removes an artifact by key from Redis
 func (s *RedisArtifactStore) Delete(ctx context.Context, key string) error {
-	return s.client.Del(ctx, key).Err()
+	var err error
+	if s.isCluster {
+		err = s.clusterClient.Del(ctx, key).Err()
+	} else {
+		err = s.client.Del(ctx, key).Err()
+	}
+	return err
 }
 
 // Ping tests the Redis connection
 func (s *RedisArtifactStore) Ping(ctx context.Context) error {
+	if s.isCluster {
+		// For cluster, ping the first node
+		return s.clusterClient.Ping(ctx).Err()
+	}
 	return s.client.Ping(ctx).Err()
 }
 
 // Close closes the Redis connection
 func (s *RedisArtifactStore) Close() error {
+	if s.isCluster {
+		return s.clusterClient.Close()
+	}
 	return s.client.Close()
 }

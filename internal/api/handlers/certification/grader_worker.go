@@ -145,22 +145,92 @@ func (w *GradingWorker) gradeChallenge(ctx context.Context, challenge *storage.C
 
 // gradeDeploymentCheck verifies a function was deployed and responds correctly
 func (w *GradingWorker) gradeDeploymentCheck(ctx context.Context, config storage.JSONMap, exam *storage.CertExam) (storage.JSONMap, error) {
-	// The candidate stores their deployed URL in practical_results
 	practicalResults := exam.PracticalResults
-	if practicalResults == nil {
-		return storage.JSONMap{"score": 0, "feedback": "No deployment submitted"}, nil
+	if practicalResults == nil || len(practicalResults) == 0 {
+		return storage.JSONMap{"score": 0, "feedback": "No deployment URL submitted"}, nil
 	}
 
-	// For now, check that the candidate deployed something
-	// Full HTTP call grading will be implemented with the execution engine
-	return storage.JSONMap{
-		"score":    100,
-		"feedback": "Deployment verified",
-	}, nil
+	deployedURL, ok := practicalResults["deployed_url"].(string)
+	if !ok || deployedURL == "" {
+		urls, urlMapOK := practicalResults["urls"].(map[string]interface{})
+		if !urlMapOK {
+			return storage.JSONMap{"score": 0, "feedback": "Missing 'deployed_url' or 'urls' in practical results"}, nil
+		}
+		primaryURL, primaryOK := urls["primary"].(string)
+		if !primaryOK || primaryURL == "" {
+			return storage.JSONMap{"score": 0, "feedback": "Missing 'urls.primary' in practical results"}, nil
+		}
+		deployedURL = primaryURL
+	}
+
+	checkURL := strings.TrimRight(deployedURL, "/")
+
+	expectedPath, _ := config["expected_path"].(string)
+	if expectedPath != "" {
+		checkURL = strings.TrimRight(checkURL, "/") + "/" + strings.TrimLeft(expectedPath, "/")
+	}
+
+	expectedStatus := 200
+	if sv, ok := config["expected_status"].(float64); ok {
+		expectedStatus = int(sv)
+	}
+
+	if expectedStatus == 0 {
+		expectedStatus = 200
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", checkURL, nil)
+	if err != nil {
+		return storage.JSONMap{"score": 0, "feedback": fmt.Sprintf("Invalid URL %q: %v", checkURL, err)}, nil
+	}
+
+	resp, err := w.httpClient.Do(req)
+	if err != nil {
+		return storage.JSONMap{"score": 0, "feedback": fmt.Sprintf("Deployment at %q is not reachable: %v", checkURL, err)}, nil
+	}
+	defer resp.Body.Close()
+
+	score := 0
+	if resp.StatusCode == expectedStatus {
+		score = 100
+	} else if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		score = 50
+	}
+
+	if expectedBody, ok := config["expected_body"].(string); ok && expectedBody != "" {
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return storage.JSONMap{"score": 0, "feedback": fmt.Sprintf("Failed to read response body from %s: %v", checkURL, err)}, nil
+		}
+		if !strings.Contains(string(bodyBytes), expectedBody) {
+			return storage.JSONMap{
+				"score":    max(0, score-30),
+				"feedback": fmt.Sprintf("Deployment at %q does not contain expected body content", checkURL),
+			}, nil
+		}
+	}
+
+	feedback := fmt.Sprintf("Deployment verified at %s (HTTP %d)", checkURL, resp.StatusCode)
+	if score == 100 {
+		feedback = "Deployment fully verified"
+	}
+
+	return storage.JSONMap{"score": score, "feedback": feedback}, nil
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 // gradeHTTPResponse calls an endpoint and verifies the response
 func (w *GradingWorker) gradeHTTPResponse(ctx context.Context, config storage.JSONMap) (storage.JSONMap, error) {
+	if config == nil {
+		return storage.JSONMap{"score": 0, "feedback": "HTTP response grading requires 'config'"}, nil
+	}
+
 	url, ok := config["url"].(string)
 	if !ok || url == "" {
 		return storage.JSONMap{"score": 0, "feedback": "HTTP response grading requires 'url' in config"}, nil

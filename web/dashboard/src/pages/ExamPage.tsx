@@ -95,7 +95,7 @@ export function ExamPage() {
         <div className="flex flex-col items-center justify-center py-24 gap-4">
           <AlertTriangle className="h-12 w-12 text-red-500" />
           <p className="text-text-muted">Failed to load exam. It may have expired.</p>
-          <Button variant="outline" onClick={() => navigate('/certification')}>
+          <Button variant="outline" onClick={() => navigate('/certification')} className="border-brand-500 text-brand-500 hover:bg-brand-500/10 hover:scale-105 transition-all duration-200">
             Back to Certification
           </Button>
         </div>
@@ -200,6 +200,8 @@ export function ExamPage() {
                     onAnswer={(answer) => handleAnswer(currentQuestion.id, answer)}
                     questionNumber={currentQuestionIndex + 1}
                     totalQuestions={questions.length}
+                    onNext={() => setCurrentQuestionIndex(currentQuestionIndex + 1)}
+                    onPrevious={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}
                   />
                 </motion.div>
               )}

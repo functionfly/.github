@@ -6,6 +6,17 @@ import (
 	"github.com/google/uuid"
 )
 
+type StateFabricHostConfig struct {
+	Repo          interface{}
+	TriggerEngine interface{}
+	TenantID      uuid.UUID
+	DefaultFabric uuid.UUID
+}
+
+func HostHandlerForExecution(_ StateFabricHostConfig) HostFunctionHandler {
+	return NewDefaultHostHandler(nil)
+}
+
 // ParseFabricIDFromInput extracts an optional default fabric ID from execution input JSON.
 func ParseFabricIDFromInput(input []byte) uuid.UUID {
 	if len(input) == 0 {

@@ -517,9 +517,9 @@ export function ConnectProviderStep() {
           width={window.innerWidth}
           height={window.innerHeight}
           recycle={false}
-          numberOfPieces={80}
+          numberOfPieces={50}
           gravity={0.3}
-          colors={['#FF6B35', '#FFB800', '#00D4FF', '#5B7CF5', '#10b981', '#FF4F5E']}
+          colors={['#FF6B35', '#FFB800', '#00D4FF', '#5B7CF5', '#10b981']}
         />
       )}
       <div className="space-y-6">

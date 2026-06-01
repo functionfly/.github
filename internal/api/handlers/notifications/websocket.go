@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -317,8 +316,6 @@ func (h *WebSocketHandler) SubscribeToNotifications(ctx context.Context, poolFac
 				continue
 			}
 
-			// Every session starts with LISTEN so pg_notify payloads are received
-			// as Notifications; Exec here creates the persistent subscription.
 			if _, err := conn.Conn().Exec(ctx, "LISTEN "+channel); err != nil {
 				conn.Release()
 				h.logger.WithError(err).Errorf("Failed to execute LISTEN %s", channel)
@@ -328,7 +325,6 @@ func (h *WebSocketHandler) SubscribeToNotifications(ctx context.Context, poolFac
 
 			h.logger.WithField("channel", channel).Info("LISTEN subscription active")
 
-			// Receive loop – exits only on context cancellation or connection error.
 			for {
 				notification, err := conn.Conn().WaitForNotification(ctx)
 				if err != nil {
@@ -338,7 +334,12 @@ func (h *WebSocketHandler) SubscribeToNotifications(ctx context.Context, poolFac
 					h.logger.WithError(err).Warn("Notification subscription connection dropped, reconnecting")
 					break
 				}
-				// Payload is JSON: {"type":"notification","user_id":"...","notification_id":"..."}
+
+				if channel == "cert_exam_updates" {
+					h.handleCertExamUpdate(notification.Payload)
+					continue
+				}
+
 				var payload struct {
 					Type           string `json:"type"`
 					UserID         string `json:"user_id"`
@@ -354,7 +355,6 @@ func (h *WebSocketHandler) SubscribeToNotifications(ctx context.Context, poolFac
 					return
 				}
 
-				// Only broadcast "notification" type messages.
 				if payload.Type != "notification" || payload.UserID == "" {
 					continue
 				}
@@ -380,17 +380,11 @@ func (h *WebSocketHandler) SubscribeToNotifications(ctx context.Context, poolFac
 			if ctx.Err() != nil {
 				return
 			}
-
-			// Connection dropped or errored – back off and retry.
-			if err != nil && !strings.Contains(err.Error(), "context canceled") {
-				h.logger.WithError(err).Warn("Notification subscription connection dropped, reconnecting")
-			}
 			time.Sleep(2 * time.Second)
 		}
 	}
 
-	// Subscribe to the global broadcast channel and to each user's personal channel.
-	channels := []string{pgListenerKey}
+	channels := []string{pgListenerKey, "cert_exam_updates"}
 	for {
 		// Re-check context before creating subscriptions.
 		if ctx.Err() != nil {
@@ -449,6 +443,26 @@ func (h *WebSocketHandler) BroadcastNotification(userID string, n *notification.
 	}
 
 	h.hub.Broadcast(userID, "notification", payload)
+}
+
+func (h *WebSocketHandler) handleCertExamUpdate(payload string) {
+	var data struct {
+		Type     string `json:"type"`
+		UserID   string `json:"user_id"`
+		ExamID   string `json:"exam_id"`
+		Status   string `json:"status"`
+	}
+	if err := json.Unmarshal([]byte(payload), &data); err != nil {
+		h.logger.WithError(err).Warn("Failed to parse cert_exam_updates payload")
+		return
+	}
+	if data.Type != "cert_exam_status" || data.UserID == "" || data.ExamID == "" {
+		return
+	}
+	h.hub.Broadcast(data.UserID, "cert_exam_status", map[string]string{
+		"exam_id": data.ExamID,
+		"status":  data.Status,
+	})
 }
 
 // RegisterWebSocketRoute registers the WebSocket route

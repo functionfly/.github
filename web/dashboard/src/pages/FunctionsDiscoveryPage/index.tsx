@@ -201,8 +201,8 @@ export function FunctionsDiscoveryPage() {
           data = allFunctions.filter((f) => favoriteIds.has(f.id));
           break;
         case 'my': {
-          // Merge platform functions with user's registry functions (deduplicate by name)
-          // Registry functions use "author/name" format, platform functions use just "name"
+          // Merge user's private registry functions with their published registry functions (deduplicate by name)
+          // Published registry functions use "author/name" format, private ones use just "name"
           const seenNames = new Set(userFunctions.map((f) => f.name.toLowerCase()));
           const merged = [...userFunctions];
           for (const fn of mappedMyRegistryFunctions) {
@@ -348,7 +348,7 @@ export function FunctionsDiscoveryPage() {
                     const funcName = fn.name.split('/')[1] || fn.name;
                     navigate(`/fx/${fn.author}/${funcName}`);
                   } else {
-                    // Navigate to user's platform function
+                    // Navigate to user's private registry function
                     navigate(`/functions/${id}`);
                   }
                 }}

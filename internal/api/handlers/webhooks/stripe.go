@@ -87,6 +87,7 @@ type StripeWebhookHandler struct {
 	dunningManager  *billingpkg.DunningManager
 	operationalRepo *storage.BillingOperationalRepository
 	payoutService   PayoutWebhookProcessor
+	certRepo        *storage.CertificationRepository
 }
 
 // PayoutWebhookProcessor handles payout-related webhook events.
@@ -131,6 +132,7 @@ func NewStripeWebhookHandler(
 	refundRepo *storage.RefundRepository,
 	registryRepo *storageregistry.RegistryRepository,
 	emailSvc email.Service,
+	certRepo *storage.CertificationRepository,
 ) *StripeWebhookHandler {
 	return &StripeWebhookHandler{
 		financialTxRepo:  financialTxRepo,
@@ -144,6 +146,7 @@ func NewStripeWebhookHandler(
 		refundRepo:       refundRepo,
 		registryRepo:     registryRepo,
 		emailSvc:         emailSvc,
+		certRepo:         certRepo,
 	}
 }
 
@@ -176,6 +179,8 @@ func (h *StripeWebhookHandler) RegisterRoutes(router *mux.Router) {
 // Security: Webhook signature verification is MANDATORY in production.
 // The ALLOW_UNVERIFIED_WEBHOOKS environment variable is IGNORED in production.
 func (h *StripeWebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
+	logrus.WithField("path", r.URL.Path).WithField("method", r.Method).Info("stripe webhook handler hit")
+
 	payload, err := io.ReadAll(r.Body)
 	if err != nil {
 		logrus.WithError(err).Error("failed to read webhook body")
@@ -183,6 +188,18 @@ func (h *StripeWebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	defer r.Body.Close()
+
+	var event stripe.Event
+	if err := json.Unmarshal(payload, &event); err != nil {
+		logrus.WithError(err).Warn("failed to unmarshal stripe webhook event before idempotency")
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	logrus.WithFields(logrus.Fields{
+		"event_type": event.Type,
+		"event_id":   event.ID,
+		"livemode":   event.Livemode,
+	}).Info("stripe webhook: received event before idempotency")
 
 	// SECURITY: Strict production check - NEVER allow unverified webhooks in production
 	isProduction := os.Getenv("PRODUCTION") == "true"
@@ -195,7 +212,6 @@ func (h *StripeWebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Parse the event to get the event ID for idempotency check
-	var event stripe.Event
 	if h.webhookSecret == "" {
 		// In non-production, only allow unverified webhooks if explicitly opted in
 		// Note: ALLOW_UNVERIFIED_WEBHOOKS is IGNORED in production due to check above
@@ -210,6 +226,19 @@ func (h *StripeWebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Requ
 			logrus.WithError(err).Warn("failed to parse stripe webhook event")
 			http.Error(w, "Invalid JSON", http.StatusBadRequest)
 			return
+		}
+		// Manually extract Data.Raw from the payload for checkout.session.completed events
+		// since Stripe's json.Unmarshal doesn't automatically populate event.Data.Raw
+		var rawPayload map[string]interface{}
+		if err := json.Unmarshal(payload, &rawPayload); err == nil {
+			if dataObj, ok := rawPayload["data"].(map[string]interface{}); ok {
+				if obj, ok := dataObj["object"].(map[string]interface{}); ok {
+					if event.Data == nil {
+						event.Data = &stripe.EventData{}
+					}
+					event.Data.Raw, _ = json.Marshal(obj)
+				}
+			}
 		}
 	} else {
 		// Verify webhook signature with configured secret
@@ -308,7 +337,16 @@ func (h *StripeWebhookHandler) handleEvent(w http.ResponseWriter, r *http.Reques
 
 func (h *StripeWebhookHandler) handleCheckoutSessionCompleted(w http.ResponseWriter, r *http.Request, event *stripe.Event) {
 	var session stripe.CheckoutSession
-	sessionData, err := event.Data.Raw.MarshalJSON()
+
+	logrus.WithField("event_type", event.Type).WithField("event_id", event.ID).Info("Processing checkout.session.completed")
+
+	if event.Data == nil || event.Data.Raw == nil {
+		logrus.Error("checkout.session.completed: event.Data or event.Data.Raw is nil")
+		http.Error(w, "Invalid event data", http.StatusBadRequest)
+		return
+	}
+
+	sessionData, err := json.Marshal(event.Data.Raw)
 	if err != nil {
 		logrus.WithError(err).Error("failed to marshal checkout session data")
 		http.Error(w, "Invalid event data", http.StatusBadRequest)
@@ -334,6 +372,8 @@ func (h *StripeWebhookHandler) handleCheckoutSessionCompleted(w http.ResponseWri
 		h.handleFunctionVerificationCheckout(w, r, &session)
 	case "username_change":
 		h.handleUsernameChangeCheckout(w, r, &session)
+	case "cert_exam":
+		h.handleCertExamCheckout(w, r, &session)
 	default:
 		logrus.WithField("purpose", purpose).Debug("checkout.session.completed: unknown purpose, ignoring")
 		w.WriteHeader(http.StatusOK)
@@ -3118,6 +3158,82 @@ func (h *StripeWebhookHandler) handleConnectAccountUpdated(w http.ResponseWriter
 			logrus.WithError(err).WithField("account_id", account.ID).Warn("failed to refresh connect account status")
 		}
 	}
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "processed"})
+}
+
+func (h *StripeWebhookHandler) handleCertExamCheckout(w http.ResponseWriter, r *http.Request, session *stripe.CheckoutSession) {
+	examIDStr := session.Metadata["exam_id"]
+	tierSlug := session.Metadata["tier_slug"]
+	userIDStr := session.Metadata["user_id"]
+
+	logrus.WithFields(logrus.Fields{
+		"exam_id":          examIDStr,
+		"tier_slug":        tierSlug,
+		"session_id":       session.ID,
+		"payment_intent":   session.PaymentIntent,
+		"payment_status":   session.PaymentStatus,
+		"webhook_user_id":  userIDStr,
+	}).Info("handleCertExamCheckout called")
+
+	if examIDStr == "" || userIDStr == "" {
+		logrus.Warn("cert exam checkout missing required metadata")
+		http.Error(w, "Missing metadata", http.StatusBadRequest)
+		return
+	}
+
+	examID, err := uuid.Parse(examIDStr)
+	if err != nil {
+		logrus.WithError(err).Error("invalid exam_id in metadata")
+		http.Error(w, "Invalid exam_id", http.StatusBadRequest)
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		logrus.WithError(err).Error("invalid user_id in metadata")
+		http.Error(w, "Invalid user_id", http.StatusBadRequest)
+		return
+	}
+
+	var paymentIntentID string
+	if session.PaymentIntent != nil {
+		paymentIntentID = session.PaymentIntent.ID
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"exam_id":      examIDStr,
+		"user_id":      userIDStr,
+		"pi_id":        paymentIntentID,
+		"cert_repo_nil": h.certRepo == nil,
+	}).Info("cert exam checkout: before update")
+
+	// Update exam with Stripe payment ID and activate it
+	if err := h.certRepo.UpdateExamStripePaymentID(r.Context(), examID, paymentIntentID); err != nil {
+		logrus.WithError(err).WithField("exam_id", examIDStr).Error("failed to update exam with payment ID")
+		http.Error(w, "Failed to update exam", http.StatusInternalServerError)
+		return
+	}
+
+	logrus.WithField("exam_id", examIDStr).Info("cert exam checkout: stripe payment ID updated")
+
+	// Activate the exam (select questions and set status to in_progress) — validates ownership
+	if err := h.certRepo.ActivateExamFromPaymentWithUser(r.Context(), examID, userID); err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"exam_id": examIDStr,
+			"user_id": userIDStr,
+		}).Error("failed to activate exam from payment")
+		http.Error(w, fmt.Sprintf("Failed to activate exam: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"exam_id":     examIDStr,
+		"user_id":     userIDStr,
+		"session_id":  session.ID,
+		"tier_slug":   tierSlug,
+	}).Info("cert exam payment completed and exam activated")
 
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]string{"status": "processed"})

@@ -11,6 +11,7 @@ import (
 	agenthandler "github.com/functionfly/functionfly/internal/api/handlers/agent"
 	"github.com/functionfly/functionfly/internal/api/handlers/billing"
 	"github.com/functionfly/functionfly/internal/api/handlers/blog"
+	"github.com/functionfly/functionfly/internal/api/handlers/certification"
 	"github.com/functionfly/functionfly/internal/api/handlers/content"
 	factoryhandler "github.com/functionfly/functionfly/internal/api/handlers/factory"
 	feedbackHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/feedback"
@@ -62,6 +63,7 @@ func registerAdminRoutes(
 	disputesHandler *admin.DisputesHandler,
 	stateUsageHandler *billing.StateUsageHandler,
 	unfairAdvantageHandler *agenthandler.UnfairAdvantageHandler,
+	certHandler *certification.Handler,
 ) {
 	adminRoutes := api.PathPrefix("/admin").Subrouter()
 
@@ -674,4 +676,23 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/newsletter/campaigns", authMiddleware.RequirePermission(auth.PermSystemWrite)(newsletterHandler.CreateCampaign)).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/newsletter/campaigns/{id}", authMiddleware.RequirePermission(auth.PermSystemRead)(newsletterHandler.GetCampaign)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/newsletter/campaigns/{id}/send", authMiddleware.RequirePermission(auth.PermSystemWrite)(newsletterHandler.SendCampaign)).Methods("POST", "OPTIONS")
+
+	// ── Certification Admin ─────────────────────────────────────────────
+	adminRoutes.HandleFunc("/certification/tiers", authMiddleware.RequirePermission(auth.PermSystemWrite)(certHandler.AdminListTiers)).Methods("GET", "POST", "OPTIONS")
+	adminRoutes.HandleFunc("/certification/tiers/{tierID}", authMiddleware.RequirePermission(auth.PermSystemWrite)(certHandler.AdminGetTier)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/certification/tiers/{tierID}", authMiddleware.RequirePermission(auth.PermSystemWrite)(certHandler.AdminUpdateTier)).Methods("PUT", "PATCH", "OPTIONS")
+	adminRoutes.HandleFunc("/certification/tiers/{tierID}", authMiddleware.RequirePermission(auth.PermSystemWrite)(certHandler.AdminDeleteTier)).Methods("DELETE", "OPTIONS")
+	adminRoutes.HandleFunc("/certification/tiers/{tierID}/questions", authMiddleware.RequirePermission(auth.PermSystemWrite)(certHandler.AdminListQuestionsForTier)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/certification/tiers/{tierID}/questions", authMiddleware.RequirePermission(auth.PermSystemWrite)(certHandler.AdminCreateQuestionForTier)).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/certification/questions/{questionID}", authMiddleware.RequirePermission(auth.PermSystemWrite)(certHandler.AdminGetQuestion)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/certification/questions/{questionID}", authMiddleware.RequirePermission(auth.PermSystemWrite)(certHandler.AdminUpdateQuestion)).Methods("PUT", "PATCH", "OPTIONS")
+	adminRoutes.HandleFunc("/certification/questions/{questionID}", authMiddleware.RequirePermission(auth.PermSystemWrite)(certHandler.AdminDeleteQuestion)).Methods("DELETE", "OPTIONS")
+	adminRoutes.HandleFunc("/certification/exams", authMiddleware.RequirePermission(auth.PermSystemRead)(certHandler.AdminListExams)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/certification/exams/{examID}", authMiddleware.RequirePermission(auth.PermSystemRead)(certHandler.AdminGetExam)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/certification/exams/{examID}/grade", authMiddleware.RequirePermission(auth.PermSystemWrite)(certHandler.AdminGradeExam)).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/certification/exams/{examID}/reset", authMiddleware.RequirePermission(auth.PermSystemWrite)(certHandler.AdminResetExam)).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/certification/credentials", authMiddleware.RequirePermission(auth.PermSystemRead)(certHandler.AdminListCredentials)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/certification/credentials/{credentialID}", authMiddleware.RequirePermission(auth.PermSystemRead)(certHandler.AdminGetCredential)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/certification/credentials/{credentialID}/revoke", authMiddleware.RequirePermission(auth.PermSystemWrite)(certHandler.AdminRevokeCredential)).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/certification/users/{userID}/exams/tier/{tierSlug}/reset", authMiddleware.RequirePermission(auth.PermSystemWrite)(certHandler.AdminResetUserTierExamAttempts)).Methods("POST", "OPTIONS")
 }

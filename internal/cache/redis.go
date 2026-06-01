@@ -60,6 +60,11 @@ func (k *RegistryCacheKey) ConsumerDiversity(functionID string, since time.Time)
 	return fmt.Sprintf("registry:function:%s:consumer_diversity:%d", functionID, since.Unix())
 }
 
+// GalleryStats generates cache key for gallery statistics
+func (k *RegistryCacheKey) GalleryStats() string {
+	return "registry:gallery:stats"
+}
+
 // SearchResults generates cache key for search results
 func (k *RegistryCacheKey) SearchResults(query string, filters map[string]interface{}) string {
 	// Create a deterministic key from filters

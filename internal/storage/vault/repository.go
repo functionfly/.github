@@ -552,3 +552,62 @@ func (r *Repository) Transaction(ctx context.Context, fn func(*Repository) error
 func (r *Repository) DB() *gorm.DB {
 	return r.db
 }
+
+// GetAllSecretsPaginated returns all secrets without tenant filtering (admin only)
+func (r *Repository) GetAllSecretsPaginated(ctx context.Context, limit, offset int) ([]Secret, error) {
+	var secrets []Secret
+	err := r.db.WithContext(ctx).
+		Where("deleted_at IS NULL").
+		Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&secrets).Error
+	return secrets, err
+}
+
+// CountAllSecrets returns the total count of all secrets (admin only)
+func (r *Repository) CountAllSecrets(ctx context.Context) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&Secret{}).Where("deleted_at IS NULL").Count(&count).Error
+	return count, err
+}
+
+// GetSecretByIDAdmin retrieves a secret by ID without tenant filtering (admin only)
+func (r *Repository) GetSecretByIDAdmin(ctx context.Context, id uuid.UUID) (*Secret, error) {
+	var secret Secret
+	err := r.db.WithContext(ctx).
+		Where("id = ? AND deleted_at IS NULL", id).
+		First(&secret).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &secret, nil
+}
+
+// GetVaultStats returns statistics about the vault (admin only)
+func (r *Repository) GetVaultStats(ctx context.Context) (map[string]interface{}, error) {
+	var totalCount int64
+	var totalVersions int64
+
+	r.db.WithContext(ctx).Model(&Secret{}).Where("deleted_at IS NULL").Count(&totalCount)
+	r.db.WithContext(ctx).Model(&SecretVersion{}).Count(&totalVersions)
+
+	return map[string]interface{}{
+		"total_secrets": totalCount,
+		"total_versions": totalVersions,
+	}, nil
+}
+
+// GetTenantsWithSecrets returns all tenant IDs that have secrets (admin only)
+func (r *Repository) GetTenantsWithSecrets(ctx context.Context) ([]uuid.UUID, error) {
+	var tenantIDs []uuid.UUID
+	err := r.db.WithContext(ctx).
+		Model(&Secret{}).
+		Where("deleted_at IS NULL").
+		Distinct("tenant_id").
+		Pluck("tenant_id", &tenantIDs).Error
+	return tenantIDs, err
+}

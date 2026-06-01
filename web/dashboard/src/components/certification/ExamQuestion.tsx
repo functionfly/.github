@@ -2,6 +2,8 @@ import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { CertQuestionPublic } from '@/api/certification';
 
 interface ExamQuestionProps {
@@ -10,6 +12,8 @@ interface ExamQuestionProps {
   onAnswer: (answer: string) => void;
   questionNumber: number;
   totalQuestions: number;
+  onNext?: () => void;
+  onPrevious?: () => void;
 }
 
 const difficultyColors: Record<string, string> = {
@@ -24,6 +28,8 @@ export function ExamQuestion({
   onAnswer,
   questionNumber,
   totalQuestions,
+  onNext,
+  onPrevious,
 }: ExamQuestionProps) {
   return (
     <div className="space-y-4">
@@ -72,6 +78,30 @@ export function ExamQuestion({
           </div>
         ))}
       </RadioGroup>
+
+      {/* Navigation buttons */}
+      <div className="flex items-center justify-between pt-4 border-t border-theme">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onPrevious}
+          disabled={questionNumber <= 1}
+          className="flex items-center gap-1"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Previous
+        </Button>
+        <Button
+          variant="default"
+          size="sm"
+          onClick={onNext}
+          disabled={questionNumber >= totalQuestions}
+          className="flex items-center gap-1 bg-brand-500 hover:bg-brand-600"
+        >
+          Next
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 }

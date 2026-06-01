@@ -332,19 +332,13 @@ func (h *VaultHandler) HandleListTenantsWithSecrets(w http.ResponseWriter, r *ht
 	}
 
 	type TenantInfo struct {
-		TenantID       uuid.UUID `json:"tenant_id"`
-		SecretCount    int64     `json:"secret_count"`
-		OldestSecretAt interface{} `json:"oldest_secret_at,omitempty"`
-		NewestSecretAt interface{} `json:"newest_secret_at,omitempty"`
+		TenantID uuid.UUID `json:"tenant_id"`
 	}
 
 	items := make([]TenantInfo, len(tenants))
-	for i, t := range tenants {
+	for i, tid := range tenants {
 		items[i] = TenantInfo{
-			TenantID:       t.TenantID,
-			SecretCount:    t.SecretCount,
-			OldestSecretAt: t.OldestSecretAt,
-			NewestSecretAt: t.NewestSecretAt,
+			TenantID: tid,
 		}
 	}
 

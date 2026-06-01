@@ -7,12 +7,13 @@ This document is the central reference for **all Cloudflare usage** on the platf
 ## Overview
 
 | Area | Purpose | Docs / config |
-|------|--------|----------------| | **DNS** | Hostnames, GeoDNS, health checks | `deploy/dns/cloudflare-geo-dns.json`, `scripts/update-cloudflare-dns.sh`, `.fly/setup-dns.sh` |
+|------|--------|----------------|
+| **DNS** | Hostnames, GeoDNS, health checks | `deploy/dns/cloudflare-geo-dns.json`, `scripts/update-cloudflare-dns.sh`, `.fly/setup-dns.sh` |
 | **CDN** | Static assets (SDK, docs) at cdn.* | `docs/CDN_SETUP.md`, `CACHE_CDN_*` env |
 | **R2** | Object storage (uploads, optional CDN origin) | `docs/OBJECT_STORAGE.md`, `STORAGE_BACKEND=r2` |
 | **Workers** | Deploy user functions to Cloudflare Workers | `internal/adapters/cloudflare/`, backend provider `workers` |
-| **Tunnel** (optional) | Expose API/dashboard without opening ports | This doc, `deploy/cloudflare/` |
-| **Pages** (optional) | Host dashboard/docs | This doc, `deploy/cloudflare/` |
+| **Tunnel** (optional) | Expose API/dashboard without opening ports | `deploy/cloudflare-tunnel.example.sh` |
+| **Pages** (optional) | Host dashboard/docs | This doc |
 | **WAF / proxy** | DDoS, bot protection, SSL | Cloudflare dashboard; enable proxy (orange cloud) |
 
 ---
@@ -25,7 +26,7 @@ Set these where the orchestrator or CI runs. Prefer a secrets manager (e.g. Infi
 
 | Variable | Required for | Description |
 |----------|----------------|-------------|
-| `CLOUDFLARE_ACCOUNT_ID` | Workers, API, Tunnel | Account ID from Cloudflare dashboard URL |
+| `CLOUDFLARE_ACCOUNT_ID` | Workers, API | Account ID from Cloudflare dashboard URL |
 | `CLOUDFLARE_ZONE_ID` | DNS script, CI | Zone ID for your domain (e.g. functionfly.com) |
 | `CLOUDFLARE_API_TOKEN` | DNS script, Workers, CI | API token with needed permissions (Zone:DNS:Edit, Account:Workers:Edit, etc.) |
 
@@ -123,15 +124,16 @@ No global env vars are required in the orchestrator for Workers; credentials are
 
 ## Cloudflare Tunnel (optional)
 
-To expose the orchestrator (and optionally dashboard) through Cloudflare without opening server ports:
+To expose the orchestrator and dashboard without opening server ports:
 
-1. Install **cloudflared** on the host or in a container.  
-2. Create a Tunnel in the Cloudflare dashboard (Zero Trust → Tunnels) or via API; note the tunnel token.  
-3. Add a public hostname in the tunnel (e.g. `api.functionfly.com` → `http://localhost:8080`).  
-4. Run cloudflared with the token (see `deploy/cloudflare/cloudflare-tunnel.example.sh`).  
-5. In Cloudflare DNS, point `api` (and any other hostnames) to the tunnel (CNAME to `<tunnel-id>.cfargotunnel.com`), **or** use “Route via Cloudflare Tunnel” so no public DNS A/CNAME is needed.
+1. Create a Tunnel in Cloudflare Zero Trust (https://one.dash.cloudflare.com → Networks → Tunnels → Create Tunnel → select "Cloudflared").  
+2. Note the tunnel token.  
+3. Run `deploy/cloudflare-tunnel.example.sh --token <YOUR_TOKEN>`.  
+4. In the tunnel's Public Hostname configuration, add:
+   - `api.localhost` → `http://localhost:8080`
+   - `dashboard.localhost` → `http://localhost:3000`
 
-Benefits: no inbound firewall rules, DDoS and WAF at the edge, simple HTTPS.
+Benefits: no inbound firewall rules, DDoS and WAF at the edge, automatic HTTPS.
 
 ---
 
@@ -226,7 +228,7 @@ For production, use your custom domain (e.g., `app.functionfly.com`).
 - [ ] `CACHE_CDN_ENABLED=true`, `CACHE_CDN_PROVIDER=cloudflare`, `CACHE_CDN_BASE_URL` set.  
 - [ ] R2 bucket and API token if using `STORAGE_BACKEND=r2`; `R2_ACCOUNT_ID` and credentials set.  
 - [ ] Workers backend configured (account_id, api_token, script_name, zone_id) for function deployments.  
-- [ ] Optional: Tunnel for API/dashboard; Pages for dashboard/docs.  
+- [ ] Optional: Pages for dashboard/docs.  
 - [ ] CI secrets: `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_API_TOKEN` (and `CLOUDFLARE_ACCOUNT_ID` if used in CI).
 
 ---

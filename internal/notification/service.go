@@ -1,14 +1,9 @@
 package notification
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	htmltemplate "html/template"
-	"sort"
-	"strings"
 	"sync"
-	texttemplate "text/template"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/email"
@@ -425,291 +420,7 @@ func (s *Service) Stop() {
 	s.queue.Stop()
 }
 
-// TemplateEngine handles template rendering
-type TemplateEngine struct {
-	repo Repository
-}
 
-// NewTemplateEngine creates a new template engine
-func NewTemplateEngine(repo Repository) *TemplateEngine {
-	return &TemplateEngine{repo: repo}
-}
-
-// Render renders a template with data using Go's text/template and html/template.
-// Templates may use {{.Key}} (e.g. {{.UserName}}) or legacy {{Key}}; both are supported.
-// HTML body is executed with html/template so injected values are escaped for safety.
-func (e *TemplateEngine) Render(ctx context.Context, notificationType, channel string, data JSONMap) (subject, bodyHTML, bodyText string, err error) {
-	tmpl, err := e.repo.GetTemplate(ctx, notificationType, channel)
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get template: %w", err)
-	}
-	if tmpl == nil {
-		return "", "", "", nil
-	}
-
-	// Normalize legacy {{key}} to {{.key}} so stored templates work with Go template
-	subject = normalizeTemplatePlaceholders(tmpl.Subject, data)
-	bodyHTML = normalizeTemplatePlaceholders(tmpl.BodyHTML, data)
-	bodyText = normalizeTemplatePlaceholders(tmpl.BodyText, data)
-
-	subject, err = executeTextTemplate("subject", subject, data)
-	if err != nil {
-		return "", "", "", fmt.Errorf("subject template: %w", err)
-	}
-	bodyText, err = executeTextTemplate("bodyText", bodyText, data)
-	if err != nil {
-		return "", "", "", fmt.Errorf("body text template: %w", err)
-	}
-	bodyHTML, err = executeHTMLTemplate("bodyHTML", bodyHTML, data)
-	if err != nil {
-		return "", "", "", fmt.Errorf("body HTML template: %w", err)
-	}
-
-	return subject, bodyHTML, bodyText, nil
-}
-
-// normalizeTemplatePlaceholders rewrites {{key}} to {{.key}} for each key in data (longest keys first to avoid partial matches).
-func normalizeTemplatePlaceholders(s string, data JSONMap) string {
-	if len(data) == 0 {
-		return s
-	}
-	keys := make([]string, 0, len(data))
-	for k := range data {
-		keys = append(keys, k)
-	}
-	sort.Slice(keys, func(i, j int) bool { return len(keys[i]) > len(keys[j]) })
-	for _, k := range keys {
-		old := fmt.Sprintf("{{%s}}", k)
-		new := fmt.Sprintf("{{.%s}}", k)
-		s = strings.ReplaceAll(s, old, new)
-	}
-	return s
-}
-
-func executeTextTemplate(name, text string, data JSONMap) (string, error) {
-	t, err := texttemplate.New(name).Parse(text)
-	if err != nil {
-		return "", err
-	}
-	var buf bytes.Buffer
-	if err := t.Execute(&buf, data); err != nil {
-		return "", err
-	}
-	return buf.String(), nil
-}
-
-func executeHTMLTemplate(name, text string, data JSONMap) (string, error) {
-	t, err := htmltemplate.New(name).Parse(text)
-	if err != nil {
-		return "", err
-	}
-	var buf bytes.Buffer
-	if err := t.Execute(&buf, data); err != nil {
-		return "", err
-	}
-	return buf.String(), nil
-}
-
-// Queue manages the notification processing queue
-type Queue struct {
-	repo     Repository
-	logger   *logrus.Logger
-	queue    chan *Notification
-	wg       sync.WaitGroup
-	ctx      context.Context
-	cancel   context.CancelFunc
-	workers  int
-	stopOnce sync.Once
-}
-
-// NewQueue creates a new notification queue
-func NewQueue(repo Repository, logger *logrus.Logger) *Queue {
-	return &Queue{
-		repo:    repo,
-		logger:  logger,
-		queue:   make(chan *Notification, 1000),
-		workers: 5,
-	}
-}
-
-// Enqueue adds a notification to the queue
-func (q *Queue) Enqueue(n *Notification) {
-	select {
-	case q.queue <- n:
-		q.logger.WithField("notification_id", n.ID).Debug("Notification queued")
-	default:
-		q.logger.WithField("notification_id", n.ID).Warn("Notification queue full, dropping notification")
-	}
-}
-
-// Start begins processing the queue
-func (q *Queue) Start(ctx context.Context, dispatcher *Dispatcher) {
-	q.ctx, q.cancel = context.WithCancel(ctx)
-
-	for i := 0; i < q.workers; i++ {
-		q.wg.Add(1)
-		go q.worker(dispatcher)
-	}
-
-	q.logger.WithField("workers", q.workers).Info("Notification queue started")
-}
-
-// Stop stops the queue processing
-func (q *Queue) Stop() {
-	q.stopOnce.Do(func() {
-		if q.cancel != nil {
-			q.cancel()
-		}
-		close(q.queue)
-		q.wg.Wait()
-		q.logger.Info("Notification queue stopped")
-	})
-}
-
-// worker processes notifications from the queue
-func (q *Queue) worker(dispatcher *Dispatcher) {
-	defer q.wg.Done()
-
-	for {
-		select {
-		case n, ok := <-q.queue:
-			if !ok {
-				return
-			}
-			if err := dispatcher.Dispatch(q.ctx, n); err != nil {
-				q.logger.WithError(err).WithField("notification_id", n.ID).Error("Failed to dispatch notification")
-			}
-		case <-q.ctx.Done():
-			return
-		}
-	}
-}
-
-// userLookup is the minimal interface the Dispatcher needs to resolve full user details.
-type userLookup interface {
-	GetUserByID(userID uuid.UUID) (*storage.User, error)
-}
-
-// Dispatcher handles notification delivery to channels
-type Dispatcher struct {
-	channels   map[string]Channel
-	repo       Repository
-	userLookup userLookup
-	logger     *logrus.Logger
-}
-
-// NewDispatcher creates a new dispatcher
-func NewDispatcher(channels map[string]Channel, repo Repository, ul userLookup, logger *logrus.Logger) *Dispatcher {
-	return &Dispatcher{
-		channels:   channels,
-		repo:       repo,
-		userLookup: ul,
-		logger:     logger,
-	}
-}
-
-// Dispatch sends a notification through configured channels
-func (d *Dispatcher) Dispatch(ctx context.Context, n *Notification) error {
-	// Update status to processing
-	if err := d.repo.UpdateNotificationStatus(ctx, n.ID, StatusProcessing); err != nil {
-		return fmt.Errorf("failed to update notification status: %w", err)
-	}
-
-	// Resolve full user details so channels (e.g. email) have the address, name, etc.
-	user := &storage.User{ID: n.UserID}
-	if d.userLookup != nil {
-		if u, err := d.userLookup.GetUserByID(n.UserID); err != nil {
-			d.logger.WithError(err).WithField("user_id", n.UserID).Warn("failed to look up user for notification dispatch; email channel will be skipped")
-		} else if u != nil {
-			user = u
-		}
-	}
-
-	successCount := 0
-	failedCount := 0
-
-	for _, channelName := range n.Channels {
-		channel, ok := d.channels[channelName]
-		if !ok {
-			d.logger.WithField("channel", channelName).Warn("Unknown notification channel")
-			continue
-		}
-
-		if !channel.IsConfigured() {
-			d.logger.WithField("channel", channelName).Debug("Channel not configured")
-			continue
-		}
-
-		// Check user preference for this channel + category
-		pref, err := d.repo.GetPreference(ctx, n.UserID, channelName, n.Category)
-		if err != nil {
-			d.logger.WithError(err).WithFields(logrus.Fields{
-				"user_id":  n.UserID,
-				"channel":  channelName,
-				"category": n.Category,
-			}).Warn("Failed to get preference; proceeding with send")
-		} else if pref != nil && !pref.Enabled {
-			d.logger.WithFields(logrus.Fields{
-				"user_id":  n.UserID,
-				"channel":  channelName,
-				"category": n.Category,
-			}).Debug("Notification disabled by user preference for this channel/category")
-			continue
-		}
-
-		if err := channel.Send(ctx, n, user); err != nil {
-			d.logger.WithError(err).WithFields(logrus.Fields{
-				"notification_id": n.ID,
-				"channel":         channelName,
-			}).Error("Failed to send notification")
-
-			// Track failure analytics
-			analytics := &NotificationAnalytics{
-				NotificationID: n.ID,
-				Channel:        channelName,
-				Status:         AnalyticsStatusFailed,
-				ErrorMessage:   strPtr(err.Error()),
-			}
-			d.repo.TrackAnalytics(ctx, analytics)
-			failedCount++
-		} else {
-			// Track success analytics
-			now := time.Now()
-			analytics := &NotificationAnalytics{
-				NotificationID: n.ID,
-				Channel:        channelName,
-				Status:         AnalyticsStatusDelivered,
-				DeliveredAt:    &now,
-			}
-			d.repo.TrackAnalytics(ctx, analytics)
-			successCount++
-		}
-	}
-
-	// Update final status
-	finalStatus := StatusSent
-	if failedCount > 0 && successCount == 0 {
-		finalStatus = StatusFailed
-	}
-
-	if err := d.repo.UpdateNotificationStatus(ctx, n.ID, finalStatus); err != nil {
-		return fmt.Errorf("failed to update final notification status: %w", err)
-	}
-
-	d.logger.WithFields(logrus.Fields{
-		"notification_id": n.ID,
-		"success_count":   successCount,
-		"failed_count":    failedCount,
-		"final_status":    finalStatus,
-	}).Info("Notification dispatched")
-
-	return nil
-}
-
-// strPtr is a helper to create a string pointer
-func strPtr(s string) *string {
-	return &s
-}
 
 // SendLowBalance sends a low balance alert to a user via email
 func (s *Service) SendLowBalance(ctx context.Context, userEmail string, data map[string]interface{}) error {
@@ -826,6 +537,21 @@ func (s *Service) SendAutoTopupApproaching(ctx context.Context, userID interface
 	return err
 }
 
+func formatMetric(thresholdType string, value int) string {
+	switch thresholdType {
+	case "user_count":
+		return fmt.Sprintf("%d users", value)
+	case "mrr_cents", "revenue_cents":
+		return fmt.Sprintf("$%.2f MRR", float64(value)/100)
+	case "api_calls":
+		return fmt.Sprintf("%d API calls", value)
+	case "days_elapsed":
+		return fmt.Sprintf("%d days", value)
+	default:
+		return fmt.Sprintf("%d", value)
+	}
+}
+
 // SendFounderModeThresholdWarning notifies a user they're approaching a founder mode threshold
 func (s *Service) SendFounderModeThresholdWarning(ctx context.Context, userID uuid.UUID, bundleName string, progressPercent float64, threshold string, current int) error {
 	_, err := s.Send(ctx, SendRequest{
@@ -909,22 +635,6 @@ func (s *Service) SendFounderModeConverted(ctx context.Context, userID uuid.UUID
 		Priority: PriorityNormal,
 	})
 	return err
-}
-
-// formatMetric formats a metric for display
-func formatMetric(thresholdType string, value int) string {
-	switch thresholdType {
-	case "user_count":
-		return fmt.Sprintf("%d users", value)
-	case "mrr_cents", "revenue_cents":
-		return fmt.Sprintf("$%.2f MRR", float64(value)/100)
-	case "api_calls":
-		return fmt.Sprintf("%d API calls", value)
-	case "days_elapsed":
-		return fmt.Sprintf("%d days", value)
-	default:
-		return fmt.Sprintf("%d", value)
-	}
 }
 
 // Team Notifications

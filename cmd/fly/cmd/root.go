@@ -14,9 +14,9 @@ import (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "fly",
+	Use:   "ff",
 	Short: "FunctionFly CLI - Go from idea to global API in under 60 seconds",
-	Long: `The fly CLI enables developers to go from idea → global API in under 60 seconds
+	Long: `The ff CLI enables developers to go from idea → global API in under 60 seconds
 with zero infrastructure configuration.
 
 Publishing must feel easier than writing a README. No Docker, no infra config,
@@ -44,13 +44,13 @@ Enhanced Commands:
   health        Check system and function health status
 
 Example:
-  fly login
-  fly init slugify
-  fly dev
-  fly compile rust -i ./Cargo.toml -o ./dist
-  fly publish
-  fly test
-  fly stats`,
+  ff login
+  ff init slugify
+  ff dev
+  ff compile rust -i ./Cargo.toml -o ./dist
+  ff publish
+  ff test
+  ff stats`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

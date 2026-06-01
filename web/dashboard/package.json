@@ -31,6 +31,8 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@formkit/auto-animate": "^0.9.0",
+    "@functionfly/shared": "file:../../packages/shared",
+    "@functionfly/ui-futuristic": "file:../../packages/ui-futuristic",
     "@headlessui/react": "^2.2.10",
     "@hookform/resolvers": "^5.2.2",
     "@iconify/react": "^6.0.2",
@@ -72,7 +74,6 @@
     "@use-gesture/react": "^10.3.1",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
-    "@functionfly/ui-futuristic": "file:../../packages/ui-futuristic",
     "@visx/event": "^3.12.0",
     "@visx/group": "^3.12.0",
     "@visx/network": "^3.12.0",
@@ -152,15 +153,6 @@
     "tailwind-merge": "^3.5.0",
     "tar": "^7.5.13",
     "three": "^0.183.2",
-    "undici": "^8.0.3",
-    "use-local-storage-state": "^19.5.0",
-    "use-sound": "^5.0.0",
-    "validator": "^13.15.35",
-    "vanilla-cookieconsent": "^3.1.0",
-    "web-vitals": "^5.2.0",
-    "wrangler": "^4.81.1",
-    "zod": "^4.3.6",
-    "zustand": "^5.0.12",
     "ui-adaptive-ux": "file:../../packages/ui-adaptive-ux",
     "ui-agent": "file:../../packages/ui-agent",
     "ui-ai": "file:../../packages/ui-ai",
@@ -183,7 +175,16 @@
     "ui-security": "file:../../packages/ui-security",
     "ui-simulation": "file:../../packages/ui-simulation",
     "ui-universal-runtime": "file:../../packages/ui-universal-runtime",
-    "ui-visualization": "file:../../packages/ui-visualization"
+    "ui-visualization": "file:../../packages/ui-visualization",
+    "undici": "^8.0.3",
+    "use-local-storage-state": "^19.5.0",
+    "use-sound": "^5.0.0",
+    "validator": "^13.15.35",
+    "vanilla-cookieconsent": "^3.1.0",
+    "web-vitals": "^5.2.0",
+    "wrangler": "^4.81.1",
+    "zod": "^4.3.6",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@axe-core/react": "^4.11.1",
@@ -220,16 +221,6 @@
     "typescript-eslint": "^8.58.1",
     "vite": "^8.0.8",
     "vitest": "^4.1.4"
-  },
-  "overrides": {
-    "minimatch": ">=9.0.7",
-    "rollup": ">=4.59.0",
-    "undici": ">=7.24.0",
-    "tar": ">=7.5.8",
-    "lodash": ">=4.18.1",
-    "defu": ">=6.1.6",
-    "vite": ">=7.4.0",
-    "ajv": ">=8.18.0"
   },
   "lint-staged": {
     "src/**/*.{ts,tsx,js,jsx,json,css,md}": [

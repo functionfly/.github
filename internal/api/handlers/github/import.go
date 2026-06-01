@@ -1,6 +1,7 @@
 package github
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -272,6 +273,186 @@ func (h *Handler) HandlePreviewImport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.respondJSON(w, http.StatusOK, preview)
+}
+
+// HandlePreviewBulkImport performs a dry-run for multiple import requests.
+func (h *Handler) HandlePreviewBulkImport(w http.ResponseWriter, r *http.Request) {
+	claims := h.requireAuth(w, r)
+	if claims == nil {
+		return
+	}
+
+	var req BulkImportRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.respondError(w, http.StatusBadRequest, "invalid_body", "Invalid request body")
+		return
+	}
+
+	if len(req.Imports) == 0 {
+		h.respondError(w, http.StatusBadRequest, "empty_imports", "At least one import is required")
+		return
+	}
+	if len(req.Imports) > 20 {
+		h.respondError(w, http.StatusBadRequest, "too_many_imports", "Maximum 20 imports per bulk preview")
+		return
+	}
+
+	conn, err := h.githubRepo.GetConnectionByUserID(r.Context(), claims.UserID)
+	if err != nil || conn == nil {
+		h.respondError(w, http.StatusNotFound, "not_found", "No GitHub connection found")
+		return
+	}
+
+	previews := make([]map[string]interface{}, 0, len(req.Imports))
+
+	for _, impReq := range req.Imports {
+		preview := h.buildPreviewForImport(r.Context(), conn, &impReq)
+		previews = append(previews, preview)
+	}
+
+	h.respondJSON(w, http.StatusOK, previews)
+}
+
+func (h *Handler) buildPreviewForImport(ctx context.Context, conn *storage.GitHubConnection, req *ImportRequest) map[string]interface{} {
+	preview := map[string]interface{}{
+		"repo_id":                  req.RepoID.String(),
+		"repo_full_name":           "",
+		"functions":                []map[string]interface{}{},
+		"total_file_count":         0,
+		"total_size_bytes":         0,
+		"total_estimated_cost_usd": 0.0,
+		"warnings":                 []string{},
+		"conflicts":                []map[string]interface{}{},
+	}
+
+	repo, err := h.githubRepo.GetRepoByID(ctx, req.RepoID)
+	if err != nil || repo == nil || repo.ConnectionID != conn.ID {
+		preview["warnings"] = append(preview["warnings"].([]string), "Repository not found or access denied")
+		return preview
+	}
+
+	preview["repo_full_name"] = repo.FullName
+
+	vault, err := githubsvc.NewTokenVault(h.vaultKey)
+	if err != nil {
+		preview["warnings"] = append(preview["warnings"].([]string), "Failed to decrypt token")
+		return preview
+	}
+
+	token, err := vault.Decrypt(conn.EncryptedToken, conn.TokenIV, conn.TokenTag)
+	if err != nil {
+		preview["warnings"] = append(preview["warnings"].([]string), "Failed to decrypt token")
+		return preview
+	}
+
+	ghClient := githubsvc.NewClient(token, githubsvc.WithLogger(h.logger))
+
+	branch := req.Branch
+	if branch == "" {
+		branch = repo.DefaultBranch
+	}
+
+	branches, err := ghClient.ListBranches(ctx, repo.Owner, repo.Name)
+	if err != nil {
+		preview["warnings"] = append(preview["warnings"].([]string), fmt.Sprintf("Failed to list branches: %v", err))
+		return preview
+	}
+
+	var branchSHA string
+	for _, b := range branches {
+		if b.Name == branch {
+			branchSHA = b.Commit.SHA
+			break
+		}
+	}
+	if branchSHA == "" {
+		preview["warnings"] = append(preview["warnings"].([]string), fmt.Sprintf("Branch %q not found", branch))
+		return preview
+	}
+
+	tree, err := ghClient.GetTree(ctx, repo.Owner, repo.Name, branchSHA, true)
+	if err != nil {
+		preview["warnings"] = append(preview["warnings"].([]string), fmt.Sprintf("Failed to fetch tree: %v", err))
+		return preview
+	}
+
+	var totalSize int64
+	var sourceFiles []string
+	for _, entry := range tree.Tree {
+		if entry.Type == "blob" {
+			totalSize += int64(entry.Size)
+			ext := strings.ToLower(filepath.Ext(entry.Path))
+			if ext == ".js" || ext == ".ts" || ext == ".mjs" || ext == ".cjs" ||
+				ext == ".jsx" || ext == ".tsx" || ext == ".py" || ext == ".go" ||
+				ext == ".rs" || ext == ".java" || ext == ".rb" || ext == ".php" {
+				sourceFiles = append(sourceFiles, entry.Path)
+			}
+		}
+	}
+
+	runtime := detectRuntimeFromTree(tree.Tree, repo)
+	if req.RuntimeOverride != nil && *req.RuntimeOverride != "" {
+		runtime = *req.RuntimeOverride
+	}
+
+	estimatedCost := calculateImportCost(len(sourceFiles), totalSize, runtime)
+
+	var detectedFuncs []githubsvc.DetectedFunction
+	if repo.DetectedFunctions != nil {
+		json.Unmarshal(repo.DetectedFunctions, &detectedFuncs)
+	}
+
+	functionNames := req.FunctionNames
+	if len(functionNames) == 0 && req.FunctionName != "" {
+		functionNames = []string{req.FunctionName}
+	}
+
+	previewFunctions := make([]map[string]interface{}, 0, len(functionNames))
+	for _, fnName := range functionNames {
+		var detected githubsvc.DetectedFunction
+		for _, df := range detectedFuncs {
+			if df.Name == fnName {
+				detected = df
+				break
+			}
+		}
+		if detected.Name == "" {
+			detected = githubsvc.DetectedFunction{
+				Name:       fnName,
+				EntryPoint: fnName,
+				Runtime:    "auto-detect",
+				Confidence: 0.85,
+				Strategy:   "single",
+			}
+		}
+
+		previewFunctions = append(previewFunctions, map[string]interface{}{
+			"name":                 detected.Name,
+			"entry_point":          detected.EntryPoint,
+			"confidence":           detected.Confidence,
+			"strategy":             detected.Strategy,
+			"sub_directory":        detected.SubDirectory,
+			"file_count":           len(sourceFiles),
+			"branch":               branch,
+			"runtime":              runtime,
+			"visibility":           req.Visibility,
+			"estimated_size_bytes": totalSize,
+			"estimated_cost_usd":   estimatedCost / float64(len(functionNames)),
+			"has_conflict":         false,
+			"conflict_type":        "none",
+		})
+	}
+
+	preview["functions"] = previewFunctions
+	preview["total_file_count"] = len(sourceFiles)
+	preview["total_size_bytes"] = totalSize
+	preview["total_estimated_cost_usd"] = estimatedCost
+
+	if len(sourceFiles) == 0 {
+		preview["warnings"] = append(preview["warnings"].([]string), "No source files detected in repository")
+	}
+
+	return preview
 }
 
 // HandleBulkImport starts multiple import jobs.

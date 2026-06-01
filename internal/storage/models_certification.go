@@ -78,6 +78,7 @@ type CertPracticalChallenge struct {
 	TimeLimitMinutes  int        `json:"time_limit_minutes" gorm:"default:30"`
 	GradingConfig     JSONMap    `json:"grading_config" gorm:"type:jsonb;not null"`
 	ValidatorFuncID   *uuid.UUID `json:"validator_function_id,omitempty" gorm:"type:uuid"`
+	EnvironmentURL    string     `json:"environment_url" gorm:"size:500"`
 	IsActive          bool       `json:"is_active" gorm:"default:true"`
 	Metadata          JSONMap    `json:"metadata,omitempty" gorm:"type:jsonb;default:'{}'"`
 	CreatedAt         time.Time  `json:"created_at" gorm:"autoCreateTime"`
@@ -105,10 +106,10 @@ type CertExam struct {
 	PracticalScore   *float64   `json:"practical_score,omitempty" gorm:"type:numeric(5,2)"`
 	TotalScore       *float64   `json:"total_score,omitempty" gorm:"type:numeric(5,2)"`
 	Passed           *bool      `json:"passed,omitempty"`
-	QuestionIDs      JSONMap    `json:"question_ids" gorm:"type:jsonb;default:'[]'"`
-	PracticalIDs     JSONMap    `json:"practical_ids" gorm:"type:jsonb;default:'[]'"`
-	Answers          JSONMap    `json:"answers,omitempty" gorm:"type:jsonb;default:'{}'"`
-	PracticalResults JSONMap    `json:"practical_results,omitempty" gorm:"type:jsonb;default:'{}'"`
+	QuestionIDs      []uuid.UUID `json:"question_ids" gorm:"-"`
+	PracticalIDs     []uuid.UUID `json:"practical_ids" gorm:"-"`
+	Answers          JSONMap     `json:"answers,omitempty" gorm:"type:jsonb;default:'{}'"`
+	PracticalResults JSONMap     `json:"practical_results,omitempty" gorm:"type:jsonb;default:'{}'"`
 	IPAddress        *string    `json:"ip_address,omitempty" gorm:"type:inet"`
 	UserAgent        *string    `json:"user_agent,omitempty" gorm:"size:500"`
 	Metadata         JSONMap    `json:"metadata,omitempty" gorm:"type:jsonb;default:'{}'"`
@@ -120,13 +121,14 @@ func (CertExam) TableName() string { return "cert_exams" }
 
 // Exam status constants
 const (
-	CertExamStatusInProgress = "in_progress"
-	CertExamStatusSubmitted  = "submitted"
-	CertExamStatusGrading    = "grading"
-	CertExamStatusPassed     = "passed"
-	CertExamStatusFailed     = "failed"
-	CertExamStatusExpired    = "expired"
-	CertExamStatusAbandoned  = "abandoned"
+	CertExamStatusInProgress     = "in_progress"
+	CertExamStatusPendingPayment = "pending_payment"
+	CertExamStatusSubmitted      = "submitted"
+	CertExamStatusGrading        = "grading"
+	CertExamStatusPassed         = "passed"
+	CertExamStatusFailed         = "failed"
+	CertExamStatusExpired        = "expired"
+	CertExamStatusAbandoned      = "abandoned"
 )
 
 // CertCredential represents an earned certification

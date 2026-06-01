@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { API_BASE_URL } from '../lib/constants';
+import { getApiBaseUrl } from '../lib/constants';
 import { useAuthStore } from '../stores/authStore';
 import { RealtimeEvent } from './types';
 
@@ -66,12 +66,9 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
   eventTypeRef.current = eventType;
   onEventRef.current = onEvent;
 
-  // Get WebSocket URL from same base as REST API (VITE_API_URL / API_BASE_URL)
+  // Get WebSocket URL from same base as REST API (getApiBaseUrl())
   const getWebSocketUrl = useCallback(() => {
-    const base =
-      API_BASE_URL.startsWith('http://') || API_BASE_URL.startsWith('https://')
-        ? API_BASE_URL
-        : `${typeof window !== 'undefined' ? window.location.origin : ''}${API_BASE_URL}`;
+    const base = getApiBaseUrl();
     const wsBase = base.replace(/^http/, 'ws');
     const href = `${wsBase.replace(/\/$/, '')}/v1/monitoring/realtime`;
 
@@ -333,7 +330,7 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
       // Validate session with server
       connectionAttemptRef.current = true;
       try {
-        const response = await axios.get('/api/v1/auth/validate', {
+        const response = await axios.get(`${getApiBaseUrl()}/v1/auth/validate`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (response.status === 200) {
