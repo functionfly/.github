@@ -681,18 +681,19 @@ func (r *CertificationRepository) ListExamsByUser(ctx context.Context, userID uu
 
 // GetCompletedExamCountForUserTier returns how many times the user has completed an exam for the given tier.
 // Completed means status in (passed, failed, expired, abandoned).
+// NOTE: Passed exams are excluded from the count to allow users at least 1 retake after failure.
 func (r *CertificationRepository) GetCompletedExamCountForUserTier(ctx context.Context, userID, tierID uuid.UUID) (int, error) {
-    var count int64
-    err := r.db.GORM.WithContext(ctx).
-        Model(&CertExam{}).
-        Where("user_id = ? AND tier_id = ? AND status IN (?, ?, ?, ?)",
-            userID, tierID,
-            CertExamStatusPassed,
-            CertExamStatusFailed,
-            CertExamStatusExpired,
-            CertExamStatusAbandoned,
-        ).
-        Count(&count).Error
+	var count int64
+	err := r.db.GORM.WithContext(ctx).
+		Model(&CertExam{}).
+		Where("user_id = ? AND tier_id = ? AND status IN (?, ?, ?, ?)",
+			userID, tierID,
+			CertExamStatusFailed,
+			CertExamStatusExpired,
+			CertExamStatusAbandoned,
+			CertExamStatusInProgress,
+		).
+		Count(&count).Error
     if err != nil {
         return 0, fmt.Errorf("failed to count completed exams: %w", err)
     }

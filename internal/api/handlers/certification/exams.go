@@ -86,7 +86,7 @@ func (h *Handler) StartExam(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if completedCount >= maxAttempts {
-		writeJSONError(w, http.StatusTooManyRequests, fmt.Sprintf("Maximum exam attempts (%d) reached for this tier. Please contact support for exceptions.", maxAttempts))
+		writeJSONError(w, http.StatusTooManyRequests, fmt.Sprintf("Maximum exam retakes (%d) reached for this tier. You must contact support for exceptions.", maxAttempts))
 		return
 	}
 
