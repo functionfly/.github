@@ -1,6 +1,8 @@
 import { Analytics } from '@/components/common/Analytics';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { GlobalKeyboardShortcuts } from '@/components/common/GlobalKeyboardShortcuts';
+import { PageViewTracker } from '@/components/common/PageViewTracker';
+import { ThemeAwareToaster } from '@/components/common/ThemeAwareToaster';
 import { ThemeProvider } from '@/components/common/ThemeProvider';
 import { CookieConsentProvider } from '@/components/cookie-consent';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -15,17 +17,17 @@ import {
 } from '@/lib/constants';
 import { unreadStoreKeyFromEventCategory } from '@/lib/notification-unread-sync';
 import { isPlatformAdminRole } from '@/lib/platform-admin';
-import AgentMarketplaceDetailPage from '@/pages/AgentMarketplaceDetailPage';
-import AgentsMarketplacePage from '@/pages/AgentsMarketplacePage';
-import { AgentDetailPage } from '@/pages/AgentDetailPage';
-import { AgentCreatePage } from '@/pages/AgentCreatePage';
-import { AgentEditPage } from '@/pages/AgentEditPage';
-import { AgentWalletPage } from '@/pages/AgentWalletPage';
 import { AgentAnalyticsPage } from '@/pages/AgentAnalyticsPage';
+import { AgentCreatePage } from '@/pages/AgentCreatePage';
+import { AgentDetailPage } from '@/pages/AgentDetailPage';
+import { AgentEditPage } from '@/pages/AgentEditPage';
+import AgentMarketplaceDetailPage from '@/pages/AgentMarketplaceDetailPage';
 import { AgentMemoryPage } from '@/pages/AgentMemoryPage';
 import { AgentMemoryDetailPage } from '@/pages/AgentMemoryPage/AgentMemoryDetailPage';
 import { AgentSDKIntegrationsPage } from '@/pages/AgentSDKIntegrationsPage';
+import AgentsMarketplacePage from '@/pages/AgentsMarketplacePage';
 import { AgentsPage } from '@/pages/AgentsPage';
+import { AgentWalletPage } from '@/pages/AgentWalletPage';
 import { AIComposerPage } from '@/pages/AIComposerPage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import { APIKeyDetailPage, APIKeysPage } from '@/pages/api-keys';
@@ -36,40 +38,42 @@ import { MagicLinkVerifyPage } from '@/pages/AuthPage/MagicLinkVerifyPage';
 import { BrowseFunctionsPage } from '@/pages/BrowseFunctionsPage';
 import { BundlePricingPage } from '@/pages/BundlePricingPage';
 import BundleProvisioningPage from '@/pages/BundleProvisioningPage';
+import { BrainPage } from '@/pages/BrainPage';
 import { CertificationPage } from '@/pages/CertificationPage';
-import { ExamPage } from '@/pages/ExamPage';
-import { ExamResultsPage } from '@/pages/ExamResultsPage';
-import { CredentialsPage } from '@/pages/CredentialsPage';
-import { VerifyPage } from '@/pages/VerifyPage';
 import ChangelogPage from '@/pages/ChangelogPage';
 import { ContactPage } from '@/pages/ContactPage';
 import ConversationsPage from '@/pages/ConversationsPage';
+import { CredentialsPage } from '@/pages/CredentialsPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import DecisionsPage from '@/pages/DecisionsPage';
+import DNAOverviewPage from '@/pages/DNAOverviewPage';
 import { EnterpriseAuditPage } from '@/pages/EnterpriseAuditPage';
 import EnterpriseSLAPage from '@/pages/EnterpriseSLAPage';
 import { EnterpriseSupportPage } from '@/pages/EnterpriseSupportPage';
 import { EvolutionPage } from '@/pages/EvolutionPage';
+import { ExamPage } from '@/pages/ExamPage';
+import { ExamResultsPage } from '@/pages/ExamResultsPage';
 import ExecutionExplorerPage from '@/pages/ExecutionExplorerPage';
 import { FAQPage } from '@/pages/FAQPage';
+import FavoritesPage from '@/pages/FavoritesPage';
 import { FeaturesPage } from '@/pages/FeaturesPage';
 import { FeedbackPage } from '@/pages/FeedbackPage';
 import { ForbiddenPage } from '@/pages/ForbiddenPage';
 import FRGEditorPage from '@/pages/FRGEditorPage';
 import FRGGraphsPage from '@/pages/FRGGraphsPage';
 import FRGShowcasePage from '@/pages/FRGShowcasePage';
-import GitHubPage from '@/pages/GitHubPage';
-import GitHubRepoImportPage from '@/pages/GitHubRepoImportPage';
+import FunctionDNAPage from '@/pages/FunctionDNAPage';
 import FunctionMarketplacePage from '@/pages/FunctionMarketplacePage';
 import FunctionPage from '@/pages/FunctionPage';
 import { FunctionsDiscoveryPage } from '@/pages/FunctionsDiscoveryPage';
-import FavoritesPage from '@/pages/FavoritesPage';
 import { FunctionsPage } from '@/pages/FunctionsPage';
 import { FunctionDetailPage } from '@/pages/FunctionsPage/FunctionDetailPage';
 import { FunctionEditorPage } from '@/pages/FunctionsPage/FunctionEditorPage';
 import { FunctionLogsPage } from '@/pages/FunctionsPage/FunctionLogsPage';
 import { FunctionSettingsPage } from '@/pages/FunctionsPage/FunctionSettingsPage';
 import GalleryPage from '@/pages/GalleryPage';
+import GitHubPage from '@/pages/GitHubPage';
+import GitHubRepoImportPage from '@/pages/GitHubRepoImportPage';
 import { HelpCenterPage } from '@/pages/HelpCenterPage';
 import { IntegrationsPage } from '@/pages/IntegrationsPage';
 import { LaunchPage } from '@/pages/LaunchPage';
@@ -83,9 +87,6 @@ import { ProfileSettingsPage } from '@/pages/ProfileSettingsPage';
 import { ProvidersPage } from '@/pages/ProvidersPage';
 import RegistryDeployPage from '@/pages/RegistryDeployPage';
 import { ReplayPage } from '@/pages/ReplayPage';
-import { TimeMachinePage } from '@/pages/TimeMachinePage';
-import { NewReplayPage } from '@/pages/TimeMachinePage/NewReplayPage';
-import { ReplayDetailPage } from '@/pages/TimeMachinePage/ReplayDetailPage';
 import { SecretsPage } from '@/pages/SecretsPage';
 import { SecurityPage } from '@/pages/SecurityPage';
 import { ServerErrorPage } from '@/pages/ServerErrorPage';
@@ -99,17 +100,20 @@ import { StateDetailPage } from '@/pages/StatePage/StateDetailPage';
 import TeamDecisionsPage from '@/pages/TeamDecisionsPage';
 import TeamMemoryPage from '@/pages/TeamMemoryPage';
 import { TeamsPage } from '@/pages/TeamsPage';
+import { TimeMachinePage } from '@/pages/TimeMachinePage';
+import { NewReplayPage } from '@/pages/TimeMachinePage/NewReplayPage';
+import { ReplayDetailPage } from '@/pages/TimeMachinePage/ReplayDetailPage';
 import { UserDashboardFunctionsPage } from '@/pages/UserDashboardFunctionsPage';
 import { UserDashboardSettingsPage } from '@/pages/UserDashboardSettingsPage';
+import { VerifyPage } from '@/pages/VerifyPage';
 import WalletPage from '@/pages/WalletPage';
-import FunctionDNAPage from '@/pages/FunctionDNAPage';
-import DNAOverviewPage from '@/pages/DNAOverviewPage';
 import { useAuthStore } from '@/stores/authStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useOnboardingStore } from '@/stores/onboardingStore';
 import type { Notification, NotificationCategory } from '@/types/notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AlertTriangle, Bell, DollarSign, Loader2, MessageSquare, Shield } from 'lucide-react';
+import { NuqsAdapter } from 'nuqs/adapters/react-router/v7';
 import { useEffect, useState } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import {
@@ -122,25 +126,23 @@ import {
   useParams,
 } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ThemeAwareToaster } from '@/components/common/ThemeAwareToaster';
-import { NuqsAdapter } from 'nuqs/adapters/react-router/v7';
 
-import { NotificationsPage } from '@/pages/NotificationsPage';
-import StatusPage from '@/pages/StatusPage';
-import { StudioPage } from '@/pages/StudioPage'
-import { DevOpsPage } from '@/pages/DevOpsPage';
-import { UsagePage } from '@/pages/UsagePage';
-import { PasteCodePage } from '@/pages/PasteCodePage';
+import { AdaptiveUXPage } from '@/pages/AdaptiveUXPage';
 import { CodeIntelligencePage } from '@/pages/CodeIntelligencePage';
 import CollaborationPage from '@/pages/CollaborationPage';
-import { MemoryPage } from '@/pages/MemoryPage';
-import SimulationPage from '@/pages/SimulationPage';
-import { RoboticsPage } from '@/pages/RoboticsPage';
-import { MarketplaceEconomyPage } from '@/pages/MarketplaceEconomyPage';
-import { AdaptiveUXPage } from '@/pages/AdaptiveUXPage';
-import { UniversalRuntimePage } from '@/pages/UniversalRuntimePage';
 import { DataVisualizationPage } from '@/pages/DataVisualizationPage';
+import { DevOpsPage } from '@/pages/DevOpsPage';
 import FuturisticPage from '@/pages/FuturisticPage';
+import { MarketplaceEconomyPage } from '@/pages/MarketplaceEconomyPage';
+import { MemoryPage } from '@/pages/MemoryPage';
+import { NotificationsPage } from '@/pages/NotificationsPage';
+import { PasteCodePage } from '@/pages/PasteCodePage';
+import { RoboticsPage } from '@/pages/RoboticsPage';
+import SimulationPage from '@/pages/SimulationPage';
+import StatusPage from '@/pages/StatusPage';
+import { StudioPage } from '@/pages/StudioPage';
+import { UniversalRuntimePage } from '@/pages/UniversalRuntimePage';
+import { UsagePage } from '@/pages/UsagePage';
 
 function RegistryFunctionRedirect() {
   const { author, name } = useParams<{ author: string; name: string }>();
@@ -637,6 +639,8 @@ function AppContent() {
           <Route path="dashboard/api-keys" element={<APIKeysPage />} />
           <Route path="dashboard/api-keys/:keyId" element={<APIKeyDetailPage />} />
           <Route path="secrets" element={<SecretsPage />} />
+          <Route path="connectors" element={<Navigate to="/settings#integrations" replace />} />
+          <Route path="brain" element={<BrainPage />} />
           <Route path="teams" element={<TeamsPage />} />
           <Route path="my-team" element={<MyTeamPage />} />
           <Route path="teams/:teamId/memory" element={<TeamMemoryPage />} />
@@ -734,6 +738,8 @@ function AppContent() {
         >
           <Route index element={<MemoryPage />} />
           <Route path=":panel" element={<MemoryPage />} />
+        </Route>
+
         <Route
           path="simulation"
           element={
@@ -744,7 +750,6 @@ function AppContent() {
         >
           <Route index element={<SimulationPage />} />
           <Route path=":panel" element={<SimulationPage />} />
-        </Route>
         </Route>
 
         <Route
@@ -846,6 +851,7 @@ function App() {
               <NuqsAdapter>
                 <HelmetProvider>
                   <Analytics />
+                  <PageViewTracker />
                   <GlobalKeyboardShortcuts />
                   <AppContent />
                 </HelmetProvider>

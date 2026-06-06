@@ -34,6 +34,8 @@ type HandlerRepo interface {
 	CreateVersion(ctx context.Context, version *PluginVersion) error
 	ListVersions(ctx context.Context, pluginID string) ([]PluginVersion, error)
 	GetPreviousVersion(ctx context.Context, pluginID, currentVersion string) (*PluginVersion, error)
+	GetTelemetrySummary(ctx context.Context, tenantID, pluginID string, timeRange string) (*TelemetrySummary, error)
+	RecordAnalytics(ctx context.Context, analytics *PluginAnalytics) error
 }
 
 func NewHandler(repo HandlerRepo) *Handler {
@@ -142,31 +144,31 @@ func (h *Handler) HandleGetPlugin(w http.ResponseWriter, r *http.Request) {
 }
 
 type InstallPluginRequest struct {
-	Manifest        map[string]interface{} `json:"manifest"`
-	PluginType      PluginType             `json:"plugin_type"`
-	Name            string                  `json:"name"`
-	Version         string                  `json:"version"`
-	Description     string                  `json:"description"`
-	AuthorName      string                  `json:"author_name"`
-	AuthorEmail     string                  `json:"author_email"`
-	AuthorWebsite   string                  `json:"author_website"`
-	Category        string                  `json:"category"`
-	IconURL         string                  `json:"icon_url"`
-	HomepageURL     string                  `json:"homepage_url"`
-	RepositoryURL   string                  `json:"repository_url"`
-	License         string                  `json:"license"`
-	SizeBytes       int                     `json:"size_bytes"`
-	Signature       string                  `json:"signature"`
-	SandboxTier     SandboxTier             `json:"sandbox_tier"`
-	SandboxConfig   *SandboxConfig          `json:"sandbox_config"`
+	Manifest      map[string]interface{} `json:"manifest"`
+	PluginType    PluginType             `json:"plugin_type"`
+	Name          string                 `json:"name"`
+	Version       string                 `json:"version"`
+	Description   string                 `json:"description"`
+	AuthorName    string                 `json:"author_name"`
+	AuthorEmail   string                 `json:"author_email"`
+	AuthorWebsite string                 `json:"author_website"`
+	Category      string                 `json:"category"`
+	IconURL       string                 `json:"icon_url"`
+	HomepageURL   string                 `json:"homepage_url"`
+	RepositoryURL string                 `json:"repository_url"`
+	License       string                 `json:"license"`
+	SizeBytes     int                    `json:"size_bytes"`
+	Signature     string                 `json:"signature"`
+	SandboxTier   SandboxTier            `json:"sandbox_tier"`
+	SandboxConfig *SandboxConfig         `json:"sandbox_config"`
 }
 
 type SandboxConfig struct {
-	CPULimit       float64   `json:"cpu_limit"`
-	MemoryLimitMB  int       `json:"memory_limit_mb"`
-	TimeoutSeconds int       `json:"timeout_seconds"`
-	AllowedDomains []string  `json:"allowed_domains"`
-	BlockedDomains []string  `json:"blocked_domains"`
+	CPULimit       float64  `json:"cpu_limit"`
+	MemoryLimitMB  int      `json:"memory_limit_mb"`
+	TimeoutSeconds int      `json:"timeout_seconds"`
+	AllowedDomains []string `json:"allowed_domains"`
+	BlockedDomains []string `json:"blocked_domains"`
 }
 
 func (h *Handler) HandleInstallPlugin(w http.ResponseWriter, r *http.Request) {
@@ -215,11 +217,11 @@ func (h *Handler) HandleInstallPlugin(w http.ResponseWriter, r *http.Request) {
 
 	if req.SandboxTier != "" || req.SandboxConfig != nil {
 		sandbox := &PluginSandbox{
-			PluginID:        plugin.ID,
-			Tier:            req.SandboxTier,
-			CPULimit:        0.5,
-			MemoryLimitMB:   256,
-			TimeoutSeconds:  30,
+			PluginID:       plugin.ID,
+			Tier:           req.SandboxTier,
+			CPULimit:       0.5,
+			MemoryLimitMB:  256,
+			TimeoutSeconds: 30,
 		}
 		if req.SandboxConfig != nil {
 			sandbox.CPULimit = req.SandboxConfig.CPULimit
@@ -413,26 +415,54 @@ func (h *Handler) HandleRollbackPlugin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	prevVersion, err := h.repo.GetPreviousVersion(r.Context(), plugin.ID, plugin.Version)
-	if err != nil {
-		logrus.WithError(err).Error("plugins: failed to get previous version for rollback")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to rollback plugin")
-		return
-	}
-	if prevVersion == nil {
-		writeJSONError(w, http.StatusBadRequest, "No previous version available for rollback")
-		return
+	targetVersion := r.URL.Query().Get("to_version")
+	var targetManifest map[string]interface{}
+	rolledBackTo := ""
+
+	if targetVersion != "" {
+		versions, err := h.repo.ListVersions(r.Context(), plugin.ID)
+		if err != nil {
+			logrus.WithError(err).Error("plugins: failed to list versions for rollback")
+			writeJSONError(w, http.StatusInternalServerError, "Failed to rollback plugin")
+			return
+		}
+		var match *PluginVersion
+		for i := range versions {
+			if versions[i].Version == targetVersion {
+				match = &versions[i]
+				break
+			}
+		}
+		if match == nil {
+			writeJSONError(w, http.StatusNotFound, "Target version not found in version history")
+			return
+		}
+		targetManifest = match.Manifest
+		rolledBackTo = match.Version
+	} else {
+		prevVersion, err := h.repo.GetPreviousVersion(r.Context(), plugin.ID, plugin.Version)
+		if err != nil {
+			logrus.WithError(err).Error("plugins: failed to get previous version for rollback")
+			writeJSONError(w, http.StatusInternalServerError, "Failed to rollback plugin")
+			return
+		}
+		if prevVersion == nil {
+			writeJSONError(w, http.StatusBadRequest, "No previous version available for rollback")
+			return
+		}
+		targetManifest = prevVersion.Manifest
+		rolledBackTo = prevVersion.Version
 	}
 
-	plugin.Version = prevVersion.Version
-	plugin.Manifest = prevVersion.Manifest
+	plugin.Version = rolledBackTo
+	plugin.Manifest = targetManifest
 	if err := h.repo.Update(r.Context(), plugin); err != nil {
 		logrus.WithError(err).Error("plugins: failed to rollback plugin")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to rollback plugin")
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]interface{}{"plugin": plugin, "rolled_back_to": prevVersion.Version})
+	writeJSON(w, http.StatusOK, map[string]interface{}{"plugin": plugin, "rolled_back_to": rolledBackTo})
 }
 
 func (h *Handler) HandleGetSandbox(w http.ResponseWriter, r *http.Request) {
@@ -469,6 +499,7 @@ type UpdateSandboxRequest struct {
 	TimeoutSeconds int         `json:"timeout_seconds"`
 	AllowedDomains []string    `json:"allowed_domains"`
 	BlockedDomains []string    `json:"blocked_domains"`
+	RateLimitRPM   *int        `json:"rate_limit_rpm"`
 }
 
 func (h *Handler) HandleUpdateSandbox(w http.ResponseWriter, r *http.Request) {
@@ -532,6 +563,12 @@ func (h *Handler) HandleUpdateSandbox(w http.ResponseWriter, r *http.Request) {
 
 	sandbox.AllowedDomains = req.AllowedDomains
 	sandbox.BlockedDomains = req.BlockedDomains
+
+	if req.RateLimitRPM != nil {
+		sandbox.RateLimitRPM = req.RateLimitRPM
+	} else if existingSandbox != nil {
+		sandbox.RateLimitRPM = existingSandbox.RateLimitRPM
+	}
 
 	if err := h.repo.UpsertSandbox(r.Context(), sandbox); err != nil {
 		logrus.WithError(err).Error("plugins: failed to update sandbox")
@@ -598,10 +635,10 @@ func (h *Handler) HandleSetPermission(w http.ResponseWriter, r *http.Request) {
 
 	perm := &PluginPermission{
 		PluginID:         pluginID,
-		PermissionType:  req.PermissionType,
+		PermissionType:   req.PermissionType,
 		PermissionAction: req.PermissionAction,
-		Resource:        req.Resource,
-		Granted:         req.Granted,
+		Resource:         req.Resource,
+		Granted:          req.Granted,
 	}
 
 	if req.ExpiresAt != "" {
@@ -777,12 +814,12 @@ const (
 type PluginType string
 
 const (
-	PluginTypeUI            PluginType = "ui"
-	PluginTypeGraph         PluginType = "graph"
-	PluginTypeAITool        PluginType = "ai_tool"
-	PluginTypeRuntime       PluginType = "runtime"
+	PluginTypeUI             PluginType = "ui"
+	PluginTypeGraph          PluginType = "graph"
+	PluginTypeAITool         PluginType = "ai_tool"
+	PluginTypeRuntime        PluginType = "runtime"
 	PluginTypeInfrastructure PluginType = "infrastructure"
-	PluginTypeMarketplace   PluginType = "marketplace"
+	PluginTypeMarketplace    PluginType = "marketplace"
 )
 
 type SandboxTier string
@@ -795,15 +832,15 @@ const (
 )
 
 type PluginVersion struct {
-	ID         string
-	PluginID   string
-	Version    string
-	Changelog  string
-	Manifest   map[string]interface{}
-	SizeBytes  int
-	Signature  string
-	ReleaseAt  time.Time
-	CreatedAt  time.Time
+	ID        string
+	PluginID  string
+	Version   string
+	Changelog string
+	Manifest  map[string]interface{}
+	SizeBytes int
+	Signature string
+	ReleaseAt time.Time
+	CreatedAt time.Time
 }
 
 type PluginSandbox struct {
@@ -827,7 +864,7 @@ type PluginSandbox struct {
 type PluginPermission struct {
 	ID               string
 	PluginID         string
-	PermissionType  string
+	PermissionType   string
 	PermissionAction string
 	Resource         string
 	Granted          bool
@@ -846,10 +883,130 @@ type RateLimitCheckRequest struct {
 }
 
 type RateLimitCheckResponse struct {
-	Allowed   bool   `json:"allowed"`
-	Remaining int    `json:"remaining"`
-	ResetAt   int64  `json:"reset_at"`
-	Limit     int    `json:"limit"`
+	Allowed   bool  `json:"allowed"`
+	Remaining int   `json:"remaining"`
+	ResetAt   int64 `json:"reset_at"`
+	Limit     int   `json:"limit"`
+}
+
+type TelemetrySummary struct {
+	Executions         int     `json:"executions"`
+	Errors             int     `json:"errors"`
+	ErrorRate          float64 `json:"error_rate"`
+	AvgLatencyMs       float64 `json:"avg_latency_ms"`
+	CPUUsageSeconds    float64 `json:"cpu_usage_seconds"`
+	AvgMemoryUsageMB   float64 `json:"avg_memory_usage_mb"`
+	NetworkBytes       int64   `json:"network_bytes"`
+	PreviousExecutions int     `json:"previous_executions"`
+	LatencyTrend       string  `json:"latency_trend"`
+	ExecutionsTrend    string  `json:"executions_trend"`
+}
+
+type PluginAnalytics struct {
+	ID               string                 `json:"id"`
+	PluginID         string                 `json:"plugin_id"`
+	TenantID         string                 `json:"tenant_id"`
+	EventType        string                 `json:"event_type"`
+	ExecutionsCount  int                    `json:"executions_count"`
+	ErrorsCount      int                    `json:"errors_count"`
+	TotalLatencyMs   int64                  `json:"total_latency_ms"`
+	CPUUsageSeconds  float64                `json:"cpu_usage_seconds"`
+	MemoryUsageMBAvg float64                `json:"memory_usage_mb_avg"`
+	NetworkBytes     int64                  `json:"network_bytes"`
+	PeriodStart      time.Time              `json:"period_start"`
+	PeriodEnd        time.Time              `json:"period_end"`
+	Metadata         map[string]interface{} `json:"metadata,omitempty"`
+	CreatedAt        time.Time              `json:"created_at"`
+}
+
+func (h *Handler) HandleGetTelemetry(w http.ResponseWriter, r *http.Request) {
+	tenantID := getTenantID(r)
+	if tenantID == "" {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	pluginID := mux.Vars(r)["id"]
+	if pluginID == "" {
+		writeJSONError(w, http.StatusBadRequest, "plugin id is required")
+		return
+	}
+
+	timeRange := r.URL.Query().Get("range")
+	if timeRange == "" {
+		timeRange = "7d"
+	}
+
+	summary, err := h.repo.GetTelemetrySummary(r.Context(), tenantID, pluginID, timeRange)
+	if err != nil {
+		logrus.WithError(err).Error("plugins: failed to get telemetry")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to get telemetry")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{"telemetry": summary})
+}
+
+func (h *Handler) HandleRecordAnalytics(w http.ResponseWriter, r *http.Request) {
+	tenantID := getTenantID(r)
+	if tenantID == "" {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	pluginID := mux.Vars(r)["id"]
+	if pluginID == "" {
+		writeJSONError(w, http.StatusBadRequest, "plugin id is required")
+		return
+	}
+
+	var req struct {
+		EventType        string                 `json:"event_type"`
+		ExecutionsCount  int                    `json:"executions_count"`
+		ErrorsCount      int                    `json:"errors_count"`
+		TotalLatencyMs   int64                  `json:"total_latency_ms"`
+		CPUUsageSeconds  float64                `json:"cpu_usage_seconds"`
+		MemoryUsageMBAvg float64                `json:"memory_usage_mb_avg"`
+		NetworkBytes     int64                  `json:"network_bytes"`
+		PeriodStart      time.Time              `json:"period_start"`
+		PeriodEnd        time.Time              `json:"period_end"`
+		Metadata         map[string]interface{} `json:"metadata"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if req.PeriodStart.IsZero() {
+		req.PeriodStart = time.Now().Add(-time.Hour)
+	}
+	if req.PeriodEnd.IsZero() {
+		req.PeriodEnd = time.Now()
+	}
+
+	analytics := &PluginAnalytics{
+		PluginID:         pluginID,
+		TenantID:         tenantID,
+		EventType:        req.EventType,
+		ExecutionsCount:  req.ExecutionsCount,
+		ErrorsCount:      req.ErrorsCount,
+		TotalLatencyMs:   req.TotalLatencyMs,
+		CPUUsageSeconds:  req.CPUUsageSeconds,
+		MemoryUsageMBAvg: req.MemoryUsageMBAvg,
+		NetworkBytes:     req.NetworkBytes,
+		PeriodStart:      req.PeriodStart,
+		PeriodEnd:        req.PeriodEnd,
+		Metadata:         req.Metadata,
+	}
+
+	if err := h.repo.RecordAnalytics(r.Context(), analytics); err != nil {
+		logrus.WithError(err).Error("plugins: failed to record analytics")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to record analytics")
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, map[string]interface{}{"message": "Analytics recorded", "analytics": analytics})
 }
 
 func (h *Handler) HandleCheckRateLimit(w http.ResponseWriter, r *http.Request) {

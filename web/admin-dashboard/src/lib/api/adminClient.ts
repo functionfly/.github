@@ -1,24 +1,30 @@
 /**
  * Admin API Client
- * Handles all API communication with HMAC signing for sensitive operations
+ * Handles all API communication with server-issued HMAC signatures for
+ * sensitive mutating operations. The shared secret is never held in the
+ * browser.
  */
 
 import { CACHE_KEYS, getAdminApiBaseUrl } from '@/lib/constants';
 import { getCsrfToken, isCsrfTokenExpired, refreshCsrfToken } from '@/lib/security/csrf';
 import type { AdminAPIResponse } from '@/types';
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
-import { HMACRequestSigner } from './hmacSigner';
+import { clearSignatureCache, signRequest } from './hmacSigner';
 
 // Extend Axios config with custom flags
 declare module 'axios' {
   interface InternalAxiosRequestConfig {
     _skipCsrf?: boolean;
+    _skipSignature?: boolean;
+  }
+  interface AxiosRequestConfig {
+    _skipCsrf?: boolean;
+    _skipSignature?: boolean;
   }
 }
 
 class AdminAPIClient {
   private client: AxiosInstance;
-  private signer: HMACRequestSigner;
   private sessionToken: string | null = null;
   private deviceFingerprint: string | null = null;
   private isRefreshingToken = false;
@@ -41,10 +47,6 @@ class AdminAPIClient {
       },
     });
 
-    // Initialize HMAC signer
-    const sharedSecret = import.meta.env.VITE_ADMIN_SHARED_SECRET || '';
-    this.signer = new HMACRequestSigner(sharedSecret);
-
     // Add request interceptor
     this.client.interceptors.request.use(async (config) => {
       if (this.sessionToken) {
@@ -55,15 +57,15 @@ class AdminAPIClient {
         config.headers['X-Device-Fingerprint'] = this.deviceFingerprint;
       }
 
-      // Add CSRF token and HMAC signature to mutating requests
+      // Add CSRF token and server-issued signature to mutating requests
       const method = config.method?.toUpperCase();
       if (method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE') {
-        // Skip CSRF token and HMAC signing if requested (e.g., for fetching CSRF token)
+        // Skip CSRF and signature if requested (e.g. for fetching CSRF or sign-request itself)
         if (config._skipCsrf) {
           return config;
         }
 
-        // Refresh token if expired before adding to request
+        // Refresh CSRF token if expired before adding to request
         if (isCsrfTokenExpired()) {
           await this.refreshCsrfTokenSafely();
         }
@@ -72,20 +74,16 @@ class AdminAPIClient {
           config.headers['X-CSRF-Token'] = csrf;
         }
 
-        // Add HMAC signature for enhanced security
-        const body = config.data ? JSON.stringify(config.data) : '';
-        // Build the full path as the backend sees it.
-        // baseURL is e.g. "https://api.functionfly.com/v1/admin" and config.url is
-        // a relative path like "/signup-invites".  Using `new URL(rel, base)` resolves
-        // relative to the *origin* (dropping the base path), so we must concatenate
-        // the base pathname and the request path explicitly.
-        const baseUrl = new URL(this.client.defaults.baseURL || '');
-        const basePath = baseUrl.pathname.replace(/\/$/, ''); // strip trailing slash
-        const reqPath = (config.url || '').replace(/^([^/])/, '/$1'); // ensure leading slash
-        const path = basePath + reqPath;
-        const signature = this.signer.sign(method, path, body);
-        config.headers['X-FFLY-Timestamp'] = signature.timestamp;
-        config.headers['X-FFLY-Signature'] = signature.signature;
+        // Ask the server to sign this request intent. The shared HMAC secret
+        // is never held in the browser; the server issues a short-lived
+        // signature bound to (method, path, body hash) and the current session.
+        if (!config._skipSignature) {
+          const body = config.data ? JSON.stringify(config.data) : '';
+          const fullPath = this.fullPath((config.url || '').replace(/^([^/])/, '/$1'));
+          const signature = await signRequest(method, fullPath, body);
+          config.headers['X-FFLY-Timestamp'] = signature.timestamp;
+          config.headers['X-FFLY-Signature'] = signature.signature;
+        }
       }
 
       return config;
@@ -180,10 +178,12 @@ class AdminAPIClient {
   }
 
   /**
-   * Clear session token
+   * Clear session token. Also drops the in-memory signature cache so a new
+   * session never reuses a signature issued under a previous one.
    */
   clearSessionToken() {
     this.sessionToken = null;
+    clearSignatureCache();
   }
 
   setDeviceFingerprint(fingerprint: string) {
@@ -210,6 +210,18 @@ class AdminAPIClient {
   }
 
   /**
+   * GET request that returns the raw Axios response (no envelope unwrapping).
+   * Used by internal helpers like the CSRF refresher that need the unparsed body.
+   */
+  async getRaw<T = unknown>(
+    path: string,
+    config?: AxiosRequestConfig
+  ): Promise<{ data: T; status: number }> {
+    const response = await this.client.get<T>(path, config);
+    return { data: response.data, status: response.status };
+  }
+
+  /**
    * GET request that does NOT trigger a 401 redirect.
    * Use this for requests on public pages (e.g. login page last-login check)
    * where a 401 is an expected "not authenticated" state, not a session expiry.
@@ -229,50 +241,81 @@ class AdminAPIClient {
   }
 
   /**
-   * POST request with HMAC signing for sensitive operations
+   * POST request that does NOT trigger a 401 redirect or HMAC signing.
+   * Use for unauthenticated endpoints on the login page (forgot password,
+   * MFA challenge exchange, etc.) where we deliberately have no session yet.
+   */
+  async postNoAuth<T = unknown>(path: string, data?: unknown): Promise<T | null> {
+    try {
+      const response = await this.client.post<T>(path, data, {
+        _skipAuthRedirect: true,
+        _skipSignature: true,
+      } as AxiosRequestConfig);
+      return response.data;
+    } catch (error: any) {
+      if (error?.response?.status === 401 || error?.response?.status === 403) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * POST request that returns the raw Axios response (no envelope unwrapping).
+   * Used by internal helpers like the server-issued HMAC signer that need
+   * the unparsed body.
+   */
+  async postRaw<T = unknown>(
+    path: string,
+    data?: any,
+    config?: AxiosRequestConfig
+  ): Promise<{ data: T; status: number }> {
+    const response = await this.client.post<T>(path, data, config);
+    return { data: response.data, status: response.status };
+  }
+
+  /**
+   * POST request. The request interceptor attaches the server-issued
+   * signature and CSRF token automatically.
    */
   async post<T>(
     path: string,
     data?: any,
     config?: AxiosRequestConfig
   ): Promise<AdminAPIResponse<T>> {
-    const signedConfig = this.signRequest('POST', path, data, config);
-    const response = await this.client.post<AdminAPIResponse<T>>(path, data, signedConfig);
+    const response = await this.client.post<AdminAPIResponse<T>>(path, data, config);
     return response.data;
   }
 
   /**
-   * PUT request with HMAC signing
+   * PUT request. The request interceptor attaches the server-issued signature.
    */
   async put<T>(
     path: string,
     data?: any,
     config?: AxiosRequestConfig
   ): Promise<AdminAPIResponse<T>> {
-    const signedConfig = this.signRequest('PUT', path, data, config);
-    const response = await this.client.put<AdminAPIResponse<T>>(path, data, signedConfig);
+    const response = await this.client.put<AdminAPIResponse<T>>(path, data, config);
     return response.data;
   }
 
   /**
-   * PATCH request with HMAC signing
+   * PATCH request. The request interceptor attaches the server-issued signature.
    */
   async patch<T>(
     path: string,
     data?: any,
     config?: AxiosRequestConfig
   ): Promise<AdminAPIResponse<T>> {
-    const signedConfig = this.signRequest('PATCH', path, data, config);
-    const response = await this.client.patch<AdminAPIResponse<T>>(path, data, signedConfig);
+    const response = await this.client.patch<AdminAPIResponse<T>>(path, data, config);
     return response.data;
   }
 
   /**
-   * DELETE request with HMAC signing
+   * DELETE request. The request interceptor attaches the server-issued signature.
    */
   async delete<T>(path: string, config?: AxiosRequestConfig): Promise<AdminAPIResponse<T>> {
-    const signedConfig = this.signRequest('DELETE', path, undefined, config);
-    const response = await this.client.delete<AdminAPIResponse<T>>(path, signedConfig);
+    const response = await this.client.delete<AdminAPIResponse<T>>(path, config);
     return response.data;
   }
 
@@ -286,32 +329,6 @@ class AdminAPIClient {
     const basePath = baseUrl.pathname.replace(/\/$/, '');
     const normalised = reqPath.replace(/^([^/])/, '/$1');
     return basePath + normalised;
-  }
-
-  /**
-   * Sign request with HMAC — returns config with pre-computed headers.
-   * The request interceptor will overwrite these with the same values, so
-   * this method mainly exists to ensure the signedConfig shape is consistent.
-   */
-  private signRequest(
-    method: string,
-    path: string,
-    data?: any,
-    config?: AxiosRequestConfig
-  ): AxiosRequestConfig {
-    const body = data ? JSON.stringify(data) : '';
-    const { timestamp, signature } = this.signer.sign(method, this.fullPath(path), body);
-    // Note: CSRF token is added in the request interceptor
-    // to ensure proper handling of token refresh
-
-    return {
-      ...config,
-      headers: {
-        ...config?.headers,
-        'X-FFLY-Timestamp': timestamp,
-        'X-FFLY-Signature': signature,
-      },
-    };
   }
 }
 

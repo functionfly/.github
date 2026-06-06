@@ -1,17 +1,17 @@
 'use client';
 
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { agentApi } from '@/api/agent';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Bot, Loader2, Copy, Check } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { trackEvent } from '@/lib/analytics';
 import { ROUTES } from '@/lib/constants';
+import { ArrowLeft, Bot, Check, Copy, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 function slugFrom(s: string) {
@@ -44,10 +44,13 @@ export function AgentCreatePage() {
     }
     setSubmitting(true);
     try {
+      trackEvent('agent_create_submitted');
       const res = await agentApi.registerAgent({ agentId, name, description: form.description.trim() || undefined });
       setApiKey(res.api_key);
+      trackEvent('agent_created');
       toast.success(t('agents.agentCreatedSuccess'));
     } catch (err: unknown) {
+      trackEvent('agent_create_failed');
       const errMsg = err instanceof Error ? err.message : String(err);
       toast.error(t('agents.failedToCreate') + ': ' + errMsg);
     } finally {
@@ -57,6 +60,7 @@ export function AgentCreatePage() {
 
   const handleCopy = () => {
     if (apiKey) {
+      trackEvent('agent_api_key_copied');
       navigator.clipboard.writeText(apiKey);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -90,7 +94,10 @@ export function AgentCreatePage() {
               {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
               {copied ? t('agents.copied') : t('agents.copy')} API Key
             </Button>
-            <Button onClick={() => navigate(ROUTES.AGENT_LIST)} className="w-full">
+            <Button onClick={() => {
+              trackEvent('agent_created_go_to_list');
+              navigate(ROUTES.AGENT_LIST);
+            }} className="w-full">
               Go to Agents
             </Button>
           </CardContent>

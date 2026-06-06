@@ -145,8 +145,8 @@ func (m *AgentRateLimiter) Limit(next http.HandlerFunc) http.HandlerFunc {
 
 		result, err := m.CheckRateLimit(ctx, tenantID, limit)
 		if err != nil {
-			m.logger.WithError(err).WithField("tenant_id", tenantID).Error("Failed to check rate limit")
-			next.ServeHTTP(w, r)
+			m.logger.WithError(err).WithField("tenant_id", tenantID).Error("Rate limit check failed; blocking request for safety")
+			writeAgentRateLimitError(w, "Rate limit service unavailable", int(AgentRegistrationRateLimitWindow.Seconds()))
 			return
 		}
 

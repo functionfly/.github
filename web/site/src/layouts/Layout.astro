@@ -5,6 +5,8 @@ import { Schema } from 'astro-seo-schema';
 import { t, getLocale, SUPPORTED_LOCALES, isRtl } from '../i18n';
 import '../styles/design-system.css';
 
+const mixpanelToken = import.meta.env.PUBLIC_MIXPANEL_TOKEN as string | undefined;
+
 interface Props {
   title: string;
   description?: string;
@@ -170,8 +172,44 @@ const finalSchemas = schema
     {finalSchemas.map((s, i) => (
       <Schema key={i} item={s} />
     ))}
+
+    {/* Mixpanel Analytics — public site, no auth required */}
+    {mixpanelToken && (
+      <script define:vars={{ mixpanelToken }}>
+        (function() {
+          (function() {
+            var w = window, mp = w.mixpanel = w.mixpanel || [];
+            function i() { mp.push(arguments); }
+            i.q = mp.q || []; mp._i = [];
+            mp.init = function(token) { mp.push(['init', token]); return mp; };
+            mp.track = function() { return mp.q.push(arguments); };
+            mp.people = { track_charge: function() { mp.q.push(['people.track_charge', arguments]); } };
+            var s = document.createElement('script');
+            s.type = 'text/javascript'; s.async = true;
+            s.src = 'https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';
+            var x = document.getElementsByTagName('script')[0];
+            x.parentNode.insertBefore(s, x);
+          })();
+          window.mixpanel.init(mixpanelToken);
+
+          // Delegate CTA click tracking for all pages
+          document.addEventListener('click', function(e) {
+            var target = e.target.closest('a[href*="signup"], a[href*="auth"]');
+            if (!target) return;
+            var href = target.getAttribute('href') || '';
+            if (href.includes('plan=')) {
+              var plan = new URL(href, location.href).searchParams.get('plan') || 'unknown';
+              window.mixpanel.track('site_cta_clicked', { location: 'site', plan: plan, href: href });
+            } else {
+              window.mixpanel.track('site_cta_clicked', { location: 'site', href: href });
+            }
+          });
+        })();
+      </script>
+    )}
   </head>
   <body class="ff-grid-bg">
+    <a href="#main-content" class="skip-link">Skip to main content</a>
     <script is:inline>
       // Theme initialization - unified across all FunctionFly apps
       (function() {
@@ -290,7 +328,7 @@ const finalSchemas = schema
         </div>
       </nav>
     </header>
-    <main>
+    <main id="main-content">
       <slot />
     </main>
     <footer class="footer">
@@ -330,11 +368,14 @@ const finalSchemas = schema
             <h4>Stay Updated</h4>
             <p class="newsletter-description">Get the latest updates and news about FunctionFly.</p>
             <form id="newsletter-form" class="newsletter-form">
+              <label for="newsletter-email" class="sr-only">Email address</label>
               <input
                 type="email"
                 id="newsletter-email"
+                name="email"
                 placeholder="Enter your email"
                 required
+                autocomplete="email"
                 class="newsletter-input"
               />
               <button type="submit" class="newsletter-button" aria-label="Subscribe">
@@ -781,7 +822,7 @@ const finalSchemas = schema
     opacity: 0;
     visibility: hidden;
     transform: translateY(10px);
-    transition: all 0.25s ease;
+    transition: opacity 0.25s ease, visibility 0.25s ease, transform 0.25s ease;
     z-index: 50;
     box-shadow: 0 4px 12px rgba(15, 23, 42, 0.3);
   }
@@ -822,7 +863,7 @@ const finalSchemas = schema
     border-radius: 8px;
     color: var(--color-text-muted);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
     position: relative;
   }
 
@@ -963,5 +1004,33 @@ const finalSchemas = schema
     color: var(--color-text-muted);
     font-size: 0.75rem;
     margin: 0;
+  }
+
+  .skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--color-primary);
+    color: white;
+    padding: 0.5rem 1rem;
+    z-index: 1000;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .skip-link:focus {
+    top: 0;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 </style>

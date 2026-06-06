@@ -961,7 +961,9 @@
     "gettingStarted": "Bắt đầu",
     "collapseSidebar": "Thu gọn thanh bên",
     "expandSidebar": "Mở rộng thanh bên",
-    "commandPalette": "Bảng lệnh"
+    "commandPalette": "Bảng lệnh",
+    "brain": "Brain",
+    "connectors": "Connectors"
   },
   "notifCenter": {
     "title": "Notifications",

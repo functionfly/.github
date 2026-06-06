@@ -36,7 +36,7 @@ interface DeployFormData {
   environment: 'dev' | 'staging' | 'prod';
 }
 
-const environmentOptions = [
+  const environmentOptions = [
   { value: 'dev', label: 'Development', color: '#10b981' },
   { value: 'staging', label: 'Staging', color: '#f59e0b' },
   { value: 'prod', label: 'Production', color: '#ef4444' },
@@ -55,7 +55,7 @@ export function DeployFunctionModal({ open, onOpenChange, functionId, functionNa
     queryKey: ['admin-backends'],
     queryFn: async () => {
       const res = await adminApiClient.get<{ backends: Backend[] }>('/backends');
-      return res;
+      return { backends: res.data?.backends ?? [] };
     },
     enabled: open,
     staleTime: 1000 * 60 * 5,
@@ -71,7 +71,7 @@ export function DeployFunctionModal({ open, onOpenChange, functionId, functionNa
       };
       return adminApiClient.post('/functions/deploy', payload);
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (_data: any, variables: DeployFormData) => {
       toast.success('Function deployed successfully', {
         description: `${variables.functionId || functionName} deployed to backend`,
       });
@@ -152,7 +152,7 @@ export function DeployFunctionModal({ open, onOpenChange, functionId, functionNa
             placeholder={backendsLoading ? 'Loading backends...' : 'Select a backend'}
             options={backendOptions}
             value={formData.backendId}
-            onChange={(value) => {
+            onChange={(value: string) => {
               setFormData({ ...formData, backendId: value });
               setBackendError(undefined);
             }}

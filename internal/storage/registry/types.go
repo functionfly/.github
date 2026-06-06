@@ -252,6 +252,7 @@ type RegistryExecutionPublic struct {
 	DurationMs int             `json:"duration_ms" gorm:"not null"`
 	Cached     bool            `json:"cached" gorm:"default:false"`
 	Shareable  bool            `json:"shareable" gorm:"default:true"`
+	RevokedAt  sql.NullTime    `json:"revoked_at"`
 	CreatedAt  time.Time       `json:"created_at" gorm:"autoCreateTime;index"`
 	// Replay verification fields
 	VerifiedAt         sql.NullTime    `json:"verified_at"`
@@ -259,6 +260,15 @@ type RegistryExecutionPublic struct {
 	VerificationError  sql.NullString  `json:"verification_error" gorm:"type:text"`
 	ReplayedOutputJSON json.RawMessage `json:"replayed_output_json" gorm:"type:jsonb"`
 	ReplayedDurationMs sql.NullInt32   `json:"replayed_duration_ms"`
+	// Denormalized display fields (populated at insert time)
+	FunctionAuthor    sql.NullString `json:"function_author" gorm:"-"`
+	FunctionName      sql.NullString `json:"function_name" gorm:"-"`
+	Runtime           sql.NullString `json:"runtime" gorm:"-"`
+	FunctionVisibility sql.NullString `json:"function_visibility" gorm:"-"`
+	Description       sql.NullString `json:"description" gorm:"-"`
+	InputSchema       json.RawMessage `json:"input_schema" gorm:"-"`
+	OutputSchema      json.RawMessage `json:"output_schema" gorm:"-"`
+	ViewCount         int            `json:"view_count" gorm:"-"`
 }
 
 func (RegistryExecutionPublic) TableName() string {

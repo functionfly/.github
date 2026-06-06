@@ -1,10 +1,7 @@
 import { useState } from "react";
-import { GlassCard, Badge, Spinner, Button } from "@functionfly/ui-core";
+import { GlassCard, Badge, Spinner } from "@functionfly/ui-core";
 import { Activity, AlertTriangle, Clock, Zap, BarChart3, TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { type Plugin, usePlugins } from "@/hooks/usePlugin";
-import { useQuery } from "@tanstack/react-query";
-import { pluginsApi } from "@/api/plugins";
-import { useEffect } from "react";
+import { type Plugin, usePluginTelemetry } from "@/hooks/usePlugin";
 
 interface PluginTelemetryPanelProps {
   plugins: Plugin[];
@@ -12,119 +9,39 @@ interface PluginTelemetryPanelProps {
 
 type TimeRange = "7d" | "30d" | "90d";
 
-interface TelemetryData {
-  executions: number;
-  errors: number;
-  errorRate: number;
-  avgLatency: number;
-  cpuTime: number;
-  previousExecutions: number;
-  latencyTrend: "up" | "down" | "stable";
-  executionsTrend: "up" | "down" | "stable";
+function formatNumber(n: number) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
+  if (n >= 1000) return (n / 1000).toFixed(1) + "k";
+  return n.toString();
 }
 
-const MOCK_TELEMETRY: Record<string, TelemetryData> = {
-  "ff-github": {
-    executions: 12847,
-    errors: 23,
-    errorRate: 0.18,
-    avgLatency: 145,
-    cpuTime: 847200,
-    previousExecutions: 11250,
-    latencyTrend: "down",
-    executionsTrend: "up",
-  },
-  "ff-slack": {
-    executions: 8934,
-    errors: 12,
-    errorRate: 0.13,
-    avgLatency: 89,
-    cpuTime: 412800,
-    previousExecutions: 9102,
-    latencyTrend: "stable",
-    executionsTrend: "down",
-  },
-  "ff-stripe": {
-    executions: 3421,
-    errors: 5,
-    errorRate: 0.15,
-    avgLatency: 234,
-    cpuTime: 523400,
-    previousExecutions: 3102,
-    latencyTrend: "up",
-    executionsTrend: "up",
-  },
-  "ff-scheduler": {
-    executions: 89432,
-    errors: 89,
-    errorRate: 0.10,
-    avgLatency: 45,
-    cpuTime: 2340800,
-    previousExecutions: 85670,
-    latencyTrend: "stable",
-    executionsTrend: "up",
-  },
-};
+function formatDuration(seconds: number) {
+  if (seconds >= 3600) return (seconds / 3600).toFixed(1) + "h";
+  if (seconds >= 60) return (seconds / 60).toFixed(1) + "m";
+  return seconds + "s";
+}
+
+function getTrendIcon(trend: "up" | "down" | "stable") {
+  if (trend === "up") return <TrendingUp className="w-3 h-3 text-red-400" />;
+  if (trend === "down") return <TrendingDown className="w-3 h-3 text-green-400" />;
+  return <Minus className="w-3 h-3 text-yellow-400" />;
+}
+
+function getTrendPercentage(current: number, previous: number) {
+  if (previous === 0) return 0;
+  return ((current - previous) / previous) * 100;
+}
 
 export function PluginTelemetryPanel({ plugins }: PluginTelemetryPanelProps) {
   const [selectedPlugin, setSelectedPlugin] = useState<Plugin | null>(plugins[0] || null);
   const [timeRange, setTimeRange] = useState<TimeRange>("7d");
 
-  const { data: pluginData } = useQuery({
-    queryKey: ["plugin-telemetry", selectedPlugin?.id, timeRange],
-    queryFn: async () => {
-      if (!selectedPlugin) return null;
-      try {
-        const response = await (pluginsApi as any).getTelemetry(selectedPlugin.id, timeRange);
-        return response;
-      } catch {
-        return null;
-      }
-    },
-    enabled: !!selectedPlugin,
-  });
+  const { data: telemetryData, isLoading } = usePluginTelemetry(
+    selectedPlugin?.id || "",
+    timeRange
+  );
 
-  const getTelemetry = (pluginId: string): TelemetryData => {
-    if (MOCK_TELEMETRY[pluginId]) {
-      return MOCK_TELEMETRY[pluginId];
-    }
-    return {
-      executions: Math.floor(Math.random() * 10000) + 1000,
-      errors: Math.floor(Math.random() * 50),
-      errorRate: Math.random() * 0.5,
-      avgLatency: Math.floor(Math.random() * 300) + 50,
-      cpuTime: Math.floor(Math.random() * 1000000) + 100000,
-      previousExecutions: Math.floor(Math.random() * 10000) + 1000,
-      latencyTrend: ["up", "down", "stable"][Math.floor(Math.random() * 3)] as any,
-      executionsTrend: ["up", "down", "stable"][Math.floor(Math.random() * 3)] as any,
-    };
-  };
-
-  const telemetry = selectedPlugin ? getTelemetry(selectedPlugin.id) : null;
-
-  const formatNumber = (n: number) => {
-    if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
-    if (n >= 1000) return (n / 1000).toFixed(1) + "k";
-    return n.toString();
-  };
-
-  const formatDuration = (seconds: number) => {
-    if (seconds >= 3600) return (seconds / 3600).toFixed(1) + "h";
-    if (seconds >= 60) return (seconds / 60).toFixed(1) + "m";
-    return seconds + "s";
-  };
-
-  const getTrendIcon = (trend: "up" | "down" | "stable") => {
-    if (trend === "up") return <TrendingUp className="w-3 h-3 text-red-400" />;
-    if (trend === "down") return <TrendingDown className="w-3 h-3 text-green-400" />;
-    return <Minus className="w-3 h-3 text-yellow-400" />;
-  };
-
-  const getTrendPercentage = (current: number, previous: number) => {
-    if (previous === 0) return 0;
-    const change = ((current - previous) / previous) * 100;
-    return change.toFixed(1);
-  };
+  const telemetry = telemetryData?.telemetry;
 
   const timeRanges: { value: TimeRange; label: string }[] = [
     { value: "7d", label: "7 Days" },
@@ -158,7 +75,11 @@ export function PluginTelemetryPanel({ plugins }: PluginTelemetryPanelProps) {
         </div>
 
         <div className="flex-1">
-          {selectedPlugin && telemetry ? (
+          {selectedPlugin && isLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <Spinner className="w-8 h-8" />
+            </div>
+          ) : selectedPlugin && telemetry ? (
             <GlassCard className="p-4 space-y-4">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
@@ -186,15 +107,15 @@ export function PluginTelemetryPanel({ plugins }: PluginTelemetryPanelProps) {
                 <div className="p-4 bg-white/5 rounded-lg">
                   <div className="flex items-center gap-2 text-white/60 text-sm mb-2">
                     <Zap className="w-4 h-4" /> Executions
-                    {getTrendIcon(telemetry.executionsTrend)}
+                    {getTrendIcon(telemetry.executions_trend)}
                   </div>
                   <div className="text-2xl font-bold text-white">{formatNumber(telemetry.executions)}</div>
                   <div className={`text-xs mt-1 flex items-center gap-1 ${
-                    telemetry.executionsTrend === "up" ? "text-green-400" :
-                    telemetry.executionsTrend === "down" ? "text-red-400" : "text-white/40"
+                    telemetry.executions_trend === "up" ? "text-green-400" :
+                    telemetry.executions_trend === "down" ? "text-red-400" : "text-white/40"
                   }`}>
-                    {telemetry.executionsTrend === "up" ? "+" : telemetry.executionsTrend === "down" ? "-" : ""}
-                    {getTrendPercentage(telemetry.executions, telemetry.previousExecutions)}% from last period
+                    {telemetry.executions_trend === "up" ? "+" : telemetry.executions_trend === "down" ? "-" : ""}
+                    {getTrendPercentage(telemetry.executions, telemetry.previous_executions).toFixed(1)}% from last period
                   </div>
                 </div>
                 <div className="p-4 bg-white/5 rounded-lg">
@@ -202,21 +123,21 @@ export function PluginTelemetryPanel({ plugins }: PluginTelemetryPanelProps) {
                     <AlertTriangle className="w-4 h-4" /> Errors
                   </div>
                   <div className="text-2xl font-bold text-white">{telemetry.errors}</div>
-                  <div className="text-xs text-white/40 mt-1">{telemetry.errorRate.toFixed(2)}% error rate</div>
+                  <div className="text-xs text-white/40 mt-1">{telemetry.error_rate.toFixed(2)}% error rate</div>
                 </div>
                 <div className="p-4 bg-white/5 rounded-lg">
                   <div className="flex items-center gap-2 text-white/60 text-sm mb-2">
                     <Clock className="w-4 h-4" /> Avg Latency
-                    {getTrendIcon(telemetry.latencyTrend)}
+                    {getTrendIcon(telemetry.latency_trend)}
                   </div>
-                  <div className="text-2xl font-bold text-white">{telemetry.avgLatency}ms</div>
+                  <div className="text-2xl font-bold text-white">{Math.round(telemetry.avg_latency_ms)}ms</div>
                   <div className="text-xs text-white/40 mt-1">per execution</div>
                 </div>
                 <div className="p-4 bg-white/5 rounded-lg">
                   <div className="flex items-center gap-2 text-white/60 text-sm mb-2">
                     <Activity className="w-4 h-4" /> CPU Time
                   </div>
-                  <div className="text-2xl font-bold text-white">{formatDuration(telemetry.cpuTime)}</div>
+                  <div className="text-2xl font-bold text-white">{formatDuration(telemetry.cpu_usage_seconds)}</div>
                   <div className="text-xs text-white/40 mt-1">total usage</div>
                 </div>
               </div>

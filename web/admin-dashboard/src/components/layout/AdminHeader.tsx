@@ -4,22 +4,24 @@
  */
 
 import { DarkModeToggle } from '@/components/common/DarkModeToggle';
+import { adminApiClient } from '@/lib/api/adminClient';
 import { ROUTES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import type { AdminUser } from '@/types';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Bell,
-  ChevronDown,
-  Command,
-  HelpCircle,
-  Keyboard,
-  LifeBuoy,
-  LogOut,
-  Menu,
-  Settings,
-  Shield,
-  User,
-  type LucideIcon,
+    Bell,
+    ChevronDown,
+    Command,
+    HelpCircle,
+    Keyboard,
+    LifeBuoy,
+    LogOut,
+    Menu,
+    Settings,
+    Shield,
+    User,
+    type LucideIcon,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -35,6 +37,18 @@ interface AdminHeaderProps {
 interface BreadcrumbItem {
   label: string;
   path?: string;
+}
+
+interface AdminNotification {
+  id: string;
+  title: string;
+  message: string;
+  /** ISO timestamp; we render a relative time string from this. */
+  created_at?: string;
+  read?: boolean;
+  unread?: boolean;
+  link?: string;
+  level?: 'info' | 'warning' | 'error' | 'success';
 }
 
 interface QuickAction {
@@ -110,30 +124,47 @@ export function AdminHeader({
 }: AdminHeaderProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [showCommandPalette, setShowCommandPalette] = useState(false);
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: 'New user signup',
-      message: 'user@example.com just signed up',
-      time: '2 min ago',
-      unread: true,
+
+  // Live notifications from /admin/notifications. The endpoint may not
+  // exist on older backends; fall back to an empty list rather than
+  // blowing up the header.
+  const { data: notificationData } = useQuery({
+    queryKey: ['admin-notifications'],
+    queryFn: async () => {
+      try {
+        const res = (await adminApiClient.get<unknown>('/notifications')) as unknown as {
+          notifications?: AdminNotification[];
+          data?: AdminNotification[];
+        };
+        return res.notifications ?? res.data ?? [];
+      } catch {
+        return [] as AdminNotification[];
+      }
     },
-    {
-      id: 2,
-      title: 'System alert',
-      message: 'High CPU usage on backend-3',
-      time: '15 min ago',
-      unread: true,
+    enabled: Boolean(user),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+  const notifications: AdminNotification[] = useMemo(
+    () => (Array.isArray(notificationData) ? notificationData : []),
+    [notificationData]
+  );
+
+  const markAllRead = useMutation({
+    mutationFn: async () => adminApiClient.post('/notifications/mark-all-read', {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-notifications'] });
     },
-    {
-      id: 3,
-      title: 'Deployment complete',
-      message: 'v2.4.1 deployed successfully',
-      time: '1 hour ago',
-      unread: false,
+  });
+
+  const markOneRead = useMutation({
+    mutationFn: async (id: string) => adminApiClient.post(`/notifications/${id}/read`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-notifications'] });
     },
-  ]);
+  });
 
   // Dropdown states
   const [helpOpen, setHelpOpen] = useState(false);
@@ -161,7 +192,7 @@ export function AdminHeader({
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  const unreadCount = notifications.filter((n) => n.unread ?? !n.read).length;
 
   // Generate breadcrumbs based on current route
   const breadcrumbs = useMemo(() => {
@@ -218,8 +249,8 @@ export function AdminHeader({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  const markAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+  const handleMarkAllRead = () => {
+    markAllRead.mutate();
   };
 
   return (
@@ -360,7 +391,7 @@ export function AdminHeader({
                           <span className="font-medium text-sm text-gray-900 dark:text-white">Notifications</span>
                           {unreadCount > 0 && (
                             <button
-                              onClick={markAllRead}
+                              onClick={handleMarkAllRead}
                               className="text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
                             >
                               Mark all read
@@ -369,42 +400,49 @@ export function AdminHeader({
                         </div>
                         <div className="max-h-64 overflow-y-auto">
                           {notifications.length > 0 ? (
-                            notifications.map((notification) => (
-                              <div
-                                key={notification.id}
-                                onClick={() => {
-                                  setNotifications((prev) =>
-                                    prev.map((n) =>
-                                      n.id === notification.id ? { ...n, unread: false } : n
-                                    )
-                                  );
-                                }}
-                                className={cn(
-                                  'px-3 py-3 border-b border-gray-50 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer',
-                                  notification.unread && 'bg-indigo-50/50 dark:bg-indigo-900/20'
-                                )}
-                              >
-                                <div className="flex items-start gap-3">
-                                  <div
-                                    className={cn(
-                                      'w-2 h-2 rounded-full mt-1.5 shrink-0',
-                                      notification.unread ? 'bg-indigo-500' : 'bg-gray-300 dark:bg-gray-600'
-                                    )}
-                                  />
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                      {notification.title}
-                                    </p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                      {notification.message}
-                                    </p>
-                                    <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
-                                      {notification.time}
-                                    </p>
+                            notifications.map((notification) => {
+                              const isUnread = notification.unread ?? !notification.read;
+                              return (
+                                <div
+                                  key={notification.id}
+                                  onClick={() => {
+                                    if (isUnread) {
+                                      markOneRead.mutate(notification.id);
+                                    }
+                                    if (notification.link) {
+                                      navigate(notification.link);
+                                      setNotifOpen(false);
+                                    }
+                                  }}
+                                  className={cn(
+                                    'px-3 py-3 border-b border-gray-50 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer',
+                                    isUnread && 'bg-indigo-50/50 dark:bg-indigo-900/20'
+                                  )}
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <div
+                                      className={cn(
+                                        'w-2 h-2 rounded-full mt-1.5 shrink-0',
+                                        isUnread ? 'bg-indigo-500' : 'bg-gray-300 dark:bg-gray-600'
+                                      )}
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                        {notification.title}
+                                      </p>
+                                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                        {notification.message}
+                                      </p>
+                                      <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
+                                        {notification.created_at
+                                          ? new Date(notification.created_at).toLocaleString()
+                                          : ''}
+                                      </p>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))
+                              );
+                            })
                           ) : (
                             <div className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
                               <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />

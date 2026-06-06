@@ -2,20 +2,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import {
-  Cloud,
-  Code2,
-  Database,
-  FileCode,
-  Globe,
-  Layers,
-  Lock,
-  Network,
-  Plus,
-  Rocket,
-  Settings,
-  Shield,
-  Terminal,
-  Webhook,
+    Cloud,
+    Code2,
+    Database,
+    FileCode,
+    Globe,
+    Layers,
+    Lock,
+    Network,
+    Plus,
+    Rocket,
+    Settings,
+    Shield,
+    Terminal,
+    Webhook,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -62,7 +62,7 @@ function ActionButton({ action, index }: { action: QuickAction; index: number })
 
   const variantStyles = {
     default:
-      'border-border bg-bg-secondary hover:border-[var(--color-aviation-amber)]/50 hover:bg-[var(--color-aviation-amber)]/5',
+      'border-border bg-bg-primary hover:border-[var(--color-aviation-amber)]/50 hover:bg-[var(--color-aviation-amber)]/5',
     primary:
       'border-[var(--color-aviation-amber)]/50 bg-[var(--color-aviation-amber)]/10 hover:bg-[var(--color-aviation-amber)]/20',
     secondary:
@@ -89,7 +89,7 @@ function ActionButton({ action, index }: { action: QuickAction; index: number })
             ? 'bg-(--color-aviation-amber)/20 text-(--color-aviation-amber)'
             : action.variant === 'secondary'
               ? 'bg-(--color-aviation-cyan)/20 text-(--color-aviation-cyan)'
-              : 'bg-bg-tertiary text-text-secondary group-hover:text-(--color-aviation-amber)'
+              : 'bg-bg-secondary text-text-secondary group-hover:text-(--color-aviation-amber)'
         )}
       >
         {action.icon}
@@ -167,7 +167,7 @@ export function QuickActionsPanel({
   ];
 
   return (
-    <Card className={cn('border-theme bg-card overflow-hidden', className)}>
+    <Card className={cn('overflow-hidden', className)}>
       <CardHeader className="pb-3 pt-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium text-text-secondary">{t('quickActions.title')}</CardTitle>

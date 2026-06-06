@@ -20,9 +20,16 @@ const (
 
 	// Default request limits per month
 	// NOTE: These must match the frontend PLANS limits in web/dashboard/src/lib/constants.ts
-	StarterMaxRequestsPerMonth           = 1_000_000   // 1M requests - matches frontend Starter
-	DefaultProMaxRequestsPerMonth        = 10_000_000 // 10M requests - matches frontend Professional
-	DefaultEnterpriseMaxRequestsPerMonth = -1           // Unlimited (-1 = unlimited in our system)
+	FreeMaxRequestsPerMonth                 = 500         // Free tier: 500 requests/month
+	StarterMaxRequestsPerMonth              = 1_000_000   // 1M requests - matches frontend Starter
+	DefaultProMaxRequestsPerMonth           = 10_000_000 // 10M requests - matches frontend Professional
+	DefaultEnterpriseMaxRequestsPerMonth    = -1          // Unlimited (-1 = unlimited in our system)
+
+	// Function limits
+	FreeMaxFunctions           = 3
+	StarterMaxFunctions        = 5
+	ProMaxFunctions            = 25
+	EnterpriseMaxFunctions     = -1 // Unlimited
 
 	// Secrets limits per tenant
 	StarterMaxSecrets    = 10
@@ -779,10 +786,10 @@ type UsagePricingTier struct {
 var UsagePricingTiers = map[string]UsagePricingTier{
 "free": {
 		Name:                    "Free",
-		IncludedRequestsMonthly: 100_000,
+		IncludedRequestsMonthly: 500,
 		MonthlyPriceCents:       0,
 		OveragePricePer1000:     0, // Hard stop
-		MaxRequestsPerMonth:     100_000,
+		MaxRequestsPerMonth:     500,
 	},
 	"starter": {
 		Name:                    "Starter",

@@ -3,18 +3,27 @@
  * Platform-level security anomaly monitoring and alerting for admin dashboard
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import {
-  Shield, AlertTriangle, AlertCircle, CheckCircle, Clock,
-  RefreshCw, Filter, Eye, EyeOff, Bell, X, ChevronRight, Users, Activity
-} from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { adminApiClient } from '@/lib/api/adminClient';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { useToastHelpers } from '@/components/ui/Toast';
+import { adminApiClient } from '@/lib/api/adminClient';
+import { logger } from '@/lib/monitoring/logger';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
+import {
+    AlertCircle,
+    AlertTriangle,
+    Bell,
+    CheckCircle,
+    ChevronRight,
+    Clock,
+    Eye, EyeOff,
+    RefreshCw,
+    Shield,
+    Users
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface SecurityAnomaly {
   id: string;
@@ -69,7 +78,7 @@ export function AdminSecurityAnomalyDashboard({ platformWide = true }: AdminSecu
         affectedTenants: 0,
       });
     } catch (err) {
-      console.error('Failed to fetch security anomalies:', err);
+      logger.error('Failed to fetch security anomalies', { error: err });
     } finally {
       setIsLoading(false);
     }

@@ -1,7 +1,7 @@
-import { useState, useCallback, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import { API_BASE_URL } from '@/lib/constants';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 // ============================================================================
 // Types
@@ -101,14 +101,33 @@ export interface SimulationStatus {
 
 export interface GhostTask {
   id: string;
-  status: 'pending' | 'in_progress' | 'awaiting_approval' | 'approved' | 'rejected' | 'completed' | 'failed';
   title: string;
   description?: string;
-  createdAt: string;
-  updatedAt: string;
-  completedAt?: string;
-  approverNotes?: string;
+  status: 'pending' | 'in_progress' | 'awaiting_approval' | 'approved' | 'rejected' | 'completed' | 'failed';
+  phase?: string;
+  started_at?: string;
+  updated_at?: string;
+  completed_at?: string;
+  duration_ms?: number;
   logs?: GhostLogEntry[];
+  artifacts?: GhostArtifact[];
+  agent_id?: string;
+  confidence?: number;
+  dependencies?: string[];
+  llm_output?: string;
+}
+
+export interface GhostLogEntry {
+  timestamp: string;
+  level: 'info' | 'warn' | 'error' | 'debug';
+  message: string;
+}
+
+export interface GhostArtifact {
+  name: string;
+  type: string;
+  path: string;
+  size?: number;
 }
 
 export interface GhostLogEntry {
@@ -122,7 +141,18 @@ export interface GhostBuild {
   id: string;
   name: string;
   status: 'creating' | 'building' | 'ready' | 'failed';
+  goal?: string;
+  description?: string;
+  phase?: 'planning' | 'provisioning' | 'building' | 'deploying' | 'monitoring' | 'complete' | 'error' | 'paused';
+  progress?: number;
+  tasks?: GhostTask[];
   taskId?: string;
+  current_task_id?: string;
+  human_approval_required?: boolean;
+  approval_type?: 'schema' | 'deployment' | 'pr' | 'infra';
+  error?: string;
+  started_at?: string;
+  updated_at?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -427,9 +457,9 @@ export function useStudioAgents(filters?: { limit?: number; offset?: number }) {
 
   const pauseAgent = useMutation({
     mutationFn: (agentId: string) =>
-      studioFetch<{ ok: boolean }>(`/v1/agent/${agentId}/lifecycle/shutdown`, {
-        method: 'POST',
-        body: JSON.stringify({ grace_period_seconds: 5 }),
+      studioFetch<{ ok: boolean }>(`/v1/agent/${agentId}/lifecycle/pause`, {
+        method: 'PUT',
+        body: JSON.stringify({}),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: studioKeys.agents() });
@@ -440,12 +470,12 @@ export function useStudioAgents(filters?: { limit?: number; offset?: number }) {
     },
   });
 
-  // NOTE: Resume is not directly supported - agents can be re-spawned after shutdown
-const resumeAgent = useMutation({
-    mutationFn: async (agentId: string) => {
-      console.warn('Resume not supported - use spawn to create a new agent');
-      return { ok: true, message: 'resume not implemented - use spawn' };
-    },
+  const resumeAgent = useMutation({
+    mutationFn: (agentId: string) =>
+      studioFetch<{ ok: boolean }>(`/v1/agent/${agentId}/lifecycle/resume`, {
+        method: 'PUT',
+        body: JSON.stringify({}),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: studioKeys.agents() });
       toast.success('Agent resumed');
@@ -457,12 +487,13 @@ const resumeAgent = useMutation({
 
   const terminateAgent = useMutation({
     mutationFn: (agentId: string) =>
-      studioFetch<{ ok: boolean }>(`/v1/agent/${agentId}`, {
-        method: 'DELETE',
+      studioFetch<{ ok: boolean }>(`/v1/agent/${agentId}/lifecycle/terminate`, {
+        method: 'POST',
+        body: JSON.stringify({ grace_period_seconds: 30, reason: 'user_terminated' }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: studioKeys.agents() });
-      toast.success('Agent terminated');
+      toast.success('Agent termination initiated');
     },
     onError: (error: Error) => {
       toast.error(`Failed to terminate agent: ${error.message}`);
@@ -568,25 +599,254 @@ export function useStudioMemory(agentId?: string) {
 
 // ============================================================================
 // useStudioSimulation - R-Sim simulation hook
+// Bridges StudioPage canvas state to Go /v1/simulate/* backend.
+// Phase 3.2: Wire frontend to Go simulation engine.
 // ============================================================================
+
+export interface WorkflowNode {
+  id: string;
+  type: string;
+  name: string;
+  config: Record<string, unknown>;
+  position: { x: number; y: number };
+}
+
+export interface WorkflowEdge {
+  id: string;
+  source: string;
+  target: string;
+  condition?: string;
+}
+
+export interface WorkflowGraph {
+  id?: string;
+  name: string;
+  nodes: WorkflowNode[];
+  edges: WorkflowEdge[];
+  metadata?: Record<string, unknown>;
+}
+
+/** Go SimulationResult (from /v1/simulate/workflow) */
+export interface GoSimulationResult {
+  id: string;
+  status: string;
+  success_rate: number;
+  avg_latency_ms: number;
+  avg_cost_usd: number;
+  predicted_node_executions: Record<string, number>;
+  failed_nodes: Record<string, number>;
+  execution_count: number;
+  started_at: string;
+  completed_at?: string;
+  iteration: number;
+}
+
+/** Go MonteCarloResult (from /v1/simulate/monte-carlo) */
+export interface GoMonteCarloResult {
+  id: string;
+  iterations: number;
+  success_rate: number;
+  partial_failure_rate: number;
+  total_failure_rate: number;
+  avg_latency_ms: number;
+  p50_latency_ms: number;
+  p95_latency_ms: number;
+  p99_latency_ms: number;
+  avg_cost_usd: number;
+  outcomes: GoOutcomeSample[];
+  bottleneck_nodes: string[];
+  cost_breakdown: Record<string, number>;
+}
+
+export interface GoOutcomeSample {
+  outcome: 'success' | 'partial' | 'failed';
+  probability: number;
+  latency_ms: number;
+  cost_usd: number;
+  failed_nodes: string[];
+  risk_factors: string[];
+}
+
+/** Go ExecutionForecast (from /v1/forecast/execution) */
+export interface GoExecutionForecast {
+  workflow_id: string;
+  time_horizon: string;
+  predicted_executions: number;
+  success_rate: number;
+  avg_latency_ms: number;
+  cost_usd: number;
+  p50_latency_ms: number;
+  p95_latency_ms: number;
+  p99_latency_ms: number;
+  predictions: GoPredictionPoint[];
+}
+
+export interface GoPredictionPoint {
+  timestamp: string;
+  executions: number;
+  success_rate: number;
+}
+
+/** Go CostForecast (from /v1/forecast/cost) */
+export interface GoCostForecast {
+  workflow_id: string;
+  total_cost_usd: number;
+  per_call_usd: number;
+  lower_bound_usd: number;
+  upper_bound_usd: number;
+  confidence: number;
+  by_node: Record<string, number>;
+}
+
+/** Go LatencyForecast (from /v1/forecast/latency) */
+export interface GoLatencyForecast {
+  workflow_id: string;
+  load_level: number;
+  p50_latency_ms: number;
+  p95_latency_ms: number;
+  p99_latency_ms: number;
+  avg_latency_ms: number;
+}
+
+/** Go StressTestResult (from /v1/stress-test/{id}) */
+export interface GoStressTestResult {
+  id: string;
+  status: string;
+  iterations: number;
+  total_executions: number;
+  success_rate: number;
+  throughput: number;
+  latency_p50: number;
+  latency_p95: number;
+  latency_p99: number;
+  errors: GoErrorBreakdown[];
+}
+
+export interface GoErrorBreakdown {
+  type: string;
+  count: number;
+  percentage: number;
+}
+
+/** Go CollisionResult (from /v1/detect/collisions) */
+export interface GoCollisionResult {
+  collisions: GoCollision[];
+  resolutions: string[];
+}
+
+export interface GoCollision {
+  resource_id: string;
+  resource_name: string;
+  severity: 'high' | 'medium' | 'low';
+  conflicting_tasks: GoTaskSchedule[];
+  resolution: string;
+}
+
+export interface GoTaskSchedule {
+  task_id: string;
+  start_ms: number;
+  end_ms: number;
+  usage: number;
+  priority: number;
+}
+
+/** Go AgentBehaviorPrediction (from /v1/predict/agent-behavior) */
+export interface GoAgentBehaviorPrediction {
+  agent_id: string;
+  confidence: number;
+  based_on_samples: number;
+  likely_actions: GoActionPrediction[];
+  current_task_prediction: string;
+}
+
+export interface GoActionPrediction {
+  action: string;
+  probability: number;
+  expected_outcome: string;
+  risk_level: 'low' | 'medium' | 'high';
+}
+
+/** Go HallucinationRiskResult (from /v1/analyze/hallucination-risk) */
+export interface GoHallucinationRiskResult {
+  model_id: string;
+  risk_score: number;
+  risk_level: 'low' | 'medium' | 'high' | 'critical';
+  contributing_factors: string[];
+  recommendations: string[];
+  confidence: number;
+}
+
+/** Convert Studio WorkflowGraph to Go WorkflowSpec */
+function graphToWorkflowSpec(graph: WorkflowGraph): {
+  nodes: Array<{ id: string; type: string; timeout_ms: number; cost_usd: number; metadata?: Record<string, unknown> }>;
+  edges: Array<{ from: string; to: string; probability_success: number }>;
+} {
+  return {
+    nodes: graph.nodes.map((n) => ({
+      id: n.id,
+      type: n.type || 'function',
+      timeout_ms: (n.config?.timeout_ms as number) || 5000,
+      cost_usd: (n.config?.cost_usd as number) || 0.001,
+      metadata: n.config,
+    })),
+    edges: graph.edges.map((e) => ({
+      from: e.source,
+      to: e.target,
+      probability_success: 0.95,
+    })),
+  };
+}
 
 export function useStudioSimulation() {
   const queryClient = useQueryClient();
 
-  // Note: /v1/simulation/status doesn't exist - simulation is synchronous
-  // We track simulation state locally instead
   const [simulationState, setSimulationState] = useState<{
     activeSimulation: SimulationResult | null;
     recentSimulations: SimulationResult[];
   }>({ activeSimulation: null, recentSimulations: [] });
 
+  /** Map Go result → local SimulationResult for StudioPanel */
+  const mapGoResult = (go: GoSimulationResult): SimulationResult => ({
+    id: go.id,
+    status: go.status === 'completed' ? 'completed'
+      : go.status === 'running' ? 'running'
+      : go.status === 'aborted' ? 'aborted'
+      : 'pending',
+    config: {
+      name: 'Simulation',
+      iterations: go.iteration,
+    },
+    startedAt: go.started_at,
+    completedAt: go.completed_at,
+    metrics: {
+      totalExecutions: go.execution_count,
+      successfulExecutions: Math.round(go.success_rate * go.execution_count),
+      failedExecutions: Math.round((1 - go.success_rate) * go.execution_count),
+      averageLatencyMs: go.avg_latency_ms,
+      p50LatencyMs: go.avg_latency_ms,
+      p95LatencyMs: Math.round(go.avg_latency_ms * 1.5),
+      p99LatencyMs: Math.round(go.avg_latency_ms * 2),
+      throughput: 0,
+      costUsd: go.avg_cost_usd,
+    },
+  });
+
   const startSimulation = useMutation({
-    mutationFn: (config: SimulationConfig) =>
-      studioFetch<SimulationResult>('/v1/simulate/workflow', {
+    mutationFn: async (params: { graph: WorkflowGraph; iterations?: number }) => {
+      const spec = graphToWorkflowSpec(params.graph);
+      const iterations = params.iterations ?? 100;
+      const res = await studioFetch<{ ok: boolean; result: GoSimulationResult }>('/v1/simulate/workflow', {
         method: 'POST',
-        body: JSON.stringify({ workflow: config }),
-      }),
-    onSuccess: () => {
+        body: JSON.stringify({ workflow: spec, iterations }),
+      });
+      return res.result;
+    },
+    onSuccess: (go) => {
+      const result = mapGoResult(go);
+      setSimulationState((prev) => ({
+        activeSimulation: result,
+        recentSimulations: [result, ...prev.recentSimulations].slice(0, 20),
+      }));
       queryClient.invalidateQueries({ queryKey: studioKeys.simulationStatus() });
       toast.success('Simulation started');
     },
@@ -601,6 +861,12 @@ export function useStudioSimulation() {
         method: 'POST',
       }),
     onSuccess: () => {
+      setSimulationState((prev) => ({
+        ...prev,
+        activeSimulation: prev.activeSimulation
+          ? { ...prev.activeSimulation, status: 'aborted' }
+          : null,
+      }));
       queryClient.invalidateQueries({ queryKey: studioKeys.simulationStatus() });
       toast.success('Simulation stopped');
     },
@@ -615,6 +881,12 @@ export function useStudioSimulation() {
         method: 'POST',
       }),
     onSuccess: () => {
+      setSimulationState((prev) => ({
+        ...prev,
+        activeSimulation: prev.activeSimulation
+          ? { ...prev.activeSimulation, status: 'aborted' }
+          : null,
+      }));
       queryClient.invalidateQueries({ queryKey: studioKeys.simulationStatus() });
       toast.success('Simulation aborted');
     },
@@ -625,15 +897,26 @@ export function useStudioSimulation() {
 
   const getSimulationResults = useMutation({
     mutationFn: (simulationId: string) =>
-      studioFetch<SimulationResult>(`/v1/simulate/workflow/${simulationId}`),
+      studioFetch<{ ok: boolean; result: GoSimulationResult }>(`/v1/simulate/workflow/${simulationId}`),
+    onSuccess: (data) => {
+      const result = mapGoResult(data.result);
+      setSimulationState((prev) => ({
+        ...prev,
+        activeSimulation: result,
+      }));
+    },
   });
 
   const runMonteCarlo = useMutation({
-    mutationFn: (config: SimulationConfig) =>
-      studioFetch<SimulationResult>('/v1/simulate/monte-carlo', {
+    mutationFn: async (params: { graph: WorkflowGraph; iterations?: number }) => {
+      const spec = graphToWorkflowSpec(params.graph);
+      const iterations = params.iterations ?? 1000;
+      const res = await studioFetch<{ ok: boolean; result: GoMonteCarloResult }>('/v1/simulate/monte-carlo', {
         method: 'POST',
-        body: JSON.stringify({ config }),
-      }),
+        body: JSON.stringify({ workflow: spec, iterations }),
+      });
+      return res.result;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: studioKeys.simulationStatus() });
       toast.success('Monte Carlo simulation completed');
@@ -644,10 +927,15 @@ export function useStudioSimulation() {
   });
 
   const injectFailure = useMutation({
-    mutationFn: (params: { simulationId: string; nodeId?: string; failureType: string }) =>
+    mutationFn: (params: { simulationId?: string; nodeId?: string; failureType: string }) =>
       studioFetch<{ ok: boolean }>('/v1/simulate/failure-inject', {
         method: 'POST',
-        body: JSON.stringify({ node_id: params.nodeId, failure_type: params.failureType }),
+        body: JSON.stringify({
+          workflow_id: params.simulationId || '',
+          nodes: params.nodeId
+            ? [{ node_id: params.nodeId, failure_type: params.failureType, failure_rate: 0.5, recovery_action: 'retry' }]
+            : [],
+        }),
       }),
     onSuccess: () => {
       toast.success('Failure injected');
@@ -658,10 +946,15 @@ export function useStudioSimulation() {
   });
 
   const runStressTest = useMutation({
-    mutationFn: (params: { config: SimulationConfig; stressLevel: 'low' | 'medium' | 'high' | 'extreme' }) =>
-      studioFetch<SimulationResult>('/v1/simulation/stress-test', {
+    mutationFn: (params: { graph: WorkflowGraph; iterations?: number; parallelism?: number; stressLevel?: string }) =>
+      studioFetch<{ ok: boolean; id: string }>('/v1/stress-test/start', {
         method: 'POST',
-        body: JSON.stringify({ config: params.config, stress_level: params.stressLevel }),
+        body: JSON.stringify({
+          iterations: params.iterations ?? 1000,
+          parallelism: params.parallelism ?? 10,
+          workflow_id: params.graph.id || 'default',
+          load_profile: 'constant',
+        }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: studioKeys.simulationStatus() });
@@ -670,6 +963,83 @@ export function useStudioSimulation() {
     onError: (error: Error) => {
       toast.error(`Failed to run stress test: ${error.message}`);
     },
+  });
+
+  const getStressTest = useMutation({
+    mutationFn: (id: string) =>
+      studioFetch<{ ok: boolean; result: GoStressTestResult }>(`/v1/stress-test/${id}`),
+  });
+
+  const getExecutionForecast = useMutation({
+    mutationFn: (params: { graph: WorkflowGraph; timeHorizon?: string; callVolume?: number }) =>
+      studioFetch<{ ok: boolean; forecast: GoExecutionForecast }>('/v1/forecast/execution', {
+        method: 'POST',
+        body: JSON.stringify({
+          workflow_id: params.graph.id || 'default',
+          time_horizon: params.timeHorizon || '24h',
+          call_volume: params.callVolume ?? 100,
+          nodes: graphToWorkflowSpec(params.graph).nodes,
+        }),
+      }),
+  });
+
+  const getCostForecast = useMutation({
+    mutationFn: (params: { graph: WorkflowGraph; callVolume?: number }) =>
+      studioFetch<{ ok: boolean; forecast: GoCostForecast }>('/v1/forecast/cost', {
+        method: 'POST',
+        body: JSON.stringify({
+          workflow_id: params.graph.id || 'default',
+          nodes: graphToWorkflowSpec(params.graph).nodes,
+          call_volume: params.callVolume ?? 100,
+        }),
+      }),
+  });
+
+  const getLatencyForecast = useMutation({
+    mutationFn: (params: { graph: WorkflowGraph; loadLevel?: number }) =>
+      studioFetch<{ ok: boolean; forecast: GoLatencyForecast }>('/v1/forecast/latency', {
+        method: 'POST',
+        body: JSON.stringify({
+          workflow_id: params.graph.id || 'default',
+          nodes: graphToWorkflowSpec(params.graph).nodes,
+          load_level: params.loadLevel ?? 0.5,
+        }),
+      }),
+  });
+
+  const detectCollisions = useMutation({
+    mutationFn: (params: { resources: Array<{ id: string; name: string; type: string; capacity: number; tasks: GoTaskSchedule[] }> }) =>
+      studioFetch<{ ok: boolean; result: GoCollisionResult }>('/v1/detect/collisions', {
+        method: 'POST',
+        body: JSON.stringify({ resources: params.resources }),
+      }),
+  });
+
+  const predictAgentBehavior = useMutation({
+    mutationFn: (params: { agentId: string; historySize?: number; context?: string }) =>
+      studioFetch<{ ok: boolean; prediction: GoAgentBehaviorPrediction }>('/v1/predict/agent-behavior', {
+        method: 'POST',
+        body: JSON.stringify({
+          agent_id: params.agentId,
+          history_size: params.historySize ?? 50,
+          context: params.context || 'workflow execution',
+        }),
+      }),
+  });
+
+  const analyzeHallucinationRisk = useMutation({
+    mutationFn: (params: { modelId: string; promptLength?: number; contextWindow?: number; taskType?: string; complexity?: string; previousErrors?: number }) =>
+      studioFetch<{ ok: boolean; result: GoHallucinationRiskResult }>('/v1/analyze/hallucination-risk', {
+        method: 'POST',
+        body: JSON.stringify({
+          model_id: params.modelId,
+          prompt_length: params.promptLength ?? 1000,
+          context_window: params.contextWindow ?? 128000,
+          task_type: params.taskType || 'code_gen',
+          complexity: params.complexity || 'medium',
+          previous_errors: params.previousErrors ?? 0,
+        }),
+      }),
   });
 
   return {
@@ -685,6 +1055,13 @@ export function useStudioSimulation() {
     runMonteCarlo,
     injectFailure,
     runStressTest,
+    getStressTest,
+    getExecutionForecast,
+    getCostForecast,
+    getLatencyForecast,
+    detectCollisions,
+    predictAgentBehavior,
+    analyzeHallucinationRisk,
   };
 }
 
@@ -732,6 +1109,20 @@ export function useStudioGhost() {
     },
   });
 
+  const cancelBuild = useMutation({
+    mutationFn: (buildId: string) =>
+      studioFetch<{ ok: boolean }>(`/v1/ghost/builds/${buildId}/cancel`, {
+        method: 'POST',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: studioKeys.ghostBuilds() });
+      toast.success('Build cancelled');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to cancel build: ${error.message}`);
+    },
+  });
+
   const approveTask = useMutation({
     mutationFn: (params: { buildId: string; taskId: string }) =>
       studioFetch<{ ok: boolean; task: GhostTask }>(`/v1/ghost/builds/${params.buildId}/approve`, {
@@ -762,12 +1153,42 @@ export function useStudioGhost() {
     },
   });
 
-  // Task logs are fetched via the build details endpoint
-  // getTaskLogs is kept for API compatibility but returns empty
+  // Task logs are fetched from the build details endpoint
   const getTaskLogs = useQuery({
     queryKey: studioKeys.ghostTasks(),
-    queryFn: async () => ({ ok: true, logs: [] as GhostLogEntry[] }),
+    queryFn: async () => {
+      if (builds.data?.builds && builds.data.builds.length > 0) {
+        const firstBuild = builds.data.builds[0];
+        const response = await studioFetch<{ ok: boolean; logs: GhostLogEntry[] }>(
+          `/v1/ghost/builds/${firstBuild.id}/logs`
+        );
+        return response.logs ?? [];
+      }
+      return [] as GhostLogEntry[];
+    },
     staleTime: 1000 * 2,
+    refetchInterval: 5000,
+    enabled: !!builds.data?.builds?.length,
+  });
+
+  // Fetch task-specific logs for a given build and task
+  const getTaskLogsForTask = useMutation({
+    mutationFn: async ({ buildId, taskId }: { buildId: string; taskId: string }) => {
+      const response = await studioFetch<{ ok: boolean; logs: GhostLogEntry[] }>(
+        `/v1/ghost/builds/${buildId}/tasks/${taskId}/logs`
+      );
+      return response.logs ?? [];
+    },
+  });
+
+  // Fetch build-level logs
+  const getBuildLogs = useMutation({
+    mutationFn: async (buildId: string) => {
+      const response = await studioFetch<{ ok: boolean; logs: GhostLogEntry[] }>(
+        `/v1/ghost/builds/${buildId}/logs`
+      );
+      return response.logs ?? [];
+    },
   });
 
   return {
@@ -778,9 +1199,12 @@ export function useStudioGhost() {
     isError: builds.isError || tasks.isError,
     error: builds.error || tasks.error,
     createBuild,
+    cancelBuild,
     approveTask,
     rejectTask,
-    taskLogs: getTaskLogs.data?.logs ?? [],
+    taskLogs: getTaskLogs.data ?? [],
+    getTaskLogsForTask,
+    getBuildLogs,
   };
 }
 
@@ -1000,6 +1424,74 @@ export function useStudioWorkflow() {
       studioFetch<{ ok: boolean; events: TimelineEvent[] }>(`/v1/workflow/${graphId}/timeline`),
   });
 
+  // ── Studio Code Editor ─────────────────────────────────────────────────────
+  const formatCode = useMutation({
+    mutationFn: (params: { code: string; language: string; file_path: string; options?: Record<string, unknown> }) =>
+      studioFetch<{ formatted: string; version: number; action: string }>('/v1/studio/code/format', {
+        method: 'POST',
+        body: JSON.stringify(params),
+      }),
+    onSuccess: () => {
+      toast.success('Code formatted');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to format code: ${error.message}`);
+    },
+  });
+
+  const saveCode = useMutation({
+    mutationFn: (params: { code: string; file_path: string; metadata?: Record<string, unknown> }) =>
+      studioFetch<{ version: number; timestamp: string; action: string }>('/v1/studio/code/save', {
+        method: 'POST',
+        body: JSON.stringify(params),
+      }),
+    onSuccess: (data) => {
+      toast.success(`Saved (version ${data.version})`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to save code: ${error.message}`);
+    },
+  });
+
+  const undoCode = useMutation({
+    mutationFn: (params: { file_path: string; current_version: number }) =>
+      studioFetch<{ code: string; version: number; action: string; available: boolean; metadata?: Record<string, unknown> }>('/v1/studio/code/undo', {
+        method: 'POST',
+        body: JSON.stringify(params),
+      }),
+    onSuccess: (data) => {
+      if (data.available) {
+        toast.success(`Undone to version ${data.version}`);
+      }
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to undo: ${error.message}`);
+    },
+  });
+
+  const redoCode = useMutation({
+    mutationFn: (params: { file_path: string; current_version: number }) =>
+      studioFetch<{ code: string; version: number; action: string; available: boolean; metadata?: Record<string, unknown> }>('/v1/studio/code/redo', {
+        method: 'POST',
+        body: JSON.stringify(params),
+      }),
+    onSuccess: (data) => {
+      if (data.available) {
+        toast.success(`Redone to version ${data.version}`);
+      }
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to redo: ${error.message}`);
+    },
+  });
+
+  const getVersionHistory = useMutation({
+    mutationFn: (filePath: string) =>
+      studioFetch<{ versions: Array<{ version: number; action: string; created_at: string }>; total: number }>(
+        `/v1/studio/code/history?file_path=${encodeURIComponent(filePath)}`
+      ),
+  });
+
   return {
     graph: workflowGraph.data?.graph,
     executions: executions.data?.executions ?? [],
@@ -1017,6 +1509,12 @@ export function useStudioWorkflow() {
     cancelExecution,
     getExecution,
     timeline,
+    // Studio code editor
+    formatCode,
+    saveCode,
+    undoCode,
+    redoCode,
+    getVersionHistory,
   };
 }
 

@@ -3,14 +3,14 @@ import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
+    Bar,
+    BarChart,
+    CartesianGrid,
+    Cell,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
 } from 'recharts';
 
 export interface ErrorRateDataPoint {
@@ -66,7 +66,7 @@ export function ErrorRateWidget({ data, className }: ErrorRateWidgetProps) {
   const StatusIcon = config.icon;
 
   return (
-    <Card className={cn('border-theme bg-card overflow-hidden', className)}>
+    <Card className={cn('overflow-hidden', className)}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium text-text-secondary">Error Rate</CardTitle>

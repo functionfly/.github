@@ -77,7 +77,7 @@ export function APIKeysPage() {
     }
   }, []);
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["api-keys", filters, page],
     queryFn: () => apiKeysService.listKeys(filters, page, PAGE_SIZE),
   });
@@ -134,6 +134,8 @@ export function APIKeysPage() {
     setShowRotationModal(true);
   };
 
+  const selectedIds = useMemo(() => new Set(deleteKey ? [deleteKey.id] : []), [deleteKey]);
+
   const handleDelete = (key: APIKey) => {
     setDeleteKey(key);
   };
@@ -142,16 +144,60 @@ export function APIKeysPage() {
     if (deleteKey) deleteMutation.mutate(deleteKey.id);
   };
 
+  // Bulk delete: iterate single-delete to reuse the existing handler (with
+  // admin role checks, rate limiting, and audit logging from the backend).
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      // Run sequentially so the per-user rate limiter on the backend isn't
+      // tripped (30 req/min window). Each individual delete already has full
+      // RBAC + audit trail, so this is safe.
+      for (const id of ids) {
+        await apiKeysService.deleteKey(id);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["api-keys"] });
+      toast.success("Selected API keys deleted");
+    },
+    onError: (err) => {
+      toast.error("Failed to delete some keys", {
+        description: err instanceof Error ? err.message : "Unknown error",
+      });
+    },
+  });
+
+  // Bulk rotate: same reasoning as bulk delete.
+  const bulkRotateMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      for (const id of ids) {
+        await apiKeysService.rotateKey(id);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["api-keys"] });
+      toast.success("Selected API keys rotated");
+    },
+    onError: (err) => {
+      toast.error("Failed to rotate some keys", {
+        description: err instanceof Error ? err.message : "Unknown error",
+      });
+    },
+  });
+
   const apiBase = getApiBaseUrl() || (typeof window !== "undefined" ? window.location.origin : "");
   const curlExample = `curl -X GET "${apiBase}/v1/functions" \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json"`;
 
   const copyCurl = async () => {
-    await navigator.clipboard.writeText(curlExample);
-    setCopiedSnippet(true);
-    toast.success("Copied to clipboard");
-    setTimeout(() => setCopiedSnippet(false), 2000);
+    try {
+      await navigator.clipboard.writeText(curlExample);
+      setCopiedSnippet(true);
+      toast.success("Copied to clipboard");
+      setTimeout(() => setCopiedSnippet(false), 2000);
+    } catch {
+      toast.error("Failed to copy. Your browser may block clipboard access.");
+    }
   };
 
   return (
@@ -334,6 +380,9 @@ export function APIKeysPage() {
           <APIKeyList
             apiKeys={apiKeys}
             isLoading={isLoading}
+            isError={isError}
+            error={error as Error | null}
+            onRetry={() => refetch()}
             total={displayTotal}
             page={page}
             pageSize={PAGE_SIZE}
@@ -343,6 +392,8 @@ export function APIKeysPage() {
             onCreateNew={() => setShowCreateModal(true)}
             onRotate={handleRotate}
             onDelete={handleDelete}
+            onBulkDelete={(ids) => bulkDeleteMutation.mutate(ids)}
+            onBulkRotate={(ids) => bulkRotateMutation.mutate(ids)}
           />
         </CardContent>
       </Card>

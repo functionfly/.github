@@ -3,26 +3,26 @@
  * Supports: headings, bold, italic, lists, links, code blocks with language selection
  */
 
-import { useEditor, EditorContent, type Editor } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
+import { logger } from '@/lib/monitoring/logger';
 import Link from '@tiptap/extension-link';
+import { EditorContent, useEditor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
 import {
-  Bold,
-  Italic,
-  List,
-  ListOrdered,
-  Link as LinkIcon,
-  Code,
-  Heading1,
-  Heading2,
-  Quote,
-  Undo,
-  Redo,
-  Type,
-  ChevronDown,
-  Check,
+    Bold,
+    ChevronDown,
+    Code,
+    Heading1,
+    Heading2,
+    Italic,
+    Link as LinkIcon,
+    List,
+    ListOrdered,
+    Quote,
+    Redo,
+    Type,
+    Undo
 } from 'lucide-react';
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface RichTextEditorProps {
   content: string;
@@ -110,7 +110,7 @@ export function RichTextEditor({
         }
         editor.commands.setContent(parsed);
       } catch (e) {
-        console.error('Failed to set content:', e);
+        logger.error('Failed to set content', { error: e });
         editor.commands.setContent(content);
       }
     }

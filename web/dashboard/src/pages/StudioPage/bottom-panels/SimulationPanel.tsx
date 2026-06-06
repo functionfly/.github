@@ -1,17 +1,15 @@
-import React from "react";
-import {
-  SimulationControlCenter,
-  ExecutionForecastPanel,
-  FailureProbabilityMap,
-  LatencyPredictionGraph,
-  CostSimulationChart,
-  HallucinationRiskAnalyzer,
-  StressTestRunner,
-  ScalingForecastMap,
-  AgentBehaviorPredictor,
-} from "@functionfly/ui-simulation";
 import { useStudioAgents } from "@/hooks/useStudio";
-import { Play, Pause, RefreshCw } from "lucide-react";
+import {
+    AgentBehaviorPredictor,
+    CostSimulationChart,
+    ExecutionForecastPanel,
+    FailureProbabilityMap,
+    HallucinationRiskAnalyzer,
+    LatencyPredictionGraph,
+    ScalingForecastMap,
+    SimulationControlCenter,
+    StressTestRunner,
+} from "@functionfly/ui-simulation";
 
 interface SimulationConfig {
   name: string;

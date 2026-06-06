@@ -961,7 +961,9 @@
     "gettingStarted": "시작하기",
     "collapseSidebar": "사이드바 접기",
     "expandSidebar": "사이드바 펼치기",
-    "commandPalette": "명령 팔레트"
+    "commandPalette": "명령 팔레트",
+    "brain": "Brain",
+    "connectors": "Connectors"
   },
   "notifCenter": {
     "title": "Notifications",

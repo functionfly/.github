@@ -1,16 +1,30 @@
-import { useState, useEffect, useCallback } from "react";
-import { GlassCard, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Badge } from "@functionfly/ui-core";
+import type { StudioSettings } from "@/api/studioSettings";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
 import { useStudioSettings } from "@/hooks/useStudioSettings";
+import { cn } from "@/lib/utils";
+import { useKeyboardShortcutsStore } from "@/stores/keyboardShortcutsStore";
 import { useThemeStore } from "@/stores/themeStore";
-import type { StudioSettings } from "@/api/studioSettings";
+import { Badge, Button, GlassCard, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@functionfly/ui-core";
 import {
-  Palette, Layout, Keyboard, Bell, Shield, Globe,
-  Monitor, Wifi, Volume2, Moon, Sun, Type, LayoutDashboard,
-  Eye, Sparkles, Check, RotateCcw, Save, Search
+  Bell,
+  Check,
+  Eye,
+  Globe,
+  Keyboard,
+  Layout,
+  LayoutDashboard,
+  Monitor,
+  Moon,
+  Palette,
+  RotateCcw, Save, Search,
+  Shield,
+  Sparkles,
+  Sun, Type,
+  Volume2,
+  Wifi
 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
 interface SettingSection {
   id: string;
@@ -114,6 +128,7 @@ const fontSizes = [
 export function StudioSettingsCenter() {
   const { settings, defaultSettings, isLoading, isDirty, updateSetting, saveSettings, resetSettings, isSaving } = useStudioSettings();
   const { setTheme } = useThemeStore();
+  const { shortcuts, globalShortcuts } = useKeyboardShortcutsStore();
   const [activeTab, setActiveTab] = useState("appearance");
   const [searchQuery, setSearchQuery] = useState("");
   const [localSettings, setLocalSettings] = useState<StudioSettings | null>(null);
@@ -213,6 +228,14 @@ export function StudioSettingsCenter() {
       s.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const shortcutsByCategory = {
+    global: globalShortcuts,
+    navigation: shortcuts.filter(s => s.category === 'navigation'),
+    actions: shortcuts.filter(s => s.category === 'actions'),
+    editor: shortcuts.filter(s => s.category === 'editor'),
+    playground: shortcuts.filter(s => s.category === 'playground'),
+  };
 
   const renderContent = () => {
     if (isLoading || !localSettings) {
@@ -506,14 +529,38 @@ export function StudioSettingsCenter() {
 
       case "shortcuts":
         return (
-          <div className="space-y-4">
-            <p className="text-sm text-text-muted">Keyboard shortcut configuration coming soon. Use the Keyboard Shortcut Visualizer to see all available shortcuts.</p>
-            <GlassCard className="p-4">
-              <div className="flex items-center gap-3 text-text-secondary">
-                <Keyboard className="w-5 h-5 style={{ color: 'var(--text-accent)' }}" />
-                <span className="text-sm">Press any key combination to see its action</span>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary border border-border-subtle">
+              <div className="flex items-center gap-3">
+                <Keyboard className="w-5 h-5" style={{ color: 'var(--text-accent)' }} />
+                <div>
+                  <p className="text-sm font-medium text-text-primary">Show Shortcut Hints</p>
+                  <p className="text-xs text-text-muted">Display keyboard shortcuts when hovering over actions</p>
+                </div>
               </div>
-            </GlassCard>
+              <Switch
+                checked={localSettings.show_shortcut_hints ?? true}
+                onCheckedChange={(v) => handleUpdate('show_shortcut_hints', v)}
+              />
+            </div>
+            {(['global', 'navigation', 'actions', 'editor', 'playground'] as const).map((cat) => (
+              <div key={cat}>
+                <h4 className="text-sm font-semibold text-text-primary mb-3 capitalize">{cat} Shortcuts</h4>
+                <div className="space-y-1">
+                  {shortcutsByCategory[cat].map((shortcut) => (
+                    <div
+                      key={shortcut.key}
+                      className="flex items-center justify-between px-3 py-2 rounded-md bg-bg-secondary border border-border-subtle"
+                    >
+                      <span className="text-sm text-text-secondary">{shortcut.description}</span>
+                      <kbd className="text-xs font-mono text-text-muted bg-bg-primary border border-border-subtle rounded px-2 py-0.5">
+                        {shortcut.displayKey}
+                      </kbd>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         );
 
@@ -565,17 +612,23 @@ export function StudioSettingsCenter() {
                   <p className="text-xs text-text-muted">Help improve Studio by sharing usage data</p>
                 </div>
               </div>
-              <Switch defaultChecked={false} />
+              <Switch
+                checked={localSettings.usage_analytics_enabled ?? false}
+                onCheckedChange={(v) => handleUpdate('usage_analytics_enabled', v)}
+              />
             </div>
             <div className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary border border-border-subtle">
               <div className="flex items-center gap-3">
-                <Shield className="w-5 h-5 style={{ color: 'var(--text-accent)' }}" />
+                <Shield className="w-5 h-5" style={{ color: 'var(--text-accent)' }} />
                 <div>
                   <p className="text-sm font-medium text-text-primary">Crash Reports</p>
                   <p className="text-xs text-text-muted">Share crash data to help fix issues</p>
                 </div>
               </div>
-              <Switch defaultChecked={true} />
+              <Switch
+                checked={localSettings.crash_reports_enabled ?? true}
+                onCheckedChange={(v) => handleUpdate('crash_reports_enabled', v)}
+              />
             </div>
           </div>
         );
@@ -583,24 +636,111 @@ export function StudioSettingsCenter() {
       case "performance":
         return (
           <div className="space-y-4">
-            <GlassCard className="p-4">
-              <div className="flex items-center gap-3 text-text-secondary">
-                <Monitor className="w-5 h-5 style={{ color: 'var(--text-accent)' }}" />
-                <span className="text-sm">Performance settings help optimize Studio for your hardware</span>
-              </div>
+            <GlassCard className="p-4 border border-border-subtle">
+              <p className="text-sm text-text-secondary">
+                Performance settings are optimized for your hardware. These options may require a restart to take effect.
+              </p>
             </GlassCard>
+
+            <div className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary border border-border-subtle">
+              <div className="flex items-center gap-3">
+                <Monitor className="w-5 h-5" style={{ color: 'var(--text-accent)' }} />
+                <div>
+                  <p className="text-sm font-medium text-text-primary">GPU Acceleration</p>
+                  <p className="text-xs text-text-muted">Use GPU for rendering (recommended)</p>
+                </div>
+              </div>
+              <Switch
+                checked={localSettings.gpu_acceleration_enabled ?? true}
+                onCheckedChange={(v) => handleUpdate('gpu_acceleration_enabled', v)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary border border-border-subtle">
+              <div className="flex items-center gap-3">
+                <Sparkles className="w-5 h-5" style={{ color: 'var(--text-accent)' }} />
+                <div>
+                  <p className="text-sm font-medium text-text-primary">Developer Tools</p>
+                  <p className="text-xs text-text-muted">Enable Chromium DevTools in Studio</p>
+                </div>
+              </div>
+              <Switch
+                checked={localSettings.developer_tools_enabled ?? false}
+                onCheckedChange={(v) => handleUpdate('developer_tools_enabled', v)}
+              />
+            </div>
+
+            <div className="p-4 rounded-lg bg-bg-secondary border border-border-subtle">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <Layout className="w-5 h-5" style={{ color: 'var(--text-accent)' }} />
+                  <div>
+                    <p className="text-sm font-medium text-text-primary">Memory Limit</p>
+                    <p className="text-xs text-text-muted">Maximum memory for Studio (MB, 0 = unlimited)</p>
+                  </div>
+                </div>
+                <span className="text-sm text-text-muted font-mono">
+                  {localSettings.memory_limit_mb ?? 0} MB
+                </span>
+              </div>
+              <Slider
+                value={[localSettings.memory_limit_mb ?? 0]}
+                onValueChange={([v]) => handleUpdate('memory_limit_mb', v)}
+                min={0}
+                max={8192}
+                step={256}
+                className="w-full"
+              />
+            </div>
           </div>
         );
 
       case "network":
         return (
           <div className="space-y-4">
-            <GlassCard className="p-4">
-              <div className="flex items-center gap-3 text-text-secondary">
-                <Globe className="w-5 h-5" style={{ color: 'var(--text-accent)' }} />
-                <span className="text-sm">Network and proxy configuration</span>
-              </div>
+            <GlassCard className="p-4 border border-border-subtle">
+              <p className="text-sm text-text-secondary">
+                Configure a proxy if Studio is behind a corporate firewall or VPN.
+              </p>
             </GlassCard>
+
+            <div className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary border border-border-subtle">
+              <div className="flex items-center gap-3">
+                <Globe className="w-5 h-5" style={{ color: 'var(--text-accent)' }} />
+                <div>
+                  <p className="text-sm font-medium text-text-primary">Enable Proxy</p>
+                  <p className="text-xs text-text-muted">Route traffic through a proxy server</p>
+                </div>
+              </div>
+              <Switch
+                checked={localSettings.proxy_enabled ?? false}
+                onCheckedChange={(v) => handleUpdate('proxy_enabled', v)}
+              />
+            </div>
+
+            {localSettings.proxy_enabled && (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-text-primary">Proxy URL</label>
+                  <Input
+                    placeholder="http://proxy.example.com:8080"
+                    value={localSettings.proxy_url ?? ''}
+                    onChange={(e) => handleUpdate('proxy_url', e.target.value)}
+                    className="bg-bg-secondary border-border-subtle text-text-primary"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-text-primary">Bypass List</label>
+                  <Input
+                    placeholder="localhost,127.0.0.1,.internal"
+                    value={localSettings.proxy_bypass ?? ''}
+                    onChange={(e) => handleUpdate('proxy_bypass', e.target.value)}
+                    className="bg-bg-secondary border-border-subtle text-text-primary"
+                  />
+                  <p className="text-xs text-text-muted">Comma-separated hosts to skip the proxy</p>
+                </div>
+              </>
+            )}
           </div>
         );
 

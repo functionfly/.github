@@ -2,6 +2,7 @@ export { AccountSettingsTab } from './AccountSettingsTab';
 export { AuthSettingsTab } from './AuthSettingsTab';
 export { BillingSettingsTab } from './BillingSettingsTab';
 export { DeveloperSettingsTab } from './DeveloperSettingsTab';
+export { IntegrationsSettingsTab } from './IntegrationsSettingsTab';
 export { NotificationsSettingsTab } from './NotificationsSettingsTab';
 export { PrivacySettingsTab } from './PrivacySettingsTab';
 export { SecuritySettingsTab } from './SecuritySettingsTab';

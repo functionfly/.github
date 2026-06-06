@@ -7,6 +7,7 @@
 import { extendAdminSession } from '@/lib/api/adminAuth';
 import { adminApiClient } from '@/lib/api/adminClient';
 import { CACHE_KEYS } from '@/lib/constants';
+import { logger } from '@/lib/monitoring/logger';
 import { trackSecurityEvent } from '@/lib/monitoring/securityEvents';
 import { clearCsrfToken, refreshCsrfToken } from '@/lib/security/csrf';
 import type { AdminSession, AdminUser } from '@/types';
@@ -36,7 +37,11 @@ interface AdminAuthState {
   login: (session: AdminSession, user: AdminUser, lastLoginInfo?: LastLoginInfo) => void;
   logout: () => void;
   logoutAllSessions: () => Promise<void>;
-  verifyMFA: () => void;
+  /**
+   * Submit a 6-digit TOTP code to the server. Resolves on success; rejects
+   * with an Error on failure (invalid code, network, etc.).
+   */
+  verifyMFA: (code: string) => Promise<void>;
   updateActivity: () => void;
   /** Extend session: calls backend for new JWT and updates store. Returns a promise that rejects on failure. */
   extendSession: () => Promise<void>;
@@ -150,15 +155,62 @@ export const useAdminAuthStore = create<AdminAuthState>((set, get) => ({
       });
       get().logout();
     } catch (error) {
-      console.error('Failed to logout all sessions:', error);
+      logger.error('Failed to logout all sessions', { error });
       // Still logout locally even if remote fails
       get().logout();
     }
   },
 
-  verifyMFA: () => {
-    set({ mfaVerified: true, lastActivity: Date.now() });
-    trackSecurityEvent('mfa_verified');
+  /**
+   * Submit an MFA TOTP code to the server and, on success, mark the session
+   * as MFA-verified. Rejects on backend error so the UI can show a real
+   * failure message instead of dismissing the prompt.
+   */
+   verifyMFA: async (code: string) => {
+     try {
+       const response = await adminApiClient.post<{ verified?: boolean; error?: string }>('/auth/mfa/verify', {
+         code,
+         method: 'totp',
+       }, { _skipCsrf: true } as any);
+       const data = response.data;
+       if (!data?.verified) {
+         trackSecurityEvent('mfa_verify_failed', { reason: data?.error || 'invalid_code' });
+         throw new Error(data?.error || 'MFA verification failed');
+       }
+      // Refresh the session bootstrap so session.mfa_verified_at picks up the
+      // server's new mfa_last_used and the re-prompt timer resets.
+      const token =
+        (typeof sessionStorage !== 'undefined' &&
+          sessionStorage.getItem(CACHE_KEYS.ADMIN_ACCESS_TOKEN)) ||
+        get().session?.access_token ||
+        null;
+      if (token) {
+        const bootstrap = await extendAdminSession(token);
+        if (bootstrap.session) {
+          adminApiClient.setSessionToken(bootstrap.session.access_token ?? token);
+          try {
+            sessionStorage.setItem(
+              CACHE_KEYS.ADMIN_ACCESS_TOKEN,
+              bootstrap.session.access_token ?? token
+            );
+          } catch {
+            /* ignore */
+          }
+          set({
+            session: bootstrap.session as AdminSession,
+            user: (bootstrap.user as AdminUser) ?? get().user,
+            mfaVerified: true,
+            lastActivity: Date.now(),
+          });
+        }
+      } else {
+        set({ mfaVerified: true, lastActivity: Date.now() });
+      }
+      trackSecurityEvent('mfa_verified');
+    } catch (error) {
+      trackSecurityEvent('mfa_verify_failed', { reason: 'request_error' });
+      throw error;
+    }
   },
 
   updateActivity: () => {
@@ -327,7 +379,7 @@ export const useAdminAuthStore = create<AdminAuthState>((set, get) => ({
           }
         } catch (error) {
           // Token might be expired, clear it
-          console.warn('Failed to restore admin session:', error);
+          logger.warn('Failed to restore admin session', { error });
           try {
             sessionStorage.removeItem(CACHE_KEYS.ADMIN_ACCESS_TOKEN);
           } catch {
@@ -336,7 +388,7 @@ export const useAdminAuthStore = create<AdminAuthState>((set, get) => ({
         }
       }
     } catch (error) {
-      console.warn('Failed to initialize admin auth:', error);
+      logger.warn('Failed to initialize admin auth', { error });
     }
   },
 }));

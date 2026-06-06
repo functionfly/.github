@@ -16,11 +16,11 @@ func NewStorageAdapter(repo *storage.PluginRepository) *StorageAdapter {
 
 func (a *StorageAdapter) List(ctx context.Context, params ListPluginsParams) ([]Plugin, error) {
 	storageParams := storage.ListPluginsParams{
-		TenantID:   params.TenantID,
-		Category:   params.Category,
-		Search:     params.Search,
-		Limit:      params.Limit,
-		Offset:     params.Offset,
+		TenantID: params.TenantID,
+		Category: params.Category,
+		Search:   params.Search,
+		Limit:    params.Limit,
+		Offset:   params.Offset,
 	}
 	if params.PluginType != nil {
 		pt := storage.PluginType(*params.PluginType)
@@ -93,17 +93,17 @@ func (a *StorageAdapter) GetSandbox(ctx context.Context, pluginID string) (*Plug
 
 func (a *StorageAdapter) UpsertSandbox(ctx context.Context, sandbox *PluginSandbox) error {
 	s := &storage.PluginSandbox{
-		ID:              sandbox.ID,
-		PluginID:        sandbox.PluginID,
+		ID:             sandbox.ID,
+		PluginID:       sandbox.PluginID,
 		Tier:           storage.SandboxTier(sandbox.Tier),
-		CPULimit:        sandbox.CPULimit,
-		MemoryLimitMB:   sandbox.MemoryLimitMB,
-		TimeoutSeconds:  sandbox.TimeoutSeconds,
-		MaxInstances:    sandbox.MaxInstances,
-		EnvVars:         sandbox.EnvVars,
-		AllowedDomains:  sandbox.AllowedDomains,
-		BlockedDomains:  sandbox.BlockedDomains,
-		RateLimitRPM:    sandbox.RateLimitRPM,
+		CPULimit:       sandbox.CPULimit,
+		MemoryLimitMB:  sandbox.MemoryLimitMB,
+		TimeoutSeconds: sandbox.TimeoutSeconds,
+		MaxInstances:   sandbox.MaxInstances,
+		EnvVars:        sandbox.EnvVars,
+		AllowedDomains: sandbox.AllowedDomains,
+		BlockedDomains: sandbox.BlockedDomains,
+		RateLimitRPM:   sandbox.RateLimitRPM,
 	}
 	return a.repo.UpsertSandbox(ctx, s)
 }
@@ -120,7 +120,7 @@ func (a *StorageAdapter) SetPermission(ctx context.Context, perm *PluginPermissi
 	p := &storage.PluginPermission{
 		ID:               perm.ID,
 		PluginID:         perm.PluginID,
-		PermissionType:  perm.PermissionType,
+		PermissionType:   perm.PermissionType,
 		PermissionAction: perm.PermissionAction,
 		Resource:         perm.Resource,
 		Granted:          perm.Granted,
@@ -133,14 +133,14 @@ func (a *StorageAdapter) SetPermission(ctx context.Context, perm *PluginPermissi
 
 func (a *StorageAdapter) CreateVersion(ctx context.Context, version *PluginVersion) error {
 	v := &storage.PluginVersion{
-		ID:         version.ID,
-		PluginID:   version.PluginID,
-		Version:    version.Version,
-		Changelog:  version.Changelog,
-		Manifest:   version.Manifest,
-		SizeBytes:  version.SizeBytes,
-		Signature:  version.Signature,
-		ReleaseAt:  version.ReleaseAt,
+		ID:        version.ID,
+		PluginID:  version.PluginID,
+		Version:   version.Version,
+		Changelog: version.Changelog,
+		Manifest:  version.Manifest,
+		SizeBytes: version.SizeBytes,
+		Signature: version.Signature,
+		ReleaseAt: version.ReleaseAt,
 	}
 	return a.repo.CreateVersion(ctx, v)
 }
@@ -160,6 +160,44 @@ func (a *StorageAdapter) GetPreviousVersion(ctx context.Context, pluginID, curre
 	}
 	v := convertVersion(version)
 	return &v, nil
+}
+
+func (a *StorageAdapter) GetTelemetrySummary(ctx context.Context, tenantID, pluginID string, timeRange string) (*TelemetrySummary, error) {
+	s, err := a.repo.GetTelemetrySummary(ctx, tenantID, pluginID, timeRange)
+	if err != nil {
+		return nil, err
+	}
+	return &TelemetrySummary{
+		Executions:         s.Executions,
+		Errors:             s.Errors,
+		ErrorRate:          s.ErrorRate,
+		AvgLatencyMs:       s.AvgLatencyMs,
+		CPUUsageSeconds:    s.CPUUsageSeconds,
+		AvgMemoryUsageMB:   s.AvgMemoryUsageMB,
+		NetworkBytes:       s.NetworkBytes,
+		PreviousExecutions: s.PreviousExecutions,
+		LatencyTrend:       s.LatencyTrend,
+		ExecutionsTrend:    s.ExecutionsTrend,
+	}, nil
+}
+
+func (a *StorageAdapter) RecordAnalytics(ctx context.Context, analytics *PluginAnalytics) error {
+	return a.repo.RecordAnalytics(ctx, &storage.PluginAnalytics{
+		ID:               analytics.ID,
+		PluginID:         analytics.PluginID,
+		TenantID:         analytics.TenantID,
+		EventType:        analytics.EventType,
+		ExecutionsCount:  analytics.ExecutionsCount,
+		ErrorsCount:      analytics.ErrorsCount,
+		TotalLatencyMs:   analytics.TotalLatencyMs,
+		CPUUsageSeconds:  analytics.CPUUsageSeconds,
+		MemoryUsageMBAvg: analytics.MemoryUsageMBAvg,
+		NetworkBytes:     analytics.NetworkBytes,
+		PeriodStart:      analytics.PeriodStart,
+		PeriodEnd:        analytics.PeriodEnd,
+		Metadata:         analytics.Metadata,
+		CreatedAt:        analytics.CreatedAt,
+	})
 }
 
 func convertPlugin(p *storage.Plugin) Plugin {
@@ -256,7 +294,7 @@ func convertPermissions(perms []storage.PluginPermission) []PluginPermission {
 		result[i] = PluginPermission{
 			ID:               p.ID,
 			PluginID:         p.PluginID,
-			PermissionType:  p.PermissionType,
+			PermissionType:   p.PermissionType,
 			PermissionAction: p.PermissionAction,
 			Resource:         p.Resource,
 			Granted:          p.Granted,
@@ -271,15 +309,15 @@ func convertPermissions(perms []storage.PluginPermission) []PluginPermission {
 
 func convertVersion(v *storage.PluginVersion) PluginVersion {
 	return PluginVersion{
-		ID:         v.ID,
-		PluginID:   v.PluginID,
-		Version:    v.Version,
-		Changelog:  v.Changelog,
-		Manifest:   v.Manifest,
-		SizeBytes:  v.SizeBytes,
-		Signature:  v.Signature,
-		ReleaseAt:  v.ReleaseAt,
-		CreatedAt:  v.CreatedAt,
+		ID:        v.ID,
+		PluginID:  v.PluginID,
+		Version:   v.Version,
+		Changelog: v.Changelog,
+		Manifest:  v.Manifest,
+		SizeBytes: v.SizeBytes,
+		Signature: v.Signature,
+		ReleaseAt: v.ReleaseAt,
+		CreatedAt: v.CreatedAt,
 	}
 }
 

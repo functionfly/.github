@@ -12,7 +12,7 @@ const faqItems: FAQItem[] = [
   {
     question: 'How does pricing work?',
     answer:
-      'FunctionFly offers transparent, usage-based pricing. Start with our free tier for up to 100,000 function invocations per month. Paid plans start at $29/month for the Starter plan (1M invocations) and scale up to $99/month for Professional (10M invocations). Enterprise plans offer custom pricing with unlimited requests and dedicated support. You only pay for what you use - no hidden fees, no minimum commitments.',
+      'FunctionFly offers transparent, usage-based pricing. Start with our free tier for up to 500 function invocations per month. Paid plans start at $24/month for the Starter plan (1M invocations) and scale up to $79/month for Professional (10M invocations). Enterprise plans offer custom pricing with unlimited requests and dedicated support. You only pay for what you use - no hidden fees, no minimum commitments.',
   },
   {
     question: "What's the setup process?",

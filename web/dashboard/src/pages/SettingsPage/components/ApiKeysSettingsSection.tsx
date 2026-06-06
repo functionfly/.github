@@ -112,9 +112,13 @@ export function ApiKeysSettingsSection() {
     setCreateKeyExpiresAt("");
   };
 
-  const handleCopyKey = (value: string) => {
-    navigator.clipboard.writeText(value);
-    toast.success(t('apiKeysSettings.toastCopied'));
+  const handleCopyKey = async (value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(t('apiKeysSettings.toastCopied'));
+    } catch {
+      toast.error(t('apiKeysSettings.toastCopyFailed', 'Failed to copy'));
+    }
   };
 
   const handleRotateClick = (key: APIKey) => {

@@ -142,7 +142,7 @@ export function QuotaUsageWidget({
   );
 
   return (
-    <Card className={cn("border-theme bg-card overflow-hidden", className)}>
+    <Card className={cn("overflow-hidden", className)}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium text-text-secondary">

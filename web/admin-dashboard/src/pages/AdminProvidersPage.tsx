@@ -31,9 +31,11 @@ export function AdminProvidersPage() {
     queryKey: ['admin-providers'],
     queryFn: async () => {
       try {
-        return await adminApiClient.get<Provider[]>('/providers');
+        const res = await adminApiClient.get<Provider[]>('/providers');
+        const items = Array.isArray(res.data) ? res.data : [];
+        return items;
       } catch {
-        return { providers: [], success: false };
+        return [];
       }
     },
     staleTime: 1000 * 60,
@@ -49,7 +51,7 @@ export function AdminProvidersPage() {
     },
   });
 
-  const providers = providersResponse?.providers || [];
+  const providers = providersResponse ?? [];
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -63,13 +65,13 @@ export function AdminProvidersPage() {
     );
   }
 
-  const filteredProviders = providers.filter((provider) => {
+  const filteredProviders = providers.filter((provider: Provider) => {
     const matchesSearch = (provider.tenant_name || provider.user_email).toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = typeFilter === 'all' || provider.provider === typeFilter;
     return matchesSearch && matchesType;
   });
 
-  const providerTypes = [...new Set(providers.map((p) => p.provider))];
+  const providerTypes = [...new Set(providers.map((p: Provider) => p.provider))];
 
   return (
     <div className="space-y-6">
@@ -128,7 +130,7 @@ export function AdminProvidersPage() {
                 </td>
               </tr>
             ) : (
-              filteredProviders.map((provider) => (
+              filteredProviders.map((provider: Provider) => (
                 <tr key={provider.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
                   <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{provider.tenant_name || provider.user_email}</td>
                   <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{provider.provider}</td>

@@ -12,6 +12,7 @@ export default defineConfig({
     globals: true,
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
+    unstubEnvs: true,
   },
   define: {
     'import.meta.env.VITE_API_BASE_URL': JSON.stringify(

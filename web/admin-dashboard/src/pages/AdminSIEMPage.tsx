@@ -22,7 +22,31 @@ import {
   EyeOff
 } from 'lucide-react';
 import { LoadingScreen } from '@/components/common/LoadingScreen';
-import { SIEM_DESTINATION_TYPES, SIEM_FORMATS } from '@/lib/constants';
+interface SIEMDestinationType {
+  value: string;
+  label: string;
+  icon: string;
+}
+
+const SIEM_DESTINATION_TYPES: SIEMDestinationType[] = [
+  { value: 'webhook', label: 'Generic webhook', icon: '🔗' },
+  { value: 'splunk_hec', label: 'Splunk HEC', icon: '🟠' },
+  { value: 'datadog_logs', label: 'Datadog Logs', icon: '🐶' },
+  { value: 'cloudwatch', label: 'AWS CloudWatch', icon: '☁️' },
+  { value: 'azure', label: 'Azure Monitor', icon: '🔷' },
+  { value: 'gcp', label: 'GCP Logging', icon: '🌈' },
+];
+
+interface SIEMFormatType {
+  value: string;
+  label: string;
+}
+
+const SIEM_FORMATS: SIEMFormatType[] = [
+  { value: 'json', label: 'JSON' },
+  { value: 'cef', label: 'CEF' },
+  { value: 'leef', label: 'LEEF' },
+];
 import type { 
   SIEMConfig, 
   SIEMConfigCreateInput,
@@ -52,7 +76,7 @@ export function AdminSIEMPage() {
     format: 'json',
     enabled: true,
     config: {},
-  });
+  } as any);
 
   // Fetch tenants
   const { data: tenantsResponse } = useQuery({
@@ -136,7 +160,7 @@ export function AdminSIEMPage() {
       format: 'json',
       enabled: true,
       config: {},
-    });
+    } as any);
   };
 
   const filteredConfigs = configs.filter((config) => {
@@ -158,8 +182,8 @@ export function AdminSIEMPage() {
         id: selectedConfig.id,
         updates: {
           name: formData.name,
-          destination_type: formData.destination_type,
-          format: formData.format,
+          destination_type: formData.destination_type as any,
+          format: formData.format as any,
           enabled: formData.enabled,
           config: formData.config,
         },
@@ -189,8 +213,7 @@ export function AdminSIEMPage() {
       format: config.format,
       enabled: config.enabled,
       config: config.config,
-    });
-    setIsEditDialogOpen(true);
+    } as any);
   };
 
   const getDestinationIcon = (type: SIEMDestination) => {

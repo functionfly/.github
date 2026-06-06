@@ -19,13 +19,20 @@ import (
 
 // Handler contains all R-Sim simulation handlers
 type Handler struct {
-	// simulationEngine could reference a shared simulation engine singleton
-	// For now, each method performs in-process simulation
+	// In-memory storage for simulation results (shared across all simulation types)
+	simulations     map[string]*SimulationResult
+	monteCarloResults map[string]*MonteCarloResult
+	stressTestResults map[string]*StressTestResult
+	simMu           sync.RWMutex
 }
 
 // NewHandler creates a new R-Sim handler
 func NewHandler() *Handler {
-	return &Handler{}
+	return &Handler{
+		simulations:      make(map[string]*SimulationResult),
+		monteCarloResults: make(map[string]*MonteCarloResult),
+		stressTestResults: make(map[string]*StressTestResult),
+	}
 }
 
 // RegisterRoutes registers simulation routes on the given router
@@ -191,6 +198,11 @@ func (h *Handler) HandleSimulateWorkflow(w http.ResponseWriter, r *http.Request)
 	result := h.simulateWorkflow(req.Workflow, req.Iterations)
 	result.ID = "sim_" + generateID()
 
+	// Store the simulation result for later retrieval
+	h.simMu.Lock()
+	h.simulations[result.ID] = &result
+	h.simMu.Unlock()
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"ok":     true,
 		"result": result,
@@ -301,12 +313,37 @@ func (h *Handler) HandleGetSimulation(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "MISSING_ID", "simulation id required")
 		return
 	}
-	// For now, return a not-found since we don't store completed simulations
-	writeError(w, http.StatusNotFound, "NOT_FOUND", "simulation not found")
+
+	h.simMu.RLock()
+	result, ok := h.simulations[simID]
+	h.simMu.RUnlock()
+
+	if !ok {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "simulation not found")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"ok":     true,
+		"result": result,
+	})
 }
 
 func (h *Handler) HandleAbortSimulation(w http.ResponseWriter, r *http.Request) {
 	simID := mux.Vars(r)["id"]
+	if simID == "" {
+		writeError(w, http.StatusBadRequest, "MISSING_ID", "simulation id required")
+		return
+	}
+
+	h.simMu.Lock()
+	result, ok := h.simulations[simID]
+	if ok {
+		result.Status = "aborted"
+		h.simulations[simID] = result
+	}
+	h.simMu.Unlock()
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"ok":      true,
 		"message": "simulation aborted",
@@ -344,6 +381,11 @@ func (h *Handler) HandleMonteCarloSimulation(w http.ResponseWriter, r *http.Requ
 
 	result := h.runMonteCarlo(req.Workflow, req.Iterations)
 	result.ID = "mc_" + generateID()
+
+	// Store the Monte Carlo result for later retrieval
+	h.simMu.Lock()
+	h.monteCarloResults[result.ID] = &result
+	h.simMu.Unlock()
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"ok":     true,

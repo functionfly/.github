@@ -16,9 +16,12 @@ export function useAdminAuth() {
     logout();
   }, [logout]);
 
-  const handleVerifyMFA = useCallback(() => {
-    verifyMFA();
-  }, [verifyMFA]);
+  const handleVerifyMFA = useCallback(
+    async (code: string) => {
+      return verifyMFA(code);
+    },
+    [verifyMFA]
+  );
 
   const handleUpdateActivity = useCallback(() => {
     updateActivity();

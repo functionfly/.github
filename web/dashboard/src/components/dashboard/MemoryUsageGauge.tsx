@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
 
 export interface MemoryUsageGaugeProps {
   /** Current usage 0–100 */
@@ -51,7 +51,7 @@ export function MemoryUsageGauge({
         : "var(--color-success)";
 
   return (
-    <Card className={cn("border-theme bg-card flex flex-col justify-center p-6", className)}>
+    <Card className={cn("flex flex-col justify-center p-6", className)}>
       <CardHeader className="p-0 pb-2">
         <CardTitle className="text-sm font-medium text-text-secondary">
           {label}

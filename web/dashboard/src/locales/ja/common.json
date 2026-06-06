@@ -961,7 +961,9 @@
     "gettingStarted": "はじめに",
     "collapseSidebar": "サイドバーを折りたたむ",
     "expandSidebar": "サイドバーを展開",
-    "commandPalette": "コマンドパレット"
+    "commandPalette": "コマンドパレット",
+    "brain": "Brain",
+    "connectors": "Connectors"
   },
   "notifCenter": {
     "title": "Notifications",

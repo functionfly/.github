@@ -1,15 +1,15 @@
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import {
-  AlertTriangle,
-  ArrowLeft,
-  Binary,
-  Home,
-  Search,
-} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ParticleBackground } from '@/components/ui/ParticleBackground';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
+import { motion } from 'framer-motion';
+import {
+    AlertTriangle,
+    ArrowLeft,
+    Binary,
+    Home,
+    Search,
+} from 'lucide-react';
+import { Link } from 'react-router-dom';
 import './styles.css';
 
 interface FunctionDetailNotFoundProps {
@@ -45,7 +45,7 @@ export function FunctionDetailNotFound({ id, errorMessage }: FunctionDetailNotFo
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="text-7xl font-black text-brand-500/40 mb-2">404</div>
+            <div className="notfound-404 text-7xl font-black mb-2">404</div>
             <p className="text-lg text-text-secondary font-mono">{randomQuote}</p>
           </motion.div>
 
@@ -79,19 +79,19 @@ export function FunctionDetailNotFound({ id, errorMessage }: FunctionDetailNotFo
             <Button
               variant="outline"
               onClick={() => window.history.back()}
-              className="gap-2"
+              className="notfound-nav-btn-outline gap-2"
               size="lg"
             >
               <ArrowLeft className="w-4 h-4" />
               Go Back
             </Button>
-            <Button asChild className="gap-2" size="lg">
+            <Button asChild className="notfound-nav-btn gap-2" size="lg">
               <Link to="/functions/my">
                 <Search className="w-4 h-4" />
                 My Functions
               </Link>
             </Button>
-            <Button asChild variant="secondary" className="gap-2" size="lg">
+            <Button asChild variant="secondary" className="notfound-nav-btn-secondary gap-2" size="lg">
               <Link to="/">
                 <Home className="w-4 h-4" />
                 Dashboard
@@ -105,7 +105,7 @@ export function FunctionDetailNotFound({ id, errorMessage }: FunctionDetailNotFo
             transition={{ delay: 0.7 }}
           >
             <SpotlightCard
-              className="text-left"
+              className="notfound-spotlight text-left"
               spotlightColor="rgba(var(--info), 0.1)"
             >
               <div className="flex items-start gap-3">
@@ -117,7 +117,7 @@ export function FunctionDetailNotFound({ id, errorMessage }: FunctionDetailNotFo
                   </p>
                   <Link
                     to="/registry"
-                    className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-gradient-to-r from-brand-500 to-purple-500 text-white hover:brightness-110 transition-all"
+                    className="notfound-browse-link inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-gradient-to-r from-brand-500 to-purple-500 hover:brightness-110 transition-all"
                   >
                     Browse Registry
                   </Link>

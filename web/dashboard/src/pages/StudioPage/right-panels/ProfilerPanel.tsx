@@ -1,6 +1,6 @@
-import React from "react";
 import { ExecutionProfiler } from "@functionfly/ui-observability";
-import { BarChart2, Clock, DollarSign, AlertCircle, CheckCircle, XCircle, Timer } from "lucide-react";
+import { CheckCircle, Clock, Timer, XCircle } from "lucide-react";
+import { ProfilerPanelSkeleton } from "../components/StudioPanelsSkeleton";
 
 interface Execution {
   id: string;
@@ -17,9 +17,14 @@ interface Execution {
 
 interface ProfilerPanelProps {
   executions: Execution[];
+  isLoading?: boolean;
 }
 
-export function ProfilerPanel({ executions }: ProfilerPanelProps) {
+export function ProfilerPanel({ executions, isLoading }: ProfilerPanelProps) {
+  if (isLoading) {
+    return <ProfilerPanelSkeleton />;
+  }
+
   const totalDuration = executions.reduce(
     (acc, ex) => acc + (ex.nodeResults?.[0]?.durationMs || 0),
     0

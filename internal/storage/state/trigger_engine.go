@@ -955,6 +955,7 @@ func (e *TriggerEngine) processRetries(ctx context.Context) {
 	var events []QueuedTriggerEvent
 	err := e.db.WithContext(ctx).
 		Where("status = ? AND next_attempt_at <= ?", "pending", time.Now()).
+		Order("next_attempt_at ASC").
 		Limit(e.config.BatchSize).
 		Find(&events).Error
 

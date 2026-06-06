@@ -11,38 +11,146 @@ import (
 	"github.com/google/uuid"
 )
 
+type ExtensionUpdate struct {
+	InstalledPluginID string                 `json:"installed_plugin_id"`
+	InstalledVersion  string                 `json:"installed_version"`
+	ExtensionID       string                 `json:"extension_id"`
+	LatestVersion     string                 `json:"latest_version"`
+	Changelog         string                 `json:"changelog"`
+	Manifest          map[string]interface{} `json:"manifest"`
+}
+
+type InstalledPlugin struct {
+	ID      string
+	Name    string
+	Version string
+}
+
+func (r *MarketplaceRepository) FindUpdates(ctx context.Context, installed []InstalledPlugin) ([]ExtensionUpdate, error) {
+	if len(installed) == 0 {
+		return []ExtensionUpdate{}, nil
+	}
+
+	names := make([]string, len(installed))
+	for i, p := range installed {
+		names[i] = p.Name
+	}
+
+	query := `
+		SELECT id, name, version, COALESCE(changelog, ''), manifest
+		FROM marketplace_extensions
+		WHERE name = ANY($1) AND status = 'published'
+	`
+	rows, err := r.db.QueryContext(ctx, query, names)
+	if err != nil {
+		return nil, fmt.Errorf("find updates: %w", err)
+	}
+	defer rows.Close()
+
+	updates := []ExtensionUpdate{}
+	installedByName := make(map[string]InstalledPlugin)
+	for _, p := range installed {
+		installedByName[p.Name] = p
+	}
+
+	for rows.Next() {
+		var extID, name, version, changelog string
+		var manifest []byte
+		if err := rows.Scan(&extID, &name, &version, &changelog, &manifest); err != nil {
+			return nil, fmt.Errorf("scan update: %w", err)
+		}
+
+		inst, ok := installedByName[name]
+		if !ok {
+			continue
+		}
+
+		if isNewerVersion(version, inst.Version) {
+			var manifestMap map[string]interface{}
+			if len(manifest) > 0 {
+				_ = json.Unmarshal(manifest, &manifestMap)
+			}
+			updates = append(updates, ExtensionUpdate{
+				InstalledPluginID: inst.ID,
+				InstalledVersion:  inst.Version,
+				ExtensionID:       extID,
+				LatestVersion:     version,
+				Changelog:         changelog,
+				Manifest:          manifestMap,
+			})
+		}
+	}
+
+	return updates, rows.Err()
+}
+
+func isNewerVersion(latest, current string) bool {
+	if latest == current {
+		return false
+	}
+	l := parseSemver(latest)
+	c := parseSemver(current)
+	if l == nil || c == nil {
+		return latest != current
+	}
+	if l[0] != c[0] {
+		return l[0] > c[0]
+	}
+	if l[1] != c[1] {
+		return l[1] > c[1]
+	}
+	return l[2] > c[2]
+}
+
+func parseSemver(v string) []int {
+	v = strings.TrimPrefix(v, "v")
+	parts := strings.SplitN(v, ".", 3)
+	result := []int{0, 0, 0}
+	for i := 0; i < len(parts) && i < 3; i++ {
+		n := 0
+		for _, ch := range parts[i] {
+			if ch < '0' || ch > '9' {
+				break
+			}
+			n = n*10 + int(ch-'0')
+		}
+		result[i] = n
+	}
+	return result
+}
+
 type MarketplaceExtension struct {
-	ID              string                 `json:"id"`
-	CreatorID       string                 `json:"creator_id"`
-	PluginID        *string                `json:"plugin_id"`
-	Name            string                 `json:"name"`
-	Version         string                 `json:"version"`
-	Description     string                 `json:"description"`
-	Category        string                 `json:"category"`
-	IconURL         string                 `json:"icon_url"`
-	Screenshots     []string               `json:"screenshots"`
+	ID             string                 `json:"id"`
+	CreatorID      string                 `json:"creator_id"`
+	PluginID       *string                `json:"plugin_id"`
+	Name           string                 `json:"name"`
+	Version        string                 `json:"version"`
+	Description    string                 `json:"description"`
+	Category       string                 `json:"category"`
+	IconURL        string                 `json:"icon_url"`
+	Screenshots    []string               `json:"screenshots"`
 	Manifest       []byte                 `json:"-"`
-	ManifestParsed  map[string]interface{} `json:"manifest"`
-	ManifestURL     string                 `json:"manifest_url"`
-	Signature       string                 `json:"signature"`
-	Verified        bool                   `json:"verified"`
-	Status          string                 `json:"status"`
-	Featured        bool                   `json:"featured"`
-	InstallCount    int                    `json:"install_count"`
-	RatingAverage   float64                `json:"rating_average"`
-	RatingCount     int                    `json:"rating_count"`
-	TrustScore      float64                `json:"trust_score"`
-	SandboxScore    float64                `json:"sandbox_score"`
-	SecurityScore   float64                `json:"security_score"`
-	RuntimeScore    float64                `json:"runtime_score"`
-	Compatibility   map[string]interface{} `json:"compatibility"`
-	Tags            []string               `json:"tags"`
-	Changelog       string                 `json:"changelog"`
-	ReleaseNotes    string                 `json:"release_notes"`
-	CreatedAt       time.Time              `json:"created_at"`
-	UpdatedAt       time.Time              `json:"updated_at"`
-	PublishedAt     *time.Time             `json:"published_at"`
-	UnpublishedAt   *time.Time             `json:"unpublished_at"`
+	ManifestParsed map[string]interface{} `json:"manifest"`
+	ManifestURL    string                 `json:"manifest_url"`
+	Signature      string                 `json:"signature"`
+	Verified       bool                   `json:"verified"`
+	Status         string                 `json:"status"`
+	Featured       bool                   `json:"featured"`
+	InstallCount   int                    `json:"install_count"`
+	RatingAverage  float64                `json:"rating_average"`
+	RatingCount    int                    `json:"rating_count"`
+	TrustScore     float64                `json:"trust_score"`
+	SandboxScore   float64                `json:"sandbox_score"`
+	SecurityScore  float64                `json:"security_score"`
+	RuntimeScore   float64                `json:"runtime_score"`
+	Compatibility  map[string]interface{} `json:"compatibility"`
+	Tags           []string               `json:"tags"`
+	Changelog      string                 `json:"changelog"`
+	ReleaseNotes   string                 `json:"release_notes"`
+	CreatedAt      time.Time              `json:"created_at"`
+	UpdatedAt      time.Time              `json:"updated_at"`
+	PublishedAt    *time.Time             `json:"published_at"`
+	UnpublishedAt  *time.Time             `json:"unpublished_at"`
 }
 
 type MarketplaceRepository struct {
@@ -60,6 +168,7 @@ type ListMarketplaceParams struct {
 	Featured  *bool
 	Search    *string
 	Tags      []string
+	SortBy    string
 	Limit     int
 	Offset    int
 }
@@ -104,14 +213,34 @@ func (r *MarketplaceRepository) List(ctx context.Context, params ListMarketplace
 	}
 
 	if params.Search != nil && *params.Search != "" {
-		conditions = append(conditions, fmt.Sprintf("(name ILIKE $%d OR description ILIKE $%d)", argIdx, argIdx))
+		conditions = append(conditions, fmt.Sprintf("(name ILIKE $%d OR description ILIKE $%d OR $%d = ANY(tags))", argIdx, argIdx, argIdx))
 		args = append(args, "%"+*params.Search+"%")
 		argIdx++
+	}
+
+	if len(params.Tags) > 0 {
+		for _, tag := range params.Tags {
+			conditions = append(conditions, fmt.Sprintf("$%d = ANY(tags)", argIdx))
+			args = append(args, tag)
+			argIdx++
+		}
 	}
 
 	conditionsStr := strings.Join(conditions, " AND ")
 	if conditionsStr != "" {
 		conditionsStr = "WHERE " + conditionsStr
+	}
+
+	orderBy := "ORDER BY featured DESC, install_count DESC, trust_score DESC"
+	switch params.SortBy {
+	case "newest":
+		orderBy = "ORDER BY COALESCE(published_at, created_at) DESC"
+	case "top_rated":
+		orderBy = "ORDER BY rating_average DESC, rating_count DESC"
+	case "most_installed":
+		orderBy = "ORDER BY install_count DESC"
+	case "trending":
+		orderBy = "ORDER BY (install_count * 0.3 + rating_average * 100 * 0.7) DESC"
 	}
 
 	query := fmt.Sprintf(`
@@ -122,9 +251,9 @@ func (r *MarketplaceRepository) List(ctx context.Context, params ListMarketplace
 		       created_at, updated_at, published_at, unpublished_at
 		FROM marketplace_extensions
 		%s
-		ORDER BY featured DESC, install_count DESC, trust_score DESC
+		%s
 		LIMIT $%d OFFSET $%d
-	`, conditionsStr, argIdx, argIdx+1)
+	`, conditionsStr, orderBy, argIdx, argIdx+1)
 	args = append(args, params.Limit, params.Offset)
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
@@ -362,7 +491,114 @@ func (r *MarketplaceRepository) GetCategories(ctx context.Context) ([]struct {
 	return results, rows.Err()
 }
 
-func scanMarketplaceExtension(rows interface{ Scan(dst ...interface{}) error }) (*MarketplaceExtension, error) {
+type MarketplaceRating struct {
+	ID          string    `json:"id"`
+	ExtensionID string    `json:"extension_id"`
+	TenantID    string    `json:"tenant_id"`
+	Rating      int       `json:"rating"`
+	Review      string    `json:"review,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+func (r *MarketplaceRepository) UpsertRating(ctx context.Context, rating *MarketplaceRating) error {
+	if rating.ID == "" {
+		rating.ID = uuid.New().String()
+	}
+	if rating.CreatedAt.IsZero() {
+		rating.CreatedAt = time.Now()
+	}
+	rating.UpdatedAt = time.Now()
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	query := `
+		INSERT INTO marketplace_ratings (id, extension_id, tenant_id, rating, review, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (extension_id, tenant_id) DO UPDATE SET
+			rating = EXCLUDED.rating,
+			review = EXCLUDED.review,
+			updated_at = EXCLUDED.updated_at
+	`
+	_, err = tx.ExecContext(ctx, query,
+		rating.ID, rating.ExtensionID, rating.TenantID, rating.Rating,
+		rating.Review, rating.CreatedAt, rating.UpdatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("upsert rating: %w", err)
+	}
+
+	_, err = tx.ExecContext(ctx, `
+		UPDATE marketplace_extensions SET
+			rating_average = (SELECT AVG(rating)::float FROM marketplace_ratings WHERE extension_id = $1),
+			rating_count = (SELECT COUNT(*) FROM marketplace_ratings WHERE extension_id = $1)
+		WHERE id = $1
+	`, rating.ExtensionID)
+	if err != nil {
+		return fmt.Errorf("recompute rating aggregate: %w", err)
+	}
+
+	return tx.Commit()
+}
+
+func (r *MarketplaceRepository) GetRating(ctx context.Context, extensionID, tenantID string) (*MarketplaceRating, error) {
+	query := `
+		SELECT id, extension_id, tenant_id, rating, COALESCE(review, ''), created_at, updated_at
+		FROM marketplace_ratings
+		WHERE extension_id = $1 AND tenant_id = $2
+	`
+	var rating MarketplaceRating
+	err := r.db.QueryRowContext(ctx, query, extensionID, tenantID).Scan(
+		&rating.ID, &rating.ExtensionID, &rating.TenantID, &rating.Rating,
+		&rating.Review, &rating.CreatedAt, &rating.UpdatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get rating: %w", err)
+	}
+	return &rating, nil
+}
+
+func (r *MarketplaceRepository) ListRatings(ctx context.Context, extensionID string, limit int) ([]MarketplaceRating, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+	query := `
+		SELECT id, extension_id, tenant_id, rating, COALESCE(review, ''), created_at, updated_at
+		FROM marketplace_ratings
+		WHERE extension_id = $1
+		ORDER BY created_at DESC
+		LIMIT $2
+	`
+	rows, err := r.db.QueryContext(ctx, query, extensionID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list ratings: %w", err)
+	}
+	defer rows.Close()
+
+	var ratings []MarketplaceRating
+	for rows.Next() {
+		var rating MarketplaceRating
+		if err := rows.Scan(
+			&rating.ID, &rating.ExtensionID, &rating.TenantID, &rating.Rating,
+			&rating.Review, &rating.CreatedAt, &rating.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan rating: %w", err)
+		}
+		ratings = append(ratings, rating)
+	}
+	return ratings, rows.Err()
+}
+
+func scanMarketplaceExtension(rows interface {
+	Scan(dst ...interface{}) error
+}) (*MarketplaceExtension, error) {
 	var ext MarketplaceExtension
 	var screenshots, tags, compatibility []byte
 	var pluginID, iconURL, manifestURL, signature, changelog, releaseNotes sql.NullString

@@ -27,6 +27,9 @@ export interface Extension {
   tags?: string[];
   changelog?: string;
   release_notes?: string;
+  created_at?: string;
+  updated_at?: string;
+  published_at?: string;
 }
 
 export interface CategoryCount {
@@ -39,6 +42,8 @@ export interface MarketplaceFilters {
   status?: string;
   search?: string;
   featured?: boolean;
+  tags?: string[];
+  sort?: "trending" | "top_rated" | "newest" | "most_installed";
   limit?: number;
   offset?: number;
 }
@@ -65,6 +70,31 @@ export interface UpdateExtensionRequest {
   tags?: string[];
 }
 
+export interface Rating {
+  id: string;
+  extension_id: string;
+  tenant_id: string;
+  rating: number;
+  review?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExtensionUpdate {
+  installed_plugin_id: string;
+  installed_version: string;
+  extension_id: string;
+  latest_version: string;
+  changelog: string;
+  manifest?: Record<string, unknown>;
+}
+
+export interface InstalledPluginInfo {
+  id: string;
+  name: string;
+  version: string;
+}
+
 export const marketplaceApi = {
   list: async (filters?: MarketplaceFilters): Promise<{ extensions: Extension[] }> => {
     const params: Record<string, string | number | boolean | undefined> = {};
@@ -72,6 +102,8 @@ export const marketplaceApi = {
     if (filters?.status) params.status = filters.status;
     if (filters?.search) params.search = filters.search;
     if (filters?.featured !== undefined) params.featured = filters.featured;
+    if (filters?.tags && filters.tags.length > 0) params.tags = filters.tags.join(',');
+    if (filters?.sort) params.sort = filters.sort;
     if (filters?.limit) params.limit = filters.limit;
     if (filters?.offset) params.offset = filters.offset;
 
@@ -102,9 +134,29 @@ export const marketplaceApi = {
     return response as { message: string };
   },
 
-  install: async (extensionId: string): Promise<{ message: string; extension_id: string; plugin_manifest?: Record<string, unknown> }> => {
+  install: async (extensionId: string): Promise<{ message: string; extension: Extension; extension_id: string; plugin_manifest?: Record<string, unknown> }> => {
     const response = await apiClient.post(`/marketplace/extensions/${extensionId}/install`);
-    return response as { message: string; extension_id: string; plugin_manifest?: Record<string, unknown> };
+    return response as { message: string; extension: Extension; extension_id: string; plugin_manifest?: Record<string, unknown> };
+  },
+
+  rate: async (extensionId: string, rating: number, review?: string): Promise<{ message: string; rating: Rating }> => {
+    const response = await apiClient.post(`/marketplace/extensions/${extensionId}/rate`, { rating, review: review || '' });
+    return response as { message: string; rating: Rating };
+  },
+
+  getMyRating: async (extensionId: string): Promise<{ rating: Rating | null }> => {
+    const response = await apiClient.get(`/marketplace/extensions/${extensionId}/my-rating`);
+    return response as { rating: Rating | null };
+  },
+
+  listRatings: async (extensionId: string, limit: number = 50): Promise<{ ratings: Rating[] }> => {
+    const response = await apiClient.get(`/marketplace/extensions/${extensionId}/ratings`, { params: { limit } });
+    return response as { ratings: Rating[] };
+  },
+
+  checkUpdates: async (installed: InstalledPluginInfo[]): Promise<{ updates: ExtensionUpdate[] }> => {
+    const response = await apiClient.post('/marketplace/check-updates', installed);
+    return response as { updates: ExtensionUpdate[] };
   },
 
   getCategories: async (): Promise<{ categories: CategoryCount[] }> => {

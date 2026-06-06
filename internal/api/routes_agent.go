@@ -81,6 +81,10 @@ func registerAgentRoutes(
 	api.HandleFunc("/agent/execute/{author}/{name}", aepHandler.HandleExecute).Methods("POST", "OPTIONS")
 	api.HandleFunc("/agent/execute/{author}/{name}/{version}", aepHandler.HandleExecute).Methods("POST", "OPTIONS")
 
+	// Agent-native tool registry (built-in tools).
+	api.HandleFunc("/agent/tools", aepHandler.HandleListTools).Methods("GET", "OPTIONS")
+	api.HandleFunc("/agent/tools/{tool_name}/call", aepHandler.HandleExecuteTool).Methods("POST", "OPTIONS")
+
 	// ── AEP Management (protected) ───────────────────────────────────────────
 
 	// Initialize team memory middleware for agent API (auto-injects team context into prompts)
@@ -125,12 +129,20 @@ func registerAgentRoutes(
 	protected.HandleFunc("/agent/{agent_id}/credits/purchase", authMiddleware.RequireAuth(aepHandler.HandlePurchaseCredits)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}/credits/checkout", authMiddleware.RequireAuth(aepHandler.HandleCreateCreditsCheckout)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}/transactions", authMiddleware.RequireAuth(aepHandler.HandleListAgentTransactions)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}/keys/rotate", authMiddleware.RequireAuth(aepHandler.HandleRotateAPIKey)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/agent/concurrency/stats", authMiddleware.RequireAuth(aepHandler.HandleGetConcurrencyStats)).Methods("GET", "OPTIONS")
 
 	// ── Agent Lifecycle Management ────────────────────────────────────────
 	protected.HandleFunc("/agent/{agent_id}/lifecycle/status", authMiddleware.RequireAuth(aepHandler.HandleAgentLifecycleStatus)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/agent/{agent_id}/lifecycle/heartbeat", aepHandler.HandleAgentHeartbeat).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}/lifecycle/heartbeat", authMiddleware.RequireAuth(aepHandler.HandleAgentHeartbeat)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}/lifecycle/shutdown", authMiddleware.RequireAuth(aepHandler.HandleAgentShutdown)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}/lifecycle/pause", authMiddleware.RequireAuth(aepHandler.HandleAgentPause)).Methods("PUT", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}/lifecycle/resume", authMiddleware.RequireAuth(aepHandler.HandleAgentResume)).Methods("PUT", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}/lifecycle/terminate", authMiddleware.RequireAuth(aepHandler.HandleAgentTerminate)).Methods("POST", "OPTIONS")
+
+	// ── Root-level Agent Spawn (Studio) ─────────────────────────────────
+	// POST /v1/agent/spawn — creates a new standalone agent with auto-generated ID
+	protected.HandleFunc("/agent/spawn", authMiddleware.RequireAuth(aepHandler.HandleSpawnAgent)).Methods("POST", "OPTIONS")
 
 	// ── Swarm / Marketplace / Evolution (protected) ───────────────────────────
 	// Swarm routes MUST be registered AFTER AEP routes to take precedence for overlapping paths

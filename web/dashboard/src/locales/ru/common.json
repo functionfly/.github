@@ -961,7 +961,9 @@
     "gettingStarted": "Начало работы",
     "collapseSidebar": "Свернуть боковую панель",
     "expandSidebar": "Развернуть боковую панель",
-    "commandPalette": "Палитра команд"
+    "commandPalette": "Палитра команд",
+    "brain": "Brain",
+    "connectors": "Connectors"
   },
   "notifCenter": {
     "title": "Notifications",

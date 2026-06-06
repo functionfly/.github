@@ -1,20 +1,35 @@
 """API key validation for FlyMind AI Service.
 
-This module provides API key authentication and validation.
+This module provides API key authentication and validation using the Go orchestrator's
+PostgreSQL-backed key storage. The previous in-memory storage that lost keys on restart
+has been replaced with persistent storage via the orchestrator API.
+
+IMPORTANT: The old APIKeyValidator with _init_default_keys() should NOT be used in
+production. Use PostgresBackedAPIKeyValidator instead.
 """
 
 import hashlib
+import logging
+import os
 import secrets
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 import threading
-import logging
 
 from fastapi import Header, HTTPException, Depends, status
 from fastapi.security import APIKeyHeader
+
+from .postgres_key_validator import (
+    PostgresBackedAPIKeyValidator,
+    InMemoryFallbackValidator,
+    APIKeyInfo as PostgresAPIKeyInfo,
+    KeyStatus,
+    KeyScope,
+    create_validator,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -22,33 +37,25 @@ logger = logging.getLogger(__name__)
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
-class KeyStatus(str, Enum):
-    """API key status."""
-    ACTIVE = "active"
-    REVOKED = "revoked"
-    EXPIRED = "expired"
-    SUSPENDED = "suspended"
-
-
-class KeyScope(str, Enum):
-    """API key scopes."""
-    READ = "read"
-    WRITE = "write"
-    ADMIN = "admin"
-    FULL = "full"
-    # Embedding-specific scopes
-    EMBED_READ = "embed:read"  # Query embeddings, search
-    EMBED_WRITE = "embed:write"  # Generate new embeddings
-    EMBED_ADMIN = "embed:admin"  # Batch operations, indexing
-    RAG_READ = "rag:read"  # RAG retrieval access
-    # Chat/composer-specific scopes
-    CHAT_WRITE = "chat:write"  # Chat and AI generation operations
-    CHAT_READ = "chat:read"   # Read chat history and sessions
+# Re-export KeyStatus and KeyScope for backward compatibility
+__all__ = [
+    "KeyStatus",
+    "KeyScope",
+    "APIKeyInfo",
+    "get_api_key_validator",
+    "require_api_key",
+    "require_api_key_with_scope",
+]
 
 
 @dataclass
 class APIKeyInfo:
-    """Information about an API key."""
+    """Information about an API key.
+
+    This class provides backward compatibility for code that expects
+    the old in-memory APIKeyInfo format. The actual validation is done
+    by PostgresBackedAPIKeyValidator.
+    """
     key_id: str
     tenant_id: str
     name: str
@@ -58,7 +65,7 @@ class APIKeyInfo:
     expires_at: Optional[datetime] = None
     last_used_at: Optional[datetime] = None
     request_count: int = 0
-    rate_limit: int = 60  # requests per minute
+    rate_limit: int = 60
 
     def is_valid(self) -> bool:
         """Check if the key is valid."""
@@ -80,217 +87,138 @@ class APIKeyInfo:
         return scope in self.scopes
 
 
-class APIKeyValidator:
-    """Validates API keys for authentication."""
+class PostgresValidatorWrapper:
+    """Wrapper around PostgresBackedAPIKeyValidator that provides sync interface.
 
-    def __init__(self):
-        """Initialize the API key validator."""
-        self._logger = logging.getLogger(__name__)
-        self._lock = threading.Lock()
+    The underlying PostgresBackedAPIKeyValidator is async, but FastAPI dependencies
+    can be sync when needed by using a simple wrapper that runs the async code
+    in a thread pool.
+    """
 
-        # Key storage: key_id -> (hashed_key, info)
-        self._keys: Dict[str, tuple[str, APIKeyInfo]] = {}
-
-        # Lookup by full key for fast validation
-        self._key_lookup: Dict[str, str] = {}  # hashed_key -> key_id
-
-        # Stats
-        self._total_validations = 0
-        self._failed_validations = 0
-
-    def create_key(
+    def __init__(
         self,
-        tenant_id: str,
-        name: str,
-        scopes: List[KeyScope],
-        expires_in_days: Optional[int] = None,
-        rate_limit: int = 60,
-    ) -> tuple[str, APIKeyInfo]:
-        """Create a new API key.
+        orchestrator_url: Optional[str] = None,
+        orchestrator_api_key: Optional[str] = None,
+    ):
+        self._validator: Optional[PostgresBackedAPIKeyValidator] = None
+        self._fallback: Optional[InMemoryFallbackValidator] = None
+        self._is_fallback = False
+        self._orchestrator_url = orchestrator_url
+        self._orchestrator_api_key = orchestrator_api_key
+        self._initialized = False
 
-        Args:
-            tenant_id: Tenant ID
-            name: Key name
-            scopes: List of scopes
-            expires_in_days: Days until expiration (None for no expiration)
-            rate_limit: Requests per minute
+        # Check for development mode
+        self._dev_mode = os.getenv("DEVELOPMENT", "false").lower() == "true"
+        self._force_fallback = os.getenv("AI_SERVICE_USE_IN_MEMORY_KEY_VALIDATOR", "false").lower() == "true"
 
-        Returns:
-            Tuple of (full_key, APIKeyInfo)
-        """
-        with self._lock:
-            # Generate key
-            key_id = secrets.token_hex(8)
-            full_key = f"fly_{secrets.token_hex(32)}"
+    def initialize(self) -> None:
+        """Initialize the validator. Call this at startup."""
+        if self._initialized:
+            return
 
-            # Hash the key for storage
-            key_hash = self._hash_key(full_key)
+        if self._force_fallback or self._dev_mode:
+            logger.warning(
+                "=" * 60
+            )
+            logger.warning("INSECURE MODE: Using in-memory API key validation!")
+            logger.warning("Keys will be lost on restart and no key revocation works.")
+            if self._dev_mode:
+                logger.warning("This is expected in DEVELOPMENT mode.")
+            else:
+                logger.warning("Set AI_SERVICE_USE_IN_MEMORY_KEY_VALIDATOR=false to disable.")
+            logger.warning("DO NOT use this in production!")
+            logger.warning("=" * 60)
 
-            # Create info
-            expires_at = None
-            if expires_in_days:
-                expires_at = datetime.utcnow() + timedelta(days=expires_in_days)
-
-            info = APIKeyInfo(
-                key_id=key_id,
-                tenant_id=tenant_id,
-                name=name,
-                scopes=scopes,
-                status=KeyStatus.ACTIVE,
-                created_at=datetime.utcnow(),
-                expires_at=expires_at,
-                rate_limit=rate_limit,
+            self._fallback = InMemoryFallbackValidator()
+            self._is_fallback = True
+        else:
+            self._validator = PostgresBackedAPIKeyValidator(
+                orchestrator_url=self._orchestrator_url or "http://localhost:8080",
+                orchestrator_api_key=self._orchestrator_api_key,
             )
 
-            # Store
-            self._keys[key_id] = (key_hash, info)
-            self._key_lookup[key_hash] = key_id
+        self._initialized = True
 
-            self._logger.info(f"Created API key {key_id} for tenant {tenant_id}")
+    async def _async_initialize(self) -> None:
+        """Async initialization for use at startup."""
+        if self._is_fallback or self._force_fallback:
+            self._fallback = InMemoryFallbackValidator()
+            self._is_fallback = True
+            return
 
-            return full_key, info
+        self._validator = PostgresBackedAPIKeyValidator(
+            orchestrator_url=self._orchestrator_url or "http://localhost:8080",
+            orchestrator_api_key=self._orchestrator_api_key,
+        )
+        await self._validator.initialize()
 
     def validate_key(self, key: str) -> Optional[APIKeyInfo]:
-        """Validate an API key.
+        """Validate an API key (sync interface for FastAPI dependencies)."""
+        if not self._initialized:
+            self.initialize()
 
-        Args:
-            key: The full API key
+        import asyncio
 
-        Returns:
-            APIKeyInfo if valid, None otherwise
-        """
-        with self._lock:
-            self._total_validations += 1
+        if self._is_fallback and self._fallback:
+            # Run async validation in thread pool
+            return asyncio.run(self._fallback.validate_key(key))
 
-            # Hash the key
-            key_hash = self._hash_key(key)
+        if self._validator:
+            return asyncio.run(self._validator.validate_key(key))
 
-            # Look up
-            key_id = self._key_lookup.get(key_hash)
-            if not key_id:
-                self._failed_validations += 1
-                return None
-
-            _, info = self._keys.get(key_id, (None, None))
-            if not info:
-                self._failed_validations += 1
-                return None
-
-            # Check validity
-            if not info.is_valid():
-                self._failed_validations += 1
-                return None
-
-            # Update stats
-            info.last_used_at = datetime.utcnow()
-            info.request_count += 1
-
-            return info
-
-    def revoke_key(self, key_id: str) -> bool:
-        """Revoke an API key.
-
-        Args:
-            key_id: The key ID
-
-        Returns:
-            True if revoked, False if not found
-        """
-        with self._lock:
-            if key_id not in self._keys:
-                return False
-
-            _, info = self._keys[key_id]
-            info.status = KeyStatus.REVOKED
-
-            # Remove from lookup
-            for hash_val, k_id in list(self._key_lookup.items()):
-                if k_id == key_id:
-                    del self._key_lookup[hash_val]
-
-            self._logger.info(f"Revoked API key {key_id}")
-            return True
-
-    def get_key_info(self, key_id: str) -> Optional[APIKeyInfo]:
-        """Get information about an API key.
-
-        Args:
-            key_id: The key ID
-
-        Returns:
-            APIKeyInfo or None
-        """
-        with self._lock:
-            _, info = self._keys.get(key_id, (None, None))
-            return info
-
-    def list_keys(self, tenant_id: str) -> List[APIKeyInfo]:
-        """List all keys for a tenant.
-
-        Args:
-            tenant_id: Tenant ID
-
-        Returns:
-            List of APIKeyInfo
-        """
-        with self._lock:
-            return [
-                info for _, info in self._keys.values()
-                if info.tenant_id == tenant_id
-            ]
-
-    def _hash_key(self, key: str) -> str:
-        """Hash an API key for storage.
-
-        Args:
-            key: The full key
-
-        Returns:
-            Hashed key
-        """
-        return hashlib.sha256(key.encode()).hexdigest()
+        return None
 
     def get_stats(self) -> Dict[str, int]:
-        """Get validator statistics.
+        """Get validator statistics."""
+        if self._is_fallback and self._fallback:
+            return {"mode": "in_memory_fallback"}
 
-        Returns:
-            Dictionary with stats
-        """
-        with self._lock:
-            return {
-                "total_keys": len(self._keys),
-                "total_validations": self._total_validations,
-                "failed_validations": self._failed_validations,
-            }
+        if self._validator:
+            return self._validator.get_stats()
 
-    # Default keys for development
-    def _init_default_keys(self) -> None:
-        """Initialize default development keys."""
-        # Create a default key for development
-        self.create_key(
-            tenant_id="default",
-            name="Development Key",
-            scopes=[KeyScope.FULL],
-            rate_limit=100,
-        )
+        return {"mode": "uninitialized"}
 
 
-# Global validator
-_api_key_validator: Optional[APIKeyValidator] = None
+# Global validator instance
+_validator_instance: Optional[PostgresValidatorWrapper] = None
 
 
-def get_api_key_validator() -> APIKeyValidator:
+def get_api_key_validator() -> PostgresValidatorWrapper:
     """Get the global API key validator.
 
     Returns:
-        APIKeyValidator instance
+        PostgresValidatorWrapper instance (uses orchestrator-backed storage in production)
     """
-    global _api_key_validator
-    if _api_key_validator is None:
-        _api_key_validator = APIKeyValidator()
-        _api_key_validator._init_default_keys()
+    global _validator_instance
+    if _validator_instance is None:
+        from ..config import settings
 
-    return _api_key_validator
+        _validator_instance = PostgresValidatorWrapper(
+            orchestrator_url=settings.orchestrator_url,
+            orchestrator_api_key=settings.orchestrator_api_key,
+        )
+        _validator_instance.initialize()
+
+    return _validator_instance
+
+
+async def initialize_api_key_validator() -> None:
+    """Initialize the API key validator asynchronously. Call this at startup."""
+    global _validator_instance
+
+    from ..config import settings
+
+    wrapper = PostgresValidatorWrapper(
+        orchestrator_url=settings.orchestrator_url,
+        orchestrator_api_key=settings.orchestrator_api_key,
+    )
+    await wrapper._async_initialize()
+    _validator_instance = wrapper
+
+
+# Backward compatibility alias - the old APIKeyValidator is deprecated
+# and should not be used in production
+APIKeyValidator = PostgresValidatorWrapper
 
 
 # FastAPI dependency functions

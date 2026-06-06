@@ -20,7 +20,6 @@ export const ROUTES = {
   ADMIN_CONTENT: '/content',
   ADMIN_BLOG: '/blog',
   ADMIN_FUNCTIONS: '/functions',
-  ADMIN_REGISTRY: '/registry',
   ADMIN_STATE_FABRIC: '/state-fabric',
   ADMIN_FEEDBACK: '/feedback',
   ADMIN_FEATURES: '/features',
@@ -46,6 +45,7 @@ export const ROUTES = {
   ADMIN_SIEM: '/siem',
   ADMIN_AUTH_AUDIT: '/auth-audit',
   ADMIN_SIGNUP_INVITES: '/signup-invites',
+  ADMIN_WAITLIST: '/waitlist',
 };
 
 export const API_ROUTES = {
@@ -57,13 +57,8 @@ export const API_ROUTES = {
   ADMIN_TENANTS: '/tenants',
   ADMIN_USERS: '/users',
   ADMIN_AUDIT_EVENTS: '/audit-events',
-  // Blog settings
-  ADMIN_BLOG_SETTINGS: '/content/blog/settings',
   // Maintenance
   ADMIN_MAINTENANCE: '/maintenance',
-  ADMIN_MAINTENANCE_TEMPLATES: '/maintenance/templates',
-  ADMIN_MAINTENANCE_SCHEDULE: '/maintenance/schedule',
-  ADMIN_MAINTENANCE_AUDIT: '/maintenance/audit',
   // Cache
   ADMIN_CACHE_STATS: '/cache/stats',
   // Monitoring
@@ -72,14 +67,6 @@ export const API_ROUTES = {
   ADMIN_MONITORING_HEALTH: '/monitoring/health',
   // Cloudflare Analytics
   ADMIN_CLOUDFLARE_ANALYTICS: '/cloudflare/analytics',
-  // Security
-  ADMIN_SECURITY_METRICS: '/security/metrics',
-  ADMIN_SECURITY_CHECK_IP: '/security/check-ip',
-  ADMIN_SECURITY_SERVICES: '/security/services',
-  ADMIN_SECURITY_CERTIFICATES: '/security/certificates',
-  ADMIN_SECURITY_INCIDENTS: '/security/incidents',
-  ADMIN_SECURITY_COMPLIANCE: '/security/compliance',
-  ADMIN_SECURITY_MEASURES: '/security/measures',
   // Factory
   FACTORY_STATUS: '/factory/status',
   FACTORY_CONFIG: '/factory/config',
@@ -101,6 +88,93 @@ export function factoryRoute(opportunityId?: string, action?: 'approve' | 'rejec
   }
   return API_ROUTES.FACTORY_OPPORTUNITIES;
 }
+
+/**
+ * Canonical auth audit event types returned by GET /v1/admin/auth-audit.
+ * The list is what the backend actually emits — the filter dropdown and
+ * the "event type" column use this exact set.
+ */
+export const AUDIT_EVENT_TYPES = [
+  { value: 'login', label: 'Login' },
+  { value: 'logout', label: 'Logout' },
+  { value: 'mfa_enable', label: 'MFA enabled' },
+  { value: 'mfa_disable', label: 'MFA disabled' },
+  { value: 'mfa_challenge', label: 'MFA challenge' },
+  { value: 'mfa_failed', label: 'MFA failed' },
+  { value: 'sso_login', label: 'SSO login' },
+  { value: 'password_change', label: 'Password change' },
+  { value: 'password_reset', label: 'Password reset' },
+  { value: 'session_revoke', label: 'Session revoked' },
+  { value: 'api_key_create', label: 'API key created' },
+  { value: 'api_key_revoke', label: 'API key revoked' },
+  { value: 'ip_allowlist_create', label: 'IP allowlist entry added' },
+  { value: 'ip_allowlist_update', label: 'IP allowlist entry updated' },
+  { value: 'ip_allowlist_delete', label: 'IP allowlist entry removed' },
+  { value: 'siem_config_create', label: 'SIEM config created' },
+  { value: 'siem_config_update', label: 'SIEM config updated' },
+  { value: 'passkey_register', label: 'Passkey registered' },
+  { value: 'passkey_delete', label: 'Passkey deleted' },
+  { value: 'tenant_suspend', label: 'Tenant suspended' },
+  { value: 'user_create', label: 'User created' },
+  { value: 'user_update', label: 'User updated' },
+  { value: 'user_delete', label: 'User deleted' },
+] as const;
+
+export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number]['value'];
+
+/**
+ * MFA policy options exposed in the tenant settings UI. The string values
+ * are what the backend stores on tenant.mfa_policy; the labels are
+ * display-only.
+ */
+export const MFA_POLICY_OPTIONS = [
+  { value: 'disabled', label: 'Disabled' },
+  { value: 'optional', label: 'Optional' },
+  { value: 'required_admins', label: 'Required for admins' },
+  { value: 'required_all', label: 'Required for everyone' },
+] as const;
+
+export type MFAPolicyValue = (typeof MFA_POLICY_OPTIONS)[number]['value'];
+
+/**
+ * Default session policy applied to new tenants. Matches what the
+ * backend's defaults look like — keep these in lockstep with
+ * internal/storage/sql/sessions.go's createSession defaults.
+ */
+export const SESSION_POLICY_DEFAULTS = {
+  idle_timeout_minutes: 30,
+  absolute_timeout_minutes: 24 * 60,
+  mfa_reverify_interval_minutes: 4 * 60,
+  max_concurrent_sessions: 5,
+  ip_binding: 'none',
+} as const;
+
+/**
+ * SIEM destination types the admin SIEM integration supports. Kept in
+ * lockstep with internal/adapters/siem/sink.go's destination schemas.
+ */
+export const SIEM_DESTINATION_TYPES = [
+  { value: 'webhook', label: 'Generic webhook' },
+  { value: 'splunk_hec', label: 'Splunk HEC' },
+  { value: 'datadog_logs', label: 'Datadog Logs' },
+  { value: 's3', label: 'Amazon S3' },
+  { value: 'gcs', label: 'Google Cloud Storage' },
+] as const;
+
+export type SIEMDestinationType = (typeof SIEM_DESTINATION_TYPES)[number]['value'];
+
+/**
+ * SIEM event payload formats supported by the admin SIEM integration.
+ * Values are what the backend's SIEM adapter recognises.
+ */
+export const SIEM_FORMATS = [
+  { value: 'json', label: 'JSON (one event per line)' },
+  { value: 'cef', label: 'CEF (Common Event Format)' },
+  { value: 'leef', label: 'LEEF (Log Event Extended Format)' },
+  { value: 'syslog', label: 'Syslog RFC 5424' },
+] as const;
+
+export type SIEMFormatValue = (typeof SIEM_FORMATS)[number]['value'];
 
 export const SESSION = {
   TIMEOUT: parseInt(import.meta.env.VITE_SESSION_TIMEOUT || '1800000', 10),

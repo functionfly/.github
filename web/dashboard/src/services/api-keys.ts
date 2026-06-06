@@ -253,9 +253,18 @@ export const storeNewApiKey: (key: APIKeyCreateResponse) => void = (key) => {
       key,
       createdAt: new Date().toISOString(),
     });
-    storage.setItem(API_KEY_STORAGE_KEY, obfuscate(payload));
-  } catch (error) {
-    console.error('Failed to store API key:', error);
+    // SECURITY: We previously used base64 "obfuscation" which is trivially
+    // reversible. Now we XOR-encrypt with a session-scoped key derived from
+    // a random value kept in sessionStorage. This is not a replacement for
+    // the Vault (which uses AES-GCM with the user's passphrase), but it
+    // stops trivial inspection via DevTools and casual XSS payloads.
+    const sessionKey = getOrCreateSessionKey(storage);
+    const encrypted = xorEncrypt(payload, sessionKey);
+    storage.setItem(API_KEY_STORAGE_KEY, encrypted);
+  } catch {
+    // Do not log the full error — it may contain partial key fragments.
+    // eslint-disable-next-line no-console
+    console.error('Failed to persist newly created API key');
   }
 };
 
@@ -268,14 +277,34 @@ export const getStoredApiKey: () => {
     if (!storage) return null;
     const stored = storage.getItem(API_KEY_STORAGE_KEY);
     if (!stored) return null;
-    const deobfuscated = deobfuscate(stored);
-    const parsed = JSON.parse(deobfuscated);
+
+    // Try the new encrypted format first; fall back to legacy base64 for
+    // migration of in-flight values from the previous version.
+    let parsed: { key: APIKeyCreateResponse; createdAt: string } | null = null;
+    if (!stored.startsWith(OBFUSCATION_PREFIX)) {
+      const sessionKey = sessionStorage.getItem(API_KEY_SESSION_KEY);
+      if (sessionKey) {
+        const decrypted = xorDecrypt(stored, sessionKey);
+        if (decrypted) {
+          try {
+            parsed = JSON.parse(decrypted);
+          } catch {
+            parsed = null;
+          }
+        }
+      }
+    }
+    if (!parsed) {
+      // Legacy base64 path
+      const deobfuscated = deobfuscate(stored);
+      parsed = JSON.parse(deobfuscated);
+    }
 
     storage.removeItem(API_KEY_STORAGE_KEY);
-
     return parsed;
-  } catch (error) {
-    console.error('Failed to retrieve API key:', error);
+  } catch {
+    // eslint-disable-next-line no-console
+    console.error('Failed to retrieve stored API key');
     return null;
   }
 };
@@ -283,7 +312,69 @@ export const getStoredApiKey: () => {
 export const clearStoredApiKey: () => void = () => {
   try {
     localStorage.removeItem(API_KEY_STORAGE_KEY);
-  } catch (error) {
-    console.error('Failed to clear API key:', error);
+  } catch {
+    // eslint-disable-next-line no-console
+    console.error('Failed to clear stored API key');
   }
 };
+
+/*
+ * Session-scoped XOR encryption
+ * =============================
+ * This is a stop-gap defence against trivial DevTools inspection and
+ * opportunistic XSS payloads. It is NOT a substitute for the proper Vault
+ * (AES-GCM via Web Crypto). The XOR key is random per browser tab and lives
+ * in sessionStorage so it is cleared on tab close.
+ */
+
+const API_KEY_SESSION_KEY = 'ff_api_key_session_v1';
+
+function getOrCreateSessionKey(_storage: Storage): string {
+  let key = sessionStorage.getItem(API_KEY_SESSION_KEY);
+  if (!key) {
+    const bytes = new Uint8Array(32);
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      crypto.getRandomValues(bytes);
+    } else {
+      for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+    }
+    key = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+    sessionStorage.setItem(API_KEY_SESSION_KEY, key);
+  }
+  return key;
+}
+
+function xorEncrypt(plaintext: string, hexKey: string): string {
+  const key = hexToBytes(hexKey);
+  const data = new TextEncoder().encode(plaintext);
+  const out = new Uint8Array(data.length);
+  for (let i = 0; i < data.length; i++) {
+    out[i] = data[i] ^ key[i % key.length];
+  }
+  return btoa(String.fromCharCode(...out));
+}
+
+function xorDecrypt(b64: string, hexKey: string): string | null {
+  try {
+    const key = hexToBytes(hexKey);
+    const raw = atob(b64);
+    const data = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) data[i] = raw.charCodeAt(i);
+    const out = new Uint8Array(data.length);
+    for (let i = 0; i < data.length; i++) {
+      out[i] = data[i] ^ key[i % key.length];
+    }
+    return new TextDecoder().decode(out);
+  } catch {
+    return null;
+  }
+}
+
+function hexToBytes(hex: string): Uint8Array {
+  const len = hex.length / 2;
+  const out = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    out[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+  }
+  return out;
+}

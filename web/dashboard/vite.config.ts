@@ -1,7 +1,6 @@
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import sass from 'sass';
 import fs from 'fs';
 import path from 'path';
 import type { PluginOption } from 'vite';
@@ -115,10 +114,25 @@ export default defineConfig({
     },
     conditions: ['import', 'module', 'es2020', 'es2015', 'require'],
     mainFields: ['module', 'browser', 'main'],
+    // Force all React imports to resolve to the same instance, preventing the
+    // "multiple copies of React" bug caused by file:-protocol local packages.
+    dedupe: ['react', 'react-dom'],
   },
 
   optimizeDeps: {
-    include: ['three', '@react-three/fiber', '@react-three/drei', '@react-three/postprocessing'],
+    include: [
+      'react',
+      'react-dom',
+      'zustand',
+      'zustand/middleware/immer',
+      'immer',
+      'vanilla-cookieconsent',
+      'three',
+      '@react-three/fiber',
+      '@react-three/drei',
+      '@react-three/postprocessing',
+    ],
+    exclude: [],
   },
 
   server: {

@@ -193,7 +193,7 @@ ffly deploy --verbose
 **Cause:** You've hit a plan limit
 
 **Solutions:**
-- Free tier: 1 function, 100K requests/month
+- Free tier: 3 functions, 500 requests/month
 - Upgrade to Starter/Professional/Enterprise
 - Delete unused functions to free quota
 

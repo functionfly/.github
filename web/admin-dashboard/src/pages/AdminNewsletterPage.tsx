@@ -364,7 +364,7 @@ export function AdminNewsletterPage() {
           <Select
             options={statusOptions}
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(value) => setStatusFilter(value)}
           />
         </div>
         <Button variant="outline">
@@ -442,7 +442,7 @@ export function AdminNewsletterPage() {
               label="Recipient Segment"
               options={segmentOptions}
               value={newNewsletter.recipient_segment}
-              onChange={(e) => setNewNewsletter({ ...newNewsletter, recipient_segment: e.target.value })}
+              onChange={(value) => setNewNewsletter({ ...newNewsletter, recipient_segment: value })}
             />
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Content</label>

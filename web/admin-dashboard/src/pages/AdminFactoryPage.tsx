@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Activity,
@@ -53,6 +54,7 @@ type FactorySettingsForm = Partial<FactoryConfig>;
  * AdminFactoryPage - Main factory management page
  */
 export function AdminFactoryPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToastHelpers();
   const [activeTab, setActiveTab] = useState<FactoryTab>('status');

@@ -5,6 +5,7 @@
 
 import { RichTextEditor } from '@/components/ui/RichTextEditor';
 import { adminApiClient } from '@/lib/api/adminClient';
+import { logger } from '@/lib/monitoring/logger';
 import { blogSettingsStore, type BlogSettings } from '@/stores/blogSettingsStore';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BarChart3, FileText, FolderTree, Pencil, Plus, Settings, Trash2, X } from 'lucide-react';
@@ -18,14 +19,20 @@ interface BlogPost {
   slug: string;
   content: string;
   body?: unknown;
-  excerpt: string;
-  author: string;
+  description: string;
+  author: { name: string };
+  heroImage: { url?: string };
   tags: string[];
-  featured_image?: string | null;
-  is_published: boolean;
+  status: string;
   published_at?: string | null;
   created_at: string;
   updated_at: string;
+  is_published?: boolean;
+  publishedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  featured_image?: string | null;
+  excerpt?: string;
 }
 
 interface BlogCategory {
@@ -100,9 +107,9 @@ function BlogSettingsTab() {
         metaDescription: string;
       }>('/blog/settings');
       return {
-        blogTitle: res.blogTitle ?? 'FunctionFly Blog',
-        postsPerPage: res.postsPerPage ?? 10,
-        metaDescription: res.metaDescription ?? '',
+        blogTitle: res.data?.blogTitle ?? 'FunctionFly Blog',
+        postsPerPage: res.data?.postsPerPage ?? 10,
+        metaDescription: res.data?.metaDescription ?? '',
       } as BlogSettings;
     },
   });
@@ -263,21 +270,27 @@ function BlogPostsTab() {
       const res = await adminApiClient.get<{ data: BlogPost[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(
         '/blog/posts?limit=50'
       );
-      const posts: BlogPost[] = (res.data ?? []).map((p: BlogPost) => {
+      const posts: BlogPost[] = (res.data?.data ?? []).map((p: any) => {
         return {
           id: p.id,
           title: p.title,
           slug: p.slug,
-          content: typeof p.body === 'object' ? JSON.stringify(p.body) : p.body,
-          body: typeof p.body === 'object' ? p.body : null,
-          excerpt: p.description,
-          author: p.author?.name ?? 'Unknown',
-          tags: p.tags ?? [],
-          featured_image: p.heroImage?.url,
+          content: typeof p.body === 'object' && p.body !== null ? JSON.stringify(p.body) : (typeof p.content === 'string' ? p.content : ''),
+          body: typeof p.body === 'object' && p.body !== null ? p.body : null,
+          excerpt: p.description ?? '',
+          author: { name: typeof p.author === 'string' ? p.author : (p.author?.name ?? 'Unknown') },
+          tags: Array.isArray(p.tags) ? p.tags : [],
+          featured_image: typeof p.heroImage === 'object' && p.heroImage !== null ? (p.heroImage as { url?: string }).url : null,
           is_published: p.status === 'published',
-          published_at: p.publishedAt,
-          created_at: p.createdAt,
-          updated_at: p.updatedAt ?? p.createdAt,
+          published_at: p.published_at,
+          created_at: p.created_at,
+          updated_at: p.updated_at ?? p.created_at,
+          description: p.description ?? '',
+          heroImage: p.heroImage,
+          status: p.status,
+          publishedAt: p.published_at,
+          createdAt: p.created_at,
+          updatedAt: p.updated_at,
         };
       });
       return { posts, limit: 50, offset: 0 };
@@ -364,11 +377,9 @@ function BlogPostsTab() {
             setEditingPost(null);
           }}
           onSaved={() => {
-            console.log('onSaved called - invalidating queries and closing form');
             queryClient.invalidateQueries({ queryKey: ['admin-blog-posts'] });
             setShowForm(false);
             setEditingPost(null);
-            console.log('Form should now be closed');
           }}
         />
       )}
@@ -397,7 +408,9 @@ function BlogPostsTab() {
                 <tr key={post.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
                   <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{post.title}</td>
                   <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{post.slug}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{post.author}</td>
+                   <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                     {typeof post.author === 'string' ? post.author : post.author?.name ?? 'Unknown'}
+                   </td>
                   <td className="px-6 py-4 text-sm">
                     <span className={post.is_published ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}>
                       {post.is_published ? 'Published' : 'Draft'}
@@ -467,7 +480,7 @@ function PostForm({
   const [slug, setSlug] = useState(post?.slug ?? '');
   const [content, setContent] = useState(post?.content ?? '');
   const [excerpt, setExcerpt] = useState(post?.excerpt ?? '');
-  const [author, setAuthor] = useState(post?.author ?? '');
+  const [author, setAuthor] = useState(typeof post?.author === 'string' ? post.author : (post?.author?.name ?? ''));
   const [tagsStr, setTagsStr] = useState(Array.isArray(post?.tags) ? post.tags.join(', ') : '');
   const [isPublished, setIsPublished] = useState(post?.is_published ?? false);
   const [featuredImage, setFeaturedImage] = useState(post?.featured_image ?? '');
@@ -492,10 +505,10 @@ function PostForm({
       } else {
         setContent('{"type":"doc","content":[]}');
       }
-      setExcerpt(post.excerpt);
-      setAuthor(post.author);
+      setExcerpt(post.excerpt ?? '');
+      setAuthor(typeof post.author === 'string' ? post.author : (post.author?.name ?? 'Unknown'));
       setTagsStr(Array.isArray(post.tags) ? post.tags.join(', ') : '');
-      setIsPublished(post.is_published);
+      setIsPublished(post.is_published ?? false);
       setFeaturedImage(post.featured_image ?? '');
     }
   }, [post]);
@@ -506,7 +519,7 @@ function PostForm({
       onSaved();
     },
     onError: (error) => {
-      console.error('Create post error:', error);
+      logger.error('Create post error', { error });
       alert(`Failed to create post: ${error.message}`);
     },
   });
@@ -517,7 +530,7 @@ function PostForm({
       onSaved();
     },
     onError: (error) => {
-      console.error('Update post error:', error);
+      logger.error('Update post error', { error });
       alert(`Failed to update post: ${error.message}`);
     },
   });
@@ -575,21 +588,14 @@ function PostForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('1. Form submitted, post:', post?.id);
     if (post) {
-      console.log('2. Calling updateMutation.mutate');
       updateMutation.mutate(payload, {
-        onSuccess: (data) => {
-          console.log('3. Update success, data:', data);
-          onSaved();
-        },
-        onError: (err, variables, context) => {
-          console.error('3. Update error:', err, 'Response:', err.response?.data);
-          alert(`Failed to update post: ${err.message}`);
+        onError: (err: { message?: string } & { response?: { data?: unknown } }) => {
+          logger.error('Update post error', { error: err, response: err.response?.data });
+          alert(`Failed to update post: ${err.message ?? 'Unknown error'}`);
         }
       });
     } else {
-      console.log('2. Calling createMutation.mutate');
       createMutation.mutate(payload);
     }
   };

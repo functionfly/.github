@@ -307,7 +307,7 @@ function PricingCalculatorDemo() {
   const [plan, setPlan] = useState<'free' | 'developer' | 'professional' | 'enterprise'>('professional');
 
   const plans = {
-    free: { name: 'Free', basePrice: 0, includedInvocations: 100000 },
+    free: { name: 'Free', basePrice: 0, includedInvocations: 500 },
     developer: { name: 'Developer', basePrice: 9, includedInvocations: 1000000 },
     professional: { name: 'Professional', basePrice: 29, includedInvocations: 5000000 },
     enterprise: { name: 'Enterprise', basePrice: 99, includedInvocations: 25000000 }

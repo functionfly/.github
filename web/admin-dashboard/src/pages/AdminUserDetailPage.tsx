@@ -52,8 +52,7 @@ export function AdminUserDetailPage() {
   const updateMutation = useMutation({
     mutationFn: async (payload: { name?: string; email?: string; role?: string; plan?: string }) => {
       const res = await adminApiClient.patch<AdminUser>(`/users/${userId!}`, payload);
-      // res is AdminAPIResponse<AdminUser> = { data: AdminUser, success: boolean, ... }
-      return (res as { data?: AdminUser })?.data ?? res as AdminUser;
+      return (res as { data?: AdminUser }).data ?? (res as unknown as AdminUser);
     },
     onSuccess: (updated) => {
       if (updated) {

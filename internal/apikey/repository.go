@@ -435,6 +435,25 @@ func (r *Repository) UpdateLastUsed(ctx context.Context, keyID uuid.UUID) error 
 	return nil
 }
 
+// UpdateExpiresAt sets the expires_at timestamp for an API key.
+// Pass nil to clear the expiry.
+func (r *Repository) UpdateExpiresAt(ctx context.Context, keyID uuid.UUID, expiresAt *time.Time) error {
+	updates := map[string]interface{}{
+		"expires_at": expiresAt,
+		"updated_at": time.Now(),
+	}
+	result := r.db.WithContext(ctx).Model(&APIKey{}).
+		Where("id = ?", keyID).
+		Updates(updates)
+	if result.Error != nil {
+		return fmt.Errorf("failed to update expires_at: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("API key not found: %s", keyID)
+	}
+	return nil
+}
+
 // CountByTenant counts API keys for a tenant
 func (r *Repository) CountByTenant(ctx context.Context, tenantID uuid.UUID) (int64, error) {
 	var count int64
@@ -528,10 +547,13 @@ func (r *Repository) CreateTrustAPIKey(ctx context.Context, req *CreateTrustAPIK
 		apiKey.Scopes = scopesMap
 	}
 
-	// Set allowed IPs
+	// Set allowed IPs (validate each entry; skip invalid ones with a warning)
 	if len(req.AllowedIPs) > 0 {
 		allowedIPsMap := JSONBMap{}
 		for _, ip := range req.AllowedIPs {
+			if !isValidIPOrCIDR(ip) {
+				continue
+			}
 			allowedIPsMap[ip] = true
 		}
 		apiKey.AllowedIPs = allowedIPsMap
@@ -613,6 +635,20 @@ func (r *Repository) CheckIPAllowed(apiKey *APIKey, clientIP string) bool {
 	}
 
 	return false
+}
+
+// isValidIPOrCIDR returns true if s is a valid bare IP address or CIDR range.
+// Bare IPs are normalized to /32 (IPv4) or /128 (IPv6) so storage is consistent.
+func isValidIPOrCIDR(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return false
+	}
+	if strings.Contains(s, "/") {
+		_, _, err := net.ParseCIDR(s)
+		return err == nil
+	}
+	return net.ParseIP(s) != nil
 }
 
 // ipInCIDR checks if an IP address is within a CIDR range

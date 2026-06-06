@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useLoginForm } from '@/hooks/useAuthForms';
+import { trackEvent } from '@/lib/analytics';
 import { ADMIN_DASHBOARD_URL, getApiBaseUrl } from '@/lib/constants';
 import { isPlatformAdminRole, notifyAdminPanelAfterLogin } from '@/lib/platform-admin';
 import { cn } from '@/lib/utils';
@@ -39,6 +40,7 @@ async function fetchOAuthProviders(): Promise<OAuthProvider[]> {
 
 // Handle social login
 const handleSocialLogin = async (provider: string) => {
+  trackEvent('auth_oauth_clicked', { provider });
   try {
     const base = getApiBaseUrl();
     const response = await fetch(`${base}/v1/auth/oauth/url?provider=${provider}`);
@@ -149,10 +151,12 @@ export function LoginForm({
         ...data,
         ...(import.meta.env.PROD && recaptchaToken ? { recaptchaToken } : {}),
       };
+      trackEvent('auth_login_submitted');
       await login(loginData);
 
       // Check if MFA is required
       if (useAuthStore.getState().mfaRequired) {
+        trackEvent('auth_mfa_triggered');
         const redirectQuery = redirectTo ? `&redirect=${encodeURIComponent(redirectTo)}` : '';
         const adminQuery = openAdminAfterLogin ? '&admin=1' : '';
         navigate(
@@ -170,8 +174,10 @@ export function LoginForm({
         return;
       }
       notifyAdminPanelAfterLogin(u?.role);
+      trackEvent('auth_login_success');
       navigate(redirectTo ?? '/overview', { replace: true });
     } catch (err: unknown) {
+      trackEvent('auth_login_failed');
       // Handle MFA required - redirect to MFA challenge
       const error = err as Error & {
         status?: number;
@@ -367,7 +373,10 @@ export function LoginForm({
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={() => {
+                    trackEvent('auth_password_toggled');
+                    setShowPassword(!showPassword);
+                  }}
                   className="password-toggle absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded text-text-muted hover:text-text-primary hover:bg-bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >

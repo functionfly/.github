@@ -1,25 +1,25 @@
-import React, { useState } from "react";
-import {
-  FunctionCanvas,
-  type NodeData,
-} from "@functionfly/ui-graph";
-import {
-  GlassCard,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-  Badge,
-  cn,
-} from "@functionfly/ui-core";
+import { useStudioMemory } from "@/hooks/useStudio";
+import type { AgentMemory } from "@/types";
 import {
   AgentLifecyclePanel,
   AgentMemoryViewer,
   type AgentData,
 } from "@functionfly/ui-agent";
-import { useStudioMemory } from "@/hooks/useStudio";
-import type { AgentMemory } from "@/types";
-import { Brain, Database, Plus, Settings, X } from "lucide-react";
+import {
+  Badge,
+  cn,
+  GlassCard,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@functionfly/ui-core";
+import {
+  FunctionCanvas,
+  type NodeData,
+} from "@functionfly/ui-graph";
+import { Database, Plus, Settings } from "lucide-react";
+import { useState } from "react";
 
 interface CanvasPanelProps {
   canvasNodes: Array<{

@@ -1,14 +1,14 @@
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import {
+    Area,
+    AreaChart,
+    CartesianGrid,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
+} from "recharts";
 
 export interface UsageGraphDataPoint {
   time: string;
@@ -34,7 +34,7 @@ export function UsageGraph({
   // Don't render chart if no data
   if (!data || data.length === 0) {
     return (
-      <Card className={cn("border-theme bg-card", className)}>
+      <Card className={cn("card bg-card", className)}>
         {title && (
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold text-text-primary">
@@ -52,7 +52,7 @@ export function UsageGraph({
   }
 
   return (
-    <Card className={cn("border-theme bg-card", className)}>
+    <Card className={cn("card bg-card", className)}>
       {title && (
         <CardHeader className="pb-2">
           <CardTitle className="text-base font-semibold text-text-primary">

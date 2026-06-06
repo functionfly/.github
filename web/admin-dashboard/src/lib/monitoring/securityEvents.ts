@@ -5,6 +5,23 @@
 
 import { adminApiClient } from '@/lib/api/adminClient';
 
+// Small helper to build DOM elements with inline styles. Using DOM APIs keeps
+// the markup out of HTML strings so CSP doesn't need 'unsafe-inline' for the
+// React app, and so any future dynamic content cannot accidentally become
+// script injection.
+function el<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  options: { className?: string; styles?: Partial<CSSStyleDeclaration>; text?: string } = {}
+): HTMLElementTagNameMap[K] {
+  const node = document.createElement(tag);
+  if (options.className) node.className = options.className;
+  if (options.styles) {
+    Object.assign(node.style, options.styles);
+  }
+  if (options.text != null) node.textContent = options.text;
+  return node;
+}
+
 export type SecurityEventType =
   | 'login_success'
   | 'login_failed'
@@ -12,6 +29,7 @@ export type SecurityEventType =
   | 'session_expired'
   | 'mfa_verified'
   | 'mfa_failed'
+  | 'mfa_verify_failed'
   | 'mfa_required'
   | 'ip_blocked'
   | 'suspicious_activity'
@@ -112,48 +130,63 @@ export function showSessionTimeoutWarning(
   `;
 
   const card = document.createElement('div');
-  card.style.cssText = `
-    background: white;
-    padding: 24px;
-    border-radius: 12px;
-    max-width: 400px;
-    width: 90%;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  `;
+  Object.assign(card.style, {
+    background: 'white',
+    padding: '24px',
+    borderRadius: '12px',
+    maxWidth: '400px',
+    width: '90%',
+    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+  });
 
-  card.innerHTML = `
-    <h2 style="margin: 0 0 12px; font-size: 18px; font-weight: 600; color: #111;">
-      Session Expiring Soon
-    </h2>
-    <p style="margin: 0 0 20px; color: #666; font-size: 14px;">
-      Your session will expire in less than 1 minute due to inactivity.
-      Would you like to continue?
-    </p>
-    <div style="display: flex; gap: 12px;">
-      <button id="session-continue" style="
-        flex: 1;
-        padding: 10px 16px;
-        background: #2563eb;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-      ">Continue Session</button>
-      <button id="session-logout" style="
-        flex: 1;
-        padding: 10px 16px;
-        background: #f3f4f6;
-        color: #374151;
-        border: none;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-      ">Logout</button>
-    </div>
-  `;
+  const heading = el('h2', {
+    styles: { margin: '0 0 12px', fontSize: '18px', fontWeight: '600', color: '#111' },
+    text: 'Session Expiring Soon',
+  });
+  const body = el('p', {
+    styles: { margin: '0 0 20px', color: '#666', fontSize: '14px' },
+    text: 'Your session will expire in less than 1 minute due to inactivity. Would you like to continue?',
+  });
+
+  const continueBtn = el('button', {
+    styles: {
+      flex: '1',
+      padding: '10px 16px',
+      background: '#2563eb',
+      color: 'white',
+      border: 'none',
+      borderRadius: '6px',
+      fontSize: '14px',
+      fontWeight: '500',
+      cursor: 'pointer',
+    },
+    text: 'Continue Session',
+  });
+  continueBtn.id = 'session-continue';
+
+  const logoutBtn = el('button', {
+    styles: {
+      flex: '1',
+      padding: '10px 16px',
+      background: '#f3f4f6',
+      color: '#374151',
+      border: 'none',
+      borderRadius: '6px',
+      fontSize: '14px',
+      fontWeight: '500',
+      cursor: 'pointer',
+    },
+    text: 'Logout',
+  });
+  logoutBtn.id = 'session-logout';
+
+  const row = el('div', { styles: { display: 'flex', gap: '12px' } });
+  row.appendChild(continueBtn);
+  row.appendChild(logoutBtn);
+
+  card.appendChild(heading);
+  card.appendChild(body);
+  card.appendChild(row);
 
   overlay.appendChild(card);
   document.body.appendChild(overlay);
@@ -168,8 +201,8 @@ export function showSessionTimeoutWarning(
     onLogout();
   };
 
-  card.querySelector('#session-continue')?.addEventListener('click', handleContinue);
-  card.querySelector('#session-logout')?.addEventListener('click', handleLogout);
+  continueBtn.addEventListener('click', handleContinue);
+  logoutBtn.addEventListener('click', handleLogout);
 
   const timeoutId = setTimeout(handleLogout, timeoutMs);
 
@@ -202,47 +235,63 @@ export function showMFAReverificationPrompt(
   `;
 
   const card = document.createElement('div');
-  card.style.cssText = `
-    background: white;
-    padding: 24px;
-    border-radius: 12px;
-    max-width: 400px;
-    width: 90%;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  `;
+  Object.assign(card.style, {
+    background: 'white',
+    padding: '24px',
+    borderRadius: '12px',
+    maxWidth: '400px',
+    width: '90%',
+    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+  });
 
-  card.innerHTML = `
-    <h2 style="margin: 0 0 12px; font-size: 18px; font-weight: 600; color: #111;">
-      Re-verify Your Identity
-    </h2>
-    <p style="margin: 0 0 20px; color: #666; font-size: 14px;">
-      For your security, please verify your identity again to continue.
-    </p>
-    <div style="display: flex; gap: 12px;">
-      <button id="mfa-verify" style="
-        flex: 1;
-        padding: 10px 16px;
-        background: #2563eb;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-      ">Verify Now</button>
-      <button id="mfa-cancel" style="
-        flex: 1;
-        padding: 10px 16px;
-        background: #f3f4f6;
-        color: #374151;
-        border: none;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-      ">Cancel</button>
-    </div>
-  `;
+  const heading = el('h2', {
+    styles: { margin: '0 0 12px', fontSize: '18px', fontWeight: '600', color: '#111' },
+    text: 'Re-verify Your Identity',
+  });
+  const body = el('p', {
+    styles: { margin: '0 0 20px', color: '#666', fontSize: '14px' },
+    text: 'For your security, please verify your identity again to continue.',
+  });
+
+  const verifyBtn = el('button', {
+    styles: {
+      flex: '1',
+      padding: '10px 16px',
+      background: '#2563eb',
+      color: 'white',
+      border: 'none',
+      borderRadius: '6px',
+      fontSize: '14px',
+      fontWeight: '500',
+      cursor: 'pointer',
+    },
+    text: 'Verify Now',
+  });
+  verifyBtn.id = 'mfa-verify';
+
+  const cancelBtn = el('button', {
+    styles: {
+      flex: '1',
+      padding: '10px 16px',
+      background: '#f3f4f6',
+      color: '#374151',
+      border: 'none',
+      borderRadius: '6px',
+      fontSize: '14px',
+      fontWeight: '500',
+      cursor: 'pointer',
+    },
+    text: 'Cancel',
+  });
+  cancelBtn.id = 'mfa-cancel';
+
+  const row = el('div', { styles: { display: 'flex', gap: '12px' } });
+  row.appendChild(verifyBtn);
+  row.appendChild(cancelBtn);
+
+  card.appendChild(heading);
+  card.appendChild(body);
+  card.appendChild(row);
 
   overlay.appendChild(card);
   document.body.appendChild(overlay);
@@ -257,8 +306,8 @@ export function showMFAReverificationPrompt(
     onCancel();
   };
 
-  card.querySelector('#mfa-verify')?.addEventListener('click', handleVerify);
-  card.querySelector('#mfa-cancel')?.addEventListener('click', handleCancel);
+  verifyBtn.addEventListener('click', handleVerify);
+  cancelBtn.addEventListener('click', handleCancel);
 
   // Return cleanup function
   return () => {

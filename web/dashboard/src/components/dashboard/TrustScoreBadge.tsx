@@ -1,5 +1,5 @@
-import { Shield, CheckCircle, AlertTriangle, XCircle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AlertTriangle, CheckCircle, Info, Shield, XCircle } from "lucide-react";
 
 export type TrustLevel =
   | "excellent"
@@ -87,7 +87,7 @@ export function TrustScoreBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center font-medium rounded-full border border-theme",
+        "inline-flex items-center font-medium rounded-full border",
         config.textClass,
         config.bgClass,
         sizeClasses[size],

@@ -1,29 +1,45 @@
-import React from "react";
+import { useStudioAgents, useStudioGhost } from "@/hooks/useStudio";
 import {
-  GhostModeOrchestrator,
   AgentConversationTimeline,
+  GhostModeOrchestrator,
   MultiAgentConversationView,
 } from "@functionfly/ui-ghost";
-import { useStudioAgents } from "@/hooks/useStudio";
-import { Activity, Plus, X } from "lucide-react";
+import { Activity, Plus } from "lucide-react";
+import { useCallback } from "react";
 
 interface GhostBuild {
   id: string;
-  goal: string;
-  phase: "planning" | "building" | "complete" | "error";
+  goal?: string;
+  description?: string;
+  phase: "planning" | "provisioning" | "building" | "deploying" | "monitoring" | "complete" | "error" | "paused";
   progress: number;
-  startedAt: string;
-  updatedAt: string;
+  started_at?: string;
+  updated_at?: string;
+  current_task_id?: string;
+  human_approval_required?: boolean;
+  approval_type?: "schema" | "deployment" | "pr" | "infra";
+  tasks?: GhostTask[];
 }
 
 interface GhostTask {
   id: string;
   title: string;
   description?: string;
-  status: string;
-  logs?: Array<{ message: string }>;
-  updatedAt: string;
-  createdAt: string;
+  status: "pending" | "in_progress" | "awaiting_approval" | "approved" | "rejected" | "completed" | "failed";
+  phase?: string;
+  logs?: GhostLogEntry[];
+  started_at?: string;
+  createdAt?: string;
+  updated_at?: string;
+  updatedAt?: string;
+  completed_at?: string;
+}
+
+interface GhostLogEntry {
+  timestamp: string;
+  level: "info" | "warn" | "error" | "debug";
+  message: string;
+  metadata?: Record<string, unknown>;
 }
 
 interface GhostPanelProps {
@@ -35,6 +51,7 @@ interface GhostPanelProps {
 
 export function GhostPanel({ build, tasks, onCancelBuild, onCreateBuild }: GhostPanelProps) {
   const { agents: rawAgents } = useStudioAgents();
+  const { cancelBuild, approveTask, rejectTask, taskLogs } = useStudioGhost();
 
   const agents = rawAgents.map((agent) => ({
     id: agent.id,
@@ -66,13 +83,31 @@ export function GhostPanel({ build, tasks, onCancelBuild, onCreateBuild }: Ghost
     tags: [],
   }));
 
+  const handleCancel = useCallback(() => {
+    if (build?.id) {
+      cancelBuild.mutate(build.id);
+    }
+    onCancelBuild();
+  }, [build?.id, cancelBuild, onCancelBuild]);
+
+  const handleApproval = useCallback((type: "approve" | "reject", notes?: string) => {
+    if (!build?.id || !build.current_task_id) return;
+
+    if (type === "approve") {
+      approveTask.mutate({ buildId: build.id, taskId: build.current_task_id });
+    } else {
+      rejectTask.mutate({ buildId: build.id, taskId: build.current_task_id, reason: notes });
+    }
+  }, [build?.id, build?.current_task_id, approveTask, rejectTask]);
+
   return (
     <div className="p-3 space-y-4">
       {build ? (
         <>
           <GhostModeOrchestrator
             build={build}
-            onCancel={onCancelBuild}
+            onCancel={handleCancel}
+            onApproval={handleApproval}
           />
 
           <div className="border-t border-border-subtle pt-4">
@@ -88,16 +123,25 @@ export function GhostPanel({ build, tasks, onCancelBuild, onCreateBuild }: Ghost
                 agentRole: task.description || "Ghost Task",
                 type: task.status === "in_progress" ? "action" : "thought",
                 content: task.logs?.map((l) => l.message).join("\n") || task.title,
-                timestamp: task.updatedAt,
+                timestamp: task.updated_at,
               }))}
-              decisions={[]}
+              decisions={tasks
+                .filter((t) => t.status === "awaiting_approval")
+                .map((t) => ({
+                  id: t.id,
+                  taskId: t.id,
+                  taskTitle: t.title,
+                  description: t.description || "",
+                  status: "pending" as const,
+                  timestamp: t.updated_at,
+                }))}
             />
           </div>
 
           <div className="border-t border-border-subtle pt-4">
             <h4 className="text-xs font-medium mb-2">Multi-Agent Conversations</h4>
             <MultiAgentConversationView
-              conversations={agents.slice(0, 3).map((agent, i) => ({
+              conversations={agents.slice(0, 3).map((agent) => ({
                 agentId: agent.id,
                 agentName: agent.name,
                 agentRole: agent.role || "Agent",
@@ -108,7 +152,7 @@ export function GhostPanel({ build, tasks, onCancelBuild, onCreateBuild }: Ghost
                   agentRole: task.description || "Task",
                   type: "thought" as const,
                   content: task.logs?.map((l) => l.message).join("\n") || task.title,
-                  timestamp: task.updatedAt,
+                  timestamp: task.updated_at,
                 })),
               }))}
             />

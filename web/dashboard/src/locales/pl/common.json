@@ -961,7 +961,9 @@
     "gettingStarted": "Pierwsze kroki",
     "collapseSidebar": "Zwiń pasek boczny",
     "expandSidebar": "Rozwiń pasek boczny",
-    "commandPalette": "Paleta poleceń"
+    "commandPalette": "Paleta poleceń",
+    "brain": "Brain",
+    "connectors": "Connectors"
   },
   "notifCenter": {
     "title": "Notifications",

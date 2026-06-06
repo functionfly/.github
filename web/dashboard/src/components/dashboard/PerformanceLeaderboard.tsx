@@ -2,14 +2,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import {
-  ArrowDownRight,
-  ArrowUpRight,
-  Clock,
-  Flame,
-  Medal,
-  TrendingDown,
-  TrendingUp,
-  Zap,
+    ArrowDownRight,
+    ArrowUpRight,
+    Clock,
+    Flame,
+    Medal,
+    TrendingDown,
+    TrendingUp,
+    Zap,
 } from "lucide-react";
 
 export interface FunctionPerformance {
@@ -142,7 +142,7 @@ export function PerformanceLeaderboard({
   const hasData = functions.length > 0;
 
   return (
-    <Card className={cn("border-theme bg-card overflow-hidden", className)}>
+    <Card className={cn("overflow-hidden", className)}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium text-text-secondary">

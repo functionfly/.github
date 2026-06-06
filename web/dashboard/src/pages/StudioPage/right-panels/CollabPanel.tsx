@@ -1,20 +1,21 @@
-import React, { useMemo } from "react";
+import type { CollabEvent } from "@/api/studioCollab";
+import type { Collaborator } from "@functionfly/ui-collaboration";
 import {
+  AIHumanTaskBoard,
+  AsyncReviewTimeline,
+  CollaborativeGraphEditor,
+  CollaborativePromptEditor,
+  ConflictResolutionPanel,
+  LivePairProgrammingView,
+  RealtimeAnnotationSystem,
   SessionReplayViewer,
+  SharedExecutionView,
   SharedMemoryBoard,
   TeamActivityFeed,
-  CollaborativeGraphEditor,
-  ConflictResolutionPanel,
-  CollaborativePromptEditor,
-  AIHumanTaskBoard,
-  LivePairProgrammingView,
-  AsyncReviewTimeline,
-  RealtimeAnnotationSystem,
-  SharedExecutionView,
 } from "@functionfly/ui-collaboration";
-import type { Collaborator } from "@functionfly/ui-collaboration";
-import type { CollabEvent } from "@/api/studioCollab";
-import { Users, MessageSquare, GitBranch, AlertTriangle } from "lucide-react";
+import { AlertTriangle, Users } from "lucide-react";
+import { useMemo } from "react";
+import { CollabPanelSkeleton } from "../components/StudioPanelsSkeleton";
 
 interface PromptVersion {
   id: string;
@@ -128,6 +129,7 @@ interface CollabPanelProps {
   onEndPairSession?: (sessionId: string) => void;
   onUpdatePromptVersion?: (prompt: string, changes: string) => void;
   onRecordActivity?: (activity: { action: string; target: string; icon: string }) => void;
+  isLoading?: boolean;
 }
 
 export function CollabPanel({
@@ -147,8 +149,13 @@ export function CollabPanel({
   onEndPairSession,
   onUpdatePromptVersion,
   onRecordActivity,
+  isLoading,
 }: CollabPanelProps) {
   const hasConflicts = conflictsData && conflictsData.length > 0;
+
+  if (isLoading) {
+    return <CollabPanelSkeleton />;
+  }
 
   return (
     <div className="p-3 space-y-4">

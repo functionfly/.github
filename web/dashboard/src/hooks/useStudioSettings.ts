@@ -1,7 +1,7 @@
-import { useState, useCallback, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { studioSettingsApi, type StudioSettings } from '@/api/studioSettings';
 import { useThemeStore } from '@/stores/themeStore';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useState } from 'react';
 
 const STUDIO_SETTINGS_KEY = 'studio-settings';
 
@@ -12,7 +12,7 @@ const DEFAULT_SETTINGS: StudioSettings = {
   sidebar_position: 'left',
   compact_mode: false,
   animations_enabled: true,
-  transparency_enabled: true,
+  transparency_enabled: false,
   notification_level: 'all',
   sound_enabled: true,
   auto_save: true,
@@ -23,6 +23,19 @@ const DEFAULT_SETTINGS: StudioSettings = {
     line_numbers: true,
     word_wrap: false,
   },
+  // Privacy
+  usage_analytics_enabled: false,
+  crash_reports_enabled: true,
+  // Shortcuts
+  show_shortcut_hints: true,
+  // Performance
+  gpu_acceleration_enabled: true,
+  developer_tools_enabled: false,
+  memory_limit_mb: 0,
+  // Network
+  proxy_enabled: false,
+  proxy_url: '',
+  proxy_bypass: '',
 };
 
 export function useStudioSettings() {

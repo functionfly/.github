@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ShieldAlert } from 'lucide-react';
 import { SECURITY } from '@/lib/constants';
 import { checkAdminIPAccess } from '@/lib/security/adminSecurity';
+import { zeroTrustBlockedReason } from '@/lib/security/zeroTrust';
 import { useAdminAuthStore } from '@/stores/adminAuthStore';
 
 export function AdminSecurityGate({ children }: { children: React.ReactNode }) {
@@ -13,6 +14,19 @@ export function AdminSecurityGate({ children }: { children: React.ReactNode }) {
     let mounted = true;
 
     async function runChecks() {
+      // Zero Trust (Cloudflare Access) — soft client-side guard. The hard
+      // enforcement is at the Cloudflare edge; this is just so the user
+      // gets a clear message instead of a hung app shell if the bundle
+      // somehow loads without the CF_Authorization cookie.
+      const ztReason = zeroTrustBlockedReason();
+      if (ztReason) {
+        if (mounted) {
+          setBlockedReason(ztReason);
+          setChecking(false);
+        }
+        return;
+      }
+
       if (!SECURITY.ENABLE_IP_WHITELIST) {
         setIpAllowed(true, undefined);
         if (mounted) setChecking(false);
@@ -50,6 +64,7 @@ export function AdminSecurityGate({ children }: { children: React.ReactNode }) {
   }
 
   if (blockedReason) {
+    const isCloudflareAccess = blockedReason === 'cloudflare_access_required';
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white border border-red-200 rounded-lg p-6">
@@ -58,7 +73,9 @@ export function AdminSecurityGate({ children }: { children: React.ReactNode }) {
             <h1 className="text-lg font-semibold text-gray-900">Access blocked</h1>
           </div>
           <p className="mt-4 text-sm text-gray-700">
-            This admin session was blocked by security policy.
+            {isCloudflareAccess
+              ? 'This admin area is protected by Cloudflare Access. Please sign in through the access page that opened in a new tab or window, then return to this page.'
+              : 'This admin session was blocked by security policy.'}
           </p>
           <p className="mt-2 text-xs text-gray-500">Reason: {blockedReason}</p>
         </div>

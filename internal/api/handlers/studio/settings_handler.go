@@ -93,22 +93,35 @@ func (h *SettingsHandler) HandleResetSettings(w http.ResponseWriter, r *http.Req
 
 func getDefaultSettings() storage.Settings {
 	return storage.Settings{
-		Theme:             "dark",
-		PrimaryColor:      "orange",
-		FontSize:          14,
-		SidebarPosition:   "left",
-		CompactMode:       false,
-		AnimationsEnabled: true,
-		Transparency:      true,
-		NotificationLevel: "all",
-		SoundEnabled:      true,
-		AutoSave:          true,
-		AutoSaveInterval:  30,
+		Theme:               "dark",
+		PrimaryColor:       "orange",
+		FontSize:           14,
+		SidebarPosition:    "left",
+		CompactMode:        false,
+		AnimationsEnabled:  true,
+		Transparency:       false,
+		NotificationLevel:  "all",
+		SoundEnabled:       true,
+		AutoSave:           true,
+		AutoSaveInterval:   30,
 		EditorFeatures: storage.EditorFeatures{
 			BracketMatching: true,
 			Minimap:         true,
 			LineNumbers:     true,
 			WordWrap:        false,
 		},
+		// Privacy
+		UsageAnalyticsEnabled: false,
+		CrashReportsEnabled:   true,
+		// Shortcuts
+		ShowShortcutHints: true,
+		// Performance
+		GPUAccelerationEnabled: true,
+		DeveloperToolsEnabled:  false,
+		MemoryLimitMB:          0,
+		// Network
+		ProxyEnabled: false,
+		ProxyURL:     "",
+		ProxyBypass:  "",
 	}
 }

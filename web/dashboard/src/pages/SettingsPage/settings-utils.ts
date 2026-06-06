@@ -48,6 +48,7 @@ export const VALID_TABS = [
   'security',
   'privacy',
   'platform',
+  'integrations',
   'github',
 ] as const;
 export type SettingsTabValue = (typeof VALID_TABS)[number];

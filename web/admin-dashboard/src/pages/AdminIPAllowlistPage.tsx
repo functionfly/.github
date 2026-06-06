@@ -448,7 +448,7 @@ export function AdminIPAllowlistPage() {
                                     {entry.ip_address}
                                   </span>
                                   <button
-                                    onClick={() => copyToClipboard(entry.ip_address)}
+                                    onClick={() => copyToClipboard(entry.ip_address ?? '')}
                                     className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                                   >
                                     <Copy className="w-3 h-3" />
@@ -456,7 +456,7 @@ export function AdminIPAllowlistPage() {
                                 </div>
                               </td>
                               <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">
-                                {entry.cidr ? `/${entry.cidr}` : '-'}
+                                {entry.cidr !== undefined ? `/${String(entry.cidr)}` : '-'}
                               </td>
                               <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">
                                 {entry.description || '-'}
@@ -700,7 +700,7 @@ export function AdminIPAllowlistPage() {
                 <input
                   type="number"
                   value={entryData.cidr || ''}
-                  onChange={(e) => setEntryData({ ...entryData, cidr: e.target.value ? parseInt(e.target.value) : undefined })}
+                  onChange={(e) => setEntryData({ ...entryData, cidr: e.target.value || undefined })}
                   placeholder="e.g., 24"
                   min={0}
                   max={128}

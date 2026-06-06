@@ -1,12 +1,12 @@
-import React from "react";
+import { useStudioRuntimes } from "@/hooks/useStudio";
+import type { RuntimeSelection } from "@functionfly/ui-runtime";
 import {
-  RuntimeTargetSelector,
   RuntimeCapabilityMatrix,
+  RuntimeTargetSelector,
   WasmExecutionPanel,
 } from "@functionfly/ui-runtime";
-import type { RuntimeSelection } from "@functionfly/ui-runtime";
-import { Cpu, Zap, Shield, Globe } from "lucide-react";
-import { useStudioRuntimes } from "@/hooks/useStudio";
+import { Cpu, Globe, Shield, Zap } from "lucide-react";
+import { RuntimePanelSkeleton } from "../components/StudioPanelsSkeleton";
 
 interface RuntimePanelProps {
   selectedRuntime: RuntimeSelection | null;
@@ -26,6 +26,10 @@ const CAPABILITIES = [
 export function RuntimePanel({ selectedRuntime, onSelect }: RuntimePanelProps) {
   const { runtimes, isLoading, error } = useStudioRuntimes();
 
+  if (isLoading) {
+    return <RuntimePanelSkeleton />;
+  }
+
   return (
     <div className="p-3 space-y-4">
       <div className="border-b border-border-subtle pb-3">
@@ -33,11 +37,7 @@ export function RuntimePanel({ selectedRuntime, onSelect }: RuntimePanelProps) {
         <p className="text-xs text-text-muted">Choose execution environment for your agents</p>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin size-5 border-2 border-brand-500 border-t-transparent rounded-full" />
-        </div>
-      ) : error ? (
+      {error ? (
         <div className="text-xs text-error px-2 py-1 bg-error/10 rounded">
           Failed to load runtimes
         </div>

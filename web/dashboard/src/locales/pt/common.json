@@ -961,7 +961,9 @@
     "gettingStarted": "Primeiros passos",
     "collapseSidebar": "Recolher barra lateral",
     "expandSidebar": "Expandir barra lateral",
-    "commandPalette": "Paleta de comandos"
+    "commandPalette": "Paleta de comandos",
+    "brain": "Brain",
+    "connectors": "Connectors"
   },
   "notifCenter": {
     "title": "Notifications",

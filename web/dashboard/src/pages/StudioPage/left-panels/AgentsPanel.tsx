@@ -1,4 +1,5 @@
-import React from "react";
+import { useStudioAgents, useStudioMemory } from "@/hooks/useStudio";
+import type { AgentMemory } from "@/types";
 import {
   AgentDock,
   AgentLifecyclePanel,
@@ -7,9 +8,7 @@ import {
   AgentRuntimeInspector,
   type AgentData,
 } from "@functionfly/ui-agent";
-import { GlassCard } from "@functionfly/ui-core";
-import { useStudioAgents, useStudioMemory } from "@/hooks/useStudio";
-import type { AgentMemory } from "@/types";
+import { AgentsPanelSkeleton } from "../components/StudioPanelsSkeleton";
 
 interface AgentsPanelProps {
   selectedAgentId: string | null;
@@ -64,6 +63,10 @@ export function AgentsPanel({
   }));
 
   const selectedAgent = agents.find((a) => a.id === selectedAgentId) || null;
+
+  if (isLoadingAgents) {
+    return <AgentsPanelSkeleton />;
+  }
 
   return (
     <div className="flex-1 overflow-y-auto">

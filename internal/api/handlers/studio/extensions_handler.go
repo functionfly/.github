@@ -4,10 +4,31 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
+
+// extensionDeprecationSunset is the date the extension_registry API
+// is removed. Clients should migrate to /plugins before this date.
+// See docs/PLUGIN_MIGRATION.md.
+var extensionDeprecationSunset = time.Date(2026, 7, 6, 0, 0, 0, 0, time.UTC)
+
+// markExtensionDeprecation sets the deprecation response headers on
+// every response from the legacy extension_registry endpoints and
+// logs a one-line warning per call so we can track laggards in
+// staging. The Sunset header follows RFC 8594.
+func markExtensionDeprecation(w http.ResponseWriter, route string) {
+	w.Header().Set("Deprecation", "true")
+	w.Header().Set("Sunset", extensionDeprecationSunset.Format(http.TimeFormat))
+	w.Header().Set("X-Deprecated-Use", "/plugins")
+	w.Header().Set("Link", `</docs/PLUGIN_MIGRATION.md>; rel="deprecation"`)
+	logrus.WithFields(logrus.Fields{
+		"route":  route,
+		"sunset": extensionDeprecationSunset.Format(time.RFC3339),
+	}).Warn("extension_registry: deprecated endpoint called; clients must migrate to /plugins")
+}
 
 // ExtensionsHandler handles studio extension HTTP requests
 type ExtensionsHandler struct {
@@ -21,6 +42,7 @@ func NewExtensionsHandler(extRepo *ExtensionRepository) *ExtensionsHandler {
 
 // HandleListExtensions handles GET /v1/extensions
 func (h *ExtensionsHandler) HandleListExtensions(w http.ResponseWriter, r *http.Request) {
+	markExtensionDeprecation(w, "GET /v1/extensions")
 	tenantID := getTenantID(r)
 	if tenantID == "" {
 		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
@@ -58,11 +80,11 @@ func (h *ExtensionsHandler) HandleListExtensions(w http.ResponseWriter, r *http.
 	}
 
 	params := ListExtensionsParams{
-		TenantID:  tenantID,
-		Category:  categoryPtr,
-		Status:    statusPtr,
-		Limit:     limit,
-		Offset:    offset,
+		TenantID: tenantID,
+		Category: categoryPtr,
+		Status:   statusPtr,
+		Limit:    limit,
+		Offset:   offset,
 	}
 
 	extensions, err := h.extRepo.ListExtensions(r.Context(), params)
@@ -77,6 +99,7 @@ func (h *ExtensionsHandler) HandleListExtensions(w http.ResponseWriter, r *http.
 
 // HandleInstallExtension handles POST /v1/extensions/{id}/install
 func (h *ExtensionsHandler) HandleInstallExtension(w http.ResponseWriter, r *http.Request) {
+	markExtensionDeprecation(w, "POST /v1/extensions/{id}/install")
 	tenantID := getTenantID(r)
 	if tenantID == "" {
 		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
@@ -128,6 +151,7 @@ func (h *ExtensionsHandler) HandleInstallExtension(w http.ResponseWriter, r *htt
 
 // HandleUninstallExtension handles DELETE /v1/extensions/{id}
 func (h *ExtensionsHandler) HandleUninstallExtension(w http.ResponseWriter, r *http.Request) {
+	markExtensionDeprecation(w, "DELETE /v1/extensions/{id}")
 	tenantID := getTenantID(r)
 	if tenantID == "" {
 		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
@@ -151,6 +175,7 @@ func (h *ExtensionsHandler) HandleUninstallExtension(w http.ResponseWriter, r *h
 
 // HandleEnableExtension handles POST /v1/extensions/{id}/enable
 func (h *ExtensionsHandler) HandleEnableExtension(w http.ResponseWriter, r *http.Request) {
+	markExtensionDeprecation(w, "POST /v1/extensions/{id}/enable")
 	tenantID := getTenantID(r)
 	if tenantID == "" {
 		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
@@ -174,6 +199,7 @@ func (h *ExtensionsHandler) HandleEnableExtension(w http.ResponseWriter, r *http
 
 // HandleDisableExtension handles POST /v1/extensions/{id}/disable
 func (h *ExtensionsHandler) HandleDisableExtension(w http.ResponseWriter, r *http.Request) {
+	markExtensionDeprecation(w, "POST /v1/extensions/{id}/disable")
 	tenantID := getTenantID(r)
 	if tenantID == "" {
 		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
@@ -197,6 +223,7 @@ func (h *ExtensionsHandler) HandleDisableExtension(w http.ResponseWriter, r *htt
 
 // HandleConfigureExtension handles PUT /v1/extensions/{id}/config
 func (h *ExtensionsHandler) HandleConfigureExtension(w http.ResponseWriter, r *http.Request) {
+	markExtensionDeprecation(w, "PUT /v1/extensions/{id}/config")
 	tenantID := getTenantID(r)
 	if tenantID == "" {
 		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
@@ -237,6 +264,7 @@ func (h *ExtensionsHandler) HandleConfigureExtension(w http.ResponseWriter, r *h
 
 // HandleListHooks handles GET /v1/extensions/hooks
 func (h *ExtensionsHandler) HandleListHooks(w http.ResponseWriter, r *http.Request) {
+	markExtensionDeprecation(w, "GET /v1/extensions/hooks")
 	tenantID := getTenantID(r)
 	if tenantID == "" {
 		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")

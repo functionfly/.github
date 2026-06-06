@@ -6,7 +6,8 @@ import { PluginSandboxInspector } from "./PluginSandboxInspector";
 import { PluginVersionManager } from "./PluginVersionManager";
 import { PluginTelemetryPanel } from "./PluginTelemetryPanel";
 import { PluginUpdateCenter } from "./PluginUpdateCenter";
-import { usePlugins, useInstallPlugin, useEnablePlugin, useDisablePlugin, useConfigurePlugin, type Plugin } from "@/hooks/usePlugin";
+import { usePlugins, useInstallPlugin, useEnablePlugin, useDisablePlugin, useConfigurePlugin, useCheckRateLimit, type Plugin } from "@/hooks/usePlugin";
+import { marketplaceApi } from "@/api/marketplace";
 import { Spinner, GlassCard, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@functionfly/ui-core";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { ConfigurePluginDialog } from "./ConfigurePluginDialog";
@@ -35,6 +36,7 @@ export function PluginManager() {
   const enableMutation = useEnablePlugin();
   const disableMutation = useDisablePlugin();
   const configureMutation = useConfigurePlugin();
+  const rateLimitCheck = useCheckRateLimit();
 
   const plugins = data?.plugins || [];
   const enabledPlugins = plugins.filter((p: Plugin) => p.status === "enabled");
@@ -42,7 +44,33 @@ export function PluginManager() {
   const errorPlugins = plugins.filter((p: Plugin) => p.status === "error");
 
   const handleInstallPlugin = async (pluginData: any) => {
-    await installMutation.mutateAsync(pluginData);
+    try {
+      const rateLimitResult = await rateLimitCheck.mutateAsync({
+        ip: "127.0.0.1",
+        endpoint: "plugins/install",
+      });
+      if (rateLimitResult.enabled === false || rateLimitResult.allowed !== false) {
+        const extensionId = pluginData?.extension_id;
+        if (extensionId) {
+          await marketplaceApi.install(extensionId);
+        } else {
+          await installMutation.mutateAsync(pluginData);
+        }
+      } else {
+        toast.error("Rate limit exceeded. Please try again later.");
+      }
+    } catch {
+      const extensionId = pluginData?.extension_id;
+      if (extensionId) {
+        try {
+          await marketplaceApi.install(extensionId);
+        } catch {
+          await installMutation.mutateAsync(pluginData);
+        }
+      } else {
+        await installMutation.mutateAsync(pluginData);
+      }
+    }
   };
 
   const handleConfigurePlugin = (plugin: Plugin) => {

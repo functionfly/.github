@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { GlassCard, Badge, Button } from "@functionfly/ui-core";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
@@ -8,6 +8,8 @@ import {
   CheckCircle2, XCircle, Clock, Archive, Trash2, Settings, Volume2,
   MessageSquare, Bug, Zap, Users, Bookmark
 } from "lucide-react";
+import { usePlugins } from "@/hooks/usePlugin";
+import { useExtensionUpdates } from "@/hooks/useMarketplace";
 
 interface Notification {
   id: string;
@@ -20,26 +22,7 @@ interface Notification {
   actionUrl?: string;
 }
 
-const mockNotifications: Notification[] = [
-  {
-    id: "n1",
-    type: "success",
-    title: "Graph execution completed",
-    message: "Customer Churn Prediction graph finished successfully in 2.4s",
-    timestamp: new Date(Date.now() - 300000),
-    read: false,
-    category: "workflow",
-    actionUrl: "/graphs/customer-churn",
-  },
-  {
-    id: "n2",
-    type: "info",
-    title: "Plugin update available",
-    message: "GitHub Integration v2.1.0 is available with bug fixes",
-    timestamp: new Date(Date.now() - 3600000),
-    read: false,
-    category: "plugin",
-  },
+const staticNotifications: Notification[] = [
   {
     id: "n3",
     type: "warning",
@@ -88,11 +71,35 @@ const notificationSettings = {
 
 export function GlobalNotificationCenter() {
   const [activeTab, setActiveTab] = useState("all");
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>(staticNotifications);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [settings, setSettings] = useState(notificationSettings);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const { data: pluginsData } = usePlugins();
+  const installedPlugins = useMemo(
+    () => (pluginsData?.plugins || []).map(p => ({ id: p.id, name: p.name, version: p.version })),
+    [pluginsData]
+  );
+  const { updates } = useExtensionUpdates(installedPlugins);
+
+  const updateNotifications: Notification[] = useMemo(() => {
+    return updates.map((u) => ({
+      id: `update-${u.installed_plugin_id}`,
+      type: "info" as const,
+      title: `Plugin update available`,
+      message: `Version ${u.latest_version} is available (you have ${u.installed_version})`,
+      timestamp: new Date(),
+      read: false,
+      category: "plugin" as const,
+    }));
+  }, [updates]);
+
+  const allNotifications = useMemo(
+    () => [...updateNotifications, ...notifications],
+    [updateNotifications, notifications]
+  );
+
+  const unreadCount = allNotifications.filter((n) => !n.read).length;
 
   const markAsRead = (id: string) => {
     setNotifications((prev) =>
@@ -112,7 +119,7 @@ export function GlobalNotificationCenter() {
     setNotifications([]);
   };
 
-  const filteredNotifications = notifications.filter((n) => {
+  const filteredNotifications = allNotifications.filter((n) => {
     if (activeTab === "all") return true;
     if (activeTab === "unread") return !n.read;
     return n.category === activeTab;

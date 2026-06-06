@@ -24,10 +24,10 @@ CREATE TABLE IF NOT EXISTS mfa_enrollments (
     CONSTRAINT unique_user_method UNIQUE (user_id, method) -- One enrollment per method per user
 );
 
-CREATE INDEX idx_mfa_enrollments_user_id ON mfa_enrollments(user_id);
-CREATE INDEX idx_mfa_enrollments_tenant_id ON mfa_enrollments(tenant_id);
-CREATE INDEX idx_mfa_enrollments_status ON mfa_enrollments(status);
-CREATE INDEX idx_mfa_enrollments_enrolled_at ON mfa_enrollments(enrolled_at);
+CREATE INDEX IF NOT EXISTS idx_mfa_enrollments_user_id ON mfa_enrollments(user_id);
+CREATE INDEX IF NOT EXISTS idx_mfa_enrollments_tenant_id ON mfa_enrollments(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_mfa_enrollments_status ON mfa_enrollments(status);
+CREATE INDEX IF NOT EXISTS idx_mfa_enrollments_enrolled_at ON mfa_enrollments(enrolled_at);
 
 -- Table to track individual backup codes (for one-time use tracking)
 CREATE TABLE IF NOT EXISTS mfa_backup_codes (
@@ -39,8 +39,8 @@ CREATE TABLE IF NOT EXISTS mfa_backup_codes (
     CONSTRAINT unique_enrollment_code UNIQUE (enrollment_id, code_hash)
 );
 
-CREATE INDEX idx_mfa_backup_codes_enrollment_id ON mfa_backup_codes(enrollment_id);
-CREATE INDEX idx_mfa_backup_codes_used_at ON mfa_backup_codes(used_at) WHERE used_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_mfa_backup_codes_enrollment_id ON mfa_backup_codes(enrollment_id);
+CREATE INDEX IF NOT EXISTS idx_mfa_backup_codes_used_at ON mfa_backup_codes(used_at) WHERE used_at IS NULL;
 
 -- Trigger to update updated_at on mfa_enrollments
 CREATE OR REPLACE FUNCTION update_mfa_enrollment_updated_at()

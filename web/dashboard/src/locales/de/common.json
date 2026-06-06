@@ -961,7 +961,9 @@
     "gettingStarted": "Erste Schritte",
     "collapseSidebar": "Seitenleiste einklappen",
     "expandSidebar": "Seitenleiste ausklappen",
-    "commandPalette": "Befehlspalette"
+    "commandPalette": "Befehlspalette",
+    "brain": "Brain",
+    "connectors": "Connectors"
   },
   "notifCenter": {
     "title": "Notifications",

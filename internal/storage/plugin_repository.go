@@ -14,12 +14,12 @@ import (
 type PluginType string
 
 const (
-	PluginTypeUI            PluginType = "ui"
-	PluginTypeGraph         PluginType = "graph"
-	PluginTypeAITool        PluginType = "ai_tool"
-	PluginTypeRuntime       PluginType = "runtime"
+	PluginTypeUI             PluginType = "ui"
+	PluginTypeGraph          PluginType = "graph"
+	PluginTypeAITool         PluginType = "ai_tool"
+	PluginTypeRuntime        PluginType = "runtime"
 	PluginTypeInfrastructure PluginType = "infrastructure"
-	PluginTypeMarketplace   PluginType = "marketplace"
+	PluginTypeMarketplace    PluginType = "marketplace"
 )
 
 type PluginStatus string
@@ -28,104 +28,117 @@ const (
 	PluginStatusEnabled  PluginStatus = "enabled"
 	PluginStatusDisabled PluginStatus = "disabled"
 	PluginStatusError    PluginStatus = "error"
-	PluginStatusPaused    PluginStatus = "paused"
+	PluginStatusPaused   PluginStatus = "paused"
 )
 
 type SandboxTier string
 
 const (
-	SandboxTierWASM      SandboxTier = "wasm"
-	SandboxTierWorker    SandboxTier = "worker"
-	SandboxTierMicroVM   SandboxTier = "microvm"
+	SandboxTierWASM       SandboxTier = "wasm"
+	SandboxTierWorker     SandboxTier = "worker"
+	SandboxTierMicroVM    SandboxTier = "microvm"
 	SandboxTierEnterprise SandboxTier = "enterprise"
 )
 
 type Plugin struct {
-	ID            string            `json:"id"`
-	TenantID      string            `json:"tenant_id"`
+	ID            string                 `json:"id"`
+	TenantID      string                 `json:"tenant_id"`
 	Manifest      map[string]interface{} `json:"manifest"`
-	PluginType    PluginType        `json:"plugin_type"`
-	Name          string            `json:"name"`
-	Version       string            `json:"version"`
-	Description   string            `json:"description,omitempty"`
-	AuthorName    string            `json:"author_name"`
-	AuthorEmail   string            `json:"author_email,omitempty"`
-	AuthorWebsite string            `json:"author_website,omitempty"`
-	Category      string            `json:"category"`
-	Status        PluginStatus      `json:"status"`
-	IconURL       string            `json:"icon_url,omitempty"`
-	HomepageURL   string            `json:"homepage_url,omitempty"`
-	RepositoryURL string            `json:"repository_url,omitempty"`
-	License       string            `json:"license,omitempty"`
-	SizeBytes     int               `json:"size_bytes"`
-	Signature     string            `json:"signature,omitempty"`
-	Verified      bool              `json:"verified"`
-	Config        map[string]string `json:"config,omitempty"`
+	PluginType    PluginType             `json:"plugin_type"`
+	Name          string                 `json:"name"`
+	Version       string                 `json:"version"`
+	Description   string                 `json:"description,omitempty"`
+	AuthorName    string                 `json:"author_name"`
+	AuthorEmail   string                 `json:"author_email,omitempty"`
+	AuthorWebsite string                 `json:"author_website,omitempty"`
+	Category      string                 `json:"category"`
+	Status        PluginStatus           `json:"status"`
+	IconURL       string                 `json:"icon_url,omitempty"`
+	HomepageURL   string                 `json:"homepage_url,omitempty"`
+	RepositoryURL string                 `json:"repository_url,omitempty"`
+	License       string                 `json:"license,omitempty"`
+	SizeBytes     int                    `json:"size_bytes"`
+	Signature     string                 `json:"signature,omitempty"`
+	Verified      bool                   `json:"verified"`
+	Config        map[string]string      `json:"config,omitempty"`
 	Metadata      map[string]interface{} `json:"metadata,omitempty"`
-	InstalledAt   time.Time         `json:"installed_at"`
-	UpdatedAt     time.Time         `json:"updated_at"`
-	EnabledAt     *time.Time        `json:"enabled_at,omitempty"`
-	ErrorMessage  *string           `json:"error,omitempty"`
+	InstalledAt   time.Time              `json:"installed_at"`
+	UpdatedAt     time.Time              `json:"updated_at"`
+	EnabledAt     *time.Time             `json:"enabled_at,omitempty"`
+	ErrorMessage  *string                `json:"error,omitempty"`
 }
 
 type PluginVersion struct {
-	ID         string    `json:"id"`
-	PluginID   string    `json:"plugin_id"`
-	Version    string    `json:"version"`
-	Changelog  string    `json:"changelog,omitempty"`
-	Manifest   map[string]interface{} `json:"manifest"`
-	SizeBytes  int       `json:"size_bytes"`
-	Signature  string    `json:"signature,omitempty"`
-	ReleaseAt  time.Time `json:"release_at"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID        string                 `json:"id"`
+	PluginID  string                 `json:"plugin_id"`
+	Version   string                 `json:"version"`
+	Changelog string                 `json:"changelog,omitempty"`
+	Manifest  map[string]interface{} `json:"manifest"`
+	SizeBytes int                    `json:"size_bytes"`
+	Signature string                 `json:"signature,omitempty"`
+	ReleaseAt time.Time              `json:"release_at"`
+	CreatedAt time.Time              `json:"created_at"`
 }
 
 type PluginPermission struct {
-	ID              string     `json:"id"`
-	PluginID        string     `json:"plugin_id"`
-	PermissionType  string     `json:"permission_type"`
-	PermissionAction string    `json:"permission_action"`
-	Resource        string     `json:"resource,omitempty"`
-	Granted         bool       `json:"granted"`
-	GrantedAt       *time.Time `json:"granted_at,omitempty"`
-	GrantedBy       *string    `json:"granted_by,omitempty"`
-	ExpiresAt       *time.Time `json:"expires_at,omitempty"`
-	CreatedAt       time.Time  `json:"created_at"`
+	ID               string     `json:"id"`
+	PluginID         string     `json:"plugin_id"`
+	PermissionType   string     `json:"permission_type"`
+	PermissionAction string     `json:"permission_action"`
+	Resource         string     `json:"resource,omitempty"`
+	Granted          bool       `json:"granted"`
+	GrantedAt        *time.Time `json:"granted_at,omitempty"`
+	GrantedBy        *string    `json:"granted_by,omitempty"`
+	ExpiresAt        *time.Time `json:"expires_at,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
 }
 
 type PluginSandbox struct {
-	ID                string     `json:"id"`
-	PluginID          string     `json:"plugin_id"`
-	Tier              SandboxTier `json:"tier"`
-	CPULimit          float64    `json:"cpu_limit"`
-	MemoryLimitMB     int        `json:"memory_limit_mb"`
-	TimeoutSeconds    int        `json:"timeout_seconds"`
-	NetworkIsolated   bool       `json:"network_isolated"`
-	FilesystemScope   string     `json:"filesystem_scope"`
-	MaxInstances      int        `json:"max_instances"`
-	EnvVars           map[string]string `json:"env_vars,omitempty"`
-	AllowedDomains    []string   `json:"allowed_domains,omitempty"`
-	BlockedDomains    []string   `json:"blocked_domains,omitempty"`
-	RateLimitRPM      *int       `json:"rate_limit_rpm,omitempty"`
-	CreatedAt         time.Time  `json:"created_at"`
-	UpdatedAt         time.Time  `json:"updated_at"`
+	ID              string            `json:"id"`
+	PluginID        string            `json:"plugin_id"`
+	Tier            SandboxTier       `json:"tier"`
+	CPULimit        float64           `json:"cpu_limit"`
+	MemoryLimitMB   int               `json:"memory_limit_mb"`
+	TimeoutSeconds  int               `json:"timeout_seconds"`
+	NetworkIsolated bool              `json:"network_isolated"`
+	FilesystemScope string            `json:"filesystem_scope"`
+	MaxInstances    int               `json:"max_instances"`
+	EnvVars         map[string]string `json:"env_vars,omitempty"`
+	AllowedDomains  []string          `json:"allowed_domains,omitempty"`
+	BlockedDomains  []string          `json:"blocked_domains,omitempty"`
+	RateLimitRPM    *int              `json:"rate_limit_rpm,omitempty"`
+	CreatedAt       time.Time         `json:"created_at"`
+	UpdatedAt       time.Time         `json:"updated_at"`
 }
 
 type PluginAnalytics struct {
-	ID                string    `json:"id"`
-	PluginID          string    `json:"plugin_id"`
-	TenantID          string    `json:"tenant_id"`
-	EventType         string    `json:"event_type"`
-	ExecutionsCount   int       `json:"executions_count"`
-	ErrorsCount       int       `json:"errors_count"`
-	TotalLatencyMs    int64     `json:"total_latency_ms"`
-	CPUUsageSeconds   float64   `json:"cpu_usage_seconds"`
-	MemoryUsageMBAvg  float64   `json:"memory_usage_mb_avg"`
-	NetworkBytes      int64     `json:"network_bytes"`
-	PeriodStart       time.Time `json:"period_start"`
-	PeriodEnd         time.Time `json:"period_end"`
-	Metadata          map[string]interface{} `json:"metadata,omitempty"`
-	CreatedAt         time.Time `json:"created_at"`
+	ID               string                 `json:"id"`
+	PluginID         string                 `json:"plugin_id"`
+	TenantID         string                 `json:"tenant_id"`
+	EventType        string                 `json:"event_type"`
+	ExecutionsCount  int                    `json:"executions_count"`
+	ErrorsCount      int                    `json:"errors_count"`
+	TotalLatencyMs   int64                  `json:"total_latency_ms"`
+	CPUUsageSeconds  float64                `json:"cpu_usage_seconds"`
+	MemoryUsageMBAvg float64                `json:"memory_usage_mb_avg"`
+	NetworkBytes     int64                  `json:"network_bytes"`
+	PeriodStart      time.Time              `json:"period_start"`
+	PeriodEnd        time.Time              `json:"period_end"`
+	Metadata         map[string]interface{} `json:"metadata,omitempty"`
+	CreatedAt        time.Time              `json:"created_at"`
+}
+
+type TelemetrySummary struct {
+	Executions         int     `json:"executions"`
+	Errors             int     `json:"errors"`
+	ErrorRate          float64 `json:"error_rate"`
+	AvgLatencyMs       float64 `json:"avg_latency_ms"`
+	CPUUsageSeconds    float64 `json:"cpu_usage_seconds"`
+	AvgMemoryUsageMB   float64 `json:"avg_memory_usage_mb"`
+	NetworkBytes       int64   `json:"network_bytes"`
+	PreviousExecutions int     `json:"previous_executions"`
+	LatencyTrend       string  `json:"latency_trend"`
+	ExecutionsTrend    string  `json:"executions_trend"`
 }
 
 type PluginRepository struct {
@@ -811,7 +824,101 @@ func (r *PluginRepository) GetPreviousVersion(ctx context.Context, pluginID, cur
 	return &v, nil
 }
 
-func scanPlugin(rows interface{ Scan(dst ...interface{}) error }) (*Plugin, error) {
+func (r *PluginRepository) GetTelemetrySummary(ctx context.Context, tenantID, pluginID string, timeRange string) (*TelemetrySummary, error) {
+	var interval string
+	switch timeRange {
+	case "30d":
+		interval = "30 days"
+	case "90d":
+		interval = "90 days"
+	default:
+		interval = "7 days"
+	}
+
+	query := `
+		SELECT
+			COALESCE(SUM(executions_count), 0) AS executions,
+			COALESCE(SUM(errors_count), 0) AS errors,
+			COALESCE(AVG(total_latency_ms), 0) AS avg_latency_ms,
+			COALESCE(SUM(cpu_usage_seconds), 0) AS cpu_usage_seconds,
+			COALESCE(AVG(memory_usage_mb_avg), 0) AS avg_memory_usage_mb,
+			COALESCE(SUM(network_bytes), 0) AS network_bytes
+		FROM plugin_analytics
+		WHERE plugin_id = $1 AND tenant_id = $2
+		  AND period_start >= NOW() - $3::interval
+	`
+
+	var summary TelemetrySummary
+	err := r.db.QueryRowContext(ctx, query, pluginID, tenantID, interval).Scan(
+		&summary.Executions, &summary.Errors, &summary.AvgLatencyMs,
+		&summary.CPUUsageSeconds, &summary.AvgMemoryUsageMB, &summary.NetworkBytes,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get telemetry summary: %w", err)
+	}
+
+	if summary.Executions > 0 {
+		summary.ErrorRate = float64(summary.Errors) / float64(summary.Executions) * 100
+	}
+
+	prevQuery := `
+		SELECT COALESCE(SUM(executions_count), 0) AS executions
+		FROM plugin_analytics
+		WHERE plugin_id = $1 AND tenant_id = $2
+		  AND period_start >= NOW() - $3::interval * 2
+		  AND period_start < NOW() - $3::interval
+	`
+	_ = r.db.QueryRowContext(ctx, prevQuery, pluginID, tenantID, interval).Scan(&summary.PreviousExecutions)
+
+	if summary.PreviousExecutions > 0 {
+		change := float64(summary.Executions-summary.PreviousExecutions) / float64(summary.PreviousExecutions)
+		if change > 0.05 {
+			summary.ExecutionsTrend = "up"
+		} else if change < -0.05 {
+			summary.ExecutionsTrend = "down"
+		} else {
+			summary.ExecutionsTrend = "stable"
+		}
+	} else {
+		summary.ExecutionsTrend = "stable"
+	}
+
+	summary.LatencyTrend = "stable"
+
+	return &summary, nil
+}
+
+func (r *PluginRepository) RecordAnalytics(ctx context.Context, analytics *PluginAnalytics) error {
+	if analytics.ID == "" {
+		analytics.ID = uuid.New().String()
+	}
+	if analytics.CreatedAt.IsZero() {
+		analytics.CreatedAt = time.Now()
+	}
+
+	metadataRaw, _ := json.Marshal(analytics.Metadata)
+	query := `
+		INSERT INTO plugin_analytics (id, plugin_id, tenant_id, event_type, executions_count,
+		                              errors_count, total_latency_ms, cpu_usage_seconds,
+		                              memory_usage_mb_avg, network_bytes, period_start, period_end,
+		                              metadata, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+	`
+	_, err := r.db.ExecContext(ctx, query,
+		analytics.ID, analytics.PluginID, analytics.TenantID, analytics.EventType,
+		analytics.ExecutionsCount, analytics.ErrorsCount, analytics.TotalLatencyMs,
+		analytics.CPUUsageSeconds, analytics.MemoryUsageMBAvg, analytics.NetworkBytes,
+		analytics.PeriodStart, analytics.PeriodEnd, metadataRaw, analytics.CreatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("record plugin analytics: %w", err)
+	}
+	return nil
+}
+
+func scanPlugin(rows interface {
+	Scan(dst ...interface{}) error
+}) (*Plugin, error) {
 	var plugin Plugin
 	var manifest, config, metadata []byte
 	var desc, authorEmail, authorWebsite, iconURL, homepageURL, repositoryURL, license, signature sql.NullString

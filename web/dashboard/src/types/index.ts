@@ -764,7 +764,7 @@ export interface StateFabric {
 export interface StateFabricStore {
   id: string;
   name: string;
-  type: 'memory' | 'persistent' | 'cache' | 'queue';
+  type: 'memory' | 'persistent' | 'cache' | 'queue' | 'vector' | 'embedding' | 'ai-memory';
   status: 'active' | 'inactive' | 'error';
   size: number;
   maxSize: number;

@@ -14,6 +14,7 @@ import {
   Globe,
   Loader2,
   AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,28 +22,45 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   APIKey,
   API_KEY_TYPE_LABELS,
   PERMISSION_LABELS,
   RESOURCE_TYPE_LABELS,
-  RotationReason,
+  APIKeyRotation,
+  ROTATION_REASON_LABELS,
 } from "@/types/api-key";
 import { apiKeysService } from "@/services/api-keys";
 
 interface APIKeyDetailsProps {
   onRotate?: (key: APIKey) => void;
   onDelete?: (key: APIKey) => void;
+  onEdit?: (key: APIKey) => void;
 }
 
-export function APIKeyDetails({ onRotate, onDelete }: APIKeyDetailsProps) {
+export function APIKeyDetails({ onRotate, onDelete, onEdit }: APIKeyDetailsProps) {
   const { keyId } = useParams<{ keyId: string }>();
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
+  const [showRotations, setShowRotations] = useState(false);
 
   const { data: apiKey, isLoading, error, refetch } = useQuery({
     queryKey: ["api-key", keyId],
     queryFn: () => apiKeysService.getKey(keyId!),
     enabled: !!keyId,
+  });
+
+  const { data: rotations, isLoading: rotationsLoading } = useQuery({
+    queryKey: ["api-key-rotations", keyId],
+    queryFn: () => apiKeysService.getRotationHistory(keyId!),
+    enabled: !!keyId && showRotations,
   });
 
   const toggleActiveMutation = useMutation({
@@ -54,10 +72,14 @@ export function APIKeyDetails({ onRotate, onDelete }: APIKeyDetailsProps) {
   });
 
   const handleCopyKey = async () => {
-    // Note: We can't copy the actual key here as it's not available in the API response
-    // This would be used when showing the key after creation
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const value = `${apiKey?.key_prefix ?? ""}${"•".repeat(12)}`;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // noop
+    }
   };
 
   const formatDate = (dateString?: string) => {
@@ -140,6 +162,12 @@ export function APIKeyDetails({ onRotate, onDelete }: APIKeyDetailsProps) {
 
       {/* Quick Actions */}
       <div className="flex gap-3">
+        {onEdit && (
+          <Button variant="outline" onClick={() => onEdit(key)}>
+            <Edit className="w-4 h-4 mr-2" />
+            Edit
+          </Button>
+        )}
         {onRotate && (
           <Button variant="outline" onClick={() => onRotate(key)}>
             <RotateCcw className="w-4 h-4 mr-2" />
@@ -156,6 +184,19 @@ export function APIKeyDetails({ onRotate, onDelete }: APIKeyDetailsProps) {
             Delete Key
           </Button>
         )}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleCopyKey}
+          aria-label="Copy key identifier"
+          className="ml-auto"
+        >
+          {copied ? (
+            <Check className="w-4 h-4 text-green-600" />
+          ) : (
+            <Copy className="w-4 h-4" />
+          )}
+        </Button>
       </div>
 
       {/* Overview Cards */}
@@ -210,6 +251,40 @@ export function APIKeyDetails({ onRotate, onDelete }: APIKeyDetailsProps) {
         </Card>
       </div>
 
+      {/* Usage & Budget (new) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="w-5 h-5" />
+            Usage & Budget
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="space-y-1">
+              <Label className="text-muted-foreground">Total Requests</Label>
+              <p className="font-medium">{key.use_count?.toLocaleString() ?? "—"}</p>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-muted-foreground">Budget (cents)</Label>
+              <p className="font-medium">
+                {key.billing_budget_cents
+                  ? `$${(key.billing_budget_cents / 100).toFixed(2)}`
+                  : "—"}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-muted-foreground">Cost Center</Label>
+              <p className="font-medium">{key.cost_center ?? "—"}</p>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-muted-foreground">High Value</Label>
+              <p className="font-medium">{key.is_high_value ? "Yes" : "No"}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Settings */}
       <Card>
         <CardHeader>
@@ -257,6 +332,60 @@ export function APIKeyDetails({ onRotate, onDelete }: APIKeyDetailsProps) {
             </div>
           </div>
         </CardContent>
+      </Card>
+
+      {/* Rotation History */}
+      <Card>
+        <CardHeader>
+          <CardTitle
+            className="flex items-center gap-2 cursor-pointer"
+            onClick={() => setShowRotations((v) => !v)}
+          >
+            <RefreshCw className="w-5 h-5" />
+            Rotation History
+            <span className="ml-auto text-sm text-muted-foreground">
+              {showRotations ? "Hide" : "Show"}
+            </span>
+          </CardTitle>
+        </CardHeader>
+        {showRotations && (
+          <CardContent>
+            {rotationsLoading ? (
+              <div className="flex justify-center py-6">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : rotations && rotations.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Rotated At</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead>Created By</TableHead>
+                    <TableHead>Hash</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rotations!.map((r: APIKeyRotation) => (
+                    <TableRow key={r.id}>
+                      <TableCell>{formatDate(r.rotated_at)}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                        {ROTATION_REASON_LABELS[r.rotation_reason] ?? r.rotation_reason}
+                      </Badge>
+                      </TableCell>
+                      <TableCell>{r.created_by ?? "system"}</TableCell>
+                      <TableCell>
+                        <code className="text-xs">{r.key_hash.slice(0, 12)}…</code>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="text-sm text-muted-foreground">No rotations recorded.</p>
+            )}
+          </CardContent>
+        )}
       </Card>
 
       {/* Permissions */}

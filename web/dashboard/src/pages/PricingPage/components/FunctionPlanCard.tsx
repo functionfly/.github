@@ -23,7 +23,7 @@ interface FunctionPlanCardProps {
 }
 
 const FEATURE_TOOLTIPS: Record<string, string> = {
-  '1 function': 'Deploy a single serverless function',
+  '3 functions': 'Deploy up to 3 serverless functions',
   '5 functions': 'Deploy up to 5 serverless functions',
   '25 functions': 'Deploy up to 25 serverless functions',
   'Unlimited functions': 'Deploy unlimited serverless functions',
@@ -31,7 +31,7 @@ const FEATURE_TOOLTIPS: Record<string, string> = {
   '3 providers': 'Deploy to Vercel, Netlify, or Fly.io',
   '5 providers': 'Deploy to all supported providers',
   'All providers': 'Deploy to all supported providers',
-  '100K requests/month': '100,000 function invocations per month',
+  '500 requests/month': '500 function invocations per month',
   '1M requests/month': '1 million function invocations per month',
   '10M requests/month': '10 million function invocations per month',
   'Unlimited requests': 'Unlimited function invocations',

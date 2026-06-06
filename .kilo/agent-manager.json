@@ -1,0 +1,101 @@
+{
+  "worktrees": {
+    "wt-1774831901652-1": {
+      "branch": "rhinestone-teller",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/rhinestone-teller",
+      "parentBranch": "master",
+      "createdAt": "2026-03-30T00:51:41.652Z",
+      "remote": "origin"
+    },
+    "wt-1774831964078-2": {
+      "branch": "butternut-computer",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/butternut-computer",
+      "parentBranch": "master",
+      "createdAt": "2026-03-30T00:52:44.078Z",
+      "remote": "origin"
+    },
+    "wt-1775192329364-1": {
+      "branch": "solar-zircon",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/solar-zircon",
+      "parentBranch": "master",
+      "createdAt": "2026-04-03T04:58:49.364Z",
+      "remote": "origin"
+    },
+    "wt-1776295702424-1": {
+      "branch": "vine-fine",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/vine-fine",
+      "parentBranch": "develop",
+      "createdAt": "2026-04-15T23:28:22.424Z",
+      "remote": "origin"
+    },
+    "wt-1776722653391-2": {
+      "branch": "helpful-liquid",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/helpful-liquid",
+      "parentBranch": "develop",
+      "createdAt": "2026-04-20T22:04:13.391Z",
+      "remote": "origin"
+    }
+  },
+  "sessions": {
+    "ses_2c3c65b87ffemHArCWN1o0vfZs": {
+      "worktreeId": "wt-1774831901652-1",
+      "createdAt": "2026-03-30T00:51:48.714Z"
+    },
+    "ses_2c3c56fa9ffe58JetZ53AJc28V": {
+      "worktreeId": "wt-1774831964078-2",
+      "createdAt": "2026-03-30T00:52:45.131Z"
+    },
+    "ses_2ae4aad00ffeV3yWsUaphb0Gci": {
+      "worktreeId": "wt-1775192329364-1",
+      "createdAt": "2026-04-03T04:58:51.014Z"
+    },
+    "ses_26c868d25ffe8VpgrUffYztA3v": {
+      "worktreeId": "wt-1776295702424-1",
+      "createdAt": "2026-04-15T23:28:24.621Z"
+    },
+    "ses_25313cf17ffeonxvwwm2VPJDA3": {
+      "worktreeId": "wt-1776722653391-2",
+      "createdAt": "2026-04-20T22:04:13.422Z"
+    },
+    "ses_1e1f2e43affenKeeH7J5DdSKLD": {
+      "worktreeId": null,
+      "createdAt": "2026-05-12T21:17:16.204Z"
+    },
+    "ses_1db983c18ffeJ7plkmug33p93R": {
+      "worktreeId": null,
+      "createdAt": "2026-05-14T02:54:00.741Z"
+    },
+    "ses_1c1ff6ceaffe5yggOXNAEjI1yA": {
+      "worktreeId": null,
+      "createdAt": "2026-05-19T02:11:25.879Z"
+    },
+    "ses_1c1918045ffeaYao6Z1UwRiBZ1": {
+      "worktreeId": null,
+      "createdAt": "2026-05-19T04:11:29.652Z"
+    },
+    "ses_1bee1ba04ffevlVhHvWYOm1BR1": {
+      "worktreeId": null,
+      "createdAt": "2026-05-19T16:42:43.650Z"
+    },
+    "ses_1beaf0523ffeGEvj70TErR161m": {
+      "worktreeId": null,
+      "createdAt": "2026-05-19T17:38:06.750Z"
+    },
+    "ses_1beaca4a2ffeDvuCbxM76GQjaW": {
+      "worktreeId": null,
+      "createdAt": "2026-05-19T17:40:42.575Z"
+    }
+  },
+  "tabOrder": {
+    "local": [
+      "pending:1"
+    ]
+  },
+  "worktreeOrder": [
+    "wt-1774831901652-1",
+    "wt-1774831964078-2",
+    "wt-1775192329364-1",
+    "wt-1776295702424-1",
+    "wt-1776722653391-2"
+  ]
+}

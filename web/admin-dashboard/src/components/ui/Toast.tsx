@@ -6,7 +6,7 @@ interface Toast {
   id: string;
   type: 'success' | 'error' | 'warning' | 'info';
   title: string;
-  message?: string;
+  description?: React.ReactNode;
   duration?: number;
 }
 
@@ -106,9 +106,9 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
       </div>
       <div className="flex-1 min-w-0">
         <h4 className="font-semibold text-gray-900">{toast.title}</h4>
-        {toast.message && (
-          <p className="mt-0.5 text-sm text-gray-600">{toast.message}</p>
-        )}
+         {toast.description && (
+           <p className="mt-0.5 text-sm text-gray-600">{toast.description}</p>
+         )}
       </div>
       <button
         onClick={onDismiss}
@@ -126,17 +126,27 @@ export function useToastHelpers() {
   const { showToast } = useToast();
 
   return {
-    success: (title: string, message?: string) => {
-      showToast({ type: 'success', title, message });
+    success: (title: string, arg2?: string | React.ReactNode | { description?: string | React.ReactNode; duration?: number }) => {
+      const isOpt = typeof arg2 === 'object' && arg2 !== null && !('type' in (arg2 as any));
+      const description = isOpt ? (arg2 as any).description : arg2;
+      const duration = isOpt ? (arg2 as any).duration : undefined;
+      showToast({ type: 'success', title, description, duration });
     },
-    error: (title: string, message?: string) => {
-      showToast({ type: 'error', title, message, duration: 8000 });
+    error: (title: string, arg2?: string | React.ReactNode | { description?: string | React.ReactNode; duration?: number }) => {
+      const isOpt = typeof arg2 === 'object' && arg2 !== null && !('type' in (arg2 as any));
+      const description = isOpt ? (arg2 as any).description : arg2;
+      const duration = isOpt ? (arg2 as any).duration : 8000;
+      showToast({ type: 'error', title, description, duration });
     },
-    warning: (title: string, message?: string) => {
-      showToast({ type: 'warning', title, message });
+    warning: (title: string, arg2?: string | React.ReactNode | { description?: string | React.ReactNode; duration?: number }) => {
+      const isOpt = typeof arg2 === 'object' && arg2 !== null && !('type' in (arg2 as any));
+      const description = isOpt ? (arg2 as any).description : arg2;
+      showToast({ type: 'warning', title, description });
     },
-    info: (title: string, message?: string) => {
-      showToast({ type: 'info', title, message });
+    info: (title: string, arg2?: string | React.ReactNode | { description?: string | React.ReactNode; duration?: number }) => {
+      const isOpt = typeof arg2 === 'object' && arg2 !== null && !('type' in (arg2 as any));
+      const description = isOpt ? (arg2 as any).description : arg2;
+      showToast({ type: 'info', title, description });
     },
   };
 }

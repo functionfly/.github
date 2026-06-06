@@ -545,3 +545,123 @@ export type ConnectProviderRequestValidated = z.infer<typeof connectProviderRequ
 export type ConnectedProviderValidated = z.infer<typeof connectedProviderSchema>;
 export type ConnectProviderResponseValidated = z.infer<typeof connectProviderResponseSchema>;
 export type TestConnectionResponseValidated = z.infer<typeof testConnectionResponseSchema>;
+
+// ──────────────────────────────────────────────────────────────────────
+// API Key validation
+// ──────────────────────────────────────────────────────────────────────
+
+export const apiKeyTypeSchema = z.enum([
+  'platform',
+  'function',
+  'agent',
+  'environment',
+  'oauth',
+  'trust',
+]);
+
+export const permissionSchema = z.enum(['read', 'write', 'execute', 'admin']);
+
+export const resourceTypeSchema = z.enum([
+  'function',
+  'app',
+  'tenant',
+  'registry',
+  'deployment',
+  'secret',
+]);
+
+export const rotationReasonSchema = z.enum(['manual', 'automatic', 'compromised']);
+
+// Nested rate_limit (matches backend apikey.CreateAPIKeyRequest.RateLimitConfig).
+const rateLimitSchema = z.object({
+  rpm: z.number().int().min(0).max(10_000_000),
+  rph: z.number().int().min(0).max(100_000_000),
+  rpd: z.number().int().min(0).max(1_000_000_000),
+});
+
+const apiKeyNameSchema = z
+  .string()
+  .min(1, 'Name is required')
+  .max(255, 'Name must be 255 characters or fewer');
+
+const apiKeyDescriptionSchema = z
+  .string()
+  .max(2000, 'Description must be 2000 characters or fewer')
+  .optional();
+
+const permissionGrantSchema = z.object({
+  permission: permissionSchema,
+  resource_type: resourceTypeSchema,
+  resource_id: z.string().uuid('Invalid resource ID'),
+});
+
+export const createAPIKeySchema = z.object({
+  name: apiKeyNameSchema,
+  description: apiKeyDescriptionSchema,
+  key_type: apiKeyTypeSchema,
+  permissions: z.array(permissionGrantSchema).optional(),
+  environments: z.array(z.string().uuid()).optional(),
+  expires_at: z
+    .string()
+    .refine((v) => !isNaN(Date.parse(v)), 'Invalid timestamp')
+    .refine((v) => Date.parse(v) > Date.now(), 'expires_at must be in the future')
+    .optional(),
+  rotation_frequency_days: z.number().int().min(0).max(3650).optional(),
+  // Nested rate_limit object — the previous flat-field shape was silently
+  // dropped by the backend because of a schema mismatch.
+  rate_limit: rateLimitSchema.optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const updateAPIKeySchema = z
+  .object({
+    name: apiKeyNameSchema.optional(),
+    description: z.string().max(2000).optional(),
+    expires_at: z
+      .string()
+      .refine((v) => !isNaN(Date.parse(v)), 'Invalid timestamp')
+      .optional(),
+    rotation_frequency_days: z.number().int().min(0).max(3650).optional(),
+    rate_limit_rpm: z.number().int().min(0).max(10_000_000).optional(),
+    rate_limit_rph: z.number().int().min(0).max(100_000_000).optional(),
+    rate_limit_rpd: z.number().int().min(0).max(1_000_000_000).optional(),
+    is_active: z.boolean().optional(),
+    metadata: z.record(z.string(), z.unknown()).optional(),
+  })
+  .strict();
+
+export const rotateAPIKeySchema = z
+  .object({
+    reason: rotationReasonSchema.optional(),
+    expires_in_days: z.number().int().min(0).max(36500).optional(),
+    metadata: z.record(z.string(), z.unknown()).optional(),
+  })
+  .strict();
+
+export const addPermissionSchema = z.object({
+  permission: permissionSchema,
+  resource_type: resourceTypeSchema,
+  resource_id: z.string().uuid(),
+});
+
+export const addEnvironmentSchema = z.object({
+  environment_id: z.string().uuid(),
+  environment_name: z.string().max(255).optional(),
+});
+
+export const apiKeyFiltersSchema = z.object({
+  key_type: apiKeyTypeSchema.optional(),
+  is_active: z.boolean().optional(),
+  expires_before: z.string().optional(),
+  expires_after: z.string().optional(),
+  search: z.string().max(200).optional(),
+  page: z.number().int().min(1).optional(),
+});
+
+export type CreateAPIKeyRequestValidated = z.infer<typeof createAPIKeySchema>;
+export type UpdateAPIKeyRequestValidated = z.infer<typeof updateAPIKeySchema>;
+export type RotateAPIKeyRequestValidated = z.infer<typeof rotateAPIKeySchema>;
+export type AddPermissionValidated = z.infer<typeof addPermissionSchema>;
+export type AddEnvironmentValidated = z.infer<typeof addEnvironmentSchema>;
+export type APIKeyFiltersValidated = z.infer<typeof apiKeyFiltersSchema>;
+

@@ -110,7 +110,9 @@
     "expandSidebar": "Expand sidebar",
     "commandPalette": "Command Palette",
     "githubImport": "GitHub Import",
-    "pasteCode": "Paste Code"
+    "pasteCode": "Paste Code",
+    "brain": "Brain",
+    "connectors": "Connectors"
   },
   "auth": {
     "login": "Log In",

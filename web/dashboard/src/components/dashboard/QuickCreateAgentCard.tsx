@@ -30,11 +30,11 @@ export function QuickCreateAgentCard({
   return (
     <Card
       className={cn(
-        'border-theme bg-card cursor-pointer transition-all duration-200',
+        'cursor-pointer transition-all duration-200',
         'border-dashed',
         isLocked
           ? 'border-amber-500/30 bg-amber-500/[0.03] hover:border-amber-500/50 hover:bg-amber-500/[0.05]'
-          : 'hover:border-[var(--color-brand-500)]/40 hover:bg-bg-hover/50',
+          : 'hover:border-[var(--color-brand-500)]/40',
         className
       )}
       onClick={handleClick}

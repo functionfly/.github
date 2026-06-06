@@ -20,6 +20,19 @@ export interface StudioSettings {
   auto_save: boolean;
   auto_save_interval: number;
   editor_features: EditorFeatures;
+  // Privacy
+  usage_analytics_enabled?: boolean;
+  crash_reports_enabled?: boolean;
+  // Shortcuts
+  show_shortcut_hints?: boolean;
+  // Performance (Tauri)
+  gpu_acceleration_enabled?: boolean;
+  developer_tools_enabled?: boolean;
+  memory_limit_mb?: number;
+  // Network
+  proxy_enabled?: boolean;
+  proxy_url?: string;
+  proxy_bypass?: string;
 }
 
 export const studioSettingsApi = {

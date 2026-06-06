@@ -96,6 +96,8 @@ func registerAuthRoutes(
 	api.HandleFunc("/auth/password-reset", authRateLimiter.Limit(authHandler.HandlePasswordResetRequest)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/password-reset/confirm", authRateLimiter.Limit(authHandler.HandlePasswordResetConfirm)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/api-key", apiKeyAuthHandler.HandleAuthenticate).Methods("POST", "OPTIONS")
+	// AI service key validation (public - used by FlyMind AI service to validate API keys)
+	api.HandleFunc("/auth/validate-key", apiKeyAuthHandler.HandleValidateAPIKey).Methods("POST", "OPTIONS")
 
 	// Magic link authentication (public, rate-limited)
 	// Registered on both the bare router and /v1 for compatibility
@@ -111,6 +113,9 @@ func registerAuthRoutes(
 	api.HandleFunc("/auth/mfa/enable", authMiddleware.RequireAuth(mfaHandler.EnableMFA)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/mfa/disable", authMiddleware.RequireAuth(mfaHandler.DisableMFA)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/mfa/status", authMiddleware.RequireAuth(mfaHandler.GetMFAStatus)).Methods("GET", "OPTIONS")
+
+	// CSRF token (protected — any authenticated user can get a token for their session)
+	api.HandleFunc("/csrf", authMiddleware.RequireAuth(csrfMiddleware.HandleGetCSRFToken)).Methods("GET", "OPTIONS")
 
 	// ── Users ──────────────────────────────────────────────────────────────
 	// /users/me* must be registered before /users/{username} so "me" is never
@@ -201,19 +206,22 @@ func registerAuthRoutes(
 	api.HandleFunc("/follow/me/stats", authMiddleware.RequireAuth(followHandler.HandleGetMyFollowStats)).Methods("GET", "OPTIONS")
 
 	// ── API Keys (protected) ────────────────────────────────────────────────
+	// Reads (GET) require only auth. Mutations (POST/PATCH/DELETE) additionally
+	// require CSRF protection to prevent cross-site request forgery.
 	api.HandleFunc("/api-keys/environments/available", authMiddleware.RequireAuth(apiKeysHandler.HandleListAvailableEnvironments)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/api-keys", authMiddleware.RequireAuth(apiKeysHandler.HandleList)).Methods("GET", "OPTIONS")
-	api.HandleFunc("/api-keys", authMiddleware.RequireAuth(apiKeysHandler.HandleCreate)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/api-keys", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(apiKeysHandler.HandleCreate))).Methods("POST", "OPTIONS")
 	api.HandleFunc("/api-keys/{id}", authMiddleware.RequireAuth(apiKeysHandler.HandleGet)).Methods("GET", "OPTIONS")
-	api.HandleFunc("/api-keys/{id}", authMiddleware.RequireAuth(apiKeysHandler.HandleUpdate)).Methods("PATCH", "OPTIONS")
-	api.HandleFunc("/api-keys/{id}", authMiddleware.RequireAuth(apiKeysHandler.HandleDelete)).Methods("DELETE", "OPTIONS")
-	api.HandleFunc("/api-keys/{id}/rotate", authMiddleware.RequireAuth(apiKeysHandler.HandleRotate)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/api-keys/{id}", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(apiKeysHandler.HandleUpdate))).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/api-keys/{id}", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(apiKeysHandler.HandleDelete))).Methods("DELETE", "OPTIONS")
+	api.HandleFunc("/api-keys/{id}/rotate", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(apiKeysHandler.HandleRotate))).Methods("POST", "OPTIONS")
+	api.HandleFunc("/api-keys/{id}/rotations", authMiddleware.RequireAuth(apiKeysHandler.HandleGetRotationHistory)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/api-keys/{id}/permissions", authMiddleware.RequireAuth(apiKeysHandler.HandleListPermissions)).Methods("GET", "OPTIONS")
-	api.HandleFunc("/api-keys/{id}/permissions", authMiddleware.RequireAuth(apiKeysHandler.HandleAddPermission)).Methods("POST", "OPTIONS")
-	api.HandleFunc("/api-keys/{id}/permissions/{perm_id}", authMiddleware.RequireAuth(apiKeysHandler.HandleRemovePermission)).Methods("DELETE", "OPTIONS")
+	api.HandleFunc("/api-keys/{id}/permissions", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(apiKeysHandler.HandleAddPermission))).Methods("POST", "OPTIONS")
+	api.HandleFunc("/api-keys/{id}/permissions/{perm_id}", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(apiKeysHandler.HandleRemovePermission))).Methods("DELETE", "OPTIONS")
 	api.HandleFunc("/api-keys/{id}/environments", authMiddleware.RequireAuth(apiKeysHandler.HandleListEnvironments)).Methods("GET", "OPTIONS")
-	api.HandleFunc("/api-keys/{id}/environments", authMiddleware.RequireAuth(apiKeysHandler.HandleAddEnvironment)).Methods("POST", "OPTIONS")
-	api.HandleFunc("/api-keys/{id}/environments/{env_id}", authMiddleware.RequireAuth(apiKeysHandler.HandleRemoveEnvironment)).Methods("DELETE", "OPTIONS")
+	api.HandleFunc("/api-keys/{id}/environments", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(apiKeysHandler.HandleAddEnvironment))).Methods("POST", "OPTIONS")
+	api.HandleFunc("/api-keys/{id}/environments/{env_id}", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(apiKeysHandler.HandleRemoveEnvironment))).Methods("DELETE", "OPTIONS")
 
 	// ── Billing ─────────────────────────────────────────────────────────────
 	// State Fabric add-on catalog (public — pricing page)

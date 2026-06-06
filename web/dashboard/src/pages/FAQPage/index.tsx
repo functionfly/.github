@@ -173,7 +173,7 @@ export function FAQPage() {
       {
         question: "What's included in the free tier?",
         answer:
-          'The free tier includes 100,000 function invocations, 100GB bandwidth, and 1GB storage per month. Perfect for development, testing, and small production applications.',
+          'The free tier includes 500 function invocations, 3 functions, and community support per month. Perfect for development, testing, and small production applications.',
         category: 'Free Tier',
       },
       {

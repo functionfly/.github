@@ -3,11 +3,11 @@ import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Globe2, MapPin, Server } from "lucide-react";
 import {
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
+    Cell,
+    Pie,
+    PieChart,
+    ResponsiveContainer,
+    Tooltip,
 } from "recharts";
 
 export interface RegionData {
@@ -53,7 +53,7 @@ export function RegionDistributionWidget({
   const hasData = regions.length > 0 && totalFunctions > 0;
 
   return (
-    <Card className={cn("border-theme bg-card overflow-hidden", className)}>
+    <Card className={cn("overflow-hidden", className)}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium text-text-secondary">

@@ -15,8 +15,6 @@ import (
 	"github.com/functionfly/functionfly/internal/agent/categorization"
 	agentdeployment "github.com/functionfly/functionfly/internal/agent/deployment"
 	"github.com/functionfly/functionfly/internal/agent/discovery"
-	agenttesting "github.com/functionfly/functionfly/internal/agent/testing"
-	secureSandbox "github.com/functionfly/functionfly/internal/agent/testing/sandbox"
 	"github.com/functionfly/functionfly/internal/agent/economy"
 	"github.com/functionfly/functionfly/internal/agent/evolution"
 	factorysvc "github.com/functionfly/functionfly/internal/agent/factory"
@@ -27,6 +25,8 @@ import (
 	"github.com/functionfly/functionfly/internal/agent/marketplace"
 	agentsecurity "github.com/functionfly/functionfly/internal/agent/security"
 	"github.com/functionfly/functionfly/internal/agent/swarm"
+	agenttesting "github.com/functionfly/functionfly/internal/agent/testing"
+	secureSandbox "github.com/functionfly/functionfly/internal/agent/testing/sandbox"
 	"github.com/functionfly/functionfly/internal/analytics"
 	"github.com/functionfly/functionfly/internal/analytics/unified"
 	"github.com/functionfly/functionfly/internal/api/docs"
@@ -36,16 +36,19 @@ import (
 	analyticshandler "github.com/functionfly/functionfly/internal/api/handlers/analytics"
 	"github.com/functionfly/functionfly/internal/api/handlers/apikeys"
 	"github.com/functionfly/functionfly/internal/api/handlers/apps"
-	"github.com/functionfly/functionfly/internal/api/handlers/blog"
 	authHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/auth"
 	"github.com/functionfly/functionfly/internal/api/handlers/backends"
 	billinghandler "github.com/functionfly/functionfly/internal/api/handlers/billing"
+	"github.com/functionfly/functionfly/internal/api/handlers/blog"
+	brainhandler "github.com/functionfly/functionfly/internal/api/handlers/brain"
 	categorizationhandler "github.com/functionfly/functionfly/internal/api/handlers/categorization"
 	"github.com/functionfly/functionfly/internal/api/handlers/certification"
 	"github.com/functionfly/functionfly/internal/api/handlers/chat"
+	connectorhandler "github.com/functionfly/functionfly/internal/api/handlers/connectors"
 	"github.com/functionfly/functionfly/internal/api/handlers/content"
 	"github.com/functionfly/functionfly/internal/api/handlers/dashboard"
 	"github.com/functionfly/functionfly/internal/api/handlers/decisions"
+	"github.com/functionfly/functionfly/internal/api/handlers/demo"
 	"github.com/functionfly/functionfly/internal/api/handlers/deploykeys"
 	"github.com/functionfly/functionfly/internal/api/handlers/deployments"
 	enterprisePkg "github.com/functionfly/functionfly/internal/api/handlers/enterprise"
@@ -54,37 +57,36 @@ import (
 	followHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/follow"
 	"github.com/functionfly/functionfly/internal/api/handlers/function_webhooks"
 	"github.com/functionfly/functionfly/internal/api/handlers/functions"
+	"github.com/functionfly/functionfly/internal/api/handlers/ghost"
 	githubhandler "github.com/functionfly/functionfly/internal/api/handlers/github"
-	"github.com/functionfly/functionfly/internal/manifest"
+	marketplacehandler "github.com/functionfly/functionfly/internal/api/handlers/marketplace"
 	mfaHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/mfa"
 	"github.com/functionfly/functionfly/internal/api/handlers/monitoring"
 	"github.com/functionfly/functionfly/internal/api/handlers/newsletter"
-	notificationHandlerPkg 	"github.com/functionfly/functionfly/internal/api/handlers/notifications"
+	notificationHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/notifications"
 	payoutsHandler "github.com/functionfly/functionfly/internal/api/handlers/payouts"
-	"github.com/functionfly/functionfly/internal/api/handlers/simulation"
 	"github.com/functionfly/functionfly/internal/api/handlers/playground"
+	"github.com/functionfly/functionfly/internal/api/handlers/plugin"
 	privacyhandler "github.com/functionfly/functionfly/internal/api/handlers/privacy"
 	"github.com/functionfly/functionfly/internal/api/handlers/providers"
 	"github.com/functionfly/functionfly/internal/api/handlers/recommendations"
 	registryhandler "github.com/functionfly/functionfly/internal/api/handlers/registry"
-	registryexecution "github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	drehandler "github.com/functionfly/functionfly/internal/api/handlers/registry/dre"
-	"github.com/functionfly/functionfly/internal/api/handlers/security"
-	"github.com/functionfly/functionfly/internal/api/handlers/ghost"
-	"github.com/functionfly/functionfly/internal/api/handlers/state"
-	"github.com/functionfly/functionfly/internal/api/handlers/studio"
-	"github.com/functionfly/functionfly/internal/api/handlers/plugin"
+	registryexecution "github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	runtimehandler "github.com/functionfly/functionfly/internal/api/handlers/runtime"
-	marketplacehandler "github.com/functionfly/functionfly/internal/api/handlers/marketplace"
+	"github.com/functionfly/functionfly/internal/api/handlers/security"
+	"github.com/functionfly/functionfly/internal/api/handlers/simulation"
+	"github.com/functionfly/functionfly/internal/api/handlers/state"
 	"github.com/functionfly/functionfly/internal/api/handlers/statefabric"
-	"github.com/functionfly/functionfly/internal/api/handlers/workflow"
 	statushandler "github.com/functionfly/functionfly/internal/api/handlers/status"
+	"github.com/functionfly/functionfly/internal/api/handlers/studio"
 	supportHandler "github.com/functionfly/functionfly/internal/api/handlers/support"
 	"github.com/functionfly/functionfly/internal/api/handlers/teams"
 	usersHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/users"
 	"github.com/functionfly/functionfly/internal/api/handlers/vault"
 	versionhandler "github.com/functionfly/functionfly/internal/api/handlers/version"
 	"github.com/functionfly/functionfly/internal/api/handlers/wellknown"
+	"github.com/functionfly/functionfly/internal/api/handlers/workflow"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/apikey"
 	"github.com/functionfly/functionfly/internal/billing"
@@ -92,10 +94,11 @@ import (
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/captcha"
 	"github.com/functionfly/functionfly/internal/currency"
+	"github.com/functionfly/functionfly/internal/manifest"
 	monitoringPkg "github.com/functionfly/functionfly/internal/monitoring"
+	paymentPkg "github.com/functionfly/functionfly/internal/payment"
 	"github.com/functionfly/functionfly/internal/privacy"
 	"github.com/functionfly/functionfly/internal/provisioning"
-	paymentPkg "github.com/functionfly/functionfly/internal/payment"
 	"github.com/functionfly/functionfly/internal/scheduler"
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/statefabricaddons"
@@ -103,10 +106,10 @@ import (
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	staterepo "github.com/functionfly/functionfly/internal/storage/state"
 	statefabricrepo "github.com/functionfly/functionfly/internal/storage/statefabric"
+	timemachine "github.com/functionfly/functionfly/internal/storage/timemachine"
 	trustapirepo "github.com/functionfly/functionfly/internal/storage/trustapi"
 	decisionsrepo "github.com/functionfly/functionfly/internal/storage/trustapi/decisions"
 	vaultstorage "github.com/functionfly/functionfly/internal/storage/vault"
-	timemachine "github.com/functionfly/functionfly/internal/storage/timemachine"
 	"github.com/functionfly/functionfly/internal/support"
 	"github.com/functionfly/functionfly/internal/versioning"
 	"github.com/functionfly/functionfly/internal/wallet"
@@ -332,6 +335,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	appPlaygroundHandler := playground.NewHandler(s.repo)
 
+	demoHandler := demo.NewHandler(s.repo, s.redisClient)
+
 	// Initialize the persistent SandboxClient daemon for function execution.
 	// This replaces per-request process spawning with a single long-lived runtime.
 	if err := registryexecution.InitSandboxClient(); err != nil {
@@ -441,12 +446,24 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	studioExtensionsHandler := studio.NewExtensionsHandler(studioExtRepo)
 	studioSettingsRepo := storage.NewStudioSettingsRepository(s.postgresDB.DB)
 	studioSettingsHandler := studio.NewSettingsHandler(studioSettingsRepo)
+	studioCodeEditorRepo := studio.NewCodeEditorRepository(s.postgresDB.DB)
+	studioCodeEditorHandler := studio.NewCodeEditorHandler(studioCodeEditorRepo)
+	studioDevOpsRepo := studio.NewDevOpsRepository(s.postgresDB.DB)
+	studioDevOpsHandler := studio.NewDevOpsHandler(studioDevOpsRepo)
+	// Initialize DevOps schema on startup
+	go func() {
+		if err := studioDevOpsRepo.InitSchema(context.Background()); err != nil {
+			logrus.WithError(err).Error("failed to initialize devops schema")
+		} else {
+			logrus.Info("studio devops schema initialized")
+		}
+	}()
 	pluginRepo := storage.NewPluginRepository(s.postgresDB.DB)
 	pluginStorageAdapter := plugin.NewStorageAdapter(pluginRepo)
 	pluginHandler := plugin.NewHandler(pluginStorageAdapter)
 	runtimeHandler := runtimehandler.New()
 	marketplaceRepo := storage.NewMarketplaceRepository(s.postgresDB.DB)
-	marketplaceStorageAdapter := marketplacehandler.NewStorageAdapter(marketplaceRepo)
+	marketplaceStorageAdapter := marketplacehandler.NewStorageAdapterWithPlugins(marketplaceRepo, pluginRepo)
 	marketplaceHandler := marketplacehandler.NewHandler(marketplaceStorageAdapter)
 	enterpriseSLAHandler := enterprisePkg.NewSLAHandler(s.repo)
 	decisionsRepo := decisionsrepo.NewRepository(s.postgresDB.GORM)
@@ -506,6 +523,12 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	vaultRepo := vaultstorage.NewRepository(s.postgresDB.GORM)
 	s.vaultRepo = vaultRepo
 	vaultHandler := vault.NewHandler(vaultRepo, logrus.New())
+
+	// Brain + Connector handlers
+	connectorRepo := storage.NewConnectorRepository(s.postgresDB.DB)
+	brainRepo := storage.NewBrainRepository(s.postgresDB.DB, s.redisClient)
+	connectorHandler := connectorhandler.NewHandler(connectorRepo, brainRepo, nil, logrus.New())
+	brainHandler := brainhandler.NewHandler(brainRepo, logrus.New())
 
 	// Support handler initialization
 	supportRepo := support.NewPostgresRepository(s.postgresDB.DB)
@@ -984,6 +1007,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		appPlaygroundHandler, docsHandler, tutorialsHandler,
 		versionHandler, blogHandler, contentHandler, feedbackHandler, recommendationHandler,
 		anchoringService,
+		demoHandler,
 	)
 
 	// ── FRG (Function Registry + Live Runtime Graph) ─────────────────────────
@@ -1027,6 +1051,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		studioTasksHandler,
 		studioExtensionsHandler,
 		studioSettingsHandler,
+		studioCodeEditorRepo,
+		studioCodeEditorHandler,
+		studioDevOpsHandler,
 		pluginHandler,
 		runtimeHandler,
 	)
@@ -1042,6 +1069,10 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		aepHandler, swarmHandler, sebgHandler, evolutionHandler, daemonHandler,
 		registryRepo, cacheService,
 	)
+
+	// Connector + Brain routes
+	registerConnectorRoutes(api, protected, authMiddleware, connectorHandler)
+	registerBrainRoutes(protected, authMiddleware, brainHandler)
 
 	// R-Sim simulation engine routes
 	registerSimulationRoutes(api, authMiddleware, simHandler)

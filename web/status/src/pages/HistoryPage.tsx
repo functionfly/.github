@@ -16,6 +16,7 @@ import {
   type IncidentsListResponse,
   type UptimeDataPoint,
 } from "@/lib/api";
+import { trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO, subDays } from "date-fns";
@@ -112,7 +113,12 @@ function Header() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="hidden sm:flex">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden sm:flex"
+              onClick={() => trackEvent('history_export_clicked')}
+            >
               <Download className="w-4 h-4 mr-2" />
               Export
             </Button>
@@ -473,7 +479,10 @@ export default function HistoryPage() {
                   {ranges.map((range) => (
                     <button
                       key={range.value}
-                      onClick={() => setSelectedRange(range.value)}
+                      onClick={() => {
+                        trackEvent('history_range_selected', { range: range.value });
+                        setSelectedRange(range.value);
+                      }}
                       className={cn(
                         "px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200",
                         selectedRange === range.value
@@ -665,11 +674,15 @@ export default function HistoryPage() {
                 <Button
                   variant="outline"
                   className="border-border-default hover:bg-bg-hover"
+                  onClick={() => trackEvent('history_export_csv_clicked')}
                 >
                   <Download className="w-4 h-4 mr-2" />
                   Export CSV
                 </Button>
-                <Button className="bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-500/25">
+                <Button
+                  className="bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-500/25"
+                  onClick={() => trackEvent('history_api_access_clicked')}
+                >
                   <Globe className="w-4 h-4 mr-2" />
                   API Access
                 </Button>

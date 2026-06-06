@@ -961,7 +961,9 @@
     "gettingStarted": "البدء",
     "collapseSidebar": "طيّ الشريط الجانبي",
     "expandSidebar": "توسيع الشريط الجانبي",
-    "commandPalette": "لوحة الأوامر"
+    "commandPalette": "لوحة الأوامر",
+    "brain": "Brain",
+    "connectors": "Connectors"
   },
   "notifCenter": {
     "title": "Notifications",

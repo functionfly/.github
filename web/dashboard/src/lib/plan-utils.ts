@@ -1,4 +1,4 @@
-import { PLANS, AGENT_ENTERPRISE } from './constants';
+import { AGENT_ENTERPRISE, PLANS } from './constants';
 
 export type PlanTier = 'free' | 'starter' | 'professional' | 'enterprise' | 'agent_enterprise';
 
@@ -251,7 +251,7 @@ export const FEATURES: Record<string, readonly PlanTier[]> = {
   /** Stateful fabrics: Free has 0 quota; paid tiers per PLANS.limits.stateFabrics */
   STATE_FABRIC: ['starter', 'professional', 'enterprise'],
   /** AI agents: Free has 0 quota; paid tiers per PLANS.limits.agents */
-  AGENTS: ['starter', 'professional', 'enterprise', 'agent_enterprise'],
+  AGENTS: ['free', 'starter', 'professional', 'enterprise', 'agent_enterprise'],
   UNLIMITED_FUNCTIONS: ['enterprise'],
   UNLIMITED_PROVIDERS: ['enterprise'],
   PRIORITY_SUPPORT: ['professional', 'enterprise'],

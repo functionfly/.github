@@ -170,6 +170,8 @@ func (h *Handler) RegisterRoutes(r *mux.Router) {
 	r.HandleFunc("/ghost/builds/{id}/tasks/{task_id}/complete", h.HandleCompleteTask).Methods("POST", "OPTIONS")
 	r.HandleFunc("/ghost/builds/{id}/tasks/{task_id}/fail", h.HandleFailTask).Methods("POST", "OPTIONS")
 	r.HandleFunc("/ghost/builds/{id}/tasks/{task_id}/logs", h.HandleAddTaskLog).Methods("POST", "OPTIONS")
+	r.HandleFunc("/ghost/builds/{id}/tasks/{task_id}/logs", h.HandleGetTaskLogs).Methods("GET", "OPTIONS")
+	r.HandleFunc("/ghost/builds/{id}/logs", h.HandleGetBuildLogs).Methods("GET", "OPTIONS")
 
 	// Human approval
 	r.HandleFunc("/ghost/builds/{id}/approve", h.HandleApproval).Methods("POST", "OPTIONS")
@@ -598,21 +600,110 @@ func (h *Handler) HandleAddTaskLog(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// HandleGetTaskLogs retrieves all log entries for a specific task within a build
+// GET /v1/ghost/builds/{id}/tasks/{task_id}/logs
+func (h *Handler) HandleGetTaskLogs(w http.ResponseWriter, r *http.Request) {
+	buildID := mux.Vars(r)["id"]
+	taskID := mux.Vars(r)["task_id"]
+
+	if buildID == "" {
+		writeError(w, http.StatusBadRequest, "MISSING_BUILD_ID", "build id required")
+		return
+	}
+	if taskID == "" {
+		writeError(w, http.StatusBadRequest, "MISSING_TASK_ID", "task id required")
+		return
+	}
+
+	h.mu.RLock()
+	build, ok := h.builds[buildID]
+	h.mu.RUnlock()
+
+	if !ok {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "build not found")
+		return
+	}
+
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	var logs []LogEntry
+	for _, task := range build.Tasks {
+		if task.ID == taskID {
+			logs = task.Logs
+			break
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"ok":       true,
+		"build_id": buildID,
+		"task_id":  taskID,
+		"logs":     logs,
+		"total":    len(logs),
+	})
+}
+
+// HandleGetBuildLogs retrieves all log entries for a build across all tasks
+// GET /v1/ghost/builds/{id}/logs
+func (h *Handler) HandleGetBuildLogs(w http.ResponseWriter, r *http.Request) {
+	buildID := mux.Vars(r)["id"]
+
+	if buildID == "" {
+		writeError(w, http.StatusBadRequest, "MISSING_BUILD_ID", "build id required")
+		return
+	}
+
+	h.mu.RLock()
+	build, ok := h.builds[buildID]
+	h.mu.RUnlock()
+
+	if !ok {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "build not found")
+		return
+	}
+
+	// Collect all logs with task context
+	type TaskLogEntry struct {
+		TaskID    string    `json:"task_id"`
+		TaskTitle string    `json:"task_title"`
+		Timestamp time.Time `json:"timestamp"`
+		Level     string    `json:"level"`
+		Message   string    `json:"message"`
+	}
+
+	var allLogs []TaskLogEntry
+	for _, task := range build.Tasks {
+		for _, log := range task.Logs {
+			allLogs = append(allLogs, TaskLogEntry{
+				TaskID:    task.ID,
+				TaskTitle: task.Title,
+				Timestamp: log.Timestamp,
+				Level:     log.Level,
+				Message:   log.Message,
+			})
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"ok":       true,
+		"build_id": buildID,
+		"logs":     allLogs,
+		"total":    len(allLogs),
+	})
+}
+
 func (h *Handler) HandleApproval(w http.ResponseWriter, r *http.Request) {
 	buildID := mux.Vars(r)["id"]
 	if buildID == "" {
-		buildID = r.URL.Query().Get("build_id")
+		writeError(w, http.StatusBadRequest, "MISSING_BUILD_ID", "build id required")
+		return
 	}
 
 	var req ApprovalRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "invalid request body")
 		return
-	}
-
-	// Override with path param if present
-	if buildID == "" {
-		buildID = mux.Vars(r)["id"]
 	}
 
 	h.mu.Lock()

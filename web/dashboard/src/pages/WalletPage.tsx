@@ -1,5 +1,5 @@
 import { agentApi, type AgentIdentity } from '@/api/agent';
-import { getWalletInfo, topUpWallet, getWalletTransactions } from '@/api/billing';
+import { getWalletInfo, getWalletTransactions, topUpWallet } from '@/api/billing';
 import { notificationsApi } from '@/api/notifications';
 import { WalletDashboard } from '@/components/swarm/WalletDashboard';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { trackEvent } from '@/lib/analytics';
+import { cn } from '@/lib/utils';
 import { useNotificationStore } from '@/stores/notificationStore';
+import { useQuery } from '@tanstack/react-query';
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -29,8 +32,6 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useQuery } from '@tanstack/react-query';
-import { cn } from '@/lib/utils';
 
 const LAST_WALLET_AGENT_KEY = 'ff-last-wallet-agent-id';
 const FUND_PRESETS = [10, 25, 50, 100];
@@ -117,16 +118,18 @@ function PlatformWalletView() {
       toast.error('Please enter a valid amount');
       return;
     }
+    trackEvent('wallet_checkout_initiated', { amount });
     setAddFundsLoading(true);
     try {
       const origin = window.location.origin;
-      const { url } = await topUpWallet(
+      const { checkout_url } = await topUpWallet(
         amount,
         `${origin}/wallet?walletTopUp=success`,
         `${origin}/wallet?walletTopUp=cancel`
       );
-      window.location.href = url;
+      window.location.href = checkout_url;
     } catch {
+      trackEvent('wallet_checkout_failed');
       toast.error('Could not initiate checkout. Please try again.');
     } finally {
       setAddFundsLoading(false);
@@ -225,7 +228,10 @@ function PlatformWalletView() {
                 />
               </div>
             </div>
-            <Button onClick={() => setShowAddFunds(true)} className="gap-2 w-full sm:w-auto h-8 text-sm">
+            <Button onClick={() => {
+              trackEvent('wallet_add_funds_opened');
+              setShowAddFunds(true);
+            }} className="gap-2 w-full sm:w-auto h-8 text-sm">
               <Plus className="h-3.5 w-3.5" />
               Add Funds
             </Button>
@@ -346,7 +352,10 @@ function PlatformWalletView() {
               {FUND_PRESETS.map((preset) => (
                 <button
                   key={preset}
-                  onClick={() => setAddFundsAmount(String(preset))}
+                  onClick={() => {
+                    trackEvent('wallet_preset_selected', { preset });
+                    setAddFundsAmount(String(preset));
+                  }}
                   className={cn(
                     'flex-1 py-2 rounded-lg border text-sm font-medium transition-all',
                     addFundsAmount === String(preset)

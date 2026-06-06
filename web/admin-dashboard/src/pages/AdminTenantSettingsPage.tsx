@@ -23,7 +23,23 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { LoadingScreen } from '@/components/common/LoadingScreen';
-import { MFA_POLICY_OPTIONS, SESSION_POLICY_DEFAULTS } from '@/lib/constants';
+
+const MFA_POLICY_OPTIONS = [
+  { value: 'disabled', label: 'Disabled', description: 'MFA is not required for any user.' },
+  { value: 'optional', label: 'Optional', description: 'Users can enable MFA but it is not enforced.' },
+  { value: 'required_admins', label: 'Required for admins', description: 'MFA is required for users with admin roles.' },
+  { value: 'required_all', label: 'Required for all', description: 'MFA is required for all users.' },
+] as const;
+
+const SESSION_POLICY_DEFAULTS = {
+  idle_timeout_minutes: 30,
+  absolute_timeout_minutes: 480,
+  mfa_reverify_interval_minutes: 1440,
+  max_concurrent_sessions: 5,
+  max_duration_minutes: 480,
+  ip_binding: 'none' as const,
+};
+
 import type {
   Tenant,
   SAMLConfig,
@@ -43,6 +59,7 @@ export function AdminTenantSettingsPage() {
 
   // SAML form state
   const [samlConfig, setSamlConfig] = useState<SAMLConfig>({
+    id: '',
     enabled: false,
     entity_id: '',
     sso_url: '',
@@ -55,9 +72,11 @@ export function AdminTenantSettingsPage() {
 
   // Session policy form state
   const [sessionPolicy, setSessionPolicy] = useState<SessionPolicy>({
-    max_duration_minutes: SESSION_POLICY_DEFAULTS.max_duration_minutes,
+    timeout_minutes: SESSION_POLICY_DEFAULTS.absolute_timeout_minutes,
     idle_timeout_minutes: SESSION_POLICY_DEFAULTS.idle_timeout_minutes,
     max_concurrent_sessions: SESSION_POLICY_DEFAULTS.max_concurrent_sessions,
+    enforce_device_fingerprint: false,
+    max_duration_minutes: SESSION_POLICY_DEFAULTS.max_duration_minutes,
   });
 
   // Fetch tenant info
@@ -427,10 +446,10 @@ export function AdminTenantSettingsPage() {
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">ACS URL</p>
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-mono text-gray-900 dark:text-white truncate">
-                            {metadataResponse.data.acs_url}
+                            {metadataResponse.data.acs_url ?? ''}
                           </p>
                           <button
-                            onClick={() => copyToClipboard(metadataResponse.data.acs_url)}
+                            onClick={() => copyToClipboard(metadataResponse.data.acs_url ?? '')}
                             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                           >
                             <Copy className="w-3 h-3" />
@@ -442,11 +461,11 @@ export function AdminTenantSettingsPage() {
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">SLO URL</p>
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-mono text-gray-900 dark:text-white truncate">
-                            {metadataResponse.data.slo_url || '—'}
+                            {metadataResponse.data.slo_url ?? '—'}
                           </p>
                           {metadataResponse.data.slo_url && (
                             <button
-                              onClick={() => copyToClipboard(metadataResponse.data.slo_url)}
+                              onClick={() => copyToClipboard(metadataResponse.data.slo_url ?? '')}
                               className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                             >
                               <Copy className="w-3 h-3" />
@@ -495,7 +514,7 @@ export function AdminTenantSettingsPage() {
                     />
                     <div>
                       <span className="font-medium text-gray-900 dark:text-white">{option.label}</span>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{option.description}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{(option as any).description}</p>
                     </div>
                   </label>
                 ))}
@@ -539,13 +558,13 @@ export function AdminTenantSettingsPage() {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Max Session Duration (minutes)
                     </label>
-                    <input
-                      type="number"
-                      value={sessionPolicy.max_duration_minutes}
-                      onChange={(e) => setSessionPolicy({
-                        ...sessionPolicy,
-                        max_duration_minutes: parseInt(e.target.value) || SESSION_POLICY_DEFAULTS.max_duration_minutes
-                      })}
+                      <input
+                        type="number"
+                        value={sessionPolicy.max_duration_minutes ?? SESSION_POLICY_DEFAULTS.max_duration_minutes}
+                        onChange={(e) => setSessionPolicy({
+                          ...sessionPolicy,
+                          max_duration_minutes: parseInt(e.target.value) || SESSION_POLICY_DEFAULTS.max_duration_minutes
+                        })}
                       min={5}
                       max={525600} // 1 year
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"

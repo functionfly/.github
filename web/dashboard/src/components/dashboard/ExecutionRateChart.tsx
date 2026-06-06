@@ -1,15 +1,15 @@
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
-} from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import {
+    CartesianGrid,
+    Line,
+    LineChart,
+    ReferenceLine,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
+} from "recharts";
 
 export interface ExecutionRateDataPoint {
   time: string;
@@ -40,7 +40,7 @@ export function ExecutionRateChart({
   // Don't render chart if no data
   if (!data || data.length === 0) {
     return (
-      <Card className={cn("border-theme bg-card", className)}>
+      <Card className={cn("card bg-card", className)}>
         {title && (
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold text-text-primary">
@@ -58,7 +58,7 @@ export function ExecutionRateChart({
   }
 
   return (
-    <Card className={cn("border-theme bg-card", className)}>
+    <Card className={cn("card bg-card", className)}>
       {title && (
         <CardHeader className="pb-2">
           <CardTitle className="text-base font-semibold text-text-primary">

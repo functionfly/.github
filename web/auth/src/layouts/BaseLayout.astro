@@ -4,6 +4,7 @@ interface Props {
   description?: string;
 }
 const { title, description = "Authenticate to FunctionFly™" } = Astro.props;
+const mixpanelToken = import.meta.env.PUBLIC_MIXPANEL_TOKEN as string | undefined;
 ---
 <!doctype html>
 <html lang="en">
@@ -27,6 +28,29 @@ const { title, description = "Authenticate to FunctionFly™" } = Astro.props;
     <!-- Velocity Theme + Auth Component Styles -->
     <link rel="stylesheet" href="/src/styles/velocity-theme.css" />
     <link rel="stylesheet" href="/src/styles/auth-components.css" />
+
+    <!-- Mixpanel Analytics -->
+    <script define:vars={{ mixpanelToken }}>
+      (function() {
+        if (!mixpanelToken) return;
+        (function() {
+          var w = window, mp = w.mixpanel = w.mixpanel || [];
+          function i() { mp.push(arguments); }
+          i.q = mp.q || [];
+          mp._i = [];
+          mp.init = function(token) { mp.push(['init', token]); return mp; };
+          mp.track = function() { return mp.q.push(arguments); };
+          mp.people = { track_charge: function() { mp.q.push(['people.track_charge', arguments]); } };
+          var s = document.createElement('script');
+          s.type = 'text/javascript';
+          s.async = true;
+          s.src = 'https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';
+          var x = document.getElementsByTagName('script')[0];
+          x.parentNode.insertBefore(s, x);
+        })();
+        window.mixpanel.init(mixpanelToken);
+      })();
+    </script>
 
     <style>
       /* Global resets that can't be in component layer */

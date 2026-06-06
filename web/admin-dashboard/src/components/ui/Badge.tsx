@@ -1,6 +1,13 @@
 import React from 'react';
 
-type BadgeVariant = 'default' | 'success' | 'warning' | 'info' | 'error';
+export type BadgeVariant =
+  | 'default'
+  | 'success'
+  | 'warning'
+  | 'info'
+  | 'error'
+  | 'secondary'
+  | 'outline';
 
 interface BadgeProps {
   children: React.ReactNode;
@@ -16,6 +23,8 @@ export function Badge({ children, variant = 'default', icon, className = '' }: B
     warning: 'bg-yellow-100 text-yellow-700 border-yellow-200',
     info: 'bg-blue-100 text-blue-700 border-blue-200',
     error: 'bg-red-100 text-red-700 border-red-200',
+    secondary: 'bg-gray-50 text-gray-600 border-gray-200',
+    outline: 'bg-white text-gray-700 border-gray-300',
   };
 
   return (

@@ -1,11 +1,12 @@
 import { OTPInput } from '@/components/auth/OTPInput';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { trackEvent } from '@/lib/analytics';
 import { ADMIN_DASHBOARD_URL } from '@/lib/constants';
 import {
-  decodeJwtRole,
-  isPlatformAdminRole,
-  notifyAdminPanelAfterLogin,
+    decodeJwtRole,
+    isPlatformAdminRole,
+    notifyAdminPanelAfterLogin,
 } from '@/lib/platform-admin';
 import { useAuthStore } from '@/stores/authStore';
 import { ArrowLeft, Shield, Zap } from 'lucide-react';
@@ -52,6 +53,7 @@ export function MFAChallengePage({ onVerify }: MFAChallengePageProps) {
       } else {
         await verifyMFA(code);
       }
+      trackEvent('auth_mfa_verified');
       const role = decodeJwtRole(localStorage.getItem('ff-access-token'));
       if (
         openAdminAfterLogin &&
@@ -64,6 +66,7 @@ export function MFAChallengePage({ onVerify }: MFAChallengePageProps) {
       notifyAdminPanelAfterLogin(role);
       navigate(redirectTo ?? '/overview', { replace: true });
     } catch (err) {
+      trackEvent('auth_mfa_failed');
       setAttempts((prev) => prev + 1);
       setMfaCode('');
     } finally {

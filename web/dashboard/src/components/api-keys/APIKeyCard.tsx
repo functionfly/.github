@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import {
   Key,
   Copy,
@@ -8,7 +9,6 @@ import {
   RotateCcw,
   Trash2,
   Edit,
-  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,7 +30,6 @@ import {
   APIKey,
   API_KEY_TYPE_LABELS,
 } from "@/types/api-key";
-import { cn } from "@/lib/utils";
 
 interface APIKeyCardProps {
   apiKey: APIKey;
@@ -47,13 +46,21 @@ export function APIKeyCard({
 }: APIKeyCardProps) {
   const [copied, setCopied] = useState(false);
 
+  // Copy the visible identifier (the key prefix). The full plaintext is only
+  // available at creation/rotation time and is not stored on the API key
+  // record. We surface this clearly so users know what they're copying.
   const handleCopyKey = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // Note: We can't copy the actual key here as it's not available in the API response
-    // This would be used in the details view where the key is shown
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const value = `${apiKey.key_prefix}${"•".repeat(12)}`;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      toast.success("API key identifier copied to clipboard");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy. Your browser may block clipboard access.");
+    }
   };
 
   const handleRotate = (e: React.MouseEvent) => {
@@ -111,8 +118,21 @@ export function APIKeyCard({
               </div>
               <div>
                 <CardTitle className="text-lg">{apiKey.name}</CardTitle>
-                <CardDescription className="text-xs">
-                  {apiKey.key_prefix}•••••••••
+                <CardDescription className="text-xs flex items-center gap-1">
+                  {apiKey.key_prefix}{"•".repeat(12)}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5"
+                    onClick={handleCopyKey}
+                    aria-label="Copy key identifier"
+                  >
+                    {copied ? (
+                      <Check className="w-3 h-3 text-green-600" />
+                    ) : (
+                      <Copy className="w-3 h-3" />
+                    )}
+                  </Button>
                 </CardDescription>
               </div>
             </div>
@@ -144,22 +164,30 @@ export function APIKeyCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleEdit}>
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleRotate}>
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Rotate
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={handleDelete}
-                  className="text-red-600 focus:text-red-600"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
+                {onEdit && (
+                  <DropdownMenuItem onClick={handleEdit}>
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
+                {onRotate && (
+                  <DropdownMenuItem onClick={handleRotate}>
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Rotate
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={handleDelete}
+                      className="text-red-600 focus:text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

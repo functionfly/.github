@@ -8,13 +8,14 @@ interface SelectOption {
   disabled?: boolean;
 }
 
-interface SelectProps extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'options'> {
+interface SelectProps extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'options' | 'onChange'> {
   label?: string;
   helperText?: string;
   error?: string;
   options: SelectOption[];
   placeholder?: string;
   fullWidth?: boolean;
+  onChange?: (value: string) => void;
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
@@ -54,7 +55,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     }, [isOpen]);
 
     const handleSelect = (optionValue: string) => {
-      onChange?.({ target: { value: optionValue } } as any);
+      onChange?.(optionValue);
       setIsOpen(false);
     };
 
@@ -120,7 +121,6 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         <select
           ref={ref}
           value={value}
-          onChange={onChange}
           disabled={disabled}
           className="sr-only"
           {...props}

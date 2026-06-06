@@ -1,19 +1,24 @@
-import React from "react";
+import type { TelemetryMetric, TokenUsage } from "@functionfly/ui-observability";
 import {
-  LiveTelemetryPanel,
   CostHeatmap,
   LatencyGraph,
+  LiveTelemetryPanel,
 } from "@functionfly/ui-observability";
-import type { TelemetryMetric, TokenUsage } from "@functionfly/ui-observability";
-import { BarChart2, Zap, AlertTriangle, CheckCircle } from "lucide-react";
+import { BarChart2, Zap } from "lucide-react";
+import { TelemetryPanelSkeleton } from "../components/StudioPanelsSkeleton";
 
 interface TelemetryPanelProps {
   metrics: TelemetryMetric[];
   tokenUsage: TokenUsage;
   onMetricClick?: (metric: TelemetryMetric) => void;
+  isLoading?: boolean;
 }
 
-export function TelemetryPanel({ metrics, tokenUsage, onMetricClick }: TelemetryPanelProps) {
+export function TelemetryPanel({ metrics, tokenUsage, onMetricClick, isLoading }: TelemetryPanelProps) {
+  if (isLoading) {
+    return <TelemetryPanelSkeleton />;
+  }
+
   return (
     <div className="p-3 space-y-4">
       <LiveTelemetryPanel

@@ -1,14 +1,14 @@
-import { formatDistanceToNow } from "date-fns";
-import {
-  Bot,
-  CheckCircle2,
-  AlertCircle,
-  Zap,
-  Clock,
-  XCircle,
-} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { formatDistanceToNow } from "date-fns";
+import {
+    AlertCircle,
+    Bot,
+    CheckCircle2,
+    Clock,
+    XCircle,
+    Zap,
+} from "lucide-react";
 
 export type AgentActivityType =
   | "invocation"
@@ -81,7 +81,7 @@ export function AgentActivityFeed({
   const displayActivities = activities.slice(0, maxItems);
 
   return (
-    <Card className={cn("border-theme bg-card", className)}>
+    <Card className={cn("", className)}>
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-semibold text-text-primary">
           {title}

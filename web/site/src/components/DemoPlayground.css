@@ -1,0 +1,297 @@
+/* =============================================
+   ZERO-FRICTION DEMO PLAYGROUND
+   Scoped to the DemoPlayground island. Imported
+   by the React component so styles reach the
+   client-rendered DOM (Astro-scoped <style> blocks
+   don't penetrate React islands).
+   ============================================= */
+.demo-playground {
+  padding: 5rem 1.5rem;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(99, 102, 241, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(16, 185, 129, 0.08) 0%, transparent 50%),
+    var(--color-bg);
+  border-top: 1px solid var(--glass-border);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.demo-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.demo-panel {
+  max-width: 860px;
+  margin: 0 auto;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  backdrop-filter: blur(20px);
+  box-shadow: var(--depth-shadow), var(--glow-shadow);
+  overflow: hidden;
+}
+
+.demo-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--glass-border);
+  overflow-x: auto;
+}
+
+.demo-tab {
+  flex: 1;
+  min-width: 160px;
+  padding: 1rem 1.25rem;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  font-family: inherit;
+}
+
+.demo-tab:hover {
+  color: var(--color-text);
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.demo-tab.active {
+  color: var(--color-aurora-primary);
+  border-bottom-color: var(--color-aurora-primary);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.demo-tab-label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.demo-tab-desc {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  line-height: 1.3;
+}
+
+.demo-editor {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.demo-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.demo-editor-title {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-cyan);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.demo-editor-hint {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.demo-textarea {
+  width: 100%;
+  min-height: 160px;
+  background: var(--color-bg-light, #1e293b);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 8px;
+  padding: 1rem;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  resize: vertical;
+  transition: border-color 0.2s ease;
+}
+
+.demo-textarea:focus {
+  outline: none;
+  border-color: var(--color-aurora-primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.demo-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  flex-wrap: wrap;
+}
+
+.demo-rate-hint {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.demo-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: demo-spin 0.8s linear infinite;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+
+@keyframes demo-spin {
+  to { transform: rotate(360deg); }
+}
+
+.demo-result {
+  margin: 0 1.25rem 1.25rem;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--color-bg-light, #1e293b);
+}
+
+.demo-result-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  background: rgba(0, 0, 0, 0.04);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.demo-status {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+}
+
+.demo-status.ok {
+  background: rgba(16, 185, 129, 0.15);
+  color: #4ade80;
+}
+
+.demo-status.err {
+  background: rgba(248, 113, 113, 0.15);
+  color: #f87171;
+}
+
+.demo-meta {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.demo-result-body {
+  padding: 1rem;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--color-text);
+  overflow-x: auto;
+  max-height: 320px;
+}
+
+.demo-result-body code {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.demo-cta {
+  margin: 0 1.25rem 1.5rem;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(56, 189, 248, 0.1));
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.demo-cta-text {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.demo-cta .ff-btn {
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .demo-playground {
+    padding: 3rem 1rem;
+  }
+
+  .demo-tabs {
+    flex-direction: column;
+  }
+
+  .demo-tab {
+    border-bottom: 1px solid var(--glass-border);
+    border-left: 2px solid transparent;
+  }
+
+  .demo-tab.active {
+    border-bottom-color: var(--glass-border);
+    border-left-color: var(--color-aurora-primary);
+  }
+
+  .demo-cta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-tab,
+  .demo-textarea {
+    transition: none;
+  }
+  .demo-spinner {
+    animation: none;
+  }
+}
+
+[data-theme='light'] .demo-playground {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(99, 102, 241, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(16, 185, 129, 0.04) 0%, transparent 50%),
+    var(--color-bg);
+}
+
+[data-theme='light'] .demo-panel {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(99, 102, 241, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 0 0 40px rgba(99, 102, 241, 0.06);
+}
+
+[data-theme='light'] .demo-spinner {
+  border-color: rgba(99, 102, 241, 0.3);
+  border-top-color: #6366f1;
+}
+
+[data-theme='light'] .demo-status.ok {
+  color: #16a34a;
+}
+
+[data-theme='light'] .demo-status.err {
+  color: #dc2626;
+}

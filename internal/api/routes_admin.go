@@ -116,6 +116,10 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/auth/session", authMiddleware.RequireAuth(adminHandler.HandleGetAdminSession)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/auth/session", authMiddleware.RequireAuth(adminHandler.HandleExtendAdminSession)).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/auth/last-login", authMiddleware.RequireAuth(adminHandler.HandleGetAdminLastLogin)).Methods("GET", "OPTIONS")
+	// Short-lived HMAC signature issuance. No HMAC required on this endpoint
+	// (chicken-and-egg) but session auth, IP allowlist, rate-limit, and CSRF
+	// still apply through the adminRoutes.Use chain above.
+	adminRoutes.HandleFunc("/auth/sign-request", authMiddleware.RequireAuth(adminHandler.HandleSignRequest)).Methods("POST", "OPTIONS")
 
 	// Tenant management
 	adminRoutes.HandleFunc("/tenants", authMiddleware.RequirePermission(auth.PermTenantsRead)(adminHandler.HandleListTenants)).Methods("GET", "OPTIONS")

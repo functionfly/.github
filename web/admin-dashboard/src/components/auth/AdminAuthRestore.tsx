@@ -1,6 +1,14 @@
 /**
- * Restores admin session from sessionStorage on app load so a page refresh keeps
- * the user logged in.  Also picks up JWT tokens written by the main dashboard login.
+ * Restores the admin session on app load so a page refresh keeps the user
+ * logged in within the same tab.
+ *
+ * The token lives in sessionStorage (cleared on tab close) — the dashboard's
+ * `localStorage` JWT is NOT read here. A previous version of this component
+ * cross-read `localStorage.ffly_jwt` / `localStorage['ff-access-token']`,
+ * which made the admin JWT stealable by any XSS on the marketing site, the
+ * main dashboard, or any third-party script with a single tab. That was
+ * removed; opening the admin dashboard in a new tab now requires a fresh
+ * admin login (the right tradeoff for the surface area it protects).
  *
  * Routing responsibilities:
  *  - If the session is restored, ProtectedRoute (which reads from Zustand) will
@@ -10,16 +18,14 @@
  *    router doesn't flash the wrong page before we know auth state.
  */
 
-import { useEffect, useState } from 'react';
-import { useAdminAuthStore } from '@/stores/adminAuthStore';
 import { LoadingScreen } from '@/components/common/LoadingScreen';
-import { bootstrapAdminSession } from '@/lib/api/adminAuth';
-import { CACHE_KEYS } from '@/lib/constants';
+import { logger } from '@/lib/monitoring/logger';
+import { useAdminAuthStore } from '@/stores/adminAuthStore';
+import { useEffect, useState } from 'react';
 
 export function AdminAuthRestore({ children }: { children: React.ReactNode }) {
   const [restoring, setRestoring] = useState(true);
   const initialize = useAdminAuthStore((s) => s.initialize);
-  const login = useAdminAuthStore((s) => s.login);
 
   useEffect(() => {
     const restoreSession = async () => {
@@ -31,33 +37,9 @@ export function AdminAuthRestore({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        // 1. Try to restore from sessionStorage (handled inside initialize())
         await initialize();
-
-        // 2. If still not authenticated, try a JWT written by the main dashboard
-        if (!useAdminAuthStore.getState().isAuthenticated) {
-          const jwtToken =
-            localStorage.getItem('ffly_jwt') || localStorage.getItem('ff-access-token');
-          if (jwtToken) {
-            try {
-              const bootstrap = await bootstrapAdminSession(jwtToken);
-              if (bootstrap.session && bootstrap.user) {
-                try {
-                  sessionStorage.setItem(CACHE_KEYS.ADMIN_ACCESS_TOKEN, jwtToken);
-                } catch {
-                  /* sessionStorage may be unavailable */
-                }
-                login(bootstrap.session, bootstrap.user);
-              }
-            } catch (error) {
-              console.warn('Failed to bootstrap admin session from JWT:', error);
-              localStorage.removeItem('ffly_jwt');
-              localStorage.removeItem('ff-access-token');
-            }
-          }
-        }
       } catch (error) {
-        console.warn('Failed to restore admin session:', error);
+        logger.warn('Failed to restore admin session', { error });
       } finally {
         setRestoring(false);
       }

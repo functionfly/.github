@@ -26,6 +26,14 @@ const faqSchema = {
     },
     {
       '@type': 'Question',
+      name: 'Where does State Fabric pricing show up?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'State Fabric tiers are billed alongside your workspace plan. Optional add-ons can be enabled to increase performance, security, or analytics—confirm live rates in your billing page.',
+      },
+    },
+    {
+      '@type': 'Question',
       name: 'Can we upgrade or downgrade?',
       acceptedAnswer: {
         '@type': 'Answer',
@@ -138,13 +146,15 @@ const pricingSchemas = [faqSchema, productSchema];
             <span class="price-amount">$0</span>
             <span class="price-period">/ month</span>
           </div>
-          <p class="tier-desc">Perfect for getting started with FunctionFly.</p>
+          <p class="tier-desc">For side projects and experimentation.</p>
           <ul class="feature-list">
-            <li><span class="check" aria-hidden="true">✓</span> 1 function</li>
+            <li><span class="check" aria-hidden="true">✓</span> 3 functions</li>
             <li><span class="check" aria-hidden="true">✓</span> 2 providers</li>
-            <li><span class="check" aria-hidden="true">✓</span> 100,000 requests / month</li>
+            <li><span class="check" aria-hidden="true">✓</span> 500 requests / month</li>
+            <li><span class="check" aria-hidden="true">✓</span> 3 AI agents, 10K calls/mo</li>
             <li><span class="check" aria-hidden="true">✓</span> Community support</li>
             <li class="tm-feature"><span class="check" aria-hidden="true">✓</span> <strong>Time Machine:</strong> 24h replay window, 100 executions</li>
+            <li class="consciousness-feature"><span aria-hidden="true">—</span> <strong>Consciousness:</strong> Not included on Free</li>
           </ul>
           <a class="btn btn-secondary full-width" href={`${AUTH_ORIGIN}/signup`}>Start free</a>
         </article>
@@ -159,11 +169,11 @@ const pricingSchemas = [faqSchema, productSchema];
           <p class="tier-desc">For side projects and MVPs.</p>
           <ul class="feature-list">
             <li><span class="check" aria-hidden="true">✓</span> 5 functions</li>
-            <li><span class="check" aria-hidden="true">✓</span> 3 providers</li>
+            <li><span class="check" aria-hidden="true">✓</span> 2 providers</li>
             <li><span class="check" aria-hidden="true">✓</span> 1M requests / month</li>
             <li><span class="check" aria-hidden="true">✓</span> 1 custom domain</li>
-            <li><span class="check" aria-hidden="true">✓</span> State Fabric: up to 1 instance</li>
-            <li><span class="check" aria-hidden="true">✓</span> AI Agents: 100K calls/mo, 10 concurrency</li>
+            <li><span class="check" aria-hidden="true">✓</span> State Fabric: up to 3 instances</li>
+            <li><span class="check" aria-hidden="true">✓</span> AI Agents: 10 agents, 100K calls/mo, 10 concurrency</li>
             <li><span class="check" aria-hidden="true">✓</span> Email support &amp; basic analytics</li>
             <li class="tm-feature"><span class="check" aria-hidden="true">✓</span> <strong>Time Machine:</strong> 72h window, 1,000 execs/replay</li>
           </ul>
@@ -171,21 +181,20 @@ const pricingSchemas = [faqSchema, productSchema];
         </article>
 
         <article class="price-card price-card--featured" data-plan="professional">
-          <div class="featured-pill">Most popular</div>
           <h3 class="tier-name">Professional</h3>
           <div class="price-row">
             <span class="price-amount" data-monthly="$79" data-annual="$66">$79</span>
             <span class="price-period">/ month</span>
           </div>
-          <div class="annual-note" style="display: none;">$790 billed annually</div>
+          <div class="annual-note" style="display: none;">$792 billed annually</div>
           <p class="tier-desc">For growing teams and production SaaS.</p>
           <ul class="feature-list">
             <li><span class="check" aria-hidden="true">✓</span> 25 functions</li>
-            <li><span class="check" aria-hidden="true">✓</span> 5 providers</li>
+            <li><span class="check" aria-hidden="true">✓</span> 3 providers</li>
             <li><span class="check" aria-hidden="true">✓</span> 10M requests / month</li>
             <li><span class="check" aria-hidden="true">✓</span> 5 custom domains</li>
-            <li><span class="check" aria-hidden="true">✓</span> State Fabric: up to 5 instances</li>
-            <li><span class="check" aria-hidden="true">✓</span> AI Agents: 1M calls/mo, 100 concurrency</li>
+            <li><span class="check" aria-hidden="true">✓</span> State Fabric: up to 10 instances</li>
+            <li><span class="check" aria-hidden="true">✓</span> AI Agents: 100 agents, 1M calls/mo, 100 concurrency</li>
             <li><span class="check" aria-hidden="true">✓</span> 99.9% SLA, priority support</li>
             <li><span class="check" aria-hidden="true">✓</span> Advanced analytics &amp; team collaboration</li>
             <li class="tm-feature"><span class="check" aria-hidden="true">✓</span> <strong>Time Machine:</strong> 30-day window, 10K execs, dry-run reconciliation</li>
@@ -197,16 +206,16 @@ const pricingSchemas = [faqSchema, productSchema];
         <article class="price-card" data-plan="enterprise">
           <h3 class="tier-name">Enterprise</h3>
           <div class="price-row">
-            <span class="price-amount">$299</span>
+            <span class="price-amount" data-monthly="$299" data-annual="$249">$299</span>
             <span class="price-period">/ month</span>
           </div>
           <div class="annual-note" style="display: none;">$2990 billed annually</div>
           <p class="tier-desc">For large-scale apps, compliance, and custom trust policies.</p>
           <ul class="feature-list">
             <li><span class="check" aria-hidden="true">✓</span> Unlimited functions &amp; requests</li>
-            <li><span class="check" aria-hidden="true">✓</span> All providers &amp; domains</li>
+            <li><span class="check" aria-hidden="true">✓</span> 5 providers</li>
             <li><span class="check" aria-hidden="true">✓</span> State Fabric: unlimited instances</li>
-            <li><span class="check" aria-hidden="true">✓</span> AI Agents: 5M calls/mo, 500 concurrency</li>
+            <li><span class="check" aria-hidden="true">✓</span> AI Agents: 500 agents, 5M calls/mo, 500 concurrency</li>
             <li><span class="check" aria-hidden="true">✓</span> 99.99% SLA &amp; dedicated support</li>
             <li><span class="check" aria-hidden="true">✓</span> Custom integrations &amp; onboarding</li>
             <li class="tm-feature"><span class="check" aria-hidden="true">✓</span> <strong>Time Machine:</strong> 90-day window, 100K execs, live reconciliation, SOC2/HIPAA audit certs</li>
@@ -218,6 +227,107 @@ const pricingSchemas = [faqSchema, productSchema];
       <p class="footnote">
         Limits and features match what your workspace shows. Verification, marketplace, and Trust API usage may be billed separately—see <a href="/trust">Trust layer</a> and in-product usage for current rates.
       </p>
+
+      <div class="comparison-table-wrap">
+        <h3 class="comparison-title">Compare platform plans</h3>
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th scope="col">Feature</th>
+              <th scope="col">Free</th>
+              <th scope="col">Starter</th>
+              <th scope="col">Professional</th>
+              <th scope="col">Enterprise</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Functions</td>
+              <td>3</td>
+              <td>5</td>
+              <td>25</td>
+              <td>Unlimited</td>
+            </tr>
+            <tr>
+              <td>Providers</td>
+              <td>2</td>
+              <td>2</td>
+              <td>3</td>
+              <td>5</td>
+            </tr>
+            <tr>
+              <td>Custom domains</td>
+              <td>—</td>
+              <td>1</td>
+              <td>5</td>
+              <td>Unlimited</td>
+            </tr>
+            <tr>
+              <td>State Fabric instances</td>
+              <td>—</td>
+              <td>Up to 3</td>
+              <td>Up to 10</td>
+              <td>Unlimited</td>
+            </tr>
+            <tr>
+              <td>Requests / month</td>
+              <td>500</td>
+              <td>1M</td>
+              <td>10M</td>
+              <td>Unlimited</td>
+            </tr>
+            <tr>
+              <td>AI Agents</td>
+              <td>3</td>
+              <td>10</td>
+              <td>100</td>
+              <td>500</td>
+            </tr>
+            <tr>
+              <td>AI Agents calls / mo</td>
+              <td>10K</td>
+              <td>100K</td>
+              <td>1M</td>
+              <td>5M</td>
+            </tr>
+            <tr>
+              <td>AI Agents concurrency</td>
+              <td>3</td>
+              <td>10</td>
+              <td>100</td>
+              <td>500</td>
+            </tr>
+            <tr>
+              <td>Time Machine</td>
+              <td>24h / 100 execs</td>
+              <td>72h / 1K execs</td>
+              <td>30d / 10K execs</td>
+              <td>90d / 100K execs</td>
+            </tr>
+            <tr>
+              <td>Consciousness</td>
+              <td>—</td>
+              <td>—</td>
+              <td>7-day lookback</td>
+              <td>30-day lookback</td>
+            </tr>
+            <tr>
+              <td>SLA</td>
+              <td>—</td>
+              <td>—</td>
+              <td>99.9%</td>
+              <td>99.99%</td>
+            </tr>
+            <tr>
+              <td>Support</td>
+              <td>Community</td>
+              <td>Email</td>
+              <td>Priority</td>
+              <td>Dedicated</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       {/* Backend-in-a-Box Bundles Promo */}
       <div class="bundles-promo">
@@ -308,7 +418,6 @@ const pricingSchemas = [faqSchema, productSchema];
         </article>
 
         <article class="price-card price-card--featured">
-          <div class="featured-pill">Best for production</div>
           <h3 class="tier-name">Pro</h3>
           <div class="price-row">
             <span class="price-amount">$99</span>
@@ -524,23 +633,28 @@ const pricingSchemas = [faqSchema, productSchema];
           </thead>
           <tbody>
             <tr>
+              <td><strong>Free</strong></td>
+              <td class="agent-price-cell"><span class="price-amount" data-monthly="Included" data-annual="Included">Included</span></td>
+              <td class="muted-cell">3 agents, basic discovery</td>
+            </tr>
+            <tr>
               <td><strong>Starter</strong> (bundled)</td>
-              <td>Included</td>
+              <td class="agent-price-cell"><span class="price-amount" data-monthly="Included" data-annual="Included">Included</span></td>
               <td class="muted-cell">100K AI calls/mo, 10 agents, 100 calls/min</td>
             </tr>
             <tr>
               <td><strong>Professional</strong> (bundled)</td>
-              <td>Included</td>
+              <td class="agent-price-cell"><span class="price-amount" data-monthly="Included" data-annual="Included">Included</span></td>
               <td class="muted-cell">1M AI calls/mo, 100 agents, 500 calls/min</td>
             </tr>
             <tr>
               <td><strong>Enterprise</strong></td>
-              <td>$299 / mo</td>
+              <td class="agent-price-cell"><span class="price-amount" data-monthly="$299 / mo" data-annual="$249 / mo">$299 / mo</span></td>
               <td class="muted-cell">5M AI calls/mo, 500 agents, 2K calls/min, $0.05/1K overage</td>
             </tr>
             <tr>
               <td><strong>Agent Enterprise</strong></td>
-              <td>$499 / mo</td>
+              <td class="agent-price-cell"><span class="price-amount" data-monthly="$499 / mo" data-annual="$399 / mo">$499 / mo</span></td>
               <td class="muted-cell">Unlimited AI calls, unlimited agents, dedicated infrastructure</td>
             </tr>
           </tbody>

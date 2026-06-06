@@ -2,5 +2,245 @@
   background: rgba(var(--bg-secondary), 0.7);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(var(--border-subtle), 0.3);
+  border: 2px solid rgba(var(--warning), 0.4);
+  outline: 1px solid rgba(var(--warning), 0.12);
+  outline-offset: 3px;
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme='light'] .glass {
+  border: 2px solid rgba(217, 119, 6, 0.45);
+  outline: 1px solid rgba(217, 119, 6, 0.15);
+  outline-offset: 3px;
+  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.08);
+}
+
+/* ==========================================================================
+   404 "Looking for a published function?" card
+
+   SpotlightCard uses `bg-card` which resolves to a flat #1a1a25 in dark mode.
+   Against the page gradient + the spotlight overlay that produces a washed-out
+   gray panel that fights the rest of the page. Give it a true dark-mode
+   surface: layered brand-tinted base, soft inner glow, and a 2px brand
+   border that breathes away from the inner content (padding + outer ring
+   via box-shadow) so it doesn't "hug" the text. Works in light + dark.
+   ========================================================================== */
+.notfound-spotlight {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 107, 53, 0.06) 0%,
+      rgba(168, 85, 247, 0.05) 100%
+    ),
+    rgba(10, 10, 15, 0.7) !important;
+  border: 2px solid rgba(255, 107, 53, 0.45) !important;
+  outline: 1px solid rgba(255, 107, 53, 0.15);
+  outline-offset: 4px;
+  box-shadow:
+    0 0 0 1px rgba(255, 107, 53, 0.08) inset,
+    0 12px 40px -12px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.notfound-spotlight:hover {
+  border-color: rgba(255, 107, 53, 0.7) !important;
+  outline-color: rgba(255, 107, 53, 0.3);
+  box-shadow:
+    0 0 0 1px rgba(255, 107, 53, 0.12) inset,
+    0 16px 48px -8px rgba(255, 107, 53, 0.3);
+}
+
+[data-theme='light'] .notfound-spotlight {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 107, 53, 0.06) 0%,
+      rgba(168, 85, 247, 0.05) 100%
+    ),
+    rgba(255, 255, 255, 0.95) !important;
+  border: 2px solid rgba(232, 90, 42, 0.5) !important;
+  outline: 1px solid rgba(232, 90, 42, 0.18);
+  outline-offset: 4px;
+  box-shadow:
+    0 0 0 1px rgba(232, 90, 42, 0.08) inset,
+    0 6px 20px -4px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='light'] .notfound-spotlight:hover {
+  border-color: rgba(232, 90, 42, 0.8) !important;
+  outline-color: rgba(232, 90, 42, 0.35);
+  box-shadow:
+    0 0 0 1px rgba(232, 90, 42, 0.12) inset,
+    0 10px 28px -6px rgba(232, 90, 42, 0.2);
+}
+
+/* ==========================================================================
+   "Browse Registry" gradient CTA
+
+   The brand-to-purple gradient on the link clashes with dark mode because
+   the link is rendered through global `a` orange (handled by the
+   `.notfound-browse-link` color override). Add a frosted inner overlay so
+   the button reads as a real surface: a subtle dark scrim on top of the
+   gradient gives the white text a proper backdrop and a visible focus/hover
+   state. The overlay fades to transparent on hover for an "open" feel.
+   ========================================================================== */
+.notfound-browse-link {
+  position: relative;
+  color: #fff !important;
+  font-weight: 500;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  box-shadow:
+    0 4px 14px -4px rgba(255, 107, 53, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.notfound-browse-link::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.18) 0%,
+    rgba(0, 0, 0, 0.05) 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity 250ms ease;
+}
+
+.notfound-browse-link > * {
+  position: relative;
+  z-index: 1;
+}
+
+.notfound-browse-link:hover::before {
+  opacity: 0.5;
+}
+
+.notfound-browse-link:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow:
+    0 6px 20px -4px rgba(255, 107, 53, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.12) inset;
+}
+
+/* Light mode: the brand→purple gradient is bright on a white page and
+   the white text + white wash overlay became invisible. Swap the gradient
+   for a solid brand surface, switch text to white, and add a darker ring
+   for definition on light backgrounds. */
+[data-theme='light'] .notfound-browse-link {
+  background: linear-gradient(
+    135deg,
+    #f97316 0%,
+    #ea580c 60%,
+    #c2410c 100%
+  ) !important;
+  border-color: rgba(154, 52, 18, 0.5);
+  box-shadow:
+    0 4px 14px -4px rgba(232, 90, 42, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.25) inset;
+}
+
+[data-theme='light'] .notfound-browse-link::before {
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.1) 0%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
+[data-theme='light'] .notfound-browse-link:hover {
+  border-color: rgba(154, 52, 18, 0.7);
+  background: linear-gradient(
+    135deg,
+    #ea580c 0%,
+    #c2410c 60%,
+    #9a3412 100%
+  ) !important;
+}
+
+/* ==========================================================================
+   "Go Back" outline button
+
+   The default Button `outline` variant uses a 1px border, which on a dark
+   background reads as a hairline and visually hugs the label. Bump it to
+   2px and tint it with the brand color so the outline actually frames the
+   text. Light mode gets a stronger darker outline for definition on white.
+   ========================================================================== */
+.notfound-nav-btn-outline {
+  border-width: 2px !important;
+  border-color: rgba(255, 107, 53, 0.45) !important;
+  color: var(--text-primary) !important;
+  background: rgba(255, 107, 53, 0.04);
+}
+
+.notfound-nav-btn-outline:hover {
+  border-color: rgba(255, 107, 53, 0.75) !important;
+  background: rgba(255, 107, 53, 0.08);
+}
+
+[data-theme='light'] .notfound-nav-btn-outline {
+  border-color: rgba(232, 90, 42, 0.5) !important;
+  background: rgba(232, 90, 42, 0.04);
+  color: #1a1a25 !important;
+}
+
+[data-theme='light'] .notfound-nav-btn-outline:hover {
+  border-color: rgba(232, 90, 42, 0.8) !important;
+  background: rgba(232, 90, 42, 0.1);
+}
+
+/* Same treatment for the secondary "Dashboard" button so the three CTAs are
+   visually balanced — primary is filled orange, secondary is a 2px outline
+   tinted to the brand. */
+.notfound-nav-btn-secondary {
+  border-width: 2px !important;
+  border-color: rgba(168, 85, 247, 0.45) !important;
+  color: var(--text-primary) !important;
+  background: rgba(168, 85, 247, 0.04);
+}
+
+.notfound-nav-btn-secondary:hover {
+  border-color: rgba(168, 85, 247, 0.75) !important;
+  background: rgba(168, 85, 247, 0.08);
+}
+
+[data-theme='light'] .notfound-nav-btn-secondary {
+  border-color: rgba(126, 34, 206, 0.5) !important;
+  background: rgba(168, 85, 247, 0.05);
+  color: #1a1a25 !important;
+}
+
+[data-theme='light'] .notfound-nav-btn-secondary:hover {
+  border-color: rgba(126, 34, 206, 0.8) !important;
+  background: rgba(168, 85, 247, 0.12);
+}
+
+/* Override the global `a` color rule (styles/index.css) which forces link
+   text to brand orange #ff6b35. The Button `asChild` pattern renders <a>
+   tags without the excluded `.btn`/`.v-btn-*` classes, so orange wins
+   over `text-white` on the button — making the label invisible. The
+   spotlight "Browse Registry" link has the same problem. */
+.notfound-nav-btn,
+.notfound-nav-btn-outline,
+.notfound-nav-btn-secondary,
+.notfound-browse-link {
+  color: #fff !important;
+}
+
+.notfound-nav-btn-outline,
+.notfound-nav-btn-secondary {
+  color: var(--text-primary) !important;
+}
+
+.notfound-404 {
+  /* Brand color at higher opacity so the "404" reads as the focal point
+     on the dark background. The 40% variant was nearly invisible. */
+  color: rgba(255, 107, 53, 0.7) !important;
+  text-shadow: 0 0 24px rgba(255, 107, 53, 0.25);
 }

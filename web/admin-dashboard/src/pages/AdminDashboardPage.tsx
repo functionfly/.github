@@ -3,32 +3,32 @@
  * Main dashboard with overview statistics, section cards, and activity
  */
 
-import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { adminApiClient } from '@/lib/api/adminClient';
 import { LoadingScreen } from '@/components/common/LoadingScreen';
+import { adminApiClient } from '@/lib/api/adminClient';
 import { ROUTES } from '@/lib/constants';
+import { useQuery } from '@tanstack/react-query';
 import {
-  TrendingUp,
-  Users,
-  Building2,
-  Activity,
-  CreditCard,
-  Shield,
-  Settings,
-  FileText,
-  Mail,
-  Calendar,
-  MessageSquare,
-  BarChart3,
-  CircleDot,
-  AlertTriangle,
-  Zap,
-  PanelTop,
-  RotateCcw,
-  Landmark,
-  BookOpen,
+    Activity,
+    AlertTriangle,
+    BarChart3,
+    BookOpen,
+    Building2,
+    Calendar,
+    CircleDot,
+    CreditCard,
+    FileText,
+    Landmark,
+    Mail,
+    MessageSquare,
+    PanelTop,
+    RotateCcw,
+    Settings,
+    Shield,
+    TrendingUp,
+    Users,
+    Zap,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface QuickStats {
   total_tenants: number;
@@ -106,7 +106,6 @@ export function AdminDashboardPage() {
     { title: 'Blog', description: 'Posts, categories, settings & analytics', path: ROUTES.ADMIN_BLOG, icon: BookOpen, color: 'teal' },
     { title: 'Feedback', description: 'User feedback and tickets', path: ROUTES.ADMIN_FEEDBACK, icon: MessageSquare, color: 'pink' },
     { title: 'Functions', description: 'All functions across tenants', path: ROUTES.ADMIN_FUNCTIONS, icon: BarChart3, color: 'violet' },
-    { title: 'Registry', description: 'Function registry moderation', path: ROUTES.ADMIN_REGISTRY, icon: FileText, color: 'cyan' },
     { title: 'State Fabric', description: 'State fabrics across tenants', path: ROUTES.ADMIN_STATE_FABRIC, icon: CircleDot, color: 'amber' },
     { title: 'Status', description: 'Platform health', path: ROUTES.ADMIN_STATUS, icon: Landmark, color: 'gray' },
     { title: 'Status Incidents', description: 'Incident management', path: ROUTES.ADMIN_STATUS_INCIDENTS, icon: AlertTriangle, color: 'red' },

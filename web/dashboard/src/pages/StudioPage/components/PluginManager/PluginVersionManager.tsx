@@ -29,7 +29,7 @@ export function PluginVersionManager({ plugins }: PluginVersionManagerProps) {
   const handleRollback = async (version: string) => {
     if (!selectedPlugin) return;
     if (confirm(`Rollback to version ${version}? This will revert all changes made in versions after ${version}.`)) {
-      await rollbackMutation.mutateAsync(selectedPlugin.id);
+      await rollbackMutation.mutateAsync({ pluginId: selectedPlugin.id, toVersion: version });
       queryClient.invalidateQueries({ queryKey: pluginKeys.versions(selectedPlugin.id) });
     }
   };

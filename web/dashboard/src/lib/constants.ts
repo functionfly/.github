@@ -2,13 +2,38 @@ export const APP_NAME = 'FunctionFly';
 export const APP_TAGLINE = 'The Trust Layer for AI Agents';
 
 /**
+ * Allowed docs site origins — prevents open-redirect if VITE_DOCS_SITE_URL is misconfigured.
+ * In production only docs.functionfly.com is allowed.
+ * In development localhost ports 4322/4323 are allowed.
+ */
+const ALLOWED_DOCS_ORIGINS = new Set([
+  'https://docs.functionfly.com',
+  'http://localhost:4322',
+  'http://localhost:4323',
+]);
+
+function isAllowedDocsOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    // In production (or when no override is set), only allow known safe origins
+    if (import.meta.env.PROD) {
+      return ALLOWED_DOCS_ORIGINS.has(origin);
+    }
+    // In dev, allow localhost on the expected ports
+    return url.hostname === 'localhost' && ALLOWED_DOCS_ORIGINS.has(origin);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Origin of the standalone Astro docs site (web/docs), e.g. https://docs.functionfly.com.
  * Dashboard /docs/* redirects here. Dev default: http://localhost:4322 (see web/docs astro.config).
  * Override with VITE_DOCS_SITE_URL.
  */
 export function getPublicDocsSiteOrigin(): string {
-  const env = (import.meta.env.VITE_DOCS_SITE_URL ?? '').trim().replace(/\/$/, '');
-  if (env) return env;
+  const raw = (import.meta.env.VITE_DOCS_SITE_URL ?? '').trim().replace(/\/$/, '');
+  if (raw && isAllowedDocsOrigin(raw)) return raw;
   if (import.meta.env.PROD) return 'https://docs.functionfly.com';
   return 'http://localhost:4322';
 }
@@ -315,17 +340,17 @@ export const PLANS = {
     priceId: '',
     priceIdAnnual: '',
     description: 'Perfect for getting started with FunctionFly',
-    features: ['1 function', '2 providers', '100,000 requests/month', 'Community support', '24h Time Machine replay'],
+    features: ['3 functions', '2 providers', '500 requests/month', 'Community support', '24h Time Machine replay'],
     overageRate: null, // Hard stop at limit
     annualDiscount: 0,
     comingSoon: false,
     limits: {
-      functions: 1,
+      functions: 3,
       providers: 2,
-      requests: 100000,
+      requests: 500,
       customDomains: 0,
       stateFabrics: 0,
-      agents: 0,
+      agents: 3,
       apps: 0,
       secrets: 0,
       tokensPerSecret: 0,

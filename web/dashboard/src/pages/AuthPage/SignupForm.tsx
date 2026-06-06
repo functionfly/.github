@@ -7,22 +7,23 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useSignupForm } from '@/hooks/useAuthForms';
 import { useSignupConfig } from '@/hooks/useSignupConfig';
 import { useUsernameValidation } from '@/hooks/useUsernameValidation';
+import { trackEvent } from '@/lib/analytics';
 import { getMarketingPageUrl } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import {
-  AtSign,
-  Building2,
-  Calendar,
-  Check,
-  Eye,
-  EyeOff,
-  Key,
-  Loader2,
-  Mail,
-  Shield,
-  User,
-  X,
+    AtSign,
+    Building2,
+    Calendar,
+    Check,
+    Eye,
+    EyeOff,
+    Key,
+    Loader2,
+    Mail,
+    Shield,
+    User,
+    X,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -149,9 +150,11 @@ function SignupFormFields({ inviteRequired }: { inviteRequired: boolean }): Reac
         ...(import.meta.env.PROD && recaptchaToken ? { recaptchaToken } : {}),
       };
 
+      trackEvent('auth_signup_submitted');
       // Use the proper signup endpoint - now returns SignupResponse
       const response = await signup(signupData);
 
+      trackEvent('auth_signup_success');
       // Show success message and navigate to verification page
       if (response.requiresVerification) {
         navigate('/auth/verify-email', {
@@ -163,6 +166,7 @@ function SignupFormFields({ inviteRequired }: { inviteRequired: boolean }): Reac
         });
       }
     } catch {
+      trackEvent('auth_signup_failed');
       // Error is handled by the store
     }
   };
@@ -431,7 +435,10 @@ function SignupFormFields({ inviteRequired }: { inviteRequired: boolean }): Reac
             />
             <button
               type="button"
-              onClick={() => setShowPassword(!showPassword)}
+              onClick={() => {
+                trackEvent('auth_password_toggled');
+                setShowPassword(!showPassword);
+              }}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -488,7 +495,10 @@ function SignupFormFields({ inviteRequired }: { inviteRequired: boolean }): Reac
             />
             <button
               type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              onClick={() => {
+                trackEvent('auth_password_toggled');
+                setShowConfirmPassword(!showConfirmPassword);
+              }}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
             >
               {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}

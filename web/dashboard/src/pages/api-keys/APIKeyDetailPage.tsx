@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { AlertTriangle } from "lucide-react";
 import {
@@ -15,32 +15,44 @@ import {
 import {
   APIKeyDetails,
   APIKeyRotationModal,
+  EditAPIKeyModal,
 } from "@/components/api-keys";
 import { APIKey } from "@/types/api-key";
 import { apiKeysService } from "@/services/api-keys";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function APIKeyDetailPage() {
   const { keyId } = useParams<{ keyId: string }>();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [showRotationModal, setShowRotationModal] = useState(false);
   const [selectedKey, setSelectedKey] = useState<APIKey | null>(null);
   const [deleteKey, setDeleteKey] = useState<APIKey | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editKey, setEditKey] = useState<APIKey | null>(null);
 
   const handleRotate = (key: APIKey) => {
     setSelectedKey(key);
     setShowRotationModal(true);
   };
 
-  const handleDelete = async (key: APIKey) => {
+  const handleDelete = (key: APIKey) => {
     setDeleteKey(key);
+  };
+
+  const handleEdit = (key: APIKey) => {
+    setEditKey(key);
+    setShowEditModal(true);
   };
 
   const confirmDelete = async () => {
     if (!deleteKey) return;
-
     try {
       await apiKeysService.deleteKey(deleteKey.id);
       toast.success("API key deleted");
-      window.location.href = "/dashboard/api-keys";
+      setDeleteKey(null);
+      queryClient.invalidateQueries({ queryKey: ["api-keys"] });
+      navigate("/dashboard/api-keys");
     } catch (error) {
       toast.error("Failed to delete API key", {
         description: error instanceof Error ? error.message : "Unknown error",
@@ -61,6 +73,13 @@ export function APIKeyDetailPage() {
       <APIKeyDetails
         onRotate={handleRotate}
         onDelete={handleDelete}
+        onEdit={handleEdit}
+      />
+
+      <EditAPIKeyModal
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+        apiKey={editKey}
       />
 
       {/* Rotation Modal */}
@@ -70,6 +89,7 @@ export function APIKeyDetailPage() {
         apiKey={selectedKey}
         onSuccess={() => {
           toast.success("API key rotated successfully");
+          queryClient.invalidateQueries({ queryKey: ["api-keys"] });
         }}
       />
 

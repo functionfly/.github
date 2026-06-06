@@ -33,7 +33,20 @@ type Settings struct {
 	AutoSave            bool                 `json:"auto_save"`
 	AutoSaveInterval    int                  `json:"auto_save_interval"`
 	EditorFeatures      EditorFeatures       `json:"editor_features"`
-	AccountPreferences  *AccountPreferences `json:"account_preferences,omitempty"`
+	AccountPreferences  *AccountPreferences  `json:"account_preferences,omitempty"`
+	// Privacy settings
+	UsageAnalyticsEnabled bool `json:"usage_analytics_enabled"`
+	CrashReportsEnabled   bool `json:"crash_reports_enabled"`
+	// Shortcuts
+	ShowShortcutHints bool `json:"show_shortcut_hints"`
+	// Performance settings (Tauri/desktop)
+	GPUAccelerationEnabled bool `json:"gpu_acceleration_enabled"`
+	DeveloperToolsEnabled   bool `json:"developer_tools_enabled"`
+	MemoryLimitMB           int  `json:"memory_limit_mb"`
+	// Network settings
+	ProxyEnabled   bool   `json:"proxy_enabled"`
+	ProxyURL       string `json:"proxy_url"`
+	ProxyBypass    string `json:"proxy_bypass"`
 }
 
 type EditorFeatures struct {
@@ -102,9 +115,9 @@ func MergeAccountPreferences(existing, incoming *AccountPreferences) *AccountPre
 }
 
 func DefaultSettings() *Settings {
-	return&Settings{
+	return &Settings{
 		Theme:               "dark",
-		PrimaryColor:        "#6366f1",
+		PrimaryColor:        "orange",
 		FontSize:            14,
 		SidebarPosition:     "left",
 		CompactMode:         false,
@@ -121,6 +134,19 @@ func DefaultSettings() *Settings {
 			WordWrap:        false,
 		},
 		AccountPreferences: DefaultAccountPreferences(),
+		// Privacy
+		UsageAnalyticsEnabled: false,
+		CrashReportsEnabled:   true,
+		// Shortcuts
+		ShowShortcutHints: true,
+		// Performance (Tauri defaults)
+		GPUAccelerationEnabled: true,
+		DeveloperToolsEnabled:  false,
+		MemoryLimitMB:          0, // 0 = no limit
+		// Network
+		ProxyEnabled: false,
+		ProxyURL:     "",
+		ProxyBypass:  "",
 	}
 }
 

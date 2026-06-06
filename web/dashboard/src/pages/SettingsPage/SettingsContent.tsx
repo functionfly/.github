@@ -3,12 +3,13 @@
  * Used on the standalone /settings page and on /u/{username} (profile Settings tab).
  *
  * URL STRUCTURE (Hash-based routing - long term):
- *   /u/:username/settings#account      → Account tab (default)
- *   /u/:username/settings#billing      → Billing tab
- *   /u/:username/settings#developer    → Developer tab (API Keys, Deploy Keys, Webhooks)
+ *   /u/:username/settings#account       → Account tab (default)
+ *   /u/:username/settings#billing       → Billing tab
+ *   /u/:username/settings#developer     → Developer tab (API Keys, Deploy Keys, Webhooks)
  *   /u/:username/settings#notifications → Notifications tab
  *   /u/:username/settings#security      → Security tab
  *   /u/:username/settings#privacy       → Privacy tab
+ *   /u/:username/settings#integrations  → Integrations tab (Brain connectors)
  *
  * BACKWARDS COMPATIBILITY:
  *   /u/:username/settings/billing      → Redirects to #billing (path-based, deprecated)
@@ -25,7 +26,7 @@ import { useApiReachableStore } from '@/stores/apiReachableStore';
 import { useAuthStore } from '@/stores/authStore';
 import type { UserProfile } from '@/types';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, CreditCard, Code, Dna, Key, Shield, ShieldCheck, User } from 'lucide-react';
+import { Bell, CreditCard, Code, Dna, Key, Link2, Shield, ShieldCheck, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -35,6 +36,7 @@ import {
   AuthSettingsTab,
   BillingSettingsTab,
   DeveloperSettingsTab,
+  IntegrationsSettingsTab,
   NotificationsSettingsTab,
   PlatformSettingsTab,
   SecuritySettingsTab,
@@ -223,6 +225,13 @@ export function SettingsContent({
             Platform
           </TabsTrigger>
           <TabsTrigger
+            value="integrations"
+            className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500 data-[state=active]:shadow-glow-sm"
+          >
+            <Link2 className="h-4 w-4 shrink-0" />
+            Integrations
+          </TabsTrigger>
+          <TabsTrigger
             value="github"
             className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500 data-[state=active]:shadow-glow-sm"
           >
@@ -258,6 +267,10 @@ export function SettingsContent({
 
         <TabsContent value="platform" className="space-y-6">
           <PlatformSettingsTab />
+        </TabsContent>
+
+        <TabsContent value="integrations" className="space-y-6">
+          <IntegrationsSettingsTab />
         </TabsContent>
 
         <TabsContent value="github" className="space-y-6">

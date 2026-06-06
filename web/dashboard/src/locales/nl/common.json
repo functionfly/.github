@@ -961,7 +961,9 @@
     "gettingStarted": "Aan de slag",
     "collapseSidebar": "Zijbalk inklappen",
     "expandSidebar": "Zijbalk uitklappen",
-    "commandPalette": "Commandopalet"
+    "commandPalette": "Commandopalet",
+    "brain": "Brain",
+    "connectors": "Connectors"
   },
   "notifCenter": {
     "title": "Notifications",

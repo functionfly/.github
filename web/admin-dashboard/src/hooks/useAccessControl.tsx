@@ -3,8 +3,8 @@
  * Checks user permissions for specific features/routes
  */
 
-import React from 'react';
 import { useAdminAuthStore } from '@/stores/adminAuthStore';
+import React from 'react';
 
 export type Permission =
   | 'functions:read'
@@ -42,7 +42,31 @@ interface UseAccessControlReturn {
   isSuperAdmin: boolean;
 }
 const ROLE_PERMISSIONS: Record<string, Permission[]> = {
-  super_admin: ['admin:all'],
+  // super_admin: every permission, including the destructive ones
+  // (users:delete, tenants:delete, system:write, billing:write).
+  super_admin: [
+    'admin:all',
+    'functions:read',
+    'functions:write',
+    'functions:delete',
+    'users:read',
+    'users:write',
+    'users:delete',
+    'billing:read',
+    'billing:write',
+    'tenants:read',
+    'tenants:write',
+    'tenants:delete',
+    'audit:read',
+    'registry:read',
+    'registry:write',
+    'features:read',
+    'features:write',
+    'system:read',
+    'system:write',
+  ],
+  // admin: scoped platform admin. Can manage day-to-day but not delete users
+  // or tenants, and cannot change system/billing configuration.
   admin: [
     'functions:read',
     'functions:write',
@@ -106,7 +130,10 @@ export function useAccessControl(): UseAccessControlReturn {
   const user = useAdminAuthStore((s) => s.user);
 
   const currentRole = user?.role?.toLowerCase() ?? null;
-  const isSuperAdmin = currentRole === 'super_admin' || currentRole === 'admin';
+  // super_admin is a single, distinct role. Other platform-admin roles
+  // (admin, support, billing_admin, developer_admin) keep their own
+  // scoped permissions — they must NOT bypass per-permission checks.
+  const isSuperAdmin = currentRole === 'super_admin';
 
   const permissions = currentRole ? ROLE_PERMISSIONS[currentRole] ?? [] : [];
 

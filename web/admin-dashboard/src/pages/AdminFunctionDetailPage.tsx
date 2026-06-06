@@ -55,26 +55,27 @@ export function AdminFunctionDetailPage() {
   const { functionId } = useParams<{ functionId: string }>();
   const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set());
 
-  const { data: functionData, isLoading: loadingFn } = useQuery({
+  const { data: functionData, isLoading: loadingFn } = useQuery<FunctionDetailResponse | null>({
     queryKey: ['admin-function-detail', functionId],
     queryFn: async () => {
       if (!functionId) {
         return null;
       }
       const resp = await adminApiClient.get<FunctionDetailResponse>(`/registry/functions/${functionId}`);
-      if (resp && 'function' in resp) return resp;
-      if (resp?.data && 'function' in (resp.data as object)) return resp.data as FunctionDetailResponse;
-      return null;
+      const inner = (resp as { data?: FunctionDetailResponse }).data;
+      return inner ?? null;
     },
     enabled: Boolean(functionId),
   });
 
-  const { data: metricsResponse, isLoading: loadingMetrics } = useQuery({
+  const { data: metricsResponse, isLoading: loadingMetrics } = useQuery<Record<string, unknown>>({
     queryKey: ['admin-function-metrics', functionId],
     queryFn: async () => {
       if (!functionId) return {};
       try {
-        return await adminApiClient.get<Record<string, unknown>>(`/functions/${functionId}/metrics`);
+        const resp = await adminApiClient.get<Record<string, unknown>>(`/functions/${functionId}/metrics`);
+        const inner = (resp as { data?: Record<string, unknown> }).data;
+        return inner ?? {};
       } catch {
         return {};
       }
@@ -145,7 +146,7 @@ export function AdminFunctionDetailPage() {
 
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <p className="text-sm text-gray-600 dark:text-gray-400">Metrics snapshot</p>
-        <pre className="mt-2 text-xs overflow-auto bg-gray-50 dark:bg-gray-900 rounded p-3">{JSON.stringify(metricsResponse?.data || metricsResponse || {}, null, 2)}</pre>
+        <pre className="mt-2 text-xs overflow-auto bg-gray-50 dark:bg-gray-900 rounded p-3">{JSON.stringify(metricsResponse || {}, null, 2)}</pre>
       </div>
 
       {versions.length > 0 && (
@@ -155,7 +156,7 @@ export function AdminFunctionDetailPage() {
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Source Code ({versions.length} version{versions.length !== 1 ? 's' : ''})</p>
           </div>
           <div className="space-y-3">
-            {versions.map((version) => {
+            {versions.map((version: FunctionVersion) => {
               const isExpanded = expandedVersions.has(version.id);
               return (
                 <div key={version.id} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">

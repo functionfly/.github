@@ -1,170 +1,109 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import type { CollabEvent } from "@/api/studioCollab";
+import { useTeamMemories } from "@/hooks/use-team-memory";
+import { useActiveEnvironment } from "@/hooks/useActiveEnvironment";
+import { usePresence } from "@/hooks/usePresence";
 import {
-  StudioShell,
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-  Tooltip,
-  GlassCard,
-} from "@functionfly/ui-core";
+  useStudioAgents,
+  useStudioGhost,
+  useStudioMemory,
+  useStudioSimulation,
+  useStudioState,
+  useStudioTelemetry,
+  useStudioWorkflow,
+  type AgentStatus,
+} from "@/hooks/useStudio";
+import { useStudioCollabActivity, useStudioCollabEvents } from "@/hooks/useStudioCollab";
 import {
-  FunctionCanvas,
-  generateSampleGraph,
-  getStatusColor,
-  type NodeData,
-} from "@functionfly/ui-graph";
+  useEndPairSession,
+  useRecordActivity,
+  useResolveAnnotation,
+  useResolveComment,
+  useUpdatePromptVersion
+} from "@/hooks/useStudioCollabActions";
+import { useStudioCollabData } from "@/hooks/useStudioCollabData";
+import {
+  useAssignTask,
+  useCreateTask,
+  useDeleteTask,
+  useUpdateTask,
+} from "@/hooks/useStudioTask";
+import { useTeamMembers, useTeams } from "@/hooks/useTeams";
+import {
+  StudioSettingsCenter
+} from "@/pages/StudioPage/components";
+import { DataSourceConfigDialog, type DataSource } from "@/pages/StudioPage/components/DataSourceConfigDialog";
+import { PluginManager } from "@/pages/StudioPage/components/PluginManager";
+import { useAuthStore } from "@/stores/authStore";
 import {
   AICommandPalette,
   type AICommand,
 } from "@functionfly/ui-ai";
-import {
-  GhostModeOrchestrator,
-  type GhostBuild,
-  type GhostTask,
-  type AgentConversationMessage,
-  type AgentDecisionPoint,
-} from "@functionfly/ui-ghost";
-import {
-  useStudioState,
-  useStudioAgents,
-  useStudioSimulation,
-  useStudioGhost,
-  useStudioTelemetry,
-  useStudioWorkflow,
-  useStudioMemory,
-  type AgentStatus,
-} from "@/hooks/useStudio";
-import { useActiveEnvironment } from "@/hooks/useActiveEnvironment";
-import type { AgentMemory } from "@/types";
-import type { CollabEvent } from "@/api/studioCollab";
-import { useAuthStore } from "@/stores/authStore";
-import { usePresence } from "@/hooks/usePresence";
-import { useTeams, useTeamMembers } from "@/hooks/useTeams";
-import { useTeamMemories } from "@/hooks/use-team-memory";
-import { useStudioCollabEvents, useStudioCollabActivity } from "@/hooks/useStudioCollab";
-import {
-  useExecuteFunction,
-  useFavoriteFunction,
-  useCreatePlan,
-  useEditPlan,
-  useRequestPayout,
-  useUpdateLicense,
-  useUpdatePricing,
-} from "@/hooks/useStudioMarketplace";
-import {
-  useInstallExtension,
-  useUninstallExtension,
-  useEnableExtension,
-  useDisableExtension,
-  useConfigureExtension,
-} from "@/hooks/useStudioExtension";
-import { PluginManager } from "@/pages/StudioPage/components/PluginManager";
-import {
-  StudioSettingsCenter,
-  ThemeEngine,
-  WorkspaceSnapshotManager,
-  KeyboardShortcutVisualizer,
-  StudioPerformanceProfiler,
-  CrashRecoveryManager,
-  ExperimentalFeatureLab,
-  UniversalSearchEngine,
-  GlobalNotificationCenter,
-  StudioUpdateManager,
-} from "@/pages/StudioPage/components";
 import { LivePresence } from "@functionfly/ui-collaboration";
-import { DataSourceConfigDialog, type DataSource } from "@/pages/StudioPage/components/DataSourceConfigDialog";
 import {
-  useCreateTask,
-  useUpdateTask,
-  useDeleteTask,
-  useAssignTask,
-} from "@/hooks/useStudioTask";
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+  StudioShell,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Tooltip
+} from "@functionfly/ui-core";
 import {
-  useResolveComment,
-  useCreateComment,
-  useResolveAnnotation,
-  useEndPairSession,
-  useUpdatePromptVersion,
-  useRecordActivity,
-} from "@/hooks/useStudioCollabActions";
-import { useReassignAgentRole, useReshapeSwarm } from "@/hooks/useAgentSwarm";
-import { useQuery } from "@tanstack/react-query";
+  type NodeData
+} from "@functionfly/ui-graph";
 import {
-  Search,
-  Bot,
-  Code,
-  GitBranch,
   Activity,
-  Zap,
-  Clock,
-  Database,
   BarChart2,
-  Settings,
-  Play,
-  Pause,
-  RotateCcw,
-  ChevronRight,
+  Bot,
   Brain,
-  Terminal,
-  Eye,
-  Layers,
-  Cpu,
-  MemoryStick,
-  DollarSign,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  Loader2,
-  LineChart,
-  Target,
-  Gauge,
-  TrendingUp,
-  TrendingDown,
-  RefreshCcw,
-  Filter,
-  SortAsc,
-  Sparkles,
-  Puzzle,
-  Users,
-  Wand2,
   CheckSquare,
-  Share2,
-  Save,
-  Undo2,
+  Code,
+  Cpu,
+  Database,
+  Eye,
+  Gauge,
+  GitBranch,
+  Layers,
+  Play,
+  Puzzle,
   Redo2,
   Rocket,
+  Save,
+  Search,
+  Share2,
+  Undo2,
+  Users,
+  Wand2
 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 // Import extracted panels
+import {
+  DevOpsPanel,
+  ExecutionPanel,
+  GhostPanel,
+  MemoryPanel,
+  SimulationPanel,
+  TasksPanel
+} from "@/pages/StudioPage/bottom-panels";
+import { StudioEditor } from "@/pages/StudioPage/editor/StudioEditor";
+import { useKeyboardShortcuts } from "@/pages/StudioPage/hooks";
 import { AgentsPanel } from "@/pages/StudioPage/left-panels/AgentsPanel";
 import { CanvasPanel } from "@/pages/StudioPage/left-panels/CanvasPanel";
 import { MarketplacePanel } from "@/pages/StudioPage/left-panels/MarketplacePanel";
 import { RuntimePanel } from "@/pages/StudioPage/left-panels/RuntimePanel";
-import { SwarmPanel } from "@/pages/StudioPage/left-panels/SwarmPanel";
 import { SkillsPanel } from "@/pages/StudioPage/left-panels/SkillsPanel";
+import { SwarmPanel } from "@/pages/StudioPage/left-panels/SwarmPanel";
 import {
-  ExecutionPanel,
-  SimulationPanel,
-  GhostPanel,
-  TasksPanel,
-  DevOpsPanel,
-  MemoryPanel,
-  RoboticsPanel,
-} from "@/pages/StudioPage/bottom-panels";
-import {
+  CollabPanel,
+  ProfilerPanel,
   TelemetryPanel,
   VisualizationPanel,
-  ProfilerPanel,
-  CollabPanel,
 } from "@/pages/StudioPage/right-panels";
-import { StudioEditor } from "@/pages/StudioPage/editor/StudioEditor";
 import { StatusBar } from "@/pages/StudioPage/StatusBar";
-import { useKeyboardShortcuts, DEFAULT_STUDIO_SHORTCUTS } from "@/pages/StudioPage/hooks";
 
 const DEFAULT_CODE = `// FunctionFly Studio - Main Workflow
 import { agent, workflow } from "@functionfly/sdk";
@@ -257,6 +196,8 @@ export function StudioPage() {
   const [dataSourceDialogOpen, setDataSourceDialogOpen] = useState(false);
   const [dataSources, setDataSources] = useState<DataSource[]>([]);
 
+  const [codeVersion, setCodeVersion] = useState(1);
+
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isConnected, setIsConnected] = useState(true);
 
@@ -265,7 +206,7 @@ export function StudioPage() {
   const { user } = useAuthStore();
 
   const { agents, isLoading: agentsLoading, refreshAgents, spawnAgent, pauseAgent, resumeAgent, terminateAgent } = useStudioAgents();
-  const { graph, executions, isLoadingGraph, isLoadingExecutions, executeWorkflow } = useStudioWorkflow();
+  const { graph, executions, isLoadingGraph, isLoadingExecutions, executeWorkflow, formatCode, saveCode, undoCode, redoCode, getVersionHistory } = useStudioWorkflow();
   const { activeSimulation, startSimulation, abortSimulation } = useStudioSimulation();
   const { metrics, tokenUsage, latencyStats, errorRateStats, isLoading: telemetryLoading } = useStudioTelemetry();
   const { builds, tasks, createBuild, approveTask, rejectTask } = useStudioGhost();
@@ -361,12 +302,14 @@ export function StudioPage() {
   }));
 
 const collabActivity = (collabActivityData?.activities || []) as CollabEvent[];
-   const promptVersionsData = [] as { id: string; metadata?: { prompt?: string; user_name?: string; user_color?: string; changes?: string }; created_at: string }[];
-   const pairSessionsData = [] as { id: string; metadata?: { host_name?: string; host_color?: string; guest_name?: string; guest_color?: string; status?: string; current_file?: string; current_line?: number }; created_at: string }[];
-   const commentsData = [] as { id: string; metadata?: { user_name?: string; user_color?: string; content?: string; line?: number; resolved?: boolean }; created_at: string }[];
-   const annotationsData = [] as { id: string; metadata?: { user_name?: string; user_color?: string; target_id?: string; target_type?: string; content?: string; position?: { x: number; y: number }; resolved?: boolean }; created_at: string }[];
-   const graphEditsData = [] as { id: string; created_by: string; metadata?: { user_name?: string; node_id?: string; field?: string; old_value?: string; new_value?: string }; created_at: string }[];
-   const conflictsData = [] as { id: string; metadata?: { field?: string; current_user?: string; current_value?: string; incoming_user?: string; incoming_value?: string } }[];
+  const {
+    promptVersionsData,
+    pairSessionsData,
+    commentsData,
+    annotationsData,
+    graphEditsData,
+    conflictsData,
+  } = useStudioCollabData();
 
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
@@ -448,13 +391,13 @@ const collabActivity = (collabActivityData?.activities || []) as CollabEvent[];
   const handleSimulationToggle = useCallback(async () => {
     if (simulationRunning && activeSimulation) {
       await abortSimulation.mutateAsync(activeSimulation.id);
-    } else {
+    } else if (graph) {
       await startSimulation.mutateAsync({
-        ...simulationConfig,
-        name: "Quick Simulation",
+        graph,
+        iterations: simulationConfig.iterations,
       });
     }
-  }, [simulationRunning, activeSimulation, abortSimulation, startSimulation, simulationConfig]);
+  }, [simulationRunning, activeSimulation, abortSimulation, startSimulation, graph, simulationConfig.iterations]);
 
   const handleGhostModeToggle = useCallback(async () => {
     await createBuild.mutateAsync({ name: "New Build" });
@@ -476,6 +419,66 @@ const collabActivity = (collabActivityData?.activities || []) as CollabEvent[];
   const handleCommandExecute = useCallback((command: AICommand) => {
     console.log("Command executed:", command);
   }, []);
+
+  // ── Code Editor Handlers ────────────────────────────────────────────────
+
+  const handleFormatCode = useCallback(async () => {
+    try {
+      const result = await formatCode.mutateAsync({
+        code,
+        language: 'typescript',
+        file_path: 'main.ts',
+      });
+      setCode(result.formatted);
+      setCodeVersion(result.version);
+    } catch (error) {
+      console.error("Failed to format code:", error);
+    }
+  }, [formatCode, code]);
+
+  const handleSaveCode = useCallback(async () => {
+    try {
+      const result = await saveCode.mutateAsync({
+        code,
+        file_path: 'main.ts',
+        metadata: { saved_at: new Date().toISOString() },
+      });
+      setCodeVersion(result.version);
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error("Failed to save code:", error);
+    }
+  }, [saveCode, code]);
+
+  const handleUndo = useCallback(async () => {
+    try {
+      const result = await undoCode.mutateAsync({
+        file_path: 'main.ts',
+        current_version: codeVersion,
+      });
+      if (result.available && result.code) {
+        setCode(result.code);
+        setCodeVersion(result.version);
+      }
+    } catch (error) {
+      console.error("Failed to undo:", error);
+    }
+  }, [undoCode, codeVersion]);
+
+  const handleRedo = useCallback(async () => {
+    try {
+      const result = await redoCode.mutateAsync({
+        file_path: 'main.ts',
+        current_version: codeVersion,
+      });
+      if (result.available && result.code) {
+        setCode(result.code);
+        setCodeVersion(result.version);
+      }
+    } catch (error) {
+      console.error("Failed to redo:", error);
+    }
+  }, [redoCode, codeVersion]);
 
   const [timelineEvents, setTimelineEvents] = useState<Array<{ id: string; type: string; nodeLabel: string; result: "success" | "failure" | "partial"; timestamp: number; duration: number }>>([]);
   useKeyboardShortcuts([
@@ -664,10 +667,10 @@ const collabActivity = (collabActivityData?.activities || []) as CollabEvent[];
                     isGhostModeActive={builds.length > 0 && builds[0]?.status === 'ready'}
                     onToggleGhostMode={handleGhostModeToggle}
                     onRunWorkflow={handleWorkflowExecute}
-                    onFormatCode={() => recordActivity.mutate({ action: 'formatted code', target: 'code', icon: '✨' })}
-                    onSave={() => console.log('Saved')}
-                    onUndo={() => console.log('Undo')}
-                    onRedo={() => console.log('Redo')}
+                    onFormatCode={handleFormatCode}
+                    onSave={handleSaveCode}
+                    onUndo={handleUndo}
+                    onRedo={handleRedo}
                     onCommandPalette={() => setIsCommandPaletteOpen(true)}
                   />
                 </ResizablePanel>
@@ -685,7 +688,10 @@ const collabActivity = (collabActivityData?.activities || []) as CollabEvent[];
                           <TabsTrigger value="tasks" className="text-[11px] gap-1.5"><CheckSquare className="size-3" /> Tasks</TabsTrigger>
                           <TabsTrigger value="devops" className="text-[11px] gap-1.5"><Rocket className="size-3" /> DevOps</TabsTrigger>
                           <TabsTrigger value="memory" className="text-[11px] gap-1.5"><Database className="size-3" /> Memory</TabsTrigger>
-                          <TabsTrigger value="robotics" className="text-[11px] gap-1.5"><Bot className="size-3" /> Robotics</TabsTrigger>
+                          <TabsTrigger value="robotics" className="text-[11px] gap-1.5 relative" disabled>
+                            <Bot className="size-3" /> Robotics
+                            <span className="absolute -top-1 -right-1 text-[8px] bg-amber-500/20 text-amber-400 px-1 rounded">Soon</span>
+                          </TabsTrigger>
                         </TabsList>
                         <div className="flex-1 overflow-auto">
                           <TabsContent value="execution" className="h-full">
@@ -711,14 +717,14 @@ const collabActivity = (collabActivityData?.activities || []) as CollabEvent[];
                           <TabsContent value="ghost" className="h-full">
                             <GhostPanel
                               build={builds.length > 0 ? {
-                                id: builds[0].id,
-                                goal: builds[0].name,
-                                phase: builds[0].status === 'ready' ? 'complete' : 'building',
-                                progress: builds[0].status === 'ready' ? 100 : 0,
-                                startedAt: builds[0].createdAt,
-                                updatedAt: builds[0].updatedAt,
+                                ...builds[0],
+                                goal: builds[0].goal || builds[0].name,
+                                phase: builds[0].phase || (builds[0].status === 'ready' ? 'complete' : builds[0].status === 'building' ? 'building' : 'planning'),
+                                progress: builds[0].progress ?? (builds[0].status === 'ready' ? 100 : 0),
+                                started_at: builds[0].started_at || builds[0].createdAt,
+                                updated_at: builds[0].updated_at || builds[0].updatedAt,
                               } : undefined}
-                              tasks={tasks}
+                              tasks={builds.length > 0 && (builds[0].tasks ?? []).length > 0 ? builds[0].tasks : tasks}
                               onCancelBuild={() => console.log('Cancel build')}
                               onCreateBuild={handleGhostModeToggle}
                             />
@@ -731,8 +737,8 @@ const collabActivity = (collabActivityData?.activities || []) as CollabEvent[];
                                 description: t.description || '',
                                 status: t.status === 'in_progress' ? 'in-progress' : t.status === 'completed' ? 'done' : t.status === 'failed' ? 'blocked' : 'todo',
                                 priority: 'medium' as const,
-                                createdAt: t.createdAt,
-                                updatedAt: t.updatedAt,
+                                createdAt: t.started_at || '',
+                                updatedAt: t.updated_at || '',
                               }))}
                               onTaskCreate={(task) => createTask.mutate({ title: task.title, description: task.description })}
                               onTaskUpdate={({ id, updates }) => updateTask.mutate({ taskId: id, updates: { title: updates.title, description: updates.description } })}
@@ -746,8 +752,16 @@ const collabActivity = (collabActivityData?.activities || []) as CollabEvent[];
                           <TabsContent value="memory" className="h-full">
                             <MemoryPanel />
                           </TabsContent>
-                          <TabsContent value="robotics" className="h-full">
-                            <RoboticsPanel />
+                          <TabsContent value="robotics" className="h-full flex items-center justify-center">
+                            <div className="text-center space-y-3">
+                              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-500/10">
+                                <Bot className="size-6 text-amber-400" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-text-primary">Robotics Control</p>
+                                <p className="text-xs text-text-muted">Coming in a future update</p>
+                              </div>
+                            </div>
                           </TabsContent>
                         </div>
                       </Tabs>
@@ -776,6 +790,7 @@ const collabActivity = (collabActivityData?.activities || []) as CollabEvent[];
                           metrics={telemetryMetricsFormatted}
                           tokenUsage={tokenUsageFormatted}
                           onMetricClick={(m) => recordActivity.mutate({ action: 'viewed metric', target: m.id, icon: '📈' })}
+                          isLoading={telemetryLoading}
                         />
                       </TabsContent>
                       <TabsContent value="visualization">
@@ -787,6 +802,7 @@ const collabActivity = (collabActivityData?.activities || []) as CollabEvent[];
                             status: n.status,
                           }))}
                           edges={canvasEdges.map((e) => ({ source: e.source, target: e.target, strength: 0.8 }))}
+                          isLoading={isLoadingGraph}
                         />
                       </TabsContent>
                       <TabsContent value="profiler">
@@ -798,6 +814,7 @@ const collabActivity = (collabActivityData?.activities || []) as CollabEvent[];
                             startedAt: ex.startedAt,
                             status: ex.status === 'completed' ? 'completed' : 'failed',
                           }))}
+                          isLoading={isLoadingExecutions}
                         />
                       </TabsContent>
                       <TabsContent value="collab">
@@ -818,6 +835,7 @@ const collabActivity = (collabActivityData?.activities || []) as CollabEvent[];
                             onEndPairSession={(sessionId) => endPairSession.mutate(sessionId)}
                             onUpdatePromptVersion={(prompt, changes) => updatePromptVersion.mutate({ prompt, changes })}
                             onRecordActivity={recordActivity.mutate}
+                            isLoading={false}
                           />
                       </TabsContent>
                     </div>

@@ -961,7 +961,9 @@
     "gettingStarted": "入门指南",
     "collapseSidebar": "收起侧边栏",
     "expandSidebar": "展开侧边栏",
-    "commandPalette": "命令面板"
+    "commandPalette": "命令面板",
+    "brain": "Brain",
+    "connectors": "Connectors"
   },
   "notifCenter": {
     "title": "Notifications",

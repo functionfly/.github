@@ -333,7 +333,11 @@ export async function getFactoryVersionCode(versionId: string): Promise<FactoryV
   const response = await adminApiClient.get<FactoryVersionCodeResponse>(
     `${API_ROUTES.FACTORY_VERSION_CODE}/${versionId}/code`
   );
-  return unwrap(response);
+  const version = (response as { data?: { version: FactoryVersionCode } }).data?.version
+    ?? (response as any).version
+    ?? (response as any).data?.version
+    ?? (response as any);
+  return version as FactoryVersionCode;
 }
 
 // ============================================================================

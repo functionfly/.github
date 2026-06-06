@@ -110,6 +110,7 @@ export interface UpdateSandboxRequest {
   timeout_seconds?: number;
   allowed_domains?: string[];
   blocked_domains?: string[];
+  rate_limit_rpm?: number;
 }
 
 export interface SetPermissionRequest {
@@ -127,6 +128,36 @@ export interface PluginFilters {
   search?: string;
   limit?: number;
   offset?: number;
+}
+
+export interface TelemetryData {
+  executions: number;
+  errors: number;
+  error_rate: number;
+  avg_latency_ms: number;
+  cpu_usage_seconds: number;
+  avg_memory_usage_mb: number;
+  network_bytes: number;
+  previous_executions: number;
+  latency_trend: "up" | "down" | "stable";
+  executions_trend: "up" | "down" | "stable";
+}
+
+export interface RateLimitCheckRequest {
+  ip: string;
+  endpoint: string;
+  user_id?: string;
+  limit?: number;
+  window_sec?: number;
+}
+
+export interface RateLimitCheckResponse {
+  enabled: boolean;
+  message?: string;
+  allowed?: boolean;
+  remaining?: number;
+  reset_at?: number;
+  limit?: number;
 }
 
 export const pluginsApi = {
@@ -181,8 +212,10 @@ export const pluginsApi = {
     return response as { message: string };
   },
 
-  rollback: async (pluginId: string): Promise<{ plugin: Plugin; rolled_back_to: string }> => {
-    const response = await apiClient.post(`/plugins/${pluginId}/rollback`);
+  rollback: async (pluginId: string, toVersion?: string): Promise<{ plugin: Plugin; rolled_back_to: string }> => {
+    const params: Record<string, string> = {};
+    if (toVersion) params.to_version = toVersion;
+    const response = await apiClient.post(`/plugins/${pluginId}/rollback`, null, { params });
     return response as { plugin: Plugin; rolled_back_to: string };
   },
 
@@ -214,5 +247,25 @@ export const pluginsApi = {
   listVersions: async (pluginId: string): Promise<{ versions: PluginVersion[] }> => {
     const response = await apiClient.get(`/plugins/${pluginId}/versions`);
     return response as { versions: PluginVersion[] };
+  },
+
+  getTelemetry: async (pluginId: string, timeRange: string = "7d"): Promise<{ telemetry: TelemetryData }> => {
+    const response = await apiClient.get(`/plugins/${pluginId}/telemetry`, { params: { range: timeRange } });
+    return response as { telemetry: TelemetryData };
+  },
+
+  setError: async (pluginId: string, error: string): Promise<{ message: string }> => {
+    const response = await apiClient.post(`/plugins/${pluginId}/error`, { error });
+    return response as { message: string };
+  },
+
+  checkRateLimit: async (data: RateLimitCheckRequest): Promise<RateLimitCheckResponse> => {
+    const response = await apiClient.post('/plugins/check-rate-limit', data);
+    return response as RateLimitCheckResponse;
+  },
+
+  recordAnalytics: async (pluginId: string, data: Partial<TelemetryData> & { event_type?: string; period_start?: string; period_end?: string }): Promise<{ message: string }> => {
+    const response = await apiClient.post(`/plugins/${pluginId}/analytics`, data);
+    return response as { message: string };
   },
 };

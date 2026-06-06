@@ -3,6 +3,7 @@ import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { trackEvent } from '@/lib/analytics';
 import { auth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -47,16 +48,19 @@ export function MagicLinkForm({ onBack }: MagicLinkFormProps): React.JSX.Element
     setIsLoading(true);
 
     try {
+      trackEvent('auth_magic_link_requested');
       const result = await auth.requestMagicLink(data.email, redirectTo ?? '/overview');
 
       if (result.email_sent) {
         setIsSuccess(true);
+        trackEvent('auth_magic_link_sent');
         toast.success('Magic link sent! Check your email.');
       } else {
         // Still show success to prevent email enumeration
         setIsSuccess(true);
       }
     } catch (err) {
+      trackEvent('auth_magic_link_failed');
       const message = err instanceof Error ? err.message : 'Failed to send magic link';
       setError(message);
       toast.error(message);

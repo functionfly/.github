@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Activity, Play, RefreshCw, CheckCircle, XCircle, Clock,
-  AlertTriangle, Pause, Resume, Settings, TrendingUp, Package
+  AlertTriangle, Pause, Settings, TrendingUp, Package
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';

@@ -1,6 +1,6 @@
-import * as React from "react";
-import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/lib/utils";
+import { Slot } from "@radix-ui/react-slot";
+import * as React from "react";
 
 const Card = React.forwardRef<
   HTMLDivElement,
@@ -12,8 +12,14 @@ const Card = React.forwardRef<
   return (
     <Comp
       ref={ref}
+      // Default surface: transparent body, hairline border, soft top
+      // highlight for depth. Cards now sit flush with the page bg
+      // instead of floating as a lighter gray panel. Override
+      // with `bg-*` / `border-*` classes when a filled surface
+      // is genuinely needed (e.g. popovers, modals).
       className={cn(
-        "rounded-xl border border-theme bg-card text-card-foreground shadow-sm transition-all duration-200",
+        "rounded-xl border border-[var(--border-subtle)] bg-transparent text-card-foreground shadow-sm transition-all duration-200",
+        "[box-shadow:inset_0_1px_0_0_rgba(255,255,255,0.04)]",
         className
       )}
       {...props}
@@ -107,4 +113,4 @@ const CardFooter = React.forwardRef<
 });
 CardFooter.displayName = "CardFooter";
 
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent };
+export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle };

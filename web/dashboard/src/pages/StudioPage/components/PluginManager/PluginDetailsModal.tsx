@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { GlassCard, Badge, Button, Spinner } from "@functionfly/ui-core";
 import { X, Star, Download, Shield, Clock, GitBranch, ChevronDown, ChevronUp, Check } from "lucide-react";
-import { type Extension } from "@/api/marketplace";
+import { type Extension, marketplaceApi } from "@/api/marketplace";
 import { useInstallPlugin, type InstallPluginRequest, type PluginType } from "@/hooks/usePlugin";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { RatingDialog } from "./RatingDialog";
 
 interface PluginDetailsModalProps {
   extension: Extension;
@@ -16,9 +17,16 @@ interface PluginDetailsModalProps {
 export function PluginDetailsModal({ extension, onClose, onInstall }: PluginDetailsModalProps) {
   const [selectedVersion, setSelectedVersion] = useState(extension.version);
   const [installing, setInstalling] = useState(false);
+  const [showRating, setShowRating] = useState(false);
   const { data: fullExtension } = useQuery({
     queryKey: ["extension-details", extension.id],
     queryFn: () => marketplaceApi.get(extension.id),
+    enabled: !!extension.id,
+  });
+
+  const { data: myRating } = useQuery({
+    queryKey: ["marketplace-my-rating", extension.id],
+    queryFn: () => marketplaceApi.getMyRating(extension.id),
     enabled: !!extension.id,
   });
 
@@ -26,6 +34,7 @@ export function PluginDetailsModal({ extension, onClose, onInstall }: PluginDeta
     setInstalling(true);
     try {
       await onInstall({
+        extension_id: extension.id,
         manifest: extension.manifest || { name: extension.name, version: selectedVersion },
         plugin_type: (extension.category as PluginType) || "ui",
         name: extension.name,
@@ -169,6 +178,10 @@ export function PluginDetailsModal({ extension, onClose, onInstall }: PluginDeta
         </div>
 
         <div className="flex items-center justify-end gap-3 p-5 border-t border-white/10 bg-white/5">
+          <Button variant="outline" onClick={() => setShowRating(true)}>
+            <Star className={cn("w-4 h-4 mr-2", myRating?.rating ? "fill-yellow-400 text-yellow-400" : "")} />
+            {myRating?.rating ? `Rated ${myRating.rating.rating}★` : "Rate"}
+          </Button>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button
             onClick={handleInstall}
@@ -179,6 +192,13 @@ export function PluginDetailsModal({ extension, onClose, onInstall }: PluginDeta
           </Button>
         </div>
       </div>
+
+      {showRating && (
+        <RatingDialog
+          extension={extension}
+          onClose={() => setShowRating(false)}
+        />
+      )}
     </div>
   );
 }

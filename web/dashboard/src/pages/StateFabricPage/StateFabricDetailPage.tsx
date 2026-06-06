@@ -64,7 +64,7 @@ import { PipelineVisualization } from "./components/PipelineVisualization";
 import { StoreConfiguration } from "./components/StoreConfiguration";
 import { StateFabricMetrics as MetricsDashboard } from "./components/StateFabricMetrics";
 import { SnapshotManager } from "./components/SnapshotManager";
-import { TriggerConfiguration } from "./components/TriggerConfiguration";
+import { StateFabricAddonGate } from "./components/StateFabricAddonGate";
 import type {
   CreateStateFabricRequest,
   UpdateStateFabricRequest,
@@ -421,7 +421,9 @@ export function StateFabricDetailPage() {
         </TabsContent>
 
         <TabsContent value="events">
-          <EventLogViewer fabricId={id || ""} events={eventLogs?.events || []} total={eventLogs?.total || 0} />
+          <StateFabricAddonGate addonId="advanced_security_pack">
+            <EventLogViewer fabricId={id || ""} events={eventLogs?.events || []} total={eventLogs?.total || 0} />
+          </StateFabricAddonGate>
         </TabsContent>
 
         <TabsContent value="snapshots">
@@ -433,7 +435,9 @@ export function StateFabricDetailPage() {
         </TabsContent>
 
         <TabsContent value="metrics">
-          <MetricsDashboard fabricId={id || ""} metrics={metrics} />
+          <StateFabricAddonGate addonId="advanced_insights">
+            <MetricsDashboard fabricId={id || ""} metrics={metrics} />
+          </StateFabricAddonGate>
         </TabsContent>
       </Tabs>
     </div>

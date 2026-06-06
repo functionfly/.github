@@ -6,14 +6,15 @@ import { UserMenu } from '@/components/layout/UserMenu';
 import { NotificationBell } from '@/components/notifications';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { DOCS_SITE_URL, getMarketingRedirectOrigin } from '@/lib/constants';
+import { DOCS_SITE_URL, getMarketingRedirectOrigin, PROVIDERS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { useNotificationStore } from '@/stores/notificationStore';
+import { useProvidersStore } from '@/stores/providersStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bot, Cloud, Command, CreditCard, FunctionSquare, Home, Menu, MessageCircle, ShoppingBag, Sparkles, X, Zap } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 interface NavbarProps {
@@ -61,6 +62,7 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const paletteRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -68,6 +70,9 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
   const theme = useThemeStore((state) => state.theme);
   const messagesUnread = useNotificationStore((state) => state.unreadCounts.messages);
   const marketingHomeUrl = getMarketingRedirectOrigin();
+  const connectedProviders = useProvidersStore((state) => state.providers);
+  const totalProviders = Object.keys(PROVIDERS).length;
+  const connectedCount = connectedProviders.length;
 
   // Scroll-aware background
   useEffect(() => {
@@ -81,8 +86,12 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
   // Keyboard shortcuts
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      // Command palette: Cmd/Ctrl + K
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      // Skip if focus is in an interactive element (search, code editor, etc.)
+      const target = e.target as HTMLElement;
+      const isInteractive = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
+      // Command palette: Cmd/Ctrl + K (skip if in an input)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k' && !isInteractive) {
         e.preventDefault();
         setShowCommandPalette(true);
       }
@@ -99,6 +108,33 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
+
+  // Focus trap within command palette
+  useEffect(() => {
+    if (!showCommandPalette) return;
+
+    const handleTab = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const focusable = paletteRef.current?.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusable || focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleTab);
+    return () => document.removeEventListener('keydown', handleTab);
+  }, [showCommandPalette]);
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -160,7 +196,7 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
               {/* Breadcrumbs - shown on nested pages */}
               {variant === 'dashboard' && location.pathname.split('/').filter(Boolean).length > 1 && (
                 <nav className="hidden lg:flex items-center gap-2 text-sm text-text-muted ml-2">
-                  <Link to="/" className="hover:text-text-primary transition-colors">Home</Link>
+                  <Link to="/dashboard" className="hover:text-text-primary transition-colors">Home</Link>
                   {location.pathname.split('/').filter(Boolean).slice(0, -1).map((segment, i) => {
                     const path = '/' + location.pathname.split('/').filter(Boolean).slice(0, i + 1).join('/');
                     return (
@@ -277,14 +313,25 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
               {isAuthenticated && variant === 'dashboard' && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-full bg-bg-secondary/30 border border-border-subtle cursor-pointer hover:bg-bg-secondary/50 transition-colors">
+                    <Link
+                      to="/providers"
+                      className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-full bg-bg-secondary/30 border border-border-subtle hover:bg-bg-secondary/50 transition-colors cursor-pointer"
+                    >
                       <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                      <span className="text-xs text-text-secondary">3/3 Providers</span>
-                    </div>
+                      <span className="text-xs text-text-secondary">
+                        {connectedCount}/{totalProviders} Providers
+                      </span>
+                    </Link>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="bg-bg-secondary border border-border-subtle shadow-lg">
-                    <p className="text-text-primary">All providers operational</p>
-                    <p className="text-xs text-text-muted">Cloudflare, Vercel, Fly.io</p>
+                    <p className="text-text-primary font-medium">
+                      {connectedCount === totalProviders
+                        ? 'All providers connected'
+                        : `${connectedCount} of ${totalProviders} providers connected`}
+                    </p>
+                    <p className="text-xs text-text-muted mt-1">
+                      {Object.values(PROVIDERS).map((p) => p.name).join(' • ')}
+                    </p>
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -414,19 +461,20 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
               >
                 <div className="px-4 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
                   {/* Search for mobile */}
-                  <div className="relative">
-                    <Command className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-                    <input
-                      type="text"
-                      placeholder="Search..."
-                      className="w-full pl-9 pr-4 py-2 bg-bg-secondary border border-border-subtle rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:border-warning"
-                      onClick={() => {
-                        setIsMobileMenuOpen(false);
-                        setShowCommandPalette(true);
-                      }}
-                      readOnly
-                    />
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      setShowCommandPalette(true);
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 bg-bg-secondary border border-border-subtle rounded-lg text-text-muted hover:border-warning/30 transition-colors text-left"
+                  >
+                    <Command className="w-4 h-4 shrink-0" />
+                    <span className="text-sm">Search...</span>
+                    <kbd className="ml-auto text-[10px] font-mono bg-bg-primary px-1.5 py-0.5 rounded border border-border-subtle">
+                      ⌘K
+                    </kbd>
+                  </button>
 
                   {isAuthenticated ? (
                     <>
@@ -593,6 +641,7 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
               onClick={() => setShowCommandPalette(false)}
             >
               <motion.div
+                ref={paletteRef}
                 initial={{ opacity: 0, y: -20, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -20, scale: 0.95 }}

@@ -1,6 +1,6 @@
 /**
  * Analytics tracking for auth funnel events
- * Supports Plausible, PostHog, or any analytics provider
+ * Supports Mixpanel, Plausible, PostHog, or any analytics provider
  */
 
 type AuthEvent =
@@ -32,17 +32,37 @@ interface EventProperties {
   provider?: string;
   step?: number;
   has_invite?: boolean;
+  duration?: number;
   [key: string]: string | number | boolean | undefined;
 }
 
+// Type definitions for analytics globals
+interface PlausibleWindow extends Window {
+  plausible?: (
+    eventName: string,
+    options?: { props?: Record<string, unknown> }
+  ) => void;
+}
+
+interface PostHogWindow extends Window {
+  posthog?: {
+    capture: (eventName: string, properties?: Record<string, unknown>) => void;
+  };
+}
+
 /**
- * Track an auth funnel event
+ * Track an auth funnel event to all configured providers
  */
 export function trackAuth(
   event: AuthEvent,
   properties: EventProperties = {}
 ): void {
   const eventName = `auth_${event}`;
+
+  // Mixpanel
+  if (typeof window !== "undefined" && (window as MixpanelWindow).mixpanel) {
+    (window as MixpanelWindow).mixpanel.track(eventName, properties);
+  }
 
   // Plausible
   if (typeof window !== "undefined" && (window as PlausibleWindow).plausible) {
@@ -108,26 +128,13 @@ export function createTimer(variable: string): () => void {
   };
 }
 
-// Type definitions for analytics globals
-interface PlausibleWindow extends Window {
-  plausible?: (
-    eventName: string,
-    options?: { props?: Record<string, unknown> }
-  ) => void;
-}
-
-interface PostHogWindow extends Window {
-  posthog?: {
-    capture: (eventName: string, properties?: Record<string, unknown>) => void;
-  };
-}
-
 /**
  * Initialize analytics (call once on app load)
  */
 export function initAnalytics(): void {
   // Plausible auto-tracks page views, no initialization needed
   // PostHog would be initialized here if needed
+  // Mixpanel initialization is handled by the script snippet in BaseLayout.astro
 
   // Track initial page load
   if (typeof window !== "undefined") {
@@ -142,4 +149,11 @@ export function initAnalytics(): void {
       trackAuth("email_verification_start");
     }
   }
+}
+
+// Mixpanel global type
+interface MixpanelWindow extends Window {
+  mixpanel?: {
+    track: (name: string, props?: Record<string, unknown>) => void;
+  };
 }

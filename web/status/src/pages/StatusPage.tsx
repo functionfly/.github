@@ -1,17 +1,18 @@
 import { Button } from "@/components/ui/button";
 import { useStatusRealtime } from "@/hooks/useStatusWebSocket";
+import { trackEvent } from "@/lib/analytics";
 import {
-  statusAPI,
-  type Component,
-  type Incident,
-  type MaintenanceSummary,
+    statusAPI,
+    type Component,
+    type Incident,
+    type MaintenanceSummary,
 } from "@/lib/api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  motion as framerMotion,
-  motion,
-  useScroll,
-  useSpring,
+    motion as framerMotion,
+    motion,
+    useScroll,
+    useSpring,
 } from "framer-motion";
 import { AlertTriangle, ArrowRight, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -19,19 +20,19 @@ import { useNavigate } from "react-router-dom";
 
 // Modular status page components
 import {
-  AnimatedBackground,
-  Footer,
-  Header,
-  HeroStatus,
-  IncidentTimeline,
-  MaintenanceSection,
-  MetricsSection,
-  ProviderSection,
-  ServiceCard,
-  ServiceCardSkeleton,
-  SubscribeSection,
-  UptimeHistorySection,
-  defaultProviders,
+    AnimatedBackground,
+    Footer,
+    Header,
+    HeroStatus,
+    IncidentTimeline,
+    MaintenanceSection,
+    MetricsSection,
+    ProviderSection,
+    ServiceCard,
+    ServiceCardSkeleton,
+    SubscribeSection,
+    UptimeHistorySection,
+    defaultProviders,
 } from "@/components/status";
 
 export default function StatusPage() {
@@ -86,6 +87,7 @@ export default function StatusPage() {
       : null;
 
   const handleRefresh = () => {
+    trackEvent('status_page_refreshed');
     setIsRefreshing(true);
     queryClient.invalidateQueries({ queryKey: ["platformStatus"] });
     queryClient.invalidateQueries({ queryKey: ["components"] });
@@ -190,7 +192,10 @@ export default function StatusPage() {
                   variant="ghost"
                   size="sm"
                   className="group"
-                  onClick={() => navigate("/history")}
+                  onClick={() => {
+                    trackEvent('status_history_viewed');
+                    navigate("/history");
+                  }}
                 >
                   View History
                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />

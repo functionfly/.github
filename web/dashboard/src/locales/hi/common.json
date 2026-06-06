@@ -961,7 +961,9 @@
     "gettingStarted": "शुरू करें",
     "collapseSidebar": "साइडबार समेटें",
     "expandSidebar": "साइडबार फैलाएं",
-    "commandPalette": "कमांड पैलेट"
+    "commandPalette": "कमांड पैलेट",
+    "brain": "Brain",
+    "connectors": "Connectors"
   },
   "notifCenter": {
     "title": "Notifications",

@@ -4,14 +4,15 @@
  * Merged with Registry page - both were redundant
  */
 
+import { DeployFunctionModal } from '@/components/common/DeployFunctionModal';
+import { LoadingScreen } from '@/components/common/LoadingScreen';
+import { adminApiClient } from '@/lib/api/adminClient';
+import { logger } from '@/lib/monitoring/logger';
+import { useQuery } from '@tanstack/react-query';
+import clsx from 'clsx';
+import { Eye, LayoutGrid, List, Plus, Search, Star } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { adminApiClient } from '@/lib/api/adminClient';
-import { Plus, Search, Star, Eye, DollarSign, LayoutGrid, List } from 'lucide-react';
-import { LoadingScreen } from '@/components/common/LoadingScreen';
-import { DeployFunctionModal } from '@/components/common/DeployFunctionModal';
-import clsx from 'clsx';
 
 interface RegistryFunctionData {
   id: string;
@@ -58,15 +59,13 @@ export function AdminFunctionsPage() {
     queryKey: ['admin-functions'],
     queryFn: async () => {
       try {
-        const resp = await adminApiClient.get<{ functions: RegistryFunctionData[], total: number }>('/registry/functions');
-        console.log('/registry/functions response:', resp);
-        // Response shape: {data: {functions: [], total: N}} from AdminAPIResponse wrapper
-        // But log shows direct {functions: [], total: N}, so check both
-        if (resp?.functions) return resp;
-        if (resp?.data?.functions) return resp.data;
+        const raw = await adminApiClient.get<{ functions: RegistryFunctionData[]; total: number }>('/registry/functions');
+        const payload = (raw as { data?: { functions: RegistryFunctionData[]; total: number } }).data;
+        if (payload?.functions) return payload;
+        if ((raw as any)?.functions) return raw as unknown as { functions: RegistryFunctionData[]; total: number };
         return { functions: [], total: 0 };
       } catch (e) {
-        console.error('functions error:', e);
+        logger.error('functions error', { error: e });
         return { functions: [], total: 0 };
       }
     },
@@ -77,14 +76,13 @@ export function AdminFunctionsPage() {
     queryKey: ['admin-registry-stats'],
     queryFn: async () => {
       try {
-        const resp = await adminApiClient.get<RegistryStats>('/registry/stats');
-        console.log('/registry/stats response:', resp);
-        // Direct response {total_functions, active_functions, ...}
-        if (resp && 'total_functions' in resp) return resp;
-        if (resp?.data && 'total_functions' in resp.data) return resp.data;
+        const raw = await adminApiClient.get<RegistryStats>('/registry/stats');
+        const payload = (raw as { data?: RegistryStats }).data;
+        if (payload && 'total_functions' in payload) return payload;
+        if (raw && 'total_functions' in raw) return raw as unknown as RegistryStats;
         return { total_functions: 0, active_functions: 0, flagged_functions: 0 };
       } catch (e) {
-        console.error('registry stats error:', e);
+        logger.error('registry stats error', { error: e });
         return { total_functions: 0, active_functions: 0, flagged_functions: 0 };
       }
     },

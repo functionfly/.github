@@ -1,7 +1,9 @@
 import { getAnalyticsSettings } from '@/api';
 import { loadGoogleAnalytics } from '@/components/cookie-consent/ConditionalScriptLoader';
+import { identifyUser, initMixpanel, resetUser } from '@/lib/analytics/mixpanel';
 import { COMING_SOON_ONLY } from '@/lib/constants';
 import { useAuthStore } from '@/stores/authStore';
+import { useCookieConsentStore } from '@/stores/cookieConsentStore';
 import type { AnalyticsSettings } from '@/types';
 import { Analytics as VercelAnalytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
@@ -23,11 +25,35 @@ export function Analytics() {
   const [settings, setSettings] = useState<AnalyticsSettings | null>(null);
   const [loaded, setLoaded] = useState(false);
   const user = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const enableVercelInsights = useVercelInsights();
   const location = useLocation();
   const isLaunchPage =
     COMING_SOON_ONLY ||
     LAUNCH_PAGE_PATHS.some((p) => location.pathname === p || location.pathname.startsWith(p + '/'));
+  const hasAnalyticsConsent = useCookieConsentStore((s) => s.categories.analytics);
+
+  // Initialize Mixpanel once when analytics consent is available
+  useEffect(() => {
+    if (!hasAnalyticsConsent) return;
+    initMixpanel();
+  }, [hasAnalyticsConsent]);
+
+  // Identify user on login / session restore; reset on logout
+  useEffect(() => {
+    if (!hasAnalyticsConsent) return;
+    if (isAuthenticated && user?.id) {
+      identifyUser(user.id, {
+        email: user.email,
+        username: user.username,
+        plan: user.plan,
+        role: user.role,
+        tenantId: user.tenantId,
+      });
+    } else {
+      resetUser();
+    }
+  }, [hasAnalyticsConsent, isAuthenticated, user?.id, user?.email, user?.username, user?.plan, user?.role, user?.tenantId]);
 
   useEffect(() => {
     const loadAnalyticsSettings = async () => {

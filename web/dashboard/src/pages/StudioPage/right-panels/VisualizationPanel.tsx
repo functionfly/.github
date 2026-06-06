@@ -1,6 +1,7 @@
-import React, { useState } from "react";
 import { NeuralExecutionMap } from "@functionfly/ui-visualization";
-import { RotateCcw, Maximize2, Minimize2 } from "lucide-react";
+import { Maximize2, Minimize2, RotateCcw } from "lucide-react";
+import { useState } from "react";
+import { VisualizationPanelSkeleton } from "../components/StudioPanelsSkeleton";
 
 interface VisualizationNode {
   id: string;
@@ -18,11 +19,16 @@ interface VisualizationEdge {
 interface VisualizationPanelProps {
   nodes: VisualizationNode[];
   edges: VisualizationEdge[];
+  isLoading?: boolean;
 }
 
-export function VisualizationPanel({ nodes, edges }: VisualizationPanelProps) {
+export function VisualizationPanel({ nodes, edges, isLoading }: VisualizationPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showParticles, setShowParticles] = useState(true);
+
+  if (isLoading) {
+    return <VisualizationPanelSkeleton />;
+  }
 
   return (
     <div className="h-full flex flex-col">

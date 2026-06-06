@@ -27,6 +27,8 @@ func registerGhostRoutes(
 	api.HandleFunc("/v1/ghost/builds/{id}/tasks/{task_id}/complete", authMiddleware.RequireAuth(ghostHandler.HandleCompleteTask)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/v1/ghost/builds/{id}/tasks/{task_id}/fail", authMiddleware.RequireAuth(ghostHandler.HandleFailTask)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/v1/ghost/builds/{id}/tasks/{task_id}/logs", authMiddleware.RequireAuth(ghostHandler.HandleAddTaskLog)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/v1/ghost/builds/{id}/tasks/{task_id}/logs", authMiddleware.RequireAuth(ghostHandler.HandleGetTaskLogs)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/v1/ghost/builds/{id}/logs", authMiddleware.RequireAuth(ghostHandler.HandleGetBuildLogs)).Methods("GET", "OPTIONS")
 
 	// Human approval
 	api.HandleFunc("/v1/ghost/builds/{id}/approve", authMiddleware.RequireAuth(ghostHandler.HandleApproval)).Methods("POST", "OPTIONS")

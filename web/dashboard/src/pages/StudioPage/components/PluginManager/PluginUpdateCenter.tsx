@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { marketplaceApi, type Extension, type MarketplaceFilters } from "@/api/marketplace";
 import { PluginDetailsModal } from "./PluginDetailsModal";
 import { ALL_FUNCTIONFLY_PLUGINS, FUNCTIONFLY_TEAM_PLUGINS, type DefaultPlugin } from "./defaultPlugins";
+import { RatingDialog } from "./RatingDialog";
 import { cn } from "@/lib/utils";
 
 import { type Plugin } from "@/api/plugins";
@@ -23,14 +24,20 @@ export function PluginUpdateCenter({ onInstall, installedPlugins = [] }: PluginU
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("trending");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
-  const [featuredFilter, setFeaturedFilter] = useState<CategoryFilter | null>(null);
   const [page, setPage] = useState(1);
   const [selectedExtension, setSelectedExtension] = useState<Extension | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [ratingExtension, setRatingExtension] = useState<Extension | null>(null);
 
   const { data: marketplaceData, isLoading } = useQuery({
-    queryKey: ["marketplace-extensions"],
-    queryFn: () => marketplaceApi.list({ status: "published", limit: 100 }),
+    queryKey: ["marketplace-extensions", sortBy, categoryFilter, searchQuery],
+    queryFn: () => marketplaceApi.list({
+      status: "published",
+      category: categoryFilter !== "all" ? categoryFilter : undefined,
+      search: searchQuery || undefined,
+      sort: sortBy,
+      limit: 200,
+    }),
     staleTime: 1000 * 60 * 5,
   });
 
@@ -106,8 +113,8 @@ export function PluginUpdateCenter({ onInstall, installedPlugins = [] }: PluginU
         break;
       case "newest":
         results = [...results].sort((a, b) => {
-          const dateA = new Date(a.changelog ? 0 : 0).getTime();
-          const dateB = new Date(b.changelog ? 0 : 0).getTime();
+          const dateA = new Date(a.published_at || a.created_at || 0).getTime();
+          const dateB = new Date(b.published_at || b.created_at || 0).getTime();
           return dateB - dateA;
         });
         break;
@@ -137,6 +144,7 @@ export function PluginUpdateCenter({ onInstall, installedPlugins = [] }: PluginU
 
   const handleInstall = async (extension: Extension) => {
     await onInstall({
+      extension_id: extension.id,
       manifest: extension.manifest || { name: extension.name, version: extension.version },
       plugin_type: (extension.category as PluginType) || "ui",
       name: extension.name,
@@ -288,22 +296,36 @@ export function PluginUpdateCenter({ onInstall, installedPlugins = [] }: PluginU
                   <Download className="w-3 h-3" />
                   {formatNumber(extension.install_count)}
                 </span>
-                <span className="flex items-center gap-1 text-yellow-400">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setRatingExtension(extension); }}
+                  className="flex items-center gap-1 text-yellow-400 hover:text-yellow-300"
+                >
                   <Star className="w-3 h-3 fill-current" />
                   {extension.rating_average.toFixed(1)}
-                </span>
+                </button>
               </div>
 
-              <Button
-                size="sm"
-                className="w-full opacity-0 group-hover:opacity-100 transition-opacity"
-                variant="default"
-                disabled={installedPluginNames.has(extension.name.toLowerCase())}
-                onClick={(e) => { e.stopPropagation(); handleInstall(extension); }}
-              >
-                <Download className="w-4 h-4 mr-1" />
-                {installedPluginNames.has(extension.name.toLowerCase()) ? "Installed" : "Install"}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  className="flex-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  variant="default"
+                  disabled={installedPluginNames.has(extension.name.toLowerCase())}
+                  onClick={(e) => { e.stopPropagation(); handleInstall(extension); }}
+                >
+                  <Download className="w-4 h-4 mr-1" />
+                  {installedPluginNames.has(extension.name.toLowerCase()) ? "Installed" : "Install"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={(e) => { e.stopPropagation(); setRatingExtension(extension); }}
+                  className="text-white/60 hover:text-yellow-400"
+                  title="Rate this plugin"
+                >
+                  <Star className="w-4 h-4" />
+                </Button>
+              </div>
             </GlassCard>
           ))}
         </div>
@@ -394,6 +416,13 @@ export function PluginUpdateCenter({ onInstall, installedPlugins = [] }: PluginU
           extension={selectedExtension}
           onClose={() => setSelectedExtension(null)}
           onInstall={onInstall}
+        />
+      )}
+
+      {ratingExtension && (
+        <RatingDialog
+          extension={ratingExtension}
+          onClose={() => setRatingExtension(null)}
         />
       )}
     </div>

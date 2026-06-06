@@ -3,9 +3,10 @@
  * Tabbed interface: Newsletter (subscribers & campaigns) and Email Settings
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { Mail, Settings, Send, Users, Plus, Trash2, Send as SendIcon, BarChart3, X } from 'lucide-react';
 import { adminApiClient } from '@/lib/api/adminClient';
+import { logger } from '@/lib/monitoring/logger';
+import { BarChart3, Mail, Plus, Send, Settings, Trash2, Users, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
 type TabId = 'newsletter' | 'settings';
 
@@ -107,7 +108,7 @@ function NewsletterTab() {
         setStats(response.data);
       }
     } catch (err: any) {
-      console.error('Failed to fetch newsletter stats:', err);
+      logger.error('Failed to fetch newsletter stats', { error: err });
     }
   }, []);
 

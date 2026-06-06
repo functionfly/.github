@@ -20,8 +20,8 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { LoadingScreen } from '@/components/common/LoadingScreen';
-import { AUDIT_EVENT_TYPES } from '@/lib/constants';
-import type { AuditEvent, AuditLogFilters } from '@/types';
+import { AUDIT_EVENT_TYPES, type AuditEventType } from '@/lib/constants';
+import type { AuthAuditEvent, AuditLogFilters } from '@/types';
 
 const ACTION_ICONS: Record<string, string> = {
   login: '🔓',
@@ -50,9 +50,9 @@ const ACTION_ICONS: Record<string, string> = {
 
 export function AdminAuthAuditPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [eventTypeFilter, setEventTypeFilter] = useState<string>('all');
+  const [eventTypeFilter, setEventTypeFilter] = useState<AuditEventType | 'all'>('all');
   const [successFilter, setSuccessFilter] = useState<string>('all');
-  const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<AuthAuditEvent | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   
@@ -71,7 +71,7 @@ export function AdminAuthAuditPage() {
         if (startDate) params.append('start_date', startDate);
         if (endDate) params.append('end_date', endDate);
         
-        return await adminApiClient.get<AuditEvent[]>(`/admin/auth-audit?${params.toString()}`);
+        return await adminApiClient.get<AuthAuditEvent[]>(`/admin/auth-audit?${params.toString()}`);
       } catch {
         return { data: [], success: false };
       }
@@ -109,7 +109,7 @@ export function AdminAuthAuditPage() {
     const csv = [
       ['Timestamp', 'Event Type', 'User Email', 'Tenant', 'IP Address', 'Success', 'Action'],
       ...filteredEvents.map((e) => [
-        new Date(e.created_at || e.timestamp).toISOString(),
+        new Date(e.created_at || e.timestamp || Date.now()).toISOString(),
         e.event_type || '',
         e.user_email || 'System',
         e.tenant_name || '-',
@@ -224,10 +224,12 @@ export function AdminAuthAuditPage() {
                 </label>
                 <select
                   value={eventTypeFilter}
-                  onChange={(e) => setEventTypeFilter(e.target.value)}
+                  onChange={(e) =>
+                    setEventTypeFilter(e.target.value as AuditEventType | 'all')
+                  }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                 >
-                  {AUDIT_EVENT_TYPES.map((type) => (
+                  {AUDIT_EVENT_TYPES.map((type: { value: AuditEventType; label: string }) => (
                     <option key={type.value} value={type.value}>
                       {type.label}
                     </option>
@@ -371,9 +373,9 @@ export function AdminAuthAuditPage() {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                     <div>
-                      <p>{new Date(event.created_at || event.timestamp).toLocaleDateString()}</p>
+                      <p>{new Date(event.created_at || event.timestamp || Date.now()).toLocaleDateString()}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {new Date(event.created_at || event.timestamp).toLocaleTimeString()}
+                        {new Date(event.created_at || event.timestamp || Date.now()).toLocaleTimeString()}
                       </p>
                     </div>
                   </td>
@@ -471,7 +473,9 @@ export function AdminAuthAuditPage() {
                 <div>
                   <h3 className="font-semibold text-gray-900 dark:text-white">Timestamp</h3>
                   <p className="text-gray-600 dark:text-gray-300">
-                    {new Date(selectedEvent.created_at || selectedEvent.timestamp).toLocaleString()}
+                    {new Date(
+                      selectedEvent.created_at || selectedEvent.timestamp || Date.now()
+                    ).toLocaleString()}
                   </p>
                 </div>
 

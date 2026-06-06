@@ -3,7 +3,7 @@
  * Token is stored in memory only (not localStorage) to prevent XSS theft.
  */
 
-import { adminApiClient } from '@/lib/api/adminClient';
+import { logger } from '@/lib/monitoring/logger';
 
 // In-memory token storage (not localStorage to prevent XSS theft)
 let csrfToken: string | null = null;
@@ -75,19 +75,19 @@ export async function refreshCsrfToken(): Promise<string | null> {
     // Make a direct request to the CSRF endpoint (this will include JWT token)
     // Note: This request will be intercepted and will try to add CSRF token,
     // but since we're fetching the token, we need to temporarily skip CSRF for this request
-    const response = await adminApiClient.client.get('/csrf', {
+    const { data: responseData } = await adminApiClient.getRaw<{ token?: string }>('/csrf', {
       _skipCsrf: true, // Custom flag to skip CSRF token addition
     });
 
-    if (response.data?.token) {
-      csrfToken = response.data.token;
+    if (responseData?.token) {
+      csrfToken = responseData.token;
       csrfTokenExpiry = Date.now() + CSRF_TOKEN_TTL;
       return csrfToken;
     }
 
     return null;
   } catch (error) {
-    console.warn('Failed to refresh CSRF token:', error);
+    logger.warn('Failed to refresh CSRF token', { error });
     return null;
   }
 }

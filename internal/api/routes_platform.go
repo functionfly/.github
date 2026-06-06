@@ -9,8 +9,8 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/apps"
 	"github.com/functionfly/functionfly/internal/api/handlers/backends"
 	billinghandler "github.com/functionfly/functionfly/internal/api/handlers/billing"
-	"github.com/functionfly/functionfly/internal/api/handlers/chat"
 	categorizationhandler "github.com/functionfly/functionfly/internal/api/handlers/categorization"
+	"github.com/functionfly/functionfly/internal/api/handlers/chat"
 	"github.com/functionfly/functionfly/internal/api/handlers/dashboard"
 	"github.com/functionfly/functionfly/internal/api/handlers/decisions"
 	"github.com/functionfly/functionfly/internal/api/handlers/deploykeys"
@@ -20,14 +20,14 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/function_webhooks"
 	"github.com/functionfly/functionfly/internal/api/handlers/functions"
 	"github.com/functionfly/functionfly/internal/api/handlers/monitoring"
+	"github.com/functionfly/functionfly/internal/api/handlers/plugin"
 	"github.com/functionfly/functionfly/internal/api/handlers/providers"
+	runtimehandler "github.com/functionfly/functionfly/internal/api/handlers/runtime"
 	"github.com/functionfly/functionfly/internal/api/handlers/security"
 	"github.com/functionfly/functionfly/internal/api/handlers/state"
 	"github.com/functionfly/functionfly/internal/api/handlers/statefabric"
-	"github.com/functionfly/functionfly/internal/api/handlers/studio"
-	"github.com/functionfly/functionfly/internal/api/handlers/plugin"
-	runtimehandler "github.com/functionfly/functionfly/internal/api/handlers/runtime"
 	statushandler "github.com/functionfly/functionfly/internal/api/handlers/status"
+	"github.com/functionfly/functionfly/internal/api/handlers/studio"
 	"github.com/functionfly/functionfly/internal/api/handlers/support"
 	teammemoryhandler "github.com/functionfly/functionfly/internal/api/handlers/team_memory"
 	"github.com/functionfly/functionfly/internal/api/handlers/teams"
@@ -87,6 +87,9 @@ func registerPlatformRoutes(
 	studioTasksHandler *studio.TasksHandler,
 	studioExtensionsHandler *studio.ExtensionsHandler,
 	studioSettingsHandler *studio.SettingsHandler,
+	codeEditorRepo *studio.CodeEditorRepository,
+	codeEditorHandler *studio.CodeEditorHandler,
+	studioDevOpsHandler *studio.DevOpsHandler,
 	pluginHandler *plugin.Handler,
 	runtimeHandler *runtimehandler.Handler,
 ) {
@@ -299,6 +302,31 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/studio/settings", authMiddleware.RequireAuth(studioSettingsHandler.HandleSaveSettings)).Methods("PUT", "OPTIONS")
 	protected.HandleFunc("/studio/settings", authMiddleware.RequireAuth(studioSettingsHandler.HandleResetSettings)).Methods("DELETE", "OPTIONS")
 
+	// ── Studio Code Editor (protected, tenant-scoped) ──────────────────────────────
+	protected.HandleFunc("/studio/code/format", authMiddleware.RequireAuth(codeEditorHandler.HandleFormatCode)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/studio/code/save", authMiddleware.RequireAuth(codeEditorHandler.HandleSaveCode)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/studio/code/undo", authMiddleware.RequireAuth(codeEditorHandler.HandleUndo)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/studio/code/redo", authMiddleware.RequireAuth(codeEditorHandler.HandleRedo)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/studio/code/history", authMiddleware.RequireAuth(codeEditorHandler.HandleGetVersionHistory)).Methods("GET", "OPTIONS")
+
+	// ── Studio DevOps (protected, tenant-scoped) ───────────────────────────────
+	protected.HandleFunc("/studio/devops/stats", authMiddleware.RequireAuth(studioDevOpsHandler.HandleGetDevOpsStats)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/studio/devops/pipelines", authMiddleware.RequireAuth(studioDevOpsHandler.HandleListPipelines)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/studio/devops/pipelines", authMiddleware.RequireAuth(studioDevOpsHandler.HandleCreatePipeline)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/studio/devops/pipelines/{id}", authMiddleware.RequireAuth(studioDevOpsHandler.HandleGetPipeline)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/studio/devops/pipelines/{id}/stages/{stageId}", authMiddleware.RequireAuth(studioDevOpsHandler.HandleUpdatePipelineStage)).Methods("PATCH", "OPTIONS")
+	protected.HandleFunc("/studio/devops/pipelines/{id}/stages/{stageId}/retry", authMiddleware.RequireAuth(studioDevOpsHandler.HandleRetryPipelineStage)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/studio/devops/environments", authMiddleware.RequireAuth(studioDevOpsHandler.HandleListEnvironments)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/studio/devops/environments", authMiddleware.RequireAuth(studioDevOpsHandler.HandleCreateEnvironment)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/studio/devops/environments/{id}", authMiddleware.RequireAuth(studioDevOpsHandler.HandleGetEnvironment)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/studio/devops/environments/{id}", authMiddleware.RequireAuth(studioDevOpsHandler.HandleUpdateEnvironment)).Methods("PATCH", "OPTIONS")
+	protected.HandleFunc("/studio/devops/environments/{id}", authMiddleware.RequireAuth(studioDevOpsHandler.HandleDeleteEnvironment)).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/studio/devops/environments/{id}/variables", authMiddleware.RequireAuth(studioDevOpsHandler.HandleAddEnvironmentVariable)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/studio/devops/environments/{id}/secrets", authMiddleware.RequireAuth(studioDevOpsHandler.HandleAddEnvironmentSecret)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/studio/devops/regions", authMiddleware.RequireAuth(studioDevOpsHandler.HandleListCloudRegions)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/studio/devops/regions", authMiddleware.RequireAuth(studioDevOpsHandler.HandleCreateCloudRegion)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/studio/devops/regions/{id}", authMiddleware.RequireAuth(studioDevOpsHandler.HandleGetCloudRegion)).Methods("GET", "OPTIONS")
+
 	// ── Plugin Manager (protected, tenant-scoped) ──────────────────────────
 	protected.HandleFunc("/plugins", authMiddleware.RequireAuth(pluginHandler.HandleListPlugins)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/plugins", authMiddleware.RequireAuth(pluginHandler.HandleInstallPlugin)).Methods("POST", "OPTIONS")
@@ -315,6 +343,10 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/plugins/{id}/permissions", authMiddleware.RequireAuth(pluginHandler.HandleGetPermissions)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/plugins/{id}/permissions", authMiddleware.RequireAuth(pluginHandler.HandleSetPermission)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/plugins/{id}/versions", authMiddleware.RequireAuth(pluginHandler.HandleListVersions)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/plugins/{id}/telemetry", authMiddleware.RequireAuth(pluginHandler.HandleGetTelemetry)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/plugins/{id}/analytics", authMiddleware.RequireAuth(pluginHandler.HandleRecordAnalytics)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/plugins/{id}/error", authMiddleware.RequireAuth(pluginHandler.HandleSetError)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/plugins/check-rate-limit", authMiddleware.RequireAuth(pluginHandler.HandleCheckRateLimit)).Methods("POST", "OPTIONS")
 
 	// ── State Usage (billing/quota integration) ─────────────────────────────
 	protected.HandleFunc("/usage/state", authMiddleware.RequireAuth(stateUsageHandler.GetCurrentStateUsage)).Methods("GET", "OPTIONS")

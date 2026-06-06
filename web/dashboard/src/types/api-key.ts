@@ -79,7 +79,9 @@ export interface APIKey {
   revoked_at?: string;
   revoked_reason?: string;
   use_count?: number;
-  allowed_ips?: string[];
+  billing_budget_cents?: number;
+  is_high_value?: boolean;
+  cost_center?: string;
   created_by?: string;
 }
 
@@ -94,6 +96,10 @@ export interface PermissionGrant {
   resource_id: string;
 }
 
+// CreateAPIKeyRequest: matches backend apikey.CreateAPIKeyRequest shape.
+// IMPORTANT: rate_limit must be sent as a NESTED object (not flat fields) so
+// that the backend's req.RateLimit pointer is non-nil and the per-key limits
+// are persisted. Sending flat `rate_limit_rpm` etc. was silently dropped.
 export interface CreateAPIKeyRequest {
   name: string;
   description?: string;
@@ -102,12 +108,13 @@ export interface CreateAPIKeyRequest {
   environments?: string[];
   expires_at?: string;
   rotation_frequency_days?: number;
-  rate_limit_rpm?: number;
-  rate_limit_rph?: number;
-  rate_limit_rpd?: number;
+  rate_limit?: RateLimitConfig;
   metadata?: Record<string, unknown>;
 }
 
+// UpdateAPIKeyRequest: backend uses flat rate_limit_* fields on the update path
+// (see internal/api/handlers/apikeys/update.go UpdateAPIKeyRequest). Keep flat
+// fields here for update; create uses the nested object above.
 export interface UpdateAPIKeyRequest {
   name?: string;
   description?: string;
@@ -122,6 +129,7 @@ export interface UpdateAPIKeyRequest {
 
 export interface RotateAPIKeyRequest {
   reason?: RotationReason;
+  expires_in_days?: number;
   metadata?: Record<string, unknown>;
 }
 

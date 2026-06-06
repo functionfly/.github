@@ -15,6 +15,7 @@
    Jet exhaust flames at sunset altitude
    ============================================= */
 :root {
+  color-scheme: dark;
   /* Velocity Brand Colors */
   --ff-flame: #FF6B35;
   --ff-flame-rgb: 255, 107, 53;
@@ -188,6 +189,7 @@
    LIGHT THEME (Velocity Brand)
    ============================================= */
 [data-theme='light'] {
+  color-scheme: light;
   /* Velocity Flame adjusted for light backgrounds */
   --ff-flame: #E85A2A;
   --ff-flame-rgb: 232, 90, 42;
@@ -2579,4 +2581,14 @@ html[data-theme='light'] .ff-input-group:focus-within {
 .cli-footer a:hover {
   color: var(--cyan-7);
   text-decoration-color: var(--cyan-6);
+}
+
+/* Accessibility: reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

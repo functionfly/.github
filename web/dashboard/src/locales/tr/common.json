@@ -961,7 +961,9 @@
     "gettingStarted": "Başlarken",
     "collapseSidebar": "Kenar çubuğunu daralt",
     "expandSidebar": "Kenar çubuğunu genişlet",
-    "commandPalette": "Komut Paleti"
+    "commandPalette": "Komut Paleti",
+    "brain": "Brain",
+    "connectors": "Connectors"
   },
   "notifCenter": {
     "title": "Notifications",

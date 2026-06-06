@@ -170,3 +170,107 @@ func RegisterAuthRoutes(router *mux.Router, repo *apikey.Repository, jwtSecret s
 	h := NewAPIKeyAuthHandler(repo, jwtSecret)
 	router.HandleFunc("/auth/api-key", h.HandleAuthenticate).Methods("POST", "OPTIONS")
 }
+
+// ValidateAPIKeyRequest represents a request to validate an API key (for AI service integration)
+type ValidateAPIKeyRequest struct {
+	APIKey string `json:"api_key"`
+}
+
+// ValidateAPIKeyResponse represents the response after validating an API key
+type ValidateAPIKeyResponse struct {
+	Valid       bool      `json:"valid"`
+	TenantID    string    `json:"tenant_id,omitempty"`
+	KeyID       string    `json:"key_id,omitempty"`
+	Name        string    `json:"name,omitempty"`
+	KeyType     string    `json:"key_type,omitempty"`
+	Scopes      []string  `json:"scopes,omitempty"`
+	IsActive    bool      `json:"is_active"`
+	IsRevoked   bool      `json:"is_revoked"`
+	ExpiresAt   *string   `json:"expires_at,omitempty"`
+	LastUsedAt  *string   `json:"last_used_at,omitempty"`
+	RateLimitRPM int      `json:"rate_limit_rpm"`
+	RateLimitRPH int      `json:"rate_limit_rph"`
+	RateLimitRPD int      `json:"rate_limit_rpd"`
+}
+
+// HandleValidateAPIKey handles POST /api/v1/auth/validate-key
+// Validates an API key and returns metadata (used by AI service for key validation)
+// This endpoint does NOT generate a JWT - it returns raw key metadata
+func (h *APIKeyAuthHandler) HandleValidateAPIKey(w http.ResponseWriter, r *http.Request) {
+	// Parse request body
+	var req ValidateAPIKeyRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, http.StatusBadRequest, "invalid_request", "Invalid request body")
+		return
+	}
+
+	// Validate API key presence
+	if req.APIKey == "" {
+		h.writeError(w, http.StatusBadRequest, "invalid_request", "API key is required")
+		return
+	}
+
+	// Hash the provided API key (using bcrypt, same as Go storage)
+	keyHash := h.hasher.Hash(req.APIKey)
+
+	// Look up the API key
+	ctx := context.Background()
+	apiKey, err := h.repo.GetByHash(ctx, keyHash)
+	if err != nil {
+		logrus.WithError(err).Debug("API key validation failed - key not found")
+		h.writeJSON(w, http.StatusOK, map[string]interface{}{
+			"data": ValidateAPIKeyResponse{
+				Valid: false,
+			},
+		})
+		return
+	}
+
+	// Build scopes list from JSONB map
+	var scopes []string
+	if apiKey.Scopes != nil {
+		for scope := range apiKey.Scopes {
+			scopes = append(scopes, scope)
+		}
+	}
+
+	// Format times
+	var expiresAt *string
+	if apiKey.ExpiresAt != nil {
+		t := apiKey.ExpiresAt.Format(time.RFC3339)
+		expiresAt = &t
+	}
+	var lastUsedAt *string
+	if apiKey.LastUsedAt != nil {
+		t := apiKey.LastUsedAt.Format(time.RFC3339)
+		lastUsedAt = &t
+	}
+
+	// Update last used timestamp (fire and forget)
+	go func() {
+		_ = h.repo.UpdateLastUsed(ctx, apiKey.ID)
+	}()
+
+	// Return key metadata
+	h.writeSuccess(w, ValidateAPIKeyResponse{
+		Valid:        true,
+		TenantID:     apiKey.TenantID.String(),
+		KeyID:        apiKey.ID.String(),
+		Name:         apiKey.Name,
+		KeyType:      string(apiKey.KeyType),
+		Scopes:       scopes,
+		IsActive:     apiKey.IsActive,
+		IsRevoked:    apiKey.IsRevoked,
+		ExpiresAt:    expiresAt,
+		LastUsedAt:   lastUsedAt,
+		RateLimitRPM: apiKey.RateLimitRPM,
+		RateLimitRPH: apiKey.RateLimitRPH,
+		RateLimitRPD: apiKey.RateLimitRPD,
+	})
+}
+
+// RegisterValidateRoutes registers the API key validation route for AI service
+func RegisterValidateRoutes(router *mux.Router, repo *apikey.Repository, jwtSecret string) {
+	h := NewAPIKeyAuthHandler(repo, jwtSecret)
+	router.HandleFunc("/auth/validate-key", h.HandleValidateAPIKey).Methods("POST", "OPTIONS")
+}

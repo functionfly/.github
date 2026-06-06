@@ -60,17 +60,19 @@ export function ResizablePanelGroup({
     return child;
   });
 
-  const panels = React.Children.toArray(childrenWithIndex).filter(
-    (child): child is React.ReactElement<ResizablePanelProps> =>
-      React.isValidElement(child) && child.type === ResizablePanel
-  );
+  const panels: React.ReactElement<ResizablePanelProps>[] = [];
+  React.Children.forEach(childrenWithIndex, (child) => {
+    if (React.isValidElement(child) && child.type === ResizablePanel) {
+      panels.push(child as React.ReactElement<ResizablePanelProps>);
+    }
+  });
 
   const panelCount = panels.length;
-  const initialSizes = panels.map(
+  const initialSizes: number[] = panels.map(
     (child) => child.props.defaultSize ?? 100 / panelCount
   );
 
-  const [sizes, setSizes] = React.useState(initialSizes);
+  const [sizes, setSizes] = React.useState<number[]>(initialSizes);
 
   const contextValue = React.useMemo(
     () => ({ direction, sizes, setSizes, panelCount }),

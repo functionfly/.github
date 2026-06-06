@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 
+	"github.com/functionfly/functionfly/internal/api/handlers/demo"
 	"github.com/functionfly/functionfly/internal/api/handlers/blog"
 	"github.com/functionfly/functionfly/internal/api/handlers/content"
 	feedbackHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/feedback"
@@ -38,6 +39,7 @@ func registerRegistryRoutes(
 	feedbackHandler *feedbackHandlerPkg.Handler,
 	recommendationHandler *recommendations.Handler,
 	anchoringService drehandler.AnchorServicer,
+	demoHandler *demo.Handler,
 ) {
 	// Inline init for registry-specific sub-handlers
 	canaryHandler := registryhandler.NewCanaryHandler(
@@ -73,6 +75,15 @@ func registerRegistryRoutes(
 		executionSecurityMW.SecureExecution(fn.ID, fn.Version)(appPlaygroundHandler.HandleExecute).ServeHTTP(w, r)
 	}).Methods("POST", "OPTIONS")
 
+	// ── Zero-Friction Demo API (public, no auth, no signup) ────────────────
+	// Must be registered BEFORE the /{author}/{name} catchall below, otherwise
+	// POST /v1/demo/execute is matched as author="demo", name="execute" and
+	// returns "Function not found" before the demo handler ever sees it.
+	if demoHandler != nil {
+		api.HandleFunc("/demo", demoHandler.ListFunctions).Methods("GET", "OPTIONS")
+		api.HandleFunc("/demo/execute", demoHandler.HandleExecute).Methods("POST", "OPTIONS")
+	}
+
 	// ── Public Execute (v1 prefix, /fx alias for compatibility) ─────────────
 	secureExecuteHandler := func(w http.ResponseWriter, r *http.Request) {
 		repo := storageregistry.NewRegistryRepository(s.postgresDB.GORM, nil)
@@ -86,11 +97,23 @@ func registerRegistryRoutes(
 		executionSecurityMW.SecureExecution(fn.ID, version)(registryHandler.HandleExecute).ServeHTTP(w, r)
 	}
 	if verificationMiddleware != nil {
+		// ── Publish (protected) ─────────────────────────────────────────────
+		// Must be registered BEFORE the /{author}/{name} catchall below, otherwise
+		// POST /v1/functions/publish is matched as author="functions", name="publish"
+		// and returns "Function not found" before the publish handler ever sees it.
+		api.HandleFunc("/functions/publish", authMiddleware.RequireAuth(registryHandler.HandlePublish)).Methods("POST", "OPTIONS")
+
 		api.Handle("/{author}/{name}", verificationMiddleware.RequireVerifiedFunction("standard")(http.HandlerFunc(secureExecuteHandler))).Methods("POST", "OPTIONS")
 		api.Handle("/{author}/{name}@{version}", verificationMiddleware.RequireVerifiedFunction("standard")(http.HandlerFunc(secureExecuteHandler))).Methods("POST", "OPTIONS")
 		api.Handle("/fx/{author}/{name}", verificationMiddleware.RequireVerifiedFunction("standard")(http.HandlerFunc(secureExecuteHandler))).Methods("POST", "OPTIONS")
 		api.Handle("/fx/{author}/{name}@{version}", verificationMiddleware.RequireVerifiedFunction("standard")(http.HandlerFunc(secureExecuteHandler))).Methods("POST", "OPTIONS")
 	} else {
+		// ── Publish (protected) ─────────────────────────────────────────────
+		// Must be registered BEFORE the /{author}/{name} catchall below, otherwise
+		// POST /v1/functions/publish is matched as author="functions", name="publish"
+		// and returns "Function not found" before the publish handler ever sees it.
+		api.HandleFunc("/functions/publish", authMiddleware.RequireAuth(registryHandler.HandlePublish)).Methods("POST", "OPTIONS")
+
 		api.HandleFunc("/{author}/{name}", secureExecuteHandler).Methods("POST", "OPTIONS")
 		api.HandleFunc("/{author}/{name}@{version}", secureExecuteHandler).Methods("POST", "OPTIONS")
 		api.HandleFunc("/fx/{author}/{name}", secureExecuteHandler).Methods("POST", "OPTIONS")
@@ -218,9 +241,6 @@ func registerRegistryRoutes(
 
 	// Cache monitoring (public)
 	api.HandleFunc("/cache/stats", registryHandler.HandleGetCacheStats).Methods("GET")
-
-	// ── Publish (protected) ──────────────────────────────────────────────────
-	api.HandleFunc("/functions/publish", authMiddleware.RequireAuth(registryHandler.HandlePublish)).Methods("POST")
 
 	// ── Stats / test / rating / reviews (public or protected) ────────────────
 	api.HandleFunc("/functions/{author}/{name}/stats", registryHandler.HandleGetFunctionStats).Methods("GET")

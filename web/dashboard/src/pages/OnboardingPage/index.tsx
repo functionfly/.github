@@ -23,12 +23,12 @@ import {
   Users,
   Zap,
 } from 'lucide-react';
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import Confetti from 'react-confetti';
 import { useNavigate } from 'react-router-dom';
 // import { useAuthStore } from "@/stores/authStore";
 import { HelpTooltip } from '@/components/ui/help-tooltip';
-import { Stepper, StepperContent, type Step } from '@/components/ui/stepper';
+import { trackEvent } from '@/lib/analytics';
 import { useOnboardingStore, type OnboardingStep } from '@/stores/onboardingStore';
 import { Footer } from '../LandingPage/components/Footer';
 import { ConnectProviderStep } from './ConnectProviderStep';
@@ -104,6 +104,7 @@ export function OnboardingPage() {
   }, [currentStepIndex, steps.length, showSkipDialog, isCompleting]);
 
   const handleNext = async () => {
+    trackEvent('onboarding_step_completed', { step: currentStep });
     // Special handling for team-setup step - this might change the steps shown
     if (currentStep === 'team-setup') {
       completeStep('team-setup' as OnboardingStep);
@@ -114,6 +115,7 @@ export function OnboardingPage() {
       // Show celebration for 3 seconds before navigating
       setTimeout(() => {
         setShowConfetti(false);
+        trackEvent('onboarding_completed');
         navigate('/overview');
       }, 3000);
       return;
@@ -130,22 +132,26 @@ export function OnboardingPage() {
       // Show celebration for 3 seconds before navigating
       setTimeout(() => {
         setShowConfetti(false);
+        trackEvent('onboarding_completed');
         navigate('/overview');
       }, 3000);
     }
   };
 
   const handleSkip = () => {
+    trackEvent('onboarding_skip_viewed');
     setShowSkipDialog(true);
   };
 
   const confirmSkip = () => {
+    trackEvent('onboarding_skipped');
     skipOnboarding();
     setShowSkipDialog(false);
     navigate('/overview');
   };
 
   const handleBack = () => {
+    trackEvent('onboarding_step_back', { step: currentStep });
     if (currentStepIndex > 0) {
       useOnboardingStore.getState().goToPrevStep();
     }

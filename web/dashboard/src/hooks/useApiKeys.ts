@@ -86,8 +86,16 @@ export function useRotateAPIKey() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, expiresInDays }: { id: string; expiresInDays?: number }) =>
-      apiKeysApi.rotate(id, expiresInDays ? { reason: undefined, expires_in_days: expiresInDays } as RotateAPIKeyRequest : undefined),
+    // Pass expires_in_days and reason through to the backend; the backend now
+    // understands expires_in_days and applies it as a new ExpiresAt.
+    mutationFn: ({ id, expiresInDays, reason }: { id: string; expiresInDays?: number; reason?: RotateAPIKeyRequest['reason'] }) => {
+      const payload: RotateAPIKeyRequest = {};
+      if (reason) payload.reason = reason;
+      if (typeof expiresInDays === 'number' && Number.isFinite(expiresInDays) && expiresInDays > 0) {
+        payload.expires_in_days = Math.floor(expiresInDays);
+      }
+      return apiKeysApi.rotate(id, Object.keys(payload).length > 0 ? payload : undefined);
+    },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: apiKeyKeys.detail(id) });
       queryClient.invalidateQueries({ queryKey: apiKeyKeys.lists() });
@@ -116,10 +124,14 @@ export function useAddAPIKeyPermission() {
   return useMutation({
     mutationFn: ({ keyId, resourceType, resourceId, action }: {
       keyId: string;
-      resourceType: string;
+      resourceType: import('@/types/api-key').ResourceType;
       resourceId: string;
-      action: string;
-    }) => apiKeysApi.addPermission(keyId, { permission: action as 'read' | 'write' | 'execute' | 'admin', resource_type: resourceType as any, resource_id: resourceId }),
+      action: import('@/types/api-key').Permission;
+    }) => apiKeysApi.addPermission(keyId, {
+      permission: action,
+      resource_type: resourceType,
+      resource_id: resourceId,
+    }),
     onSuccess: (_, { keyId }) => {
       queryClient.invalidateQueries({ queryKey: apiKeyKeys.permissions(keyId) });
       toast.success('Permission added successfully');

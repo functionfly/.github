@@ -1,5 +1,6 @@
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
+import { trackEvent } from "@/lib/analytics";
 import {
   Tooltip,
   TooltipContent,
@@ -501,14 +502,20 @@ export function SubscribeSection() {
           <Button
             variant="outline"
             className="border-aviation-border-instrument hover:bg-aviation-bg-instrument text-aviation-text-secondary"
-            onClick={() => setShowEmailSubscription(!showEmailSubscription)}
+            onClick={() => {
+              trackEvent('status_subscribe_email_clicked');
+              setShowEmailSubscription(!showEmailSubscription);
+            }}
           >
             <Bell className="w-4 h-4 mr-2" />
             Email Alerts
           </Button>
           <Button
             className="aviation-button-primary"
-            onClick={() => window.open("/api/v1/status/rss", "_blank")}
+            onClick={() => {
+              trackEvent('status_rss_feed_clicked');
+              window.open("/api/v1/status/rss", "_blank");
+            }}
           >
             <ExternalLink className="w-4 h-4 mr-2" />
             RSS Feed
@@ -544,6 +551,7 @@ export function SubscribeSection() {
                     className="w-full sm:w-auto aviation-button-primary"
                     onClick={() => {
                       if (email.includes("@")) {
+                        trackEvent('status_email_subscribed', { email_domain: email.split('@')[1] });
                         setSubscribed(true);
                         setTimeout(() => {
                           setShowEmailSubscription(false);

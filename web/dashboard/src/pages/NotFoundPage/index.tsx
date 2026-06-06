@@ -161,8 +161,8 @@ function QuickActionCard({
       transition={{ delay, duration: 0.4 }}
     >
       <Link to={to}>
-        <SpotlightCard 
-          className="h-full cursor-pointer group holographic-card spotlight-hover"
+        <SpotlightCard
+          className="h-full cursor-pointer group tron-card tron-spotlight p-5"
           spotlightColor={`rgba(var(--${color}), 0.15)`}
         >
           <div className="flex items-start gap-4 relative z-10">
@@ -329,7 +329,7 @@ export function NotFoundPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.9 }}
           >
-            <div className="relative neon-border">
+            <div className="relative tron-search-border">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" />
               <Input
                 type="text"
@@ -385,16 +385,16 @@ export function NotFoundPage() {
           >
             <Button 
               variant="outline" 
-              className="gap-2 holographic-card" 
-              onClick={() => navigate(-1)}
               size="lg"
+              onClick={() => navigate(-1)}
+              className="gap-2 notfound-nav-btn-outline"
             >
               <ArrowLeft className="w-4 h-4" />
               Go Back
             </Button>
             <Button 
               asChild 
-              className="gap-2 neon-border"
+              className="gap-2 notfound-nav-btn"
               size="lg"
             >
               <Link to="/">
@@ -405,8 +405,8 @@ export function NotFoundPage() {
             <Button 
               variant="secondary"
               asChild 
-              className="gap-2 holographic-card"
               size="lg"
+              className="gap-2 notfound-nav-btn-secondary"
             >
               <a href="/docs" target="_blank" rel="noopener noreferrer">
                 <HelpCircle className="w-4 h-4" />
@@ -467,8 +467,8 @@ export function NotFoundPage() {
                 whileHover={{ scale: 1.02 }}
                 transition={{ type: "spring", stiffness: 300 }}
               >
-                <SpotlightCard 
-                  className="h-full holographic-card spotlight-hover"
+                <SpotlightCard
+                  className="h-full tron-card tron-spotlight p-6"
                   spotlightColor="rgba(var(--info), 0.1)"
                 >
                   {/* Card Header */}

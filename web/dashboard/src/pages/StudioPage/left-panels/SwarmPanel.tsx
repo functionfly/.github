@@ -1,9 +1,8 @@
-import React from "react";
-import { SwarmCoordinator } from "@functionfly/ui-agent";
-import type { AgentData } from "@functionfly/ui-agent";
-import { useStudioAgents } from "@/hooks/useStudio";
 import { useReassignAgentRole, useReshapeSwarm } from "@/hooks/useAgentSwarm";
-import { Users, Network, GitBranch } from "lucide-react";
+import { useStudioAgents } from "@/hooks/useStudio";
+import type { AgentData } from "@functionfly/ui-agent";
+import { SwarmCoordinator } from "@functionfly/ui-agent";
+import { GitBranch, Network, Users } from "lucide-react";
 
 export function SwarmPanel() {
   const { agents: rawAgents } = useStudioAgents();

@@ -1,8 +1,7 @@
-import React from "react";
-import { AgentSkillGraph, AgentDependencyMap } from "@functionfly/ui-agent";
-import type { AgentData } from "@functionfly/ui-agent";
 import { useStudioAgents } from "@/hooks/useStudio";
-import { Wand2, Link2, Sparkles, Zap } from "lucide-react";
+import type { AgentData } from "@functionfly/ui-agent";
+import { AgentDependencyMap, AgentSkillGraph } from "@functionfly/ui-agent";
+import { Link2, Sparkles, Wand2, Zap } from "lucide-react";
 
 export function SkillsPanel() {
   const { agents: rawAgents } = useStudioAgents();

@@ -1,7 +1,8 @@
 import { Badge, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@functionfly/ui-core";
-import { MoreHorizontal, Play, Pause, Trash2, Settings, Shield, Activity, Clock } from "lucide-react";
-import { type Plugin, useEnablePlugin, useDisablePlugin, usePausePlugin, useUninstallPlugin } from "@/hooks/usePlugin";
+import { MoreHorizontal, Play, Pause, Trash2, Settings, Shield, Activity, Clock, AlertTriangle } from "lucide-react";
+import { type Plugin, useEnablePlugin, useDisablePlugin, usePausePlugin, useUninstallPlugin, useSetPluginError } from "@/hooks/usePlugin";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface PluginCardProps {
   plugin: Plugin;
@@ -15,6 +16,7 @@ export function PluginCard({ plugin, onConfigure, onViewPermissions, onViewSandb
   const disableMutation = useDisablePlugin();
   const pauseMutation = usePausePlugin();
   const uninstallMutation = useUninstallPlugin();
+  const setErrorMutation = useSetPluginError();
 
   const statusColors = {
     enabled: "bg-green-500/20 text-green-400 border-green-500/30",
@@ -38,6 +40,13 @@ export function PluginCard({ plugin, onConfigure, onViewPermissions, onViewSandb
   const handleUninstall = () => {
     if (confirm(`Are you sure you want to uninstall "${plugin.name}"?`)) {
       uninstallMutation.mutate(plugin.id);
+    }
+  };
+
+  const handleReportError = () => {
+    const errorMsg = prompt(`Report an error for "${plugin.name}":`);
+    if (errorMsg && errorMsg.trim()) {
+      setErrorMutation.mutate({ pluginId: plugin.id, error: errorMsg.trim() });
     }
   };
 
@@ -98,6 +107,9 @@ export function PluginCard({ plugin, onConfigure, onViewPermissions, onViewSandb
               <Activity className="w-4 h-4 mr-2" /> Sandbox
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleReportError}>
+              <AlertTriangle className="w-4 h-4 mr-2" /> Report Error
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={handleUninstall} className="text-red-400">
               <Trash2 className="w-4 h-4 mr-2" /> Uninstall
             </DropdownMenuItem>

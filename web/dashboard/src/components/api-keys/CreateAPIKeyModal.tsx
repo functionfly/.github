@@ -116,14 +116,26 @@ export function CreateAPIKeyModal({
 
     setIsLoading(true);
     try {
+      // Sanitize numeric inputs: parseInt("-5", 10) === -5 (truthy), so we
+      // explicitly clamp to >= 0 and fall back to the default.
+      const safeInt = (val: number, fallback: number): number => {
+        if (!Number.isFinite(val) || val < 0) return fallback;
+        return Math.floor(val);
+      };
+
       const data: CreateAPIKeyRequest = {
         name: name.trim(),
         description: description.trim() || undefined,
         key_type: keyType,
-        rotation_frequency_days: rotationDays,
-        rate_limit_rpm: rpm,
-        rate_limit_rph: rph,
-        rate_limit_rpd: rpd,
+        rotation_frequency_days: safeInt(rotationDays, DEFAULT_ROTATION_DAYS),
+        // Send rate_limit as a nested object — this matches the backend
+        // apikey.CreateAPIKeyRequest.RateLimit field. Sending flat fields
+        // would be silently dropped and the default rate limit would apply.
+        rate_limit: {
+          rpm: safeInt(rpm, DEFAULT_RATE_LIMIT.rpm),
+          rph: safeInt(rph, DEFAULT_RATE_LIMIT.rph),
+          rpd: safeInt(rpd, DEFAULT_RATE_LIMIT.rpd),
+        },
       };
 
       const response = await apiKeysService.createKey(data);
@@ -147,7 +159,10 @@ export function CreateAPIKeyModal({
             setVaultSaveStatus('failed');
           }
         } catch (vaultErr) {
-          console.error('Failed to save to vault:', vaultErr);
+          // Sanitized log: do not print the full error object as it may
+          // contain request bodies or partial key fragments.
+          // eslint-disable-next-line no-console
+          console.error('Failed to save API key to vault');
           setVaultSaveStatus('failed');
           toast.error('Failed to save to vault', {
             description: 'Your API key was created but could not be saved to vault',
@@ -161,18 +176,19 @@ export function CreateAPIKeyModal({
         onOpenChange(false);
       }
     } catch (err: unknown) {
-      console.error("Failed to create API key:", err);
-      const apiMessage =
-        err &&
-        typeof err === "object" &&
-        "response" in err &&
-        (err as { response?: { data?: { error?: { message?: string } } } }).response?.data?.error?.message;
-      setError(
-        typeof apiMessage === "string" && apiMessage
-          ? apiMessage
+      // Sanitized log: extract message only, do not log the full error.
+      const safeMessage =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response?: { data?: { error?: { message?: string } } } }).response?.data?.error?.message
           : err instanceof Error
             ? err.message
-            : t("createApiKey.failedToCreate")
+            : String(err);
+      // eslint-disable-next-line no-console
+      console.error("Failed to create API key:", safeMessage);
+      setError(
+        typeof safeMessage === "string" && safeMessage
+          ? safeMessage
+          : t("createApiKey.failedToCreate")
       );
     } finally {
       setIsLoading(false);
@@ -312,7 +328,13 @@ export function CreateAPIKeyModal({
               min={1}
               max={365}
               value={rotationDays}
-              onChange={(e) => setRotationDays(parseInt(e.target.value, 10) || DEFAULT_ROTATION_DAYS)}
+              onChange={(e) => {
+                const n = parseInt(e.target.value, 10);
+                // Guard against NaN, negative numbers, and oversized values.
+                setRotationDays(
+                  Number.isFinite(n) && n >= 1 && n <= 365 ? n : DEFAULT_ROTATION_DAYS
+                );
+              }}
             />
             <p className="text-xs text-muted-foreground">
               {t("createApiKey.rotationHelp")}
@@ -327,7 +349,12 @@ export function CreateAPIKeyModal({
                 type="number"
                 min={1}
                 value={rpm}
-                onChange={(e) => setRpm(parseInt(e.target.value, 10) || DEFAULT_RATE_LIMIT.rpm)}
+                onChange={(e) => {
+                  const n = parseInt(e.target.value, 10);
+                  setRpm(
+                    Number.isFinite(n) && n >= 1 ? n : DEFAULT_RATE_LIMIT.rpm
+                  );
+                }}
               />
             </div>
             <div className="space-y-2">
@@ -337,7 +364,12 @@ export function CreateAPIKeyModal({
                 type="number"
                 min={1}
                 value={rph}
-                onChange={(e) => setRph(parseInt(e.target.value, 10) || DEFAULT_RATE_LIMIT.rph)}
+                onChange={(e) => {
+                  const n = parseInt(e.target.value, 10);
+                  setRph(
+                    Number.isFinite(n) && n >= 1 ? n : DEFAULT_RATE_LIMIT.rph
+                  );
+                }}
               />
             </div>
             <div className="space-y-2">
@@ -347,7 +379,12 @@ export function CreateAPIKeyModal({
                 type="number"
                 min={1}
                 value={rpd}
-                onChange={(e) => setRpd(parseInt(e.target.value, 10) || DEFAULT_RATE_LIMIT.rpd)}
+                onChange={(e) => {
+                  const n = parseInt(e.target.value, 10);
+                  setRpd(
+                    Number.isFinite(n) && n >= 1 ? n : DEFAULT_RATE_LIMIT.rpd
+                  );
+                }}
               />
             </div>
           </div>

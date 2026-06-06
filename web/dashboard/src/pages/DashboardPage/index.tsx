@@ -1,52 +1,42 @@
 import { providersApi } from '@/api';
-import { dashboardApi } from '@/api/dashboard';
 import { appsApi } from '@/api/apps';
 import { createCheckoutSession } from '@/api/billing';
+import { dashboardApi } from '@/api/dashboard';
 import { functionsApi } from '@/api/functions';
 import { ProviderStatus } from '@/components/common/ProviderStatus';
 import type { AgentActivityItem } from '@/components/dashboard';
 import {
-  AgentActivityFeed,
-  DraggableDashboardGrid,
-  ErrorRateWidget,
-  ExecutionRateChart,
-  LiveIndicator,
-  MemoryUsageGauge,
-  MetricCard,
-  PerformanceLeaderboard,
-  QuickActionsPanel,
-  QuickCreateAgentCard,
-  QuotaUsageWidget,
-  RegionDistributionWidget,
-  SystemHealthIndicator,
-  TrustScoreBadge,
-  UsageGraph,
-  type DraggableSection,
-  type ErrorRateDataPoint,
-  type FunctionPerformance,
-  type RegionData,
+    AgentActivityFeed,
+    DraggableDashboardGrid,
+    ErrorRateWidget,
+    ExecutionRateChart,
+    LiveIndicator,
+    MemoryUsageGauge,
+    MetricCard,
+    PerformanceLeaderboard,
+    QuickActionsPanel,
+    QuickCreateAgentCard,
+    QuotaUsageWidget,
+    RegionDistributionWidget,
+    SystemHealthIndicator,
+    TrustScoreBadge,
+    UsageGraph,
+    type DraggableSection,
+    type ErrorRateDataPoint,
+    type FunctionPerformance,
+    type RegionData,
 } from '@/components/dashboard';
 import { EnterpriseStatusCard, PlanSelectionModal } from '@/components/enterprise';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  usePlan,
-  useFunctions,
-  useApps,
-  useDashboardUsage,
-  useDashboardExecutionRate,
-  useDashboardActivity,
-  useDashboardMemory,
-  useDashboardMetrics,
-  useDashboardHealthStatus,
-  useConnectedProviders,
-  useCreateCheckout,
+    usePlan
 } from '@/hooks';
 import { useAuthStore } from '@/stores/authStore';
 import { useOnboardingStore } from '@/stores/onboardingStore';
-import { useQuery, useQueries } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Activity, Building2, FunctionSquare, Globe, Loader2, Play, Rocket, X, Zap } from 'lucide-react';
+import { Activity, Building2, FunctionSquare, Globe, Loader2, Play, X, Zap } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -322,12 +312,14 @@ export function DashboardPage() {
               value={functionsLoading ? '—' : activeFunctions}
               changeLabel={t('dashboard.totalDeployed')}
               icon={<FunctionSquare className="h-5 w-5" />}
+              tone="indigo"
             />
             <MetricCard
               title={t('dashboard.avgLatency')}
               value={metricsLoading ? '—' : avgLatencyDisplay}
               changeLabel={avgLatencyLabel}
               icon={<Zap className="h-5 w-5" />}
+              tone="amber"
             />
             <MetricCard
               title={t('dashboard.uptime')}
@@ -336,6 +328,7 @@ export function DashboardPage() {
               changeLabel={t('dashboard.vsLast7d')}
               sparklineData={uptimeSparkline}
               icon={<Activity className="h-5 w-5" />}
+              tone="emerald"
             />
             <MetricCard
               title={t('dashboard.requestsThisMonth')}
@@ -344,6 +337,7 @@ export function DashboardPage() {
               changeLabel={t('dashboard.vsLastMonth')}
               sparklineData={requestsSparkline}
               icon={<Globe className="h-5 w-5" />}
+              tone="cyan"
             />
           </motion.div>
         ),
@@ -377,14 +371,14 @@ export function DashboardPage() {
             className="grid grid-cols-1 lg:grid-cols-2 gap-4"
           >
             {usageLoading ? (
-              <Card className="border-theme bg-card h-[280px] flex items-center justify-center">
+              <Card className="h-[280px] flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-text-muted" />
               </Card>
             ) : (
               <UsageGraph data={usageGraphData} title={t('dashboard.usageLast14Days')} valueLabel={t('dashboard.requests')} />
             )}
             {executionRateLoading ? (
-              <Card className="border-theme bg-card h-[280px] flex items-center justify-center">
+              <Card className="h-[280px] flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-text-muted" />
               </Card>
             ) : (
@@ -407,13 +401,13 @@ export function DashboardPage() {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
           >
             {memoryLoading ? (
-              <Card className="border-theme bg-card flex flex-col justify-center p-6 min-h-[140px]">
+              <Card className="flex flex-col justify-center p-6 min-h-[140px]">
                 <Loader2 className="h-8 w-8 animate-spin text-text-muted mx-auto" />
               </Card>
             ) : (
               <MemoryUsageGauge percent={memoryData?.percent ?? 0} label={t('dashboard.memory')} size="md" />
             )}
-            <Card className="border-theme bg-card flex flex-col justify-center p-6">
+            <Card className="flex flex-col justify-center p-6">
               <CardHeader className="p-0 pb-2">
                 <CardTitle className="text-sm font-medium text-text-secondary">{t('dashboard.trustScore')}</CardTitle>
               </CardHeader>
@@ -430,7 +424,7 @@ export function DashboardPage() {
               </CardContent>
             </Card>
             {/* Live Status */}
-            <Card className="border-theme bg-card flex flex-col justify-center p-6">
+            <Card className="flex flex-col justify-center p-6">
               <CardHeader className="p-0 pb-3">
                 <CardTitle className="text-sm font-medium text-text-secondary">
                   {t('dashboard.realtimeStatus')}
@@ -690,7 +684,7 @@ export function DashboardPage() {
             transition={{ duration: 0.5, delay: 0.35 }}
           >
             {activityLoading ? (
-              <Card className="border-theme bg-card flex items-center justify-center py-16">
+              <Card className="flex items-center justify-center py-16">
                 <Loader2 className="h-8 w-8 animate-spin text-text-muted" />
               </Card>
             ) : (

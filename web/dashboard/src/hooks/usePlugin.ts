@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { pluginsApi, type Plugin, type PluginFilters, type InstallPluginRequest, type UpdateSandboxRequest, type SetPermissionRequest } from '@/api/plugins';
+import { pluginsApi, type Plugin, type PluginFilters, type InstallPluginRequest, type UpdateSandboxRequest, type SetPermissionRequest, type RateLimitCheckRequest } from '@/api/plugins';
 
 export { type Plugin, type PluginFilters, type InstallPluginRequest, type UpdateSandboxRequest, type SetPermissionRequest };
 
@@ -13,6 +13,7 @@ export const pluginKeys = {
   sandbox: (id: string) => [...pluginKeys.detail(id), 'sandbox'] as const,
   permissions: (id: string) => [...pluginKeys.detail(id), 'permissions'] as const,
   versions: (id: string) => [...pluginKeys.detail(id), 'versions'] as const,
+  telemetry: (id: string, range: string) => [...pluginKeys.detail(id), 'telemetry', range] as const,
 };
 
 export function usePlugins(filters?: PluginFilters) {
@@ -110,7 +111,8 @@ export function useRollbackPlugin() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (pluginId: string) => pluginsApi.rollback(pluginId),
+    mutationFn: (params: { pluginId: string; toVersion?: string }) =>
+      pluginsApi.rollback(params.pluginId, params.toVersion),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: pluginKeys.all });
       toast.success(`Rolled back to version ${result.rolled_back_to}`);
@@ -189,5 +191,49 @@ export function usePluginVersions(pluginId: string) {
     queryKey: pluginKeys.versions(pluginId),
     queryFn: () => pluginsApi.listVersions(pluginId),
     enabled: !!pluginId,
+  });
+}
+
+export function usePluginTelemetry(pluginId: string, timeRange: string = "7d") {
+  return useQuery({
+    queryKey: pluginKeys.telemetry(pluginId, timeRange),
+    queryFn: () => pluginsApi.getTelemetry(pluginId, timeRange),
+    enabled: !!pluginId,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useSetPluginError() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: { pluginId: string; error: string }) =>
+      pluginsApi.setError(params.pluginId, params.error),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pluginKeys.all });
+      toast.success('Error recorded');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to set error: ${error.message}`);
+    },
+  });
+}
+
+export function useCheckRateLimit() {
+  return useMutation({
+    mutationFn: (data: RateLimitCheckRequest) => pluginsApi.checkRateLimit(data),
+    onError: (error: Error) => {
+      toast.error(`Rate limit check failed: ${error.message}`);
+    },
+  });
+}
+
+export function useRecordAnalytics() {
+  return useMutation({
+    mutationFn: (params: { pluginId: string; data: any }) =>
+      pluginsApi.recordAnalytics(params.pluginId, params.data),
+    onError: (error: Error) => {
+      console.error('Failed to record analytics:', error.message);
+    },
   });
 }
