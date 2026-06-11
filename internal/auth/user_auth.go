@@ -267,6 +267,24 @@ func (a *AuthService) Login(identifier, password, ipAddress, userAgent string) (
 	if err := a.repo.ClearUserLockout(user.ID); err != nil {
 		logrus.WithError(err).WithField("user_id", user.ID).Warn("Failed to clear user lockout on successful login")
 	}
+	// SECURITY FIX: Session regeneration - revoke all existing refresh tokens and increment
+	// TokenVersion to invalidate all existing JWTs. This prevents session fixation attacks
+	// and token replay attacks where an attacker had obtained a previous token.
+	if err := a.repo.RevokeUserRefreshTokens(user.ID); err != nil {
+		logrus.WithError(err).WithField("user_id", user.ID).Warn("Failed to revoke old refresh tokens - continuing with login")
+	} else {
+		logrus.WithField("user_id", user.ID).Debug("Revoked all existing refresh tokens for user")
+	}
+
+	// Increment TokenVersion to invalidate all existing JWTs
+	newTokenVersion, err := a.repo.IncrementUserTokenVersion(context.Background(), user.ID)
+	if err != nil {
+		logrus.WithError(err).WithField("user_id", user.ID).Warn("Failed to increment token version - continuing with login")
+	} else {
+		logrus.WithField("user_id", user.ID).WithField("new_token_version", newTokenVersion).Debug("Incremented user token version")
+		// Update user's TokenVersion so the new JWT gets the correct version
+		user.TokenVersion = newTokenVersion
+	}
 
 	// Generate JWT token
 	token, err := a.generateToken(user)

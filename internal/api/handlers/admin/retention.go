@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -91,7 +92,7 @@ func (h *RetentionHandler) HandleGetRetentionSettings(w http.ResponseWriter, r *
 	settings, err := h.postgresDB.GetOrCreateExecutionRetentionSettings(ctx)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get retention settings")
-		http.Error(w, "Failed to get retention settings", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get retention settings"))
 		return
 	}
 
@@ -120,7 +121,7 @@ func (h *RetentionHandler) HandleUpdateRetentionSettings(w http.ResponseWriter, 
 
 	var req UpdateRetentionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -148,7 +149,7 @@ func (h *RetentionHandler) HandleUpdateRetentionSettings(w http.ResponseWriter, 
 	settings, err := h.postgresDB.UpdateExecutionRetentionSettings(ctx, updates)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to update retention settings")
-		http.Error(w, "Failed to update retention settings", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update retention settings"))
 		return
 	}
 
@@ -199,7 +200,7 @@ func (h *RetentionHandler) HandleGetRetentionStats(w http.ResponseWriter, r *htt
 	stats, err := h.postgresDB.GetExecutionRetentionStats(ctx)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get retention stats")
-		http.Error(w, "Failed to get retention statistics", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get retention statistics"))
 		return
 	}
 
@@ -259,7 +260,7 @@ func (h *RetentionHandler) HandleGetRetentionStats(w http.ResponseWriter, r *htt
 // HandleRunManualCleanup returns POST /v1/admin/retention/cleanup
 func (h *RetentionHandler) HandleRunManualCleanup(w http.ResponseWriter, r *http.Request) {
 	if h.executionLogCleanup == nil {
-		http.Error(w, "Cleanup service not available", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Cleanup service not available"))
 		return
 	}
 
@@ -315,7 +316,7 @@ func (h *RetentionHandler) HandleResetRetentionDefaults(w http.ResponseWriter, r
 	settings, err := h.postgresDB.ResetExecutionRetentionSettingsToDefaults(ctx, updatedBy)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to reset retention settings to defaults")
-		http.Error(w, "Failed to reset retention settings", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to reset retention settings"))
 		return
 	}
 

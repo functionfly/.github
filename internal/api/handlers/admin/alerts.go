@@ -1,14 +1,10 @@
 package admin
 
 import (
-	"database/sql"
-	"encoding/json"
 	"net/http"
-	"strconv"
-	"time"
 
-	"github.com/functionfly/functionfly/internal/api/middleware"
-	"github.com/functionfly/functionfly/internal/auth"
+	"github.com/functionfly/functionfly/internal/apierror"
+	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -64,12 +60,12 @@ func (h *AlertHandler) HandleListSecurityAlerts(w http.ResponseWriter, r *http.R
 	// Check permission
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !auth.IsAdminRole(claims.Role) {
-		http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden: insufficient permissions"))
 		return
 	}
 
@@ -151,7 +147,7 @@ func (h *AlertHandler) HandleListSecurityAlerts(w http.ResponseWriter, r *http.R
 	var total int
 	if err := h.db.QueryRow(countQuery, countArgs...).Scan(&total); err != nil {
 		logrus.WithError(err).Error("Failed to count security alerts")
-		http.Error(w, "Failed to count security alerts", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to count security alerts"))
 		return
 	}
 
@@ -167,7 +163,7 @@ func (h *AlertHandler) HandleListSecurityAlerts(w http.ResponseWriter, r *http.R
 	rows, err := h.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list security alerts")
-		http.Error(w, "Failed to list security alerts", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list security alerts"))
 		return
 	}
 	defer rows.Close()
@@ -229,12 +225,12 @@ func (h *AlertHandler) HandleCreateSecurityAlert(w http.ResponseWriter, r *http.
 	// Check permission
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !auth.IsAdminRole(claims.Role) {
-		http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden: insufficient permissions"))
 		return
 	}
 
@@ -249,28 +245,28 @@ func (h *AlertHandler) HandleCreateSecurityAlert(w http.ResponseWriter, r *http.
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	// Validate required fields
 	if req.Name == "" {
-		http.Error(w, "Alert name is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Alert name is required"))
 		return
 	}
 
 	if req.AlertType == "" {
-		http.Error(w, "Alert type is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Alert type is required"))
 		return
 	}
 
 	if !ValidAlertTypes[req.AlertType] {
-		http.Error(w, "Invalid alert type. Valid types: failed_login_threshold, rate_limit_exceeded, ip_blocked, suspicious_activity, session_anomaly", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid alert type. Valid types: failed_login_threshold, rate_limit_exceeded, ip_blocked, suspicious_activity, session_anomaly"))
 		return
 	}
 
 	if req.Threshold <= 0 {
-		http.Error(w, "Threshold must be a positive integer", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Threshold must be a positive integer"))
 		return
 	}
 
@@ -283,7 +279,7 @@ func (h *AlertHandler) HandleCreateSecurityAlert(w http.ResponseWriter, r *http.
 	if req.Severity == "" {
 		req.Severity = "medium"
 	} else if !ValidSeverityLevels[req.Severity] {
-		http.Error(w, "Invalid severity level. Valid levels: low, medium, high, critical", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid severity level. Valid levels: low, medium, high, critical"))
 		return
 	}
 
@@ -301,7 +297,7 @@ func (h *AlertHandler) HandleCreateSecurityAlert(w http.ResponseWriter, r *http.
 	notificationChannelsJSON, err := json.Marshal(req.NotificationChannels)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to marshal notification channels")
-		http.Error(w, "Failed to create security alert", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create security alert"))
 		return
 	}
 
@@ -340,7 +336,7 @@ func (h *AlertHandler) HandleCreateSecurityAlert(w http.ResponseWriter, r *http.
 
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create security alert")
-		http.Error(w, "Failed to create security alert", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create security alert"))
 		return
 	}
 
@@ -373,12 +369,12 @@ func (h *AlertHandler) HandleUpdateSecurityAlert(w http.ResponseWriter, r *http.
 	// Check permission
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !auth.IsAdminRole(claims.Role) {
-		http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden: insufficient permissions"))
 		return
 	}
 
@@ -386,7 +382,7 @@ func (h *AlertHandler) HandleUpdateSecurityAlert(w http.ResponseWriter, r *http.
 	idStr := vars["id"]
 	_, err := uuid.Parse(idStr)
 	if err != nil {
-		http.Error(w, "Invalid alert ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid alert ID"))
 		return
 	}
 
@@ -401,25 +397,25 @@ func (h *AlertHandler) HandleUpdateSecurityAlert(w http.ResponseWriter, r *http.
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	// Validate alert_type if provided
 	if req.AlertType != nil && !ValidAlertTypes[*req.AlertType] {
-		http.Error(w, "Invalid alert type. Valid types: failed_login_threshold, rate_limit_exceeded, ip_blocked, suspicious_activity, session_anomaly", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid alert type. Valid types: failed_login_threshold, rate_limit_exceeded, ip_blocked, suspicious_activity, session_anomaly"))
 		return
 	}
 
 	// Validate severity if provided
 	if req.Severity != nil && !ValidSeverityLevels[*req.Severity] {
-		http.Error(w, "Invalid severity level. Valid levels: low, medium, high, critical", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid severity level. Valid levels: low, medium, high, critical"))
 		return
 	}
 
 	// Validate threshold if provided
 	if req.Threshold != nil && *req.Threshold <= 0 {
-		http.Error(w, "Threshold must be a positive integer", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Threshold must be a positive integer"))
 		return
 	}
 
@@ -430,12 +426,12 @@ func (h *AlertHandler) HandleUpdateSecurityAlert(w http.ResponseWriter, r *http.
 	checkQuery := `SELECT EXISTS(SELECT 1 FROM security_alert_rules WHERE id = $1)`
 	if err := h.db.QueryRowContext(ctx, checkQuery, idStr).Scan(&exists); err != nil {
 		logrus.WithError(err).Error("Failed to check if security alert exists")
-		http.Error(w, "Failed to update security alert", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update security alert"))
 		return
 	}
 
 	if !exists {
-		http.Error(w, "Security alert not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Security alert not found"))
 		return
 	}
 
@@ -484,7 +480,7 @@ func (h *AlertHandler) HandleUpdateSecurityAlert(w http.ResponseWriter, r *http.
 		notificationChannelsJSON, err := json.Marshal(req.NotificationChannels)
 		if err != nil {
 			logrus.WithError(err).Error("Failed to marshal notification channels")
-			http.Error(w, "Failed to update security alert", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to update security alert"))
 			return
 		}
 		updateQuery += ", notification_channels = $" + strconv.Itoa(argNum)
@@ -517,7 +513,7 @@ func (h *AlertHandler) HandleUpdateSecurityAlert(w http.ResponseWriter, r *http.
 
 	if err != nil {
 		logrus.WithError(err).Error("Failed to update security alert")
-		http.Error(w, "Failed to update security alert", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update security alert"))
 		return
 	}
 
@@ -548,12 +544,12 @@ func (h *AlertHandler) HandleDeleteSecurityAlert(w http.ResponseWriter, r *http.
 	// Check permission
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !auth.IsAdminRole(claims.Role) {
-		http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden: insufficient permissions"))
 		return
 	}
 
@@ -561,7 +557,7 @@ func (h *AlertHandler) HandleDeleteSecurityAlert(w http.ResponseWriter, r *http.
 	idStr := vars["id"]
 	alertID, err := uuid.Parse(idStr)
 	if err != nil {
-		http.Error(w, "Invalid alert ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid alert ID"))
 		return
 	}
 
@@ -572,12 +568,12 @@ func (h *AlertHandler) HandleDeleteSecurityAlert(w http.ResponseWriter, r *http.
 	checkQuery := `SELECT EXISTS(SELECT 1 FROM security_alert_rules WHERE id = $1)`
 	if err := h.db.QueryRowContext(ctx, checkQuery, idStr).Scan(&exists); err != nil {
 		logrus.WithError(err).Error("Failed to check if security alert exists")
-		http.Error(w, "Failed to delete security alert", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete security alert"))
 		return
 	}
 
 	if !exists {
-		http.Error(w, "Security alert not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Security alert not found"))
 		return
 	}
 
@@ -586,7 +582,7 @@ func (h *AlertHandler) HandleDeleteSecurityAlert(w http.ResponseWriter, r *http.
 	_, err = h.db.ExecContext(ctx, deleteQuery, idStr)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to delete security alert")
-		http.Error(w, "Failed to delete security alert", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete security alert"))
 		return
 	}
 
@@ -604,12 +600,12 @@ func (h *AlertHandler) HandleGetSecurityAlert(w http.ResponseWriter, r *http.Req
 	// Check permission
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !auth.IsAdminRole(claims.Role) {
-		http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden: insufficient permissions"))
 		return
 	}
 
@@ -617,7 +613,7 @@ func (h *AlertHandler) HandleGetSecurityAlert(w http.ResponseWriter, r *http.Req
 	idStr := vars["id"]
 	_, err := uuid.Parse(idStr)
 	if err != nil {
-		http.Error(w, "Invalid alert ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid alert ID"))
 		return
 	}
 
@@ -649,11 +645,11 @@ func (h *AlertHandler) HandleGetSecurityAlert(w http.ResponseWriter, r *http.Req
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			http.Error(w, "Security alert not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Security alert not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to get security alert")
-		http.Error(w, "Failed to get security alert", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get security alert"))
 		return
 	}
 

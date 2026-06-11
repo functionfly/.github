@@ -3,9 +3,8 @@ package admin
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 
-	"github.com/functionfly/functionfly/internal/auth"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -34,7 +33,7 @@ func (h *BackendsHandler) HandleListPlatformBackends(w http.ResponseWriter, r *h
 	backends, err := h.repo.ListAllBackends(ctx)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list all backends")
-		http.Error(w, "Failed to list backends", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list backends"))
 		return
 	}
 
@@ -97,13 +96,13 @@ func (h *BackendsHandler) HandleUpdateBackendEnabled(w http.ResponseWriter, r *h
 	vars := mux.Vars(r)
 	backendIDStr, ok := vars["backendId"]
 	if !ok {
-		http.Error(w, "Backend ID required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Backend ID required"))
 		return
 	}
 
 	backendID, err := uuid.Parse(backendIDStr)
 	if err != nil {
-		http.Error(w, "Invalid backend ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid backend ID"))
 		return
 	}
 
@@ -112,7 +111,7 @@ func (h *BackendsHandler) HandleUpdateBackendEnabled(w http.ResponseWriter, r *h
 		Enabled bool `json:"enabled"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -120,18 +119,18 @@ func (h *BackendsHandler) HandleUpdateBackendEnabled(w http.ResponseWriter, r *h
 	backend, err := h.repo.GetBackendByID(backendID)
 	if err != nil {
 		logrus.WithError(err).WithField("backend_id", backendID).Error("Failed to get backend")
-		http.Error(w, "Backend not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Backend not found"))
 		return
 	}
 	if backend == nil {
-		http.Error(w, "Backend not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Backend not found"))
 		return
 	}
 
 	// Update backend enabled status
 	if err := h.repo.UpdateBackendEnabled(ctx, backendID, req.Enabled); err != nil {
 		logrus.WithError(err).WithField("backend_id", backendID).Error("Failed to update backend enabled status")
-		http.Error(w, "Failed to update backend", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update backend"))
 		return
 	}
 
@@ -139,7 +138,7 @@ func (h *BackendsHandler) HandleUpdateBackendEnabled(w http.ResponseWriter, r *h
 	updatedBackend, err := h.repo.GetBackendByID(backendID)
 	if err != nil {
 		logrus.WithError(err).WithField("backend_id", backendID).Error("Failed to get updated backend")
-		http.Error(w, "Failed to get updated backend", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get updated backend"))
 		return
 	}
 

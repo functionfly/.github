@@ -1,12 +1,12 @@
 package admin
 
 import (
-	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
-	"time"
+	"strings"
 
-	"github.com/functionfly/functionfly/internal/auth"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -49,14 +49,14 @@ func (h *SIEMHandler) HandleListSIEMConfigs(w http.ResponseWriter, r *http.Reque
 	tenantIDStr := vars["tenantId"]
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
-		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tenant ID"))
 		return
 	}
 
 	configs, err := h.siemRepo.GetByTenant(r.Context(), tenantID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list SIEM configs")
-		http.Error(w, "Failed to list SIEM configs", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list SIEM configs"))
 		return
 	}
 
@@ -78,7 +78,7 @@ func (h *SIEMHandler) HandleCreateSIEMConfig(w http.ResponseWriter, r *http.Requ
 	tenantIDStr := vars["tenantId"]
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
-		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tenant ID"))
 		return
 	}
 
@@ -91,17 +91,17 @@ func (h *SIEMHandler) HandleCreateSIEMConfig(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if req.Name == "" {
-		http.Error(w, "Name is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Name is required"))
 		return
 	}
 
 	if req.DestinationType == "" {
-		http.Error(w, "Destination type is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Destination type is required"))
 		return
 	}
 
@@ -119,7 +119,7 @@ func (h *SIEMHandler) HandleCreateSIEMConfig(w http.ResponseWriter, r *http.Requ
 	}
 
 	if !validDestinations[req.DestinationType] {
-		http.Error(w, "Invalid destination type", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid destination type"))
 		return
 	}
 
@@ -133,7 +133,7 @@ func (h *SIEMHandler) HandleCreateSIEMConfig(w http.ResponseWriter, r *http.Requ
 		auth.FormatLEEF: true,
 	}
 	if !validFormats[req.ExportFormat] {
-		http.Error(w, "Invalid export format", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid export format"))
 		return
 	}
 
@@ -148,7 +148,7 @@ func (h *SIEMHandler) HandleCreateSIEMConfig(w http.ResponseWriter, r *http.Requ
 
 	if err := h.siemRepo.Create(r.Context(), config); err != nil {
 		logrus.WithError(err).Error("Failed to create SIEM config")
-		http.Error(w, "Failed to create SIEM config", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create SIEM config"))
 		return
 	}
 
@@ -164,19 +164,19 @@ func (h *SIEMHandler) HandleGetSIEMConfig(w http.ResponseWriter, r *http.Request
 	configIDStr := vars["id"]
 	configID, err := uuid.Parse(configIDStr)
 	if err != nil {
-		http.Error(w, "Invalid config ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid config ID"))
 		return
 	}
 
 	config, err := h.siemRepo.GetByID(r.Context(), configID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get SIEM config")
-		http.Error(w, "Failed to get SIEM config", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get SIEM config"))
 		return
 	}
 
 	if config == nil {
-		http.Error(w, "SIEM config not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("SIEM config not found"))
 		return
 	}
 
@@ -191,7 +191,7 @@ func (h *SIEMHandler) HandleUpdateSIEMConfig(w http.ResponseWriter, r *http.Requ
 	configIDStr := vars["id"]
 	configID, err := uuid.Parse(configIDStr)
 	if err != nil {
-		http.Error(w, "Invalid config ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid config ID"))
 		return
 	}
 
@@ -199,12 +199,12 @@ func (h *SIEMHandler) HandleUpdateSIEMConfig(w http.ResponseWriter, r *http.Requ
 	existing, err := h.siemRepo.GetByID(r.Context(), configID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get SIEM config")
-		http.Error(w, "Failed to get SIEM config", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get SIEM config"))
 		return
 	}
 
 	if existing == nil {
-		http.Error(w, "SIEM config not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("SIEM config not found"))
 		return
 	}
 
@@ -217,7 +217,7 @@ func (h *SIEMHandler) HandleUpdateSIEMConfig(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -247,7 +247,7 @@ func (h *SIEMHandler) HandleUpdateSIEMConfig(w http.ResponseWriter, r *http.Requ
 
 	if err := h.siemRepo.Update(r.Context(), existing); err != nil {
 		logrus.WithError(err).Error("Failed to update SIEM config")
-		http.Error(w, "Failed to update SIEM config", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update SIEM config"))
 		return
 	}
 
@@ -262,13 +262,13 @@ func (h *SIEMHandler) HandleDeleteSIEMConfig(w http.ResponseWriter, r *http.Requ
 	configIDStr := vars["id"]
 	configID, err := uuid.Parse(configIDStr)
 	if err != nil {
-		http.Error(w, "Invalid config ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid config ID"))
 		return
 	}
 
 	if err := h.siemRepo.Delete(r.Context(), configID); err != nil {
 		logrus.WithError(err).Error("Failed to delete SIEM config")
-		http.Error(w, "Failed to delete SIEM config", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete SIEM config"))
 		return
 	}
 
@@ -282,7 +282,7 @@ func (h *SIEMHandler) HandleTestSIEMConfig(w http.ResponseWriter, r *http.Reques
 	configIDStr := vars["id"]
 	configID, err := uuid.Parse(configIDStr)
 	if err != nil {
-		http.Error(w, "Invalid config ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid config ID"))
 		return
 	}
 
@@ -290,12 +290,12 @@ func (h *SIEMHandler) HandleTestSIEMConfig(w http.ResponseWriter, r *http.Reques
 	config, err := h.siemRepo.GetByID(r.Context(), configID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get SIEM config")
-		http.Error(w, "Failed to get SIEM config", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get SIEM config"))
 		return
 	}
 
 	if config == nil {
-		http.Error(w, "SIEM config not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("SIEM config not found"))
 		return
 	}
 
@@ -324,7 +324,7 @@ func (h *SIEMHandler) HandleGetSIEMExportLogs(w http.ResponseWriter, r *http.Req
 	configIDStr := vars["id"]
 	configID, err := uuid.Parse(configIDStr)
 	if err != nil {
-		http.Error(w, "Invalid config ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid config ID"))
 		return
 	}
 
@@ -339,7 +339,7 @@ func (h *SIEMHandler) HandleGetSIEMExportLogs(w http.ResponseWriter, r *http.Req
 	logs, err := h.siemRepo.GetExportLogs(r.Context(), configID, limit)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get SIEM export logs")
-		http.Error(w, "Failed to get SIEM export logs", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get SIEM export logs"))
 		return
 	}
 
@@ -361,7 +361,7 @@ func (h *SIEMHandler) HandleTriggerSIEMExport(w http.ResponseWriter, r *http.Req
 	configIDStr := vars["id"]
 	configID, err := uuid.Parse(configIDStr)
 	if err != nil {
-		http.Error(w, "Invalid config ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid config ID"))
 		return
 	}
 
@@ -369,17 +369,17 @@ func (h *SIEMHandler) HandleTriggerSIEMExport(w http.ResponseWriter, r *http.Req
 	config, err := h.siemRepo.GetByID(r.Context(), configID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get SIEM config")
-		http.Error(w, "Failed to get SIEM config", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get SIEM config"))
 		return
 	}
 
 	if config == nil {
-		http.Error(w, "SIEM config not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("SIEM config not found"))
 		return
 	}
 
 	if !config.Enabled {
-		http.Error(w, "SIEM config is disabled", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("SIEM config is disabled"))
 		return
 	}
 

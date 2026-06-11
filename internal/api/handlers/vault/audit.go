@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage/vault"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -15,7 +16,7 @@ import (
 func (h *Handler) HandleGetAuditLog(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		h.respondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
@@ -33,7 +34,7 @@ func (h *Handler) HandleGetAuditLog(w http.ResponseWriter, r *http.Request) {
 	total, err := h.repo.CountAuditLogsByTenant(r.Context(), claims.TenantID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to count audit logs")
-		h.respondError(w, http.StatusInternalServerError, "LIST_FAILED", "Failed to get audit logs")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get audit logs"))
 		return
 	}
 
@@ -41,7 +42,7 @@ func (h *Handler) HandleGetAuditLog(w http.ResponseWriter, r *http.Request) {
 	logs, err := h.repo.GetAuditLogsByTenant(r.Context(), claims.TenantID, limit, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get audit logs")
-		h.respondError(w, http.StatusInternalServerError, "LIST_FAILED", "Failed to get audit logs")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get audit logs"))
 		return
 	}
 
@@ -64,14 +65,14 @@ func (h *Handler) HandleGetAuditLog(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetSecretAuditLog(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		h.respondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	secretID := parseUUID(vars["id"])
 	if secretID == nil {
-		h.respondError(w, http.StatusBadRequest, "INVALID_ID", "Invalid secret ID")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid secret ID"))
 		return
 	}
 
@@ -79,11 +80,11 @@ func (h *Handler) HandleGetSecretAuditLog(w http.ResponseWriter, r *http.Request
 	secret, err := h.repo.GetSecretByID(r.Context(), *secretID, claims.TenantID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get secret")
-		h.respondError(w, http.StatusInternalServerError, "GET_FAILED", "Failed to verify secret")
+		apierror.WriteError(w, apierror.NewInternal("Failed to verify secret"))
 		return
 	}
 	if secret == nil {
-		h.respondError(w, http.StatusNotFound, "NOT_FOUND", "Secret not found")
+		apierror.WriteError(w, apierror.NewNotFound("Secret not found"))
 		return
 	}
 
@@ -97,7 +98,7 @@ func (h *Handler) HandleGetSecretAuditLog(w http.ResponseWriter, r *http.Request
 	logs, err := h.repo.GetAuditLogsBySecret(r.Context(), *secretID, claims.TenantID, limit)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get audit logs")
-		h.respondError(w, http.StatusInternalServerError, "LIST_FAILED", "Failed to get audit logs")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get audit logs"))
 		return
 	}
 
@@ -120,7 +121,7 @@ func (h *Handler) HandleGetSecretAuditLog(w http.ResponseWriter, r *http.Request
 func (h *Handler) HandleGetAuditLogByAction(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		h.respondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
@@ -128,7 +129,7 @@ func (h *Handler) HandleGetAuditLogByAction(w http.ResponseWriter, r *http.Reque
 	actionStr := vars["action"]
 	action := vault.AuditAction(actionStr)
 	if !action.Valid() {
-		h.respondError(w, http.StatusBadRequest, "INVALID_ACTION", "Invalid audit action")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid audit action"))
 		return
 	}
 
@@ -142,7 +143,7 @@ func (h *Handler) HandleGetAuditLogByAction(w http.ResponseWriter, r *http.Reque
 	logs, err := h.repo.GetAuditLogsByAction(r.Context(), action, claims.TenantID, limit)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get audit logs")
-		h.respondError(w, http.StatusInternalServerError, "LIST_FAILED", "Failed to get audit logs")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get audit logs"))
 		return
 	}
 
@@ -165,7 +166,7 @@ func (h *Handler) HandleGetAuditLogByAction(w http.ResponseWriter, r *http.Reque
 func (h *Handler) HandleGetAuditLogByActor(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		h.respondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
@@ -175,7 +176,7 @@ func (h *Handler) HandleGetAuditLogByActor(w http.ResponseWriter, r *http.Reques
 
 	actorType := vault.ActorType(actorTypeStr)
 	if !actorType.Valid() {
-		h.respondError(w, http.StatusBadRequest, "INVALID_ACTOR_TYPE", "Invalid actor type")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid actor type"))
 		return
 	}
 
@@ -189,7 +190,7 @@ func (h *Handler) HandleGetAuditLogByActor(w http.ResponseWriter, r *http.Reques
 	logs, err := h.repo.GetAuditLogsByActor(r.Context(), actorID, actorType, claims.TenantID, limit)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get audit logs")
-		h.respondError(w, http.StatusInternalServerError, "LIST_FAILED", "Failed to get audit logs")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get audit logs"))
 		return
 	}
 

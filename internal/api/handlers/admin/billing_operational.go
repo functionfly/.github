@@ -3,9 +3,9 @@ package admin
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
-	"time"
 
+	"github.com/functionfly/functionfly/internal/apierror"
+	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -34,14 +34,14 @@ func (h *Handler) HandleListStoredWebhooks(w http.ResponseWriter, r *http.Reques
 
 	// Get operational repository
 	if h.billingOperationalRepo == nil {
-		http.Error(w, "Webhook storage not configured", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Webhook storage not configured"))
 		return
 	}
 
 	payloads, total, err := h.billingOperationalRepo.ListStoredWebhookPayloads(r.Context(), status, eventType, limit, offset)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list stored webhook payloads")
-		http.Error(w, "Failed to list webhooks", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list webhooks"))
 		return
 	}
 
@@ -61,23 +61,23 @@ func (h *Handler) HandleGetStoredWebhook(w http.ResponseWriter, r *http.Request)
 	webhookIDStr := vars["webhookId"]
 	webhookID, err := uuid.Parse(webhookIDStr)
 	if err != nil {
-		http.Error(w, "Invalid webhook ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid webhook ID"))
 		return
 	}
 
 	if h.billingOperationalRepo == nil {
-		http.Error(w, "Webhook storage not configured", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Webhook storage not configured"))
 		return
 	}
 
 	payload, err := h.billingOperationalRepo.GetStoredWebhookPayload(r.Context(), webhookID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get stored webhook payload")
-		http.Error(w, "Failed to get webhook", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get webhook"))
 		return
 	}
 	if payload == nil {
-		http.Error(w, "Webhook payload not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Webhook payload not found"))
 		return
 	}
 
@@ -92,14 +92,14 @@ func (h *Handler) HandleReplayWebhook(w http.ResponseWriter, r *http.Request) {
 	webhookIDStr := vars["webhookId"]
 	webhookID, err := uuid.Parse(webhookIDStr)
 	if err != nil {
-		http.Error(w, "Invalid webhook ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid webhook ID"))
 		return
 	}
 
 	// Get current user ID from context (set by auth middleware)
 	userID, ok := r.Context().Value("user_id").(uuid.UUID)
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -107,17 +107,17 @@ func (h *Handler) HandleReplayWebhook(w http.ResponseWriter, r *http.Request) {
 		Reason string `json:"reason"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	if req.Reason == "" {
-		http.Error(w, "Reason is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Reason is required"))
 		return
 	}
 
 	if h.billingOperationalRepo == nil {
-		http.Error(w, "Webhook storage not configured", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Webhook storage not configured"))
 		return
 	}
 
@@ -125,17 +125,17 @@ func (h *Handler) HandleReplayWebhook(w http.ResponseWriter, r *http.Request) {
 	payload, err := h.billingOperationalRepo.GetStoredWebhookPayload(r.Context(), webhookID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get stored webhook payload for replay")
-		http.Error(w, "Failed to get webhook", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get webhook"))
 		return
 	}
 	if payload == nil {
-		http.Error(w, "Webhook payload not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Webhook payload not found"))
 		return
 	}
 
 	// Check if already processed
 	if payload.ProcessingStatus == "processed" {
-		http.Error(w, "Webhook already processed - replay would cause duplicate processing", http.StatusConflict)
+		apierror.WriteError(w, apierror.NewConflict("Webhook already processed - replay would cause duplicate processing"))
 		return
 	}
 
@@ -143,7 +143,7 @@ func (h *Handler) HandleReplayWebhook(w http.ResponseWriter, r *http.Request) {
 	replayReq, err := h.billingOperationalRepo.CreateWebhookReplayRequest(r.Context(), webhookID, userID, req.Reason)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create webhook replay request")
-		http.Error(w, "Failed to create replay request", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create replay request"))
 		return
 	}
 
@@ -196,14 +196,14 @@ func (h *Handler) HandleListWebhookReplayRequests(w http.ResponseWriter, r *http
 	}
 
 	if h.billingOperationalRepo == nil {
-		http.Error(w, "Webhook storage not configured", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Webhook storage not configured"))
 		return
 	}
 
 	requests, total, err := h.billingOperationalRepo.ListWebhookReplayRequests(r.Context(), status, limit, offset)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list webhook replay requests")
-		http.Error(w, "Failed to list replay requests", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list replay requests"))
 		return
 	}
 
@@ -234,14 +234,14 @@ func (h *Handler) HandleListPendingTaxCertificates(w http.ResponseWriter, r *htt
 	}
 
 	if h.billingOperationalRepo == nil {
-		http.Error(w, "Tax exemption storage not configured", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Tax exemption storage not configured"))
 		return
 	}
 
 	certs, total, err := h.billingOperationalRepo.ListPendingTaxExemptionCertificates(r.Context(), limit, offset)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list pending tax exemption certificates")
-		http.Error(w, "Failed to list certificates", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list certificates"))
 		return
 	}
 
@@ -261,14 +261,14 @@ func (h *Handler) HandleReviewTaxCertificate(w http.ResponseWriter, r *http.Requ
 	certIDStr := vars["certificateId"]
 	certID, err := uuid.Parse(certIDStr)
 	if err != nil {
-		http.Error(w, "Invalid certificate ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid certificate ID"))
 		return
 	}
 
 	// Get current user ID from context
 	userID, ok := r.Context().Value("user_id").(uuid.UUID)
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -278,22 +278,22 @@ func (h *Handler) HandleReviewTaxCertificate(w http.ResponseWriter, r *http.Requ
 		RejectionReason string `json:"rejection_reason"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	if req.Action != "approve" && req.Action != "reject" {
-		http.Error(w, "Action must be 'approve' or 'reject'", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Action must be 'approve' or 'reject'"))
 		return
 	}
 
 	if req.Action == "reject" && req.RejectionReason == "" {
-		http.Error(w, "Rejection reason is required when rejecting", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Rejection reason is required when rejecting"))
 		return
 	}
 
 	if h.billingOperationalRepo == nil {
-		http.Error(w, "Tax exemption storage not configured", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Tax exemption storage not configured"))
 		return
 	}
 
@@ -301,7 +301,7 @@ func (h *Handler) HandleReviewTaxCertificate(w http.ResponseWriter, r *http.Requ
 	cert, err := h.billingOperationalRepo.ReviewTaxExemptionCertificate(r.Context(), certID, userID, approved, req.Notes, req.RejectionReason)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to review tax exemption certificate")
-		http.Error(w, "Failed to review certificate", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to review certificate"))
 		return
 	}
 
@@ -320,14 +320,14 @@ func (h *Handler) HandleReviewTaxCertificate(w http.ResponseWriter, r *http.Requ
 // POST /v1/admin/billing/webhooks/cleanup
 func (h *Handler) HandleCleanupExpiredWebhooks(w http.ResponseWriter, r *http.Request) {
 	if h.billingOperationalRepo == nil {
-		http.Error(w, "Webhook storage not configured", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Webhook storage not configured"))
 		return
 	}
 
 	deletedCount, err := h.billingOperationalRepo.CleanupExpiredWebhookPayloads(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to cleanup expired webhook payloads")
-		http.Error(w, "Cleanup failed", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Cleanup failed"))
 		return
 	}
 

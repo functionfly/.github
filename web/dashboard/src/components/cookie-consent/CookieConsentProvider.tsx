@@ -16,53 +16,9 @@ export function CookieConsentProvider({ children }: CookieConsentProviderProps) 
   const { setConsent } = useCookieConsentStore();
 
   useEffect(() => {
-    // Initialize cookie consent
     CookieConsent.run(cookieConsentConfig).then(() => {
-      // Remove cc--darkmode after library initializes
       document.documentElement.classList.remove('cc--darkmode');
 
-      // Force light mode by injecting override styles
-      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-      if (isLight) {
-        // Remove any existing override
-        const existing = document.getElementById('cc-light-override');
-        if (existing) existing.remove();
-
-        const styleEl = document.createElement('style');
-        styleEl.id = 'cc-light-override';
-        styleEl.textContent = `
-          #cc-main,
-          #cc-main .cm,
-          #cc-main .pm,
-          #cc-main .cm-wrapper,
-          #cc-main .pm-wrapper {
-            background: #FFFFFF !important;
-            --cc-bg: #FFFFFF !important;
-          }
-          #cc-main .cm,
-          #cc-main .pm {
-            background-color: #FFFFFF !important;
-            border: 1px solid rgba(0,0,0,0.08) !important;
-          }
-          #cc-main .pm__section,
-          #cc-main .pm__section--toggle .pm__section-title {
-            background: #F6F8FA !important;
-            background-color: #F6F8FA !important;
-            border-color: rgba(0,0,0,0.08) !important;
-          }
-          #cc-main .cm__title,
-          #cc-main .pm__title {
-            color: #0D1117 !important;
-          }
-          #cc-main .cm__desc,
-          #cc-main .pm__section-desc {
-            color: #6B7280 !important;
-          }
-        `;
-        document.head.appendChild(styleEl);
-      }
-
-      // Check if user has already given consent
       if (CookieConsent.validConsent()) {
         const cookie = CookieConsent.getCookie();
         if (cookie && cookie.categories.length > 0) {
@@ -74,19 +30,15 @@ export function CookieConsentProvider({ children }: CookieConsentProviderProps) 
           };
 
           setConsent(categories);
-          // Update Google Consent Mode for existing consent
           updateGoogleConsentFromCategories();
         }
       }
     });
 
-    // Since vanilla-cookieconsent doesn't have event listeners,
-    // we need to periodically check for consent changes
     const checkConsentInterval = setInterval(() => {
       document.documentElement.classList.remove('cc--darkmode');
     }, 100);
 
-    // Cleanup function
     return () => {
       clearInterval(checkConsentInterval);
     };

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/gorilla/mux"
 )
 
@@ -342,7 +343,7 @@ func (h *Handler) GetRuntimeInfo(w http.ResponseWriter, r *http.Request) {
 
 	runtime, exists := runtimes[runtimeID]
 	if !exists {
-		http.Error(w, fmt.Sprintf("Runtime '%s' not found", runtimeID), http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound(fmt.Sprintf("Runtime '%s' not found", runtimeID)))
 		return
 	}
 
@@ -358,7 +359,7 @@ func (h *Handler) GetDiagnostics(w http.ResponseWriter, r *http.Request) {
 	// Get function from registry
 	fn, err := h.registry.GetFunction(functionID)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Function '%s' not found", functionID), http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound(fmt.Sprintf("Function '%s' not found", functionID)))
 		return
 	}
 
@@ -414,14 +415,14 @@ func (h *Handler) UpdateRuntimeConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&config); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	// Get function from registry
 	fn, err := h.registry.GetFunction(functionID)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Function '%s' not found", functionID), http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound(fmt.Sprintf("Function '%s' not found", functionID)))
 		return
 	}
 
@@ -433,7 +434,7 @@ func (h *Handler) UpdateRuntimeConfig(w http.ResponseWriter, r *http.Request) {
 
 	// Save to registry
 	if err := h.registry.UpdateFunction(fn); err != nil {
-		http.Error(w, fmt.Sprintf("Failed to update function: %v", err), http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal(fmt.Sprintf("Failed to update function: %v", err)))
 		return
 	}
 

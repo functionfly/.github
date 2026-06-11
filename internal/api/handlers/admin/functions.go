@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -39,7 +40,7 @@ func (h *Handler) HandleListAdminFunctions(w http.ResponseWriter, r *http.Reques
 	functions, total, err := h.repo.ListAllFunctions(r.Context(), limit, offset, tenantID, status)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list functions (admin)")
-		http.Error(w, "Failed to list functions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list functions"))
 		return
 	}
 
@@ -55,14 +56,14 @@ func (h *Handler) HandleGetAdminFunction(w http.ResponseWriter, r *http.Request)
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["functionId"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	function, err := h.repo.GetFunctionByID(r.Context(), functionID)
 	if err != nil {
 		logrus.WithError(err).WithField("function_id", functionID).Error("Failed to get function (admin)")
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
@@ -75,13 +76,13 @@ func (h *Handler) HandleUpdateAdminFunction(w http.ResponseWriter, r *http.Reque
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["functionId"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	var updates map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -93,14 +94,14 @@ func (h *Handler) HandleUpdateAdminFunction(w http.ResponseWriter, r *http.Reque
 		}
 	}
 	if len(allowed) == 0 {
-		http.Error(w, "No allowed fields to update", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("No allowed fields to update"))
 		return
 	}
 
 	function, err := h.repo.UpdateFunction(r.Context(), functionID, allowed)
 	if err != nil {
 		logrus.WithError(err).WithField("function_id", functionID).Error("Failed to update function (admin)")
-		http.Error(w, "Failed to update function", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update function"))
 		return
 	}
 
@@ -113,13 +114,13 @@ func (h *Handler) HandleDeleteAdminFunction(w http.ResponseWriter, r *http.Reque
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["functionId"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	if err := h.repo.DeleteFunction(r.Context(), functionID); err != nil {
 		logrus.WithError(err).WithField("function_id", functionID).Error("Failed to delete function (admin)")
-		http.Error(w, "Failed to delete function", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete function"))
 		return
 	}
 
@@ -132,7 +133,7 @@ func (h *Handler) HandleToggleAdminFunction(w http.ResponseWriter, r *http.Reque
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["functionId"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
@@ -140,7 +141,7 @@ func (h *Handler) HandleToggleAdminFunction(w http.ResponseWriter, r *http.Reque
 		Enabled bool `json:"enabled"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -151,7 +152,7 @@ func (h *Handler) HandleToggleAdminFunction(w http.ResponseWriter, r *http.Reque
 	function, err := h.repo.UpdateFunction(r.Context(), functionID, map[string]interface{}{"status": status})
 	if err != nil {
 		logrus.WithError(err).WithField("function_id", functionID).Error("Failed to toggle function (admin)")
-		http.Error(w, "Failed to toggle function", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to toggle function"))
 		return
 	}
 
@@ -164,7 +165,7 @@ func (h *Handler) HandleListAdminFunctionDeployments(w http.ResponseWriter, r *h
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["functionId"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
@@ -178,7 +179,7 @@ func (h *Handler) HandleListAdminFunctionDeployments(w http.ResponseWriter, r *h
 	deployments, err := h.repo.ListFunctionDeployments(r.Context(), functionID, limit)
 	if err != nil {
 		logrus.WithError(err).WithField("function_id", functionID).Error("Failed to list deployments (admin)")
-		http.Error(w, "Failed to list deployments", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list deployments"))
 		return
 	}
 
@@ -191,7 +192,7 @@ func (h *Handler) HandleListAdminFunctionLogs(w http.ResponseWriter, r *http.Req
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["functionId"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
@@ -206,7 +207,7 @@ func (h *Handler) HandleListAdminFunctionLogs(w http.ResponseWriter, r *http.Req
 	logs, err := h.repo.GetFunctionLogs(r.Context(), &id, nil, limit, nil, nil)
 	if err != nil {
 		logrus.WithError(err).WithField("function_id", functionID).Error("Failed to list logs (admin)")
-		http.Error(w, "Failed to list logs", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list logs"))
 		return
 	}
 
@@ -219,7 +220,7 @@ func (h *Handler) HandleGetAdminFunctionMetrics(w http.ResponseWriter, r *http.R
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["functionId"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
@@ -227,7 +228,7 @@ func (h *Handler) HandleGetAdminFunctionMetrics(w http.ResponseWriter, r *http.R
 	deployments, err := h.repo.ListFunctionDeployments(r.Context(), functionID, 0)
 	if err != nil {
 		logrus.WithError(err).WithField("function_id", functionID).Error("Failed to list deployments for metrics")
-		http.Error(w, "Failed to retrieve metrics", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve metrics"))
 		return
 	}
 
@@ -235,7 +236,7 @@ func (h *Handler) HandleGetAdminFunctionMetrics(w http.ResponseWriter, r *http.R
 	logs, err := h.repo.GetFunctionLogs(r.Context(), &functionID, nil, 500, nil, nil)
 	if err != nil {
 		logrus.WithError(err).WithField("function_id", functionID).Error("Failed to fetch logs for metrics")
-		http.Error(w, "Failed to retrieve metrics", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve metrics"))
 		return
 	}
 

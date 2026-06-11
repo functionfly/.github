@@ -12,10 +12,10 @@ func (h *Handler) attachProfileStats(profile map[string]interface{}, userID uuid
 		logrus.WithError(err).WithField("userID", userID).Warn("Failed to load profile stats")
 		profile["stats"] = map[string]interface{}{
 			"functionsCount":  0,
-			"totalExecutions":   int64(0),
-			"trustScore":        0,
-			"followersCount":    0,
-			"followingCount":    0,
+			"totalExecutions": int64(0),
+			"trustScore":      0,
+			"followersCount":  0,
+			"followingCount":  0,
 		}
 		return
 	}

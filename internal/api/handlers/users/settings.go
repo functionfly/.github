@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
@@ -113,7 +114,7 @@ func (h *Handler) HandlePatchUserSettingsProfile(w http.ResponseWriter, r *http.
 
 	var req SettingsProfilePatchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -128,16 +129,16 @@ func (h *Handler) HandlePatchUserSettingsProfile(w http.ResponseWriter, r *http.
 		clean := strings.ToLower(strings.TrimSpace(req.Username))
 		for _, c := range clean {
 			if !((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_') {
-				writeJSONError(w, http.StatusBadRequest, "Username may only contain lowercase letters, numbers, hyphens, and underscores")
+				apierror.WriteError(w, apierror.NewBadRequest("Username may only contain lowercase letters, numbers, hyphens, and underscores"))
 				return
 			}
 		}
 		if len(clean) < 3 {
-			writeJSONError(w, http.StatusBadRequest, "Username must be at least 3 characters")
+			apierror.WriteError(w, apierror.NewBadRequest("Username must be at least 3 characters"))
 			return
 		}
 		if len(clean) > 30 {
-			writeJSONError(w, http.StatusBadRequest, "Username must be 30 characters or fewer")
+			apierror.WriteError(w, apierror.NewBadRequest("Username must be 30 characters or fewer"))
 			return
 		}
 		updates["username"] = clean
@@ -151,11 +152,11 @@ func (h *Handler) HandlePatchUserSettingsProfile(w http.ResponseWriter, r *http.
 	_, err := h.repo.UpdateUser(context.Background(), claims.UserID, updates)
 	if err != nil {
 		if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
-			writeJSONError(w, http.StatusConflict, "Username is already taken")
+			apierror.WriteError(w, apierror.NewConflict("Username is already taken"))
 			return
 		}
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update profile settings")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to update profile")
+		apierror.WriteError(w, apierror.NewInternal("Failed to update profile"))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Profile updated"})
@@ -165,13 +166,13 @@ func (h *Handler) HandlePatchUserSettingsProfile(w http.ResponseWriter, r *http.
 func (h *Handler) HandlePatchUserSettingsNotifications(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	var req map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -204,7 +205,7 @@ func (h *Handler) HandlePatchUserSettingsNotifications(w http.ResponseWriter, r 
 
 	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update notification settings")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to update notification settings")
+		apierror.WriteError(w, apierror.NewInternal("Failed to update notification settings"))
 		return
 	}
 
@@ -215,13 +216,13 @@ func (h *Handler) HandlePatchUserSettingsNotifications(w http.ResponseWriter, r 
 func (h *Handler) HandlePatchUserSettingsPrivacy(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	var req map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -247,7 +248,7 @@ func (h *Handler) HandlePatchUserSettingsPrivacy(w http.ResponseWriter, r *http.
 
 	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update privacy settings")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to update privacy settings")
+		apierror.WriteError(w, apierror.NewInternal("Failed to update privacy settings"))
 		return
 	}
 
@@ -258,13 +259,13 @@ func (h *Handler) HandlePatchUserSettingsPrivacy(w http.ResponseWriter, r *http.
 func (h *Handler) HandlePatchUserSettingsVisibility(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	var req map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -292,7 +293,7 @@ func (h *Handler) HandlePatchUserSettingsVisibility(w http.ResponseWriter, r *ht
 
 	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update visibility settings")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to update visibility settings")
+		apierror.WriteError(w, apierror.NewInternal("Failed to update visibility settings"))
 		return
 	}
 
@@ -303,18 +304,18 @@ func (h *Handler) HandlePatchUserSettingsVisibility(w http.ResponseWriter, r *ht
 func (h *Handler) HandleGetUserSettingsMe(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	user, err := h.repo.GetUserByID(claims.UserID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to get user")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve user")
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve user"))
 		return
 	}
 	if user == nil {
-		writeJSONError(w, http.StatusNotFound, "User not found")
+		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
 	}
 
@@ -370,13 +371,13 @@ func (h *Handler) HandleGetUserSettingsMe(w http.ResponseWriter, r *http.Request
 func (h *Handler) HandlePatchUserSettingsProfileMe(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	var req SettingsProfilePatchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -391,16 +392,16 @@ func (h *Handler) HandlePatchUserSettingsProfileMe(w http.ResponseWriter, r *htt
 		clean := strings.ToLower(strings.TrimSpace(req.Username))
 		for _, c := range clean {
 			if !((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_') {
-				writeJSONError(w, http.StatusBadRequest, "Username may only contain lowercase letters, numbers, hyphens, and underscores")
+				apierror.WriteError(w, apierror.NewBadRequest("Username may only contain lowercase letters, numbers, hyphens, and underscores"))
 				return
 			}
 		}
 		if len(clean) < 3 {
-			writeJSONError(w, http.StatusBadRequest, "Username must be at least 3 characters")
+			apierror.WriteError(w, apierror.NewBadRequest("Username must be at least 3 characters"))
 			return
 		}
 		if len(clean) > 30 {
-			writeJSONError(w, http.StatusBadRequest, "Username must be 30 characters or fewer")
+			apierror.WriteError(w, apierror.NewBadRequest("Username must be 30 characters or fewer"))
 			return
 		}
 		updates["username"] = clean
@@ -414,11 +415,11 @@ func (h *Handler) HandlePatchUserSettingsProfileMe(w http.ResponseWriter, r *htt
 	_, err := h.repo.UpdateUser(context.Background(), claims.UserID, updates)
 	if err != nil {
 		if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
-			writeJSONError(w, http.StatusConflict, "Username is already taken")
+			apierror.WriteError(w, apierror.NewConflict("Username is already taken"))
 			return
 		}
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update profile settings")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to update profile")
+		apierror.WriteError(w, apierror.NewInternal("Failed to update profile"))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Profile updated"})
@@ -428,13 +429,13 @@ func (h *Handler) HandlePatchUserSettingsProfileMe(w http.ResponseWriter, r *htt
 func (h *Handler) HandlePatchUserSettingsNotificationsMe(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	var req map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -467,7 +468,7 @@ func (h *Handler) HandlePatchUserSettingsNotificationsMe(w http.ResponseWriter, 
 
 	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update notification settings")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to update notification settings")
+		apierror.WriteError(w, apierror.NewInternal("Failed to update notification settings"))
 		return
 	}
 
@@ -478,13 +479,13 @@ func (h *Handler) HandlePatchUserSettingsNotificationsMe(w http.ResponseWriter, 
 func (h *Handler) HandlePatchUserSettingsPrivacyMe(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	var req map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -510,7 +511,7 @@ func (h *Handler) HandlePatchUserSettingsPrivacyMe(w http.ResponseWriter, r *htt
 
 	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update privacy settings")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to update privacy settings")
+		apierror.WriteError(w, apierror.NewInternal("Failed to update privacy settings"))
 		return
 	}
 
@@ -521,13 +522,13 @@ func (h *Handler) HandlePatchUserSettingsPrivacyMe(w http.ResponseWriter, r *htt
 func (h *Handler) HandlePatchUserSettingsVisibilityMe(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	var req map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -555,7 +556,7 @@ func (h *Handler) HandlePatchUserSettingsVisibilityMe(w http.ResponseWriter, r *
 
 	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update visibility settings")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to update visibility settings")
+		apierror.WriteError(w, apierror.NewInternal("Failed to update visibility settings"))
 		return
 	}
 
@@ -571,7 +572,7 @@ type ValidEnvironmentValues struct {
 func (h *Handler) HandleGetActiveEnvironment(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -604,7 +605,7 @@ func (h *Handler) HandleGetActiveEnvironment(w http.ResponseWriter, r *http.Requ
 func (h *Handler) HandleSetActiveEnvironment(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -612,14 +613,14 @@ func (h *Handler) HandleSetActiveEnvironment(w http.ResponseWriter, r *http.Requ
 		Environment string `json:"environment"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	// Validate environment value
 	validEnvs := map[string]bool{"production": true, "staging": true, "development": true}
 	if !validEnvs[req.Environment] {
-		writeJSONError(w, http.StatusBadRequest, "Invalid environment. Must be: production, staging, or development")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid environment. Must be: production, staging, or development"))
 		return
 	}
 
@@ -634,7 +635,7 @@ func (h *Handler) HandleSetActiveEnvironment(w http.ResponseWriter, r *http.Requ
 
 	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update active environment")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to update environment preference")
+		apierror.WriteError(w, apierror.NewInternal("Failed to update environment preference"))
 		return
 	}
 
@@ -654,13 +655,13 @@ type SessionSecuritySettingsRequest struct {
 func (h *Handler) HandlePatchUserSettingsSecurityMe(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	var req SessionSecuritySettingsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -668,7 +669,7 @@ func (h *Handler) HandlePatchUserSettingsSecurityMe(w http.ResponseWriter, r *ht
 	if req.SessionTimeout != nil {
 		validTimeouts := map[string]bool{"1h": true, "24h": true, "7d": true, "30d": true, "never": true}
 		if !validTimeouts[*req.SessionTimeout] {
-			writeJSONError(w, http.StatusBadRequest, "Invalid session timeout value. Must be: 1h, 24h, 7d, 30d, or never")
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid session timeout value. Must be: 1h, 24h, 7d, 30d, or never"))
 			return
 		}
 	}
@@ -689,7 +690,7 @@ func (h *Handler) HandlePatchUserSettingsSecurityMe(w http.ResponseWriter, r *ht
 
 	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update security settings")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to update security settings")
+		apierror.WriteError(w, apierror.NewInternal("Failed to update security settings"))
 		return
 	}
 
@@ -698,13 +699,13 @@ func (h *Handler) HandlePatchUserSettingsSecurityMe(w http.ResponseWriter, r *ht
 
 // CustomStatusRequest is the body for PATCH /v1/users/me/settings/status
 type CustomStatusRequest struct {
-	CustomStatus   string `json:"customStatus"`   // "online", "away", "busy", "offline", or ""
+	CustomStatus      string `json:"customStatus"`      // "online", "away", "busy", "offline", or ""
 	CustomStatusEmoji string `json:"customStatusEmoji"` // Optional emoji
 }
 
 // ValidCustomStatusValues are the allowed custom status values
 var ValidCustomStatusValues = map[string]bool{
-	"":       true, // Clear status
+	"":        true, // Clear status
 	"online":  true,
 	"away":    true,
 	"busy":    true,
@@ -716,19 +717,19 @@ var ValidCustomStatusValues = map[string]bool{
 func (h *Handler) HandlePatchUserSettingsStatusMe(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	var req CustomStatusRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	// Validate custom status value
 	if !ValidCustomStatusValues[req.CustomStatus] {
-		writeJSONError(w, http.StatusBadRequest, "Invalid custom status value. Must be: online, away, busy, offline, or empty string to clear")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid custom status value. Must be: online, away, busy, offline, or empty string to clear"))
 		return
 	}
 
@@ -751,14 +752,14 @@ func (h *Handler) HandlePatchUserSettingsStatusMe(w http.ResponseWriter, r *http
 
 	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update custom status")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to update custom status")
+		apierror.WriteError(w, apierror.NewInternal("Failed to update custom status"))
 		return
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"message":             "Custom status updated",
-		"customStatus":        currentSettings["customStatus"],
-		"customStatusEmoji":   currentSettings["customStatusEmoji"],
+		"message":           "Custom status updated",
+		"customStatus":      currentSettings["customStatus"],
+		"customStatusEmoji": currentSettings["customStatusEmoji"],
 	})
 }
 
@@ -767,7 +768,7 @@ func (h *Handler) HandlePatchUserSettingsStatusMe(w http.ResponseWriter, r *http
 func (h *Handler) HandleGetUserSettingsStatusMe(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -788,29 +789,29 @@ func (h *Handler) HandleGetUserSettingsStatusMe(w http.ResponseWriter, r *http.R
 
 // PlatformSettingsRequest is the body for PATCH /v1/users/me/settings/platform
 type PlatformSettingsRequest struct {
-	AutoEvolve               *bool   `json:"auto_evolve,omitempty"`
-	RequireApproval          *bool   `json:"require_approval,omitempty"`
-	SandboxValidation        *bool   `json:"sandbox_validation,omitempty"`
-	DefaultCanaryPct         *int    `json:"default_canary_pct,omitempty"`
-	MaxMutationsPerDay       *int    `json:"max_mutations_per_day,omitempty"`
-	NotifyOnProposal         *bool   `json:"notify_on_proposal,omitempty"`
-	NotifyOnDeploy           *bool   `json:"notify_on_deploy,omitempty"`
-	NotifyOnRollback         *bool   `json:"notify_on_rollback,omitempty"`
-	AutoRollbackOnError       *bool   `json:"auto_rollback_on_error,omitempty"`
-	AutoRollbackErrorThreshold *int   `json:"auto_rollback_error_threshold,omitempty"`
+	AutoEvolve                 *bool `json:"auto_evolve,omitempty"`
+	RequireApproval            *bool `json:"require_approval,omitempty"`
+	SandboxValidation          *bool `json:"sandbox_validation,omitempty"`
+	DefaultCanaryPct           *int  `json:"default_canary_pct,omitempty"`
+	MaxMutationsPerDay         *int  `json:"max_mutations_per_day,omitempty"`
+	NotifyOnProposal           *bool `json:"notify_on_proposal,omitempty"`
+	NotifyOnDeploy             *bool `json:"notify_on_deploy,omitempty"`
+	NotifyOnRollback           *bool `json:"notify_on_rollback,omitempty"`
+	AutoRollbackOnError        *bool `json:"auto_rollback_on_error,omitempty"`
+	AutoRollbackErrorThreshold *int  `json:"auto_rollback_error_threshold,omitempty"`
 }
 
 // HandlePatchUserSettingsPlatformMe handles PATCH /v1/users/me/settings/platform
 func (h *Handler) HandlePatchUserSettingsPlatformMe(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	var req PlatformSettingsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -826,7 +827,7 @@ func (h *Handler) HandlePatchUserSettingsPlatformMe(w http.ResponseWriter, r *ht
 	}
 	platform, ok := currentSettings["platform"].(map[string]interface{})
 	if !ok {
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Internal error"))
 		return
 	}
 
@@ -887,15 +888,15 @@ func (h *Handler) HandlePatchUserSettingsPlatformMe(w http.ResponseWriter, r *ht
 
 	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update platform settings")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to update platform settings")
+		apierror.WriteError(w, apierror.NewInternal("Failed to update platform settings"))
 		return
 	}
 
 	logrus.WithFields(logrus.Fields{
 		"user_id":          claims.UserID,
 		"auto_evolve":      platform["auto_evolve"],
-		"require_approval":  platform["require_approval"],
-		"default_canary":    platform["default_canary_pct"],
+		"require_approval": platform["require_approval"],
+		"default_canary":   platform["default_canary_pct"],
 	}).Info("users: platform settings updated")
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Platform settings updated"})

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Shield, Play, Check, Loader2, AlertTriangle, RefreshCw, Globe, Activity, Sparkles } from "lucide-react";
+import { Shield, Play, Check, Loader2, AlertTriangle, RefreshCw, Globe, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -121,7 +121,7 @@ export function TestFailoverStep() {
             recycle={false}
             numberOfPieces={50}
             gravity={0.3}
-            colors={['#FF6B35', '#FFB800', '#00D4FF', '#5B7CF5', '#10b981']}
+            colors={['#f59e0b', '#ffb800', '#06b6d4', '#5b7cf5', '#10b981']}
           />
         )}
         <motion.div
@@ -129,174 +129,172 @@ export function TestFailoverStep() {
           animate={{ opacity: 1, scale: 1 }}
           className="space-y-6"
         >
-        <div className="text-center py-4 relative">
-          {testStatus === "success" && !showSkeleton && (
-            /* Celebration particles for success */
-            <div className="absolute inset-0 pointer-events-none">
-              {[...Array(12)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  className="absolute w-1 h-1 bg-gradient-to-r from-ff-taxiway to-ff-cyan rounded-full"
-                  initial={{
-                    x: "50%",
-                    y: "50%",
-                    scale: 0,
-                    opacity: 1
-                  }}
-                  animate={{
-                    x: `${50 + (Math.random() - 0.5) * 250}%`,
-                    y: `${50 + (Math.random() - 0.5) * 250}%`,
-                    scale: [0, 1, 0],
-                    opacity: [1, 1, 0]
-                  }}
-                  transition={{
-                    duration: 3,
-                    delay: Math.random() * 0.8,
-                    ease: "easeOut"
-                  }}
-                  style={{
-                    left: `${Math.random() * 100}%`,
-                    top: `${Math.random() * 100}%`,
-                  }}
-                />
-              ))}
-            </div>
-          )}
+          <div className="text-center py-4 relative">
+            {testStatus === "success" && !showSkeleton && (
+              <div className="absolute inset-0 pointer-events-none">
+                {[...Array(12)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    className="absolute w-1 h-1 bg-gradient-to-r from-aviation-green to-aviation-cyan rounded-full"
+                    initial={{
+                      x: "50%",
+                      y: "50%",
+                      scale: 0,
+                      opacity: 1
+                    }}
+                    animate={{
+                      x: `${50 + (Math.random() - 0.5) * 250}%`,
+                      y: `${50 + (Math.random() - 0.5) * 250}%`,
+                      scale: [0, 1, 0],
+                      opacity: [1, 1, 0]
+                    }}
+                    transition={{
+                      duration: 3,
+                      delay: Math.random() * 0.8,
+                      ease: "easeOut"
+                    }}
+                    style={{
+                      left: `${Math.random() * 100}%`,
+                      top: `${Math.random() * 100}%`,
+                    }}
+                  />
+                ))}
+              </div>
+            )}
 
-          <motion.div
-            className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 relative z-10 ${
-              testStatus === "success" ? "bg-ff-taxiway/20" : "bg-ff-emergency/20"
-            }`}
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", bounce: 0.5, delay: 0.2 }}
-          >
             <motion.div
-              initial={{ scale: 0, rotate: testStatus === "success" ? -180 : 0 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ type: "spring", bounce: 0.6, delay: 0.4 }}
+              className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 relative z-10 ${
+                testStatus === "success" ? "bg-aviation-green-dim" : "bg-aviation-red-dim"
+              }`}
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", bounce: 0.5, delay: 0.2 }}
             >
-              {testStatus === "success" ? (
-                <Shield className="w-8 h-8 text-ff-taxiway" />
-              ) : (
-                <AlertTriangle className="w-8 h-8 text-red-500" />
-              )}
+              <motion.div
+                initial={{ scale: 0, rotate: testStatus === "success" ? -180 : 0 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", bounce: 0.6, delay: 0.4 }}
+              >
+                {testStatus === "success" ? (
+                  <Shield className="w-8 h-8 text-aviation-green" />
+                ) : (
+                  <AlertTriangle className="w-8 h-8 text-aviation-red" />
+                )}
+              </motion.div>
             </motion.div>
-          </motion.div>
 
-          <motion.h3
-            className="text-xl font-semibold text-text-primary mb-2"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-          >
-            {testStatus === "success" ? "Failover Test Passed! 🛡️" : "Failover Test Failed"}
-          </motion.h3>
+            <motion.h3
+              className="text-xl font-mono font-bold text-aviation-text-primary mb-2"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+            >
+              {testStatus === "success" ? "Failover Test Passed!" : "Failover Test Failed"}
+            </motion.h3>
 
-          <motion.p
-            className="text-text-secondary"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 }}
-          >
-            {testStatus === "success"
-              ? "Your setup is working correctly. Automatic failover is ready."
-              : "There was an issue with your failover configuration."
-            }
-          </motion.p>
-        </div>
+            <motion.p
+              className="text-aviation-text-secondary font-mono"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+            >
+              {testStatus === "success"
+                ? "Your setup is working correctly. Automatic failover is ready."
+                : "There was an issue with your failover configuration."
+              }
+            </motion.p>
+          </div>
 
-        <div className="space-y-3">
-          <h4 className="text-sm font-medium text-text-primary">Test Results</h4>
-          {showSkeleton ? (
-            // Skeleton loading state
-            <div className="space-y-3">
-              {[1, 2].map((index) => (
-                <Card key={index} className="card p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Skeleton className="w-8 h-8 rounded-full" />
-                    <div>
-                      <Skeleton className="h-4 w-24 mb-1" />
+          <div className="space-y-3">
+            <h4 className="text-sm font-mono font-medium text-aviation-text-primary">Test Results</h4>
+            {showSkeleton ? (
+              <div className="space-y-3">
+                {[1, 2].map((index) => (
+                  <Card key={index} className="aviation-instrument p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="w-8 h-8 rounded-full" />
+                      <div>
+                        <Skeleton className="h-4 w-24 mb-1" />
+                        <Skeleton className="h-3 w-16" />
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <Skeleton className="h-4 w-12 mb-1" />
                       <Skeleton className="h-3 w-16" />
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              results.map((result, index) => (
+                <Card
+                  key={index}
+                  className="aviation-instrument p-3 flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        result.status === "success" ? "bg-aviation-green-dim" : "bg-aviation-red-dim"
+                      }`}
+                    >
+                      {result.status === "success" ? (
+                        <Check className="w-4 h-4 text-aviation-green" />
+                      ) : (
+                        <AlertTriangle className="w-4 h-4 text-aviation-red" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-mono font-medium text-aviation-text-primary">{result.provider}</p>
+                      <p className="text-xs font-mono text-aviation-text-muted">{result.region}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <Skeleton className="h-4 w-12 mb-1" />
-                    <Skeleton className="h-3 w-16" />
+                    <div className="flex items-center gap-1">
+                      <p className="text-sm font-mono text-aviation-text-primary">{result.latency}ms</p>
+                      <HelpTooltip content="Latency measures response time. Lower values mean faster performance for your users." />
+                    </div>
+                    <p className="text-xs font-mono text-aviation-text-muted">Latency</p>
                   </div>
                 </Card>
-              ))}
-            </div>
-          ) : (
-            results.map((result, index) => (
-              <Card
-                key={index}
-                className="card p-3 flex items-center justify-between"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      result.status === "success" ? "bg-ff-taxiway/20" : "bg-ff-emergency/20"
-                    }`}
-                  >
-                    {result.status === "success" ? (
-                      <Check className="w-4 h-4 text-ff-taxiway" />
-                    ) : (
-                      <AlertTriangle className="w-4 h-4 text-red-500" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-text-primary">{result.provider}</p>
-                    <p className="text-xs text-text-muted">{result.region}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="flex items-center gap-1">
-                    <p className="text-sm text-text-primary">{result.latency}ms</p>
-                    <HelpTooltip content="Latency measures response time. Lower values mean faster performance for your users." />
-                  </div>
-                  <p className="text-xs text-text-muted">Latency</p>
-                </div>
-              </Card>
-            ))
-          )}
-        </div>
-
-<div className="bg-ff-taxiway/10 border border-ff-taxiway/20 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <Activity className="w-5 h-5 text-ff-taxiway flex-shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-medium text-ff-taxiway mb-1">What happened?</h4>
-              <p className="text-sm text-text-secondary">
-                When the primary provider (Cloudflare) was temporarily unavailable,
-                FunctionFly automatically routed traffic to your backup provider
-                (Vercel) with zero downtime.
-              </p>
-            </div>
+              ))
+            )}
           </div>
-        </div>
 
-        {testError && (
-          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+          <div className="bg-aviation-green-dim border border-aviation-green/30 rounded-lg p-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <Activity className="w-5 h-5 text-aviation-green flex-shrink-0 mt-0.5" />
               <div>
-                <h4 className="font-medium text-red-400 mb-1">Test Error</h4>
-                <p className="text-sm text-red-300">{testError}</p>
+                <h4 className="font-mono font-medium text-aviation-green mb-1">What happened?</h4>
+                <p className="text-sm font-mono text-aviation-text-secondary">
+                  When the primary provider (Cloudflare) was temporarily unavailable,
+                  FunctionFly automatically routed traffic to your backup provider
+                  (Vercel) with zero downtime.
+                </p>
               </div>
             </div>
           </div>
-        )}
 
-        <Button
-          variant="outline"
-          onClick={runFailoverTest}
-          className="w-full"
-        >
-          <RefreshCw className="w-4 h-4 mr-2" />
-          {testStatus === "failed" ? "Retry Test" : "Run Test Again"}
-        </Button>
-      </motion.div>
+          {testError && (
+            <div className="bg-aviation-red-dim border border-aviation-red/30 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-aviation-red flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-mono font-medium text-aviation-red mb-1">Test Error</h4>
+                  <p className="text-sm font-mono text-aviation-red/80">{testError}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <Button
+            variant="outline"
+            onClick={runFailoverTest}
+            className="w-full font-mono border-aviation-border-instrument text-aviation-text-primary hover:border-aviation-amber hover:text-aviation-amber"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            {testStatus === "failed" ? "Retry Test" : "Run Test Again"}
+          </Button>
+        </motion.div>
       </>
     );
   }
@@ -304,7 +302,7 @@ export function TestFailoverStep() {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <p className="text-text-secondary">
+        <p className="text-aviation-text-secondary font-mono">
           Test your failover setup by simulating a provider failure.
           We'll verify that traffic automatically routes to your backup.
         </p>
@@ -324,11 +322,11 @@ export function TestFailoverStep() {
         >
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-text-primary">{testSteps[currentStep].name}</span>
-              <span className="text-text-muted">{Math.round(progress)}%</span>
+              <span className="text-aviation-text-primary font-mono">{testSteps[currentStep].name}</span>
+              <span className="text-aviation-text-muted font-mono">{Math.round(progress)}%</span>
             </div>
-            <Progress value={progress} className="h-2" />
-            <p className="text-xs text-text-muted">
+            <Progress value={progress} className="h-2 bg-aviation-bg-tertiary [&>div]:bg-gradient-to-r [&>div]:from-aviation-amber [&>div]:to-aviation-cyan" />
+            <p className="text-xs font-mono text-aviation-text-muted">
               {testSteps[currentStep].description}
             </p>
           </div>
@@ -338,13 +336,13 @@ export function TestFailoverStep() {
               {results.map((result, index) => (
                 <Card
                   key={index}
-                  className="card p-3 flex items-center justify-between"
+                  className="aviation-instrument p-3 flex items-center justify-between"
                 >
                   <div className="flex items-center gap-3">
-                    <Globe className="w-4 h-4 text-text-accent" />
-                    <span className="text-sm text-text-primary">{result.provider}</span>
+                    <Globe className="w-4 h-4 text-aviation-cyan" />
+                    <span className="text-sm font-mono text-aviation-text-primary">{result.provider}</span>
                   </div>
-                  <Check className="w-4 h-4 text-ff-taxiway" />
+                  <Check className="w-4 h-4 text-aviation-green" />
                 </Card>
               ))}
             </div>
@@ -355,7 +353,7 @@ export function TestFailoverStep() {
       <Button
         onClick={runFailoverTest}
         disabled={testStatus === "running"}
-        className="btn-primary w-full"
+        className="aviation-button-primary w-full font-mono"
       >
         {testStatus === "running" ? (
           <>
@@ -371,21 +369,21 @@ export function TestFailoverStep() {
       </Button>
 
       <div className="grid grid-cols-2 gap-3 text-center">
-        <Card className="card p-3">
+        <Card className="aviation-instrument p-3">
           <div className="flex items-center justify-center gap-1 mb-2">
-            <Globe className="w-5 h-5 text-text-accent" />
+            <Globe className="w-5 h-5 text-aviation-cyan" />
             <HelpTooltip content="Your primary provider handles all traffic under normal conditions. It's the first choice for serving your functions." />
           </div>
-          <p className="text-xs text-text-muted">Primary</p>
-          <p className="text-sm font-medium text-text-primary">Cloudflare</p>
+          <p className="text-xs font-mono text-aviation-text-muted">Primary</p>
+          <p className="text-sm font-mono font-semibold text-aviation-text-primary">Cloudflare</p>
         </Card>
-        <Card className="card p-3">
+        <Card className="aviation-instrument p-3">
           <div className="flex items-center justify-center gap-1 mb-2">
-            <Shield className="w-5 h-5 text-green-500" />
+            <Shield className="w-5 h-5 text-aviation-green" />
             <HelpTooltip content="Your backup provider automatically takes over if the primary fails. This ensures your functions stay available 24/7." />
           </div>
-          <p className="text-xs text-text-muted">Backup</p>
-          <p className="text-sm font-medium text-text-primary">Vercel</p>
+          <p className="text-xs font-mono text-aviation-text-muted">Backup</p>
+          <p className="text-sm font-mono font-semibold text-aviation-text-primary">Vercel</p>
         </Card>
       </div>
     </div>

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -33,7 +34,7 @@ func NewDisputesHandler(disputeRepo *storage.DisputeRepository, refundRepo *stor
 // GET /v1/admin/billing/disputes
 func (h *DisputesHandler) HandleListDisputes(w http.ResponseWriter, r *http.Request) {
 	if h.disputeRepo == nil {
-		http.Error(w, "Dispute service not available", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Dispute service not available"))
 		return
 	}
 
@@ -91,7 +92,7 @@ func (h *DisputesHandler) HandleListDisputes(w http.ResponseWriter, r *http.Requ
 	disputes, total, err := h.disputeRepo.ListDisputesWithRelations(r.Context(), filter, limit, offset)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list disputes")
-		http.Error(w, "Failed to list disputes", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list disputes"))
 		return
 	}
 
@@ -108,7 +109,7 @@ func (h *DisputesHandler) HandleListDisputes(w http.ResponseWriter, r *http.Requ
 // GET /v1/admin/billing/disputes/{disputeId}
 func (h *DisputesHandler) HandleGetDispute(w http.ResponseWriter, r *http.Request) {
 	if h.disputeRepo == nil {
-		http.Error(w, "Dispute service not available", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Dispute service not available"))
 		return
 	}
 
@@ -117,19 +118,19 @@ func (h *DisputesHandler) HandleGetDispute(w http.ResponseWriter, r *http.Reques
 
 	disputeID, err := uuid.Parse(disputeIDStr)
 	if err != nil {
-		http.Error(w, "Invalid dispute ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid dispute ID"))
 		return
 	}
 
 	dispute, err := h.disputeRepo.GetDisputeByID(r.Context(), disputeID)
 	if err != nil {
 		logrus.WithError(err).WithField("dispute_id", disputeID).Error("Failed to get dispute")
-		http.Error(w, "Failed to get dispute", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get dispute"))
 		return
 	}
 
 	if dispute == nil {
-		http.Error(w, "Dispute not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Dispute not found"))
 		return
 	}
 
@@ -157,7 +158,7 @@ func (h *DisputesHandler) HandleGetDispute(w http.ResponseWriter, r *http.Reques
 // PATCH /v1/admin/billing/disputes/{disputeId}/status
 func (h *DisputesHandler) HandleUpdateDisputeStatus(w http.ResponseWriter, r *http.Request) {
 	if h.disputeRepo == nil {
-		http.Error(w, "Dispute service not available", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Dispute service not available"))
 		return
 	}
 
@@ -166,7 +167,7 @@ func (h *DisputesHandler) HandleUpdateDisputeStatus(w http.ResponseWriter, r *ht
 
 	disputeID, err := uuid.Parse(disputeIDStr)
 	if err != nil {
-		http.Error(w, "Invalid dispute ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid dispute ID"))
 		return
 	}
 
@@ -177,7 +178,7 @@ func (h *DisputesHandler) HandleUpdateDisputeStatus(w http.ResponseWriter, r *ht
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
@@ -191,13 +192,13 @@ func (h *DisputesHandler) HandleUpdateDisputeStatus(w http.ResponseWriter, r *ht
 		}
 	}
 	if !isValid {
-		http.Error(w, "Invalid status", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid status"))
 		return
 	}
 
 	if err := h.disputeRepo.UpdateDisputeStatus(r.Context(), disputeID, req.Status, req.Outcome, req.OutcomeReason); err != nil {
 		logrus.WithError(err).WithField("dispute_id", disputeID).Error("Failed to update dispute status")
-		http.Error(w, "Failed to update dispute status", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update dispute status"))
 		return
 	}
 
@@ -209,14 +210,14 @@ func (h *DisputesHandler) HandleUpdateDisputeStatus(w http.ResponseWriter, r *ht
 // GET /v1/admin/billing/disputes/stats
 func (h *DisputesHandler) HandleGetDisputeStats(w http.ResponseWriter, r *http.Request) {
 	if h.disputeRepo == nil {
-		http.Error(w, "Dispute service not available", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Dispute service not available"))
 		return
 	}
 
 	stats, err := h.disputeRepo.GetDisputeStats(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get dispute stats")
-		http.Error(w, "Failed to get dispute stats", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get dispute stats"))
 		return
 	}
 
@@ -228,7 +229,7 @@ func (h *DisputesHandler) HandleGetDisputeStats(w http.ResponseWriter, r *http.R
 // GET /v1/admin/billing/refunds
 func (h *DisputesHandler) HandleListRefunds(w http.ResponseWriter, r *http.Request) {
 	if h.refundRepo == nil {
-		http.Error(w, "Refund service not available", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Refund service not available"))
 		return
 	}
 
@@ -278,7 +279,7 @@ func (h *DisputesHandler) HandleListRefunds(w http.ResponseWriter, r *http.Reque
 	refunds, total, err := h.refundRepo.ListRefundsWithRelations(r.Context(), filter, limit, offset)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list refunds")
-		http.Error(w, "Failed to list refunds", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list refunds"))
 		return
 	}
 
@@ -295,7 +296,7 @@ func (h *DisputesHandler) HandleListRefunds(w http.ResponseWriter, r *http.Reque
 // GET /v1/admin/billing/refunds/{refundId}
 func (h *DisputesHandler) HandleGetRefund(w http.ResponseWriter, r *http.Request) {
 	if h.refundRepo == nil {
-		http.Error(w, "Refund service not available", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Refund service not available"))
 		return
 	}
 
@@ -304,19 +305,19 @@ func (h *DisputesHandler) HandleGetRefund(w http.ResponseWriter, r *http.Request
 
 	refundID, err := uuid.Parse(refundIDStr)
 	if err != nil {
-		http.Error(w, "Invalid refund ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid refund ID"))
 		return
 	}
 
 	refund, err := h.refundRepo.GetRefundByID(r.Context(), refundID)
 	if err != nil {
 		logrus.WithError(err).WithField("refund_id", refundID).Error("Failed to get refund")
-		http.Error(w, "Failed to get refund", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get refund"))
 		return
 	}
 
 	if refund == nil {
-		http.Error(w, "Refund not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Refund not found"))
 		return
 	}
 
@@ -344,14 +345,14 @@ func (h *DisputesHandler) HandleGetRefund(w http.ResponseWriter, r *http.Request
 // GET /v1/admin/billing/refunds/stats
 func (h *DisputesHandler) HandleGetRefundStats(w http.ResponseWriter, r *http.Request) {
 	if h.refundRepo == nil {
-		http.Error(w, "Refund service not available", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Refund service not available"))
 		return
 	}
 
 	stats, err := h.refundRepo.GetRefundStats(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get refund stats")
-		http.Error(w, "Failed to get refund stats", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get refund stats"))
 		return
 	}
 
@@ -363,7 +364,7 @@ func (h *DisputesHandler) HandleGetRefundStats(w http.ResponseWriter, r *http.Re
 // GET /v1/admin/billing/chargebacks/reconciliation
 func (h *DisputesHandler) HandleGetChargebackReconciliation(w http.ResponseWriter, r *http.Request) {
 	if h.disputeRepo == nil {
-		http.Error(w, "Dispute service not available", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Dispute service not available"))
 		return
 	}
 
@@ -383,7 +384,7 @@ func (h *DisputesHandler) HandleGetChargebackReconciliation(w http.ResponseWrite
 	recon, err := h.disputeRepo.GetChargebackReconciliation(r.Context(), startDate, endDate)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get chargeback reconciliation")
-		http.Error(w, "Failed to get reconciliation", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get reconciliation"))
 		return
 	}
 
@@ -395,7 +396,7 @@ func (h *DisputesHandler) HandleGetChargebackReconciliation(w http.ResponseWrite
 // POST /v1/admin/billing/disputes/{disputeId}/evidence
 func (h *DisputesHandler) HandleUpdateDisputeEvidence(w http.ResponseWriter, r *http.Request) {
 	if h.disputeRepo == nil {
-		http.Error(w, "Dispute service not available", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Dispute service not available"))
 		return
 	}
 
@@ -404,19 +405,19 @@ func (h *DisputesHandler) HandleUpdateDisputeEvidence(w http.ResponseWriter, r *
 
 	disputeID, err := uuid.Parse(disputeIDStr)
 	if err != nil {
-		http.Error(w, "Invalid dispute ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid dispute ID"))
 		return
 	}
 
 	var req storage.EvidenceDetails
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	if err := h.disputeRepo.UpdateDisputeEvidence(r.Context(), disputeID, &req); err != nil {
 		logrus.WithError(err).WithField("dispute_id", disputeID).Error("Failed to update dispute evidence")
-		http.Error(w, "Failed to update evidence", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update evidence"))
 		return
 	}
 
@@ -428,7 +429,7 @@ func (h *DisputesHandler) HandleUpdateDisputeEvidence(w http.ResponseWriter, r *
 // GET /v1/admin/billing/disputes/open
 func (h *DisputesHandler) HandleGetOpenDisputes(w http.ResponseWriter, r *http.Request) {
 	if h.disputeRepo == nil {
-		http.Error(w, "Dispute service not available", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Dispute service not available"))
 		return
 	}
 
@@ -453,7 +454,7 @@ func (h *DisputesHandler) HandleGetOpenDisputes(w http.ResponseWriter, r *http.R
 	disputes, total, err := h.disputeRepo.ListDisputesWithRelations(r.Context(), filter, limit, offset)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list open disputes")
-		http.Error(w, "Failed to list disputes", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list disputes"))
 		return
 	}
 

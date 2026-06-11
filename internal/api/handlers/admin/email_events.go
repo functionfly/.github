@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -73,7 +74,7 @@ func (h *AdminEmailEventsHandler) ListEmailEvents(w http.ResponseWriter, r *http
 	events, err := h.repo.GetEmailEvents(r.Context(), filters, limit, offset)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to retrieve email events")
-		http.Error(w, `{"error": "Failed to retrieve email events"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve email events"))
 		return
 	}
 
@@ -85,7 +86,7 @@ func (h *AdminEmailEventsHandler) ListEmailEvents(w http.ResponseWriter, r *http
 		"offset": offset,
 	}); err != nil {
 		logrus.WithError(err).Error("Failed to encode email events response")
-		http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to encode response"))
 		return
 	}
 }
@@ -112,7 +113,7 @@ func (h *AdminEmailEventsHandler) ListPendingBounces(w http.ResponseWriter, r *h
 	events, err := h.repo.GetPendingBounceReviews(r.Context(), limit, offset)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to retrieve pending bounce reviews")
-		http.Error(w, `{"error": "Failed to retrieve pending bounce reviews"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve pending bounce reviews"))
 		return
 	}
 
@@ -124,7 +125,7 @@ func (h *AdminEmailEventsHandler) ListPendingBounces(w http.ResponseWriter, r *h
 		"offset": offset,
 	}); err != nil {
 		logrus.WithError(err).Error("Failed to encode pending bounces response")
-		http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to encode response"))
 		return
 	}
 }
@@ -136,7 +137,7 @@ func (h *AdminEmailEventsHandler) MarkEventReviewed(w http.ResponseWriter, r *ht
 	eventIDStr := vars["id"]
 	eventID, err := strconv.ParseInt(eventIDStr, 10, 64)
 	if err != nil {
-		http.Error(w, `{"error": "Invalid event ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid event ID"))
 		return
 	}
 
@@ -148,20 +149,20 @@ func (h *AdminEmailEventsHandler) MarkEventReviewed(w http.ResponseWriter, r *ht
 
 	var req ReviewRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error": "Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	adminID, err := uuid.Parse(req.AdminID)
 	if err != nil {
-		http.Error(w, `{"error": "Invalid admin ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid admin ID"))
 		return
 	}
 
 	// Mark event as reviewed
 	if err := h.repo.MarkEmailEventReviewed(r.Context(), eventID, adminID); err != nil {
 		logrus.WithError(err).WithField("event_id", eventID).Error("Failed to mark event as reviewed")
-		http.Error(w, `{"error": "Failed to mark event as reviewed"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to mark event as reviewed"))
 		return
 	}
 
@@ -206,7 +207,7 @@ func (h *AdminEmailEventsHandler) GetEmailStats(w http.ResponseWriter, r *http.R
 	stats, err := h.repo.GetEmailEventStats(r.Context(), filters)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to retrieve email statistics")
-		http.Error(w, `{"error": "Failed to retrieve email statistics"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve email statistics"))
 		return
 	}
 
@@ -214,7 +215,7 @@ func (h *AdminEmailEventsHandler) GetEmailStats(w http.ResponseWriter, r *http.R
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(stats); err != nil {
 		logrus.WithError(err).Error("Failed to encode email stats response")
-		http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to encode response"))
 		return
 	}
 }

@@ -134,17 +134,17 @@ export const cookieConsentConfig: CookieConsentConfig = {
     },
   },
 
-  // GUI options
+  // GUI options - Aviation cockpit-inspired layout
   guiOptions: {
     consentModal: {
       layout: 'box wide',
-      position: 'bottom center',
+      position: 'bottom right',
       equalWeightButtons: true,
       flipButtons: false,
     },
     preferencesModal: {
       layout: 'box',
-      position: 'left',
+      position: 'center',
       equalWeightButtons: true,
       flipButtons: false,
     },

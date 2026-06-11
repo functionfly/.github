@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/functionfly/functionfly/internal/api/apierror"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/gorilla/mux"
@@ -16,7 +17,7 @@ import (
 func (h *Handler) HandleGetUserActivity(w http.ResponseWriter, r *http.Request) {
 	username := mux.Vars(r)["username"]
 	if username == "" {
-		writeJSONError(w, http.StatusBadRequest, "username is required")
+		apierror.WriteError(w, apierror.NewBadRequest("username is required"))
 		return
 	}
 
@@ -42,11 +43,11 @@ func (h *Handler) HandleGetUserActivity(w http.ResponseWriter, r *http.Request) 
 	user, err := h.repo.GetUserByUsername(username)
 	if err != nil {
 		logrus.WithError(err).WithField("username", username).Error("Failed to get user by username")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve user")
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve user"))
 		return
 	}
 	if user == nil {
-		writeJSONError(w, http.StatusNotFound, "User not found")
+		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
 	}
 
@@ -90,7 +91,7 @@ func (h *Handler) HandleGetUserActivity(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) HandleCreateUserActivity(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -104,12 +105,12 @@ func (h *Handler) HandleCreateUserActivity(w http.ResponseWriter, r *http.Reques
 
 	var req createActivityRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if req.ActivityType == "" || req.Title == "" {
-		writeJSONError(w, http.StatusBadRequest, "activityType and title are required")
+		apierror.WriteError(w, apierror.NewBadRequest("activityType and title are required"))
 		return
 	}
 
@@ -124,7 +125,7 @@ func (h *Handler) HandleCreateUserActivity(w http.ResponseWriter, r *http.Reques
 
 	if err := h.repo.CreateUserActivity(activity); err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to create user activity")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to create activity")
+		apierror.WriteError(w, apierror.NewInternal("Failed to create activity"))
 		return
 	}
 

@@ -104,6 +104,12 @@ func (db *PostgresDB) ReactivateUser(ctx context.Context, userID uuid.UUID) erro
 	return db.userRepository.ReactivateUser(ctx, userID)
 }
 
+// IncrementUserTokenVersion increments the user's token_version to invalidate all existing JWTs.
+// Called on login to prevent session fixation attacks.
+func (db *PostgresDB) IncrementUserTokenVersion(ctx context.Context, userID uuid.UUID) (int, error) {
+	return db.userRepository.IncrementUserTokenVersion(ctx, userID)
+}
+
 func (db *PostgresDB) UpdateUserMFA(userID uuid.UUID, secret *string, enabled bool, backupCodes []string, lastUsed *time.Time) error {
 	return db.userRepository.UpdateUserMFA(userID, secret, enabled, backupCodes, lastUsed)
 }

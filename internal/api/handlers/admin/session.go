@@ -1,13 +1,10 @@
 package admin
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
-	"strings"
-	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/sirupsen/logrus"
 )
 
@@ -15,14 +12,14 @@ import (
 func (h *Handler) HandleGetAdminSession(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	user, err := h.repo.GetUserByID(claims.UserID)
 	if err != nil || user == nil {
 		logrus.WithError(err).WithField("user_id", claims.UserID).Warn("Failed to resolve admin user for session bootstrap")
-		http.Error(w, "User not found", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("User not found"))
 		return
 	}
 
@@ -99,14 +96,14 @@ func (h *Handler) HandleGetAdminSession(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) HandleGetAdminLastLogin(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	lastAttempt, err := h.loginAttemptRepo.GetLastSuccessfulLogin(claims.UserID)
 	if err != nil {
 		logrus.WithError(err).WithField("user_id", claims.UserID).Warn("Failed to fetch last login")
-		http.Error(w, "Failed to retrieve last login", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve last login"))
 		return
 	}
 
@@ -138,21 +135,21 @@ func (h *Handler) HandleGetAdminLastLogin(w http.ResponseWriter, r *http.Request
 func (h *Handler) HandleExtendAdminSession(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	user, err := h.repo.GetUserByID(claims.UserID)
 	if err != nil || user == nil {
 		logrus.WithError(err).WithField("user_id", claims.UserID).Warn("Failed to resolve admin user for session extend")
-		http.Error(w, "User not found", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("User not found"))
 		return
 	}
 
 	newToken, err := h.authSvc.GenerateToken(user)
 	if err != nil {
 		logrus.WithError(err).WithField("user_id", user.ID).Error("Failed to generate token for session extend")
-		http.Error(w, "Failed to extend session", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to extend session"))
 		return
 	}
 

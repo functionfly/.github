@@ -1,17 +1,15 @@
 package admin
 
 import (
-	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
-	"os"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/functionfly/functionfly/internal/cache"
-	registryrepo "github.com/functionfly/functionfly/internal/storage/registry"
-	"github.com/google/uuid"
+	"github.com/functionfly/functionfly/internal/apierror"
+	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
@@ -36,7 +34,7 @@ func (h *RegistryHandler) HandleGetRegistryStats(w http.ResponseWriter, r *http.
 	stats, err := h.registryRepo.GetAdminRegistryStats()
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get admin registry stats")
-		http.Error(w, "Failed to get registry stats", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get registry stats"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -74,7 +72,7 @@ func (h *RegistryHandler) HandleListRegistryFunctions(w http.ResponseWriter, r *
 	functions, total, err := h.registryRepo.ListFunctionsForAdmin(visibility, category, search, limit, offset)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list registry functions (admin)")
-		http.Error(w, "Failed to list functions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list functions"))
 		return
 	}
 
@@ -137,14 +135,14 @@ func (h *RegistryHandler) HandleGetRegistryFunction(w http.ResponseWriter, r *ht
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["functionId"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	fn, err := h.registryRepo.GetFunctionByID(functionID)
 	if err != nil {
 		logrus.WithError(err).WithField("function_id", functionID).Error("Failed to get registry function (admin)")
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
@@ -270,20 +268,20 @@ func (h *RegistryHandler) HandleUpdateRegistryFunction(w http.ResponseWriter, r 
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["functionId"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	var updates map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	updated, err := h.registryRepo.UpdateRegistryFunction(functionID, updates)
 	if err != nil {
 		logrus.WithError(err).WithField("function_id", functionID).Error("Failed to update registry function (admin)")
-		http.Error(w, "Failed to update function", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update function"))
 		return
 	}
 
@@ -329,19 +327,19 @@ func (h *RegistryHandler) HandleDeleteRegistryFunction(w http.ResponseWriter, r 
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["functionId"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	fn, err := h.registryRepo.GetFunctionByID(functionID)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	if err := h.registryRepo.DeleteFunction(fn.Author, fn.Name); err != nil {
 		logrus.WithError(err).WithField("function_id", functionID).Error("Failed to delete registry function (admin)")
-		http.Error(w, "Failed to delete function", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete function"))
 		return
 	}
 
@@ -354,7 +352,7 @@ func (h *RegistryHandler) HandleUpdateRegistryVisibility(w http.ResponseWriter, 
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["functionId"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
@@ -362,18 +360,18 @@ func (h *RegistryHandler) HandleUpdateRegistryVisibility(w http.ResponseWriter, 
 		Visibility string `json:"visibility"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 	if body.Visibility != "public" && body.Visibility != "private" && body.Visibility != "unlisted" {
-		http.Error(w, "visibility must be public, private, or unlisted", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("visibility must be public, private, or unlisted"))
 		return
 	}
 
 	updated, err := h.registryRepo.UpdateRegistryFunction(functionID, map[string]interface{}{"visibility": body.Visibility})
 	if err != nil {
 		logrus.WithError(err).WithField("function_id", functionID).Error("Failed to update visibility (admin)")
-		http.Error(w, "Failed to update visibility", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update visibility"))
 		return
 	}
 
@@ -415,7 +413,7 @@ func (h *RegistryHandler) HandleUpdateRegistryPricing(w http.ResponseWriter, r *
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["functionId"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
@@ -423,14 +421,14 @@ func (h *RegistryHandler) HandleUpdateRegistryPricing(w http.ResponseWriter, r *
 		PricePerCall float64 `json:"price_per_call"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	updated, err := h.registryRepo.UpdateRegistryFunction(functionID, map[string]interface{}{"price_per_call": body.PricePerCall})
 	if err != nil {
 		logrus.WithError(err).WithField("function_id", functionID).Error("Failed to update pricing (admin)")
-		http.Error(w, "Failed to update pricing", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update pricing"))
 		return
 	}
 
@@ -472,13 +470,13 @@ func (h *RegistryHandler) HandleFlagRegistryFunction(w http.ResponseWriter, r *h
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["functionId"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	fn, err := h.registryRepo.GetFunctionByID(functionID)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
@@ -488,11 +486,11 @@ func (h *RegistryHandler) HandleFlagRegistryFunction(w http.ResponseWriter, r *h
 		AdminID string `json:"admin_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 	if body.Reason == "" {
-		http.Error(w, "reason is required (spam, malware, ip_infringement, abuse, policy_violation)", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("reason is required (spam, malware, ip_infringement, abuse, policy_violation)"))
 		return
 	}
 
@@ -504,7 +502,7 @@ func (h *RegistryHandler) HandleFlagRegistryFunction(w http.ResponseWriter, r *h
 
 	if err := h.registryRepo.FlagFunction(r.Context(), functionID, flagReason, reviewerID, body.Notes); err != nil {
 		logrus.WithError(err).WithField("function_id", functionID).Error("Failed to flag registry function")
-		http.Error(w, "Failed to flag function", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to flag function"))
 		return
 	}
 
@@ -547,14 +545,14 @@ func (h *RegistryHandler) HandleListRegistryFunctionVersions(w http.ResponseWrit
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["functionId"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	versions, err := h.registryRepo.ListFunctionVersions(functionID)
 	if err != nil {
 		logrus.WithError(err).WithField("function_id", functionID).Error("Failed to list versions (admin)")
-		http.Error(w, "Failed to list versions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list versions"))
 		return
 	}
 
@@ -583,23 +581,23 @@ func (h *RegistryHandler) HandleDeactivateRegistryVersion(w http.ResponseWriter,
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["functionId"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 	versionID, err := uuid.Parse(vars["versionId"])
 	if err != nil {
-		http.Error(w, "Invalid version ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid version ID"))
 		return
 	}
 
 	// Verify the version belongs to the function
 	version, err := h.registryRepo.GetVersionByID(versionID)
 	if err != nil {
-		http.Error(w, "Version not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Version not found"))
 		return
 	}
 	if version.FunctionID != functionID {
-		http.Error(w, "Version does not belong to the specified function", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Version does not belong to the specified function"))
 		return
 	}
 
@@ -608,7 +606,7 @@ func (h *RegistryHandler) HandleDeactivateRegistryVersion(w http.ResponseWriter,
 			"function_id": functionID,
 			"version_id":  versionID,
 		}).Error("Failed to deactivate registry version (admin)")
-		http.Error(w, "Failed to deactivate version", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to deactivate version"))
 		return
 	}
 
@@ -628,7 +626,7 @@ func (h *RegistryHandler) HandleGetRegistryFunctionMetrics(w http.ResponseWriter
 	functionIDStr := vars["functionId"]
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
@@ -666,13 +664,13 @@ const openRouterURL = "https://openrouter.ai/api/v1/chat/completions"
 // Uses Open Router free models to generate a short description from function name/title/category.
 func (h *RegistryHandler) HandleGenerateRegistryDescription(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 		return
 	}
 
 	apiKey := os.Getenv("OPENROUTER_API_KEY")
 	if apiKey == "" {
-		http.Error(w, "Open Router API key not configured (OPENROUTER_API_KEY)", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Open Router API key not configured (OPENROUTER_API_KEY)"))
 		return
 	}
 
@@ -682,12 +680,12 @@ func (h *RegistryHandler) HandleGenerateRegistryDescription(w http.ResponseWrite
 		Category string `json:"category"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 	body.Name = strings.TrimSpace(body.Name)
 	if body.Name == "" {
-		http.Error(w, "name is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("name is required"))
 		return
 	}
 
@@ -714,7 +712,7 @@ func (h *RegistryHandler) HandleGenerateRegistryDescription(w http.ResponseWrite
 	req, err := http.NewRequestWithContext(r.Context(), "POST", openRouterURL, bytes.NewReader(encoded))
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create Open Router request")
-		http.Error(w, "Failed to create request", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create request"))
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -723,14 +721,14 @@ func (h *RegistryHandler) HandleGenerateRegistryDescription(w http.ResponseWrite
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		logrus.WithError(err).Error("Open Router request failed")
-		http.Error(w, "Open Router request failed", http.StatusBadGateway)
+		apierror.WriteError(w, apierror.NewInternal("Open Router request failed"))
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		logrus.WithField("status", resp.StatusCode).Error("Open Router returned non-200")
-		http.Error(w, "Open Router returned error", http.StatusBadGateway)
+		apierror.WriteError(w, apierror.NewInternal("Open Router returned error"))
 		return
 	}
 
@@ -743,7 +741,7 @@ func (h *RegistryHandler) HandleGenerateRegistryDescription(w http.ResponseWrite
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&openResp); err != nil {
 		logrus.WithError(err).Error("Failed to decode Open Router response")
-		http.Error(w, "Failed to parse response", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to parse response"))
 		return
 	}
 	description := ""
@@ -757,13 +755,13 @@ func (h *RegistryHandler) HandleGenerateRegistryDescription(w http.ResponseWrite
 // HandlePurgeAllCache returns DELETE /v1/admin/cache - Purge all cache entries
 func (h *RegistryHandler) HandlePurgeAllCache(w http.ResponseWriter, r *http.Request) {
 	if h.cacheService == nil {
-		http.Error(w, "Cache service not available", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Cache service not available"))
 		return
 	}
 
 	if err := h.cacheService.PurgeAll(); err != nil {
 		logrus.WithError(err).Error("Failed to purge all cache entries")
-		http.Error(w, "Failed to purge cache", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to purge cache"))
 		return
 	}
 
@@ -778,26 +776,26 @@ func (h *RegistryHandler) HandlePurgeAllCache(w http.ResponseWriter, r *http.Req
 // HandlePurgeFunctionCache returns DELETE /v1/admin/cache/{functionId} - Purge all cache for a function
 func (h *RegistryHandler) HandlePurgeFunctionCache(w http.ResponseWriter, r *http.Request) {
 	if h.cacheService == nil {
-		http.Error(w, "Cache service not available", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Cache service not available"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	functionID := vars["functionId"]
 	if functionID == "" {
-		http.Error(w, "Function ID is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Function ID is required"))
 		return
 	}
 
 	// Validate UUID format
 	if _, err := uuid.Parse(functionID); err != nil {
-		http.Error(w, "Invalid function ID format", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID format"))
 		return
 	}
 
 	if err := h.cacheService.InvalidateFunction(functionID); err != nil {
 		logrus.WithError(err).WithField("function_id", functionID).Error("Failed to purge function cache")
-		http.Error(w, "Failed to purge function cache", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to purge function cache"))
 		return
 	}
 
@@ -813,7 +811,7 @@ func (h *RegistryHandler) HandlePurgeFunctionCache(w http.ResponseWriter, r *htt
 // HandlePurgeVersionCache returns DELETE /v1/admin/cache/{functionId}/{version} - Purge specific version cache
 func (h *RegistryHandler) HandlePurgeVersionCache(w http.ResponseWriter, r *http.Request) {
 	if h.cacheService == nil {
-		http.Error(w, "Cache service not available", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Cache service not available"))
 		return
 	}
 
@@ -822,13 +820,13 @@ func (h *RegistryHandler) HandlePurgeVersionCache(w http.ResponseWriter, r *http
 	version := vars["version"]
 
 	if functionID == "" || version == "" {
-		http.Error(w, "Function ID and version are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Function ID and version are required"))
 		return
 	}
 
 	// Validate UUID format
 	if _, err := uuid.Parse(functionID); err != nil {
-		http.Error(w, "Invalid function ID format", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID format"))
 		return
 	}
 
@@ -837,7 +835,7 @@ func (h *RegistryHandler) HandlePurgeVersionCache(w http.ResponseWriter, r *http
 			"function_id": functionID,
 			"version":     version,
 		}).Error("Failed to purge version cache")
-		http.Error(w, "Failed to purge version cache", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to purge version cache"))
 		return
 	}
 
@@ -857,7 +855,7 @@ func (h *RegistryHandler) HandlePurgeVersionCache(w http.ResponseWriter, r *http
 // HandleGetCacheStats returns GET /v1/admin/cache/stats - Get comprehensive cache statistics
 func (h *RegistryHandler) HandleGetCacheStats(w http.ResponseWriter, r *http.Request) {
 	if h.cacheService == nil {
-		http.Error(w, "Cache service not available", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Cache service not available"))
 		return
 	}
 

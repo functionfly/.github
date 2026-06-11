@@ -10,11 +10,12 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 )
@@ -42,13 +43,13 @@ const (
 )
 
 type UserPresence struct {
-	UserID      uuid.UUID       `json:"userId"`
+	UserID      uuid.UUID      `json:"userId"`
 	Status      PresenceStatus `json:"status"`
 	LastActive  time.Time      `json:"lastActive"`
-	TenantID    uuid.UUID       `json:"tenantId,omitempty"`
-	Username    string          `json:"username,omitempty"`
-	DisplayName string          `json:"displayName,omitempty"`
-	Avatar      string          `json:"avatar,omitempty"`
+	TenantID    uuid.UUID      `json:"tenantId,omitempty"`
+	Username    string         `json:"username,omitempty"`
+	DisplayName string         `json:"displayName,omitempty"`
+	Avatar      string         `json:"avatar,omitempty"`
 }
 
 type PresenceHeartbeat struct {
@@ -60,12 +61,12 @@ type PresenceHeartbeat struct {
 }
 
 type PresenceMessage struct {
-	Type      string          `json:"type"`
-	UserID    string          `json:"userId,omitempty"`
-	Status    PresenceStatus `json:"status,omitempty"`
+	Type      string             `json:"type"`
+	UserID    string             `json:"userId,omitempty"`
+	Status    PresenceStatus     `json:"status,omitempty"`
 	Heartbeat *PresenceHeartbeat `json:"heartbeat,omitempty"`
-	Users     []UserPresence `json:"users,omitempty"`
-	Timestamp time.Time      `json:"timestamp"`
+	Users     []UserPresence     `json:"users,omitempty"`
+	Timestamp time.Time          `json:"timestamp"`
 }
 
 type PresenceWebSocketClient struct {
@@ -92,11 +93,11 @@ type PresenceHub struct {
 }
 
 type PresenceHandler struct {
-	repo         storage.Repository
-	authSvc      *auth.AuthService
-	redisClient  *redis.Client
-	hub          *PresenceHub
-	logger       *logrus.Logger
+	repo        storage.Repository
+	authSvc     *auth.AuthService
+	redisClient *redis.Client
+	hub         *PresenceHub
+	logger      *logrus.Logger
 }
 
 func NewPresenceHandler(repo storage.Repository, authSvc *auth.AuthService, redisClient *redis.Client, logger *logrus.Logger) *PresenceHandler {
@@ -291,7 +292,7 @@ func (h *PresenceHandler) HandleWebSocketPresence(w http.ResponseWriter, r *http
 					tokenPrefix = token[:50] + "..."
 				}
 				h.logger.WithError(err).WithField("token_prefix", tokenPrefix).Warn("Presence WebSocket auth failed via token")
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 				return
 			}
 			claims = validatedClaims
@@ -299,13 +300,13 @@ func (h *PresenceHandler) HandleWebSocketPresence(w http.ResponseWriter, r *http
 		}
 	}
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	user, err := h.repo.GetUserByID(claims.UserID)
 	if err != nil || user == nil {
-		http.Error(w, "User not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
 	}
 

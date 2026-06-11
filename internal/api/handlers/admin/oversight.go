@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
@@ -351,7 +352,7 @@ func (h *OversightHandler) openInvestigation(entityType, entityID, reason string
 func (h *OversightHandler) HandleGetTrustDashboard(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -362,14 +363,14 @@ func (h *OversightHandler) HandleGetTrustDashboard(w http.ResponseWriter, r *htt
 	dist, err := h.registryRepo.GetTrustDistribution()
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get trust distribution")
-		http.Error(w, "Failed to load trust distribution", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to load trust distribution"))
 		return
 	}
 
 	highRiskRows, err := h.registryRepo.GetHighRiskFunctions(20)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get high-risk functions")
-		http.Error(w, "Failed to load high-risk functions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to load high-risk functions"))
 		return
 	}
 
@@ -413,7 +414,7 @@ func (h *OversightHandler) HandleGetTrustDashboard(w http.ResponseWriter, r *htt
 func (h *OversightHandler) HandleGetExecutionAudit(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -445,7 +446,7 @@ func (h *OversightHandler) HandleGetExecutionAudit(w http.ResponseWriter, r *htt
 	rows, total, err := h.registryRepo.GetExecutionAuditData(searchTerm, tenantFilter, statusFilter, offset, pageSize)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get execution audit data")
-		http.Error(w, "Failed to load execution audit data", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to load execution audit data"))
 		return
 	}
 
@@ -499,7 +500,7 @@ func (h *OversightHandler) HandleGetExecutionAudit(w http.ResponseWriter, r *htt
 func (h *OversightHandler) HandleGetFraudDetection(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -599,7 +600,7 @@ func (h *OversightHandler) HandleGetFraudDetection(w http.ResponseWriter, r *htt
 func (h *OversightHandler) HandleGetEconomicLeaderboard(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -610,7 +611,7 @@ func (h *OversightHandler) HandleGetEconomicLeaderboard(w http.ResponseWriter, r
 	economicResult, err := h.registryRepo.AnalyzeEconomicData()
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to analyze economic data")
-		http.Error(w, "Failed to load economic leaderboard data", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to load economic leaderboard data"))
 		return
 	}
 
@@ -665,7 +666,7 @@ func (h *OversightHandler) HandleGetEconomicLeaderboard(w http.ResponseWriter, r
 func (h *OversightHandler) HandleBlockEntity(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -686,7 +687,7 @@ func (h *OversightHandler) HandleBlockEntity(w http.ResponseWriter, r *http.Requ
 		// Block a function by its version ID
 		functionVersionID, parseErr := uuid.Parse(entityID)
 		if parseErr != nil {
-			http.Error(w, "Invalid function version ID", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid function version ID"))
 			return
 		}
 		err = h.registryRepo.BlockFunction(functionVersionID, "Blocked by admin oversight")
@@ -695,7 +696,7 @@ func (h *OversightHandler) HandleBlockEntity(w http.ResponseWriter, r *http.Requ
 		// Block a user/tenant by setting their execution quota BlockUntil
 		entityUUID, parseErr := uuid.Parse(entityID)
 		if parseErr != nil {
-			http.Error(w, "Invalid tenant/user ID", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid tenant/user ID"))
 			return
 		}
 
@@ -710,20 +711,20 @@ func (h *OversightHandler) HandleBlockEntity(w http.ResponseWriter, r *http.Requ
 		// Parse pattern type from ID (e.g., "bot-001" -> "bot")
 		patternParts := strings.Split(entityID, "-")
 		if len(patternParts) < 2 {
-			http.Error(w, "Invalid pattern ID format. Expected format: type-number (e.g., bot-001)", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid pattern ID format. Expected format: type-number (e.g., bot-001)"))
 			return
 		}
 		patternType := patternParts[0]
 		err = h.blockPattern(patternType, entityID, claims.UserID)
 
 	default:
-		http.Error(w, "Unknown entity type. Supported types: function, tenant, user, ip, pattern", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Unknown entity type. Supported types: function, tenant, user, ip, pattern"))
 		return
 	}
 
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to block entity")
-		http.Error(w, "Failed to block entity", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to block entity"))
 		return
 	}
 
@@ -738,7 +739,7 @@ func (h *OversightHandler) HandleBlockEntity(w http.ResponseWriter, r *http.Requ
 func (h *OversightHandler) HandleInvestigateEntity(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -770,7 +771,7 @@ func (h *OversightHandler) HandleInvestigateEntity(w http.ResponseWriter, r *htt
 	err := h.openInvestigation(entityType, entityID, reason, claims.UserID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to open investigation")
-		http.Error(w, "Failed to open investigation", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to open investigation"))
 		return
 	}
 

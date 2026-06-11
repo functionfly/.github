@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/api/apierror"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/payment"
@@ -40,14 +41,14 @@ func extractIP(addr string) string {
 func (h *Handler) HandleGetUsernameChangeEligibility(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	eligibility, err := h.authSvc.CheckUsernameChangeEligibility(r.Context(), claims.UserID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to check username change eligibility")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to check eligibility")
+		apierror.WriteError(w, apierror.NewInternal("Failed to check eligibility"))
 		return
 	}
 
@@ -66,7 +67,7 @@ func (h *Handler) HandleGetUsernameChangeEligibilityByUsername(w http.ResponseWr
 	eligibility, err := h.authSvc.CheckUsernameChangeEligibility(r.Context(), claims.UserID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to check username change eligibility")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to check eligibility")
+		apierror.WriteError(w, apierror.NewInternal("Failed to check eligibility"))
 		return
 	}
 
@@ -77,13 +78,13 @@ func (h *Handler) HandleGetUsernameChangeEligibilityByUsername(w http.ResponseWr
 func (h *Handler) HandleChangeUsernameMe(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	var req auth.ChangeUsernameRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -98,7 +99,7 @@ func (h *Handler) HandleChangeUsernameMe(w http.ResponseWriter, r *http.Request)
 	resp, err := h.authSvc.ChangeUsername(r.Context(), claims.UserID, req, ipAddress, userAgent)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Warn("Username change failed")
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		apierror.WriteError(w, apierror.NewBadRequest(err.Error()))
 		return
 	}
 
@@ -117,7 +118,7 @@ func (h *Handler) HandleChangeUsernameByUsername(w http.ResponseWriter, r *http.
 
 	var req auth.ChangeUsernameRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -132,7 +133,7 @@ func (h *Handler) HandleChangeUsernameByUsername(w http.ResponseWriter, r *http.
 	resp, err := h.authSvc.ChangeUsername(r.Context(), claims.UserID, req, ipAddress, userAgent)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Warn("Username change failed")
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		apierror.WriteError(w, apierror.NewBadRequest(err.Error()))
 		return
 	}
 
@@ -143,14 +144,14 @@ func (h *Handler) HandleChangeUsernameByUsername(w http.ResponseWriter, r *http.
 func (h *Handler) HandleGetUsernameChangeHistoryMe(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	history, err := h.repo.GetUsernameChangeHistory(r.Context(), claims.UserID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to get username change history")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve history")
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve history"))
 		return
 	}
 
@@ -179,26 +180,26 @@ type CreateUsernameChangeCheckoutResponse struct {
 func (h *Handler) HandleCreateUsernameChangeCheckout(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	var req CreateUsernameChangeCheckoutRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	// Validate username
 	if req.NewUsername == "" {
-		writeJSONError(w, http.StatusBadRequest, "new_username is required")
+		apierror.WriteError(w, apierror.NewBadRequest("new_username is required"))
 		return
 	}
 
 	// Get user details
 	user, err := h.repo.GetUserByID(claims.UserID)
 	if err != nil || user == nil {
-		writeJSONError(w, http.StatusNotFound, "User not found")
+		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
 	}
 
@@ -211,19 +212,19 @@ func (h *Handler) HandleCreateUsernameChangeCheckout(w http.ResponseWriter, r *h
 	eligibility, err := h.authSvc.CheckUsernameChangeEligibility(r.Context(), claims.UserID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to check eligibility")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to check eligibility")
+		apierror.WriteError(w, apierror.NewInternal("Failed to check eligibility"))
 		return
 	}
 
 	// If can change freely, no need for checkout
 	if eligibility.CanChangeFreely {
-		writeJSONError(w, http.StatusBadRequest, "No payment required - you have free changes available")
+		apierror.WriteError(w, apierror.NewBadRequest("No payment required - you have free changes available"))
 		return
 	}
 
 	// If cannot change even with fee, reject
 	if !eligibility.CanChangeWithFee {
-		writeJSONError(w, http.StatusBadRequest, eligibility.Message)
+		apierror.WriteError(w, apierror.NewBadRequest(eligibility.Message))
 		return
 	}
 
@@ -251,7 +252,7 @@ func (h *Handler) HandleCreateUsernameChangeCheckout(w http.ResponseWriter, r *h
 
 	if err := h.repo.CreatePendingUsernameChange(r.Context(), pending); err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to create pending username change")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to initiate username change")
+		apierror.WriteError(w, apierror.NewInternal("Failed to initiate username change"))
 		return
 	}
 
@@ -281,7 +282,7 @@ func (h *Handler) HandleCreateUsernameChangeCheckout(w http.ResponseWriter, r *h
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to create checkout session")
 		// Mark pending change as failed
 		_ = h.repo.UpdatePendingUsernameChangeStatus(r.Context(), pending.ID, "failed")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to create checkout session")
+		apierror.WriteError(w, apierror.NewInternal("Failed to create checkout session"))
 		return
 	}
 

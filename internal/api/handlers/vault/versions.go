@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage/vault"
 	"github.com/gorilla/mux"
 )
@@ -15,14 +16,14 @@ import (
 func (h *Handler) HandleListSecretVersions(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		h.respondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	secretID := parseUUID(vars["id"])
 	if secretID == nil {
-		h.respondError(w, http.StatusBadRequest, "INVALID_ID", "Invalid secret ID")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid secret ID"))
 		return
 	}
 
@@ -40,11 +41,11 @@ func (h *Handler) HandleListSecretVersions(w http.ResponseWriter, r *http.Reques
 	secret, err := h.repo.GetSecretByID(r.Context(), *secretID, claims.TenantID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get secret")
-		h.respondError(w, http.StatusInternalServerError, "GET_FAILED", "Failed to get secret")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get secret"))
 		return
 	}
 	if secret == nil {
-		h.respondError(w, http.StatusNotFound, "NOT_FOUND", "Secret not found")
+		apierror.WriteError(w, apierror.NewNotFound("Secret not found"))
 		return
 	}
 
@@ -52,14 +53,14 @@ func (h *Handler) HandleListSecretVersions(w http.ResponseWriter, r *http.Reques
 	total, err := h.repo.CountSecretVersions(r.Context(), *secretID, claims.TenantID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to count versions")
-		h.respondError(w, http.StatusInternalServerError, "COUNT_FAILED", "Failed to count versions")
+		apierror.WriteError(w, apierror.NewInternal("Failed to count versions"))
 		return
 	}
 
 	versions, err := h.repo.GetSecretVersions(r.Context(), *secretID, claims.TenantID, limit, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to list versions")
-		h.respondError(w, http.StatusInternalServerError, "LIST_FAILED", "Failed to list versions")
+		apierror.WriteError(w, apierror.NewInternal("Failed to list versions"))
 		return
 	}
 
@@ -82,20 +83,20 @@ func (h *Handler) HandleListSecretVersions(w http.ResponseWriter, r *http.Reques
 func (h *Handler) HandleGetSecretVersion(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		h.respondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	secretID := parseUUID(vars["id"])
 	if secretID == nil {
-		h.respondError(w, http.StatusBadRequest, "INVALID_ID", "Invalid secret ID")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid secret ID"))
 		return
 	}
 
 	versionNumber, err := strconv.Atoi(vars["version"])
 	if err != nil || versionNumber < 1 {
-		h.respondError(w, http.StatusBadRequest, "INVALID_VERSION", "Invalid version number")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid version number"))
 		return
 	}
 
@@ -103,11 +104,11 @@ func (h *Handler) HandleGetSecretVersion(w http.ResponseWriter, r *http.Request)
 	secret, err := h.repo.GetSecretByID(r.Context(), *secretID, claims.TenantID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get secret")
-		h.respondError(w, http.StatusInternalServerError, "GET_FAILED", "Failed to get secret")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get secret"))
 		return
 	}
 	if secret == nil {
-		h.respondError(w, http.StatusNotFound, "NOT_FOUND", "Secret not found")
+		apierror.WriteError(w, apierror.NewNotFound("Secret not found"))
 		return
 	}
 
@@ -115,11 +116,11 @@ func (h *Handler) HandleGetSecretVersion(w http.ResponseWriter, r *http.Request)
 	version, err := h.repo.GetSecretVersionByNumber(r.Context(), *secretID, claims.TenantID, versionNumber)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get version")
-		h.respondError(w, http.StatusInternalServerError, "GET_FAILED", "Failed to get version")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get version"))
 		return
 	}
 	if version == nil {
-		h.respondError(w, http.StatusNotFound, "VERSION_NOT_FOUND", "Version not found")
+		apierror.WriteError(w, apierror.NewNotFound("Version not found"))
 		return
 	}
 
@@ -135,27 +136,27 @@ func (h *Handler) HandleGetSecretVersion(w http.ResponseWriter, r *http.Request)
 func (h *Handler) HandleDiffSecretVersions(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		h.respondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	secretID := parseUUID(vars["id"])
 	if secretID == nil {
-		h.respondError(w, http.StatusBadRequest, "INVALID_ID", "Invalid secret ID")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid secret ID"))
 		return
 	}
 
 	// Parse version params
 	fromVersionStr := r.URL.Query().Get("from_version")
 	if fromVersionStr == "" {
-		h.respondError(w, http.StatusBadRequest, "MISSING_PARAM", "from_version query parameter is required")
+		apierror.WriteError(w, apierror.NewBadRequest("from_version query parameter is required"))
 		return
 	}
 
 	fromVersion, err := strconv.Atoi(fromVersionStr)
 	if err != nil || fromVersion < 1 {
-		h.respondError(w, http.StatusBadRequest, "INVALID_VERSION", "Invalid from_version")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid from_version"))
 		return
 	}
 
@@ -165,11 +166,11 @@ func (h *Handler) HandleDiffSecretVersions(w http.ResponseWriter, r *http.Reques
 	secret, err := h.repo.GetSecretByID(r.Context(), *secretID, claims.TenantID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get secret")
-		h.respondError(w, http.StatusInternalServerError, "GET_FAILED", "Failed to get secret")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get secret"))
 		return
 	}
 	if secret == nil {
-		h.respondError(w, http.StatusNotFound, "NOT_FOUND", "Secret not found")
+		apierror.WriteError(w, apierror.NewNotFound("Secret not found"))
 		return
 	}
 
@@ -178,7 +179,7 @@ func (h *Handler) HandleDiffSecretVersions(w http.ResponseWriter, r *http.Reques
 	if toVersionStr != "" {
 		toVersion, err = strconv.Atoi(toVersionStr)
 		if err != nil || toVersion < 1 {
-			h.respondError(w, http.StatusBadRequest, "INVALID_VERSION", "Invalid to_version")
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid to_version"))
 			return
 		}
 	} else if secret.CurrentVersion != nil {
@@ -187,7 +188,7 @@ func (h *Handler) HandleDiffSecretVersions(w http.ResponseWriter, r *http.Reques
 
 	// Ensure from < to
 	if fromVersion >= toVersion {
-		h.respondError(w, http.StatusBadRequest, "INVALID_RANGE", "from_version must be less than to_version")
+		apierror.WriteError(w, apierror.NewBadRequest("from_version must be less than to_version"))
 		return
 	}
 
@@ -195,22 +196,22 @@ func (h *Handler) HandleDiffSecretVersions(w http.ResponseWriter, r *http.Reques
 	fromVer, err := h.repo.GetSecretVersionByNumber(r.Context(), *secretID, claims.TenantID, fromVersion)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get from version")
-		h.respondError(w, http.StatusInternalServerError, "GET_FAILED", "Failed to get version")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get version"))
 		return
 	}
 	if fromVer == nil {
-		h.respondError(w, http.StatusNotFound, "VERSION_NOT_FOUND", "From version not found")
+		apierror.WriteError(w, apierror.NewNotFound("From version not found"))
 		return
 	}
 
 	toVer, err := h.repo.GetSecretVersionByNumber(r.Context(), *secretID, claims.TenantID, toVersion)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get to version")
-		h.respondError(w, http.StatusInternalServerError, "GET_FAILED", "Failed to get version")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get version"))
 		return
 	}
 	if toVer == nil {
-		h.respondError(w, http.StatusNotFound, "VERSION_NOT_FOUND", "To version not found")
+		apierror.WriteError(w, apierror.NewNotFound("To version not found"))
 		return
 	}
 
@@ -248,25 +249,25 @@ func (h *Handler) HandleDiffSecretVersions(w http.ResponseWriter, r *http.Reques
 func (h *Handler) HandleRollbackSecret(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		h.respondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	secretID := parseUUID(vars["id"])
 	if secretID == nil {
-		h.respondError(w, http.StatusBadRequest, "INVALID_ID", "Invalid secret ID")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid secret ID"))
 		return
 	}
 
 	var req RollbackSecretRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.respondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if req.TargetVersion < 1 {
-		h.respondError(w, http.StatusBadRequest, "INVALID_VERSION", "Target version must be at least 1")
+		apierror.WriteError(w, apierror.NewBadRequest("Target version must be at least 1"))
 		return
 	}
 
@@ -274,11 +275,11 @@ func (h *Handler) HandleRollbackSecret(w http.ResponseWriter, r *http.Request) {
 	secret, err := h.repo.GetSecretByID(r.Context(), *secretID, claims.TenantID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get secret")
-		h.respondError(w, http.StatusInternalServerError, "GET_FAILED", "Failed to get secret")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get secret"))
 		return
 	}
 	if secret == nil {
-		h.respondError(w, http.StatusNotFound, "NOT_FOUND", "Secret not found")
+		apierror.WriteError(w, apierror.NewNotFound("Secret not found"))
 		return
 	}
 
@@ -286,11 +287,11 @@ func (h *Handler) HandleRollbackSecret(w http.ResponseWriter, r *http.Request) {
 	targetVer, err := h.repo.GetSecretVersionByNumber(r.Context(), *secretID, claims.TenantID, req.TargetVersion)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get target version")
-		h.respondError(w, http.StatusInternalServerError, "GET_FAILED", "Failed to get target version")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get target version"))
 		return
 	}
 	if targetVer == nil {
-		h.respondError(w, http.StatusNotFound, "VERSION_NOT_FOUND", "Target version not found")
+		apierror.WriteError(w, apierror.NewNotFound("Target version not found"))
 		return
 	}
 
@@ -298,7 +299,7 @@ func (h *Handler) HandleRollbackSecret(w http.ResponseWriter, r *http.Request) {
 	newVersion, err := h.repo.RollbackSecret(r.Context(), *secretID, claims.TenantID, req.TargetVersion, claims.UserID, vault.ActorTypeUser)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to rollback secret")
-		h.respondError(w, http.StatusInternalServerError, "ROLLBACK_FAILED", "Failed to rollback secret")
+		apierror.WriteError(w, apierror.NewInternal("Failed to rollback secret"))
 		return
 	}
 

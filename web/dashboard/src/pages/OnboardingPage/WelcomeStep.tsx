@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Zap, Shield, Globe, Rocket, ArrowRight, CheckCircle } from "lucide-react";
+import { Zap, Shield, Globe, Rocket, CheckCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { HelpTooltip } from "@/components/ui/help-tooltip";
 
@@ -40,22 +40,20 @@ export function WelcomeStep() {
 
   return (
     <div className="space-y-8">
-      {/* Hero Section */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="text-center space-y-4"
       >
-        <div className="w-20 h-20 bg-gradient-to-br from-ff-flame to-ff-afterburner rounded-full flex items-center justify-center mx-auto">
-          <Zap className="w-10 h-10 text-white" fill="currentColor" />
+        <div className="w-20 h-20 bg-gradient-to-br from-aviation-amber to-aviation-amber-glow rounded-full flex items-center justify-center mx-auto shadow-lg shadow-aviation-amber-dim">
+          <Zap className="w-10 h-10 text-aviation-bg-primary" fill="currentColor" />
         </div>
-        <p className="text-lg text-text-secondary max-w-2xl mx-auto leading-relaxed">
+        <p className="text-lg text-aviation-text-secondary max-w-2xl mx-auto leading-relaxed font-mono">
           Deploy serverless functions with automatic failover across multiple cloud providers.
           Built for reliability, speed, and simplicity.
         </p>
       </motion.div>
 
-      {/* Key Benefits */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -63,64 +61,62 @@ export function WelcomeStep() {
         className="grid grid-cols-1 md:grid-cols-2 gap-4"
       >
         {benefits.map((benefit, index) => (
-          <Card key={index} className="card p-4 hover:border-ff-flame/50 transition-colors">
+          <Card key={index} className="aviation-instrument p-4 hover:border-aviation-amber-dim transition-all">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-ff-flame/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                <benefit.icon className="w-5 h-5 text-ff-flame" />
+              <div className="w-10 h-10 bg-aviation-amber-subtle rounded-lg flex items-center justify-center flex-shrink-0">
+                <benefit.icon className="w-5 h-5 text-aviation-amber" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-medium text-text-primary">{benefit.title}</h3>
+                  <h3 className="font-mono font-semibold text-aviation-text-primary">{benefit.title}</h3>
                   <HelpTooltip content={benefit.tooltip} />
                 </div>
-                <p className="text-sm text-text-secondary">{benefit.description}</p>
+                <p className="text-sm text-aviation-text-secondary font-mono">{benefit.description}</p>
               </div>
             </div>
           </Card>
         ))}
       </motion.div>
 
-      {/* What to Expect */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
         className="space-y-4"
       >
-        <h3 className="text-xl font-semibold text-text-primary text-center">
+        <h3 className="text-xl font-mono font-semibold text-aviation-text-primary text-center">
           What to Expect
         </h3>
-        <Card className="card p-6">
+        <Card className="aviation-panel p-6">
           <div className="space-y-3">
             {steps.map((step, index) => (
               <div key={index} className="flex items-center gap-3">
-                <div className="w-6 h-6 bg-ff-flame/20 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-xs font-medium text-ff-flame">{index + 1}</span>
+                <div className="w-6 h-6 bg-aviation-amber-subtle rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs font-mono font-bold text-aviation-amber">{index + 1}</span>
                 </div>
-                <span className="text-text-primary">{step}</span>
+                <span className="text-aviation-text-primary font-mono">{step}</span>
               </div>
             ))}
           </div>
         </Card>
       </motion.div>
 
-      {/* Call to Action */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6 }}
         className="text-center space-y-4"
       >
-        <div className="bg-ff-taxiway/10 border border-ff-taxiway/20 rounded-lg p-4 inline-block">
-          <div className="flex items-center gap-2 text-ff-taxiway">
+        <div className="bg-aviation-green-dim border border-aviation-green/30 rounded-lg p-4 inline-block">
+          <div className="flex items-center gap-2 text-aviation-green">
             <CheckCircle className="w-5 h-5" />
-            <span className="font-medium">Ready to get started?</span>
+            <span className="font-mono font-medium">Ready to get started?</span>
           </div>
-          <p className="text-sm text-text-secondary mt-1">
+          <p className="text-sm text-aviation-text-secondary mt-1 font-mono">
             This will take about 5 minutes to complete.
           </p>
         </div>
-        <p className="text-text-secondary">
+        <p className="text-aviation-text-secondary font-mono">
           Click <strong>Next</strong> to begin connecting your first provider.
         </p>
       </motion.div>

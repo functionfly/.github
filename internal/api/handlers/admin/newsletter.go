@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/email"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
@@ -54,7 +55,7 @@ func (h *NewsletterHandler) ListSubscribers(w http.ResponseWriter, r *http.Reque
 	subscribers, total, err := h.repo.ListNewsletterSubscribers(r.Context(), status, limit, offset)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list newsletter subscribers")
-		http.Error(w, `{"error": "Failed to list subscribers"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list subscribers"))
 		return
 	}
 
@@ -71,7 +72,7 @@ func (h *NewsletterHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 	stats, err := h.repo.GetNewsletterStats(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get newsletter stats")
-		http.Error(w, `{"error": "Failed to get newsletter stats"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get newsletter stats"))
 		return
 	}
 
@@ -88,13 +89,13 @@ type CreateSubscriberRequest struct {
 func (h *NewsletterHandler) CreateSubscriber(w http.ResponseWriter, r *http.Request) {
 	var req CreateSubscriberRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error": "Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	emailAddr := strings.ToLower(strings.TrimSpace(req.Email))
 	if emailAddr == "" {
-		http.Error(w, `{"error": "Email is required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Email is required"))
 		return
 	}
 
@@ -109,11 +110,11 @@ func (h *NewsletterHandler) CreateSubscriber(w http.ResponseWriter, r *http.Requ
 	subscriber, err := h.repo.CreateNewsletterSubscriber(r.Context(), emailAddr, name, source, ipAddress, userAgent)
 	if err != nil {
 		if err == storage.ErrSubscriberExists {
-			http.Error(w, `{"error": "Email is already subscribed"}`, http.StatusConflict)
+			apierror.WriteError(w, apierror.NewConflict("Email is already subscribed"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to create newsletter subscriber")
-		http.Error(w, `{"error": "Failed to create subscriber"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create subscriber"))
 		return
 	}
 
@@ -131,17 +132,17 @@ func (h *NewsletterHandler) DeleteSubscriber(w http.ResponseWriter, r *http.Requ
 
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		http.Error(w, `{"error": "Invalid subscriber ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid subscriber ID"))
 		return
 	}
 
 	if err := h.repo.DeleteNewsletterSubscriber(r.Context(), id); err != nil {
 		if err == storage.ErrSubscriberNotFound {
-			http.Error(w, `{"error": "Subscriber not found"}`, http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Subscriber not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to delete newsletter subscriber")
-		http.Error(w, `{"error": "Failed to delete subscriber"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete subscriber"))
 		return
 	}
 
@@ -180,7 +181,7 @@ func (h *NewsletterHandler) ListCampaigns(w http.ResponseWriter, r *http.Request
 	campaigns, total, err := h.repo.ListNewsletterCampaigns(r.Context(), status, limit, offset)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list newsletter campaigns")
-		http.Error(w, `{"error": "Failed to list campaigns"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list campaigns"))
 		return
 	}
 
@@ -202,17 +203,17 @@ type CreateCampaignRequest struct {
 func (h *NewsletterHandler) CreateCampaign(w http.ResponseWriter, r *http.Request) {
 	var req CreateCampaignRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error": "Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if strings.TrimSpace(req.Subject) == "" {
-		http.Error(w, `{"error": "Subject is required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Subject is required"))
 		return
 	}
 
 	if strings.TrimSpace(req.Content) == "" {
-		http.Error(w, `{"error": "Content is required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Content is required"))
 		return
 	}
 
@@ -230,7 +231,7 @@ func (h *NewsletterHandler) CreateCampaign(w http.ResponseWriter, r *http.Reques
 	c, err := h.repo.CreateNewsletterCampaign(r.Context(), campaign)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create newsletter campaign")
-		http.Error(w, `{"error": "Failed to create campaign"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create campaign"))
 		return
 	}
 
@@ -248,18 +249,18 @@ func (h *NewsletterHandler) GetCampaign(w http.ResponseWriter, r *http.Request) 
 
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		http.Error(w, `{"error": "Invalid campaign ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid campaign ID"))
 		return
 	}
 
 	campaign, err := h.repo.GetNewsletterCampaignByID(r.Context(), id)
 	if err != nil {
 		if err == storage.ErrCampaignNotFound {
-			http.Error(w, `{"error": "Campaign not found"}`, http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Campaign not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to get newsletter campaign")
-		http.Error(w, `{"error": "Failed to get campaign"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get campaign"))
 		return
 	}
 
@@ -277,35 +278,35 @@ func (h *NewsletterHandler) SendCampaign(w http.ResponseWriter, r *http.Request)
 
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		http.Error(w, `{"error": "Invalid campaign ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid campaign ID"))
 		return
 	}
 
 	campaign, err := h.repo.GetNewsletterCampaignByID(r.Context(), id)
 	if err != nil {
 		if err == storage.ErrCampaignNotFound {
-			http.Error(w, `{"error": "Campaign not found"}`, http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Campaign not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to get newsletter campaign")
-		http.Error(w, `{"error": "Failed to get campaign"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get campaign"))
 		return
 	}
 
 	if campaign.Status == "sent" {
-		http.Error(w, `{"error": "Campaign has already been sent"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Campaign has already been sent"))
 		return
 	}
 
 	subscribers, err := h.repo.GetActiveNewsletterSubscribers(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get active subscribers")
-		http.Error(w, `{"error": "Failed to get subscribers"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get subscribers"))
 		return
 	}
 
 	if len(subscribers) == 0 {
-		http.Error(w, `{"error": "No active subscribers to send to"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("No active subscribers to send to"))
 		return
 	}
 

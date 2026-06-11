@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/api/apierror"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/gorilla/mux"
@@ -35,56 +36,56 @@ type reportProfileRequest struct {
 func (h *Handler) HandleReportProfile(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	username := strings.TrimSpace(mux.Vars(r)["username"])
 	if username == "" || strings.EqualFold(username, "me") {
-		writeJSONError(w, http.StatusBadRequest, "username is required")
+		apierror.WriteError(w, apierror.NewBadRequest("username is required"))
 		return
 	}
 
 	var req reportProfileRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid JSON body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON body"))
 		return
 	}
 
 	if !req.AcknowledgedAccuracy {
-		writeJSONError(w, http.StatusBadRequest, "You must confirm this report is submitted in good faith")
+		apierror.WriteError(w, apierror.NewBadRequest("You must confirm this report is submitted in good faith"))
 		return
 	}
 
 	reason := strings.TrimSpace(req.Reason)
 	if _, ok := allowedProfileReportReasons[reason]; !ok {
-		writeJSONError(w, http.StatusBadRequest, "Invalid report reason")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid report reason"))
 		return
 	}
 
 	details := strings.TrimSpace(req.Details)
 	if len(details) > 4000 {
-		writeJSONError(w, http.StatusBadRequest, "Details must be 4000 characters or less")
+		apierror.WriteError(w, apierror.NewBadRequest("Details must be 4000 characters or less"))
 		return
 	}
 	if reason == "other" && len(details) < 20 {
-		writeJSONError(w, http.StatusBadRequest, "Please describe what happened (at least 20 characters)")
+		apierror.WriteError(w, apierror.NewBadRequest("Please describe what happened (at least 20 characters)"))
 		return
 	}
 
 	reported, err := h.repo.GetUserForPublicProfile(username)
 	if err != nil {
 		logrus.WithError(err).WithField("username", username).Error("GetUserForPublicProfile for report failed")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to load profile")
+		apierror.WriteError(w, apierror.NewInternal("Failed to load profile"))
 		return
 	}
 	if reported == nil {
-		writeJSONError(w, http.StatusNotFound, "User not found")
+		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
 	}
 
 	if reported.ID == claims.UserID {
-		writeJSONError(w, http.StatusBadRequest, "You cannot report your own profile")
+		apierror.WriteError(w, apierror.NewBadRequest("You cannot report your own profile"))
 		return
 	}
 
@@ -104,7 +105,7 @@ func (h *Handler) HandleReportProfile(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if n >= 8 {
-			writeJSONError(w, http.StatusTooManyRequests, "Too many reports submitted. Please try again later.")
+			apierror.WriteError(w, apierror.NewRateLimited("Too many reports submitted. Please try again later."))
 			return
 		}
 	}
@@ -142,11 +143,11 @@ func (h *Handler) HandleReportProfile(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) && pqErr.Code == "23514" && strings.Contains(strings.ToLower(pqErr.Message), "feedback_type") {
-			writeJSONError(w, http.StatusBadRequest, "Profile reporting is not enabled on this deployment (database constraint).")
+			apierror.WriteError(w, apierror.NewBadRequest("Profile reporting is not enabled on this deployment (database constraint)."))
 			return
 		}
 		logrus.WithError(err).Error("CreateFeedback profile_report failed")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to submit report")
+		apierror.WriteError(w, apierror.NewInternal("Failed to submit report"))
 		return
 	}
 

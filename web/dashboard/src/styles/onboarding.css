@@ -1,7 +1,7 @@
 /* ==========================================================================
-   Onboarding Page Styles
+   Onboarding Page Styles - Aviation Theme
    Theme-aware styles for /onboarding page
-   Uses FunctionFly brand colors - flame orange (#FF6B35) as primary
+   Uses FunctionFly Aviation Design System
    ========================================================================== */
 
 /* ==========================================================================
@@ -13,54 +13,21 @@
 }
 
 .onboarding-brand-text {
-  font-family: var(--font-display), system-ui, sans-serif;
+  font-family: var(--font-mono);
   font-weight: 700;
-}
-
-.onboarding-step-counter {
-  font-family: var(--font-display), system-ui, sans-serif;
-  color: var(--ff-text-secondary);
-}
-
-.onboarding-skip-btn {
-  color: var(--ff-text-muted);
-  transition: color 0.2s ease;
-}
-
-.onboarding-skip-btn:hover {
-  color: var(--ff-flame);
 }
 
 /* ==========================================================================
    SKIP ONBOARDING DIALOG
    ========================================================================== */
 
-/* Dialog content - inherits from themes.css */
-.dialog-content {
-  background-color: var(--ff-panel);
-  border: 1px solid var(--ff-border-flame);
-  color: var(--ff-text-primary);
-}
-
-[data-theme='light'] .dialog-content {
-  background-color: var(--ff-sky);
-  border-color: var(--ff-flame);
-  color: var(--ff-text-primary-light);
-}
-
-/* Skip dialog title with flame accent */
 .onboarding-skip-title {
-  color: var(--ff-flame);
-  font-family: var(--font-display), system-ui, sans-serif;
+  color: var(--color-aviation-amber) !important;
+  font-family: var(--font-mono) !important;
 }
 
-/* Warning icon - use flame orange for brand consistency */
 .onboarding-skip-warning-icon {
-  color: var(--ff-flame);
-}
-
-[data-theme='light'] .onboarding-skip-warning-icon {
-  color: var(--ff-flame-dark);
+  color: var(--color-aviation-amber) !important;
 }
 
 /* Alert items with icons */
@@ -75,61 +42,47 @@
   flex-shrink: 0;
 }
 
-/* Warning icon - flame orange for brand consistency */
 .onboarding-skip-alert-icon--warning {
-  color: var(--ff-flame);
+  color: var(--color-aviation-amber) !important;
 }
 
-[data-theme='light'] .onboarding-skip-alert-icon--warning {
-  color: var(--ff-flame-dark);
-}
-
-/* Info icon - cyan for contrast */
 .onboarding-skip-alert-icon--info {
-  color: var(--ff-cyan);
+  color: var(--color-aviation-cyan) !important;
 }
 
-[data-theme='light'] .onboarding-skip-alert-icon--info {
-  color: var(--ff-cyan-dark);
-}
-
-/* Success/check icon - taxiway green */
 .onboarding-skip-alert-icon--success {
-  color: var(--ff-taxiway);
+  color: var(--color-aviation-green) !important;
 }
 
-/* Danger icon - emergency red */
 .onboarding-skip-alert-icon--danger {
-  color: var(--ff-emergency);
+  color: var(--color-aviation-red) !important;
 }
 
-/* Text colors that adapt to theme */
 .onboarding-skip-text {
-  color: var(--ff-text-secondary);
+  color: var(--color-aviation-text-secondary) !important;
 }
 
 .onboarding-skip-text--primary {
-  color: var(--ff-text-primary);
+  color: var(--color-aviation-text-primary) !important;
   font-weight: 600;
 }
 
-/* Dialog footer - both buttons styled consistently */
 .onboarding-skip-dialog-footer {
-  display: flex;
-  gap: 0.75rem;
-  padding-top: 1rem;
+  display: flex !important;
+  gap: 0.75rem !important;
+  padding-top: 1rem !important;
 }
 
-/* Continue button - outline style */
+/* Continue button - aviation instrument style */
 .onboarding-skip-btn-continue {
   flex: 1;
   padding: 0.75rem 1.5rem;
   font-weight: 600;
-  font-family: var(--font-display), system-ui, sans-serif;
-  border: 2px solid var(--ff-border-default);
-  border-radius: 0.5rem;
-  background: transparent;
-  color: var(--ff-text-primary);
+  font-family: var(--font-mono);
+  border: 1px solid var(--color-aviation-border-instrument);
+  border-radius: 8px;
+  background: linear-gradient(145deg, var(--color-aviation-bg-instrument) 0%, var(--color-aviation-bg-panel) 100%);
+  color: var(--color-aviation-text-primary);
   transition: all 0.2s ease;
   text-align: center;
   min-height: 3rem;
@@ -139,9 +92,10 @@
 }
 
 .onboarding-skip-btn-continue:hover {
-  border-color: var(--ff-flame);
-  color: var(--ff-flame);
-  background: var(--ff-flame)/5;
+  border-color: var(--color-aviation-amber-dim);
+  color: var(--color-aviation-amber);
+  background: var(--color-aviation-bg-tertiary);
+  box-shadow: 0 0 15px var(--color-aviation-amber-dim);
 }
 
 /* Skip Anyway button - flame gradient CTA */
@@ -149,10 +103,10 @@
   flex: 1;
   padding: 0.75rem 1.5rem;
   font-weight: 700;
-  font-family: var(--font-display), system-ui, sans-serif;
+  font-family: var(--font-mono);
   border: none;
-  border-radius: 0.5rem;
-  background: var(--ff-gradient-cta);
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--ff-flame) 0%, var(--ff-afterburner) 100%);
   color: white;
   transition: all 0.2s ease;
   text-align: center;
@@ -160,15 +114,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 4px 14px rgba(255, 107, 53, 0.35);
 }
 
 .onboarding-skip-btn-skip:hover {
-  box-shadow: var(--ff-glow-flame);
   transform: translateY(-2px);
-}
-
-[data-theme='light'] .onboarding-skip-btn-skip {
-  background: var(--ff-gradient-cta);
+  box-shadow: 0 6px 20px rgba(255, 107, 53, 0.45);
 }
 
 /* ==========================================================================
@@ -185,16 +136,16 @@
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 9999px;
-  background-color: var(--ff-bg-tertiary);
+  background-color: var(--color-aviation-bg-tertiary);
 }
 
 .onboarding-step-dot--active {
-  background-color: var(--ff-flame);
-  box-shadow: 0 0 8px rgba(var(--ff-flame-rgb), 0.5);
+  background-color: var(--color-aviation-amber);
+  box-shadow: 0 0 8px var(--color-aviation-amber-glow);
 }
 
 .onboarding-step-dot--completed {
-  background-color: var(--ff-taxiway);
+  background-color: var(--color-aviation-green);
 }
 
 /* ==========================================================================
@@ -203,14 +154,14 @@
 
 .onboarding-progress-bar {
   height: 0.25rem;
-  background-color: var(--ff-bg-secondary);
+  background-color: var(--color-aviation-bg-secondary);
   border-radius: 9999px;
   overflow: hidden;
 }
 
 .onboarding-progress-fill {
   height: 100%;
-  background: var(--ff-gradient-cta);
+  background: linear-gradient(90deg, var(--ff-flame), var(--ff-afterburner));
   transition: width 0.3s ease;
 }
 
@@ -219,20 +170,20 @@
    ========================================================================== */
 
 .onboarding-step-card {
-  background-color: var(--ff-bg-secondary);
-  border: 1px solid var(--ff-border-subtle);
-  border-radius: 0.75rem;
+  background-color: var(--color-aviation-bg-instrument);
+  border: 1px solid var(--color-aviation-border-instrument);
+  border-radius: 12px;
   padding: 1.5rem;
 }
 
 .onboarding-step-card-title {
-  color: var(--ff-text-primary);
+  color: var(--color-aviation-text-primary);
   font-weight: 600;
-  font-family: var(--font-display), system-ui, sans-serif;
+  font-family: var(--font-mono);
 }
 
 .onboarding-step-card-description {
-  color: var(--ff-text-secondary);
+  color: var(--color-aviation-text-secondary);
 }
 
 /* ==========================================================================
@@ -242,8 +193,8 @@
 .onboarding-celebration-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
+  background: var(--color-aviation-bg-primary);
+  backdrop-filter: blur(8px);
   z-index: 50;
   display: flex;
   align-items: center;
@@ -251,12 +202,15 @@
 }
 
 .onboarding-celebration-card {
-  background-color: var(--ff-bg-primary);
-  border: 1px solid var(--ff-border-flame);
-  border-radius: 1rem;
+  background-color: var(--color-aviation-bg-panel);
+  border: 1px solid var(--color-aviation-amber-dim);
+  border-radius: 16px;
   padding: 2rem;
   text-align: center;
   max-width: 24rem;
+  box-shadow:
+    0 0 0 1px rgba(245, 158, 11, 0.1),
+    0 20px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
 /* ==========================================================================
@@ -270,31 +224,32 @@
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
   font-weight: 600;
-  font-family: var(--font-display), system-ui, sans-serif;
-  border-radius: 0.5rem;
+  font-family: var(--font-mono);
+  border-radius: 8px;
   transition: all 0.2s ease;
 }
 
 .onboarding-nav-button--primary {
-  background: var(--ff-gradient-cta);
+  background: linear-gradient(135deg, var(--ff-flame) 0%, var(--ff-afterburner) 100%);
   color: white;
   border: none;
+  box-shadow: 0 4px 14px rgba(255, 107, 53, 0.35);
 }
 
 .onboarding-nav-button--primary:hover {
-  box-shadow: var(--ff-glow-flame);
   transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 107, 53, 0.45);
 }
 
 .onboarding-nav-button--secondary {
-  background: transparent;
-  border: 1px solid var(--ff-border-default);
-  color: var(--ff-text-primary);
+  background: linear-gradient(145deg, var(--color-aviation-bg-instrument) 0%, var(--color-aviation-bg-panel) 100%);
+  border: 1px solid var(--color-aviation-border-instrument);
+  color: var(--color-aviation-text-primary);
 }
 
 .onboarding-nav-button--secondary:hover {
-  border-color: var(--ff-flame);
-  color: var(--ff-flame);
+  border-color: var(--color-aviation-amber-dim);
+  color: var(--color-aviation-amber);
 }
 
 /* ==========================================================================
@@ -302,50 +257,17 @@
    ========================================================================== */
 
 .onboarding-help-panel {
-  border: 1px solid var(--ff-border-flame);
+  border: 1px solid var(--color-aviation-amber-dim);
   backdrop-filter: blur(8px);
+  background: var(--color-aviation-bg-instrument);
 }
 
 .onboarding-help-icon {
-  color: var(--ff-flame);
+  color: var(--color-aviation-amber);
 }
 
 /* ==========================================================================
-   LIGHT MODE ADJUSTMENTS
-   ========================================================================== */
-
-[data-theme='light'] .onboarding-skip-alert-icon--success {
-  color: var(--ff-taxiway-dark);
-}
-
-[data-theme='light'] .onboarding-skip-alert-icon--danger {
-  color: var(--ff-emergency);
-}
-
-[data-theme='light'] .onboarding-step-dot--active {
-  box-shadow: 0 0 8px rgba(var(--ff-flame-rgb), 0.3);
-}
-
-[data-theme='light'] .onboarding-nav-button--secondary:hover {
-  border-color: var(--ff-flame);
-  color: var(--ff-flame);
-}
-
-[data-theme='light'] .onboarding-celebration-card {
-  border-color: var(--ff-flame);
-}
-
-[data-theme='light'] .onboarding-skip-btn:hover {
-  color: var(--ff-flame-dark);
-}
-
-[data-theme='light'] .onboarding-help-panel {
-  background-color: var(--ff-sky);
-  border-color: var(--ff-flame);
-}
-
-/* ==========================================================================
-   STEPPER / STEP INDICATORS (Bottom of page)
+   STEPPER / STEP INDICATORS
    ========================================================================== */
 
 .onboarding-stepper {
@@ -363,36 +285,36 @@
   gap: 0.75rem;
   padding: 1.25rem 2rem;
   position: relative;
-  background: var(--ff-bg-primary);
-  border-radius: 1rem;
+  background: var(--color-aviation-bg-instrument);
+  border-radius: 16px;
   border: 2px solid transparent;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .onboarding-stepper-item:hover {
-  background: var(--ff-bg-secondary);
-  border-color: var(--ff-border-flame);
+  background: var(--color-aviation-bg-tertiary);
+  border-color: var(--color-aviation-amber-dim);
 }
 
 .onboarding-stepper-item.active {
-  background: var(--ff-bg-secondary);
-  border-color: var(--ff-flame);
-  box-shadow: 0 4px 16px rgba(255, 107, 53, 0.2);
+  background: var(--color-aviation-bg-tertiary);
+  border-color: var(--color-aviation-amber);
+  box-shadow: 0 0 20px var(--color-aviation-amber-dim), 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 .onboarding-stepper-item.completed {
-  background: var(--ff-bg-secondary);
+  background: var(--color-aviation-bg-tertiary);
+  border-color: var(--color-aviation-green);
 }
 
 .onboarding-stepper-item:not(:last-child)::after {
   content: '';
   position: absolute;
-  top: 2rem;
+  top: 2.5rem;
   left: calc(50% + 3rem);
   width: calc(4rem);
   height: 4px;
-  background: var(--ff-border-subtle);
+  background: var(--color-aviation-border-panel);
   border-radius: 2px;
 }
 
@@ -401,7 +323,7 @@
 }
 
 .onboarding-stepper-item.completed:not(:last-child)::after {
-  background: var(--ff-taxiway);
+  background: var(--color-aviation-green);
 }
 
 .onboarding-stepper-icon {
@@ -413,16 +335,16 @@
   justify-content: center;
   font-weight: 700;
   font-size: 1.125rem;
-  font-family: var(--font-display), system-ui, sans-serif;
-  background: var(--ff-bg-tertiary);
-  color: var(--ff-text-muted);
-  border: 3px solid var(--ff-border-subtle);
+  font-family: var(--font-mono);
+  background: var(--color-aviation-bg-tertiary);
+  color: var(--color-aviation-text-muted);
+  border: 3px solid var(--color-aviation-border-panel);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 1;
 }
 
 .onboarding-stepper-item.active .onboarding-stepper-icon {
-  background: linear-gradient(135deg, var(--ff-flame), var(--ff-afterburner));
+  background: linear-gradient(135deg, var(--ff-flame) 0%, var(--ff-afterburner) 100%);
   color: white;
   border-color: var(--ff-flame);
   box-shadow: 0 0 24px rgba(255, 107, 53, 0.6), 0 0 48px rgba(255, 107, 53, 0.3);
@@ -430,10 +352,10 @@
 }
 
 .onboarding-stepper-item.completed .onboarding-stepper-icon {
-  background: var(--ff-taxiway);
+  background: var(--color-aviation-green);
   color: white;
-  border-color: var(--ff-taxiway);
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+  border-color: var(--color-aviation-green);
+  box-shadow: 0 0 12px var(--color-aviation-green-glow);
 }
 
 .onboarding-stepper-content {
@@ -444,60 +366,42 @@
 }
 
 .onboarding-stepper-title {
-  font-family: var(--font-display), system-ui, sans-serif;
-  font-size: 1.125rem;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
   font-weight: 700;
-  color: var(--ff-text-primary);
+  color: var(--color-aviation-text-primary);
   text-align: center;
   max-width: 9rem;
   transition: all 0.3s ease;
   line-height: 1.2;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
   letter-spacing: -0.01em;
 }
 
 .onboarding-stepper-item.active .onboarding-stepper-title {
-  color: var(--ff-flame);
+  color: var(--color-aviation-amber);
   font-weight: 800;
-  text-shadow: 0 0 12px rgba(255, 107, 53, 0.4);
+  text-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
 }
 
 .onboarding-stepper-item.completed .onboarding-stepper-title {
-  color: var(--ff-taxiway);
+  color: var(--color-aviation-green);
   font-weight: 700;
 }
 
 .onboarding-stepper-description {
-  font-size: 0.9375rem;
-  color: var(--ff-text-secondary);
+  font-size: 0.75rem;
+  color: var(--color-aviation-text-muted);
   text-align: center;
   max-width: 9rem;
-  line-height: 1.5;
-  opacity: 1;
-  font-weight: 500;
-  padding: 0.25rem 0.5rem;
-  background: var(--ff-bg-tertiary);
-  border-radius: 0.375rem;
-}
-
-[data-theme='light'] .onboarding-stepper-icon {
-  background: var(--ff-sky);
-  border-color: var(--ff-border-default);
-}
-
-[data-theme='light'] .onboarding-stepper-item.active .onboarding-stepper-icon {
-  box-shadow: 0 0 16px rgba(255, 107, 53, 0.4);
-}
-
-[data-theme='light'] .onboarding-stepper-item.completed .onboarding-stepper-icon {
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+  line-height: 1.4;
+  font-family: var(--font-mono);
 }
 
 /* Step connector line styling */
 .onboarding-stepper-connector {
   width: 5rem;
   height: 3px;
-  background: var(--ff-border-subtle);
+  background: var(--color-aviation-border-panel);
   margin-top: 1.25rem;
   border-radius: 2px;
   transition: background 0.4s ease;
@@ -508,30 +412,102 @@
 }
 
 .onboarding-stepper-connector.completed {
-  background: var(--ff-taxiway);
-}
-
-/* Progress bar in header already uses brand gradient - ensure consistency */
-.onboarding-progress-fill {
-  background: linear-gradient(90deg, var(--ff-flame), var(--ff-afterburner)) !important;
+  background: var(--color-aviation-green);
 }
 
 /* Help tooltip icon matching brand */
 .onboarding-help-icon-btn {
-  color: var(--ff-text-muted);
+  color: var(--color-aviation-text-muted);
   transition: color 0.2s ease;
 }
 
 .onboarding-help-icon-btn:hover {
-  color: var(--ff-flame);
+  color: var(--color-aviation-amber);
 }
 
 /* Skip button hover effect */
 .onboarding-skip-btn-header {
-  color: var(--ff-text-muted);
+  color: var(--color-aviation-text-muted);
   transition: all 0.2s ease;
 }
 
 .onboarding-skip-btn-header:hover {
+  color: var(--color-aviation-amber);
+}
+
+/* ==========================================================================
+   LIGHT MODE ADJUSTMENTS
+   ========================================================================== */
+
+[data-theme='light'] .onboarding-skip-alert-icon--success {
+  color: var(--color-aviation-green-light) !important;
+}
+
+[data-theme='light'] .onboarding-skip-alert-icon--danger {
+  color: var(--color-aviation-red-light) !important;
+}
+
+[data-theme='light'] .onboarding-step-dot--active {
+  box-shadow: 0 0 8px var(--color-aviation-amber-glow-light);
+}
+
+[data-theme='light'] .onboarding-nav-button--secondary:hover {
+  border-color: var(--ff-flame);
   color: var(--ff-flame);
+}
+
+[data-theme='light'] .onboarding-celebration-card {
+  border-color: var(--color-aviation-amber-dim-light);
+  box-shadow:
+    0 0 0 1px rgba(217, 119, 6, 0.15),
+    0 10px 40px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme='light'] .onboarding-skip-btn:hover {
+  color: var(--ff-flame-dark);
+}
+
+[data-theme='light'] .onboarding-help-panel {
+  background-color: var(--color-aviation-bg-panel-light);
+  border-color: var(--color-aviation-amber-dim-light);
+}
+
+[data-theme='light'] .onboarding-skip-btn-continue {
+  background: linear-gradient(145deg, var(--color-aviation-bg-instrument-light) 0%, var(--color-aviation-bg-panel-light) 100%);
+  border-color: var(--color-aviation-border-instrument-light);
+  color: var(--color-aviation-text-primary-light);
+}
+
+[data-theme='light'] .onboarding-skip-btn-continue:hover {
+  border-color: var(--color-aviation-amber-dim-light);
+  color: var(--color-aviation-amber-light);
+  background: var(--color-aviation-bg-tertiary-light);
+}
+
+[data-theme='light'] .onboarding-stepper-icon {
+  background: var(--color-aviation-bg-instrument-light);
+  border-color: var(--color-aviation-border-instrument-light);
+}
+
+[data-theme='light'] .onboarding-stepper-item.active .onboarding-stepper-icon {
+  box-shadow: 0 0 16px var(--color-aviation-amber-glow-light);
+}
+
+[data-theme='light'] .onboarding-stepper-item.completed .onboarding-stepper-icon {
+  box-shadow: 0 0 10px var(--color-aviation-green-glow-light);
+}
+
+[data-theme='light'] .onboarding-stepper-item {
+  background: var(--color-aviation-bg-instrument-light);
+}
+
+[data-theme='light'] .onboarding-stepper-item:hover {
+  background: var(--color-aviation-bg-tertiary-light);
+  border-color: var(--color-aviation-amber-dim-light);
+}
+
+[data-theme='light'] .onboarding-stepper-item.active {
+  background: var(--color-aviation-bg-tertiary-light);
+  border-color: var(--color-aviation-amber-light);
+  box-shadow: 0 0 20px var(--color-aviation-amber-dim-light), 0 8px 32px rgba(0, 0, 0, 0.1);
 }

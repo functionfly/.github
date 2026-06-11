@@ -3,6 +3,7 @@ package users
 import (
 	"net/http"
 
+	"github.com/functionfly/functionfly/internal/api/apierror"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -17,19 +18,19 @@ func (h *Handler) HandleGetUserTrust(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.repo.GetUserByUsername(username)
 	if err != nil || user == nil {
-		writeJSONError(w, http.StatusNotFound, "User not found")
+		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
 	}
 
 	stats, err := h.repo.GetUserProfileStats(user.ID)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Failed to load user stats")
+		apierror.WriteError(w, apierror.NewInternal("Failed to load user stats"))
 		return
 	}
 
 	breakdown, err := h.repo.GetUserTrustBreakdown(user.ID)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Failed to load trust breakdown")
+		apierror.WriteError(w, apierror.NewInternal("Failed to load trust breakdown"))
 		return
 	}
 
@@ -39,9 +40,9 @@ func (h *Handler) HandleGetUserTrust(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, UserTrustResponse{
-		UserID:      user.ID,
-		Username:    username,
-		TrustScore:  trustScore,
+		UserID:     user.ID,
+		Username:   username,
+		TrustScore: trustScore,
 		Components: UserTrustComponents{
 			Reliability:  toFloat64(breakdown["reliability"]),
 			Latency:      toFloat64(breakdown["latency"]),
@@ -50,10 +51,10 @@ func (h *Handler) HandleGetUserTrust(w http.ResponseWriter, r *http.Request) {
 			Verification: toFloat64(breakdown["verification"]),
 		},
 		Metrics: UserTrustMetrics{
-			TotalCalls:        toInt(breakdown["total_calls"]),
-			SuccessRate:       toFloat64(breakdown["success_rate"]),
-			AvgP50LatencyMs:  toFloat64(breakdown["avg_p50_latency_ms"]),
-			AvgP95LatencyMs:  toFloat64(breakdown["avg_p95_latency_ms"]),
+			TotalCalls:      toInt(breakdown["total_calls"]),
+			SuccessRate:     toFloat64(breakdown["success_rate"]),
+			AvgP50LatencyMs: toFloat64(breakdown["avg_p50_latency_ms"]),
+			AvgP95LatencyMs: toFloat64(breakdown["avg_p95_latency_ms"]),
 		},
 		FunctionsWithTrust: toInt(breakdown["functions_with_trust"]),
 	})
@@ -64,13 +65,13 @@ func (h *Handler) HandleGetUserTrust(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetMyTrust(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	user, err := h.repo.GetUserByID(claims.UserID)
 	if err != nil || user == nil {
-		writeJSONError(w, http.StatusNotFound, "User not found")
+		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
 	}
 
@@ -81,13 +82,13 @@ func (h *Handler) HandleGetMyTrust(w http.ResponseWriter, r *http.Request) {
 
 	stats, err := h.repo.GetUserProfileStats(user.ID)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Failed to load user stats")
+		apierror.WriteError(w, apierror.NewInternal("Failed to load user stats"))
 		return
 	}
 
 	breakdown, err := h.repo.GetUserTrustBreakdown(user.ID)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Failed to load trust breakdown")
+		apierror.WriteError(w, apierror.NewInternal("Failed to load trust breakdown"))
 		return
 	}
 
@@ -97,9 +98,9 @@ func (h *Handler) HandleGetMyTrust(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, UserTrustResponse{
-		UserID:      user.ID,
-		Username:    username,
-		TrustScore:  trustScore,
+		UserID:     user.ID,
+		Username:   username,
+		TrustScore: trustScore,
 		Components: UserTrustComponents{
 			Reliability:  toFloat64(breakdown["reliability"]),
 			Latency:      toFloat64(breakdown["latency"]),
@@ -108,10 +109,10 @@ func (h *Handler) HandleGetMyTrust(w http.ResponseWriter, r *http.Request) {
 			Verification: toFloat64(breakdown["verification"]),
 		},
 		Metrics: UserTrustMetrics{
-			TotalCalls:        toInt(breakdown["total_calls"]),
-			SuccessRate:       toFloat64(breakdown["success_rate"]),
-			AvgP50LatencyMs:  toFloat64(breakdown["avg_p50_latency_ms"]),
-			AvgP95LatencyMs:  toFloat64(breakdown["avg_p95_latency_ms"]),
+			TotalCalls:      toInt(breakdown["total_calls"]),
+			SuccessRate:     toFloat64(breakdown["success_rate"]),
+			AvgP50LatencyMs: toFloat64(breakdown["avg_p50_latency_ms"]),
+			AvgP95LatencyMs: toFloat64(breakdown["avg_p95_latency_ms"]),
 		},
 		FunctionsWithTrust: toInt(breakdown["functions_with_trust"]),
 	})
@@ -119,12 +120,12 @@ func (h *Handler) HandleGetMyTrust(w http.ResponseWriter, r *http.Request) {
 
 // UserTrustResponse is the API response for user trust breakdown.
 type UserTrustResponse struct {
-	UserID               uuid.UUID           `json:"user_id"`
-	Username             string             `json:"username"`
-	TrustScore           int                `json:"trust_score"`
-	Components           UserTrustComponents `json:"components"`
-	Metrics             UserTrustMetrics    `json:"metrics"`
-	FunctionsWithTrust   int                `json:"functions_with_trust"`
+	UserID             uuid.UUID           `json:"user_id"`
+	Username           string              `json:"username"`
+	TrustScore         int                 `json:"trust_score"`
+	Components         UserTrustComponents `json:"components"`
+	Metrics            UserTrustMetrics    `json:"metrics"`
+	FunctionsWithTrust int                 `json:"functions_with_trust"`
 }
 
 // UserTrustComponents are the individual trust score components (0-100).
@@ -132,14 +133,14 @@ type UserTrustComponents struct {
 	Reliability  float64 `json:"reliability"`
 	Latency      float64 `json:"latency"`
 	ErrorRate    float64 `json:"error_rate"`
-	UserRating  float64 `json:"user_rating"`
+	UserRating   float64 `json:"user_rating"`
 	Verification float64 `json:"verification"`
 }
 
 // UserTrustMetrics are execution metrics for the user's functions.
 type UserTrustMetrics struct {
-	TotalCalls       int     `json:"total_calls"`
-	SuccessRate      float64 `json:"success_rate"`
+	TotalCalls      int     `json:"total_calls"`
+	SuccessRate     float64 `json:"success_rate"`
 	AvgP50LatencyMs float64 `json:"avg_p50_latency_ms"`
 	AvgP95LatencyMs float64 `json:"avg_p95_latency_ms"`
 }

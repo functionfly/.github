@@ -1,14 +1,10 @@
 package admin
 
 import (
-	"database/sql"
-	"encoding/json"
 	"net/http"
-	"strconv"
-	"time"
 
-	"github.com/functionfly/functionfly/internal/api/middleware"
-	"github.com/functionfly/functionfly/internal/auth"
+	"github.com/functionfly/functionfly/internal/apierror"
+	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -47,12 +43,12 @@ func (h *SecurityEventHandler) HandleListSecurityEvents(w http.ResponseWriter, r
 	// Check permission
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !auth.IsAdminRole(claims.Role) {
-		http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden: insufficient permissions"))
 		return
 	}
 
@@ -150,7 +146,7 @@ func (h *SecurityEventHandler) HandleListSecurityEvents(w http.ResponseWriter, r
 	var total int
 	if err := h.db.QueryRow(countQuery, countArgs...).Scan(&total); err != nil {
 		logrus.WithError(err).Error("Failed to count security events")
-		http.Error(w, "Failed to count security events", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to count security events"))
 		return
 	}
 
@@ -166,7 +162,7 @@ func (h *SecurityEventHandler) HandleListSecurityEvents(w http.ResponseWriter, r
 	rows, err := h.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list security events")
-		http.Error(w, "Failed to list security events", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list security events"))
 		return
 	}
 	defer rows.Close()
@@ -250,12 +246,12 @@ func (h *SecurityEventHandler) HandleReviewSecurityEvent(w http.ResponseWriter, 
 	// Check permission
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !auth.IsAdminRole(claims.Role) {
-		http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden: insufficient permissions"))
 		return
 	}
 
@@ -263,7 +259,7 @@ func (h *SecurityEventHandler) HandleReviewSecurityEvent(w http.ResponseWriter, 
 	idStr := vars["id"]
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid ID"))
 		return
 	}
 
@@ -282,11 +278,11 @@ func (h *SecurityEventHandler) HandleReviewSecurityEvent(w http.ResponseWriter, 
 	err = h.db.QueryRowContext(ctx, query, claims.UserID, id).Scan(&eventID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			http.Error(w, "Security event not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Security event not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to review security event")
-		http.Error(w, "Failed to review security event", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to review security event"))
 		return
 	}
 
@@ -306,12 +302,12 @@ func (h *SecurityEventHandler) HandleCreateSecurityEvents(w http.ResponseWriter,
 	// Check permission
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !auth.IsAdminRole(claims.Role) {
-		http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden: insufficient permissions"))
 		return
 	}
 
@@ -328,7 +324,7 @@ func (h *SecurityEventHandler) HandleCreateSecurityEvents(w http.ResponseWriter,
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -410,12 +406,12 @@ func (h *SecurityEventHandler) HandleGetSecurityEventStats(w http.ResponseWriter
 	// Check permission
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !auth.IsAdminRole(claims.Role) {
-		http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden: insufficient permissions"))
 		return
 	}
 
@@ -435,7 +431,7 @@ func (h *SecurityEventHandler) HandleGetSecurityEventStats(w http.ResponseWriter
 	rows, err := h.db.QueryContext(ctx, query)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get security event stats")
-		http.Error(w, "Failed to get security event stats", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get security event stats"))
 		return
 	}
 	defer rows.Close()

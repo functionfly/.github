@@ -25,8 +25,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Confetti from 'react-confetti';
-import { useNavigate } from 'react-router-dom';
-// import { useAuthStore } from "@/stores/authStore";
+import { useNavigate, useParams } from 'react-router-dom';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { trackEvent } from '@/lib/analytics';
 import { useOnboardingStore, type OnboardingStep } from '@/stores/onboardingStore';
@@ -37,7 +36,6 @@ import { TeamSetupStep } from './TeamSetupStep';
 import { TestFailoverStep } from './TestFailoverStep';
 import { WelcomeStep } from './WelcomeStep';
 
-// Define base steps
 const baseSteps: Array<{ id: OnboardingStep; title: string; description: string; icon: typeof Zap }> = [
   {
     id: 'welcome',
@@ -65,7 +63,6 @@ const baseSteps: Array<{ id: OnboardingStep; title: string; description: string;
   },
 ];
 
-// Admin-only step
 const adminSteps: Array<{ id: OnboardingStep; title: string; description: string; icon: typeof Users }> = [
   {
     id: 'team-setup',
@@ -77,16 +74,25 @@ const adminSteps: Array<{ id: OnboardingStep; title: string; description: string
 
 export function OnboardingPage() {
   const navigate = useNavigate();
+  const params = useParams();
 
-  const { currentStep, completedSteps, completeStep, skipOnboarding, userRole } =
+  const { currentStep, completedSteps, completeStep, skipOnboarding, userRole, setCurrentStep } =
     useOnboardingStore();
   const [isCompleting, setIsCompleting] = useState(false);
   const [showSkipDialog, setShowSkipDialog] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
 
   const steps = userRole === 'admin' ? [...baseSteps, ...adminSteps] : baseSteps;
-  const currentStepIndex = steps.findIndex((s) => s.id === currentStep);
+
+  const currentStepFromUrl = params.step as OnboardingStep | undefined;
+  const currentStepIndex = steps.findIndex((s) => s.id === (currentStepFromUrl || currentStep));
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
+
+  useEffect(() => {
+    if (currentStepFromUrl && currentStepFromUrl !== currentStep) {
+      setCurrentStep(currentStepFromUrl);
+    }
+  }, [currentStepFromUrl]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -103,16 +109,23 @@ export function OnboardingPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentStepIndex, steps.length, showSkipDialog, isCompleting]);
 
+  const updateUrl = (step: OnboardingStep) => {
+    const targetUrl = `/onboarding/${step}`;
+    if (window.location.pathname !== targetUrl) {
+      setTimeout(() => {
+        navigate(targetUrl, { replace: true });
+      }, 50);
+    }
+  };
+
   const handleNext = async () => {
+    if (isCompleting) return;
     trackEvent('onboarding_step_completed', { step: currentStep });
-    // Special handling for team-setup step - this might change the steps shown
     if (currentStep === 'team-setup') {
       completeStep('team-setup' as OnboardingStep);
-      // After team setup, onboarding is complete
       setIsCompleting(true);
       setShowConfetti(true);
 
-      // Show celebration for 3 seconds before navigating
       setTimeout(() => {
         setShowConfetti(false);
         trackEvent('onboarding_completed');
@@ -122,14 +135,14 @@ export function OnboardingPage() {
     }
 
     if (currentStepIndex < steps.length - 1) {
-      completeStep(currentStep as OnboardingStep);
+      const nextStep = steps[currentStepIndex + 1].id;
+      setCurrentStep(nextStep);
+      updateUrl(nextStep);
     } else {
-      // Complete onboarding with celebration
       setIsCompleting(true);
       setShowConfetti(true);
       completeStep(currentStep as OnboardingStep);
 
-      // Show celebration for 3 seconds before navigating
       setTimeout(() => {
         setShowConfetti(false);
         trackEvent('onboarding_completed');
@@ -153,7 +166,9 @@ export function OnboardingPage() {
   const handleBack = () => {
     trackEvent('onboarding_step_back', { step: currentStep });
     if (currentStepIndex > 0) {
-      useOnboardingStore.getState().goToPrevStep();
+      const prevStep = steps[currentStepIndex - 1].id;
+      setCurrentStep(prevStep);
+      updateUrl(prevStep);
     }
   };
 
@@ -166,46 +181,52 @@ export function OnboardingPage() {
   }[currentStep];
 
   return (
-    <div className="min-h-screen bg-bg-primary flex flex-col">
-      {/* Header */}
-      <header className="border-b border-border-subtle bg-bg-glass backdrop-blur-sm">
+    <div className="min-h-screen bg-aviation-bg-primary flex flex-col">
+      <header className="border-b border-aviation-border-panel bg-aviation-bg-primary/95 backdrop-blur-sm">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-ff-flame to-ff-afterburner flex items-center justify-center">
-              <Zap className="w-5 h-5 text-white" fill="currentColor" />
-            </div>
-            <span className="text-xl font-bold gradient-text ff-brand-flame">FunctionFly</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                navigate('/onboarding');
+                setCurrentStep('welcome');
+              }}
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            >
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-aviation-amber to-aviation-amber-glow flex items-center justify-center shadow-lg shadow-aviation-amber-dim">
+                <Zap className="w-5 h-5 text-aviation-bg-primary" fill="currentColor" />
+              </div>
+              <span className="text-xl font-bold font-mono text-aviation-text-primary">
+                Function<span className="text-aviation-amber">Fly</span>
+              </span>
+            </button>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-text-secondary">
+            <span className="text-sm font-mono text-aviation-text-muted">
               Step {currentStepIndex + 1} of {steps.length}
             </span>
             <HelpTooltip content="Need help? FunctionFly deploys your functions across multiple cloud providers for high availability. Each step connects a new provider and tests failover automatically.">
-              <Button variant="ghost" size="sm" className="text-text-muted" aria-label="Help">
+              <Button variant="ghost" size="sm" className="text-aviation-text-muted hover:text-aviation-amber hover:bg-aviation-bg-instrument" aria-label="Help">
                 <HelpCircle className="w-4 h-4" />
               </Button>
             </HelpTooltip>
-            <Button variant="ghost" size="sm" onClick={handleSkip} className="text-text-muted hover:text-ff-flame">
+            <Button variant="ghost" size="sm" onClick={handleSkip} className="text-aviation-text-muted hover:text-aviation-amber font-mono text-sm">
               Skip for now
             </Button>
           </div>
         </div>
       </header>
 
-      {/* Progress Bar */}
-      <div className="w-full h-1 bg-bg-secondary">
+      <div className="w-full h-1 bg-aviation-bg-secondary">
         <motion.div
-          className="h-full bg-gradient-to-r from-ff-flame to-ff-afterburner"
+          className="h-full bg-gradient-to-r from-aviation-amber to-aviation-cyan"
           initial={{ width: 0 }}
           animate={{ width: `${progress}%` }}
           transition={{ duration: 0.5, ease: 'easeInOut' }}
         />
       </div>
 
-      {/* Main Content */}
       <main className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-2xl">
-          {/* ARIA live region for step changes */}
           <div
             role="status"
             aria-live="polite"
@@ -223,24 +244,24 @@ export function OnboardingPage() {
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.3 }}
             >
-              <Card className="card">
+              <Card className="aviation-panel">
                 <CardHeader className="text-center pb-2">
-                  <div className="mx-auto w-16 h-16 bg-gradient-to-br from-ff-flame/20 to-ff-afterburner/20 rounded-full flex items-center justify-center mb-4">
+                  <div className="mx-auto w-16 h-16 bg-gradient-to-br from-aviation-amber/20 to-aviation-cyan/20 rounded-2xl flex items-center justify-center mb-4 border border-aviation-amber-dim">
                     {(() => {
                       const step = steps[currentStepIndex];
                       if (!step?.icon) return null;
                       const Icon = step.icon;
-                      return <Icon className="w-8 h-8 text-ff-flame" />;
+                      return <Icon className="w-8 h-8 text-aviation-amber" />;
                     })()}
                   </div>
                   {(() => {
                     const step = steps[currentStepIndex];
                     return (
                       <>
-                        <CardTitle className="text-2xl text-text-primary font-display">
+                        <CardTitle className="text-2xl text-aviation-text-primary font-mono font-bold">
                           {step?.title || ''}
                         </CardTitle>
-                        <CardDescription className="text-text-secondary text-base">
+                        <CardDescription className="text-aviation-text-secondary text-base font-mono">
                           {step?.description || ''}
                         </CardDescription>
                       </>
@@ -249,16 +270,14 @@ export function OnboardingPage() {
                 </CardHeader>
 
                 <CardContent className="space-y-6">
-                  {/* Step Content */}
                   <CurrentStepComponent />
 
-                  {/* Navigation */}
-                  <div className="flex items-center justify-between pt-4 border-t border-border-subtle">
+                  <div className="flex items-center justify-between pt-4 border-t border-aviation-border-panel">
                     <Button
                       variant="ghost"
                       onClick={handleBack}
                       disabled={currentStepIndex <= 0}
-                      className="gap-2"
+                      className="gap-2 font-mono text-aviation-text-secondary hover:text-aviation-amber hover:bg-aviation-bg-instrument"
                     >
                       <ArrowLeft className="w-4 h-4" />
                       Back
@@ -267,7 +286,7 @@ export function OnboardingPage() {
                     <Button
                       onClick={handleNext}
                       disabled={isCompleting}
-                      className="btn-primary gap-2"
+                      className="aviation-button-primary gap-2 font-mono"
                     >
                       {isCompleting ? (
                         <>
@@ -292,18 +311,17 @@ export function OnboardingPage() {
             </motion.div>
           </AnimatePresence>
 
-          {/* Contextual Help Panel */}
           {completedSteps.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               className="mt-6"
             >
-              <Card className="card p-4 bg-bg-glass backdrop-blur-sm border-ff-flame/20">
+              <Card className="aviation-panel-glow p-4">
                 <div className="flex items-start gap-3">
-                  <Lightbulb className="w-5 h-5 text-ff-flame shrink-0 mt-0.5" />
+                  <Lightbulb className="w-5 h-5 text-aviation-amber shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <h4 className="font-medium text-text-primary mb-2">
+                    <h4 className="font-mono font-semibold text-aviation-text-primary mb-2">
                       {currentStepIndex === 0 && 'Welcome to FunctionFly'}
                       {completedSteps.includes('welcome') &&
                         currentStepIndex === 1 &&
@@ -316,7 +334,7 @@ export function OnboardingPage() {
                         'Function Deployed Successfully'}
                       {completedSteps.length === 4 && 'Setup Complete!'}
                     </h4>
-                    <div className="text-sm text-text-secondary space-y-2">
+                    <div className="text-sm text-aviation-text-secondary space-y-2 font-mono">
                       {currentStepIndex === 0 && (
                         <div className="space-y-2">
                           <p>
@@ -325,15 +343,15 @@ export function OnboardingPage() {
                           </p>
                           {userRole && (
                             <div
-                              className={`p-2 rounded text-xs ${
+                              className={`p-2 rounded text-xs font-mono ${
                                 userRole === 'admin'
-                                  ? 'bg-ff-stratosphere/20 border border-ff-stratosphere/40 text-ff-stratosphere'
+                                  ? 'bg-aviation-stratosphere/20 border border-aviation-stratosphere/40 text-aviation-stratosphere'
                                   : userRole === 'member'
-                                    ? 'bg-ff-cyan/20 border border-ff-cyan/40 text-ff-cyan'
-                                    : 'bg-ff-taxiway/20 border border-ff-taxiway/40 text-ff-taxiway'
+                                    ? 'bg-aviation-cyan-dim border border-aviation-cyan/40 text-aviation-cyan'
+                                    : 'bg-aviation-green-dim border border-aviation-green/40 text-aviation-green'
                               }`}
                             >
-                              👋 Welcome{' '}
+                              Welcome{' '}
                               {userRole === 'admin'
                                 ? 'Team Administrator'
                                 : userRole === 'member'
@@ -362,9 +380,9 @@ export function OnboardingPage() {
                             Excellent! Your provider is connected. Now let's deploy your first
                             function to see FunctionFly in action.
                           </p>
-                          <div className="bg-ff-taxiway border border-ff-taxiway/30 rounded p-2">
-                            <p className="text-ff-pitch text-xs font-medium">
-                              ✅ API token securely stored and encrypted
+                          <div className="bg-aviation-green-dim border border-aviation-green/30 rounded p-2">
+                            <p className="text-aviation-green text-xs font-mono font-medium">
+                              API token securely stored and encrypted
                             </p>
                           </div>
                         </div>
@@ -375,9 +393,9 @@ export function OnboardingPage() {
                             Your function is live! The final step tests your failover setup to
                             ensure high availability.
                           </p>
-                          <div className="bg-ff-cyan/20 border border-ff-cyan/40 rounded p-2">
-                            <p className="text-ff-cyan text-xs font-medium">
-                              💡 FunctionFly automatically routes traffic to healthy providers if
+                          <div className="bg-aviation-cyan-dim border border-aviation-cyan/40 rounded p-2">
+                            <p className="text-aviation-cyan text-xs font-mono font-medium">
+                              FunctionFly automatically routes traffic to healthy providers if
                               one fails
                             </p>
                           </div>
@@ -391,9 +409,9 @@ export function OnboardingPage() {
                               Great! Your failover setup is working. Now let's set up your team for
                               collaboration.
                             </p>
-                            <div className="bg-ff-cyan/20 border border-ff-cyan/40 rounded p-2">
-                              <p className="text-ff-cyan text-xs font-medium">
-                                👥 Invite team members to collaborate on functions and share
+                            <div className="bg-aviation-cyan-dim border border-aviation-cyan/40 rounded p-2">
+                              <p className="text-aviation-cyan text-xs font-mono font-medium">
+                                Invite team members to collaborate on functions and share
                                 provider access
                               </p>
                             </div>
@@ -407,12 +425,12 @@ export function OnboardingPage() {
                               Excellent! Your FunctionFly setup is complete and ready for
                               production.
                             </p>
-<div className="bg-ff-taxiway/20 border border-ff-taxiway/40 rounded p-2">
-                            <p className="text-ff-taxiway text-xs font-medium">
-                              🎉 You're all set to start deploying functions with high
-                              availability!
-                            </p>
-                          </div>
+                            <div className="bg-aviation-green-dim border border-aviation-green/40 rounded p-2">
+                              <p className="text-aviation-green text-xs font-mono font-medium">
+                                You're all set to start deploying functions with high
+                                availability!
+                              </p>
+                            </div>
                           </div>
                         )}
                       {completedSteps.length === steps.length && (
@@ -421,9 +439,9 @@ export function OnboardingPage() {
                             Congratulations! Your FunctionFly setup is complete and
                             production-ready.
                           </p>
-                          <div className="bg-ff-stratosphere/10 border border-ff-stratosphere/20 rounded p-2">
-                            <p className="text-ff-stratosphere text-xs">
-                              🚀 Your functions are now deployed across multiple providers with
+                          <div className="bg-aviation-stratosphere/10 border border-aviation-stratosphere/20 rounded p-2">
+                            <p className="text-aviation-stratosphere text-xs font-mono">
+                              Your functions are now deployed across multiple providers with
                               automatic failover
                             </p>
                           </div>
@@ -436,9 +454,8 @@ export function OnboardingPage() {
             </motion.div>
           )}
 
-          {/* Step Indicators - Custom branded stepper */}
           <div className="mt-8 flex justify-center">
-            <div className="onboarding-stepper">
+            <div className="flex items-center gap-4">
               {steps.map((step, index) => {
                 if (!step) return null;
                 const isActive = index === currentStepIndex;
@@ -447,29 +464,57 @@ export function OnboardingPage() {
                 if (!Icon) return null;
 
                 return (
-                  <div
-                    key={step.id}
-                    role="listitem"
-                    aria-current={isActive ? 'step' : undefined}
-                    className={`onboarding-stepper-item ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}
-                  >
-                    <div className="onboarding-stepper-icon">
-                      {isCompleted ? (
-                        <CheckCircle className="w-5 h-5" />
-                      ) : (
-                        Icon ? (
-                          <HelpTooltip content={`${step.title}: ${step.description}`}>
-                            <Icon className="w-5 h-5 cursor-help" />
-                          </HelpTooltip>
-                        ) : null
-                      )}
-                    </div>
-                    <div className="onboarding-stepper-content">
-                      <span className="onboarding-stepper-title">{step.title}</span>
-                      <span className="onboarding-stepper-description">{step.description}</span>
+                  <div key={step.id} className="flex items-center">
+                    <div
+                      role="listitem"
+                      aria-current={isActive ? 'step' : undefined}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-xl transition-all duration-300 ${
+                        isActive
+                          ? 'bg-aviation-bg-instrument border-2 border-aviation-amber shadow-lg shadow-aviation-amber-dim'
+                          : isCompleted
+                            ? 'bg-aviation-bg-instrument border border-aviation-green/50'
+                            : 'bg-aviation-bg-secondary border border-aviation-border-panel'
+                      }`}
+                    >
+                      <div
+                        className={`w-12 h-12 rounded-full flex items-center justify-center font-mono font-bold text-lg transition-all duration-300 ${
+                          isActive
+                            ? 'bg-gradient-to-br from-aviation-amber to-aviation-amber-glow text-aviation-bg-primary shadow-lg shadow-aviation-amber-glow scale-110'
+                            : isCompleted
+                              ? 'bg-aviation-green text-aviation-bg-primary'
+                              : 'bg-aviation-bg-tertiary text-aviation-text-muted'
+                        }`}
+                      >
+                        {isCompleted ? (
+                          <CheckCircle className="w-6 h-6" />
+                        ) : (
+                          Icon && <Icon className="w-6 h-6" />
+                        )}
+                      </div>
+                      <div className="flex flex-col items-center gap-1 text-center">
+                        <span
+                          className={`font-mono text-sm font-semibold ${
+                            isActive
+                              ? 'text-aviation-amber'
+                              : isCompleted
+                                ? 'text-aviation-green'
+                                : 'text-aviation-text-muted'
+                          }`}
+                        >
+                          {step.title}
+                        </span>
+                      </div>
                     </div>
                     {index < steps.length - 1 && (
-                      <div className={`onboarding-stepper-connector ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`} />
+                      <div
+                        className={`w-8 h-1 mx-2 rounded-full transition-all duration-300 ${
+                          isCompleted
+                            ? 'bg-aviation-green'
+                            : isActive
+                              ? 'bg-gradient-to-r from-aviation-amber to-aviation-cyan'
+                              : 'bg-aviation-border-panel'
+                        }`}
+                      />
                     )}
                   </div>
                 );
@@ -479,65 +524,64 @@ export function OnboardingPage() {
         </div>
       </main>
 
-      {/* Skip Confirmation Dialog */}
       <Dialog open={showSkipDialog} onOpenChange={setShowSkipDialog}>
-        <DialogContent className="onboarding-skip-dialog sm:max-w-md" aria-describedby="skip-dialog-desc">
+        <DialogContent className="aviation-panel sm:max-w-md" aria-describedby="skip-dialog-desc">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 onboarding-skip-warning-icon" />
+            <DialogTitle className="flex items-center gap-2 font-mono text-aviation-text-primary">
+              <AlertTriangle className="w-5 h-5 text-aviation-amber" />
               Skip Onboarding?
             </DialogTitle>
-            <DialogDescription id="skip-dialog-desc" className="onboarding-skip-text">
+            <DialogDescription id="skip-dialog-desc" className="text-aviation-text-secondary font-mono">
               You're about to skip the remaining FunctionFly onboarding steps. Here's what that means:
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             {currentStepIndex < 1 && (
-              <div className="onboarding-skip-alert-item">
-                <AlertTriangle className="w-4 h-4 onboarding-skip-alert-icon onboarding-skip-alert-icon--warning" />
-                <span className="onboarding-skip-text">You won't connect any cloud providers for deployment</span>
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-aviation-amber shrink-0 mt-0.5" />
+                <span className="text-aviation-text-secondary font-mono text-sm">You won't connect any cloud providers for deployment</span>
               </div>
             )}
             {currentStepIndex < 2 && (
-              <div className="onboarding-skip-alert-item">
-                <AlertTriangle className="w-4 h-4 onboarding-skip-alert-icon onboarding-skip-alert-icon--warning" />
-                <span className="onboarding-skip-text">You won't deploy your first function to test the setup</span>
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-aviation-amber shrink-0 mt-0.5" />
+                <span className="text-aviation-text-secondary font-mono text-sm">You won't deploy your first function to test the setup</span>
               </div>
             )}
             {currentStepIndex < 3 && (
-              <div className="onboarding-skip-alert-item">
-                <AlertTriangle className="w-4 h-4 onboarding-skip-alert-icon onboarding-skip-alert-icon--warning" />
-                <span className="onboarding-skip-text">You won't test automatic failover capabilities</span>
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-aviation-amber shrink-0 mt-0.5" />
+                <span className="text-aviation-text-secondary font-mono text-sm">You won't test automatic failover capabilities</span>
               </div>
             )}
             {userRole === 'admin' && currentStepIndex < 4 && (
-              <div className="onboarding-skip-alert-item">
-                <Lightbulb className="w-4 h-4 onboarding-skip-alert-icon onboarding-skip-alert-icon--info" />
-                <span className="onboarding-skip-text">You can still invite team members later from your dashboard</span>
+              <div className="flex items-start gap-2">
+                <Lightbulb className="w-4 h-4 text-aviation-cyan shrink-0 mt-0.5" />
+                <span className="text-aviation-text-secondary font-mono text-sm">You can still invite team members later from your dashboard</span>
               </div>
             )}
-            <div className="onboarding-skip-alert-item">
-              <Lightbulb className="w-4 h-4 onboarding-skip-alert-icon onboarding-skip-alert-icon--info" />
-              <span className="onboarding-skip-text">You can resume onboarding anytime from your dashboard settings</span>
+            <div className="flex items-start gap-2">
+              <Lightbulb className="w-4 h-4 text-aviation-cyan shrink-0 mt-0.5" />
+              <span className="text-aviation-text-secondary font-mono text-sm">You can resume onboarding anytime from your dashboard settings</span>
             </div>
-            <div className="onboarding-skip-alert-item">
-              <CheckCircle className="w-4 h-4 onboarding-skip-alert-icon onboarding-skip-alert-icon--success" />
-              <span className="onboarding-skip-text">
+            <div className="flex items-start gap-2">
+              <CheckCircle className="w-4 h-4 text-aviation-green shrink-0 mt-0.5" />
+              <span className="text-aviation-text-secondary font-mono text-sm">
                 Basic functions can still be deployed, but without multi-provider benefits
               </span>
             </div>
           </div>
-          <DialogFooter className="onboarding-skip-dialog-footer">
+          <DialogFooter className="flex gap-3 pt-4">
             <button
               onClick={() => setShowSkipDialog(false)}
-              className="onboarding-skip-btn-continue"
+              className="flex-1 px-4 py-3 font-mono font-semibold rounded-lg border border-aviation-border-instrument bg-aviation-bg-instrument text-aviation-text-primary transition-all hover:border-aviation-amber hover:text-aviation-amber"
               aria-label="Continue onboarding"
             >
               Continue Onboarding
             </button>
             <button
               onClick={confirmSkip}
-              className="onboarding-skip-btn-skip"
+              className="flex-1 px-4 py-3 font-mono font-semibold rounded-lg bg-gradient-to-r from-aviation-amber to-aviation-amber-glow text-aviation-bg-primary transition-all hover:shadow-lg hover:shadow-aviation-amber-glow"
               aria-label="Skip onboarding"
             >
               Skip Anyway
@@ -546,7 +590,6 @@ export function OnboardingPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Completion Celebration Overlay */}
       {isCompleting && (
         <>
           {showConfetti && (
@@ -556,28 +599,27 @@ export function OnboardingPage() {
               recycle={false}
               numberOfPieces={200}
               gravity={0.3}
-              colors={['#FF6B35', '#FFB800', '#00D4FF', '#5B7CF5', '#10b981', '#FF4F5E']}
+              colors={['#f59e0b', '#ffb800', '#06b6d4', '#5b7cf5', '#10b981', '#ff4f5e']}
             />
           )}
           <motion.div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center"
+            className="fixed inset-0 bg-aviation-bg-primary/80 backdrop-blur-sm z-50 flex items-center justify-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
             <motion.div
-              className="text-center"
+              className="text-center relative"
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', bounce: 0.4 }}
             >
-              {/* Celebration particles */}
               <div className="absolute inset-0 pointer-events-none">
                 {[...Array(20)].map((_, i) => (
                   <motion.div
                     key={i}
                     className="absolute w-3 h-3 rounded-full"
                     style={{
-                      background: ['var(--ff-flame)', 'var(--ff-cyan)', 'var(--ff-taxiway)', 'var(--ff-stratosphere)', 'var(--ff-afterburner)'][i % 5],
+                      background: ['#f59e0b', '#06b6d4', '#10b981', '#5b7cf5', '#ff4f5e'][i % 5],
                       left: `${Math.random() * 100}%`,
                       top: `${Math.random() * 100}%`,
                     }}
@@ -603,7 +645,7 @@ export function OnboardingPage() {
               </div>
 
               <motion.div
-                className="w-24 h-24 bg-gradient-to-r from-ff-flame to-ff-afterburner rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl"
+                className="w-24 h-24 bg-gradient-to-r from-aviation-amber to-aviation-amber-glow rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-aviation-amber-glow"
                 animate={{
                   rotate: [0, 10, -10, 0],
                   scale: [1, 1.1, 1],
@@ -613,20 +655,20 @@ export function OnboardingPage() {
                   scale: { duration: 1, repeat: Infinity, ease: 'easeInOut' },
                 }}
               >
-                <CheckCircle className="w-12 h-12 text-white" />
+                <CheckCircle className="w-12 h-12 text-aviation-bg-primary" />
               </motion.div>
 
               <motion.h2
-                className="text-3xl font-bold text-white mb-4"
+                className="text-3xl font-bold text-aviation-text-primary mb-4 font-mono"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
               >
-                Welcome to FunctionFly! 🎉
+                Welcome to FunctionFly!
               </motion.h2>
 
               <motion.p
-                className="text-white/80 text-lg"
+                className="text-aviation-text-secondary text-lg font-mono"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
@@ -638,7 +680,6 @@ export function OnboardingPage() {
         </>
       )}
 
-      {/* Footer */}
       <Footer />
     </div>
   );

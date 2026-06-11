@@ -76,6 +76,28 @@ const providers = [
     status: 'available' as ProviderStatus,
     isManaged: true,
   },
+  {
+    id: 'deno',
+    name: 'Deno Deploy',
+    description: 'Deploy to Deno Deploy global edge network',
+    tooltip:
+      'Deno Deploy runs your JavaScript and TypeScript at the edge, closer to your users. Built on V8 and designed for secure, serverless deployments.',
+    color: '#000000',
+    docsUrl: 'https://docs.deno.com/deploy/',
+    requiresApiToken: true,
+    status: 'available' as ProviderStatus,
+  },
+  {
+    id: 'aws-lambda',
+    name: 'AWS Lambda',
+    description: 'Deploy serverless functions to AWS Lambda',
+    tooltip:
+      'AWS Lambda lets you run code without provisioning or managing servers. Pay only for the compute time you consume, with automatic scaling.',
+    color: '#FF9900',
+    docsUrl: 'https://docs.aws.amazon.com/lambda/',
+    requiresApiToken: true,
+    status: 'available' as ProviderStatus,
+  },
 ];
 
 type ValidationState = 'idle' | 'validating' | 'valid' | 'invalid';
@@ -107,10 +129,8 @@ export function ConnectProviderStep() {
     setIsConnecting(true);
 
     try {
-      // Strip 'Bearer ' prefix if present before sending to backend
       const cleanToken = apiToken.startsWith('Bearer ') ? apiToken.slice(7) : apiToken;
 
-      // Use backend API for provider validation
       const response = await fetch('/v1/providers/validate', {
         method: 'POST',
         headers: {
@@ -147,7 +167,6 @@ export function ConnectProviderStep() {
       setIsConnected(true);
       setShowConfetti(true);
 
-      // Create provider config
       const providerConfig: {
         id: string;
         provider: string;
@@ -156,13 +175,12 @@ export function ConnectProviderStep() {
         isShared?: boolean;
         teamId?: string;
       } = {
-        id: `${selectedProvider}-${Date.now()}`, // Generate temporary ID
+        id: `${selectedProvider}-${Date.now()}`,
         provider: selectedProvider,
         providerName: selectedProviderData?.name || selectedProvider,
         connectedAt: new Date().toISOString(),
       };
 
-      // Save step data to onboarding store
       updateStepData('connect-provider', {
         selectedProvider,
         providerName: selectedProviderData?.name,
@@ -172,11 +190,9 @@ export function ConnectProviderStep() {
         providerConfig,
       });
 
-      // Share with team if requested
       if (shareWithTeam) {
         setIsSharing(true);
         try {
-          // Resolve the team ID from the current tenant's teams
           const { teams } = await teamsApi.list();
           const teamId = teams[0]?.id;
 
@@ -210,7 +226,6 @@ export function ConnectProviderStep() {
         }
       }
 
-      // Hide confetti after 3 seconds
       setTimeout(() => setShowConfetti(false), 3000);
 
       toast.success(`${selectedProviderData?.name} connected successfully!`);
@@ -253,7 +268,6 @@ export function ConnectProviderStep() {
 
   const selectedProviderData = providers.find((p) => p.id === selectedProvider);
 
-  // Real API validation functions
   const validateProviderToken = async (
     token: string,
     provider: string
@@ -265,6 +279,10 @@ export function ConnectProviderStep() {
         return await validateVercelToken(token);
       case 'fly':
         return await validateFlyToken(token);
+      case 'deno':
+        return await validateDenoToken(token);
+      case 'aws-lambda':
+        return await validateAWSLambdaToken(token);
       default:
         return { isValid: false, message: 'Unsupported provider' };
     }
@@ -272,10 +290,8 @@ export function ConnectProviderStep() {
 
   const validateCloudflareToken = async (token: string): Promise<ValidationResult> => {
     try {
-      // Strip 'Bearer ' prefix if present (users sometimes paste the full header value)
       const cleanToken = token.startsWith('Bearer ') ? token.slice(7) : token;
 
-      // Cloudflare API token validation
       const response = await fetch('https://api.cloudflare.com/client/v4/user/tokens/verify', {
         method: 'GET',
         headers: {
@@ -314,10 +330,8 @@ export function ConnectProviderStep() {
 
   const validateVercelToken = async (token: string): Promise<ValidationResult> => {
     try {
-      // Strip 'Bearer ' prefix if present
       const cleanToken = token.startsWith('Bearer ') ? token.slice(7) : token;
 
-      // Vercel API token validation
       const response = await fetch('https://api.vercel.com/v2/user', {
         method: 'GET',
         headers: {
@@ -363,10 +377,8 @@ export function ConnectProviderStep() {
 
   const validateFlyToken = async (token: string): Promise<ValidationResult> => {
     try {
-      // Strip 'Bearer ' prefix if present
       const cleanToken = token.startsWith('Bearer ') ? token.slice(7) : token;
 
-      // Fly.io API token validation
       const response = await fetch('https://api.fly.io/v1/apps', {
         method: 'GET',
         headers: {
@@ -391,7 +403,6 @@ export function ConnectProviderStep() {
         };
       }
 
-      // If we can access apps, the token is valid
       return { isValid: true };
     } catch (error) {
       return {
@@ -402,13 +413,87 @@ export function ConnectProviderStep() {
     }
   };
 
+  const validateDenoToken = async (token: string): Promise<ValidationResult> => {
+    try {
+      const cleanToken = token.startsWith('Bearer ') ? token.slice(7) : token;
+
+      const response = await fetch('https://api.deno.com/v1/user', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${cleanToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.status === 401) {
+        return {
+          isValid: false,
+          message: 'Invalid Deno Deploy API token',
+          suggestion: 'Please check your API token in the Deno Deploy dashboard',
+        };
+      }
+
+      if (!response.ok) {
+        return {
+          isValid: false,
+          message: 'Unable to validate Deno Deploy token',
+          suggestion: 'Please try again or check your token permissions',
+        };
+      }
+
+      return { isValid: true };
+    } catch (error) {
+      return {
+        isValid: false,
+        message: 'Unable to connect to Deno Deploy API',
+        suggestion: 'Check your internet connection and try again',
+      };
+    }
+  };
+
+  const validateAWSLambdaToken = async (token: string): Promise<ValidationResult> => {
+    try {
+      const cleanToken = token.startsWith('Bearer ') ? token.slice(7) : token;
+
+      const response = await fetch('https://lambda.amazonaws.com/2018-10-17/functions/', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${cleanToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        return {
+          isValid: false,
+          message: 'Invalid AWS credentials',
+          suggestion: 'Please check your AWS access key and secret in the AWS dashboard',
+        };
+      }
+
+      if (!response.ok) {
+        return {
+          isValid: false,
+          message: 'Unable to validate AWS credentials',
+          suggestion: 'Please try again or check your IAM permissions',
+        };
+      }
+
+      return { isValid: true };
+    } catch (error) {
+      return {
+        isValid: false,
+        message: 'Unable to connect to AWS Lambda API',
+        suggestion: 'Check your internet connection and try again',
+      };
+    }
+  };
+
   const validateApiToken = async (token: string, provider: string): Promise<ValidationResult> => {
     if (!token.trim()) {
       return { isValid: false };
     }
 
-    // Basic format validation
-    // Strip 'Bearer ' prefix if present for consistent validation
     const cleanToken = token.startsWith('Bearer ') ? token.slice(7) : token;
 
     const basicValidation = {
@@ -418,6 +503,9 @@ export function ConnectProviderStep() {
         (cleanToken.startsWith('vercel_') || /^[a-zA-Z0-9_-]+$/.test(cleanToken)),
       fly:
         cleanToken.length > 20 && !cleanToken.includes(' ') && /^[A-Za-z0-9_-]+$/.test(cleanToken),
+      deno: cleanToken.length > 20 && /^[A-Za-z0-9_-]+$/.test(cleanToken),
+      'aws-lambda':
+        cleanToken.length > 20 && !cleanToken.includes(' ') && /^[A-Za-z0-9+/=]+$/.test(cleanToken),
     };
 
     if (!basicValidation[provider as keyof typeof basicValidation]) {
@@ -429,15 +517,19 @@ export function ConnectProviderStep() {
             ? 'Cloudflare API tokens are long alphanumeric strings (40+ characters). Get yours from the Cloudflare dashboard under My Profile > API Tokens.'
             : provider === 'vercel'
               ? 'Vercel API tokens start with "vercel_" or are long alphanumeric strings. Create one in your Vercel dashboard under Account Settings > Tokens.'
-              : 'Fly.io API tokens are alphanumeric strings without spaces. Create one using "flyctl tokens create" in your terminal or in the Fly.io dashboard.',
+              : provider === 'fly'
+                ? 'Fly.io API tokens are alphanumeric strings without spaces. Create one using "flyctl tokens create" in your terminal or in the Fly.io dashboard.'
+                : provider === 'deno'
+                  ? 'Deno Deploy API tokens are alphanumeric strings. Create one in your Deno Deploy dashboard under Account Settings > API Tokens.'
+                  : provider === 'aws-lambda'
+                    ? 'AWS credentials consist of an Access Key ID and Secret Access Key. Create IAM credentials in the AWS Console with Lambda permissions.'
+                    : 'Please check your API token format and try again.',
       };
     }
 
-    // Simulate API validation
     setValidationState('validating');
 
     try {
-      // Real API validation for each provider
       const validationResult = await validateProviderToken(token, provider);
 
       if (!validationResult.isValid) {
@@ -461,7 +553,6 @@ export function ConnectProviderStep() {
     }
   };
 
-  // Debounced validation effect
   useEffect(() => {
     if (!apiToken || !selectedProvider) {
       setValidationState('idle');
@@ -475,12 +566,11 @@ export function ConnectProviderStep() {
       setValidationState(result.isValid ? 'valid' : 'invalid');
       setValidationMessage(result.message || '');
       setValidationSuggestion(result.suggestion || '');
-    }, 500); // 500ms debounce
+    }, 500);
 
     return () => clearTimeout(timeoutId);
   }, [apiToken, selectedProvider]);
 
-  // Effect to estimate costs when provider is selected
   useEffect(() => {
     if (selectedProvider && validationState === 'valid') {
       estimateCost(selectedProvider);
@@ -496,13 +586,13 @@ export function ConnectProviderStep() {
         animate={{ opacity: 1, scale: 1 }}
         className="text-center py-8"
       >
-        <div className="w-16 h-16 bg-ff-taxiway/20 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Check className="w-8 h-8 text-ff-taxiway" />
+        <div className="w-16 h-16 bg-aviation-green-dim rounded-full flex items-center justify-center mx-auto mb-4">
+          <Check className="w-8 h-8 text-aviation-green" />
         </div>
-        <h3 className="text-xl font-semibold text-text-primary mb-2">
+        <h3 className="text-xl font-mono font-semibold text-aviation-text-primary mb-2">
           {selectedProviderData?.name} Connected!
         </h3>
-        <p className="text-text-secondary">Your provider is now ready to deploy functions.</p>
+        <p className="text-aviation-text-secondary font-mono">Your provider is now ready to deploy functions.</p>
       </motion.div>
     );
   }
@@ -519,19 +609,19 @@ export function ConnectProviderStep() {
           recycle={false}
           numberOfPieces={50}
           gravity={0.3}
-          colors={['#FF6B35', '#FFB800', '#00D4FF', '#5B7CF5', '#10b981']}
+          colors={['#f59e0b', '#ffb800', '#06b6d4', '#5b7cf5', '#10b981']}
         />
       )}
       <div className="space-y-6">
         {unavailableProviders.length > 0 && (
-          <div className="bg-ff-cyan/10 border border-ff-cyan/30 rounded-lg p-4">
+          <div className="bg-aviation-cyan-dim border border-aviation-cyan/30 rounded-lg p-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-ff-cyan flex-shrink-0 mt-0.5" />
+              <AlertTriangle className="w-5 h-5 text-aviation-cyan flex-shrink-0 mt-0.5" />
               <div>
-                <h4 className="font-medium text-ff-cyan mb-1">
+                <h4 className="font-mono font-medium text-aviation-cyan mb-1">
                   Some providers are currently unavailable
                 </h4>
-                <p className="text-sm text-text-secondary">
+                <p className="text-sm font-mono text-aviation-text-secondary">
                   {unavailableProviders.length === 1
                     ? `${unavailableProviders[0].name} is undergoing maintenance.`
                     : `${unavailableProviders.length} providers are currently unavailable.`}{' '}
@@ -555,17 +645,17 @@ export function ConnectProviderStep() {
                     : CheckCircle2;
               const statusColor =
                 provider.status === 'maintenance'
-                  ? 'text-ff-cyan'
+                  ? 'text-aviation-cyan'
                   : provider.status === 'outage'
-                    ? 'text-ff-emergency'
-                    : 'text-ff-taxiway';
+                    ? 'text-aviation-red'
+                    : 'text-aviation-green';
 
               return (
                 <Card
                   key={provider.id}
-                  className={`card p-4 transition-all ${
+                  className={`aviation-instrument p-4 transition-all ${
                     isAvailable
-                      ? 'cursor-pointer hover:border-ff-flame/50'
+                      ? 'cursor-pointer hover:border-aviation-amber-dim'
                       : 'opacity-60 cursor-not-allowed'
                   }`}
                   onClick={() => isAvailable && setSelectedProvider(provider.id)}
@@ -578,24 +668,24 @@ export function ConnectProviderStep() {
                       <Cloud className="w-6 h-6" style={{ color: provider.color }} />
                       <div className="absolute -top-1 -right-1">
                         {React.createElement(statusIcon, {
-                          className: `w-4 h-4 ${statusColor} bg-bg-primary rounded-full p-0.5`,
+                          className: `w-4 h-4 ${statusColor} bg-aviation-bg-primary rounded-full p-0.5`,
                         })}
                       </div>
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <h3
-                          className={`font-medium ${isAvailable ? 'text-text-primary' : 'text-text-muted'}`}
+                          className={`font-mono font-semibold ${isAvailable ? 'text-aviation-text-primary' : 'text-aviation-text-muted'}`}
                         >
                           {provider.name}
                         </h3>
                         <HelpTooltip content={provider.tooltip} />
                         {!isAvailable && (
                           <span
-                            className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                            className={`text-xs px-2 py-0.5 rounded-full font-mono font-medium ${
                               provider.status === 'maintenance'
-                                ? 'bg-ff-cyan text-ff-pitch'
-                                : 'bg-ff-emergency text-white'
+                                ? 'bg-aviation-cyan/20 text-aviation-cyan'
+                                : 'bg-aviation-red/20 text-aviation-red'
                             }`}
                           >
                             {provider.status === 'maintenance' ? 'Maintenance' : 'Outage'}
@@ -603,19 +693,19 @@ export function ConnectProviderStep() {
                         )}
                       </div>
                       <p
-                        className={`text-sm ${isAvailable ? 'text-text-secondary' : 'text-text-muted'}`}
+                        className={`text-sm font-mono ${isAvailable ? 'text-aviation-text-secondary' : 'text-aviation-text-muted'}`}
                       >
                         {provider.description}
                       </p>
                       {!isAvailable && (
-                        <p className="text-xs text-text-muted mt-1">
+                        <p className="text-xs font-mono text-aviation-text-muted mt-1">
                           {provider.status === 'maintenance'
                             ? 'Temporarily unavailable for scheduled maintenance'
                             : 'Service is currently experiencing issues'}
                         </p>
                       )}
                     </div>
-                    <Button variant="ghost" size="sm" disabled={!isAvailable}>
+                    <Button variant="ghost" size="sm" disabled={!isAvailable} className="text-aviation-text-muted">
                       {isAvailable ? 'Connect' : 'Unavailable'}
                     </Button>
                   </div>
@@ -629,7 +719,7 @@ export function ConnectProviderStep() {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-6"
           >
-            <div className="flex items-center gap-4 p-4 bg-bg-tertiary rounded-lg">
+            <div className="flex items-center gap-4 p-4 bg-aviation-bg-tertiary rounded-lg">
               <div
                 className="w-12 h-12 rounded-lg flex items-center justify-center"
                 style={{ backgroundColor: `${selectedProviderData?.color}20` }}
@@ -637,12 +727,12 @@ export function ConnectProviderStep() {
                 <Cloud className="w-6 h-6" style={{ color: selectedProviderData?.color }} />
               </div>
               <div className="flex-1">
-                <h3 className="font-medium text-text-primary">{selectedProviderData?.name}</h3>
+                <h3 className="font-mono font-semibold text-aviation-text-primary">{selectedProviderData?.name}</h3>
                 <a
                   href={selectedProviderData?.docsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-text-accent hover:underline inline-flex items-center gap-1"
+                  className="text-sm font-mono text-aviation-cyan hover:underline inline-flex items-center gap-1"
                 >
                   View Documentation
                   <ExternalLink className="w-3 h-3" />
@@ -655,57 +745,57 @@ export function ConnectProviderStep() {
                   setSelectedProvider(null);
                   setApiToken('');
                 }}
+                className="text-aviation-text-muted hover:text-aviation-amber"
               >
                 Change
               </Button>
             </div>
 
-            {/* Cost Preview */}
             {selectedProvider && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                className="bg-bg-tertiary rounded-lg p-4 border border-border-subtle"
+                className="bg-aviation-bg-instrument rounded-lg p-4 border border-aviation-border-panel"
               >
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="text-sm font-medium text-text-primary">Cost Preview</span>
+                  <span className="text-sm font-mono font-medium text-aviation-text-primary">Cost Preview</span>
                   <HelpTooltip content="Estimated monthly costs for a typical function deployment. Actual costs may vary based on usage." />
                 </div>
 
                 {isEstimatingCost ? (
-                  <div className="flex items-center gap-2 text-text-muted">
+                  <div className="flex items-center gap-2 text-aviation-text-muted">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="text-sm">Calculating costs...</span>
+                    <span className="text-sm font-mono">Calculating costs...</span>
                   </div>
                 ) : costEstimate ? (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-text-secondary">Monthly Estimate</span>
-                      <span className="text-lg font-semibold text-text-primary">
+                      <span className="text-sm font-mono text-aviation-text-secondary">Monthly Estimate</span>
+                      <span className="text-lg font-mono font-semibold text-aviation-text-primary">
                         ${costEstimate.monthlyCost.toFixed(2)} {costEstimate.currency}
                       </span>
                     </div>
 
                     <div className="space-y-2">
-                      <div className="text-xs text-text-muted">Breakdown:</div>
+                      <div className="text-xs font-mono text-aviation-text-muted">Breakdown:</div>
                       {Object.entries(costEstimate.breakdown).map(([key, value]) => (
                         <div key={key} className="flex justify-between text-sm">
-                          <span className="text-text-secondary capitalize">
+                          <span className="text-aviation-text-secondary font-mono capitalize">
                             {key.replace('_', ' ')}
                           </span>
-                          <span className="text-text-primary">${value.toFixed(3)}</span>
+                          <span className="text-aviation-text-primary font-mono">${value.toFixed(3)}</span>
                         </div>
                       ))}
                     </div>
 
                     {costEstimate.providerData && (
-                      <div className="text-xs text-text-muted pt-2 border-t border-border-subtle">
+                      <div className="text-xs font-mono text-aviation-text-muted pt-2 border-t border-aviation-border-panel">
                         Based on 1,000 requests/day, 100ms compute time, 128MB memory
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="text-sm text-text-muted">
+                  <div className="text-sm font-mono text-aviation-text-muted">
                     Connect your provider to see cost estimates
                   </div>
                 )}
@@ -713,7 +803,7 @@ export function ConnectProviderStep() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="apiToken" className="flex items-center gap-2">
+              <Label htmlFor="apiToken" className="flex items-center gap-2 font-mono text-aviation-text-secondary">
                 <Key className="w-4 h-4" />
                 API Token
                 <HelpTooltip content="An API token is a secure key that allows FunctionFly to deploy functions to your provider account. You can generate this in your provider's dashboard under API settings." />
@@ -725,51 +815,51 @@ export function ConnectProviderStep() {
                   placeholder={`Enter your ${selectedProviderData?.name} API token`}
                   value={apiToken}
                   onChange={(e) => setApiToken(e.target.value)}
-                  className={`input pr-10 ${
+                  className={`aviation-input pr-10 ${
                     validationState === 'invalid'
-                      ? 'border-red-500 focus:border-red-500'
+                      ? 'border-aviation-red focus:border-aviation-red'
                       : validationState === 'valid'
-                        ? 'border-ff-taxiway focus:border-ff-taxiway'
+                        ? 'border-aviation-green focus:border-aviation-green'
                         : ''
                   }`}
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
                   {validationState === 'validating' && (
-                    <Loader2 className="w-4 h-4 animate-spin text-text-muted" />
+                    <Loader2 className="w-4 h-4 animate-spin text-aviation-text-muted" />
                   )}
                   {validationState === 'valid' && (
-                    <CheckCircle2 className="w-4 h-4 text-ff-taxiway" />
+                    <CheckCircle2 className="w-4 h-4 text-aviation-green" />
                   )}
                   {validationState === 'invalid' && (
-                    <AlertCircle className="w-4 h-4 text-red-500" />
+                    <AlertCircle className="w-4 h-4 text-aviation-red" />
                   )}
                 </div>
               </div>
-              <div className="text-xs space-y-1">
+              <div className="text-xs font-mono space-y-1">
                 {validationState === 'invalid' && validationMessage && (
-                  <div className="flex items-start gap-2 text-red-400">
+                  <div className="flex items-start gap-2 text-aviation-red">
                     <AlertCircle className="w-3 h-3 flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="font-medium">{validationMessage}</p>
                       {validationSuggestion && (
-                        <p className="text-red-300 mt-1">{validationSuggestion}</p>
+                        <p className="text-aviation-red/80 mt-1">{validationSuggestion}</p>
                       )}
                     </div>
                   </div>
                 )}
                 {validationState === 'valid' && (
-                  <p className="text-green-400 flex items-center gap-1">
+                  <p className="text-aviation-green flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3" />
                     API token validated successfully
                   </p>
                 )}
                 {validationState === 'idle' && (
                   <>
-                    <p className="text-text-muted">
+                    <p className="text-aviation-text-muted">
                       Find your API token in {selectedProviderData?.name}'s dashboard under API
                       settings.
                     </p>
-                    <p className="text-text-muted">
+                    <p className="text-aviation-text-muted">
                       Your API token is securely encrypted and stored. We never share your
                       credentials.
                     </p>
@@ -778,23 +868,22 @@ export function ConnectProviderStep() {
               </div>
             </div>
 
-            {/* Team Sharing Option */}
-            <div className="flex items-center gap-3 p-3 bg-bg-tertiary rounded-lg">
+            <div className="flex items-center gap-3 p-3 bg-aviation-bg-tertiary rounded-lg">
               <input
                 type="checkbox"
                 id="shareWithTeam"
                 checked={shareWithTeam}
                 onChange={(e) => setShareWithTeam(e.target.checked)}
-                className="w-4 h-4 text-ff-flame border-border-subtle rounded focus:ring-ff-flame focus:ring-1"
+                className="w-4 h-4 text-aviation-amber border-aviation-border-instrument rounded focus:ring-aviation-amber focus:ring-1"
               />
               <div className="flex-1">
                 <Label
                   htmlFor="shareWithTeam"
-                  className="text-sm font-medium text-text-primary cursor-pointer"
+                  className="text-sm font-mono font-medium text-aviation-text-primary cursor-pointer"
                 >
                   Share with Team
                 </Label>
-                <p className="text-xs text-text-muted">
+                <p className="text-xs font-mono text-aviation-text-muted">
                   Allow team members to use this provider for deployments
                 </p>
               </div>
@@ -809,7 +898,7 @@ export function ConnectProviderStep() {
                 isConnecting ||
                 isSharing
               }
-              className="btn-primary w-full"
+              className="aviation-button-primary w-full font-mono"
             >
               {isConnecting ? (
                 <>

@@ -537,9 +537,17 @@ function AppContent() {
         <Route path="/auth/magic-link" element={<RedirectToAuth />} />
         <Route path="/auth/magic-link/verify" element={<MagicLinkVerifyPage />} />
 
-        {/* Onboarding Route */}
+        {/* Onboarding Routes */}
         <Route
           path="/onboarding"
+          element={
+            <OnboardingRoute>
+              <OnboardingPage />
+            </OnboardingRoute>
+          }
+        />
+        <Route
+          path="/onboarding/:step"
           element={
             <OnboardingRoute>
               <OnboardingPage />

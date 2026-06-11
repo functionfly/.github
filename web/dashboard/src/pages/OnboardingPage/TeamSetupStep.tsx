@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Users, Mail, Check, Loader2, AlertTriangle, Crown, User, Eye, Plus, X } from "lucide-react";
+import { Users, Mail, Check, Loader2, Crown, User, Eye, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,35 +31,33 @@ export function TeamSetupStep() {
       label: 'Admin',
       description: 'Full access to manage team, providers, and functions',
       icon: Crown,
-      color: 'text-purple-500',
+      color: 'text-aviation-stratosphere',
     },
     {
       value: 'member' as TeamRole,
       label: 'Member',
       description: 'Can deploy and manage functions, view team resources',
       icon: User,
-      color: 'text-blue-500',
+      color: 'text-aviation-cyan',
     },
     {
       value: 'viewer' as TeamRole,
       label: 'Viewer',
       description: 'Read-only access to team functions and metrics',
       icon: Eye,
-      color: 'text-green-500',
+      color: 'text-aviation-green',
     },
   ];
 
   const addInvite = () => {
     if (!newEmail.trim()) return;
 
-    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newEmail)) {
       toast.error('Please enter a valid email address');
       return;
     }
 
-    // Check if email already exists
     if (invites.some(invite => invite.email === newEmail)) {
       toast.error('This email has already been added');
       return;
@@ -77,7 +75,6 @@ export function TeamSetupStep() {
 
   const handleSendInvites = async () => {
     if (invites.length === 0) {
-      // Skip team setup
       handleSkip();
       return;
     }
@@ -92,7 +89,7 @@ export function TeamSetupStep() {
         },
         body: JSON.stringify({
           emails: invites.map(invite => invite.email),
-          role: invites[0].role, // For now, use the same role for all invites
+          role: invites[0].role,
           message: 'Welcome to our FunctionFly team! Please join us to start deploying functions together.',
         }),
       });
@@ -104,7 +101,6 @@ export function TeamSetupStep() {
 
       const result = await response.json();
 
-      // Update store with team invites
       setTeamInvites(result.invites.map((invite: any) => ({
         email: invite.email,
         token: invite.token,
@@ -112,10 +108,8 @@ export function TeamSetupStep() {
         expires: invite.expires,
       })));
 
-      // Update user role
       setUserRole(userRole);
 
-      // Save step data
       updateStepData("team-setup", {
         userRole,
         invitesSent: result.invites.length,
@@ -135,17 +129,14 @@ export function TeamSetupStep() {
   const handleSkip = () => {
     setIsSkipping(true);
 
-    // Update store for solo user
     setUserRole('admin');
 
-    // Save step data
     updateStepData("team-setup", {
       userRole: 'admin',
       skipped: true,
       teamCreated: false,
     });
 
-    // Simulate brief loading
     setTimeout(() => {
       setIsSkipping(false);
       toast.success('Continuing with solo setup');
@@ -154,11 +145,10 @@ export function TeamSetupStep() {
 
   return (
     <div className="space-y-6">
-      {/* User Role Selection */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <Crown className="w-5 h-5 text-ff-stratosphere" />
-          <h3 className="text-lg font-medium text-text-primary">Your Role</h3>
+          <Crown className="w-5 h-5 text-aviation-stratosphere" />
+          <h3 className="text-lg font-mono font-semibold text-aviation-text-primary">Your Role</h3>
           <HelpTooltip content="Choose your role in the team. You can change this later in team settings." />
         </div>
 
@@ -168,25 +158,25 @@ export function TeamSetupStep() {
             return (
               <Card
                 key={option.value}
-                className={`card p-4 cursor-pointer transition-all ${
+                className={`aviation-instrument p-4 cursor-pointer transition-all ${
                   userRole === option.value
-                    ? "border-ff-stratosphere ring-1 ring-ff-stratosphere bg-ff-stratosphere/5"
-                    : "hover:border-border-default"
+                    ? "border-aviation-stratosphere ring-1 ring-aviation-stratosphere bg-aviation-stratosphere/5"
+                    : "hover:border-aviation-border-glow"
                 }`}
                 onClick={() => setLocalUserRole(option.value)}
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    userRole === option.value ? "bg-ff-stratosphere/20" : "bg-bg-tertiary"
+                    userRole === option.value ? "bg-aviation-stratosphere/20" : "bg-aviation-bg-tertiary"
                   }`}>
-                    <Icon className={`w-5 h-5 ${userRole === option.value ? "text-ff-stratosphere" : "text-text-muted"}`} />
+                    <Icon className={`w-5 h-5 ${userRole === option.value ? "text-aviation-stratosphere" : "text-aviation-text-muted"}`} />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <h4 className="font-medium text-text-primary">{option.label}</h4>
-                      {userRole === option.value && <Check className="w-4 h-4 text-ff-stratosphere" />}
+                      <h4 className="font-mono font-semibold text-aviation-text-primary">{option.label}</h4>
+                      {userRole === option.value && <Check className="w-4 h-4 text-aviation-stratosphere" />}
                     </div>
-                    <p className="text-sm text-text-secondary">{option.description}</p>
+                    <p className="text-sm font-mono text-aviation-text-secondary">{option.description}</p>
                   </div>
                 </div>
               </Card>
@@ -195,20 +185,18 @@ export function TeamSetupStep() {
         </div>
       </div>
 
-      {/* Team Invitations */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <Users className="w-5 h-5 text-ff-flame" />
-          <h3 className="text-lg font-medium text-text-primary">Invite Team Members</h3>
+          <Users className="w-5 h-5 text-aviation-amber" />
+          <h3 className="text-lg font-mono font-semibold text-aviation-text-primary">Invite Team Members</h3>
           <HelpTooltip content="Add team members to collaborate on functions and share provider configurations." />
         </div>
 
-        {/* Add Invite Form */}
-        <Card className="card p-4">
+        <Card className="aviation-panel p-4">
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="md:col-span-2">
-                <Label htmlFor="email" className="flex items-center gap-2">
+                <Label htmlFor="email" className="flex items-center gap-2 font-mono text-aviation-text-secondary">
                   <Mail className="w-4 h-4" />
                   Email Address
                 </Label>
@@ -219,16 +207,16 @@ export function TeamSetupStep() {
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && addInvite()}
-                  className="mt-1"
+                  className="aviation-input mt-1"
                 />
               </div>
               <div>
-                <Label htmlFor="role">Role</Label>
+                <Label htmlFor="role" className="font-mono text-aviation-text-secondary">Role</Label>
                 <select
                   id="role"
                   value={newRole}
                   onChange={(e) => setNewRole(e.target.value as TeamRole)}
-                  className="mt-1 w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-md text-text-primary focus:border-ff-flame focus:ring-1 focus:ring-ff-flame"
+                  className="mt-1 w-full px-3 py-2 bg-aviation-bg-instrument border border-aviation-border-instrument rounded-md text-aviation-text-primary font-mono focus:border-aviation-amber focus:ring-1 focus:ring-aviation-amber"
                 >
                   {roleOptions.slice(1).map((option) => (
                     <option key={option.value} value={option.value}>
@@ -241,7 +229,7 @@ export function TeamSetupStep() {
             <Button
               onClick={addInvite}
               disabled={!newEmail.trim()}
-              className="w-full md:w-auto"
+              className="aviation-button w-full md:w-auto"
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Team Member
@@ -249,30 +237,29 @@ export function TeamSetupStep() {
           </div>
         </Card>
 
-        {/* Pending Invites */}
         {invites.length > 0 && (
           <div className="space-y-3">
-            <h4 className="font-medium text-text-primary">Pending Invites ({invites.length})</h4>
+            <h4 className="font-mono font-medium text-aviation-text-primary">Pending Invites ({invites.length})</h4>
             {invites.map((invite) => {
               const roleData = roleOptions.find(r => r.value === invite.role);
               const Icon = roleData?.icon || User;
               return (
-                <Card key={invite.email} className="card p-3">
+                <Card key={invite.email} className="aviation-instrument p-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center">
-                        <Icon className="w-4 h-4 text-text-muted" />
+                      <div className="w-8 h-8 rounded-full bg-aviation-bg-tertiary flex items-center justify-center">
+                        <Icon className="w-4 h-4 text-aviation-text-muted" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-text-primary">{invite.email}</p>
-                        <p className="text-xs text-text-muted">{roleData?.label}</p>
+                        <p className="text-sm font-mono font-medium text-aviation-text-primary">{invite.email}</p>
+                        <p className="text-xs font-mono text-aviation-text-muted">{roleData?.label}</p>
                       </div>
                     </div>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => removeInvite(invite.email)}
-                      className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                      className="text-aviation-red hover:text-aviation-red hover:bg-aviation-red-dim"
                     >
                       <X className="w-4 h-4" />
                     </Button>
@@ -283,12 +270,11 @@ export function TeamSetupStep() {
           </div>
         )}
 
-        {/* Action Buttons */}
         <div className="flex gap-3 pt-4">
           <Button
             onClick={handleSendInvites}
             disabled={isSendingInvites || isSkipping}
-            className="btn-primary flex-1"
+            className="aviation-button-primary flex-1 font-mono"
           >
             {isSendingInvites ? (
               <>
@@ -311,7 +297,7 @@ export function TeamSetupStep() {
             variant="outline"
             onClick={handleSkip}
             disabled={isSendingInvites || isSkipping}
-            className="flex-1"
+            className="flex-1 font-mono border-aviation-border-instrument text-aviation-text-primary hover:border-aviation-amber hover:text-aviation-amber"
           >
             {isSkipping ? (
               <>
@@ -325,12 +311,12 @@ export function TeamSetupStep() {
         </div>
 
         {invites.length === 0 && (
-          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+          <div className="bg-aviation-cyan-dim border border-aviation-cyan/30 rounded-lg p-4">
             <div className="flex items-start gap-3">
-              <Users className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+              <Users className="w-5 h-5 text-aviation-cyan flex-shrink-0 mt-0.5" />
               <div>
-                <h4 className="font-medium text-blue-400 mb-1">Team Benefits</h4>
-                <p className="text-sm text-text-secondary">
+                <h4 className="font-mono font-medium text-aviation-cyan mb-1">Team Benefits</h4>
+                <p className="text-sm font-mono text-aviation-text-secondary">
                   Invite team members to collaborate on functions, share provider configurations,
                   and manage deployments together. You can always add members later from your dashboard.
                 </p>

@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
+	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
-	"gorm.io/gorm"
 )
 
 // HandleListSignupInvites returns invite metadata (no plaintext codes).
@@ -17,7 +17,7 @@ func (h *Handler) HandleListSignupInvites(w http.ResponseWriter, r *http.Request
 	rows, err := h.repo.ListSignupInvitesAdmin(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list signup invites")
-		http.Error(w, "Failed to list invites", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list invites"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -42,14 +42,14 @@ type createSignupInviteResponse struct {
 func (h *Handler) HandleCreateSignupInvite(w http.ResponseWriter, r *http.Request) {
 	var req createSignupInviteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 	var expiresAt *time.Time
 	if req.ExpiresAt != "" {
 		t, err := time.Parse(time.RFC3339, req.ExpiresAt)
 		if err != nil {
-			http.Error(w, "expiresAt must be RFC3339", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("expiresAt must be RFC3339"))
 			return
 		}
 		u := t.UTC()
@@ -62,7 +62,7 @@ func (h *Handler) HandleCreateSignupInvite(w http.ResponseWriter, r *http.Reques
 	id, plain, err := h.repo.CreateSignupInvite(r.Context(), req.Label, req.MaxUses, expiresAt, createdBy)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create signup invite")
-		http.Error(w, "Failed to create invite", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create invite"))
 		return
 	}
 	resp := createSignupInviteResponse{
@@ -85,16 +85,16 @@ func (h *Handler) HandleRevokeSignupInvite(w http.ResponseWriter, r *http.Reques
 	idStr := mux.Vars(r)["id"]
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		http.Error(w, "Invalid id", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid id"))
 		return
 	}
 	if err := h.repo.RevokeSignupInvite(r.Context(), id); err != nil {
 		if err == gorm.ErrRecordNotFound {
-			http.Error(w, "Invite not found or already revoked", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Invite not found or already revoked"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to revoke signup invite")
-		http.Error(w, "Failed to revoke invite", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to revoke invite"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
