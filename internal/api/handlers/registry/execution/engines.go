@@ -505,8 +505,8 @@ func newNodeJSEngine() (*nodeJSEngine, error) {
 		tempDir:   tempDir,
 	}
 
-	// Wait for daemon to become ready
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// Wait for daemon to become ready (30s timeout to accommodate slow wasmtime init)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if err := sc.waitForReady(ctx); err != nil {
 		sc.Close()
@@ -538,6 +538,7 @@ func findNodeJSRuntime() (string, error) {
 func (e *nodeJSEngine) waitForReady(ctx context.Context) error {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
+	start := time.Now()
 	for {
 		select {
 		case <-ctx.Done():
@@ -553,7 +554,19 @@ func (e *nodeJSEngine) waitForReady(ctx context.Context) error {
 				resp.Body.Close()
 				return nil
 			}
+			if err != nil {
+				logrus.WithFields(logrus.Fields{
+					"url":    e.daemonURL,
+					"elapsed": time.Since(start),
+					"error":  err,
+				}).Debug("nodeJSEngine: health check failed, retrying...")
+			}
 			if resp != nil {
+				logrus.WithFields(logrus.Fields{
+					"url":         e.daemonURL,
+					"elapsed":     time.Since(start),
+					"status_code": resp.StatusCode,
+				}).Debug("nodeJSEngine: health check returned non-OK, retrying...")
 				resp.Body.Close()
 			}
 		}

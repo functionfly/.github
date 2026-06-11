@@ -165,3 +165,43 @@ type MessageAttachment struct {
 func (MessageAttachment) TableName() string {
 	return "message_attachments"
 }
+
+// MessageReaction represents an emoji reaction on a message.
+type MessageReaction struct {
+	ID        uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	MessageID uuid.UUID `json:"message_id" gorm:"type:uuid;not null;index"`
+	UserID    uuid.UUID `json:"user_id" gorm:"type:uuid;not null;index"`
+	Reaction  string   `json:"reaction" gorm:"type:varchar(50);not null"`
+	CreatedAt time.Time `json:"created_at" gorm:"not null;default:now()"`
+}
+
+// TableName returns the table name.
+func (MessageReaction) TableName() string {
+	return "message_reactions"
+}
+
+// ReactionSummary represents aggregated reaction data for a message.
+type ReactionSummary struct {
+	Reaction string   `json:"reaction"`
+	Count    int      `json:"count"`
+	UserIDs  []string `json:"user_ids"`
+}
+
+// MessageReactions represents all reactions on a message with summary.
+type MessageReactions struct {
+	MessageID  uuid.UUID         `json:"message_id"`
+	Reactions []ReactionSummary `json:"reactions"`
+}
+
+// MessageRead represents a read receipt for a message.
+type MessageRead struct {
+	ID        uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	MessageID uuid.UUID `json:"message_id" gorm:"type:uuid;not null;uniqueIndex:idx_message_read_unique"`
+	UserID    uuid.UUID `json:"user_id" gorm:"type:uuid;not null;uniqueIndex:idx_message_read_unique"`
+	ReadAt    time.Time `json:"read_at" gorm:"type:timestamptz;not null;default:now()"`
+}
+
+// TableName returns the table name.
+func (MessageRead) TableName() string {
+	return "conversation_message_reads"
+}

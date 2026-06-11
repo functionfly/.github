@@ -11,11 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import type { FunctionConfig } from '@/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -41,6 +37,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { usePageTitle } from '@/hooks';
 import { ROUTES } from '@/lib/constants';
 import { toast } from 'sonner';
 import { ToggleButtonGroup } from '@/components/ui';
@@ -50,6 +47,7 @@ import { ToggleButtonGroup } from '@/components/ui';
  * Theme-aware: Industrial instrumentation aesthetic for both light/dark modes
  */
 export function FunctionsPage() {
+  usePageTitle('Functions');
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -109,129 +107,136 @@ export function FunctionsPage() {
   );
 
   // Define table columns for list view
-  const columns = useMemo<ColumnDef<FunctionConfig>[]>(() => [
-    {
-      accessorKey: 'name',
-      header: t('functionsPage.columnName'),
-      size: 200,
-      cell: ({ row }) => (
-        <div className="flex flex-col">
-          <span className="font-medium">{row.original.name}</span>
-          <span className="text-xs text-muted-foreground font-mono">{row.original.id}</span>
-        </div>
-      ),
-    },
-    {
-      accessorKey: 'status',
-      header: t('functionsPage.columnStatus'),
-      size: 120,
-      cell: ({ row }) => {
-        const status = row.original.status;
-        const statusColors: Record<string, string> = {
-          deployed: 'bg-green-500/20 text-green-600 border-green-500/30',
-          draft: 'bg-amber-500/20 text-amber-600 border-amber-500/30',
-          deploying: 'bg-blue-500/20 text-blue-600 border-blue-500/30',
-          failed: 'bg-red-500/20 text-red-600 border-red-500/30',
-        };
-        return (
-          <Badge
-            variant="outline"
-            className={`${statusColors[status] || 'bg-gray-500/20 text-gray-600'} font-mono text-xs`}
-          >
-            {status}
-          </Badge>
-        );
-      },
-    },
-    {
-      accessorKey: 'region',
-      header: t('functionsPage.columnRegion'),
-      size: 120,
-      cell: ({ row }) => (
-        <span className="text-xs font-mono uppercase">{row.original.region}</span>
-      ),
-    },
-    {
-      accessorKey: 'providers',
-      header: t('functionsPage.columnProviders'),
-      size: 150,
-      cell: ({ row }) => (
-        <div className="flex flex-wrap gap-1">
-          {row.original.providers?.slice(0, 3).map((provider) => (
-            <Badge key={provider} variant="secondary" className="text-xs">
-              {provider}
-            </Badge>
-          ))}
-          {row.original.providers && row.original.providers.length > 3 && (
-            <Badge variant="outline" className="text-xs">+{row.original.providers.length - 3}</Badge>
-          )}
-        </div>
-      ),
-    },
-    {
-      accessorKey: 'trustScore',
-      header: t('functionsPage.columnTrustScore'),
-      size: 120,
-      cell: ({ row }) => {
-        const score = row.original.trustScore;
-        if (score === undefined) return <span className="text-muted-foreground">-</span>;
-        const color = score >= 80 ? 'text-green-500' : score >= 60 ? 'text-amber-500' : 'text-red-500';
-        return (
-          <div className="flex items-center gap-2">
-            <span className={`font-mono font-semibold ${color}`}>{score}</span>
-            <span className="text-xs text-muted-foreground">/100</span>
+  const columns = useMemo<ColumnDef<FunctionConfig>[]>(
+    () => [
+      {
+        accessorKey: 'name',
+        header: t('functionsPage.columnName'),
+        size: 200,
+        cell: ({ row }) => (
+          <div className="flex flex-col">
+            <span className="font-medium">{row.original.name}</span>
+            <span className="text-xs text-muted-foreground font-mono">{row.original.id}</span>
           </div>
-        );
+        ),
       },
-    },
-    {
-      accessorKey: 'createdAt',
-      header: t('functionsPage.columnCreated'),
-      size: 150,
-      cell: ({ row }) => {
-        const date = new Date(row.original.createdAt);
-        return (
-          <span className="text-sm text-muted-foreground">
-            {date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </span>
-        );
+      {
+        accessorKey: 'status',
+        header: t('functionsPage.columnStatus'),
+        size: 120,
+        cell: ({ row }) => {
+          const status = row.original.status;
+          const statusColors: Record<string, string> = {
+            deployed: 'bg-green-500/20 text-green-600 border-green-500/30',
+            draft: 'bg-amber-500/20 text-amber-600 border-amber-500/30',
+            deploying: 'bg-blue-500/20 text-blue-600 border-blue-500/30',
+            failed: 'bg-red-500/20 text-red-600 border-red-500/30',
+          };
+          return (
+            <Badge
+              variant="outline"
+              className={`${statusColors[status] || 'bg-gray-500/20 text-gray-600'} font-mono text-xs`}
+            >
+              {status}
+            </Badge>
+          );
+        },
       },
-    },
-    {
-      id: 'actions',
-      header: t('functionsPage.columnActions'),
-      size: 150,
-      enableSorting: false,
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate(`/functions/${row.original.id}`)}
-            className="h-8 w-8"
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate(`/functions/${row.original.id}/edit`)}
-            className="h-8 w-8"
-          >
-            <Edit3 className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleDeleteClick(row.original)}
-            className="h-8 w-8 text-red-500 hover:text-red-600"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
-    },
-  ], [navigate, t]);
+      {
+        accessorKey: 'region',
+        header: t('functionsPage.columnRegion'),
+        size: 120,
+        cell: ({ row }) => (
+          <span className="text-xs font-mono uppercase">{row.original.region}</span>
+        ),
+      },
+      {
+        accessorKey: 'providers',
+        header: t('functionsPage.columnProviders'),
+        size: 150,
+        cell: ({ row }) => (
+          <div className="flex flex-wrap gap-1">
+            {row.original.providers?.slice(0, 3).map((provider) => (
+              <Badge key={provider} variant="secondary" className="text-xs">
+                {provider}
+              </Badge>
+            ))}
+            {row.original.providers && row.original.providers.length > 3 && (
+              <Badge variant="outline" className="text-xs">
+                +{row.original.providers.length - 3}
+              </Badge>
+            )}
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'trustScore',
+        header: t('functionsPage.columnTrustScore'),
+        size: 120,
+        cell: ({ row }) => {
+          const score = row.original.trustScore;
+          if (score === undefined) return <span className="text-muted-foreground">-</span>;
+          const color =
+            score >= 80 ? 'text-green-500' : score >= 60 ? 'text-amber-500' : 'text-red-500';
+          return (
+            <div className="flex items-center gap-2">
+              <span className={`font-mono font-semibold ${color}`}>{score}</span>
+              <span className="text-xs text-muted-foreground">/100</span>
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: 'createdAt',
+        header: t('functionsPage.columnCreated'),
+        size: 150,
+        cell: ({ row }) => {
+          const date = new Date(row.original.createdAt);
+          return (
+            <span className="text-sm text-muted-foreground">
+              {date.toLocaleDateString()}{' '}
+              {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          );
+        },
+      },
+      {
+        id: 'actions',
+        header: t('functionsPage.columnActions'),
+        size: 150,
+        enableSorting: false,
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(`/functions/${row.original.id}`)}
+              className="h-8 w-8"
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(`/functions/${row.original.id}/edit`)}
+              className="h-8 w-8"
+            >
+              <Edit3 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleDeleteClick(row.original)}
+              className="h-8 w-8 text-red-500 hover:text-red-600"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [navigate, t]
+  );
 
   // Handle bulk actions
   const handleBulkAction = (action: string, selectedRows: FunctionConfig[]) => {
@@ -476,8 +481,16 @@ export function FunctionsPage() {
               value={viewMode}
               onValueChange={(v) => setViewMode(v as 'grid' | 'list')}
               options={[
-                { value: 'grid', label: t('functionsPage.grid'), icon: <LayoutGrid className="h-4 w-4" /> },
-                { value: 'list', label: t('functionsPage.list'), icon: <List className="h-4 w-4" /> },
+                {
+                  value: 'grid',
+                  label: t('functionsPage.grid'),
+                  icon: <LayoutGrid className="h-4 w-4" />,
+                },
+                {
+                  value: 'list',
+                  label: t('functionsPage.list'),
+                  icon: <List className="h-4 w-4" />,
+                },
               ]}
               variant="outline"
               size="sm"
@@ -566,7 +579,10 @@ export function FunctionsPage() {
                           }}
                         >
                           {statusFilter.includes(status) && (
-                            <Check className="w-3 h-3" style={{ color: 'var(--color-aviation-bg-primary)' }} />
+                            <Check
+                              className="w-3 h-3"
+                              style={{ color: 'var(--color-aviation-bg-primary)' }}
+                            />
                           )}
                         </div>
                         <span
@@ -591,8 +607,8 @@ export function FunctionsPage() {
                       className="aviation-label block mb-2"
                       style={{ color: 'var(--color-aviation-text-muted)' }}
                     >
-                    {t('functionsPage.region')}
-                  </span>
+                      {t('functionsPage.region')}
+                    </span>
                     <div className="space-y-2 max-h-32 overflow-y-auto">
                       {availableRegions.map((region) => (
                         <button
@@ -617,7 +633,10 @@ export function FunctionsPage() {
                             }}
                           >
                             {regionFilter.includes(region) && (
-                              <Check className="w-3 h-3" style={{ color: 'var(--color-aviation-bg-primary)' }} />
+                              <Check
+                                className="w-3 h-3"
+                                style={{ color: 'var(--color-aviation-bg-primary)' }}
+                              />
                             )}
                           </div>
                           <span
@@ -687,7 +706,10 @@ export function FunctionsPage() {
                       className="font-mono text-sm font-semibold"
                       style={{ color: 'var(--color-aviation-text-primary)' }}
                     >
-                      {t('functionsPage.unitsDetected', { count: filteredFunctions.length, plural: filteredFunctions.length !== 1 ? 'S' : '' })}
+                      {t('functionsPage.unitsDetected', {
+                        count: filteredFunctions.length,
+                        plural: filteredFunctions.length !== 1 ? 'S' : '',
+                      })}
                     </span>
                   </div>
 
@@ -732,7 +754,11 @@ export function FunctionsPage() {
                     enableColumnFilters={true}
                     onBulkAction={handleBulkAction}
                     bulkActions={[
-                      { label: t('functionsPage.deleteSelected'), value: 'delete', variant: 'destructive' },
+                      {
+                        label: t('functionsPage.deleteSelected'),
+                        value: 'delete',
+                        variant: 'destructive',
+                      },
                     ]}
                     exportFileName={`functions-${new Date().toISOString().split('T')[0]}`}
                     isLoading={isLoading}

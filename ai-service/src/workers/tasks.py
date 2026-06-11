@@ -197,6 +197,63 @@ async def health_check_task() -> Dict[str, Any]:
         }
 
 
+async def orchestrator_retry_task() -> Dict[str, Any]:
+    """Retry connecting to orchestrator if in degraded mode.
+
+    This task periodically checks if the orchestrator has become available
+    and re-initializes the API key validator when it recovers.
+
+    Returns:
+        Dictionary with retry results
+    """
+    try:
+        from ..security.auth import get_api_key_validator, initialize_api_key_validator
+        from ..observability.health import get_health_checker
+
+        validator = get_api_key_validator()
+        checker = get_health_checker()
+
+        # Only retry if we're in degraded state
+        if not checker.is_degraded():
+            return {
+                "status": "not_degraded",
+                "action": "none",
+            }
+
+        # Check if orchestrator is now reachable
+        import httpx
+        from ..config import settings
+
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(f"{settings.orchestrator_url}/health")
+
+            if response.status_code == 200:
+                # Orchestrator is back! Re-initialize the validator
+                logger.info("Orchestrator recovered, re-initializing API key validator")
+                await initialize_api_key_validator()
+                checker.clear_degraded()
+
+                return {
+                    "status": "recovered",
+                    "action": "reinitialized_validator",
+                }
+        except Exception:
+            pass
+
+        return {
+            "status": "still_unreachable",
+            "action": "none",
+        }
+
+    except Exception as e:
+        logger.error(f"Orchestrator retry task failed: {e}")
+        return {
+            "status": "error",
+            "error": str(e),
+        }
+
+
 def register_default_tasks(scheduler) -> None:
     """Register default background tasks.
 
@@ -236,6 +293,13 @@ def register_default_tasks(scheduler) -> None:
         name="health_check",
         func=health_check_task,
         interval_seconds=120,
+    )
+
+    # Orchestrator retry - every 30 seconds when degraded
+    scheduler.add_task(
+        name="orchestrator_retry",
+        func=orchestrator_retry_task,
+        interval_seconds=30,
     )
 
     logger.info("Registered default background tasks")

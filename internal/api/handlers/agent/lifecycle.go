@@ -3,10 +3,8 @@ package agent
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 	"time"
 
-	"github.com/functionfly/functionfly/internal/agent/identity"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -288,109 +286,6 @@ func (h *Handler) HandleAgentTerminate(w http.ResponseWriter, r *http.Request) {
 		"status":              "terminating",
 		"grace_period_seconds": gracePeriod,
 		"message":             "agent termination initiated",
-	})
-}
-
-// ============================================================
-// Agent CRUD (Get, List, Delete)
-// ============================================================
-
-// HandleGetAgent retrieves an agent by ID
-// GET /v1/agent/{agent_id}
-func (h *Handler) HandleGetAgent(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.GetUserFromContext(r)
-	if claims == nil {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
-		return
-	}
-
-	agentID := mux.Vars(r)["agent_id"]
-	agent, err := h.identityRepo.GetAgent(r.Context(), agentID)
-	if err != nil {
-		writeError(w, http.StatusNotFound, "NOT_FOUND", "agent not found")
-		return
-	}
-
-	if agent.TenantID != claims.TenantID {
-		writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied")
-		return
-	}
-
-	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"ok":    true,
-		"agent": agent,
-	})
-}
-
-// HandleListAgents lists all agents for the authenticated tenant
-// GET /v1/agent
-func (h *Handler) HandleListAgents(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.GetUserFromContext(r)
-	if claims == nil {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
-		return
-	}
-
-	limit := 20
-	offset := 0
-	if l := r.URL.Query().Get("limit"); l != "" {
-		if v, err := strconv.Atoi(l); err == nil && v > 0 && v <= 100 {
-			limit = v
-		}
-	}
-	if o := r.URL.Query().Get("offset"); o != "" {
-		if v, err := strconv.Atoi(o); err == nil && v >= 0 {
-			offset = v
-		}
-	}
-
-	agents, total, err := h.identityRepo.ListAgents(r.Context(), claims.TenantID, limit, offset)
-	if err != nil {
-		logrus.WithError(err).Error("failed to list agents")
-		writeError(w, http.StatusInternalServerError, "LIST_FAILED", "failed to list agents")
-		return
-	}
-
-	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"ok":     true,
-		"agents": agents,
-		"total":  total,
-		"limit":  limit,
-		"offset": offset,
-	})
-}
-
-// HandleDeleteAgent deregisters an agent
-// DELETE /v1/agent/{agent_id}
-func (h *Handler) HandleDeleteAgent(w http.ResponseWriter, r *http.Request) {
-	claims := middleware.GetUserFromContext(r)
-	if claims == nil {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
-		return
-	}
-
-	agentID := mux.Vars(r)["agent_id"]
-	agent, err := h.identityRepo.GetAgent(r.Context(), agentID)
-	if err != nil {
-		writeError(w, http.StatusNotFound, "NOT_FOUND", "agent not found")
-		return
-	}
-
-	if agent.TenantID != claims.TenantID {
-		writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied")
-		return
-	}
-
-	if err := h.identityRepo.UpdateAgentStatus(r.Context(), agentID, identity.AgentStatusDeleted); err != nil {
-		writeError(w, http.StatusInternalServerError, "DELETE_FAILED", "failed to delete agent")
-		return
-	}
-
-	h.scheduler.RemovePool(agentID)
-
-	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"ok":      true,
-		"message": "agent deregistered",
 	})
 }
 

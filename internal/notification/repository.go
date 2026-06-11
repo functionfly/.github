@@ -16,6 +16,7 @@ type Repository interface {
 	CreateNotification(ctx context.Context, n *Notification) error
 	GetNotification(ctx context.Context, id uuid.UUID) (*Notification, error)
 	ListNotifications(ctx context.Context, userID uuid.UUID, opts ListOptions) ([]*Notification, error)
+	CountNotifications(ctx context.Context, userID uuid.UUID, opts ListOptions) (int, error)
 	GetUnreadCount(ctx context.Context, userID uuid.UUID) (int, error)
 	GetUnreadCountsByCategory(ctx context.Context, userID uuid.UUID) (map[string]int, error)
 	GetTotalCount(ctx context.Context, userID uuid.UUID) (int, error)
@@ -24,6 +25,8 @@ type Repository interface {
 	DeleteNotification(ctx context.Context, id uuid.UUID) error
 	ArchiveNotification(ctx context.Context, id uuid.UUID) error
 	UpdateNotificationStatus(ctx context.Context, id uuid.UUID, status string) error
+	DeleteExpired(ctx context.Context, before time.Time) (int64, error)
+	CheckDuplicate(ctx context.Context, userID uuid.UUID, notificationType, category string, data JSONMap, within time.Duration) (*Notification, error)
 
 	// Preferences
 	GetPreferences(ctx context.Context, userID uuid.UUID) ([]*NotificationPreference, error)
@@ -158,6 +161,34 @@ func (r *PostgresRepository) ListNotifications(ctx context.Context, userID uuid.
 		notifications = append(notifications, n)
 	}
 	return notifications, rows.Err()
+}
+
+// CountNotifications returns the total number of notifications matching the filters
+func (r *PostgresRepository) CountNotifications(ctx context.Context, userID uuid.UUID, opts ListOptions) (int, error) {
+	query := `
+		SELECT COUNT(*) FROM notifications
+		WHERE user_id = $1
+	`
+	args := []interface{}{userID}
+	argCount := 1
+
+	if opts.Status != "" {
+		argCount++
+		query += fmt.Sprintf(" AND status = $%d", argCount)
+		args = append(args, opts.Status)
+	}
+	if opts.Category != "" {
+		argCount++
+		query += fmt.Sprintf(" AND category = $%d", argCount)
+		args = append(args, opts.Category)
+	}
+	if opts.UnreadOnly {
+		query += " AND status NOT IN ('read', 'archived')"
+	}
+
+	var count int
+	err := r.db.QueryRowContext(ctx, query, args...).Scan(&count)
+	return count, err
 }
 
 // GetUnreadCount returns the number of unread notifications for a user
@@ -470,4 +501,64 @@ func (r *PostgresRepository) GetAnalytics(ctx context.Context, notificationID uu
 		analytics = append(analytics, a)
 	}
 	return analytics, rows.Err()
+}
+
+// DeleteExpired removes all expired notifications that are not already read.
+// Returns the number of deleted notifications.
+func (r *PostgresRepository) DeleteExpired(ctx context.Context, before time.Time) (int64, error) {
+	query := `
+		DELETE FROM notifications
+		WHERE expires_at < $1 AND status NOT IN ('read', 'archived')
+	`
+	result, err := r.db.ExecContext(ctx, query, before)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+// CheckDuplicate checks if a similar notification was created within the time window.
+// Returns the existing notification if found, nil otherwise.
+// Deduplication is based on user_id, type, category, and data hash within the time window.
+func (r *PostgresRepository) CheckDuplicate(ctx context.Context, userID uuid.UUID, notificationType, category string, data JSONMap, within time.Duration) (*Notification, error) {
+	// Create a simple hash of the data for comparison
+	dataHash := ""
+	if data != nil {
+		dataBytes, _ := json.Marshal(data)
+		dataHash = string(dataBytes)
+	}
+
+	query := `
+		SELECT id, user_id, type, category, title, body, data, channels, priority, status, read_at, sent_at, expires_at, created_at, updated_at
+		FROM notifications
+		WHERE user_id = $1
+			AND type = $2
+			AND category = $3
+			AND created_at > $4
+			AND status NOT IN ('read', 'archived')
+		ORDER BY created_at DESC
+		LIMIT 1
+	`
+	 cutoff := time.Now().Add(-within)
+	n := &Notification{}
+	err := r.db.QueryRowContext(ctx, query, userID, notificationType, category, cutoff).Scan(
+		&n.ID, &n.UserID, &n.Type, &n.Category, &n.Title, &n.Body, &n.Data, &n.Channels,
+		&n.Priority, &n.Status, &n.ReadAt, &n.SentAt, &n.ExpiresAt, &n.CreatedAt, &n.UpdatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// Verify data matches (simple string comparison)
+	if dataHash != "" {
+		existingDataBytes, _ := json.Marshal(n.Data)
+		if string(existingDataBytes) != dataHash {
+			return nil, nil // Data doesn't match, not a duplicate
+		}
+	}
+
+	return n, nil
 }

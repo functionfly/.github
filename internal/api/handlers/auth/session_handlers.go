@@ -199,12 +199,18 @@ func (h *Handler) HandleValidateToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if user.ProviderData != nil {
-		if name, ok := user.ProviderData["name"].(string); ok {
+		if name, ok := user.ProviderData["name"].(string); ok && name != "" {
 			safeUser["name"] = name
 		}
-		if avatar, ok := user.ProviderData["avatar_url"].(string); ok {
+		if avatar, ok := user.ProviderData["avatar_url"].(string); ok && avatar != "" {
 			safeUser["avatar"] = avatar
 		}
+	}
+	if _, ok := safeUser["name"]; !ok && user.Name != "" {
+		safeUser["name"] = user.Name
+	}
+	if user.DateOfBirth != nil {
+		safeUser["date_of_birth"] = user.DateOfBirth.Format("2006-01-02")
 	}
 
 	response := map[string]interface{}{

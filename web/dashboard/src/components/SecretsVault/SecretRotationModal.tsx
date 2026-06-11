@@ -101,6 +101,7 @@ import {
   RadioGroupItem,
 } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
+import { vaultApi } from "@/api/vault";
 
 /** Rotation type options */
 export type RotationType = "immediate" | "scheduled" | "automatic";
@@ -351,6 +352,10 @@ export function SecretRotationModal({
   const [localResult, setLocalResult] = useState<RotationResult | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Dependency state
+  const [fetchedDependencies, setFetchedDependencies] = useState<ImpactedService[]>([]);
+  const [isLoadingDependencies, setIsLoadingDependencies] = useState(false);
+
   // Form state
   const [rotationType, setRotationType] = useState<RotationType>("immediate");
   const [scheduledAt, setScheduledAt] = useState<Date | undefined>();
@@ -380,6 +385,46 @@ export function SecretRotationModal({
       setGracePeriodHours(rotationOptions.defaultGracePeriodHours || 24);
     }
   }, [isOpen, rotationOptions.defaultGracePeriodHours]);
+
+  // Fetch dependencies when modal opens if not provided via props
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // If impactedServices are already provided via props, don't fetch
+    if (impactedServices && impactedServices.length > 0) {
+      setFetchedDependencies([]);
+      return;
+    }
+
+    // Fetch dependencies from API
+    const fetchDependencies = async () => {
+      setIsLoadingDependencies(true);
+      try {
+        const response = await vaultApi.getSecretDependencies(secretId);
+        const mapped: ImpactedService[] = response.dependencies.map((dep) => ({
+          id: dep.dependent_id,
+          name: dep.dependent_name,
+          type: dep.dependent_type as ImpactedService["type"],
+          criticality: dep.criticality as ImpactedService["criticality"],
+          lastUsedAt: undefined,
+          estimatedDowntime: undefined,
+        }));
+        setFetchedDependencies(mapped);
+      } catch (error) {
+        console.error("Failed to fetch secret dependencies:", error);
+        setFetchedDependencies([]);
+      } finally {
+        setIsLoadingDependencies(false);
+      }
+    };
+
+    fetchDependencies();
+  }, [isOpen, secretId, impactedServices]);
+
+  // Use fetched dependencies if no prop-provided dependencies
+  const effectiveImpactedServices = impactedServices && impactedServices.length > 0
+    ? impactedServices
+    : fetchedDependencies;
 
   // Handle step changes
   const goToStep = useCallback(
@@ -707,10 +752,25 @@ export function SecretRotationModal({
             </div>
 
             {/* Impact analysis */}
-            {impactedServices.length > 0 && (
+            {(effectiveImpactedServices.length > 0 || isLoadingDependencies) && (
               <>
                 <Separator className="bg-(--border-subtle)" />
-                <ImpactAnalysis services={impactedServices} />
+                {isLoadingDependencies ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-medium text-(--color-text-primary)">
+                        Impact Analysis
+                      </h4>
+                      <Loader2 className="h-4 w-4 animate-spin text-(--color-text-muted)" />
+                    </div>
+                    <div className="space-y-2">
+                      <Skeleton className="h-8 w-full" />
+                      <Skeleton className="h-8 w-full" />
+                    </div>
+                  </div>
+                ) : (
+                  <ImpactAnalysis services={effectiveImpactedServices} />
+                )}
               </>
             )}
 
@@ -775,7 +835,7 @@ export function SecretRotationModal({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-(--color-text-muted)">Impacted Services</span>
-                  <span className="font-medium">{impactedServices.length}</span>
+                  <span className="font-medium">{effectiveImpactedServices.length}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-(--color-text-muted)">Stakeholders Notified</span>

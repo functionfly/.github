@@ -13,15 +13,17 @@ import (
 
 // MFAHandler handles MFA-related API endpoints
 type MFAHandler struct {
-	authSvc *auth.AuthService
-	logger  *logrus.Logger
+	authSvc     *auth.AuthService
+	rateLimiter *middleware.MFARateLimiter
+	logger      *logrus.Logger
 }
 
 // NewMFAHandler creates a new MFA handler
-func NewMFAHandler(authSvc *auth.AuthService) *MFAHandler {
+func NewMFAHandler(authSvc *auth.AuthService, rateLimiter *middleware.MFARateLimiter) *MFAHandler {
 	return &MFAHandler{
-		authSvc: authSvc,
-		logger:  logrus.New(),
+		authSvc:     authSvc,
+		rateLimiter: rateLimiter,
+		logger:      logrus.New(),
 	}
 }
 
@@ -96,6 +98,20 @@ func (h *MFAHandler) VerifyMFA(w http.ResponseWriter, r *http.Request) {
 
 		http.Error(w, "Failed to verify MFA", http.StatusInternalServerError)
 		return
+	}
+
+	// Track MFA verification result for rate limiting and lockout
+	userID := claims.UserID.String()
+	if !response.Verified {
+		// Record failed attempt for lockout tracking
+		if h.rateLimiter != nil {
+			h.rateLimiter.RecordFailure(userID)
+		}
+	} else {
+		// Clear failed attempts on successful verification
+		if h.rateLimiter != nil {
+			h.rateLimiter.ClearFailures(userID)
+		}
 	}
 
 	// Log MFA verification result

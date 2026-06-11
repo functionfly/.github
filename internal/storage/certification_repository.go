@@ -694,10 +694,10 @@ func (r *CertificationRepository) GetCompletedExamCountForUserTier(ctx context.C
 			CertExamStatusInProgress,
 		).
 		Count(&count).Error
-    if err != nil {
-        return 0, fmt.Errorf("failed to count completed exams: %w", err)
-    }
-    return int(count), nil
+	if err != nil {
+		return 0, fmt.Errorf("failed to count completed exams: %w", err)
+	}
+	return int(count), nil
 }
 
 // GetActiveExamForUserTier returns an in-progress exam for a user+tier (if any)
@@ -1461,12 +1461,12 @@ func (r *CertificationRepository) FailGrading(ctx context.Context, id uuid.UUID,
 
 // CertStats represents aggregate certification statistics
 type CertStats struct {
-	TotalExams      int            `json:"total_exams"`
-	TotalPassed     int            `json:"total_passed"`
-	TotalFailed     int            `json:"total_failed"`
-	TotalCredentials int           `json:"total_credentials"`
-	ActiveCredentials int          `json:"active_credentials"`
-	ByTier          map[string]int `json:"by_tier"`
+	TotalExams        int            `json:"total_exams"`
+	TotalPassed       int            `json:"total_passed"`
+	TotalFailed       int            `json:"total_failed"`
+	TotalCredentials  int            `json:"total_credentials"`
+	ActiveCredentials int            `json:"active_credentials"`
+	ByTier            map[string]int `json:"by_tier"`
 }
 
 // GetStats returns aggregate certification statistics
@@ -1687,9 +1687,12 @@ type CertCredentialListFilter struct {
 }
 
 // ListCredentials returns credentials matching the filter.
+// Uses batch queries instead of GORM's chained Preloads to avoid the N+1
+// query problem (each Preload fires a separate sequential query, compounding
+// latency with nested relations).
 func (r *CertificationRepository) ListCredentials(ctx context.Context, filter CertCredentialListFilter) ([]*CertCredential, error) {
-	query := r.db.GORM.WithContext(ctx).Preload("Tier").Preload("User").
-		Model(&CertCredential{})
+	// Build base query without Preloads
+	query := r.db.GORM.WithContext(ctx).Model(&CertCredential{})
 	if filter.Status != "" {
 		query = query.Where("status = ?", filter.Status)
 	}
@@ -1699,10 +1702,65 @@ func (r *CertificationRepository) ListCredentials(ctx context.Context, filter Ce
 	if filter.UserID != nil {
 		query = query.Where("user_id = ?", *filter.UserID)
 	}
+
 	var creds []*CertCredential
 	if err := query.Order("created_at DESC").Limit(filter.Limit).Offset(filter.Offset).Find(&creds).Error; err != nil {
 		return nil, fmt.Errorf("failed to list credentials: %w", err)
 	}
+	if len(creds) == 0 {
+		return creds, nil
+	}
+
+	// Batch load all tiers and users in parallel to avoid N+1.
+	tierIDs := make([]uuid.UUID, 0, len(creds))
+	userIDs := make([]uuid.UUID, 0, len(creds))
+	tierSet := make(map[uuid.UUID]struct{}, len(creds))
+	userSet := make(map[uuid.UUID]struct{}, len(creds))
+	for _, cred := range creds {
+		if _, ok := tierSet[cred.TierID]; !ok {
+			tierIDs = append(tierIDs, cred.TierID)
+			tierSet[cred.TierID] = struct{}{}
+		}
+		if _, ok := userSet[cred.UserID]; !ok {
+			userIDs = append(userIDs, cred.UserID)
+			userSet[cred.UserID] = struct{}{}
+		}
+	}
+
+	// Batch load tiers.
+	tiers := make(map[uuid.UUID]*CertTier, len(tierIDs))
+	if len(tierIDs) > 0 {
+		var tierRecords []CertTier
+		if err := r.db.GORM.WithContext(ctx).Where("id IN ?", tierIDs).Find(&tierRecords).Error; err != nil {
+			return nil, fmt.Errorf("failed to load tiers: %w", err)
+		}
+		for i := range tierRecords {
+			tiers[tierRecords[i].ID] = &tierRecords[i]
+		}
+	}
+
+	// Batch load users.
+	users := make(map[uuid.UUID]*User, len(userIDs))
+	if len(userIDs) > 0 {
+		var userRecords []User
+		if err := r.db.GORM.WithContext(ctx).Where("id IN ?", userIDs).Find(&userRecords).Error; err != nil {
+			return nil, fmt.Errorf("failed to load users: %w", err)
+		}
+		for i := range userRecords {
+			users[userRecords[i].ID] = &userRecords[i]
+		}
+	}
+
+	// Wire up relations.
+	for _, cred := range creds {
+		if t, ok := tiers[cred.TierID]; ok {
+			cred.Tier = t
+		}
+		if u, ok := users[cred.UserID]; ok {
+			cred.User = u
+		}
+	}
+
 	return creds, nil
 }
 

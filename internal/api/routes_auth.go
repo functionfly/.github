@@ -33,10 +33,12 @@ func registerAuthRoutes(
 	router *mux.Router,
 	api *mux.Router,
 	authRateLimiter *middleware.AuthRateLimiter,
+	publicRateLimiter *middleware.PublicRateLimiter,
 	walletRateLimiter *middleware.WalletRateLimiter,
 	mfaRateLimiter *middleware.MFARateLimiter,
 	authMiddleware *middleware.AuthMiddleware,
 	csrfMiddleware *middleware.CSRFMiddleware,
+	reservedUsernameChecker middleware.ReservedUsernameChecker,
 	authHandler *authHandlerPkg.Handler,
 	tenantAuthHandler *authHandlerPkg.TenantAuthHandler,
 	apiKeyAuthHandler *apikeys.APIKeyAuthHandler,
@@ -55,6 +57,7 @@ func registerAuthRoutes(
 	notificationHandler *notificationHandlerPkg.Handler,
 	notificationWSHandler *notificationHandlerPkg.WebSocketHandler,
 	presenceHandler *usersHandlerPkg.PresenceHandler,
+	notificationRateLimiter *middleware.NotificationRateLimiter,
 ) {
 	// ── Auth (public) ──────────────────────────────────────────────────────
 	// Registered on both the bare router and /v1 so the CLI (fly login) works
@@ -161,17 +164,18 @@ func registerAuthRoutes(
 	// NOTE: Presence routes must be registered before /users/{username} catch-all
 	// because gorilla/mux matches by order of registration.
 	presenceHandler.RegisterRoutes(api, authMiddleware)
-	api.HandleFunc("/users/{username}", usersHandler.HandleGetPublicProfile).Methods("GET", "OPTIONS")
+	usernameValidator := middleware.ValidateUsernameMiddleware(reservedUsernameChecker)
+	api.HandleFunc("/users/{username}", usernameValidator(publicRateLimiter.Limit(usersHandler.HandleGetPublicProfile))).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/{username}/settings", authMiddleware.RequireAuth(usersHandler.HandleGetUserSettings)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/{username}/settings/profile", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsProfile)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/{username}/settings/notifications", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsNotifications)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/{username}/settings/privacy", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsPrivacy)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/{username}/settings/visibility", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsVisibility)).Methods("PATCH", "OPTIONS")
-	api.HandleFunc("/users/{username}/analytics", usersHandler.HandleGetUserAnalytics).Methods("GET", "OPTIONS")
-	api.HandleFunc("/users/{username}/achievements", usersHandler.HandleGetUserAchievements).Methods("GET", "OPTIONS")
-	api.HandleFunc("/users/{username}/activity", usersHandler.HandleGetUserActivity).Methods("GET", "OPTIONS")
-	api.HandleFunc("/users/{username}/contributions", usersHandler.HandleGetUserContributions).Methods("GET", "OPTIONS")
-	api.HandleFunc("/users/{username}/skills", usersHandler.HandleGetUserSkills).Methods("GET", "OPTIONS")
+	api.HandleFunc("/users/{username}/analytics", usernameValidator(publicRateLimiter.Limit(usersHandler.HandleGetUserAnalytics))).Methods("GET", "OPTIONS")
+	api.HandleFunc("/users/{username}/achievements", usernameValidator(publicRateLimiter.Limit(usersHandler.HandleGetUserAchievements))).Methods("GET", "OPTIONS")
+	api.HandleFunc("/users/{username}/activity", usernameValidator(publicRateLimiter.Limit(usersHandler.HandleGetUserActivity))).Methods("GET", "OPTIONS")
+	api.HandleFunc("/users/{username}/contributions", usernameValidator(publicRateLimiter.Limit(usersHandler.HandleGetUserContributions))).Methods("GET", "OPTIONS")
+	api.HandleFunc("/users/{username}/skills", usernameValidator(publicRateLimiter.Limit(usersHandler.HandleGetUserSkills))).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/{username}/report", authMiddleware.RequireAuth(usersHandler.HandleReportProfile)).Methods("POST", "OPTIONS")
 
 	// ── Tenant Auth Settings (Backend-in-a-Box) ─────────────────────────────
@@ -190,7 +194,7 @@ func registerAuthRoutes(
 	// Username change endpoints (by username path)
 	api.HandleFunc("/users/{username}/username/eligibility", authMiddleware.RequireAuth(usersHandler.HandleGetUsernameChangeEligibilityByUsername)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/{username}/username/change", authMiddleware.RequireAuth(usersHandler.HandleChangeUsernameByUsername)).Methods("POST", "OPTIONS")
-	api.HandleFunc("/@/{username}", usersHandler.HandleGetPublicProfileByAt).Methods("GET", "OPTIONS")
+	api.HandleFunc("/@/{username}", usernameValidator(publicRateLimiter.Limit(usersHandler.HandleGetPublicProfileByAt))).Methods("GET", "OPTIONS")
 
 	// ── Follow ─────────────────────────────────────────────────────────────
 	api.HandleFunc("/follow/users/{username}/follow", authMiddleware.RequireAuth(followHandler.HandleFollowUser)).Methods("POST", "OPTIONS")
@@ -324,11 +328,12 @@ func registerAuthRoutes(
 	api.HandleFunc("/costs/entries", authMiddleware.RequireAuth(costAllocationHandler.GetCostEntries)).Methods("GET", "OPTIONS")
 
 	// ── Notifications (protected) ───────────────────────────────────────────
-	api.HandleFunc("/notifications", authMiddleware.RequireAuth(notificationHandler.HandleListNotifications)).Methods("GET", "OPTIONS")
-	api.HandleFunc("/notifications/unread-count", authMiddleware.RequireAuth(notificationHandler.HandleGetUnreadCount)).Methods("GET", "OPTIONS")
-	api.HandleFunc("/notifications/read-all", authMiddleware.RequireAuth(notificationHandler.HandleMarkAllAsRead)).Methods("POST", "OPTIONS")
-	api.HandleFunc("/notifications/{id}/read", authMiddleware.RequireAuth(notificationHandler.HandleMarkAsRead)).Methods("PATCH", "OPTIONS")
-	api.HandleFunc("/notifications/{id}", authMiddleware.RequireAuth(notificationHandler.HandleDeleteNotification)).Methods("DELETE", "OPTIONS")
+	api.HandleFunc("/notifications", authMiddleware.RequireAuth(notificationRateLimiter.LimitList(notificationHandler.HandleListNotifications))).Methods("GET", "OPTIONS")
+	api.HandleFunc("/notifications/unread-count", authMiddleware.RequireAuth(notificationRateLimiter.LimitUnreadCount(notificationHandler.HandleGetUnreadCount))).Methods("GET", "OPTIONS")
+	api.HandleFunc("/notifications/read-all", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(notificationRateLimiter.LimitMarkAllRead(notificationHandler.HandleMarkAllAsRead)))).Methods("POST", "OPTIONS")
+	api.HandleFunc("/notifications/{id}/read", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(notificationRateLimiter.LimitMarkRead(notificationHandler.HandleMarkAsRead)))).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/notifications/{id}", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(notificationRateLimiter.LimitDelete(notificationHandler.HandlePatchNotification)))).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/notifications/{id}", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(notificationRateLimiter.LimitDelete(notificationHandler.HandleDeleteNotification)))).Methods("DELETE", "OPTIONS")
 	api.HandleFunc("/notifications/stream", authMiddleware.RequireAuth(notificationWSHandler.HandleWebSocket))
 
 	// ── Usage Exports (protected) ────────────────────────────────────────

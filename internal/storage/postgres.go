@@ -35,41 +35,41 @@ type ReadReplicaConnection struct {
 
 // PostgresDB wraps sql.DB and provides repository pattern implementation with read replica support
 type PostgresDB struct {
-	skipPreparedStatements   bool     // For migrations, skip prepared statements
-	*sql.DB                           // Primary write connection
-	GORM                     *gorm.DB // GORM instance for ORM operations
-	userRepository           *UserRepository
-	tenantRepository         *TenantRepository
-	billingRepository        *BillingRepository
-	revenueRepository        *RevenueRepository
-	auditRepository          *AuditRepository
-	appRepository            *AppRepository
-	backendRepository        *BackendRepository
-	deploymentRepository     *DeploymentRepository
-	contentRepository        *ContentRepository
-	feedbackRepository       *FeedbackRepository
-	monitoringRepository     *MonitoringRepository
-	sessionRepository        *SessionRepository
-	refreshTokenRepository   *RefreshTokenRepository
-	loginAttemptRepository   *LoginAttemptRepository
-	authEventRepository      *AuthEventRepository
-	localRuntimeRepository   *LocalRuntimeRepository
-	functionRepository       *FunctionRepository
-	registryRepository       *registry.RegistryRepository
-	incidentRepository       *IncidentRepository
-	featureMeasureRepository *FeatureMeasureRepository
-	teamRepository           *TeamRepository
-	followRepository         *FollowRepository
-	favoriteRepository       *FavoriteRepository
-	adminSessionRepository   *AdminSessionRepository
-	analyticsRepository      *AnalyticsRepository
-	usageAlertRepository     *UsageAlertRepository
-	encryptionManager        *DatabaseEncryptionManager
-	exportRepository         *ExportRepository
-	teamMemoryRepository     TeamMemoryRepository
-	creditNoteRepository     *CreditNoteRepository
+	skipPreparedStatements       bool     // For migrations, skip prepared statements
+	*sql.DB                               // Primary write connection
+	GORM                         *gorm.DB // GORM instance for ORM operations
+	userRepository               *UserRepository
+	tenantRepository             *TenantRepository
+	billingRepository            *BillingRepository
+	revenueRepository            *RevenueRepository
+	auditRepository              *AuditRepository
+	appRepository                *AppRepository
+	backendRepository            *BackendRepository
+	deploymentRepository         *DeploymentRepository
+	contentRepository            *ContentRepository
+	feedbackRepository           *FeedbackRepository
+	monitoringRepository         *MonitoringRepository
+	sessionRepository            *SessionRepository
+	refreshTokenRepository       *RefreshTokenRepository
+	loginAttemptRepository       *LoginAttemptRepository
+	authEventRepository          *AuthEventRepository
+	localRuntimeRepository       *LocalRuntimeRepository
+	functionRepository           *FunctionRepository
+	registryRepository           *registry.RegistryRepository
+	incidentRepository           *IncidentRepository
+	featureMeasureRepository     *FeatureMeasureRepository
+	teamRepository               *TeamRepository
+	followRepository             *FollowRepository
+	favoriteRepository           *FavoriteRepository
+	adminSessionRepository       *AdminSessionRepository
+	analyticsRepository          *AnalyticsRepository
+	usageAlertRepository         *UsageAlertRepository
+	encryptionManager            *DatabaseEncryptionManager
+	exportRepository             *ExportRepository
+	teamMemoryRepository         TeamMemoryRepository
+	creditNoteRepository         *CreditNoteRepository
 	tenantStripeConfigRepository *TenantStripeConfigRepository
-	certificationRepository  *CertificationRepository
+	certificationRepository      *CertificationRepository
 
 	// Read replica connections
 	readReplicas       []ReadReplicaConnection
@@ -96,6 +96,7 @@ type PostgresDB struct {
 	preparedStatements  map[string]*sql.Stmt
 	stmtMutex           sync.RWMutex
 	stmtReprepareTicker *time.Ticker
+	stmtInitialized     bool // Tracks whether InitPreparedStatements completed successfully
 	lastStmtReprepare   time.Time
 
 	// Transaction management

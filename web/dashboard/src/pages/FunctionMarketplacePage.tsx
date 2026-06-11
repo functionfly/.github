@@ -11,7 +11,7 @@ export function FunctionMarketplacePage() {
   });
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="aviation-marketplace min-h-screen flex flex-col">
       {/* SEO Meta Tags */}
       <MetaTags
         title="Discover Functions | FunctionFly"

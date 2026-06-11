@@ -6,6 +6,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_NAME="functionfly-ai-service"
+RQ_APP_NAME="functionfly-ai-service-rq"
 ENVIRONMENT="${1:-production}"
 
 echo "🚀 Deploying AI Service to Fly.io (${ENVIRONMENT})..."
@@ -42,6 +43,15 @@ else
     echo "   App ${APP_NAME} exists"
 fi
 
+# Check if RQ worker app exists, create if not
+echo "📦 Checking if RQ worker app exists..."
+if ! flyctl apps list | grep -q "^${RQ_APP_NAME}$"; then
+    echo "   Creating RQ worker app: ${RQ_APP_NAME}"
+    flyctl apps create "$RQ_APP_NAME"
+else
+    echo "   RQ worker app ${RQ_APP_NAME} exists"
+fi
+
 # Verify required secrets are set
 echo "🔑 Checking required secrets..."
 REQUIRED_SECRETS=(
@@ -71,12 +81,12 @@ if [ ${#MISSING_SECRETS[@]} -gt 0 ]; then
     fi
 fi
 
-# Build and deploy
-echo "🏗️  Building and deploying..."
+# Build and deploy main service
+echo "🏗️  Building and deploying main service..."
 flyctl deploy --app "$APP_NAME" --remote-only
 
 # Wait for deployment
-echo "⏳ Waiting for deployment to stabilize..."
+echo "⏳ Waiting for main service deployment to stabilize..."
 sleep 15
 
 # Health check (using fly proxy)
@@ -110,14 +120,26 @@ if [ $ATTEMPTS -eq $MAX_ATTEMPTS ]; then
     exit 1
 fi
 
+# Deploy RQ worker
+echo "🏗️  Building and deploying RQ worker..."
+flyctl deploy --app "$RQ_APP_NAME" --config fly-rq-worker.toml --remote-only
+
+# Wait for RQ worker deployment
+echo "⏳ Waiting for RQ worker deployment to stabilize..."
+sleep 10
+
 # Show status
 echo ""
 echo "✅ Deployment complete!"
 echo "================================================"
-echo "App:        $APP_NAME"
-echo "Region:     ord (primary)"
-echo "Internal:   http://$APP_NAME.internal:8081"
-echo "Status:     $(flyctl status --app "$APP_NAME" | grep -E '(Status|Instances)')"
+echo "Main Service: $APP_NAME"
+echo "  Internal:   http://$APP_NAME.internal:8081"
+echo "  Status:     $(flyctl status --app "$APP_NAME" | grep -E '(Status|Instances)' || echo 'see flyctl status')"
+echo ""
+echo "RQ Worker:   $RQ_APP_NAME"
+echo "  Status:     $(flyctl status --app "$RQ_APP_NAME" | grep -E '(Status|Instances)' || echo 'see flyctl status')"
 echo ""
 echo "View logs:  flyctl logs --app $APP_NAME"
 echo "SSH:        flyctl ssh console --app $APP_NAME"
+echo ""
+echo "RQ worker logs: flyctl logs --app $RQ_APP_NAME"

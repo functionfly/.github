@@ -2683,6 +2683,369 @@ paths:
               schema:
                 type: string
 
+  # Agent Runtime Platform - Function Discovery
+  /v1/agent/functions:
+    get:
+      tags:
+        - AgentRuntime
+      summary: List agent functions
+      description: Returns all agent functions with optional filtering by category, exclusive, verified, or capabilities.
+      security: []
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [search, browser, file, data, compute, communication, workflow, memory, assure, validate, simulate, observe, learn, agent_mgmt, capability]
+        - name: exclusive
+          in: query
+          schema:
+            type: boolean
+        - name: verified
+          in: query
+          schema:
+            type: boolean
+        - name: capabilities
+          in: query
+          description: JSON array of required capabilities
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: List of agent functions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  functions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AgentFunction'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/agent/functions/{author}/{name}:
+    get:
+      tags:
+        - AgentRuntime
+      summary: Get agent function
+      description: Returns a specific agent function by author and name.
+      security: []
+      parameters:
+        - name: author
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Agent function details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  author:
+                    type: string
+                  name:
+                    type: string
+        '404':
+          description: Function not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Agent Runtime Platform - Function Execution
+  /v1/agent/execute/{author}/{name}:
+    post:
+      tags:
+        - AgentRuntime
+      summary: Execute agent function
+      description: Executes an agent function with the provided input.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: author
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                input:
+                  type: object
+                  description: Function input parameters
+                session_id:
+                  type: string
+                  description: Optional session ID for tracking
+                call_depth:
+                  type: integer
+                  description: Recursion depth for nested calls
+                trace_id:
+                  type: string
+                  description: Trace ID for distributed tracing
+                span_id:
+                  type: string
+                  description: Span ID for distributed tracing
+      responses:
+        '200':
+          description: Execution result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  output:
+                    type: object
+                  execution_id:
+                    type: string
+                  duration_ms:
+                    type: integer
+                  cost_usd:
+                    type: number
+                  metadata:
+                    type: object
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Function not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/agent/execute/{author}/{name}/{version}:
+    post:
+      tags:
+        - AgentRuntime
+      summary: Execute agent function with version
+      description: Executes a specific version of an agent function.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: author
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                input:
+                  type: object
+                session_id:
+                  type: string
+                call_depth:
+                  type: integer
+      responses:
+        '200':
+          description: Execution result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  output:
+                    type: object
+                  execution_id:
+                    type: string
+                  duration_ms:
+                    type: integer
+                  cost_usd:
+                    type: number
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Agent Runtime Platform - Tool Call
+  /v1/agent/tools/{tool_name}/call:
+    post:
+      tags:
+        - AgentRuntime
+      summary: Execute agent tool
+      description: Executes a named tool with the provided parameters.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tool_name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tool name (e.g., search.web, browser.navigate)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Tool-specific parameters
+      responses:
+        '200':
+          description: Tool execution result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  tool:
+                    type: string
+                  data:
+                    type: object
+                  duration_ms:
+                    type: integer
+                  cost_usd:
+                    type: number
+                  execution_id:
+                    type: string
+        '400':
+          description: Execution failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  tool:
+                    type: string
+                  error_code:
+                    type: string
+                  error_msg:
+                    type: string
+                  execution_id:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Agent Runtime Platform - Function Discovery (Legacy)
+  /v1/agent/discover:
+    get:
+      tags:
+        - AgentRuntime
+      summary: Discover agent functions
+      description: Legacy discovery endpoint for agent functions.
+      security: []
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: deterministic
+          in: query
+          schema:
+            type: boolean
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Discovery results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  results:
+                    type: array
+                    items:
+                      type: object
+
+  # Agent Runtime Platform - Agent Tools (Legacy)
+  /v1/agent/tools:
+    get:
+      tags:
+        - AgentRuntime
+      summary: List agent tools
+      description: Returns all registered tools available to the authenticated agent.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of tools
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  tools:
+                    type: array
+                    items:
+                      type: object
+                  costs_usd:
+                    type: object
+
   /.well-known/functionfly.json:
     get:
       tags:
@@ -3874,3 +4237,53 @@ components:
         trust_api_endpoint:
           type: string
           format: uri
+
+    AgentFunction:
+      type: object
+      properties:
+        author:
+          type: string
+          description: Function author
+        name:
+          type: string
+          description: Function name
+        version:
+          type: string
+          description: Function version
+        description:
+          type: string
+          description: Function description
+        category:
+          type: string
+          enum: [search, browser, file, data, compute, communication, workflow, memory, assure, validate, simulate, observe, learn, agent_mgmt, capability]
+        input_schema:
+          type: object
+          description: JSON Schema for function input
+        output_schema:
+          type: object
+          description: JSON Schema for function output
+        pricing:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [per_call, per_second, per_unit]
+            price:
+              type: number
+        capabilities:
+          type: array
+          items:
+            type: string
+          description: Required capabilities (e.g., web_access, ssl, javascript)
+        is_verified:
+          type: boolean
+          description: Whether function is verified
+        is_exclusive:
+          type: boolean
+          description: Whether function is FunctionFly exclusive
+        max_concurrency:
+          type: integer
+          description: Maximum concurrent executions
+        rate_limit_rpm:
+          type: integer
+          description: Rate limit per minute

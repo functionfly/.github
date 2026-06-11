@@ -99,7 +99,7 @@ build_images() {
 
     # Build orchestrator API
     log_info "Building orchestrator-api..."
-    docker build -f deploy/production/Dockerfile.orchestrator -t functionfly/orchestrator-api:latest .
+    docker build -f deploy/docker/Dockerfile.orchestrator -t functionfly/orchestrator-api:latest .
 
     # Build dashboard
     log_info "Building dashboard..."

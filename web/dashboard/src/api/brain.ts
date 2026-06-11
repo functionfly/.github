@@ -91,7 +91,10 @@ export const brainApi = {
     if (params?.offset) searchParams.set("offset", String(params.offset));
     if (params?.sort) searchParams.set("sort", params.sort);
     const qs = searchParams.toString();
-    return apiClient.get(`/v1/brain/signals${qs ? `?${qs}` : ""}`);
+    const res = await apiClient.get<{ signals: BrainSignal[] | null; total: number }>(
+      `/v1/brain/signals${qs ? `?${qs}` : ""}`
+    );
+    return { signals: res.signals ?? [], total: res.total ?? 0 };
   },
 
   searchSignals: async (
@@ -121,10 +124,10 @@ export const brainApi = {
 
   // Composers
   listComposers: async (): Promise<BrainComposer[]> => {
-    const res = await apiClient.get<{ composers: BrainComposer[] }>(
+    const res = await apiClient.get<{ composers: BrainComposer[] | null }>(
       "/v1/brain/composers"
     );
-    return res.composers;
+    return res.composers ?? [];
   },
 
   createComposer: async (
@@ -143,10 +146,10 @@ export const brainApi = {
 
   // Triggers
   listTriggers: async (): Promise<BrainTrigger[]> => {
-    const res = await apiClient.get<{ triggers: BrainTrigger[] }>(
+    const res = await apiClient.get<{ triggers: BrainTrigger[] | null }>(
       "/v1/brain/triggers"
     );
-    return res.triggers;
+    return res.triggers ?? [];
   },
 
   createTrigger: async (

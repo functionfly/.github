@@ -130,6 +130,28 @@ func (r *Repository) ListExecutions(ctx context.Context, agentID string, limit, 
 	return records, total, nil
 }
 
+// ListToolCalls lists tool call records for an agent session with pagination
+func (r *Repository) ListToolCalls(ctx context.Context, agentID, sessionID string, limit, offset int) ([]*AgentExecutionRecord, int64, error) {
+	var total int64
+	var records []*AgentExecutionRecord
+
+	query := r.db.WithContext(ctx).Model(&AgentExecutionRecord{}).Where("agent_id = ?", agentID)
+
+	if sessionID != "" {
+		query = query.Where("session_id = ?", sessionID)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to count tool calls: %w", err)
+	}
+
+	if err := query.Order("timestamp DESC").Limit(limit).Offset(offset).Find(&records).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to list tool calls: %w", err)
+	}
+
+	return records, total, nil
+}
+
 // StartSession creates a new agent session
 func (r *Repository) StartSession(ctx context.Context, agentID string, tenantID uuid.UUID, sessionID string) (*AgentSession, error) {
 	session := &AgentSession{

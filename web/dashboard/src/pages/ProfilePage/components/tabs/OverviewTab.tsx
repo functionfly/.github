@@ -68,7 +68,15 @@ export function OverviewTab({ profile }: OverviewTabProps) {
         <div className="space-y-6">
           <AchievementsSection achievements={profile.achievements} />
           <CertificationsSection badges={profile.certifications} username={profile.username} />
-          <TrustMetricsSection trustScore={profile.stats.trustScore} />
+          <TrustMetricsSection
+            trustScore={profile.stats.trustScore}
+            builderScore={profile.stats.builderScore}
+            optimizerScore={profile.stats.optimizerScore}
+            mentorScore={profile.stats.mentorScore}
+            agentWhispererScore={profile.stats.agentWhispererScore}
+            reputationTier={profile.stats.reputationTier}
+            overallReputationScore={profile.stats.overallReputationScore}
+          />
           <SkillsSection skills={profile.skills} />
         </div>
       </div>

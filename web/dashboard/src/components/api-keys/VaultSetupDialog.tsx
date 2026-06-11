@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VaultCrypto } from '@/utils/vault-crypto';
-import { setupVaultPassphrase, isVaultPassphraseSet, setVaultPassphrase } from '@/services/vault-api-key-storage';
+import { setupVaultPassphrase, setVaultPassphrase } from '@/services/vault-api-key-storage';
 import { toast } from 'sonner';
 import { Loader2, Lock, Shield, Eye, EyeOff } from 'lucide-react';
 
@@ -124,9 +124,7 @@ export function VaultSetupDialog({
               <Shield className="w-5 h-5 text-brand-500" />
             </div>
             <div>
-              <DialogTitle>
-                {isSetup ? 'Set Up Vault Passphrase' : 'Unlock Vault'}
-              </DialogTitle>
+              <DialogTitle>{isSetup ? 'Set Up Vault Passphrase' : 'Unlock Vault'}</DialogTitle>
               <DialogDescription>
                 {isSetup
                   ? 'Create a passphrase to encrypt your API keys. This passphrase will be required to view your keys.'
@@ -192,8 +190,8 @@ export function VaultSetupDialog({
                 <div className="text-sm text-amber-800 dark:text-amber-200">
                   <p className="font-medium mb-1">Important: Save Your Passphrase</p>
                   <p>
-                    Your passphrase is used to encrypt your API keys locally. We cannot recover
-                    this passphrase if you lose it. Store it securely in a password manager.
+                    Your passphrase is used to encrypt your API keys locally. We cannot recover this
+                    passphrase if you lose it. Store it securely in a password manager.
                   </p>
                 </div>
               </div>
@@ -221,10 +219,4 @@ export function VaultSetupDialog({
       </DialogContent>
     </Dialog>
   );
-}
-
-export function useVaultStatus() {
-  return {
-    isVaultPassphraseSet: isVaultPassphraseSet(),
-  };
 }

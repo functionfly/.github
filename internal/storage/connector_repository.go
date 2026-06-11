@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -50,6 +51,19 @@ func (r *ConnectorRepository) GetConnectorBySlug(ctx context.Context, slug strin
 		&c.ID, &c.Slug, &c.Name, &c.IconURL, &c.OAuthURL, &c.Scopes, &c.IsActive, &c.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("get connector by slug: %w", err)
+	}
+	return c, nil
+}
+
+// GetConnectorByID retrieves a connector by its UUID.
+func (r *ConnectorRepository) GetConnectorByID(ctx context.Context, id uuid.UUID) (*Connector, error) {
+	c := &Connector{}
+	err := r.db.QueryRowContext(ctx, `
+		SELECT id, slug, name, COALESCE(icon_url,''), COALESCE(oauth_url,''), COALESCE(scopes,''), is_active, created_at
+		FROM connectors WHERE id = $1`, id).Scan(
+		&c.ID, &c.Slug, &c.Name, &c.IconURL, &c.OAuthURL, &c.Scopes, &c.IsActive, &c.CreatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("get connector by id: %w", err)
 	}
 	return c, nil
 }
@@ -222,4 +236,133 @@ func (r *ConnectorRepository) GetActiveConnectorsForSync(ctx context.Context, fr
 		connectors = append(connectors, uc)
 	}
 	return connectors, nil
+}
+
+func (r *ConnectorRepository) UpdateUserConnectorSettings(ctx context.Context, tenantID, connectorID uuid.UUID, enabled *bool, displayName *string, syncFrequency *string, autoSync *bool) error {
+	// Check if connector exists
+	uc, err := r.GetUserConnector(ctx, tenantID, connectorID)
+	if err != nil {
+		return fmt.Errorf("user connector not found")
+	}
+
+	// Build dynamic update query
+	setClauses := []string{}
+	args := []interface{}{}
+	argIndex := 1
+
+	if enabled != nil {
+		status := "active"
+		if !*enabled {
+			status = "disabled"
+		}
+		setClauses = append(setClauses, fmt.Sprintf("status = $%d", argIndex))
+		args = append(args, status)
+		argIndex++
+	}
+
+	if displayName != nil && *displayName != "" {
+		setClauses = append(setClauses, fmt.Sprintf("display_name = $%d", argIndex))
+		args = append(args, *displayName)
+		argIndex++
+	}
+
+	if syncFrequency != nil {
+		validFrequencies := map[string]bool{"5m": true, "15m": true, "1h": true, "6h": true, "24h": true}
+		if validFrequencies[*syncFrequency] {
+			setClauses = append(setClauses, fmt.Sprintf("sync_frequency = $%d", argIndex))
+			args = append(args, *syncFrequency)
+			argIndex++
+		}
+	}
+
+	if autoSync != nil {
+		setClauses = append(setClauses, fmt.Sprintf("auto_sync = $%d", argIndex))
+		args = append(args, *autoSync)
+		argIndex++
+	}
+
+	if len(setClauses) == 0 {
+		return fmt.Errorf("no fields to update")
+	}
+
+	setClauses = append(setClauses, fmt.Sprintf("updated_at = NOW()"))
+
+	query := fmt.Sprintf("UPDATE user_connectors SET %s WHERE tenant_id = $%d AND id = $%d",
+		strings.Join(setClauses, ", "), argIndex, argIndex+1)
+	args = append(args, tenantID, connectorID)
+
+	result, err := r.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("update user connector settings: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("user connector not found")
+	}
+
+	_ = uc // silence unused variable warning
+	return nil
+}
+
+func (r *ConnectorRepository) StoreOAuthState(ctx context.Context, state string, tenantID, connectorID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO connector_oauth_states (state, tenant_id, connector_id, created_at)
+		VALUES ($1, $2, $3, NOW())
+		ON CONFLICT DO NOTHING`, state, tenantID, connectorID)
+	return err
+}
+
+// ConnectorOAuthState represents a stored OAuth state for CSRF validation
+type ConnectorOAuthState struct {
+	State       string
+	TenantID    uuid.UUID
+	ConnectorID uuid.UUID
+	ExpiresAt   time.Time
+	CreatedAt   time.Time
+}
+
+// GetOAuthState retrieves an OAuth state without consuming it (for validation)
+func (r *ConnectorRepository) GetOAuthState(ctx context.Context, state string) (*ConnectorOAuthState, error) {
+	s := &ConnectorOAuthState{}
+	err := r.db.QueryRowContext(ctx, `
+		SELECT state, tenant_id, connector_id, expires_at, created_at
+		FROM connector_oauth_states
+		WHERE state = $1 AND expires_at > NOW()`, state).Scan(
+		&s.State, &s.TenantID, &s.ConnectorID, &s.ExpiresAt, &s.CreatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get oauth state: %w", err)
+	}
+	return s, nil
+}
+
+// ConsumeOAuthState retrieves and deletes an OAuth state (one-time use)
+func (r *ConnectorRepository) ConsumeOAuthState(ctx context.Context, state string) (*ConnectorOAuthState, error) {
+	s := &ConnectorOAuthState{}
+	err := r.db.QueryRowContext(ctx, `
+		DELETE FROM connector_oauth_states
+		WHERE state = $1 AND expires_at > NOW()
+		RETURNING state, tenant_id, connector_id, expires_at, created_at`, state).Scan(
+		&s.State, &s.TenantID, &s.ConnectorID, &s.ExpiresAt, &s.CreatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("consume oauth state: %w", err)
+	}
+	return s, nil
+}
+
+// CleanupExpiredOAuthStates removes expired OAuth states
+func (r *ConnectorRepository) CleanupExpiredOAuthStates(ctx context.Context) (int64, error) {
+	result, err := r.db.ExecContext(ctx, `
+		DELETE FROM connector_oauth_states WHERE expires_at <= NOW()`)
+	if err != nil {
+		return 0, fmt.Errorf("cleanup expired oauth states: %w", err)
+	}
+	rows, _ := result.RowsAffected()
+	return rows, nil
 }

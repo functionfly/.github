@@ -255,8 +255,7 @@ func (d *FeatureDetector) hasRedis() bool {
 
 func (d *FeatureDetector) hasNATS() bool {
 	return d.fileContains("internal/", "nats.") ||
-		d.fileContains("internal/", "NATS") ||
-		d.fileExists("runtimes/sar/Cargo.toml")
+		d.fileContains("internal/", "NATS")
 }
 
 func (d *FeatureDetector) hasTelemetry() bool {
@@ -523,12 +522,6 @@ func (d *FeatureDetector) DetectTestFramework() TestFramework {
 		if framework.CoverageCmd == "" {
 			framework.CoverageCmd = "go test -cover ./..."
 		}
-	}
-
-	if d.fileExists("runtimes/sar/Cargo.toml") {
-		framework.Name = "Cargo"
-		framework.RunCmd = "cargo test"
-		framework.CoverageCmd = "cargo test --coverage"
 	}
 
 	return framework

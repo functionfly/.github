@@ -6,16 +6,32 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/lib/pq"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage"
 	statestorage "github.com/functionfly/functionfly/internal/storage/state"
+)
+
+// AuditAction represents the type of audit action performed on agent memory
+type AuditAction string
+
+const (
+	AuditActionCreate      AuditAction = "create"
+	AuditActionRead        AuditAction = "read"
+	AuditActionUpdate      AuditAction = "update"
+	AuditActionDelete      AuditAction = "delete"
+	AuditActionSearch      AuditAction = "search"
+	AuditActionMarkAccessed AuditAction = "mark_accessed"
+	AuditActionRebuildIndex AuditAction = "rebuild_index"
 )
 
 // ============================================
@@ -25,6 +41,86 @@ import (
 // AgentMemoryHandler handles HTTP requests for agent memory management
 type AgentMemoryHandler struct {
 	db *gorm.DB
+}
+
+const (
+	// MaxEmbeddingDimensions is the maximum allowed embedding vector dimensions
+	MaxEmbeddingDimensions = 1536
+)
+
+// getClientIP extracts the client IP address from the request, considering proxies
+func getClientIP(r *http.Request) string {
+	// Check X-Forwarded-For header first (for proxied requests)
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		parts := strings.Split(xff, ",")
+		return strings.TrimSpace(parts[0])
+	}
+	// Check X-Real-IP header
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return xri
+	}
+	// Fall back to RemoteAddr
+	ip, _, _ := strings.Cut(r.RemoteAddr, ":")
+	return ip
+}
+
+// logAuditEvent logs an audit event for agent memory operations
+func logAuditEvent(r *http.Request, claims *auth.Claims, action AuditAction, memoryID *uuid.UUID, metadata map[string]interface{}) {
+	entry := logrus.WithFields(logrus.Fields{
+		"service":     "agent_memory",
+		"action":      action,
+		"tenant_id":   claims.TenantID,
+		"user_id":     claims.UserID,
+		"user_email":  claims.Email,
+		"ip_address":  getClientIP(r),
+		"user_agent":  r.UserAgent(),
+		"request_id":  r.Header.Get("X-Request-ID"),
+	})
+	if memoryID != nil {
+		entry = entry.WithField("memory_id", *memoryID)
+	}
+	if metadata != nil {
+		entry = entry.WithFields(metadata)
+	}
+	entry.Info("agent_memory audit event")
+}
+
+// hasPermission checks if the user claims contain the required permission
+func hasPermission(claims *auth.Claims, permission string) bool {
+	if claims == nil {
+		return false
+	}
+	// Allow super_admin and admin roles to bypass permission checks
+	if claims.Role == auth.RoleSuperAdmin || claims.Role == auth.RoleAdmin {
+		return true
+	}
+	if claims.Permissions == nil {
+		return false
+	}
+	for _, p := range claims.Permissions {
+		if p == permission {
+			return true
+		}
+	}
+	return false
+}
+
+// checkMemoryRead checks if the user has memory.read permission
+func checkMemoryRead(claims *auth.Claims) bool {
+	return hasPermission(claims, auth.PermMemoryRead)
+}
+
+// checkMemoryWrite checks if the user has memory.write permission
+func checkMemoryWrite(claims *auth.Claims) bool {
+	return hasPermission(claims, auth.PermMemoryWrite)
+}
+
+// validateEmbedding validates the embedding vector length
+func validateEmbedding(embedding []float32) error {
+	if len(embedding) > MaxEmbeddingDimensions {
+		return fmt.Errorf("embedding dimensions (%d) exceed maximum allowed (%d)", len(embedding), MaxEmbeddingDimensions)
+	}
+	return nil
 }
 
 // NewHandler creates a new AgentMemoryHandler
@@ -105,6 +201,12 @@ func (h *AgentMemoryHandler) HandleCreateMemory(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// Check memory.write permission
+	if !checkMemoryWrite(claims) {
+		http.Error(w, "forbidden: insufficient permissions", http.StatusForbidden)
+		return
+	}
+
 	var req CreateMemoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
@@ -114,6 +216,14 @@ func (h *AgentMemoryHandler) HandleCreateMemory(w http.ResponseWriter, r *http.R
 	if req.AgentID == "" || req.MemoryType == "" {
 		http.Error(w, "agent_id and memory_type are required", http.StatusBadRequest)
 		return
+	}
+
+	// Validate embedding if provided
+	if len(req.Embedding) > 0 {
+		if err := validateEmbedding(req.Embedding); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 	}
 
 	memory := &statestorage.AgentMemory{
@@ -139,6 +249,15 @@ func (h *AgentMemoryHandler) HandleCreateMemory(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// Log audit event
+	logAuditEvent(r, claims, AuditActionCreate, &created.ID, map[string]interface{}{
+		"agent_id":     created.AgentID,
+		"memory_type":  created.MemoryType,
+		"importance":   created.ImportanceScore,
+		"has_embedding": len(created.Embedding) > 0,
+		"ttl_days":     created.TTLDays,
+	})
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(created)
@@ -149,6 +268,12 @@ func (h *AgentMemoryHandler) HandleListMemories(w http.ResponseWriter, r *http.R
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Check memory.read permission
+	if !checkMemoryRead(claims) {
+		http.Error(w, "forbidden: insufficient permissions", http.StatusForbidden)
 		return
 	}
 
@@ -184,6 +309,16 @@ func (h *AgentMemoryHandler) HandleListMemories(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// Log audit event for list operation
+	logAuditEvent(r, claims, AuditActionRead, nil, map[string]interface{}{
+		"operation": "list",
+		"agent_id":  agentID,
+		"count":     len(memories),
+		"total":     total,
+		"limit":     limit,
+		"offset":    offset,
+	})
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(ListMemoriesResponse{
 		Memories: memories,
@@ -198,6 +333,12 @@ func (h *AgentMemoryHandler) HandleGetMemory(w http.ResponseWriter, r *http.Requ
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Check memory.read permission
+	if !checkMemoryRead(claims) {
+		http.Error(w, "forbidden: insufficient permissions", http.StatusForbidden)
 		return
 	}
 
@@ -216,6 +357,13 @@ func (h *AgentMemoryHandler) HandleGetMemory(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Log audit event
+	logAuditEvent(r, claims, AuditActionRead, &memoryUUID, map[string]interface{}{
+		"agent_id":    memory.AgentID,
+		"memory_type": memory.MemoryType,
+		"operation":   "get",
+	})
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(memory)
 }
@@ -225,6 +373,12 @@ func (h *AgentMemoryHandler) HandleUpdateMemory(w http.ResponseWriter, r *http.R
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Check memory.write permission
+	if !checkMemoryWrite(claims) {
+		http.Error(w, "forbidden: insufficient permissions", http.StatusForbidden)
 		return
 	}
 
@@ -241,6 +395,14 @@ func (h *AgentMemoryHandler) HandleUpdateMemory(w http.ResponseWriter, r *http.R
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
+	}
+
+	// Validate embedding if provided
+	if req.Embedding != nil && len(req.Embedding) > 0 {
+		if err := validateEmbedding(req.Embedding); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 	}
 
 	// Get existing memory
@@ -271,6 +433,14 @@ func (h *AgentMemoryHandler) HandleUpdateMemory(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// Log audit event
+	logAuditEvent(r, claims, AuditActionUpdate, &memoryUUID, map[string]interface{}{
+		"agent_id":     updated.AgentID,
+		"memory_type":  updated.MemoryType,
+		"importance":   updated.ImportanceScore,
+		"has_embedding": len(updated.Embedding) > 0,
+	})
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(updated)
 }
@@ -280,6 +450,12 @@ func (h *AgentMemoryHandler) HandleDeleteMemory(w http.ResponseWriter, r *http.R
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Check memory.write permission
+	if !checkMemoryWrite(claims) {
+		http.Error(w, "forbidden: insufficient permissions", http.StatusForbidden)
 		return
 	}
 
@@ -299,6 +475,11 @@ func (h *AgentMemoryHandler) HandleDeleteMemory(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// Log audit event
+	logAuditEvent(r, claims, AuditActionDelete, &memoryUUID, map[string]interface{}{
+		"agent_id": memoryID,
+	})
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -307,6 +488,12 @@ func (h *AgentMemoryHandler) HandleMarkAccessed(w http.ResponseWriter, r *http.R
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Check memory.read permission (marking as accessed is a read operation)
+	if !checkMemoryRead(claims) {
+		http.Error(w, "forbidden: insufficient permissions", http.StatusForbidden)
 		return
 	}
 
@@ -334,6 +521,9 @@ func (h *AgentMemoryHandler) HandleMarkAccessed(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// Log audit event
+	logAuditEvent(r, claims, AuditActionMarkAccessed, &memoryUUID, nil)
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"memory_id": memoryID,
@@ -350,10 +540,24 @@ func (h *AgentMemoryHandler) HandleSearchMemories(w http.ResponseWriter, r *http
 		return
 	}
 
+	// Check memory.read permission
+	if !checkMemoryRead(claims) {
+		http.Error(w, "forbidden: insufficient permissions", http.StatusForbidden)
+		return
+	}
+
 	var req SearchMemoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
+	}
+
+	// Validate embedding if provided
+	if len(req.Embedding) > 0 {
+		if err := validateEmbedding(req.Embedding); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 	}
 
 	if req.Limit == 0 {
@@ -380,6 +584,20 @@ func (h *AgentMemoryHandler) HandleSearchMemories(w http.ResponseWriter, r *http
 		return
 	}
 
+	// Log audit event
+	searchType := "filter"
+	if len(req.Embedding) > 0 {
+		searchType = "vector"
+	}
+	logAuditEvent(r, claims, AuditActionSearch, nil, map[string]interface{}{
+		"search_type":  searchType,
+		"agent_id":     req.AgentID,
+		"memory_type":  req.MemoryType,
+		"result_count": len(memories),
+		"limit":        req.Limit,
+		"threshold":    req.Threshold,
+	})
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(SearchMemoriesResponse{
 		Memories: memories,
@@ -392,6 +610,12 @@ func (h *AgentMemoryHandler) HandleRebuildIndex(w http.ResponseWriter, r *http.R
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Check memory.write permission (rebuilding index is a write operation)
+	if !checkMemoryWrite(claims) {
+		http.Error(w, "forbidden: insufficient permissions", http.StatusForbidden)
 		return
 	}
 
@@ -418,6 +642,13 @@ func (h *AgentMemoryHandler) HandleRebuildIndex(w http.ResponseWriter, r *http.R
 		http.Error(w, "failed to rebuild index", http.StatusInternalServerError)
 		return
 	}
+
+	// Log audit event
+	logAuditEvent(r, claims, AuditActionRebuildIndex, nil, map[string]interface{}{
+		"agent_id":     req.AgentID,
+		"memory_type":  req.MemoryType,
+		"memory_count": index.MemoryCount,
+	})
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(RebuildIndexResponse{
@@ -569,50 +800,52 @@ func (h *AgentMemoryHandler) listMemoriesByTenant(ctx context.Context, tenantID 
 }
 
 func (h *AgentMemoryHandler) searchMemoriesByVector(ctx context.Context, tenantID uuid.UUID, agentID, memoryType string, embedding []float32, limit int, threshold float32) ([]*statestorage.AgentMemory, error) {
-	// Convert float32 slice to PostgreSQL vector format for pgvector
-	vectorStr := "["
-	for i, v := range embedding {
-		if i > 0 {
-			vectorStr += ","
-		}
-		vectorStr += fmt.Sprintf("%.6f", v)
-	}
-	vectorStr += "]"
-
 	var memories []*statestorage.AgentMemory
 
-	// Build the base query conditions
-	baseConditions := []interface{}{}
-	whereClause := "tenant_id = ? AND (expires_at IS NULL OR expires_at > NOW()) AND embedding IS NOT NULL"
-	baseConditions = append(baseConditions, tenantID)
+	// Build the base query conditions using GORM's parameterized queries
+	query := h.db.WithContext(ctx).
+		Where("tenant_id = ? AND (expires_at IS NULL OR expires_at > NOW()) AND embedding IS NOT NULL", tenantID)
 
 	if agentID != "" {
-		whereClause += " AND agent_id = ?"
-		baseConditions = append(baseConditions, agentID)
+		query = query.Where("agent_id = ?", agentID)
 	}
 	if memoryType != "" {
-		whereClause += " AND memory_type = ?"
-		baseConditions = append(baseConditions, memoryType)
+		query = query.Where("memory_type = ?", memoryType)
 	}
 	if threshold > 0 {
-		whereClause += " AND importance_score >= ?"
-		baseConditions = append(baseConditions, threshold)
+		query = query.Where("importance_score >= ?", threshold)
 	}
 
-	// Build the full SQL query with vector similarity ordering
-	sqlQuery := fmt.Sprintf(`
-		SELECT id, tenant_id, agent_id, memory_type, content, structured_data,
-				   embedding, importance_score, access_count, last_accessed_at,
-				   ttl_days, expires_at, source_event_id, created_at, updated_at
-		FROM agent_memories
-		WHERE %s
-		ORDER BY embedding <=> '%s'
-		LIMIT ?
-	`, whereClause, vectorStr)
+	// Use GORM's raw query with pgvector's cosine distance operator (<=>)
+	// The embedding is passed as a pq.Array which GORM properly parameterizes
+	// This prevents SQL injection since the vector values are never interpolated directly
+	sqlQuery := `SELECT id, tenant_id, agent_id, memory_type, content, structured_data,
+				 embedding, importance_score, access_count, last_accessed_at,
+				 ttl_days, expires_at, source_event_id, created_at, updated_at
+		  FROM agent_memories
+		  WHERE tenant_id = ? AND (expires_at IS NULL OR expires_at > NOW()) AND embedding IS NOT NULL`
 
-	baseConditions = append(baseConditions, limit)
+	args := []interface{}{tenantID}
 
-	err := h.db.WithContext(ctx).Raw(sqlQuery, baseConditions...).Scan(&memories).Error
+	if agentID != "" {
+		sqlQuery += " AND agent_id = ?"
+		args = append(args, agentID)
+	}
+	if memoryType != "" {
+		sqlQuery += " AND memory_type = ?"
+		args = append(args, memoryType)
+	}
+	if threshold > 0 {
+		sqlQuery += " AND importance_score >= ?"
+		args = append(args, threshold)
+	}
+
+	// Use pgvector's <=> (cosine distance) operator for similarity search
+	// Pass embedding as a properly parameterized pq.Array to prevent SQL injection
+	sqlQuery += " ORDER BY embedding <=> ? LIMIT ?"
+	args = append(args, pq.Array(embedding), limit)
+
+	err := h.db.WithContext(ctx).Raw(sqlQuery, args...).Scan(&memories).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to search memories: %w", err)
 	}

@@ -183,14 +183,14 @@ function ComponentCard({
             <div className="flex items-center justify-between text-xs">
               <span className="text-text-muted">{t('statusPage.uptime')}</span>
               <span className={cn('font-medium', status.text)}>
-                {component.uptime_percent.toFixed(2)}%
+                {component.uptime_percent?.toFixed(2) ?? '0.00'}%
               </span>
             </div>
             <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-bg-tertiary">
               <motion.div
                 className={cn('h-full rounded-full', status.dot)}
                 initial={{ width: 0 }}
-                animate={{ width: `${component.uptime_percent}%` }}
+                animate={{ width: `${component.uptime_percent ?? 0}%` }}
                 transition={{ duration: 0.5, delay: index * 0.05 }}
               />
             </div>

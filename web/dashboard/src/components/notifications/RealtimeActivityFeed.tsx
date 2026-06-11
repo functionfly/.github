@@ -249,7 +249,7 @@ function groupActivities(activities: ActivityFeedItem[]): (ActivityFeedItem | Gr
 /**
  * Live indicator with pulse animation
  */
-function LiveIndicator({ isConnected }: { isConnected: boolean }) {
+function LiveIndicator({ isConnected, error }: { isConnected: boolean; error?: Error | string | null }) {
   return (
     <div className="flex items-center gap-2">
       <div className="relative flex h-3 w-3">
@@ -270,7 +270,7 @@ function LiveIndicator({ isConnected }: { isConnected: boolean }) {
           isConnected ? 'text-green-500' : 'text-red-500'
         )}
       >
-        {isConnected ? 'Live' : 'Disconnected'}
+        {isConnected ? 'Live' : error ? 'Connection Error' : 'Disconnected'}
       </span>
     </div>
   );
@@ -559,7 +559,7 @@ export function RealtimeActivityFeed({
   }, [isPaused, maxItems]);
 
   // Subscribe to real-time activity updates
-  const { isConnected } = useRealtimeSubscription<ActivityEvent>(
+  const { isConnected, error: wsError } = useRealtimeSubscription<ActivityEvent>(
     'activity',
     'new_activity',
     handleNewActivity
@@ -622,7 +622,7 @@ export function RealtimeActivityFeed({
               <div className="flex items-center gap-3">
                 <Activity className="h-5 w-5 text-text-primary" />
                 <h2 className="text-lg font-semibold text-text-primary">Live Activity</h2>
-                <LiveIndicator isConnected={isConnected} />
+                <LiveIndicator isConnected={isConnected} error={wsError} />
               </div>
 
               <div className="flex items-center gap-1">

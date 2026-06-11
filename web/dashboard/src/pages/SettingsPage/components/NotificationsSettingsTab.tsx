@@ -70,11 +70,11 @@ export function NotificationsSettingsTab() {
   };
 
   return (
-    <div className="space-y-6">
-      <Card className="ff-card-velocity">
+    <div className="settings-page space-y-6">
+      <Card className="settings-panel">
         <CardHeader>
-          <CardTitle className="font-display">{t('notifSettings.title')}</CardTitle>
-          <CardDescription className="text-text-secondary">
+          <CardTitle className="settings-section-title">{t('notifSettings.title')}</CardTitle>
+          <CardDescription className="settings-section-description">
             {t('notifSettings.description')}
           </CardDescription>
         </CardHeader>

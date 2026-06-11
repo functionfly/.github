@@ -36,6 +36,12 @@ async function retryWithBackoff<T>(
   throw lastError;
 }
 
+interface ConnectProviderResult {
+  success: boolean;
+  apiKey?: string;
+  apiKeyId?: string;
+}
+
 interface ProvidersState {
   providers: ConnectedProvider[];
   isLoading: boolean;
@@ -45,7 +51,7 @@ interface ProvidersState {
 
   // Actions
   fetchProviders: (forceRefresh?: boolean) => Promise<void>;
-  connectProvider: (request: ConnectProviderRequest) => Promise<void>;
+  connectProvider: (request: ConnectProviderRequest) => Promise<ConnectProviderResult>;
   disconnectProvider: (providerId: string) => Promise<void>;
   testConnection: (providerId: string) => Promise<boolean>;
   clearError: () => void;
@@ -104,6 +110,11 @@ export const useProvidersStore = create<ProvidersState>()(
             providers: dedupeConnectedProvidersBySlug([...filtered, response.provider]),
             isLoading: false,
           });
+          return {
+            success: true,
+            apiKey: response.apiKey,
+            apiKeyId: response.apiKeyId,
+          };
         } catch (error) {
           set({
             error: error instanceof Error ? error.message : 'Failed to connect provider',

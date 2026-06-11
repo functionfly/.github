@@ -782,17 +782,3 @@ function Search({ className }: { className?: string }) {
 // ============================================================================
 // Index
 // ============================================================================
-
-export type {
-  Extension,
-  ExtensionHook,
-  ExtensionSandbox,
-  ExtensionMetrics,
-  ExtensionSettings,
-  ExtensionManagerProps,
-  ExtensionDetailPanelProps,
-  HookSystemVisualizerProps,
-  SandboxMonitorProps,
-  ExtensionMarketplaceBrowserProps,
-  ExtensionSDKDebuggerProps,
-} from "./types";

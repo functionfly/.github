@@ -23,8 +23,8 @@ func isLocalhost(r *http.Request) bool {
 		clientIP == "localhost"
 }
 
-// requirePermission middleware checks if user has required permission
-func (m *AuthMiddleware) RequirePermission(permission string) func(http.HandlerFunc) http.HandlerFunc {
+// requirePermissionWithAdminBypass middleware checks if user has required permission (allows admin bypass)
+func (m *AuthMiddleware) requirePermissionWithAdminBypass(permission string) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return m.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 			claims := GetUserFromContext(r)

@@ -166,3 +166,76 @@ go run cmd/apply-migrations/main.go
 ```
 
 This will test that the latest migration can be rolled back successfully on a temporary database.
+
+## Soft Delete Column Conventions
+
+This project uses two distinct patterns for soft-delete-like functionality, each with different semantics:
+
+### `deactivated_at` - User Account Lifecycle
+
+Used on the `users` table for account management:
+
+```sql
+-- User account deactivation (reversible)
+ALTER TABLE users ADD COLUMN deactivated_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN deactivated_by UUID REFERENCES users(id);
+
+-- Query active users (not deactivated)
+SELECT * FROM users WHERE deactivated_at IS NULL;
+```
+
+**Purpose**: Account suspension. The user cannot log in, but data is preserved and account can be reactivated by clearing `deactivated_at`.
+
+**Usage**: `internal/storage/user_repository_lifecycle.go`, `internal/storage/user_repository_search.go`
+
+### `deleted_at` - Content/Data Soft Delete
+
+Used on content and data tables for soft deletion:
+
+```sql
+-- Soft delete (content hidden but recoverable)
+ALTER TABLE secrets ADD COLUMN deleted_at TIMESTAMPTZ;
+ALTER TABLE conversation_messages ADD COLUMN deleted_at TIMESTAMPTZ;
+
+-- Query non-deleted content
+SELECT * FROM secrets WHERE deleted_at IS NULL;
+```
+
+**Purpose**: Soft delete for data. Records are hidden from normal queries but retained in database for potential recovery or audit.
+
+**Usage**: Vault (`internal/storage/vault/repository.go`), Conversations (`internal/storage/conversation_repository.go`), Community (`internal/community/models.go`), Auth configs (`internal/auth/gba/plugins/saml/service.go`, `internal/auth/gba/plugins/scim/service.go`), Agent experiments (`internal/agent/factory/experiment.go`)
+
+### Key Distinction
+
+| Pattern | Column | Purpose | Reactivatable |
+|---------|--------|---------|---------------|
+| User Deactivation | `deactivated_at` | Account lifecycle (suspend/resume) | Yes (clear field) |
+| Soft Delete | `deleted_at` | Content/data hiding | No (data marked deleted) |
+
+### Adding New Soft-Delete Columns
+
+- For **user account** features → use `deactivated_at`
+- For **content/data** features → use `deleted_at`
+- Do NOT use `is_deleted` (boolean) - use nullable timestamp instead for audit trail
+
+### Example: Adding Soft Delete to a New Table
+
+```sql
+-- For content/data tables
+ALTER TABLE my_table ADD COLUMN deleted_at TIMESTAMPTZ;
+
+-- Query pattern
+SELECT * FROM my_table WHERE deleted_at IS NULL;
+
+-- Soft delete operation
+UPDATE my_table SET deleted_at = NOW() WHERE id = ?;
+```
+
+```sql
+-- For user account tables (if needed)
+ALTER TABLE my_table ADD COLUMN deactivated_at TIMESTAMPTZ;
+ALTER TABLE my_table ADD COLUMN deactivated_by UUID REFERENCES users(id);
+
+-- Reactivate operation
+UPDATE users SET deactivated_at = NULL, deactivated_by = NULL WHERE id = ?;
+```

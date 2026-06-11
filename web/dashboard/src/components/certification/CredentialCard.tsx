@@ -44,11 +44,11 @@ export function CredentialCard({ credential, compact }: CredentialCardProps) {
       <motion.div
         whileHover={{ scale: 1.02 }}
         className={cn(
-          'flex items-center gap-3 rounded-lg border p-3',
-          isActive ? 'border-theme bg-card' : 'border-theme bg-card opacity-60'
+          'credentials-card compact',
+          isActive ? '' : 'inactive'
         )}
       >
-        <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br', gradient)}>
+        <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg', gradient.replace('from-', 'bg-gradient-to-br from-'))}>
           <Icon className="h-5 w-5 text-white" />
         </div>
         <div className="flex-1 min-w-0">
@@ -69,53 +69,60 @@ export function CredentialCard({ credential, compact }: CredentialCardProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        'glass-card glow rounded-xl border border-theme bg-card p-6',
-        !isActive && 'opacity-70'
+        'credentials-card',
+        !isActive && 'inactive',
+        credential.tier?.slug === 'architect' ? 'gold' : credential.tier?.slug === 'professional' ? 'purple' : 'blue'
       )}
     >
       {/* Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className={cn('flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br', gradient)}>
-            <Icon className="h-6 w-6 text-white" />
+      <div className="credentials-card-header">
+        <div className="credentials-card-info">
+          <div className="credentials-card-icon">
+            <Icon className="h-6 w-6" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-text-primary">
+            <h3 className="credentials-card-title">
               {credential.tier?.name || 'Certification'}
             </h3>
-            <p className="text-sm text-text-muted font-mono">{credential.credential_number}</p>
+            <p className="credentials-card-number">{credential.credential_number}</p>
           </div>
         </div>
-        <Badge variant={isActive ? 'success' : isExpired ? 'secondary' : 'destructive'}>
+        <span className={`credentials-status-badge ${credential.status}`}>
           {credential.status}
-        </Badge>
+        </span>
       </div>
 
       {/* Details */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="flex items-center gap-2 text-sm text-text-secondary">
-          <Calendar className="h-4 w-4 text-text-muted" />
+      <div className="credentials-card-details">
+        <div className="credentials-card-detail">
+          <Calendar className="h-4 w-4" />
           <span>Issued: {new Date(credential.issued_at).toLocaleDateString()}</span>
         </div>
-        <div className="flex items-center gap-2 text-sm text-text-secondary">
-          <Calendar className="h-4 w-4 text-text-muted" />
+        <div className="credentials-card-detail">
+          <Calendar className="h-4 w-4" />
           <span>Expires: {new Date(credential.expires_at).toLocaleDateString()}</span>
         </div>
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={copyNumber}>
+      <div className="credentials-card-actions">
+        <button
+          onClick={copyNumber}
+          className="btn-outline"
+        >
           {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
           {copied ? 'Copied' : 'Copy Number'}
-        </Button>
+        </button>
         {credential.verification_url && (
-          <Button variant="outline" size="sm" asChild>
-            <a href={credential.verification_url} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4" />
-              Verify
-            </a>
-          </Button>
+          <a
+            href={credential.verification_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-outline"
+          >
+            <ExternalLink className="h-4 w-4" />
+            Verify
+          </a>
         )}
       </div>
     </motion.div>

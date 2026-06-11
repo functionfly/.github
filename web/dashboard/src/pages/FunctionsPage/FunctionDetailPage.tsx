@@ -21,7 +21,11 @@ import {
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useDNAProfile, useToggleDNAEvolution, useTriggerDNAAnalysis } from '@/hooks/useFunctionDNA';
+import {
+  useDNAProfile,
+  useToggleDNAEvolution,
+  useTriggerDNAAnalysis,
+} from '@/hooks/useFunctionDNA';
 import '@/styles/components.css';
 import type { FunctionHeaderData, TrustTier } from '@/types';
 import {
@@ -266,6 +270,8 @@ export function FunctionDetailPage() {
   const [isRedeploying, setIsRedeploying] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showReportDialog, setShowReportDialog] = useState(false);
+  const [reportDescription, setReportDescription] = useState('');
 
   // State for API data
   const [functionData, setFunctionData] = useState<FunctionData | null>(null);
@@ -354,6 +360,29 @@ export function FunctionDetailPage() {
     }
   };
 
+  const handleReportIssue = () => {
+    setShowReportDialog(true);
+  };
+
+  const submitReport = async () => {
+    if (!id || !functionData) return;
+
+    try {
+      // Submit issue report to the API
+      await apiClient.post(`/v1/functions/${id}/report-issue`, {
+        description: reportDescription,
+        functionName: functionData.name,
+        author: functionData.author,
+      });
+      toast.success(t('functionDetail.issueReported'));
+      setShowReportDialog(false);
+      setReportDescription('');
+    } catch (error) {
+      console.error('Failed to report issue:', error);
+      toast.error(t('functionDetail.failedToReportIssue'));
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -422,6 +451,7 @@ export function FunctionDetailPage() {
         onDeploy={handleRedeploy}
         onTest={() => toast.info(t('functionDetail.testComingSoon'))}
         onShare={() => toast.info(t('functionDetail.shareComingSoon'))}
+        onReportIssue={handleReportIssue}
       />
 
       {/* Function Info Card */}
@@ -429,7 +459,9 @@ export function FunctionDetailPage() {
         <CardContent className="card-content p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <h3 className="text-sm font-medium text-text-secondary mb-2">{t('functionDetail.providers')}</h3>
+              <h3 className="text-sm font-medium text-text-secondary mb-2">
+                {t('functionDetail.providers')}
+              </h3>
               <div className="flex items-center gap-2">
                 {functionData.providers.map((provider) => (
                   <div key={provider} className="flex items-center gap-2">
@@ -440,23 +472,33 @@ export function FunctionDetailPage() {
               </div>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-text-secondary mb-2">{t('functionDetail.region')}</h3>
+              <h3 className="text-sm font-medium text-text-secondary mb-2">
+                {t('functionDetail.region')}
+              </h3>
               <p className="text-text-primary">{functionData.region.toUpperCase()}</p>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-text-secondary mb-2">{t('functionDetail.runtime')}</h3>
+              <h3 className="text-sm font-medium text-text-secondary mb-2">
+                {t('functionDetail.runtime')}
+              </h3>
               <p className="text-text-primary">{functionData.runtime}</p>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-text-secondary mb-2">{t('functionDetail.version')}</h3>
+              <h3 className="text-sm font-medium text-text-secondary mb-2">
+                {t('functionDetail.version')}
+              </h3>
               <Badge variant="secondary">{functionData.version}</Badge>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-text-secondary mb-2">{t('functionDetail.lastDeployed')}</h3>
+              <h3 className="text-sm font-medium text-text-secondary mb-2">
+                {t('functionDetail.lastDeployed')}
+              </h3>
               <p className="text-text-primary">{functionData.lastDeployed}</p>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-text-secondary mb-2">{t('functionDetail.created')}</h3>
+              <h3 className="text-sm font-medium text-text-secondary mb-2">
+                {t('functionDetail.created')}
+              </h3>
               <p className="text-text-primary">{functionData.createdAt}</p>
             </div>
           </div>
@@ -616,7 +658,9 @@ export function FunctionDetailPage() {
 
             <Card className="card">
               <CardHeader className="card-header">
-                <CardTitle className="card-title">{t('functionDetail.errorDistribution')}</CardTitle>
+                <CardTitle className="card-title">
+                  {t('functionDetail.errorDistribution')}
+                </CardTitle>
               </CardHeader>
               <CardContent className="card-content">
                 <div className="h-[300px]">
@@ -681,12 +725,10 @@ export function FunctionDetailPage() {
                 <Dna className="h-10 w-10 text-text-muted mb-4" />
                 <h3 className="text-lg font-semibold text-text-primary mb-2">DNA Not Enabled</h3>
                 <p className="text-sm text-text-secondary mb-4 text-center max-w-md">
-                  Enable Function DNA to track execution patterns and receive AI-powered evolution suggestions.
+                  Enable Function DNA to track execution patterns and receive AI-powered evolution
+                  suggestions.
                 </p>
-                <Button
-                  onClick={() => navigate(`/functions/${id}/dna`)}
-                  className="gap-1.5"
-                >
+                <Button onClick={() => navigate(`/functions/${id}/dna`)} className="gap-1.5">
                   <Dna className="h-4 w-4" />
                   Enable DNA
                 </Button>
@@ -715,6 +757,59 @@ export function FunctionDetailPage() {
             </Button>
             <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting}>
               {isDeleting ? t('functionDetail.deleting') : t('functionDetail.deleteFunction')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Report Issue Dialog */}
+      <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              {t('functionDetail.reportIssue')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('functionDetail.reportIssueDescription', { name: functionData?.name })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label
+                htmlFor="report-description"
+                className="block text-sm font-medium text-text-primary mb-2"
+              >
+                {t('functionDetail.whatIsTheIssue')}
+              </label>
+              <textarea
+                id="report-description"
+                value={reportDescription}
+                onChange={(e) => setReportDescription(e.target.value)}
+                placeholder={t('functionDetail.issuePlaceholder')}
+                className="w-full min-h-[120px] px-3 py-2 rounded-lg border border-border-subtle bg-bg-primary text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-amber-500/50 resize-none"
+              />
+            </div>
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+              <p className="text-xs text-amber-400">
+                {t('functionDetail.reportDisclaimer', {
+                  functionName: functionData?.name,
+                  author: functionData?.author,
+                })}
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowReportDialog(false)}>
+              {t('functionDetail.cancel')}
+            </Button>
+            <Button
+              variant="default"
+              onClick={submitReport}
+              disabled={!reportDescription.trim()}
+              className="bg-amber-500 hover:bg-amber-600 text-white border-0"
+            >
+              {t('functionDetail.submitReport')}
             </Button>
           </DialogFooter>
         </DialogContent>

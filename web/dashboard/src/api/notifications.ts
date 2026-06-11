@@ -62,7 +62,20 @@ export interface FetchNotificationsParams {
   status?: NotificationStatus;
   priority?: NotificationPriority;
   limit?: number;
+  /** Cursor for cursor-based pagination (preferred over offset for large datasets) */
+  cursor?: string;
+  /** Offset-based pagination (deprecated - use cursor for large datasets) */
   offset?: number;
+}
+
+export interface PaginatedNotifications {
+  notifications: Notification[];
+  /** Cursor for next page (present if more data available) */
+  nextCursor?: string;
+  /** Whether more notifications exist after this page */
+  hasMore: boolean;
+  /** Total count (may be approximate with cursor pagination) */
+  total?: number;
 }
 
 export interface NotificationCount {
@@ -76,22 +89,31 @@ export interface NotificationCount {
  */
 export async function fetchNotifications(
   params: FetchNotificationsParams = {}
-): Promise<Notification[]> {
-  const { category, status, priority, limit = 50, offset = 0 } = params;
+): Promise<PaginatedNotifications> {
+  const { category, status, priority, limit = 50, cursor, offset } = params;
 
   try {
     const queryParams = new URLSearchParams();
     if (limit) queryParams.set('limit', limit.toString());
-    if (offset) queryParams.set('offset', offset.toString());
+    if (cursor) {
+      queryParams.set('cursor', cursor);
+    } else if (offset !== undefined) {
+      queryParams.set('offset', offset.toString());
+    }
     if (category && category !== 'all') queryParams.set('category', category);
     if (status) queryParams.set('status', status);
     // Note: priority filtering might not be supported by backend yet
 
     const url = `/v1/notifications${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    const response = (await apiClient.get(url)) as { notifications: any[] };
+    const response = (await apiClient.get(url)) as {
+      notifications: any[];
+      next_cursor?: string;
+      has_more?: boolean;
+      total?: number;
+    };
 
     // Transform the response into Notification objects
-    return (response.notifications || []).map((item: any) => ({
+    const notifications = (response.notifications || []).map((item: any) => ({
       id: item.id,
       type: item.type,
       category: normalizeNotificationCategory(String(item.category ?? 'all')),
@@ -108,6 +130,13 @@ export async function fetchNotifications(
       readAt: item.read_at,
       archivedAt: item.archived_at,
     }));
+
+    return {
+      notifications,
+      nextCursor: response.next_cursor,
+      hasMore: response.has_more ?? (response.next_cursor !== undefined),
+      total: response.total,
+    };
   } catch (error: any) {
     console.error('Failed to fetch notifications:', error);
     throw new Error(`Failed to fetch notifications: ${error?.message || 'Unknown error'}`);
@@ -164,12 +193,29 @@ export async function getNotificationPreferences(): Promise<{
 }> {
   const response = (await apiClient.get('/v1/users/me/notification-preferences')) as {
     preferences?: any;
+    email_enabled?: boolean;
+    push_enabled?: boolean;
+    category_settings?: Record<string, boolean>;
   };
 
+  // Handle different response formats: object, array, or flat fields
+  let prefs = response.preferences;
+  if (Array.isArray(prefs) && prefs.length > 0) {
+    prefs = prefs[0];
+  }
+  if (!prefs || typeof prefs !== 'object') {
+    // Fallback to flat fields if preferences object is missing
+    prefs = {
+      email_enabled: response.email_enabled,
+      push_enabled: response.push_enabled,
+      category_settings: response.category_settings,
+    };
+  }
+
   return {
-    emailEnabled: response.preferences?.email_enabled ?? true,
-    pushEnabled: response.preferences?.push_enabled ?? true,
-    categories: response.preferences?.category_settings || {},
+    emailEnabled: (prefs as any)?.email_enabled ?? true,
+    pushEnabled: (prefs as any)?.push_enabled ?? true,
+    categories: (prefs as any)?.category_settings || {},
   };
 }
 

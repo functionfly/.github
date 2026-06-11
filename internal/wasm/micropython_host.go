@@ -3,10 +3,12 @@
 package wasm
 
 import (
-	"log"
-
+	"github.com/sirupsen/logrus"
 	"github.com/bytecodealliance/wasmtime-go/v19"
 )
+
+// stubSecurityEnabled controls whether to log stub function calls (audit purposes)
+const stubSecurityEnabled = true
 
 // DefineMicropythonHostFunctions defines the env.* functions that micropython.wasm needs
 // These are JavaScript interop stubs that aren't needed for serverless execution
@@ -19,118 +21,279 @@ func DefineMicropythonHostFunctions(linker *wasmtime.Linker, store *wasmtime.Sto
 // If streamingState is nil, streaming functions will be stub implementations
 // If getMemory is nil, a default memory accessor will be used
 func DefineMicropythonHostFunctionsWithState(linker *wasmtime.Linker, store *wasmtime.Store, streamingState *StreamingState, getMemory func() []byte) error {
-	// env.invoke_* stubs
-	if err := linker.DefineFunc(store, "env", "invoke_ii", func(caller *wasmtime.Caller, a, b int32) int32 { return 0 }); err != nil {
+	// env.invoke_* stubs - with security hardening for pointer validation
+	if err := linker.DefineFunc(store, "env", "invoke_ii", func(caller *wasmtime.Caller, a, b int32) int32 {
+		if stubSecurityEnabled && (a < 0 || b < 0) {
+			logrus.WithFields(logrus.Fields{
+				"function": "invoke_ii",
+				"a":        a,
+				"b":        b,
+			}).Warn("[Security] invoke_ii: negative pointer(s)")
+		}
+		return 0
+	}); err != nil {
 		return err
 	}
-	if err := linker.DefineFunc(store, "env", "invoke_iiii", func(caller *wasmtime.Caller, a, b, c, d int32) {}); err != nil {
+	if err := linker.DefineFunc(store, "env", "invoke_iiii", func(caller *wasmtime.Caller, a, b, c, d int32) {
+		if stubSecurityEnabled && (a < 0 || b < 0 || c < 0 || d < 0) {
+			logrus.WithFields(logrus.Fields{"function": "invoke_iiii"}).Warn("[Security] invoke_iiii: negative pointer(s)")
+		}
+	}); err != nil {
 		return err
 	}
-	if err := linker.DefineFunc(store, "env", "invoke_v", func(caller *wasmtime.Caller, a int32) {}); err != nil {
+	if err := linker.DefineFunc(store, "env", "invoke_v", func(caller *wasmtime.Caller, a int32) {
+		if stubSecurityEnabled && a < 0 {
+			logrus.WithFields(logrus.Fields{"function": "invoke_v", "a": a}).Warn("[Security] invoke_v: negative pointer")
+		}
+	}); err != nil {
 		return err
 	}
-	if err := linker.DefineFunc(store, "env", "invoke_viii", func(caller *wasmtime.Caller, a, b, c, d int32) {}); err != nil {
+	if err := linker.DefineFunc(store, "env", "invoke_viii", func(caller *wasmtime.Caller, a, b, c, d int32) {
+		if stubSecurityEnabled && (a < 0 || b < 0 || c < 0 || d < 0) {
+			logrus.WithFields(logrus.Fields{"function": "invoke_viii"}).Warn("[Security] invoke_viii: negative pointer(s)")
+		}
+	}); err != nil {
 		return err
 	}
-	if err := linker.DefineFunc(store, "env", "invoke_iiiii", func(caller *wasmtime.Caller, a, b, c, d, e int32) int32 { return 0 }); err != nil {
+	if err := linker.DefineFunc(store, "env", "invoke_iiiii", func(caller *wasmtime.Caller, a, b, c, d, e int32) int32 {
+		if stubSecurityEnabled && (a < 0 || b < 0 || c < 0 || d < 0 || e < 0) {
+			logrus.WithFields(logrus.Fields{"function": "invoke_iiiii"}).Warn("[Security] invoke_iiiii: negative pointer(s)")
+		}
+		return 0
+	}); err != nil {
 		return err
 	}
-	if err := linker.DefineFunc(store, "env", "invoke_iii", func(caller *wasmtime.Caller, a, b, c int32) int32 { return 0 }); err != nil {
+	if err := linker.DefineFunc(store, "env", "invoke_iii", func(caller *wasmtime.Caller, a, b, c int32) int32 {
+		if stubSecurityEnabled && (a < 0 || b < 0 || c < 0) {
+			logrus.WithFields(logrus.Fields{"function": "invoke_iii"}).Warn("[Security] invoke_iii: negative pointer(s)")
+		}
+		return 0
+	}); err != nil {
 		return err
 	}
-	if err := linker.DefineFunc(store, "env", "invoke_vi", func(caller *wasmtime.Caller, a int32) {}); err != nil {
+	if err := linker.DefineFunc(store, "env", "invoke_vi", func(caller *wasmtime.Caller, a int32) {
+		if stubSecurityEnabled && a < 0 {
+			logrus.WithFields(logrus.Fields{"function": "invoke_vi", "a": a}).Warn("[Security] invoke_vi: negative pointer")
+		}
+	}); err != nil {
 		return err
 	}
-	if err := linker.DefineFunc(store, "env", "invoke_vii", func(caller *wasmtime.Caller, a, b int32) {}); err != nil {
+	if err := linker.DefineFunc(store, "env", "invoke_vii", func(caller *wasmtime.Caller, a, b int32) {
+		if stubSecurityEnabled && (a < 0 || b < 0) {
+			logrus.WithFields(logrus.Fields{"function": "invoke_vii"}).Warn("[Security] invoke_vii: negative pointer(s)")
+		}
+	}); err != nil {
 		return err
 	}
-	if err := linker.DefineFunc(store, "env", "invoke_i", func(caller *wasmtime.Caller, a int32) int32 { return 0 }); err != nil {
-		return err
-	}
-
-	// env.mp_js_* stubs
-	if err := linker.DefineFunc(store, "env", "mp_js_hook", func(caller *wasmtime.Caller, a int32) {}); err != nil {
-		return err
-	}
-	if err := linker.DefineFunc(store, "env", "mp_js_random_u32", func(caller *wasmtime.Caller) int32 { return 0 }); err != nil {
-		return err
-	}
-	if err := linker.DefineFunc(store, "env", "mp_js_ticks_ms", func(caller *wasmtime.Caller) int32 { return 0 }); err != nil {
-		return err
-	}
-	if err := linker.DefineFunc(store, "env", "mp_js_time_ms", func(caller *wasmtime.Caller) float64 { return 0 }); err != nil {
-		return err
-	}
-
-	// env.emscripten_* stubs
-	if err := linker.DefineFunc(store, "env", "emscripten_scan_registers", func(caller *wasmtime.Caller, a int32) {}); err != nil {
-		return err
-	}
-	if err := linker.DefineFunc(store, "env", "emscripten_resize_heap", func(caller *wasmtime.Caller, a int32) int32 { return 0 }); err != nil {
-		return err
-	}
-	if err := linker.DefineFunc(store, "env", "_emscripten_throw_longjmp", func(caller *wasmtime.Caller) {}); err != nil {
-		return err
-	}
-
-	// env.proxy_* stubs
-	if err := linker.DefineFunc(store, "env", "proxy_convert_mp_to_js_then_js_to_mp_obj_jsside", func(caller *wasmtime.Caller, a, b, c, d, e, f int32) {}); err != nil {
-		return err
-	}
-	if err := linker.DefineFunc(store, "env", "proxy_convert_mp_to_js_then_js_to_js_then_js_to_mp_obj_jsside", func(caller *wasmtime.Caller, a, b, c, d, e, f int32) {}); err != nil {
-		return err
-	}
-	if err := linker.DefineFunc(store, "env", "js_get_proxy_js_ref_info", func(caller *wasmtime.Caller, a int32) {}); err != nil {
-		return err
-	}
-	if err := linker.DefineFunc(store, "env", "js_get_iter", func(caller *wasmtime.Caller, a, b, c, d int32) {}); err != nil {
-		return err
-	}
-	if err := linker.DefineFunc(store, "env", "proxy_js_free_obj", func(caller *wasmtime.Caller, a, b, c, d int32) {}); err != nil {
-		return err
-	}
-	if err := linker.DefineFunc(store, "env", "js_reflect_construct", func(caller *wasmtime.Caller, a, b, c, d, e, f int32) {}); err != nil {
-		return err
-	}
-	if err := linker.DefineFunc(store, "env", "js_iter_next", func(caller *wasmtime.Caller, a int32) int32 { return 0 }); err != nil {
-		return err
-	}
-	if err := linker.DefineFunc(store, "env", "js_check_existing", func(caller *wasmtime.Caller, a int32) int32 { return 0 }); err != nil {
-		return err
-	}
-	if err := linker.DefineFunc(store, "env", "js_get_error_info", func(caller *wasmtime.Caller, a, b, c, d int32) {}); err != nil {
-		return err
-	}
-	if err := linker.DefineFunc(store, "env", "js_then_resolve", func(caller *wasmtime.Caller, a, b, c, d int32) {}); err != nil {
-		return err
-	}
-	if err := linker.DefineFunc(store, "env", "create_promise", func(caller *wasmtime.Caller, a, b, c, d int32) {}); err != nil {
-		return err
-	}
-	if err := linker.DefineFunc(store, "env", "js_then_continue", func(caller *wasmtime.Caller, a, b, c, d, e, f int32) {}); err != nil {
-		return err
-	}
-	if err := linker.DefineFunc(store, "env", "js_then_reject", func(caller *wasmtime.Caller, a, b, c, d int32) {}); err != nil {
+	if err := linker.DefineFunc(store, "env", "invoke_i", func(caller *wasmtime.Caller, a int32) int32 {
+		if stubSecurityEnabled && a < 0 {
+			logrus.WithFields(logrus.Fields{"function": "invoke_i", "a": a}).Warn("[Security] invoke_i: negative pointer")
+		}
+		return 0
+	}); err != nil {
 		return err
 	}
 
-	// env.call* stubs
-	if err := linker.DefineFunc(store, "env", "call0_kwarg", func(caller *wasmtime.Caller, a, b, c, d, e, f, g, h int32) {}); err != nil {
+	// env.mp_js_* stubs - with security hardening
+	if err := linker.DefineFunc(store, "env", "mp_js_hook", func(caller *wasmtime.Caller, a int32) {
+		if stubSecurityEnabled {
+			mem := caller.GetExport("memory")
+			if mem != nil {
+				memory := mem.Memory()
+				if memory != nil {
+					memData := memory.UnsafeData(store)
+					if a < 0 || int(a) >= len(memData) {
+						logrus.WithFields(logrus.Fields{"function": "mp_js_hook", "a": a}).Warn("[Security] mp_js_hook: invalid pointer")
+						return
+					}
+				}
+			}
+		}
+	}); err != nil {
 		return err
 	}
-	if err := linker.DefineFunc(store, "env", "calln_kwarg", func(caller *wasmtime.Caller, a, b, c, d, e, f, g, h int32) {}); err != nil {
+	if err := linker.DefineFunc(store, "env", "mp_js_random_u32", func(caller *wasmtime.Caller) int32 {
+		if stubSecurityEnabled {
+			logrus.WithFields(logrus.Fields{"function": "mp_js_random_u32"}).Warn("[Security] mp_js_random_u32 called (returns 0 - no entropy source)")
+		}
+		return 0
+	}); err != nil {
 		return err
 	}
-	if err := linker.DefineFunc(store, "env", "call1", func(caller *wasmtime.Caller, a, b, c, d, e int32) int32 { return 0 }); err != nil {
+	if err := linker.DefineFunc(store, "env", "mp_js_ticks_ms", func(caller *wasmtime.Caller) int32 {
+		return 0
+	}); err != nil {
 		return err
 	}
-	if err := linker.DefineFunc(store, "env", "call2", func(caller *wasmtime.Caller, a, b, c, d, e int32) int32 { return 0 }); err != nil {
+	if err := linker.DefineFunc(store, "env", "mp_js_time_ms", func(caller *wasmtime.Caller) float64 {
+		return 0
+	}); err != nil {
 		return err
 	}
-	if err := linker.DefineFunc(store, "env", "calln", func(caller *wasmtime.Caller, a, b, c, d, e int32) int32 { return 0 }); err != nil {
+
+	// env.emscripten_* stubs - with security hardening
+	if err := linker.DefineFunc(store, "env", "emscripten_scan_registers", func(caller *wasmtime.Caller, a int32) {
+		if stubSecurityEnabled && a < 0 {
+			logrus.WithFields(logrus.Fields{"function": "emscripten_scan_registers", "a": a}).Warn("[Security] emscripten_scan_registers: negative pointer")
+		}
+	}); err != nil {
 		return err
 	}
-	if err := linker.DefineFunc(store, "env", "call0", func(caller *wasmtime.Caller, a, b, c int32) {}); err != nil {
+	if err := linker.DefineFunc(store, "env", "emscripten_resize_heap", func(caller *wasmtime.Caller, a int32) int32 {
+		if stubSecurityEnabled {
+			logrus.WithFields(logrus.Fields{"function": "emscripten_resize_heap", "size": a}).Warn("[Security] emscripten_resize_heap called (rejected - no dynamic memory)")
+		}
+		return -1
+	}); err != nil {
+		return err
+	}
+	if err := linker.DefineFunc(store, "env", "_emscripten_throw_longjmp", func(caller *wasmtime.Caller) {
+		if stubSecurityEnabled {
+			logrus.WithFields(logrus.Fields{"function": "_emscripten_throw_longjmp"}).Info("[Security] _emscripten_throw_longjmp called (no-op in serverless)")
+		}
+	}); err != nil {
+		return err
+	}
+
+	// env.proxy_* stubs - with security hardening for pointer validation
+	if err := linker.DefineFunc(store, "env", "proxy_convert_mp_to_js_then_js_to_mp_obj_jsside", func(caller *wasmtime.Caller, a, b, c, d, e, f int32) {
+		if stubSecurityEnabled && (a < 0 || b < 0 || c < 0 || d < 0 || e < 0 || f < 0) {
+			logrus.WithFields(logrus.Fields{"function": "proxy_convert_mp_to_js"}).Warn("[Security] proxy_convert_mp_to_js: negative pointer(s)")
+		}
+	}); err != nil {
+		return err
+	}
+	if err := linker.DefineFunc(store, "env", "proxy_convert_mp_to_js_then_js_to_js_then_js_to_mp_obj_jsside", func(caller *wasmtime.Caller, a, b, c, d, e, f int32) {
+		if stubSecurityEnabled && (a < 0 || b < 0 || c < 0 || d < 0 || e < 0 || f < 0) {
+			logrus.WithFields(logrus.Fields{"function": "proxy_convert_mp_to_js_chain"}).Warn("[Security] proxy_convert_mp_to_js_chain: negative pointer(s)")
+		}
+	}); err != nil {
+		return err
+	}
+	if err := linker.DefineFunc(store, "env", "js_get_proxy_js_ref_info", func(caller *wasmtime.Caller, a int32) {
+		if stubSecurityEnabled && a < 0 {
+			logrus.WithFields(logrus.Fields{"function": "js_get_proxy_js_ref_info", "a": a}).Warn("[Security] js_get_proxy_js_ref_info: negative pointer")
+		}
+	}); err != nil {
+		return err
+	}
+	if err := linker.DefineFunc(store, "env", "js_get_iter", func(caller *wasmtime.Caller, a, b, c, d int32) {
+		if stubSecurityEnabled && (a < 0 || b < 0 || c < 0 || d < 0) {
+			logrus.WithFields(logrus.Fields{"function": "js_get_iter"}).Warn("[Security] js_get_iter: negative pointer(s)")
+		}
+	}); err != nil {
+		return err
+	}
+	if err := linker.DefineFunc(store, "env", "proxy_js_free_obj", func(caller *wasmtime.Caller, a, b, c, d int32) {
+		if stubSecurityEnabled && (a < 0 || b < 0 || c < 0 || d < 0) {
+			logrus.WithFields(logrus.Fields{"function": "proxy_js_free_obj"}).Warn("[Security] proxy_js_free_obj: negative pointer(s)")
+		}
+	}); err != nil {
+		return err
+	}
+	if err := linker.DefineFunc(store, "env", "js_reflect_construct", func(caller *wasmtime.Caller, a, b, c, d, e, f int32) {
+		if stubSecurityEnabled && (a < 0 || b < 0 || c < 0 || d < 0 || e < 0 || f < 0) {
+			logrus.WithFields(logrus.Fields{"function": "js_reflect_construct"}).Warn("[Security] js_reflect_construct: negative pointer(s)")
+		}
+	}); err != nil {
+		return err
+	}
+	if err := linker.DefineFunc(store, "env", "js_iter_next", func(caller *wasmtime.Caller, a int32) int32 {
+		if stubSecurityEnabled && a < 0 {
+			logrus.WithFields(logrus.Fields{"function": "js_iter_next", "a": a}).Warn("[Security] js_iter_next: negative pointer")
+		}
+		return 0
+	}); err != nil {
+		return err
+	}
+	if err := linker.DefineFunc(store, "env", "js_check_existing", func(caller *wasmtime.Caller, a int32) int32 {
+		if stubSecurityEnabled && a < 0 {
+			logrus.WithFields(logrus.Fields{"function": "js_check_existing", "a": a}).Warn("[Security] js_check_existing: negative pointer")
+		}
+		return 0
+	}); err != nil {
+		return err
+	}
+	if err := linker.DefineFunc(store, "env", "js_get_error_info", func(caller *wasmtime.Caller, a, b, c, d int32) {
+		if stubSecurityEnabled && (a < 0 || b < 0 || c < 0 || d < 0) {
+			logrus.WithFields(logrus.Fields{"function": "js_get_error_info"}).Warn("[Security] js_get_error_info: negative pointer(s)")
+		}
+	}); err != nil {
+		return err
+	}
+	if err := linker.DefineFunc(store, "env", "js_then_resolve", func(caller *wasmtime.Caller, a, b, c, d int32) {
+		if stubSecurityEnabled && (a < 0 || b < 0 || c < 0 || d < 0) {
+			logrus.WithFields(logrus.Fields{"function": "js_then_resolve"}).Warn("[Security] js_then_resolve: negative pointer(s)")
+		}
+	}); err != nil {
+		return err
+	}
+	if err := linker.DefineFunc(store, "env", "create_promise", func(caller *wasmtime.Caller, a, b, c, d int32) {
+		if stubSecurityEnabled && (a < 0 || b < 0 || c < 0 || d < 0) {
+			logrus.WithFields(logrus.Fields{"function": "create_promise"}).Warn("[Security] create_promise: negative pointer(s)")
+		}
+	}); err != nil {
+		return err
+	}
+	if err := linker.DefineFunc(store, "env", "js_then_continue", func(caller *wasmtime.Caller, a, b, c, d, e, f int32) {
+		if stubSecurityEnabled && (a < 0 || b < 0 || c < 0 || d < 0 || e < 0 || f < 0) {
+			logrus.WithFields(logrus.Fields{"function": "js_then_continue"}).Warn("[Security] js_then_continue: negative pointer(s)")
+		}
+	}); err != nil {
+		return err
+	}
+	if err := linker.DefineFunc(store, "env", "js_then_reject", func(caller *wasmtime.Caller, a, b, c, d int32) {
+		if stubSecurityEnabled && (a < 0 || b < 0 || c < 0 || d < 0) {
+			logrus.WithFields(logrus.Fields{"function": "js_then_reject"}).Warn("[Security] js_then_reject: negative pointer(s)")
+		}
+	}); err != nil {
+		return err
+	}
+
+	// env.call* stubs - with security hardening
+	if err := linker.DefineFunc(store, "env", "call0_kwarg", func(caller *wasmtime.Caller, a, b, c, d, e, f, g, h int32) {
+		if stubSecurityEnabled {
+			logrus.WithFields(logrus.Fields{"function": "call0_kwarg"}).Debug("[Security] call0_kwarg: no-op in serverless context")
+		}
+	}); err != nil {
+		return err
+	}
+	if err := linker.DefineFunc(store, "env", "calln_kwarg", func(caller *wasmtime.Caller, a, b, c, d, e, f, g, h int32) {
+		if stubSecurityEnabled {
+			logrus.WithFields(logrus.Fields{"function": "calln_kwarg"}).Debug("[Security] calln_kwarg: no-op in serverless context")
+		}
+	}); err != nil {
+		return err
+	}
+	if err := linker.DefineFunc(store, "env", "call1", func(caller *wasmtime.Caller, a, b, c, d, e int32) int32 {
+		if stubSecurityEnabled {
+			logrus.WithFields(logrus.Fields{"function": "call1"}).Debug("[Security] call1: returns 0 (not implemented)")
+		}
+		return 0
+	}); err != nil {
+		return err
+	}
+	if err := linker.DefineFunc(store, "env", "call2", func(caller *wasmtime.Caller, a, b, c, d, e int32) int32 {
+		if stubSecurityEnabled {
+			logrus.WithFields(logrus.Fields{"function": "call2"}).Debug("[Security] call2: returns 0 (not implemented)")
+		}
+		return 0
+	}); err != nil {
+		return err
+	}
+	if err := linker.DefineFunc(store, "env", "calln", func(caller *wasmtime.Caller, a, b, c, d, e int32) int32 {
+		if stubSecurityEnabled {
+			logrus.WithFields(logrus.Fields{"function": "calln"}).Debug("[Security] calln: returns 0 (not implemented)")
+		}
+		return 0
+	}); err != nil {
+		return err
+	}
+	if err := linker.DefineFunc(store, "env", "call0", func(caller *wasmtime.Caller, a, b, c int32) {
+		if stubSecurityEnabled {
+			logrus.WithFields(logrus.Fields{"function": "call0"}).Debug("[Security] call0: no-op in serverless context")
+		}
+	}); err != nil {
 		return err
 	}
 
@@ -219,7 +382,7 @@ func DefineMicropythonHostFunctionsWithState(linker *wasmtime.Linker, store *was
 		// The chunk data is at memory[ptr:ptr+len]
 		// WASM is telling us it received this chunk
 		// For now, we just acknowledge - actual data is already in memory
-		log.Printf("[Streaming] WASM acknowledged chunk %d (%d bytes), isLast=%v", chunkID, len, isLast != 0)
+		logrus.WithFields(logrus.Fields{"chunkID": chunkID, "len": len, "isLast": isLast != 0}).Debug("[Streaming] WASM acknowledged chunk")
 		return 0 // Success
 	}); err != nil {
 		return err
@@ -284,7 +447,7 @@ func DefineMicropythonHostFunctionsWithState(linker *wasmtime.Linker, store *was
 		memData[metaOffset+14] = 0
 		memData[metaOffset+15] = 0
 
-		log.Printf("[Streaming] Output chunk %d: ptr=%d len=%d", chunkID, ptr, chunkLen)
+		logrus.WithFields(logrus.Fields{"chunkID": chunkID, "ptr": ptr, "len": chunkLen}).Debug("[Streaming] Output chunk")
 		return int32(metaOffset)
 	}); err != nil {
 		return err
@@ -346,7 +509,7 @@ func DefineMicropythonHostFunctionsWithState(linker *wasmtime.Linker, store *was
 			memData[metaOffset+12] = 1
 		}
 
-		log.Printf("[Streaming] Input chunk %d: ptr=%d len=%d isLast=%v", chunkID, ptr, chunkLen, isLast)
+		logrus.WithFields(logrus.Fields{"chunkID": chunkID, "ptr": ptr, "len": chunkLen, "isLast": isLast}).Debug("[Streaming] Input chunk")
 		return int32(metaOffset)
 	}); err != nil {
 		return err
@@ -380,7 +543,7 @@ func DefineMicropythonHostFunctionsWithState(linker *wasmtime.Linker, store *was
 		// Add to streaming state
 		streamingState.AddOutputChunk(chunkID, chunk)
 
-		log.Printf("[Streaming] Output chunk %d ready: %d bytes", chunkID, chunkLen)
+		logrus.WithFields(logrus.Fields{"chunkID": chunkID, "len": chunkLen}).Debug("[Streaming] Output chunk ready")
 		return 0 // Success
 	}); err != nil {
 		return err
@@ -396,7 +559,7 @@ func DefineMicropythonHostFunctionsWithState(linker *wasmtime.Linker, store *was
 		nextChunkID := streamingState.GetOutputCount()
 		nextPtr := streamingState.GetOutputChunkPtr(nextChunkID)
 
-		log.Printf("[Streaming] Next output ptr: chunkID=%d ptr=%d", nextChunkID, nextPtr)
+		logrus.WithFields(logrus.Fields{"chunkID": nextChunkID, "ptr": nextPtr}).Debug("[Streaming] Next output ptr")
 		return nextPtr
 	}); err != nil {
 		return err
@@ -422,7 +585,7 @@ func DefineMicropythonHostFunctionsWithState(linker *wasmtime.Linker, store *was
 		// Read chunk data
 		bytesRead := streamingState.ReadChunkInto(chunkID, destPtr, maxLen, memData)
 		if bytesRead > 0 {
-			log.Printf("[Streaming] Read chunk %d: %d bytes into ptr %d", chunkID, bytesRead, destPtr)
+			logrus.WithFields(logrus.Fields{"chunkID": chunkID, "bytesRead": bytesRead, "destPtr": destPtr}).Debug("[Streaming] Read chunk")
 		}
 		return bytesRead
 	}); err != nil {

@@ -1,4 +1,5 @@
-export { SupportChatProvider, useSupportChat } from './SupportChat';
+export { SupportChatProvider } from './SupportChat';
+export { useSupportChat } from './useSupportChat';
 export type { SupportContext, SupportConversation, SupportMessage } from './SupportChat';
 
 export { SupportBubble } from './SupportBubble';

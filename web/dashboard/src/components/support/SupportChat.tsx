@@ -361,15 +361,7 @@ interface SupportChatContextValue {
   requestEmergencyFix: (functionId: string, reason: string) => Promise<void>;
 }
 
-const SupportChatContext = createContext<SupportChatContextValue | null>(null);
-
-export function useSupportChat(): SupportChatContextValue {
-  const context = useContext(SupportChatContext);
-  if (!context) {
-    throw new Error('useSupportChat must be used within SupportChatProvider');
-  }
-  return context;
-}
+export const SupportChatContext = createContext<SupportChatContextValue | null>(null);
 
 // ============================================================================
 // Provider Component

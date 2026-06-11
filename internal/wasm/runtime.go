@@ -24,6 +24,7 @@ type PythonRuntime struct {
 	debug          bool
 	config         *WASMSecurityConfig
 	streamingState *StreamingState
+	runtimeScanner *RuntimeScanner
 }
 
 // NewPythonRuntime creates a new Python runtime instance
@@ -65,8 +66,9 @@ func NewPythonRuntimeWithConfigAndDebug(wasmPath string, stdout, stderr io.Write
 	}
 	_ = maxMemoryPages // Note: wasmtime-go doesn't have direct memory limit API, we enforce in allocate
 
-	// Enable fuel/energy for instruction counting if deterministic mode
-	if config.EnableDeterministic {
+	// Enable fuel/energy for instruction counting by default
+	// Can be disabled via WASM_DISABLE_DETERMINISTIC=true
+	if !config.DisableDeterministic {
 		engineConfig.SetConsumeFuel(true)
 	}
 
@@ -139,6 +141,7 @@ func NewPythonRuntimeWithConfigAndDebug(wasmPath string, stdout, stderr io.Write
 		debug:          debug,
 		config:         config,
 		streamingState: streamingState,
+		runtimeScanner: NewRuntimeScanner(),
 	}, nil
 }
 
@@ -169,6 +172,15 @@ func (r *PythonRuntime) Init() error {
 
 // LoadCode loads Python source code into the runtime
 func (r *PythonRuntime) LoadCode(code string) error {
+	// Runtime malware scan before loading
+	if r.runtimeScanner != nil {
+		scanResult := r.runtimeScanner.ScanSource(code)
+		r.runtimeScanner.LogThreats(scanResult)
+		if scanResult.Blocked {
+			return fmt.Errorf("code blocked due to security policy violation")
+		}
+	}
+
 	loadCodeFunc := r.instance.GetExport(r.store, "load_code").Func()
 	if loadCodeFunc == nil {
 		return fmt.Errorf("module does not export load_code function")

@@ -352,7 +352,7 @@ func (h *WebSocketHandler) SubscribeToNotifications(ctx context.Context, poolFac
 				}
 				if err := json.Unmarshal([]byte(notification.Payload), &payload); err != nil {
 					h.logger.WithError(err).Warn("Failed to parse notification payload")
-					return
+					break
 				}
 
 				if payload.Type != "notification" || payload.UserID == "" {

@@ -206,6 +206,14 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                     href="#"
                     className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
                   >
+                    MCP Protocol
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
+                  >
                     Guides
                   </a>
                 </li>
@@ -244,6 +252,14 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                 </li>
                 <li>
                   <a
+                    href="/community"
+                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
+                  >
+                    Community
+                  </a>
+                </li>
+                <li>
+                  <a
                     href="/contact"
                     className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
                   >
@@ -266,6 +282,53 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                     className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
                   >
                     Feedback
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Community */}
+            <div className="lg:col-span-2">
+              <h3 className="text-text-primary font-semibold mb-4">Community</h3>
+              <ul className="space-y-3">
+                <li>
+                  <a
+                    href="https://discord.gg/functionfly"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
+                  >
+                    Discord
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://github.com/functionfly/functionfly/discussions"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
+                  >
+                    GitHub Discussions
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://x.com/functionflycom"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
+                  >
+                    X (Twitter)
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://linkedin.com/company/functionfly"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
+                  >
+                    LinkedIn
                   </a>
                 </li>
               </ul>

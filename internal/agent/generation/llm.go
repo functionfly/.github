@@ -16,9 +16,9 @@ import (
 
 const (
 	defaultOpenRouterBaseURL = "https://openrouter.ai/api/v1"
-	// Free models on OpenRouter
-	defaultSimpleModel       = "inclusionai/ling-2.6-flash:free"
-	defaultComplexModel      = "inclusionai/ling-2.6-1t:free"
+	// Free models on OpenRouter (prefer poolside for general, nemotron nano for reasoning)
+	defaultSimpleModel       = "poolside/laguna-xs.2:free"
+	defaultComplexModel      = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
 	defaultGenerationTimeout = 120 * time.Second
 	defaultCacheTTL          = 30 * time.Minute
 	defaultSimilarityCutoff  = 0.92

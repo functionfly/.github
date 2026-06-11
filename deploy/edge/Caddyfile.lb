@@ -11,12 +11,19 @@ http://edge.functionfly.com {
     redir https://edge.functionfly.com{uri}
 }
 
-# HTTPS LB — pass-through to origin Caddy instances on both VPS nodes
+# Primary Edge Nodes (VPS):
+#   - 217.160.124.206: Frankfurt VPS (primary)
+#   - 209.46.125.113: Singapore VPS (secondary)
+#
+# Health check failover: nodes are probed every 10s; failures trigger 30s fail_duration
+# before removing from rotation. Max 3 consecutive failures before removal.
+#
+# For DNS-based discovery, consider SRV records or separate load balancer config.
 edge.functionfly.com {
     tls /etc/ssl/functionfly/fullchain.pem /etc/ssl/functionfly/privkey.pem
 
     reverse_proxy 217.160.124.206:443 209.46.125.113:443 {
-        health_uri /healthz
+        health_uri /health
         health_interval 10s
         health_timeout 5s
         fail_duration 30s

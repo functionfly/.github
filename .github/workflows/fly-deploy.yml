@@ -49,7 +49,7 @@ jobs:
 
       - name: Deploy to Fly.io
         run: |
-          flyctl deploy --config deploy/fly/functionfly-control/fly.toml --remote-only
+          flyctl deploy --config fly.toml --remote-only
         working-directory: .
 
       - name: Deploy Status Check

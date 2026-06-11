@@ -189,6 +189,24 @@ func (r *Repository) Credit(ctx context.Context, req CreditRequest) (*BalanceUpd
 		return nil, fmt.Errorf("credit amount must be positive")
 	}
 
+	// PRE-CHECK: Return existing transaction if idempotency key already processed
+	if req.IdempotencyKey != "" {
+		existing, err := r.GetTransactionByIdempotencyKey(ctx, req.IdempotencyKey)
+		if err != nil {
+			return nil, fmt.Errorf("idempotency check failed: %w", err)
+		}
+		if existing != nil {
+			// Return existing transaction — no modification made
+			return &BalanceUpdate{
+				WalletID:        existing.WalletID,
+				PreviousBalance: existing.BalanceBeforeUSD,
+				CurrentBalance:  existing.BalanceAfterUSD,
+				Amount:          existing.AmountUSD,
+				TransactionID:    existing.ID,
+			}, nil
+		}
+	}
+
 	var update BalanceUpdate
 	update.WalletID = req.WalletID
 	update.Amount = req.AmountUSD
@@ -262,6 +280,25 @@ func (r *Repository) Credit(ctx context.Context, req CreditRequest) (*BalanceUpd
 func (r *Repository) Debit(ctx context.Context, req DebitRequest) (*BalanceUpdate, error) {
 	if req.AmountUSD <= 0 {
 		return nil, fmt.Errorf("debit amount must be positive")
+	}
+
+	// PRE-CHECK: Return existing transaction if idempotency key already processed
+	// Debit idempotency is optional - only check if IdempotencyKey is provided in Metadata
+	if idempotencyKey, ok := req.Metadata["idempotency_key"].(string); ok && idempotencyKey != "" {
+		existing, err := r.GetTransactionByIdempotencyKey(ctx, idempotencyKey)
+		if err != nil {
+			return nil, fmt.Errorf("idempotency check failed: %w", err)
+		}
+		if existing != nil {
+			// Return existing transaction — no modification made
+			return &BalanceUpdate{
+				WalletID:        existing.WalletID,
+				PreviousBalance: existing.BalanceBeforeUSD,
+				CurrentBalance:  existing.BalanceAfterUSD,
+				Amount:          existing.AmountUSD,
+				TransactionID:    existing.ID,
+			}, nil
+		}
 	}
 
 	var update BalanceUpdate
@@ -429,6 +466,25 @@ func (r *Repository) HasTransactionWithIdempotencyKey(ctx context.Context, key s
 		return false, fmt.Errorf("failed to check idempotency key: %w", err)
 	}
 	return count > 0, nil
+}
+
+// GetTransactionByIdempotencyKey retrieves a transaction by its idempotency key
+func (r *Repository) GetTransactionByIdempotencyKey(ctx context.Context, key string) (*WalletTransaction, error) {
+	if key == "" {
+		return nil, nil
+	}
+
+	var tx WalletTransaction
+	err := r.db.WithContext(ctx).
+		Where("idempotency_key = ?", key).
+		First(&tx).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get transaction by idempotency key: %w", err)
+	}
+	return &tx, nil
 }
 
 // ============================================

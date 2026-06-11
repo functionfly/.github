@@ -47,6 +47,13 @@ export const comparisonFeatures = [
     enterprise: 'All',
   },
   {
+    feature: 'Connector availability',
+    free: 'GitHub (all)',
+    starter: 'GitHub (all), Notion, Slack',
+    professional: 'GitHub (all), Notion, Slack, Gmail, Linear',
+    enterprise: 'All',
+  },
+  {
     feature: 'Monthly Requests',
     free: '100K',
     starter: '1M',

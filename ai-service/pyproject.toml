@@ -75,6 +75,10 @@ resilience = [
 errors = [
     "sentry-sdk[fastapi]>=2.57.0",
 ]
+# RQ for Redis-backed background job queue (audit log flushing, etc.)
+rq = [
+    "rq>=1.16.0",
+]
 # Install with: pip install .[prod] or uv sync --extra prod
 prod = [
     "opentelemetry-api>=1.40.0",
@@ -86,6 +90,7 @@ prod = [
     "structlog>=25.5.0",
     "tenacity>=9.1.4",
     "sentry-sdk[fastapi]>=2.57.0",
+    "rq>=1.16.0",
     "fireworks-ai>=0.9.0",  # Fireworks native SDK for optimal performance
 ]
 

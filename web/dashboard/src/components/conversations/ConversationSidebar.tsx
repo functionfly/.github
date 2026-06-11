@@ -65,13 +65,16 @@ export function ConversationSidebar({
   }, [hoveredId, fetchPreview, previewText]);
 
   return (
-    <aside className="w-72 border-r border-border bg-muted/20 flex flex-col">
-      <div className="p-3 border-b border-border flex items-center justify-between">
-        <h2 className="font-semibold text-sm">Messages</h2>
+    <aside className="h-full flex flex-col">
+      <div className="conv-aviation-sidebar-header p-3 border-b border-border flex items-center justify-between">
+        <h2 className="conv-aviation-sidebar-title font-semibold text-sm flex items-center gap-2">
+          <MessageSquare className="h-4 w-4" />
+          Messages
+        </h2>
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="conv-aviation-btn h-8 w-8"
           onClick={onNewConversation}
           title="New conversation"
         >
@@ -96,9 +99,9 @@ export function ConversationSidebar({
                   onMouseEnter={() => setHoveredId(c.id)}
                   onMouseLeave={() => setHoveredId(null)}
                   className={cn(
-                    'flex flex-col gap-0.5 rounded-lg px-3 py-2 text-left transition-colors',
+                    'conv-aviation-thread-row flex flex-col gap-0.5 rounded-lg px-3 py-2 text-left transition-colors',
                     activeConversationId === c.id
-                      ? 'bg-brand-500/15 border border-brand-500/30'
+                      ? 'active'
                       : 'hover:bg-muted/60',
                   )}
                 >
@@ -110,14 +113,14 @@ export function ConversationSidebar({
                         )}
                         {c.type.replace(/_/g, ' ')}
                       </span>
-                      <span className="text-sm font-medium truncate">
+                      <span className="conv-aviation-thread-title text-sm font-medium truncate">
                         {formatParticipantLine(
                           c.participant_ids,
                           currentUserId,
                           displayForParticipantId,
                         )}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="conv-aviation-thread-preview text-xs text-muted-foreground">
                         {formatDistanceToNow(new Date(c.updated_at), { addSuffix: true })}
                       </span>
                       {/* Hover preview of last message */}
@@ -129,7 +132,7 @@ export function ConversationSidebar({
                     </div>
                     {(c.unread_count ?? 0) > 0 && (
                       <span
-                        className="mt-0.5 shrink-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[10px] font-semibold text-white tabular-nums"
+                        className="conv-aviation-unread-badge mt-0.5 shrink-0 flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold text-white tabular-nums"
                         aria-label={`${c.unread_count} unread`}
                       >
                         {(c.unread_count ?? 0) > 99 ? '99+' : c.unread_count}

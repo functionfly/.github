@@ -7,11 +7,8 @@ package receipt
 import (
 	"bytes"
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,6 +22,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/handlers/registry"
 	"github.com/functionfly/functionfly/internal/functionregistry"
+	"github.com/functionfly/functionfly/internal/gateway"
 	"github.com/functionfly/functionfly/internal/privacy"
 	receiptstorage "github.com/functionfly/functionfly/internal/storage/receipt"
 	registrystorage "github.com/functionfly/functionfly/internal/storage/registry"
@@ -697,6 +695,8 @@ func (h *Handler) HandleRevoke(w http.ResponseWriter, r *http.Request) {
 // PublicResponse is the response shape for GET /v1/receipts/:id.
 type PublicResponse struct {
 	ID       string                   `json:"id"`
+	Protocol string                   `json:"protocol"`
+	State    string                   `json:"state,omitempty"`
 	Function PublicResponseFunction   `json:"function"`
 	Execution PublicResponseExecution `json:"execution"`
 	Share    PublicResponseShare      `json:"share"`
@@ -774,7 +774,9 @@ func (h *Handler) buildResponsePayload(ctx context.Context, exec *registrystorag
 	}
 
 	resp := &PublicResponse{
-		ID: exec.PublicID,
+		ID:       exec.PublicID,
+		Protocol: exec.Protocol,
+		State:    exec.State,
 		Function: PublicResponseFunction{
 			Name:         functionName,
 			Author:       functionAuthor,
@@ -934,39 +936,17 @@ func (r *recordingResponseWriter) Flush() {
 
 // HMACSign returns a base64url signature for the given payload.
 func (h *Handler) HMACSign(payload string) string {
-	if len(h.Signer) == 0 {
-		return ""
-	}
-	mac := hmac.New(sha256.New, h.Signer)
-	mac.Write([]byte(payload))
-	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+	return gateway.HMACSign(h.Signer, payload)
 }
 
 // HMACVerify is the corresponding verifier.
 func (h *Handler) HMACVerify(payload, sig string) bool {
-	if len(h.Signer) == 0 {
-		return true
-	}
-	want, err := base64.RawURLEncoding.DecodeString(sig)
-	if err != nil {
-		return false
-	}
-	mac := hmac.New(sha256.New, h.Signer)
-	mac.Write([]byte(payload))
-	return hmac.Equal(mac.Sum(nil), want)
+	return gateway.HMACVerify(h.Signer, payload, sig)
 }
 
 // SignID returns `id.sig` if signing is enabled, else just `id`.
 func (h *Handler) SignID(id string) string {
-	sig := h.HMACSign(id)
-	if sig == "" {
-		return id
-	}
-	return id + "." + sig
+	return gateway.SignID(h.Signer, id)
 }
 
-// hexHash returns a short hex digest of the input.
-func hexHash(s string) string {
-	sum := sha256.Sum256([]byte(s))
-	return hex.EncodeToString(sum[:8])
-}
+

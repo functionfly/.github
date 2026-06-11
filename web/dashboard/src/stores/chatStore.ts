@@ -15,6 +15,7 @@ interface ChatState {
   createSession: (title?: string, model?: string) => Promise<ChatSession>;
   selectSession: (session: ChatSession | null) => void;
   deleteSession: (id: string) => Promise<void>;
+  updateSession: (id: string, updates: { title?: string; model?: string }) => Promise<void>;
 
   fetchMessages: (sessionId: string) => Promise<void>;
   sendMessage: (content: string) => Promise<void>;
@@ -81,6 +82,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }));
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to delete session' });
+    }
+  },
+
+  updateSession: async (id, updates) => {
+    try {
+      await chatApi.updateSession(id, updates);
+      set((state) => ({
+        sessions: state.sessions.map((s) =>
+          s.id === id ? { ...s, ...updates } : s
+        ),
+        currentSession:
+          state.currentSession?.id === id
+            ? { ...state.currentSession, ...updates }
+            : state.currentSession,
+      }));
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to update session' });
     }
   },
 

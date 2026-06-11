@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 // EmbedConfig holds per-function embed configuration
@@ -254,6 +255,11 @@ type RegistryExecutionPublic struct {
 	Shareable  bool            `json:"shareable" gorm:"default:true"`
 	RevokedAt  sql.NullTime    `json:"revoked_at"`
 	CreatedAt  time.Time       `json:"created_at" gorm:"autoCreateTime;index"`
+	// Cross-protocol fields (P1)
+	Protocol       string         `json:"protocol" gorm:"type:text;not null;default:'mcp'"`
+	State          string         `json:"state" gorm:"type:text;not null;default:'completed"`
+	ParentTaskID   *uuid.UUID     `json:"parent_task_id,omitempty" gorm:"type:uuid;index"`
+	FallbackChain  pq.StringArray `json:"fallback_chain" gorm:"type:text[];not null;default:'{}'"`
 	// Replay verification fields
 	VerifiedAt         sql.NullTime    `json:"verified_at"`
 	VerificationStatus sql.NullString  `json:"verification_status" gorm:"type:text"` // "verified", "failed", "pending"

@@ -52,18 +52,6 @@ func (h *Handler) HandleSignRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Defense-in-depth: do not allow signing of cross-origin paths. The browser
-	// only ever needs to sign paths under /v1/admin (the admin base path), so
-	// any other path is suspicious.
-	if !isPathAllowedForSigning(r.URL.Path) {
-		logrus.WithFields(logrus.Fields{
-			"user_id": claims.UserID.String(),
-			"path":    r.URL.Path,
-		}).Warn("Rejected sign-request for disallowed path")
-		http.Error(w, "Path not allowed for signing", http.StatusForbidden)
-		return
-	}
-
 	var req signRequestRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -75,6 +63,18 @@ func (h *Handler) HandleSignRequest(w http.ResponseWriter, r *http.Request) {
 	}
 	if !isMethodAllowedForSigning(req.Method) {
 		http.Error(w, "method not allowed for signing", http.StatusBadRequest)
+		return
+	}
+
+	// Defense-in-depth: do not allow signing of cross-origin paths. The browser
+	// only ever needs to sign paths under /v1/admin (the admin base path), so
+	// any other path is suspicious.
+	if !isPathAllowedForSigning(req.Path) {
+		logrus.WithFields(logrus.Fields{
+			"user_id": claims.UserID.String(),
+			"path":    req.Path,
+		}).Warn("Rejected sign-request for disallowed path")
+		http.Error(w, "Path not allowed for signing", http.StatusForbidden)
 		return
 	}
 

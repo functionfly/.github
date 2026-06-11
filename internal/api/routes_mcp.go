@@ -76,6 +76,13 @@ func (s *Server) registerMCPRoutes(
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"ok":true,"service":"mcp-registry"}`))
 	}).Methods("GET", "OPTIONS")
+
+	// ── Global MCP Settings, Analytics & Connections ────────────────────────
+	mcpGlobalHandler := mcp.NewGlobalHandler(registryRepo)
+	api.HandleFunc("/mcp/settings", mcpGlobalHandler.HandleGetMCPSettings).Methods("GET", "OPTIONS")
+	api.HandleFunc("/mcp/settings", mcpGlobalHandler.HandleUpdateMCPSettings).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/mcp/analytics", mcpGlobalHandler.HandleGetMCPAnalytics).Methods("GET", "OPTIONS")
+	api.HandleFunc("/mcp/connections", mcpGlobalHandler.HandleGetMCPConnections).Methods("GET", "OPTIONS")
 }
 
 // buildMCPHandler constructs a *mcp.Handler with the production store and

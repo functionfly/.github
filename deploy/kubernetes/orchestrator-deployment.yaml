@@ -22,6 +22,17 @@ spec:
         prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: orchestrator-api
+      podSecurityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seLinuxOptions:
+          rule: RunAsAny
+          level: "s0:c123,c456"
+        sysctls:
+          - name: net.ipv4.ping_group_range
+            value: "1000 1000"
       containers:
         - name: orchestrator-api
           image: functionfly/orchestrator-api:latest

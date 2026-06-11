@@ -58,13 +58,13 @@ func (r *Rollbacker) RollbackMutation(ctx context.Context, mutationID, tenantID,
 		return fmt.Errorf("get mutation: %w", err)
 	}
 	if m == nil {
-		return fmt.Errorf("mutation not found")
+		return ErrMutationNotFound
 	}
 	if m.TenantID != tenantID {
-		return fmt.Errorf("access denied")
+		return ErrAccessDenied
 	}
 	if m.Status != "deployed" && m.Status != "accepted" && m.Status != "deploying" {
-		return fmt.Errorf("mutation is not in a rollback-eligible status: %s", m.Status)
+		return fmt.Errorf("%w: %s", ErrRollbackNotEligible, m.Status)
 	}
 
 	// Cancel active canary if exists

@@ -1,4 +1,5 @@
 import * as React from 'react';
+import DOMPurify from 'dompurify';
 import { cn } from '@/lib/utils';
 import {
   Paperclip,
@@ -13,6 +14,7 @@ import {
   Bold,
   Italic,
   Code2,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from './button';
 import EmojiPicker, { Theme as EmojiTheme } from 'emoji-picker-react';
@@ -31,6 +33,8 @@ export interface ChatInputProps {
   maxSize?: number;
   maxLength?: number;
   showMarkdownPreview?: boolean;
+  rateLimitRemaining?: number;
+  rateLimitResetAt?: string;
   className?: string;
 }
 
@@ -42,8 +46,8 @@ function formatFileSize(bytes: number) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
-function simpleMarkdownPreview(text: string): string {
-  return text
+function sanitizeAndRenderMarkdown(text: string): string {
+  const escaped = text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -51,6 +55,11 @@ function simpleMarkdownPreview(text: string): string {
     .replace(/_(.+?)_/g, '<em>$1</em>')
     .replace(/`(.+?)`/g, '<code class="px-1 py-0.5 rounded bg-muted text-xs font-mono">$1</code>')
     .replace(/\n/g, '<br />');
+
+  return DOMPurify.sanitize(escaped, {
+    ALLOWED_TAGS: ['strong', 'em', 'code', 'br'],
+    ALLOWED_ATTR: ['class'],
+  });
 }
 
 export function ChatInput({
@@ -66,6 +75,8 @@ export function ChatInput({
   maxSize = 25 * 1024 * 1024,
   maxLength,
   showMarkdownPreview: enableMarkdownPreview = false,
+  rateLimitRemaining,
+  rateLimitResetAt,
   className,
 }: ChatInputProps) {
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
@@ -80,6 +91,8 @@ export function ChatInput({
 
   const resolvedTheme = useThemeStore((s) => s.resolvedTheme);
   const emojiTheme = resolvedTheme === 'dark' ? EmojiTheme.DARK : EmojiTheme.LIGHT;
+
+  const showRateLimitWarning = rateLimitRemaining !== undefined && rateLimitRemaining < 3;
 
   // Auto-grow textarea
   React.useEffect(() => {
@@ -257,7 +270,7 @@ export function ChatInput({
         <div className="mx-3 mt-2 rounded-md border border-border bg-muted/30 p-3 text-sm prose prose-sm dark:prose-invert max-w-none">
           <div
             className="whitespace-pre-wrap"
-            dangerouslySetInnerHTML={{ __html: simpleMarkdownPreview(value) }}
+            dangerouslySetInnerHTML={{ __html: sanitizeAndRenderMarkdown(value) }}
           />
         </div>
       )}
@@ -398,6 +411,16 @@ export function ChatInput({
             )}
           >
             {value.length}/{maxLength}
+          </span>
+        </div>
+      )}
+
+      {showRateLimitWarning && (
+        <div className="px-3 pb-2 flex items-center gap-1.5 text-amber-500">
+          <AlertTriangle className="h-3 w-3" />
+          <span className="text-xs">
+            Rate limit low ({rateLimitRemaining} remaining)
+            {rateLimitResetAt && ` - resets ${new Date(rateLimitResetAt).toLocaleTimeString()}`}
           </span>
         </div>
       )}

@@ -94,14 +94,14 @@ func (a *AuthService) ConfirmPasswordReset(token, newPassword string) error {
 }
 
 // validatePasswordStrength checks that a password meets minimum security requirements:
-//   - At least 8 characters
+//   - At least 12 characters
 //   - At least one uppercase letter
 //   - At least one lowercase letter
 //   - At least one digit
 //   - At least one special character
 func validatePasswordStrength(password string) error {
-	if len(password) < 8 {
-		return fmt.Errorf("password must be at least 8 characters long")
+	if len(password) < 12 {
+		return fmt.Errorf("password must be at least 12 characters long")
 	}
 	var hasUpper, hasLower, hasDigit, hasSpecial bool
 	for _, ch := range password {
@@ -424,7 +424,7 @@ func (a *AuthService) Signup(req SignupRequest) (*SignupResponse, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate verification token: %w", err)
 		}
-		expiresAt := time.Now().Add(24 * time.Hour) // 24 hours
+		expiresAt := time.Now().Add(4 * time.Hour) // 4 hours
 
 		// Update user with new verification token
 		err = a.repo.UpdateUserEmailVerification(nil, existingUser.ID, false, &verificationToken, &expiresAt)

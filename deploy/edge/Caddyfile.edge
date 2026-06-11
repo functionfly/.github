@@ -16,7 +16,7 @@ http://edge.functionfly.com {
 # HTTPS - Cloudflare forwards traffic to this
 edge.functionfly.com {
     tls /etc/ssl/functionfly/fullchain.pem /etc/ssl/functionfly/privkey.pem
-    reverse_proxy localhost:8080 {
+    reverse_proxy localhost:8082 {
         header_up Host {host}
         header_up X-Forwarded-Proto https
         header_up X-Real-IP {remote_host}

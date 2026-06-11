@@ -4,6 +4,9 @@ package dre
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/subtle"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -154,27 +157,48 @@ func (h *Handler) HandleVerifyCertificate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Parse the stored FXCERT JSON
 	var fxcert drecert.FXCert
 	if err := json.Unmarshal(cert.CertJSON, &fxcert); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to parse certificate")
 		return
 	}
 
-	// Verify certificate hash matches
-	certHashValid := cert.CertificateHash != ""
+	hashValid := false
+	signaturesValid := false
+	certValid := false
+	verificationErrors := []string{}
 
-	// Verify signatures are present
-	signaturesValid := fxcert.Signatures.NodeSignature != nil
+	if cert.CertificateHash == "" {
+		verificationErrors = append(verificationErrors, "certificate hash is empty")
+	} else {
+		hashValid = true
+	}
 
-	// Check anchoring status
-	anchored := cert.Anchored
+	if fxcert.Signatures.NodeSignature == nil {
+		verificationErrors = append(verificationErrors, "node signature is missing")
+	} else {
+		pubKeyBytes, err := base64.StdEncoding.DecodeString(fxcert.Signatures.NodeSignature.PublicKey)
+		if err != nil {
+			verificationErrors = append(verificationErrors, fmt.Sprintf("failed to decode node public key: %v", err))
+		} else if len(pubKeyBytes) != ed25519.PublicKeySize {
+			verificationErrors = append(verificationErrors, "invalid node public key size")
+		} else {
+			nodePublicKey := ed25519.PublicKey(pubKeyBytes)
+			if err := drecert.Verify(&fxcert, nodePublicKey); err != nil {
+				verificationErrors = append(verificationErrors, fmt.Sprintf("signature verification failed: %v", err))
+			} else {
+				signaturesValid = true
+				certValid = true
+			}
+		}
+	}
 
-	// Verify certificate is not expired (if expiry field exists in trust section)
-	certValid := true
 	if fxcert.Trust.VerifiedExecutionsTotal == 0 && fxcert.Trust.DriftIncidentsTotal > 0 {
 		certValid = false
+		verificationErrors = append(verificationErrors, "certificate has no verified executions but has drift incidents")
 	}
+
+	anchored := cert.Anchored
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"certificate_id":   cert.CertificateID,
@@ -182,21 +206,23 @@ func (h *Handler) HandleVerifyCertificate(w http.ResponseWriter, r *http.Request
 		"certificate_hash": cert.CertificateHash,
 		"anchored":         anchored,
 		"verification": map[string]interface{}{
-			"hash_valid":       certHashValid,
-			"signatures_valid": signaturesValid,
-			"anchored":         anchored,
-			"cert_valid":       certValid,
-			"verified_at":      time.Now().UTC().Format(time.RFC3339),
+			"hash_valid":        hashValid,
+			"signatures_valid":  signaturesValid,
+			"anchored":          anchored,
+			"cert_valid":        certValid,
+			"verified_at":       time.Now().UTC().Format(time.RFC3339),
+			"verification_errors": verificationErrors,
 		},
 		"trust": map[string]interface{}{
-			"trust_score":                fxcert.Trust.TrustScore,
-			"determinism_score":          fxcert.Trust.DeterminismScore,
-			"replay_consistency_score":   fxcert.Trust.ReplayConsistencyScore,
-			"drift_incidents_total":      fxcert.Trust.DriftIncidentsTotal,
-			"verified_executions_total":  fxcert.Trust.VerifiedExecutionsTotal,
+			"trust_score":               fxcert.Trust.TrustScore,
+			"determinism_score":         fxcert.Trust.DeterminismScore,
+			"replay_consistency_score":  fxcert.Trust.ReplayConsistencyScore,
+			"drift_incidents_total":     fxcert.Trust.DriftIncidentsTotal,
+			"verified_executions_total": fxcert.Trust.VerifiedExecutionsTotal,
 		},
 	})
 }
+
 
 // HandleAnchorCertificate anchors a certificate to the blockchain.
 //
@@ -348,9 +374,18 @@ func (h *Handler) HandleListCertificates(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-// HandleReplay triggers a deterministic replay of a specific execution.
-// It builds MEG for both the original and replay, compares root hashes,
-// and returns the comparison result.
+// rootsMatch performs a timing-safe comparison of two root hashes.
+// Returns true if both hashes are non-empty and equal.
+func rootsMatch(hash1, hash2 string) bool {
+	if hash1 == "" || hash2 == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(hash1), []byte(hash2)) == 1
+}
+
+// HandleReplay returns the replay verification status for a specific execution.
+// This endpoint provides the stored MEG record with verification status.
+// Note: This is a status-check endpoint, not an actual replay trigger.
 //
 // POST /registry/{author}/{name}/replay/{execution_id}
 func (h *Handler) HandleReplay(w http.ResponseWriter, r *http.Request) {
@@ -383,7 +418,6 @@ func (h *Handler) HandleReplay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Return the MEG record with verification status
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"function":            fmt.Sprintf("fx://%s/%s", author, name),
 		"function_id":         fn.ID,
@@ -391,7 +425,7 @@ func (h *Handler) HandleReplay(w http.ResponseWriter, r *http.Request) {
 		"execution_root_hash": megRecord.ExecutionRootHash,
 		"replay_root_hash":    megRecord.ReplayRootHash,
 		"replay_verified_at":  megRecord.ReplayVerifiedAt,
-		"determinism_tier":    megRecord.DeterminismTier,
+		"determinism_tier":   megRecord.DeterminismTier,
 		"protocol_version":    megRecord.ProtocolVersion,
 		"component_hashes": map[string]string{
 			"input":       megRecord.InputHash,
@@ -402,7 +436,9 @@ func (h *Handler) HandleReplay(w http.ResponseWriter, r *http.Request) {
 			"output":      megRecord.OutputHash,
 			"metadata":    megRecord.MetadataHash,
 		},
-		"roots_match": megRecord.ReplayRootHash != "" && megRecord.ReplayRootHash == megRecord.ExecutionRootHash,
+		"roots_match":      rootsMatch(megRecord.ReplayRootHash, megRecord.ExecutionRootHash),
+		"replay_status":    "status_check",
+		"replay_note":      "This endpoint returns stored MEG record status. Use POST /replay/{execution_id}/trigger to trigger actual replay.",
 	})
 }
 
@@ -593,6 +629,7 @@ func (h *Handler) HandleDivergenceSimulation(w http.ResponseWriter, r *http.Requ
 	var simulatedMEG *drecrypto.MEGResult
 	reExecuted := false
 	reExecError := ""
+	simulationMode := "simulated"
 
 	if len(fnVersion.WasmBinary) > 0 {
 		// storage.RegistryFunctionVersion is an alias for registry.RegistryFunctionVersion; same underlying type
@@ -600,6 +637,7 @@ func (h *Handler) HandleDivergenceSimulation(w http.ResponseWriter, r *http.Requ
 		output, execErr := execution.ExecuteLocally(fnVersionStorage, input, memoryMB, maxCPUTimeMs)
 		if execErr == nil {
 			reExecuted = true
+			simulationMode = "computed"
 			inputBytes := input
 			if len(inputBytes) == 0 {
 				inputBytes = []byte("{}")
@@ -624,6 +662,7 @@ func (h *Handler) HandleDivergenceSimulation(w http.ResponseWriter, r *http.Requ
 
 	// Fallback to simulated MEG when re-execution was not run or failed
 	if simulatedMEG == nil {
+		simulationMode = "simulated"
 		simulatedMEG = &drecrypto.MEGResult{
 			ExecutionRootHash: drecrypto.HashString(drecrypto.TagMeta, []byte(modifiedHash+baseExecID)),
 			InputHash:         drecrypto.HashString(drecrypto.TagInput, []byte("simulated")),
@@ -638,6 +677,7 @@ func (h *Handler) HandleDivergenceSimulation(w http.ResponseWriter, r *http.Requ
 	simulationPayload := map[string]interface{}{
 		"modified_capsule_hash": modifiedHash,
 		"simulated_root_hash":   simulatedMEG.ExecutionRootHash,
+		"simulation_mode":        simulationMode,
 		"constraints": map[string]interface{}{
 			"memory_limit":    req.MemoryLimit,
 			"runtime_version": req.RuntimeVersion,
@@ -720,13 +760,14 @@ func (h *Handler) HandleListExecutions(w http.ResponseWriter, r *http.Request) {
 	// Build response
 	executions := make([]map[string]interface{}, len(records))
 	for i, rec := range records {
+		rootsMatch := rec.ReplayRootHash != "" && timingSafeHashEqual(rec.ReplayRootHash, rec.ExecutionRootHash)
 		executions[i] = map[string]interface{}{
 			"execution_id":        rec.ExecutionID.String(),
 			"execution_root_hash": rec.ExecutionRootHash,
 			"version":             rec.Version,
 			"created_at":          rec.CreatedAt,
 			"replay_verified":     rec.ReplayVerifiedAt != nil,
-			"roots_match":         rec.ReplayRootHash != "" && rec.ReplayRootHash == rec.ExecutionRootHash,
+			"roots_match":         rootsMatch,
 			"determinism_tier":    rec.DeterminismTier,
 			"protocol_version":    rec.ProtocolVersion,
 			"component_hashes": map[string]string{
@@ -825,7 +866,7 @@ func (h *Handler) HandleGetExecution(w http.ResponseWriter, r *http.Request) {
 		"replay_verified_at":  rec.ReplayVerifiedAt,
 		"replay_root_hash":    rec.ReplayRootHash,
 		"replay_node_id":      rec.ReplayNodeID,
-		"roots_match":         rec.ReplayRootHash != "" && rec.ReplayRootHash == rec.ExecutionRootHash,
+		"roots_match":         rec.ReplayRootHash != "" && timingSafeHashEqual(rec.ReplayRootHash, rec.ExecutionRootHash),
 		"component_hashes": map[string]string{
 			"input":       rec.InputHash,
 			"output":      rec.OutputHash,
@@ -915,7 +956,7 @@ func (h *Handler) HandleGetExecutionByHash(w http.ResponseWriter, r *http.Reques
 		"replay_verified_at":  rec.ReplayVerifiedAt,
 		"replay_root_hash":    rec.ReplayRootHash,
 		"replay_node_id":      rec.ReplayNodeID,
-		"roots_match":         rec.ReplayRootHash != "" && rec.ReplayRootHash == rec.ExecutionRootHash,
+		"roots_match":         rec.ReplayRootHash != "" && timingSafeHashEqual(rec.ReplayRootHash, rec.ExecutionRootHash),
 		"component_hashes": map[string]string{
 			"input":       rec.InputHash,
 			"output":      rec.OutputHash,
@@ -1170,4 +1211,15 @@ func writeError(w http.ResponseWriter, status int, message string) {
 		"error":  message,
 		"status": status,
 	})
+}
+
+// timingSafeHashEqual compares two hash strings in a timing-safe manner to prevent
+// timing attacks on sensitive comparisons. Returns true if hashes are equal.
+func timingSafeHashEqual(a, b string) bool {
+	if len(a) != len(b) {
+		// Still perform comparison to maintain constant time
+		_ = subtle.ConstantTimeCompare([]byte(a), []byte(b))
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
 }

@@ -153,9 +153,10 @@ func (c *DatabaseReservedUsernameChecker) IsReservedUsername(username string) bo
 	return false
 }
 
-// ValidateUsernameMiddleware validates that a username is not reserved
-func ValidateUsernameMiddleware(checker ReservedUsernameChecker) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
+// ValidateUsernameMiddleware validates that a username is not reserved.
+// Validates both 'username' and 'author' path variables.
+func ValidateUsernameMiddleware(checker ReservedUsernameChecker) func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			vars := mux.Vars(r)
 

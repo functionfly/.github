@@ -1,5 +1,21 @@
+# pnpm workspace configuration
+# See https://pnpm.io/pnpm-workspace.yaml
+
 packages:
-  - 'web/*'
-  - '!web/shared'
-  - 'packages/*'
-  - '!packages/shared'
+  - "web/*"
+  - "packages/*"
+  - "."
+
+allowBuilds:
+  "@parcel/watcher": true
+  "@sentry-internal/node-cpu-profiler": true
+  "@sentry/cli": true
+  bun: true
+  cbor-extract: true
+  core-js: true
+  es5-ext: true
+  esbuild: true
+  nx: true
+  sharp: true
+  unrs-resolver: true
+  workerd: true

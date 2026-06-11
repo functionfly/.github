@@ -205,6 +205,44 @@ func (h *ConversationWebSocketHub) BroadcastMessageDeleted(conversationID, messa
 	}, nil)
 }
 
+// BroadcastMessageReactionAdded notifies participants that a reaction was added to a message.
+func (h *ConversationWebSocketHub) BroadcastMessageReactionAdded(conversationID, messageID, userID uuid.UUID, reaction string) {
+	payload, _ := json.Marshal(map[string]interface{}{
+		"message_id": messageID,
+		"user_id":    userID,
+		"reaction":   reaction,
+	})
+	h.BroadcastToConversation(conversationID, &ConvWSMessage{
+		Type:    "message_reaction_added",
+		Payload: payload,
+	}, nil)
+}
+
+// BroadcastMessageReactionRemoved notifies participants that a reaction was removed from a message.
+func (h *ConversationWebSocketHub) BroadcastMessageReactionRemoved(conversationID, messageID, userID uuid.UUID, reaction string) {
+	payload, _ := json.Marshal(map[string]interface{}{
+		"message_id": messageID,
+		"user_id":    userID,
+		"reaction":   reaction,
+	})
+	h.BroadcastToConversation(conversationID, &ConvWSMessage{
+		Type:    "message_reaction_removed",
+		Payload: payload,
+	}, nil)
+}
+
+// BroadcastMessageRead notifies participants that a message was read.
+func (h *ConversationWebSocketHub) BroadcastMessageRead(conversationID, messageID, userID uuid.UUID) {
+	payload, _ := json.Marshal(map[string]interface{}{
+		"message_id": messageID,
+		"user_id":    userID,
+	})
+	h.BroadcastToConversation(conversationID, &ConvWSMessage{
+		Type:    "message_read",
+		Payload: payload,
+	}, nil)
+}
+
 // SendToUser delivers a message to every connection of a particular user.
 func (h *ConversationWebSocketHub) SendToUser(userID uuid.UUID, msg *ConvWSMessage) {
 	h.mu.RLock()

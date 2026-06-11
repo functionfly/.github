@@ -23,16 +23,19 @@ export function escapeHtml(str: string): string {
  * Rate-limited keyboard shortcut handler.
  * Prevents rapid-fire shortcut execution that could bypass navigation guards.
  * Minimum interval: 100ms between same shortcut executions.
+ *
+ * Uses a ref for lastExecution so the rate limit persists across
+ * handler recreations caused by dependency changes.
  */
 export function createRateLimitedHandler(
   handler: (e: KeyboardEvent) => void,
   minIntervalMs = 100
 ): (e: KeyboardEvent) => void {
-  let lastExecution = 0;
+const lastExecutionRef = { current: 0 };
   return (e: KeyboardEvent) => {
     const now = Date.now();
-    if (now - lastExecution >= minIntervalMs) {
-      lastExecution = now;
+    if (now - lastExecutionRef.current >= minIntervalMs) {
+      lastExecutionRef.current = now;
       handler(e);
     }
   };
@@ -55,10 +58,10 @@ export function isItemActive(path: string, pathname: string): boolean {
 // i18n label translation
 // ============================================================================
 
-/** Translate a nav label using i18n; escape HTML as defense-in-depth. */
+/** Translate a nav label using i18n. i18n system is trusted to produce plain text. */
 export function translateLabel(t: (key: string) => string, label: string): string {
   const translated = NAV_LABEL_KEYS[label] ? t(NAV_LABEL_KEYS[label]) : label;
-  return escapeHtml(translated);
+  return translated;
 }
 
 // ============================================================================

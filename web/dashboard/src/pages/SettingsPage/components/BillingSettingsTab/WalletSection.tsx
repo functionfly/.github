@@ -5,14 +5,14 @@ import { Label } from '@/components/ui/label';
 import { Loader2, Wallet } from 'lucide-react';
 import type { WalletInfo } from '@/api/billing';
 import { getWalletErrorMessage } from '@/api/billing';
+import {
+  WALLET_TOP_UP_PRESETS,
+  MIN_WALLET_TOP_UP_USD,
+  MAX_WALLET_TOP_UP_USD,
+  formatUsd,
+} from './WalletSection.constants';
 
-const WALLET_TOP_UP_PRESETS = [10, 25, 50, 100] as const;
-const MIN_WALLET_TOP_UP_USD = 1;
-const MAX_WALLET_TOP_UP_USD = 10_000;
-
-function formatUsd(amount: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
-}
+export { MIN_WALLET_TOP_UP_USD, MAX_WALLET_TOP_UP_USD };
 
 interface WalletSectionProps {
   walletData: WalletInfo | undefined;
@@ -149,5 +149,3 @@ export function WalletSection({
     </Card>
   );
 }
-
-export { WALLET_TOP_UP_PRESETS, MIN_WALLET_TOP_UP_USD, MAX_WALLET_TOP_UP_USD, formatUsd };

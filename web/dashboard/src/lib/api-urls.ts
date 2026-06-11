@@ -184,6 +184,20 @@ export const API_URLS = {
     subscribe: `${apiRoot.replace(/\/$/, '')}/newsletter/subscribe`,
     unsubscribe: `${apiRoot.replace(/\/$/, '')}/newsletter/unsubscribe`,
   },
+
+  // ========================================================================
+  // Execution Receipt Endpoints (Public - no auth required for read paths)
+  // ========================================================================
+  receipts: {
+    get: (id: string) => `${API}/receipts/${id}`,
+    trending: `${API}/receipts/trending`,
+    byFunction: (author: string, name: string) =>
+      `${API}/receipts/function/${author}/${name}`,
+    run: (id: string) => `${API}/receipts/${id}/run`,
+    forkPayload: (id: string) => `${API}/receipts/${id}/fork-payload`,
+    view: (id: string) => `${API}/receipts/${id}/view`,
+    revoke: (id: string) => `${API}/receipts/${id}/revoke`,
+  },
 } as const;
 
 // ============================================================================

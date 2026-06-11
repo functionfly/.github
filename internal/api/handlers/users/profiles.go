@@ -81,7 +81,7 @@ func (h *Handler) HandleGetPublicProfile(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Build safe public profile — never expose email, tenantId, role, password, MFA, etc.
+	// Build safe public profile — never expose email, tenantId, password, MFA, etc.
 	name := user.Name
 	if name == "" && user.ProviderData != nil {
 		if n, ok := user.ProviderData["name"].(string); ok {
@@ -129,6 +129,9 @@ func (h *Handler) HandleGetPublicProfile(w http.ResponseWriter, r *http.Request)
 	isOnline := isUserOnline(user.LastActiveAt)
 	lastActive := formatLastActivePointer(user.LastActiveAt)
 
+	// Only expose admin status as boolean — not the full role string
+	isAdmin := user.Role == "platform_admin" || user.Role == "admin"
+
 	profile := map[string]interface{}{
 		"id":                 user.ID,
 		"username":           usernameStr,
@@ -144,10 +147,10 @@ func (h *Handler) HandleGetPublicProfile(w http.ResponseWriter, r *http.Request)
 		"linkedinUrl":        getString(user.LinkedInURL),
 		"createdAt":          user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		"publishedFunctions": publishedFunctions,
-		"isOnline":           isOnline,
-		"lastActive":         lastActive,
-		"profileNumber":      getInt(user.ProfileNumber),
-		"role":               user.Role, // Platform admin role for badge display
+		"isOnline":            isOnline,
+		"lastActive":          lastActive,
+		"profileNumber":       getInt(user.ProfileNumber),
+		"isAdmin":             isAdmin, // Boolean only — does not expose full role string
 	}
 	h.attachProfileStats(profile, user.ID)
 	h.applyProfileVisibility(profile, user.ID)
@@ -229,6 +232,9 @@ func (h *Handler) HandleGetPublicProfileByAt(w http.ResponseWriter, r *http.Requ
 	isOnline := isUserOnline(user.LastActiveAt)
 	lastActive := formatLastActivePointer(user.LastActiveAt)
 
+	// Only expose admin status as boolean — not the full role string
+	isAdmin := user.Role == "platform_admin" || user.Role == "admin"
+
 	// Build SEO-enhanced profile with additional metadata
 	profile := map[string]interface{}{
 		"id":                 user.ID,
@@ -245,10 +251,10 @@ func (h *Handler) HandleGetPublicProfileByAt(w http.ResponseWriter, r *http.Requ
 		"linkedinUrl":        getString(user.LinkedInURL),
 		"createdAt":          user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		"publishedFunctions": publishedFunctions,
-		"isOnline":           isOnline,
-		"lastActive":         lastActive,
-		"profileNumber":      getInt(user.ProfileNumber),
-		"role":               user.Role, // Platform admin role for badge display
+		"isOnline":            isOnline,
+		"lastActive":          lastActive,
+		"profileNumber":       getInt(user.ProfileNumber),
+		"isAdmin":             isAdmin, // Boolean only — does not expose full role string
 		// SEO enhancement fields
 		"profileUrl":     "/@" + usernameStr,
 		"totalFunctions": len(publishedFunctions),

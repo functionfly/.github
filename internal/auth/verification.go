@@ -65,7 +65,7 @@ func (a *AuthService) ResendVerificationEmail(email string) error {
 	if err != nil {
 		return fmt.Errorf("failed to generate verification token: %w", err)
 	}
-	expiresAt := time.Now().Add(24 * time.Hour) // 24 hours
+	expiresAt := time.Now().Add(4 * time.Hour) // 4 hours
 
 	// Update user with new verification token
 	err = a.repo.UpdateUserEmailVerification(nil, user.ID, false, &verificationToken, &expiresAt)

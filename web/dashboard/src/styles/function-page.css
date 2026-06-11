@@ -296,6 +296,81 @@
 }
 
 /* ==========================================================================
+   QUICK RATING SECTION
+   ========================================================================== */
+
+.quick-rating {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--ff-border-subtle);
+  background-color: var(--ff-bg-secondary);
+}
+
+.quick-rating-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.quick-rating-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ff-text-primary);
+}
+
+.quick-rating-stars {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.quick-rating-star-btn {
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  border-radius: 0.25rem;
+  transition: background-color 0.15s ease;
+}
+
+.quick-rating-star-btn:hover {
+  background-color: var(--ff-bg-tertiary);
+}
+
+.quick-rating-star-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.quick-rating-star {
+  width: 1.5rem;
+  height: 1.5rem;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.quick-rating-star-btn:hover .quick-rating-star {
+  transform: scale(1.1);
+}
+
+.quick-rating-star--filled {
+  color: var(--ff-beacon);
+  fill: var(--ff-beacon);
+}
+
+.quick-rating-star--empty {
+  color: var(--ff-text-muted);
+  fill: transparent;
+}
+
+.quick-rating-count {
+  font-size: 0.75rem;
+  color: var(--ff-text-muted);
+}
+
+/* ==========================================================================
    API REFERENCE SECTION
    ========================================================================== */
 

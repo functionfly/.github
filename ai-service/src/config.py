@@ -3,10 +3,11 @@
 Uses Pydantic Settings for environment-based configuration.
 """
 
+from pathlib import Path
 from typing import Optional
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pathlib import Path
 
 
 class Settings(BaseSettings):
@@ -44,9 +45,7 @@ class Settings(BaseSettings):
     )
 
     # Ollama configuration (local/development)
-    ollama_base_url: str = Field(
-        default="", description="Ollama base URL - must be set explicitly"
-    )
+    ollama_base_url: str = Field(default="", description="Ollama base URL - must be set explicitly")
     # Smaller default so local dev fits typical RAM; override with OLLAMA_MODEL (e.g. llama3.3 when you have headroom)
     ollama_model: str = "llama3.2:3b"
     ollama_embedding_model: str = "nomic-embed-text"
@@ -103,7 +102,7 @@ class Settings(BaseSettings):
     anthropic_model: str = "claude-sonnet-4-6"
     anthropic_max_tokens: int = 8192
 
-    openrouter_model: str = "inclusionai/ling-2.6-flash:free"
+    openrouter_model: str = "poolside/laguna-xs.2:free"
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
 
     # Fireworks AI configuration (primary for structured output)

@@ -17,6 +17,7 @@ export const ChatPage: React.FC = () => {
     createSession,
     selectSession,
     deleteSession,
+    updateSession,
     sendMessage,
     fetchConnectors,
     fetchModels,
@@ -77,7 +78,7 @@ export const ChatPage: React.FC = () => {
               <ModelSelector
                 models={models}
                 selected={currentSession.model}
-                onSelect={(model) => console.log('Model change not implemented:', model)}
+                onSelect={(model) => updateSession(currentSession.id, { model })}
               />
             </div>
 

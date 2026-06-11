@@ -284,7 +284,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
         initial="hidden"
         animate="visible"
         exit="exit"
-        className="space-y-6 px-4 md:px-8 pb-8"
+        className="settings-page space-y-6 px-4 md:px-8 pb-8"
       >
         <div className="animate-pulse space-y-4">
           <div className="h-32 bg-bg-secondary rounded-lg" />
@@ -302,7 +302,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
         initial="hidden"
         animate="visible"
         exit="exit"
-        className="space-y-6 px-4 md:px-8 pb-8"
+        className="settings-page space-y-6 px-4 md:px-8 pb-8"
       >
         {/* Header with save button */}
         <div className="flex items-center justify-between">
@@ -329,7 +329,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
         </div>
 
         {/* Profile Visibility Section */}
-        <Card className="ff-card-velocity border-border-subtle">
+        <Card className="settings-panel border-border-subtle">
           <CardHeader>
             <CardTitle className="font-display text-lg flex items-center gap-2">
               <Eye className="w-5 h-5 text-brand-500" />
@@ -484,7 +484,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
         </Card>
 
         {/* Social Links Section */}
-        <Card className="ff-card-velocity border-border-subtle">
+        <Card className="settings-panel border-border-subtle">
           <CardHeader>
             <CardTitle className="font-display text-lg flex items-center gap-2">
               <LinkIcon className="w-5 h-5 text-brand-500" />
@@ -595,7 +595,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
         </Card>
 
         {/* Custom Status Section */}
-        <Card className="ff-card-velocity border-border-subtle">
+        <Card className="settings-panel border-border-subtle">
           <CardHeader>
             <CardTitle className="font-display text-lg flex items-center gap-2">
               <CircleDot className="w-5 h-5 text-brand-500" />
@@ -649,7 +649,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
         </Card>
 
         {/* Notification Settings */}
-        <Card className="ff-card-velocity border-border-subtle">
+        <Card className="settings-panel border-border-subtle">
           <CardHeader>
             <CardTitle className="font-display text-lg flex items-center gap-2">
               <Bell className="w-5 h-5 text-brand-500" />
@@ -763,7 +763,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
         </Card>
 
         {/* Privacy Settings */}
-        <Card className="ff-card-velocity border-border-subtle">
+        <Card className="settings-panel border-border-subtle">
           <CardHeader>
             <CardTitle className="font-display text-lg flex items-center gap-2">
               <Shield className="w-5 h-5 text-brand-500" />

@@ -10,7 +10,12 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@functionfly/ui-core": "file:../ui-core",
     "lucide-react": "^1.14.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3"
   },
   "peerDependencies": {
     "react": "^19.2.5",

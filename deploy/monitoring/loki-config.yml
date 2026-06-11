@@ -16,6 +16,10 @@ common:
     kvstore:
       store: inmemory
 
+# Explicitly set retention period (30 days default, configurable for compliance)
+limits:
+  retention_period: 30d
+
 query_range:
   results_cache:
     cache:

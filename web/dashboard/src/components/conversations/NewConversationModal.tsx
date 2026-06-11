@@ -18,8 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { Loader2 } from 'lucide-react';
-import { useRef } from 'react';
+import { Loader2, MessageSquarePlus } from 'lucide-react';
 
 interface UsernameSuggestion {
   id: string;
@@ -71,41 +70,46 @@ export function NewConversationModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>New conversation</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="conv-aviation-dialog sm:max-w-md">
+        <div className="conv-aviation-dialog-accent" />
+        <DialogHeader className="conv-aviation-dialog-header">
+          <div className="conv-aviation-dialog-icon">
+            <MessageSquarePlus className="h-5 w-5" />
+          </div>
+          <DialogTitle className="conv-aviation-dialog-title">New conversation</DialogTitle>
+          <DialogDescription className="conv-aviation-dialog-description">
             Choose a type and add participant usernames (with or without @). You are included
             automatically for DMs.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <Label htmlFor="new-conv-type">Type</Label>
+        <div className="conv-aviation-dialog-body space-y-4 py-2">
+          <div className="conv-aviation-form-group space-y-2">
+            <Label htmlFor="new-conv-type" className="conv-aviation-form-label">Type</Label>
             <Select
               value={conversationType}
               onValueChange={(v) => onConversationTypeChange(v as ConversationType)}
             >
-              <SelectTrigger id="new-conv-type" className="h-9 w-full">
+              <SelectTrigger id="new-conv-type" className="conv-aviation-select-trigger h-9 w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent position="popper" className="z-200">
+              <SelectContent position="popper" className="conv-aviation-select-content z-[200]">
                 {CONVERSATION_TYPES.map(({ value, label }) => (
-                  <SelectItem key={value} value={value}>
+                  <SelectItem key={value} value={value} className="conv-aviation-select-item">
                     {label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="new-conv-participants">Participant usernames (comma-separated)</Label>
+          <div className="conv-aviation-form-group space-y-2">
+            <Label htmlFor="new-conv-participants" className="conv-aviation-form-label">Participant usernames (comma-separated)</Label>
             <div className="relative">
               <Input
                 ref={participantInputRef}
                 id="new-conv-participants"
                 placeholder="Start typing a username…"
                 autoComplete="off"
+                className="conv-aviation-input"
                 value={participantUsernames}
                 onChange={(e) => {
                   onParticipantUsernamesChange(e.target.value);
@@ -137,41 +141,35 @@ export function NewConversationModal({
                 participantSegment.length >= 2 &&
                 !UUID_RE.test(participantSegment) && (
                   <div
-                    className="absolute left-0 right-0 z-200 mt-1 max-h-48 overflow-auto rounded-md border bg-card py-1 shadow-md"
-                    style={{
-                      borderColor: 'var(--border-default)',
-                      backgroundColor: 'var(--card)',
-                    }}
+                    className="conv-aviation-suggestions absolute left-0 right-0 z-[200] mt-1 max-h-48 overflow-auto rounded-md border bg-card py-1 shadow-md"
                   >
                     {usernameSearchLoading ? (
                       <div
-                        className="flex items-center gap-2 px-3 py-2 text-sm"
-                        style={{ color: 'var(--text-muted)' }}
+                        className="conv-aviation-suggestions-loading flex items-center gap-2 px-3 py-2 text-sm"
                       >
                         <Loader2 className="h-4 w-4 shrink-0 animate-spin opacity-70" />
                         Searching…
                       </div>
                     ) : usernameSuggestions.length === 0 ? (
-                      <div className="px-3 py-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+                      <div className="conv-aviation-suggestions-empty px-3 py-2 text-sm">
                         No matching users
                       </div>
                     ) : (
-                      <ul className="py-0.5" style={{ color: 'var(--card-foreground)' }}>
+                      <ul className="conv-aviation-suggestions-list py-0.5">
                         {usernameSuggestions.map((u) => (
                           <li key={u.id}>
                             <button
                               type="button"
                               className={cn(
-                                'flex w-full flex-col gap-0.5 px-3 py-2 text-left text-sm',
+                                'conv-aviation-suggestions-item flex w-full flex-col gap-0.5 px-3 py-2 text-left text-sm',
                                 'hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none'
                               )}
-                              style={{ color: 'var(--card-foreground)' }}
                               onMouseDown={(e) => e.preventDefault()}
                               onClick={() => onPickUsername(u.username)}
                             >
-                              <span className="font-medium">@{u.username}</span>
+                              <span className="conv-aviation-suggestions-username font-medium">@{u.username}</span>
                               {u.name ? (
-                                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                                <span className="conv-aviation-suggestions-name text-xs">
                                   {u.name}
                                 </span>
                               ) : null}
@@ -184,11 +182,12 @@ export function NewConversationModal({
                 )}
             </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <div className="conv-aviation-dialog-actions flex justify-end gap-2">
+            <Button variant="outline" className="conv-aviation-btn-outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button
+              className="conv-aviation-btn-primary"
               onClick={onCreate}
               disabled={createPending || !canCreate}
             >

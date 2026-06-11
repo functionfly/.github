@@ -210,7 +210,8 @@ export const BACKEND_PROVIDERS: BackendTemplate[] = [
     provider: 'functionfly-edge',
     name: 'FunctionFly Edge',
     icon: '⬡',
-    description: 'FunctionFly managed edge network with global distribution, automatic scaling, and built-in DDoS protection.',
+    description:
+      'FunctionFly managed edge network with global distribution, automatic scaling, and built-in DDoS protection.',
     features: ['Global CDN', 'Auto-scaling', 'DDoS Protection', 'Edge Caching', '99.9% SLA'],
     supportedRegions: ['us-east-1', 'eu-central-1'],
     capabilities: ['http', 'websocket', 'grpc'],
@@ -220,9 +221,19 @@ export const BACKEND_PROVIDERS: BackendTemplate[] = [
     provider: 'workers',
     name: 'Cloudflare Workers',
     icon: '☁',
-    description: 'V8-based serverless functions running on Cloudflare\'s global network with sub-millisecond cold starts.',
+    description:
+      "V8-based serverless functions running on Cloudflare's global network with sub-millisecond cold starts.",
     features: ['Global Network', 'Cold Start < 1ms', 'KV Storage', 'Durable Objects', 'Cache API'],
-    supportedRegions: ['us-east-1', 'us-west-1', 'eu-west-1', 'ap-southeast-1', 'ap-northeast-1', 'ap-southeast-2', 'sa-east-1', 'af-south-1'],
+    supportedRegions: [
+      'us-east-1',
+      'us-west-1',
+      'eu-west-1',
+      'ap-southeast-1',
+      'ap-northeast-1',
+      'ap-southeast-2',
+      'sa-east-1',
+      'af-south-1',
+    ],
     capabilities: ['http', 'websocket', 'queue'],
     documentationUrl: '/docs/backends/cloudflare-workers',
   },
@@ -230,9 +241,36 @@ export const BACKEND_PROVIDERS: BackendTemplate[] = [
     provider: 'vercel',
     name: 'Vercel',
     icon: '▲',
-    description: 'Zero-config deployment platform with instant scaling, edge functions, and built-in CI/CD.',
-    features: ['Instant Scaling', 'Edge Functions', 'Preview Deployments', 'Git Integration', 'Analytics'],
-    supportedRegions: ['arn1', 'bom1', 'cdg1', 'cle1', 'cpt1', 'dub1', 'fra1', 'gru1', 'hkg1', 'hnd1', 'iad1', 'icn1', 'jnb1', 'lax1', 'lhr1', 'pdx1', 'sfo1', 'sin1', 'syd1'],
+    description:
+      'Zero-config deployment platform with instant scaling, edge functions, and built-in CI/CD.',
+    features: [
+      'Instant Scaling',
+      'Edge Functions',
+      'Preview Deployments',
+      'Git Integration',
+      'Analytics',
+    ],
+    supportedRegions: [
+      'arn1',
+      'bom1',
+      'cdg1',
+      'cle1',
+      'cpt1',
+      'dub1',
+      'fra1',
+      'gru1',
+      'hkg1',
+      'hnd1',
+      'iad1',
+      'icn1',
+      'jnb1',
+      'lax1',
+      'lhr1',
+      'pdx1',
+      'sfo1',
+      'sin1',
+      'syd1',
+    ],
     capabilities: ['http', 'serverless'],
     documentationUrl: '/docs/backends/vercel',
   },
@@ -240,9 +278,49 @@ export const BACKEND_PROVIDERS: BackendTemplate[] = [
     provider: 'fly',
     name: 'Fly.io',
     icon: '✈',
-    description: 'Run applications close to users worldwide with Fly\'s lightweight VMs and anycast routing.',
-    features: ['Anycast Routing', 'Fly Machines', 'Private Networking', 'Auto Health Checks', 'Edge Locations'],
-    supportedRegions: ['ams', 'arn', 'atl', 'bog', 'bos', 'bru', 'cdg', 'den', 'dfw', 'ewr', 'eze', 'fra', 'gig', 'gru', 'hkg', 'iad', 'jnb', 'lax', 'lhr', 'mad', 'mia', 'nrt', 'ord', 'phx', 'pma', 'sea', 'sfo', 'sin', 'syd', 'tsn', 'waw', 'yyz'],
+    description:
+      "Run applications close to users worldwide with Fly's lightweight VMs and anycast routing.",
+    features: [
+      'Anycast Routing',
+      'Fly Machines',
+      'Private Networking',
+      'Auto Health Checks',
+      'Edge Locations',
+    ],
+    supportedRegions: [
+      'ams',
+      'arn',
+      'atl',
+      'bog',
+      'bos',
+      'bru',
+      'cdg',
+      'den',
+      'dfw',
+      'ewr',
+      'eze',
+      'fra',
+      'gig',
+      'gru',
+      'hkg',
+      'iad',
+      'jnb',
+      'lax',
+      'lhr',
+      'mad',
+      'mia',
+      'nrt',
+      'ord',
+      'phx',
+      'pma',
+      'sea',
+      'sfo',
+      'sin',
+      'syd',
+      'tsn',
+      'waw',
+      'yyz',
+    ],
     capabilities: ['http', 'websocket', 'tcp'],
     documentationUrl: '/docs/backends/fly',
   },
@@ -250,7 +328,8 @@ export const BACKEND_PROVIDERS: BackendTemplate[] = [
     provider: 'deno-deploy',
     name: 'Deno Deploy',
     icon: '  ',
-    description: 'Edge runtime powered by Deno with TypeScript native support, built-in KV, and zero config deployment.',
+    description:
+      'Edge runtime powered by Deno with TypeScript native support, built-in KV, and zero config deployment.',
     features: ['TypeScript Native', 'Built-in KV', 'Queues', 'Cron Triggers', 'Edge Caching'],
     supportedRegions: ['us-east4', 'europe-west4', 'asia-southeast1', 'us-west2'],
     capabilities: ['http', 'websocket', 'kv'],
@@ -637,6 +716,7 @@ export interface FunctionCardProps {
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
   onAdminAction?: (id: string, action: string) => void;
+  onRate?: (id: string, stars: number) => void;
 }
 
 // Function Header Types
@@ -683,6 +763,8 @@ export interface FunctionHeaderProps {
   onDeploy?: () => void;
   onTest?: () => void;
   onShare?: () => void;
+  /** Handler for reporting a function issue to the author */
+  onReportIssue?: () => void;
 }
 
 // Trust Score Badge Types
@@ -1017,6 +1099,14 @@ export interface UserStats {
   trustScore: number;
   reputationRank: string;
 
+  // User Reputation Profile scores (from reputation_profiles table)
+  builderScore?: number;
+  optimizerScore?: number;
+  mentorScore?: number;
+  agentWhispererScore?: number;
+  reputationTier?: string;
+  overallReputationScore?: number;
+
   // Social
   followersCount: number;
   followingCount: number;
@@ -1100,7 +1190,7 @@ export interface UserProfile {
   stats: UserStats;
   achievements: Achievement[];
   recentActivity: UserActivity[];
-  certifications: import("@/api/certification").PublicBadge[];
+  certifications: import('@/api/certification').PublicBadge[];
   publishedFunctions: FunctionCardData[];
 }
 

@@ -232,3 +232,88 @@ type RotateSecretRequest struct {
 	EncryptedData EncryptedDataPayload `json:"encrypted_data" validate:"required"`
 	Reason        string               `json:"reason,omitempty"`
 }
+
+// BulkDeleteRequest represents a request to delete multiple secrets
+type BulkDeleteRequest struct {
+	SecretIDs []uuid.UUID `json:"secret_ids" validate:"required,min=1"`
+	DryRun    bool        `json:"dry_run,omitempty"`
+}
+
+// BulkDeleteResponse represents the response from a bulk delete operation
+type BulkDeleteResponse struct {
+	Deleted  int64                `json:"deleted"`
+	Failed   int64                `json:"failed"`
+	Errors   []BulkDeleteError    `json:"errors,omitempty"`
+	Previews map[uuid.UUID]BulkDeletePreview `json:"previews,omitempty"`
+}
+
+// BulkDeletePreview represents preview information for a single secret in bulk delete
+type BulkDeletePreview struct {
+	SecretID     uuid.UUID          `json:"secret_id"`
+	SecretName   string             `json:"secret_name"`
+	Found        bool               `json:"found"`
+	TokensCount  int                `json:"tokens_count"`
+	Dependencies []DependencyInfo   `json:"dependencies"`
+}
+
+// DependencyInfo describes a single dependency
+type DependencyInfo struct {
+	ID          uuid.UUID `json:"id"`
+	Type        string    `json:"type"`
+	Name        string    `json:"name"`
+	Criticality string    `json:"criticality"`
+}
+
+// BulkDeleteError represents an error that occurred during bulk delete
+type BulkDeleteError struct {
+	SecretID uuid.UUID `json:"secret_id"`
+	Error    string    `json:"error"`
+}
+
+// ExportSecretsResponse represents the response for exporting secrets
+type ExportSecretsResponse struct {
+	Secrets []SecretExport `json:"secrets"`
+	Total   int            `json:"total"`
+	ExportedAt time.Time   `json:"exported_at"`
+}
+
+// SecretExport represents secret metadata for export (no encrypted values)
+type SecretExport struct {
+	ID          uuid.UUID       `json:"id"`
+	Name        string          `json:"name"`
+	Description string          `json:"description,omitempty"`
+	SecretType  vault.SecretType `json:"secret_type"`
+	KeyVersion  int             `json:"key_version"`
+	Scopes      []string        `json:"scopes,omitempty"`
+	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	CreatedAt   time.Time       `json:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at"`
+}
+
+// SecretDependenciesResponse represents the response for getting secret dependencies
+type SecretDependenciesResponse struct {
+	SecretID     uuid.UUID         `json:"secret_id"`
+	Dependencies []SecretDependency `json:"dependencies"`
+	Total        int64             `json:"total"`
+}
+
+// SecretDependency represents a dependency in API responses
+type SecretDependency struct {
+	ID            uuid.UUID `json:"id"`
+	DependentID   uuid.UUID `json:"dependent_id"`
+	DependentType string    `json:"dependent_type"`
+	DependentName string    `json:"dependent_name"`
+	Criticality   string    `json:"criticality"`
+	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+	CreatedAt     time.Time `json:"created_at"`
+}
+
+// CreateSecretDependencyRequest represents a request to create a secret dependency
+type CreateSecretDependencyRequest struct {
+	SecretID      uuid.UUID `json:"secret_id" validate:"required"`
+	DependentID   uuid.UUID `json:"dependent_id" validate:"required"`
+	DependentType string    `json:"dependent_type" validate:"required"`
+	DependentName string    `json:"dependent_name" validate:"required"`
+	Criticality   string    `json:"criticality,omitempty"`
+	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+}

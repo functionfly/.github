@@ -51,12 +51,13 @@ func (m JSONBMap) Value() (driver.Value, error) {
 type KeyType string
 
 const (
-	KeyTypePlatform    KeyType = "platform"
-	KeyTypeFunction    KeyType = "function"
-	KeyTypeAgent       KeyType = "agent"
+	KeyTypePlatform KeyType = "platform"
+	KeyTypeFunction KeyType = "function"
+	KeyTypeAgent    KeyType = "agent"
+	KeyTypeEdge     KeyType = "edge" // FunctionFly Edge API keys
 	KeyTypeEnvironment KeyType = "environment"
-	KeyTypeOAuth       KeyType = "oauth"
-	KeyTypeTrust       KeyType = "trust" // Trust API partner keys
+	KeyTypeOAuth    KeyType = "oauth"
+	KeyTypeTrust    KeyType = "trust" // Trust API partner keys
 )
 
 // Key prefixes by type
@@ -64,6 +65,7 @@ const (
 	PrefixPlatform    = "ffp_"
 	PrefixFunction    = "fff_"
 	PrefixAgent       = "aep_"
+	PrefixEdge        = "ffx_"
 	PrefixEnvironment = "ffe_"
 	PrefixOAuth       = "ffo_"
 	PrefixTrust       = "fft_" // Trust API key prefix
@@ -310,6 +312,8 @@ func GetPrefixForKeyType(keyType KeyType) string {
 		return PrefixFunction
 	case KeyTypeAgent:
 		return PrefixAgent
+	case KeyTypeEdge:
+		return PrefixEdge
 	case KeyTypeEnvironment:
 		return PrefixEnvironment
 	case KeyTypeOAuth:
@@ -361,7 +365,7 @@ func (k *APIKey) ToResponse() *APIKeyResponse {
 // IsValidKeyType checks if the given string is a valid key type
 func IsValidKeyType(s string) bool {
 	switch KeyType(s) {
-	case KeyTypePlatform, KeyTypeFunction, KeyTypeAgent, KeyTypeEnvironment, KeyTypeOAuth, KeyTypeTrust:
+	case KeyTypePlatform, KeyTypeFunction, KeyTypeAgent, KeyTypeEdge, KeyTypeEnvironment, KeyTypeOAuth, KeyTypeTrust:
 		return true
 	default:
 		return false

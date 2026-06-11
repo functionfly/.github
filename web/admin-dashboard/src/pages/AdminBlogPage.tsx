@@ -8,53 +8,18 @@ import { adminApiClient } from '@/lib/api/adminClient';
 import { logger } from '@/lib/monitoring/logger';
 import { blogSettingsStore, type BlogSettings } from '@/stores/blogSettingsStore';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BarChart3, FileText, FolderTree, Pencil, Plus, Settings, Trash2, X } from 'lucide-react';
+import { BarChart3, FileText, FolderTree, Pencil, Plus, Settings, Trash2, Users, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-type TabId = 'settings' | 'analytics' | 'posts' | 'categories';
-
-interface BlogPost {
-  id: string;
-  title: string;
-  slug: string;
-  content: string;
-  body?: unknown;
-  description: string;
-  author: { name: string };
-  heroImage: { url?: string };
-  tags: string[];
-  status: string;
-  published_at?: string | null;
-  created_at: string;
-  updated_at: string;
-  is_published?: boolean;
-  publishedAt?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  featured_image?: string | null;
-  excerpt?: string;
-}
-
-interface BlogCategory {
-  id: string;
-  title: string;
-  slug: string;
-  description: string;
-  color: string;
-  icon: string;
-  order: number;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export function AdminBlogPage() {
-  const [activeTab, setActiveTab] = useState<TabId>('posts');
+export default function AdminBlogPage() {
+  const [activeTab, setActiveTab] = useState<TabId>('settings');
 
   const tabs = [
     { id: 'settings' as const, label: 'Settings', icon: Settings },
     { id: 'analytics' as const, label: 'Analytics', icon: BarChart3 },
     { id: 'posts' as const, label: 'Posts', icon: FileText },
     { id: 'categories' as const, label: 'Categories', icon: FolderTree },
+    { id: 'authors' as const, label: 'Authors', icon: Users },
   ];
 
   return (
@@ -90,6 +55,7 @@ export function AdminBlogPage() {
       {activeTab === 'analytics' && <BlogAnalyticsTab />}
       {activeTab === 'posts' && <BlogPostsTab />}
       {activeTab === 'categories' && <BlogCategoriesTab />}
+      {activeTab === 'authors' && <BlogAuthorsTab />}
     </div>
   );
 }
@@ -484,6 +450,12 @@ function PostForm({
   const [tagsStr, setTagsStr] = useState(Array.isArray(post?.tags) ? post.tags.join(', ') : '');
   const [isPublished, setIsPublished] = useState(post?.is_published ?? false);
   const [featuredImage, setFeaturedImage] = useState(post?.featured_image ?? '');
+  const [seoTitle, setSeoTitle] = useState(post?.seoTitle ?? '');
+  const [seoDescription, setSeoDescription] = useState(post?.seoDescription ?? '');
+  const [keywordsStr, setKeywordsStr] = useState(Array.isArray(post?.keywords) ? post.keywords.join(', ') : '');
+  const [canonicalUrl, setCanonicalUrl] = useState(post?.canonicalUrl ?? '');
+  const [ogImageUrl, setOgImageUrl] = useState(post?.ogImage?.url ?? '');
+  const [ogImageAlt, setOgImageAlt] = useState(post?.ogImage?.alt ?? '');
 
   useEffect(() => {
     if (post) {
@@ -510,6 +482,12 @@ function PostForm({
       setTagsStr(Array.isArray(post.tags) ? post.tags.join(', ') : '');
       setIsPublished(post.is_published ?? false);
       setFeaturedImage(post.featured_image ?? '');
+      setSeoTitle(post.seoTitle ?? '');
+      setSeoDescription(post.seoDescription ?? '');
+      setKeywordsStr(Array.isArray(post.keywords) ? post.keywords.join(', ') : '');
+      setCanonicalUrl(post.canonicalUrl ?? '');
+      setOgImageUrl(post.ogImage?.url ?? '');
+      setOgImageAlt(post.ogImage?.alt ?? '');
     }
   }, [post]);
 
@@ -538,6 +516,11 @@ function PostForm({
   const tags = tagsStr
     .split(',')
     .map((t) => t.trim())
+    .filter(Boolean);
+
+  const keywords = keywordsStr
+    .split(',')
+    .map((k) => k.trim())
     .filter(Boolean);
 
   // Parse content as TipTap JSON or fallback to plain text in content field
@@ -584,6 +567,11 @@ function PostForm({
     tags,
     is_published: isPublished,
     featured_image: featuredImage || undefined,
+    seo_title: seoTitle || undefined,
+    seo_description: seoDescription || undefined,
+    keywords: keywords.length > 0 ? keywords : undefined,
+    canonical_url: canonicalUrl || undefined,
+    og_image: ogImageUrl ? { url: ogImageUrl, alt: ogImageAlt } : undefined,
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -684,7 +672,98 @@ function PostForm({
             onChange={(e) => setFeaturedImage(e.target.value)}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           />
+          {featuredImage && (
+            <div className="mt-2">
+              <p className="text-xs text-gray-500 mb-1">Preview</p>
+              <img
+                src={featuredImage}
+                alt="Featured preview"
+                className="max-w-xs rounded border border-gray-200 dark:border-gray-600"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            </div>
+          )}
         </div>
+
+        <details className="group border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+          <summary className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer list-none flex items-center justify-between">
+            <span>SEO Settings</span>
+            <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+          </summary>
+          <div className="mt-4 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">SEO Title</label>
+              <input
+                type="text"
+                value={seoTitle}
+                onChange={(e) => setSeoTitle(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
+                placeholder="Override title for search engines"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">SEO Description</label>
+              <textarea
+                rows={2}
+                value={seoDescription}
+                onChange={(e) => setSeoDescription(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
+                placeholder="Meta description for search results"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Keywords (comma-separated)</label>
+              <input
+                type="text"
+                value={keywordsStr}
+                onChange={(e) => setKeywordsStr(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
+                placeholder="keyword1, keyword2, keyword3"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Canonical URL</label>
+              <input
+                type="url"
+                value={canonicalUrl}
+                onChange={(e) => setCanonicalUrl(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
+                placeholder="https://..."
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">OG Image URL</label>
+                <input
+                  type="url"
+                  value={ogImageUrl}
+                  onChange={(e) => setOgImageUrl(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
+                  placeholder="https://.../og-image.png"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">OG Image Alt</label>
+                <input
+                  type="text"
+                  value={ogImageAlt}
+                  onChange={(e) => setOgImageAlt(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
+                  placeholder="Alt text for OG image"
+                />
+              </div>
+            </div>
+            {ogImageUrl && (
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">OG Image Preview</p>
+                <img src={ogImageUrl} alt={ogImageAlt || 'OG preview'} className="max-w-xs rounded border border-gray-200 dark:border-gray-600" />
+              </div>
+            )}
+          </div>
+        </details>
+
         <div className="flex items-center gap-3">
           <input
             type="checkbox"
@@ -731,13 +810,13 @@ function BlogCategoriesTab() {
   } = useQuery({
     queryKey: ['admin-blog-categories'],
     queryFn: async () => {
-      const res = await adminApiClient.get<BlogCategory[]>('/blog/categories');
-      return Array.isArray(res) ? res : [];
+      const res = await adminApiClient.get<BlogCategory[]>('/content/categories');
+      return res?.data ?? [];
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => adminApiClient.delete(`/blog/categories/${id}`),
+    mutationFn: (id: string) => adminApiClient.delete(`/content/categories/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-blog-categories'] });
       setDeleteConfirm(null);
@@ -927,12 +1006,12 @@ function CategoryForm({
 
   const createMutation = useMutation({
     mutationFn: (payload: Record<string, unknown>) =>
-      adminApiClient.post('/blog/categories', payload),
+      adminApiClient.post('/content/categories', payload),
     onSuccess: () => onSaved(),
   });
   const updateMutation = useMutation({
     mutationFn: (payload: Record<string, unknown>) =>
-      adminApiClient.put(`/blog/categories/${category!.id}`, payload),
+      adminApiClient.put(`/content/categories/${category!.id}`, payload),
     onSuccess: () => onSaved(),
   });
 
@@ -1034,6 +1113,363 @@ function CategoryForm({
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
           >
             {saving ? 'Saving…' : category ? 'Update category' : 'Add category'}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function BlogAuthorsTab() {
+  const queryClient = useQueryClient();
+  const [showAdd, setShowAdd] = useState(false);
+  const [editing, setEditing] = useState<BlogAuthor | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+  const {
+    data: authors = [],
+    isLoading,
+    error: queryError,
+  } = useQuery({
+    queryKey: ['admin-blog-authors'],
+    queryFn: async () => {
+      const res = await adminApiClient.get<BlogAuthor[]>('/content/authors');
+      return res?.data ?? [];
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => adminApiClient.delete(`/content/authors/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-blog-authors'] });
+      setDeleteConfirm(null);
+    },
+  });
+
+  if (isLoading) {
+    return <div className="text-gray-500 dark:text-gray-400">Loading authors…</div>;
+  }
+
+  if (queryError) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Authors</h2>
+          <button
+            type="button"
+            onClick={() => {
+              setEditing(null);
+              setShowAdd(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            <Plus className="w-4 h-4" />
+            Add author
+          </button>
+        </div>
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 text-amber-800 dark:text-amber-200">
+          <p className="font-medium">Unable to load authors</p>
+          <p className="text-sm mt-1">Please try refreshing the page or check your connection.</p>
+        </div>
+        {(showAdd || editing) && (
+          <AuthorForm
+            author={editing ?? undefined}
+            onClose={() => {
+              setShowAdd(false);
+              setEditing(null);
+            }}
+            onSaved={() => {
+              queryClient.invalidateQueries({ queryKey: ['admin-blog-authors'] });
+              setShowAdd(false);
+              setEditing(null);
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Authors</h2>
+        <button
+          type="button"
+          onClick={() => {
+            setEditing(null);
+            setShowAdd(true);
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          <Plus className="w-4 h-4" />
+          Add author
+        </button>
+      </div>
+
+      {(showAdd || editing) && (
+        <AuthorForm
+          author={editing ?? undefined}
+          onClose={() => {
+            setShowAdd(false);
+            setEditing(null);
+          }}
+          onSaved={() => {
+            queryClient.invalidateQueries({ queryKey: ['admin-blog-authors'] });
+            setShowAdd(false);
+            setEditing(null);
+          }}
+        />
+      )}
+
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-gray-50 border-b border-gray-200">
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Slug</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Role</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Active</th>
+              <th className="px-6 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {authors.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  No authors yet. Add one with "Add author".
+                </td>
+              </tr>
+            ) : (
+              authors.map((author) => (
+                <tr key={author.id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{author.name}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{author.slug}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{author.email ?? '—'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{author.role ?? '—'}</td>
+                  <td className="px-6 py-4 text-sm">
+                    <span className={author.active ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}>
+                      {author.active ? 'Yes' : 'No'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-right">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditing(author);
+                        setShowAdd(false);
+                      }}
+                      className="text-blue-600 hover:text-blue-800 mr-3"
+                    >
+                      <Pencil className="w-4 h-4 inline" />
+                    </button>
+                    {deleteConfirm === author.id ? (
+                      <span className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => deleteMutation.mutate(author.id)}
+                          className="text-red-600 hover:text-red-800 font-medium"
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteConfirm(null)}
+                          className="text-gray-600"
+                        >
+                          Cancel
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirm(author.id)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <Trash2 className="w-4 h-4 inline" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function AuthorForm({
+  author,
+  onClose,
+  onSaved,
+}: {
+  author?: BlogAuthor;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [name, setName] = useState(author?.name ?? '');
+  const [slug, setSlug] = useState(author?.slug ?? '');
+  const [bio, setBio] = useState(author?.bio ?? '');
+  const [email, setEmail] = useState(author?.email ?? '');
+  const [website, setWebsite] = useState(author?.website ?? '');
+  const [role, setRole] = useState(author?.role ?? '');
+  const [photoUrl, setPhotoUrl] = useState(author?.photo?.url ?? '');
+  const [active, setActive] = useState(author?.active ?? true);
+
+  useEffect(() => {
+    if (author) {
+      setName(author.name);
+      setSlug(author.slug);
+      setBio(author.bio ?? '');
+      setEmail(author.email ?? '');
+      setWebsite(author.website ?? '');
+      setRole(author.role ?? '');
+      setPhotoUrl(author.photo?.url ?? '');
+      setActive(author.active);
+    }
+  }, [author]);
+
+  const createMutation = useMutation({
+    mutationFn: (payload: Record<string, unknown>) =>
+      adminApiClient.post('/content/authors', payload),
+    onSuccess: () => onSaved(),
+  });
+  const updateMutation = useMutation({
+    mutationFn: (payload: Record<string, unknown>) =>
+      adminApiClient.put(`/content/authors/${author!.id}`, payload),
+    onSuccess: () => onSaved(),
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload = {
+      name: name.trim(),
+      slug: slug.trim() || undefined,
+      bio: bio.trim() || undefined,
+      email: email.trim() || undefined,
+      website: website.trim() || undefined,
+      role: role.trim() || undefined,
+      photo: photoUrl ? { url: photoUrl } : undefined,
+      active,
+    };
+    if (author) {
+      updateMutation.mutate(payload);
+    } else {
+      createMutation.mutate(payload);
+    }
+  };
+
+  const saving = createMutation.isPending || updateMutation.isPending;
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          {author ? 'Edit author' : 'Add author'}
+        </h3>
+        <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name *</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Slug</label>
+          <input
+            type="text"
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
+            placeholder={name ? name.toLowerCase().replace(/\s+/g, '-') : ''}
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bio</label>
+          <textarea
+            rows={2}
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Website</label>
+            <input
+              type="url"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              placeholder="https://..."
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
+          <input
+            type="text"
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            placeholder="e.g. Editor, Contributor"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Photo URL</label>
+          <input
+            type="url"
+            value={photoUrl}
+            onChange={(e) => setPhotoUrl(e.target.value)}
+            placeholder="https://.../photo.jpg"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700"
+          />
+        </div>
+        <div className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            id="author_active"
+            checked={active}
+            onChange={(e) => setActive(e.target.checked)}
+            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <label htmlFor="author_active" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Active
+          </label>
+        </div>
+        <div className="flex gap-3 pt-2">
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {saving ? 'Saving…' : author ? 'Update author' : 'Add author'}
           </button>
           <button
             type="button"

@@ -16,7 +16,7 @@ export {
   ModelRoutingVisualizer,
   InferenceProviderSelector,
   RuntimeCapabilityMatrix,
-} from './index.tsx';
+} from "./index.tsx";
 
 // Types
 export type {
@@ -37,7 +37,7 @@ export type {
   ServerlessFunction,
   ServerlessRuntimeViewerProps,
   AgentAction,
-  BrowserAgentSession,
+  BrowserAgentSessionData,
   BrowserAgentSessionProps,
   EdgeNode,
   EdgeRuntimeMapProps,
@@ -51,4 +51,4 @@ export type {
   InferenceProviderSelectorProps,
   RuntimeCapability,
   RuntimeCapabilityMatrixProps,
-} from './types';
+} from "./types";

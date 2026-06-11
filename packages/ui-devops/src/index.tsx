@@ -6,7 +6,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { cn } from '@functionfly/ui-core';
 import {
-  Pipeline,
   GitBranch,
   GitCommit,
   Play,
@@ -22,6 +21,7 @@ import {
   Globe,
   MapPin,
   Boxes,
+  Cloud,
   Key,
   Shield,
   Eye,
@@ -348,6 +348,7 @@ export const EnvironmentManager: React.FC<EnvironmentManagerProps> = ({
   onVariableAdd,
   onVariableUpdate,
   onVariableDelete,
+  onSecretDelete,
   className,
 }) => {
   const [newVarKey, setNewVarKey] = useState('');

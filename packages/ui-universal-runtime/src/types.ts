@@ -7,12 +7,18 @@
 // Shared Types
 // ============================================================================
 
-export type RuntimeType = 'wasm' | 'native' | 'serverless' | 'browser' | 'edge' | 'gpu';
-export type ExecutionMode = 'synchronous' | 'asynchronous' | 'streaming';
-export type RuntimeStatus = 'ready' | 'busy' | 'error' | 'offline';
-export type CloudProvider = 'aws' | 'gcp' | 'azure' | 'cloudflare' | 'local';
-export type KernelStatus = 'idle' | 'running' | 'queued' | 'completed';
-export type InferenceProvider = 'openai' | 'anthropic' | 'local' | 'custom';
+export type RuntimeType =
+  | "wasm"
+  | "native"
+  | "serverless"
+  | "browser"
+  | "edge"
+  | "gpu";
+export type ExecutionMode = "synchronous" | "asynchronous" | "streaming";
+export type RuntimeStatus = "ready" | "busy" | "error" | "offline";
+export type CloudProvider = "aws" | "gcp" | "azure" | "cloudflare" | "local";
+export type KernelStatus = "idle" | "running" | "queued" | "completed";
+export type InferenceProvider = "openai" | "anthropic" | "local" | "custom";
 
 export interface RuntimeMetrics {
   cpuUsage: number;
@@ -134,17 +140,17 @@ export interface AgentAction {
   screenshot?: string;
 }
 
-export interface BrowserAgentSession {
+export interface BrowserAgentSessionData {
   id: string;
   agentId: string;
-  status: 'active' | 'paused' | 'completed' | 'failed';
+  status: "active" | "paused" | "completed" | "failed";
   startedAt: number;
   actions: AgentAction[];
   currentUrl?: string;
 }
 
 export interface BrowserAgentSessionProps {
-  session: BrowserAgentSession | null;
+  session: BrowserAgentSessionData | null;
   onSessionPause?: () => void;
   onSessionResume?: () => void;
   onSessionStop?: () => void;

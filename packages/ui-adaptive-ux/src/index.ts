@@ -16,7 +16,7 @@ export {
   AttentionFocusOverlay,
   WorkflowOptimizationHints,
   AdaptiveLayoutEngine,
-} from './index.tsx';
+} from "./index.tsx";
 
 // Types
 export type {
@@ -48,4 +48,4 @@ export type {
   WorkflowOptimizationHintsProps,
   LayoutConfiguration,
   AdaptiveLayoutEngineProps,
-} from './types';
+} from "./types";

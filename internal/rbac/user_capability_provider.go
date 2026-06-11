@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"gorm.io/gorm"
+	"github.com/functionfly/functionfly/internal/storage"
 )
 
 type UserCapabilityProvider struct {

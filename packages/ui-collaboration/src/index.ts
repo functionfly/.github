@@ -21,7 +21,7 @@ export {
   LivePairProgrammingView,
   AIHumanTaskAssignmentBoard,
   AIHumanTaskBoard,
-} from './index.tsx';
+} from "./index.tsx";
 
 // Types
 export type {
@@ -63,4 +63,4 @@ export type {
   TaskAssignee,
   CodePosition,
   CodeRange,
-} from './types';
+} from "./types";

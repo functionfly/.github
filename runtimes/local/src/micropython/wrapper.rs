@@ -94,6 +94,12 @@ impl WrapperGenerator {
   (import "host" "get_input" (func $host_get_input (param i32 i32) (result i32)))
   (import "host" "set_output" (func $host_set_output (param i32 i32)))
 
+  ;; MicroPython imports (provided by host via linker)
+  (import "env" "mp_js_do_exec" (func $env_mp_js_do_exec (param i32 i32) (result i32)))
+  (import "env" "mp_js_init" (func $env_mp_js_init (param i32) (result i32)))
+  (import "env" "malloc" (func $env_malloc (param i32) (result i32)))
+  (import "env" "free" (func $env_free (param i32)))
+
   ;; FunctionFly host function imports for Python bridge
   (import "host" "ff_log" (func $ff_log (param i32 i32 i32)))
   (import "host" "ff_get_env" (func $ff_get_env (param i32 i32 i32 i32) (result i32)))

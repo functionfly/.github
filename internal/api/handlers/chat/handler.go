@@ -170,6 +170,54 @@ func (h *Handler) DeleteSession(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
 }
 
+type UpdateSessionRequest struct {
+	Title  string `json:"title"`
+	Model  string `json:"model"`
+}
+
+func (h *Handler) UpdateSession(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+
+	vars := mux.Vars(r)
+	id, err := uuid.Parse(vars["id"])
+	if err != nil {
+		http.Error(w, `{"error":"Invalid session ID"}`, http.StatusBadRequest)
+		return
+	}
+
+	var req UpdateSessionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+
+	updates := map[string]interface{}{}
+	if req.Title != "" {
+		updates["title"] = req.Title
+	}
+	if req.Model != "" {
+		updates["model"] = req.Model
+	}
+
+	if len(updates) == 0 {
+		http.Error(w, `{"error":"No fields to update"}`, http.StatusBadRequest)
+		return
+	}
+
+	if err := h.repo.UpdateSession(r.Context(), id, user.TenantID, updates); err != nil {
+		h.logger.WithError(err).Error("Update session failed")
+		http.Error(w, `{"error":"Failed to update session"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "updated"})
+}
+
 type SendMessageRequest struct {
 	Content      string   `json:"content"`
 	SessionID    string   `json:"session_id"`
@@ -289,6 +337,7 @@ func (h *Handler) RegisterRoutes(router *mux.Router, authMw *middleware.AuthMidd
 	router.HandleFunc("/chat/sessions", authMw.RequireAuth(h.CreateSession)).Methods("POST")
 	router.HandleFunc("/chat/sessions", authMw.RequireAuth(h.ListSessions)).Methods("GET")
 	router.HandleFunc("/chat/sessions/{id}", authMw.RequireAuth(h.GetSession)).Methods("GET")
+	router.HandleFunc("/chat/sessions/{id}", authMw.RequireAuth(h.UpdateSession)).Methods("PATCH")
 	router.HandleFunc("/chat/sessions/{id}", authMw.RequireAuth(h.DeleteSession)).Methods("DELETE")
 	router.HandleFunc("/chat/messages", authMw.RequireAuth(h.SendMessage)).Methods("POST")
 	router.HandleFunc("/chat/models", authMw.RequireAuth(h.ListModels)).Methods("GET")

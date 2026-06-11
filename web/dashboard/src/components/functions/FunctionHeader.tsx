@@ -24,8 +24,8 @@
  * />
  */
 
-import * as React from "react";
-import { Link } from "react-router-dom";
+import * as React from 'react';
+import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
   Shield,
@@ -41,26 +41,22 @@ import {
   Play,
   Pause,
   Trash2,
-} from "lucide-react";
-import { cn, truncate } from "@/lib/utils";
-import type { FunctionHeaderData, FunctionHeaderProps, TrustTier } from "@/types";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+  AlertCircle,
+} from 'lucide-react';
+import { cn, truncate } from '@/lib/utils';
+import type { FunctionHeaderData, FunctionHeaderProps, TrustTier } from '@/types';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { StatusBadge } from "@/components/common/StatusBadge";
-import { ProviderIcon } from "@/components/common/ProviderIcon";
+} from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { StatusBadge } from '@/components/common/StatusBadge';
+import { ProviderIcon } from '@/components/common/ProviderIcon';
 
 // ============================================================================
 // Utility Functions
@@ -72,44 +68,44 @@ import { ProviderIcon } from "@/components/common/ProviderIcon";
 function getTrustTierConfig(tier: TrustTier) {
   const configs = {
     critical: {
-      color: "text-purple-400",
-      bgColor: "bg-purple-500/10",
-      borderColor: "border-purple-500/30",
-      iconColor: "#a855f7",
-      label: "Critical Trust",
-      description: "Maximum security and verification",
+      color: 'text-purple-400',
+      bgColor: 'bg-purple-500/10',
+      borderColor: 'border-purple-500/30',
+      iconColor: '#a855f7',
+      label: 'Critical Trust',
+      description: 'Maximum security and verification',
     },
     high: {
-      color: "text-emerald-400",
-      bgColor: "bg-emerald-500/10",
-      borderColor: "border-emerald-500/30",
-      iconColor: "#10b981",
-      label: "High Trust",
-      description: "Verified and highly trusted",
+      color: 'text-emerald-400',
+      bgColor: 'bg-emerald-500/10',
+      borderColor: 'border-emerald-500/30',
+      iconColor: '#10b981',
+      label: 'High Trust',
+      description: 'Verified and highly trusted',
     },
     medium: {
-      color: "text-brand-400",
-      bgColor: "bg-brand-500/10",
-      borderColor: "border-brand-500/30",
-      iconColor: "#6366f1",
-      label: "Medium Trust",
-      description: "Standard verification level",
+      color: 'text-brand-400',
+      bgColor: 'bg-brand-500/10',
+      borderColor: 'border-brand-500/30',
+      iconColor: '#6366f1',
+      label: 'Medium Trust',
+      description: 'Standard verification level',
     },
     low: {
-      color: "text-amber-400",
-      bgColor: "bg-amber-500/10",
-      borderColor: "border-amber-500/30",
-      iconColor: "#f59e0b",
-      label: "Low Trust",
-      description: "Basic verification only",
+      color: 'text-amber-400',
+      bgColor: 'bg-amber-500/10',
+      borderColor: 'border-amber-500/30',
+      iconColor: '#f59e0b',
+      label: 'Low Trust',
+      description: 'Basic verification only',
     },
     untrusted: {
-      color: "text-red-400",
-      bgColor: "bg-red-500/10",
-      borderColor: "border-red-500/30",
-      iconColor: "#ef4444",
-      label: "Untrusted",
-      description: "Not verified - use with caution",
+      color: 'text-red-400',
+      bgColor: 'bg-red-500/10',
+      borderColor: 'border-red-500/30',
+      iconColor: '#ef4444',
+      label: 'Untrusted',
+      description: 'Not verified - use with caution',
     },
   };
 
@@ -120,20 +116,20 @@ function getTrustTierConfig(tier: TrustTier) {
  * Get economic score color based on value
  */
 function getEconomicScoreColor(score: number): string {
-  if (score >= 80) return "text-emerald-400";
-  if (score >= 60) return "text-brand-400";
-  if (score >= 40) return "text-amber-400";
-  return "text-red-400";
+  if (score >= 80) return 'text-emerald-400';
+  if (score >= 60) return 'text-brand-400';
+  if (score >= 40) return 'text-amber-400';
+  return 'text-red-400';
 }
 
 /**
  * Get economic score background color
  */
 function getEconomicScoreBgColor(score: number): string {
-  if (score >= 80) return "bg-emerald-500/10";
-  if (score >= 60) return "bg-brand-500/10";
-  if (score >= 40) return "bg-amber-500/10";
-  return "bg-red-500/10";
+  if (score >= 80) return 'bg-emerald-500/10';
+  if (score >= 60) return 'bg-brand-500/10';
+  if (score >= 40) return 'bg-amber-500/10';
+  return 'bg-red-500/10';
 }
 
 // ============================================================================
@@ -152,7 +148,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error("Failed to copy:", err);
+      console.error('Failed to copy:', err);
     }
   };
 
@@ -175,7 +171,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>{copied ? "Copied!" : `Copy ${label}`}</p>
+          <p>{copied ? 'Copied!' : `Copy ${label}`}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -194,17 +190,15 @@ function TrustTierBadge({ tier, className }: { tier: TrustTier; className?: stri
         <TooltipTrigger asChild>
           <div
             className={cn(
-              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border",
+              'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border',
               config.bgColor,
               config.borderColor,
               className
             )}
             aria-label={`Trust tier: ${config.label}`}
           >
-            <Shield className={cn("h-3.5 w-3.5", config.color)} />
-            <span className={cn("text-xs font-medium", config.color)}>
-              {config.label}
-            </span>
+            <Shield className={cn('h-3.5 w-3.5', config.color)} />
+            <span className={cn('text-xs font-medium', config.color)}>{config.label}</span>
           </div>
         </TooltipTrigger>
         <TooltipContent>
@@ -225,14 +219,14 @@ function EconomicScoreBadge({ score, className }: { score: number; className?: s
         <TooltipTrigger asChild>
           <div
             className={cn(
-              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border-subtle",
+              'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border-subtle',
               getEconomicScoreBgColor(score),
               className
             )}
             aria-label={`Economic score: ${score}%`}
           >
-            <TrendingUp className={cn("h-3.5 w-3.5", getEconomicScoreColor(score))} />
-            <span className={cn("text-xs font-medium", getEconomicScoreColor(score))}>
+            <TrendingUp className={cn('h-3.5 w-3.5', getEconomicScoreColor(score))} />
+            <span className={cn('text-xs font-medium', getEconomicScoreColor(score))}>
               {score}%
             </span>
           </div>
@@ -253,7 +247,7 @@ function FxcertBadge({
   to,
   className,
 }: {
-  fxcert: FunctionHeaderData["fxcert"];
+  fxcert: FunctionHeaderData['fxcert'];
   /** Optional route to certificates (e.g. /registry/author/name/executions?tab=certificates) */
   to?: string;
   className?: string;
@@ -262,7 +256,7 @@ function FxcertBadge({
     return (
       <Badge
         variant="outline"
-        className={cn("gap-1.5 text-text-muted", className)}
+        className={cn('gap-1.5 text-text-muted', className)}
         aria-label="Certificate not verified"
       >
         <Shield className="h-3.5 w-3.5" />
@@ -274,7 +268,7 @@ function FxcertBadge({
   const badge = (
     <Badge
       variant="success"
-      className={cn("gap-1.5", to && "cursor-pointer hover:opacity-90", className)}
+      className={cn('gap-1.5', to && 'cursor-pointer hover:opacity-90', className)}
       aria-label="Verified certificate"
     >
       <ShieldCheck className="h-3.5 w-3.5" />
@@ -321,11 +315,11 @@ function FxcertBadge({
  */
 function RuntimeBadge({ runtime, className }: { runtime: string; className?: string }) {
   const runtimeLabels: Record<string, string> = {
-    workers: "Cloudflare Workers",
-    vercel: "Vercel",
-    fly: "Fly.io",
-    deno: "Deno Deploy",
-    "functionfly-edge": "FunctionFly Edge",
+    workers: 'Cloudflare Workers',
+    vercel: 'Vercel',
+    fly: 'Fly.io',
+    deno: 'Deno Deploy',
+    'functionfly-edge': 'FunctionFly Edge',
   };
 
   const label = runtimeLabels[runtime] || runtime;
@@ -333,7 +327,7 @@ function RuntimeBadge({ runtime, className }: { runtime: string; className?: str
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border-subtle bg-bg-tertiary",
+        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border-subtle bg-bg-tertiary',
         className
       )}
       aria-label={`Runtime: ${label}`}
@@ -341,6 +335,48 @@ function RuntimeBadge({ runtime, className }: { runtime: string; className?: str
       <ProviderIcon provider={runtime} size="sm" />
       <span className="text-xs font-medium text-text-primary">{label}</span>
     </div>
+  );
+}
+
+/**
+ * Report Issue Badge Component
+ * A sleek warning badge that lets users report if a function is down or doesn't work.
+ */
+function ReportIssueBadge({
+  functionName,
+  author,
+  onClick,
+}: {
+  functionName: string;
+  author: string;
+  onClick: () => void;
+}) {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={onClick}
+            className={cn(
+              'p-1.5 rounded-md border border-transparent',
+              'text-text-muted hover:text-amber-500 hover:border-amber-500/20 hover:bg-amber-500/5',
+              'transition-all cursor-pointer'
+            )}
+            aria-label="Report an issue with this function"
+          >
+            <AlertCircle className="h-4 w-4" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs">
+          <div className="space-y-1">
+            <p className="font-medium">Report a Function Issue</p>
+            <p className="text-xs text-text-muted">
+              Notify @{author} that {functionName} is down or not working.
+            </p>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
@@ -359,7 +395,7 @@ function HashDisplay({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div className={cn('flex items-center gap-2', className)}>
       <Hash className="h-3.5 w-3.5 text-text-muted flex-shrink-0" />
       <div className="flex items-center gap-1.5 min-w-0">
         <TooltipProvider>
@@ -391,7 +427,7 @@ function ResourceSignatureDisplay({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div className={cn('flex items-center gap-2', className)}>
       <Database className="h-3.5 w-3.5 text-text-muted flex-shrink-0" />
       <div className="flex items-center gap-1.5 min-w-0">
         <span className="text-xs text-text-muted">Resource:</span>
@@ -433,11 +469,12 @@ export function FunctionHeader({
   onDeploy,
   onTest,
   onShare,
+  onReportIssue,
 }: FunctionHeaderProps) {
   return (
     <div
       className={cn(
-        "w-full space-y-4 p-6 rounded-xl border border-border-subtle bg-bg-tertiary/50",
+        'w-full space-y-4 p-6 rounded-xl border border-border-subtle bg-bg-tertiary/50',
         className
       )}
       role="banner"
@@ -495,14 +532,17 @@ export function FunctionHeader({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Function options">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                aria-label="Function options"
+              >
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="bg-bg-tertiary border-white/8">
-              {onShare && (
-                <DropdownMenuItem onClick={onShare}>Share Function</DropdownMenuItem>
-              )}
+              {onShare && <DropdownMenuItem onClick={onShare}>Share Function</DropdownMenuItem>}
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-red-400">
                 <Trash2 className="h-4 w-4 mr-2" />
@@ -526,8 +566,8 @@ export function FunctionHeader({
           <FxcertBadge
             fxcert={data.fxcert}
             to={
-              data.id && data.id.includes("/")
-                ? `/registry/${data.id.split("/").slice(0, 2).join("/")}/executions?tab=certificates`
+              data.id && data.id.includes('/')
+                ? `/registry/${data.id.split('/').slice(0, 2).join('/')}/executions?tab=certificates`
                 : undefined
             }
           />
@@ -541,6 +581,13 @@ export function FunctionHeader({
             truncatedLength={20}
           />
           <ResourceSignatureDisplay signature={data.resourceSignature} />
+          {onReportIssue && (
+            <ReportIssueBadge
+              functionName={data.name}
+              author={data.id.split('/')[0] ?? ''}
+              onClick={onReportIssue}
+            />
+          )}
         </div>
       </div>
     </div>

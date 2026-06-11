@@ -6,31 +6,31 @@ description = "Firecracker MicroVM orchestrator for CPython execution"
 
 [dependencies]
 # Async runtime
-tokio = { version = "1.49.0", features = ["full"] }
+tokio = { version = "1.52.3", features = ["full"] }
 
 # HTTP client for Firecracker API
-reqwest = { version = "0.13.2", features = ["json", "rustls"], default-features = false }
+reqwest = { version = "0.13.4", features = ["json", "rustls"], default-features = false }
 
 # Serialization
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.149"
+serde_json = "1.0.150"
 
 # Logging
 tracing = "0.1.44"
-tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 
 # Error handling
 anyhow = "1.0.102"
 thiserror = "2.0.18"
 
 # Time handling
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { version = "0.4.45", features = ["serde"] }
 
 # UUID for VM identification
-uuid = { version = "1.6", features = ["v4", "serde"] }
+uuid = { version = "1.23.3", features = ["v4", "serde"] }
 
 # CLI parsing
-clap = { version = "4.5.60", features = ["derive"] }
+clap = { version = "4.6.1", features = ["derive"] }
 
 # Async channels
 async-channel = "2.1"
@@ -39,18 +39,18 @@ async-channel = "2.1"
 portable-pty = "0.9.0"
 
 # Network utilities
-socket2 = "0.6.2"
+socket2 = "0.6.4"
 
 # Vsock support
-vsock = "0.5.2"
+vsock = "0.5.4"
 
 # HTTP server (axum is lightweight)
-axum = { version = "0.8.8", features = ["json"] }
+axum = { version = "0.8.9", features = ["json"] }
 tower = "0.5.3"
-tower-http = { version = "0.6.8", features = ["cors"] }
+tower-http = { version = "0.6.11", features = ["cors"] }
 
 [dev-dependencies]
-tempfile = "3.25.0"
+tempfile = "3.27.0"
 
 # Test profile: balance between compile time and runtime speed
 [profile.test]

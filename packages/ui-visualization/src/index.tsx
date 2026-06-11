@@ -7,7 +7,7 @@
  */
 
 import * as React from "react";
-import { cn } from "@functionfly/ui-core";
+const cn = (...classes: (string | undefined | null | false)[]) => classes.filter(Boolean).join(" ");
 
 // ============================================================================
 // Types
@@ -345,7 +345,7 @@ export function TokenParticleSystem({
 }: TokenParticleSystemProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const [particles, setParticles] = React.useState<TokenParticle[]>(tokens);
-  const animationRef = React.useRef<number>();
+  const animationRef = React.useRef<number | undefined>(undefined);
 
   React.useEffect(() => {
     setParticles(tokens);
@@ -1244,7 +1244,7 @@ export function AIReasoningTree({
   const nodeHeight = direction === "horizontal" ? 50 : 40;
   const gap = direction === "horizontal" ? 60 : 40;
 
-  const renderNode = (node: ReasoningNode, depth = 0): JSX.Element => {
+  const renderNode = (node: ReasoningNode, depth = 0): React.ReactElement => {
     const isSelected = node.id === selectedNodeId;
     const color = typeColors[node.type];
     const hasChildren = node.children && node.children.length > 0;

@@ -49,4 +49,4 @@ export {
   SalesConversionAnalytics,
   MonetizationOptimizer,
   MarketplaceTrendRadar,
-} from './index.tsx';
+} from './components';

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 
 	statestore "github.com/functionfly/functionfly/internal/storage/state"
 )
@@ -216,6 +217,7 @@ func (r *Repository) UpdateFabricTrigger(ctx context.Context, tenantID, fabricID
 }
 
 // RestoreFabricSnapshot restores live fabric state from a snapshot by ID.
+// It creates a backup snapshot before restoring to allow rollback if needed.
 func (r *Repository) RestoreFabricSnapshot(ctx context.Context, tenantID, fabricID, snapshotID uuid.UUID) error {
 	state, err := r.stateRepo.GetStateByID(ctx, fabricID)
 	if err != nil {
@@ -228,6 +230,17 @@ func (r *Repository) RestoreFabricSnapshot(ctx context.Context, tenantID, fabric
 	var snapshot statestore.StateSnapshot
 	if err := r.db.WithContext(ctx).Where("id = ? AND state_id = ?", snapshotID, fabricID).First(&snapshot).Error; err != nil {
 		return fmt.Errorf("snapshot not found")
+	}
+
+	// Create a backup snapshot before restoring
+	backupLabel := fmt.Sprintf("pre-restore-backup-%s", snapshotID.String()[:8])
+	_, backupErr := r.CreateSnapshot(ctx, tenantID, fabricID, backupLabel)
+	if backupErr != nil {
+		// Log the error but continue with restore - backup failure shouldn't block restore
+		logrus.WithError(backupErr).WithFields(logrus.Fields{
+			"fabric_id":   fabricID,
+			"snapshot_id": snapshotID,
+		}).Warn("Failed to create backup snapshot before restore - continuing with restore anyway")
 	}
 
 	return r.stateRepo.RestoreSnapshot(ctx, fabricID, snapshot.SnapshotVersion, "dashboard", snapshotID.String())

@@ -20,6 +20,7 @@ require (
 	github.com/charmbracelet/bubbles v0.18.0
 	github.com/charmbracelet/bubbletea v0.27.0
 	github.com/charmbracelet/lipgloss v0.10.0
+	github.com/chromedp/chromedp v0.14.2
 	github.com/claywarren/upstash-go v1.3.0
 	github.com/dgraph-io/ristretto v0.2.0
 	github.com/dop251/goja v0.0.0-20260311135729-065cd970411c

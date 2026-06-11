@@ -118,3 +118,59 @@ type FeedbackAttachment struct {
 	S3Bucket    string    `json:"s3_bucket"`
 	CreatedAt   time.Time `json:"created_at"`
 }
+
+// BlogPageView represents a single page view on a blog post
+type BlogPageView struct {
+	ID          uuid.UUID  `json:"id"`
+	PostID      uuid.UUID  `json:"post_id"`
+	VisitorID   string     `json:"visitor_id,omitempty"`
+	Referrer    string     `json:"referrer,omitempty"`
+	UserAgent   string     `json:"user_agent,omitempty"`
+	IPAddress   string     `json:"ip_address,omitempty"`
+	Country     string     `json:"country,omitempty"`
+	City        string     `json:"city,omitempty"`
+	DeviceType  string     `json:"device_type,omitempty"`
+	Browser     string     `json:"browser,omitempty"`
+	OS          string     `json:"os,omitempty"`
+	ViewedAt    time.Time  `json:"viewed_at"`
+}
+
+// BlogDailyAnalytics represents aggregated daily analytics for a blog post
+type BlogDailyAnalytics struct {
+	ID             uuid.UUID `json:"id"`
+	PostID         uuid.UUID `json:"post_id"`
+	Date           time.Time `json:"date"`
+	Views          int       `json:"views"`
+	UniqueVisitors int       `json:"unique_visitors"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+// BlogAnalyticsSummary represents the overall analytics summary
+type BlogAnalyticsSummary struct {
+	TotalViews      int64   `json:"total_views"`
+	TotalPosts      int     `json:"total_posts"`
+	PublishedPosts  int     `json:"published_posts"`
+	TopPostID       *string `json:"top_post_id,omitempty"`
+	TopPostTitle    string  `json:"top_post_title,omitempty"`
+	TopPostViews    int64   `json:"top_post_views"`
+}
+
+// BlogViewsTimeSeries represents views over time
+type BlogViewsTimeSeries struct {
+	Date           time.Time `json:"date"`
+	Views          int       `json:"views"`
+	UniqueVisitors int       `json:"unique_visitors"`
+}
+
+// TopBlogPost represents a top performing blog post
+type TopBlogPost struct {
+	ID            uuid.UUID `json:"id"`
+	Title         string    `json:"title"`
+	Slug          string    `json:"slug"`
+	Author        string    `json:"author"`
+	PublishedAt   *string   `json:"published_at,omitempty"`
+	TotalViews    int64     `json:"total_views"`
+	UniqueViews   int64     `json:"unique_visitors"`
+	LastViewedAt  *string   `json:"last_viewed_at,omitempty"`
+}

@@ -1,4 +1,4 @@
-import { useSupportChat } from './SupportChat';
+import { useSupportChat } from './useSupportChat';
 
 // ============================================================================
 // Support Bubble Trigger

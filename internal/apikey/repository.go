@@ -117,6 +117,12 @@ func (r *Repository) Create(ctx context.Context, tenantID, userID uuid.UUID, req
 	return apiKey, plaintext, nil
 }
 
+// CreatePreGenerated inserts a new API key with a pre-generated plaintext key.
+// Unlike Create which generates the key internally, this method accepts an already-generated key.
+func (r *Repository) CreatePreGenerated(ctx context.Context, apiKey *APIKey) error {
+	return r.db.WithContext(ctx).Create(apiKey).Error
+}
+
 // GetByID retrieves an API key by its ID
 func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (*APIKey, error) {
 	var apiKey APIKey

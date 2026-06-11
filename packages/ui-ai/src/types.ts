@@ -417,7 +417,7 @@ export interface Agent {
 
 export interface MultiAgentConversationViewProps {
   agents: Agent[];
-  messages: AgentMessage[];
+  messages: AgentChatMessage[];
   currentAgentId?: string;
   onAgentSelect?: (agentId: string) => void;
   onMessageSend?: (agentId: string, content: string) => void;

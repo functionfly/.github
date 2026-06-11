@@ -25,6 +25,10 @@ func registerConnectorRoutes(
 		authMiddleware.RequireAuth(connectorHandler.HandleLinkConnector),
 	).Methods("POST", "OPTIONS")
 
+	// Public: OAuth callback from provider (GET - no session, uses state for tenant identification)
+	api.HandleFunc("/connectors/callback", connectorHandler.HandleOAuthCallbackGet).Methods("GET", "OPTIONS")
+
+	// Protected: OAuth callback from frontend page (POST - has session)
 	protected.HandleFunc("/connectors/callback",
 		authMiddleware.RequireAuth(connectorHandler.HandleOAuthCallback),
 	).Methods("POST", "OPTIONS")
@@ -36,6 +40,14 @@ func registerConnectorRoutes(
 	protected.HandleFunc("/connectors/{connector_id}/sync",
 		authMiddleware.RequireAuth(connectorHandler.HandleTriggerSync),
 	).Methods("POST", "OPTIONS")
+
+	protected.HandleFunc("/connectors/{connector_id}",
+		authMiddleware.RequireAuth(connectorHandler.HandleUpdateUserConnector),
+	).Methods("PATCH", "OPTIONS")
+
+	protected.HandleFunc("/connectors/oauth-url",
+		authMiddleware.RequireAuth(connectorHandler.HandleGetConnectorOAuthURL),
+	).Methods("GET", "OPTIONS")
 }
 
 func registerBrainRoutes(

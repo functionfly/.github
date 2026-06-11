@@ -1,5 +1,7 @@
 import react from "@astrojs/react";
 import sitemap from "@astrojs/sitemap";
+import sentry from "@sentry/astro";
+import vercel from "@astrojs/vercel";
 import { defineConfig } from "astro/config";
 
 const site = process.env.PUBLIC_SITE_URL || "https://functionfly.com";
@@ -17,6 +19,10 @@ export default defineConfig({
   site,
   integrations: [
     react(),
+    sentry({
+      dsn: process.env.SENTRY_DSN,
+      tracesSampleRate: 0.1,
+    }),
     sitemap({
       changefreq: "weekly",
       priority: 0.7,
@@ -30,11 +36,12 @@ export default defineConfig({
       },
     }),
   ],
+  adapter: vercel(),
   i18n: {
     defaultLocale: "en",
     locales: SUPPORTED_LOCALES,
     routing: {
-      prefixDefaultLocale: false, // / = English, /es/ = Spanish
+      prefixDefaultLocale: false,
       redirectToDefaultLocale: false,
     },
   },

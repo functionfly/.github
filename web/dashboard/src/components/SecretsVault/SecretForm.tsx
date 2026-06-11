@@ -227,10 +227,10 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
   const isSubmitting = createSecret.isPending || updateSecret.isPending || isEncrypting;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="secrets-form space-y-6">
       {/* Name field */}
       <div className="space-y-2">
-        <Label htmlFor="name">
+        <Label htmlFor="name" className="secrets-form-label">
           Name <span className="text-error">*</span>
         </Label>
         <Input
@@ -239,17 +239,17 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
           value={formData.name}
           onChange={(e) => handleChange('name', e.target.value)}
           disabled={isEditMode} // Name cannot be changed in edit mode
-          className={cn(errors.name && 'border-error')}
+          className={cn("secrets-search-input", errors.name && 'border-error')}
         />
-        {errors.name && <p className="text-sm text-error">{errors.name}</p>}
-        <p className="text-xs text-text-muted">
+        {errors.name && <p className="secrets-form-error">{errors.name}</p>}
+        <p className="secrets-form-hint">
           Unique identifier for this secret. Cannot be changed after creation.
         </p>
       </div>
 
       {/* Secret Type field */}
       <div className="space-y-2">
-        <Label htmlFor="secret_type">
+        <Label htmlFor="secret_type" className="secrets-form-label">
           Secret Type <span className="text-error">*</span>
         </Label>
         <Select
@@ -257,7 +257,7 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
           onValueChange={(value) => handleChange('secret_type', value)}
           disabled={isEditMode} // Type cannot be changed in edit mode
         >
-          <SelectTrigger className={cn(errors.secret_type && 'border-error')}>
+          <SelectTrigger className={cn("secrets-search-input", errors.secret_type && 'border-error')}>
             <SelectValue placeholder="Select type" />
           </SelectTrigger>
           <SelectContent>
@@ -278,21 +278,21 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
 
       {/* Description field */}
       <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
+        <Label htmlFor="description" className="secrets-form-label">Description</Label>
         <Textarea
           id="description"
           placeholder="What is this secret used for?"
           value={formData.description}
           onChange={(e) => handleChange('description', e.target.value)}
-          className={cn(errors.description && 'border-error')}
+          className={cn("secrets-search-input", errors.description && 'border-error')}
           rows={3}
         />
-        {errors.description && <p className="text-sm text-error">{errors.description}</p>}
+        {errors.description && <p className="secrets-form-error">{errors.description}</p>}
       </div>
 
       {/* Scopes field */}
       <div className="space-y-2">
-        <Label>Scopes</Label>
+        <Label className="secrets-form-label">Scopes</Label>
         <div className="flex flex-wrap gap-2">
           {AVAILABLE_SCOPES.map((scope) => (
             <button
@@ -300,10 +300,10 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
               type="button"
               onClick={() => toggleScope(scope.value)}
               className={cn(
-                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200',
+                'secrets-scope-btn',
                 formData.scopes?.includes(scope.value)
-                  ? 'bg-brand-500/20 text-brand-600 border border-brand-500/30'
-                  : 'bg-bg-tertiary text-text-muted border border-border-subtle hover:border-border-default'
+                  ? 'secrets-scope-btn-active'
+                  : ''
               )}
             >
               {scope.label}
@@ -311,14 +311,14 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
             </button>
           ))}
         </div>
-        <p className="text-xs text-text-muted">Select the access levels for this secret</p>
+        <p className="secrets-form-hint">Select the access levels for this secret</p>
       </div>
 
       {/* Plaintext secret field (only for create mode) */}
       {!isEditMode && (
         <>
           <div className="space-y-2">
-            <Label htmlFor="plaintext">
+            <Label htmlFor="plaintext" className="secrets-form-label">
               Secret Value <span className="text-error">*</span>
             </Label>
             <div className="relative">
@@ -328,7 +328,7 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
                   placeholder="Enter the secret value to encrypt..."
                   value={formData.plaintext}
                   onChange={(e) => handleChange('plaintext', e.target.value)}
-                  className={cn(errors.plaintext && 'border-error', 'pr-10 font-mono text-sm')}
+                  className={cn("secrets-search-input font-mono text-sm", errors.plaintext && 'border-error')}
                   rows={4}
                 />
               ) : (
@@ -338,31 +338,31 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
                   placeholder="Enter the secret value to encrypt..."
                   value={formData.plaintext}
                   onChange={(e) => handleChange('plaintext', e.target.value)}
-                  className={cn(errors.plaintext && 'border-error', 'pr-10 font-mono text-sm h-24')}
+                  className={cn("secrets-search-input font-mono text-sm h-24", errors.plaintext && 'border-error')}
                 />
               )}
               <button
                 type="button"
                 onClick={() => setShowPlaintext(!showPlaintext)}
-                className="absolute right-3 top-3 text-text-muted hover:text-text-primary"
+                className="absolute right-3 top-3 text-text-muted hover:text-text-primary secrets-toggle-btn"
               >
                 {showPlaintext ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            {errors.plaintext && <p className="text-sm text-error">{errors.plaintext}</p>}
+            {errors.plaintext && <p className="secrets-form-error">{errors.plaintext}</p>}
           </div>
 
           {/* Passphrase field */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="passphrase">
+              <Label htmlFor="passphrase" className="secrets-form-label">
                 Encryption Passphrase <span className="text-error">*</span>
               </Label>
               <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={handleGeneratePassphrase}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-brand-500 hover:text-brand-600 transition-colors"
+                  className="secrets-generate-btn"
                 >
                   <Wand2 className="h-3 w-3" />
                   Generate
@@ -371,7 +371,7 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
                   <button
                     type="button"
                     onClick={handleCopyPassphrase}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-text-muted hover:text-text-primary transition-colors ml-2"
+                    className="secrets-copy-btn ml-2"
                   >
                     {passphraseCopied ? (
                       <>
@@ -395,19 +395,19 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
                 placeholder="Enter a strong passphrase to encrypt this secret"
                 value={formData.passphrase}
                 onChange={(e) => handleChange('passphrase', e.target.value)}
-                className={cn(errors.passphrase && 'border-error', 'pr-10')}
+                className={cn("secrets-search-input pr-10", errors.passphrase && 'border-error')}
               />
               <button
                 type="button"
                 onClick={() => setShowPassphrase(!showPassphrase)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary secrets-toggle-btn"
               >
                 {showPassphrase ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
             {formData.passphrase && <PasswordStrengthIndicator password={formData.passphrase} />}
-            {errors.passphrase && <p className="text-sm text-error">{errors.passphrase}</p>}
-            <div className="rounded-lg bg-warning-glow border border-warning/20 p-3">
+            {errors.passphrase && <p className="secrets-form-error">{errors.passphrase}</p>}
+            <div className="secrets-warning-box">
               <p className="text-sm text-warning">
                 <strong>Important:</strong> This passphrase will be used to encrypt your secret. You
                 will need this same passphrase to decrypt the secret later. Store it securely - we
@@ -419,11 +419,11 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
       )}
 
       {/* Actions */}
-      <div className="flex justify-end gap-3 pt-4 border-t border-border-subtle">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+      <div className="secrets-form-actions">
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting} className="btn-secrets-cancel">
           Cancel
         </Button>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting} className="btn-secrets-create">
           {isSubmitting ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />

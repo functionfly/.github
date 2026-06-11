@@ -37,7 +37,6 @@ export type {
   TimelineEvent,
   AgentConversationTimelineProps,
   Agent,
-  AgentMessage,
   MultiAgentConversationViewProps,
 } from "./types";
 

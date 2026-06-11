@@ -26,6 +26,7 @@ import {
   useDeleteState,
 } from "@/hooks/useState";
 import type { SimpleState } from "@/types";
+import "./styles.css";
 
 export function StatePage() {
   const { t } = useTranslation();
@@ -88,99 +89,101 @@ export function StatePage() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="state-container state-content">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-brand-100 rounded-lg">
-            <Database className="h-6 w-6 text-brand-600" />
+      <div className="state-header">
+        <div className="state-header-left">
+          <div className="state-icon-container">
+            <Database className="state-icon" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-text-primary">Simple State</h1>
-            <p className="text-sm text-text-secondary">
+            <h1 className="state-title">Simple State</h1>
+            <p className="state-subtitle">
               Manage your key-value state storage
             </p>
           </div>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
-          <Plus className="h-4 w-4" />
-          {t("Create State")}
-        </Button>
+        <div className="state-header-actions">
+          <Button onClick={handleCreate} className="btn-state-primary">
+            <Plus className="h-4 w-4" />
+            {t("Create State")}
+          </Button>
+        </div>
       </div>
 
       {/* Search and Filters */}
-      <Card>
+      <Card className="state-search-card">
         <CardContent className="pt-6">
           <div className="flex gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+              <Search className="state-search-icon absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" />
               <Input
                 placeholder="Search by path or key..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="state-search-input pl-10"
               />
             </div>
             <Input
               placeholder="Filter by prefix..."
               value={prefixFilter}
               onChange={(e) => setPrefixFilter(e.target.value)}
-              className="w-64"
+              className="state-filter-input"
             />
           </div>
         </CardContent>
       </Card>
 
       {/* States Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>States ({filteredStates?.length || 0})</CardTitle>
+      <Card className="state-table-card">
+        <CardHeader className="state-table-header">
+          <CardTitle className="state-table-title">States ({filteredStates?.length || 0})</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="state-table-content">
           {isLoading ? (
-            <div className="space-y-4">
+            <div className="state-loading-container">
               {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
+                <Skeleton key={i} className="state-skeleton" />
               ))}
             </div>
           ) : error ? (
-            <div className="text-center py-8 text-error">
+            <div className="state-error">
               <p>Failed to load states: {(error as Error).message}</p>
             </div>
           ) : filteredStates?.length === 0 ? (
-            <div className="text-center py-8">
-              <Database className="h-12 w-12 mx-auto text-text-muted mb-4" />
-              <p className="text-text-secondary mb-4">No states found</p>
-              <Button onClick={handleCreate} variant="outline">
+            <div className="state-empty-state">
+              <Database className="state-empty-icon" />
+              <p className="state-empty-description mb-4">No states found</p>
+              <Button onClick={handleCreate} variant="outline" className="btn-state-outline">
                 Create your first state
               </Button>
             </div>
           ) : (
-            <Table>
+            <Table className="state-table">
               <TableHeader>
-                <TableRow>
-                  <TableHead>Path</TableHead>
-                  <TableHead>Key</TableHead>
-                  <TableHead>Value</TableHead>
-                  <TableHead>Version</TableHead>
-                  <TableHead>Updated</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
+                <TableRow className="state-table-header-row">
+                  <TableHead className="state-table-header-cell">Path</TableHead>
+                  <TableHead className="state-table-header-cell">Key</TableHead>
+                  <TableHead className="state-table-header-cell">Value</TableHead>
+                  <TableHead className="state-table-header-cell">Version</TableHead>
+                  <TableHead className="state-table-header-cell">Updated</TableHead>
+                  <TableHead className="state-table-header-cell state-table-cell-actions"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredStates?.map((state) => (
                   <TableRow
                     key={state.path}
-                    className="cursor-pointer hover:bg-muted/50"
+                    className="state-table-body-row"
                     onClick={() => handleView(state.path)}
                   >
-                    <TableCell className="font-mono text-sm">
+                    <TableCell className="state-table-cell state-table-cell-path">
                       {state.path}
                     </TableCell>
-                    <TableCell className="font-medium">{state.key}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-text-secondary max-w-[200px] truncate">
+                    <TableCell className="state-table-cell state-table-cell-key">{state.key}</TableCell>
+                    <TableCell className="state-table-cell">
+                      <div className="state-table-cell-value">
+                        <span className="state-table-cell-value-text">
                           {formatValue(state.value)}
                         </span>
                         <Badge className={getValueTypeColor(state.value)}>
@@ -188,35 +191,35 @@ export function StatePage() {
                         </Badge>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">v{state.version}</Badge>
+                    <TableCell className="state-table-cell">
+                      <Badge className="state-version-badge">v{state.version}</Badge>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-sm text-text-secondary">
+                    <TableCell className="state-table-cell">
+                      <div className="state-table-cell-updated">
                         <Clock className="h-3 w-3" />
                         {new Date(state.updatedAt).toLocaleDateString()}
                       </div>
                     </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
+                    <TableCell className="state-table-cell state-table-cell-actions" onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <Button variant="ghost" size="sm" className="btn-state-ghost h-8 w-8 p-0">
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent align="end" className="state-dropdown-content">
                           <DropdownMenuItem
                             onClick={() => handleView(state.path)}
-                            className="cursor-pointer"
+                            className="state-dropdown-item cursor-pointer"
                           >
-                            <ChevronRight className="mr-2 h-4 w-4" />
+                            <ChevronRight className="state-dropdown-item-icon mr-2 h-4 w-4" />
                             View Details
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleDelete(state.path)}
-                            className="cursor-pointer text-error focus:text-error"
+                            className="state-dropdown-item state-dropdown-item-danger cursor-pointer"
                           >
-                            <Trash2 className="mr-2 h-4 w-4" />
+                            <Trash2 className="state-dropdown-item-icon mr-2 h-4 w-4" />
                             Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>

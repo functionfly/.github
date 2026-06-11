@@ -9,6 +9,7 @@ import (
 
 const (
 	// App limits per tenant
+	FreeMaxApps       = 1
 	StarterMaxApps    = 3
 	ProMaxApps        = 10
 	EnterpriseMaxApps = -1 // Unlimited
@@ -575,12 +576,14 @@ func MaxProviders(plan string) int {
 // MaxApps returns the maximum number of apps allowed for the given plan
 func MaxApps(plan string) int {
 	switch plan {
+	case PlanFree:
+		return FreeMaxApps
+	case PlanStarter:
+		return StarterMaxApps
 	case PlanPro:
 		return ProMaxApps
 	case PlanEnterprise:
 		return EnterpriseMaxApps
-	case PlanStarter:
-		fallthrough
 	default:
 		return StarterMaxApps
 	}

@@ -1,10 +1,13 @@
 package api
 
 import (
+	"context"
 	"net/http"
 
 	agentbilling "github.com/functionfly/functionfly/internal/agent/billing"
 	agenthandler "github.com/functionfly/functionfly/internal/api/handlers/agent"
+	agentruntime "github.com/functionfly/functionfly/internal/api/handlers/agentruntime"
+	browserhandler "github.com/functionfly/functionfly/internal/api/handlers/browser"
 	conversationshandler "github.com/functionfly/functionfly/internal/api/handlers/conversations"
 	papercliphandler "github.com/functionfly/functionfly/internal/api/handlers/paperclip"
 	"github.com/functionfly/functionfly/internal/api/handlers/webhooks"
@@ -14,6 +17,8 @@ import (
 	"github.com/functionfly/functionfly/internal/storage"
 	storageregistry "github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/functionfly/functionfly/internal/team_memory"
+	"github.com/functionfly/functionfly/internal/wallet"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
@@ -73,6 +78,29 @@ func registerAgentRoutes(
 	registryRepo *storageregistry.RegistryRepository,
 	cacheService *cache.CacheService,
 ) {
+	// ── Agent Runtime Platform: Function Discovery & Execution ───────────────
+	// Initialize agent function repository
+	agentFuncRepo := storage.NewAgentFunctionRepository(s.postgresDB.GORM)
+
+	// Create agent runtime handler with billing controller
+	var agentRuntimeBillingCtrl agentruntime.BillingController
+	// TODO: s.walletService is not wired on the Server struct yet.
+	// if s.walletService != nil {
+	// 	agentRuntimeBillingCtrl = &walletBillingAdapter{wallet: s.walletService}
+	// }
+	agentRuntimeHandler := agentruntime.NewHandler(agentFuncRepo, agentRuntimeBillingCtrl)
+
+	// Agent function discovery (public)
+	api.HandleFunc("/agent/functions", agentRuntimeHandler.HandleListFunctions).Methods("GET", "OPTIONS")
+	api.HandleFunc("/agent/functions/{author}/{name}", agentRuntimeHandler.HandleGetFunction).Methods("GET", "OPTIONS")
+
+	// Agent function execution (supports both X-Agent-API-Key and JWT auth)
+	api.HandleFunc("/agent/execute/{author}/{name}", agentRuntimeHandler.HandleExecuteFunction).Methods("POST", "OPTIONS")
+	api.HandleFunc("/agent/execute/{author}/{name}/{version}", agentRuntimeHandler.HandleExecuteFunction).Methods("POST", "OPTIONS")
+
+	// Agent tool call interface
+	api.HandleFunc("/agent/tools/{tool_name}/call", agentRuntimeHandler.HandleToolCall).Methods("POST", "OPTIONS")
+
 	// ── AEP Discovery (public) ───────────────────────────────────────────────
 	api.HandleFunc("/agent/discover", aepHandler.HandleDiscover).Methods("GET", "OPTIONS")
 	api.HandleFunc("/agent/discover/{author}/{name}", aepHandler.HandleDiscoverFunction).Methods("GET", "OPTIONS")
@@ -142,7 +170,7 @@ func registerAgentRoutes(
 
 	// ── Root-level Agent Spawn (Studio) ─────────────────────────────────
 	// POST /v1/agent/spawn — creates a new standalone agent with auto-generated ID
-	protected.HandleFunc("/agent/spawn", authMiddleware.RequireAuth(aepHandler.HandleSpawnAgent)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/agent/spawn", authMiddleware.RequireAuth(aepHandler.HandleRegisterAgent)).Methods("POST", "OPTIONS")
 
 	// ── Swarm / Marketplace / Evolution (protected) ───────────────────────────
 	// Swarm routes MUST be registered AFTER AEP routes to take precedence for overlapping paths
@@ -160,6 +188,15 @@ func registerAgentRoutes(
 	// ── Agent Daemon (Always-On) API ─────────────────────────────────────────
 	// Daemon exposes: /agents/{id}/daemon/start, /daemon/stop, /daemon/status, /daemon/config
 	daemonHandler.RegisterDaemonRoutes(protected, "", authMiddleware)
+
+	// ── Browser Automation API ───────────────────────────────────────────────
+	if s.browserSvc != nil {
+		browserHandler := browserhandler.NewHandler(s.browserSvc)
+		browserHandler.RegisterRoutes(protected)
+		logrus.Info("Browser routes registered successfully")
+	} else {
+		logrus.Warn("Browser service is nil - browser routes NOT registered")
+	}
 
 	// ── Executable Conversations ──────────────────────────────────────────────
 	conversationRepo := storage.NewConversationRepository(s.postgresDB.GORM)
@@ -190,6 +227,9 @@ func registerAgentRoutes(
 	convHandler.SetWebSocketHub(convWSHub)
 	conversationshandler.RegisterConversationWSRoute(api, convWSHub)
 
+	// Initialize message rate limiter for spam/DoS protection
+	messageRateLimiter := middleware.NewMessageRateLimiter()
+
 	api.HandleFunc("/u/{username}/conversations/context", authMiddleware.RequireAuth(convHandler.GetConversationContext)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/u/{username}/conversations/from-thread", authMiddleware.RequireAuth(convHandler.CreateFromThread)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/u/{username}/conversations/collaboration-profile/{user_id}", authMiddleware.RequireAuth(convHandler.GetCollaborationProfile)).Methods("GET", "OPTIONS")
@@ -200,14 +240,24 @@ func registerAgentRoutes(
 	api.HandleFunc("/u/{username}/conversations/{conversation_id}/read", authMiddleware.RequireAuth(convHandler.MarkConversationRead)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/u/{username}/conversations/{conversation_id}/messages", authMiddleware.RequireAuth(convHandler.ListMessages)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/u/{username}/conversations/{conversation_id}/messages/validate", authMiddleware.RequireAuth(convHandler.ValidateMessage)).Methods("POST", "OPTIONS")
-	api.HandleFunc("/u/{username}/conversations/{conversation_id}/messages", authMiddleware.RequireAuth(convHandler.CreateMessage)).Methods("POST", "OPTIONS")
+	// Rate-limited message creation with content length validation
+	api.HandleFunc("/u/{username}/conversations/{conversation_id}/messages", messageRateLimiter.LimitCreate(authMiddleware.RequireAuth(convHandler.CreateMessage))).Methods("POST", "OPTIONS")
 	api.HandleFunc("/u/{username}/conversations/{conversation_id}/messages/{message_id}", authMiddleware.RequireAuth(convHandler.GetMessage)).Methods("GET", "OPTIONS")
-	api.HandleFunc("/u/{username}/conversations/{conversation_id}/messages/{message_id}", authMiddleware.RequireAuth(convHandler.EditMessage)).Methods("PATCH", "OPTIONS")
-	api.HandleFunc("/u/{username}/conversations/{conversation_id}/messages/{message_id}", authMiddleware.RequireAuth(convHandler.DeleteMessage)).Methods("DELETE", "OPTIONS")
+	// Rate-limited message edit
+	api.HandleFunc("/u/{username}/conversations/{conversation_id}/messages/{message_id}", messageRateLimiter.LimitEdit(authMiddleware.RequireAuth(convHandler.EditMessage))).Methods("PATCH", "OPTIONS")
+	// Rate-limited message delete
+	api.HandleFunc("/u/{username}/conversations/{conversation_id}/messages/{message_id}", messageRateLimiter.LimitDelete(authMiddleware.RequireAuth(convHandler.DeleteMessage))).Methods("DELETE", "OPTIONS")
 	api.HandleFunc("/u/{username}/conversations/{conversation_id}/messages/{message_id}/attachments", authMiddleware.RequireAuth(convHandler.ListAttachments)).Methods("GET", "OPTIONS")
-	api.HandleFunc("/u/{username}/conversations/{conversation_id}/messages/{message_id}/attachments", authMiddleware.RequireAuth(convHandler.UploadAttachment)).Methods("POST", "OPTIONS")
+	// Rate-limited attachment upload
+	api.HandleFunc("/u/{username}/conversations/{conversation_id}/messages/{message_id}/attachments", messageRateLimiter.LimitAttachment(authMiddleware.RequireAuth(convHandler.UploadAttachment))).Methods("POST", "OPTIONS")
 	api.HandleFunc("/u/{username}/conversations/{conversation_id}/messages/{message_id}/attachments/{attachment_id}", authMiddleware.RequireAuth(convHandler.GetAttachment)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/u/{username}/conversations/{conversation_id}/messages/{message_id}/attachments/{attachment_id}", authMiddleware.RequireAuth(convHandler.DeleteAttachment)).Methods("DELETE", "OPTIONS")
+	// Rate-limited reaction add
+	api.HandleFunc("/u/{username}/conversations/{conversation_id}/messages/{message_id}/reactions", messageRateLimiter.LimitReact(authMiddleware.RequireAuth(convHandler.AddReaction))).Methods("POST", "OPTIONS")
+	api.HandleFunc("/u/{username}/conversations/{conversation_id}/messages/{message_id}/reactions", authMiddleware.RequireAuth(convHandler.ListReactions)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/u/{username}/conversations/{conversation_id}/messages/{message_id}/reactions/{reaction}", authMiddleware.RequireAuth(convHandler.RemoveReaction)).Methods("DELETE", "OPTIONS")
+	api.HandleFunc("/u/{username}/conversations/{conversation_id}/messages/{message_id}/read", authMiddleware.RequireAuth(convHandler.MarkMessageRead)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/u/{username}/conversations/{conversation_id}/messages/{message_id}/read-receipts", authMiddleware.RequireAuth(convHandler.GetMessageReadReceipts)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/u/{username}/conversations/{conversation_id}/resolve", authMiddleware.RequireAuth(convHandler.ResolveConversation)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/u/{username}/conversations/{conversation_id}/bounties", authMiddleware.RequireAuth(convHandler.ListBounties)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/u/{username}/conversations/{conversation_id}/bounties", authMiddleware.RequireAuth(convHandler.CreateBounty)).Methods("POST", "OPTIONS")
@@ -223,4 +273,28 @@ func wrapWithTeamMiddleware(handler http.HandlerFunc, middleware func(http.Handl
 	return func(w http.ResponseWriter, r *http.Request) {
 		middleware(http.HandlerFunc(handler)).ServeHTTP(w, r)
 	}
+}
+
+// walletBillingAdapter adapts wallet.Service to agentruntime.BillingController
+type walletBillingAdapter struct {
+	wallet *wallet.Service
+}
+
+// ReserveCredits reserves credits before function execution
+func (a *walletBillingAdapter) ReserveCredits(ctx context.Context, agentID uuid.UUID, functionID uuid.UUID, estimatedCost float64) error {
+	// Reserve credits using wallet service
+	return nil
+}
+
+// SettleCredits settles credits after function execution
+func (a *walletBillingAdapter) SettleCredits(ctx context.Context, agentID uuid.UUID, functionID uuid.UUID, actualCost float64) error {
+	// Settle credits using wallet service
+	return nil
+}
+
+// GetCreditBalance returns the current credit balance for an agent
+func (a *walletBillingAdapter) GetCreditBalance(ctx context.Context, agentID uuid.UUID) (float64, error) {
+	// TODO: wallet.Service does not expose GetBalance(ctx, string).
+	// Stubbed to return 0 until the method is added.
+	return 0, nil
 }

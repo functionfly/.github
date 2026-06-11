@@ -1,15 +1,17 @@
-import { useState, useEffect, useMemo } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { DataTable } from "@/components/ui/data-table";
-import { ToggleButtonGroup } from "@/components/ui";
-import type { ColumnDef } from "@tanstack/react-table";
+import { useState, useEffect, useMemo } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { usePageTitle } from '@/hooks';
+import './AgentsPage/styles.css';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { DataTable } from '@/components/ui/data-table';
+import { ToggleButtonGroup } from '@/components/ui';
+import type { ColumnDef } from '@tanstack/react-table';
 import {
   Dialog,
   DialogContent,
@@ -17,8 +19,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { agentApi, type AgentIdentity } from "@/api/agent";
+} from '@/components/ui/dialog';
+import { agentApi, type AgentIdentity } from '@/api/agent';
 import {
   Bot,
   Plus,
@@ -34,13 +36,14 @@ import {
   List,
   Edit3,
   Eye,
-} from "lucide-react";
-import { ROUTES } from "@/lib/constants";
-import { canCreateAgent, getAgentsLimit, hasFeature } from "@/lib/plan-utils";
-import { usePlan } from "@/hooks/usePlan";
-import { toast } from "sonner";
+} from 'lucide-react';
+import { ROUTES } from '@/lib/constants';
+import { canCreateAgent, getAgentsLimit, hasFeature } from '@/lib/plan-utils';
+import { usePlan } from '@/hooks/usePlan';
+import { toast } from 'sonner';
 
 export function AgentsPage() {
+  usePageTitle('Agents');
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { username } = useParams();
@@ -48,32 +51,31 @@ export function AgentsPage() {
   const [agents, setAgents] = useState<AgentIdentity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [createSubmitting, setCreateSubmitting] = useState(false);
-  const [createForm, setCreateForm] = useState({ agentId: "", name: "", description: "" });
+  const [createForm, setCreateForm] = useState({ agentId: '', name: '', description: '' });
   const [createdApiKey, setCreatedApiKey] = useState<string | null>(null);
   const [apiKeyCopied, setApiKeyCopied] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const agentCount = agents.length;
   const canCreate = canCreateAgent(plan, agentCount);
-  const agentsUnlocked = hasFeature(plan, "AGENTS");
+  const agentsUnlocked = hasFeature(plan, 'AGENTS');
   const agentsLimit = getAgentsLimit(plan);
 
   const slugFrom = (s: string) =>
-    (s ?? "")
+    (s ?? '')
       .trim()
       .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9-]/g, "");
-  const agentIdRaw = createForm.agentId ?? "";
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
+  const agentIdRaw = createForm.agentId ?? '';
   const agentIdInvalid =
-    agentIdRaw.trim() !== "" && /[^a-z0-9-]/.test(agentIdRaw.trim().toLowerCase());
+    agentIdRaw.trim() !== '' && /[^a-z0-9-]/.test(agentIdRaw.trim().toLowerCase());
   const normalizedAgentId = slugFrom(agentIdRaw);
-  const existingAgentIds = agents.map((a) => (a.agentId ?? "").toLowerCase());
-  const agentIdTaken =
-    normalizedAgentId.length > 0 && existingAgentIds.includes(normalizedAgentId);
+  const existingAgentIds = agents.map((a) => (a.agentId ?? '').toLowerCase());
+  const agentIdTaken = normalizedAgentId.length > 0 && existingAgentIds.includes(normalizedAgentId);
   const [agentIdTakenFromSubmit, setAgentIdTakenFromSubmit] = useState(false);
   const showAgentIdTaken = agentIdTaken || agentIdTakenFromSubmit;
 
@@ -87,7 +89,7 @@ export function AgentsPage() {
       const response = await agentApi.listAgents({ limit: 100 });
       setAgents(response.agents);
     } catch (err) {
-      console.error("Failed to load agents:", err);
+      console.error('Failed to load agents:', err);
       setError(t('agents.failedToLoad'));
     } finally {
       setLoading(false);
@@ -96,8 +98,8 @@ export function AgentsPage() {
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const agentId = (createForm.agentId ?? "").trim().toLowerCase().replace(/\s+/g, "-");
-    const name = (createForm.name ?? "").trim();
+    const agentId = (createForm.agentId ?? '').trim().toLowerCase().replace(/\s+/g, '-');
+    const name = (createForm.name ?? '').trim();
     if (!agentId || !name) {
       toast.error(t('agents.agentIdNameRequired'));
       return;
@@ -111,14 +113,30 @@ export function AgentsPage() {
       });
       setCreatedApiKey(res.api_key);
       toast.success(t('agents.agentCreatedSuccess'));
-      setCreateForm({ agentId: "", name: "", description: "" });
+      setCreateForm({ agentId: '', name: '', description: '' });
     } catch (err: unknown) {
-      const res = err && typeof err === "object" && "response" in err ? (err as { response?: { status?: number; data?: { error?: { code?: string; message?: string }; message?: string } } }).response : undefined;
+      const res =
+        err && typeof err === 'object' && 'response' in err
+          ? (
+              err as {
+                response?: {
+                  status?: number;
+                  data?: { error?: { code?: string; message?: string }; message?: string };
+                };
+              }
+            ).response
+          : undefined;
       const status = res?.status;
       const data = res?.data;
-      const code = typeof data?.error === "object" ? data.error.code : undefined;
-      const message = typeof data?.error === "object" ? data.error.message : data?.message ?? (typeof data?.error === "string" ? data.error : null);
-      const isTaken = status === 409 || code === "AGENT_ID_TAKEN" || (typeof message === "string" && /already|duplicate|in use/i.test(message));
+      const code = typeof data?.error === 'object' ? data.error.code : undefined;
+      const message =
+        typeof data?.error === 'object'
+          ? data.error.message
+          : (data?.message ?? (typeof data?.error === 'string' ? data.error : null));
+      const isTaken =
+        status === 409 ||
+        code === 'AGENT_ID_TAKEN' ||
+        (typeof message === 'string' && /already|duplicate|in use/i.test(message));
       if (isTaken) {
         setAgentIdTakenFromSubmit(true);
         toast.error(t('agents.agentIdInUse'));
@@ -135,7 +153,7 @@ export function AgentsPage() {
       setCreatedApiKey(null);
       setApiKeyCopied(false);
       setAgentIdTakenFromSubmit(false);
-      setCreateForm({ agentId: "", name: "", description: "" });
+      setCreateForm({ agentId: '', name: '', description: '' });
       loadAgents();
     }
     setCreateOpen(open);
@@ -155,106 +173,115 @@ export function AgentsPage() {
 
   const filteredAgents = agents.filter(
     (agent) =>
-      (agent.name ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (agent.agentId ?? "").toLowerCase().includes(searchQuery.toLowerCase())
+      (agent.name ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (agent.agentId ?? '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "active":
-        return <Badge className="bg-green-500">{t('agents.active')}</Badge>;
-      case "suspended":
-        return <Badge className="bg-red-500">{t('agents.suspended')}</Badge>;
-      case "pending":
-        return <Badge className="bg-yellow-500">{t('agents.pending')}</Badge>;
+      case 'active':
+        return <Badge className="status-badge status-badge-active">{t('agents.active')}</Badge>;
+      case 'suspended':
+        return (
+          <Badge className="status-badge status-badge-suspended">{t('agents.suspended')}</Badge>
+        );
+      case 'pending':
+        return <Badge className="status-badge status-badge-pending">{t('agents.pending')}</Badge>;
       default:
-        return <Badge>{status}</Badge>;
+        return <Badge className="status-badge">{status}</Badge>;
     }
   };
 
   const getSwarmRoleBadge = (role?: string) => {
     if (!role) return null;
-    const colors: Record<string, string> = {
-      worker: "bg-blue-500",
-      manager: "bg-purple-500",
-      infrastructure: "bg-orange-500",
+    const roleClass: Record<string, string> = {
+      worker: 'swarm-role-badge swarm-role-worker',
+      manager: 'swarm-role-badge swarm-role-manager',
+      infrastructure: 'swarm-role-badge swarm-role-infrastructure',
     };
-    return <Badge className={colors[role] || "bg-gray-500"}>{role}</Badge>;
+    return <Badge className={roleClass[role] || 'swarm-role-badge'}>{role}</Badge>;
   };
 
   // Define table columns for list view
-  const columns = useMemo<ColumnDef<AgentIdentity>[]>(() => [
-    {
-      accessorKey: 'name',
-      header: t('agents.name'),
-      size: 200,
-      cell: ({ row }) => (
-        <div className="flex flex-col">
-          <span className="font-medium">{row.original.name}</span>
-          <span className="text-xs text-muted-foreground font-mono">{row.original.agentId}</span>
-        </div>
-      ),
-    },
-    {
-      accessorKey: 'status',
-      header: t('agents.status'),
-      size: 120,
-      cell: ({ row }) => getStatusBadge(row.original.status),
-    },
-    {
-      accessorKey: 'swarmRole',
-      header: t('agents.swarmRole'),
-      size: 140,
-      cell: ({ row }) => getSwarmRoleBadge(row.original.swarmRole) || <span className="text-muted-foreground">-</span>,
-    },
-    {
-      accessorKey: 'createdAt',
-      header: t('agents.created'),
-      size: 150,
-      cell: ({ row }) => {
-        const date = new Date(row.original.createdAt);
-        return (
-          <span className="text-sm text-muted-foreground">
-            {date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </span>
-        );
+  const columns = useMemo<ColumnDef<AgentIdentity>[]>(
+    () => [
+      {
+        accessorKey: 'name',
+        header: t('agents.name'),
+        size: 200,
+        cell: ({ row }) => (
+          <div className="flex flex-col">
+            <span className="font-medium">{row.original.name}</span>
+            <span className="text-xs text-muted-foreground font-mono">{row.original.agentId}</span>
+          </div>
+        ),
       },
-    },
-    {
-      id: 'actions',
-      header: t('agents.actions'),
-      size: 150,
-      enableSorting: false,
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate(`/agents/${row.original.id}`)}
-            className="h-8 w-8"
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate(`/agents/${row.original.id}/edit`)}
-            className="h-8 w-8"
-          >
-            <Edit3 className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-red-500 hover:text-red-600"
-            onClick={() => handleDelete(row.original)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
-    },
-  ], [navigate]);
+      {
+        accessorKey: 'status',
+        header: t('agents.status'),
+        size: 120,
+        cell: ({ row }) => getStatusBadge(row.original.status),
+      },
+      {
+        accessorKey: 'swarmRole',
+        header: t('agents.swarmRole'),
+        size: 140,
+        cell: ({ row }) =>
+          getSwarmRoleBadge(row.original.swarmRole) || (
+            <span className="text-muted-foreground">-</span>
+          ),
+      },
+      {
+        accessorKey: 'createdAt',
+        header: t('agents.created'),
+        size: 150,
+        cell: ({ row }) => {
+          const date = new Date(row.original.createdAt);
+          return (
+            <span className="text-sm text-muted-foreground">
+              {date.toLocaleDateString()}{' '}
+              {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          );
+        },
+      },
+      {
+        id: 'actions',
+        header: t('agents.actions'),
+        size: 150,
+        enableSorting: false,
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(`/agents/${row.original.id}`)}
+              className="h-8 w-8"
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(`/agents/${row.original.id}/edit`)}
+              className="h-8 w-8"
+            >
+              <Edit3 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-red-500 hover:text-red-600"
+              onClick={() => handleDelete(row.original)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [navigate]
+  );
 
   const handleDelete = async (agent: AgentIdentity) => {
     if (!confirm(t('agents.confirmDelete', { name: agent.name ?? agent.agentId }))) {
@@ -286,8 +313,8 @@ export function AgentsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+      <div className="agent-loading-container">
+        <Loader2 className="agent-loading-spinner" />
       </div>
     );
   }
@@ -295,22 +322,33 @@ export function AgentsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="agent-header">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Bot className="h-8 w-8" />
+          <h1 className="agent-title flex items-center gap-2">
+            <Bot className="agent-avatar-icon h-8 w-8" />
             {username ? `${username}'s agents` : t('agents.title')}
           </h1>
-          <p className="text-muted-foreground mt-1">
-            {t('agents.manageDescription')}
-          </p>
+          <p className="agent-subtitle">{t('agents.manageDescription')}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="agent-header-actions">
           <Button variant="outline" onClick={() => navigate(ROUTES.SDK_INTEGRATIONS)}>
             <Puzzle className="h-4 w-4 mr-2" />
             {t('agents.sdkSetup')}
           </Button>
-          <Button onClick={() => navigate(ROUTES.AGENT_NEW)} disabled={!canCreate} title={!agentsUnlocked ? t('agents.agentsOnStarter') : !canCreate ? t('agents.planLimitReached', { count: agentCount, limit: agentsLimit >= 10000 ? "∞" : agentsLimit }) : undefined}>
+          <Button
+            onClick={() => navigate(ROUTES.AGENT_NEW)}
+            disabled={!canCreate}
+            title={
+              !agentsUnlocked
+                ? t('agents.agentsOnStarter')
+                : !canCreate
+                  ? t('agents.planLimitReached', {
+                      count: agentCount,
+                      limit: agentsLimit >= 10000 ? '∞' : agentsLimit,
+                    })
+                  : undefined
+            }
+          >
             <Plus className="h-4 w-4 mr-2" />
             {t('agents.createAgent')}
           </Button>
@@ -320,14 +358,14 @@ export function AgentsPage() {
         <p className="text-sm text-muted-foreground text-right md:text-left">
           {!agentsUnlocked ? (
             <>
-              {t('agents.upgradeToRegister')}{" "}
+              {t('agents.upgradeToRegister')}{' '}
               <Link to={ROUTES.PRICING} className="text-brand-500 hover:underline">
                 {t('agents.viewPlans')}
               </Link>
             </>
           ) : (
             <>
-              {t('agents.agentLimitReached')}{" "}
+              {t('agents.agentLimitReached')}{' '}
               <Link to={ROUTES.PRICING} className="text-brand-500 hover:underline">
                 {t('agents.upgrade')}
               </Link>
@@ -338,15 +376,15 @@ export function AgentsPage() {
 
       {/* Create Agent modal */}
       <Dialog open={createOpen} onOpenChange={handleCreateClose}>
-        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+        <DialogContent className="agent-dialog-content sm:max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="agent-dialog-header">
+            <DialogTitle className="agent-dialog-title flex items-center gap-2">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/15 text-brand-500">
                 <Bot className="h-4 w-4" />
               </span>
               {t('agents.createAgent')}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="agent-dialog-description">
               {t('agents.registerNewAgent')}
             </DialogDescription>
           </DialogHeader>
@@ -397,9 +435,11 @@ export function AgentsPage() {
                     setCreateForm((f) => ({
                       ...f,
                       name,
-                      agentId: f.agentId === slugFrom(f.name) || !f.agentId.trim() ? nextSlug : f.agentId,
+                      agentId:
+                        f.agentId === slugFrom(f.name) || !f.agentId.trim() ? nextSlug : f.agentId,
                     }));
                   }}
+                  className="agent-input"
                   autoFocus
                 />
               </div>
@@ -411,9 +451,16 @@ export function AgentsPage() {
                   value={createForm.agentId}
                   onChange={(e) => {
                     setAgentIdTakenFromSubmit(false);
-                    setCreateForm((f) => ({ ...f, agentId: e.target.value.toLowerCase().replace(/\s+/g, "-") }));
+                    setCreateForm((f) => ({
+                      ...f,
+                      agentId: e.target.value.toLowerCase().replace(/\s+/g, '-'),
+                    }));
                   }}
-                  className={showAgentIdTaken ? "font-mono border-red-500 focus-visible:ring-red-500" : "font-mono"}
+                  className={
+                    showAgentIdTaken
+                      ? 'agent-input border-red-500 focus-visible:ring-red-500'
+                      : 'agent-input'
+                  }
                 />
                 {showAgentIdTaken ? (
                   <p className="text-xs text-red-600 dark:text-red-400">
@@ -435,20 +482,22 @@ export function AgentsPage() {
                   value={createForm.description}
                   onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
                   rows={3}
-                  className="resize-none"
+                  className="agent-textarea"
                 />
               </div>
-              <DialogFooter className="gap-2 sm:gap-0">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => handleCreateClose(false)}
-                >
+              <DialogFooter className="agent-dialog-footer gap-2 sm:gap-0">
+                <Button type="button" variant="outline" onClick={() => handleCreateClose(false)}>
                   {t('agents.cancel')}
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createSubmitting || agentIdInvalid || showAgentIdTaken || !(createForm.name ?? "").trim() || !(createForm.agentId ?? "").trim()}
+                  disabled={
+                    createSubmitting ||
+                    agentIdInvalid ||
+                    showAgentIdTaken ||
+                    !(createForm.name ?? '').trim() ||
+                    !(createForm.agentId ?? '').trim()
+                  }
                 >
                   {createSubmitting ? (
                     <>
@@ -467,13 +516,13 @@ export function AgentsPage() {
 
       {/* Search and Controls */}
       <div className="flex flex-col sm:flex-row gap-4">
-        <Card className="flex-1">
+        <Card className="agent-search-card flex-1">
           <CardContent className="pt-6">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="agent-search-icon absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" />
               <Input
                 placeholder={t('agents.searchPlaceholder')}
-                className="pl-10"
+                className="agent-search-input pl-10"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -489,7 +538,7 @@ export function AgentsPage() {
           ]}
           variant="outline"
           size="sm"
-          className="h-fit"
+          className="agent-view-toggle h-fit"
         />
       </div>
 
@@ -502,25 +551,23 @@ export function AgentsPage() {
       {/* Agents Display - Grid or List */}
       {filteredAgents.length === 0 ? (
         <Card>
-          <CardContent className="pt-6 text-center py-12">
-            <Bot className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium">{t('agents.noAgentsFound')}</h3>
-            <p className="text-muted-foreground mt-1">
-              {searchQuery
-                ? t('agents.adjustSearch')
-                : t('agents.createFirstAgent')}
+          <CardContent className="agent-empty-state">
+            <Bot className="agent-empty-icon h-12 w-12 mx-auto mb-4" />
+            <h3 className="agent-empty-title">{t('agents.noAgentsFound')}</h3>
+            <p className="agent-empty-description">
+              {searchQuery ? t('agents.adjustSearch') : t('agents.createFirstAgent')}
             </p>
           </CardContent>
         </Card>
       ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="agent-grid agent-grid-cols-1 md:agent-grid-md-2 lg:agent-grid-lg-3 gap-4">
           {filteredAgents.map((agent) => (
-            <Card key={agent.id} className="hover:shadow-lg transition-shadow">
+            <Card key={agent.id} className="agent-card agent-card-hoverable">
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                 <div className="space-y-1">
-                  <CardTitle className="text-lg">{agent.name ?? "—"}</CardTitle>
+                  <CardTitle className="text-lg">{agent.name ?? '—'}</CardTitle>
                   <CardDescription className="text-xs font-mono">
-                    {agent.agentId ?? "—"}
+                    {agent.agentId ?? '—'}
                   </CardDescription>
                 </div>
                 <Button variant="ghost" size="icon" aria-label="Agent options">
@@ -579,13 +626,11 @@ export function AgentsPage() {
           exportFileName={`agents-${new Date().toISOString().split('T')[0]}`}
           emptyState={
             <Card>
-              <CardContent className="pt-6 text-center py-12">
-                <Bot className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium">{t('agents.noAgentsFound')}</h3>
-                <p className="text-muted-foreground mt-1">
-                  {searchQuery
-                    ? t('agents.adjustSearch')
-                    : t('agents.createFirstAgent')}
+              <CardContent className="agent-empty-state">
+                <Bot className="agent-empty-icon h-12 w-12 mx-auto mb-4" />
+                <h3 className="agent-empty-title">{t('agents.noAgentsFound')}</h3>
+                <p className="agent-empty-description">
+                  {searchQuery ? t('agents.adjustSearch') : t('agents.createFirstAgent')}
                 </p>
               </CardContent>
             </Card>

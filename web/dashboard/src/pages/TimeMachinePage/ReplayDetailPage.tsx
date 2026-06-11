@@ -1,3 +1,5 @@
+import './styles.css';
+
 import { Link, useParams } from 'react-router-dom';
 import {
   History,

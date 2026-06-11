@@ -385,21 +385,15 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/state/{path}/enable-encryption", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleEnableEncryption))).Methods("POST")
 	protected.HandleFunc("/state/rotate-key", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleRotateEncryptionKey))).Methods("POST")
 
-	// ── Agent Memory (protected) ──────────────────────────────────────────────
-	protected.HandleFunc("/memories", authMiddleware.RequireAuth(memoryHandler.HandleListMemories)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/memories", authMiddleware.RequireAuth(memoryHandler.HandleCreateMemory)).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/memories/search", authMiddleware.RequireAuth(memoryHandler.HandleSearchMemories)).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/memories/{id}", authMiddleware.RequireAuth(memoryHandler.HandleGetMemory)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/memories/{id}", authMiddleware.RequireAuth(memoryHandler.HandleUpdateMemory)).Methods("PATCH", "OPTIONS")
-	protected.HandleFunc("/memories/{id}", authMiddleware.RequireAuth(memoryHandler.HandleDeleteMemory)).Methods("DELETE", "OPTIONS")
-	protected.HandleFunc("/agent-memories", authMiddleware.RequireAuth(agentMemoryHandler.HandleListMemories)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/agent-memories", authMiddleware.RequireAuth(agentMemoryHandler.HandleCreateMemory)).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/agent-memories/search", authMiddleware.RequireAuth(agentMemoryHandler.HandleSearchMemories)).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/agent-memories/index", authMiddleware.RequireAuth(agentMemoryHandler.HandleRebuildIndex)).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/agent-memories/{id}", authMiddleware.RequireAuth(agentMemoryHandler.HandleGetMemory)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/agent-memories/{id}", authMiddleware.RequireAuth(agentMemoryHandler.HandleUpdateMemory)).Methods("PATCH", "OPTIONS")
-	protected.HandleFunc("/agent-memories/{id}", authMiddleware.RequireAuth(agentMemoryHandler.HandleDeleteMemory)).Methods("DELETE", "OPTIONS")
-	protected.HandleFunc("/agent-memories/{id}/accessed", authMiddleware.RequireAuth(agentMemoryHandler.HandleMarkAccessed)).Methods("POST", "OPTIONS")
+	// ── Agent Memory (protected, rate-limited per-tenant) ─────────────────────
+	protected.HandleFunc("/agent-memories", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(agentMemoryHandler.HandleListMemories))).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/agent-memories", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(agentMemoryHandler.HandleCreateMemory))).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/agent-memories/search", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(agentMemoryHandler.HandleSearchMemories))).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/agent-memories/index", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(agentMemoryHandler.HandleRebuildIndex))).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/agent-memories/{id}", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(agentMemoryHandler.HandleGetMemory))).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/agent-memories/{id}", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(agentMemoryHandler.HandleUpdateMemory))).Methods("PATCH", "OPTIONS")
+	protected.HandleFunc("/agent-memories/{id}", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(agentMemoryHandler.HandleDeleteMemory))).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/agent-memories/{id}/accessed", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(agentMemoryHandler.HandleMarkAccessed))).Methods("POST", "OPTIONS")
 
 	// ── State Fabric (protected, rate-limited per-tenant) ─────────────────────
 	protected.HandleFunc("/state-fabrics", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleList))).Methods("GET", "OPTIONS")
@@ -444,6 +438,15 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/vault/secrets/{id}/versions/{version}", authMiddleware.RequireAuth(vaultHandler.HandleGetSecretVersion)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/vault/secrets/{id}/versions/diff", authMiddleware.RequireAuth(vaultHandler.HandleDiffSecretVersions)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/vault/secrets/{id}/rollback", authMiddleware.RequireAuth(vaultHandler.HandleRollbackSecret)).Methods("POST", "OPTIONS")
+
+	// ── Secret Dependencies (protected) ─────────────────────────────────────
+	protected.HandleFunc("/vault/secrets/{id}/dependencies", authMiddleware.RequireAuth(vaultHandler.HandleGetSecretDependencies)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/vault/secrets/{id}/dependencies", authMiddleware.RequireAuth(vaultHandler.HandleCreateSecretDependency)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/vault/secrets/{id}/dependencies/{dep_id}", authMiddleware.RequireAuth(vaultHandler.HandleDeleteSecretDependency)).Methods("DELETE", "OPTIONS")
+
+	// ── Bulk Operations (protected) ─────────────────────────────────────────
+	protected.HandleFunc("/vault/secrets/bulk-delete", authMiddleware.RequireAuth(vaultRateLimiter.LimitCreate(vaultHandler.HandleBulkDeleteSecrets))).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/vault/secrets/export", authMiddleware.RequireAuth(vaultHandler.HandleExportSecrets)).Methods("GET", "OPTIONS")
 
 	// ── Backends (protected) ──────────────────────────────────────────────────
 	protected.HandleFunc("/apps/{appId}/backends", authMiddleware.RequireAuth(backendsHandler.HandleCreateBackend)).Methods("POST")

@@ -13,6 +13,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -31,7 +33,31 @@ const (
 	waitReceiptTimeout = 2 * time.Minute
 	waitReceiptPoll    = 2 * time.Second
 	minConfirmations   = 1
+
+	// gasLimit is the default gas limit for anchor transactions.
+	// This is a conservative estimate for a simple anchor(bytes32) call.
+	// Override via ANCHOR_GAS_LIMIT environment variable if needed.
+	defaultGasLimit = uint64(100_000)
+
+	// minGasLimit is the minimum acceptable gas limit (21k for basic transfer).
+	minGasLimit = uint64(21000)
+
+	// maxGasLimit is a safety cap to prevent overflow in adversarial conditions.
+	maxGasLimit = uint64(500_000)
 )
+
+// getConfiguredGasLimit returns the gas limit for anchor transactions.
+// It checks the ANCHOR_GAS_LIMIT environment variable and validates against min/max limits.
+func getConfiguredGasLimit() uint64 {
+	if envGas := os.Getenv("ANCHOR_GAS_LIMIT"); envGas != "" {
+		if parsed, err := strconv.ParseUint(envGas, 10, 64); err == nil {
+			if parsed >= minGasLimit && parsed <= maxGasLimit {
+				return parsed
+			}
+		}
+	}
+	return defaultGasLimit
+}
 
 // SetSigningKey sets the ECDSA private key (hex, with or without 0x) for signing anchor transactions.
 // Call with a value from secure storage or env (e.g. os.Getenv("ANCHOR_SIGNING_KEY")). Do not commit keys.
@@ -116,7 +142,7 @@ func (s *EthereumAnchoringService) anchorOnChain(ctx context.Context, chain, exe
 		return nil, fmt.Errorf("cert: nonce: %w", err)
 	}
 
-	gasLimit := uint64(100_000)
+	gasLimit := getConfiguredGasLimit()
 	gasPrice, err := client.SuggestGasPrice(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cert: gas price: %w", err)

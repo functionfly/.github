@@ -47,6 +47,28 @@ class HealthChecker:
         self._logger = logging.getLogger(__name__)
         self._checks: Dict[str, Callable] = {}
         self._components: Dict[str, ComponentHealth] = {}
+        self._degraded_reason: Optional[str] = None
+
+    def set_degraded(self, reason: str) -> None:
+        """Mark the service as degraded with a reason.
+
+        Args:
+            reason: Human-readable reason for degraded state
+        """
+        self._degraded_reason = reason
+        self._logger.warning(f"Service marked as degraded: {reason}")
+
+    def clear_degraded(self) -> None:
+        """Clear the degraded state."""
+        self._degraded_reason = None
+
+    def is_degraded(self) -> bool:
+        """Check if the service is in degraded state."""
+        return self._degraded_reason is not None
+
+    def get_degraded_reason(self) -> Optional[str]:
+        """Get the degraded reason if any."""
+        return self._degraded_reason
 
     def register_check(
         self,
@@ -140,6 +162,10 @@ class HealthChecker:
         Returns:
             Overall HealthStatus
         """
+        # If explicitly degraded, report degraded
+        if self._degraded_reason:
+            return HealthStatus.DEGRADED
+
         if not self._components:
             return HealthStatus.UNKNOWN
 
@@ -171,7 +197,7 @@ class HealthChecker:
             for name, comp in self._components.items()
         }
 
-        return {
+        summary = {
             "status": overall.value,
             "components": components,
             "total_components": len(self._components),
@@ -179,6 +205,12 @@ class HealthChecker:
                 1 for c in self._components.values() if c.status == HealthStatus.HEALTHY
             ),
         }
+
+        # Include degraded reason if applicable
+        if self._degraded_reason:
+            summary["degraded_reason"] = self._degraded_reason
+
+        return summary
 
 
 # Default health checks
@@ -229,9 +261,26 @@ def create_default_checks(checker: HealthChecker) -> None:
         except Exception:
             return False
 
+    # Check if orchestrator is reachable (for API key validation)
+    async def check_orchestrator():
+        try:
+            from ..security.auth import get_api_key_validator
+
+            validator = get_api_key_validator()
+            # Use the existing async validation
+            import httpx
+            from ..config import settings
+
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(f"{settings.orchestrator_url}/health")
+                return response.status_code == 200
+        except Exception:
+            return False
+
     checker.register_check("redis", check_redis)
     checker.register_check("database", check_database)
     checker.register_check("providers", check_providers)
+    checker.register_check("orchestrator", check_orchestrator)
 
 
 # Global health checker

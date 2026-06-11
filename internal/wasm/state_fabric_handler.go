@@ -277,7 +277,15 @@ func (h *StateFabricHostHandler) parsePath(path string) (uuid.UUID, uuid.UUID, s
 	}
 }
 
-// getValueFromFabric retrieves a value from the fabric
+// EdgeStateEntry represents a single edge state entry with TTL support
+type EdgeStateEntry struct {
+	Value      interface{} `json:"value"`
+	ExpiresAt  *time.Time  `json:"expiresAt,omitempty"`
+	CreatedAt  time.Time   `json:"createdAt"`
+	ModifiedAt time.Time   `json:"modifiedAt"`
+}
+
+// getValueFromFabric retrieves a value from the fabric with TTL enforcement
 // This is a simplified implementation using the fabric's settings as a key-value store
 func (h *StateFabricHostHandler) getValueFromFabric(fabricID uuid.UUID, key string) (interface{}, error) {
 	// Get fabric
@@ -302,10 +310,26 @@ func (h *StateFabricHostHandler) getValueFromFabric(fabricID uuid.UUID, key stri
 		return nil, nil
 	}
 
+	// Check if value is an EdgeStateEntry with TTL
+	if entry, ok := value.(map[string]interface{}); ok {
+		if expiresAt, ok := entry["expiresAt"].(string); ok && expiresAt != "" {
+			expTime, err := time.Parse(time.RFC3339, expiresAt)
+			if err == nil && time.Now().After(expTime) {
+				// TTL expired, delete the key and return nil
+				h.deleteValueFromFabric(fabricID, key)
+				return nil, nil
+			}
+		}
+		// Return the actual value from the entry
+		if v, ok := entry["value"]; ok {
+			return v, nil
+		}
+	}
+
 	return value, nil
 }
 
-// setValueInFabric stores a value in the fabric
+// setValueInFabric stores a value in the fabric with optional TTL
 func (h *StateFabricHostHandler) setValueInFabric(fabricID uuid.UUID, key string, value string) error {
 	// Get fabric
 	fabric, err := h.repo.GetFabric(h.ctx, h.tenantID, fabricID)
@@ -330,8 +354,26 @@ func (h *StateFabricHostHandler) setValueInFabric(fabricID uuid.UUID, key string
 		stateMap = make(map[string]interface{})
 	}
 
-	// Set the value
-	stateMap[key] = valueData
+	// Wrap value in EdgeStateEntry with TTL support
+	now := time.Now().UTC()
+	entry := map[string]interface{}{
+		"value":      valueData,
+		"createdAt":  now.Format(time.RFC3339),
+		"modifiedAt": now.Format(time.RFC3339),
+	}
+
+	// Check for TTL in the value data if it's a map with ttl field
+	if valueMap, ok := valueData.(map[string]interface{}); ok {
+		if ttl, ok := valueMap["_ttl"].(float64); ok && ttl > 0 {
+			expiresAt := now.Add(time.Duration(int64(ttl)) * time.Second)
+			entry["expiresAt"] = expiresAt.Format(time.RFC3339)
+			// Remove the _ttl field from the actual value
+			delete(valueMap, "_ttl")
+			entry["value"] = valueMap
+		}
+	}
+
+	stateMap[key] = entry
 	fabric.Settings["_edge_state"] = stateMap
 
 	// Update fabric

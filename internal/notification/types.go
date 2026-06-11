@@ -22,10 +22,11 @@ type Trigger interface {
 
 // Priority levels
 const (
-	PriorityLow    = "low"
-	PriorityNormal = "normal"
-	PriorityHigh   = "high"
-	PriorityUrgent = "urgent"
+	PriorityLow     = "low"
+	PriorityNormal  = "normal"
+	PriorityHigh    = "high"
+	PriorityUrgent  = "urgent"
+	PriorityCritical = "critical"
 )
 
 // Status values

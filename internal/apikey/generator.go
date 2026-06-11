@@ -143,6 +143,8 @@ func GetKeyTypeFromPrefix(prefix string) (KeyType, error) {
 		return KeyTypeFunction, nil
 	case PrefixAgent:
 		return KeyTypeAgent, nil
+	case PrefixEdge:
+		return KeyTypeEdge, nil
 	case PrefixEnvironment:
 		return KeyTypeEnvironment, nil
 	case PrefixOAuth:

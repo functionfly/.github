@@ -210,6 +210,8 @@ body {
 /* Import all style modules */
 /* Aviation Theme - PRIMARY (Unified Velocity Brand + Aviation Components) */
 @import '@/styles/aviation-theme.css';
+@import '@/styles/mcp-center-aviation.css';
+@import '@/styles/aviation-marketplace.css';
 
 /* Velocity Theme - Secondary (legacy utility classes, kept for migration) */
 @import '@/styles/velocity-theme.css';

@@ -221,6 +221,70 @@ export function useConversationWebSocket(
             break;
           }
 
+          case 'message_reaction_added': {
+            const payload = message.payload as { message_id: string; user_id: string; reaction: string };
+            queryClient.setQueryData(
+              conversationKeys.messages(payload.message_id),
+              (old: { messages: ConversationMessage[] } | undefined) => {
+                if (!old) return old;
+                return {
+                  messages: old.messages.map((m) => {
+                    if (m.id !== payload.message_id) return m;
+                    const existingReaction = m.reactions?.find(r => r.reaction === payload.reaction);
+                    if (existingReaction) {
+                      return {
+                        ...m,
+                        reactions: m.reactions?.map(r =>
+                          r.reaction === payload.reaction
+                            ? { ...r, count: r.count + 1, user_ids: [...r.user_ids, payload.user_id] }
+                            : r
+                        ),
+                      };
+                    }
+                    return {
+                      ...m,
+                      reactions: [...(m.reactions || []), { reaction: payload.reaction, count: 1, user_ids: [payload.user_id] }],
+                    };
+                  }),
+                };
+              }
+            );
+            break;
+          }
+
+          case 'message_reaction_removed': {
+            const payload = message.payload as { message_id: string; user_id: string; reaction: string };
+            queryClient.setQueryData(
+              conversationKeys.messages(payload.message_id),
+              (old: { messages: ConversationMessage[] } | undefined) => {
+                if (!old) return old;
+                return {
+                  messages: old.messages.map((m) => {
+                    if (m.id !== payload.message_id) return m;
+                    return {
+                      ...m,
+                      reactions: m.reactions
+                        ?.map(r => {
+                          if (r.reaction !== payload.reaction) return r;
+                          const newUserIds = r.user_ids.filter(id => id !== payload.user_id);
+                          if (newUserIds.length === 0) return null;
+                          return { ...r, count: r.count - 1, user_ids: newUserIds };
+                        })
+                        .filter((r): r is NonNullable<typeof r> => r !== null),
+                    };
+                  }),
+                };
+              }
+            );
+            break;
+          }
+
+          case 'message_read': {
+            const payload = message.payload as { message_id: string; user_id: string };
+            queryClient.invalidateQueries({ queryKey: conversationKeys.messages(payload.message_id) });
+            break;
+          }
+
           case 'pong': {
             // Keep-alive response — no action needed.
             break;

@@ -516,6 +516,28 @@ func (h *Handler) HandleGetAgentUsage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Tenant verification: Check if agent belongs to this tenant via subscriptions
+	// This prevents IDOR - users cannot query usage for agents outside their tenant
+	subscriptions, err := h.repo.GetAgentSubscriptionsByTenant(r.Context(), claims.TenantID)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Warn("billing: failed to get agent subscriptions")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to verify agent ownership")
+		return
+	}
+
+	agentBelongsToTenant := false
+	for _, s := range subscriptions {
+		if s.AgentID == agentID {
+			agentBelongsToTenant = true
+			break
+		}
+	}
+
+	if !agentBelongsToTenant {
+		writeJSONError(w, http.StatusForbidden, "Access denied: agent does not belong to your tenant")
+		return
+	}
+
 	// Parse pagination
 	limit := 10
 	offset := 0
@@ -530,27 +552,20 @@ func (h *Handler) HandleGetAgentUsage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Get usage summary
-	totalCalls, billableCalls, overageCalls, estimatedCost, err := h.repo.GetAgentUsageSummary(r.Context(), agentID)
+	// Get usage summary with tenant_id for additional security
+	totalCalls, billableCalls, overageCalls, estimatedCost, err := h.repo.GetAgentUsageSummary(r.Context(), agentID, claims.TenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("agent_id", agentID).Warn("billing: failed to get agent usage summary")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve usage summary")
 		return
 	}
 
-	// Get recent usage records
-	usageRecords, err := h.repo.GetAgentUsageByAgentID(r.Context(), agentID, limit, offset)
+	// Get recent usage records with tenant_id for additional security
+	usageRecords, err := h.repo.GetAgentUsageByAgentID(r.Context(), agentID, claims.TenantID, limit, offset)
 	if err != nil {
 		logrus.WithError(err).WithField("agent_id", agentID).Warn("billing: failed to get agent usage")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve usage records")
 		return
-	}
-
-	// Get active subscriptions for the tenant's agents
-	subscriptions, err := h.repo.GetAgentSubscriptionsByTenant(r.Context(), claims.TenantID)
-	if err != nil {
-		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Warn("billing: failed to get agent subscriptions")
-		// Don't fail the request, just don't include subscriptions
 	}
 
 	// Build response

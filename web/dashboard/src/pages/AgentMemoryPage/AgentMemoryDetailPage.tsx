@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import {
   useAgentMemory,
+  useCreateAgentMemory,
   useUpdateAgentMemory,
   useDeleteAgentMemory,
 } from "@/hooks/useAgentMemory";
@@ -52,6 +53,7 @@ export function AgentMemoryDetailPage() {
   const isNew = id === "new";
 
   const { data: memory, isLoading, error } = useAgentMemory(id || "");
+  const createMutation = useCreateAgentMemory();
   const updateMutation = useUpdateAgentMemory(id || "");
   const deleteMutation = useDeleteAgentMemory();
 
@@ -76,9 +78,23 @@ export function AgentMemoryDetailPage() {
   }
 
   const handleSave = async () => {
-    if (!id || isNew) {
-      // For new memories, navigate to list (create not implemented for now)
-      toast.error("Creating new memories is not yet implemented");
+    if (isNew) {
+      try {
+        await createMutation.mutateAsync({
+          agent_id: formData.agent_id,
+          memory_type: formData.memory_type,
+          content: formData.content,
+          importance_score: formData.importance_score,
+          ttl_days: formData.ttl_days,
+        });
+        navigate("/agent-memories");
+      } catch (err) {
+        // Error handled by mutation
+      }
+      return;
+    }
+
+    if (!id) {
       return;
     }
 

@@ -219,8 +219,8 @@ type Repository interface {
 
 	// Agent Usage
 	CreateAgentUsage(ctx context.Context, usage *AgentUsage) error
-	GetAgentUsageByAgentID(ctx context.Context, agentID uuid.UUID, limit, offset int) ([]*AgentUsage, error)
-	GetAgentUsageSummary(ctx context.Context, agentID uuid.UUID) (totalCalls, billableCalls, overageCalls, estimatedCost int, err error)
+	GetAgentUsageByAgentID(ctx context.Context, agentID, tenantID uuid.UUID, limit, offset int) ([]*AgentUsage, error)
+	GetAgentUsageSummary(ctx context.Context, agentID, tenantID uuid.UUID) (totalCalls, billableCalls, overageCalls, estimatedCost int, err error)
 
 	// Platform Fees
 	CreatePlatformFee(ctx context.Context, fee *PlatformFee) error

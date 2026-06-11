@@ -189,6 +189,146 @@ export const vaultApi = {
       data
     );
   },
+
+  // ==================== Bulk Operations ====================
+
+  /**
+   * Bulk delete multiple secrets
+   */
+  bulkDeleteSecrets: async (secretIds: string[], dryRun: boolean = false): Promise<{
+    deleted: number;
+    failed: number;
+    errors?: { secret_id: string; error: string }[];
+    previews?: Record<string, {
+      secret_id: string;
+      secret_name: string;
+      found: boolean;
+      tokens_count: number;
+      dependencies: { id: string; type: string; name: string; criticality: string }[];
+    }>;
+  }> => {
+    return apiClient.delete<{
+      deleted: number;
+      failed: number;
+      errors?: { secret_id: string; error: string }[];
+      previews?: Record<string, {
+        secret_id: string;
+        secret_name: string;
+        found: boolean;
+        tokens_count: number;
+        dependencies: { id: string; type: string; name: string; criticality: string }[];
+      }>;
+    }>(`/v1/vault/secrets/bulk-delete`, {
+      data: { secret_ids: secretIds, dry_run: dryRun },
+    });
+  },
+
+  /**
+   * Export all secrets for the tenant (metadata only, no encrypted values)
+   */
+  exportSecrets: async (): Promise<{
+    secrets: {
+      id: string;
+      name: string;
+      description?: string;
+      secret_type: string;
+      key_version: number;
+      scopes?: string[];
+      metadata?: Record<string, unknown>;
+      created_at: string;
+      updated_at: string;
+    }[];
+    total: number;
+    exported_at: string;
+  }> => {
+    return apiClient.get<{
+      secrets: {
+        id: string;
+        name: string;
+        description?: string;
+        secret_type: string;
+        key_version: number;
+        scopes?: string[];
+        metadata?: Record<string, unknown>;
+        created_at: string;
+        updated_at: string;
+      }[];
+      total: number;
+      exported_at: string;
+    }>(`/v1/vault/secrets/export`);
+  },
+
+  // ==================== Secret Dependencies ====================
+
+  /**
+   * Get dependencies for a secret (services/functions that depend on it)
+   */
+  getSecretDependencies: async (secretId: string): Promise<{
+    secret_id: string;
+    dependencies: {
+      id: string;
+      dependent_id: string;
+      dependent_type: string;
+      dependent_name: string;
+      criticality: string;
+      metadata?: Record<string, unknown>;
+      created_at: string;
+    }[];
+    total: number;
+  }> => {
+    return apiClient.get<{
+      secret_id: string;
+      dependencies: {
+        id: string;
+        dependent_id: string;
+        dependent_type: string;
+        dependent_name: string;
+        criticality: string;
+        metadata?: Record<string, unknown>;
+        created_at: string;
+      }[];
+      total: number;
+    }>(`/v1/vault/secrets/${secretId}/dependencies`);
+  },
+
+  /**
+   * Create a secret dependency record
+   */
+  createSecretDependency: async (
+    secretId: string,
+    data: {
+      dependent_id: string;
+      dependent_type: string;
+      dependent_name: string;
+      criticality?: string;
+      metadata?: Record<string, unknown>;
+    }
+  ): Promise<{
+    id: string;
+    dependent_id: string;
+    dependent_type: string;
+    dependent_name: string;
+    criticality: string;
+    metadata?: Record<string, unknown>;
+    created_at: string;
+  }> => {
+    return apiClient.post<{
+      id: string;
+      dependent_id: string;
+      dependent_type: string;
+      dependent_name: string;
+      criticality: string;
+      metadata?: Record<string, unknown>;
+      created_at: string;
+    }>(`/v1/vault/secrets/${secretId}/dependencies`, data);
+  },
+
+  /**
+   * Delete a secret dependency record
+   */
+  deleteSecretDependency: async (secretId: string, dependencyId: string): Promise<void> => {
+    await apiClient.delete<void>(`/v1/vault/secrets/${secretId}/dependencies/${dependencyId}`);
+  },
 };
 
 /**

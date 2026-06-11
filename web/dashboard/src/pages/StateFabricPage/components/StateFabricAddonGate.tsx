@@ -1,27 +1,28 @@
-import { Link } from "react-router-dom";
-import { Lock } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useStateFabricEntitlements } from "@/hooks/useBilling";
+import { Link } from 'react-router-dom';
+import { Lock } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { useStateFabricEntitlements } from '@/hooks/useBilling';
+import { useHasStateFabricAddon } from './StateFabricAddonGate.hooks';
 
 export type StateFabricAddOnId =
-  | "advanced_insights"
-  | "advanced_security_pack"
-  | "hot_cache_booster"
-  | "ai_memory_pack";
+  | 'advanced_insights'
+  | 'advanced_security_pack'
+  | 'hot_cache_booster'
+  | 'ai_memory_pack';
 
 const ADDON_LABELS: Record<StateFabricAddOnId, string> = {
-  advanced_insights: "Advanced Insights",
-  advanced_security_pack: "Advanced Security Pack",
-  hot_cache_booster: "Hot Cache Booster",
-  ai_memory_pack: "AI Memory Pack",
+  advanced_insights: 'Advanced Insights',
+  advanced_security_pack: 'Advanced Security Pack',
+  hot_cache_booster: 'Hot Cache Booster',
+  ai_memory_pack: 'AI Memory Pack',
 };
 
 const ADDON_DESCRIPTIONS: Record<StateFabricAddOnId, string> = {
-  advanced_insights: "Unlock fabric metrics, throughput charts, and latency dashboards.",
-  advanced_security_pack: "Unlock the full event log and audit trail for this fabric.",
-  hot_cache_booster: "Unlock deterministic replay sessions for debugging and recovery.",
-  ai_memory_pack: "Unlock vector and AI memory store types.",
+  advanced_insights: 'Unlock fabric metrics, throughput charts, and latency dashboards.',
+  advanced_security_pack: 'Unlock the full event log and audit trail for this fabric.',
+  hot_cache_booster: 'Unlock deterministic replay sessions for debugging and recovery.',
+  ai_memory_pack: 'Unlock vector and AI memory store types.',
 };
 
 interface StateFabricAddonGateProps {
@@ -29,10 +30,7 @@ interface StateFabricAddonGateProps {
   children: React.ReactNode;
 }
 
-export function useHasStateFabricAddon(addonId: StateFabricAddOnId): boolean {
-  const { data } = useStateFabricEntitlements();
-  return (data?.addon_ids ?? []).includes(addonId);
-}
+export { useHasStateFabricAddon };
 
 export function StateFabricAddonGate({ addonId, children }: StateFabricAddonGateProps) {
   const { data, isLoading } = useStateFabricEntitlements();
@@ -63,8 +61,8 @@ export function StateFabricAddonGate({ addonId, children }: StateFabricAddonGate
       <CardContent className="space-y-4">
         <p className="text-sm text-text-secondary">{ADDON_DESCRIPTIONS[addonId]}</p>
         <p className="text-xs text-text-muted">
-          State Fabric core features (fabrics, stores, pipelines, snapshots, triggers) are included on
-          paid plans. This tab requires an additional add-on.
+          State Fabric core features (fabrics, stores, pipelines, snapshots, triggers) are included
+          on paid plans. This tab requires an additional add-on.
         </p>
         <Button asChild variant="outline" size="sm">
           <Link to="/pricing#state-fabric-add-ons">View add-ons on Pricing</Link>

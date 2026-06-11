@@ -173,13 +173,12 @@ function debounce<T extends (...args: any[]) => void>(
 }
 
 /**
- * Get channel name based on categories
+ * Get channel name for notifications.
+ * Backend subscribes to notification_broadcast PostgreSQL channel.
+ * Category filtering happens client-side after receiving all notifications.
  */
-function getNotificationChannel(categories?: NotificationCategory[]): string {
-  if (!categories || categories.length === 0 || categories.includes('all')) {
-    return 'notifications:all';
-  }
-  return `notifications:${categories.join(',')}`;
+function getNotificationChannel(_categories?: NotificationCategory[]): string {
+  return 'notification_broadcast';
 }
 
 // ============================================================================

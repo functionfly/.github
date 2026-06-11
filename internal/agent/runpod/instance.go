@@ -3,9 +3,10 @@ package runpod
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 // InstanceState represents the lifecycle state of a GPU instance
@@ -166,7 +167,7 @@ func (p *InstancePool) provisionInstance(ctx context.Context, instance *GPUInsta
 	instance.RequestCount = 1
 	instance.mu.Unlock()
 
-	log.Printf("GPU instance %s ready at %s", instance.ID, instance.Endpoint)
+	logrus.WithFields(logrus.Fields{"instanceID": instance.ID, "endpoint": instance.Endpoint}).Info("GPU instance ready")
 
 	// Trigger callback
 	if p.onInstanceReady != nil {
@@ -212,7 +213,7 @@ func (p *InstancePool) Terminate(ctx context.Context, instanceID string) error {
 
 	if instance.PodID != "" {
 		if err := p.client.TerminatePod(ctx, instance.PodID); err != nil {
-			log.Printf("Warning: failed to terminate pod %s: %v", instance.PodID, err)
+			logrus.WithFields(logrus.Fields{"podID": instance.PodID, "error": err}).Warn("Failed to terminate pod")
 		}
 	}
 
@@ -253,7 +254,7 @@ func (p *InstancePool) CleanupIdleInstances(ctx context.Context) error {
 
 		if inst.PodID != "" {
 			if err := p.client.TerminatePod(ctx, inst.PodID); err != nil {
-				log.Printf("Warning: failed to terminate idle pod %s: %v", inst.PodID, err)
+				logrus.WithFields(logrus.Fields{"podID": inst.PodID, "error": err}).Warn("Failed to terminate idle pod")
 			}
 		}
 		inst.mu.Lock()
@@ -313,7 +314,7 @@ func (p *InstancePool) cleanupIdleInstances(ctx context.Context) {
 			if inst.PodID != "" {
 				go func(podID string) {
 					if err := p.client.TerminatePod(ctx, podID); err != nil {
-						log.Printf("Warning: failed to terminate idle pod %s: %v", podID, err)
+						logrus.WithFields(logrus.Fields{"podID": podID, "error": err}).Warn("Failed to terminate idle pod")
 					}
 				}(inst.PodID)
 			}

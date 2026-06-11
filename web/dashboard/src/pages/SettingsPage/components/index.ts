@@ -7,3 +7,4 @@ export { NotificationsSettingsTab } from './NotificationsSettingsTab';
 export { PrivacySettingsTab } from './PrivacySettingsTab';
 export { SecuritySettingsTab } from './SecuritySettingsTab';
 export { PlatformSettingsTab } from './PlatformSettingsTab';
+export { TrustAPISettingsTab } from './TrustAPISettingsTab';

@@ -30,6 +30,9 @@ type UserConnector struct {
 	EncryptedCredentials  json.RawMessage `json:"encrypted_credentials"`
 	LastSyncAt            *time.Time      `json:"last_sync_at,omitempty"`
 	SyncError             string          `json:"sync_error,omitempty"`
+	SyncFrequency         string          `json:"sync_frequency"`
+	AutoSync              bool            `json:"auto_sync"`
+	Enabled               bool            `json:"enabled"`
 	CreatedAt             time.Time       `json:"created_at"`
 	UpdatedAt             time.Time       `json:"updated_at"`
 }

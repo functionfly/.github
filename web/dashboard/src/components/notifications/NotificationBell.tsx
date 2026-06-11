@@ -80,8 +80,8 @@ function getBadgeSize(size: NotificationBellProps['size']): string {
 /** Play a short notification ping using Web Audio (no external URL, avoids 403 hotlink issues). */
 function playNotificationPing(): void {
   if (typeof window === 'undefined' || !window.AudioContext) return;
+  const ctx = new window.AudioContext();
   try {
-    const ctx = new window.AudioContext();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
@@ -92,8 +92,12 @@ function playNotificationPing(): void {
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 0.12);
+    osc.onended = () => ctx.close();
   } catch {
     // Ignore (e.g. autoplay policy, AudioContext not allowed)
+  } finally {
+    // Ensure cleanup even if onended doesn't fire
+    setTimeout(() => ctx.close().catch(() => {}), 200);
   }
 }
 

@@ -319,18 +319,18 @@ export class FunctionFlyAuth {
   private storeTokens(): void {
     if (typeof window !== 'undefined') {
       if (this.jwtToken) {
-        localStorage.setItem('ffly_jwt', this.jwtToken);
+        localStorage.setItem('ff-access-token', this.jwtToken);
       }
       if (this.refreshTokenValue) {
-        localStorage.setItem('ffly_refresh', this.refreshTokenValue);
+        localStorage.setItem('ff-refresh-token', this.refreshTokenValue);
       }
     }
   }
 
   private loadTokens(): void {
     if (typeof window !== 'undefined') {
-      this.jwtToken = localStorage.getItem('ffly_jwt');
-      this.refreshTokenValue = localStorage.getItem('ffly_refresh');
+      this.jwtToken = localStorage.getItem('ff-access-token');
+      this.refreshTokenValue = localStorage.getItem('ff-refresh-token');
     }
   }
 
@@ -341,8 +341,8 @@ export class FunctionFlyAuth {
     this.csrfExpiresAt = null;
 
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('ffly_jwt');
-      localStorage.removeItem('ffly_refresh');
+      localStorage.removeItem('ff-access-token');
+      localStorage.removeItem('ff-refresh-token');
     }
   }
 

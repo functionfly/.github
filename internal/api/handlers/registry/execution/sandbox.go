@@ -1265,8 +1265,9 @@ func NewSandboxClient(runtimePath string) (*SandboxClient, error) {
 		tempDir:   tempDir,
 	}
 
-	// Wait for the daemon to become ready
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// Wait for the daemon to become ready (60s timeout to accommodate
+	// AOT cache compilation and WASM instance pool initialization)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	if err := sc.waitForReady(ctx); err != nil {
 		sc.Close()

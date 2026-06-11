@@ -238,6 +238,82 @@ func (h *Handler) HandleListFunctions(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+// HandleListFunctionsWithMCP serves GET /v1/functions/mcp.
+// Returns all functions that have MCP settings configured (enabled or disabled).
+func (h *Handler) HandleListFunctionsWithMCP(w http.ResponseWriter, r *http.Request) {
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit == 0 {
+		limit = DefaultLimit
+	}
+	if limit > MaxLimit {
+		limit = MaxLimit
+	}
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+
+	functions, total, err := h.repo.ListFunctionsWithMCPSettings(r.Context(), limit, offset)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list functions with MCP settings")
+		http.Error(w, "Failed to list functions", http.StatusInternalServerError)
+		return
+	}
+
+	// Transform to the response format expected by the frontend
+	type MCPFunctionInfo struct {
+		ID         string `json:"id"`
+		Author     string `json:"author"`
+		Name       string `json:"name"`
+		Status     string `json:"status"`
+		MCPSettings struct {
+			Enabled            bool     `json:"enabled"`
+			Transports         []string `json:"transports"`
+			ExposeInputSchema  bool     `json:"expose_input_schema"`
+			ExposeOutputSchema bool     `json:"expose_output_schema"`
+			ToolNameOverride   string   `json:"tool_name_override,omitempty"`
+			RateLimitPerMin    int      `json:"rate_limit_per_min"`
+			AllowlistOrigins   []string `json:"allowlist_origins"`
+			VerifiedMCP        bool     `json:"verified_mcp"`
+			InvocationCount    int64    `json:"invocation_count"`
+			LastInvokedAt      *string  `json:"last_invoked_at,omitempty"`
+		} `json:"mcp"`
+	}
+
+	funcs := make([]MCPFunctionInfo, 0, len(functions))
+	for _, f := range functions {
+		info := MCPFunctionInfo{
+			ID:     f.ID.String(),
+			Author: f.Author,
+			Name:   f.Name,
+			Status: f.Status,
+		}
+		info.MCPSettings.Enabled = f.Enabled
+		info.MCPSettings.Transports = f.Transports
+		info.MCPSettings.ExposeInputSchema = f.ExposeInputSchema
+		info.MCPSettings.ExposeOutputSchema = f.ExposeOutputSchema
+		info.MCPSettings.RateLimitPerMin = f.RateLimitPerMin
+		info.MCPSettings.AllowlistOrigins = f.AllowlistOrigins
+		info.MCPSettings.VerifiedMCP = f.VerifiedMCP
+		info.MCPSettings.InvocationCount = f.InvocationCount
+		if f.ToolNameOverride.Valid {
+			info.MCPSettings.ToolNameOverride = f.ToolNameOverride.String
+		}
+		if f.LastInvokedAt != nil {
+			s := f.LastInvokedAt.Format(time.RFC3339)
+			info.MCPSettings.LastInvokedAt = &s
+		}
+		funcs = append(funcs, info)
+	}
+
+	response := map[string]interface{}{
+		"functions": funcs,
+		"total":     total,
+		"limit":     limit,
+		"offset":    offset,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
 func (h *Handler) HandleListMyFunctions(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {

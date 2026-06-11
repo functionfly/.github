@@ -1,8 +1,10 @@
 # NATS & SAR Runtime — Production Runbook
 
-**Document Version:** 1.0
-**Last Updated:** 2026-05-27
+**Document Version:** 1.1
+**Last Updated:** 2026-06-07
 **Owner:** Platform Team
+
+> **Note:** SAR source code has moved to its own repo: [functionfly/sar](https://github.com/functionfly/sar). See that repo for build instructions, CI, and release binaries.
 
 ---
 
@@ -139,11 +141,12 @@ SAR cannot be containerized easily because it requires the Rust toolchain to bui
 For a containerized SAR in production, build a multi-stage Dockerfile:
 
 ```dockerfile
-# deploy/sar/Dockerfile
+# See https://github.com/functionfly/sar for the official Dockerfile
+# Or use a pre-built release binary from https://github.com/functionfly/sar/releases
 FROM rust:1.75 AS builder
 WORKDIR /app
-COPY runtimes/sar/ .
-RUN cargo build --release --manifest-path Cargo.toml
+# Clone from the SAR repo or copy from a release
+RUN cargo build --release
 
 FROM debian:bookworm-slim
 COPY --from=builder /app/target/release/functionfly-sar /app/bin/

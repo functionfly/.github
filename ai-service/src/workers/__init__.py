@@ -3,6 +3,7 @@
 This module provides:
 - Background task scheduler
 - Periodic tasks (cache warming, anomaly checks)
+- RQ-based job queue for reliable background processing
 """
 
 from .scheduler import (

@@ -13,6 +13,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/functionregistry"
 	agenttools "github.com/functionfly/functionfly/internal/agent/tools"
+	"github.com/functionfly/functionfly/internal/gateway"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -697,12 +698,16 @@ func (h *Handler) recordInvocation(r *http.Request, functionID uuid.UUID, method
 // public http helpers (shared with jsonrpc.go)
 // =============================================================================
 
+// setCORSHeaders writes the MCP transport CORS headers. It is a thin
+// wrapper over gateway.SetCORSHeaders — the actual header set is the
+// single source of truth in the gateway package (see P0 of the
+// Two-Protocol Gateway plan).
 func setCORSHeaders(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Mcp-Session-Id, Mcp-Protocol-Version")
-	w.Header().Set("Access-Control-Expose-Headers", "Mcp-Session-Id, X-Request-Id")
-	w.Header().Set("Access-Control-Max-Age", "86400")
+	gateway.SetCORSHeaders(w, r, gateway.CORSOptions{
+		AllowMethods:  "GET, POST, OPTIONS",
+		AllowHeaders:  "Content-Type, Authorization, Mcp-Session-Id, Mcp-Protocol-Version",
+		ExposeHeaders: "Mcp-Session-Id, X-Request-Id",
+	})
 }
 
 func writeJSONRPCError(w http.ResponseWriter, id json.RawMessage, code int, msg string) {

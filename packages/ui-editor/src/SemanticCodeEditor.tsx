@@ -4,13 +4,19 @@
  */
 
 import * as React from "react";
-import Editor, { type OnMount, type OnChange, loader } from "@monaco-editor/react";
+import Editor, {
+  type OnMount,
+  type OnChange,
+  loader,
+} from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
 import { Sparkles } from "lucide-react";
 import { cn } from "@functionfly/ui-core";
 
 // Configure Monaco worker paths
-loader.config({ paths: { vs: "https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs" } });
+loader.config({
+  paths: { vs: "https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs" },
+});
 
 // Runtime to Monaco language mapping
 const RUNTIME_MONACO_LANG: Record<string, string> = {
@@ -51,7 +57,7 @@ const THEME_CONFIG = {
       "editorLineNumber.foreground": "#4b5563",
       "editorLineNumber.activeForeground": "#f97316",
       "editorCursor.foreground": "#f97316",
-"editor.inactiveSelectionBackground": "#f9731622",
+      "editor.inactiveSelectionBackground": "#f9731622",
     },
   },
   "studio-dark": {
@@ -88,7 +94,13 @@ export interface SemanticCodeEditorProps {
   onChange?: (value: string) => void;
   language?: string;
   runtime?: string;
-  theme?: "dark" | "light" | "studio-dark" | "studio-light" | "monokai" | "github-dark";
+  theme?:
+    | "dark"
+    | "light"
+    | "studio-dark"
+    | "studio-light"
+    | "monokai"
+    | "github-dark";
   readOnly?: boolean;
   height?: string | number;
   showLineNumbers?: boolean;
@@ -97,7 +109,10 @@ export interface SemanticCodeEditorProps {
   fontSize?: number;
   lineHeight?: number;
   padding?: { top?: number; bottom?: number };
-  onEditorMount?: (editor: Monaco.editor.IStandaloneCodeEditor, monaco: typeof Monaco) => void;
+  onEditorMount?: (
+    editor: Monaco.editor.IStandaloneCodeEditor,
+    monaco: typeof Monaco,
+  ) => void;
   onCursorChange?: (position: { lineNumber: number; column: number }) => void;
   className?: string;
   aiAssisted?: boolean;
@@ -121,7 +136,9 @@ export function SemanticCodeEditor({
   className,
   aiAssisted = false,
 }: SemanticCodeEditorProps) {
-  const editorRef = React.useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
+  const editorRef = React.useRef<Monaco.editor.IStandaloneCodeEditor | null>(
+    null,
+  );
   const monacoRef = React.useRef<typeof Monaco | null>(null);
 
   // Resolve language from runtime if provided
@@ -208,7 +225,10 @@ export function SemanticCodeEditor({
   }, [theme]);
 
   return (
-    <div className={cn("relative overflow-hidden rounded-lg", className)} style={{ height }}>
+    <div
+      className={cn("relative overflow-hidden rounded-lg", className)}
+      style={{ height }}
+    >
       {aiAssisted && (
         <div className="absolute top-2 right-2 z-10 flex items-center gap-1.5 px-2 py-1 bg-brand-500/20 border border-brand-500/30 rounded text-[10px] text-brand-400">
           <Sparkles className="size-3" />

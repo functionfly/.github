@@ -48,7 +48,7 @@ export function Tabs({ value, defaultValue, onValueChange, children, className }
     onValueChange?.(newValue);
   };
 
-  const contextValue = React.useMemo(() => ({ value: currentValue, onValueChange: handleValueChange }), [currentValue]);
+  const contextValue = React.useMemo(() => ({ value: currentValue ?? "", onValueChange: handleValueChange }), [currentValue]);
   return (
     <TabsContext.Provider value={contextValue}>
       <div className={cn("flex flex-col", className)}>{children}</div>

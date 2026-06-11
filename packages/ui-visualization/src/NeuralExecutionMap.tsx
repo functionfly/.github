@@ -8,7 +8,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Text, useGLTF, Environment, Stars } from "@react-three/drei";
 import { useSpring, animated, config } from "@react-spring/three";
 import { Group, Vector3, Color, MathUtils } from "three";
-import { cn } from "@functionfly/ui-core";
+const cn = (...classes: (string | undefined | null | false)[]) => classes.filter(Boolean).join(" ");
 
 // --- Types ---
 export interface NeuralNode {
@@ -51,9 +51,8 @@ export interface ParticleFlowProps {
 }
 
 // --- Neural Node Component ---
-function NeuralNode3D({ node, hovered, onHover }: { node: NeuralNode; hovered: boolean; onHover: (id: string | null) => void }) {
+function NeuralNode3D({ node, hovered, onHover, autoRotate }: { node: NeuralNode; hovered: boolean; onHover: (id: string | null) => void; autoRotate?: boolean }) {
   const meshRef = React.useRef<Group>(null);
-  const { nodes, connections, autoRotate } = useThree((state) => state.scene);
 
   const nodeSize = node.size || 1;
   const nodeColor = node.color || getNodeTypeColor(node.type);
@@ -161,7 +160,7 @@ function NeuralConnectionLine({ from, to, active, strength = 0.5 }: { from: Vect
       {active && (
         <mesh position={smoothPoints[Math.floor(progress * (smoothPoints.length - 1))] || from}>
           <sphereGeometry args={[0.08, 8, 8]} />
-          <meshBasicMaterial color="#f97316" emissive="#f97316" emissiveIntensity={2} />
+          <meshStandardMaterial color="#f97316" emissive="#f97316" emissiveIntensity={2} />
         </mesh>
       )}
     </group>
@@ -213,7 +212,7 @@ export function ParticleFlow({ count = 200, speed = 0.5, color = "#f97316", clas
   });
 
   return (
-    <points ref={particlesRef} className={className}>
+    <points ref={particlesRef}>
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" count={count} array={positions} itemSize={3} />
       </bufferGeometry>
@@ -286,6 +285,7 @@ export function NeuralExecutionMap({
             node={node}
             hovered={hoveredNode === node.id}
             onHover={setHoveredNode}
+            autoRotate={autoRotate}
           />
         ))}
 
@@ -344,7 +344,7 @@ export function TokenParticleSystem({
 }: TokenParticleSystemProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null)
   const [particles, setParticles] = React.useState<TokenParticle[]>([])
-  const animationRef = React.useRef<number>()
+  const animationRef = React.useRef<number | undefined>(undefined)
 
   React.useEffect(() => {
     setParticles(tokens)
@@ -1582,7 +1582,7 @@ export function AIReasoningTree({
     assumption: "#f59e0b",
   }
 
-  const renderNode = (node: ReasoningNode, depth = 0): JSX.Element => {
+  const renderNode = (node: ReasoningNode, depth = 0): React.ReactElement => {
     const isSelected = node.id === selectedNodeId
     const color = typeColors[node.type]
     const hasChildren = node.children && node.children.length > 0
@@ -1880,6 +1880,20 @@ export function RealtimeTopologyGraph({
 }: RealtimeTopologyGraphProps) {
   const [time, setTime] = React.useState(0)
   const [dimensions, setDimensions] = React.useState({ width: 600, height: 400 })
+  const containerRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect
+        setDimensions({ width, height })
+      }
+    })
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [])
 
   React.useEffect(() => {
     const interval = setInterval(() => setTime((t) => t + 1), 50)
@@ -1923,11 +1937,8 @@ export function RealtimeTopologyGraph({
 
   return (
     <div
+      ref={containerRef}
       className={cn("relative w-full h-96 rounded-lg overflow-hidden bg-[#08080c]", className)}
-      onResize={(e) => {
-        const { width, height } = (e.target as HTMLDivElement).getBoundingClientRect()
-        setDimensions({ width, height })
-      }}
     >
       <svg className="w-full h-full">
         {/* Links */}
@@ -2275,7 +2286,7 @@ export function InfrastructureHologram({
         <defs>
           <linearGradient id="hologram-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#00d4ff" />
-            <stop offset="100%" stopColor="#00d4ff" stopOffset="100%" />
+            <stop offset="100%" stopColor="#00d4ff" />
           </linearGradient>
         </defs>
       </svg>

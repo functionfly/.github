@@ -3,11 +3,24 @@
 package saml
 
 import (
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
+
+// getClockSkewTolerance returns the clock skew tolerance for SAML assertion validation.
+// This allows for minor clock differences between the IdP and SP.
+func getClockSkewTolerance() time.Duration {
+	if v := os.Getenv("SAML_CLOCK_SKEW_TOLERANCE_MINUTES"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed >= 0 {
+			return time.Duration(parsed) * time.Minute
+		}
+	}
+	return 5 * time.Minute // Default to 5 minutes
+}
 
 // SAMLConfig stores SAML Identity Provider configuration for a tenant
 type SAMLConfig struct {
@@ -197,16 +210,23 @@ func (a *SAMLAssertion) GetGroups(mapping *SAMLAttributeMapping) []string {
 }
 
 // IsValid checks if the assertion is valid (not expired, correct audience)
+// Takes clock skew into account to handle minor time differences between IdP and SP.
 func (a *SAMLAssertion) IsValid(expectedAudience string) bool {
 	now := time.Now()
+	skew := getClockSkewTolerance()
 
-	// Check NotBefore
-	if now.Before(a.NotBefore) {
+	// Check NotBefore with clock skew tolerance
+	// Allow assertions that appear to be from the future by up to skew minutes
+	// (handles clock differences where SP clock is slightly behind IdP clock)
+	if a.NotBefore.After(now.Add(skew)) {
 		return false
 	}
 
-	// Check NotOnOrAfter
-	if now.After(a.NotOnOrAfter) {
+	// Check NotOnOrAfter with clock skew tolerance
+	// Allow assertions that appear expired by up to skew minutes
+	// (handles clock differences where SP clock is slightly ahead of IdP clock,
+	// and network latency in receiving the assertion)
+	if a.NotOnOrAfter.Before(now.Add(-skew)) {
 		return false
 	}
 

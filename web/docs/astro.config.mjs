@@ -1,6 +1,10 @@
 import react from "@astrojs/react";
+import sentry from "@sentry/astro";
 import starlight from "@astrojs/starlight";
 import starlightOpenAPI from "starlight-openapi";
+import starlightLlmsTxt from "starlight-llms-txt";
+import expressiveCodeCollapsible from "expressive-code-collapsible";
+import astroMermaid from "astro-mermaid";
 import { defineConfig } from "astro/config";
 
 // https://astro.build/config
@@ -159,6 +163,7 @@ export default defineConfig({
               items: [
                 { label: "Studio", link: "/studio/" },
                 { label: "Studio Plugins", link: "/studio-plugins/" },
+                { label: "Trust API for AI Models", link: "/guides/trust-api-ai-models/" },
               ],
             },
             {
@@ -277,6 +282,11 @@ export default defineConfig({
         ]),
       ],
     }),
+    sentry({
+      dsn: process.env.SENTRY_DSN,
+      tracesSampleRate: 0.1,
+    }),
+    astroMermaid(),
     react({
       include: ["**/*.jsx", "**/*.tsx"],
     }),
@@ -291,6 +301,9 @@ export default defineConfig({
     format: "directory",
   },
   vite: {
+    ssr: {
+      noExternal: ["starlight-llms-txt", "starlight-package-managers", "expressive-code-collapsible"],
+    },
     build: {
       cssMinify: true,
       minify: false,

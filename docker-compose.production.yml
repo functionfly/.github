@@ -57,7 +57,7 @@ services:
   orchestrator-api:
     build:
       context: .
-      dockerfile: deploy/production/Dockerfile.orchestrator
+      dockerfile: deploy/docker/Dockerfile.orchestrator
     container_name: functionfly-orchestrator
     environment:
       - APP_ENV=production

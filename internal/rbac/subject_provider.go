@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage"
-	"github.com/functionfly/functionfly/internal/storage/postgres"
 	"gorm.io/gorm"
 )
 

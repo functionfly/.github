@@ -4,15 +4,7 @@ import path from 'path';
 import { defineConfig, type ProxyOptions } from 'vite';
 
 function resolveApiBaseUrl(): string {
-  const url = process.env.VITE_API_BASE_URL;
-  if (!url) {
-    throw new Error(
-      'VITE_API_BASE_URL environment variable is required for the dev server ' +
-        'proxy. Set it in web/admin-dashboard/.env.local or in your shell before ' +
-        'starting `npm run dev` (e.g. VITE_API_BASE_URL=http://localhost:8080).'
-    );
-  }
-  return url;
+  return process.env.VITE_API_BASE_URL || 'http://localhost:8080';
 }
 
 // Build the proxy options so that backend errors are surfaced to the

@@ -2,7 +2,7 @@
 name: Orchestrator
 description: Coordinate complex multi-step tasks by delegating to specialized agents
 argument-hint: A complex task to orchestrate, e.g., "implement a new API feature end-to-end"
-tools: ['vscode', 'execute', 'read', 'edit', 'search', 'agent', 'todo']
+tools: ['vscode', 'execute', 'read', 'edit', 'search', 'agent', 'todo', 'search.web', 'search.news', 'search.docs', 'search.company']
 agents: ['ask', 'plan', 'code', 'review', 'test', 'debug', 'security']
 ---
 

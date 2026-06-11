@@ -25,14 +25,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { SkeletonMessages } from '@/components/ui/skeleton-chat';
 import { useRealtimeMessages } from '@/hooks/useConversations';
 import { useDebounce } from '@/hooks/useInfiniteScroll';
-import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useAuthStore } from '@/stores/authStore';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AnimatePresence, motion } from 'framer-motion';
-import { Coins, Play, ChevronRight } from 'lucide-react';
+import { Coins, Play, MessageSquare } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import '@/styles/conversations-aviation.css';
 
 export default function ConversationsPage() {
   const { username, id: conversationId } = useParams<{ username?: string; id?: string }>();
@@ -249,19 +248,6 @@ export default function ConversationsPage() {
     onError: (err: Error) => toast.error(err.message || 'Failed to create conversation'),
   });
 
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-
-  // Swipe gestures for mobile: swipe right to open sidebar, swipe left to close
-  const { gestureHandlers: sidebarSwipeHandlers } = useSwipeGesture({
-    onSwipeLeft: () => setMobileSidebarOpen(false),
-  });
-
-  const { gestureHandlers: mainSwipeHandlers } = useSwipeGesture({
-    onSwipeRight: () => {
-      if (conversationId) setMobileSidebarOpen(true);
-    },
-  });
-
   const messages = messagesData?.messages ?? [];
   const isOwn = (authorId: string) => authorId === user?.id;
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -301,32 +287,9 @@ export default function ConversationsPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] border-t border-border">
-      {/* Mobile sidebar overlay */}
-      <AnimatePresence>
-        {mobileSidebarOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
-            onClick={() => setMobileSidebarOpen(false)}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Sidebar - hidden on mobile unless open */}
-      <div
-        className={`
-          fixed inset-y-0 left-0 z-50 w-72 lg:relative lg:z-auto
-          transition-transform duration-300 ease-in-out
-          lg:translate-x-0
-          ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        `}
-        style={{ top: '4rem' }}
-        {...sidebarSwipeHandlers}
-      >
+    <div className="conv-aviation-page conv-aviation-grid-bg flex h-full">
+      {/* Conversations sidebar */}
+      <div className="conv-aviation-sidebar w-72 shrink-0 border-r border-border flex flex-col">
         <ConversationSidebar
           conversations={conversations}
           loading={listLoading}
@@ -334,10 +297,7 @@ export default function ConversationsPage() {
           activeConversationId={conversationId}
           currentUserId={user?.id}
           displayForParticipantId={displayForParticipantId}
-          onNewConversation={() => {
-            setNewConversationModalOpen(true);
-            setMobileSidebarOpen(false);
-          }}
+          onNewConversation={() => setNewConversationModalOpen(true)}
         />
       </div>
 
@@ -362,13 +322,19 @@ export default function ConversationsPage() {
         participantInputRef={participantInputRef}
       />
 
-      <main className="flex-1 flex flex-col min-w-0" {...mainSwipeHandlers}>
+      <main className="conv-aviation-main flex-1 flex flex-col min-w-0">
         {!conversationId ? (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground">
+          <div className="conv-aviation-empty-state flex-1 flex flex-col items-center justify-center text-muted-foreground">
             {conversations.length > 0 ? (
-              <p className="text-sm">Select a conversation</p>
+              <>
+                <MessageSquare className="conv-aviation-empty-icon h-12 w-12 mb-4 opacity-50" />
+                <p className="text-sm font-mono">Select a conversation</p>
+              </>
             ) : (
-              <p className="text-sm">Your executable conversations will appear here.</p>
+              <>
+                <MessageSquare className="conv-aviation-empty-icon h-12 w-12 mb-4 opacity-50" />
+                <p className="text-sm font-mono">Your executable conversations will appear here.</p>
+              </>
             )}
           </div>
         ) : (
@@ -384,18 +350,6 @@ export default function ConversationsPage() {
                 resolvePending={resolveMutation.isPending}
               />
             )}
-            {/* Mobile back button */}
-            <div className="lg:hidden flex items-center gap-2 px-3 py-1.5 border-b border-border">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs text-muted-foreground"
-                onClick={() => setMobileSidebarOpen(true)}
-              >
-                <ChevronRight className="h-3.5 w-3.5 mr-1 rotate-180" />
-                All conversations
-              </Button>
-            </div>
             {conversationId && currentUsername && (
               <BountyAttachModal
                 username={currentUsername}
@@ -412,9 +366,9 @@ export default function ConversationsPage() {
                 onOpenChange={setSearchOpen}
               />
             )}
-            <ScrollArea className="flex-1 p-4">
+            <ScrollArea className="conv-aviation-message-list flex-1 p-4">
               {convData?.type === 'fix_mode' && (
-                <div className="mb-4 p-3 rounded-lg border border-border bg-card">
+                <div className="conv-aviation-fix-timeline mb-4 p-3 rounded-lg border border-border bg-card">
                   <FixModeLayout
                     conversation={convData}
                     isResolved={Boolean(convData.resolved_at)}
@@ -435,9 +389,9 @@ export default function ConversationsPage() {
                   {bountiesData.bounties.map((b) => (
                     <div
                       key={b.id}
-                      className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-sm"
+                      className="conv-aviation-bounty-badge flex items-center gap-2 rounded-md border px-2 py-1 text-sm"
                     >
-                      <Coins className="h-4 w-4 text-amber-600" />
+                      <Coins className="h-4 w-4" />
                       <span>
                         +{b.amount_reputation} rep
                         {b.amount_cents ? ` · $${(b.amount_cents / 100).toFixed(2)}` : ''}
@@ -448,7 +402,7 @@ export default function ConversationsPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-6 text-xs"
+                          className="conv-aviation-btn h-6 text-xs"
                           onClick={() => claimBountyMutation.mutate(b.id)}
                           disabled={claimBountyMutation.isPending || !convData?.resolved_at}
                         >
@@ -483,7 +437,7 @@ export default function ConversationsPage() {
               displayForParticipantId={displayForParticipantId}
             />
             {showRunPanel && conversationId && currentUsername && (
-              <div className="border-t border-border p-3 bg-muted/20">
+              <div className="conv-aviation-run-panel border-t border-border p-3 bg-muted/20">
                 <RunInThreadPanel
                   username={currentUsername}
                   conversationId={conversationId}
@@ -491,11 +445,11 @@ export default function ConversationsPage() {
                 />
               </div>
             )}
-            <div className="flex items-center gap-1 border-t border-border px-2 py-1">
+            <div className="conv-aviation-composer flex items-center gap-1 border-t border-border px-2 py-1">
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2 text-xs text-muted-foreground"
+                className="conv-aviation-btn h-7 px-2 text-xs"
                 onClick={() => setShowRunPanel((v) => !v)}
               >
                 <Play className="h-3.5 w-3.5 mr-1" />

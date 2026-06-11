@@ -342,7 +342,7 @@ psql "${DATABASE_URL}" -c "SHOW max_connections;"
 
 ```bash
 # Update base image (if using Dockerfile)
-fly deploy --app functionfly-orchestrator --dockerfile deploy/production/Dockerfile.orchestrator
+fly deploy --app functionfly-orchestrator --dockerfile deploy/docker/Dockerfile.orchestrator
 
 # Review security advisories
 go list -m -versions all | grep -E "(critical|high)"

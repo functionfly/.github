@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { usePageTitle } from '@/hooks';
 import {
   Brain,
   Search,
@@ -25,24 +26,30 @@ import {
   Settings,
   ChevronDown,
   X,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Select } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Progress } from "@/components/ui/progress";
-import { MetaTags } from "@/components/seo/MetaTags";
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Select } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Progress } from '@/components/ui/progress';
+import { MetaTags } from '@/components/seo/MetaTags';
 import {
   brainApi,
   type BrainSignal,
   type BrainStats,
   type BrainComposer,
   type BrainTrigger,
-} from "@/api/brain";
+} from '@/api/brain';
 
 const connectorIcons: Record<string, React.ReactNode> = {
   github: <GitBranch className="w-3.5 h-3.5" />,
@@ -54,27 +61,27 @@ const connectorIcons: Record<string, React.ReactNode> = {
 };
 
 const connectorColors: Record<string, string> = {
-  github: "bg-gray-500/10 text-gray-400 border-gray-500/20",
-  notion: "bg-gray-500/10 text-gray-300 border-gray-500/20",
-  slack: "bg-purple-500/10 text-purple-400 border-purple-500/20",
-  gmail: "bg-red-500/10 text-red-400 border-red-500/20",
-  linear: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  flymind: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+  github: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
+  notion: 'bg-gray-500/10 text-gray-300 border-gray-500/20',
+  slack: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  gmail: 'bg-red-500/10 text-red-400 border-red-500/20',
+  linear: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  flymind: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
 };
 
 const importanceColors: Record<number, string> = {
-  1: "bg-white/5 text-text-secondary border-white/10",
-  2: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-  3: "bg-red-500/10 text-red-400 border-red-500/20",
+  1: 'bg-white/5 text-text-secondary border-white/10',
+  2: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+  3: 'bg-red-500/10 text-red-400 border-red-500/20',
 };
 
 function formatRelativeTime(dateStr?: string): string {
-  if (!dateStr) return "Never";
+  if (!dateStr) return 'Never';
   const date = new Date(dateStr);
   const now = new Date();
   const diff = now.getTime() - date.getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Just now";
+  if (mins < 1) return 'Just now';
   if (mins < 60) return `${mins}m ago`;
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours}h ago`;
@@ -93,10 +100,10 @@ function StatsOverview({ stats }: { stats: BrainStats }) {
             <span className="text-xs text-text-secondary font-medium">Total Signals</span>
             <Activity className="w-4 h-4 text-indigo-400" />
           </div>
-          <p className="text-2xl font-bold text-text-primary">{stats.total_signals.toLocaleString()}</p>
-          <p className="text-xs text-text-secondary mt-1">
-            Retention: {stats.retention_days} days
+          <p className="text-2xl font-bold text-text-primary">
+            {stats.total_signals.toLocaleString()}
           </p>
+          <p className="text-xs text-text-secondary mt-1">Retention: {stats.retention_days} days</p>
         </CardContent>
       </Card>
 
@@ -125,7 +132,11 @@ function StatsOverview({ stats }: { stats: BrainStats }) {
           </p>
           <div className="flex flex-wrap gap-1 mt-2">
             {Object.entries(stats.signals_by_connector).map(([slug, count]) => (
-              <Badge key={slug} variant="outline" className={`text-[10px] ${connectorColors[slug] || "bg-white/5 border-white/10"}`}>
+              <Badge
+                key={slug}
+                variant="outline"
+                className={`text-[10px] ${connectorColors[slug] || 'bg-white/5 border-white/10'}`}
+              >
                 {slug}: {count}
               </Badge>
             ))}
@@ -174,7 +185,10 @@ function SignalRow({
         onClick={() => setShowActions(!showActions)}
       >
         <div className="flex-shrink-0 mt-0.5">
-          <Badge variant="outline" className={connectorColors[signal.connector_slug] || "bg-white/5 border-white/10"}>
+          <Badge
+            variant="outline"
+            className={connectorColors[signal.connector_slug] || 'bg-white/5 border-white/10'}
+          >
             <span className="flex items-center gap-1">
               {connectorIcons[signal.connector_slug] || <Zap className="w-3 h-3" />}
               {signal.connector_slug}
@@ -187,8 +201,13 @@ function SignalRow({
           <div className="flex items-center gap-2 mt-1.5">
             <span className="text-[10px] text-text-secondary">{signal.signal_type}</span>
             <span className="text-text-secondary/30">·</span>
-            <span className="text-[10px] text-text-secondary">{formatRelativeTime(signal.created_at)}</span>
-            <Badge variant="outline" className={`text-[10px] ${importanceColors[signal.importance] || importanceColors[1]}`}>
+            <span className="text-[10px] text-text-secondary">
+              {formatRelativeTime(signal.created_at)}
+            </span>
+            <Badge
+              variant="outline"
+              className={`text-[10px] ${importanceColors[signal.importance] || importanceColors[1]}`}
+            >
               P{signal.importance}
             </Badge>
             {signal.source_url && (
@@ -262,8 +281,15 @@ function ComposerCard({
             <CardTitle className="text-sm text-text-primary">{composer.name}</CardTitle>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className={composer.is_active ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-white/5 text-text-secondary border-white/10"}>
-              {composer.is_active ? "Active" : "Paused"}
+            <Badge
+              variant="outline"
+              className={
+                composer.is_active
+                  ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                  : 'bg-white/5 text-text-secondary border-white/10'
+              }
+            >
+              {composer.is_active ? 'Active' : 'Paused'}
             </Badge>
             <Button
               variant="ghost"
@@ -284,7 +310,11 @@ function ComposerCard({
           {composer.signal_filters?.map((f, i) => (
             <div key={i} className="flex items-center gap-1">
               {f.connector_slugs?.map((slug) => (
-                <Badge key={slug} variant="outline" className={`text-[10px] ${connectorColors[slug] || "bg-white/5 border-white/10"}`}>
+                <Badge
+                  key={slug}
+                  variant="outline"
+                  className={`text-[10px] ${connectorColors[slug] || 'bg-white/5 border-white/10'}`}
+                >
                   {slug}
                 </Badge>
               ))}
@@ -317,8 +347,15 @@ function TriggerCard({
             <CardTitle className="text-sm text-text-primary">{trigger.name}</CardTitle>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className={trigger.is_active ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-white/5 text-text-secondary border-white/10"}>
-              {trigger.is_active ? "Active" : "Paused"}
+            <Badge
+              variant="outline"
+              className={
+                trigger.is_active
+                  ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                  : 'bg-white/5 text-text-secondary border-white/10'
+              }
+            >
+              {trigger.is_active ? 'Active' : 'Paused'}
             </Badge>
             <Button
               variant="ghost"
@@ -336,7 +373,9 @@ function TriggerCard({
           <div className="flex flex-wrap gap-1.5">
             <span className="text-[10px] text-text-secondary">Types:</span>
             {trigger.signal_types.map((t) => (
-              <Badge key={t} variant="outline" className="text-[10px] bg-white/5 border-white/10">{t}</Badge>
+              <Badge key={t} variant="outline" className="text-[10px] bg-white/5 border-white/10">
+                {t}
+              </Badge>
             ))}
           </div>
           <div className="flex items-center gap-2 text-[10px] text-text-secondary">
@@ -347,7 +386,9 @@ function TriggerCard({
             <span>Schedule: {trigger.schedule}</span>
           </div>
           {trigger.last_fired_at && (
-            <p className="text-[10px] text-text-secondary">Last fired: {formatRelativeTime(trigger.last_fired_at)}</p>
+            <p className="text-[10px] text-text-secondary">
+              Last fired: {formatRelativeTime(trigger.last_fired_at)}
+            </p>
           )}
         </div>
       </CardContent>
@@ -355,17 +396,18 @@ function TriggerCard({
   );
 }
 
-type TabId = "signals" | "composers" | "triggers";
+type TabId = 'signals' | 'composers' | 'triggers';
 
 export function BrainPage() {
-  const [activeTab, setActiveTab] = useState<TabId>("signals");
+  usePageTitle('Brain');
+  const [activeTab, setActiveTab] = useState<TabId>('signals');
   const [stats, setStats] = useState<BrainStats | null>(null);
   const [signals, setSignals] = useState<BrainSignal[]>([]);
   const [composers, setComposers] = useState<BrainComposer[]>([]);
   const [triggers, setTriggers] = useState<BrainTrigger[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [connectorFilter, setConnectorFilter] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [connectorFilter, setConnectorFilter] = useState<string>('');
   const [purgeDialogOpen, setPurgeDialogOpen] = useState(false);
   const [purging, setPurging] = useState(false);
 
@@ -374,7 +416,7 @@ export function BrainPage() {
       const s = await brainApi.getStats();
       setStats(s);
     } catch (err) {
-      console.error("Failed to load brain stats:", err);
+      console.error('Failed to load brain stats:', err);
     }
   }, []);
 
@@ -385,7 +427,7 @@ export function BrainPage() {
       const res = await brainApi.listSignals(params);
       setSignals(res.signals || []);
     } catch (err) {
-      console.error("Failed to load signals:", err);
+      console.error('Failed to load signals:', err);
     }
   }, [connectorFilter]);
 
@@ -394,7 +436,7 @@ export function BrainPage() {
       const c = await brainApi.listComposers();
       setComposers(c);
     } catch (err) {
-      console.error("Failed to load composers:", err);
+      console.error('Failed to load composers:', err);
     }
   }, []);
 
@@ -403,7 +445,7 @@ export function BrainPage() {
       const t = await brainApi.listTriggers();
       setTriggers(t);
     } catch (err) {
-      console.error("Failed to load triggers:", err);
+      console.error('Failed to load triggers:', err);
     }
   }, []);
 
@@ -422,7 +464,7 @@ export function BrainPage() {
       setSignals((prev) => prev.filter((s) => s.id !== id));
       loadStats();
     } catch (err) {
-      console.error("Failed to delete signal:", err);
+      console.error('Failed to delete signal:', err);
     }
   };
 
@@ -430,7 +472,7 @@ export function BrainPage() {
     try {
       await brainApi.submitFeedback({ signal_id: signalId, helpful });
     } catch (err) {
-      console.error("Failed to submit feedback:", err);
+      console.error('Failed to submit feedback:', err);
     }
   };
 
@@ -442,7 +484,7 @@ export function BrainPage() {
       await loadStats();
       setPurgeDialogOpen(false);
     } catch (err) {
-      console.error("Failed to purge signals:", err);
+      console.error('Failed to purge signals:', err);
     } finally {
       setPurging(false);
     }
@@ -453,7 +495,7 @@ export function BrainPage() {
       await brainApi.deleteComposer(id);
       setComposers((prev) => prev.filter((c) => c.id !== id));
     } catch (err) {
-      console.error("Failed to delete composer:", err);
+      console.error('Failed to delete composer:', err);
     }
   };
 
@@ -462,7 +504,7 @@ export function BrainPage() {
       await brainApi.deleteTrigger(id);
       setTriggers((prev) => prev.filter((t) => t.id !== id));
     } catch (err) {
-      console.error("Failed to delete trigger:", err);
+      console.error('Failed to delete trigger:', err);
     }
   };
 
@@ -478,9 +520,24 @@ export function BrainPage() {
   });
 
   const tabs: { id: TabId; label: string; icon: React.ReactNode; count?: number }[] = [
-    { id: "signals", label: "Signals", icon: <Activity className="w-4 h-4" />, count: signals.length },
-    { id: "composers", label: "Composers", icon: <Calendar className="w-4 h-4" />, count: composers.length },
-    { id: "triggers", label: "Triggers", icon: <Bell className="w-4 h-4" />, count: triggers.length },
+    {
+      id: 'signals',
+      label: 'Signals',
+      icon: <Activity className="w-4 h-4" />,
+      count: signals.length,
+    },
+    {
+      id: 'composers',
+      label: 'Composers',
+      icon: <Calendar className="w-4 h-4" />,
+      count: composers.length,
+    },
+    {
+      id: 'triggers',
+      label: 'Triggers',
+      icon: <Bell className="w-4 h-4" />,
+      count: triggers.length,
+    },
   ];
 
   if (loading) {
@@ -514,7 +571,8 @@ export function BrainPage() {
             Brain
           </h1>
           <p className="mt-1 text-text-secondary">
-            Your personal AI memory. Signals from connected accounts are scored, stored, and injected into agent context.
+            Your personal AI memory. Signals from connected accounts are scored, stored, and
+            injected into agent context.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -553,14 +611,17 @@ export function BrainPage() {
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
               activeTab === tab.id
-                ? "bg-white/[0.08] text-text-primary"
-                : "text-text-secondary hover:text-text-primary hover:bg-white/[0.04]"
+                ? 'bg-white/[0.08] text-text-primary'
+                : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
             }`}
           >
             {tab.icon}
             {tab.label}
             {tab.count !== undefined && (
-              <Badge variant="outline" className="ml-1 text-[10px] bg-white/5 border-white/10 px-1.5 py-0">
+              <Badge
+                variant="outline"
+                className="ml-1 text-[10px] bg-white/5 border-white/10 px-1.5 py-0"
+              >
                 {tab.count}
               </Badge>
             )}
@@ -569,7 +630,7 @@ export function BrainPage() {
       </div>
 
       {/* Signals Tab */}
-      {activeTab === "signals" && (
+      {activeTab === 'signals' && (
         <div className="space-y-4">
           {/* Search and filters */}
           <div className="flex items-center gap-3">
@@ -583,7 +644,7 @@ export function BrainPage() {
               />
               {searchQuery && (
                 <button
-                  onClick={() => setSearchQuery("")}
+                  onClick={() => setSearchQuery('')}
                   className="absolute right-3 top-1/2 -translate-y-1/2"
                 >
                   <X className="w-3.5 h-3.5 text-text-secondary hover:text-text-primary" />
@@ -596,9 +657,12 @@ export function BrainPage() {
               className="px-3 py-2 rounded-md bg-white/[0.03] border border-white/[0.06] text-sm text-text-primary"
             >
               <option value="">All connectors</option>
-              {stats && Object.keys(stats.signals_by_connector).map((slug) => (
-                <option key={slug} value={slug}>{slug}</option>
-              ))}
+              {stats &&
+                Object.keys(stats.signals_by_connector).map((slug) => (
+                  <option key={slug} value={slug}>
+                    {slug}
+                  </option>
+                ))}
             </select>
           </div>
 
@@ -607,10 +671,10 @@ export function BrainPage() {
             <EmptyState
               variant="card"
               icon={<Activity className="w-8 h-8" />}
-              title={searchQuery ? "No matching signals" : "No signals yet"}
+              title={searchQuery ? 'No matching signals' : 'No signals yet'}
               description={
                 searchQuery
-                  ? "Try adjusting your search or filter."
+                  ? 'Try adjusting your search or filter.'
                   : "Link a connector to start building your Brain's memory."
               }
             />
@@ -634,7 +698,7 @@ export function BrainPage() {
       )}
 
       {/* Composers Tab */}
-      {activeTab === "composers" && (
+      {activeTab === 'composers' && (
         <div className="space-y-4">
           {composers.length === 0 ? (
             <EmptyState
@@ -660,7 +724,7 @@ export function BrainPage() {
       )}
 
       {/* Triggers Tab */}
-      {activeTab === "triggers" && (
+      {activeTab === 'triggers' && (
         <div className="space-y-4">
           {triggers.length === 0 ? (
             <EmptyState
@@ -673,11 +737,7 @@ export function BrainPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <AnimatePresence mode="popLayout">
                 {triggers.map((trigger) => (
-                  <TriggerCard
-                    key={trigger.id}
-                    trigger={trigger}
-                    onDelete={handleDeleteTrigger}
-                  />
+                  <TriggerCard key={trigger.id} trigger={trigger} onDelete={handleDeleteTrigger} />
                 ))}
               </AnimatePresence>
             </div>
@@ -701,14 +761,14 @@ export function BrainPage() {
             </p>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setPurgeDialogOpen(false)} className="border-white/10">
+            <Button
+              variant="ghost"
+              onClick={() => setPurgeDialogOpen(false)}
+              className="border-white/10"
+            >
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handlePurge}
-              disabled={purging}
-            >
+            <Button variant="destructive" onClick={handlePurge} disabled={purging}>
               {purging ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : (

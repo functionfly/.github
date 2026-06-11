@@ -41,6 +41,7 @@ pub mod executor;
 pub mod loader;
 pub mod memory;
 pub mod wrapper;
+pub mod host_functions;
 
 // Re-export main types for convenience
 pub use executor::{ExecutorConfig, MicroPythonExecutor};

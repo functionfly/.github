@@ -415,8 +415,8 @@ export function SecuritySettingsTab() {
   }, [sessions]);
 
   return (
-    <div className="space-y-6">
-      <Card className="ff-card-velocity">
+    <div className="settings-page space-y-6">
+      <Card className="settings-panel">
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-brand-500" />
@@ -576,7 +576,7 @@ export function SecuritySettingsTab() {
       </Card>
 
       {recoveryCodes.length > 0 ? (
-        <Card className="ff-card-velocity">
+        <Card className="settings-panel">
           <CardHeader>
             <CardTitle className="font-display flex items-center gap-2">
               <KeyRound className="h-5 w-5 text-brand-500" />
@@ -610,7 +610,7 @@ export function SecuritySettingsTab() {
         </Card>
       ) : null}
 
-      <Card className="ff-card-velocity">
+      <Card className="settings-panel">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -834,7 +834,7 @@ export function SecuritySettingsTab() {
         </CardContent>
       </Card>
 
-      <Card className="ff-card-velocity">
+      <Card className="settings-panel">
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
             <Download className="h-5 w-5 text-brand-500" />
@@ -854,7 +854,7 @@ export function SecuritySettingsTab() {
         </CardContent>
       </Card>
 
-      <Card className="ff-card-velocity border-red-500/30">
+      <Card className="settings-panel border-red-500/30">
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2 text-red-600 dark:text-red-400">
             <ShieldAlert className="h-5 w-5" />

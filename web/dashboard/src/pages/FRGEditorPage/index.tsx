@@ -4,6 +4,8 @@
  * Integrates all FRG components with the 3-panel layout
  */
 
+import './styles.css';
+
 import { useCallback, useEffect, useState, useRef } from 'react';
 import {
   ReactFlowProvider,
@@ -95,7 +97,7 @@ const edgeTypes = {
 function FRGEditorInner() {
   const reactFlow = useReactFlow();
   const store = useFRGStore();
-  const { id } = useParams();
+  const { author, name } = useParams<{ author: string; name: string }>();
   const navigate = useNavigate();
   
   const {
@@ -122,6 +124,7 @@ function FRGEditorInner() {
     pauseExecution,
     stopExecution,
     saveGraph,
+    loadGraph,
     isLoading,
     isSaving,
     isExecuting,
@@ -135,7 +138,7 @@ function FRGEditorInner() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showCollaboration, setShowCollaboration] = useState(false);
   const [presentationMode, setPresentationMode] = useState(false);
-  const [isNewGraph, setIsNewGraph] = useState(!id && nodes.length === 0);
+  const [isNewGraph, setIsNewGraph] = useState(!author && nodes.length === 0);
   const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -189,8 +192,15 @@ function FRGEditorInner() {
 
   // Check if this is a new graph
   useEffect(() => {
-    setIsNewGraph(!id && nodes.length === 0);
-  }, [id, nodes.length]);
+    setIsNewGraph(!author && nodes.length === 0);
+  }, [author, nodes.length]);
+
+  // Load graph when author/name changes
+  useEffect(() => {
+    if (author && name) {
+      loadGraph(author, name);
+    }
+  }, [author, name, loadGraph]);
 
   // Handle node changes
   const onNodesChange = useCallback((changes: NodeChange[]) => {
@@ -380,41 +390,41 @@ function FRGEditorInner() {
   const activeRightPanel = selectedNodeId ? 'inspector' : rightPanel;
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className={cn(
-        "flex flex-col h-screen bg-[var(--bg-primary)] overflow-hidden",
-        isFullscreen && "fixed inset-0 z-50",
-        presentationMode && "presentation-mode"
+        "frg-editor-container",
+        isFullscreen && "fullscreen",
+        presentationMode && "frg-editor-presentation-mode"
       )}
     >
       {/* Top Bar */}
       {!presentationMode && (
-        <header className="h-14 border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)] flex items-center justify-between px-4 shrink-0">
+        <header className="frg-editor-topbar">
           {/* Left: Logo & Graph Name */}
-          <div className="flex items-center gap-4">
+          <div className="frg-editor-topbar-left">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center">
-                <Share className="w-4 h-4 text-white" />
+              <div className="frg-editor-logo">
+                <Share className="frg-editor-logo-icon" />
               </div>
-              <span className="font-semibold text-[var(--text-primary)]">FRG Editor</span>
+              <span className="frg-editor-title">FRG Editor</span>
             </div>
-            <Separator orientation="vertical" className="h-6" />
+            <Separator orientation="vertical" className="frg-editor-separator" />
             <div className="flex items-center gap-2">
               <Input
                 value={graphName}
                 onChange={(e) => setGraphName(e.target.value)}
-                className="h-8 w-48 bg-transparent border-0 focus-visible:ring-0 px-0 text-[var(--text-primary)] font-medium"
+                className="frg-editor-graph-name"
                 placeholder="Graph name..."
               />
               {isDirty && (
-                <Badge variant="secondary" className="text-xs">Unsaved</Badge>
+                <span className="frg-editor-unsaved-badge">Unsaved</span>
               )}
             </div>
           </div>
 
           {/* Center: Execution Controls */}
-          <div className="flex items-center gap-2">
+          <div className="frg-editor-topbar-center">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -423,14 +433,15 @@ function FRGEditorInner() {
                     size="icon"
                     onClick={undo}
                     disabled={!canUndo}
+                    className="frg-editor-button frg-editor-button-icon"
                   >
-                    <Undo2 className="w-4 h-4" />
+                    <Undo2 className="frg-editor-button-icon-svg" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Undo (Ctrl+Z)</TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            
+
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -439,68 +450,70 @@ function FRGEditorInner() {
                     size="icon"
                     onClick={redo}
                     disabled={!canRedo}
+                    className="frg-editor-button frg-editor-button-icon"
                   >
-                    <Redo2 className="w-4 h-4" />
+                    <Redo2 className="frg-editor-button-icon-svg" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Redo (Ctrl+Shift+Z)</TooltipContent>
               </Tooltip>
             </TooltipProvider>
 
-            <Separator orientation="vertical" className="h-6 mx-2" />
+            <Separator orientation="vertical" className="frg-editor-separator" />
 
             <Button
               variant={editorMode === 'debug' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setEditorMode(editorMode === 'debug' ? 'edit' : 'debug')}
+              className={cn("frg-editor-button frg-editor-button-debug", editorMode === 'debug' && "active")}
             >
-              <Bug className="w-4 h-4 mr-2" />
+              <Bug className="frg-editor-button-icon-svg mr-2" />
               Debug
             </Button>
 
-            <Separator orientation="vertical" className="h-6 mx-2" />
+            <Separator orientation="vertical" className="frg-editor-separator" />
 
             {/* Run Controls */}
             {executionStatus === 'running' ? (
               <>
-                <Button variant="outline" size="sm" onClick={pauseExecution}>
-                  <Pause className="w-4 h-4 mr-2" />
+                <Button variant="outline" size="sm" onClick={pauseExecution} className="frg-editor-button frg-editor-button-outline">
+                  <Pause className="frg-editor-button-icon-svg mr-2" />
                   Pause
                 </Button>
-                <Button variant="destructive" size="sm" onClick={handleStop}>
-                  <Square className="w-4 h-4 mr-2" />
+                <Button variant="destructive" size="sm" onClick={handleStop} className="frg-editor-button frg-editor-button-danger">
+                  <Square className="frg-editor-button-icon-svg mr-2" />
                   Stop
                 </Button>
               </>
             ) : executionStatus === 'paused' ? (
               <>
-                <Button variant="default" size="sm" onClick={handleRun}>
-                  <Play className="w-4 h-4 mr-2" />
+                <Button variant="default" size="sm" onClick={handleRun} className="frg-editor-button frg-editor-button-primary">
+                  <Play className="frg-editor-button-icon-svg mr-2" />
                   Resume
                 </Button>
               </>
             ) : (
-              <Button 
-                variant="default" 
-                size="sm" 
+              <Button
+                variant="default"
+                size="sm"
                 onClick={handleRun}
-                className="bg-gradient-to-r from-green-500 to-emerald-500"
+                className="frg-editor-button frg-editor-button-run"
               >
-                <Play className="w-4 h-4 mr-2" />
+                <Play className="frg-editor-button-icon-svg mr-2" />
                 Run
               </Button>
             )}
 
             {executionStatus === 'running' && (
-              <div className="flex items-center gap-2 ml-2">
-                <Loader2 className="w-4 h-4 animate-spin text-brand-500" />
-                <span className="text-xs text-[var(--text-secondary)]">Running...</span>
+              <div className="frg-editor-execution-status">
+                <Loader2 className="frg-editor-execution-spinner" />
+                <span className="frg-editor-execution-text">Running...</span>
               </div>
             )}
           </div>
 
           {/* Right: Actions */}
-          <div className="flex items-center gap-2">
+          <div className="frg-editor-topbar-right">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -508,9 +521,9 @@ function FRGEditorInner() {
                     variant="ghost"
                     size="icon"
                     onClick={() => setShowCollaboration(!showCollaboration)}
-                    className={cn(showCollaboration && "text-brand-500")}
+                    className={cn("frg-editor-button frg-editor-button-icon", showCollaboration && "active")}
                   >
-                    <Users className="w-4 h-4" />
+                    <Users className="frg-editor-button-icon-svg" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Toggle collaboration cursors</TooltipContent>
@@ -524,98 +537,99 @@ function FRGEditorInner() {
                     variant="ghost"
                     size="icon"
                     onClick={() => setShowShortcuts(true)}
+                    className="frg-editor-button frg-editor-button-icon"
                   >
-                    <Keyboard className="w-4 h-4" />
+                    <Keyboard className="frg-editor-button-icon-svg" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Keyboard shortcuts (?)</TooltipContent>
               </Tooltip>
             </TooltipProvider>
 
-            <Button variant="outline" size="sm">
-              <Upload className="w-4 h-4 mr-2" />
+            <Button variant="outline" size="sm" className="frg-editor-button frg-editor-button-outline">
+              <Upload className="frg-editor-button-icon-svg mr-2" />
               Import
             </Button>
-            <Button variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-2" />
+            <Button variant="outline" size="sm" className="frg-editor-button frg-editor-button-outline">
+              <Download className="frg-editor-button-icon-svg mr-2" />
               Export
             </Button>
             {store.isOffline && operationQueue.length > 0 && (
-              <Badge variant="secondary" className="text-xs">
+              <span className="frg-editor-queued-badge">
                 {operationQueue.length} queued
-              </Badge>
+              </span>
             )}
-            <Button variant="default" size="sm" className={cn(isDirty && "animate-pulse")} onClick={handleSave} disabled={isLoading || isSaving}>
-              <Save className="w-4 h-4 mr-2" />
+            <Button variant="default" size="sm" className={cn("frg-editor-button frg-editor-button-primary frg-editor-button-save", isDirty && "animate-pulse")} onClick={handleSave} disabled={isLoading || isSaving}>
+              <Save className="frg-editor-button-icon-svg mr-2" />
               {isSaving ? 'Saving...' : isLoading ? 'Loading...' : 'Save'}
             </Button>
             {lastSavedAt && (
-              <span className="text-xs text-[var(--text-muted)]">
+              <span className="frg-editor-saved-indicator">
                 Saved {new Date(lastSavedAt).toLocaleTimeString()}
               </span>
             )}
-            <Separator orientation="vertical" className="h-6 mx-1" />
-            <Button variant="ghost" size="icon" onClick={toggleFullscreen}>
-              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            <Separator orientation="vertical" className="frg-editor-separator" />
+            <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="frg-editor-button frg-editor-button-icon">
+              {isFullscreen ? <Minimize2 className="frg-editor-button-icon-svg" /> : <Maximize2 className="frg-editor-button-icon-svg" />}
             </Button>
-            <Button variant="ghost" size="icon">
-              <Settings className="w-4 h-4" />
+            <Button variant="ghost" size="icon" className="frg-editor-button frg-editor-button-icon">
+              <Settings className="frg-editor-button-icon-svg" />
             </Button>
           </div>
         </header>
       )}
 
       {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="frg-editor-main">
         {/* Left Sidebar */}
         {!presentationMode && leftPanel && (
-          <aside className="w-72 border-r border-[var(--border-subtle)] bg-[var(--bg-secondary)] flex flex-col shrink-0 overflow-hidden">
-            <Tabs value={leftPanel} className="w-full">
-              <TabsList className="w-full grid grid-cols-4 h-10">
-                <TabsTrigger 
-                  value="library" 
+          <aside className="frg-editor-sidebar frg-editor-sidebar-left">
+            <Tabs value={leftPanel} className="w-full h-full flex flex-col">
+              <TabsList className="frg-editor-tabs-list">
+                <TabsTrigger
+                  value="library"
                   onClick={() => toggleLeftPanel('library')}
-                  className="text-xs"
+                  className="frg-editor-tabs-trigger"
                 >
-                  <Library className="w-3 h-3 mr-1" />
+                  <Library className="frg-editor-tabs-trigger-icon" />
                   Library
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="ai" 
+                <TabsTrigger
+                  value="ai"
                   onClick={() => toggleLeftPanel('ai')}
-                  className="text-xs"
+                  className="frg-editor-tabs-trigger"
                 >
-                  <Sparkles className="w-3 h-3 mr-1" />
+                  <Sparkles className="frg-editor-tabs-trigger-icon" />
                   AI
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="versions" 
+                <TabsTrigger
+                  value="versions"
                   onClick={() => toggleLeftPanel('versions')}
-                  className="text-xs"
+                  className="frg-editor-tabs-trigger"
                 >
-                  <GitBranch className="w-3 h-3 mr-1" />
+                  <GitBranch className="frg-editor-tabs-trigger-icon" />
                   Versions
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="evolution" 
+                <TabsTrigger
+                  value="evolution"
                   onClick={() => toggleLeftPanel('evolution')}
-                  className="text-xs"
+                  className="frg-editor-tabs-trigger"
                 >
-                  <Wand2 className="w-3 h-3 mr-1" />
+                  <Wand2 className="frg-editor-tabs-trigger-icon" />
                   Evolve
                 </TabsTrigger>
               </TabsList>
-              
-              <TabsContent value="library" className="m-0 flex-1 overflow-hidden">
+
+              <TabsContent value="library" className="frg-editor-tabs-content">
                 <FunctionLibrary />
               </TabsContent>
-              <TabsContent value="ai" className="m-0 flex-1 overflow-hidden">
+              <TabsContent value="ai" className="frg-editor-tabs-content">
                 <AIAssistantPanel />
               </TabsContent>
-              <TabsContent value="versions" className="m-0 flex-1 overflow-hidden">
+              <TabsContent value="versions" className="frg-editor-tabs-content">
                 <VersionSelector />
               </TabsContent>
-              <TabsContent value="evolution" className="m-0 flex-1 overflow-hidden">
+              <TabsContent value="evolution" className="frg-editor-tabs-content">
                 <EvolutionPanel />
               </TabsContent>
             </Tabs>
@@ -624,26 +638,19 @@ function FRGEditorInner() {
 
         {/* Toggle Left Panel Button (when hidden) */}
         {!presentationMode && !leftPanel && (
-          <div className="absolute left-4 top-[4.5rem] z-10">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => toggleLeftPanel('library')}
-              className="shadow-lg"
-            >
-              <PanelLeft className="w-4 h-4 mr-2" />
-              Show Library
-            </Button>
+          <div className="frg-editor-toggle-button frg-editor-toggle-button-left">
+            <PanelLeft className="w-4 h-4" />
+            Show Library
           </div>
         )}
 
         {/* Graph Canvas */}
-        <main className="flex-1 relative overflow-hidden">
+        <main className="frg-editor-canvas">
           <GraphCanvas
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
           />
-          
+
           {/* Empty State Overlay */}
           {isNewGraph && nodes.length === 0 && (
             <EmptyStateOverlay
@@ -651,25 +658,25 @@ function FRGEditorInner() {
               onAIPrompt={handleAIPrompt}
             />
           )}
-          
+
           {/* Execution Overlay */}
           <ExecutionOverlay />
-          
+
           {/* Collaboration Cursors */}
           {showCollaboration && <LiveCursors />}
-          
+
           {/* Comment Pins */}
           {showCollaboration && <CommentPins />}
-          
+
           {/* Canvas Controls */}
           <CanvasControls
             onPresentationModeToggle={() => setPresentationMode(!presentationMode)}
             presentationMode={presentationMode}
           />
-          
+
           {/* React Flow Controls */}
           <Controls className="!bg-[var(--bg-secondary)] !border-[var(--border-subtle)]" />
-          <MiniMap 
+          <MiniMap
             className="!bg-[var(--bg-secondary)] !border-[var(--border-subtle)]"
             maskColor="rgba(0,0,0,0.2)"
             nodeColor={(node) => {
@@ -677,9 +684,9 @@ function FRGEditorInner() {
               return '#6366f1';
             }}
           />
-          <Background 
-            variant={BackgroundVariant.Dots} 
-            gap={20} 
+          <Background
+            variant={BackgroundVariant.Dots}
+            gap={20}
             size={1}
             color="var(--border-subtle)"
           />
@@ -687,35 +694,35 @@ function FRGEditorInner() {
 
         {/* Right Sidebar */}
         {!presentationMode && showRightPanel && (
-          <aside className="w-80 border-l border-[var(--border-subtle)] bg-[var(--bg-secondary)] flex flex-col shrink-0 overflow-hidden">
+          <aside className="frg-editor-sidebar frg-editor-sidebar-right">
             <Tabs value={activeRightPanel || 'inspector'} className="w-full h-full flex flex-col">
-              <TabsList className="w-full grid grid-cols-3 h-10">
-                <TabsTrigger 
-                  value="inspector" 
-                  className="text-xs"
+              <TabsList className="frg-editor-tabs-list">
+                <TabsTrigger
+                  value="inspector"
+                  className="frg-editor-tabs-trigger"
                 >
                   Inspector
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="test" 
+                <TabsTrigger
+                  value="test"
                   onClick={() => toggleRightPanel('test')}
-                  className="text-xs"
+                  className="frg-editor-tabs-trigger"
                 >
-                  <TestTube className="w-3 h-3 mr-1" />
+                  <TestTube className="frg-editor-tabs-trigger-icon" />
                   Test
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="settings" 
-                  className="text-xs"
+                <TabsTrigger
+                  value="settings"
+                  className="frg-editor-tabs-trigger"
                 >
-                  <Settings className="w-3 h-3" />
+                  <Settings className="frg-editor-tabs-trigger-icon" />
                 </TabsTrigger>
               </TabsList>
-              
-              <TabsContent value="inspector" className="m-0 flex-1 overflow-hidden">
+
+              <TabsContent value="inspector" className="frg-editor-tabs-content">
                 <NodeInspector />
               </TabsContent>
-              <TabsContent value="test" className="m-0 flex-1 overflow-hidden">
+              <TabsContent value="test" className="frg-editor-tabs-content">
                 <TestRunnerPanel />
               </TabsContent>
             </Tabs>
@@ -724,26 +731,21 @@ function FRGEditorInner() {
 
         {/* Toggle Right Panel Button (when hidden) */}
         {!presentationMode && !showRightPanel && (
-          <div className="absolute right-4 top-[4.5rem] z-10">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => toggleRightPanel('test')}
-              className="shadow-lg"
-            >
-              Show Inspector
-              <PanelRight className="w-4 h-4 ml-2" />
-            </Button>
+          <div className="frg-editor-toggle-button frg-editor-toggle-button-right">
+            Show Inspector
+            <PanelRight className="w-4 h-4 ml-2" />
           </div>
         )}
       </div>
 
       {/* Bottom Execution Panel */}
       {!presentationMode && (
-        <CollapsibleExecutionPanel 
-          onRun={handleRun}
-          onStop={handleStop}
-        />
+        <div className="frg-editor-bottom-panel">
+          <CollapsibleExecutionPanel
+            onRun={handleRun}
+            onStop={handleStop}
+          />
+        </div>
       )}
 
       {/* Keyboard Shortcuts Help Modal */}

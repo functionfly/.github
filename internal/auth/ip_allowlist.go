@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/functionfly/functionfly/internal/storage"
@@ -142,23 +143,29 @@ func normalizeIP(ip string) string {
 	return strings.TrimSpace(ip)
 }
 
-// GetClientIP extracts the client IP from an HTTP request
-// It checks X-Forwarded-For, X-Real-IP headers and falls back to RemoteAddr
+// GetClientIP extracts the client IP from an HTTP request.
+// SECURITY: X-Forwarded-For and X-Real-IP headers are ONLY trusted when the
+// connection comes from a known trusted proxy (127.0.0.1, ::1, localhost, or
+// configured TRUSTED_PROXY_IPS). This prevents IP spoofing attacks where
+// attackers set these headers to bypass IP allowlists or rate limits.
 func GetClientIP(r *http.Request) string {
-	// Check X-Forwarded-For header first (may contain multiple IPs)
-	xff := r.Header.Get("X-Forwarded-For")
-	if xff != "" {
-		// X-Forwarded-For can contain multiple IPs, the first is the original client
-		ips := strings.Split(xff, ",")
-		if len(ips) > 0 {
-			return normalizeIP(strings.TrimSpace(ips[0]))
+	// Only trust forwarded headers from known trusted proxies
+	if isTrustedProxy(r) {
+		// Check X-Forwarded-For header first (may contain multiple IPs)
+		xff := r.Header.Get("X-Forwarded-For")
+		if xff != "" {
+			// X-Forwarded-For can contain multiple IPs, the first is the original client
+			ips := strings.Split(xff, ",")
+			if len(ips) > 0 {
+				return normalizeIP(strings.TrimSpace(ips[0]))
+			}
 		}
-	}
 
-	// Check X-Real-IP header
-	xri := r.Header.Get("X-Real-IP")
-	if xri != "" {
-		return normalizeIP(strings.TrimSpace(xri))
+		// Check X-Real-IP header
+		xri := r.Header.Get("X-Real-IP")
+		if xri != "" {
+			return normalizeIP(strings.TrimSpace(xri))
+		}
 	}
 
 	// Fall back to RemoteAddr
@@ -168,6 +175,34 @@ func GetClientIP(r *http.Request) string {
 	}
 
 	return remoteAddr
+}
+
+// isTrustedProxy checks if the request comes from a known trusted proxy.
+// Only connections from localhost or explicitly configured TRUSTED_PROXY_IPS
+// are considered trusted. This is critical for preventing IP spoofing.
+func isTrustedProxy(r *http.Request) bool {
+	remoteHost, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		remoteHost = r.RemoteAddr
+	}
+
+	// Trust loopback addresses (localhost connections from nginx, apache, etc.)
+	if remoteHost == "127.0.0.1" || remoteHost == "::1" || remoteHost == "localhost" {
+		return true
+	}
+
+	// Check for explicitly configured trusted proxies
+	trustedProxies := os.Getenv("TRUSTED_PROXY_IPS")
+	if trustedProxies != "" {
+		for _, proxy := range strings.Split(trustedProxies, ",") {
+			proxy = strings.TrimSpace(proxy)
+			if remoteHost == proxy {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // IsMFAVerified checks if the request has been verified with MFA

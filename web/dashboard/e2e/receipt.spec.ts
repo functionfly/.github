@@ -8,6 +8,7 @@
 //   4. Clicking "Fork this function" lands an unauthenticated user on
 //      the signup flow with a `next=` parameter
 //   5. The "Powered by FunctionFly" badge is rendered as a link
+//   6. A revoked receipt returns 410 Gone
 //
 // Tests are designed to run against a local dev stack (orchestrator on
 // :8080, dashboard on :3000). The fixtures under /e2e/fixtures/ build
@@ -17,6 +18,23 @@ import { test, expect, type APIRequestContext, request } from '@playwright/test'
 
 const ORCHESTRATOR = process.env.E2E_ORCHESTRATOR_URL || 'http://localhost:8080'
 const DASHBOARD = process.env.E2E_DASHBOARD_URL || 'http://localhost:3000'
+
+/**
+ * Test credentials for authenticated owner tests.
+ * SECURITY: Default credentials are only available in DEVELOPMENT mode.
+ */
+function getTestCredentials() {
+  if (process.env.NODE_ENV !== 'development' && process.env.DEVELOPMENT !== 'true') {
+    throw new Error(
+      'Test credentials should not be used outside DEVELOPMENT mode. ' +
+        'Set DEVELOPMENT=true or provide credentials explicitly via environment variables.'
+    )
+  }
+  return {
+    email: process.env.TEST_OWNER_EMAIL || 'admin@functionfly.local',
+    password: process.env.TEST_OWNER_PASSWORD || 'admin123',
+  }
+}
 
 /**
  * Create a public function, execute it, and return the public receipt id.
@@ -59,6 +77,26 @@ async function createSeedReceipt(api: APIRequestContext): Promise<string> {
     throw new Error('No execution_id in response — receipts must be auto-generated')
   }
   return execBody.execution_id
+}
+
+/**
+ * Login via the API and return an authenticated context.
+ */
+async function createAuthenticatedContext(): Promise<APIRequestContext> {
+  const { email, password } = getTestCredentials()
+  const ctx = await request.newContext({ baseURL: ORCHESTRATOR })
+
+  const loginRes = await ctx.post(`${ORCHESTRATOR}/v1/auth/login`, {
+    headers: { 'Content-Type': 'application/json' },
+    data: { email, password },
+  })
+
+  if (!loginRes.ok()) {
+    await ctx.dispose()
+    throw new Error(`Failed to login: ${loginRes.status()} ${await loginRes.text()}`)
+  }
+
+  return ctx
 }
 
 test.describe('Execution Receipt', () => {
@@ -147,9 +185,67 @@ test.describe('Execution Receipt', () => {
   })
 
   test('revoked receipt returns 410', async ({ page }) => {
-    // Only run this test if we can actually revoke — skip silently if
-    // we don't have owner credentials.
-    test.skip(true, 'requires authenticated owner context')
+    // Create an authenticated context as the function owner.
+    let authCtx: APIRequestContext | null = null
+    try {
+      authCtx = await createAuthenticatedContext()
+    } catch {
+      // Skip if we can't authenticate (e.g., credentials not configured)
+      test.skip(true, 'requires authenticated owner context')
+      return
+    }
+
+    try {
+      // Create a function and execute it to get a receipt.
+      const { email } = getTestCredentials()
+      const author = `e2e-revoke-${Date.now()}`
+      const funcName = `e2e-receipt-revoke-${Date.now()}`
+
+      const createRes = await authCtx.post(`${ORCHESTRATOR}/v1/functions`, {
+        headers: { 'Content-Type': 'application/json' },
+        data: {
+          author,
+          name: funcName,
+          visibility: 'public',
+          price_per_call: 0,
+          runtime: 'python3.11',
+          source_code: 'def handler(input):\n    return {"echo": input}\n',
+          manifest: {
+            inputs: { type: 'object', properties: { msg: { type: 'string' } } },
+            outputs: { type: 'object', properties: { echo: { type: 'string' } } },
+          },
+        },
+      })
+      if (!createRes.ok()) {
+        throw new Error(`Failed to create function: ${createRes.status()} ${await createRes.text()}`)
+      }
+
+      const execRes = await authCtx.post(`${ORCHESTRATOR}/v1/fx/${author}/${funcName}`, {
+        headers: { 'Content-Type': 'application/json' },
+        data: { input: { msg: 'revoke test' } },
+      })
+      if (!execRes.ok()) {
+        throw new Error(`Failed to execute function: ${execRes.status()} ${await execRes.text()}`)
+      }
+      const execBody = await execRes.json()
+      const receiptToRevoke = execBody.execution_id as string
+
+      // Revoke the receipt.
+      const revokeRes = await authCtx.post(`${ORCHESTRATOR}/v1/receipts/${receiptToRevoke}/revoke`, {
+        headers: { 'Content-Type': 'application/json' },
+        data: { reason: 'E2E test revocation' },
+      })
+      if (!revokeRes.ok()) {
+        throw new Error(`Failed to revoke receipt: ${revokeRes.status()} ${await revokeRes.text()}`)
+      }
+
+      // Navigate to the revoked receipt page - should show 410.
+      await page.goto(`${DASHBOARD}/r/${receiptToRevoke}`)
+      // The page should indicate the receipt is no longer available.
+      await expect(page.getByText(/revoked|unavailable|gone/i)).toBeVisible({ timeout: 5000 })
+    } finally {
+      await authCtx.dispose()
+    }
   })
 
   test('404 receipt shows a friendly error', async ({ page }) => {

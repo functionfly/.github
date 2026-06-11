@@ -2,15 +2,22 @@
  * Trust Metrics Section Component
  *
  * Displays user's trust score with detailed metrics breakdown.
+ * Also shows user reputation profile scores when available.
  */
 
 import { getTrustColorConfig, getTrustScoreBand } from '@/components/functions/TrustScoreBadge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { BookOpen, Shield, Target, Users, Zap } from 'lucide-react';
+import { BookOpen, Shield, Target, Users, Zap, Hammer, Lightbulb, GraduationCap, Bot } from 'lucide-react';
 
 export interface TrustMetricsSectionProps {
   trustScore: number;
+  builderScore?: number;
+  optimizerScore?: number;
+  mentorScore?: number;
+  agentWhispererScore?: number;
+  reputationTier?: string;
+  overallReputationScore?: number;
 }
 
 const RING_SIZE = 96;
@@ -62,10 +69,54 @@ function TrustScoreRing({ score }: { score: number }) {
   );
 }
 
-export function TrustMetricsSection({ trustScore }: TrustMetricsSectionProps) {
+interface ReputationScoreBarProps {
+  label: string;
+  score: number;
+  maxScore: number;
+  icon: React.ElementType;
+  color: string;
+}
+
+function ReputationScoreBar({ label, score, maxScore, icon: Icon, color }: ReputationScoreBarProps) {
+  const percentage = maxScore > 0 ? Math.min(100, (score / maxScore) * 100) : 0;
+
+  return (
+    <div className="flex items-center gap-3">
+      <Icon className={cn('w-4 h-4', color)} />
+      <span className="text-sm text-text-secondary w-28">{label}</span>
+      <div className="flex-1">
+        <div className="h-2 bg-border-subtle rounded-full overflow-hidden">
+          <div
+            className={cn('h-full rounded-full transition-all duration-1000', color.replace('text-', 'bg-'))}
+            style={{ width: `${percentage}%` }}
+          />
+        </div>
+      </div>
+      <span className="text-sm font-medium font-mono tabular-nums text-text-primary w-10 text-right">
+        {score.toLocaleString()}
+      </span>
+    </div>
+  );
+}
+
+export function TrustMetricsSection({
+  trustScore,
+  builderScore,
+  optimizerScore,
+  mentorScore,
+  agentWhispererScore,
+  reputationTier,
+  overallReputationScore,
+}: TrustMetricsSectionProps) {
   const normalizedTrust = Math.max(0, Math.min(100, Number.isFinite(trustScore) ? trustScore : 0));
   const band = getTrustScoreBand(normalizedTrust);
   const headlineConfig = getTrustColorConfig(band);
+
+  const hasReputationProfile =
+    builderScore !== undefined ||
+    optimizerScore !== undefined ||
+    mentorScore !== undefined ||
+    agentWhispererScore !== undefined;
 
   const metrics = [
     {
@@ -131,6 +182,70 @@ export function TrustMetricsSection({ trustScore }: TrustMetricsSectionProps) {
             </div>
           ))}
         </div>
+
+        {/* User Reputation Profile Scores */}
+        {hasReputationProfile && (
+          <>
+            <div className="mt-6 pt-6 border-t border-border-subtle">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-sm font-medium text-text-primary">Reputation Profile</h4>
+                {reputationTier && (
+                  <span className="text-xs px-2 py-1 rounded-full bg-brand-500/10 text-brand-400 capitalize">
+                    {reputationTier.replace('_', ' ')}
+                  </span>
+                )}
+              </div>
+              <div className="space-y-3">
+                {builderScore !== undefined && (
+                  <ReputationScoreBar
+                    label="Builder"
+                    score={builderScore}
+                    maxScore={10000}
+                    icon={Hammer}
+                    color="text-blue-500"
+                  />
+                )}
+                {optimizerScore !== undefined && (
+                  <ReputationScoreBar
+                    label="Optimizer"
+                    score={optimizerScore}
+                    maxScore={10000}
+                    icon={Lightbulb}
+                    color="text-yellow-500"
+                  />
+                )}
+                {mentorScore !== undefined && (
+                  <ReputationScoreBar
+                    label="Mentor"
+                    score={mentorScore}
+                    maxScore={10000}
+                    icon={GraduationCap}
+                    color="text-green-500"
+                  />
+                )}
+                {agentWhispererScore !== undefined && (
+                  <ReputationScoreBar
+                    label="Agent Whisperer"
+                    score={agentWhispererScore}
+                    maxScore={10000}
+                    icon={Bot}
+                    color="text-purple-500"
+                  />
+                )}
+              </div>
+              {overallReputationScore !== undefined && (
+                <div className="mt-4 pt-4 border-t border-border-subtle">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-text-primary">Overall Score</span>
+                    <span className="text-lg font-bold text-brand-500">
+                      {overallReputationScore.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

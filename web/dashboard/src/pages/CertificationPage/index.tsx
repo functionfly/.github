@@ -10,6 +10,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useEffect } from 'react';
 
+import './certification-page.css';
+
 export function CertificationPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -77,26 +79,29 @@ export function CertificationPage() {
         title="Developer Certification"
         subtitle="Prove your expertise. Earn verifiable credentials. Stand out in the marketplace."
         badges={[{ label: 'New', variant: 'new' }]}
+        className="mb-8"
       />
 
       {/* Hero stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         {[
-          { icon: Users, label: 'Certified Developers', value: 'Growing', color: 'text-blue-500' },
-          { icon: TrendingUp, label: 'Premium Pricing', value: 'Up to 40% more', color: 'text-emerald-500' },
-          { icon: BookOpen, label: 'Industry Recognition', value: 'LinkedIn Ready', color: 'text-purple-500' },
+          { icon: Users, label: 'Certified Developers', value: 'Growing', color: 'users' },
+          { icon: TrendingUp, label: 'Premium Pricing', value: 'Up to 40% more', color: 'trending' },
+          { icon: BookOpen, label: 'Industry Recognition', value: 'LinkedIn Ready', color: 'book' },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="glass-card rounded-xl border border-theme bg-card p-4 flex items-center gap-3"
+            className="certification-stat-card"
           >
-            <stat.icon className={`h-8 w-8 ${stat.color}`} />
-            <div>
-              <p className="text-sm text-text-muted">{stat.label}</p>
-              <p className="text-lg font-bold text-text-primary">{stat.value}</p>
+            <div className={`certification-stat-icon ${stat.color}`}>
+              <stat.icon className="h-6 w-6" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <p className="certification-stat-label">{stat.label}</p>
+              <p className="certification-stat-value">{stat.value}</p>
             </div>
           </motion.div>
         ))}
@@ -104,11 +109,11 @@ export function CertificationPage() {
 
       {/* Tier Cards */}
       {tiersLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+        <div className="certification-loading">
+          <div className="certification-loading-spinner" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="certification-tier-grid">
           {(tiersData?.tiers || []).map((tier) => {
             const pendingId = pendingExamsByTierId[tier.id] || (isPaidRedirect ? paidExamId || undefined : undefined);
             const hasPending = !!pendingId;
@@ -140,25 +145,25 @@ export function CertificationPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
-        className="mt-12 rounded-xl border border-theme bg-card p-6"
+        className="certification-how-it-works"
       >
-        <h3 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
-          <Award className="h-5 w-5 text-brand-500" />
-          How It Works
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="certification-how-it-works-header">
+          <Award className="h-5 w-5" />
+          <h3>How It Works</h3>
+        </div>
+        <div className="certification-steps-grid">
           {[
             { step: '1', title: 'Choose Your Tier', desc: 'Select Associate, Professional, or Architect based on your skill level.' },
             { step: '2', title: 'Take the Exam', desc: 'Answer knowledge questions and complete hands-on practical challenges.' },
             { step: '3', title: 'Get Certified', desc: 'Pass with 70%+ to earn your verifiable credential and digital badge.' },
             { step: '4', title: 'Share & Grow', desc: 'Display your badge on LinkedIn, resumes, and your FunctionFly profile.' },
           ].map((item) => (
-            <div key={item.step} className="text-center">
-              <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-brand-500/10 text-brand-500 font-bold mx-auto">
+            <div key={item.step} className="certification-step">
+              <div className="certification-step-number">
                 {item.step}
               </div>
-              <h4 className="font-medium text-text-primary mb-1">{item.title}</h4>
-              <p className="text-sm text-text-muted">{item.desc}</p>
+              <h4 className="certification-step-title">{item.title}</h4>
+              <p className="certification-step-description">{item.desc}</p>
             </div>
           ))}
         </div>

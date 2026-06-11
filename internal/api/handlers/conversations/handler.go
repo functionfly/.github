@@ -89,17 +89,122 @@ func (h *Handler) GetCollaborationProfile(w http.ResponseWriter, r *http.Request
 		http.Error(w, `{"error":"user_id required"}`, http.StatusBadRequest)
 		return
 	}
-	_, err := uuid.Parse(userIDStr)
+	targetUserID, err := uuid.Parse(userIDStr)
 	if err != nil {
 		http.Error(w, `{"error":"Invalid user_id"}`, http.StatusBadRequest)
 		return
 	}
 
+	// Verify target user exists
+	targetUser, err := h.users.GetUserByID(targetUserID)
+	if err != nil {
+		http.Error(w, `{"error":"User not found"}`, http.StatusNotFound)
+		return
+	}
+
+	// Get real collaboration stats from database
+	_ = r.Context() // TODO: fix - ctx was unused
+	reputation := map[string]int{
+		"builder": 0,
+		"mentor":  0,
+	}
+	sharedThreads := 0
+	functionsOverlap := []string{}
+
+	// Query trust score from registry ratings
+	var avgTrustScore float64
+	if err := h.repo.DB().Raw(`
+		SELECT COALESCE(AVG(rat.overall_score), 0)
+		FROM registry_functions rf
+		LEFT JOIN registry_function_ratings rat ON rat.function_id = rf.id
+		WHERE rf.owner_user_id = ?`, targetUserID).Scan(&avgTrustScore).Error; err != nil {
+		h.logger.WithError(err).Warn("Failed to get avg trust score for collaboration profile")
+	}
+
+	// Query function count (builder reputation)
+	var functionCount int64
+	if err := h.repo.DB().Model(&storage.RegistryFunction{}).Where("owner_user_id = ?", targetUserID).Count(&functionCount).Error; err != nil {
+		h.logger.WithError(err).Warn("Failed to get function count for collaboration profile")
+	}
+
+	// Query shared conversations (threads) between current user and target user
+	if err := h.repo.DB().Raw(`
+		SELECT COUNT(DISTINCT cc.id)
+		FROM conversation_conversations cc
+		JOIN conversation_conversation_participants ccp1 ON cc.id = ccp1.conversation_id AND ccp1.user_id = ?
+		JOIN conversation_conversation_participants ccp2 ON cc.id = ccp2.conversation_id AND ccp2.user_id = ?
+		WHERE cc.id IN (
+			SELECT conversation_id FROM conversation_conversation_participants WHERE user_id = ?
+			INTERSECT
+			SELECT conversation_id FROM conversation_conversation_participants WHERE user_id = ?
+		)`, user.UserID, targetUserID, user.UserID, targetUserID).Scan(&sharedThreads).Error; err != nil {
+		h.logger.WithError(err).Warn("Failed to get shared threads for collaboration profile")
+	}
+
+	// Query execution count as mentor indicator
+	var executionCount int64
+	if err := h.repo.DB().Raw(`
+		SELECT COALESCE(SUM(execution_count), 0)
+		FROM registry_function_executions
+		WHERE function_id IN (SELECT id FROM registry_functions WHERE owner_user_id = ?)
+		AND created_at > NOW() - INTERVAL '30 days'`, targetUserID).Scan(&executionCount).Error; err != nil {
+		h.logger.WithError(err).Warn("Failed to get execution count for collaboration profile")
+	}
+
+	// Set builder reputation based on function count (0-100 scale)
+	builderRep := int(functionCount * 10)
+	if builderRep > 100 {
+		builderRep = 100
+	}
+	reputation["builder"] = builderRep
+
+	// Set mentor reputation based on recent executions (0-100 scale)
+	mentorRep := int(executionCount)
+	if mentorRep > 100 {
+		mentorRep = 100
+	}
+	reputation["mentor"] = mentorRep
+
+	// Get overlapping functions (functions both users have interacted with)
+	type functionOverlap struct {
+		FunctionName string
+	}
+	var overlaps []functionOverlap
+	if err := h.repo.DB().Raw(`
+		SELECT rf.author || '/' || rf.name as function_name
+		FROM registry_functions rf
+		WHERE rf.owner_user_id = ?
+		AND rf.name IN (
+			SELECT DISTINCT rf2.name
+			FROM registry_functions rf2
+			JOIN registry_function_executions rfe ON rfe.function_id = rf2.id
+			WHERE rf2.owner_user_id = ?
+			AND rfe.created_at > NOW() - INTERVAL '90 days'
+		)
+		LIMIT 10`, targetUserID, user.UserID).Scan(&overlaps).Error; err != nil {
+		h.logger.WithError(err).Warn("Failed to get functions overlap for collaboration profile")
+	}
+	for _, f := range overlaps {
+		functionsOverlap = append(functionsOverlap, f.FunctionName)
+	}
+
+	trustScore := int(avgTrustScore * 100)
+	if trustScore < 0 {
+		trustScore = 0
+	}
+	if trustScore > 100 {
+		trustScore = 100
+	}
+
 	profile := map[string]interface{}{
-		"user_id":           userIDStr,
-		"reputation":        map[string]int{"builder": 0, "mentor": 0},
-		"shared_threads":    0,
-		"functions_overlap": []string{},
+		"user_id":            targetUserID.String(),
+		"username":           targetUser.Username,
+		"reputation":         reputation,
+		"trust_score":       trustScore,
+		"shared_threads":    sharedThreads,
+		"functions_overlap": functionsOverlap,
+		"function_count":    functionCount,
+		"recent_executions": executionCount,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(profile)
@@ -119,72 +224,69 @@ func (h *Handler) GetConversationContext(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	var ctx map[string]interface{}
-	if h.registryRepo != nil {
-		parts := strings.SplitN(fn, "/", 2)
-		author, name := "", ""
-		if len(parts) >= 1 {
-			author = strings.TrimSpace(parts[0])
+	if h.registryRepo == nil {
+		http.Error(w, `{"error":"Registry not available","code":"REGISTRY_UNAVAILABLE","message":"Function context lookup is not available"}`, http.StatusServiceUnavailable)
+		return
+	}
+
+	parts := strings.SplitN(fn, "/", 2)
+	author, name := "", ""
+	if len(parts) >= 1 {
+		author = strings.TrimSpace(parts[0])
+	}
+	if len(parts) == 2 {
+		name = strings.TrimSpace(parts[1])
+	}
+	if author == "" || name == "" {
+		http.Error(w, `{"error":"function must be author/name (e.g. author/name)"}`, http.StatusBadRequest)
+		return
+	}
+
+	fnRecord, err := h.registryRepo.GetFunctionByAuthorName(author, name)
+	if err != nil {
+		h.logger.WithError(err).WithField("function", fn).Error("GetFunctionByAuthorName failed")
+		http.Error(w, `{"error":"Failed to lookup function","code":"LOOKUP_FAILED","message":"Unable to retrieve function information"}`, http.StatusInternalServerError)
+		return
+	}
+	if fnRecord == nil {
+		http.Error(w, fmt.Sprintf(`{"error":"Function not found","code":"FUNCTION_NOT_FOUND","message":"Function '%s' does not exist"}`, fn), http.StatusNotFound)
+		return
+	}
+
+	trustScore := 50
+	since := time.Now().AddDate(0, 0, -30)
+	if total, successRate, _, _, _, _, _, err := h.registryRepo.GetFunctionTrustStats(fnRecord.ID, since); err == nil && total > 0 {
+		trustScore = int(successRate)
+		if trustScore < 0 {
+			trustScore = 0
 		}
-		if len(parts) == 2 {
-			name = strings.TrimSpace(parts[1])
+		if trustScore > 100 {
+			trustScore = 100
 		}
-		if author == "" || name == "" {
-			http.Error(w, `{"error":"function must be author/name (e.g. author/name)"}`, http.StatusBadRequest)
-			return
-		}
-		fnRecord, err := h.registryRepo.GetFunctionByAuthorName(author, name)
-		if err != nil || fnRecord == nil {
-			ctx = map[string]interface{}{
-				"function":        fn,
-				"trust_score":     0,
-				"last_failures":   []interface{}{},
-				"open_issues":     []interface{}{},
-				"suggested_hints": []string{"Include execution hash if reporting a bug.", "Mention version for reproducibility."},
+	}
+
+	lastFailures := []interface{}{}
+	if failures, err := h.registryRepo.GetRecentFailedExecutions(fnRecord.ID, 10); err == nil {
+		for _, e := range failures {
+			entry := map[string]interface{}{
+				"id":        e.ID.String(),
+				"timestamp": e.Timestamp.Format(time.RFC3339),
+				"outcome":   e.Outcome,
+				"version":   e.Version,
 			}
-		} else {
-			trustScore := 85
-			since := time.Now().AddDate(0, 0, -30)
-			if total, successRate, _, _, _, _, _, err := h.registryRepo.GetFunctionTrustStats(fnRecord.ID, since); err == nil && total > 0 {
-				trustScore = int(successRate)
-				if trustScore < 0 {
-					trustScore = 0
-				}
-				if trustScore > 100 {
-					trustScore = 100
-				}
+			if e.ErrorCode.Valid {
+				entry["error_code"] = e.ErrorCode.String
 			}
-			lastFailures := []interface{}{}
-			if failures, err := h.registryRepo.GetRecentFailedExecutions(fnRecord.ID, 10); err == nil {
-				for _, e := range failures {
-					entry := map[string]interface{}{
-						"id":        e.ID.String(),
-						"timestamp": e.Timestamp.Format(time.RFC3339),
-						"outcome":   e.Outcome,
-						"version":   e.Version,
-					}
-					if e.ErrorCode.Valid {
-						entry["error_code"] = e.ErrorCode.String
-					}
-					lastFailures = append(lastFailures, entry)
-				}
-			}
-			ctx = map[string]interface{}{
-				"function":        fn,
-				"trust_score":     trustScore,
-				"last_failures":   lastFailures,
-				"open_issues":     []interface{}{},
-				"suggested_hints": []string{"Include execution hash if reporting a bug.", "Mention version for reproducibility."},
-			}
+			lastFailures = append(lastFailures, entry)
 		}
-	} else {
-		ctx = map[string]interface{}{
-			"function":        fn,
-			"trust_score":     85,
-			"last_failures":   []interface{}{},
-			"open_issues":     []interface{}{},
-			"suggested_hints": []string{"Include execution hash if reporting a bug.", "Mention version for reproducibility."},
-		}
+	}
+
+	ctx := map[string]interface{}{
+		"function":        fn,
+		"trust_score":     trustScore,
+		"last_failures":   lastFailures,
+		"open_issues":     []interface{}{},
+		"suggested_hints": []string{"Include execution hash if reporting a bug.", "Mention version for reproducibility."},
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(ctx)
@@ -503,6 +605,13 @@ func (h *Handler) CreateMessage(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Embeddings == nil {
 		req.Embeddings = json.RawMessage("{}")
+	}
+
+	// Server-side message content length validation
+	if ok, errMsg := middleware.ValidateMessageContent(req.Content); !ok {
+		w.Header().Set("Content-Type", "application/json")
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, errMsg), http.StatusBadRequest)
+		return
 	}
 	m := &conversations.ConversationMessage{
 		ConversationID: id,
@@ -1082,6 +1191,258 @@ func (h *Handler) DeleteAttachment(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+// AddReactionRequest is the body for adding a reaction.
+type AddReactionRequest struct {
+	Reaction string `json:"reaction"`
+}
+
+// AddReaction handles POST /api/v1/conversations/:id/messages/:message_id/reactions
+func (h *Handler) AddReaction(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+	vars := mux.Vars(r)
+	convID, err := uuid.Parse(vars["conversation_id"])
+	if err != nil {
+		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		return
+	}
+	msgID, err := uuid.Parse(vars["message_id"])
+	if err != nil {
+		http.Error(w, `{"error":"Invalid message ID"}`, http.StatusBadRequest)
+		return
+	}
+	ok, err := h.repo.IsParticipant(r.Context(), convID, user.UserID)
+	if err != nil || !ok {
+		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		return
+	}
+	msg, err := h.repo.GetMessageByID(r.Context(), msgID)
+	if err != nil || msg == nil || msg.ConversationID != convID {
+		http.Error(w, `{"error":"Message not found"}`, http.StatusNotFound)
+		return
+	}
+	var req AddReactionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+	if strings.TrimSpace(req.Reaction) == "" {
+		http.Error(w, `{"error":"Reaction cannot be empty"}`, http.StatusBadRequest)
+		return
+	}
+	rxn, err := h.repo.AddReaction(r.Context(), msgID, user.UserID, req.Reaction)
+	if err != nil {
+		h.logger.WithError(err).Error("Add reaction failed")
+		http.Error(w, `{"error":"Failed to add reaction"}`, http.StatusInternalServerError)
+		return
+	}
+
+	// Broadcast reaction added to all participants
+	if h.wsHub != nil {
+		payload, _ := json.Marshal(map[string]interface{}{
+			"message_id": msgID,
+			"user_id":    user.UserID,
+			"reaction":   req.Reaction,
+		})
+		h.wsHub.BroadcastToConversation(convID, &ConvWSMessage{
+			Type:    "message_reaction_added",
+			Payload: payload,
+		}, nil)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(rxn)
+}
+
+// RemoveReaction handles DELETE /api/v1/conversations/:id/messages/:message_id/reactions/:reaction
+func (h *Handler) RemoveReaction(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+	vars := mux.Vars(r)
+	convID, err := uuid.Parse(vars["conversation_id"])
+	if err != nil {
+		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		return
+	}
+	msgID, err := uuid.Parse(vars["message_id"])
+	if err != nil {
+		http.Error(w, `{"error":"Invalid message ID"}`, http.StatusBadRequest)
+		return
+	}
+	reaction := vars["reaction"]
+	if reaction == "" {
+		http.Error(w, `{"error":"Reaction is required"}`, http.StatusBadRequest)
+		return
+	}
+	ok, err := h.repo.IsParticipant(r.Context(), convID, user.UserID)
+	if err != nil || !ok {
+		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		return
+	}
+	msg, err := h.repo.GetMessageByID(r.Context(), msgID)
+	if err != nil || msg == nil || msg.ConversationID != convID {
+		http.Error(w, `{"error":"Message not found"}`, http.StatusNotFound)
+		return
+	}
+	if err := h.repo.RemoveReaction(r.Context(), msgID, user.UserID, reaction); err != nil {
+		h.logger.WithError(err).Error("Remove reaction failed")
+		http.Error(w, `{"error":"Failed to remove reaction"}`, http.StatusInternalServerError)
+		return
+	}
+
+	// Broadcast reaction removed to all participants
+	if h.wsHub != nil {
+		payload, _ := json.Marshal(map[string]interface{}{
+			"message_id": msgID,
+			"user_id":    user.UserID,
+			"reaction":   reaction,
+		})
+		h.wsHub.BroadcastToConversation(convID, &ConvWSMessage{
+			Type:    "message_reaction_removed",
+			Payload: payload,
+		}, nil)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+// ListReactions handles GET /api/v1/conversations/:id/messages/:message_id/reactions
+func (h *Handler) ListReactions(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+	vars := mux.Vars(r)
+	convID, err := uuid.Parse(vars["conversation_id"])
+	if err != nil {
+		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		return
+	}
+	msgID, err := uuid.Parse(vars["message_id"])
+	if err != nil {
+		http.Error(w, `{"error":"Invalid message ID"}`, http.StatusBadRequest)
+		return
+	}
+	ok, err := h.repo.IsParticipant(r.Context(), convID, user.UserID)
+	if err != nil || !ok {
+		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		return
+	}
+	msg, err := h.repo.GetMessageByID(r.Context(), msgID)
+	if err != nil || msg == nil || msg.ConversationID != convID {
+		http.Error(w, `{"error":"Message not found"}`, http.StatusNotFound)
+		return
+	}
+	summary, err := h.repo.GetMessageReactionSummary(r.Context(), msgID)
+	if err != nil {
+		h.logger.WithError(err).Error("List reactions failed")
+		http.Error(w, `{"error":"Failed to list reactions"}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"reactions": summary})
+}
+
+// MarkMessageRead handles POST /api/v1/conversations/:id/messages/:message_id/read
+func (h *Handler) MarkMessageRead(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+	vars := mux.Vars(r)
+	convID, err := uuid.Parse(vars["conversation_id"])
+	if err != nil {
+		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		return
+	}
+	msgID, err := uuid.Parse(vars["message_id"])
+	if err != nil {
+		http.Error(w, `{"error":"Invalid message ID"}`, http.StatusBadRequest)
+		return
+	}
+	ok, err := h.repo.IsParticipant(r.Context(), convID, user.UserID)
+	if err != nil || !ok {
+		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		return
+	}
+	msg, err := h.repo.GetMessageByID(r.Context(), msgID)
+	if err != nil || msg == nil || msg.ConversationID != convID {
+		http.Error(w, `{"error":"Message not found"}`, http.StatusNotFound)
+		return
+	}
+	if err := h.repo.MarkMessageRead(r.Context(), msgID, user.UserID); err != nil {
+		h.logger.WithError(err).Error("Mark message read failed")
+		http.Error(w, `{"error":"Failed to mark message read"}`, http.StatusInternalServerError)
+		return
+	}
+
+	// Broadcast read receipt to all participants
+	if h.wsHub != nil {
+		payload, _ := json.Marshal(map[string]interface{}{
+			"message_id": msgID,
+			"user_id":    user.UserID,
+		})
+		h.wsHub.BroadcastToConversation(convID, &ConvWSMessage{
+			Type:    "message_read",
+			Payload: payload,
+		}, nil)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+// GetMessageReadReceipts handles GET /api/v1/conversations/:id/messages/:message_id/read-receipts
+func (h *Handler) GetMessageReadReceipts(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+	vars := mux.Vars(r)
+	convID, err := uuid.Parse(vars["conversation_id"])
+	if err != nil {
+		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		return
+	}
+	msgID, err := uuid.Parse(vars["message_id"])
+	if err != nil {
+		http.Error(w, `{"error":"Invalid message ID"}`, http.StatusBadRequest)
+		return
+	}
+	ok, err := h.repo.IsParticipant(r.Context(), convID, user.UserID)
+	if err != nil || !ok {
+		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		return
+	}
+	msg, err := h.repo.GetMessageByID(r.Context(), msgID)
+	if err != nil || msg == nil || msg.ConversationID != convID {
+		http.Error(w, `{"error":"Message not found"}`, http.StatusNotFound)
+		return
+	}
+	receipts, err := h.repo.GetMessageReadReceipts(r.Context(), msgID)
+	if err != nil {
+		h.logger.WithError(err).Error("Get message read receipts failed")
+		http.Error(w, `{"error":"Failed to get read receipts"}`, http.StatusInternalServerError)
+		return
+	}
+	if receipts == nil {
+		receipts = []*conversations.MessageRead{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"read_receipts": receipts})
 }
 
 func conversationMessagePreview(content string) string {

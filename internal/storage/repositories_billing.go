@@ -258,12 +258,12 @@ func (db *PostgresDB) CreateAgentUsage(ctx context.Context, usage *AgentUsage) e
 	return db.revenueRepository.CreateAgentUsage(ctx, usage)
 }
 
-func (db *PostgresDB) GetAgentUsageByAgentID(ctx context.Context, agentID uuid.UUID, limit, offset int) ([]*AgentUsage, error) {
-	return db.revenueRepository.GetAgentUsageByAgentID(ctx, agentID, limit, offset)
+func (db *PostgresDB) GetAgentUsageByAgentID(ctx context.Context, agentID, tenantID uuid.UUID, limit, offset int) ([]*AgentUsage, error) {
+	return db.revenueRepository.GetAgentUsageByAgentID(ctx, agentID, tenantID, limit, offset)
 }
 
-func (db *PostgresDB) GetAgentUsageSummary(ctx context.Context, agentID uuid.UUID) (totalCalls, billableCalls, overageCalls, estimatedCost int, err error) {
-	return db.revenueRepository.GetAgentUsageSummary(ctx, agentID)
+func (db *PostgresDB) GetAgentUsageSummary(ctx context.Context, agentID, tenantID uuid.UUID) (totalCalls, billableCalls, overageCalls, estimatedCost int, err error) {
+	return db.revenueRepository.GetAgentUsageSummary(ctx, agentID, tenantID)
 }
 
 // Platform Fees

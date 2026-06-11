@@ -6,10 +6,13 @@
 [data-theme='dark'] .agent-sdk-integrations-page {
   background:
     radial-gradient(circle at 10% 0%, rgba(var(--ff-flame-rgb), 0.08), transparent 40%),
-    radial-gradient(circle at 90% 5%, rgba(var(--ff-afterburner-rgb, 255, 79, 94), 0.06), transparent 35%);
+    radial-gradient(
+      circle at 90% 5%,
+      rgba(var(--ff-afterburner-rgb, 255, 79, 94), 0.06),
+      transparent 35%
+    );
   border: 1px solid rgba(var(--ff-flame-rgb), 0.15);
   border-radius: 16px;
-  padding: 1rem;
 }
 
 [data-theme='dark'] .agent-sdk-integrations-page .sdk-header p {
@@ -45,7 +48,11 @@
 }
 
 [data-theme='dark'] .agent-sdk-integrations-page .sdk-quickstart-btn {
-  background: linear-gradient(90deg, var(--ff-flame) 0%, var(--ff-afterburner, #FF4F5E) 100%) !important;
+  background: linear-gradient(
+    90deg,
+    var(--ff-flame) 0%,
+    var(--ff-afterburner, #ff4f5e) 100%
+  ) !important;
   color: #ffffff !important;
   border: none !important;
   box-shadow: 0 4px 12px rgba(var(--ff-flame-rgb), 0.35);
@@ -151,10 +158,4 @@
 
 [data-theme='dark'] .agent-sdk-integrations-page .sdk-code-line-content {
   white-space: pre;
-}
-
-@media (max-width: 768px) {
-  [data-theme='dark'] .agent-sdk-integrations-page {
-    padding: 0.75rem;
-  }
 }

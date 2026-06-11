@@ -1,6 +1,8 @@
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { usePageTitle } from "@/hooks";
 import { motion } from "framer-motion";
 import {
   Card,
@@ -76,9 +78,12 @@ import {
 } from "@/components/dre";
 import type { ComponentType } from "@/components/dre";
 import { mapCertificateDetailToFXCertData } from "@/lib/dre";
+import "./styles.css";
 import { ReplayMode } from "@/components/dre/replay";
 
 export default function ExecutionExplorerPage() {
+  usePageTitle("Executions");
+  const { t } = useTranslation();
   const { author, name } = useParams<{ author: string; name: string }>();
   const [page, setPage] = useState(0);
   const [limit] = useState(20);
@@ -170,7 +175,7 @@ export default function ExecutionExplorerPage() {
   }
 
   return (
-    <div className="execution-explorer-page min-h-screen flex flex-col bg-bg-primary">
+    <div className="aviation-executions min-h-screen flex flex-col">
       <Navbar variant="landing" />
       <main className="flex-1 pt-16">
         <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -182,20 +187,20 @@ export default function ExecutionExplorerPage() {
           >
             <Link
               to={`/fx/${author}/${name}`}
-              className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4"
+              className="executions-back-link"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to Function
+              {t("executionsPage.backToFunction")}
             </Link>
 
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <h1 className="text-3xl font-bold flex items-center gap-3">
+                <h1 className="text-3xl font-bold flex items-center gap-3 executions-title">
                   <Lock className="w-8 h-8 text-brand-500" />
-                  Execution Explorer
+                  {t("executionsPage.title")}
                 </h1>
-                <p className="text-muted-foreground mt-1">
-                  Browse all execution root hashes for{" "}
+                <p className="text-muted-foreground mt-1 executions-subtitle">
+                  {t("executionsPage.subtitle")}{" "}
                   <span className="font-mono text-foreground">
                     {author}/{name}
                   </span>
@@ -203,10 +208,10 @@ export default function ExecutionExplorerPage() {
               </div>
 
               {data && (
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span>
-                    <strong className="text-foreground">{data.total}</strong>{" "}
-                    total executions
+                <div className="executions-stats-bar">
+                  <span className="text-sm text-muted-foreground">
+                    <strong className="executions-stat-value">{data.total}</strong>{" "}
+                    {t("executionsPage.totalLabel")}
                   </span>
                 </div>
               )}
@@ -225,12 +230,12 @@ export default function ExecutionExplorerPage() {
                 return next;
               });
             }}
-            className="w-full"
+            className="w-full executions-tabs"
           >
-            <TabsList className="mb-6">
-              <TabsTrigger value="history">History</TabsTrigger>
-              <TabsTrigger value="certificates">Certificates (FXCERT)</TabsTrigger>
-              <TabsTrigger value="executions">Executions (MEG)</TabsTrigger>
+            <TabsList className="mb-6 executions-tabs-list">
+              <TabsTrigger value="history" className="executions-tabs-trigger">{t("executionsPage.tabs.history")}</TabsTrigger>
+              <TabsTrigger value="certificates" className="executions-tabs-trigger">{t("executionsPage.tabs.certificates")}</TabsTrigger>
+              <TabsTrigger value="executions" className="executions-tabs-trigger">{t("executionsPage.tabs.executions")}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="executions" className="mt-0">
@@ -241,12 +246,12 @@ export default function ExecutionExplorerPage() {
             transition={{ delay: 0.1 }}
             className="mb-6"
           >
-            <Card className="bg-bg-primary/60 border-border-subtle">
+            <Card className="executions-filters">
               <CardContent className="p-4">
                 <div className="flex flex-wrap items-center gap-4">
                   <div className="flex items-center gap-2">
                     <Filter className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Filters:</span>
+                    <span className="executions-filter-label">{t("executionsPage.filters.label")}:</span>
                   </div>
 
                   <Select
@@ -255,11 +260,11 @@ export default function ExecutionExplorerPage() {
                       setFilters((f) => ({ ...f, version: value }))
                     }
                   >
-                    <SelectTrigger className="w-40">
-                      <SelectValue placeholder="All versions" />
+                    <SelectTrigger className="w-40 executions-filter-select">
+                      <SelectValue placeholder={t("executionsPage.filters.allVersions")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__all">All versions</SelectItem>
+                      <SelectItem value="__all">{t("executionsPage.filters.allVersions")}</SelectItem>
                       {/* Could dynamically load versions */}
                     </SelectContent>
                   </Select>
@@ -276,7 +281,7 @@ export default function ExecutionExplorerPage() {
                       htmlFor="verified-only"
                       className="text-sm cursor-pointer"
                     >
-                      Verified only
+                      {t("executionsPage.filters.verifiedOnly")}
                     </Label>
                   </div>
                 </div>
@@ -301,26 +306,27 @@ export default function ExecutionExplorerPage() {
             ))}
 
             {data?.executions.length === 0 && (
-              <Card className="bg-bg-primary/60 border-border-subtle">
+              <Card className="executions-empty-state">
                 <CardContent className="p-12">
                   <div className="text-center mb-8">
-                    <Hash className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2">
-                      No executions found
+                    <div className="executions-empty-icon">
+                      <Hash className="w-8 h-8" />
+                    </div>
+                    <h3 className="executions-empty-title">
+                      {t("executionsPage.empty.title")}
                     </h3>
-                    <p className="text-muted-foreground mb-6">
-                      This function hasn't been executed yet or no execution
-                      records are available.
+                    <p className="executions-empty-description">
+                      {t("executionsPage.empty.description")}
                     </p>
                   </div>
                   <div className="border-t border-border-subtle pt-8">
                     <p className="text-sm font-medium text-foreground mb-3">
-                      When executions exist, you'll see:
+                      {t("executionsPage.empty.whenExists")}
                     </p>
-                    <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
-                      <li>Execution cards with root hash, version, and verification status</li>
-                      <li>Click any card to open the <strong className="text-foreground">DRE detail view</strong>: execution header, Merkle execution tree, trust score, FXCERT viewer, and replay</li>
-                      <li>Filters by version and verified-only toggle</li>
+                    <ul className="executions-empty-list">
+                      <li>{t("executionsPage.empty.feature1")}</li>
+                      <li>{t("executionsPage.empty.feature2")}</li>
+                      <li>{t("executionsPage.empty.feature3")}</li>
                     </ul>
                   </div>
                 </CardContent>
@@ -334,27 +340,29 @@ export default function ExecutionExplorerPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
-              className="flex items-center justify-between mt-8"
+              className="executions-pagination"
             >
               <Button
                 variant="outline"
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
                 disabled={page === 0}
+                className="executions-pagination-btn"
               >
                 <ChevronLeft className="w-4 h-4 mr-2" />
-                Previous
+                {t("executionsPage.pagination.previous")}
               </Button>
 
-              <span className="text-sm text-muted-foreground">
-                Page {page + 1} of {totalPages}
+              <span className="executions-pagination-info">
+                {t("executionsPage.pagination.page")} <strong>{page + 1}</strong> {t("executionsPage.pagination.of")} <strong>{totalPages}</strong>
               </span>
 
               <Button
                 variant="outline"
                 onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                 disabled={page >= totalPages - 1}
+                className="executions-pagination-btn"
               >
-                Next
+                {t("executionsPage.pagination.next")}
                 <ChevronRight className="w-4 h-4 ml-2" />
               </Button>
             </motion.div>
@@ -399,7 +407,7 @@ export default function ExecutionExplorerPage() {
         open={!!selectedExecution}
         onOpenChange={() => setSelectedExecution(null)}
       >
-        <DialogContent className="execution-explorer-detail-dialog max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="aviation-executions-dialog max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Lock className="w-5 h-5 text-brand-500" />
@@ -469,7 +477,7 @@ export default function ExecutionExplorerPage() {
           }
         }}
       >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="aviation-executions-dialog max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Shield className="w-5 h-5 text-brand-500" />
@@ -543,6 +551,7 @@ function ExecutionCard({
   index: number;
   onClick: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -550,31 +559,34 @@ function ExecutionCard({
       transition={{ delay: index * 0.05 }}
     >
       <Card
-        className="bg-bg-primary/60 border-border-subtle hover:border-brand-500/30 transition-all cursor-pointer group"
+        className="execution-card"
         onClick={onClick}
       >
+        <div className="execution-card-accent" />
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row md:items-center gap-4">
             {/* Hash */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2">
-                <Lock className="w-4 h-4 text-brand-500" />
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Execution Root Hash
+              <div className="execution-card-header">
+                <div className="execution-card-icon">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <span className="execution-card-label">
+                  {t("executionsPage.card.rootHash")}
                 </span>
               </div>
-              <code className="text-sm font-mono bg-bg-secondary px-2 py-1 rounded block truncate">
+              <code className="execution-hash block truncate">
                 {execution.execution_root_hash}
               </code>
             </div>
 
             {/* Version & Date */}
-            <div className="flex items-center gap-4 text-sm">
+            <div className="execution-meta">
               <div className="flex items-center gap-1">
-                <Badge variant="outline">v{execution.version}</Badge>
+                <span className="execution-version-badge">v{execution.version}</span>
               </div>
               <div
-                className="flex items-center gap-1 text-muted-foreground"
+                className="execution-timestamp"
                 title={format(new Date(execution.created_at), "PPpp")}
               >
                 <Calendar className="w-4 h-4" />
@@ -587,63 +599,52 @@ function ExecutionCard({
             {/* Status Badges */}
             <div className="flex items-center gap-2">
               {execution.replay_verified ? (
-                <Badge
-                  variant="outline"
-                  className="bg-green-500/10 text-green-500 border-green-500/20"
-                >
+                <span className="execution-badge execution-badge-verified">
                   <CheckCircle className="w-3 h-3 mr-1" />
-                  Verified
-                </Badge>
+                  {t("executionsPage.card.verified")}
+                </span>
               ) : (
-                <Badge
-                  variant="outline"
-                  className="text-muted-foreground"
-                >
+                <span className="execution-badge execution-badge-pending">
                   <Clock className="w-3 h-3 mr-1" />
-                  Pending
-                </Badge>
+                  {t("executionsPage.card.pending")}
+                </span>
               )}
 
               {execution.roots_match && (
-                <Badge
-                  variant="outline"
-                  className="bg-blue-500/10 text-blue-500 border-blue-500/20"
-                >
+                <span className="execution-badge execution-badge-match">
                   <Shield className="w-3 h-3 mr-1" />
-                  Match
-                </Badge>
+                  {t("executionsPage.card.match")}
+                </span>
               )}
             </div>
 
             {/* Arrow */}
-            <ExternalLink className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+            <ExternalLink className="execution-card-arrow w-4 h-4" />
           </div>
 
           {/* Component Hashes Preview */}
-          <div className="mt-4 pt-4 border-t border-border-subtle">
-            <div className="grid grid-cols-7 gap-2 text-xs">
+          <div className="execution-components">
                 {[
-                { key: "input", label: "Input" },
-                { key: "output", label: "Output" },
-                { key: "environment", label: "Env" },
-                { key: "dependency", label: "Dep" },
-                { key: "trace", label: "Trace" },
-                { key: "resource", label: "Res" },
-                { key: "metadata", label: "Meta" },
+                { key: "input", label: t("executionsPage.card.input") },
+                { key: "output", label: t("executionsPage.card.output") },
+                { key: "environment", label: t("executionsPage.card.env") },
+                { key: "dependency", label: t("executionsPage.card.dep") },
+                { key: "trace", label: t("executionsPage.card.trace") },
+                { key: "resource", label: t("executionsPage.card.res") },
+                { key: "metadata", label: t("executionsPage.card.meta") },
               ].map(({ key, label }) => {
                 const hashes = execution.component_hashes as unknown as Record<string, string>;
                 const hash = hashes[key];
                 return (
-                  <div key={key} className="text-center">
-                    <div className="text-muted-foreground mb-1">{label}</div>
-                    <code className="font-mono text-[10px] bg-bg-secondary px-1 py-0.5 rounded block truncate">
+                  <div key={key} className="execution-component">
+                    <div className="execution-component-label">{label}</div>
+                    <code className="execution-component-hash">
                       {hash?.slice(0, 8) || "—"}
                     </code>
                   </div>
                 );
               })}
             </div>
-          </div>
         </CardContent>
       </Card>
     </motion.div>
@@ -675,6 +676,19 @@ const COMPONENT_DETAIL: Record<
   },
 };
 
+function useComponentDetailTranslation() {
+  const { t } = useTranslation();
+  return {
+    input: { label: t("executionsPage.component.input"), description: t("executionsPage.component.inputDesc") },
+    output: { label: t("executionsPage.component.output"), description: t("executionsPage.component.outputDesc") },
+    environment: { label: t("executionsPage.component.environment"), description: t("executionsPage.component.environmentDesc") },
+    dependency: { label: t("executionsPage.component.dependency"), description: t("executionsPage.component.dependencyDesc") },
+    trace: { label: t("executionsPage.component.trace"), description: t("executionsPage.component.traceDesc") },
+    resource: { label: t("executionsPage.component.resource"), description: t("executionsPage.component.resourceDesc") },
+    metadata: { label: t("executionsPage.component.metadata"), description: t("executionsPage.component.metadataDesc") },
+  };
+}
+
 function ExecutionDetailView({
   execution,
   onReplay,
@@ -684,6 +698,8 @@ function ExecutionDetailView({
   onReplay?: () => void;
   onViewFullCert?: (certId: string) => void;
 }) {
+  const { t } = useTranslation();
+  const componentDetailTranslations = useComponentDetailTranslation();
   const [copied, setCopied] = useState(false);
   const [componentDetail, setComponentDetail] = useState<{
     type: ComponentType;
@@ -693,18 +709,18 @@ function ExecutionDetailView({
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
-    toast.success("Copied to clipboard");
+    toast.success(t("executionsPage.copiedToClipboard"));
     setTimeout(() => setCopied(false), 2000);
   };
 
   const componentOrder = [
-    { key: "input", label: "Input Hash" },
-    { key: "output", label: "Output Hash" },
-    { key: "environment", label: "Environment Hash" },
-    { key: "dependency", label: "Dependency Hash" },
-    { key: "trace", label: "Trace Hash" },
-    { key: "resource", label: "Resource Hash" },
-    { key: "metadata", label: "Metadata Hash" },
+    { key: "input", label: t("executionsPage.component.inputHash") },
+    { key: "output", label: t("executionsPage.component.outputHash") },
+    { key: "environment", label: t("executionsPage.component.environmentHash") },
+    { key: "dependency", label: t("executionsPage.component.dependencyHash") },
+    { key: "trace", label: t("executionsPage.component.traceHash") },
+    { key: "resource", label: t("executionsPage.component.resourceHash") },
+    { key: "metadata", label: t("executionsPage.component.metadataHash") },
   ] as const;
 
   return (
@@ -737,7 +753,7 @@ function ExecutionDetailView({
             showWarning={execution.determinism_tier !== "full"}
             warningMessage={
               execution.determinism_tier !== "full"
-                ? "This execution has non-deterministic components. Replay may differ."
+                ? t("executionsPage.replayWarning")
                 : undefined
             }
           />
@@ -774,15 +790,15 @@ function ExecutionDetailView({
             <>
               <DialogHeader>
                 <DialogTitle>
-                  {COMPONENT_DETAIL[componentDetail.type].label}
+                  {componentDetailTranslations[componentDetail.type].label}
                 </DialogTitle>
                 <DialogDescription>
-                  {COMPONENT_DETAIL[componentDetail.type].description}
+                  {componentDetailTranslations[componentDetail.type].description}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3 pt-2">
                 <Label className="text-muted-foreground text-xs uppercase tracking-wide">
-                  Component hash
+                  {t("executionsPage.component.componentHash")}
                 </Label>
                 <HashBlock
                   hash={componentDetail.hash}
@@ -865,7 +881,7 @@ function ExecutionDetailView({
               onClick={() => onViewFullCert(execution.certificate!.certificate_id)}
             >
               <Shield className="h-4 w-4" />
-              View full FXCERT
+              {t("executionsPage.viewFullCert")}
             </Button>
           )}
         </div>

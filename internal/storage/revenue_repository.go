@@ -484,19 +484,19 @@ func (r *RevenueRepository) CreateAgentUsage(ctx context.Context, usage *AgentUs
 	return err
 }
 
-// GetAgentUsageByAgentID retrieves agent usage records by agent ID
-func (r *RevenueRepository) GetAgentUsageByAgentID(ctx context.Context, agentID uuid.UUID, limit, offset int) ([]*AgentUsage, error) {
+// GetAgentUsageByAgentID retrieves agent usage records by agent ID and tenant ID
+func (r *RevenueRepository) GetAgentUsageByAgentID(ctx context.Context, agentID, tenantID uuid.UUID, limit, offset int) ([]*AgentUsage, error) {
 	query := `
 		SELECT id, agent_id, tenant_id, subscription_id, period_start, period_end,
 		       total_calls, total_executions, total_errors, total_latency_ms,
 		       billable_calls, overage_calls, estimated_cost_cents, status,
 		       stripe_invoice_id, created_at, updated_at
 		FROM agent_usage
-		WHERE agent_id = $1
+		WHERE agent_id = $1 AND tenant_id = $2
 		ORDER BY period_start DESC
-		LIMIT $2 OFFSET $3`
+		LIMIT $3 OFFSET $4`
 
-	rows, err := r.db.QueryContext(ctx, query, agentID, limit, offset)
+	rows, err := r.db.QueryContext(ctx, query, agentID, tenantID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -520,15 +520,15 @@ func (r *RevenueRepository) GetAgentUsageByAgentID(ctx context.Context, agentID 
 	return usages, nil
 }
 
-// GetAgentUsageSummary returns aggregated usage summary for an agent
-func (r *RevenueRepository) GetAgentUsageSummary(ctx context.Context, agentID uuid.UUID) (totalCalls, billableCalls, overageCalls, estimatedCost int, err error) {
+// GetAgentUsageSummary returns aggregated usage summary for an agent and tenant
+func (r *RevenueRepository) GetAgentUsageSummary(ctx context.Context, agentID, tenantID uuid.UUID) (totalCalls, billableCalls, overageCalls, estimatedCost int, err error) {
 	query := `
 		SELECT COALESCE(SUM(total_calls), 0), COALESCE(SUM(billable_calls), 0),
 		       COALESCE(SUM(overage_calls), 0), COALESCE(SUM(estimated_cost_cents), 0)
 		FROM agent_usage
-		WHERE agent_id = $1 AND status = 'active'`
+		WHERE agent_id = $1 AND tenant_id = $2 AND status = 'active'`
 
-	err = r.db.QueryRowContext(ctx, query, agentID).Scan(&totalCalls, &billableCalls, &overageCalls, &estimatedCost)
+	err = r.db.QueryRowContext(ctx, query, agentID, tenantID).Scan(&totalCalls, &billableCalls, &overageCalls, &estimatedCost)
 	return totalCalls, billableCalls, overageCalls, estimatedCost, err
 }
 

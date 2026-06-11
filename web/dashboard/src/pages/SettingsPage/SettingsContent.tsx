@@ -18,6 +18,9 @@
  * Use getSettingsUrl(username, tab) from settings-utils.ts for generating URLs.
  */
 
+import './styles.css';
+import '@/styles/aviation-dashboard.css';
+
 import { usersApi } from '@/api/users';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PrivacySettingsTab } from './components/PrivacySettingsTab';
@@ -30,6 +33,7 @@ import { Bell, CreditCard, Code, Dna, Key, Link2, Shield, ShieldCheck, User } fr
 import { useEffect, useState } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { usePageTitle } from '@/hooks';
 import { toast } from 'sonner';
 import {
   AccountSettingsTab,
@@ -40,6 +44,7 @@ import {
   NotificationsSettingsTab,
   PlatformSettingsTab,
   SecuritySettingsTab,
+  TrustAPISettingsTab,
 } from './components';
 import { VALID_TABS, type SettingsTabValue } from './settings-utils';
 
@@ -76,6 +81,7 @@ export function SettingsContent({
   profile,
   initialTab: initialTabProp,
 }: SettingsContentProps) {
+  usePageTitle('Settings');
   const { t } = useTranslation();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -113,7 +119,11 @@ export function SettingsContent({
     const newHash = `#${activeTab}`;
     if (location.hash !== newHash) {
       // Use replaceState for initial load, pushState for user-initiated changes
-      window.history.replaceState({}, document.title, `${location.pathname}${newHash}${location.search}`);
+      window.history.replaceState(
+        {},
+        document.title,
+        `${location.pathname}${newHash}${location.search}`
+      );
     }
   }, [activeTab, location.pathname, location.search, location.hash]);
 
@@ -159,20 +169,20 @@ export function SettingsContent({
   const returnUrl = `${window.location.origin}${location.pathname}${location.search ? location.search : ''}`;
 
   return (
-    <div className="space-y-6">
+    <div className="aviation-dashboard settings-page space-y-6">
       {showHeader && (
-        <div>
-          <h1 className="font-display text-2xl font-bold text-text-primary text-glow">
+        <div className="settings-page-header">
+          <h1 className="settings-page-title">
             {t('settings.title')}
           </h1>
-          <p className="text-text-secondary">{t('settings.manageAccount')}</p>
+          <p className="settings-page-subtitle">{t('settings.manageAccount')}</p>
         </div>
       )}
 
       <Tabs
         value={activeTab}
         onValueChange={(v) => setActiveTab(v as SettingsTabValue)}
-        className="space-y-6"
+        className="settings-tab-content space-y-6"
       >
         <TabsList className="settings-page-tabs inline-flex h-auto flex-wrap gap-1 rounded-xl border border-border-default bg-bg-secondary/80 p-1.5 text-text-secondary backdrop-blur-sm">
           <TabsTrigger
@@ -235,46 +245,67 @@ export function SettingsContent({
             value="github"
             className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500 data-[state=active]:shadow-glow-sm"
           >
-            <svg role="img" viewBox="0 0 24 24" className="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+            <svg
+              role="img"
+              viewBox="0 0 24 24"
+              className="h-4 w-4 shrink-0"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                fill="currentColor"
+                d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"
+              />
+            </svg>
             GitHub
+          </TabsTrigger>
+          <TabsTrigger
+            value="trust-api"
+            className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500 data-[state=active]:shadow-glow-sm"
+          >
+            <Shield className="h-4 w-4 shrink-0" />
+            Trust API
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="account" className="space-y-6">
+        <TabsContent value="account" className="settings-tab-content space-y-6">
           <AccountSettingsTab />
         </TabsContent>
 
-        <TabsContent value="billing" className="space-y-6">
+        <TabsContent value="billing" className="settings-tab-content space-y-6">
           <BillingSettingsTab returnUrl={returnUrl} displayPlan={displayPlan} />
         </TabsContent>
 
-        <TabsContent value="developer" className="space-y-6">
+        <TabsContent value="developer" className="settings-tab-content space-y-6">
           <DeveloperSettingsTab />
           <AuthSettingsTab />
         </TabsContent>
 
-        <TabsContent value="notifications" className="space-y-6">
+        <TabsContent value="notifications" className="settings-tab-content space-y-6">
           <NotificationsSettingsTab />
         </TabsContent>
 
-        <TabsContent value="security" className="space-y-6">
+        <TabsContent value="security" className="settings-tab-content space-y-6">
           <SecuritySettingsTab />
         </TabsContent>
 
-        <TabsContent value="privacy" className="space-y-6">
+        <TabsContent value="privacy" className="settings-tab-content space-y-6">
           <PrivacySettingsTab profile={profile ?? undefined} />
         </TabsContent>
 
-        <TabsContent value="platform" className="space-y-6">
+        <TabsContent value="platform" className="settings-tab-content space-y-6">
           <PlatformSettingsTab />
         </TabsContent>
 
-        <TabsContent value="integrations" className="space-y-6">
+        <TabsContent value="integrations" className="settings-tab-content space-y-6">
           <IntegrationsSettingsTab />
         </TabsContent>
 
-        <TabsContent value="github" className="space-y-6">
+        <TabsContent value="github" className="settings-tab-content space-y-6">
           <GitHubSettingsPage />
+        </TabsContent>
+
+        <TabsContent value="trust-api" className="settings-tab-content space-y-6">
+          <TrustAPISettingsTab returnUrl={returnUrl} />
         </TabsContent>
       </Tabs>
     </div>

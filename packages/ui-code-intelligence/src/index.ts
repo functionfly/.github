@@ -23,4 +23,4 @@ export {
   RefactorSimulationViewer,
   ArchitectureConstraintPanel,
   CodeOwnershipMap,
-} from './index.tsx'
+} from "./index.tsx";

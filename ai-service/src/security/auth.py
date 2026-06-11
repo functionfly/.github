@@ -1,35 +1,23 @@
 """API key validation for FlyMind AI Service.
 
 This module provides API key authentication and validation using the Go orchestrator's
-PostgreSQL-backed key storage. The previous in-memory storage that lost keys on restart
-has been replaced with persistent storage via the orchestrator API.
-
-IMPORTANT: The old APIKeyValidator with _init_default_keys() should NOT be used in
-production. Use PostgresBackedAPIKeyValidator instead.
+PostgreSQL-backed key storage. Keys persist across service restarts and revocations
+are immediately effective.
 """
 
 import hashlib
 import logging
-import os
-import secrets
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional
 import threading
+
+import httpx
 
 from fastapi import Header, HTTPException, Depends, status
 from fastapi.security import APIKeyHeader
-
-from .postgres_key_validator import (
-    PostgresBackedAPIKeyValidator,
-    InMemoryFallbackValidator,
-    APIKeyInfo as PostgresAPIKeyInfo,
-    KeyStatus,
-    KeyScope,
-    create_validator,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -37,25 +25,33 @@ logger = logging.getLogger(__name__)
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
-# Re-export KeyStatus and KeyScope for backward compatibility
-__all__ = [
-    "KeyStatus",
-    "KeyScope",
-    "APIKeyInfo",
-    "get_api_key_validator",
-    "require_api_key",
-    "require_api_key_with_scope",
-]
+class KeyStatus(str, Enum):
+    """API key status."""
+    ACTIVE = "active"
+    REVOKED = "revoked"
+    EXPIRED = "expired"
+    SUSPENDED = "suspended"
+
+
+class KeyScope(str, Enum):
+    """API key scopes."""
+    READ = "read"
+    WRITE = "write"
+    ADMIN = "admin"
+    FULL = "full"
+    # Embedding-specific scopes
+    EMBED_READ = "embed:read"
+    EMBED_WRITE = "embed:write"
+    EMBED_ADMIN = "embed:admin"
+    RAG_READ = "rag:read"
+    # Chat/composer-specific scopes
+    CHAT_WRITE = "chat:write"
+    CHAT_READ = "chat:read"
 
 
 @dataclass
 class APIKeyInfo:
-    """Information about an API key.
-
-    This class provides backward compatibility for code that expects
-    the old in-memory APIKeyInfo format. The actual validation is done
-    by PostgresBackedAPIKeyValidator.
-    """
+    """Information about an API key."""
     key_id: str
     tenant_id: str
     name: str
@@ -87,138 +83,205 @@ class APIKeyInfo:
         return scope in self.scopes
 
 
-class PostgresValidatorWrapper:
-    """Wrapper around PostgresBackedAPIKeyValidator that provides sync interface.
+class APIKeyValidator:
+    """Validates API keys using Go orchestrator's PostgreSQL storage.
 
-    The underlying PostgresBackedAPIKeyValidator is async, but FastAPI dependencies
-    can be sync when needed by using a simple wrapper that runs the async code
-    in a thread pool.
+    This validator queries the orchestrator's /auth/validate-key endpoint
+    to validate keys against the database-backed storage.
     """
 
     def __init__(
         self,
-        orchestrator_url: Optional[str] = None,
+        orchestrator_url: str = "http://localhost:8080",
         orchestrator_api_key: Optional[str] = None,
+        cache_ttl_seconds: int = 60,
     ):
-        self._validator: Optional[PostgresBackedAPIKeyValidator] = None
-        self._fallback: Optional[InMemoryFallbackValidator] = None
-        self._is_fallback = False
-        self._orchestrator_url = orchestrator_url
+        """Initialize the validator.
+
+        Args:
+            orchestrator_url: URL of the Go orchestrator API
+            orchestrator_api_key: Optional API key for orchestrator authentication
+            cache_ttl_seconds: How long to cache validation results
+        """
+        self._orchestrator_url = orchestrator_url.rstrip("/")
         self._orchestrator_api_key = orchestrator_api_key
-        self._initialized = False
+        self._cache_ttl = cache_ttl_seconds
 
-        # Check for development mode
-        self._dev_mode = os.getenv("DEVELOPMENT", "false").lower() == "true"
-        self._force_fallback = os.getenv("AI_SERVICE_USE_IN_MEMORY_KEY_VALIDATOR", "false").lower() == "true"
+        self._lock = threading.Lock()
+        self._cache: Dict[str, tuple[Optional[APIKeyInfo], float]] = {}  # key_hash -> (info, expiry)
 
-    def initialize(self) -> None:
-        """Initialize the validator. Call this at startup."""
-        if self._initialized:
-            return
+    def _get_cache_key(self, key: str) -> str:
+        """Generate a cache key from the API key."""
+        return hashlib.sha256(key.encode()).hexdigest()
 
-        if self._force_fallback or self._dev_mode:
-            logger.warning(
-                "=" * 60
-            )
-            logger.warning("INSECURE MODE: Using in-memory API key validation!")
-            logger.warning("Keys will be lost on restart and no key revocation works.")
-            if self._dev_mode:
-                logger.warning("This is expected in DEVELOPMENT mode.")
-            else:
-                logger.warning("Set AI_SERVICE_USE_IN_MEMORY_KEY_VALIDATOR=false to disable.")
-            logger.warning("DO NOT use this in production!")
-            logger.warning("=" * 60)
+    async def _validate_via_orchestrator(self, key: str) -> Optional[APIKeyInfo]:
+        """Validate a key directly via orchestrator API (no cache)."""
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                headers = {}
+                if self._orchestrator_api_key:
+                    headers["Authorization"] = f"Bearer {self._orchestrator_api_key}"
 
-            self._fallback = InMemoryFallbackValidator()
-            self._is_fallback = True
-        else:
-            self._validator = PostgresBackedAPIKeyValidator(
-                orchestrator_url=self._orchestrator_url or "http://localhost:8080",
-                orchestrator_api_key=self._orchestrator_api_key,
-            )
+                response = await client.post(
+                    f"{self._orchestrator_url}/api/v1/auth/validate-key",
+                    json={"api_key": key},
+                    headers=headers,
+                )
 
-        self._initialized = True
+                if response.status_code == 200:
+                    data = response.json()
+                    if not data.get("data", {}).get("valid", False):
+                        return None
 
-    async def _async_initialize(self) -> None:
-        """Async initialization for use at startup."""
-        if self._is_fallback or self._force_fallback:
-            self._fallback = InMemoryFallbackValidator()
-            self._is_fallback = True
-            return
+                    return self._parse_key_response(data["data"])
+                else:
+                    logger.warning(f"Unexpected response from orchestrator: {response.status_code}")
 
-        self._validator = PostgresBackedAPIKeyValidator(
-            orchestrator_url=self._orchestrator_url or "http://localhost:8080",
-            orchestrator_api_key=self._orchestrator_api_key,
-        )
-        await self._validator.initialize()
-
-    def validate_key(self, key: str) -> Optional[APIKeyInfo]:
-        """Validate an API key (sync interface for FastAPI dependencies)."""
-        if not self._initialized:
-            self.initialize()
-
-        import asyncio
-
-        if self._is_fallback and self._fallback:
-            # Run async validation in thread pool
-            return asyncio.run(self._fallback.validate_key(key))
-
-        if self._validator:
-            return asyncio.run(self._validator.validate_key(key))
+        except Exception as e:
+            logger.error(f"Failed to validate key via orchestrator: {e}")
 
         return None
 
+    def _parse_key_response(self, data: dict) -> Optional[APIKeyInfo]:
+        """Parse the orchestrator response into APIKeyInfo."""
+        try:
+            # Parse expiration
+            expires_at = None
+            if data.get("expires_at"):
+                expires_at = datetime.fromisoformat(data["expires_at"].replace("Z", "+00:00"))
+
+            # Parse last used
+            last_used_at = None
+            if data.get("last_used_at"):
+                last_used_at = datetime.fromisoformat(data["last_used_at"].replace("Z", "+00:00"))
+
+            # Parse scopes
+            scopes = []
+            for scope_str in data.get("scopes", []):
+                try:
+                    scopes.append(KeyScope(scope_str))
+                except ValueError:
+                    logger.debug(f"Unknown scope: {scope_str}")
+
+            # Determine status
+            if data.get("is_revoked"):
+                status_val = KeyStatus.REVOKED
+            elif not data.get("is_active"):
+                status_val = KeyStatus.SUSPENDED
+            elif expires_at and datetime.utcnow() > expires_at:
+                status_val = KeyStatus.EXPIRED
+            else:
+                status_val = KeyStatus.ACTIVE
+
+            return APIKeyInfo(
+                key_id=data.get("key_id", ""),
+                tenant_id=data.get("tenant_id", ""),
+                name=data.get("name", ""),
+                scopes=scopes,
+                status=status_val,
+                created_at=datetime.utcnow(),
+                expires_at=expires_at,
+                last_used_at=last_used_at,
+                request_count=0,
+                rate_limit=data.get("rate_limit_rpm", 60),
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to parse key response: {e}")
+            return None
+
+    async def initialize(self) -> bool:
+        """Initialize the validator by checking orchestrator connectivity.
+
+        Returns:
+            True if orchestrator is reachable
+        """
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(f"{self._orchestrator_url}/health")
+                return response.status_code == 200
+        except Exception as e:
+            logger.error(f"Orchestrator health check failed: {e}")
+            return False
+
+    def validate_key_sync(self, key: str) -> Optional[APIKeyInfo]:
+        """Validate an API key synchronously (for FastAPI dependencies)."""
+        import asyncio
+
+        cache_key = self._get_cache_key(key)
+
+        # Check cache first
+        with self._lock:
+            if cache_key in self._cache:
+                cached_info, expiry = self._cache[cache_key]
+                if time.time() < expiry:
+                    return cached_info
+
+        # Validate via orchestrator
+        info = asyncio.run(self._validate_via_orchestrator(key))
+
+        # Cache the result
+        with self._lock:
+            self._cache[cache_key] = (info, time.time() + self._cache_ttl)
+
+        return info
+
     def get_stats(self) -> Dict[str, int]:
         """Get validator statistics."""
-        if self._is_fallback and self._fallback:
-            return {"mode": "in_memory_fallback"}
-
-        if self._validator:
-            return self._validator.get_stats()
-
-        return {"mode": "uninitialized"}
+        with self._lock:
+            return {
+                "cached_keys": len(self._cache),
+            }
 
 
 # Global validator instance
-_validator_instance: Optional[PostgresValidatorWrapper] = None
+_validator_instance: Optional[APIKeyValidator] = None
 
 
-def get_api_key_validator() -> PostgresValidatorWrapper:
+def get_api_key_validator() -> APIKeyValidator:
     """Get the global API key validator.
 
     Returns:
-        PostgresValidatorWrapper instance (uses orchestrator-backed storage in production)
+        APIKeyValidator instance
     """
     global _validator_instance
     if _validator_instance is None:
         from ..config import settings
 
-        _validator_instance = PostgresValidatorWrapper(
+        _validator_instance = APIKeyValidator(
             orchestrator_url=settings.orchestrator_url,
             orchestrator_api_key=settings.orchestrator_api_key,
         )
-        _validator_instance.initialize()
 
     return _validator_instance
 
 
-async def initialize_api_key_validator() -> None:
-    """Initialize the API key validator asynchronously. Call this at startup."""
+async def initialize_api_key_validator() -> bool:
+    """Initialize the API key validator. Call this at startup.
+
+    Returns:
+        True if orchestrator is reachable, False otherwise.
+        The service will start in degraded mode if orchestrator is unreachable.
+    """
     global _validator_instance
 
     from ..config import settings
 
-    wrapper = PostgresValidatorWrapper(
+    _validator_instance = APIKeyValidator(
         orchestrator_url=settings.orchestrator_url,
         orchestrator_api_key=settings.orchestrator_api_key,
     )
-    await wrapper._async_initialize()
-    _validator_instance = wrapper
 
+    healthy = await _validator_instance.initialize()
+    if not healthy:
+        logger.warning(
+            f"Orchestrator not reachable at {settings.orchestrator_url}. "
+            "API key validation will operate in degraded mode."
+        )
+        return False
 
-# Backward compatibility alias - the old APIKeyValidator is deprecated
-# and should not be used in production
-APIKeyValidator = PostgresValidatorWrapper
+    logger.info("API key validator initialized (orchestrator-backed)")
+    return True
 
 
 # FastAPI dependency functions
@@ -244,7 +307,7 @@ async def require_api_key(
         )
 
     validator = get_api_key_validator()
-    info = validator.validate_key(x_api_key)
+    info = validator.validate_key_sync(x_api_key)
 
     if not info:
         raise HTTPException(
@@ -281,7 +344,7 @@ def require_api_key_with_scope(scope: KeyScope):
             )
 
         validator = get_api_key_validator()
-        info = validator.validate_key(x_api_key)
+        info = validator.validate_key_sync(x_api_key)
 
         if not info:
             raise HTTPException(

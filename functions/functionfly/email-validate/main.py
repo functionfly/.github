@@ -1,5 +1,21 @@
 import re
 
+try:
+    import dns.resolver
+    HAS_DNS = True
+except ImportError:
+    HAS_DNS = False
+
+
+def _check_mx(domain):
+    if not HAS_DNS:
+        return None
+    try:
+        mx_records = dns.resolver.resolve(domain, "MX")
+        return len(mx_records) > 0
+    except Exception:
+        return False
+
 
 def handler(event):
     """
@@ -12,7 +28,7 @@ def handler(event):
         - ok: True if format is valid
         - valid: Same as ok
         - format_valid: True if pattern matches
-        - has_mx: True if domain has MX record (hint; not implemented here, always null)
+        - has_mx: True if domain has MX record
         - error: Message if invalid
     """
     if isinstance(event, dict):
@@ -25,7 +41,6 @@ def handler(event):
 
     email = str(email).strip().lower()
 
-    # RFC 5322-ish: local@domain, reasonable length
     pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$"
     if not re.match(pattern, email):
         return {
@@ -35,7 +50,6 @@ def handler(event):
             "error": "Invalid email format",
         }
 
-    # Basic sanity: no consecutive dots, no leading/trailing dots in local
     local, _, domain = email.partition("@")
     if ".." in email or local.startswith(".") or local.endswith("."):
         return {
@@ -45,7 +59,6 @@ def handler(event):
             "error": "Invalid email format",
         }
 
-    # Length limits
     if len(local) > 64 or len(domain) > 255 or len(email) > 254:
         return {
             "ok": False,
@@ -54,6 +67,8 @@ def handler(event):
             "error": "Email too long",
         }
 
+    has_mx = _check_mx(domain)
+
     return {
         "ok": True,
         "valid": True,
@@ -61,4 +76,5 @@ def handler(event):
         "email": email,
         "local": local,
         "domain": domain,
+        "has_mx": has_mx,
     }

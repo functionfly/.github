@@ -3,6 +3,8 @@ package billing
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -56,6 +58,33 @@ type CreditPurchaseRequest struct {
 	AgentID         string  `json:"agent_id"`
 	AmountUSD       float64 `json:"amount_usd"`
 	PaymentMethodID string  `json:"payment_method_id"`
+}
+
+// BrowserUsage records a browser automation usage event
+type BrowserUsage struct {
+	ID              uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	AgentID         string    `json:"agent_id" gorm:"not null;index"`
+	SessionID       uuid.UUID `json:"session_id" gorm:"type:uuid;not null"`
+	Action          string    `json:"action" gorm:"not null"` // navigate, click, fill, screenshot, extract
+	Domain          string    `json:"domain" gorm:"index"`
+	DurationMs      int       `json:"duration_ms"`
+	BrowserMinutes  float64   `json:"browser_minutes" gorm:"type:decimal(10,4)"`
+	CostUSD         float64   `json:"cost_usd" gorm:"type:decimal(10,6)"`
+	CreatedAt       time.Time `json:"created_at" gorm:"autoCreateTime"`
+}
+
+// TableName returns the table name
+func (BrowserUsage) TableName() string {
+	return "agent_browser_usage"
+}
+
+// BrowserUsageStats holds browser usage statistics
+type BrowserUsageStats struct {
+	AgentID      string  `json:"agent_id"`
+	Period       string  `json:"period"`
+	TotalMinutes float64 `json:"total_minutes"`
+	TotalCostUSD float64 `json:"total_cost_usd"`
+	TotalActions int64   `json:"total_actions"`
 }
 
 // BillingMode constants
@@ -337,4 +366,60 @@ func periodToTime(period string) time.Time {
 
 	// Default: last 30 days
 	return time.Now().UTC().AddDate(0, 0, -30)
+}
+
+// RecordBrowserUsage records browser automation usage for cost attribution
+func (c *Controller) RecordBrowserUsage(ctx context.Context, agentID string, sessionID uuid.UUID, action, domain string, durationMs int) error {
+	if c.redis == nil {
+		return nil
+	}
+
+	// Calculate browser minutes and cost
+	browserMinutes := float64(durationMs) / 60000.0
+	costPerMinute := 0.01 // Default cost per minute
+	if v := os.Getenv("BROWSER_COST_PER_MINUTE"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 {
+			costPerMinute = f
+		}
+	}
+	cost := browserMinutes * costPerMinute
+
+	// Store in Redis for aggregation
+	key := fmt.Sprintf("browser:usage:%s:%s", agentID, time.Now().UTC().Format("2006-01-02"))
+	c.redis.HIncrByFloat(ctx, key, "total_minutes", browserMinutes)
+	c.redis.HIncrByFloat(ctx, key, "total_cost", cost)
+	c.redis.HIncrBy(ctx, key, "total_actions", 1)
+	c.redis.Expire(ctx, key, 7*24*time.Hour) // Keep for 7 days
+
+	// Also record in the database for permanent tracking
+	usage := BrowserUsage{
+		AgentID:        agentID,
+		SessionID:       sessionID,
+		Action:          action,
+		Domain:          domain,
+		DurationMs:      durationMs,
+		BrowserMinutes:  browserMinutes,
+		CostUSD:         cost,
+	}
+	return c.db.WithContext(ctx).Create(&usage).Error
+}
+
+// GetBrowserUsageStats returns browser usage statistics for an agent
+func (c *Controller) GetBrowserUsageStats(ctx context.Context, agentID string, period string) (*BrowserUsageStats, error) {
+	if c.redis == nil {
+		return nil, fmt.Errorf("redis not available")
+	}
+
+	key := fmt.Sprintf("browser:usage:%s:%s", agentID, period)
+	minutes, _ := c.redis.HGet(ctx, key, "total_minutes").Float64()
+	cost, _ := c.redis.HGet(ctx, key, "total_cost").Float64()
+	actions, _ := c.redis.HGet(ctx, key, "total_actions").Int64()
+
+	return &BrowserUsageStats{
+		AgentID:      agentID,
+		Period:       period,
+		TotalMinutes: minutes,
+		TotalCostUSD: cost,
+		TotalActions: actions,
+	}, nil
 }

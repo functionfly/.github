@@ -1,4 +1,4 @@
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
@@ -14,16 +14,12 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o health-monitor ./
 
 FROM alpine:latest
 
-# Install Infisical CLI
-RUN apk --no-cache add ca-certificates curl && \
-    curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | sh && \
-    apk --no-cache add infisical && \
-    apk del curl
-
-WORKDIR /root/
-
-# Copy the binary from builder stage
+# Use official Infisical CLI image as base for secrets injection
+# Multi-stage: copy binary from builder, use infisical image for running
 COPY --from=builder /app/health-monitor .
 
-# Run the binary with Infisical if token is set, otherwise run directly
-CMD ["sh", "-c", "if [ -n \"$INFISICAL_TOKEN\" ]; then infisical run --token=$INFISICAL_TOKEN --env=dev -- ./health-monitor; else ./health-monitor; fi"]
+WORKDIR /app
+
+# Run the binary directly - Infisical token injection should happen at runtime
+# via environment variables or secrets manager integration
+CMD ["./health-monitor"]

@@ -269,6 +269,8 @@ export const FEATURES: Record<string, readonly PlanTier[]> = {
   TIME_MACHINE_UNLIMITED: ['agent_enterprise'],
   /** Incident Insurance: dedicated engineer during critical incidents */
   TIME_MACHINE_INSURANCE: ['agent_enterprise'],
+  /** Function DNA: AI-powered code evolution based on execution patterns */
+  FUNCTION_DNA: ['starter', 'professional', 'enterprise', 'agent_enterprise'],
 } as const;
 
 export type FeatureKey = keyof typeof FEATURES;

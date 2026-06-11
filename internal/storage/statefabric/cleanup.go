@@ -19,15 +19,21 @@ type CleanupConfig struct {
 	Verbose bool
 	// Max age for expired snapshots (default: immediate deletion when expires_at < now)
 	MaxAge time.Duration
+	// Edge state version retention - number of versions to keep per key
+	EdgeStateVersionRetention int
+	// Edge state version max age - delete versions older than this
+	EdgeStateVersionMaxAge time.Duration
 }
 
 // DefaultCleanupConfig returns the default configuration
 func DefaultCleanupConfig() CleanupConfig {
 	return CleanupConfig{
-		Interval:  1 * time.Hour, // Run every hour by default
-		BatchSize: 1000,
-		Verbose:   false,
-		MaxAge:    0, // Delete immediately when expires_at < now
+		Interval:                  1 * time.Hour, // Run every hour by default
+		BatchSize:                1000,
+		Verbose:                  false,
+		MaxAge:                   0, // Delete immediately when expires_at < now
+		EdgeStateVersionRetention: 10, // Keep last 10 versions of edge state per key
+		EdgeStateVersionMaxAge:   30 * 24 * time.Hour, // Delete versions older than 30 days
 	}
 }
 
@@ -119,6 +125,14 @@ func (s *CleanupService) runCleanup() {
 	s.logger.WithFields(logrus.Fields{
 		"expiredSnapshotsDeleted": snapshotsDeleted,
 	}).Info("Cleaned up expired state fabric snapshots")
+
+	// Clean up old edge state versions
+	if s.config.EdgeStateVersionRetention > 0 || s.config.EdgeStateVersionMaxAge > 0 {
+		edgeStateCleaned := s.cleanupEdgeStateVersions(ctx)
+		s.logger.WithFields(logrus.Fields{
+			"edgeStateVersionsRemoved": edgeStateCleaned,
+		}).Info("Cleaned up old edge state versions")
+	}
 }
 
 // cleanupExpiredSnapshots deletes state fabric snapshots that have expired
@@ -206,6 +220,118 @@ func (s *CleanupService) cleanupExpiredSnapshots(ctx context.Context) int64 {
 	}
 
 	return totalDeleted
+}
+
+// cleanupEdgeStateVersions cleans up old edge state versions from fabric settings
+// This removes versions beyond the retention limit and older than max age
+func (s *CleanupService) cleanupEdgeStateVersions(ctx context.Context) int64 {
+	if s.r2Backend == nil {
+		s.logger.Debug("R2 backend not configured, skipping edge state version cleanup")
+		return 0
+	}
+
+	var totalDeleted int64 = 0
+
+	// Get all fabrics with edge state
+	var fabrics []StateFabric
+	if err := s.db.WithContext(ctx).
+		Where("settings LIKE ?", "%_edge_state%").
+		Find(&fabrics).Error; err != nil {
+		s.logger.WithError(err).Error("Failed to query fabrics for edge state cleanup")
+		return 0
+	}
+
+	for _, fabric := range fabrics {
+		deleted := s.cleanupFabricEdgeState(ctx, &fabric)
+		totalDeleted += deleted
+	}
+
+	return totalDeleted
+}
+
+// cleanupFabricEdgeState cleans up edge state versions for a single fabric
+func (s *CleanupService) cleanupFabricEdgeState(ctx context.Context, fabric *StateFabric) int64 {
+	if fabric.Settings == nil {
+		return 0
+	}
+
+	edgeState, ok := fabric.Settings["_edge_state"]
+	if !ok {
+		return 0
+	}
+
+	stateMap, ok := edgeState.(map[string]interface{})
+	if !ok {
+		return 0
+	}
+
+	var deleted int64
+	now := time.Now()
+	maxAge := s.config.EdgeStateVersionMaxAge
+	retention := s.config.EdgeStateVersionRetention
+
+	for key, value := range stateMap {
+		entry, ok := value.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Check if this is a versioned entry with history
+		versions, hasVersions := entry["_versions"].([]interface{})
+		if !hasVersions || len(versions) == 0 {
+			continue
+		}
+
+		filteredVersions := make([]interface{}, 0)
+		cutoffTime := now.Add(-maxAge)
+
+		for i, v := range versions {
+			versionEntry, ok := v.(map[string]interface{})
+			if !ok {
+				continue
+			}
+
+			// Check creation time
+			if createdAtStr, ok := versionEntry["createdAt"].(string); ok {
+				if createdAt, err := time.Parse(time.RFC3339, createdAtStr); err == nil {
+					// Skip if older than max age
+					if maxAge > 0 && createdAt.Before(cutoffTime) {
+						deleted++
+						continue
+					}
+				}
+			}
+
+			// Keep if within retention limit
+			if retention <= 0 || i < retention {
+				filteredVersions = append(filteredVersions, v)
+			} else {
+				deleted++
+			}
+		}
+
+		// Update the entry with filtered versions
+		if deleted > 0 {
+			if len(filteredVersions) > 0 {
+				entry["_versions"] = filteredVersions
+			} else {
+				delete(entry, "_versions")
+			}
+			stateMap[key] = entry
+		}
+	}
+
+	// If we deleted versions, update the fabric settings
+	if deleted > 0 {
+		fabric.Settings["_edge_state"] = stateMap
+		if err := s.db.WithContext(ctx).Model(&StateFabric{}).
+			Where("id = ?", fabric.ID).
+			Update("settings", fabric.Settings).Error; err != nil {
+			s.logger.WithError(err).WithField("fabric_id", fabric.ID).Error("Failed to update fabric settings after edge state cleanup")
+		}
+	}
+
+	return deleted
 }
 
 // CleanupExpiredSnapshotsOnce runs a single cleanup of expired snapshots

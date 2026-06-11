@@ -146,3 +146,49 @@ export async function setupVaultPassphrase(
 export function markVaultApiKeyStored(_apiKeyId: string): void {
   // intentionally empty — use vaultApi.findApiKeySecretInVault() instead
 }
+
+const VAULT_API_KEY_PATH = '/api-keys';
+
+export interface StoreEdgeApiKeyOptions {
+  apiKey: string;
+  apiKeyId: string;
+  passphrase: string;
+}
+
+export async function storeEdgeApiKey({
+  apiKey,
+  apiKeyId,
+  passphrase,
+}: StoreEdgeApiKeyOptions): Promise<SecretMetadata> {
+  const encrypted = await VaultCrypto.encryptWithPassphrase(apiKey, passphrase);
+
+  const secretName = `ffx_v1_${apiKeyId}`;
+
+  const secretRequest: CreateSecretRequest = {
+    name: secretName,
+    description: 'FunctionFly Edge API Key',
+    secret_type: 'api_key',
+    encrypted_data: VaultCrypto.toPayload(encrypted),
+    scopes: ['read', 'write'],
+    metadata: {
+      apiKeyId,
+      keyType: 'functionfly-edge',
+    },
+  };
+
+  return vaultApi.createSecret(secretRequest);
+}
+
+export async function findEdgeApiKeySecretInVault(
+  apiKeyId: string
+): Promise<SecretMetadata | null> {
+  try {
+    const secrets = await vaultApi.listSecrets();
+    return secrets.find((s) => {
+      const meta = s.metadata as Record<string, unknown> | undefined;
+      return meta?.apiKeyId === apiKeyId && meta?.keyType === 'functionfly-edge';
+    }) || null;
+  } catch {
+    return null;
+  }
+}

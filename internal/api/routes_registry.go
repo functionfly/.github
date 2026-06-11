@@ -3,9 +3,9 @@ package api
 import (
 	"net/http"
 
-	"github.com/functionfly/functionfly/internal/api/handlers/demo"
 	"github.com/functionfly/functionfly/internal/api/handlers/blog"
 	"github.com/functionfly/functionfly/internal/api/handlers/content"
+	"github.com/functionfly/functionfly/internal/api/handlers/demo"
 	feedbackHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/feedback"
 	"github.com/functionfly/functionfly/internal/api/handlers/playground"
 	"github.com/functionfly/functionfly/internal/api/handlers/recommendations"
@@ -238,6 +238,13 @@ func registerRegistryRoutes(
 	// Function settings (protected)
 	api.HandleFunc("/functions/{author}/{name}/settings", authMiddleware.RequireAuth(registryHandler.HandleGetFunctionSettings)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/functions/{author}/{name}/settings", authMiddleware.RequireAuth(registryHandler.HandlePatchFunctionSettings)).Methods("PATCH", "OPTIONS")
+
+	// ── MCP Settings (per-function) ──────────────────────────────────────────
+	api.HandleFunc("/functions/{author}/{name}/mcp", authMiddleware.RequireAuth(registryHandler.HandleGetMCPSettings)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/functions/{author}/{name}/mcp", authMiddleware.RequireAuth(registryHandler.HandleUpdateMCPSettings)).Methods("PATCH", "OPTIONS")
+
+	// ── MCP Functions list (all functions with MCP settings) ──────────────────
+	api.HandleFunc("/functions/mcp", registryHandler.HandleListFunctionsWithMCP).Methods("GET", "OPTIONS")
 
 	// Cache monitoring (public)
 	api.HandleFunc("/cache/stats", registryHandler.HandleGetCacheStats).Methods("GET")

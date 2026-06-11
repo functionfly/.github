@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Play, Send } from 'lucide-react';
+import { Loader2, Play, Send, AlertCircle } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 
 export interface MessageComposerProps {
@@ -11,6 +11,7 @@ export interface MessageComposerProps {
   showRunPanel: boolean;
   onToggleRunPanel: () => void;
   onTyping?: (typing: boolean) => void;
+  rateLimitRemaining?: number;
 }
 
 export function MessageComposer({
@@ -21,9 +22,11 @@ export function MessageComposer({
   showRunPanel,
   onToggleRunPanel,
   onTyping,
+  rateLimitRemaining,
 }: MessageComposerProps) {
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
+  const showRateLimitWarning = rateLimitRemaining !== undefined && rateLimitRemaining < 3;
 
   useEffect(() => {
     return () => {

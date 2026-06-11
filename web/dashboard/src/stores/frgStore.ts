@@ -129,6 +129,8 @@ interface FRGState {
   loadGraph: (author: string, name: string, version?: string) => Promise<void>;
   saveGraph: () => Promise<void>;
   createNewGraph: (name: string, executionMode?: string) => void;
+  setGraphSettings: (settings: { visibility?: string; executionMode?: string; name?: string }) => void;
+  publishGraph: () => Promise<void>;
   
   // Library
   fetchLibraryFunctions: () => Promise<void>;
@@ -660,6 +662,35 @@ export const useFRGStore = create<FRGState>()(
             isLoading: false,
             error: null,
           });
+        },
+
+        setGraphSettings: (settings: { visibility?: string; executionMode?: string; name?: string }) => {
+          const { definition } = get();
+          if (!definition) return;
+          set({
+            definition: {
+              ...definition,
+              visibility: (settings.visibility as GraphDefinition['visibility']) || definition.visibility,
+              executionMode: (settings.executionMode as GraphDefinition['executionMode']) || definition.executionMode,
+              name: settings.name || definition.name,
+            },
+            isDirty: true,
+          });
+        },
+
+        publishGraph: async () => {
+          const { graphAuthor, graphName } = get();
+          if (!graphAuthor || !graphName) {
+            toast({ title: 'No graph loaded to publish', variant: 'destructive' });
+            return;
+          }
+          try {
+            await frgApi.publishGraph(graphAuthor, graphName);
+            toast({ title: 'Graph published successfully' });
+          } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to publish graph';
+            toast({ title: message, variant: 'destructive' });
+          }
         },
 
         // Execution controls

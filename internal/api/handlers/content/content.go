@@ -20,6 +20,7 @@ import (
 // Handler contains content management handlers
 type Handler struct {
 	repo          storage.Repository
+	contentRepo   *storage.ContentRepository
 	githubService *services.GitHubService
 }
 
@@ -32,7 +33,7 @@ func getEnvOrDefault(key, defaultValue string) string {
 }
 
 // NewHandler creates a new content handler
-func NewHandler(repo storage.Repository) *Handler {
+func NewHandler(repo storage.Repository, contentRepo *storage.ContentRepository) *Handler {
 	// Initialize with proper config from environment
 	githubOwner := getEnvOrDefault("GITHUB_OWNER", "functionfly")
 	githubRepo := getEnvOrDefault("GITHUB_REPO", "functionfly")
@@ -42,6 +43,7 @@ func NewHandler(repo storage.Repository) *Handler {
 
 	return &Handler{
 		repo:          repo,
+		contentRepo:   contentRepo,
 		githubService: githubService,
 	}
 }
@@ -1246,4 +1248,131 @@ func (h *Handler) HandleUpdateBlogSettings(w http.ResponseWriter, r *http.Reques
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(settings)
+}
+
+// Blog Analytics Handlers
+
+// HandleRecordBlogView records a page view for a blog post
+// POST /v1/content/blog/{postId}/view
+func (h *Handler) HandleRecordBlogView(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	postIDStr := vars["postId"]
+	postID, err := uuid.Parse(postIDStr)
+	if err != nil {
+		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		VisitorID  string `json:"visitor_id"`
+		Referrer   string `json:"referrer"`
+		Country    string `json:"country"`
+		City       string `json:"city"`
+		DeviceType string `json:"device_type"`
+		Browser    string `json:"browser"`
+		OS         string `json:"os"`
+	}
+	// Request body is optional for public tracking
+	if r.Body != nil {
+		json.NewDecoder(r.Body).Decode(&req)
+	}
+
+	view := &storage.BlogPageView{
+		PostID:     postID,
+		VisitorID: req.VisitorID,
+		Referrer:   req.Referrer,
+		UserAgent: r.UserAgent(),
+		IPAddress: r.RemoteAddr,
+		Country:    req.Country,
+		City:       req.City,
+		DeviceType: req.DeviceType,
+		Browser:    req.Browser,
+		OS:         req.OS,
+	}
+
+	if err := h.contentRepo.RecordBlogPageView(r.Context(), view); err != nil {
+		logrus.WithError(err).Error("Failed to record blog view")
+		http.Error(w, "Failed to record view", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// HandleGetBlogAnalyticsSummary returns blog analytics summary
+// GET /v1/admin/content/analytics/summary
+func (h *Handler) HandleGetBlogAnalyticsSummary(w http.ResponseWriter, r *http.Request) {
+	days := 30
+	if d := r.URL.Query().Get("days"); d != "" {
+		if parsed, err := strconv.Atoi(d); err == nil && parsed > 0 {
+			days = parsed
+		}
+	}
+
+	summary, err := h.contentRepo.GetBlogAnalyticsSummary(r.Context(), days)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get blog analytics summary")
+		http.Error(w, "Failed to get analytics summary", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(summary)
+}
+
+// HandleGetBlogViewsTimeSeries returns views over time
+// GET /v1/admin/content/analytics/timeseries
+func (h *Handler) HandleGetBlogViewsTimeSeries(w http.ResponseWriter, r *http.Request) {
+	days := 30
+	if d := r.URL.Query().Get("days"); d != "" {
+		if parsed, err := strconv.Atoi(d); err == nil && parsed > 0 {
+			days = parsed
+		}
+	}
+
+	series, err := h.contentRepo.GetBlogViewsTimeSeries(r.Context(), days)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get blog views time series")
+		http.Error(w, "Failed to get time series", http.StatusInternalServerError)
+		return
+	}
+
+	if series == nil {
+		series = []storage.BlogViewsTimeSeries{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(series)
+}
+
+// HandleGetTopBlogPosts returns top performing blog posts
+// GET /v1/admin/content/analytics/top-posts
+func (h *Handler) HandleGetTopBlogPosts(w http.ResponseWriter, r *http.Request) {
+	days := 30
+	if d := r.URL.Query().Get("days"); d != "" {
+		if parsed, err := strconv.Atoi(d); err == nil && parsed > 0 {
+			days = parsed
+		}
+	}
+
+	limit := 10
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+
+	posts, err := h.contentRepo.GetTopBlogPosts(r.Context(), days, limit)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get top blog posts")
+		http.Error(w, "Failed to get top posts", http.StatusInternalServerError)
+		return
+	}
+
+	if posts == nil {
+		posts = []storage.TopBlogPost{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(posts)
 }

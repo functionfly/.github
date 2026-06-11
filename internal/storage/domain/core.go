@@ -219,8 +219,8 @@ type RevenueRepository interface {
 	UpdateAgentSubscriptionStatus(ctx context.Context, id uuid.UUID, status string) error
 
 	CreateAgentUsage(ctx context.Context, usage *storage.AgentUsage) error
-	GetAgentUsageByAgentID(ctx context.Context, agentID uuid.UUID, limit, offset int) ([]*storage.AgentUsage, error)
-	GetAgentUsageSummary(ctx context.Context, agentID uuid.UUID) (totalCalls, billableCalls, overageCalls, estimatedCost int, err error)
+	GetAgentUsageByAgentID(ctx context.Context, agentID, tenantID uuid.UUID, limit, offset int) ([]*storage.AgentUsage, error)
+	GetAgentUsageSummary(ctx context.Context, agentID, tenantID uuid.UUID) (totalCalls, billableCalls, overageCalls, estimatedCost int, err error)
 
 	// Platform fees
 	CreatePlatformFee(ctx context.Context, fee *storage.PlatformFee) error

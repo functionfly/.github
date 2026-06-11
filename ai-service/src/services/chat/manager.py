@@ -7,17 +7,17 @@ import json
 import logging
 import uuid
 from datetime import datetime, timedelta
-from typing import Optional, Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import redis.asyncio as redis
 
 from ...config import settings
 from ...models.schemas import ChatMessage, MessageRole
 from ...providers.manager import get_provider_manager
-from .intent_classifier import IntentClassifier, get_intent_classifier
-from .context_builder import ContextBuilder, get_context_builder
-from .rag import get_rag_index
 from . import prompts
+from .context_builder import ContextBuilder, get_context_builder
+from .intent_classifier import IntentClassifier, get_intent_classifier
+from .rag import get_rag_index
 
 logger = logging.getLogger(__name__)
 
@@ -331,12 +331,16 @@ class ChatManager:
                 messages=messages_for_llm,
                 temperature=0.7,
                 max_tokens=1024,
+                user_id=user_id,
+                tenant_id=tenant_id,
             )
 
             assistant_message = response.content
         except Exception as e:
             logger.error(f"LLM completion failed: {e}")
-            assistant_message = "I apologize, but I encountered an error processing your request. Please try again."
+            assistant_message = (
+                "I apologize, but I encountered an error processing your request. Please try again."
+            )
 
         # Add assistant message to session
         await self.add_message(

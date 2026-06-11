@@ -29,9 +29,6 @@ import {
   Play,
   AlertTriangle,
   RefreshCw,
-  Gauge,
-  History,
-  Plus,
 } from "lucide-react";
 
 // --- Types ---
@@ -148,7 +145,7 @@ function formatRating(avg: number): string {
   return avg.toFixed(1);
 }
 
-function renderStars(rating: number, count?: number): JSX.Element {
+function renderStars(rating: number, count?: number): React.ReactElement {
   const full = Math.floor(rating);
   const half = rating % 1 >= 0.5 ? 1 : 0;
   const empty = 5 - full - half;

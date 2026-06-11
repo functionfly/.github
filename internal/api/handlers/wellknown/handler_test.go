@@ -55,6 +55,12 @@ func TestHandleWellKnown_EmptyRegistry(t *testing.T) {
 	if rec.Header().Get("Cache-Control") != "public, max-age=300" {
 		t.Errorf("expected Cache-Control public, max-age=300, got %s", rec.Header().Get("Cache-Control"))
 	}
+	if rec.Header().Get("X-Robots-Tag") != "noindex, nofollow" {
+		t.Errorf("expected X-Robots-Tag noindex, nofollow, got %s", rec.Header().Get("X-Robots-Tag"))
+	}
+	if rec.Header().Get("Vary") != "Accept-Encoding" {
+		t.Errorf("expected Vary Accept-Encoding, got %s", rec.Header().Get("Vary"))
+	}
 
 	var manifest FunctionFlyManifest
 	if err := json.NewDecoder(rec.Body).Decode(&manifest); err != nil {

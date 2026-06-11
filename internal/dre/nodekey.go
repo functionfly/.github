@@ -1,5 +1,12 @@
 // Package dre provides DRE (Deterministic Reliable Execution) protocol support.
 // This file loads the execution node's Ed25519 key from environment for signing FXCERTs.
+//
+// SECURITY WARNING: The private key is loaded from environment variables or files.
+// - Never log the private key or include it in error messages
+// - Ensure the key file has restricted permissions (600 or similar)
+// - PRODUCTION: Use HSM (AWS KMS, GCP Cloud KMS, HashiCorp Vault) for key management
+// - When keys are loaded, they are held in memory - ensure secure memory handling in production
+// - For production deployments, prefer DRE_PLATFORM_PRIVATE_KEY_PATH pointing to a secrets manager mount
 
 package dre
 

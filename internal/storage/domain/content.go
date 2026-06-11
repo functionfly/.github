@@ -48,6 +48,12 @@ type ContentRepository interface {
 	// Blog settings
 	GetBlogSettings(ctx context.Context) (*storage.BlogSettings, error)
 	UpdateBlogSettings(ctx context.Context, updates map[string]interface{}) (*storage.BlogSettings, error)
+
+	// Blog analytics
+	RecordBlogPageView(ctx context.Context, view *storage.BlogPageView) error
+	GetBlogAnalyticsSummary(ctx context.Context, days int) (*storage.BlogAnalyticsSummary, error)
+	GetBlogViewsTimeSeries(ctx context.Context, days int) ([]storage.BlogViewsTimeSeries, error)
+	GetTopBlogPosts(ctx context.Context, days, limit int) ([]storage.TopBlogPost, error)
 }
 
 // FeedbackRepository handles user feedback and support tickets

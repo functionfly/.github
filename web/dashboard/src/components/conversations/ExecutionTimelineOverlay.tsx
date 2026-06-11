@@ -15,7 +15,7 @@ async function fetchTimeline(
   metric: string
 ): Promise<{ insight?: string; buckets?: Array<{ bucket: string; value: number }> }> {
   const base = import.meta.env.VITE_API_URL || "";
-  const url = `${base}/v1/registry/${encodeURIComponent(author)}/${encodeURIComponent(name)}/executions/timeline?metric=${metric}`;
+  const url = `${base}/v1/functions/${encodeURIComponent(author)}/${encodeURIComponent(name)}/executions/timeline?metric=${metric}`;
   const res = await fetch(url, { credentials: "include" });
   if (!res.ok) return {};
   const data = await res.json();

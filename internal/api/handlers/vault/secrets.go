@@ -178,14 +178,33 @@ func (h *Handler) HandleListSecrets(w http.ResponseWriter, r *http.Request) {
 		offset = 0
 	}
 
+	// Parse optional secret type filter
+	secretType := vault.SecretType(r.URL.Query().Get("secret_type"))
+	if secretType != "" && !secretType.Valid() {
+		h.respondError(w, http.StatusBadRequest, "INVALID_SECRET_TYPE", "Invalid secret type")
+		return
+	}
+
 	// Get total count and page of secrets (DB-level pagination)
-	total, err := h.repo.CountSecretsByTenant(r.Context(), claims.TenantID)
+	var total int64
+	var err error
+	if secretType != "" {
+		total, err = h.repo.CountSecretsByTenantFiltered(r.Context(), claims.TenantID, secretType)
+	} else {
+		total, err = h.repo.CountSecretsByTenant(r.Context(), claims.TenantID)
+	}
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to count secrets")
 		h.respondError(w, http.StatusInternalServerError, "LIST_FAILED", "Failed to list secrets")
 		return
 	}
-	secrets, err := h.repo.GetSecretsByTenantPaginated(r.Context(), claims.TenantID, limit, offset)
+
+	var secrets []vault.Secret
+	if secretType != "" {
+		secrets, err = h.repo.GetSecretsByTenantPaginatedFiltered(r.Context(), claims.TenantID, limit, offset, secretType)
+	} else {
+		secrets, err = h.repo.GetSecretsByTenantPaginated(r.Context(), claims.TenantID, limit, offset)
+	}
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to list secrets")
 		h.respondError(w, http.StatusInternalServerError, "LIST_FAILED", "Failed to list secrets")
@@ -652,4 +671,341 @@ func (h *Handler) HandleRotateSecret(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.respondJSON(w, http.StatusOK, secretToResponse(updatedSecret))
+}
+
+// HandleBulkDeleteSecrets handles DELETE /v1/vault/secrets/bulk
+// Bulk deletes multiple secrets with dependency checking
+func (h *Handler) HandleBulkDeleteSecrets(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		h.respondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
+	var req BulkDeleteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.respondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
+		return
+	}
+
+	if len(req.SecretIDs) == 0 {
+		h.respondError(w, http.StatusBadRequest, "INVALID_REQUEST", "At least one secret ID is required")
+		return
+	}
+
+	if len(req.SecretIDs) > 100 {
+		h.respondError(w, http.StatusBadRequest, "TOO_MANY", "Maximum 100 secrets can be deleted at once")
+		return
+	}
+
+	if req.DryRun {
+		previews, err := h.repo.BulkDeleteSecretsDryRun(r.Context(), req.SecretIDs, claims.TenantID)
+		if err != nil {
+			h.logger.WithError(err).Error("Failed to get bulk delete previews")
+			h.respondError(w, http.StatusInternalServerError, "PREVIEW_FAILED", "Failed to preview bulk delete")
+			return
+		}
+
+		bulkPreviews := make(map[uuid.UUID]BulkDeletePreview)
+		for id, p := range previews {
+			depInfos := make([]DependencyInfo, len(p.Dependencies))
+			for i, d := range p.Dependencies {
+				depInfos[i] = DependencyInfo{
+					ID:          d.ID,
+					Type:        d.Type,
+					Name:        d.Name,
+					Criticality: d.Criticality,
+				}
+			}
+			bulkPreviews[id] = BulkDeletePreview{
+				SecretID:     p.SecretID,
+				SecretName:   p.SecretName,
+				Found:        p.Found,
+				TokensCount:  p.TokensCount,
+				Dependencies: depInfos,
+			}
+		}
+
+		h.respondJSON(w, http.StatusOK, BulkDeleteResponse{
+			Deleted:  0,
+			Failed:   0,
+			Previews: bulkPreviews,
+		})
+		return
+	}
+
+	deleted, errs := h.repo.BulkDeleteSecrets(r.Context(), req.SecretIDs, claims.TenantID)
+
+	response := BulkDeleteResponse{
+		Deleted: deleted,
+		Failed:  int64(len(errs)),
+	}
+
+	if len(errs) > 0 {
+		bulkErrors := make([]BulkDeleteError, len(errs))
+		for i, e := range errs {
+			var id uuid.UUID
+			if se, ok := e.(interface{ SecretID() uuid.UUID }); ok {
+				id = se.SecretID()
+			}
+			bulkErrors[i] = BulkDeleteError{
+				SecretID: id,
+				Error:    e.Error(),
+			}
+		}
+		response.Errors = bulkErrors
+	}
+
+	auditLog := &vault.AuditLog{
+		TenantID:  claims.TenantID,
+		Action:    vault.AuditActionDelete,
+		ActorID:   claims.UserID.String(),
+		ActorType: vault.ActorTypeUser,
+		RequestID: r.Header.Get("X-Request-ID"),
+		IPAddress: getClientIP(r),
+		UserAgent: r.UserAgent(),
+		Metadata: vault.JSONMap{
+			"operation":   "bulk_delete",
+			"secret_ids":  len(req.SecretIDs),
+			"deleted":     deleted,
+			"failed":      len(errs),
+		},
+		Success: true,
+	}
+	if err := h.repo.CreateAuditLog(r.Context(), auditLog); err != nil {
+		h.logger.WithError(err).Warn("Failed to create audit log")
+	}
+
+	h.respondJSON(w, http.StatusOK, response)
+}
+
+// HandleExportSecrets handles GET /v1/vault/secrets/export
+// Exports all secrets for the tenant (metadata only, no encrypted values)
+func (h *Handler) HandleExportSecrets(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		h.respondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
+	exports, err := h.repo.ExportSecrets(r.Context(), claims.TenantID)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to export secrets")
+		h.respondError(w, http.StatusInternalServerError, "EXPORT_FAILED", "Failed to export secrets")
+		return
+	}
+
+	secretExports := make([]SecretExport, len(exports))
+	for i, e := range exports {
+		secretExports[i] = SecretExport{
+			ID:          e.ID,
+			Name:        e.Name,
+			Description: e.Description,
+			SecretType:  e.SecretType,
+			KeyVersion:  e.KeyVersion,
+			Scopes:      jsonMapToScopes(e.Scopes),
+			Metadata:    e.Metadata,
+			CreatedAt:   e.CreatedAt,
+			UpdatedAt:   e.UpdatedAt,
+		}
+	}
+
+	auditLog := &vault.AuditLog{
+		TenantID:  claims.TenantID,
+		Action:    vault.AuditActionRead,
+		ActorID:   claims.UserID.String(),
+		ActorType: vault.ActorTypeUser,
+		RequestID: r.Header.Get("X-Request-ID"),
+		IPAddress: getClientIP(r),
+		UserAgent: r.UserAgent(),
+		Metadata: vault.JSONMap{
+			"operation": "export",
+			"count":     len(secretExports),
+		},
+		Success: true,
+	}
+	if err := h.repo.CreateAuditLog(r.Context(), auditLog); err != nil {
+		h.logger.WithError(err).Warn("Failed to create audit log")
+	}
+
+	h.respondJSON(w, http.StatusOK, ExportSecretsResponse{
+		Secrets:    secretExports,
+		Total:      len(secretExports),
+		ExportedAt: time.Now(),
+	})
+}
+
+// HandleGetSecretDependencies handles GET /v1/vault/secrets/{id}/dependencies
+// Gets all services/functions that depend on a specific secret
+func (h *Handler) HandleGetSecretDependencies(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		h.respondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
+	vars := mux.Vars(r)
+	secretID := parseUUID(vars["id"])
+	if secretID == nil {
+		h.respondError(w, http.StatusBadRequest, "INVALID_ID", "Invalid secret ID")
+		return
+	}
+
+	secret, err := h.repo.GetSecretByID(r.Context(), *secretID, claims.TenantID)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get secret")
+		h.respondError(w, http.StatusInternalServerError, "GET_FAILED", "Failed to get secret")
+		return
+	}
+	if secret == nil {
+		h.respondError(w, http.StatusNotFound, "NOT_FOUND", "Secret not found")
+		return
+	}
+
+	deps, err := h.repo.GetSecretDependencies(r.Context(), *secretID, claims.TenantID)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get secret dependencies")
+		h.respondError(w, http.StatusInternalServerError, "GET_DEPS_FAILED", "Failed to get dependencies")
+		return
+	}
+
+	dependencies := make([]SecretDependency, len(deps))
+	for i, d := range deps {
+		depMeta := make(map[string]interface{})
+		for k, v := range d.Metadata {
+			depMeta[k] = v
+		}
+		dependencies[i] = SecretDependency{
+			ID:            d.ID,
+			DependentID:   d.DependentID,
+			DependentType: d.DependentType,
+			DependentName: d.DependentName,
+			Criticality:   d.Criticality,
+			Metadata:      depMeta,
+			CreatedAt:     d.CreatedAt,
+		}
+	}
+
+	h.respondJSON(w, http.StatusOK, SecretDependenciesResponse{
+		SecretID:     *secretID,
+		Dependencies: dependencies,
+		Total:        int64(len(dependencies)),
+	})
+}
+
+// HandleCreateSecretDependency handles POST /v1/vault/secrets/{id}/dependencies
+// Creates a new dependency tracking record
+func (h *Handler) HandleCreateSecretDependency(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		h.respondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
+	vars := mux.Vars(r)
+	secretID := parseUUID(vars["id"])
+	if secretID == nil {
+		h.respondError(w, http.StatusBadRequest, "INVALID_ID", "Invalid secret ID")
+		return
+	}
+
+	secret, err := h.repo.GetSecretByID(r.Context(), *secretID, claims.TenantID)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get secret")
+		h.respondError(w, http.StatusInternalServerError, "GET_FAILED", "Failed to get secret")
+		return
+	}
+	if secret == nil {
+		h.respondError(w, http.StatusNotFound, "NOT_FOUND", "Secret not found")
+		return
+	}
+
+	var req CreateSecretDependencyRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.respondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
+		return
+	}
+
+	if req.DependentType != "function" && req.DependentType != "service" &&
+		req.DependentType != "integration" && req.DependentType != "workflow" {
+		h.respondError(w, http.StatusBadRequest, "INVALID_TYPE", "Invalid dependent type")
+		return
+	}
+
+	criticality := req.Criticality
+	if criticality == "" {
+		criticality = "medium"
+	}
+	if criticality != "low" && criticality != "medium" && criticality != "high" && criticality != "critical" {
+		h.respondError(w, http.StatusBadRequest, "INVALID_CRITICALITY", "Invalid criticality level")
+		return
+	}
+
+	dep := &vault.SecretDependency{
+		SecretID:      *secretID,
+		TenantID:      claims.TenantID,
+		DependentID:   req.DependentID,
+		DependentType: req.DependentType,
+		DependentName: req.DependentName,
+		Criticality:   criticality,
+		Metadata:      req.Metadata,
+	}
+
+	if err := h.repo.CreateSecretDependency(r.Context(), dep); err != nil {
+		h.logger.WithError(err).Error("Failed to create secret dependency")
+		h.respondError(w, http.StatusInternalServerError, "CREATE_FAILED", "Failed to create dependency")
+		return
+	}
+
+	h.respondJSON(w, http.StatusCreated, SecretDependency{
+		ID:            dep.ID,
+		DependentID:   dep.DependentID,
+		DependentType: dep.DependentType,
+		DependentName: dep.DependentName,
+		Criticality:   dep.Criticality,
+		Metadata:      dep.Metadata,
+		CreatedAt:     dep.CreatedAt,
+	})
+}
+
+// HandleDeleteSecretDependency handles DELETE /v1/vault/secrets/{id}/dependencies/{dep_id}
+// Deletes a secret dependency record
+func (h *Handler) HandleDeleteSecretDependency(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		h.respondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
+	vars := mux.Vars(r)
+	secretID := parseUUID(vars["id"])
+	if secretID == nil {
+		h.respondError(w, http.StatusBadRequest, "INVALID_ID", "Invalid secret ID")
+		return
+	}
+
+	depID := parseUUID(vars["dep_id"])
+	if depID == nil {
+		h.respondError(w, http.StatusBadRequest, "INVALID_ID", "Invalid dependency ID")
+		return
+	}
+
+	secret, err := h.repo.GetSecretByID(r.Context(), *secretID, claims.TenantID)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get secret")
+		h.respondError(w, http.StatusInternalServerError, "GET_FAILED", "Failed to get secret")
+		return
+	}
+	if secret == nil {
+		h.respondError(w, http.StatusNotFound, "NOT_FOUND", "Secret not found")
+		return
+	}
+
+	if err := h.repo.DeleteSecretDependency(r.Context(), *depID, claims.TenantID); err != nil {
+		h.logger.WithError(err).Error("Failed to delete secret dependency")
+		h.respondError(w, http.StatusInternalServerError, "DELETE_FAILED", "Failed to delete dependency")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }

@@ -16,6 +16,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/functionregistry"
+	"github.com/functionfly/functionfly/internal/gateway"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -224,6 +225,8 @@ func (h *Handler) HandleWellKnown(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Cache-Control", "public, max-age="+strconv.Itoa(cacheMaxAgeSeconds))
+	w.Header().Set("X-Robots-Tag", "noindex, nofollow")
+	w.Header().Set("Vary", "Accept-Encoding")
 	setCORSHeaders(w, r)
 
 	enc := json.NewEncoder(w)
@@ -239,10 +242,16 @@ func (h *Handler) HandleWellKnown(w http.ResponseWriter, r *http.Request) {
 	}).Debug("wellknown: request completed")
 }
 
+// setCORSHeaders writes the well-known CORS headers. Public read-only
+// endpoint — GET/OPTIONS only. Thin wrapper over gateway.SetCORSHeaders
+// (see P0 of the Two-Protocol Gateway plan). The middleware-level
+// security headers are still applied via middleware.SetCORSHeaders
+// before the gateway call so we don't lose Caddy/CDN semantics.
 func setCORSHeaders(w http.ResponseWriter, r *http.Request) {
 	middleware.SetCORSHeaders(w, r)
-	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-	w.Header().Set("Access-Control-Max-Age", "86400")
+	gateway.SetCORSHeaders(w, r, gateway.CORSOptions{
+		AllowMethods: "GET, OPTIONS",
+	})
 }
 
 func writeErrorJSON(w http.ResponseWriter, r *http.Request, status int, code, message string) {

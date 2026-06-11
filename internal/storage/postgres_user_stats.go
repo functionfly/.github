@@ -248,13 +248,52 @@ func (db *PostgresDB) GetUserProfileStats(userID uuid.UUID) (map[string]interfac
 		trustScore = 100
 	}
 
-	return map[string]interface{}{
+	// Fetch reputation profile data
+	var repProfile struct {
+		BuilderScore        int
+		OptimizerScore      int
+		MentorScore         int
+		AgentWhispererScore int
+		OverallScore        int
+		Tier                string
+	}
+	hasReputationProfile := true
+	if err := db.GORM.Raw(`
+		SELECT
+			builder_score,
+			optimizer_score,
+			mentor_score,
+			agent_whisperer_score,
+			overall_score,
+			tier
+		FROM reputation_profiles
+		WHERE user_id = ?`, userID).Scan(&repProfile).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			hasReputationProfile = false
+		} else {
+			logrus.WithError(err).WithField("userID", userID).Warn("Failed to get reputation profile")
+		}
+	}
+
+	stats := map[string]interface{}{
 		"functionsCount":  fc,
 		"totalExecutions": te,
 		"trustScore":      trustScore,
 		"followersCount":  followers,
 		"followingCount": following,
-	}, nil
+	}
+
+	// Add reputation profile data if available
+	if hasReputationProfile {
+		stats["builderScore"] = repProfile.BuilderScore
+		stats["optimizerScore"] = repProfile.OptimizerScore
+		stats["mentorScore"] = repProfile.MentorScore
+		stats["agentWhispererScore"] = repProfile.AgentWhispererScore
+		stats["overallReputationScore"] = repProfile.OverallScore
+		stats["reputationTier"] = repProfile.Tier
+	}
+
+	return stats, nil
 }
 
 // GetUserTrustBreakdown returns per-component trust metrics aggregated across all of a user's functions.

@@ -278,6 +278,135 @@ func (r *RegistryRepository) ListEnabledMCPSettings(ctx context.Context, categor
 	return rows, int(total), nil
 }
 
+// FunctionWithMCPSettings combines RegistryFunction info with its MCP settings.
+// Used by the MCP Center dashboard to list all functions with their MCP config.
+type FunctionWithMCPSettings struct {
+	RegistryFunction
+	MCPSettings
+}
+
+// ListFunctionsWithMCPSettings returns all functions with their MCP settings (if configured).
+// This includes both MCP-enabled and MCP-disabled functions that have MCP settings rows.
+// The MCP settings row is created when a user first configures MCP (even if later disabled).
+func (r *RegistryRepository) ListFunctionsWithMCPSettings(ctx context.Context, limit, offset int) ([]FunctionWithMCPSettings, int, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 100
+	}
+
+	var results []FunctionWithMCPSettings
+	var total int64
+
+	// Count total functions that have MCP settings (via LEFT JOIN)
+	if err := r.db.WithContext(ctx).
+		Model(&RegistryFunction{}).
+		Joins("LEFT JOIN registry_function_mcp_settings m ON m.function_id = registry_functions.id").
+		Where("m.function_id IS NOT NULL").
+		Count(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("count functions with mcp settings: %w", err)
+	}
+
+	// Query functions with MCP settings
+	rows, err := r.db.WithContext(ctx).
+		Table("registry_functions").
+		Select(`registry_functions.*, m.enabled as mcp_enabled, m.transports as mcp_transports,
+			m.expose_input_schema as mcp_expose_input_schema, m.expose_output_schema as mcp_expose_output_schema,
+			m.tool_name_override as mcp_tool_name_override, m.rate_limit_per_min as mcp_rate_limit_per_min,
+			m.allowlist_origins as mcp_allowlist_origins, m.verified_mcp as mcp_verified_mcp,
+			m.invocation_count as mcp_invocation_count, m.last_invoked_at as mcp_last_invoked_at,
+			m.enabled_at as mcp_enabled_at, m.created_at as mcp_created_at, m.updated_at as mcp_updated_at`).
+		Joins("LEFT JOIN registry_function_mcp_settings m ON m.function_id = registry_functions.id").
+		Where("m.function_id IS NOT NULL").
+		Order("m.invocation_count DESC, m.updated_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Rows()
+	if err != nil {
+		return nil, 0, fmt.Errorf("list functions with mcp settings: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var fn RegistryFunction
+		var mcpEnabled bool
+		var mcpTransports string
+		var mcpExposeInput, mcpExposeOutput bool
+		var mcpToolNameOverride sql.NullString
+		var mcpRateLimit int
+		var mcpAllowlistOrigins string
+		var mcpVerifiedMCP bool
+		var mcpInvocationCount int64
+		var mcpLastInvokedAt sql.NullTime
+		var mcpEnabledAt sql.NullTime
+		var mcpCreatedAt, mcpUpdatedAt time.Time
+
+		if err := rows.Scan(
+			&fn.ID, &fn.Author, &fn.Name, &fn.LatestVersion, &fn.Title, &fn.Description,
+			&fn.Category, &fn.Tags, &fn.Visibility, &fn.PricePerCall, &fn.PopularityScore,
+			&fn.ReliabilityScore, &fn.DeterministicScore, &fn.Capabilities, &fn.EmbedConfig,
+			&fn.Settings, &fn.TenantID, &fn.OwnerUserID, &fn.PlatformFeePaid, &fn.PlatformFeeAmountUSD,
+			&fn.LastFeeChargedAt, &fn.CreatedAt, &fn.UpdatedAt,
+			&fn.TrustScore, &fn.TrustTier, &fn.TrustUpdatedAt, &fn.TrustCalculationVersion,
+			&fn.Providers, &fn.Region, &fn.Code, &fn.EnvVars, &fn.Schedule,
+			&fn.PlaygroundEnabled, &fn.PlaygroundConfig, &fn.Status, &fn.AppID, &fn.Versions, &fn.Rating,
+			&mcpEnabled, &mcpTransports, &mcpExposeInput, &mcpExposeOutput,
+			&mcpToolNameOverride, &mcpRateLimit, &mcpAllowlistOrigins,
+			&mcpVerifiedMCP, &mcpInvocationCount, &mcpLastInvokedAt,
+			&mcpEnabledAt, &mcpCreatedAt, &mcpUpdatedAt,
+		); err != nil {
+			return nil, 0, fmt.Errorf("scan function row: %w", err)
+		}
+
+		mcpSettings := MCPSettings{
+			FunctionID:        fn.ID,
+			Enabled:            mcpEnabled,
+			ExposeInputSchema:  mcpExposeInput,
+			ExposeOutputSchema: mcpExposeOutput,
+			RateLimitPerMin:    mcpRateLimit,
+			VerifiedMCP:       mcpVerifiedMCP,
+			InvocationCount:    mcpInvocationCount,
+			CreatedAt:          mcpCreatedAt,
+			UpdatedAt:          mcpUpdatedAt,
+		}
+
+		// Parse transports JSON array
+		if mcpTransports != "" {
+			var transports []string
+			if err := json.Unmarshal([]byte(mcpTransports), &transports); err == nil {
+				mcpSettings.Transports = transports
+			}
+		}
+
+		// Parse allowlist_origins JSON array
+		if mcpAllowlistOrigins != "" {
+			var origins []string
+			if err := json.Unmarshal([]byte(mcpAllowlistOrigins), &origins); err == nil {
+				mcpSettings.AllowlistOrigins = origins
+			}
+		}
+
+		if mcpToolNameOverride.Valid {
+			mcpSettings.ToolNameOverride = mcpToolNameOverride
+		}
+		if mcpLastInvokedAt.Valid {
+			mcpSettings.LastInvokedAt = &mcpLastInvokedAt.Time
+		}
+		if mcpEnabledAt.Valid {
+			mcpSettings.EnabledAt = &mcpEnabledAt.Time
+		}
+
+		results = append(results, FunctionWithMCPSettings{
+			RegistryFunction: fn,
+			MCPSettings:     mcpSettings,
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("rows iteration error: %w", err)
+	}
+
+	return results, int(total), nil
+}
+
 // IncrementMCPInvocationCount atomically increments invocation_count and sets
 // last_invoked_at. Called from the tools/call handler.
 func (r *RegistryRepository) IncrementMCPInvocationCount(ctx context.Context, functionID uuid.UUID) error {
@@ -374,6 +503,267 @@ func (r *RegistryRepository) AggregateMCPInvocationsByFunction(ctx context.Conte
 		}
 	}
 	return
+}
+
+// =============================================================================
+// Global MCP Analytics Storage Methods
+// =============================================================================
+
+// MCPTimeSeriesPoint represents a single point in a time series for analytics.
+type MCPTimeSeriesPoint struct {
+	Time  time.Time
+	Count int64
+}
+
+// MCPClientCount represents a client and its invocation count.
+type MCPClientCount struct {
+	Client string
+	Count  int64
+}
+
+// MCPFunctionCallCount represents a function and its call count.
+type MCPFunctionCallCount struct {
+	Author string
+	Name   string
+	Calls  int64
+}
+
+// MCPTransportCount represents a transport and its usage count.
+type MCPTransportCount struct {
+	Transport string
+	Count     int64
+}
+
+// MCPConnectionRecord represents a client connection summary.
+type MCPConnectionRecord struct {
+	ClientType         string
+	ClientIcon         string
+	Status             string
+	ConnectedFunctions int
+	TotalInvocations   int64
+	LastConnectedAt    *time.Time
+}
+
+// GetTotalMCPInvocations returns the total number of MCP invocations since the given time.
+func (r *RegistryRepository) GetTotalMCPInvocations(ctx context.Context, since time.Time) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&MCPInvocationRecord{}).
+		Where("timestamp >= ?", since).
+		Count(&count).Error
+	return count, err
+}
+
+// GetUniqueMCPClients returns the number of unique callers since the given time.
+func (r *RegistryRepository) GetUniqueMCPClients(ctx context.Context, since time.Time) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&MCPInvocationRecord{}).
+		Where("timestamp >= ?", since).
+		Where("caller_id IS NOT NULL AND caller_id != ''").
+		Distinct("caller_id").
+		Count(&count).Error
+	return count, err
+}
+
+// GetAverageMCPLatency returns the average latency in milliseconds since the given time.
+func (r *RegistryRepository) GetAverageMCPLatency(ctx context.Context, since time.Time) (int, error) {
+	var avg float64
+	err := r.db.WithContext(ctx).
+		Model(&MCPInvocationRecord{}).
+		Where("timestamp >= ?", since).
+		Select("COALESCE(AVG(duration_ms), 0)").
+		Scan(&avg).Error
+	return int(avg), err
+}
+
+// GetMCPSuccessRate returns the percentage of successful (non-error) invocations.
+func (r *RegistryRepository) GetMCPSuccessRate(ctx context.Context, since time.Time) (float64, error) {
+	var total, errors int64
+
+	if err := r.db.WithContext(ctx).
+		Model(&MCPInvocationRecord{}).
+		Where("timestamp >= ?", since).
+		Count(&total).Error; err != nil {
+		return 0, err
+	}
+
+	if total == 0 {
+		return 100.0, nil
+	}
+
+	if err := r.db.WithContext(ctx).
+		Model(&MCPInvocationRecord{}).
+		Where("timestamp >= ?", since).
+		Where("status_code >= 400 OR error_code IS NOT NULL").
+		Count(&errors).Error; err != nil {
+		return 0, err
+	}
+
+	return float64(total-errors) / float64(total) * 100, nil
+}
+
+// GetMCPCallsOverTime returns time series data of MCP invocations grouped by hour.
+func (r *RegistryRepository) GetMCPCallsOverTime(ctx context.Context, since time.Time) ([]MCPTimeSeriesPoint, error) {
+	rows, err := r.db.WithContext(ctx).Raw(`
+		SELECT
+			date_trunc('hour', timestamp) as time_bucket,
+			COUNT(*) as count
+		FROM registry_mcp_invocations
+		WHERE timestamp >= ?
+		GROUP BY time_bucket
+		ORDER BY time_bucket ASC
+	`, since).Rows()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []MCPTimeSeriesPoint
+	for rows.Next() {
+		var p MCPTimeSeriesPoint
+		if err := rows.Scan(&p.Time, &p.Count); err != nil {
+			return nil, err
+		}
+		results = append(results, p)
+	}
+	return results, rows.Err()
+}
+
+// GetMCPClientBreakdown returns the breakdown of invocations by client type.
+func (r *RegistryRepository) GetMCPClientBreakdown(ctx context.Context, since time.Time) ([]MCPClientCount, error) {
+	rows, err := r.db.WithContext(ctx).Raw(`
+		SELECT
+			COALESCE(NULLIF(caller_id, ''), 'unknown') as client,
+			COUNT(*) as count
+		FROM registry_mcp_invocations
+		WHERE timestamp >= ?
+		GROUP BY client
+		ORDER BY count DESC
+		LIMIT 20
+	`, since).Rows()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []MCPClientCount
+	for rows.Next() {
+		var c MCPClientCount
+		if err := rows.Scan(&c.Client, &c.Count); err != nil {
+			return nil, err
+		}
+		results = append(results, c)
+	}
+	return results, rows.Err()
+}
+
+// GetMCPTopFunctions returns the top functions by invocation count.
+func (r *RegistryRepository) GetMCPTopFunctions(ctx context.Context, since time.Time, limit int) ([]MCPFunctionCallCount, error) {
+	rows, err := r.db.WithContext(ctx).Raw(`
+		SELECT
+			f.author,
+			f.name,
+			COUNT(i.invocation_id) as calls
+		FROM registry_mcp_invocations i
+		JOIN registry_functions f ON f.id = i.function_id
+		WHERE i.timestamp >= ?
+		GROUP BY f.author, f.name
+		ORDER BY calls DESC
+		LIMIT ?
+	`, since, limit).Rows()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []MCPFunctionCallCount
+	for rows.Next() {
+		var f MCPFunctionCallCount
+		if err := rows.Scan(&f.Author, &f.Name, &f.Calls); err != nil {
+			return nil, err
+		}
+		results = append(results, f)
+	}
+	return results, rows.Err()
+}
+
+// GetMCPTransportUsage returns the breakdown of invocations by transport type.
+func (r *RegistryRepository) GetMCPTransportUsage(ctx context.Context, since time.Time) ([]MCPTransportCount, error) {
+	rows, err := r.db.WithContext(ctx).Raw(`
+		SELECT
+			COALESCE(transport, 'streamable-http') as transport,
+			COUNT(*) as count
+		FROM registry_mcp_invocations
+		WHERE timestamp >= ?
+		GROUP BY transport
+		ORDER BY count DESC
+	`, since).Rows()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []MCPTransportCount
+	for rows.Next() {
+		var t MCPTransportCount
+		if err := rows.Scan(&t.Transport, &t.Count); err != nil {
+			return nil, err
+		}
+		results = append(results, t)
+	}
+	return results, rows.Err()
+}
+
+// GetMCPConnections returns aggregated connection information per client type.
+func (r *RegistryRepository) GetMCPConnections(ctx context.Context) ([]MCPConnectionRecord, error) {
+	rows, err := r.db.WithContext(ctx).Raw(`
+		SELECT
+			COALESCE(NULLIF(caller_id, ''), 'unknown') as client_type,
+			COUNT(DISTINCT function_id) as connected_functions,
+			COUNT(*) as total_invocations,
+			MAX(timestamp) as last_connected_at,
+			CASE
+				WHEN MAX(timestamp) IS NULL THEN 'never'
+				WHEN MAX(timestamp) < NOW() - INTERVAL '7 days' THEN 'stale'
+				ELSE 'active'
+			END as status
+		FROM registry_mcp_invocations
+		GROUP BY caller_id
+		ORDER BY total_invocations DESC
+	`).Rows()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []MCPConnectionRecord
+	for rows.Next() {
+		var c MCPConnectionRecord
+		if err := rows.Scan(&c.ClientType, &c.ConnectedFunctions, &c.TotalInvocations, &c.LastConnectedAt, &c.Status); err != nil {
+			return nil, err
+		}
+		// Set default icon based on client type
+		c.ClientIcon = getClientIcon(c.ClientType)
+		results = append(results, c)
+	}
+	return results, rows.Err()
+}
+
+// getClientIcon returns an icon identifier for known client types.
+func getClientIcon(clientType string) string {
+	switch clientType {
+	case "claude-desktop":
+		return "claude"
+	case "cursor":
+		return "cursor"
+	case "vscode":
+		return "vscode"
+	case "windsurf":
+		return "windsurf"
+	default:
+		return "generic"
+	}
 }
 
 // =============================================================================

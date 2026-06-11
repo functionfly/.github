@@ -105,14 +105,8 @@ class ApiClient {
 
   // Helper method to handle auth failures
   private _handleAuthFailure() {
-    localStorage.removeItem('ff-access-token');
-    localStorage.removeItem('ff-refresh-token');
-    // Avoid showing another account's last agent wallet in the user menu after re-login.
-    localStorage.removeItem('ff-last-wallet-agent-id');
-    apiClient.clearToken();
-
+    this.clearToken();
     import('@/stores/authStore').then(({ useAuthStore }) => {
-      // logout() now handles redirect by default
       useAuthStore.getState().logout(true);
     });
   }
@@ -121,6 +115,7 @@ class ApiClient {
     this.token = null;
     localStorage.removeItem('ff-access-token');
     localStorage.removeItem('ff-refresh-token');
+    localStorage.removeItem('ff-last-wallet-agent-id');
   }
 
   clearCSRFToken() {

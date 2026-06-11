@@ -269,7 +269,7 @@ type AgentMessage struct {
 	FromAgentID    string         `json:"from_agent_id" gorm:"not null"`
 	ToAgentID      string         `json:"to_agent_id" gorm:"not null"`
 	MessageType    string         `json:"message_type" gorm:"not null"`
-	Payload        map[string]any `json:"payload" gorm:"type:jsonb;default:'{}'"`
+	Payload        JSONBMap `json:"payload" gorm:"type:jsonb;default:'{}'"`
 	SessionID      *string        `json:"session_id"`
 	TTLSeconds     int            `json:"ttl_seconds" gorm:"not null;default:3600"`
 	Status         string         `json:"status" gorm:"not null;default:'pending'"` // pending | delivered | read | expired | failed

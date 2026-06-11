@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { usePageTitle } from '@/hooks';
 import {
   CreditCard,
   Loader2,
@@ -32,6 +33,7 @@ import { toast } from 'sonner';
 import { ROUTES } from '@/lib/constants';
 import { usePlan } from '@/hooks/usePlan';
 import { useAuthStore } from '@/stores/authStore';
+import { cn } from '@/lib/utils';
 
 // Local imports
 import { DATE_RANGES, type DateRangeValue, getDateRangeDates } from './constants';
@@ -39,6 +41,7 @@ import { useUsagePageData } from './hooks/useUsageData';
 import { useChartData } from './hooks/useChartData';
 import { useInsights } from './hooks/useInsights';
 import { DateRangePicker, type DateRangeSelection } from '@/components/ui/date-picker';
+import './styles.css';
 
 // Components
 import { InsightsSection } from './components/InsightsSection';
@@ -48,11 +51,15 @@ import { CostsTab } from './components/CostsTab';
 import { ForecastTab } from './components/ForecastTab';
 
 export function UsagePage() {
+  usePageTitle('Usage');
   const user = useAuthStore((s) => s.user);
   const { limits, displayName, isEnterprise } = usePlan();
   const [billingLoading, setBillingLoading] = useState(false);
   const [dateRange, setDateRange] = useState<DateRangeValue>('30d');
-  const [customDateRange, setCustomDateRange] = useState<DateRangeSelection>({ from: null, to: null });
+  const [customDateRange, setCustomDateRange] = useState<DateRangeSelection>({
+    from: null,
+    to: null,
+  });
   const [activeTab, setActiveTab] = useState('overview');
 
   // Calculate actual date range based on selection
@@ -149,9 +156,7 @@ export function UsagePage() {
   const openBillingPortal = async () => {
     setBillingLoading(true);
     try {
-      const { url } = await createBillingPortalSession(
-        `${window.location.origin}${ROUTES.USAGE}`
-      );
+      const { url } = await createBillingPortalSession(`${window.location.origin}${ROUTES.USAGE}`);
       if (url) window.location.href = url;
     } catch (e) {
       toast.error(getBillingPortalErrorMessage(e));
@@ -164,54 +169,48 @@ export function UsagePage() {
   const customDomainsLimit = (limits as { customDomains?: number })?.customDomains ?? 0;
 
   return (
-    <div className="space-y-6">
+    <div className="usage-page">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary tracking-tight">
-            Usage & Analytics
-          </h1>
-          <p className="text-text-secondary mt-1">
-            Track platform usage, costs, and resource limits across all services.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Select
-            value={dateRange}
-            onValueChange={(v) => setDateRange(v as DateRangeValue)}
-          >
-            <SelectTrigger className="w-[160px]">
-              <Calendar className="h-4 w-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {DATE_RANGES.map((range) => (
-                <SelectItem key={range.value} value={range.value}>
-                  {range.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {dateRange === 'custom' && (
-            <DateRangePicker
-              value={customDateRange}
-              onChange={setCustomDateRange}
-              showPresets
-            />
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={openBillingPortal}
-            disabled={billingLoading}
-          >
-            {billingLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <CreditCard className="h-4 w-4 mr-2" />
+      <div className="usage-header">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="usage-title">Usage & Analytics</h1>
+            <p className="usage-subtitle">
+              Track platform usage, costs, and resource limits across all services.
+            </p>
+          </div>
+          <div className="usage-toolbar-right">
+            <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRangeValue)}>
+              <SelectTrigger className="w-[160px]">
+                <Calendar className="h-4 w-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {DATE_RANGES.map((range) => (
+                  <SelectItem key={range.value} value={range.value}>
+                    {range.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {dateRange === 'custom' && (
+              <DateRangePicker value={customDateRange} onChange={setCustomDateRange} showPresets />
             )}
-            Manage billing
-          </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={openBillingPortal}
+              disabled={billingLoading}
+              className="btn-usage-secondary"
+            >
+              {billingLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <CreditCard className="h-4 w-4 mr-2" />
+              )}
+              Manage billing
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -219,28 +218,24 @@ export function UsagePage() {
       <InsightsSection insights={insights} />
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-theme bg-card">
+      <div className="usage-stats-grid">
+        <Card className="border-theme bg-card usage-stat-card">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary">
-              Total Executions
-            </CardTitle>
+            <CardTitle className="usage-stat-card-label">Total Executions</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <Loader2 className="h-6 w-6 animate-spin text-text-muted" />
             ) : (
-              <p className="text-2xl font-semibold text-text-primary">
-                {totalUsage.toLocaleString()}
-              </p>
+              <p className="usage-stat-card-value">{totalUsage.toLocaleString()}</p>
             )}
           </CardContent>
         </Card>
 
-        <Card className="border-theme bg-card">
+        <Card className="border-theme bg-card usage-stat-card">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
+            <CardTitle className="usage-stat-card-label flex items-center gap-2">
+              <TrendingUp className="usage-stat-card-icon" />
               Period Trend
             </CardTitle>
           </CardHeader>
@@ -249,13 +244,14 @@ export function UsagePage() {
               <Loader2 className="h-6 w-6 animate-spin text-text-muted" />
             ) : (
               <p
-                className={`text-2xl font-semibold ${
+                className={cn(
+                  'usage-stat-card-value',
                   periodComparison.change > 0
-                    ? 'text-amber-500'
+                    ? 'usage-stat-card-trend-up'
                     : periodComparison.change < 0
-                      ? 'text-emerald-500'
-                      : 'text-text-primary'
-                }`}
+                      ? 'usage-stat-card-trend-down'
+                      : ''
+                )}
               >
                 {periodComparison.change > 0 ? '+' : ''}
                 {periodComparison.change.toFixed(1)}%
@@ -264,10 +260,10 @@ export function UsagePage() {
           </CardContent>
         </Card>
 
-        <Card className="border-theme bg-card">
+        <Card className="border-theme bg-card usage-stat-card">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary flex items-center gap-2">
-              <Cloud className="h-4 w-4" />
+            <CardTitle className="usage-stat-card-label flex items-center gap-2">
+              <Cloud className="usage-stat-card-icon" />
               Apps
             </CardTitle>
           </CardHeader>
@@ -275,16 +271,16 @@ export function UsagePage() {
             {isLoading ? (
               <Loader2 className="h-6 w-6 animate-spin text-text-muted" />
             ) : (
-              <p className="text-2xl font-semibold text-text-primary">{appsCount}</p>
+              <p className="usage-stat-card-value">{appsCount}</p>
             )}
           </CardContent>
         </Card>
 
         {!isUnlimited && (
-          <Card className="border-theme bg-card">
+          <Card className="border-theme bg-card usage-stat-card">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-text-secondary flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
+              <CardTitle className="usage-stat-card-label flex items-center gap-2">
+                <TrendingUp className="usage-stat-card-icon" />
                 Remaining Requests
               </CardTitle>
             </CardHeader>
@@ -293,9 +289,10 @@ export function UsagePage() {
                 <Loader2 className="h-6 w-6 animate-spin text-text-muted" />
               ) : (
                 <p
-                  className={`text-xl font-semibold ${
-                    isOverLimit ? 'text-destructive' : 'text-text-primary'
-                  }`}
+                  className={cn(
+                    'usage-stat-card-value',
+                    isOverLimit ? 'usage-stat-card-trend-down' : ''
+                  )}
                 >
                   {remaining !== null ? remaining.toLocaleString() : '—'}
                 </p>
@@ -305,34 +302,46 @@ export function UsagePage() {
         )}
       </div>
 
-      {/* Tabs - Modern Segmented Control Style */}
+      {/* Tabs - Aviation Style */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="flex justify-center">
-          <TabsList className="h-11 p-1.5 rounded-xl bg-bg-secondary/80 border border-border-subtle backdrop-blur-sm">
+        <div className="usage-tabs-container">
+          <TabsList className="usage-tabs-list">
             <TabsTrigger
               value="overview"
-              className="relative px-5 py-2 text-sm font-medium rounded-lg data-[state=active]:bg-card data-[state=active]:text-text-primary data-[state=active]:shadow-sm data-[state=active]:border-border-subtle transition-all duration-200 flex items-center gap-2"
+              className={cn(
+                'usage-tab-trigger',
+                activeTab === 'overview' && 'usage-tab-trigger-active'
+              )}
             >
               <BarChart3 className="w-4 h-4" />
               Overview
             </TabsTrigger>
             <TabsTrigger
               value="resources"
-              className="relative px-5 py-2 text-sm font-medium rounded-lg data-[state=active]:bg-card data-[state=active]:text-text-primary data-[state=active]:shadow-sm data-[state=active]:border-border-subtle transition-all duration-200 flex items-center gap-2"
+              className={cn(
+                'usage-tab-trigger',
+                activeTab === 'resources' && 'usage-tab-trigger-active'
+              )}
             >
               <Zap className="w-4 h-4" />
               Resources
             </TabsTrigger>
             <TabsTrigger
               value="costs"
-              className="relative px-5 py-2 text-sm font-medium rounded-lg data-[state=active]:bg-card data-[state=active]:text-text-primary data-[state=active]:shadow-sm data-[state=active]:border-border-subtle transition-all duration-200 flex items-center gap-2"
+              className={cn(
+                'usage-tab-trigger',
+                activeTab === 'costs' && 'usage-tab-trigger-active'
+              )}
             >
               <DollarSign className="w-4 h-4" />
               Cost Details
             </TabsTrigger>
             <TabsTrigger
               value="forecast"
-              className="relative px-5 py-2 text-sm font-medium rounded-lg data-[state=active]:bg-card data-[state=active]:text-text-primary data-[state=active]:shadow-sm data-[state=active]:border-border-subtle transition-all duration-200 flex items-center gap-2"
+              className={cn(
+                'usage-tab-trigger',
+                activeTab === 'forecast' && 'usage-tab-trigger-active'
+              )}
             >
               <TrendingUp className="w-4 h-4" />
               Forecast
@@ -341,7 +350,7 @@ export function UsagePage() {
         </div>
 
         {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-4 mt-4">
+        <TabsContent value="overview" className="usage-tab-content mt-4">
           <OverviewTab
             usageLoading={usageLoading}
             executionRateLoading={executionRateLoading}
@@ -361,7 +370,7 @@ export function UsagePage() {
         </TabsContent>
 
         {/* Resources Tab */}
-        <TabsContent value="resources" className="space-y-4 mt-4">
+        <TabsContent value="resources" className="usage-tab-content mt-4">
           <ResourcesTab
             displayPlan={displayPlan}
             displayName={displayName}
@@ -381,7 +390,7 @@ export function UsagePage() {
         </TabsContent>
 
         {/* Costs Tab */}
-        <TabsContent value="costs" className="space-y-4 mt-4">
+        <TabsContent value="costs" className="usage-tab-content mt-4">
           <CostsTab
             costSummaryLoading={costSummaryLoading}
             functionCostsLoading={functionCostsLoading}
@@ -396,7 +405,7 @@ export function UsagePage() {
         </TabsContent>
 
         {/* Forecast Tab */}
-        <TabsContent value="forecast" className="space-y-4 mt-4">
+        <TabsContent value="forecast" className="usage-tab-content mt-4">
           <ForecastTab
             forecastLoading={forecastLoading}
             spendCapLoading={spendCapLoading}
@@ -410,19 +419,20 @@ export function UsagePage() {
       </Tabs>
 
       {/* Footer */}
-      <Card className="border-theme bg-card">
-        <CardHeader>
-          <CardTitle className="text-base">Billing & Documentation</CardTitle>
-          <CardDescription>
+      <Card className="border-theme bg-card usage-footer">
+        <CardHeader className="usage-footer-header">
+          <CardTitle className="usage-footer-title">Billing & Documentation</CardTitle>
+          <CardDescription className="usage-footer-description">
             Manage your subscription, payment methods, and view invoices.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-3">
+        <CardContent className="usage-footer-actions">
           <Button
             variant="outline"
             size="sm"
             onClick={openBillingPortal}
             disabled={billingLoading}
+            className="btn-usage-primary"
           >
             {billingLoading ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -431,14 +441,12 @@ export function UsagePage() {
             )}
             Open billing portal
           </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link
-              to={username ? `/u/${username}/settings/billing` : ROUTES.SETTINGS}
-            >
+          <Button variant="ghost" size="sm" asChild className="btn-usage-secondary">
+            <Link to={username ? `/u/${username}/settings/billing` : ROUTES.SETTINGS}>
               Settings <ExternalLink className="h-4 w-4 ml-2" />
             </Link>
           </Button>
-          <Button variant="ghost" size="sm" asChild>
+          <Button variant="ghost" size="sm" asChild className="btn-usage-secondary">
             <Link to={ROUTES.PRICING}>
               View plans <ExternalLink className="h-4 w-4 ml-2" />
             </Link>

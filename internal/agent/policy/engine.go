@@ -15,14 +15,15 @@ import (
 
 // BehavioralPolicy defines the safety constraints for an agent
 type BehavioralPolicy struct {
-	AgentID             string   `json:"agent_id" gorm:"uniqueIndex;not null"`
+	AgentID              string   `json:"agent_id" gorm:"uniqueIndex;not null"`
 	MaxExecutionDepth   int      `json:"max_execution_depth" gorm:"not null;default:10"`
 	MaxRecursionDepth   int      `json:"max_recursion_depth" gorm:"not null;default:3"`
 	MaxWallTimeMs       int      `json:"max_wall_time_ms" gorm:"not null;default:300000"`
-	MaxMemoryGrowthMB   int      `json:"max_memory_growth_mb" gorm:"not null;default:512"`
-	ForbiddenFunctions  []string `json:"forbidden_functions,omitempty" gorm:"type:text[]"`
-	DeterministicOnly   bool     `json:"deterministic_only" gorm:"not null;default:false"`
-	AllowedCapabilities []string `json:"allowed_capabilities,omitempty" gorm:"type:text[]"`
+	MaxMemoryGrowthMB    int      `json:"max_memory_growth_mb" gorm:"not null;default:512"`
+	ForbiddenFunctions   []string `json:"forbidden_functions,omitempty" gorm:"type:text[]"`
+	DeterministicOnly    bool     `json:"deterministic_only" gorm:"not null;default:false"`
+	AllowedCapabilities  []string `json:"allowed_capabilities,omitempty" gorm:"type:text[]"`
+	AllowedBrowserDomains []string `json:"allowed_browser_domains,omitempty" gorm:"type:text[]"`
 }
 
 // TableName returns the GORM table name
@@ -32,8 +33,8 @@ func (BehavioralPolicy) TableName() string {
 
 // PolicyResult is the result of a policy check
 type PolicyResult struct {
-	Allowed   bool              `json:"allowed"`
-	Violation *PolicyViolation  `json:"violation,omitempty"`
+	Allowed   bool             `json:"allowed"`
+	Violation *PolicyViolation `json:"violation,omitempty"`
 }
 
 // PolicyViolation describes a policy violation
@@ -46,11 +47,13 @@ type PolicyViolation struct {
 type PolicyViolationCode string
 
 const (
-	ViolationLoopDetected    PolicyViolationCode = "LOOP_DETECTED"
-	ViolationDepthExceeded   PolicyViolationCode = "DEPTH_EXCEEDED"
-	ViolationFunctionBlocked PolicyViolationCode = "FUNCTION_BLOCKED"
-	ViolationCapabilityDenied PolicyViolationCode = "CAPABILITY_DENIED"
-	ViolationDeterministicOnly PolicyViolationCode = "DETERMINISTIC_ONLY"
+	ViolationLoopDetected           PolicyViolationCode = "LOOP_DETECTED"
+	ViolationDepthExceeded          PolicyViolationCode = "DEPTH_EXCEEDED"
+	ViolationFunctionBlocked        PolicyViolationCode = "FUNCTION_BLOCKED"
+	ViolationCapabilityDenied       PolicyViolationCode = "CAPABILITY_DENIED"
+	ViolationDeterministicOnly      PolicyViolationCode = "DETERMINISTIC_ONLY"
+	ViolationBrowserDomainBlocked   PolicyViolationCode = "BROWSER_DOMAIN_BLOCKED"
+	ViolationBrowserDisabled        PolicyViolationCode = "BROWSER_DISABLED"
 )
 
 func (v *PolicyViolation) Error() string {
@@ -59,13 +62,17 @@ func (v *PolicyViolation) Error() string {
 
 // AgentExecutionRequest is the input to a policy check
 type AgentExecutionRequest struct {
-	AgentID     string          `json:"agent_id"`
-	SessionID   string          `json:"session_id"`
-	FunctionURI string          `json:"function_uri"`
-	Input       json.RawMessage `json:"input"`
-	CallDepth   int             `json:"call_depth"`
-	Capabilities []string       `json:"capabilities,omitempty"`
-	Deterministic bool          `json:"deterministic"`
+	AgentID       string          `json:"agent_id"`
+	SessionID     string          `json:"session_id"`
+	FunctionURI   string          `json:"function_uri"`
+	Input         json.RawMessage `json:"input"`
+	CallDepth     int             `json:"call_depth"`
+	Capabilities  []string        `json:"capabilities,omitempty"`
+	Deterministic bool            `json:"deterministic"`
+	// Browser-specific fields
+	BrowserDomain    string `json:"browser_domain,omitempty"`
+	BrowserSessionID string `json:"browser_session_id,omitempty"`
+	BrowserCapability bool  `json:"browser_capability,omitempty"`
 }
 
 // Engine evaluates behavioral policies for agent executions
@@ -155,10 +162,52 @@ func (e *Engine) CheckPolicy(ctx context.Context, agentID string, req *AgentExec
 		}
 	}
 
+	// 6. Check browser domain policy
+	if req.BrowserCapability && req.BrowserDomain != "" {
+		if !e.canAccessBrowserDomain(ctx, policy, req.BrowserDomain) {
+			return &PolicyResult{
+				Allowed: false,
+				Violation: &PolicyViolation{
+					Code:    ViolationBrowserDomainBlocked,
+					Message: fmt.Sprintf("browser domain %s is not allowed for this agent", req.BrowserDomain),
+				},
+			}, nil
+		}
+	}
+
 	return &PolicyResult{Allowed: true}, nil
 }
 
 const loopThreshold = 3
+
+// canAccessBrowserDomain checks if a domain is allowed by the policy
+func (e *Engine) canAccessBrowserDomain(ctx context.Context, policy *BehavioralPolicy, domain string) bool {
+	if len(policy.AllowedBrowserDomains) == 0 {
+		return true // No restrictions
+	}
+	for _, pattern := range policy.AllowedBrowserDomains {
+		if matchBrowserDomain(pattern, domain) {
+			return true
+		}
+	}
+	return false
+}
+
+// matchBrowserDomain matches a domain glob pattern
+func matchBrowserDomain(pattern, domain string) bool {
+	// Exact match
+	if pattern == domain {
+		return true
+	}
+	// Wildcard subdomain: *.example.com matches www.example.com
+	if strings.HasPrefix(pattern, "*.") {
+		suffix := pattern[2:]
+		if len(domain) > len(suffix) && strings.HasSuffix(domain, suffix) {
+			return true
+		}
+	}
+	return false
+}
 
 // DetectLoop checks if a (functionURI, inputHash) pair has been called too many times in a session
 func (e *Engine) DetectLoop(ctx context.Context, agentID, sessionID, functionURI string, input json.RawMessage) (bool, error) {
@@ -234,12 +283,12 @@ func (e *Engine) loadPolicy(ctx context.Context, agentID string) (*BehavioralPol
 
 func defaultPolicy(agentID string) *BehavioralPolicy {
 	return &BehavioralPolicy{
-		AgentID:           agentID,
-		MaxExecutionDepth: 10,
-		MaxRecursionDepth: 3,
-		MaxWallTimeMs:     300000,
-		MaxMemoryGrowthMB: 512,
-		DeterministicOnly: false,
+		AgentID:            agentID,
+		MaxExecutionDepth:  10,
+		MaxRecursionDepth:  3,
+		MaxWallTimeMs:      300000,
+		MaxMemoryGrowthMB:  512,
+		DeterministicOnly:   false,
 	}
 }
 

@@ -134,7 +134,7 @@ func (h *Handler) HandleSignUp(w http.ResponseWriter, r *http.Request) {
 	tokenRecord := &VerificationToken{
 		Identifier: user.Email,
 		Token:      verificationToken,
-		ExpiresAt:  time.Now().Add(24 * time.Hour), // 24 hours
+		ExpiresAt:  time.Now().Add(4 * time.Hour), // 4 hours
 		TenantID:   tenantID,
 	}
 
@@ -799,7 +799,7 @@ func (h *Handler) HandleResendVerification(w http.ResponseWriter, r *http.Reques
 	tokenRecord := &VerificationToken{
 		Identifier: req.Email,
 		Token:      verificationToken,
-		ExpiresAt:  time.Now().Add(24 * time.Hour), // 24 hours
+		ExpiresAt:  time.Now().Add(4 * time.Hour), // 4 hours
 		TenantID:   tenantID,
 	}
 

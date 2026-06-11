@@ -38,6 +38,7 @@ import { VaultSetupDialog } from "@/components/api-keys/VaultSetupDialog";
 import { APIKey, APIKeyFilters, DEFAULT_RATE_LIMIT } from "@/types/api-key";
 import { apiKeysService, getStoredApiKey } from "@/services/api-keys";
 import { getApiBaseUrl } from "@/lib/constants";
+import "./styles.css";
 
 const PAGE_SIZE = 10;
 const EXPIRING_DAYS = 30;
@@ -201,9 +202,9 @@ export function APIKeysPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="apikeys-page space-y-8">
       {/* Page header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="apikeys-header">
         <div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
             <Link to="/dashboard" className="hover:text-foreground">
@@ -212,21 +213,23 @@ export function APIKeysPage() {
             <span>/</span>
             <span>API Keys</span>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">API Keys</h1>
-          <p className="text-muted-foreground mt-1 max-w-2xl">
+          <h1 className="apikeys-title">API Keys</h1>
+          <p className="apikeys-subtitle max-w-2xl">
             Create and manage API keys for programmatic access. Use keys in headers or environment
             variables; rotate them regularly and revoke if compromised.
           </p>
         </div>
-        <Button onClick={() => setShowCreateModal(true)} size="lg" className="shrink-0">
-          <Plus className="w-4 h-4 mr-2" />
-          Create API Key
-        </Button>
+        <div className="apikeys-header-actions">
+          <Button onClick={() => setShowCreateModal(true)} size="lg" className="btn-apikey-primary shrink-0">
+            <Plus className="w-4 h-4 mr-2" />
+            Create API Key
+          </Button>
+        </div>
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+      <div className="apikey-stats-grid">
+        <Card className="apikey-stat-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Total keys
@@ -234,11 +237,11 @@ export function APIKeysPage() {
             <KeyRound className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{displayTotal}</div>
-            <p className="text-xs text-muted-foreground">Across all pages</p>
+            <div className="apikey-stat-value apikey-stat-value-primary">{displayTotal}</div>
+            <p className="apikey-stat-label">Across all pages</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="apikey-stat-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Active (this page)
@@ -246,11 +249,11 @@ export function APIKeysPage() {
             <CheckCircle2 className="w-4 h-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.active}</div>
-            <p className="text-xs text-muted-foreground">Can be used for requests</p>
+            <div className="apikey-stat-value apikey-stat-value-success">{stats.active}</div>
+            <p className="apikey-stat-label">Can be used for requests</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="apikey-stat-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Inactive (this page)
@@ -258,11 +261,11 @@ export function APIKeysPage() {
             <XCircle className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.inactive}</div>
-            <p className="text-xs text-muted-foreground">Revoked or disabled</p>
+            <div className="apikey-stat-value apikey-stat-value-warning">{stats.inactive}</div>
+            <p className="apikey-stat-label">Revoked or disabled</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="apikey-stat-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Expiring soon
@@ -270,15 +273,15 @@ export function APIKeysPage() {
             <Clock className="w-4 h-4 text-amber-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.expiringSoon}</div>
-            <p className="text-xs text-muted-foreground">Within {EXPIRING_DAYS} days</p>
+            <div className="apikey-stat-value apikey-stat-value-accent">{stats.expiringSoon}</div>
+            <p className="apikey-stat-label">Within {EXPIRING_DAYS} days</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* How to use & Security */}
+{/* How to use & Security */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+        <Card className="apikey-card">
           <button
             type="button"
             onClick={toggleUsage}
@@ -302,7 +305,7 @@ export function APIKeysPage() {
               <p className="text-sm text-muted-foreground mb-3">
                 Send your API key in the{" "}
                 <code className="text-xs bg-muted px-1 rounded">
-                  Authorization: Bearer &lt;key&gt;
+                  Authorization: Bearer {'<key>'}
                 </code>{" "}
                 header.
               </p>
@@ -332,7 +335,7 @@ export function APIKeysPage() {
           )}
         </Card>
 
-        <Card>
+        <Card className="apikey-card">
           <button
             type="button"
             onClick={toggleSecurity}
@@ -362,11 +365,11 @@ export function APIKeysPage() {
               </ul>
             </CardContent>
           )}
-        </Card>
+</Card>
       </div>
 
       {/* Keys table */}
-      <Card>
+      <Card className="apikey-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Key className="w-5 h-5" />

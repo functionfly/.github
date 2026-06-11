@@ -244,3 +244,19 @@ type WalletCreationRequest struct {
 	BillingMode        string
 	TeamID             *uuid.UUID
 }
+
+// WalletBalanceAudit records balance drift incidents for auditing
+type WalletBalanceAudit struct {
+	ID              uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	WalletID        uuid.UUID  `json:"wallet_id" gorm:"type:uuid;not null;index"`
+	StoredBalance   float64   `json:"stored_balance" gorm:"type:decimal(15,6);not null"`
+	ComputedBalance float64   `json:"computed_balance" gorm:"type:decimal(15,6);not null"`
+	Drift           float64   `json:"drift" gorm:"type:decimal(15,6);not null"`
+	Fixed           bool      `json:"fixed" gorm:"default:false"`
+	FixedAt         *time.Time `json:"fixed_at,omitempty"`
+	CreatedAt       time.Time `json:"created_at" gorm:"autoCreateTime"`
+}
+
+func (WalletBalanceAudit) TableName() string {
+	return "wallet_balance_audit"
+}

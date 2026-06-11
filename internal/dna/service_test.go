@@ -1,6 +1,7 @@
 package dna
 
 import (
+	"net/http"
 	"testing"
 	"time"
 
@@ -9,7 +10,20 @@ import (
 )
 
 func newTestService() *Service {
-	return NewService(nil, logrus.StandardLogger())
+	svc, err := NewService(nil, logrus.StandardLogger())
+	if err != nil {
+		// For tests that don't need AI, set a dummy URL
+		t := &Service{
+			repo:       nil,
+			logger:     logrus.StandardLogger(),
+			aiBaseURL:  "http://localhost:8081",
+			aiAPIKey:   "",
+			httpClient: &http.Client{Timeout: 2 * time.Minute},
+			aiCircuitBreaker: newCircuitBreaker(5, 2*time.Minute),
+		}
+		return t
+	}
+	return svc
 }
 
 func TestComputeFitness(t *testing.T) {

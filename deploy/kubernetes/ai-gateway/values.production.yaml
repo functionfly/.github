@@ -158,6 +158,49 @@ topologySpreadConstraints:
   topologyKey: "topology.kubernetes.io/zone"
   whenUnsatisfiable: DoNotSchedule
 
+# GPU node affinity and tolerations for multi-region GPU resilience
+nodeAffinity:
+  requiredDuringSchedulingIgnoredDuringExecution:
+    nodeSelectorTerms:
+      - matchExpressions:
+          - key: "nvidia.com/gpu"
+            operator: In
+            values:
+              - "1"
+              - "2"
+              - "4"
+  preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      preference:
+        matchExpressions:
+          - key: "topology.kubernetes.io/zone"
+            operator: In
+            values:
+              - us-east-1
+              - us-west-2
+              - eu-west-1
+
+nodeTolerations:
+  enabled: true
+  tolerations:
+    - key: "nvidia.com/gpu"
+      operator: "Exists"
+      effect: "NoSchedule"
+      value: ""
+    - key: "nvidia.com/gpu"
+      operator: "Exists"
+      effect: "NoExecute"
+      value: ""
+
+# GPU resource graceful degradation
+gpuGracefulDegradation:
+  enabled: true
+  fallbackStrategies:
+    - strategy: "reduce-replicas"
+      targetReplicas: 1
+    - strategy: "disable-gpu"
+      removeGpuRequest: true
+
 # Production priority
 priorityClassName: "ai-gateway-high"
 

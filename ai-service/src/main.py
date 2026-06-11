@@ -4,7 +4,6 @@ This is the FastAPI application entry point.
 Includes Phase 1 (Foundation) and Phase 2 (Intelligence Layer).
 """
 
-import hashlib
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -17,7 +16,6 @@ from .config import settings, get_settings
 from .api.routes import router
 from .providers.manager import get_provider_manager
 from .services.embeddings import get_embeddings_service
-from .security.auth import get_api_key_validator, KeyScope
 
 
 # Configure logging (uppercase so "info" maps to logging.INFO, not logging.info)
@@ -31,42 +29,70 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _init_sentry() -> None:
+    """Initialize Sentry error tracking if SENTRY_DSN is configured.
+
+    Sentry provides distributed tracing and error tracking for production.
+    Only initialized if the SENTRY_DSN environment variable is set.
+    """
+    sentry_dsn = os.getenv("SENTRY_DSN")
+    if not sentry_dsn:
+        logger.info("Sentry not configured (SENTRY_DSN not set)")
+        return
+
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+
+        sentry_sdk.init(
+            dsn=sentry_dsn,
+            integrations=[FastApiIntegration()],
+            environment=os.getenv("FLY_ENV", "production"),
+            release=os.getenv("SENTRY_RELEASE", settings.service_version),
+            traces_sample_rate=0.1,
+            attach_stacktrace=True,
+        )
+        logger.info("Sentry initialized for error tracking")
+    except Exception as e:
+        logger.warning(f"Failed to initialize Sentry: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and shutdown events."""
     # Startup
     logger.info(f"Starting {settings.service_name} v{settings.service_version}")
 
-    # Initialize API key validator and load persistent key from environment
-    try:
-        validator = get_api_key_validator()
-        persistent_key = os.environ.get("AI_SERVICE_API_KEY")
-        if persistent_key:
-            # Check if this key already exists
-            key_info = validator.validate_key(persistent_key)
-            if not key_info:
-                # Add the persistent key to the validator
-                key_hash = hashlib.sha256(persistent_key.encode()).hexdigest()
-                from .security.auth import APIKeyInfo, KeyStatus
-                from datetime import datetime
-                from typing import List
+    # Initialize Sentry first (before other components to catch startup errors)
+    _init_sentry()
 
-                info = APIKeyInfo(
-                    key_id="persistent",
-                    tenant_id="system",
-                    name="Persistent API Key",
-                    scopes=[KeyScope.FULL, KeyScope.CHAT_WRITE],
-                    status=KeyStatus.ACTIVE,
-                    created_at=datetime.utcnow(),
-                    rate_limit=120,
-                )
-                validator._keys["persistent"] = (key_hash, info)
-                validator._key_lookup[key_hash] = "persistent"
-                logger.info("Loaded persistent API key from AI_SERVICE_API_KEY environment")
+    # Validate Redis is available at startup (fail fast in production)
+    await _validate_redis_startup()
+
+    # Initialize API key validator (uses Go orchestrator for persistent storage)
+    # NOTE: This now gracefully degrades if orchestrator is unreachable
+    try:
+        from .security.auth import initialize_api_key_validator
+        from .observability.health import get_health_checker
+
+        checker = get_health_checker()
+        healthy = await initialize_api_key_validator()
+        if healthy:
+            logger.info("API key validator initialized (orchestrator-backed)")
         else:
-            logger.info("No AI_SERVICE_API_KEY environment variable set")
+            checker.set_degraded("Orchestrator unreachable at startup")
+            logger.warning(
+                "Orchestrator unreachable at startup - running in degraded mode. "
+                "API key validation will retry periodically."
+            )
     except Exception as e:
-        logger.warning(f"Could not initialize persistent API key: {e}")
+        from .observability.health import get_health_checker
+        checker = get_health_checker()
+        checker.set_degraded(f"API key validator initialization failed: {e}")
+        logger.warning(
+            f"Failed to initialize API key validator: {e}. "
+            "Service starting in degraded mode - orchestrator-backed auth will retry."
+        )
 
     # Initialize providers
     try:
@@ -119,6 +145,38 @@ async def lifespan(app: FastAPI):
     logger.info("Shutdown complete")
 
 
+async def _validate_redis_startup() -> None:
+    """Validate Redis is available at startup.
+
+    In production, Redis is required for rate limiting and cost tracking
+    to work correctly across multiple instances. Fail fast if Redis is
+    configured as required but not reachable.
+    """
+    import os
+
+    # Check if Redis is explicitly required
+    require_redis = os.getenv("REQUIRE_REDIS", "false").lower() == "true"
+
+    if not require_redis:
+        logger.info("Redis startup validation skipped (REQUIRE_REDIS not set)")
+        return
+
+    try:
+        from .services.redis_client import RedisClient
+
+        redis_client = await RedisClient.create()
+        if not redis_client or not await redis_client.ping():
+            raise RuntimeError("Redis ping failed")
+
+        logger.info("Redis startup validation passed")
+    except Exception as e:
+        logger.error(f"Redis is required but not available: {e}")
+        raise RuntimeError(
+            f"Redis is required for production deployment but is not reachable. "
+            "Set REQUIRE_REDIS=false to disable this check."
+        )
+
+
 # Create FastAPI application
 app = FastAPI(
     title="FlyMind AI Service",
@@ -130,14 +188,17 @@ app = FastAPI(
 )
 
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins,
-    allow_credentials=settings.cors_allow_credentials,
-    allow_methods=settings.cors_allow_methods,
-    allow_headers=settings.cors_allow_headers,
-)
+# Add CORS middleware with secure defaults
+# If cors_origins is empty (default), don't add CORS at all (restrictive)
+# If cors_origins is set, use those values
+if settings.cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=settings.cors_allow_credentials,
+        allow_methods=settings.cors_allow_methods if settings.cors_allow_methods != ["*"] else ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=settings.cors_allow_headers if settings.cors_allow_headers != ["*"] else ["Authorization", "Content-Type", "X-API-Key"],
+    )
 
 
 # Include API routes
@@ -155,6 +216,46 @@ async def root():
             "docs": "/docs",
         }
     )
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint with degraded state reporting.
+
+    Returns:
+        JSON health status including whether service is in degraded mode.
+        Load balancers can use this to route requests away from degraded instances.
+    """
+    from .observability.health import get_health_checker
+
+    checker = get_health_checker()
+    health = await checker.check_all()
+    overall = checker.get_overall_status()
+
+    response = {
+        "status": overall.value,
+        "service": settings.service_name,
+        "version": settings.service_version,
+        "components": {
+            name: {
+                "status": comp.status.value,
+                "message": comp.message,
+                "latency_ms": round(comp.latency_ms, 2) if comp.latency_ms else None,
+            }
+            for name, comp in health.items()
+        },
+    }
+
+    # Include degraded reason if applicable
+    if checker.is_degraded():
+        response["degraded_reason"] = checker.get_degraded_reason()
+        response["degraded"] = True
+
+    # Return 200 for healthy/degraded, 503 for unhealthy
+    if overall.value == "unhealthy":
+        return JSONResponse(status_code=503, content=response)
+
+    return JSONResponse(content=response)
 
 
 @app.get("/metrics")

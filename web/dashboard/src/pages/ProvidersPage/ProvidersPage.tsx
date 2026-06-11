@@ -55,6 +55,7 @@ import {
 } from './constants/providerMeta';
 import type { FailoverConfig } from './components/AutoFailoverDialog';
 import type { ProviderConfig } from './constants/providerMeta';
+import './styles.css';
 
 // Provider brand colors for accents (keys match PROVIDERS constant IDs)
 const providerAccents: Record<string, { border: string; glow: string; text: string }> = {
@@ -218,9 +219,10 @@ export function ProvidersPage() {
     const providerKey = key ?? '';
 
     try {
-      await connectProvider({ providerId, apiKey: providerKey });
+      const result = await connectProvider({ providerId, apiKey: providerKey });
       await fetchProviders();
       setConnectionTestResults((prev) => ({ ...prev, [providerId]: null }));
+      return result;
     } catch (error) {
       console.error('Failed to connect provider:', error);
       throw error;
@@ -333,7 +335,9 @@ export function ProvidersPage() {
         <ConnectAWSDialog
           provider={provider}
           accent={accent}
-          onConnect={async (pid, key) => handleConnect(pid, key)}
+          onConnect={async (pid, key) => {
+            await handleConnect(pid, key);
+          }}
         />
       );
     }
@@ -373,23 +377,23 @@ export function ProvidersPage() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="space-y-8 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+      <div className="provider-header">
         <div>
-          <h1 className="text-3xl font-bold text-text-primary tracking-tight v-section-header">
+          <h1 className="provider-title tracking-tight v-section-header">
             Providers
           </h1>
-          <p className="text-text-secondary mt-1">Connect and manage your deployment targets</p>
+          <p className="provider-subtitle">Connect and manage your deployment targets</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="provider-header-actions">
           {/* Data Density Toggle */}
-          <div className="flex items-center gap-1 bg-bg-secondary/50 rounded-lg p-1 border border-border-subtle">
+          <div className="provider-density-toggle">
             <Button
               variant={dataDensity === 'compact' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setDataDensity('compact')}
-              className="gap-2"
+              className={`provider-density-btn ${dataDensity === 'compact' ? 'provider-density-btn-active' : ''}`}
               title="Compact view"
             >
               <Minimize2 className="w-3.5 h-3.5" />
@@ -399,7 +403,7 @@ export function ProvidersPage() {
               variant={dataDensity === 'comfortable' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setDataDensity('comfortable')}
-              className="gap-2"
+              className={`provider-density-btn ${dataDensity === 'comfortable' ? 'provider-density-btn-active' : ''}`}
               title="Comfortable view"
             >
               <Maximize2 className="w-3.5 h-3.5" />
@@ -409,7 +413,7 @@ export function ProvidersPage() {
               variant={dataDensity === 'dashboard' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setDataDensity('dashboard')}
-              className="gap-2"
+              className={`provider-density-btn ${dataDensity === 'dashboard' ? 'provider-density-btn-active' : ''}`}
               title="Dashboard view"
             >
               <LayoutGrid className="w-3.5 h-3.5" />
@@ -422,7 +426,7 @@ export function ProvidersPage() {
               variant={glassMorphism ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setGlassMorphism(!glassMorphism)}
-              className="gap-2"
+              className={`provider-status-btn ${glassMorphism ? 'provider-status-btn-active' : ''}`}
               title={glassMorphism ? 'Disable glass effect' : 'Enable glass effect'}
             >
               <Sparkles className="w-3.5 h-3.5" />
@@ -433,7 +437,7 @@ export function ProvidersPage() {
               variant={statusGlow ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setStatusGlow(!statusGlow)}
-              className="gap-2"
+              className={`provider-status-btn ${statusGlow ? 'provider-status-btn-active' : ''}`}
               title={statusGlow ? 'Disable status glow' : 'Enable status glow'}
             >
               <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
@@ -490,19 +494,19 @@ export function ProvidersPage() {
       />
 
       {/* Theme Status Bar */}
-      <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
-        <span className="flex items-center gap-1.5 px-2 py-1 rounded bg-bg-secondary/50 border border-border-subtle">
+      <div className="provider-theme-status">
+        <span className="provider-theme-status-item provider-theme-status-item-density">
           <DensityIcon />
-          Density: <span className="text-text-primary font-medium capitalize">{dataDensity}</span>
+          Density: <span className="capitalize">{dataDensity}</span>
         </span>
         {glassMorphism && (
-          <span className="flex items-center gap-1.5 px-2 py-1 rounded bg-bg-secondary/50 border border-border-subtle text-taxiway">
+          <span className="provider-theme-status-item provider-theme-status-item-glass">
             <Sparkles className="w-3 h-3" />
             Glass morphism enabled
           </span>
         )}
         {statusGlow && (
-          <span className="flex items-center gap-1.5 px-2 py-1 rounded bg-bg-secondary/50 border border-border-subtle text-ff-flame">
+          <span className="provider-theme-status-item provider-theme-status-item-glow">
             <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
             Status glow enabled
           </span>
@@ -511,9 +515,9 @@ export function ProvidersPage() {
 
       {/* Provider Comparison Table */}
       {showComparisonTable && (
-        <Card className="animate-in slide-in-from-top-2 duration-300">
+        <Card className="provider-comparison-card">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="provider-comparison-title">
               <LayoutGrid className="w-5 h-5" />
               Provider Comparison
             </CardTitle>
@@ -526,10 +530,10 @@ export function ProvidersPage() {
 
       {/* Audit Log Panel */}
       {showAuditLog && (
-        <Card className="animate-in slide-in-from-top-2 duration-300">
+        <Card className="provider-audit-card">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
+              <CardTitle className="provider-audit-title">
                 <History className="w-5 h-5" />
                 Connection Audit Log
               </CardTitle>
@@ -545,34 +549,34 @@ export function ProvidersPage() {
       )}
 
       {/* Stats Summary */}
-      <div className="flex flex-wrap items-center gap-4 p-4 rounded-lg bg-bg-secondary/50 border border-border-subtle">
+      <div className="provider-stats-summary">
         {isLoading && (
-          <div className="flex items-center gap-2 text-sm text-text-tertiary">
+          <div className="provider-stats-loading">
             <Loader2 className="w-4 h-4 animate-spin" />
             <span>Loading...</span>
           </div>
         )}
         <div className="flex items-center gap-4 text-sm">
-          <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 status-dot-runway online" />
+          <span className="provider-stats-item">
+            <span className="provider-status-dot provider-status-dot-online" />
             <span className="text-text-secondary">{connectedCount} connected</span>
           </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-amber-500 status-dot-runway degraded" />
+          <span className="provider-stats-item">
+            <span className="provider-status-dot provider-status-dot-degraded" />
             <span className="text-text-secondary">{availableCount} available</span>
           </span>
           {defaultProviderId && (
-            <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30">
-              <Star className="w-3 h-3 text-amber-600" />
-              <span className="text-xs text-amber-700 dark:text-amber-400">
+            <span className="provider-stats-default">
+              <Star className="w-3 h-3" />
+              <span className="text-xs">
                 Default: {getProviderConfig(defaultProviderId)?.name}
               </span>
             </span>
           )}
           {failoverConfig.enabled && (
-            <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30">
-              <Shield className="w-3 h-3 text-blue-600" />
-              <span className="text-xs text-blue-700 dark:text-blue-400">Auto-failover enabled</span>
+            <span className="provider-stats-failover">
+              <Shield className="w-3 h-3" />
+              <span className="text-xs">Auto-failover enabled</span>
             </span>
           )}
         </div>
@@ -580,17 +584,17 @@ export function ProvidersPage() {
 
       {/* Error Message with Retry */}
       {error && (
-        <div className="p-4 bg-error/10 border border-error/20 rounded-lg animate-in slide-in-from-top-2 duration-200">
+        <div className="provider-error">
           <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-error mt-0.5 shrink-0" />
+            <AlertCircle className="provider-error-icon" />
             <div className="flex-1">
-              <p className="text-error font-medium">Failed to load providers</p>
-              <p className="text-error/80 text-sm mt-1">{error}</p>
-              <div className="flex gap-2 mt-3">
+              <p className="provider-error-title">Failed to load providers</p>
+              <p className="provider-error-message">{error}</p>
+              <div className="provider-error-actions">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-error/30 text-error hover:bg-error/10 hover:text-error"
+                  className="provider-error-btn-retry"
                   onClick={() => fetchProviders()}
                   disabled={isLoading}
                 >
@@ -600,7 +604,7 @@ export function ProvidersPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-error/70 hover:text-error hover:bg-error/5"
+                  className="provider-error-btn-dismiss"
                   onClick={clearError}
                 >
                   Dismiss
@@ -613,7 +617,7 @@ export function ProvidersPage() {
 
       {/* Providers Grid/List */}
       {viewMode === 'grid' ? (
-        <div className={`grid ${getGridColumns()} gap-5`}>
+        <div className={`provider-grid ${getGridColumns()} gap-5`}>
           {isLoading && providers.length === 0
             ? Array.from({ length: 5 }).map((_, i) => <ProviderCardSkeleton key={i} />)
             : filteredProviders.map((provider) => {
@@ -656,8 +660,8 @@ export function ProvidersPage() {
         </div>
       ) : (
         // List View
-        <Card className="overflow-hidden">
-          <ScrollArea className="h-auto max-h-[600px]">
+        <Card className="provider-list-card overflow-hidden">
+          <ScrollArea className="provider-list-scroll h-auto max-h-[600px]">
             <div className="divide-y divide-border-subtle">
               {filteredProviders.map((provider) => {
                 const connected = isConnected(provider.id);
@@ -668,15 +672,15 @@ export function ProvidersPage() {
                 return (
                   <div
                     key={provider.id}
-                    className="flex items-center gap-4 p-4 hover:bg-bg-secondary/50 transition-colors"
+                    className="provider-list-item"
                   >
                     <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                      className="provider-avatar"
                       style={{ backgroundColor: `${accent.border}15` }}
                     >
                       <ProviderIcon provider={provider.id} size="md" />
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="provider-list-info flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <h4 className="font-medium text-text-primary">{provider.name}</h4>
                         {defaultProviderId === provider.id && (
@@ -688,14 +692,14 @@ export function ProvidersPage() {
                         {connected ? (
                           <Badge
                             variant="outline"
-                            className="border-taxiway/30 text-taxiway text-xs"
+                            className="provider-badge-connected text-xs"
                           >
                             Connected
                           </Badge>
                         ) : (
                           <Badge
                             variant="outline"
-                            className="border-beacon/30 text-beacon text-xs"
+                            className="provider-badge-not-connected text-xs"
                           >
                             Not Connected
                           </Badge>
@@ -706,7 +710,7 @@ export function ProvidersPage() {
                         {provider.regions.length > 3 && ` +${provider.regions.length - 3} more`}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="provider-list-actions flex items-center gap-2">
                       {connected ? (
                         <>
                           <Button

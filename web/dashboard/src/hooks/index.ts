@@ -205,6 +205,14 @@ export {
   useUpdateAgentMemory,
 } from './useAgentMemory';
 
+// Agent Search Hooks
+export {
+  searchKeys,
+  useSearchTools,
+  useSearchStats,
+  useExecuteSearchTool,
+} from './useAgentSearch';
+
 // Agent Swarm Hooks
 export {
   swarmKeys,
@@ -409,6 +417,7 @@ export {
 } from './useVault';
 
 // UI/UX Hooks
+export { usePageTitle, formatPageTitle } from './usePageTitle.tsx';
 export { useCookieConsent } from './useCookieConsent';
 export { useInfiniteScroll } from './useInfiniteScroll';
 export { useKeyboardNavigation } from './useKeyboardNavigation';
@@ -447,7 +456,13 @@ export {
 } from './useFollow';
 export { useNewsletter } from './useNewsletter';
 export { usePlan } from './usePlan';
-export { useProvisioningStatus, useProvisionBundle, useRetryProvisioning, useIsProvisioned, useProvisionedBundle } from './useProvisioning';
+export {
+  useProvisioningStatus,
+  useProvisionBundle,
+  useRetryProvisioning,
+  useIsProvisioned,
+  useProvisionedBundle,
+} from './useProvisioning';
 export { useSignupConfig } from './useSignupConfig';
 export { useStatus } from './useStatus';
 export { useStatusCheck, useStatusHealthCheck, useStatusWebSocket } from './useStatusWebSocket';
@@ -507,7 +522,7 @@ export {
   useActiveAgents,
   useToolInvocations,
   useGoalProgress,
-} from './useAICommandSystem'
+} from './useAICommandSystem';
 
 // Graph Runtime Hooks
 export {
@@ -521,14 +536,14 @@ export {
   useFailurePropagation,
   useLoopVisualization,
   useNodeVersions,
-} from './useGraphRuntime'
+} from './useGraphRuntime';
 
 // Registry Hooks
 export {
   useRegistryStore,
   selectFilteredFunctions,
   selectSortedFunctions,
-} from '@/stores/registryStore'
+} from '@/stores/registryStore';
 
 // Observability Hooks
 export {
@@ -536,7 +551,7 @@ export {
   selectCriticalMetrics,
   selectRecentLogs,
   selectActiveIncidents,
-} from '@/stores/observabilityStore'
+} from '@/stores/observabilityStore';
 
 // Visualization Hooks
 export {
@@ -544,7 +559,7 @@ export {
   selectActiveNodes,
   selectCriticalNodes,
   selectHealthyRegions,
-} from '@/stores/visualizationStore'
+} from '@/stores/visualizationStore';
 
 // Code Intelligence Hooks
 export {
@@ -568,7 +583,7 @@ export {
   useArchitectureConstraints,
   useCodeOwnership,
   useCodeIntelligenceUI,
-} from './useCodeIntelligence'
+} from './useCodeIntelligence';
 
 // DevOps Hooks
 export {
@@ -589,7 +604,7 @@ export {
   useColdStartAnalyzer,
   useServerlessExecutionMap,
   useDevOpsUI,
-} from './useDevOps'
+} from './useDevOps';
 
 // Security Hooks
 export {
@@ -610,7 +625,7 @@ export {
   useVulnerabilities,
   useSecurityPolicies,
   useSecurityUI,
-} from '@/stores/securityStore'
+} from '@/stores/securityStore';
 
 // Collaboration Hooks
 export {
@@ -618,7 +633,7 @@ export {
   selectActivePresences,
   selectSpeakingParticipants,
   selectUnresolvedConflicts,
-} from '@/stores/collaborationStore'
+} from '@/stores/collaborationStore';
 
 export type {
   CollaboratorPresence,
@@ -644,7 +659,7 @@ export type {
   TaskAssignee,
   CodePosition,
   CodeRange,
-} from '@/stores/collaborationStore'
+} from '@/stores/collaborationStore';
 
 // Robotics Hooks
 export {
@@ -659,7 +674,7 @@ export {
   useActuatorControl,
   useEdgeMonitor,
   useWorkflowDesigner,
-} from '@/stores/roboticsStore'
+} from '@/stores/roboticsStore';
 
 // Marketplace Economy Hooks
 export {
@@ -675,7 +690,7 @@ export {
   useConversionAnalytics,
   useOptimizer,
   useTrendRadar,
-} from '@/stores/marketplaceEconomyStore'
+} from '@/stores/marketplaceEconomyStore';
 
 // Adaptive UX Hooks
 export {
@@ -690,7 +705,7 @@ export {
   useCognitiveLoad,
   useAttentionFocus,
   useWorkflowHints,
-} from '@/stores/adaptiveUXStore'
+} from '@/stores/adaptiveUXStore';
 
 // Universal Runtime Hooks
 export {
@@ -705,7 +720,7 @@ export {
   useModelRouting,
   useInferenceSelector,
   useCapabilityMatrix,
-} from '@/stores/universalRuntimeStore'
+} from '@/stores/universalRuntimeStore';
 
 // Data Visualization Hooks
 export {
@@ -720,7 +735,7 @@ export {
   useCostDistribution,
   useSemanticCluster,
   useAgentInteractionGraph,
-} from '@/stores/dataVisualizationStore'
+} from '@/stores/dataVisualizationStore';
 
 // Futuristic Hooks
 export {
@@ -734,4 +749,4 @@ export {
   useSwarmMind,
   useAmbientTelemetry,
   useDigitalTwin,
-} from '@/stores/futuristicStore'
+} from '@/stores/futuristicStore';

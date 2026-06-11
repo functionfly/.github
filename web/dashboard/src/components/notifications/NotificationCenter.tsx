@@ -258,9 +258,9 @@ function useNotificationCenter() {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await notificationsApi.fetchNotifications({ limit: 50 });
-      setNotifications(data);
-      const unread = data.filter((n) => isNotificationUnreadStatus(n.status)).length;
+      const result = await notificationsApi.fetchNotifications({ limit: 50 });
+      setNotifications(result.notifications);
+      const unread = result.notifications.filter((n) => isNotificationUnreadStatus(n.status)).length;
       setUnreadCount(unread);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load notifications');
@@ -326,23 +326,35 @@ function useNotificationCenter() {
 
   const markAsRead = useCallback(
     async (id: string) => {
+      // Snapshot for rollback
+      const prevNotifications = notifications;
+      const prevUnreadCount = unreadCount;
+      const wasUnread = prevNotifications.find(
+        (n) => n.id === id && isNotificationUnreadStatus(n.status)
+      );
+
+      // Optimistic update
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.id === id
+            ? { ...n, status: 'read' as NotificationStatus, readAt: new Date().toISOString() }
+            : n
+        )
+      );
+      if (wasUnread) setUnreadCount((prev) => Math.max(0, prev - 1));
+
       try {
         await notificationsApi.markNotificationAsRead(id);
-        setNotifications((prev) =>
-          prev.map((n) =>
-            n.id === id
-              ? { ...n, status: 'read' as NotificationStatus, readAt: new Date().toISOString() }
-              : n
-          )
-        );
-        setUnreadCount((prev) => Math.max(0, prev - 1));
         void syncBellUnreadFromServer();
       } catch (err) {
+        // Rollback on failure
+        setNotifications(prevNotifications);
+        setUnreadCount(prevUnreadCount);
         console.error('Error marking notification as read:', err);
         toast.error(i18next.t('notifCenter.toastMarkAsReadFailed'));
       }
     },
-    [syncBellUnreadFromServer]
+    [notifications, unreadCount, syncBellUnreadFromServer]
   );
 
   const markAllAsRead = useCallback(async () => {
@@ -372,29 +384,36 @@ function useNotificationCenter() {
 
   const archiveNotification = useCallback(
     async (id: string) => {
+      // Snapshot for rollback
+      const prevNotifications = notifications;
+      const prevUnreadCount = unreadCount;
+      const wasUnread = prevNotifications.find(
+        (n) => n.id === id && isNotificationUnreadStatus(n.status)
+      );
+
+      // Optimistic update
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.id === id
+            ? { ...n, status: 'archived' as NotificationStatus, readAt: new Date().toISOString() }
+            : n
+        )
+      );
+      if (wasUnread) setUnreadCount((prev) => Math.max(0, prev - 1));
+
       try {
         await notificationsApi.archiveNotification(id);
-        let wasUnread = false;
-        setNotifications((prev) => {
-          const cur = prev.find((n) => n.id === id);
-          wasUnread = !!(cur && isNotificationUnreadStatus(cur.status));
-          return prev.map((n) =>
-            n.id === id
-              ? { ...n, status: 'archived' as NotificationStatus, readAt: new Date().toISOString() }
-              : n
-          );
-        });
-        if (wasUnread) {
-          setUnreadCount((prev) => Math.max(0, prev - 1));
-        }
         void syncBellUnreadFromServer();
         toast.success(i18next.t('notifCenter.toastArchived'));
       } catch (err) {
+        // Rollback on failure
+        setNotifications(prevNotifications);
+        setUnreadCount(prevUnreadCount);
         console.error('Error archiving notification:', err);
         toast.error(i18next.t('notifCenter.toastArchiveFailed'));
       }
     },
-    [syncBellUnreadFromServer]
+    [notifications, unreadCount, syncBellUnreadFromServer]
   );
 
   return {
@@ -630,7 +649,10 @@ export function NotificationCenter({
         </div>
 
         {/* Notification List */}
-        <ScrollArea className="flex-1" style={{ maxHeight }}>
+        <ScrollArea
+          className={cn('flex-1', isMarkingAllRead && 'pointer-events-none opacity-50')}
+          style={{ maxHeight }}
+        >
           <AnimatePresence mode="wait">
             {isLoading ? (
               <LoadingSkeleton />

@@ -255,3 +255,64 @@ export function useClaimBounty() {
     },
   });
 }
+
+// Add reaction
+export function useAddReaction() {
+  const queryClient = useQueryClient();
+  const currentUser = useAuthStore((state) => state.user);
+
+  return useMutation({
+    mutationFn: ({ conversationId, messageId, reaction }: { conversationId: string; messageId: string; reaction: string }) =>
+      conversationsApi.addReaction(currentUser?.username || '', conversationId, messageId, reaction),
+    onSuccess: (_, { conversationId }) => {
+      queryClient.invalidateQueries({ queryKey: conversationKeys.messages(conversationId) });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to add reaction: ${error.message}`);
+    },
+  });
+}
+
+// Remove reaction
+export function useRemoveReaction() {
+  const queryClient = useQueryClient();
+  const currentUser = useAuthStore((state) => state.user);
+
+  return useMutation({
+    mutationFn: ({ conversationId, messageId, reaction }: { conversationId: string; messageId: string; reaction: string }) =>
+      conversationsApi.removeReaction(currentUser?.username || '', conversationId, messageId, reaction),
+    onSuccess: (_, { conversationId }) => {
+      queryClient.invalidateQueries({ queryKey: conversationKeys.messages(conversationId) });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to remove reaction: ${error.message}`);
+    },
+  });
+}
+
+// Mark message as read
+export function useMarkMessageRead() {
+  const queryClient = useQueryClient();
+  const currentUser = useAuthStore((state) => state.user);
+
+  return useMutation({
+    mutationFn: ({ conversationId, messageId }: { conversationId: string; messageId: string }) =>
+      conversationsApi.markMessageRead(currentUser?.username || '', conversationId, messageId),
+    onSuccess: (_, { messageId }) => {
+      queryClient.invalidateQueries({ queryKey: conversationKeys.messages(messageId) });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to mark message as read: ${error.message}`);
+    },
+  });
+}
+
+// Get message read receipts
+export function useMessageReadReceipts(conversationId: string, messageId: string) {
+  const currentUser = useAuthStore((state) => state.user);
+  return useQuery({
+    queryKey: [...conversationKeys.messages(conversationId), 'read-receipts', messageId],
+    queryFn: () => conversationsApi.getMessageReadReceipts(currentUser?.username || '', conversationId, messageId),
+    enabled: !!conversationId && !!messageId,
+  });
+}

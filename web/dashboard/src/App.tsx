@@ -6,6 +6,7 @@ import { ThemeAwareToaster } from '@/components/common/ThemeAwareToaster';
 import { ThemeProvider } from '@/components/common/ThemeProvider';
 import { CookieConsentProvider } from '@/components/cookie-consent';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { UserProfileLayout } from '@/components/layout/UserProfileLayout';
 import { useNotificationRealtime } from '@/hooks/useNotificationRealtime';
 import { useNotificationUnreadPolling } from '@/hooks/useNotificationUnreadPolling';
 import { redirectToAuthSite } from '@/lib/auth-integration';
@@ -41,6 +42,8 @@ import BundleProvisioningPage from '@/pages/BundleProvisioningPage';
 import { BrainPage } from '@/pages/BrainPage';
 import { CertificationPage } from '@/pages/CertificationPage';
 import ChangelogPage from '@/pages/ChangelogPage';
+import { CommunityPage } from '@/pages/CommunityPage';
+import { ConnectorsCallbackPage } from '@/pages/ConnectorsCallbackPage';
 import { ContactPage } from '@/pages/ContactPage';
 import ConversationsPage from '@/pages/ConversationsPage';
 import { CredentialsPage } from '@/pages/CredentialsPage';
@@ -134,6 +137,7 @@ import { DataVisualizationPage } from '@/pages/DataVisualizationPage';
 import { DevOpsPage } from '@/pages/DevOpsPage';
 import FuturisticPage from '@/pages/FuturisticPage';
 import { MarketplaceEconomyPage } from '@/pages/MarketplaceEconomyPage';
+import { MCPCenterPage } from '@/pages/MCPCenterPage';
 import { MemoryPage } from '@/pages/MemoryPage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
 import { PasteCodePage } from '@/pages/PasteCodePage';
@@ -599,7 +603,7 @@ function AppContent() {
           {/* FRG (Function Runtime Graph) Routes */}
           <Route path="frg" element={<FRGGraphsPage />} />
           <Route path="frg/new" element={<FRGEditorPage />} />
-          <Route path="frg/:id" element={<FRGEditorPage />} />
+          <Route path="frg/:author/:name" element={<FRGEditorPage />} />
 
           {/* GitHub Integration Routes */}
           <Route path="github" element={<GitHubPage />} />
@@ -607,6 +611,7 @@ function AppContent() {
 
           <Route path="providers" element={<ProvidersPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
+          <Route path="mcp" element={<MCPCenterPage />} />
           <Route path="usage" element={<UsagePage />} />
           <Route path="state-fabric" element={<StateFabricPage />} />
           <Route path="state-fabric/new" element={<StateFabricDetailPage />} />
@@ -639,6 +644,7 @@ function AppContent() {
           <Route path="dashboard/api-keys" element={<APIKeysPage />} />
           <Route path="dashboard/api-keys/:keyId" element={<APIKeyDetailPage />} />
           <Route path="secrets" element={<SecretsPage />} />
+          <Route path="connectors/callback" element={<ConnectorsCallbackPage />} />
           <Route path="connectors" element={<Navigate to="/settings#integrations" replace />} />
           <Route path="brain" element={<BrainPage />} />
           <Route path="teams" element={<TeamsPage />} />
@@ -673,6 +679,9 @@ function AppContent() {
           <Route path="wallet/:slug" element={<WalletPage />} />
           <Route path="evolution" element={<EvolutionPage />} />
           <Route path="evolution/:slug" element={<EvolutionPage />} />
+          <Route path="conversations" element={<ConversationsPage />} />
+          <Route path="conversations/:id" element={<ConversationsPage />} />
+          <Route path="community" element={<CommunityPage />} />
         </Route>
 
         {/* Studio Route - Outside DashboardLayout for fullscreen */}
@@ -824,9 +833,19 @@ function AppContent() {
           <Route index element={<FuturisticPage />} />
           <Route path=":panel" element={<FuturisticPage />} />
         </Route>
-        <Route path="u/:username/agents" element={<AgentsPage />} />
-        <Route path="u/:username/conversations" element={<ConversationsPage />} />
-        <Route path="u/:username/conversations/:id" element={<ConversationsPage />} />
+
+        <Route
+          path="u/:username"
+          element={
+            <ProtectedRoute>
+              <UserProfileLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="agents" element={<AgentsPage />} />
+          <Route path="conversations" element={<ConversationsPage />} />
+          <Route path="conversations/:id" element={<ConversationsPage />} />
+        </Route>
 
         {/* 404 - Not Found */}
         <Route path="*" element={<NotFoundPage />} />

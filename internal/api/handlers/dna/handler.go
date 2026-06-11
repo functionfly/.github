@@ -1,10 +1,15 @@
 package dna
 
 import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -12,14 +17,21 @@ import (
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/dna"
 	"github.com/gorilla/mux"
+	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
+)
+
+const (
+	analyzeRateLimitKeyPrefix = "ratelimit:dna:analyze:"
+	analyzeRateLimitWindow   = 1 * time.Minute
+	analyzeRateLimitMaxReqs  = 10
 )
 
 // Handler exposes the Function DNA API over HTTP.
 type Handler struct {
-	svc    *dna.Service
-	logger *logrus.Logger
-	// Rate limiter for the manual analysis trigger endpoint
+	svc           *dna.Service
+	logger        *logrus.Logger
+	redisClient   *redis.Client
 	analyzeLimiter *analyzeRateLimiter
 }
 
@@ -28,7 +40,28 @@ func NewHandler(svc *dna.Service, logger *logrus.Logger) *Handler {
 	return &Handler{
 		svc:            svc,
 		logger:         logger,
-		analyzeLimiter: newAnalyzeRateLimiter(10, time.Minute), // 10 requests per minute per user
+		analyzeLimiter: newAnalyzeRateLimiter(analyzeRateLimitMaxReqs, analyzeRateLimitWindow),
+	}
+}
+
+// NewHandlerWithRedis creates a new DNA handler with Redis-based distributed rate limiting.
+func NewHandlerWithRedis(svc *dna.Service, logger *logrus.Logger, redisClient *redis.Client) *Handler {
+	limiter := newAnalyzeRateLimiter(analyzeRateLimitMaxReqs, analyzeRateLimitWindow)
+	if redisClient != nil {
+		limiter.redisClient = redisClient
+	}
+	return &Handler{
+		svc:            svc,
+		logger:         logger,
+		redisClient:    redisClient,
+		analyzeLimiter: limiter,
+	}
+}
+
+// Shutdown gracefully stops the handler's background goroutines (e.g., rate limiter cleanup).
+func (h *Handler) Shutdown() {
+	if h.analyzeLimiter != nil {
+		h.analyzeLimiter.Stop()
 	}
 }
 
@@ -166,12 +199,18 @@ func (h *Handler) AcceptVariant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Enforce body size limit to prevent memory exhaustion
+	if r.ContentLength > 4096 {
+		writeError(w, http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE", "request body too large")
+		return
+	}
+
 	mutationID := mux.Vars(r)["mutation_id"]
 
 	var req struct {
 		CanaryPercentage int `json:"canary_percentage"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&req); err != nil {
 		req.CanaryPercentage = 10
 	}
 	if req.CanaryPercentage <= 0 || req.CanaryPercentage > 100 {
@@ -179,19 +218,19 @@ func (h *Handler) AcceptVariant(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.AcceptMutation(r.Context(), mutationID, claims.UserID.String(), claims.TenantID.String(), req.CanaryPercentage); err != nil {
-		if err.Error() == "access denied" {
+		if errors.Is(err, dna.ErrAccessDenied) {
 			writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied")
 			return
 		}
-		if err.Error() == "mutation not found" {
+		if errors.Is(err, dna.ErrMutationNotFound) {
 			writeError(w, http.StatusNotFound, "NOT_FOUND", "mutation not found")
 			return
 		}
-		if strings.HasPrefix(err.Error(), "mutation is not in proposed status") {
+		if errors.Is(err, dna.ErrMutationNotProposed) {
 			writeError(w, http.StatusConflict, "CONFLICT", "mutation has already been actioned")
 			return
 		}
-		if strings.HasPrefix(err.Error(), "insufficient credits") {
+		if errors.Is(err, dna.ErrInsufficientCredits) {
 			writeError(w, http.StatusPaymentRequired, "INSUFFICIENT_CREDITS", "insufficient credits to accept this mutation")
 			return
 		}
@@ -214,26 +253,32 @@ func (h *Handler) RejectVariant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Enforce body size limit to prevent memory exhaustion
+	if r.ContentLength > 4096 {
+		writeError(w, http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE", "request body too large")
+		return
+	}
+
 	mutationID := mux.Vars(r)["mutation_id"]
 
 	var req struct {
 		Reason string `json:"reason"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
 		return
 	}
 
 	if err := h.svc.RejectMutation(r.Context(), mutationID, claims.TenantID.String(), req.Reason); err != nil {
-		if err.Error() == "access denied" {
+		if errors.Is(err, dna.ErrAccessDenied) {
 			writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied")
 			return
 		}
-		if err.Error() == "mutation not found" {
+		if errors.Is(err, dna.ErrMutationNotFound) {
 			writeError(w, http.StatusNotFound, "NOT_FOUND", "mutation not found")
 			return
 		}
-		if strings.HasPrefix(err.Error(), "mutation is not in proposed status") {
+		if errors.Is(err, dna.ErrMutationNotProposed) {
 			writeError(w, http.StatusConflict, "CONFLICT", "mutation has already been actioned")
 			return
 		}
@@ -245,6 +290,53 @@ func (h *Handler) RejectVariant(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]interface{}{
 		"mutation_id": mutationID,
 		"status":      "rejected",
+	})
+}
+
+// RollbackVariant handles POST /v1/functions/{id}/dna/variants/{mutation_id}/rollback
+func (h *Handler) RollbackVariant(w http.ResponseWriter, r *http.Request) {
+	claims := h.requireAuth(w, r)
+	if claims == nil {
+		return
+	}
+
+	// Enforce body size limit to prevent memory exhaustion
+	if r.ContentLength > 4096 {
+		writeError(w, http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE", "request body too large")
+		return
+	}
+
+	mutationID := mux.Vars(r)["mutation_id"]
+
+	var req struct {
+		Reason string `json:"reason"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
+		return
+	}
+
+	if err := h.svc.RollbackMutation(r.Context(), mutationID, claims.TenantID.String(), req.Reason); err != nil {
+		if errors.Is(err, dna.ErrAccessDenied) {
+			writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied")
+			return
+		}
+		if errors.Is(err, dna.ErrMutationNotFound) {
+			writeError(w, http.StatusNotFound, "NOT_FOUND", "mutation not found")
+			return
+		}
+		if errors.Is(err, dna.ErrRollbackNotEligible) {
+			writeError(w, http.StatusConflict, "CONFLICT", "mutation cannot be rolled back in current status")
+			return
+		}
+		h.logger.WithError(err).Error("dna: rollback mutation failed")
+		writeError(w, http.StatusInternalServerError, "INTERNAL", "failed to rollback mutation")
+		return
+	}
+
+	jsonOK(w, map[string]interface{}{
+		"mutation_id": mutationID,
+		"status":      "rolled_back",
 	})
 }
 
@@ -289,7 +381,7 @@ func (h *Handler) TriggerAnalysis(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Rate limit manual analysis triggers
-	if !h.analyzeLimiter.Allow(claims.UserID.String()) {
+	if !h.analyzeLimiter.Allow(r.Context(), claims.UserID.String()) {
 		writeError(w, http.StatusTooManyRequests, "RATE_LIMITED", "too many analysis requests, please try again later")
 		return
 	}
@@ -324,6 +416,12 @@ func (h *Handler) ToggleEvolution(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Enforce body size limit to prevent memory exhaustion
+	if r.ContentLength > 4096 {
+		writeError(w, http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE", "request body too large")
+		return
+	}
+
 	functionID := mux.Vars(r)["id"]
 	functionType := r.URL.Query().Get("type")
 	if functionType == "" {
@@ -338,7 +436,7 @@ func (h *Handler) ToggleEvolution(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Enabled bool `json:"enabled"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
 		return
 	}
@@ -422,21 +520,63 @@ func parseQueryInt(r *http.Request, key string, defaultVal, min, max int) int {
 	return v
 }
 
-// analyzeRateLimiter is a simple per-user in-memory sliding window rate limiter.
+// analyzeRateLimiter is a sliding window rate limiter that uses Redis when available,
+// falling back to in-memory storage for single-instance deployments.
 type analyzeRateLimiter struct {
-	mu       sync.Mutex
-	entries  map[string][]time.Time
-	limit    int
-	window   time.Duration
+	redisClient *redis.Client
+	memStore    *inMemoryStore
+	limit       int
+	window      time.Duration
+	stopCh      chan struct{}
+}
+
+// inMemoryStore provides thread-safe in-memory storage for rate limiting.
+type inMemoryStore struct {
+	mu    sync.Mutex
+	entries map[string][]time.Time
+}
+
+func newInMemoryStore() *inMemoryStore {
+	return &inMemoryStore{
+		entries: make(map[string][]time.Time),
+	}
+}
+
+func (s *inMemoryStore) getOrCreate(key string) *inMemoryEntry {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if e, ok := s.entries[key]; ok {
+		return &inMemoryEntry{timestamps: e, store: s, key: key}
+	}
+	e := &inMemoryEntry{timestamps: []time.Time{}, store: s, key: key}
+	s.entries[key] = e.timestamps
+	return e
+}
+
+type inMemoryEntry struct {
+	timestamps []time.Time
+	mu         sync.Mutex
+	store      *inMemoryStore
+	key        string
+}
+
+func (e *inMemoryEntry) clean(cutoff time.Time) {
+	valid := e.timestamps[:0]
+	for _, t := range e.timestamps {
+		if t.After(cutoff) {
+			valid = append(valid, t)
+		}
+	}
+	e.timestamps = valid
 }
 
 func newAnalyzeRateLimiter(limit int, window time.Duration) *analyzeRateLimiter {
 	l := &analyzeRateLimiter{
-		entries: make(map[string][]time.Time),
-		limit:   limit,
-		window:  window,
+		memStore: newInMemoryStore(),
+		limit:    limit,
+		window:   window,
+		stopCh:   make(chan struct{}),
 	}
-	// Start background cleanup to prevent unbounded memory growth
 	go l.cleanupLoop()
 	return l
 }
@@ -444,17 +584,26 @@ func newAnalyzeRateLimiter(limit int, window time.Duration) *analyzeRateLimiter 
 func (l *analyzeRateLimiter) cleanupLoop() {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
-	for range ticker.C {
-		l.cleanup()
+	for {
+		select {
+		case <-l.stopCh:
+			return
+		case <-ticker.C:
+			l.cleanupMem()
+		}
 	}
 }
 
-func (l *analyzeRateLimiter) cleanup() {
-	l.mu.Lock()
-	defer l.mu.Unlock()
+// Stop gracefully stops the cleanup goroutine.
+func (l *analyzeRateLimiter) Stop() {
+	close(l.stopCh)
+}
 
+func (l *analyzeRateLimiter) cleanupMem() {
+	l.memStore.mu.Lock()
+	defer l.memStore.mu.Unlock()
 	cutoff := time.Now().Add(-l.window)
-	for userID, timestamps := range l.entries {
+	for userID, timestamps := range l.memStore.entries {
 		valid := timestamps[:0]
 		for _, t := range timestamps {
 			if t.After(cutoff) {
@@ -462,33 +611,69 @@ func (l *analyzeRateLimiter) cleanup() {
 			}
 		}
 		if len(valid) == 0 {
-			delete(l.entries, userID)
+			delete(l.memStore.entries, userID)
 		} else {
-			l.entries[userID] = valid
+			l.memStore.entries[userID] = valid
 		}
 	}
 }
 
-func (l *analyzeRateLimiter) Allow(userID string) bool {
-	l.mu.Lock()
-	defer l.mu.Unlock()
+// Allow checks if a request is allowed under the rate limit using Redis distributed
+// sliding window. Falls back to in-memory if Redis is unavailable.
+func (l *analyzeRateLimiter) Allow(ctx context.Context, userID string) bool {
+	if l.redisClient != nil {
+		return l.allowRedis(ctx, userID)
+	}
+	return l.allowMem(userID)
+}
 
+func (l *analyzeRateLimiter) allowRedis(ctx context.Context, userID string) bool {
 	now := time.Now()
-	cutoff := now.Add(-l.window)
+	windowStart := now.Add(-l.window).UnixMilli()
+	currentTime := float64(now.UnixNano()) / float64(time.Millisecond)
 
-	timestamps := l.entries[userID]
-	valid := timestamps[:0]
-	for _, t := range timestamps {
-		if t.After(cutoff) {
-			valid = append(valid, t)
-		}
+	// Hash userID to prevent Redis key injection
+	h := sha256.Sum256([]byte(userID))
+	sanitizedKey := hex.EncodeToString(h[:8])
+	redisKey := analyzeRateLimitKeyPrefix + sanitizedKey
+
+	if err := l.redisClient.ZRemRangeByScore(ctx, redisKey, "-inf", strconv.FormatInt(windowStart, 10)).Err(); err != nil {
+		return l.allowMem(userID)
 	}
 
-	if len(valid) >= l.limit {
-		l.entries[userID] = valid
+	count, err := l.redisClient.ZCard(ctx, redisKey).Result()
+	if err != nil {
+		return l.allowMem(userID)
+	}
+
+	if count >= int64(l.limit) {
 		return false
 	}
 
-	l.entries[userID] = append(valid, now)
+	if err := l.redisClient.ZAdd(ctx, redisKey, redis.Z{
+		Score:  currentTime,
+		Member: fmt.Sprintf("%.0f", currentTime),
+	}).Err(); err != nil {
+		return l.allowMem(userID)
+	}
+
+	l.redisClient.Expire(ctx, redisKey, l.window+time.Second)
+	return true
+}
+
+func (l *analyzeRateLimiter) allowMem(userID string) bool {
+	entry := l.memStore.getOrCreate(userID)
+	entry.mu.Lock()
+	defer entry.mu.Unlock()
+
+	now := time.Now()
+	cutoff := now.Add(-l.window)
+	entry.clean(cutoff)
+
+	if len(entry.timestamps) >= l.limit {
+		return false
+	}
+
+	entry.timestamps = append(entry.timestamps, now)
 	return true
 }

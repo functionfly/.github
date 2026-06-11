@@ -125,6 +125,10 @@ func (db *PostgresDB) initPreparedStatements(ctx context.Context) error {
 
 	go db.reprepareStatementsRoutine()
 
+	// Mark initialization as successful before releasing lock
+	// This ensures the goroutine only runs when initialization completed successfully
+	db.stmtInitialized = true
+
 	logrus.Info("Initialized enhanced prepared statement management")
 	return nil
 }
@@ -132,6 +136,17 @@ func (db *PostgresDB) initPreparedStatements(ctx context.Context) error {
 // reprepareStatementsRoutine periodically re-prepares statements to prevent staleness
 func (db *PostgresDB) reprepareStatementsRoutine() {
 	for range db.stmtReprepareTicker.C {
+		// Guard against orphaned goroutine: if initialization didn't complete,
+		// the stmtInitialized flag will be false and we exit gracefully
+		db.stmtMutex.RLock()
+		initialized := db.stmtInitialized
+		db.stmtMutex.RUnlock()
+
+		if !initialized {
+			logrus.Debug("Prepared statement re-prepare goroutine exiting: initialization did not complete")
+			return
+		}
+
 		if err := db.reprepareStatements(); err != nil {
 			logrus.WithError(err).Warn("Failed to re-prepare statements")
 		} else {
@@ -278,6 +293,9 @@ func (db *PostgresDB) closePreparedStatementsLocked() {
 	if db.stmtReprepareTicker != nil {
 		db.stmtReprepareTicker.Stop()
 	}
+
+	// Mark as not initialized so orphaned goroutine exits
+	db.stmtInitialized = false
 
 	// Close all prepared statements
 	for name, stmt := range db.preparedStatements {

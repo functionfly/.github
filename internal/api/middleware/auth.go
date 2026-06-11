@@ -91,6 +91,32 @@ func (m *AuthMiddleware) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// RequirePermission returns a middleware that checks if the authenticated user has the required permission.
+// Must be used after RequireAuth since it reads claims from context.
+func (m *AuthMiddleware) RequirePermission(requiredPermission string) func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			claims := GetUserFromContext(r)
+			if claims == nil {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			if !claims.HasPermission(requiredPermission) {
+				logrus.WithFields(logrus.Fields{
+					"user_id":              claims.UserID,
+					"required_permission":  requiredPermission,
+					"user_permissions":     claims.Permissions,
+				}).Warn("Permission denied")
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		}
+	}
+}
+
 // GetUserFromContext extracts user claims from request context
 func GetUserFromContext(r *http.Request) *auth.Claims {
 	return GetClaimsFromContext(r.Context())

@@ -5,9 +5,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/api/utils"
+	"github.com/functionfly/functionfly/internal/apikey"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -52,6 +54,55 @@ func (h *Handler) HandleConnectProvider(w http.ResponseWriter, r *http.Request) 
 			})
 			return
 		}
+
+		var edgeAPIKey string
+		var edgeAPIKeyID string
+
+		if h.apikeyRepo != nil {
+			generator := apikey.NewGenerator()
+			plaintext, err := generator.Generate(apikey.KeyTypeEdge)
+			if err != nil {
+				logrus.WithError(err).Error("Failed to generate Edge API key")
+				http.Error(w, "Failed to generate API key", http.StatusInternalServerError)
+				return
+			}
+			edgeAPIKey = plaintext
+
+			hasher := apikey.NewHasher()
+			keyHash := hasher.Hash(plaintext)
+
+			now := time.Now()
+			keyID := uuid.New()
+			apiKeyRecord := &apikey.APIKey{
+				ID:                    keyID,
+				TenantID:              claims.TenantID,
+				UserID:                claims.UserID,
+				Name:                  "FunctionFly Edge",
+				Description:           "Auto-generated Edge API key for FunctionFly Edge provider",
+				KeyType:               apikey.KeyTypeEdge,
+				KeyID:                 plaintext,
+				KeyPrefix:             apikey.PrefixEdge,
+				KeyHash:               keyHash,
+				KeyVersion:            1,
+				LastRotatedAt:         now,
+				RotationFrequencyDays: 90,
+				RateLimitRPM:          1000,
+				RateLimitRPH:          60000,
+				RateLimitRPD:          1000000,
+				IsActive:              true,
+				Metadata:              apikey.JSONBMap{"provider_id": "functionfly-edge"},
+				CreatedAt:             now,
+				UpdatedAt:             now,
+				CreatedBy:             "functionfly-edge-connect",
+			}
+			if err := h.apikeyRepo.CreatePreGenerated(ctx, apiKeyRecord); err != nil {
+				logrus.WithError(err).Error("Failed to store Edge API key")
+				http.Error(w, "Failed to store API key", http.StatusInternalServerError)
+				return
+			}
+			edgeAPIKeyID = keyID.String()
+		}
+
 		idBytes := make([]byte, 16)
 		rand.Read(idBytes)
 		provider := &storage.Provider{
@@ -77,9 +128,14 @@ func (h *Handler) HandleConnectProvider(w http.ResponseWriter, r *http.Request) 
 		}, true)
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		response := map[string]interface{}{
 			"provider": providerResponse(provider),
-		})
+		}
+		if edgeAPIKey != "" {
+			response["apiKey"] = edgeAPIKey
+			response["apiKeyId"] = edgeAPIKeyID
+		}
+		json.NewEncoder(w).Encode(response)
 		return
 	}
 

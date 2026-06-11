@@ -37,6 +37,18 @@ import {
   Wand2,
   Timer,
   AlertCircle,
+  Plus,
+  Trash2,
+  Edit3,
+  Copy,
+  Save,
+  Settings,
+  Play,
+  Pause,
+  Square,
+  ThumbsUp,
+  ThumbsDown,
+  HelpCircle,
 } from 'lucide-react';
 
 // ============================================================================

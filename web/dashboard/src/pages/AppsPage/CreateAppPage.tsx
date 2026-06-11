@@ -43,71 +43,10 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
+import '@/styles/aviation-create-app.css';
 import { ICON_COLORS, ICON_OPTIONS, useCreateApp, type Environment } from './hooks/useCreateApp';
 
 type IconPickerTab = 'emoji' | 'icons';
-
-// Animation keyframes as style element
-const animationStyles = `
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes pulse-soft {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
-  }
-}
-
-.animate-fade-in-up {
-  animation: fadeInUp 0.5s ease-out forwards;
-}
-
-.animate-slide-in-right {
-  animation: slideInRight 0.5s ease-out forwards;
-}
-
-.animate-pulse-soft {
-  animation: pulse-soft 2s ease-in-out infinite;
-}
-
-.animation-delay-100 {
-  animation-delay: 100ms;
-}
-
-.animation-delay-200 {
-  animation-delay: 200ms;
-}
-
-.animation-delay-300 {
-  animation-delay: 300ms;
-}
-
-.animation-delay-400 {
-  animation-delay: 400ms;
-}
-`;
 
 // Icon picker panel (used inside Radix Popover so it is not clipped by parent overflow-hidden)
 function IconPickerPanel({
@@ -121,7 +60,7 @@ function IconPickerPanel({
   const [activeTab, setActiveTab] = useState<IconPickerTab>('emoji');
 
   return (
-    <div className="min-w-[280px]">
+    <div className="icon-picker-panel">
       {/* Tabs */}
       <div className="flex items-center gap-1 p-1 rounded-lg bg-muted/50 mb-3">
         <button
@@ -221,7 +160,7 @@ function ValidationMessage({
   const Icon = icons[type];
 
   return (
-    <div className={cn('flex items-center gap-1.5 text-xs mt-1.5', styles[type])}>
+    <div className={cn('validation-message', styles[type])}>
       <Icon className="w-3 h-3 flex-shrink-0" />
       {message}
     </div>
@@ -251,7 +190,7 @@ function SectionCard({
   return (
     <div
       className={cn(
-        'rounded-2xl border border-border/50 bg-card overflow-hidden animate-fade-in-up opacity-0',
+        'section-card animate-fade-in-up opacity-0',
         delayClass,
         className
       )}
@@ -293,8 +232,7 @@ function TagInput({
   return (
     <div
       className={cn(
-        'flex flex-wrap items-center gap-2 p-2 rounded-lg border bg-secondary/50 min-h-[44px]',
-        'focus-within:ring-2 focus-within:ring-ring focus-within:border-input',
+        'tag-input-container',
         disabled && 'opacity-50 cursor-not-allowed'
       )}
       onClick={() => inputRef.current?.focus()}
@@ -302,7 +240,7 @@ function TagInput({
       {tags.map((tag) => (
         <span
           key={tag}
-          className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 text-primary text-sm"
+          className="tag-item"
         >
           {tag}
           <button
@@ -311,7 +249,7 @@ function TagInput({
               e.stopPropagation();
               onRemove(tag);
             }}
-            className="hover:text-destructive transition-colors"
+            className="tag-remove-btn"
             disabled={disabled}
           >
             <X className="w-3 h-3" />
@@ -325,7 +263,7 @@ function TagInput({
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={tags.length === 0 ? t('appsPage.addTagsPlaceholder') : ''}
-        className="flex-1 min-w-[100px] bg-transparent outline-none text-sm placeholder:text-muted-foreground"
+        className="tag-input-field"
         disabled={disabled}
       />
     </div>
@@ -337,17 +275,17 @@ function AppPreviewCard({ formData }: { formData: ReturnType<typeof useCreateApp
   const selectedColor = ICON_COLORS.find((c) => c.value === formData.iconColor) || ICON_COLORS[0];
 
   return (
-    <Card className="overflow-hidden border border-border/50 bg-card dark:bg-card/50 backdrop-blur-sm animate-slide-in-right opacity-0 sticky top-20 shadow-sm">
+    <Card className="app-preview-card animate-slide-in-right opacity-0">
       <CardContent className="p-0">
         {/* Preview Header */}
-        <div className="px-4 py-3 border-b border-border/50 bg-muted/50 dark:bg-muted/30">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        <div className="app-preview-header">
+          <p className="app-preview-label">
             {t('appsPage.livePreview')}
           </p>
         </div>
 
         {/* Preview Content */}
-        <div className="p-6 space-y-6">
+        <div className="app-preview-content space-y-6">
           {/* App Card */}
           <div className="relative">
             <div
@@ -359,29 +297,23 @@ function AppPreviewCard({ formData }: { formData: ReturnType<typeof useCreateApp
               <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
               <div className="relative z-10">
                 <div className="flex items-start justify-between">
-                  <div
-                    className={cn(
-                      'w-14 h-14 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-3xl shadow-lg',
-                      'border border-white/30'
-                    )}
-                  >
+                  <div className="app-preview-icon">
                     {formData.iconEmoji}
                   </div>
                   <span
                     className={cn(
-                      'px-2.5 py-1 rounded-full text-xs font-medium backdrop-blur-sm text-white',
-                      'border border-white/30 shadow-sm',
-                      formData.visibility === 'public' ? 'bg-emerald-500/40' : 'bg-amber-500/40'
+                      'app-preview-visibility',
+                      formData.visibility === 'public' ? 'app-preview-visibility-public' : 'app-preview-visibility-private'
                     )}
                   >
                     {formData.visibility === 'public' ? t('appsPage.public') : t('appsPage.private')}
                   </span>
                 </div>
                 <div className="mt-4">
-                  <h3 className="text-lg font-semibold text-white drop-shadow-md">
+                  <h3 className="app-preview-name">
                     {formData.name || t('appsPage.untitledApp')}
                   </h3>
-                  <p className="text-sm text-white/90 font-mono mt-0.5 drop-shadow-sm">
+                  <p className="app-preview-slug mt-0.5">
                     {formData.slug || t('appsPage.appSlugDefault')}
                   </p>
                 </div>
@@ -400,13 +332,13 @@ function AppPreviewCard({ formData }: { formData: ReturnType<typeof useCreateApp
                 {formData.tags.slice(0, 3).map((tag) => (
                   <span
                     key={tag}
-                    className="px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground text-xs"
+                    className="app-preview-tag"
                   >
                     {tag}
                   </span>
                 ))}
                 {formData.tags.length > 3 && (
-                  <span className="px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground text-xs">
+                  <span className="app-preview-tag">
                     +{formData.tags.length - 3}
                   </span>
                 )}
@@ -423,7 +355,7 @@ function AppPreviewCard({ formData }: { formData: ReturnType<typeof useCreateApp
           {formData.slug && (
             <div className="pt-4 border-t border-border/50">
               <p className="text-xs text-muted-foreground mb-1.5">{t('appsPage.appUrl')}</p>
-              <code className="block text-xs font-mono text-primary break-all bg-muted/50 dark:bg-muted/30 px-3 py-2 rounded-lg">
+              <code className="app-preview-url">
                 {publicAppUrl(formData.slug)}
               </code>
             </div>
@@ -457,20 +389,19 @@ function GettingStartedTip({
   return (
     <div
       className={cn(
-        'group p-4 rounded-xl border border-border bg-card hover:bg-accent/50 transition-all duration-300',
-        'hover:border-border hover:shadow-md hover:-translate-y-1',
+        'getting-started-tip',
         'animate-fade-in-up opacity-0',
         delayClass
       )}
       style={{ animationFillMode: 'forwards' }}
     >
       <div className="flex items-start gap-4">
-        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+        <div className="getting-started-tip-icon">
           <Icon className="w-5 h-5 text-primary" />
         </div>
         <div className="flex-1">
-          <h4 className="font-medium text-sm">{title}</h4>
-          <p className="text-xs text-muted-foreground mt-1">{description}</p>
+          <h4 className="getting-started-tip-title">{title}</h4>
+          <p className="getting-started-tip-description mt-1">{description}</p>
         </div>
       </div>
     </div>
@@ -559,11 +490,9 @@ export function CreateAppPage() {
 
   return (
     <TooltipProvider>
-      <style>{animationStyles}</style>
-
-      <div className="min-h-screen bg-background">
+      <div className="aviation-create-app min-h-screen">
         {/* Sticky Action Bar */}
-        <div className="sticky top-0 z-50 border-b border-border/50 bg-background/85 backdrop-blur-xl">
+        <div className="action-bar sticky top-0 z-50 border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
             {/* Left: Breadcrumb */}
             <div className="flex items-center gap-3 min-w-0">
@@ -579,36 +508,36 @@ export function CreateAppPage() {
               <nav className="flex items-center gap-1.5 text-sm min-w-0" aria-label="Breadcrumb">
                 <Link
                   to="/apps"
-                  className="text-muted-foreground hover:text-foreground transition-colors truncate"
+                  className="breadcrumb-link hover:text-foreground transition-colors truncate"
                 >
                   {t('appsPage.breadcrumbApps')}
                 </Link>
                 <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                <span className="text-foreground font-medium truncate">{t('appsPage.breadcrumbCreate')}</span>
+                <span className="breadcrumb-current font-medium truncate">{t('appsPage.breadcrumbCreate')}</span>
               </nav>
             </div>
 
             {/* Center: Auto-save indicator */}
             <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
               {isSubmitting ? (
-                <span className="flex items-center gap-1.5">
+                <span className="autosave-indicator autosave-submitting flex items-center gap-1.5">
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
                   {t('appsPage.creatingApp')}
                 </span>
               ) : isDirty ? (
                 lastSaved ? (
-                  <span className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="autosave-indicator autosave-saved flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
                     {t('appsPage.draftSaved', { time: formatRelativeTime(lastSaved) })}
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1.5">
-                    <Save className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="autosave-indicator autosave-dirty flex items-center gap-1.5">
+                    <Save className="w-3.5 h-3.5" />
                     {t('appsPage.unsavedChanges')}
                   </span>
                 )
               ) : (
-                <span className="flex items-center gap-1.5">
+                <span className="autosave-indicator flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5" />
                   {t('appsPage.readyToCreate')}
                 </span>
@@ -633,7 +562,7 @@ export function CreateAppPage() {
                     disabled={!isValid || isSubmitting}
                     className={cn(
                       'gap-2 font-semibold min-w-[120px]',
-                      isValid && 'gradient-primary text-primary-foreground border-0'
+                      isValid ? 'create-btn create-btn-enabled' : 'create-btn-disabled'
                     )}
                   >
                     {isSubmitting ? (
@@ -663,16 +592,16 @@ export function CreateAppPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
           {/* Page Header */}
           <div
-            className="mb-8 animate-fade-in-up opacity-0"
+            className="page-header mb-8 animate-fade-in-up opacity-0"
             style={{ animationFillMode: 'forwards' }}
           >
             <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center animate-pulse-soft">
-                <Rocket className="w-7 h-7 text-indigo-400" />
+              <div className="page-header-icon animate-pulse-soft">
+                <Rocket className="w-7 h-7" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold tracking-tight">{t('appsPage.createNewApp')}</h1>
-                <p className="text-muted-foreground mt-1.5 text-base">
+                <h1 className="page-header-title">{t('appsPage.createNewApp')}</h1>
+                <p className="page-header-description mt-1.5 text-base">
                   {t('appsPage.appsDescription')}
                 </p>
               </div>
@@ -685,7 +614,7 @@ export function CreateAppPage() {
             <div className="lg:col-span-2 space-y-6">
               {/* General Error */}
               {errors.general && (
-                <div className="flex items-start gap-2.5 p-4 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl animate-fade-in-up">
+                <div className="general-error animate-fade-in-up">
                   <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                   <span>{errors.general}</span>
                 </div>
@@ -693,24 +622,24 @@ export function CreateAppPage() {
 
               {/* App Identity Section */}
               <SectionCard delay={100}>
-                <div className="px-6 py-4 border-b border-border/50 bg-muted/20">
+                <div className="section-header">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <div className="section-header-icon">
                       <Box className="w-4 h-4 text-primary" />
                     </div>
                     <div>
-                      <h2 className="font-semibold text-sm">{t('appsPage.appIdentity')}</h2>
-                      <p className="text-xs text-muted-foreground">
+                      <h2 className="section-header-title">{t('appsPage.appIdentity')}</h2>
+                      <p className="section-header-description">
                         {t('appsPage.appIdentityDescription')}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-6 space-y-6">
+                <div className="section-content space-y-6">
                   {/* App Name */}
                   <div className="space-y-1.5">
-                    <Label htmlFor="app-name" className="text-sm font-medium">
+                    <Label htmlFor="app-name" className="form-label">
                       {t('appsPage.appName')} <span className="text-destructive">*</span>
                     </Label>
                     <Input
@@ -720,7 +649,7 @@ export function CreateAppPage() {
                       onChange={(e) => setName(e.target.value)}
                       disabled={isSubmitting}
                       className={cn(
-                        'h-12 text-base transition-colors',
+                        'form-input',
                         errors.name && 'border-destructive focus-visible:ring-destructive/30'
                       )}
                       autoFocus
@@ -737,7 +666,7 @@ export function CreateAppPage() {
                           <ValidationMessage message={t('appsPage.nameCharLimit')} type="info" />
                         )}
                       </div>
-                      <span className="text-xs text-muted-foreground tabular-nums">
+                      <span className="char-counter">
                         {formData.name.length}/50
                       </span>
                     </div>
@@ -745,7 +674,7 @@ export function CreateAppPage() {
 
                   {/* App Slug */}
                   <div className="space-y-1.5">
-                    <Label htmlFor="app-slug" className="text-sm font-medium">
+                    <Label htmlFor="app-slug" className="form-label">
                       {t('appsPage.appSlug')} <span className="text-destructive">*</span>
                     </Label>
                     <div className="relative">
@@ -756,7 +685,7 @@ export function CreateAppPage() {
                         onChange={(e) => setSlug(e.target.value)}
                         disabled={isSubmitting}
                         className={cn(
-                          'h-12 font-mono transition-colors pr-10',
+                          'form-input form-input-mono pr-10',
                           errors.slug && 'border-destructive focus-visible:ring-destructive/30',
                           slugValidation.valid &&
                             !errors.slug &&
@@ -788,7 +717,7 @@ export function CreateAppPage() {
                           />
                         )}
                       </div>
-                      <span className="text-xs text-muted-foreground tabular-nums">
+                      <span className="char-counter">
                         {formData.slug.length}/63
                       </span>
                     </div>
@@ -798,22 +727,14 @@ export function CreateAppPage() {
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Label htmlFor="app-description" className="text-sm font-medium">
+                        <Label htmlFor="app-description" className="form-label">
                           {t('appsPage.description')}
                         </Label>
                         <button
                           type="button"
                           onClick={() => generateAIDescription()}
                           disabled={isGeneratingDescription || !formData.name.trim()}
-                          className={cn(
-                            'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium',
-                            'bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10',
-                            'text-violet-600 dark:text-violet-400',
-                            'border border-violet-500/20',
-                            'hover:from-violet-500/20 hover:to-fuchsia-500/20',
-                            'transition-all duration-200',
-                            'disabled:opacity-50 disabled:cursor-not-allowed'
-                          )}
+                          className="ai-generate-btn"
                           title={
                             formData.name.trim()
                               ? t('appsPage.aiGenerateDescription')
@@ -835,12 +756,12 @@ export function CreateAppPage() {
                       </div>
                       <span
                         className={cn(
-                          'text-xs tabular-nums',
+                          'char-counter',
                           formData.description.length > 450
                             ? formData.description.length >= 500
-                              ? 'text-destructive'
-                              : 'text-amber-500'
-                            : 'text-muted-foreground'
+                              ? 'char-counter-error'
+                              : 'char-counter-warning'
+                            : ''
                         )}
                       >
                         {formData.description.length}/500
@@ -853,7 +774,7 @@ export function CreateAppPage() {
                       onChange={(e) => setDescription(e.target.value)}
                       disabled={isSubmitting}
                       className={cn(
-                        'min-h-[100px] resize-none transition-colors',
+                        'form-textarea',
                         errors.description && 'border-destructive focus-visible:ring-destructive/30'
                       )}
                       maxLength={500}
@@ -865,7 +786,7 @@ export function CreateAppPage() {
 
                   {/* Icon Selection */}
                   <div className="space-y-3">
-                    <Label className="text-sm font-medium">{t('appsPage.appIcon')}</Label>
+                    <Label className="form-label">{t('appsPage.appIcon')}</Label>
                     <div className="flex flex-wrap gap-2 pt-2">
                       {ICON_COLORS.map((color) => (
                         <button
@@ -873,10 +794,10 @@ export function CreateAppPage() {
                           type="button"
                           onClick={() => setIconColor(color.value)}
                           className={cn(
-                            'w-10 h-10 rounded-lg transition-all duration-200',
+                            'icon-color-btn',
                             formData.iconColor === color.value
-                              ? 'ring-2 ring-offset-2 ring-offset-background ring-primary scale-110'
-                              : 'hover:scale-105 opacity-80 hover:opacity-100'
+                              ? 'icon-color-btn-selected'
+                              : ''
                           )}
                           style={{
                             background: `linear-gradient(135deg, ${color.from} 0%, ${color.to} 100%)`,
@@ -892,11 +813,7 @@ export function CreateAppPage() {
                         <button
                           type="button"
                           disabled={isSubmitting}
-                          className={cn(
-                            'inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border/50 bg-secondary/50',
-                            'hover:bg-secondary transition-colors text-2xl',
-                            'disabled:opacity-50 disabled:pointer-events-none'
-                          )}
+                          className="icon-picker-trigger"
                         >
                           <span>{formData.iconEmoji}</span>
                           <span className="text-xs text-muted-foreground">{t('appsPage.changeIcon')}</span>
@@ -923,25 +840,25 @@ export function CreateAppPage() {
 
               {/* Visibility & Access Section */}
               <SectionCard delay={200}>
-                <div className="px-6 py-4 border-b border-border/50 bg-muted/20">
+                <div className="section-header">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <div className="section-header-icon">
                       <Key className="w-4 h-4 text-primary" />
                     </div>
                     <div>
-                      <h2 className="font-semibold text-sm">{t('appsPage.visibilityAccess')}</h2>
-                      <p className="text-xs text-muted-foreground">
+                      <h2 className="section-header-title">{t('appsPage.visibilityAccess')}</h2>
+                      <p className="section-header-description">
                         {t('appsPage.visibilityAccessDescription')}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-6 space-y-6">
+                <div className="section-content space-y-6">
                   {/* Visibility Toggle */}
-                  <div className="flex items-center justify-between">
+                  <div className="visibility-toggle">
                     <div className="space-y-1">
-                      <Label className="text-sm font-medium">
+                      <Label className="form-label">
                         {formData.visibility === 'public' ? t('appsPage.publicApp') : t('appsPage.privateApp')}
                       </Label>
                       <p className="text-xs text-muted-foreground">
@@ -952,9 +869,9 @@ export function CreateAppPage() {
                     </div>
                     <div className="flex items-center gap-3">
                       {formData.visibility === 'public' ? (
-                        <Globe className="w-4 h-4 text-emerald-500" />
+                        <Globe className="visibility-icon-public w-4 h-4" />
                       ) : (
-                        <Lock className="w-4 h-4 text-amber-500" />
+                        <Lock className="visibility-icon-private w-4 h-4" />
                       )}
                       <Switch
                         checked={formData.visibility === 'public'}
@@ -967,17 +884,17 @@ export function CreateAppPage() {
 
                   {/* Team Access Info */}
                   {user && (
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="text-sm font-medium text-primary">
+                    <div className="team-access-card">
+                      <div className="team-access-avatar">
+                        <span>
                           {(user.username || user.name || user.email)?.charAt(0).toUpperCase()}
                         </span>
                       </div>
                       <div>
-                        <p className="text-sm font-medium">
+                        <p className="team-access-name">
                           {user.username || user.name || user.email}
                         </p>
-                        <p className="text-xs text-muted-foreground">{t('appsPage.owner')}</p>
+                        <p className="team-access-role">{t('appsPage.owner')}</p>
                       </div>
                     </div>
                   )}
@@ -986,24 +903,24 @@ export function CreateAppPage() {
 
               {/* Initial Configuration Section */}
               <SectionCard delay={300}>
-                <div className="px-6 py-4 border-b border-border/50 bg-muted/20">
+                <div className="section-header">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <div className="section-header-icon">
                       <Zap className="w-4 h-4 text-primary" />
                     </div>
                     <div>
-                      <h2 className="font-semibold text-sm">{t('appsPage.initialConfiguration')}</h2>
-                      <p className="text-xs text-muted-foreground">
+                      <h2 className="section-header-title">{t('appsPage.initialConfiguration')}</h2>
+                      <p className="section-header-description">
                         {t('appsPage.initialConfigurationDescription')}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-6 space-y-6">
+                <div className="section-content space-y-6">
                   {/* Tags */}
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium flex items-center gap-2">
+                    <Label className="form-label flex items-center gap-2">
                       <Tag className="w-3.5 h-3.5" />
                       {t('appsPage.tagsLabels')}
                     </Label>
@@ -1020,7 +937,7 @@ export function CreateAppPage() {
 
                   {/* Environment */}
                   <div className="space-y-2">
-                    <Label htmlFor="environment" className="text-sm font-medium">
+                    <Label htmlFor="environment" className="form-label">
                       {t('appsPage.environment')}
                     </Label>
                     <Select
@@ -1028,24 +945,24 @@ export function CreateAppPage() {
                       onValueChange={(value) => setEnvironment(value as Environment)}
                       disabled={isSubmitting}
                     >
-                      <SelectTrigger id="environment" className="h-11">
+                      <SelectTrigger id="environment" className="environment-select h-11">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="development">
-                          <div className="flex items-center gap-2">
+                          <div className="environment-option">
                             <Code2 className="w-4 h-4 text-blue-500" />
                             {t('appsPage.development')}
                           </div>
                         </SelectItem>
                         <SelectItem value="staging">
-                          <div className="flex items-center gap-2">
+                          <div className="environment-option">
                             <Layers className="w-4 h-4 text-amber-500" />
                             {t('appsPage.staging')}
                           </div>
                         </SelectItem>
                         <SelectItem value="production">
-                          <div className="flex items-center gap-2">
+                          <div className="environment-option">
                             <Rocket className="w-4 h-4 text-emerald-500" />
                             {t('appsPage.production')}
                           </div>
@@ -1060,8 +977,8 @@ export function CreateAppPage() {
               </SectionCard>
 
               {/* Getting Started Tips */}
-              <div className="pt-4">
-                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+              <div className="getting-started-section">
+                <h3 className="getting-started-title">
                   <Sparkles className="w-4 h-4 text-primary" />
                   {t('appsPage.gettingStarted')}
                 </h3>

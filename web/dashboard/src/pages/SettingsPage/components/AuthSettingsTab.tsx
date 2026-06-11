@@ -515,6 +515,7 @@ export function AuthSettingsTab() {
   }
 
   return (
+    <div className="settings-page space-y-6">
     <Tabs defaultValue="security" className="space-y-6">
       <TabsList>
         <TabsTrigger value="security">
@@ -830,5 +831,6 @@ export function AuthSettingsTab() {
         </Card>
       </TabsContent>
     </Tabs>
+    </div>
   );
 }

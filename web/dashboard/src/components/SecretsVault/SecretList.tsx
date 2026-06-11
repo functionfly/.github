@@ -145,15 +145,15 @@ export function SecretList({ className }: SecretListProps) {
   // Loading state
   if (isLoading) {
     return (
-      <div className={cn("space-y-4", className)}>
-        <div className="flex items-center justify-between">
+      <div className={cn("secrets-loading-container", className)}>
+        <div className="secrets-loading-header">
           <Skeleton className="h-10 w-64" />
           <Skeleton className="h-10 w-32" />
         </div>
-        <div className="rounded-lg border border-border-subtle">
-          <div className="space-y-2 p-4">
+        <div className="secrets-table-container">
+          <div className="secrets-loading-container p-4">
             {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
+              <Skeleton key={i} className="secrets-skeleton-row secrets-skeleton" />
             ))}
           </div>
         </div>
@@ -164,13 +164,13 @@ export function SecretList({ className }: SecretListProps) {
   // Error state
   if (error) {
     return (
-      <div className={cn("rounded-lg border border-error/20 bg-error-glow p-8 text-center", className)}>
-        <Shield className="mx-auto h-12 w-12 text-error mb-4" />
-        <h3 className="text-lg font-semibold text-error mb-2">Failed to load secrets</h3>
-        <p className="text-text-secondary mb-4">
+      <div className={cn("secrets-error-state", className)}>
+        <Shield className="secrets-error-icon mx-auto mb-4" />
+        <h3 className="secrets-error-title">Failed to load secrets</h3>
+        <p className="secrets-error-description">
           {error instanceof Error ? error.message : "An unexpected error occurred"}
         </p>
-        <Button onClick={() => window.location.reload()} variant="outline">
+        <Button onClick={() => window.location.reload()} className="btn-secrets-outline">
           Retry
         </Button>
       </div>
@@ -180,26 +180,26 @@ export function SecretList({ className }: SecretListProps) {
   return (
     <div className={cn("space-y-4", className)}>
       {/* Header with search and create button */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+      <div className="secrets-toolbar">
+        <div className="secrets-search-container">
+          <Search className="secrets-search-icon" />
           <Input
             placeholder="Search secrets..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="secrets-search-input pl-10"
           />
         </div>
-        <div className="flex items-center gap-3">
+        <div className="secrets-toolbar-actions">
           {/* Secrets limit indicator */}
           {secretsLimit > 0 && (
             <div className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm",
+              "secrets-limit-indicator",
               hasReachedLimit
-                ? "bg-warning/10 text-warning"
-                : "bg-muted text-muted-foreground"
+                ? "secrets-limit-indicator-warning"
+                : "secrets-limit-indicator-normal"
             )}>
-              <AlertCircle className="h-4 w-4" />
+              <AlertCircle className="secrets-limit-icon" />
               <span className="hidden sm:inline">
                 {formatSecretsRemaining(currentSecretCount, userPlan)}
               </span>
@@ -210,7 +210,7 @@ export function SecretList({ className }: SecretListProps) {
           )}
           <Button
             onClick={() => setIsCreateModalOpen(true)}
-            className="gap-2"
+            className="btn-secrets-create"
             disabled={hasReachedLimit}
           >
             <Plus className="h-4 w-4" />
@@ -221,14 +221,14 @@ export function SecretList({ className }: SecretListProps) {
 
       {/* Empty state */}
       {filteredSecrets?.length === 0 && (
-        <div className="rounded-lg border border-border-subtle bg-card p-12 text-center">
-          <div className="mx-auto h-16 w-16 rounded-full bg-gradient-to-br from-brand-500/20 to-purple-500/20 flex items-center justify-center mb-4">
-            <Key className="h-8 w-8 text-brand-500" />
+        <div className="secrets-empty-state">
+          <div className="secrets-empty-icon">
+            <Key className="h-8 w-8" />
           </div>
-          <h3 className="text-lg font-semibold text-card-foreground mb-2">
+          <h3 className="secrets-empty-title">
             {searchQuery ? "No secrets found" : canCreateSecrets ? "No secrets yet" : "Secrets not available"}
           </h3>
-          <p className="text-text-secondary max-w-sm mx-auto mb-6">
+          <p className="secrets-empty-description">
             {searchQuery
               ? "No secrets match your search query. Try a different search term."
               : canCreateSecrets
@@ -239,13 +239,14 @@ export function SecretList({ className }: SecretListProps) {
             <Button
               onClick={() => setIsCreateModalOpen(true)}
               disabled={hasReachedLimit}
+              className="btn-secrets-create"
             >
               <Plus className="h-4 w-4 mr-2" />
               Create Secret
             </Button>
           )}
           {!canCreateSecrets && (
-            <Button onClick={() => window.location.href = '/pricing'}>
+            <Button onClick={() => window.location.href = '/pricing'} className="btn-bundle-primary">
               Upgrade Plan
             </Button>
           )}
@@ -254,64 +255,59 @@ export function SecretList({ className }: SecretListProps) {
 
       {/* Secrets table */}
       {filteredSecrets && filteredSecrets.length > 0 && (
-        <div className="rounded-lg border border-border-subtle overflow-hidden">
+        <div className="secrets-table-container">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Rotation</TableHead>
-                <TableHead>Last Accessed</TableHead>
-                <TableHead>Created</TableHead>
+              <TableRow className="secrets-table-header-row">
+                <TableHead className="secrets-table-head">Name</TableHead>
+                <TableHead className="secrets-table-head">Type</TableHead>
+                <TableHead className="secrets-table-head">Description</TableHead>
+                <TableHead className="secrets-table-head">Rotation</TableHead>
+                <TableHead className="secrets-table-head">Last Accessed</TableHead>
+                <TableHead className="secrets-table-head">Created</TableHead>
                 <TableHead className="w-16"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredSecrets.map((secret) => {
                 const Icon = secretTypeIcons[secret.secret_type];
+                const rotationStatus = getRotationStatus(secret);
                 return (
                   <TableRow
                     key={secret.id}
-                    className="cursor-pointer"
+                    className="secrets-table-body-row"
                     onClick={() => setSelectedSecretId(secret.id)}
                   >
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-brand-500/10 to-purple-500/10 flex items-center justify-center">
-                          <Icon className="h-4 w-4 text-brand-500" />
+                    <TableCell className="secrets-table-cell">
+                      <div className="secrets-name-cell">
+                        <div className="secrets-name-icon">
+                          <Icon className="h-4 w-4" />
                         </div>
-                        <span className="font-medium text-card-foreground">
+                        <span className="secrets-name-text">
                           {secret.name}
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant={secretTypeVariants[secret.secret_type]}>
+                    <TableCell className="secrets-table-cell">
+                      <span className={`secret-type-badge secret-type-badge-${secret.secret_type === 'api_key' ? 'api' : secret.secret_type === 'oauth_token' ? 'oauth' : secret.secret_type === 'password' ? 'password' : 'certificate'}`}>
                         {secretTypeLabels[secret.secret_type]}
-                      </Badge>
+                      </span>
                     </TableCell>
-                    <TableCell>
-                      <span className="text-text-secondary line-clamp-1 max-w-[200px]">
+                    <TableCell className="secrets-table-cell">
+                      <span className="secrets-description-cell">
                         {secret.description || "—"}
                       </span>
                     </TableCell>
-                    <TableCell>
-                      {(() => {
-                        const status = getRotationStatus(secret);
-                        const StatusIcon = status.icon;
-                        return (
-                          <Badge variant={status.variant} className="gap-1">
-                            <StatusIcon className="h-3 w-3" />
-                            {status.label}
-                          </Badge>
-                        );
-                      })()}
+                    <TableCell className="secrets-table-cell">
+                      <span className={`rotation-badge rotation-badge-${rotationStatus.label.toLowerCase()}`}>
+                        <rotationStatus.icon className="rotation-badge-icon" />
+                        {rotationStatus.label}
+                      </span>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1.5 text-text-secondary">
-                        <Clock className="h-3.5 w-3.5" />
-                        <span className="text-sm">
+                    <TableCell className="secrets-table-cell">
+                      <div className="secrets-time-cell">
+                        <Clock className="secrets-time-icon" />
+                        <span className="secrets-time-text">
                           {secret.last_accessed_at
                             ? formatDistanceToNow(new Date(secret.last_accessed_at), {
                                 addSuffix: true,
@@ -320,38 +316,42 @@ export function SecretList({ className }: SecretListProps) {
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-text-secondary">
-                        {formatDistanceToNow(new Date(secret.created_at), {
-                          addSuffix: true,
-                        })}
-                      </span>
+                    <TableCell className="secrets-table-cell">
+                      <div className="secrets-time-cell">
+                        <Clock className="secrets-time-icon" />
+                        <span className="secrets-time-text">
+                          {formatDistanceToNow(new Date(secret.created_at), {
+                            addSuffix: true,
+                          })}
+                        </span>
+                      </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="secrets-actions-cell">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
+                            className="secrets-action-btn"
                             onClick={(e) => e.stopPropagation()}
                             aria-label="More actions"
                           >
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent align="end" className="secrets-dialog-content">
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedSecretId(secret.id);
                             }}
+                            className="focus:bg-[var(--secrets-input-bg)]"
                           >
                             <Eye className="h-4 w-4 mr-2" />
                             View Details
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            className="text-error focus:text-error"
+                            className="btn-secrets-delete focus:bg-[var(--secrets-input-bg)]"
                             onClick={(e) => {
                               e.stopPropagation();
                               setSecretToDelete(secret);
@@ -373,10 +373,10 @@ export function SecretList({ className }: SecretListProps) {
 
       {/* Create Secret Modal */}
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create New Secret</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="secrets-dialog-content max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="secrets-dialog-header">
+            <DialogTitle className="secrets-dialog-title">Create New Secret</DialogTitle>
+            <DialogDescription className="secrets-dialog-description">
               Store sensitive data securely with client-side encryption.
             </DialogDescription>
           </DialogHeader>
@@ -400,19 +400,19 @@ export function SecretList({ className }: SecretListProps) {
         open={!!secretToDelete}
         onOpenChange={(open) => !open && setSecretToDelete(null)}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Secret</AlertDialogTitle>
-            <AlertDialogDescription>
+        <AlertDialogContent className="secrets-delete-content">
+          <AlertDialogHeader className="secrets-delete-header">
+            <AlertDialogTitle className="secrets-delete-title">Delete Secret</AlertDialogTitle>
+            <AlertDialogDescription className="secrets-delete-description">
               Are you sure you want to delete <strong>{secretToDelete?.name}</strong>?
               This action cannot be undone. All access tokens for this secret will also be revoked.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="secrets-delete-footer">
+            <AlertDialogCancel className="btn-secrets-cancel">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="btn-secrets-delete"
               disabled={deleteSecret.isPending}
             >
               {deleteSecret.isPending ? "Deleting..." : "Delete"}

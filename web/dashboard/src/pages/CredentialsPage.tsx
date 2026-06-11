@@ -7,6 +7,8 @@ import { CredentialCard } from '@/components/certification/CredentialCard';
 import { Button } from '@/components/ui/button';
 import { useMyCredentials, useMyExams } from '@/hooks/useCertification';
 
+import './credentials-page.css';
+
 export function CredentialsPage() {
   const navigate = useNavigate();
   const { data: credsData, isLoading: credsLoading } = useMyCredentials();
@@ -20,39 +22,40 @@ export function CredentialsPage() {
       <PageHeader
         title="My Credentials"
         subtitle="Your earned FunctionFly certifications and exam history."
+        className="mb-8"
       />
 
       {/* Active Credentials */}
-      <div className="mb-8">
-        <h3 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
-          <Award className="h-5 w-5 text-brand-500" />
-          Active Certifications
-        </h3>
+      <div className="credentials-active-section">
+        <div className="credentials-section-header">
+          <Award className="h-5 w-5" />
+          <h3>Active Certifications</h3>
+        </div>
 
         {credsLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+          <div className="credentials-loading">
+            <div className="credentials-loading-spinner" />
           </div>
         ) : credentials.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="rounded-xl border border-theme bg-card p-8 text-center"
+            className="credentials-empty-state"
           >
-            <Award className="h-12 w-12 text-text-muted mx-auto mb-4" />
-            <h4 className="text-lg font-medium text-text-primary mb-2">No Certifications Yet</h4>
-            <p className="text-sm text-text-muted mb-4">
-              Start your certification journey and earn verifiable credentials.
-            </p>
-            <Button
+            <div className="credentials-empty-state-icon">
+              <Award className="h-12 w-12" />
+            </div>
+            <h4>No Certifications Yet</h4>
+            <p>Start your certification journey and earn verifiable credentials.</p>
+            <button
               onClick={() => navigate('/certification')}
-              className="bg-gradient-to-r from-brand-500 to-purple-500 text-white"
+              className="btn-primary"
             >
               Browse Certifications
-            </Button>
+            </button>
           </motion.div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="credentials-grid">
             {credentials.map((cred) => (
               <CredentialCard key={cred.id} credential={cred} />
             ))}
@@ -61,63 +64,56 @@ export function CredentialsPage() {
       </div>
 
       {/* Exam History */}
-      <div>
-        <h3 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
-          <FileText className="h-5 w-5 text-brand-500" />
-          Exam History
-        </h3>
+      <div className="credentials-exam-section">
+        <div className="credentials-section-header">
+          <FileText className="h-5 w-5" />
+          <h3>Exam History</h3>
+        </div>
 
         {examsLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+          <div className="credentials-loading">
+            <div className="credentials-loading-spinner" />
           </div>
         ) : exams.length === 0 ? (
-          <div className="rounded-xl border border-theme bg-card p-6 text-center">
+          <div className="credentials-empty-state">
             <p className="text-sm text-text-muted">No exam attempts yet.</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="credentials-exam-list">
             {exams.map((exam) => (
               <motion.div
                 key={exam.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center justify-between rounded-lg border border-theme bg-card p-4"
+                className="credentials-exam-item"
               >
-                <div className="flex items-center gap-3">
-                  <div className={`h-3 w-3 rounded-full ${
-                    exam.status === 'passed' ? 'bg-emerald-500' :
-                    exam.status === 'failed' ? 'bg-red-500' :
-                    exam.status === 'in_progress' ? 'bg-amber-500' :
-                    'bg-gray-400'
-                  }`} />
+                <div className="credentials-exam-info">
+                  <div className={`credentials-exam-status ${exam.status}`} />
                   <div>
-                    <p className="text-sm font-medium text-text-primary">
+                    <p className="credentials-exam-name">
                       {exam.tier_id || 'Exam'}
                     </p>
-                    <p className="text-xs text-text-muted">
+                    <p className="credentials-exam-date">
                       {new Date(exam.created_at || exam.started_at).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="credentials-exam-actions">
                   {exam.total_score != null && (
-                    <span className="text-sm font-medium text-text-secondary">
+                    <span className="credentials-exam-score">
                       {exam.total_score.toFixed(1)}%
                     </span>
                   )}
-                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    exam.status === 'passed' ? 'bg-emerald-500/10 text-emerald-500' :
-                    exam.status === 'failed' ? 'bg-red-500/10 text-red-500' :
-                    exam.status === 'in_progress' ? 'bg-amber-500/10 text-amber-500' :
-                    'bg-gray-500/10 text-gray-500'
-                  }`}>
+                  <span className={`credentials-exam-status-badge ${exam.status}`}>
                     {exam.status}
                   </span>
                   {exam.status === 'in_progress' && (
-                    <Button size="sm" variant="outline" onClick={() => navigate(`/certification/exam/${exam.id}`)}>
+                    <button
+                      onClick={() => navigate(`/certification/exam/${exam.id}`)}
+                      className="credentials-exam-continue"
+                    >
                       Continue
-                    </Button>
+                    </button>
                   )}
                 </div>
               </motion.div>
@@ -132,20 +128,23 @@ export function CredentialsPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="mt-8 rounded-xl border border-theme bg-card p-6 flex items-center justify-between"
+          className="credentials-verification-section"
         >
-          <div>
-            <h4 className="font-medium text-text-primary">Share Your Credentials</h4>
-            <p className="text-sm text-text-muted">
-              Anyone can verify your certifications at your public verification URL.
-            </p>
-          </div>
-          <Button variant="outline" asChild>
-            <a href={`/verify/${(window as any).__USERNAME__ || ''}`} target="_blank" rel="noopener noreferrer">
+          <div className="credentials-verification-content">
+            <div className="credentials-verification-info">
+              <h4>Share Your Credentials</h4>
+              <p>Anyone can verify your certifications at your public verification URL.</p>
+            </div>
+            <a
+              href={`/verify/${(window as any).__USERNAME__ || ''}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="credentials-verification-btn"
+            >
               <ExternalLink className="h-4 w-4" />
               Verification Page
             </a>
-          </Button>
+          </div>
         </motion.div>
       )}
     </PageLayout>

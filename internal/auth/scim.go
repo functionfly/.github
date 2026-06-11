@@ -195,34 +195,25 @@ func (s *SCIMService) ListUsers(tenantID uuid.UUID, startIndex, count int) (*SCI
 		count = 1000
 	}
 
-	// Get all users and filter by tenant
-	allUsers, err := s.userRepo.ListUsers()
-	if err != nil {
+	// Get total count for pagination
+	var total int64
+	if err := s.db.Model(&storage.User{}).Where("tenant_id = ?", tenantID).Count(&total).Error; err != nil {
+		return nil, fmt.Errorf("failed to count users: %w", err)
+	}
+
+	// Query users with tenant_id filter directly at database level
+	offset := startIndex - 1 // SCIM uses 1-based indexing
+	var users []*storage.User
+	if err := s.db.Where("tenant_id = ?", tenantID).
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(count).
+		Find(&users).Error; err != nil {
 		return nil, fmt.Errorf("failed to list users: %w", err)
 	}
 
-	// Filter by tenant
-	var tenantUsers []*storage.User
-	for _, user := range allUsers {
-		if user.TenantID == tenantID {
-			tenantUsers = append(tenantUsers, user)
-		}
-	}
-
-	total := len(tenantUsers)
-	startIdx := startIndex - 1
-	endIdx := startIdx + count
-	if startIdx >= len(tenantUsers) {
-		tenantUsers = []*storage.User{}
-	} else {
-		if endIdx > len(tenantUsers) {
-			endIdx = len(tenantUsers)
-		}
-		tenantUsers = tenantUsers[startIdx:endIdx]
-	}
-
-	scimUsers := make([]SCIMUser, len(tenantUsers))
-	for i, user := range tenantUsers {
+	scimUsers := make([]SCIMUser, len(users))
+	for i, user := range users {
 		scimUser, err := s.userToSCIM(user)
 		if err != nil {
 			s.logger.WithError(err).Warnf("failed to convert user %s to SCIM", user.ID)
@@ -232,7 +223,7 @@ func (s *SCIMService) ListUsers(tenantID uuid.UUID, startIndex, count int) (*SCI
 	}
 
 	return &SCIMListResponse{
-		TotalResults: total,
+		TotalResults: int(total),
 		ItemsPerPage: count,
 		StartIndex:   startIndex,
 		Resources:    scimUsers,
@@ -436,7 +427,7 @@ func (s *SCIMService) PatchUser(tenantID, userID uuid.UUID, operations []SCIMPat
 	return s.userToSCIM(user)
 }
 
-// DeleteUser deletes a user
+// DeleteUser deletes a user with proper cascade deletion of related records
 func (s *SCIMService) DeleteUser(tenantID, userID uuid.UUID) error {
 	user, err := s.userRepo.GetUserByID(userID)
 	if err != nil {
@@ -447,10 +438,47 @@ func (s *SCIMService) DeleteUser(tenantID, userID uuid.UUID) error {
 		return fmt.Errorf("user not found")
 	}
 
-	// Delete user using raw SQL since there's no DeleteUser method
-	err = s.db.Exec("DELETE FROM users WHERE id = $1", userID).Error
+	// Use a transaction for cascade deletion to ensure atomicity
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		// Delete user sessions first
+		if err := tx.Exec("DELETE FROM sessions WHERE user_id = $1", userID).Error; err != nil {
+			return fmt.Errorf("failed to delete user sessions: %w", err)
+		}
+
+		// Delete user audit logs (actor references)
+		if err := tx.Exec("DELETE FROM audit_events WHERE actor_user_id = $1", userID).Error; err != nil {
+			return fmt.Errorf("failed to delete user audit logs: %w", err)
+		}
+
+		// Delete user executions
+		if err := tx.Exec("DELETE FROM registry_function_executions WHERE user_id = $1", userID).Error; err != nil {
+			return fmt.Errorf("failed to delete user executions: %w", err)
+		}
+
+		// Delete user MFA credentials (totp and backup codes)
+		if err := tx.Exec("DELETE FROM mfa_totp WHERE user_id = $1", userID).Error; err != nil {
+			return fmt.Errorf("failed to delete user MFA TOTP: %w", err)
+		}
+		if err := tx.Exec("DELETE FROM mfa_backup_codes WHERE user_id = $1", userID).Error; err != nil {
+			return fmt.Errorf("failed to delete user backup codes: %w", err)
+		}
+
+		// Delete user login attempts history
+		if err := tx.Exec("DELETE FROM login_attempts WHERE user_id = $1", userID).Error; err != nil {
+			return fmt.Errorf("failed to delete user login attempts: %w", err)
+		}
+
+		// Delete the user itself
+		if err := tx.Exec("DELETE FROM users WHERE id = $1", userID).Error; err != nil {
+			return fmt.Errorf("failed to delete user: %w", err)
+		}
+
+		return nil
+	})
+
 	if err != nil {
-		return fmt.Errorf("failed to delete user: %w", err)
+		s.logger.WithError(err).Errorf("Failed to delete user %s with cascade", userID)
+		return err
 	}
 
 	// Log the sync

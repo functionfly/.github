@@ -163,6 +163,39 @@ func (s *MessageService) GetInbox(ctx context.Context, agentID string, limit int
 	return messages, err
 }
 
+// GetInboxForAgents fetches pending messages for multiple agents in a single query.
+// Returns a map of agentID -> messages, capped at limitPerAgent per agent.
+func (s *MessageService) GetInboxForAgents(ctx context.Context, agentIDs []string, limitPerAgent int) (map[string][]identity.AgentMessage, error) {
+	if len(agentIDs) == 0 {
+		return nil, nil
+	}
+	if limitPerAgent <= 0 {
+		limitPerAgent = 10
+	}
+
+	var messages []identity.AgentMessage
+	err := s.db.WithContext(ctx).
+		Where("to_agent_id IN ? AND status IN ?", agentIDs, []string{"pending", "delivered"}).
+		Order("created_at ASC").
+		Limit(len(agentIDs) * limitPerAgent).
+		Find(&messages).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// Group by agent ID, preserving per-agent limit
+	result := make(map[string][]identity.AgentMessage, len(agentIDs))
+	for _, id := range agentIDs {
+		result[id] = nil
+	}
+	for _, msg := range messages {
+		if len(result[msg.ToAgentID]) < limitPerAgent {
+			result[msg.ToAgentID] = append(result[msg.ToAgentID], msg)
+		}
+	}
+	return result, nil
+}
+
 // GetOutbox retrieves messages sent by an agent
 func (s *MessageService) GetOutbox(ctx context.Context, agentID string, limit int) ([]identity.AgentMessage, error) {
 	if limit <= 0 {

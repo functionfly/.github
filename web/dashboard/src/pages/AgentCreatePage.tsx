@@ -9,17 +9,23 @@ import { Textarea } from '@/components/ui/textarea';
 import { trackEvent } from '@/lib/analytics';
 import { ROUTES } from '@/lib/constants';
 import { ArrowLeft, Bot, Check, Copy, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+
+const AGENT_ID_MAX = 32;
+const NAME_MAX = 64;
+const DESCRIPTION_MAX = 500;
 
 function slugFrom(s: string) {
   return (s ?? '')
     .trim()
     .toLowerCase()
     .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '');
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-+/g, '-');
 }
 
 export function AgentCreatePage() {
@@ -29,17 +35,47 @@ export function AgentCreatePage() {
   const [submitting, setSubmitting] = useState(false);
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [checkingDuplicate, setCheckingDuplicate] = useState(false);
+  const [duplicateTaken, setDuplicateTaken] = useState(false);
 
   const agentIdRaw = form.agentId ?? '';
+  const slug = slugFrom(agentIdRaw);
   const agentIdInvalid =
-    agentIdRaw.trim() !== '' && /[^a-z0-9-]/.test(agentIdRaw.trim().toLowerCase());
+    slug !== '' && /[^a-z0-9-]/.test(slug);
+  const slugPreview = slugFrom(form.name ?? '').slice(0, AGENT_ID_MAX - 2);
+  const showSlugPreview = !agentIdRaw && slugPreview;
+
+  const checkDuplicate = useCallback(async (id: string) => {
+    if (!id) {
+      setDuplicateTaken(false);
+      return;
+    }
+    setCheckingDuplicate(true);
+    try {
+      await agentApi.getAgent(id);
+      setDuplicateTaken(true);
+    } catch {
+      setDuplicateTaken(false);
+    } finally {
+      setCheckingDuplicate(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => checkDuplicate(slug), 500);
+    return () => clearTimeout(timer);
+  }, [slug, checkDuplicate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const agentId = slugFrom(agentIdRaw);
+    const agentId = slug;
     const name = (form.name ?? '').trim();
     if (!agentId || !name) {
       toast.error(t('agents.agentIdNameRequired'));
+      return;
+    }
+    if (duplicateTaken) {
+      toast.error(t('agents.agentIdTaken') ?? 'Agent ID is already taken');
       return;
     }
     setSubmitting(true);
@@ -52,7 +88,13 @@ export function AgentCreatePage() {
     } catch (err: unknown) {
       trackEvent('agent_create_failed');
       const errMsg = err instanceof Error ? err.message : String(err);
-      toast.error(t('agents.failedToCreate') + ': ' + errMsg);
+      const isConflict = errMsg.toLowerCase().includes('409') || errMsg.toLowerCase().includes('already exists') || errMsg.toLowerCase().includes('duplicate');
+      if (isConflict) {
+        setDuplicateTaken(true);
+        toast.error(t('agents.agentIdTaken') ?? 'Agent ID is already taken');
+      } else {
+        toast.error(t('agents.failedToCreate') + ': ' + errMsg);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -132,30 +174,49 @@ export function AgentCreatePage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="agentId">Agent ID</Label>
+              <Label htmlFor="agentId">Agent ID <span className="text-destructive">*</span></Label>
               <Input
                 id="agentId"
                 placeholder="e.g. my-agent"
                 value={form.agentId}
-                onChange={(e) => setForm((f) => ({ ...f, agentId: e.target.value }))}
+                onChange={(e) => setForm((f) => ({ ...f, agentId: e.target.value.slice(0, AGENT_ID_MAX) }))}
                 className="font-mono"
+                maxLength={AGENT_ID_MAX}
               />
               <p className="text-xs text-text-muted">
                 Lowercase letters, numbers, and hyphens only. Used in API calls and URLs.
+                {form.agentId.length >= AGENT_ID_MAX - 5 && (
+                  <span className="ml-1 text-warning"> ({AGENT_ID_MAX - form.agentId.length} chars left)</span>
+                )}
               </p>
               {agentIdInvalid && (
                 <p className="text-xs text-destructive">{t('agents.agentIdChars')}</p>
               )}
+              {duplicateTaken && (
+                <p className="text-xs text-destructive">Agent ID is already taken</p>
+              )}
+              {checkingDuplicate && (
+                <p className="text-xs text-text-muted">Checking availability...</p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">Name <span className="text-destructive">*</span></Label>
               <Input
                 id="name"
                 placeholder="e.g. My Agent"
                 value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value.slice(0, NAME_MAX) }))}
+                maxLength={NAME_MAX}
               />
+              {form.name.length >= NAME_MAX - 5 && (
+                <p className="text-xs text-text-muted">{NAME_MAX - form.name.length} chars left</p>
+              )}
+              {showSlugPreview && slugPreview && (
+                <p className="text-xs text-text-muted">
+                  Agent ID preview: <span className="font-mono">{slugPreview}</span>
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -164,16 +225,24 @@ export function AgentCreatePage() {
                 id="description"
                 placeholder="e.g. Handles support queries and triages tickets"
                 value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value.slice(0, DESCRIPTION_MAX) }))}
                 rows={3}
+                maxLength={DESCRIPTION_MAX}
               />
+              <p className="text-xs text-text-muted">
+                {form.description.length}/{DESCRIPTION_MAX} characters
+              </p>
             </div>
 
             <div className="flex gap-2">
               <Button type="button" variant="outline" onClick={() => navigate(ROUTES.AGENT_LIST)} className="flex-1">
                 Cancel
               </Button>
-              <Button type="submit" disabled={submitting || !form.name || !form.agentId || agentIdInvalid} className="flex-1">
+              <Button
+                type="submit"
+                disabled={submitting || !form.name || !form.agentId || agentIdInvalid || duplicateTaken || checkingDuplicate}
+                className="flex-1"
+              >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Create Agent
               </Button>

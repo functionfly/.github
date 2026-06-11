@@ -19,4 +19,4 @@ export {
   SuspiciousBehaviorTimeline,
   VulnerabilityScanner,
   PolicyEngineViewer,
-} from './index.tsx'
+} from "./index.tsx";

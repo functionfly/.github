@@ -156,9 +156,9 @@ export function PlatformSettingsTab() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="settings-page space-y-6">
       {/* ─── Function DNA: Evolution ─── */}
-      <Card>
+      <Card className="settings-panel">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Dna className="h-5 w-5 text-brand-500" />

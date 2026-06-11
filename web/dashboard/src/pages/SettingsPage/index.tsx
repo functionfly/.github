@@ -31,7 +31,7 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="settings-page space-y-6">
       <SettingsContent showHeader />
     </div>
   );

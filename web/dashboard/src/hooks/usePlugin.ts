@@ -62,6 +62,23 @@ export function useUninstallPlugin() {
   });
 }
 
+export function useUpdatePlugin() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: { pluginId: string; data: Partial<Plugin> }) =>
+      pluginsApi.update(params.pluginId, params.data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: pluginKeys.all });
+      queryClient.setQueryData(pluginKeys.detail(result.plugin.id), { plugin: result.plugin });
+      toast.success(`Plugin "${result.plugin.name}" updated`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update plugin: ${error.message}`);
+    },
+  });
+}
+
 export function useEnablePlugin() {
   const queryClient = useQueryClient();
 

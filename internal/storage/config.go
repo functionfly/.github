@@ -246,7 +246,8 @@ func configureConnectionPool(db *sql.DB, config *DatabaseConfig) error {
 	// Additional optimizations for better performance
 	// Set maximum time spent waiting for a connection (default is no timeout)
 	// This prevents indefinite blocking when all connections are in use
-	// db.SetConnMaxWaitTime(30 * time.Second) // Uncomment if needed
+	// Note: SetConnMaxWaitTime was removed from sql.DB in Go 1.21+; use context timeout instead
+	_ = 30 * time.Second // Reserved for future connection wait timeout configuration
 
 	return nil
 }
@@ -439,8 +440,8 @@ func calculateConnectionPoolSize() (maxOpen, maxIdle int) {
 	if maxOpen < 1 {
 		maxOpen = 1
 	}
-	if maxOpen > 200 { // Prevent excessive connections
-		maxOpen = 200
+	if maxOpen > 100 { // Prevent excessive connections (100 × 2-10MB = 200MB-1GB per connection pool)
+		maxOpen = 100
 	}
 	if maxIdle < 1 {
 		maxIdle = 1

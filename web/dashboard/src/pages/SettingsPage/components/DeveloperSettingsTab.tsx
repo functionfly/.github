@@ -5,7 +5,7 @@ import { WebhooksSettingsSection } from "./WebhooksSettingsSection";
 
 export function DeveloperSettingsTab() {
   return (
-    <div className="space-y-6">
+    <div className="settings-page space-y-6">
       <ApiKeysSettingsSection />
       <ConnectedProvidersSection />
       <DeployKeysSettingsSection />

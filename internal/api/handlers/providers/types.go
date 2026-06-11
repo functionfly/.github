@@ -3,6 +3,7 @@ package providers
 import (
 	"net/http"
 
+	"github.com/functionfly/functionfly/internal/apikey"
 	"github.com/functionfly/functionfly/internal/notification"
 	"github.com/functionfly/functionfly/internal/storage"
 )
@@ -61,15 +62,17 @@ type TeamInvite struct {
 
 // Handler manages provider operations
 type Handler struct {
-	repo   storage.Repository
-	notify *notification.Service
+	repo       storage.Repository
+	notify     *notification.Service
+	apikeyRepo *apikey.Repository
 }
 
 // NewHandler creates a new provider handler
-func NewHandler(repo storage.Repository, notify *notification.Service) *Handler {
+func NewHandler(repo storage.Repository, notify *notification.Service, apikeyRepo *apikey.Repository) *Handler {
 	return &Handler{
-		repo:   repo,
-		notify: notify,
+		repo:       repo,
+		notify:     notify,
+		apikeyRepo: apikeyRepo,
 	}
 }
 

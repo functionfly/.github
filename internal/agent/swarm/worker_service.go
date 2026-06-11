@@ -89,8 +89,22 @@ func (ws *WorkerService) processAllChildren(ctx context.Context) {
 		return
 	}
 
+	if len(children) == 0 {
+		return
+	}
+
+	// Batch-fetch all messages in a single query instead of N queries per agent
+	agentIDs := make([]string, len(children))
+	for i, child := range children {
+		agentIDs[i] = child.AgentID
+	}
+	inboxes, err := ws.messageSvc.GetInboxForAgents(ctx, agentIDs, 10)
+	if err != nil {
+		return
+	}
+
 	for _, child := range children {
-		go ws.processChildTasks(ctx, child)
+		go ws.processChildTasks(ctx, child, inboxes[child.AgentID])
 	}
 }
 
@@ -102,12 +116,7 @@ func (ws *WorkerService) getSwarmChildren(ctx context.Context) ([]*identity.Agen
 	return children, err
 }
 
-func (ws *WorkerService) processChildTasks(ctx context.Context, child *identity.AgentIdentity) {
-	inbox, err := ws.messageSvc.GetInbox(ctx, child.AgentID, 10)
-	if err != nil {
-		return
-	}
-
+func (ws *WorkerService) processChildTasks(ctx context.Context, child *identity.AgentIdentity, inbox []identity.AgentMessage) {
 	for _, msg := range inbox {
 		ws.handleTask(ctx, child, &msg)
 		ws.messageSvc.MarkRead(ctx, msg.ID)

@@ -128,7 +128,7 @@ export function DeployKeysSettingsSection() {
 
   return (
     <>
-      <Card className="ff-card-velocity">
+      <Card className="settings-panel">
         <CardHeader>
           <CardTitle className="font-display">{t('deployKeysSettings.title')}</CardTitle>
           <CardDescription className="text-text-secondary">

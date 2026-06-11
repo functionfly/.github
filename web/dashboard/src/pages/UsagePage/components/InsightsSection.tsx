@@ -1,5 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { TrendingUp, ArrowDownRight, AlertCircle, Activity, Zap } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { Insight } from '../hooks/useInsights';
 
 interface InsightsSectionProps {
@@ -18,40 +19,35 @@ export function InsightsSection({ insights }: InsightsSectionProps) {
   if (insights.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="usage-insights-grid">
       {insights.slice(0, 4).map((insight, idx) => {
         const IconComponent = iconComponents[insight.iconName];
         return (
           <Card
             key={idx}
-            className={`border-l-4 ${
-              insight.type === 'success'
-                ? 'border-l-emerald-500'
-                : insight.type === 'warning'
-                  ? 'border-l-amber-500'
-                  : insight.type === 'error'
-                    ? 'border-l-red-500'
-                    : 'border-l-blue-500'
-            } bg-card`}
+            className={cn(
+              "usage-insight-card",
+              insight.type === 'success' && "usage-insight-card-success",
+              insight.type === 'warning' && "usage-insight-card-warning",
+              insight.type === 'error' && "usage-insight-card-error"
+            )}
           >
             <CardContent className="p-4">
-              <div className="flex items-start gap-3">
+              <div className="usage-insight-header">
                 <div
-                  className={`mt-0.5 ${
-                    insight.type === 'success'
-                      ? 'text-emerald-500'
-                      : insight.type === 'warning'
-                        ? 'text-amber-500'
-                        : insight.type === 'error'
-                          ? 'text-red-500'
-                          : 'text-blue-500'
-                  }`}
+                  className={cn(
+                    "usage-insight-icon",
+                    insight.type === 'success' && "usage-insight-icon-success",
+                    insight.type === 'warning' && "usage-insight-icon-warning",
+                    insight.type === 'error' && "usage-insight-icon-error",
+                    insight.type === 'info' && "usage-insight-icon-info"
+                  )}
                 >
                   <IconComponent className="h-4 w-4" />
                 </div>
-                <div>
-                  <p className="font-semibold text-sm">{insight.title}</p>
-                  <p className="text-xs text-text-secondary mt-1">{insight.message}</p>
+                <div className="usage-insight-content">
+                  <p className="usage-insight-title">{insight.title}</p>
+                  <p className="usage-insight-message">{insight.message}</p>
                 </div>
               </div>
             </CardContent>

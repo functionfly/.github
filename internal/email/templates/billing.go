@@ -87,7 +87,7 @@ func PaymentFailedTemplate(amount float64, dueDate time.Time, retryURL string) E
     </td></tr>
   </table>
 </body>
-</html>`, amount, dueStr, retryURL, retryURL, TransactionalEmailCopyrightOrangeHTML())
+</html>`, amount, dueStr, retryURL, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`Payment Failed — FunctionFly
 
@@ -179,7 +179,7 @@ func InvoiceReadyTemplate(period string, amount float64, invoiceURL string) Emai
     </td></tr>
   </table>
 </body>
-</html>`, period, period, amount, invoiceURL, invoiceURL, TransactionalEmailCopyrightOrangeHTML())
+</html>`, period, amount, invoiceURL, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`Invoice Ready — FunctionFly
 
@@ -274,7 +274,7 @@ func PaymentSuccessTemplate(amount float64, description string, chargedAt time.T
     </td></tr>
   </table>
 </body>
-</html>`, amount, description, timeStr, receiptURL, receiptURL, TransactionalEmailCopyrightOrangeHTML())
+</html>`, amount, description, timeStr, receiptURL, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`Payment Successful — FunctionFly
 
@@ -375,7 +375,7 @@ func TrialExpiringTemplate(daysRemaining int, upgradeURL string) EmailTemplate {
     </td></tr>
   </table>
 </body>
-</html>`, daysRemaining, daysSuffix, upgradeURL, upgradeURL, TransactionalEmailCopyrightOrangeHTML())
+</html>`, daysRemaining, daysSuffix, upgradeURL, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`Trial Ending Soon — FunctionFly
 
@@ -477,7 +477,7 @@ func SubscriptionChangeTemplate(changeType string, oldPlan, newPlan string, effe
     </td></tr>
   </table>
 </body>
-</html>`, arrow, titleCase(changeType), changeType, oldPlan, newPlan, dateStr, oldPlan, newPlan, dateStr, manageURL, manageURL, TransactionalEmailCopyrightOrangeHTML())
+</html>`, arrow, titleCase(changeType), changeType, oldPlan, newPlan, dateStr, manageURL, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`Subscription %s — FunctionFly
 

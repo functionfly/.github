@@ -11,6 +11,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/agent/tools"
+	"github.com/functionfly/functionfly/internal/agent/tools/search"
+	"github.com/functionfly/functionfly/internal/agent/tools/search/providers"
 	"github.com/functionfly/functionfly/internal/api"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/joho/godotenv"
@@ -95,6 +98,13 @@ func main() {
 		logrus.Info("Database migrations completed")
 	} else {
 		logrus.Info("Skipping database migrations")
+	}
+
+	// Initialize search tools for agents
+	if err := initializeSearchTools(); err != nil {
+		logrus.WithError(err).Warn("Failed to initialize search tools")
+	} else {
+		logrus.Info("Search tools initialized")
 	}
 
 	// Create the API server
@@ -204,4 +214,40 @@ func cleanupAIService(pid int) {
 func findRoot() string {
 	cwd, _ := os.Getwd()
 	return cwd
+}
+
+// initializeSearchTools initializes the search tools and registers them with the main tool registry.
+func initializeSearchTools() error {
+	provider := loadSearchProvider()
+	if err := search.Initialize(provider); err != nil {
+		return err
+	}
+
+	// Register search tools with the main tool registry
+	registry := tools.GetRegistry()
+	for _, tool := range search.GetRegistry().List() {
+		if err := registry.Register(tool); err != nil {
+			// Log but don't fail - tool might already be registered
+			logrus.Warnf("tool %s already registered: %v", tool.Name(), err)
+		}
+	}
+
+	return nil
+}
+
+// loadSearchProvider loads the search provider based on environment configuration.
+func loadSearchProvider() search.SearchProvider {
+	providerType := os.Getenv("SEARCH_PROVIDER")
+	switch providerType {
+	case "serpapi":
+		return providers.NewSERPProvider(search.ProviderConfig{
+			APIKey:           os.Getenv("SERPAPI_KEY"),
+			APIURL:           os.Getenv("SERPAPI_URL"),
+			TimeoutMs:        30000,
+			RateLimitPerMinute: 60,
+		})
+	default:
+		// Default to mock provider for development
+		return providers.NewMockProvider()
+	}
 }

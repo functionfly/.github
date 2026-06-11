@@ -369,4 +369,19 @@ export const frgApi = {
       `/frg/graphs/${author}/${name}/optimizations`
     );
   },
+
+  /**
+   * Generate a function using AI (for adding to graphs)
+   */
+  generateFunction: async (data: {
+    author: string;
+    name: string;
+    description: string;
+    runtime?: string;
+  }): Promise<{ success: boolean; functionId?: string; error?: string }> => {
+    return apiClient.post<{ success: boolean; functionId?: string; error?: string }>(
+      '/frg/functions/generate',
+      data
+    );
+  },
 };

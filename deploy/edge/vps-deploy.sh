@@ -6,8 +6,12 @@ set -e
 
 echo "=== FunctionFly Edge Deployment ==="
 
-# Configuration - UPDATE THIS with your shared secret
-export FFLY_SHARED_SECRET="${FFLY_SHARED_SECRET:-YOUR_SECRET_HERE}"
+# Fail fast if required secrets are not provided
+if [ -z "$FFLY_SHARED_SECRET" ]; then
+    echo "ERROR: FFLY_SHARED_SECRET environment variable is required"
+    echo "Set it with: export FFLY_SHARED_SECRET='your-secret-here'"
+    exit 1
+fi
 export BACKEND_URL="${BACKEND_URL:-https://api.functionfly.com}"
 export PORT=8080
 
@@ -205,6 +209,16 @@ fi
 echo "Building FunctionFly Edge..."
 go build -o functionfly-edge .
 
+# Create dedicated service account if it doesn't exist
+if ! id -u functionfly-edge &>/dev/null; then
+    echo "Creating functionfly-edge user..."
+    useradd -r -s /usr/sbin/nologin -d /opt/functionfly-edge -M functionfly-edge
+fi
+
+# Create application directory with proper ownership
+mkdir -p /opt/functionfly-edge
+chown -R functionfly-edge:functionfly-edge /opt/functionfly-edge
+
 # Create systemd service
 echo "Creating systemd service..."
 cat > /etc/systemd/system/functionfly-edge.service << EOF
@@ -214,7 +228,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=root
+User=functionfly-edge
+Group=functionfly-edge
 WorkingDirectory=/opt/functionfly-edge
 Environment=FFLY_SHARED_SECRET=${FFLY_SHARED_SECRET}
 Environment=BACKEND_URL=${BACKEND_URL}
@@ -222,6 +237,12 @@ Environment=PORT=${PORT}
 ExecStart=/opt/functionfly-edge/functionfly-edge
 Restart=always
 RestartSec=5
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/opt/functionfly-edge
+ReadWritePaths=/tmp
 
 [Install]
 WantedBy=multi-user.target

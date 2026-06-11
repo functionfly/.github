@@ -4,10 +4,14 @@
   "private": true,
   "description": "FunctionFly™ - Serverless Function Platform",
   "scripts": {
-    "dev": "nx run-many -t dev -p dashboard,functionfly-marketing,functionfly-blog,docs,admin-dashboard,functionfly-auth --parallel=6",
-    "dev:all": "nx run-many -t dev --all --parallel=4",
-    "dev:admin": "nx run admin-dashboard -t dev",
-    "dev:blog": "nx run functionfly-blog -t dev",
+    "dev": "pnpm --parallel -r dev",
+    "dev:all": "pnpm --parallel -r dev",
+    "dev:site": "pnpm --filter functionfly-marketing dev",
+    "dev:dashboard": "pnpm --filter functionfly-dashboard dev",
+    "dev:docs": "pnpm --filter functionfly-docs dev",
+    "dev:blog": "pnpm --filter functionfly-blog dev",
+    "dev:admin": "pnpm --filter @functionfly/admin-dashboard dev",
+    "dev:auth": "pnpm --filter functionfly-auth dev",
     "build": "nx run-many --target=build --all",
     "build:affected": "nx affected --target=build",
     "test": "nx run-many --target=test --all",
@@ -69,5 +73,10 @@
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.2",
     "scheduler": "^0.27.0"
-  }
+  },
+  "workspaces": [
+    "web/*",
+    "packages/*",
+    "."
+  ]
 }

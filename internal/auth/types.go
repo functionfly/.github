@@ -68,10 +68,20 @@ type Claims struct {
 	Email        string    `json:"email"`
 	Username     string    `json:"username,omitempty"`
 	TenantID     uuid.UUID `json:"tenant_id"`
-	Role         string    `json:"role,omitempty"`          // Platform role (for admin users)
-	Permissions  []string  `json:"permissions,omitempty"`   // Explicit permissions
-	TokenVersion int       `json:"token_version,omitempty"` // For token revocation - incremented on password change/logout all
+	Role         string    `json:"role,omitempty"`                // Platform role (for admin users)
+	Permissions  []string  `json:"permissions,omitempty"`        // Explicit permissions
+	TokenVersion int       `json:"token_version,omitempty"`       // For token revocation - incremented on password change/logout all
 	jwt.RegisteredClaims
+}
+
+// HasPermission checks if the claims contain the given permission
+func (c *Claims) HasPermission(permission string) bool {
+	for _, p := range c.Permissions {
+		if p == permission {
+			return true
+		}
+	}
+	return false
 }
 
 // LoginRequest represents a login request

@@ -491,6 +491,8 @@ export const connectedProviderSchema = z.object({
 
 export const connectProviderResponseSchema = z.object({
   provider: connectedProviderSchema,
+  apiKey: z.string().optional(),
+  apiKeyId: z.string().optional(),
 });
 
 export const testConnectionResponseSchema = z.object({

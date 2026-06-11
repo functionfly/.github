@@ -645,12 +645,13 @@ export const DependencyTreemap: React.FC<DependencyTreemapProps> = ({
         <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
           {layout.map((node, i) => {
             const isHovered = hoveredNode?.id === node.id;
+            const foundItem = data.find(d => d.id === node.id);
             return (
               <g
                 key={node.id}
                 onMouseEnter={() => setHoveredNode(node)}
                 onMouseLeave={() => setHoveredNode(null)}
-                onClick={() => onNodeClick?.(node, data.find(d => d.id === node.id) ? [d.id] : [])}
+                onClick={() => onNodeClick?.(node, foundItem ? [foundItem.id] : [])}
                 className="cursor-pointer"
               >
                 <rect
@@ -1046,7 +1047,7 @@ export const CostDistributionGraph: React.FC<CostDistributionGraphProps> = ({
       <div className="flex-1 flex items-center gap-6 p-4" style={{ height }}>
         <div className="relative flex-shrink-0" style={{ width: height * 0.5, height: height * 0.5 }}>
           <svg className="w-full h-full" viewBox="0 0 100 100">
-            {sortedData.reduce<{ angle: number; paths: JSX.Element[] }>((acc, segment, i) => {
+            {sortedData.reduce<{ angle: number; paths: React.ReactElement[] }>((acc, segment, i) => {
               const percentage = segment.value / total;
               const angleSpan = percentage * 360;
               const startAngle = acc.angle;

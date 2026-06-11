@@ -34,6 +34,8 @@ import {
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import './decisions-page.css';
+
 export default function DecisionsPage() {
   const navigate = useNavigate();
 
@@ -175,115 +177,83 @@ export default function DecisionsPage() {
   };
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
+    <div className="decisions-page container mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Decision Recorder</h1>
-          <p className="text-muted-foreground mt-1">
-            Track team decisions, rationale, and approvals. Never wonder "why did we choose X?"
-            again.
+      <div className="decisions-header">
+        <div className="decisions-header-content">
+          <h1 className="decisions-header-title">Decision Recorder</h1>
+          <p className="decisions-header-subtitle">
+            Track team decisions, rationale, and approvals. Never wonder "why did we choose X?" again.
           </p>
         </div>
-        <Button onClick={handleCreateDecision}>
-          <Plus className="mr-2 h-4 w-4" />
+        <button onClick={handleCreateDecision} className="decisions-record-btn">
+          <Plus className="h-4 w-4" />
           Record Decision
-        </Button>
+        </button>
       </div>
 
       {/* Status Summary Cards */}
-      <div className="grid grid-cols-4 gap-4">
-        <Card
-          className={`cursor-pointer transition-all ${
-            statusFilter === 'pending' ? 'border-yellow-500 bg-yellow-500/5' : ''
-          }`}
+      <div className="decisions-status-grid">
+        <div
+          className={`decisions-status-card pending ${statusFilter === 'pending' ? 'active' : ''}`}
           onClick={() => setStatusFilter(statusFilter === 'pending' ? 'all' : 'pending')}
         >
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-yellow-500/10">
-                <Clock className="h-6 w-6 text-yellow-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{statusCounts.pending}</p>
-                <p className="text-sm text-muted-foreground">Pending</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          <div className="decisions-status-icon">
+            <Clock className="h-6 w-6" />
+          </div>
+          <p className="decisions-status-count">{statusCounts.pending}</p>
+          <p className="decisions-status-label">Pending</p>
+        </div>
 
-        <Card
-          className={`cursor-pointer transition-all ${
-            statusFilter === 'approved' ? 'border-green-500 bg-green-500/5' : ''
-          }`}
+        <div
+          className={`decisions-status-card approved ${statusFilter === 'approved' ? 'active' : ''}`}
           onClick={() => setStatusFilter(statusFilter === 'approved' ? 'all' : 'approved')}
         >
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-green-500/10">
-                <CheckCircle className="h-6 w-6 text-green-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{statusCounts.approved}</p>
-                <p className="text-sm text-muted-foreground">Approved</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          <div className="decisions-status-icon">
+            <CheckCircle className="h-6 w-6" />
+          </div>
+          <p className="decisions-status-count">{statusCounts.approved}</p>
+          <p className="decisions-status-label">Approved</p>
+        </div>
 
-        <Card
-          className={`cursor-pointer transition-all ${
-            statusFilter === 'superseded' ? 'border-orange-500 bg-orange-500/5' : ''
-          }`}
+        <div
+          className={`decisions-status-card superseded ${statusFilter === 'superseded' ? 'active' : ''}`}
           onClick={() => setStatusFilter(statusFilter === 'superseded' ? 'all' : 'superseded')}
         >
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-orange-500/10">
-                <AlertCircle className="h-6 w-6 text-orange-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{statusCounts.superseded}</p>
-                <p className="text-sm text-muted-foreground">Superseded</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          <div className="decisions-status-icon">
+            <AlertCircle className="h-6 w-6" />
+          </div>
+          <p className="decisions-status-count">{statusCounts.superseded}</p>
+          <p className="decisions-status-label">Superseded</p>
+        </div>
 
-        <Card
-          className={`cursor-pointer transition-all ${
-            statusFilter === 'deprecated' ? 'border-gray-500 bg-gray-500/5' : ''
-          }`}
+        <div
+          className={`decisions-status-card deprecated ${statusFilter === 'deprecated' ? 'active' : ''}`}
           onClick={() => setStatusFilter(statusFilter === 'deprecated' ? 'all' : 'deprecated')}
         >
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-gray-500/10">
-                <XCircle className="h-6 w-6 text-gray-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{statusCounts.deprecated}</p>
-                <p className="text-sm text-muted-foreground">Deprecated</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          <div className="decisions-status-icon">
+            <XCircle className="h-6 w-6" />
+          </div>
+          <p className="decisions-status-count">{statusCounts.deprecated}</p>
+          <p className="decisions-status-label">Deprecated</p>
+        </div>
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
+      <div className="decisions-filters">
+        <div className="decisions-search">
+          <Search className="decisions-search-icon" />
+          <input
+            type="text"
             placeholder="Search decisions..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
+            className="decisions-search-input"
           />
         </div>
 
         <Select value={teamFilter} onValueChange={setTeamFilter}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="decisions-select-trigger">
             <SelectValue placeholder="Select team" />
           </SelectTrigger>
           <SelectContent>
@@ -300,7 +270,7 @@ export default function DecisionsPage() {
           value={statusFilter}
           onValueChange={(v) => setStatusFilter(v as DecisionStatus | 'all')}
         >
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger className="decisions-select-trigger">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
@@ -312,69 +282,63 @@ export default function DecisionsPage() {
           </SelectContent>
         </Select>
 
-        <div className="flex items-center gap-1 border rounded-md">
-          <Button
-            variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-            size="icon"
-            className="h-8 w-8"
+        <div className="decisions-view-toggle">
+          <button
+            className={`decisions-view-btn ${viewMode === 'grid' ? 'active' : ''}`}
             onClick={() => setViewMode('grid')}
           >
             <Grid className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-            size="icon"
-            className="h-8 w-8"
+          </button>
+          <button
+            className={`decisions-view-btn ${viewMode === 'list' ? 'active' : ''}`}
             onClick={() => setViewMode('list')}
           >
             <List className="h-4 w-4" />
-          </Button>
+          </button>
         </div>
       </div>
 
       {/* Content */}
       {teamFilter === 'all' ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Select a Team</h3>
-            <p className="text-muted-foreground max-w-md mx-auto">
-              Choose a team above to view their decisions. Each team maintains its own decision
-              history with full context and approval tracking.
-            </p>
-          </CardContent>
-        </Card>
+        <div className="decisions-select-team-state">
+          <div className="decisions-select-team-state-icon">
+            <AlertCircle className="h-12 w-12" />
+          </div>
+          <h3 className="decisions-select-team-state-title">Select a Team</h3>
+          <p className="decisions-select-team-state-description">
+            Choose a team above to view their decisions. Each team maintains its own decision history
+            with full context and approval tracking.
+          </p>
+        </div>
       ) : isDecisionsLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="decisions-loading">
+          <div className="decisions-loading-spinner" />
         </div>
       ) : decisionsError ? (
-        <Card className="border-destructive">
-          <CardContent className="py-12 text-center text-destructive">
-            <AlertCircle className="h-12 w-12 mx-auto mb-4" />
-            <p>Failed to load decisions. Please try again.</p>
-          </CardContent>
-        </Card>
+        <div className="decisions-error-state">
+          <div className="decisions-error-state-icon">
+            <AlertCircle className="h-12 w-12" />
+          </div>
+          <p className="decisions-error-state-text">Failed to load decisions. Please try again.</p>
+        </div>
       ) : filteredDecisions.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No decisions yet</h3>
-            <p className="text-muted-foreground max-w-md mx-auto mb-4">
-              {searchQuery || statusFilter !== 'all'
-                ? 'No decisions match your filters.'
-                : 'Start recording team decisions to build your decision history.'}
-            </p>
-            <Button onClick={handleCreateDecision}>
-              <Plus className="mr-2 h-4 w-4" />
-              Record Your First Decision
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="decisions-empty-state">
+          <div className="decisions-empty-state-icon success">
+            <CheckCircle className="h-12 w-12" />
+          </div>
+          <h3 className="decisions-empty-state-title">No decisions yet</h3>
+          <p className="decisions-empty-state-description">
+            {searchQuery || statusFilter !== 'all'
+              ? 'No decisions match your filters.'
+              : 'Start recording team decisions to build your decision history.'}
+          </p>
+          <button onClick={handleCreateDecision} className="decisions-empty-state-btn">
+            <Plus className="h-4 w-4" />
+            Record Your First Decision
+          </button>
+        </div>
       ) : (
-        <div
-          className={viewMode === 'grid' ? 'grid gap-4 md:grid-cols-2 lg:grid-cols-3' : 'space-y-4'}
-        >
+        <div className={viewMode === 'grid' ? 'decisions-grid' : 'decisions-list'}>
           {filteredDecisions.map((decision) => (
             <DecisionCard
               key={decision.id}

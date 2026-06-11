@@ -49,6 +49,14 @@ export function AccountSettingsTab() {
     };
   }, []);
 
+  useEffect(() => {
+    if (user?.name) {
+      const parts = user.name.split(' ');
+      setFirstName(parts[0] || '');
+      setLastName(parts.slice(1).join(' ') || '');
+    }
+  }, [user?.name]);
+
   const handleSaveProfile = async () => {
     setIsSavingProfile(true);
     try {
@@ -59,7 +67,8 @@ export function AccountSettingsTab() {
       };
 
       await usersApi.updateMe(payload);
-      await useAuthStore.getState().initialize();
+      const me = await usersApi.getMe();
+      useAuthStore.setState({ user: { ...me, isOnline: true } });
       toast.success('Profile updated successfully');
 
       if (!isDobLocked && dateOfBirth) {
@@ -108,22 +117,22 @@ export function AccountSettingsTab() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="settings-page space-y-6">
       {showOnboardingResume && (
-        <Card className="ff-card-velocity border-brand-500/30">
+        <Card className="settings-panel border-brand-500/30">
           <CardHeader>
-            <CardTitle className="font-display flex items-center gap-2">
+            <CardTitle className="settings-section-title flex items-center gap-2">
               <Play className="w-5 h-5 text-brand-500" />
               {t('settings.onboarding')}
             </CardTitle>
-            <CardDescription className="text-text-secondary">
+            <CardDescription className="settings-section-description">
               {hasSkippedOnboarding
                 ? t('settings.onboardingDescription')
                 : `You've completed ${completedSteps.length} of 4 onboarding steps. Continue where you left off.`}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={handleResumeOnboarding} className="ff-btn-velocity gap-2">
+            <Button onClick={handleResumeOnboarding} className="settings-button-primary gap-2">
               <Play className="w-4 h-4" />
               {completedSteps.length > 0 ? t('settings.resumeSetup') : t('settings.startSetup')}
             </Button>
@@ -131,26 +140,27 @@ export function AccountSettingsTab() {
         </Card>
       )}
 
-      <Card className="ff-card-velocity">
+      <Card className="settings-panel">
         <CardHeader>
-          <CardTitle className="font-display">{t('settings.profileInformation')}</CardTitle>
-          <CardDescription className="text-text-secondary">
+          <CardTitle className="settings-section-title">{t('settings.profileInformation')}</CardTitle>
+          <CardDescription className="settings-section-description">
             {t('settings.profileDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="firstName">{t('settings.firstName')}</Label>
+              <Label htmlFor="firstName" className="settings-label">{t('settings.firstName')}</Label>
               <Input
                 id="firstName"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
+                className="settings-input"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="lastName">{t('settings.lastName')}</Label>
-              <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+              <Label htmlFor="lastName" className="settings-label">{t('settings.lastName')}</Label>
+              <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} className="settings-input" />
             </div>
           </div>
           <UsernameChangeField
@@ -158,18 +168,18 @@ export function AccountSettingsTab() {
             onChange={(val) => setUsername(val)}
           />
           <div className="space-y-2">
-            <Label htmlFor="email">{t('settings.email')}</Label>
+            <Label htmlFor="email" className="settings-label">{t('settings.email')}</Label>
             <Input
               id="email"
               type="email"
               value={email}
               disabled
-              className="opacity-60 cursor-not-allowed"
+              className="settings-input opacity-60 cursor-not-allowed"
             />
             <p className="text-xs text-text-muted">{t('settings.emailCannotChange')}</p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="dateOfBirth">{t('settings.dateOfBirth')}</Label>
+            <Label htmlFor="dateOfBirth" className="settings-label">{t('settings.dateOfBirth')}</Label>
             <Input
               id="dateOfBirth"
               type="date"
@@ -180,7 +190,7 @@ export function AccountSettingsTab() {
               }}
               max={new Date().toISOString().split('T')[0]}
               disabled={isDobLocked}
-              className={isDobLocked ? 'opacity-60 cursor-not-allowed' : undefined}
+              className={isDobLocked ? 'settings-input opacity-60 cursor-not-allowed' : 'settings-input'}
             />
             {isDobLocked ? (
               <p className="text-xs text-text-muted">{t('settings.dobLocked')}</p>
@@ -190,58 +200,61 @@ export function AccountSettingsTab() {
               </p>
             )}
           </div>
-          <Button onClick={handleSaveProfile} disabled={isSavingProfile} className="ff-btn-velocity">
+          <Button onClick={handleSaveProfile} disabled={isSavingProfile} className="settings-button-primary">
             {isSavingProfile ? t('settings.saving') : t('settings.saveChanges')}
           </Button>
         </CardContent>
       </Card>
 
-      <Card className="ff-card-velocity">
+      <Card className="settings-panel">
         <CardHeader>
-          <CardTitle className="font-display">{t('settings.password')}</CardTitle>
-          <CardDescription className="text-text-secondary">{t('settings.passwordDescription')}</CardDescription>
+          <CardTitle className="settings-section-title">{t('settings.password')}</CardTitle>
+          <CardDescription className="settings-section-description">{t('settings.passwordDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="currentPassword">{t('settings.currentPassword')}</Label>
+            <Label htmlFor="currentPassword" className="settings-label">{t('settings.currentPassword')}</Label>
             <Input
               id="currentPassword"
               type="password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
+              className="settings-input"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="newPassword">{t('settings.newPassword')}</Label>
+            <Label htmlFor="newPassword" className="settings-label">{t('settings.newPassword')}</Label>
             <Input
               id="newPassword"
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
+              className="settings-input"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">{t('settings.confirmPassword')}</Label>
+            <Label htmlFor="confirmPassword" className="settings-label">{t('settings.confirmPassword')}</Label>
             <Input
               id="confirmPassword"
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              className="settings-input"
             />
           </div>
-          <Button onClick={handleUpdatePassword} disabled={isUpdatingPassword} className="ff-btn-velocity">
+          <Button onClick={handleUpdatePassword} disabled={isUpdatingPassword} className="settings-button-primary">
             {isUpdatingPassword ? t('settings.updating') : t('settings.updatePassword')}
           </Button>
         </CardContent>
       </Card>
 
-      <Card className="ff-card-velocity">
+      <Card className="settings-panel">
         <CardHeader>
-          <CardTitle className="font-display flex items-center gap-2">
+          <CardTitle className="settings-section-title flex items-center gap-2">
             <Globe className="w-5 h-5 text-brand-500" />
             {t('settings.language')}
           </CardTitle>
-          <CardDescription className="text-text-secondary">
+          <CardDescription className="settings-section-description">
             {t('settings.languageDescription')}
           </CardDescription>
         </CardHeader>
@@ -250,13 +263,13 @@ export function AccountSettingsTab() {
         </CardContent>
       </Card>
 
-      <Card className="ff-card-velocity">
+      <Card className="settings-panel">
         <CardHeader>
-          <CardTitle className="font-display flex items-center gap-2">
+          <CardTitle className="settings-section-title flex items-center gap-2">
             <Users className="w-5 h-5 text-brand-500" />
             {t('settings.followStats')}
           </CardTitle>
-          <CardDescription className="text-text-secondary">
+          <CardDescription className="settings-section-description">
             {t('settings.followStatsDescription')}
           </CardDescription>
         </CardHeader>

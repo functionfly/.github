@@ -22,6 +22,11 @@ func NewConversationRepository(db *gorm.DB) *ConversationRepository {
 	return &ConversationRepository{db: db}
 }
 
+// DB returns the underlying GORM database connection for custom queries.
+func (r *ConversationRepository) DB() *gorm.DB {
+	return r.db
+}
+
 // CreateConversation creates a new conversation.
 func (r *ConversationRepository) CreateConversation(ctx context.Context, c *conversations.Conversation) error {
 	if err := r.db.WithContext(ctx).Create(c).Error; err != nil {
@@ -373,4 +378,179 @@ func (r *ConversationRepository) GetAttachmentByID(ctx context.Context, id uuid.
 		return nil, fmt.Errorf("get attachment: %w", err)
 	}
 	return &a, nil
+}
+
+// AddReaction adds or updates a reaction on a message.
+func (r *ConversationRepository) AddReaction(ctx context.Context, messageID, userID uuid.UUID, reaction string) (*conversations.MessageReaction, error) {
+	rxn := &conversations.MessageReaction{
+		MessageID: messageID,
+		UserID:    userID,
+		Reaction:  reaction,
+	}
+	if err := r.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "message_id"}, {Name: "user_id"}, {Name: "reaction"}},
+		DoUpdates: clause.AssignmentColumns([]string{"created_at"}),
+	}).Create(rxn).Error; err != nil {
+		return nil, fmt.Errorf("add reaction: %w", err)
+	}
+	return rxn, nil
+}
+
+// RemoveReaction removes a reaction from a message.
+func (r *ConversationRepository) RemoveReaction(ctx context.Context, messageID, userID uuid.UUID, reaction string) error {
+	if err := r.db.WithContext(ctx).
+		Where("message_id = ? AND user_id = ? AND reaction = ?", messageID, userID, reaction).
+		Delete(&conversations.MessageReaction{}).Error; err != nil {
+		return fmt.Errorf("remove reaction: %w", err)
+	}
+	return nil
+}
+
+// GetMessageReactions returns all reactions for a message.
+func (r *ConversationRepository) GetMessageReactions(ctx context.Context, messageID uuid.UUID) ([]*conversations.MessageReaction, error) {
+	var list []*conversations.MessageReaction
+	if err := r.db.WithContext(ctx).Where("message_id = ?", messageID).Find(&list).Error; err != nil {
+		return nil, fmt.Errorf("get message reactions: %w", err)
+	}
+	return list, nil
+}
+
+// GetMessageReactionSummary returns aggregated reaction data for a message.
+func (r *ConversationRepository) GetMessageReactionSummary(ctx context.Context, messageID uuid.UUID) ([]conversations.ReactionSummary, error) {
+	type row struct {
+		Reaction string   `gorm:"column:reaction"`
+		UserID   uuid.UUID `gorm:"column:user_id"`
+	}
+	var rows []row
+	if err := r.db.WithContext(ctx).
+		Model(&conversations.MessageReaction{}).
+		Select("reaction, user_id").
+		Where("message_id = ?", messageID).
+		Find(&rows).Error; err != nil {
+		return nil, fmt.Errorf("get reaction summary: %w", err)
+	}
+
+	// Aggregate by reaction
+	agg := make(map[string]*conversations.ReactionSummary)
+	for _, r := range rows {
+		if s, ok := agg[r.Reaction]; ok {
+			s.Count++
+			s.UserIDs = append(s.UserIDs, r.UserID.String())
+		} else {
+			agg[r.Reaction] = &conversations.ReactionSummary{
+				Reaction: r.Reaction,
+				Count:    1,
+				UserIDs:  []string{r.UserID.String()},
+			}
+		}
+	}
+
+	result := make([]conversations.ReactionSummary, 0, len(agg))
+	for _, s := range agg {
+		result = append(result, *s)
+	}
+	return result, nil
+}
+
+// GetMessagesReactionSummaries returns reaction summaries for multiple messages.
+func (r *ConversationRepository) GetMessagesReactionSummaries(ctx context.Context, messageIDs []uuid.UUID) (map[uuid.UUID][]conversations.ReactionSummary, error) {
+	if len(messageIDs) == 0 {
+		return map[uuid.UUID][]conversations.ReactionSummary{}, nil
+	}
+
+	type row struct {
+		MessageID uuid.UUID `gorm:"column:message_id"`
+		Reaction  string    `gorm:"column:reaction"`
+		UserID    uuid.UUID `gorm:"column:user_id"`
+	}
+	var rows []row
+	if err := r.db.WithContext(ctx).
+		Model(&conversations.MessageReaction{}).
+		Select("message_id, reaction, user_id").
+		Where("message_id IN ?", messageIDs).
+		Find(&rows).Error; err != nil {
+		return nil, fmt.Errorf("get messages reaction summaries: %w", err)
+	}
+
+	result := make(map[uuid.UUID][]conversations.ReactionSummary)
+	for _, msgID := range messageIDs {
+		result[msgID] = []conversations.ReactionSummary{}
+	}
+
+	agg := make(map[uuid.UUID]map[string]*conversations.ReactionSummary)
+	for _, r := range rows {
+		if _, ok := agg[r.MessageID]; !ok {
+			agg[r.MessageID] = make(map[string]*conversations.ReactionSummary)
+		}
+		if s, ok := agg[r.MessageID][r.Reaction]; ok {
+			s.Count++
+			s.UserIDs = append(s.UserIDs, r.UserID.String())
+		} else {
+			agg[r.MessageID][r.Reaction] = &conversations.ReactionSummary{
+				Reaction: r.Reaction,
+				Count:    1,
+				UserIDs:  []string{r.UserID.String()},
+			}
+		}
+	}
+
+	for msgID, reactions := range agg {
+		summary := make([]conversations.ReactionSummary, 0, len(reactions))
+		for _, s := range reactions {
+			summary = append(summary, *s)
+		}
+		result[msgID] = summary
+	}
+	return result, nil
+}
+
+// MarkMessageRead records that a user has read a specific message.
+func (r *ConversationRepository) MarkMessageRead(ctx context.Context, messageID, userID uuid.UUID) error {
+	rxn := &conversations.MessageRead{
+		MessageID: messageID,
+		UserID:    userID,
+	}
+	if err := r.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "message_id"}, {Name: "user_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"read_at"}),
+	}).Create(rxn).Error; err != nil {
+		return fmt.Errorf("mark message read: %w", err)
+	}
+	return nil
+}
+
+// GetMessageReadReceipts returns all read receipts for a message.
+func (r *ConversationRepository) GetMessageReadReceipts(ctx context.Context, messageID uuid.UUID) ([]*conversations.MessageRead, error) {
+	var list []*conversations.MessageRead
+	if err := r.db.WithContext(ctx).Where("message_id = ?", messageID).Find(&list).Error; err != nil {
+		return nil, fmt.Errorf("get message read receipts: %w", err)
+	}
+	return list, nil
+}
+
+// GetConversationReadReceipts returns all read receipts for all messages in a conversation.
+func (r *ConversationRepository) GetConversationReadReceipts(ctx context.Context, conversationID uuid.UUID) (map[uuid.UUID][]*conversations.MessageRead, error) {
+	type row struct {
+		MessageID uuid.UUID `gorm:"column:message_id"`
+		Receipt   conversations.MessageRead `gorm:"embedded"`
+	}
+	var rows []row
+	if err := r.db.WithContext(ctx).
+		Model(&conversations.MessageRead{}).
+		Select("message_id, id, user_id, read_at").
+		Joins("JOIN conversation_messages ON conversation_messages.id = message_reads.message_id").
+		Where("conversation_messages.conversation_id = ?", conversationID).
+		Find(&rows).Error; err != nil {
+		return nil, fmt.Errorf("get conversation read receipts: %w", err)
+	}
+
+	result := make(map[uuid.UUID][]*conversations.MessageRead)
+	for _, row := range rows {
+		if _, ok := result[row.MessageID]; !ok {
+			result[row.MessageID] = []*conversations.MessageRead{}
+		}
+		receipt := row.Receipt
+		result[row.MessageID] = append(result[row.MessageID], &receipt)
+	}
+	return result, nil
 }

@@ -821,7 +821,7 @@ export function BrowseFunctionsView({ variant }: { variant: BrowseFunctionsViewV
   const topPaddingClass = variant === 'public' ? 'pt-16' : 'pt-6';
 
   return (
-    <main className={`flex-1 ${topPaddingClass}`}>
+    <main className={`aviation-marketplace flex-1 ${topPaddingClass}`}>
       <section className="registry-hero section-padding">
         <div className="registry-orb registry-orb-1" aria-hidden="true" />
         <div className="registry-orb registry-orb-2" aria-hidden="true" />

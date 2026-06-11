@@ -3,12 +3,15 @@ package statefabric
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/monitoring"
@@ -17,14 +20,86 @@ import (
 )
 
 type Handler struct {
-	repo         *repo.Repository
-	sfAddons     *statefabricaddons.Repository
-	cleanupSvc   *repo.CleanupService
+	repo          *repo.Repository
+	sfAddons      *statefabricaddons.Repository
+	cleanupSvc    *repo.CleanupService
 	planResolver  PlanResolver
+	rateLimiters  map[string]*pipelineRateLimiter
+	rateLimitLock sync.RWMutex
 }
 
 type PlanResolver interface {
 	GetTenantPlan(ctx context.Context, tenantID uuid.UUID) string
+}
+
+type pipelineRateLimiter struct {
+	mu       sync.Mutex
+	counts   map[uuid.UUID]int
+	window   time.Duration
+	limit    int
+	lastReset time.Time
+}
+
+func newPipelineRateLimiter(window time.Duration, limit int) *pipelineRateLimiter {
+	return &pipelineRateLimiter{
+		counts:    make(map[uuid.UUID]int),
+		window:    window,
+		limit:     limit,
+		lastReset: time.Now(),
+	}
+}
+
+func (rl *pipelineRateLimiter) Allow(pipelineID uuid.UUID) bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	now := time.Now()
+	if now.Sub(rl.lastReset) >= rl.window {
+		rl.counts = make(map[uuid.UUID]int)
+		rl.lastReset = now
+	}
+
+	if rl.counts[pipelineID] >= rl.limit {
+		return false
+	}
+
+	rl.counts[pipelineID]++
+	return true
+}
+
+func (rl *pipelineRateLimiter) GetRemaining(pipelineID uuid.UUID) int {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	remaining := rl.limit - rl.counts[pipelineID]
+	if remaining < 0 {
+		return 0
+	}
+	return remaining
+}
+
+func (rl *pipelineRateLimiter) GetResetTime() time.Time {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	return rl.lastReset.Add(rl.window)
+}
+
+func (h *Handler) getOrCreatePipelineRateLimiter(pipelineID uuid.UUID, window time.Duration, limit int) *pipelineRateLimiter {
+	key := pipelineID.String()
+
+	h.rateLimitLock.Lock()
+	defer h.rateLimitLock.Unlock()
+
+	if h.rateLimiters == nil {
+		h.rateLimiters = make(map[string]*pipelineRateLimiter)
+	}
+
+	if limiter, exists := h.rateLimiters[key]; exists {
+		return limiter
+	}
+
+	limiter := newPipelineRateLimiter(window, limit)
+	h.rateLimiters[key] = limiter
+	return limiter
 }
 
 func NewHandler(r *repo.Repository, sfAddons *statefabricaddons.Repository) *Handler {
@@ -305,6 +380,7 @@ func (h *Handler) HandleGetMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) HandleListStores(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	tenantID, _, ok := tenantAndUser(r, w)
 	if !ok {
 		return
@@ -315,13 +391,17 @@ func (h *Handler) HandleListStores(w http.ResponseWriter, r *http.Request) {
 	}
 	stores, err := h.repo.ListStores(r.Context(), tenantID, fabricID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "list_stores", "error")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "list_stores", "success")
+	monitoring.RecordStateFabricOperationDuration(tenantID.String(), fabricID.String(), "list_stores", time.Since(start))
 	writeJSON(w, http.StatusOK, stores)
 }
 
 func (h *Handler) HandleCreateStore(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	tenantID, _, ok := tenantAndUser(r, w)
 	if !ok {
 		return
@@ -332,6 +412,7 @@ func (h *Handler) HandleCreateStore(w http.ResponseWriter, r *http.Request) {
 	}
 	var req createStoreRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "create_store", "bad_request")
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
@@ -343,13 +424,18 @@ func (h *Handler) HandleCreateStore(w http.ResponseWriter, r *http.Request) {
 	}
 	store, err := h.repo.CreateStore(r.Context(), tenantID, fabricID, req.Name, req.Type, req.MaxSize, req.Region)
 	if err != nil {
+		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "create_store", "error")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "create_store", "success")
+	monitoring.RecordStateFabricOperationDuration(tenantID.String(), fabricID.String(), "create_store", time.Since(start))
+	monitoring.UpdateStateFabricStoreCount(tenantID.String(), fabricID.String(), 1)
 	writeJSON(w, http.StatusCreated, store)
 }
 
 func (h *Handler) HandleDeleteStore(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	tenantID, _, ok := tenantAndUser(r, w)
 	if !ok {
 		return
@@ -359,13 +445,17 @@ func (h *Handler) HandleDeleteStore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.repo.DeleteStore(r.Context(), tenantID, fabricID, mux.Vars(r)["storeId"]); err != nil {
+		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "delete_store", "error")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "delete_store", "success")
+	monitoring.RecordStateFabricOperationDuration(tenantID.String(), fabricID.String(), "delete_store", time.Since(start))
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) HandleListPipelines(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	tenantID, _, ok := tenantAndUser(r, w)
 	if !ok {
 		return
@@ -376,9 +466,12 @@ func (h *Handler) HandleListPipelines(w http.ResponseWriter, r *http.Request) {
 	}
 	item, err := h.repo.GetFabric(r.Context(), tenantID, fabricID)
 	if err != nil {
+		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "list_pipelines", "error")
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
+	monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "list_pipelines", "success")
+	monitoring.RecordStateFabricOperationDuration(tenantID.String(), fabricID.String(), "list_pipelines", time.Since(start))
 	writeJSON(w, http.StatusOK, item.Pipelines)
 }
 
@@ -479,11 +572,34 @@ func (h *Handler) HandleExecutePipeline(w http.ResponseWriter, r *http.Request) 
 	if !parsed {
 		return
 	}
+
+	rateLimiter := h.getOrCreatePipelineRateLimiter(pipelineID, time.Minute, 60)
+
+	if !rateLimiter.Allow(pipelineID) {
+		logrus.WithFields(logrus.Fields{
+			"tenant_id":   tenantID,
+			"fabric_id":   fabricID,
+			"pipeline_id": pipelineID,
+		}).Warn("Pipeline execution rate limit exceeded")
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprintf("%d", rateLimiter.limit))
+		w.Header().Set("X-RateLimit-Remaining", "0")
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprintf("%d", rateLimiter.GetResetTime().Unix()))
+		monitoring.RecordStateFabricPipelineExecution(tenantID.String(), fabricID.String(), pipelineID.String(), "rate_limited")
+		http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
+		return
+	}
+
 	var input map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
+
+	remaining := rateLimiter.GetRemaining(pipelineID)
+	w.Header().Set("X-RateLimit-Limit", fmt.Sprintf("%d", rateLimiter.limit))
+	w.Header().Set("X-RateLimit-Remaining", fmt.Sprintf("%d", remaining))
+	w.Header().Set("X-RateLimit-Reset", fmt.Sprintf("%d", rateLimiter.GetResetTime().Unix()))
+
 	result, err := h.repo.ExecutePipeline(r.Context(), tenantID, fabricID, pipelineID, input)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

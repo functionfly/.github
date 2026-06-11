@@ -56,6 +56,10 @@ type WASMSecurityConfig struct {
 	// EnableDeterministic enables deterministic execution mode (default: false)
 	EnableDeterministic bool `json:"enable_deterministic"`
 
+	// DisableDeterministic disables deterministic execution mode (default: false)
+	// When false, fuel/instruction metering is enabled by default
+	DisableDeterministic bool `json:"disable_deterministic"`
+
 	// MaxInputSize is the maximum input size in bytes (default: 1MB)
 	MaxInputSize uint32 `json:"max_input_size"`
 
@@ -146,6 +150,11 @@ func NewSecurityConfigFromEnv() *WASMSecurityConfig {
 		config.EnableDeterministic = strings.ToLower(v) == "true" || v == "1"
 	}
 
+	// WASM_DISABLE_DETERMINISTIC - disable deterministic mode (overrides WASM_ENABLE_DETERMINISTIC)
+	if v := os.Getenv("WASM_DISABLE_DETERMINISTIC"); v != "" {
+		config.DisableDeterministic = strings.ToLower(v) == "true" || v == "1"
+	}
+
 	// WASM_ENABLE_WASI - enable/disable WASI
 	if v := os.Getenv("WASM_ENABLE_WASI"); v != "" {
 		config.EnableWASI = strings.ToLower(v) == "true" || v == "1"
@@ -229,6 +238,7 @@ func (c *WASMSecurityConfig) Clone() *WASMSecurityConfig {
 		InstancePoolPerTenant: c.InstancePoolPerTenant,
 		PoolSize:              c.PoolSize,
 		EnableDeterministic:   c.EnableDeterministic,
+		DisableDeterministic:   c.DisableDeterministic,
 		MaxInputSize:          c.MaxInputSize,
 		MaxOutputSize:         c.MaxOutputSize,
 		AIInference:          c.AIInference, // Deep copy is safe for struct values

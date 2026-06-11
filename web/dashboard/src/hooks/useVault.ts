@@ -273,3 +273,58 @@ export function useRotateSecret(secretId: string) {
     },
   });
 }
+
+// ==================== Version Hooks ====================
+
+/**
+ * Hook to list all versions for a secret
+ */
+export function useSecretVersions(secretId: string, limit = 50, offset = 0) {
+  return useQuery({
+    queryKey: [...vaultKeys.versions(secretId), { limit, offset }],
+    queryFn: () => vaultApi.listSecretVersions(secretId, limit, offset),
+    enabled: isSecretIdValidForFetch(secretId),
+  });
+}
+
+/**
+ * Hook to get a specific version of a secret
+ */
+export function useSecretVersion(secretId: string, versionNumber: number, includeEncrypted = false) {
+  return useQuery({
+    queryKey: vaultKeys.version(secretId, versionNumber),
+    queryFn: () => vaultApi.getSecretVersion(secretId, versionNumber, includeEncrypted),
+    enabled: isSecretIdValidForFetch(secretId) && versionNumber > 0,
+  });
+}
+
+/**
+ * Hook to compare (diff) two versions of a secret
+ */
+export function useDiffSecretVersions(secretId: string, fromVersion: number, toVersion?: number) {
+  return useQuery({
+    queryKey: vaultKeys.versionDiff(secretId, fromVersion, toVersion ?? -1),
+    queryFn: () => vaultApi.diffSecretVersions(secretId, fromVersion, toVersion),
+    enabled: isSecretIdValidForFetch(secretId) && fromVersion > 0,
+  });
+}
+
+/**
+ * Hook to rollback a secret to a previous version
+ */
+export function useRollbackSecret(secretId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request: RollbackSecretRequest) => vaultApi.rollbackSecret(secretId, request),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: vaultKeys.detail(secretId) });
+      queryClient.invalidateQueries({ queryKey: vaultKeys.versions(secretId) });
+      queryClient.invalidateQueries({ queryKey: vaultKeys.lists() });
+      toast.success(`Rolled back to version ${response.rolled_back_to} successfully`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to rollback secret: ${error.message}`);
+    },
+  });
+}

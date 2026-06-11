@@ -21,6 +21,8 @@ import {
   Check,
   Loader2,
   ShieldCheck,
+  History,
+  AlertCircle,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -54,6 +56,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { TokenGenerator } from "./TokenGenerator";
 import { SecretForm } from "./SecretForm";
+import { SecretVersionHistory } from "./SecretVersionHistory";
 
 // Secret type icon mapping
 const secretTypeIcons: Record<SecretType, typeof Key> = {
@@ -92,6 +95,8 @@ export function SecretDetail({ secretId, onClose }: SecretDetailProps) {
   const [isTokenModalOpen, setIsTokenModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
+  const [showPassphraseWarning, setShowPassphraseWarning] = useState(true);
 
   // Handle decryption
   const handleDecrypt = useCallback(async () => {
@@ -141,7 +146,7 @@ export function SecretDetail({ secretId, onClose }: SecretDetailProps) {
   if (isLoading) {
     return (
       <Dialog open onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="secrets-dialog-content">
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
           </div>
@@ -154,13 +159,13 @@ export function SecretDetail({ secretId, onClose }: SecretDetailProps) {
   if (error || !secret) {
     return (
       <Dialog open onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl">
-          <div className="text-center py-8">
-            <AlertTriangle className="mx-auto h-12 w-12 text-error mb-4" />
-            <h3 className="text-lg font-semibold text-error mb-2">
+        <DialogContent className="secrets-dialog-content">
+          <div className="secrets-error-state">
+            <AlertTriangle className="secrets-error-icon" />
+            <h3 className="secrets-error-title">
               Failed to load secret
             </h3>
-            <p className="text-text-secondary">
+            <p className="secrets-error-description">
               {error instanceof Error ? error.message : "Secret not found"}
             </p>
           </div>
@@ -174,24 +179,30 @@ export function SecretDetail({ secretId, onClose }: SecretDetailProps) {
   return (
     <>
       <Dialog open onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <div className="flex items-start gap-4">
-              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-brand-500/10 to-purple-500/10 flex items-center justify-center shrink-0">
-                <Icon className="h-6 w-6 text-brand-500" />
+        <DialogContent className="secrets-dialog-content">
+          <DialogHeader className="secrets-dialog-header">
+            <div className="secrets-detail-header">
+              <div className="secrets-detail-icon">
+                <Icon className="h-6 w-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <DialogTitle className="text-xl break-words">
+                <DialogTitle className="secrets-detail-title">
                   {secret.name}
                 </DialogTitle>
-                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  <Badge variant="secondary">
+                <div className="secrets-detail-meta">
+                  <span className={cn(
+                    "secret-type-badge",
+                    secret.secret_type === 'api_key' && "secret-type-badge-api",
+                    secret.secret_type === 'oauth_token' && "secret-type-badge-oauth",
+                    secret.secret_type === 'password' && "secret-type-badge-password",
+                    secret.secret_type === 'certificate' && "secret-type-badge-certificate"
+                  )}>
                     {secretTypeLabels[secret.secret_type]}
-                  </Badge>
+                  </span>
                   {secret.scopes?.map((scope) => (
-                    <Badge key={scope} variant="outline" className="text-xs">
+                    <span key={scope} className="rotation-badge rotation-badge-active" style={{ fontSize: '0.65rem' }}>
                       {scope}
-                    </Badge>
+                    </span>
                   ))}
                 </div>
               </div>
@@ -201,17 +212,44 @@ export function SecretDetail({ secretId, onClose }: SecretDetailProps) {
           <div className="space-y-6">
             {/* Description */}
             {secret.description && (
-              <div>
-                <Label className="text-text-muted">Description</Label>
-                <p className="text-card-foreground mt-1">{secret.description}</p>
+              <div className="secrets-detail-section">
+                <Label className="secrets-detail-label">Description</Label>
+                <p className="secrets-detail-value">{secret.description}</p>
+              </div>
+            )}
+
+            {/* Passphrase Recovery Warning */}
+            {showPassphraseWarning && !decryptedValue && (
+              <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                        Zero-Knowledge Encryption
+                      </p>
+                      <button
+                        onClick={() => setShowPassphraseWarning(false)}
+                        className="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200"
+                        aria-label="Dismiss warning"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                      Your passphrase is never sent to the server. We cannot recover your passphrase if you lose it.
+                      Store it securely in a password manager.
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 
             {/* Decryption Section */}
-            <div className="rounded-lg border border-border-subtle p-4 space-y-4">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5 text-brand-500" />
-                <h4 className="font-semibold text-card-foreground">
+            <div className="secrets-decrypt-section">
+              <div className="secrets-decrypt-header">
+                <ShieldCheck className="h-5 w-5" />
+                <h4 className="secrets-decrypt-title">
                   Decrypt Secret
                 </h4>
               </div>
@@ -219,7 +257,7 @@ export function SecretDetail({ secretId, onClose }: SecretDetailProps) {
               {!decryptedValue ? (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="passphrase">Passphrase</Label>
+                    <Label htmlFor="passphrase" className="secrets-detail-label">Passphrase</Label>
                     <div className="relative">
                       <Input
                         id="passphrase"
@@ -231,14 +269,14 @@ export function SecretDetail({ secretId, onClose }: SecretDetailProps) {
                           if (e.key === "Enter") handleDecrypt();
                         }}
                         className={cn(
-                          "pr-10",
+                          "secrets-decrypt-input pr-10",
                           decryptError && "border-error"
                         )}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassphrase(!showPassphrase)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary"
+                        className="secrets-toggle-btn absolute right-3 top-1/2 -translate-y-1/2"
                       >
                         {showPassphrase ? (
                           <EyeOff className="h-4 w-4" />
@@ -248,7 +286,7 @@ export function SecretDetail({ secretId, onClose }: SecretDetailProps) {
                       </button>
                     </div>
                     {decryptError && (
-                      <p className="text-sm text-error flex items-center gap-1">
+                      <p className="secrets-form-error flex items-center gap-1">
                         <AlertTriangle className="h-3.5 w-3.5" />
                         {decryptError}
                       </p>
@@ -257,7 +295,7 @@ export function SecretDetail({ secretId, onClose }: SecretDetailProps) {
                   <Button
                     onClick={handleDecrypt}
                     disabled={!passphrase || isDecrypting}
-                    className="w-full"
+                    className="btn-secrets-create w-full"
                   >
                     {isDecrypting ? (
                       <>
@@ -275,11 +313,11 @@ export function SecretDetail({ secretId, onClose }: SecretDetailProps) {
               ) : (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label>Decrypted Value</Label>
+                    <Label className="secrets-detail-label">Decrypted Value</Label>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setShowDecrypted(!showDecrypted)}
-                        className="text-text-muted hover:text-text-primary p-1"
+                        className="secrets-toggle-btn"
                         title={showDecrypted ? "Hide" : "Show"}
                       >
                         {showDecrypted ? (
@@ -290,7 +328,7 @@ export function SecretDetail({ secretId, onClose }: SecretDetailProps) {
                       </button>
                       <button
                         onClick={handleCopy}
-                        className="text-text-muted hover:text-text-primary p-1"
+                        className="secrets-toggle-btn"
                         title="Copy to clipboard"
                       >
                         {copied ? (
@@ -305,7 +343,7 @@ export function SecretDetail({ secretId, onClose }: SecretDetailProps) {
                     <textarea
                       readOnly
                       value={showDecrypted ? decryptedValue : "•".repeat(20)}
-                      className="w-full min-h-[100px] p-3 rounded-lg border border-border-subtle bg-bg-secondary font-mono text-sm resize-none"
+                      className="secrets-decrypted-value"
                     />
                   </div>
                   <Button
@@ -315,7 +353,7 @@ export function SecretDetail({ secretId, onClose }: SecretDetailProps) {
                       setPassphrase("");
                       setDecryptError(null);
                     }}
-                    className="w-full"
+                    className="btn-secrets-cancel w-full"
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Lock & Clear
@@ -325,18 +363,18 @@ export function SecretDetail({ secretId, onClose }: SecretDetailProps) {
             </div>
 
             {/* Metadata */}
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="secrets-detail-grid text-sm">
               <div>
-                <Label className="text-text-muted text-xs">Created</Label>
-                <p className="flex items-center gap-1.5 text-card-foreground mt-1">
-                  <Clock className="h-3.5 w-3.5" />
+                <Label className="secrets-detail-label">Created</Label>
+                <p className="secrets-time-cell mt-1">
+                  <Clock className="secrets-time-icon" />
                   {format(new Date(secret.created_at), "MMM d, yyyy HH:mm")}
                 </p>
               </div>
               <div>
-                <Label className="text-text-muted text-xs">Last Accessed</Label>
-                <p className="flex items-center gap-1.5 text-card-foreground mt-1">
-                  <Clock className="h-3.5 w-3.5" />
+                <Label className="secrets-detail-label">Last Accessed</Label>
+                <p className="secrets-time-cell mt-1">
+                  <Clock className="secrets-time-icon" />
                   {secret.last_accessed_at
                     ? formatDistanceToNow(new Date(secret.last_accessed_at), {
                         addSuffix: true,
@@ -345,31 +383,39 @@ export function SecretDetail({ secretId, onClose }: SecretDetailProps) {
                 </p>
               </div>
               <div>
-                <Label className="text-text-muted text-xs">Access Count</Label>
-                <p className="text-card-foreground mt-1">{secret.access_count}</p>
+                <Label className="secrets-detail-label">Access Count</Label>
+                <p className="secrets-detail-value mt-1">{secret.access_count}</p>
               </div>
               <div>
-                <Label className="text-text-muted text-xs">Key Version</Label>
-                <p className="text-card-foreground mt-1">
+                <Label className="secrets-detail-label">Key Version</Label>
+                <p className="secrets-detail-value mt-1">
                   v{secret.encrypted_data.key_version}
                 </p>
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex flex-wrap gap-2 pt-4 border-t border-border-subtle">
+            <div className="secrets-detail-actions">
               <Button
                 variant="outline"
                 onClick={() => setIsTokenModalOpen(true)}
-                className="flex-1"
+                className="secrets-action-btn-detail"
               >
                 <Key className="h-4 w-4 mr-2" />
                 Generate Token
               </Button>
               <Button
                 variant="outline"
+                onClick={() => setIsVersionHistoryOpen(true)}
+                className="secrets-action-btn-detail"
+              >
+                <History className="h-4 w-4 mr-2" />
+                Version History
+              </Button>
+              <Button
+                variant="outline"
                 onClick={() => setIsEditModalOpen(true)}
-                className="flex-1"
+                className="secrets-action-btn-detail"
               >
                 <Edit3 className="h-4 w-4 mr-2" />
                 Edit
@@ -377,7 +423,7 @@ export function SecretDetail({ secretId, onClose }: SecretDetailProps) {
               <Button
                 variant="destructive"
                 onClick={() => setIsDeleteDialogOpen(true)}
-                className="flex-1"
+                className="secrets-action-btn-detail"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete
@@ -401,9 +447,9 @@ export function SecretDetail({ secretId, onClose }: SecretDetailProps) {
       {/* Edit Modal */}
       {isEditModalOpen && (
         <Dialog open onOpenChange={setIsEditModalOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Edit Secret</DialogTitle>
+          <DialogContent className="secrets-dialog-content">
+            <DialogHeader className="secrets-dialog-header">
+              <DialogTitle className="secrets-dialog-title">Edit Secret</DialogTitle>
             </DialogHeader>
             <SecretForm
               onSubmit={() => setIsEditModalOpen(false)}
@@ -419,20 +465,20 @@ export function SecretDetail({ secretId, onClose }: SecretDetailProps) {
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Secret</AlertDialogTitle>
-            <AlertDialogDescription>
+        <AlertDialogContent className="secrets-delete-content">
+          <AlertDialogHeader className="secrets-delete-header">
+            <AlertDialogTitle className="secrets-delete-title">Delete Secret</AlertDialogTitle>
+            <AlertDialogDescription className="secrets-delete-description">
               Are you sure you want to delete <strong>{secret.name}</strong>?
               This action cannot be undone. All access tokens for this secret
               will also be revoked.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="secrets-delete-footer">
+            <AlertDialogCancel className="btn-secrets-cancel">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="btn-secrets-delete"
               disabled={deleteSecret.isPending}
             >
               {deleteSecret.isPending ? "Deleting..." : "Delete"}
@@ -440,6 +486,16 @@ export function SecretDetail({ secretId, onClose }: SecretDetailProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Version History Drawer */}
+      <SecretVersionHistory
+        secretId={secretId}
+        isOpen={isVersionHistoryOpen}
+        onClose={() => setIsVersionHistoryOpen(false)}
+        onRollbackSuccess={() => {
+          // Could refetch secret data here if needed
+        }}
+      />
     </>
   );
 }

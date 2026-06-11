@@ -6,7 +6,15 @@
 import * as React from "react";
 import { cn } from "@functionfly/ui-core";
 import { Badge } from "@functionfly/ui-core";
-import { Wrench, ChevronDown, ChevronRight, CheckCircle2, XCircle, Loader2, Clock } from "lucide-react";
+import {
+  Wrench,
+  ChevronDown,
+  ChevronRight,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  Clock,
+} from "lucide-react";
 
 export interface ToolInvocation {
   id: string;
@@ -27,9 +35,21 @@ export interface ToolInvocationFeedProps {
   autoScroll?: boolean;
 }
 
-const statusConfig = {
+interface StatusConfig {
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+  bg: string;
+  animate?: boolean;
+}
+
+const statusConfig: Record<string, StatusConfig> = {
   pending: { icon: Clock, color: "text-text-muted", bg: "bg-bg-tertiary" },
-  running: { icon: Loader2, color: "text-brand-500", bg: "bg-brand-500/10", animate: true },
+  running: {
+    icon: Loader2,
+    color: "text-brand-500",
+    bg: "bg-brand-500/10",
+    animate: true,
+  },
   completed: { icon: CheckCircle2, color: "text-success", bg: "bg-success/10" },
   failed: { icon: XCircle, color: "text-error", bg: "bg-error/10" },
 };
@@ -50,7 +70,7 @@ export function ToolInvocationFeed({
   }, [invocations, autoScroll]);
 
   const toggleExpand = (id: string) => {
-    setExpandedIds(prev => {
+    setExpandedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -58,18 +78,24 @@ export function ToolInvocationFeed({
     });
   };
 
-  const runningCount = invocations.filter(i => i.status === "running").length;
+  const runningCount = invocations.filter((i) => i.status === "running").length;
 
   return (
     <div className={cn("flex flex-col h-full", className)}>
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border-subtle">
         <Wrench className="size-4 text-brand-500" />
-        <span className="text-sm font-medium text-text-primary">Tool Calls</span>
+        <span className="text-sm font-medium text-text-primary">
+          Tool Calls
+        </span>
         {runningCount > 0 && (
-          <Badge variant="brand" size="sm" pulse>{runningCount} running</Badge>
+          <Badge variant="brand" size="sm" pulse>
+            {runningCount} running
+          </Badge>
         )}
-        <Badge variant="ghost" size="sm" className="ml-auto">{invocations.length} total</Badge>
+        <Badge variant="ghost" size="sm" className="ml-auto">
+          {invocations.length} total
+        </Badge>
       </div>
 
       {/* Invocation List */}
@@ -81,11 +107,15 @@ export function ToolInvocationFeed({
             <p className="text-xs mt-1">Tool calls will appear here</p>
           </div>
         ) : (
-          invocations.map(invocation => {
+          invocations.map((invocation) => {
             const config = statusConfig[invocation.status];
             const isExpanded = expandedIds.has(invocation.id);
             const Icon = config.icon;
-            const duration = invocation.duration || (invocation.endTime ? invocation.endTime - invocation.startTime : undefined);
+            const duration =
+              invocation.duration ||
+              (invocation.endTime
+                ? invocation.endTime - invocation.startTime
+                : undefined);
 
             return (
               <div
@@ -99,20 +129,43 @@ export function ToolInvocationFeed({
                   className="flex items-center gap-3 p-3"
                 >
                   <button className="text-text-muted">
-                    {isExpanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+                    {isExpanded ? (
+                      <ChevronDown className="size-4" />
+                    ) : (
+                      <ChevronRight className="size-4" />
+                    )}
                   </button>
 
-                  <div className={cn("size-8 rounded-lg flex items-center justify-center shrink-0", config.bg)}>
-                    <Icon className={cn("size-4", config.color, config.animate && "animate-spin")} />
+                  <div
+                    className={cn(
+                      "size-8 rounded-lg flex items-center justify-center shrink-0",
+                      config.bg,
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        "size-4",
+                        config.color,
+                        config.animate && "animate-spin",
+                      )}
+                    />
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm font-mono font-medium text-text-primary">{invocation.toolName}</span>
+                    <span className="text-sm font-mono font-medium text-text-primary">
+                      {invocation.toolName}
+                    </span>
                     <div className="flex items-center gap-2 mt-0.5">
                       {duration !== undefined && (
-                        <span className="text-[10px] text-text-muted">{duration}ms</span>
+                        <span className="text-[10px] text-text-muted">
+                          {duration}ms
+                        </span>
                       )}
-                      <Badge variant="outline" size="sm" className="text-[10px]">
+                      <Badge
+                        variant="outline"
+                        size="sm"
+                        className="text-[10px]"
+                      >
                         {invocation.status}
                       </Badge>
                     </div>
@@ -143,8 +196,8 @@ export function ToolInvocationFeed({
                           Result
                         </label>
                         <pre className="p-2 bg-bg-tertiary/50 rounded text-xs font-mono text-text-secondary overflow-auto max-h-32">
-                          {typeof invocation.result === 'string' 
-                            ? invocation.result 
+                          {typeof invocation.result === "string"
+                            ? invocation.result
                             : JSON.stringify(invocation.result, null, 2)}
                         </pre>
                       </div>
@@ -153,8 +206,12 @@ export function ToolInvocationFeed({
                     {/* Error */}
                     {invocation.error && (
                       <div className="p-2 bg-error/10 rounded border border-error/20">
-                        <span className="text-xs text-error font-medium">Error: </span>
-                        <span className="text-xs text-error">{invocation.error}</span>
+                        <span className="text-xs text-error font-medium">
+                          Error:{" "}
+                        </span>
+                        <span className="text-xs text-error">
+                          {invocation.error}
+                        </span>
                       </div>
                     )}
                   </div>

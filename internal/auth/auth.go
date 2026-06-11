@@ -69,8 +69,8 @@ func NewAuthService(repo storage.Repository, jwtSecret string) (*AuthService, er
 		emailSvc = email.NewMockService(emailConfig)
 	}
 
-jwtDuration := 24 * time.Hour
-	if d, err := time.ParseDuration(getEnvOrDefault("JWT_EXPIRATION", "24h")); err == nil {
+	jwtDuration := 4 * time.Hour
+	if d, err := time.ParseDuration(getEnvOrDefault("JWT_EXPIRATION", "4h")); err == nil {
 		jwtDuration = d
 	}
 	service := &AuthService{

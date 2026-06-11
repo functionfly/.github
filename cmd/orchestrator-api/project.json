@@ -1,0 +1,37 @@
+{
+  "name": "orchestrator-api",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "cmd/orchestrator-api",
+  "projectType": "application",
+  "tags": ["type:service", "platform:go"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/bin/orchestrator-api"],
+      "options": {
+        "command": "go build -o bin/orchestrator-api ./cmd/orchestrator-api"
+      },
+      "cache": true
+    },
+    "run": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "./bin/orchestrator-api"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "go test ./cmd/orchestrator-api/..."
+      },
+      "cache": true
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "golangci-lint run ./cmd/orchestrator-api/..."
+      },
+      "cache": true
+    }
+  }
+}

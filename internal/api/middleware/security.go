@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -17,6 +18,7 @@ import (
 	"github.com/functionfly/functionfly/internal/adapters/signing"
 	"github.com/functionfly/functionfly/internal/api/middleware/advanced_security"
 	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 )
 
@@ -330,6 +332,283 @@ func BodySizeLimitMiddleware(maxBytes int64) func(http.HandlerFunc) http.Handler
 	}
 }
 
+// NotificationRateLimiter limits notification operations per user to prevent abuse
+// Uses Redis-backed distributed rate limiting when available.
+type NotificationRateLimiter struct {
+	redisClient *redis.Client
+	useRedis    bool
+
+	listLimiter        *RateLimiter
+	unreadCountLimiter *RateLimiter
+	markReadLimiter    *RateLimiter
+	markAllReadLimiter *RateLimiter
+	deleteLimiter      *RateLimiter
+	preferencesLimiter *RateLimiter
+
+	listRedis        *HybridRateLimiter
+	unreadCountRedis *HybridRateLimiter
+	markReadRedis    *HybridRateLimiter
+	markAllReadRedis *HybridRateLimiter
+	deleteRedis      *HybridRateLimiter
+	preferencesRedis *HybridRateLimiter
+}
+
+// NewNotificationRateLimiter creates a limiter for notification operations with sensible defaults
+func NewNotificationRateLimiter(redisClient *redis.Client) *NotificationRateLimiter {
+	useRedis := redisClient != nil && os.Getenv("DISTRIBUTED_RATE_LIMITER_DISABLED") != "true"
+
+	nr := &NotificationRateLimiter{
+		redisClient: redisClient,
+		useRedis:    useRedis,
+	}
+
+	if useRedis {
+		nr.listRedis = NewHybridRateLimiter(redisClient, time.Minute, 30, "notification_list")
+		nr.unreadCountRedis = NewHybridRateLimiter(redisClient, time.Minute, 60, "notification_unread_count")
+		nr.markReadRedis = NewHybridRateLimiter(redisClient, time.Minute, 30, "notification_mark_read")
+		nr.markAllReadRedis = NewHybridRateLimiter(redisClient, time.Hour, 10, "notification_mark_all_read")
+		nr.deleteRedis = NewHybridRateLimiter(redisClient, time.Minute, 20, "notification_delete")
+		nr.preferencesRedis = NewHybridRateLimiter(redisClient, time.Minute, 20, "notification_preferences")
+	} else {
+		nr.listLimiter = NewRateLimiter(time.Minute, 30)
+		nr.unreadCountLimiter = NewRateLimiter(time.Minute, 60)
+		nr.markReadLimiter = NewRateLimiter(time.Minute, 30)
+		nr.markAllReadLimiter = NewRateLimiter(time.Hour, 10)
+		nr.deleteLimiter = NewRateLimiter(time.Minute, 20)
+		nr.preferencesLimiter = NewRateLimiter(time.Minute, 20)
+	}
+
+	return nr
+}
+
+// LimitList wraps a handler with rate limiting for notification list operations
+func (nr *NotificationRateLimiter) LimitList(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims := GetUserFromContext(r)
+		if claims == nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		key := fmt.Sprintf("notification_list:%s", claims.UserID.String())
+
+		allowed := false
+		if nr.useRedis {
+			allowed = nr.listRedis.Allow(key)
+		} else {
+			allowed = nr.listLimiter.Allow(key)
+		}
+
+		if !allowed {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", "60")
+			w.WriteHeader(http.StatusTooManyRequests)
+			logrus.WithFields(logrus.Fields{
+				"user_id": claims.UserID.String(),
+				"path":    r.URL.Path,
+			}).Warn("Notification list rate limit exceeded")
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":   "rate_limit_exceeded",
+				"code":    "NOTIFICATION_LIST_RATE_LIMIT",
+				"message": "Too many notification list requests. Please try again later.",
+			})
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
+}
+
+// LimitUnreadCount wraps a handler with rate limiting for unread count operations
+func (nr *NotificationRateLimiter) LimitUnreadCount(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims := GetUserFromContext(r)
+		if claims == nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		key := fmt.Sprintf("notification_unread_count:%s", claims.UserID.String())
+
+		allowed := false
+		if nr.useRedis {
+			allowed = nr.unreadCountRedis.Allow(key)
+		} else {
+			allowed = nr.unreadCountLimiter.Allow(key)
+		}
+
+		if !allowed {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", "60")
+			w.WriteHeader(http.StatusTooManyRequests)
+			logrus.WithFields(logrus.Fields{
+				"user_id": claims.UserID.String(),
+				"path":    r.URL.Path,
+			}).Warn("Notification unread count rate limit exceeded")
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":   "rate_limit_exceeded",
+				"code":    "NOTIFICATION_UNREAD_COUNT_RATE_LIMIT",
+				"message": "Too many unread count requests. Please try again later.",
+			})
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
+}
+
+// LimitMarkRead wraps a handler with rate limiting for mark as read operations
+func (nr *NotificationRateLimiter) LimitMarkRead(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims := GetUserFromContext(r)
+		if claims == nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		key := fmt.Sprintf("notification_mark_read:%s", claims.UserID.String())
+
+		allowed := false
+		if nr.useRedis {
+			allowed = nr.markReadRedis.Allow(key)
+		} else {
+			allowed = nr.markReadLimiter.Allow(key)
+		}
+
+		if !allowed {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", "60")
+			w.WriteHeader(http.StatusTooManyRequests)
+			logrus.WithFields(logrus.Fields{
+				"user_id": claims.UserID.String(),
+				"path":    r.URL.Path,
+			}).Warn("Notification mark read rate limit exceeded")
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":   "rate_limit_exceeded",
+				"code":    "NOTIFICATION_MARK_READ_RATE_LIMIT",
+				"message": "Too many mark as read requests. Please try again later.",
+			})
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
+}
+
+// LimitMarkAllRead wraps a handler with rate limiting for mark all as read operations
+func (nr *NotificationRateLimiter) LimitMarkAllRead(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims := GetUserFromContext(r)
+		if claims == nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		key := fmt.Sprintf("notification_mark_all_read:%s", claims.UserID.String())
+
+		allowed := false
+		if nr.useRedis {
+			allowed = nr.markAllReadRedis.Allow(key)
+		} else {
+			allowed = nr.markAllReadLimiter.Allow(key)
+		}
+
+		if !allowed {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", "3600")
+			w.WriteHeader(http.StatusTooManyRequests)
+			logrus.WithFields(logrus.Fields{
+				"user_id": claims.UserID.String(),
+				"path":    r.URL.Path,
+			}).Warn("Notification mark all read rate limit exceeded")
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":   "rate_limit_exceeded",
+				"code":    "NOTIFICATION_MARK_ALL_READ_RATE_LIMIT",
+				"message": "Too many mark all as read requests. Please try again later.",
+			})
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
+}
+
+// LimitDelete wraps a handler with rate limiting for delete notification operations
+func (nr *NotificationRateLimiter) LimitDelete(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims := GetUserFromContext(r)
+		if claims == nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		key := fmt.Sprintf("notification_delete:%s", claims.UserID.String())
+
+		allowed := false
+		if nr.useRedis {
+			allowed = nr.deleteRedis.Allow(key)
+		} else {
+			allowed = nr.deleteLimiter.Allow(key)
+		}
+
+		if !allowed {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", "60")
+			w.WriteHeader(http.StatusTooManyRequests)
+			logrus.WithFields(logrus.Fields{
+				"user_id": claims.UserID.String(),
+				"path":    r.URL.Path,
+			}).Warn("Notification delete rate limit exceeded")
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":   "rate_limit_exceeded",
+				"code":    "NOTIFICATION_DELETE_RATE_LIMIT",
+				"message": "Too many delete requests. Please try again later.",
+			})
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
+}
+
+// LimitPreferences wraps a handler with rate limiting for preference update operations
+func (nr *NotificationRateLimiter) LimitPreferences(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims := GetUserFromContext(r)
+		if claims == nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		key := fmt.Sprintf("notification_preferences:%s", claims.UserID.String())
+
+		allowed := false
+		if nr.useRedis {
+			allowed = nr.preferencesRedis.Allow(key)
+		} else {
+			allowed = nr.preferencesLimiter.Allow(key)
+		}
+
+		if !allowed {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", "60")
+			w.WriteHeader(http.StatusTooManyRequests)
+			logrus.WithFields(logrus.Fields{
+				"user_id": claims.UserID.String(),
+				"path":    r.URL.Path,
+			}).Warn("Notification preferences rate limit exceeded")
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":   "rate_limit_exceeded",
+				"code":    "NOTIFICATION_PREFERENCES_RATE_LIMIT",
+				"message": "Too many preference update requests. Please try again later.",
+			})
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
+}
+
 // SecurityHeaders middleware adds security headers to responses
 func (sm *SecurityMiddleware) SecurityHeaders(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -610,12 +889,18 @@ func NewAdvancedSecurityMiddleware(db storage.Repository) *advanced_security.Adv
 // AuthRateLimiter is a strict per-IP rate limiter for sensitive auth endpoints
 // (login, signup, resend-verification). Defaults to 10 req/min — configurable
 // via AUTH_RATE_LIMIT_REQUESTS and AUTH_RATE_LIMIT_WINDOW_SECONDS.
+// Uses Redis-backed distributed rate limiting when available, falls back to
+// in-memory for single-instance deployments.
 type AuthRateLimiter struct {
-	limiter *RateLimiter
+	redisClient *redis.Client
+	memory      *RateLimiter
+	useRedis    bool
+	limit       int
+	window      time.Duration
 }
 
 // NewAuthRateLimiter creates an AuthRateLimiter with values from env or defaults.
-func NewAuthRateLimiter() *AuthRateLimiter {
+func NewAuthRateLimiter(redisClient *redis.Client) *AuthRateLimiter {
 	limit := 10
 	window := 60 // seconds
 
@@ -630,21 +915,136 @@ func NewAuthRateLimiter() *AuthRateLimiter {
 		}
 	}
 
+	useRedis := redisClient != nil && os.Getenv("DISTRIBUTED_RATE_LIMITER_DISABLED") != "true"
+
 	return &AuthRateLimiter{
-		limiter: NewRateLimiter(time.Duration(window)*time.Second, limit),
+		redisClient: redisClient,
+		memory:      NewRateLimiter(time.Duration(window)*time.Second, limit),
+		useRedis:    useRedis,
+		limit:       limit,
+		window:      time.Duration(window) * time.Second,
 	}
+}
+
+// Allow checks if a request from the given key should be allowed
+func (a *AuthRateLimiter) Allow(key string) bool {
+	if a.useRedis && a.redisClient != nil {
+		ctx := context.Background()
+		redisKey := fmt.Sprintf("ratelimit:auth:%s", key)
+		now := time.Now().Unix()
+		windowStart := now - int64(a.window.Seconds())
+
+		pipe := a.redisClient.Pipeline()
+		pipe.ZRemRangeByScore(ctx, redisKey, "-inf", fmt.Sprintf("%d", windowStart))
+		countCmd := pipe.ZCard(ctx, redisKey)
+		pipe.ZAdd(ctx, redisKey, redis.Z{Score: float64(now), Member: now})
+		pipe.Expire(ctx, redisKey, a.window)
+
+		_, err := pipe.Exec(ctx)
+		if err != nil {
+			logrus.WithError(err).Warn("Redis auth rate limiter error, allowing request")
+			return a.memory.Allow(key)
+		}
+
+		return int(countCmd.Val()) < a.limit
+	}
+	return a.memory.Allow(key)
 }
 
 // Limit wraps a handler with auth-specific rate limiting.
 func (a *AuthRateLimiter) Limit(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		clientIP := getClientIP(r)
-		if !a.limiter.Allow(clientIP) {
+		if !a.Allow(clientIP) {
 			logrus.WithFields(logrus.Fields{
 				"ip":   clientIP,
 				"path": r.URL.Path,
 			}).Warn("Auth rate limit exceeded")
-			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(a.limiter.window.Seconds())))
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(a.window.Seconds())))
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusTooManyRequests)
+			_, _ = fmt.Fprintf(w, `{"message":"Too many requests. Please wait before trying again."}`)
+			return
+		}
+		next.ServeHTTP(w, r)
+	}
+}
+
+// PublicRateLimiter rate-limits public endpoints that don't require authentication.
+// Uses a more relaxed limit than AuthRateLimiter since these are read-only public data.
+// Defaults to 60 req/min per IP — configurable via PUBLIC_RATE_LIMIT_REQUESTS and
+// PUBLIC_RATE_LIMIT_WINDOW_SECONDS.
+// Uses Redis-backed distributed rate limiting when available.
+type PublicRateLimiter struct {
+	redisClient *redis.Client
+	memory      *RateLimiter
+	useRedis    bool
+	limit       int
+	window      time.Duration
+}
+
+// NewPublicRateLimiter creates a PublicRateLimiter.
+func NewPublicRateLimiter(redisClient *redis.Client) *PublicRateLimiter {
+	limit := 60
+	window := 60 // seconds
+
+	if v := os.Getenv("PUBLIC_RATE_LIMIT_REQUESTS"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	if v := os.Getenv("PUBLIC_RATE_LIMIT_WINDOW_SECONDS"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+			window = parsed
+		}
+	}
+
+	useRedis := redisClient != nil && os.Getenv("DISTRIBUTED_RATE_LIMITER_DISABLED") != "true"
+
+	return &PublicRateLimiter{
+		redisClient: redisClient,
+		memory:      NewRateLimiter(time.Duration(window)*time.Second, limit),
+		useRedis:    useRedis,
+		limit:       limit,
+		window:      time.Duration(window) * time.Second,
+	}
+}
+
+// Allow checks if a request from the given key should be allowed
+func (p *PublicRateLimiter) Allow(key string) bool {
+	if p.useRedis && p.redisClient != nil {
+		ctx := context.Background()
+		redisKey := fmt.Sprintf("ratelimit:public:%s", key)
+		now := time.Now().Unix()
+		windowStart := now - int64(p.window.Seconds())
+
+		pipe := p.redisClient.Pipeline()
+		pipe.ZRemRangeByScore(ctx, redisKey, "-inf", fmt.Sprintf("%d", windowStart))
+		countCmd := pipe.ZCard(ctx, redisKey)
+		pipe.ZAdd(ctx, redisKey, redis.Z{Score: float64(now), Member: now})
+		pipe.Expire(ctx, redisKey, p.window)
+
+		_, err := pipe.Exec(ctx)
+		if err != nil {
+			logrus.WithError(err).Warn("Redis public rate limiter error, allowing request")
+			return p.memory.Allow(key)
+		}
+
+		return int(countCmd.Val()) < p.limit
+	}
+	return p.memory.Allow(key)
+}
+
+// Limit wraps a handler with public endpoint rate limiting.
+func (p *PublicRateLimiter) Limit(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		clientIP := getClientIP(r)
+		if !p.Allow(clientIP) {
+			logrus.WithFields(logrus.Fields{
+				"ip":   clientIP,
+				"path": r.URL.Path,
+			}).Warn("Public rate limit exceeded")
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(p.window.Seconds())))
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusTooManyRequests)
 			_, _ = fmt.Fprintf(w, `{"message":"Too many requests. Please wait before trying again."}`)
@@ -655,16 +1055,26 @@ func (a *AuthRateLimiter) Limit(next http.HandlerFunc) http.HandlerFunc {
 }
 
 // MFARateLimiter applies rate limiting to MFA verification endpoints to prevent brute force attacks
-// on TOTP codes and backup codes.
+// on TOTP codes and backup codes. It also tracks failed attempts and implements lockout after
+// consecutive failures to prevent brute force attacks.
 type MFARateLimiter struct {
-	limiter *RateLimiter
+	limiter       *RateLimiter
+	failedAttempts map[string][]time.Time // user ID -> timestamps of failed attempts
+	failedMu      sync.Mutex
+	lockouts      map[string]time.Time // user ID -> lockout expiration time
+	lockoutMu     sync.Mutex
+	maxAttempts   int
+	lockoutDuration time.Duration
 }
 
 // NewMFARateLimiter creates an MFA rate limiter with stricter limits than auth endpoints.
 // Defaults to 5 attempts per minute per user to prevent brute forcing 6-digit TOTP codes.
+// After 5 consecutive failed attempts, the user is locked out for 15 minutes.
 func NewMFARateLimiter() *MFARateLimiter {
 	limit := 5
 	window := 60 // seconds
+	maxAttempts := 5
+	lockoutDuration := 15 * time.Minute
 
 	if v := os.Getenv("MFA_RATE_LIMIT_REQUESTS"); v != "" {
 		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
@@ -676,13 +1086,109 @@ func NewMFARateLimiter() *MFARateLimiter {
 			window = parsed
 		}
 	}
+	if v := os.Getenv("MFA_MAX_FAILED_ATTEMPTS"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+			maxAttempts = parsed
+		}
+	}
+	if v := os.Getenv("MFA_LOCKOUT_DURATION_MINUTES"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+			lockoutDuration = time.Duration(parsed) * time.Minute
+		}
+	}
 
 	return &MFARateLimiter{
-		limiter: NewRateLimiter(time.Duration(window)*time.Second, limit),
+		limiter:         NewRateLimiter(time.Duration(window)*time.Second, limit),
+		failedAttempts:  make(map[string][]time.Time),
+		lockouts:        make(map[string]time.Time),
+		maxAttempts:     maxAttempts,
+		lockoutDuration: lockoutDuration,
 	}
 }
 
-// LimitVerify wraps an MFA verification handler with rate limiting.
+// CheckLockout checks if a user is currently locked out due to too many failed MFA attempts.
+// Returns true if locked out, false otherwise.
+func (m *MFARateLimiter) CheckLockout(userID string) bool {
+	m.lockoutMu.Lock()
+	defer m.lockoutMu.Unlock()
+
+	if lockoutUntil, exists := m.lockouts[userID]; exists {
+		if time.Now().Before(lockoutUntil) {
+			return true
+		}
+		// Lockout expired, clean up
+		delete(m.lockouts, userID)
+	}
+	return false
+}
+
+// RecordFailure records a failed MFA verification attempt for a user.
+// If the user exceeds maxAttempts within the lockout window, they are locked out.
+func (m *MFARateLimiter) RecordFailure(userID string) {
+	m.failedMu.Lock()
+	defer m.failedMu.Unlock()
+
+	now := time.Now()
+	windowStart := now.Add(-m.lockoutDuration)
+
+	// Get existing failures or create new slice
+	failures := m.failedAttempts[userID]
+	var validFailures []time.Time
+	for _, t := range failures {
+		if t.After(windowStart) {
+			validFailures = append(validFailures, t)
+		}
+	}
+
+	// Add new failure
+	validFailures = append(validFailures, now)
+	m.failedAttempts[userID] = validFailures
+
+	// Check if we should lock out the user
+	if len(validFailures) >= m.maxAttempts {
+		m.lockoutMu.Lock()
+		m.lockouts[userID] = now.Add(m.lockoutDuration)
+		m.lockoutMu.Unlock()
+
+		logrus.WithFields(logrus.Fields{
+			"user_id":          userID,
+			"failed_attempts":  len(validFailures),
+			"lockout_duration": m.lockoutDuration,
+		}).Warn("MFA user locked out due to too many failed attempts")
+	}
+}
+
+// ClearFailures clears all failed attempts for a user (called on successful MFA verification).
+func (m *MFARateLimiter) ClearFailures(userID string) {
+	m.failedMu.Lock()
+	defer m.failedMu.Unlock()
+	delete(m.failedAttempts, userID)
+}
+
+// GetRemainingAttempts returns the number of remaining MFA attempts before lockout.
+func (m *MFARateLimiter) GetRemainingAttempts(userID string) int {
+	m.failedMu.Lock()
+	defer m.failedMu.Unlock()
+
+	now := time.Now()
+	windowStart := now.Add(-m.lockoutDuration)
+
+	failures := m.failedAttempts[userID]
+	validCount := 0
+	for _, t := range failures {
+		if t.After(windowStart) {
+			validCount++
+		}
+	}
+
+	remaining := m.maxAttempts - validCount
+	if remaining < 0 {
+		remaining = 0
+	}
+	return remaining
+}
+
+// LimitVerify wraps an MFA verification handler with rate limiting and lockout check.
 // Uses user ID from context (set by auth middleware) as the rate limit key.
 func (m *MFARateLimiter) LimitVerify(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -694,12 +1200,25 @@ func (m *MFARateLimiter) LimitVerify(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		// Use user ID as rate limit key to prevent per-user brute force
-		key := claims.UserID.String()
+		userID := claims.UserID.String()
 
-		if !m.limiter.Allow(key) {
+		// Check if user is locked out
+		if m.CheckLockout(userID) {
 			logrus.WithFields(logrus.Fields{
-				"user_id": claims.UserID.String(),
+				"user_id": userID,
+				"path":    r.URL.Path,
+			}).Warn("MFA verification attempt on locked out account")
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(m.lockoutDuration.Seconds())))
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusTooManyRequests)
+			_, _ = fmt.Fprintf(w, `{"message":"Account temporarily locked due to too many failed MFA attempts. Please try again later."}`)
+			return
+		}
+
+		// Use user ID as rate limit key to prevent per-user brute force
+		if !m.limiter.Allow(userID) {
+			logrus.WithFields(logrus.Fields{
+				"user_id": userID,
 				"path":    r.URL.Path,
 			}).Warn("MFA verification rate limit exceeded")
 			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(m.limiter.window.Seconds())))
@@ -714,51 +1233,100 @@ func (m *MFARateLimiter) LimitVerify(next http.HandlerFunc) http.HandlerFunc {
 
 // VaultRateLimiter applies per-tenant rate limits for vault operations.
 // Use after RequireAuth so tenant ID is available from context.
+// Uses Redis-backed distributed rate limiting when available.
 type VaultRateLimiter struct {
+	redisClient *redis.Client
+	useRedis    bool
+
 	createSecretLimiter  *RateLimiter // e.g. 30/hour per tenant
 	generateTokenLimiter *RateLimiter // e.g. 60/hour per tenant
 	readSecretLimiter    *RateLimiter // e.g. 200/hour per tenant
 	listSecretsLimiter   *RateLimiter // e.g. 100/hour per tenant
+
+	createSecretRedis  *HybridRateLimiter
+	generateTokenRedis *HybridRateLimiter
+	readSecretRedis    *HybridRateLimiter
+	listSecretsRedis   *HybridRateLimiter
 }
 
 // NewVaultRateLimiter creates a limiter for vault operations per tenant.
-func NewVaultRateLimiter() *VaultRateLimiter {
-	return &VaultRateLimiter{
-		createSecretLimiter:  NewRateLimiter(time.Hour, 30),
-		generateTokenLimiter: NewRateLimiter(time.Hour, 60),
-		readSecretLimiter:    NewRateLimiter(time.Hour, 200),
-		listSecretsLimiter:   NewRateLimiter(time.Hour, 100),
+func NewVaultRateLimiter(redisClient *redis.Client) *VaultRateLimiter {
+	useRedis := redisClient != nil && os.Getenv("DISTRIBUTED_RATE_LIMITER_DISABLED") != "true"
+
+	vr := &VaultRateLimiter{
+		redisClient: redisClient,
+		useRedis:    useRedis,
 	}
+
+	if useRedis {
+		vr.createSecretRedis = NewHybridRateLimiter(redisClient, time.Hour, 30, "vault_create")
+		vr.generateTokenRedis = NewHybridRateLimiter(redisClient, time.Hour, 60, "vault_token")
+		vr.readSecretRedis = NewHybridRateLimiter(redisClient, time.Hour, 200, "vault_read")
+		vr.listSecretsRedis = NewHybridRateLimiter(redisClient, time.Hour, 100, "vault_list")
+	} else {
+		vr.createSecretLimiter = NewRateLimiter(time.Hour, 30)
+		vr.generateTokenLimiter = NewRateLimiter(time.Hour, 60)
+		vr.readSecretLimiter = NewRateLimiter(time.Hour, 200)
+		vr.listSecretsLimiter = NewRateLimiter(time.Hour, 100)
+	}
+
+	return vr
 }
 
 // LimitCreate wraps a handler with per-tenant rate limiting for creating secrets.
 func (v *VaultRateLimiter) LimitCreate(next http.HandlerFunc) http.HandlerFunc {
-	return v.limitByTenant("vault_create", v.createSecretLimiter, next)
+	return v.limitByTenant("vault_create", "vault_create", next)
 }
 
 // LimitGenerateToken wraps a handler with per-tenant rate limiting for generating tokens.
 func (v *VaultRateLimiter) LimitGenerateToken(next http.HandlerFunc) http.HandlerFunc {
-	return v.limitByTenant("vault_token", v.generateTokenLimiter, next)
+	return v.limitByTenant("vault_token", "vault_token", next)
 }
 
 // LimitRead wraps a handler with per-tenant rate limiting for reading a secret.
 func (v *VaultRateLimiter) LimitRead(next http.HandlerFunc) http.HandlerFunc {
-	return v.limitByTenant("vault_read", v.readSecretLimiter, next)
+	return v.limitByTenant("vault_read", "vault_read", next)
 }
 
 // LimitList wraps a handler with per-tenant rate limiting for listing secrets.
 func (v *VaultRateLimiter) LimitList(next http.HandlerFunc) http.HandlerFunc {
-	return v.limitByTenant("vault_list", v.listSecretsLimiter, next)
+	return v.limitByTenant("vault_list", "vault_list", next)
 }
 
-func (v *VaultRateLimiter) limitByTenant(prefix string, limiter *RateLimiter, next http.HandlerFunc) http.HandlerFunc {
+func (v *VaultRateLimiter) limitByTenant(prefix string, keyPrefix string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		claims := GetUserFromContext(r)
-		key := prefix + ":unknown"
+		key := keyPrefix + ":unknown"
 		if claims != nil {
-			key = prefix + ":" + claims.TenantID.String()
+			key = keyPrefix + ":" + claims.TenantID.String()
 		}
-		if !limiter.Allow(key) {
+
+		allowed := false
+		if v.useRedis {
+			switch prefix {
+			case "vault_create":
+				allowed = v.createSecretRedis.Allow(key)
+			case "vault_token":
+				allowed = v.generateTokenRedis.Allow(key)
+			case "vault_read":
+				allowed = v.readSecretRedis.Allow(key)
+			case "vault_list":
+				allowed = v.listSecretsRedis.Allow(key)
+			}
+		} else {
+			switch prefix {
+			case "vault_create":
+				allowed = v.createSecretLimiter.Allow(key)
+			case "vault_token":
+				allowed = v.generateTokenLimiter.Allow(key)
+			case "vault_read":
+				allowed = v.readSecretLimiter.Allow(key)
+			case "vault_list":
+				allowed = v.listSecretsLimiter.Allow(key)
+			}
+		}
+
+		if !allowed {
 			logrus.WithFields(logrus.Fields{"key": key, "path": r.URL.Path}).Warn("Vault rate limit exceeded")
 			w.Header().Set("Retry-After", "3600")
 			w.Header().Set("Content-Type", "application/json")
@@ -771,37 +1339,58 @@ func (v *VaultRateLimiter) limitByTenant(prefix string, limiter *RateLimiter, ne
 }
 
 // ProviderRateLimiter limits provider connect/disconnect/test operations per tenant.
+// Uses Redis-backed distributed rate limiting when available.
 type ProviderRateLimiter struct {
-	connectLimiter    *RateLimiter // Limit: 10/hour per tenant for connecting new providers
-	disconnectLimiter *RateLimiter // Limit: 20/hour per tenant for disconnecting providers
-	testLimiter       *RateLimiter // Limit: 30/minute per tenant for testing connections
+	redisClient *redis.Client
+	useRedis    bool
+
+	connectLimiter    *RateLimiter
+	disconnectLimiter *RateLimiter
+	testLimiter       *RateLimiter
+
+	connectRedis    *HybridRateLimiter
+	disconnectRedis *HybridRateLimiter
+	testRedis       *HybridRateLimiter
 }
 
 // NewProviderRateLimiter creates a limiter for provider operations with sensible defaults.
-func NewProviderRateLimiter() *ProviderRateLimiter {
-	return &ProviderRateLimiter{
-		connectLimiter:    NewRateLimiter(time.Hour, 10),   // 10 connects per hour per tenant
-		disconnectLimiter: NewRateLimiter(time.Hour, 20),   // 20 disconnects per hour per tenant
-		testLimiter:       NewRateLimiter(time.Minute, 30), // 30 tests per minute per tenant
+func NewProviderRateLimiter(redisClient *redis.Client) *ProviderRateLimiter {
+	useRedis := redisClient != nil && os.Getenv("DISTRIBUTED_RATE_LIMITER_DISABLED") != "true"
+
+	pr := &ProviderRateLimiter{
+		redisClient: redisClient,
+		useRedis:    useRedis,
 	}
+
+	if useRedis {
+		pr.connectRedis = NewHybridRateLimiter(redisClient, time.Hour, 10, "provider_connect")
+		pr.disconnectRedis = NewHybridRateLimiter(redisClient, time.Hour, 20, "provider_disconnect")
+		pr.testRedis = NewHybridRateLimiter(redisClient, time.Minute, 30, "provider_test")
+	} else {
+		pr.connectLimiter = NewRateLimiter(time.Hour, 10)
+		pr.disconnectLimiter = NewRateLimiter(time.Hour, 20)
+		pr.testLimiter = NewRateLimiter(time.Minute, 30)
+	}
+
+	return pr
 }
 
 // LimitConnect wraps a handler with per-tenant rate limiting for connecting providers.
 func (p *ProviderRateLimiter) LimitConnect(next http.HandlerFunc) http.HandlerFunc {
-	return p.limitByTenant("provider_connect", p.connectLimiter, next)
+	return p.limitByTenant("provider_connect", next)
 }
 
 // LimitDisconnect wraps a handler with per-tenant rate limiting for disconnecting providers.
 func (p *ProviderRateLimiter) LimitDisconnect(next http.HandlerFunc) http.HandlerFunc {
-	return p.limitByTenant("provider_disconnect", p.disconnectLimiter, next)
+	return p.limitByTenant("provider_disconnect", next)
 }
 
 // LimitTest wraps a handler with per-tenant rate limiting for testing provider connections.
 func (p *ProviderRateLimiter) LimitTest(next http.HandlerFunc) http.HandlerFunc {
-	return p.limitByTenant("provider_test", p.testLimiter, next)
+	return p.limitByTenant("provider_test", next)
 }
 
-func (p *ProviderRateLimiter) limitByTenant(prefix string, limiter *RateLimiter, next http.HandlerFunc) http.HandlerFunc {
+func (p *ProviderRateLimiter) limitByTenant(prefix string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		claims := GetUserFromContext(r)
 		if claims == nil {
@@ -811,9 +1400,33 @@ func (p *ProviderRateLimiter) limitByTenant(prefix string, limiter *RateLimiter,
 
 		key := fmt.Sprintf("%s:tenant:%s", prefix, claims.TenantID.String())
 
-		if !limiter.Allow(key) {
+		allowed := false
+		window := time.Hour
+		if p.useRedis {
+			switch prefix {
+			case "provider_connect":
+				allowed = p.connectRedis.Allow(key)
+			case "provider_disconnect":
+				allowed = p.disconnectRedis.Allow(key)
+			case "provider_test":
+				allowed = p.testRedis.Allow(key)
+				window = time.Minute
+			}
+		} else {
+			switch prefix {
+			case "provider_connect":
+				allowed = p.connectLimiter.Allow(key)
+			case "provider_disconnect":
+				allowed = p.disconnectLimiter.Allow(key)
+			case "provider_test":
+				allowed = p.testLimiter.Allow(key)
+				window = p.testLimiter.window
+			}
+		}
+
+		if !allowed {
 			w.Header().Set("Content-Type", "application/json")
-			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(limiter.window.Seconds())))
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(window.Seconds())))
 			w.WriteHeader(http.StatusTooManyRequests)
 			logrus.WithFields(logrus.Fields{
 				"tenant_id": claims.TenantID.String(),
@@ -832,20 +1445,41 @@ func (p *ProviderRateLimiter) limitByTenant(prefix string, limiter *RateLimiter,
 }
 
 // WalletRateLimiter limits wallet operations per user/agent to prevent abuse
-// and protect financial operations from brute force or spam
+// and protect financial operations from brute force or spam.
+// Uses Redis-backed distributed rate limiting when available.
 type WalletRateLimiter struct {
-	balanceCheckLimiter *RateLimiter // Limit: 60/minute per wallet for balance checks
-	topUpLimiter        *RateLimiter // Limit: 5/hour per wallet for top-up requests
-	adjustmentLimiter   *RateLimiter // Limit: 10/hour per admin for adjustments
+	redisClient *redis.Client
+	useRedis    bool
+
+	balanceCheckLimiter *RateLimiter
+	topUpLimiter        *RateLimiter
+	adjustmentLimiter   *RateLimiter
+
+	balanceCheckRedis *HybridRateLimiter
+	topUpRedis        *HybridRateLimiter
+	adjustmentRedis   *HybridRateLimiter
 }
 
 // NewWalletRateLimiter creates a limiter for wallet operations with sensible defaults
-func NewWalletRateLimiter() *WalletRateLimiter {
-	return &WalletRateLimiter{
-		balanceCheckLimiter: NewRateLimiter(time.Minute, 60), // 60 balance checks per minute per wallet
-		topUpLimiter:        NewRateLimiter(time.Hour, 5),    // 5 top-ups per hour per wallet
-		adjustmentLimiter:   NewRateLimiter(time.Hour, 10),   // 10 adjustments per hour per admin
+func NewWalletRateLimiter(redisClient *redis.Client) *WalletRateLimiter {
+	useRedis := redisClient != nil && os.Getenv("DISTRIBUTED_RATE_LIMITER_DISABLED") != "true"
+
+	wr := &WalletRateLimiter{
+		redisClient: redisClient,
+		useRedis:    useRedis,
 	}
+
+	if useRedis {
+		wr.balanceCheckRedis = NewHybridRateLimiter(redisClient, time.Minute, 60, "wallet_balance_check")
+		wr.topUpRedis = NewHybridRateLimiter(redisClient, time.Hour, 5, "wallet_topup")
+		wr.adjustmentRedis = NewHybridRateLimiter(redisClient, time.Hour, 10, "wallet_admin_adjustment")
+	} else {
+		wr.balanceCheckLimiter = NewRateLimiter(time.Minute, 60)
+		wr.topUpLimiter = NewRateLimiter(time.Hour, 5)
+		wr.adjustmentLimiter = NewRateLimiter(time.Hour, 10)
+	}
+
+	return wr
 }
 
 // LimitBalanceCheck wraps a handler with rate limiting for balance check operations
@@ -858,10 +1492,16 @@ func (wr *WalletRateLimiter) LimitBalanceCheck(next http.HandlerFunc) http.Handl
 			return
 		}
 
-		// Use user ID as the wallet identifier key
 		key := fmt.Sprintf("wallet_balance_check:%s", claims.UserID.String())
 
-		if !wr.balanceCheckLimiter.Allow(key) {
+		allowed := false
+		if wr.useRedis {
+			allowed = wr.balanceCheckRedis.Allow(key)
+		} else {
+			allowed = wr.balanceCheckLimiter.Allow(key)
+		}
+
+		if !allowed {
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Retry-After", "60")
 			w.WriteHeader(http.StatusTooManyRequests)
@@ -891,12 +1531,18 @@ func (wr *WalletRateLimiter) LimitTopUp(next http.HandlerFunc) http.HandlerFunc 
 			return
 		}
 
-		// Use tenant + user ID as the key
 		key := fmt.Sprintf("wallet_topup:%s:%s", claims.TenantID.String(), claims.UserID.String())
 
-		if !wr.topUpLimiter.Allow(key) {
+		allowed := false
+		if wr.useRedis {
+			allowed = wr.topUpRedis.Allow(key)
+		} else {
+			allowed = wr.topUpLimiter.Allow(key)
+		}
+
+		if !allowed {
 			w.Header().Set("Content-Type", "application/json")
-			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(wr.topUpLimiter.window.Seconds())))
+			w.Header().Set("Retry-After", "3600")
 			w.WriteHeader(http.StatusTooManyRequests)
 			logrus.WithFields(logrus.Fields{
 				"user_id":   claims.UserID.String(),
@@ -925,12 +1571,18 @@ func (wr *WalletRateLimiter) LimitAdminAdjustment(next http.HandlerFunc) http.Ha
 			return
 		}
 
-		// Use admin user ID as the key
 		key := fmt.Sprintf("wallet_admin_adjustment:%s", claims.UserID.String())
 
-		if !wr.adjustmentLimiter.Allow(key) {
+		allowed := false
+		if wr.useRedis {
+			allowed = wr.adjustmentRedis.Allow(key)
+		} else {
+			allowed = wr.adjustmentLimiter.Allow(key)
+		}
+
+		if !allowed {
 			w.Header().Set("Content-Type", "application/json")
-			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(wr.adjustmentLimiter.window.Seconds())))
+			w.Header().Set("Retry-After", "3600")
 			w.WriteHeader(http.StatusTooManyRequests)
 			logrus.WithFields(logrus.Fields{
 				"admin_id": claims.UserID.String(),
@@ -946,4 +1598,197 @@ func (wr *WalletRateLimiter) LimitAdminAdjustment(next http.HandlerFunc) http.Ha
 
 		next.ServeHTTP(w, r)
 	}
+}
+
+// MessageRateLimiter limits message creation per user to prevent spam/DoS
+type MessageRateLimiter struct {
+	createLimiter     *RateLimiter // Limit: 60 messages per minute per user
+	typingLimiter     *RateLimiter // Limit: 120 typing indicators per minute per user
+	editLimiter       *RateLimiter // Limit: 30 edits per minute per user
+	deleteLimiter     *RateLimiter // Limit: 20 deletes per minute per user
+	reactLimiter      *RateLimiter // Limit: 60 reactions per minute per user
+	attachmentLimiter *RateLimiter // Limit: 30 attachments per minute per user
+}
+
+// NewMessageRateLimiter creates a limiter for message operations with sensible defaults
+func NewMessageRateLimiter() *MessageRateLimiter {
+	return &MessageRateLimiter{
+		createLimiter:     NewRateLimiter(time.Minute, 60),    // 60 messages per minute per user
+		typingLimiter:     NewRateLimiter(time.Minute, 120),   // 120 typing indicators per minute per user
+		editLimiter:       NewRateLimiter(time.Minute, 30),    // 30 edits per minute per user
+		deleteLimiter:     NewRateLimiter(time.Minute, 20),    // 20 deletes per minute per user
+		reactLimiter:      NewRateLimiter(time.Minute, 60),    // 60 reactions per minute per user
+		attachmentLimiter: NewRateLimiter(time.Minute, 30),   // 30 attachments per minute per user
+	}
+}
+
+// LimitCreate wraps a handler with rate limiting for message creation
+func (mr *MessageRateLimiter) LimitCreate(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims := GetUserFromContext(r)
+		if claims == nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		key := fmt.Sprintf("message_create:%s", claims.UserID.String())
+
+		if !mr.createLimiter.Allow(key) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(mr.createLimiter.window.Seconds())))
+			w.WriteHeader(http.StatusTooManyRequests)
+			logrus.WithFields(logrus.Fields{
+				"user_id": claims.UserID.String(),
+				"path":    r.URL.Path,
+			}).Warn("Message creation rate limit exceeded")
+			remaining := mr.createLimiter.limit - len(mr.createLimiter.requests[key])
+			if remaining < 0 {
+				remaining = 0
+			}
+			resetAt := time.Now().Add(mr.createLimiter.window).Format(time.RFC3339)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":       "rate_limit_exceeded",
+				"code":        "MESSAGE_CREATE_RATE_LIMIT",
+				"message":     "Too many messages. Please slow down.",
+				"retry_after": int(mr.createLimiter.window.Seconds()),
+				"limit":       mr.createLimiter.limit,
+				"remaining":   remaining,
+				"reset_at":    resetAt,
+			})
+			return
+		}
+
+		// Add rate limit headers
+		remaining := mr.createLimiter.limit - len(mr.createLimiter.requests[key])
+		if remaining < 0 {
+			remaining = 0
+		}
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprintf("%d", mr.createLimiter.limit))
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprintf("%d", remaining))
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprintf("%d", time.Now().Add(mr.createLimiter.window).Unix()))
+
+		next.ServeHTTP(w, r)
+	}
+}
+
+// LimitEdit wraps a handler with rate limiting for message edits
+func (mr *MessageRateLimiter) LimitEdit(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims := GetUserFromContext(r)
+		if claims == nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		key := fmt.Sprintf("message_edit:%s", claims.UserID.String())
+
+		if !mr.editLimiter.Allow(key) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(mr.editLimiter.window.Seconds())))
+			w.WriteHeader(http.StatusTooManyRequests)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":   "rate_limit_exceeded",
+				"code":    "MESSAGE_EDIT_RATE_LIMIT",
+				"message": "Too many message edits. Please try again later.",
+			})
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
+}
+
+// LimitDelete wraps a handler with rate limiting for message deletion
+func (mr *MessageRateLimiter) LimitDelete(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims := GetUserFromContext(r)
+		if claims == nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		key := fmt.Sprintf("message_delete:%s", claims.UserID.String())
+
+		if !mr.deleteLimiter.Allow(key) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(mr.deleteLimiter.window.Seconds())))
+			w.WriteHeader(http.StatusTooManyRequests)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":   "rate_limit_exceeded",
+				"code":    "MESSAGE_DELETE_RATE_LIMIT",
+				"message": "Too many message deletions. Please try again later.",
+			})
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
+}
+
+// LimitReact wraps a handler with rate limiting for message reactions
+func (mr *MessageRateLimiter) LimitReact(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims := GetUserFromContext(r)
+		if claims == nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		key := fmt.Sprintf("message_react:%s", claims.UserID.String())
+
+		if !mr.reactLimiter.Allow(key) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(mr.reactLimiter.window.Seconds())))
+			w.WriteHeader(http.StatusTooManyRequests)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":   "rate_limit_exceeded",
+				"code":    "MESSAGE_REACT_RATE_LIMIT",
+				"message": "Too many reactions. Please try again later.",
+			})
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
+}
+
+// LimitAttachment wraps a handler with rate limiting for message attachments
+func (mr *MessageRateLimiter) LimitAttachment(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims := GetUserFromContext(r)
+		if claims == nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		key := fmt.Sprintf("message_attachment:%s", claims.UserID.String())
+
+		if !mr.attachmentLimiter.Allow(key) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(mr.attachmentLimiter.window.Seconds())))
+			w.WriteHeader(http.StatusTooManyRequests)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":   "rate_limit_exceeded",
+				"code":    "MESSAGE_ATTACHMENT_RATE_LIMIT",
+				"message": "Too many attachments. Please try again later.",
+			})
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
+}
+
+// MaxMessageLength is the maximum allowed message content length (32KB)
+const MaxMessageLength = 32 * 1024
+
+// ValidateMessageContent checks if message content exceeds maximum length
+func ValidateMessageContent(content string) (bool, string) {
+	if len(content) == 0 {
+		return false, "Message content cannot be empty"
+	}
+	if len(content) > MaxMessageLength {
+		return false, fmt.Sprintf("Message content exceeds maximum length of %d bytes", MaxMessageLength)
+	}
+	return true, ""
 }

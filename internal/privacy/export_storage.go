@@ -343,6 +343,15 @@ func (s *LocalStorage) Exists(ctx context.Context, requestID uuid.UUID) (bool, e
 func NewExportStorage() (ExportStorage, error) {
 	// Check if S3 credentials are configured
 	s3Cfg := DefaultS3Config()
+
+	// Fall back to standard AWS env vars if privacy-specific ones aren't set
+	if s3Cfg.AccessKeyID == "" {
+		s3Cfg.AccessKeyID = os.Getenv("AWS_ACCESS_KEY_ID")
+	}
+	if s3Cfg.SecretAccessKey == "" {
+		s3Cfg.SecretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
+	}
+
 	if s3Cfg.AccessKeyID != "" && s3Cfg.SecretAccessKey != "" {
 		logrus.Info("Initializing S3-compatible storage for GDPR exports")
 		return NewS3Storage(s3Cfg)

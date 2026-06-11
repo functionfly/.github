@@ -574,6 +574,14 @@ func (r *BillingRepository) CleanupCostAllocationByRetention(ctx context.Context
 	results := make(map[string]int64)
 	now := time.Now().UTC()
 
+	hasHolds, err := r.HasActiveLegalHolds(ctx)
+	if err != nil {
+		return results, fmt.Errorf("failed to check legal holds: %w", err)
+	}
+	if hasHolds {
+		return results, fmt.Errorf("legal hold active, skipping cleanup")
+	}
+
 	// Step 1: Delete detailed execution logs older than 90 days
 	// These are high-volume, low-value for audit after the invoice is settled
 	detailedCutoff := now.Add(-DetailedExecutionLogRetention)
@@ -595,16 +603,16 @@ func (r *BillingRepository) cleanupOldEntriesInBatches(ctx context.Context, befo
 	var totalDeleted int64
 
 	for {
-		// Use a subquery with LIMIT to delete in batches
-		// This prevents long-running transactions and table locks
+		// Use CTE for efficient batch deletion - avoids re-evaluating WHERE clause in outer DELETE
 		result, err := r.db.ExecContext(ctx, `
-			DELETE FROM cost_allocation_entries 
-			WHERE id IN (
-				SELECT id FROM cost_allocation_entries 
-				WHERE timestamp < $1 
-				ORDER BY timestamp 
+			WITH batch AS (
+				SELECT id FROM cost_allocation_entries
+				WHERE timestamp < $1
+				ORDER BY timestamp
 				LIMIT $2
-			)`,
+			)
+			DELETE FROM cost_allocation_entries USING batch
+			WHERE cost_allocation_entries.id = batch.id`,
 			before, RetentionCleanupBatchSize,
 		)
 		if err != nil {
@@ -639,6 +647,14 @@ func (r *BillingRepository) cleanupOldEntriesInBatches(ctx context.Context, befo
 // WARNING: This should only be called after legal review and confirmation
 // that no disputes or audits are pending for the period being purged.
 func (r *BillingRepository) CleanupFinancialAggregatesAfterRetention(ctx context.Context, jurisdictionRetention time.Duration) (int64, error) {
+	hasHolds, err := r.HasActiveLegalHolds(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to check legal holds: %w", err)
+	}
+	if hasHolds {
+		return 0, fmt.Errorf("legal hold active, skipping cleanup")
+	}
+
 	// Default to 7 years if not specified
 	retentionPeriod := jurisdictionRetention
 	if retentionPeriod == 0 {
@@ -649,7 +665,7 @@ func (r *BillingRepository) CleanupFinancialAggregatesAfterRetention(ctx context
 
 	// First, archive/summarize what we're about to delete for audit purposes
 	// (optional - depends on compliance requirements)
-	_, err := r.createRetentionAuditLog(ctx, cutoff)
+	_, err = r.createRetentionAuditLog(ctx, cutoff)
 	if err != nil {
 		// For SOX compliance, audit logging failures must not be silently ignored.
 		// Log the error and alert in production.

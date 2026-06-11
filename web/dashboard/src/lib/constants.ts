@@ -82,7 +82,9 @@ export const ROUTES = {
   AGENT_ANALYTICS: '/agents/:id/analytics',
   SDK_INTEGRATIONS: '/sdk-integrations',
   MARKETPLACE: '/marketplace',
+  // Alias for the agent-specific marketplace (distinct semantic purpose from generic MARKETPLACE)
   MARKETPLACE_AGENTS: '/marketplace',
+  // Alias for discovery landing — DISCOVER is the primary name
   MARKETPLACE_FUNCTIONS: '/functions/discovery',
   EVOLUTION: '/evolution',
   STUDIO: '/studio',
@@ -108,6 +110,17 @@ export const ROUTES = {
   TIME_MACHINE_DETAIL: '/time-machine/:id',
   TIME_MACHINE_SCHEDULES: '/time-machine/schedules',
   TIME_MACHINE_AUDIT: '/time-machine/audit',
+  // Nav path routes (used by sidebar to avoid raw strings)
+  NOTIFICATIONS: '/notifications',
+  FUNCTIONS_HOT: '/functions/hot',
+  FUNCTIONS_TRENDING: '/functions/trending',
+  FUNCTIONS_NEW: '/functions/explore/new',
+  FUNCTIONS_FAVORITES: '/functions/favorites',
+  BRAIN: '/brain',
+  DNA_OVERVIEW: '/dna/overview',
+  GITHUB_IMPORT: '/github',
+  FUNCTIONS_PASTE: '/functions/paste',
+  BUNDLES: '/bundles',
 } as const;
 
 /**
@@ -196,7 +209,53 @@ export const MAIN_NAV_PATHS: string[] = [
   ROUTES.SECRETS,
   ROUTES.API_KEYS,
   ROUTES.SETTINGS,
+  // Nav path routes
+  ROUTES.FUNCTIONS_HOT,
+  ROUTES.FUNCTIONS_TRENDING,
+  ROUTES.FUNCTIONS_NEW,
+  ROUTES.FUNCTIONS_FAVORITES,
+  ROUTES.NOTIFICATIONS,
+  ROUTES.BRAIN,
+  ROUTES.DNA_OVERVIEW,
+  ROUTES.TIME_MACHINE,
+  ROUTES.CERTIFICATION,
+  ROUTES.CREDENTIALS,
+  ROUTES.GITHUB_IMPORT,
+  ROUTES.FUNCTIONS_PASTE,
+  ROUTES.BUNDLES,
 ].sort((a, b) => b.length - a.length);
+
+/**
+ * Dynamic route patterns for canonical nav resolution.
+ * Each entry is [pattern, canonicalPath] where pattern segments starting with ':'
+ * match any non-slash string.
+ */
+const DYNAMIC_NAV_PATTERNS: [string, string][] = [
+  // Agent routes
+  ['/u/:username/agents', ROUTES.AGENT_LIST],
+  ['/u/:username/conversations', ROUTES.CONVERSATIONS],
+  // Wallet — detail pages and index all canonicalize to /wallet
+  ['/wallet', '/wallet'],
+  ['/wallet/agents/:id', '/wallet'],
+  // Agent detail sub-routes
+  ['/agents/:id', ROUTES.AGENT_LIST],
+  ['/agents/:id/edit', ROUTES.AGENT_LIST],
+  ['/agents/:id/wallet', ROUTES.AGENT_LIST],
+  ['/agents/:id/analytics', ROUTES.AGENT_LIST],
+];
+
+/**
+ * Match a pathname against a pattern with colon-prefixed param segments.
+ * Returns true if all static segments match and all param segments match non-empty strings.
+ */
+function matchPattern(pattern: string, pathname: string): boolean {
+  const patternParts = pattern.split('/');
+  const pathnameParts = pathname.split('/');
+  if (patternParts.length !== pathnameParts.length) return false;
+  return patternParts.every((part, i) =>
+    part.startsWith(':') ? pathnameParts[i].length > 0 : part === pathnameParts[i]
+  );
+}
 
 /** Resolve current pathname to a canonical sidebar path, or null if not a main nav route. */
 export function getCanonicalNavPath(pathname: string): string | null {
@@ -213,6 +272,10 @@ export function getCanonicalNavPath(pathname: string): string | null {
     ) {
       return p;
     }
+  }
+  // Check dynamic patterns
+  for (const [pattern, canonical] of DYNAMIC_NAV_PATTERNS) {
+    if (matchPattern(pattern, pathname)) return canonical;
   }
   return null;
 }
@@ -315,7 +378,15 @@ export const PROVIDERS = {
     name: 'AWS Lambda',
     color: '#FF9900',
     icon: 'Aws',
-    regions: ['us-east-1', 'us-east-2', 'us-west-2', 'eu-west-1', 'eu-central-1', 'ap-southeast-1', 'ap-northeast-1'],
+    regions: [
+      'us-east-1',
+      'us-east-2',
+      'us-west-2',
+      'eu-west-1',
+      'eu-central-1',
+      'ap-southeast-1',
+      'ap-northeast-1',
+    ],
     description:
       'Deploy functions to AWS Lambda with full lifecycle management, auto-scaling, and pay-per-use pricing',
   },
@@ -340,7 +411,13 @@ export const PLANS = {
     priceId: '',
     priceIdAnnual: '',
     description: 'Perfect for getting started with FunctionFly',
-    features: ['3 functions', '2 providers', '500 requests/month', 'Community support', '24h Time Machine replay'],
+    features: [
+      '3 functions',
+      '2 providers',
+      '500 requests/month',
+      'Community support',
+      '24h Time Machine replay',
+    ],
     overageRate: null, // Hard stop at limit
     annualDiscount: 0,
     comingSoon: false,
@@ -352,7 +429,7 @@ export const PLANS = {
       stateFabrics: 0,
       agents: 3,
       apps: 0,
-      secrets: 0,
+      secrets: 3,
       tokensPerSecret: 0,
       apiKeyBudgets: false,
       perKeyCostAttribution: false,
@@ -368,7 +445,8 @@ export const PLANS = {
     priceCents: 2400,
     priceAnnualCents: 24000,
     priceId: import.meta.env.VITE_STRIPE_PRICE_STARTER || 'price_starter_placeholder',
-    priceIdAnnual: import.meta.env.VITE_STRIPE_PRICE_STARTER_ANNUAL || 'price_starter_annual_placeholder',
+    priceIdAnnual:
+      import.meta.env.VITE_STRIPE_PRICE_STARTER_ANNUAL || 'price_starter_annual_placeholder',
     description: 'For side projects and MVPs',
     features: [
       '5 functions',
@@ -412,7 +490,9 @@ export const PLANS = {
     priceCents: 7900,
     priceAnnualCents: 79000,
     priceId: import.meta.env.VITE_STRIPE_PRICE_PROFESSIONAL || 'price_professional_placeholder',
-    priceIdAnnual: import.meta.env.VITE_STRIPE_PRICE_PROFESSIONAL_ANNUAL || 'price_professional_annual_placeholder',
+    priceIdAnnual:
+      import.meta.env.VITE_STRIPE_PRICE_PROFESSIONAL_ANNUAL ||
+      'price_professional_annual_placeholder',
     description: 'For growing businesses and SaaS applications',
     features: [
       '25 functions',
@@ -461,7 +541,8 @@ export const PLANS = {
     priceCents: 29900,
     priceAnnualCents: 299000,
     priceId: import.meta.env.VITE_STRIPE_PRICE_ENTERPRISE || 'price_enterprise_placeholder',
-    priceIdAnnual: import.meta.env.VITE_STRIPE_PRICE_ENTERPRISE_ANNUAL || 'price_enterprise_annual_placeholder',
+    priceIdAnnual:
+      import.meta.env.VITE_STRIPE_PRICE_ENTERPRISE_ANNUAL || 'price_enterprise_annual_placeholder',
     description: 'For large-scale applications and enterprises',
     features: [
       'Unlimited functions',
@@ -516,8 +597,11 @@ export const AGENT_ENTERPRISE = {
   price: 499,
   priceCents: 49900,
   priceAnnualCents: 499000,
-  priceId: import.meta.env.VITE_STRIPE_PRICE_AGENT_ENTERPRISE || 'price_agent_enterprise_placeholder',
-  priceIdAnnual: import.meta.env.VITE_STRIPE_PRICE_AGENT_ENTERPRISE_ANNUAL || 'price_agent_enterprise_annual_placeholder',
+  priceId:
+    import.meta.env.VITE_STRIPE_PRICE_AGENT_ENTERPRISE || 'price_agent_enterprise_placeholder',
+  priceIdAnnual:
+    import.meta.env.VITE_STRIPE_PRICE_AGENT_ENTERPRISE_ANNUAL ||
+    'price_agent_enterprise_annual_placeholder',
   description: 'Unlimited AI agent scale for enterprise',
   features: [
     'Unlimited AI calls/month',
@@ -667,7 +751,8 @@ export const AGENT_PLANS = {
     price: 499,
     priceCents: 49900,
     priceAnnualCents: 499000,
-    priceId: import.meta.env.VITE_STRIPE_PRICE_AGENT_ENTERPRISE || 'price_agent_enterprise_placeholder',
+    priceId:
+      import.meta.env.VITE_STRIPE_PRICE_AGENT_ENTERPRISE || 'price_agent_enterprise_placeholder',
     description: 'For unlimited AI agent scale',
     features: [
       'Unlimited tool calls',
@@ -888,4 +973,4 @@ function validateStripePriceIds() {
 }
 
 // Run validation at module load time
-validateStripePriceIds()
+validateStripePriceIds();

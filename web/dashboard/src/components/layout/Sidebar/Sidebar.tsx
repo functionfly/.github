@@ -99,6 +99,14 @@ class SidebarErrorBoundary extends React.Component<
     console.error('[Sidebar] Render error:', error, errorInfo);
   }
 
+  componentDidUpdate(prevProps: React.PropsWithChildren<Record<string, unknown>>) {
+    // If the children changed (e.g. route change triggered a re-render),
+    // attempt to recover from a stale error state.
+    if (this.state.hasError && this.props.children !== prevProps.children) {
+      this.setState({ hasError: false, error: null });
+    }
+  }
+
   render() {
     if (this.state.hasError) {
       return (
@@ -141,15 +149,11 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
   const resolveNavPath = useCallback(
     (item: NavItem) => {
       if (item.label === 'Wallet') return walletNavPath;
-      if (item.label === 'Agents' && user?.username) {
-        return `/u/${user.username}/agents`;
-      }
-      if (item.label === 'Conversations' && user?.username) {
-        return `/u/${user.username}/conversations`;
-      }
+      // Agents and Conversations use dashboard routes (inside DashboardLayout)
+      // NOT /u/:username routes which are outside DashboardLayout
       return item.path;
     },
-    [walletNavPath, user]
+    [walletNavPath]
   );
 
   // ─── Filter sections based on plan features ───────────────────────────────
@@ -161,6 +165,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
           if (item.path === '/state-fabric') return planHasFeature(plan, 'STATE_FABRIC');
           if (item.path === '/agents') return planHasFeature(plan, 'AGENTS');
           if (item.path === '/enterprise/support') return planHasFeature(plan, 'DEDICATED_SUPPORT');
+          if (item.path === '/dna/overview') return planHasFeature(plan, 'FUNCTION_DNA');
           return true;
         }),
       }))
@@ -186,6 +191,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
     toggleFavorite,
     isFavorite,
     completedOnboardingSteps,
+    moveSection,
   } = useSidebarStore();
 
   const {
@@ -217,6 +223,8 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
   );
   const [draggingSection, setDraggingSection] = useState<string | null>(null);
   const [dragOverSection, setDragOverSection] = useState<string | null>(null);
+  // Throttle drag-over updates to one per animation frame (~60fps) to avoid excess re-renders
+  const dragOverThrottleRef = useRef<number>(0);
   const [showShortcutsHint, setShowShortcutsHint] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -351,12 +359,24 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
   const handleDragOver = (e: React.DragEvent, sectionId: string) => {
     e.preventDefault();
     if (draggingSection && draggingSection !== sectionId) {
-      setDragOverSection(sectionId);
+      const now = Date.now();
+      if (now - dragOverThrottleRef.current >= 16) {
+        dragOverThrottleRef.current = now;
+        setDragOverSection(sectionId);
+      }
     }
   };
   const handleDragLeave = () => setDragOverSection(null);
-  const handleDrop = (e: React.DragEvent, _targetSectionId: string) => {
+  const handleDrop = (e: React.DragEvent, targetSectionId: string) => {
     e.preventDefault();
+    if (draggingSection && draggingSection !== targetSectionId) {
+      const order = useSidebarStore.getState().sectionOrder;
+      const fromIndex = order.indexOf(draggingSection);
+      const toIndex = order.indexOf(targetSectionId);
+      if (fromIndex !== -1 && toIndex !== -1) {
+        moveSection(fromIndex, toIndex);
+      }
+    }
     setDraggingSection(null);
     setDragOverSection(null);
   };
@@ -374,7 +394,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
     return recentPaths
       .map((path) => pathToItem.get(path))
       .filter((item): item is NonNullable<typeof item> => item != null)
-      .slice(0, 4);
+      .slice(0, 5);
   }, [recentPaths, pathToItem]);
 
   // ─── Onboarding progress ────────────────────────────────────────────────────
@@ -1016,17 +1036,16 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                               exit="collapsed"
                               variants={SECTION_VARIANTS}
                               transition={{ duration: 0.2, ease: 'easeInOut' }}
-                              className="overflow-hidden"
+                              className="overflow-hidden grid"
                             >
-                              <div className="space-y-0.5 pt-1">
+                              <div className="space-y-0.5 pt-1 min-h-0">
                                 {section.items.map((item, itemIndex) => {
                                   const isActive = isItemActive(item.path, location.pathname);
                                   const globalIndex =
                                     allSections
                                       .slice(0, sectionIndex)
                                       .reduce(
-                                        (acc, s) =>
-                                          acc + (expandedSections.has(s.id) ? s.items.length : 0),
+                                        (acc, s) => acc + s.items.length,
                                         0
                                       ) + itemIndex;
                                   const isFocused = focusedIndex === globalIndex;

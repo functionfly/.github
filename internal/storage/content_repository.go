@@ -894,3 +894,152 @@ func (r *ContentRepository) UpdateBlogSettings(ctx context.Context, updates map[
 	}
 	return r.GetBlogSettings(ctx)
 }
+
+// Blog Analytics Repository Methods
+
+// RecordBlogPageView records a single page view
+func (r *ContentRepository) RecordBlogPageView(ctx context.Context, view *BlogPageView) error {
+	query := `INSERT INTO blog_page_views (post_id, visitor_id, referrer, user_agent, ip_address, country, city, device_type, browser, os)
+		VALUES ($1, NULLIF($2,''), NULLIF($3,''), NULLIF($4,''), NULLIF($5,'')::inet, NULLIF($6,''), NULLIF($7,''), NULLIF($8,''), NULLIF($9,''), NULLIF($10,''))`
+	_, err := r.db.ExecContext(ctx, query,
+		view.PostID, view.VisitorID, view.Referrer, view.UserAgent,
+		view.IPAddress, view.Country, view.City, view.DeviceType, view.Browser, view.OS)
+	return err
+}
+
+// GetBlogAnalyticsSummary returns overall blog analytics summary
+func (r *ContentRepository) GetBlogAnalyticsSummary(ctx context.Context, days int) (*BlogAnalyticsSummary, error) {
+	if days <= 0 {
+		days = 30
+	}
+
+	summary := &BlogAnalyticsSummary{}
+
+	// Get total views and posts count
+	viewsQuery := `SELECT
+		COALESCE(SUM(bda.views), 0) as total_views,
+		COUNT(DISTINCT bp.id) as total_posts,
+		COUNT(DISTINCT CASE WHEN bp.is_published THEN bp.id END) as published_posts
+	FROM blog_posts bp
+	LEFT JOIN blog_daily_analytics bda ON bp.id = bda.post_id
+	WHERE bda.date >= CURRENT_DATE - $1::INTEGER OR bda.date IS NULL`
+	err := r.db.QueryRowContext(ctx, viewsQuery, days).Scan(&summary.TotalViews, &summary.TotalPosts, &summary.PublishedPosts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get blog analytics summary: %w", err)
+	}
+
+	// Get top post
+	topPostQuery := `SELECT bp.id, bp.title, COALESCE(SUM(bda.views), 0) as views
+		FROM blog_posts bp
+		LEFT JOIN blog_daily_analytics bda ON bp.id = bda.post_id
+		WHERE bp.is_published = true AND (bda.date >= CURRENT_DATE - $1::INTEGER OR bda.date IS NULL)
+		GROUP BY bp.id, bp.title
+		ORDER BY views DESC
+		LIMIT 1`
+	var topPostID, topPostTitle sql.NullString
+	var topPostViews sql.NullInt64
+	err = r.db.QueryRowContext(ctx, topPostQuery, days).Scan(&topPostID, &topPostTitle, &topPostViews)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, fmt.Errorf("failed to get top post: %w", err)
+	}
+	if topPostID.Valid {
+		summary.TopPostID = &topPostID.String
+		summary.TopPostTitle = topPostTitle.String
+		summary.TopPostViews = topPostViews.Int64
+	}
+
+	return summary, nil
+}
+
+// GetBlogViewsTimeSeries returns views over time
+func (r *ContentRepository) GetBlogViewsTimeSeries(ctx context.Context, days int) ([]BlogViewsTimeSeries, error) {
+	if days <= 0 {
+		days = 30
+	}
+
+	query := `SELECT d::DATE as date,
+		COALESCE(SUM(bda.views), 0)::INTEGER as views,
+		COALESCE(SUM(bda.unique_visitors), 0)::INTEGER as unique_visitors
+	FROM generate_series(
+		CURRENT_DATE - ($1 - 1)::INTEGER,
+		CURRENT_DATE,
+		'1 day'::INTERVAL
+	) d
+	LEFT JOIN blog_daily_analytics bda ON d::DATE = bda.date
+	GROUP BY d::DATE
+	ORDER BY d::DATE`
+
+	rows, err := r.db.QueryContext(ctx, query, days)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get blog views time series: %w", err)
+	}
+	defer rows.Close()
+
+	var series []BlogViewsTimeSeries
+	for rows.Next() {
+		var s BlogViewsTimeSeries
+		if err := rows.Scan(&s.Date, &s.Views, &s.UniqueVisitors); err != nil {
+			return nil, err
+		}
+		series = append(series, s)
+	}
+	return series, rows.Err()
+}
+
+// GetTopBlogPosts returns top performing blog posts
+func (r *ContentRepository) GetTopBlogPosts(ctx context.Context, days, limit int) ([]TopBlogPost, error) {
+	if days <= 0 {
+		days = 30
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+
+	query := `SELECT
+		bp.id,
+		bp.title,
+		bp.slug,
+		bp.author,
+		TO_CHAR(bp.published_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as published_at,
+		COALESCE(SUM(bda.views), 0)::BIGINT as total_views,
+		COUNT(DISTINCT bpv.visitor_id)::BIGINT as unique_views,
+		TO_CHAR(MAX(bpv.viewed_at), 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as last_viewed_at
+	FROM blog_posts bp
+	LEFT JOIN blog_daily_analytics bda ON bp.id = bda.post_id AND bda.date >= CURRENT_DATE - $1::INTEGER
+	LEFT JOIN blog_page_views bpv ON bp.id = bpv.post_id AND bpv.viewed_at >= CURRENT_DATE - $1::INTEGER
+	WHERE bp.is_published = true
+	GROUP BY bp.id, bp.title, bp.slug, bp.author, bp.published_at
+	ORDER BY total_views DESC
+	LIMIT $2`
+
+	rows, err := r.db.QueryContext(ctx, query, days, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get top blog posts: %w", err)
+	}
+	defer rows.Close()
+
+	var posts []TopBlogPost
+	for rows.Next() {
+		var p TopBlogPost
+		var publishedAt, lastViewedAt sql.NullString
+		if err := rows.Scan(&p.ID, &p.Title, &p.Slug, &p.Author, &publishedAt, &p.TotalViews, &p.UniqueViews, &lastViewedAt); err != nil {
+			return nil, err
+		}
+		if publishedAt.Valid {
+			p.PublishedAt = &publishedAt.String
+		}
+		if lastViewedAt.Valid {
+			p.LastViewedAt = &lastViewedAt.String
+		}
+		posts = append(posts, p)
+	}
+	return posts, rows.Err()
+}
+
+// GetPostViewsSummary returns views summary for a specific post
+func (r *ContentRepository) GetPostViewsSummary(ctx context.Context, postID uuid.UUID) (totalViews int64, uniqueVisitors int64, err error) {
+	query := `SELECT COALESCE(SUM(views), 0), COALESCE(SUM(unique_visitors), 0)
+		FROM blog_daily_analytics WHERE post_id = $1`
+	err = r.db.QueryRowContext(ctx, query, postID).Scan(&totalViews, &uniqueVisitors)
+	return
+}

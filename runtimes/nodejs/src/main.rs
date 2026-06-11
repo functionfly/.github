@@ -313,10 +313,16 @@ fn base64_decode(input: &str) -> Result<Vec<u8>, &'static str> {
 
 async fn run_daemon(port: u16, network_enabled: bool) -> Result<(), Box<dyn std::error::Error>> {
     // Initialize the global JS runtime
+    tracing::info!("Initializing daemon JS runtime...");
     wasm_entry::init_daemon()
-        .map_err(|e| format!("failed to init daemon: {}", e))?;
+        .map_err(|e| {
+            tracing::error!("Failed to initialize daemon: {}", e);
+            format!("failed to init daemon: {}", e)
+        })?;
+    tracing::info!("Daemon JS runtime initialized successfully");
 
     let state = DaemonState { network_enabled };
+
 
     let app = Router::new()
         .route("/health", post(health_handler).get(health_handler))
@@ -324,10 +330,12 @@ async fn run_daemon(port: u16, network_enabled: bool) -> Result<(), Box<dyn std:
         .with_state(state)
         .layer(TraceLayer::new_for_http());
 
+
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    let listener = tokio::net::TcpListener::bind(addr).await?;
     tracing::info!("Daemon HTTP server listening on {}", addr);
 
-    let listener = tokio::net::TcpListener::bind(addr).await?;
+
     axum::serve(listener, app).await?;
 
     Ok(())

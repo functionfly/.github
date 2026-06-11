@@ -53,7 +53,7 @@ const AdminContentPage = lazy(() =>
   import('@/pages/AdminContentPage').then((m) => ({ default: m.AdminContentPage }))
 );
 const AdminBlogPage = lazy(() =>
-  import('@/pages/AdminBlogPage').then((m) => ({ default: m.AdminBlogPage }))
+  import('@/pages/AdminBlogPage').then((m) => ({ default: m.default }))
 );
 const AdminStateFabricPage = lazy(() =>
   import('@/pages/AdminStateFabricPage').then((m) => ({ default: m.AdminStateFabricPage }))

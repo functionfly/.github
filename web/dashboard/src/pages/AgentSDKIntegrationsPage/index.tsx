@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { BookOpen, Check, Copy, ExternalLink, Info, Shield, ShieldCheck, Zap } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import './styles.css';
 
 interface TrustPolicyConfig {
   minTrustScore: number;
@@ -220,7 +221,7 @@ export function AgentSDKIntegrationsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl agent-sdk-integrations-page">
+    <div className="space-y-6 max-w-6xl agent-sdk-integrations-page">
       {/* Header */}
       <div className="sdk-header">
         <div className="flex items-center gap-2 mb-1.5">
@@ -382,7 +383,7 @@ export function AgentSDKIntegrationsPage() {
                     className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
                       policy.requiredTrustLevels.includes(level)
                         ? 'bg-orange-500 border-orange-500 text-white'
-                         : 'border-border text-muted-foreground hover:border-orange-400'
+                        : 'border-border text-muted-foreground hover:border-orange-400'
                     }`}
                   >
                     {level}

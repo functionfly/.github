@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { usePageTitle } from '@/hooks';
 import {
   Dna,
   BarChart3,
@@ -29,6 +30,7 @@ const PERIOD_LABELS: Record<Period, string> = {
 };
 
 export default function DNAOverviewPage() {
+  usePageTitle('DNA Overview');
   const [period, setPeriod] = useState<Period>('30d');
   const { data: insights, isLoading, error } = useEnterpriseDNAInsights(period);
 
@@ -39,7 +41,7 @@ export default function DNAOverviewPage() {
   const avgFitness = insights?.avg_fitness_score || 0;
   const costSavings = insights?.total_cost_savings_usd || 0;
   const latencyImprovement = insights?.avg_latency_improvement_pct || 0;
-  const acceptanceRate = totalMutations > 0 ? (acceptedMutations / totalMutations * 100) : 0;
+  const acceptanceRate = totalMutations > 0 ? (acceptedMutations / totalMutations) * 100 : 0;
 
   // Previous period data from the insights response
   const prevCostSavings = (insights as any)?.prev_period_cost_savings_usd ?? null;
@@ -190,7 +192,8 @@ export default function DNAOverviewPage() {
                 ))}
               </div>
               <p className="text-xs text-text-muted">
-                DNA analyzes function execution patterns over time and proposes optimizations automatically.
+                DNA analyzes function execution patterns over time and proposes optimizations
+                automatically.
               </p>
             </CardContent>
           </Card>
@@ -242,7 +245,9 @@ export default function DNAOverviewPage() {
         {/* 1. Functions Analyzed */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary">Functions Analyzed</CardTitle>
+            <CardTitle className="text-sm font-medium text-text-secondary">
+              Functions Analyzed
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-text-primary">{totalFunctions}</div>
@@ -253,13 +258,18 @@ export default function DNAOverviewPage() {
         {/* 2. Mutations Proposed */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary">Mutations Proposed</CardTitle>
+            <CardTitle className="text-sm font-medium text-text-secondary">
+              Mutations Proposed
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
               <div className="text-3xl font-bold text-text-primary">{totalMutations}</div>
               {acceptedMutations > 0 && (
-                <Badge variant="outline" className="text-xs text-velocity-500 border-velocity-500/30">
+                <Badge
+                  variant="outline"
+                  className="text-xs text-velocity-500 border-velocity-500/30"
+                >
                   {acceptedMutations} accepted
                 </Badge>
               )}
@@ -271,7 +281,9 @@ export default function DNAOverviewPage() {
         {/* 3. Acceptance Rate */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary">Acceptance Rate</CardTitle>
+            <CardTitle className="text-sm font-medium text-text-secondary">
+              Acceptance Rate
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-text-primary">{acceptanceRate.toFixed(0)}%</div>
@@ -284,7 +296,9 @@ export default function DNAOverviewPage() {
         {/* 4. Avg Fitness Score */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary">Avg Fitness Score</CardTitle>
+            <CardTitle className="text-sm font-medium text-text-secondary">
+              Avg Fitness Score
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-text-primary">{avgFitness.toFixed(1)}%</div>
@@ -295,11 +309,15 @@ export default function DNAOverviewPage() {
         {/* 5. Latency Improvement */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary">Latency Improvement</CardTitle>
+            <CardTitle className="text-sm font-medium text-text-secondary">
+              Latency Improvement
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
-              <div className="text-3xl font-bold text-velocity-500">+{latencyImprovement.toFixed(1)}%</div>
+              <div className="text-3xl font-bold text-velocity-500">
+                +{latencyImprovement.toFixed(1)}%
+              </div>
               {latencyDelta && (
                 <Badge
                   variant="outline"
@@ -355,7 +373,9 @@ export default function DNAOverviewPage() {
         {/* Top Categories with bar chart */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary">Top Bottleneck Categories</CardTitle>
+            <CardTitle className="text-sm font-medium text-text-secondary">
+              Top Bottleneck Categories
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {insights.top_bottleneck_categories && insights.top_bottleneck_categories.length > 0 ? (
@@ -366,7 +386,9 @@ export default function DNAOverviewPage() {
                   return (
                     <div key={i} className="space-y-1">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-text-primary font-medium truncate">{cat.category}</span>
+                        <span className="text-text-primary font-medium truncate">
+                          {cat.category}
+                        </span>
                         <Badge
                           variant="outline"
                           className="text-xs text-velocity-500 border-velocity-500/30 font-mono shrink-0"
@@ -512,7 +534,10 @@ export default function DNAOverviewPage() {
               Rejected mutations are free.
             </p>
           </div>
-          <Badge variant="outline" className="ml-auto font-mono text-velocity-500 border-velocity-500/30">
+          <Badge
+            variant="outline"
+            className="ml-auto font-mono text-velocity-500 border-velocity-500/30"
+          >
             50 cr
           </Badge>
         </div>

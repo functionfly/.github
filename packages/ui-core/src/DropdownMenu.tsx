@@ -30,10 +30,10 @@ export function DropdownMenuTrigger({ children, asChild, className }: DropdownMe
   const ctx = React.useContext(DropdownMenuContext);
 
   if (asChild && React.isValidElement(children)) {
-    return React.cloneElement(children as React.ReactElement<{ onClick?: () => void }>, {
+    return React.cloneElement(children as React.ReactElement<{ onClick?: () => void; className?: string }>, {
       onClick: () => ctx?.setOpen(!ctx.open),
       className,
-    });
+    } as any);
   }
 
   return (

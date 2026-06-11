@@ -189,6 +189,7 @@ function DeterministicBadge({
 
 /**
  * Star Rating Component
+ * When onRate is provided, stars are clickable for rating
  */
 function StarRating({
   rating,
@@ -196,12 +197,14 @@ function StarRating({
   showCount = true,
   size = "sm",
   className,
+  onRate,
 }: {
   rating: number;
   count: number;
   showCount?: boolean;
   size?: "sm" | "md" | "lg";
   className?: string;
+  onRate?: (stars: number) => void;
 }) {
   const sizeClasses = {
     sm: "h-3.5 w-3.5",
@@ -215,24 +218,49 @@ function StarRating({
     lg: "text-base",
   };
 
+  const interactive = !!onRate;
+
   return (
     <div
       className={cn("flex items-center gap-1.5", className)}
       aria-label={`Rating: ${rating.toFixed(1)} out of 5 stars, ${count} reviews`}
     >
       <div className="flex items-center">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            className={cn(
-              sizeClasses[size],
-              star <= Math.round(rating)
-                ? getStarColor(rating)
-                : "text-text-muted fill-text-muted/20"
-            )}
-            aria-hidden="true"
-          />
-        ))}
+        {[1, 2, 3, 4, 5].map((star) => {
+          const filled = star <= Math.round(rating);
+          const starEl = (
+            <Star
+              key={star}
+              className={cn(
+                sizeClasses[size],
+                filled
+                  ? getStarColor(rating)
+                  : "text-text-muted fill-text-muted/20"
+              )}
+              aria-hidden="true"
+            />
+          );
+
+          if (interactive) {
+            return (
+              <button
+                key={star}
+                type="button"
+                onClick={() => onRate(star)}
+                className={cn(
+                  "p-0.5 rounded transition-colors",
+                  "hover:bg-amber-500/20",
+                  "focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                )}
+                aria-label={`Rate ${star} star${star === 1 ? "" : "s"}`}
+              >
+                {starEl}
+              </button>
+            );
+          }
+
+          return <span key={star}>{starEl}</span>;
+        })}
       </div>
       <span className={cn("font-medium", textSizes[size], getStarColor(rating))}>
         {rating.toFixed(1)}
@@ -428,6 +456,7 @@ const FunctionCard = React.forwardRef<HTMLDivElement, FunctionCardProps>(
       onEdit,
       onDelete,
       onAdminAction,
+      onRate,
     },
     ref
   ) => {
@@ -553,6 +582,7 @@ const FunctionCard = React.forwardRef<HTMLDivElement, FunctionCardProps>(
                 count={data.rating.count}
                 showCount={false}
                 size="sm"
+                onRate={onRate ? (stars) => onRate(data.id, stars) : undefined}
               />
               <div className="flex items-center gap-1.5">
                 <DollarSign className="h-3.5 w-3.5 text-brand-400" aria-hidden="true" />
@@ -678,6 +708,7 @@ const FunctionCard = React.forwardRef<HTMLDivElement, FunctionCardProps>(
                   rating={data.rating.average}
                   count={data.rating.count}
                   size="md"
+                  onRate={onRate ? (stars) => onRate(data.id, stars) : undefined}
                 />
               </div>
 

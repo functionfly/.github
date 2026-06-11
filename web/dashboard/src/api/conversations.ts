@@ -45,6 +45,20 @@ export interface ConversationMessage {
   deleted_at?: string | null;
   created_at: string;
   attachments?: MessageAttachment[];
+  reactions?: ReactionSummary[];
+}
+
+export interface ReactionSummary {
+  reaction: string;
+  count: number;
+  user_ids: string[];
+}
+
+export interface MessageRead {
+  id: string;
+  message_id: string;
+  user_id: string;
+  read_at: string;
 }
 
 export interface MessageAttachment {
@@ -260,6 +274,60 @@ class ConversationsApi {
   ): Promise<MessageAttachment> {
     return apiClient.get<MessageAttachment>(
       `/v1/u/${username}/conversations/${conversationId}/messages/${messageId}/attachments/${attachmentId}`
+    );
+  }
+
+  async addReaction(
+    username: string,
+    conversationId: string,
+    messageId: string,
+    reaction: string
+  ): Promise<{ id: string; message_id: string; user_id: string; reaction: string; created_at: string }> {
+    return apiClient.post(
+      `/v1/u/${username}/conversations/${conversationId}/messages/${messageId}/reactions`,
+      { reaction }
+    );
+  }
+
+  async removeReaction(
+    username: string,
+    conversationId: string,
+    messageId: string,
+    reaction: string
+  ): Promise<void> {
+    await apiClient.delete(
+      `/v1/u/${username}/conversations/${conversationId}/messages/${messageId}/reactions/${encodeURIComponent(reaction)}`
+    );
+  }
+
+  async listReactions(
+    username: string,
+    conversationId: string,
+    messageId: string
+  ): Promise<{ reactions: ReactionSummary[] }> {
+    return apiClient.get<{ reactions: ReactionSummary[] }>(
+      `/v1/u/${username}/conversations/${conversationId}/messages/${messageId}/reactions`
+    );
+  }
+
+  async markMessageRead(
+    username: string,
+    conversationId: string,
+    messageId: string
+  ): Promise<void> {
+    await apiClient.post(
+      `/v1/u/${username}/conversations/${conversationId}/messages/${messageId}/read`,
+      {}
+    );
+  }
+
+  async getMessageReadReceipts(
+    username: string,
+    conversationId: string,
+    messageId: string
+  ): Promise<{ read_receipts: MessageRead[] }> {
+    return apiClient.get<{ read_receipts: MessageRead[] }>(
+      `/v1/u/${username}/conversations/${conversationId}/messages/${messageId}/read-receipts`
     );
   }
 }

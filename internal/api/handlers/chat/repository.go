@@ -151,6 +151,17 @@ func (r *Repository) UpdateSessionTimestamp(ctx context.Context, id uuid.UUID) e
 	return r.db.WithContext(ctx).Model(&ChatSession{}).Where("id = ?", id).Update("updated_at", time.Now()).Error
 }
 
+func (r *Repository) UpdateSession(ctx context.Context, id, tenantID uuid.UUID, updates map[string]interface{}) error {
+	result := r.db.WithContext(ctx).Model(&ChatSession{}).Where("id = ? AND tenant_id = ?", id, tenantID).Updates(updates)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
 func (r *Repository) DeleteSession(ctx context.Context, id, tenantID, userID uuid.UUID) error {
 	result := r.db.WithContext(ctx).Where("id = ? AND tenant_id = ? AND user_id = ?", id, tenantID, userID).Delete(&ChatSession{})
 	if result.Error != nil {

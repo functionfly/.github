@@ -53,15 +53,15 @@ impl MicroPythonLoader {
         // Create a linker to connect the modules
         let mut linker = Linker::new(&self.engine);
 
-        // Define the wrapper module - it provides the exports that MicroPython needs
+        // Define the wrapper module as "env" - MicroPython imports from "env" namespace
         linker
-            .module(&mut *store, "wrapper", wrapper_module)
+            .module(&mut *store, "env", wrapper_module)
             .map_err(|e| {
-                MicroPythonError::LinkError(format!("Failed to define wrapper module: {}", e))
+                MicroPythonError::LinkError(format!("Failed to define wrapper module as 'env': {}", e))
             })?;
 
         // Define host functions that the wrapper can call
-        Self::define_host_functions(&mut linker)?;
+        super::host_functions::register_all_host_functions(&mut linker, store)?;
 
         // Instantiate the MicroPython module with imports from wrapper
         let instance = linker

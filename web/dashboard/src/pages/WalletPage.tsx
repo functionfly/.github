@@ -31,6 +31,7 @@ import {
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { usePageTitle } from '@/hooks';
 import { toast } from 'sonner';
 
 const LAST_WALLET_AGENT_KEY = 'ff-last-wallet-agent-id';
@@ -80,10 +81,7 @@ function PlatformWalletView() {
     retry: 2,
   });
 
-  const {
-    data: txData,
-    isLoading: txLoading,
-  } = useQuery({
+  const { data: txData, isLoading: txLoading } = useQuery({
     queryKey: ['platform-wallet-transactions'],
     queryFn: () => getWalletTransactions(50),
     retry: 2,
@@ -138,7 +136,8 @@ function PlatformWalletView() {
 
   const filteredTx = transactions.filter((tx) => {
     if (transactionFilter === 'all') return true;
-    if (transactionFilter === 'credit') return tx.type === 'credit' || tx.type === 'top_up' || tx.type === 'refund';
+    if (transactionFilter === 'credit')
+      return tx.type === 'credit' || tx.type === 'top_up' || tx.type === 'refund';
     if (transactionFilter === 'debit') return tx.type === 'debit' || tx.type === 'payout';
     return true;
   });
@@ -167,7 +166,10 @@ function PlatformWalletView() {
     <div className="space-y-4 w-full">
       {/* Back + Header */}
       <div className="flex items-center gap-2">
-        <Link to="/dashboard" className="p-1.5 rounded-lg hover:bg-surface-elevated transition-colors">
+        <Link
+          to="/dashboard"
+          className="p-1.5 rounded-lg hover:bg-surface-elevated transition-colors"
+        >
           <ChevronLeft className="h-4 w-4 text-text-muted" />
         </Link>
         <div>
@@ -214,7 +216,8 @@ function PlatformWalletView() {
                 <span>
                   {wallet?.lifetime_earnings_usd
                     ? ((wallet.lifetime_fees_usd / wallet.lifetime_earnings_usd) * 100).toFixed(0)
-                    : 0}%
+                    : 0}
+                  %
                 </span>
               </div>
               <div className="h-1.5 w-full rounded-full bg-surface-elevated overflow-hidden">
@@ -228,10 +231,13 @@ function PlatformWalletView() {
                 />
               </div>
             </div>
-            <Button onClick={() => {
-              trackEvent('wallet_add_funds_opened');
-              setShowAddFunds(true);
-            }} className="gap-2 w-full sm:w-auto h-8 text-sm">
+            <Button
+              onClick={() => {
+                trackEvent('wallet_add_funds_opened');
+                setShowAddFunds(true);
+              }}
+              className="gap-2 w-full sm:w-auto h-8 text-sm"
+            >
               <Plus className="h-3.5 w-3.5" />
               Add Funds
             </Button>
@@ -272,9 +278,15 @@ function PlatformWalletView() {
             onValueChange={(v) => setTransactionFilter(v as typeof transactionFilter)}
           >
             <TabsList className="grid w-full grid-cols-3 h-8">
-              <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
-              <TabsTrigger value="credit" className="text-xs">Credits</TabsTrigger>
-              <TabsTrigger value="debit" className="text-xs">Debits</TabsTrigger>
+              <TabsTrigger value="all" className="text-xs">
+                All
+              </TabsTrigger>
+              <TabsTrigger value="credit" className="text-xs">
+                Credits
+              </TabsTrigger>
+              <TabsTrigger value="debit" className="text-xs">
+                Debits
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value={transactionFilter} className="pt-2">
@@ -342,9 +354,7 @@ function PlatformWalletView() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add Funds</DialogTitle>
-            <DialogDescription>
-              Select or enter an amount to add to your wallet
-            </DialogDescription>
+            <DialogDescription>Select or enter an amount to add to your wallet</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             {/* Preset quick-select buttons */}
@@ -379,11 +389,17 @@ function PlatformWalletView() {
                 placeholder="25.00"
               />
             </div>
-            {addFundsAmount && !isNaN(parseFloat(addFundsAmount)) && parseFloat(addFundsAmount) > 0 && (
-              <p className="text-xs text-text-muted">
-                You will be charged <span className="font-medium text-text-primary">${parseFloat(addFundsAmount).toFixed(2)}</span> via Stripe.
-              </p>
-            )}
+            {addFundsAmount &&
+              !isNaN(parseFloat(addFundsAmount)) &&
+              parseFloat(addFundsAmount) > 0 && (
+                <p className="text-xs text-text-muted">
+                  You will be charged{' '}
+                  <span className="font-medium text-text-primary">
+                    ${parseFloat(addFundsAmount).toFixed(2)}
+                  </span>{' '}
+                  via Stripe.
+                </p>
+              )}
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setShowAddFunds(false)}>
@@ -414,6 +430,7 @@ function PlatformWalletView() {
 // Falls back to platform wallet when no agents exist
 // ──────────────────────────────────────────────────────────────────────────────
 export function WalletPage() {
+  usePageTitle('Wallet');
   const { t } = useTranslation();
   const { slug: pathAgentId } = useParams<{ slug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -458,7 +475,9 @@ export function WalletPage() {
             security: byCategory.security || 0,
           });
         })
-        .catch(() => { /* silent */ });
+        .catch(() => {
+          /* silent */
+        });
     } else if (credits === 'cancel') {
       toast.info(t('walletPage.paymentCancelled'), {
         description: t('walletPage.paymentCancelledDescription'),
@@ -497,7 +516,9 @@ export function WalletPage() {
         let last: string | null = null;
         try {
           last = localStorage.getItem(LAST_WALLET_AGENT_KEY);
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
 
         if (last && list.some((a) => a.agentId === last)) {
           navigate(`/wallet/agents/${encodeURIComponent(last)}`, { replace: true });

@@ -55,15 +55,6 @@ interface SeverityConfig {
 // ============================================================================
 
 const AUTO_COLLAPSE_DURATION = 10000; // 10 seconds
-const LOCAL_STORAGE_KEY = 'trust_alert_dismissed';
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Determine severity level based on trust alert data
- */
 function getSeverityLevel(alert: TrustAlert): SeverityConfig['level'] {
   // Critical conditions
   if (
@@ -137,39 +128,7 @@ function getSeverityConfig(level: SeverityConfig['level']): SeverityConfig {
   }
 }
 
-/**
- * Check if alert has been dismissed in localStorage
- */
-function isAlertDismissed(alertId: string): boolean {
-  if (typeof window === 'undefined') return false;
-  try {
-    const dismissed = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (dismissed) {
-      const dismissedIds: string[] = JSON.parse(dismissed);
-      return dismissedIds.includes(alertId);
-    }
-  } catch {
-    // Ignore localStorage errors
-  }
-  return false;
-}
 
-/**
- * Store dismissed alert ID in localStorage
- */
-function storeDismissedAlert(alertId: string): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const dismissed = localStorage.getItem(LOCAL_STORAGE_KEY);
-    const dismissedIds: string[] = dismissed ? JSON.parse(dismissed) : [];
-    if (!dismissedIds.includes(alertId)) {
-      dismissedIds.push(alertId);
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dismissedIds));
-    }
-  } catch {
-    // Ignore localStorage errors
-  }
-}
 
 /**
  * Format timestamp for display
@@ -203,20 +162,12 @@ export function TrustAlertBanner({
   const [isPinned, setIsPinned] = useState(false);
   const [progress, setProgress] = useState(100);
   const [isVisible, setIsVisible] = useState(true);
-  const [isDismissed, setIsDismissed] = useState(false);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const autoCollapseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Check if alert was previously dismissed
-  useEffect(() => {
-    if (alert && isAlertDismissed(alert.id)) {
-      setIsDismissed(true);
-    }
-  }, [alert?.id]);
-
   // Auto-collapse timer
   useEffect(() => {
-    if (!alert || isDismissed || isPinned || isExpanded) {
+    if (!alert || isPinned || isExpanded) {
       return;
     }
 
@@ -243,12 +194,11 @@ export function TrustAlertBanner({
         clearTimeout(autoCollapseTimeoutRef.current);
       }
     };
-  }, [alert, isDismissed, isPinned, isExpanded]);
+  }, [alert, isPinned, isExpanded]);
 
   const handleDismiss = useCallback(() => {
     if (alert) {
-      storeDismissedAlert(alert.id);
-      setIsDismissed(true);
+      // Call onDismiss to update Zustand store (source of truth for dismissal state)
       onDismiss?.(alert.id);
     }
     setIsVisible(false);
@@ -271,8 +221,9 @@ export function TrustAlertBanner({
     setIsPinned((prev) => !prev);
   }, []);
 
-  // Don't render if no alert or dismissed
-  if (!alert || isDismissed || !isVisible) {
+  // Don't render if no alert or visibility is hidden
+  // Note: Dismissal state is managed by parent via onDismiss callback and Zustand store
+  if (!alert || !isVisible) {
     return null;
   }
 

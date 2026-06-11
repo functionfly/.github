@@ -249,3 +249,47 @@ func (a *AuditLog) BeforeCreate(tx *gorm.DB) error {
 	}
 	return nil
 }
+
+// SecretDependency represents a link between a secret and a service/function that depends on it
+// Used for impact analysis during rotation or deletion
+type SecretDependency struct {
+	ID            uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	SecretID      uuid.UUID `gorm:"type:uuid;not null;index"`
+	TenantID      uuid.UUID `gorm:"type:uuid;not null;index"`
+	DependentID   uuid.UUID `gorm:"type:uuid;not null"`
+	DependentType string    `gorm:"not null;size:50"` // 'function', 'service', 'integration', 'workflow'
+	DependentName string    `gorm:"not null;size:255"`
+	Criticality   string    `gorm:"not null;size:20;default:'medium'"` // 'low', 'medium', 'high', 'critical'
+	Metadata      JSONMap   `gorm:"type:jsonb;not null;default:'{}'::jsonb"`
+	CreatedAt     time.Time `gorm:"autoCreateTime"`
+	UpdatedAt     time.Time `gorm:"autoUpdateTime"`
+}
+
+// TableName specifies the table name for SecretDependency
+func (SecretDependency) TableName() string {
+	return "secret_dependencies"
+}
+
+// BeforeCreate hook to ensure UUID is set if not provided
+func (sd *SecretDependency) BeforeCreate(tx *gorm.DB) error {
+	if sd.ID == uuid.Nil {
+		sd.ID = uuid.New()
+	}
+	return nil
+}
+
+// DependentType constants
+const (
+	DependentTypeFunction    = "function"
+	DependentTypeService      = "service"
+	DependentTypeIntegration  = "integration"
+	DependentTypeWorkflow     = "workflow"
+)
+
+// Criticality constants
+const (
+	CriticalityLow      = "low"
+	CriticalityMedium   = "medium"
+	CriticalityHigh     = "high"
+	CriticalityCritical = "critical"
+)

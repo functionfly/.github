@@ -92,9 +92,21 @@ func (h *Handler) HandleGetSecretAuditLog(w http.ResponseWriter, r *http.Request
 	if limit == 0 || limit > 100 {
 		limit = 20
 	}
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	if offset < 0 {
+		offset = 0
+	}
+
+	// Get total count for secret
+	total, err := h.repo.CountAuditLogsBySecret(r.Context(), *secretID, claims.TenantID)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to count audit logs")
+		h.respondError(w, http.StatusInternalServerError, "LIST_FAILED", "Failed to get audit logs")
+		return
+	}
 
 	// Get audit logs for secret
-	logs, err := h.repo.GetAuditLogsBySecret(r.Context(), *secretID, claims.TenantID, limit)
+	logs, err := h.repo.GetAuditLogsBySecret(r.Context(), *secretID, claims.TenantID, limit, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get audit logs")
 		h.respondError(w, http.StatusInternalServerError, "LIST_FAILED", "Failed to get audit logs")
@@ -109,9 +121,9 @@ func (h *Handler) HandleGetSecretAuditLog(w http.ResponseWriter, r *http.Request
 
 	h.respondJSON(w, http.StatusOK, ListAuditLogResponse{
 		Entries: responses,
-		Total:   int64(len(logs)),
+		Total:   total,
 		Limit:   limit,
-		Offset:  0,
+		Offset:  offset,
 	})
 }
 
@@ -137,9 +149,21 @@ func (h *Handler) HandleGetAuditLogByAction(w http.ResponseWriter, r *http.Reque
 	if limit == 0 || limit > 100 {
 		limit = 20
 	}
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	if offset < 0 {
+		offset = 0
+	}
+
+	// Get total count for action
+	total, err := h.repo.CountAuditLogsByAction(r.Context(), action, claims.TenantID)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to count audit logs")
+		h.respondError(w, http.StatusInternalServerError, "LIST_FAILED", "Failed to get audit logs")
+		return
+	}
 
 	// Get audit logs by action
-	logs, err := h.repo.GetAuditLogsByAction(r.Context(), action, claims.TenantID, limit)
+	logs, err := h.repo.GetAuditLogsByAction(r.Context(), action, claims.TenantID, limit, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get audit logs")
 		h.respondError(w, http.StatusInternalServerError, "LIST_FAILED", "Failed to get audit logs")
@@ -154,9 +178,9 @@ func (h *Handler) HandleGetAuditLogByAction(w http.ResponseWriter, r *http.Reque
 
 	h.respondJSON(w, http.StatusOK, ListAuditLogResponse{
 		Entries: responses,
-		Total:   int64(len(logs)),
+		Total:   total,
 		Limit:   limit,
-		Offset:  0,
+		Offset:  offset,
 	})
 }
 
@@ -184,9 +208,21 @@ func (h *Handler) HandleGetAuditLogByActor(w http.ResponseWriter, r *http.Reques
 	if limit == 0 || limit > 100 {
 		limit = 20
 	}
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	if offset < 0 {
+		offset = 0
+	}
+
+	// Get total count for actor
+	total, err := h.repo.CountAuditLogsByActor(r.Context(), actorID, actorType, claims.TenantID)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to count audit logs")
+		h.respondError(w, http.StatusInternalServerError, "LIST_FAILED", "Failed to get audit logs")
+		return
+	}
 
 	// Get audit logs by actor
-	logs, err := h.repo.GetAuditLogsByActor(r.Context(), actorID, actorType, claims.TenantID, limit)
+	logs, err := h.repo.GetAuditLogsByActor(r.Context(), actorID, actorType, claims.TenantID, limit, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get audit logs")
 		h.respondError(w, http.StatusInternalServerError, "LIST_FAILED", "Failed to get audit logs")
@@ -201,9 +237,9 @@ func (h *Handler) HandleGetAuditLogByActor(w http.ResponseWriter, r *http.Reques
 
 	h.respondJSON(w, http.StatusOK, ListAuditLogResponse{
 		Entries: responses,
-		Total:   int64(len(logs)),
+		Total:   total,
 		Limit:   limit,
-		Offset:  0,
+		Offset:  offset,
 	})
 }
 

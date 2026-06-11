@@ -54,8 +54,10 @@ import {
   X,
 } from 'lucide-react';
 import { useState } from 'react';
+import { usePageTitle } from '@/hooks';
 // import { ToggleButtonGroup } from "@/components/ui";
 import { teamsApi, type Team, type TeamMember } from '@/api/teams';
+import './styles.css';
 import { useAuthStore } from '@/stores/authStore';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
@@ -82,6 +84,7 @@ const roleLabels = {
 };
 
 export function TeamsPage() {
+  usePageTitle('Teams');
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -127,8 +130,27 @@ export function TeamsPage() {
   // Create team mutation
   const createTeamMutation = useMutation({
     mutationFn: (name: string) => teamsApi.create({ name }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teams'] });
+    onSuccess: (data) => {
+      // Optimistically add the new team to the cache with the creator as owner
+      const newTeam = {
+        ...data.team,
+        members: [
+          {
+            id: '',
+            user_id: user?.id ?? '',
+            team_id: data.team.id,
+            role: 'owner',
+            created_at: new Date().toISOString(),
+            user: user
+              ? { id: user.id, email: user.email, name: user.name, username: user.username }
+              : undefined,
+          },
+        ],
+      };
+      queryClient.setQueryData<{ teams: Team[] }>(['teams'], (old) => ({
+        teams: old ? [...old.teams, newTeam] : [newTeam],
+      }));
+      // Don't invalidate - we already added the team optimistically with the creator as owner
       setIsCreateDialogOpen(false);
       setNewTeamName('');
       toast.success('Team created successfully');
@@ -249,69 +271,73 @@ export function TeamsPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Teams</h1>
-          <p className="text-gray-400 mt-1" style={{ color: 'var(--text-secondary)' }}>Manage your teams, members, and permissions</p>
+          <h1 className="text-2xl font-bold text-text-primary">Teams</h1>
+          <p className="text-text-secondary mt-1">Manage your teams, members, and permissions</p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-[#6366f1] hover:bg-[#5558e0]">
-              <Plus className="w-4 h-4 mr-2" />
-              Create Team
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="[&>button]:text-gray-400" style={{ backgroundColor: 'var(--team-card-bg)', borderColor: 'var(--team-card-border)', color: 'var(--team-card-text)' }}>
-            <DialogHeader>
-              <DialogTitle style={{ color: 'var(--team-card-text)' }}>Create New Team</DialogTitle>
-              <DialogDescription style={{ color: 'var(--team-card-text-secondary)' }}>
-                Create a new team to organize members and manage permissions.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-4">
-              <Label htmlFor="team-name" style={{ color: 'var(--team-card-text-secondary)' }}>
-                Team Name
-              </Label>
-              <Input
-                id="team-name"
-                placeholder="e.g., Engineering, Marketing"
-                value={newTeamName}
-                onChange={(e) => setNewTeamName(e.target.value)}
-                style={{ backgroundColor: 'var(--team-input-bg)', borderColor: 'var(--team-input-border)', color: 'var(--team-input-text)' }}
-                className="mt-2 placeholder:text-gray-500"
-              />
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setIsCreateDialogOpen(false)}
-                style={{ borderColor: 'var(--team-card-border)', color: 'var(--team-card-text-secondary)' }}
-                className="hover:bg-[#21262d]"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleCreateTeam}
-                disabled={createTeamMutation.isPending || !newTeamName.trim()}
-                className="bg-[#6366f1] hover:bg-[#5558e0]"
-              >
-                {createTeamMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+        {teams.length > 0 && (
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="btn-team-primary">
+                <Plus className="w-4 h-4 mr-2" />
                 Create Team
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="team-dialog-content [&>button]:text-[var(--team-card-text-secondary)]">
+              <DialogHeader className="team-dialog-header">
+                <DialogTitle className="team-dialog-title">Create New Team</DialogTitle>
+                <DialogDescription className="team-dialog-description">
+                  Create a new team to organize members and manage permissions.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                <Label htmlFor="team-name" style={{ color: 'var(--team-card-text-secondary)' }}>
+                  Team Name
+                </Label>
+                <Input
+                  id="team-name"
+                  placeholder="e.g., Engineering, Marketing"
+                  value={newTeamName}
+                  onChange={(e) => setNewTeamName(e.target.value)}
+                  className="team-input mt-2"
+                />
+              </div>
+              <DialogFooter className="team-dialog-footer">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsCreateDialogOpen(false)}
+                  className="btn-team-outline"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreateTeam}
+                  disabled={createTeamMutation.isPending}
+                  className="btn-team-primary"
+                >
+                  {createTeamMutation.isPending && (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  )}
+                  Create Team
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       {/* Search and Filters */}
       {teams.length > 0 && (
         <div className="flex items-center gap-4">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--team-input-placeholder)' }} />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
+              style={{ color: 'var(--team-input-placeholder)' }}
+            />
             <Input
               placeholder="Search teams..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ backgroundColor: 'var(--team-input-bg)', borderColor: 'var(--team-card-border)', color: 'var(--team-input-text)' }}
-              className="pl-10"
+              className="team-input pl-10"
             />
             {searchQuery && (
               <button
@@ -323,14 +349,13 @@ export function TeamsPage() {
               </button>
             )}
           </div>
-          <div className="flex items-center gap-2 ml-auto rounded-lg p-1" style={{ backgroundColor: 'var(--team-card-bg)', border: '1px solid var(--team-card-border)' }}>
+          <div className="flex items-center gap-2 ml-auto rounded-lg p-1 border border-border-subtle">
             <Button
               variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
               size="icon"
               className={`h-8 w-8 ${viewMode === 'grid' ? '' : ''}`}
               onClick={() => setViewMode('grid')}
               aria-label="Grid view"
-              style={viewMode === 'grid' ? { backgroundColor: 'var(--team-input-bg)', color: 'var(--team-card-text)' } : { color: 'var(--team-card-text-secondary)' }}
             >
               <LayoutGrid className="w-4 h-4" />
             </Button>
@@ -340,7 +365,6 @@ export function TeamsPage() {
               className={`h-8 w-8 ${viewMode === 'list' ? '' : ''}`}
               onClick={() => setViewMode('list')}
               aria-label="List view"
-              style={viewMode === 'list' ? { backgroundColor: 'var(--team-input-bg)', color: 'var(--team-card-text)' } : { color: 'var(--team-card-text-secondary)' }}
             >
               <List className="w-4 h-4" />
             </Button>
@@ -350,23 +374,20 @@ export function TeamsPage() {
 
       {/* Teams Grid/List */}
       {isLoading ? (
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="w-8 h-8 animate-spin text-[#6366f1]" />
+        <div className="team-loading-container">
+          <Loader2 className="team-loading-spinner" />
         </div>
       ) : teams.length === 0 ? (
-        <Card style={{ backgroundColor: 'var(--team-card-bg)', borderColor: 'var(--team-card-border)' }}>
+        <Card className="team-card aviation-panel-glow">
           <CardContent className="py-12 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#6366f1]/20 to-[#8b5cf6]/20 flex items-center justify-center mx-auto mb-4">
-              <Users className="w-8 h-8 text-[#6366f1]" />
+            <div className="team-empty-icon">
+              <Users className="w-8 h-8" />
             </div>
-            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--team-card-text)' }}>No teams yet</h3>
-            <p className="mb-6 max-w-sm mx-auto" style={{ color: 'var(--team-card-text-secondary)' }}>
+            <h3 className="team-empty-title">No teams yet</h3>
+            <p className="team-empty-description">
               Create your first team to start collaborating with your colleagues.
             </p>
-            <Button
-              onClick={() => setIsCreateDialogOpen(true)}
-              className="bg-[#6366f1] hover:bg-[#5558e0]"
-            >
+            <Button onClick={() => setIsCreateDialogOpen(true)} className="btn-team-primary">
               <Plus className="w-4 h-4 mr-2" />
               Create Team
             </Button>
@@ -394,39 +415,42 @@ export function TeamsPage() {
                   transition={{ delay: index * 0.05 }}
                 >
                   <Card
-                    style={{ backgroundColor: 'var(--team-card-bg)', borderColor: 'var(--team-card-border)' }}
-                    className={`transition-all duration-200 cursor-pointer group ${
+                    className={`team-card aviation-panel hover:border-[var(--color-aviation-amber)] transition-all duration-200 cursor-pointer group ${
                       viewMode === 'list'
-                        ? 'hover:border-[#6366f1]/30'
-                        : 'hover:border-[#6366f1]/50 hover:-translate-y-0.5'
-                    } ${isSelected ? 'ring-2 ring-[#6366f1] border-[#6366f1]' : ''}`}
+                        ? 'hover:border-[var(--color-aviation-amber-dim)]'
+                        : 'hover:-translate-y-0.5'
+                    } ${isSelected ? 'ring-2 ring-[var(--team-primary)] border-[var(--team-primary)]' : ''}`}
                     onClick={() => setSelectedTeam(team)}
                   >
                     <CardHeader className={viewMode === 'list' ? 'pb-3' : 'pb-3'}>
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
                           <div
-                            className={`rounded-xl bg-gradient-to-br from-[#6366f1]/20 to-[#8b5cf6]/20 border border-[#6366f1]/20 flex items-center justify-center ${
-                              viewMode === 'list' ? 'w-10 h-10' : 'w-12 h-12'
-                            }`}
+                            className={`team-avatar ${viewMode === 'list' ? 'w-10 h-10' : 'w-12 h-12'}`}
                           >
                             <Users
-                              className={`text-[#6366f1] ${viewMode === 'list' ? 'w-5 h-5' : 'w-6 h-6'}`}
+                              className={`team-avatar-icon ${viewMode === 'list' ? 'w-5 h-5' : 'w-6 h-6'}`}
                             />
                           </div>
                           <div>
-                            <CardTitle className="text-base" style={{ color: 'var(--team-card-text)' }}>{team.name}</CardTitle>
+                            <CardTitle
+                              className="text-base"
+                              style={{ color: 'var(--team-card-text)' }}
+                            >
+                              {team.name}
+                            </CardTitle>
                             <CardDescription style={{ color: 'var(--team-card-text-secondary)' }}>
-                              {team.members?.length ?? 0} members
+                              {team.members?.length ?? 0} member
+                              {(team.members?.length ?? 0) !== 1 ? 's' : ''}
                             </CardDescription>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge
                             variant="outline"
-                            className={`${roleColors[userRole as keyof typeof roleColors]} text-xs`}
+                            className={`role-badge role-badge-${userRole as keyof typeof roleColors}`}
                           >
-                            <RoleIcon className="w-3 h-3 mr-1" />
+                            <RoleIcon className="w-3 h-3" />
                             {roleLabels[userRole as keyof typeof roleLabels]}
                           </Badge>
                           <DropdownMenu>
@@ -441,10 +465,7 @@ export function TeamsPage() {
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                              align="end"
-                              style={{ backgroundColor: 'var(--team-card-bg)', borderColor: 'var(--team-card-border)' }}
-                            >
+                            <DropdownMenuContent align="end" className="team-dialog-content">
                               <DropdownMenuItem
                                 onClick={(e) => e.stopPropagation()}
                                 style={{ color: 'var(--team-card-text-secondary)' }}
@@ -453,9 +474,11 @@ export function TeamsPage() {
                                 <Settings className="w-4 h-4 mr-2" />
                                 Settings
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator style={{ backgroundColor: 'var(--team-card-border)' }} />
+                              <DropdownMenuSeparator
+                                style={{ backgroundColor: 'var(--team-card-border)' }}
+                              />
                               <DropdownMenuItem
-                                className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
+                                className="btn-team-danger"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   if (confirm(`Are you sure you want to delete "${team.name}"?`)) {
@@ -473,17 +496,25 @@ export function TeamsPage() {
                     </CardHeader>
                     {viewMode === 'grid' && (
                       <CardContent className="pt-0">
-                        <div className="flex items-center justify-between text-xs text-gray-500">
+                        <div
+                          className="flex items-center justify-between text-xs"
+                          style={{ color: 'var(--team-card-text-secondary)' }}
+                        >
                           <span>
                             Created{' '}
                             {formatDistanceToNow(new Date(team.created_at), { addSuffix: true })}
                           </span>
                           <ChevronRight
-                            className={`w-4 h-4 transition-transform ${isSelected ? 'text-[#6366f1]' : ''}`}
+                            className={`w-4 h-4 transition-transform ${isSelected ? 'text-[var(--team-primary)]' : ''}`}
                           />
                         </div>
                       </CardContent>
                     )}
+                    {/* Aviation corner accents */}
+                    <div className="aviation-corner aviation-corner-tl" />
+                    <div className="aviation-corner aviation-corner-tr" />
+                    <div className="aviation-corner aviation-corner-bl" />
+                    <div className="aviation-corner aviation-corner-br" />
                   </Card>
                 </motion.div>
               );
@@ -503,15 +534,17 @@ export function TeamsPage() {
             transition={{ duration: 0.2 }}
             className="mt-8"
           >
-            <Card style={{ backgroundColor: 'var(--team-card-bg)', borderColor: 'var(--team-card-border)' }}>
+            <Card className="team-card aviation-panel">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#6366f1]/20 to-[#8b5cf6]/20 border border-[#6366f1]/20 flex items-center justify-center">
-                      <Users className="w-7 h-7 text-[#6366f1]" />
+                    <div className="team-avatar-lg">
+                      <Users className="w-7 h-7 team-avatar-icon" />
                     </div>
                     <div>
-                      <CardTitle className="text-xl" style={{ color: 'var(--team-card-text)' }}>{selectedTeam.name}</CardTitle>
+                      <CardTitle className="text-xl" style={{ color: 'var(--team-card-text)' }}>
+                        {selectedTeam.name}
+                      </CardTitle>
                       <CardDescription style={{ color: 'var(--team-card-text-secondary)' }}>
                         Manage team members, invites, and settings
                       </CardDescription>
@@ -522,28 +555,33 @@ export function TeamsPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => setSelectedTeam(null)}
-                      className="border-[#30363d] text-gray-300 hover:bg-[#21262d]"
+                      className="btn-team-outline"
                     >
                       <X className="w-4 h-4 mr-2" />
                       Close
                     </Button>
                     <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
                       <DialogTrigger asChild>
-                        <Button size="sm" className="bg-[#6366f1] hover:bg-[#5558e0]">
+                        <Button size="sm" className="btn-team-primary">
                           <UserPlus className="w-4 h-4 mr-2" />
                           Invite
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="[&>button]:text-gray-400" style={{ backgroundColor: 'var(--team-card-bg)', borderColor: 'var(--team-card-border)', color: 'var(--team-card-text)' }}>
-                        <DialogHeader>
-                          <DialogTitle style={{ color: 'var(--team-card-text)' }}>Invite Team Member</DialogTitle>
-                          <DialogDescription style={{ color: 'var(--team-card-text-secondary)' }}>
+                      <DialogContent className="team-dialog-content [&>button]:text-[var(--team-card-text-secondary)]">
+                        <DialogHeader className="team-dialog-header">
+                          <DialogTitle className="team-dialog-title">
+                            Invite Team Member
+                          </DialogTitle>
+                          <DialogDescription className="team-dialog-description">
                             Send an invitation to join {selectedTeam.name}.
                           </DialogDescription>
                         </DialogHeader>
                         <div className="py-4 space-y-4">
                           <div>
-                            <Label htmlFor="invite-email" style={{ color: 'var(--team-card-text-secondary)' }}>
+                            <Label
+                              htmlFor="invite-email"
+                              style={{ color: 'var(--team-card-text-secondary)' }}
+                            >
                               Email Address
                             </Label>
                             <Input
@@ -552,12 +590,14 @@ export function TeamsPage() {
                               placeholder="colleague@company.com"
                               value={inviteEmail}
                               onChange={(e) => setInviteEmail(e.target.value)}
-                              style={{ backgroundColor: 'var(--team-input-bg)', borderColor: 'var(--team-input-border)', color: 'var(--team-input-text)' }}
-                              className="mt-2 placeholder:text-gray-500"
+                              className="team-input mt-2"
                             />
                           </div>
                           <div>
-                            <Label htmlFor="invite-role" style={{ color: 'var(--team-card-text-secondary)' }}>
+                            <Label
+                              htmlFor="invite-role"
+                              style={{ color: 'var(--team-card-text-secondary)' }}
+                            >
                               Role
                             </Label>
                             <Select
@@ -566,13 +606,17 @@ export function TeamsPage() {
                                 setInviteRole(v as 'admin' | 'member' | 'viewer')
                               }
                             >
-                              <SelectTrigger className="mt-2" style={{ backgroundColor: 'var(--team-input-bg)', borderColor: 'var(--team-input-border)', color: 'var(--team-input-text)' }}>
+                              <SelectTrigger className="team-input mt-2">
                                 <SelectValue />
                               </SelectTrigger>
-                              <SelectContent style={{ backgroundColor: 'var(--team-card-bg)', borderColor: 'var(--team-card-border)' }}>
-                                <SelectItem value="admin" style={{ color: 'var(--team-card-text)' }} className="focus:bg-[var(--team-input-bg)]">
+                              <SelectContent className="team-dialog-content">
+                                <SelectItem
+                                  value="admin"
+                                  style={{ color: 'var(--team-card-text)' }}
+                                  className="focus:bg-[var(--team-input-bg)]"
+                                >
                                   <div className="flex items-center gap-2">
-                                    <Shield className="w-4 h-4 text-purple-400" />
+                                    <Shield className="w-4 h-4 role-icon-admin" />
                                     Admin - Full access
                                   </div>
                                 </SelectItem>
@@ -582,7 +626,7 @@ export function TeamsPage() {
                                   className="focus:bg-[var(--team-input-bg)]"
                                 >
                                   <div className="flex items-center gap-2">
-                                    <User className="w-4 h-4 text-blue-400" />
+                                    <User className="w-4 h-4 role-icon-member" />
                                     Member - Can manage resources
                                   </div>
                                 </SelectItem>
@@ -592,7 +636,7 @@ export function TeamsPage() {
                                   className="focus:bg-[var(--team-input-bg)]"
                                 >
                                   <div className="flex items-center gap-2">
-                                    <Eye className="w-4 h-4 text-gray-400" />
+                                    <Eye className="w-4 h-4 role-icon-viewer" />
                                     Viewer - Read-only access
                                   </div>
                                 </SelectItem>
@@ -600,19 +644,18 @@ export function TeamsPage() {
                             </Select>
                           </div>
                         </div>
-                        <DialogFooter>
+                        <DialogFooter className="team-dialog-footer">
                           <Button
                             variant="outline"
                             onClick={() => setIsInviteDialogOpen(false)}
-                            style={{ borderColor: 'var(--team-card-border)', color: 'var(--team-card-text-secondary)' }}
-                            className="hover:bg-[#21262d]"
+                            className="btn-team-outline"
                           >
                             Cancel
                           </Button>
                           <Button
                             onClick={handleInvite}
                             disabled={inviteMemberMutation.isPending || !inviteEmail.trim()}
-                            className="bg-[#6366f1] hover:bg-[#5558e0]"
+                            className="btn-team-primary"
                           >
                             {inviteMemberMutation.isPending && (
                               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -678,19 +721,23 @@ export function TeamsPage() {
                   {/* Members Tab */}
                   <TabsContent value="members" className="mt-0">
                     {membersLoading ? (
-                      <div className="flex items-center justify-center py-12">
-                        <Loader2 className="w-6 h-6 animate-spin text-[#6366f1]" />
+                      <div className="team-loading-container">
+                        <Loader2 className="team-loading-spinner" />
                       </div>
                     ) : members.length === 0 ? (
                       <div className="text-center py-12">
-                        <Users className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--team-card-text)' }}>No members yet</h3>
+                        <div className="team-empty-icon mx-auto mb-4">
+                          <Users className="w-12 h-12" />
+                        </div>
+                        <h3 className="team-empty-title" style={{ color: 'var(--team-card-text)' }}>
+                          No members yet
+                        </h3>
                         <p className="mb-4" style={{ color: 'var(--team-card-text-secondary)' }}>
                           Invite your first team member to start collaborating.
                         </p>
                         <Button
                           onClick={() => setIsInviteDialogOpen(true)}
-                          className="bg-[#6366f1] hover:bg-[#5558e0]"
+                          className="btn-team-primary"
                         >
                           <UserPlus className="w-4 h-4 mr-2" />
                           Invite Member
@@ -701,40 +748,41 @@ export function TeamsPage() {
                         {members.map((member) => {
                           const RoleIcon = roleIcons[member.role];
                           return (
-                            <div
-                              key={member.id}
-                              style={{ backgroundColor: 'var(--team-input-bg)', borderColor: 'var(--team-card-border)' }}
-                              className="flex items-center justify-between p-4 rounded-lg border hover:border-[#6366f1]/30 transition-colors"
-                            >
+                            <div key={member.id} className="member-list-item">
                               <div className="flex items-center gap-4">
-                                <Avatar className="w-10 h-10 border" style={{ borderColor: 'var(--team-card-border)' }}>
-                                  <AvatarFallback className="text-sm font-medium" style={{ backgroundColor: 'var(--team-card-bg)', color: 'var(--team-card-text)' }}>
+                                <Avatar className="member-avatar">
+                                  <AvatarFallback className="member-avatar-fallback">
                                     {getInitials(member.user?.name, member.user?.email)}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <div className="font-medium flex items-center gap-2" style={{ color: 'var(--team-card-text)' }}>
+                                  <div className="member-name flex items-center gap-2">
                                     {member.user?.name ||
                                       member.user?.username ||
                                       member.user?.email}
                                     {isCurrentUserOwner(member) && (
                                       <Badge
                                         variant="outline"
-                                        className="bg-[#6366f1]/10 text-[#6366f1] text-xs"
+                                        className="role-badge"
+                                        style={{
+                                          backgroundColor: 'var(--team-primary-light)',
+                                          color: 'var(--team-primary)',
+                                          borderColor: 'var(--team-primary-border)',
+                                        }}
                                       >
                                         You
                                       </Badge>
                                     )}
                                   </div>
-                                  <div className="text-sm" style={{ color: 'var(--team-card-text-secondary)' }}>{member.user?.email}</div>
+                                  <div className="member-email">{member.user?.email}</div>
                                 </div>
                               </div>
                               <div className="flex items-center gap-3">
                                 <Badge
                                   variant="outline"
-                                  className={`${roleColors[member.role as keyof typeof roleColors]} text-xs`}
+                                  className={`role-badge role-badge-${member.role as keyof typeof roleColors}`}
                                 >
-                                  <RoleIcon className="w-3 h-3 mr-1" />
+                                  <RoleIcon className="w-3 h-3" />
                                   {roleLabels[member.role as keyof typeof roleLabels]}
                                 </Badge>
                                 {!isCurrentUserOwner(member) && (
@@ -751,7 +799,7 @@ export function TeamsPage() {
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent
                                       align="end"
-                                      style={{ backgroundColor: 'var(--team-card-bg)', borderColor: 'var(--team-card-border)' }}
+                                      className="team-dialog-content"
                                     >
                                       <DropdownMenuItem
                                         onClick={() =>
@@ -764,7 +812,7 @@ export function TeamsPage() {
                                         style={{ color: 'var(--team-card-text-secondary)' }}
                                         className="focus:bg-[var(--team-input-bg)] focus:text-[var(--team-card-text)]"
                                       >
-                                        <Shield className="w-4 h-4 mr-2 text-purple-400" />
+                                        <Shield className="w-4 h-4 mr-2 role-icon-admin" />
                                         Make Admin
                                       </DropdownMenuItem>
                                       <DropdownMenuItem
@@ -778,7 +826,7 @@ export function TeamsPage() {
                                         style={{ color: 'var(--team-card-text-secondary)' }}
                                         className="focus:bg-[var(--team-input-bg)] focus:text-[var(--team-card-text)]"
                                       >
-                                        <User className="w-4 h-4 mr-2 text-blue-400" />
+                                        <User className="w-4 h-4 mr-2 role-icon-member" />
                                         Make Member
                                       </DropdownMenuItem>
                                       <DropdownMenuItem
@@ -792,12 +840,14 @@ export function TeamsPage() {
                                         style={{ color: 'var(--team-card-text-secondary)' }}
                                         className="focus:bg-[var(--team-input-bg)] focus:text-[var(--team-card-text)]"
                                       >
-                                        <Eye className="w-4 h-4 mr-2 text-gray-400" />
+                                        <Eye className="w-4 h-4 mr-2 role-icon-viewer" />
                                         Make Viewer
                                       </DropdownMenuItem>
-                                      <DropdownMenuSeparator style={{ backgroundColor: 'var(--team-card-border)' }} />
+                                      <DropdownMenuSeparator
+                                        style={{ backgroundColor: 'var(--team-card-border)' }}
+                                      />
                                       <DropdownMenuItem
-                                        className="text-red-400 focus:bg-red-500/10 focus:text-red-400"
+                                        className="btn-team-danger"
                                         onClick={() => {
                                           if (
                                             confirm(`Remove ${member.user?.email} from this team?`)
@@ -826,19 +876,23 @@ export function TeamsPage() {
                   {/* Invites Tab */}
                   <TabsContent value="invites" className="mt-0">
                     {invitesLoading ? (
-                      <div className="flex items-center justify-center py-12">
-                        <Loader2 className="w-6 h-6 animate-spin text-[#6366f1]" />
+                      <div className="team-loading-container">
+                        <Loader2 className="team-loading-spinner" />
                       </div>
                     ) : invites.length === 0 ? (
                       <div className="text-center py-12">
-                        <Mail className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--team-card-text)' }}>No pending invites</h3>
+                        <div className="team-empty-icon mx-auto mb-4">
+                          <Mail className="w-12 h-12" />
+                        </div>
+                        <h3 className="team-empty-title" style={{ color: 'var(--team-card-text)' }}>
+                          No pending invites
+                        </h3>
                         <p className="mb-4" style={{ color: 'var(--team-card-text-secondary)' }}>
                           Invite team members to see pending invitations here.
                         </p>
                         <Button
                           onClick={() => setIsInviteDialogOpen(true)}
-                          className="bg-[#6366f1] hover:bg-[#5558e0]"
+                          className="btn-team-primary"
                         >
                           <UserPlus className="w-4 h-4 mr-2" />
                           Invite Member
@@ -847,18 +901,20 @@ export function TeamsPage() {
                     ) : (
                       <div className="space-y-2">
                         {invites.map((invite) => (
-                          <div
-                            key={invite.id}
-                            style={{ backgroundColor: 'var(--team-input-bg)', borderColor: 'var(--team-card-border)' }}
-                            className="flex items-center justify-between p-4 rounded-lg border"
-                          >
+                          <div key={invite.id} className="member-list-item">
                             <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                                <Mail className="w-5 h-5 text-amber-400" />
+                              <div
+                                className="w-10 h-10 rounded-lg flex items-center justify-center"
+                                style={{ backgroundColor: 'var(--status-pending-bg)' }}
+                              >
+                                <Mail
+                                  className="w-5 h-5"
+                                  style={{ color: 'var(--status-pending-text)' }}
+                                />
                               </div>
                               <div>
-                                <div className="font-medium" style={{ color: 'var(--team-card-text)' }}>{invite.email}</div>
-                                <div className="text-sm flex items-center gap-2" style={{ color: 'var(--team-card-text-secondary)' }}>
+                                <div className="member-name">{invite.email}</div>
+                                <div className="member-email flex items-center gap-2">
                                   <Clock className="w-3 h-3" />
                                   Invited{' '}
                                   {formatDistanceToNow(new Date(invite.created_at), {
@@ -905,13 +961,13 @@ export function TeamsPage() {
                   {/* Settings Tab */}
                   <TabsContent value="settings" className="mt-0">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-<Card style={{ backgroundColor: 'var(--team-input-bg)', borderColor: 'var(--team-card-border)' }}>
+                      <Card className="settings-card">
                         <CardHeader>
-                          <CardTitle className="flex items-center gap-2 text-base" style={{ color: 'var(--team-card-text)' }}>
-                            <Shield className="w-5 h-5 text-[#6366f1]" />
+                          <CardTitle className="settings-card-title flex items-center gap-2 text-base">
+                            <Shield className="w-5 h-5 team-avatar-icon" />
                             Team Permissions
                           </CardTitle>
-                          <CardDescription style={{ color: 'var(--team-card-text-secondary)' }}>
+                          <CardDescription className="settings-card-description">
                             Understanding roles and access levels
                           </CardDescription>
                         </CardHeader>
@@ -920,51 +976,49 @@ export function TeamsPage() {
                             {
                               role: 'owner',
                               desc: 'Full control - manage members, settings, billing, and delete team',
+                              bgClass: 'bg-yellow-500/10',
+                              textClass: 'text-yellow-400',
                             },
                             {
                               role: 'admin',
                               desc: 'Can manage members and resources, but cannot delete team',
+                              bgClass: 'bg-purple-500/10',
+                              textClass: 'text-purple-400',
                             },
                             {
                               role: 'member',
                               desc: 'Can create and manage functions and resources',
+                              bgClass: 'bg-blue-500/10',
+                              textClass: 'text-blue-400',
                             },
                             {
                               role: 'viewer',
                               desc: 'Read-only access to view team resources and activity',
+                              bgClass: 'bg-gray-500/10',
+                              textClass: 'text-gray-400',
                             },
-                          ].map(({ role, desc }) => {
+                          ].map(({ role, desc, bgClass, textClass }) => {
                             const RoleIcon = roleIcons[role as keyof typeof roleIcons];
                             return (
                               <div key={role} className="flex items-start gap-3">
                                 <div
-                                  className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                                    role === 'owner'
-                                      ? 'bg-yellow-500/10'
-                                      : role === 'admin'
-                                        ? 'bg-purple-500/10'
-                                        : role === 'member'
-                                          ? 'bg-blue-500/10'
-                                          : 'bg-gray-500/10'
-                                  }`}
+                                  className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${bgClass}`}
                                 >
-                                  <RoleIcon
-                                    className={`w-4 h-4 ${
-                                      role === 'owner'
-                                        ? 'text-yellow-400'
-                                        : role === 'admin'
-                                          ? 'text-purple-400'
-                                          : role === 'member'
-                                            ? 'text-blue-400'
-                                            : 'text-gray-400'
-                                    }`}
-                                  />
+                                  <RoleIcon className={`w-4 h-4 ${textClass}`} />
                                 </div>
                                 <div>
-                                  <div className="font-medium text-sm capitalize" style={{ color: 'var(--team-card-text)' }}>
+                                  <div
+                                    className="font-medium text-sm capitalize"
+                                    style={{ color: 'var(--team-card-text)' }}
+                                  >
                                     {role}
                                   </div>
-                                  <div className="text-sm" style={{ color: 'var(--team-card-text-secondary)' }}>{desc}</div>
+                                  <div
+                                    className="text-sm"
+                                    style={{ color: 'var(--team-card-text-secondary)' }}
+                                  >
+                                    {desc}
+                                  </div>
                                 </div>
                               </div>
                             );
@@ -972,162 +1026,120 @@ export function TeamsPage() {
                         </CardContent>
                       </Card>
 
-                      <Card style={{ backgroundColor: 'var(--team-input-bg)', borderColor: 'var(--team-card-border)' }}>
+                      <Card className="settings-card">
                         <CardHeader>
-                          <CardTitle className="flex items-center gap-2 text-base" style={{ color: 'var(--team-card-text)' }}>
-                            <Settings className="w-5 h-5 text-[#6366f1]" />
+                          <CardTitle className="settings-card-title flex items-center gap-2 text-base">
+                            <Settings className="w-5 h-5 team-avatar-icon" />
                             Team Settings
                           </CardTitle>
-                          <CardDescription style={{ color: 'var(--team-card-text-secondary)' }}>
+                          <CardDescription className="settings-card-description">
                             Manage your team configuration
                           </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                          <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--team-card-bg)', borderColor: 'var(--team-card-border)' }}>
+                          <div
+                            className="p-4 rounded-lg"
+                            style={{
+                              backgroundColor: 'var(--team-card-bg)',
+                              borderColor: 'var(--team-card-border)',
+                            }}
+                          >
                             <div className="flex items-center justify-between mb-2">
-                              <span className="font-medium" style={{ color: 'var(--team-card-text)' }}>Team Name</span>
+                              <span
+                                className="font-medium"
+                                style={{ color: 'var(--team-card-text)' }}
+                              >
+                                Team Name
+                              </span>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 text-[#6366f1] hover:text-[#5558e0] hover:bg-[#6366f1]/10"
+                                className="h-8"
+                                style={{ color: 'var(--team-primary)' }}
                               >
                                 <Edit3 className="w-4 h-4 mr-2" />
                                 Edit
                               </Button>
                             </div>
-                            <p className="text-sm" style={{ color: 'var(--team-card-text-secondary)' }}>{selectedTeam.name}</p>
-                          </div>
-                          <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--team-card-bg)', borderColor: 'var(--team-card-border)' }}>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="font-medium" style={{ color: 'var(--team-card-text)' }}>Team ID</span>
-                              <Badge
-                                variant="outline"
-                                style={{ color: 'var(--team-card-text-secondary)', borderColor: 'var(--team-card-border)' }}
-                                className="font-mono text-xs"
-                              >
-                                {selectedTeam.id.slice(0, 8)}...
-                              </Badge>
-                            </div>
-                            <p className="text-sm" style={{ color: 'var(--team-card-text-secondary)' }}>
-                              Unique identifier for API access
-                            </p>
-                          </div>
-                          <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--team-card-bg)', borderColor: 'var(--team-card-border)' }}>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="font-medium" style={{ color: 'var(--team-card-text)' }}>Created</span>
-                            </div>
-                            <p className="text-sm" style={{ color: 'var(--team-card-text-secondary)' }}>
-                              {format(new Date(selectedTeam.created_at), 'MMMM d, yyyy')}
-                            </p>
-                          </div>
-                          <Separator style={{ backgroundColor: 'var(--team-card-border)' }} />
-                          <div className="p-4 rounded-lg bg-red-500/5 border border-red-500/20">
-                            <div className="flex items-center gap-2 mb-2">
-                              <AlertCircle className="w-5 h-5 text-red-400" />
-                              <span className="font-medium text-red-400">Danger Zone</span>
-                            </div>
-                            <p className="text-sm" style={{ color: 'var(--team-card-text-secondary)' }}>
-                              Deleting a team will remove all members and data. This cannot be undone.
-                            </p>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => {
-                                if (
-                                  confirm(
-                                    `Are you sure you want to delete "${selectedTeam.name}"? This cannot be undone.`
-                                  )
-                                ) {
-                                  deleteTeamMutation.mutate(selectedTeam.id);
-                                }
-                              }}
-                              disabled={deleteTeamMutation.isPending}
-                              className="bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 hover:text-red-400"
+                            <p
+                              className="text-sm"
+                              style={{ color: 'var(--team-card-text-secondary)' }}
                             >
-                              {deleteTeamMutation.isPending ? (
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              ) : (
-                                <Trash2 className="w-4 h-4 mr-2" />
-                              )}
-                              Delete Team
-                            </Button>
+                              {selectedTeam.name}
+                            </p>
                           </div>
-                        </CardContent>
-                      </Card>
-
-<Card style={{ backgroundColor: 'var(--team-input-bg)', borderColor: 'var(--team-card-border)' }}>
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2 text-base" style={{ color: 'var(--team-card-text)' }}>
-                            <Settings className="w-5 h-5 text-[#6366f1]" />
-                            Team Settings
-                          </CardTitle>
-                          <CardDescription style={{ color: 'var(--team-card-text-secondary)' }}>
-                            Manage your team configuration
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--team-card-bg)', borderColor: 'var(--team-card-border)' }}>
+                          <div
+                            className="p-4 rounded-lg"
+                            style={{
+                              backgroundColor: 'var(--team-card-bg)',
+                              borderColor: 'var(--team-card-border)',
+                            }}
+                          >
                             <div className="flex items-center justify-between mb-2">
-                              <span className="font-medium" style={{ color: 'var(--team-card-text)' }}>Team Name</span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 text-[#6366f1] hover:text-[#5558e0] hover:bg-[#6366f1]/10"
+                              <span
+                                className="font-medium"
+                                style={{ color: 'var(--team-card-text)' }}
                               >
-                                <Edit3 className="w-4 h-4 mr-2" />
-                                Edit
-                              </Button>
-                            </div>
-                            <p className="text-sm" style={{ color: 'var(--team-card-text-secondary)' }}>{selectedTeam.name}</p>
-                          </div>
-                          <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--team-card-bg)', borderColor: 'var(--team-card-border)' }}>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="font-medium" style={{ color: 'var(--team-card-text)' }}>Team ID</span>
+                                Team ID
+                              </span>
                               <Badge
                                 variant="outline"
-                                style={{ color: 'var(--team-card-text-secondary)', borderColor: 'var(--team-card-border)' }}
+                                style={{
+                                  color: 'var(--team-card-text-secondary)',
+                                  borderColor: 'var(--team-card-border)',
+                                }}
                                 className="font-mono text-xs"
                               >
                                 {selectedTeam.id.slice(0, 8)}...
                               </Badge>
                             </div>
-                            <p className="text-sm" style={{ color: 'var(--team-card-text-secondary)' }}>
+                            <p
+                              className="text-sm"
+                              style={{ color: 'var(--team-card-text-secondary)' }}
+                            >
                               Unique identifier for API access
                             </p>
                           </div>
-                          <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--team-card-bg)', borderColor: 'var(--team-card-border)' }}>
+                          <div
+                            className="p-4 rounded-lg"
+                            style={{
+                              backgroundColor: 'var(--team-card-bg)',
+                              borderColor: 'var(--team-card-border)',
+                            }}
+                          >
                             <div className="flex items-center justify-between mb-2">
-                              <span className="font-medium" style={{ color: 'var(--team-card-text)' }}>Created</span>
+                              <span
+                                className="font-medium"
+                                style={{ color: 'var(--team-card-text)' }}
+                              >
+                                Created
+                              </span>
                             </div>
-                            <p className="text-sm" style={{ color: 'var(--team-card-text-secondary)' }}>
+                            <p
+                              className="text-sm"
+                              style={{ color: 'var(--team-card-text-secondary)' }}
+                            >
                               {format(new Date(selectedTeam.created_at), 'MMMM d, yyyy')}
                             </p>
                           </div>
                           <Separator style={{ backgroundColor: 'var(--team-card-border)' }} />
-                          <div className="p-4 rounded-lg bg-red-500/5 border border-red-500/20">
+                          <div className="p-4 rounded-lg aviation-glow-red">
                             <div className="flex items-center gap-2 mb-2">
-                              <AlertCircle className="w-5 h-5 text-red-400" />
-                              <span className="font-medium text-red-400">Danger Zone</span>
+                              <AlertCircle
+                                className="w-5 h-5"
+                                style={{ color: 'var(--color-aviation-red)' }}
+                              />
+                              <span
+                                className="font-medium"
+                                style={{ color: 'var(--color-aviation-red)' }}
+                              >
+                                Danger Zone
+                              </span>
                             </div>
-                            <p className="text-sm mb-3" style={{ color: 'var(--team-card-text-secondary)' }}>
-                              Deleting a team will remove all members and data. This cannot be undone.
-                            </p>
-                          </div>
-                          <div className="p-4 rounded-lg bg-[#161b22] border border-[#30363d]">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="font-medium text-white">Created</span>
-                            </div>
-                            <p className="text-sm text-gray-400">
-                              {format(new Date(selectedTeam.created_at), 'MMMM d, yyyy')}
-                            </p>
-                          </div>
-                          <Separator className="bg-[#30363d]" />
-                          <div className="p-4 rounded-lg bg-red-500/5 border border-red-500/20">
-                            <div className="flex items-center gap-2 mb-2">
-                              <AlertCircle className="w-5 h-5 text-red-400" />
-                              <span className="font-medium text-red-400">Danger Zone</span>
-                            </div>
-                            <p className="text-sm text-gray-400 mb-3">
+                            <p
+                              className="text-sm"
+                              style={{ color: 'var(--team-card-text-secondary)' }}
+                            >
                               Deleting a team will remove all members and data. This cannot be
                               undone.
                             </p>
@@ -1144,7 +1156,7 @@ export function TeamsPage() {
                                 }
                               }}
                               disabled={deleteTeamMutation.isPending}
-                              className="bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 hover:text-red-400"
+                              className="btn-team-danger mt-3"
                             >
                               {deleteTeamMutation.isPending ? (
                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />

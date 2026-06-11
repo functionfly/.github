@@ -3,6 +3,7 @@ package statefabric
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -509,9 +510,38 @@ func mapStoreType(storeType string) string {
 	}
 }
 
-func (r *Repository) DeleteStore(ctx context.Context, tenantID, fabricID uuid.UUID, _ string) error {
-	_, err := r.GetFabric(ctx, tenantID, fabricID)
-	return err
+func (r *Repository) DeleteStore(ctx context.Context, tenantID, fabricID uuid.UUID, storeID string) error {
+	state, err := r.GetFabric(ctx, tenantID, fabricID)
+	if err != nil {
+		return err
+	}
+
+	if storeID == "" {
+		return fmt.Errorf("store ID is required")
+	}
+
+	storeUUID, err := uuid.Parse(storeID)
+	if err != nil {
+		return fmt.Errorf("invalid store ID: %w", err)
+	}
+
+	result := r.db.WithContext(ctx).Delete(&StateFabricStore{}, "id = ? AND fabric_id = ?", storeUUID, fabricID)
+	if result.Error != nil {
+		return fmt.Errorf("failed to delete store: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("store not found")
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"store_id":   storeID,
+		"fabric_id":  fabricID,
+		"tenant_id":  tenantID,
+		"rows_count": result.RowsAffected,
+	}).Info("Store deleted from fabric")
+
+	_ = state
+	return nil
 }
 
 func (r *Repository) ListPipelines(ctx context.Context, fabricID uuid.UUID) ([]Pipeline, error) {
@@ -1688,4 +1718,202 @@ func (r *Repository) GetReplayDataFromR2(ctx context.Context, replayID uuid.UUID
 	}
 
 	return r.r2Backend.GetReplayData(ctx, *replay.R2ObjectKey)
+}
+
+// StateFabricAuditEvent represents an audit log entry for state fabric operations
+type StateFabricAuditEvent struct {
+	ID            uuid.UUID              `json:"id"`
+	TenantID      uuid.UUID              `json:"tenant_id"`
+	FabricID      uuid.UUID              `json:"fabric_id"`
+	StoreID       *uuid.UUID             `json:"store_id,omitempty"`
+	Action        string                 `json:"action"` // create, read, update, delete, execute, snapshot, replay
+	ActorUserID   *uuid.UUID             `json:"actor_user_id,omitempty"`
+	ActorEmail    string                 `json:"actor_email,omitempty"`
+	ResourceType  string                 `json:"resource_type"` // fabric, store, pipeline, snapshot, replay, edge_state
+	ResourceID    *uuid.UUID             `json:"resource_id,omitempty"`
+	RequestID     string                 `json:"request_id,omitempty"`
+	BeforeState   map[string]interface{} `json:"before_state,omitempty"`
+	AfterState    map[string]interface{} `json:"after_state,omitempty"`
+	IPAddress     string                 `json:"ip_address,omitempty"`
+	UserAgent     string                 `json:"user_agent,omitempty"`
+	Timestamp     time.Time             `json:"timestamp"`
+	Success       bool                   `json:"success"`
+	ErrorMessage  string                 `json:"error_message,omitempty"`
+	OperationType string                 `json:"operation_type"` // mutation, query, execution
+}
+
+// LogStateFabricAudit logs a state fabric audit event
+func (r *Repository) LogStateFabricAudit(ctx context.Context, event *StateFabricAuditEvent) error {
+	event.ID = uuid.New()
+	event.Timestamp = time.Now()
+
+	query := `
+		INSERT INTO state_fabric_audit_log (id, tenant_id, fabric_id, store_id, action, actor_user_id, actor_email,
+			resource_type, resource_id, request_id, before_state, after_state, ip_address, user_agent, timestamp, success, error_message, operation_type)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`
+
+	var beforeState, afterState []byte
+	if event.BeforeState != nil {
+		beforeState, _ = json.Marshal(event.BeforeState)
+	}
+	if event.AfterState != nil {
+		afterState, _ = json.Marshal(event.AfterState)
+	}
+
+	result := r.db.WithContext(ctx).Exec(query,
+		event.ID, event.TenantID, event.FabricID, event.StoreID, event.Action,
+		event.ActorUserID, event.ActorEmail, event.ResourceType, event.ResourceID,
+		event.RequestID, beforeState, afterState, event.IPAddress, event.UserAgent,
+		event.Timestamp, event.Success, event.ErrorMessage, event.OperationType)
+
+	if result.Error != nil {
+		logrus.WithError(result.Error).WithFields(logrus.Fields{
+			"action":   event.Action,
+			"fabric_id": event.FabricID,
+			"tenant_id": event.TenantID,
+		}).Error("Failed to log state fabric audit event")
+		return result.Error
+	}
+
+	return nil
+}
+
+// LogStateFabricMutation logs a state fabric mutation (create, update, delete)
+func (r *Repository) LogStateFabricMutation(ctx context.Context, tenantID, fabricID uuid.UUID, action, resourceType string, beforeState, afterState map[string]interface{}, userID *uuid.UUID, userEmail, ipAddress string) error {
+	event := &StateFabricAuditEvent{
+		TenantID:      tenantID,
+		FabricID:      fabricID,
+		Action:        action,
+		ActorUserID:   userID,
+		ActorEmail:    userEmail,
+		ResourceType:  resourceType,
+		BeforeState:   beforeState,
+		AfterState:    afterState,
+		IPAddress:     ipAddress,
+		Success:       true,
+		OperationType: "mutation",
+	}
+	return r.LogStateFabricAudit(ctx, event)
+}
+
+// LogStateFabricQuery logs a state fabric query operation (read, list)
+func (r *Repository) LogStateFabricQuery(ctx context.Context, tenantID, fabricID uuid.UUID, resourceType string, userID *uuid.UUID, userEmail, ipAddress string) error {
+	event := &StateFabricAuditEvent{
+		TenantID:      tenantID,
+		FabricID:      fabricID,
+		Action:        "read",
+		ActorUserID:   userID,
+		ActorEmail:    userEmail,
+		ResourceType:  resourceType,
+		IPAddress:     ipAddress,
+		Success:       true,
+		OperationType: "query",
+	}
+	return r.LogStateFabricAudit(ctx, event)
+}
+
+// LogStateFabricExecution logs a state fabric execution operation (pipeline execute, snapshot, replay)
+func (r *Repository) LogStateFabricExecution(ctx context.Context, tenantID, fabricID uuid.UUID, action, resourceType string, beforeState, afterState map[string]interface{}, userID *uuid.UUID, userEmail, ipAddress string, success bool, errorMsg string) error {
+	event := &StateFabricAuditEvent{
+		TenantID:      tenantID,
+		FabricID:      fabricID,
+		Action:        action,
+		ActorUserID:   userID,
+		ActorEmail:    userEmail,
+		ResourceType:  resourceType,
+		BeforeState:   beforeState,
+		AfterState:    afterState,
+		IPAddress:     ipAddress,
+		Success:       success,
+		ErrorMessage:  errorMsg,
+		OperationType: "execution",
+	}
+	return r.LogStateFabricAudit(ctx, event)
+}
+
+// ListStateFabricAuditLogs lists audit logs for a state fabric with filtering
+func (r *Repository) ListStateFabricAuditLogs(ctx context.Context, tenantID, fabricID uuid.UUID, limit, offset int, action, resourceType string) ([]StateFabricAuditEvent, int64, error) {
+	query := `SELECT id, tenant_id, fabric_id, store_id, action, actor_user_id, actor_email, resource_type,
+		resource_id, request_id, before_state, after_state, ip_address, user_agent, timestamp, success, error_message, operation_type
+		FROM state_fabric_audit_log WHERE tenant_id = $1 AND fabric_id = $2`
+	countQuery := `SELECT COUNT(*) FROM state_fabric_audit_log WHERE tenant_id = $1 AND fabric_id = $2`
+
+	args := []interface{}{tenantID, fabricID}
+	argIndex := 3
+
+	if action != "" {
+		query += fmt.Sprintf(" AND action = $%d", argIndex)
+		countQuery += fmt.Sprintf(" AND action = $%d", argIndex)
+		args = append(args, action)
+		argIndex++
+	}
+	if resourceType != "" {
+		query += fmt.Sprintf(" AND resource_type = $%d", argIndex)
+		countQuery += fmt.Sprintf(" AND resource_type = $%d", argIndex)
+		args = append(args, resourceType)
+		argIndex++
+	}
+
+	var total int64
+	if err := r.db.WithContext(ctx).Raw(countQuery, args...).Scan(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	query += fmt.Sprintf(" ORDER BY timestamp DESC LIMIT $%d OFFSET $%d", argIndex, argIndex+1)
+	args = append(args, limit, offset)
+
+	rows, err := r.db.WithContext(ctx).Raw(query, args...).Rows()
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var events []StateFabricAuditEvent
+	for rows.Next() {
+		var event StateFabricAuditEvent
+		var beforeState, afterState []byte
+		var storeID, actorUserID, resourceID *uuid.UUID
+		var actorEmail, ipAddress, userAgent, errorMsg sql.NullString
+
+		err := rows.Scan(
+			&event.ID, &event.TenantID, &event.FabricID, &storeID, &event.Action,
+			&actorUserID, &actorEmail, &event.ResourceType, &resourceID,
+			&event.RequestID, &beforeState, &afterState, &ipAddress, &userAgent,
+			&event.Timestamp, &event.Success, &errorMsg, &event.OperationType)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		if storeID != nil {
+			event.StoreID = storeID
+		}
+		if actorUserID != nil {
+			event.ActorUserID = actorUserID
+		}
+		if actorEmail.Valid {
+			event.ActorEmail = actorEmail.String
+		}
+		if resourceID != nil {
+			event.ResourceID = resourceID
+		}
+		if ipAddress.Valid {
+			event.IPAddress = ipAddress.String
+		}
+		if userAgent.Valid {
+			event.UserAgent = userAgent.String
+		}
+		if errorMsg.Valid {
+			event.ErrorMessage = errorMsg.String
+		}
+		if len(beforeState) > 0 {
+			_ = json.Unmarshal(beforeState, &event.BeforeState)
+		}
+		if len(afterState) > 0 {
+			_ = json.Unmarshal(afterState, &event.AfterState)
+		}
+
+		events = append(events, event)
+	}
+
+	return events, total, nil
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useInView } from "react-intersection-observer";
-import { useGesture } from "react-use-gesture";
+import { useGesture } from "@use-gesture/react";
 import toast from "react-hot-toast";
 
 // Custom hook for scroll-triggered animations

@@ -42,6 +42,14 @@ function setupAuthSyncListener(store: ReturnType<typeof authStore>) {
 
   const handleAuthEvent = (event: AuthSyncEvent) => {
     if (event.type === 'logout') {
+      const token = localStorage.getItem('ff-access-token');
+      if (token) {
+        const payload = safeDecodeJwtPayload(token);
+        const now = Math.floor(Date.now() / 1000);
+        if (payload?.exp && payload.exp > now - 60) {
+          return;
+        }
+      }
       store.getState().logout(false);
       return;
     }
@@ -170,19 +178,19 @@ const authStore = create<AuthState>()(
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
           try {
-            // Check if token is expired locally first with safe decoding
             const payload = safeDecodeJwtPayload(jwtToken);
             if (!payload) {
-              clearAuth();
-              return;
+              if (!refreshToken) {
+                clearAuth();
+                return;
+              }
             }
 
             const currentTime = Math.floor(Date.now() / 1000);
-            const expiresAt = payload.exp || 0;
+            const expiresAt = payload?.exp ? payload.exp : 0;
 
             let response: Response;
-            if (expiresAt > currentTime) {
-              // Token is still valid, validate with backend
+            if (expiresAt === 0 || expiresAt > currentTime) {
               const apiUrl = getApiBaseUrl();
               response = await fetch(`${apiUrl}/v1/auth/validate`, {
                 method: 'GET',
@@ -192,7 +200,6 @@ const authStore = create<AuthState>()(
               });
 
               if (!response.ok) {
-                // Token invalid or expired, try to refresh
                 if (!refreshToken) {
                   clearAuth();
                   return;
@@ -310,25 +317,51 @@ const authStore = create<AuthState>()(
                 broadcastAuthEvent({ type: 'token_updated', timestamp: Date.now(), userId: user.id });
                 return;
               }
+
+              // Refresh failed with 4xx (not 429) - token is invalid, don't retry
+              if (refreshResponse.status >= 400 && refreshResponse.status < 500 && refreshResponse.status !== 429) {
+                clearAuth();
+                return;
+              }
+
+              // 5xx or 429 - retry with backoff
+              if (attempt < maxRetries - 1) {
+                const delayMs = 500 * Math.pow(2, attempt);
+                await new Promise((resolve) => setTimeout(resolve, delayMs));
+                continue;
+              }
             }
 
-            // If we get here, refresh failed or wasn't possible
+            // No refresh token or all retries failed
             clearAuth();
             return;
           } catch (error) {
             lastError = error instanceof Error ? error : new Error(String(error));
             console.warn(`Auth initialization attempt ${attempt + 1} failed:`, error);
 
-            // Don't retry on the last attempt
+            // Network error or exception - retry with backoff
             if (attempt < maxRetries - 1) {
-              // Exponential backoff: 500ms, 1000ms, 2000ms
               const delayMs = 500 * Math.pow(2, attempt);
               await new Promise((resolve) => setTimeout(resolve, delayMs));
             }
           }
         }
 
-        // All retries exhausted
+        // All retries exhausted due to network errors - preserve session if we have a valid-looking token
+        const finalPayload = safeDecodeJwtPayload(jwtToken);
+        if (finalPayload && finalPayload.exp && finalPayload.exp > Math.floor(Date.now() / 1000) - 60) {
+          // Token looks valid (has future expiration), don't clear auth due to network issues
+          console.warn('Auth initialization failed due to network errors, but token appears valid - keeping session');
+          set({
+            user: null,
+            session: null,
+            isAuthenticated: false,
+            error: 'Network error - please refresh',
+            authChecked: true,
+          });
+          return;
+        }
+
         console.error('Auth initialization failed after all retries:', lastError);
         clearAuth();
       },
@@ -531,7 +564,6 @@ const authStore = create<AuthState>()(
       name: 'auth-storage',
       partialize: (state) => ({
         user: state.user,
-        session: state.session,
         isAuthenticated: state.isAuthenticated,
         authChecked: state.authChecked,
       }),

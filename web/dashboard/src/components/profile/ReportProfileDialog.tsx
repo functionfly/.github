@@ -24,16 +24,7 @@ import { ExternalLink, Flag, Loader2 } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-
-export const PROFILE_REPORT_REASONS = [
-  { value: 'tos_violation', label: 'Violates Terms of Service' },
-  { value: 'harassment', label: 'Harassment or abuse' },
-  { value: 'spam', label: 'Spam or misleading content' },
-  { value: 'impersonation', label: 'Impersonation' },
-  { value: 'other', label: 'Other (describe below)' },
-] as const;
-
-export type ProfileReportReason = (typeof PROFILE_REPORT_REASONS)[number]['value'];
+import { PROFILE_REPORT_REASONS, type ProfileReportReason } from './ReportProfileDialog.constants';
 
 export interface ReportProfileDialogProps {
   open: boolean;
@@ -122,10 +113,7 @@ export function ReportProfileDialog({
         >
           <div className="space-y-2">
             <Label htmlFor={`${formId}-reason`}>Reason</Label>
-            <Select
-              value={reason}
-              onValueChange={(v) => setReason(v as ProfileReportReason)}
-            >
+            <Select value={reason} onValueChange={(v) => setReason(v as ProfileReportReason)}>
               <SelectTrigger id={`${formId}-reason`}>
                 <SelectValue />
               </SelectTrigger>
@@ -162,8 +150,12 @@ export function ReportProfileDialog({
               onCheckedChange={(v) => setAck(v === true)}
               className="mt-0.5"
             />
-            <Label htmlFor={`${formId}-ack`} className="text-sm font-normal leading-snug cursor-pointer">
-              I confirm this report is accurate to the best of my knowledge and submitted in good faith.
+            <Label
+              htmlFor={`${formId}-ack`}
+              className="text-sm font-normal leading-snug cursor-pointer"
+            >
+              I confirm this report is accurate to the best of my knowledge and submitted in good
+              faith.
             </Label>
           </div>
         </form>

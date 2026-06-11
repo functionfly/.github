@@ -674,11 +674,3 @@ function Users({ className }: { className?: string }) {
 // ============================================================================
 // Index
 // ============================================================================
-
-export type {
-  GhostPhase,
-  GhostTask,
-  GhostBuild,
-  AgentConversationMessage,
-  AgentDecisionPoint,
-} from "./types";

@@ -130,13 +130,47 @@ class RagAuditEvent:
 
 
 class AuditLogger:
-    """Centralized audit logging for AI Service operations."""
-    
+    """Centralized audit logging for AI Service operations.
+
+    Uses ARQ (Redis-backed queue) for reliable background persistence.
+    Falls back to direct DB writes if ARQ is unavailable.
+    """
+
     def __init__(self):
         self._logger = logging.getLogger("flymind.audit")
         self._lock = threading.Lock()
         self._buffer: List[Dict[str, Any]] = []
         self._buffer_size = 100
+        self._rq_queue = None
+        self._use_rq = False
+
+    def _get_rq_queue(self):
+        """Get or create RQ queue for background processing."""
+        if self._rq_queue is not None:
+            return self._rq_queue
+
+        try:
+            import os
+            import redis
+            from rq import Queue
+
+            redis_addr = os.getenv("REDIS_ADDR", "localhost:6379")
+            redis_password = os.getenv("REDIS_PASSWORD", "")
+
+            if redis_password:
+                redis_url = f"redis://:{redis_password}@{redis_addr}/0"
+            else:
+                redis_url = f"redis://{redis_addr}/0"
+
+            r = redis.from_url(redis_url)
+            self._rq_queue = Queue("audit", connection=r)
+            self._use_rq = True
+            self._logger.info("Using RQ queue for audit log persistence")
+            return self._rq_queue
+        except Exception as e:
+            self._logger.warning(f"RQ queue unavailable: {e}. Using direct DB writes.")
+            self._use_rq = False
+            return None
         
     def _hash_text(self, text: str) -> str:
         """Create SHA256 hash of text for audit logging.
@@ -303,15 +337,35 @@ class AuditLogger:
     
     def _flush_buffer(self) -> None:
         """Flush audit buffer to persistent storage.
-        
-        In production, batch inserts to PostgreSQL. Falls back to
-        structured logging if DB is unavailable.
+
+        Uses ARQ queue for background processing when available.
+        Falls back to direct PostgreSQL batch inserts if RQ is unavailable.
         """
         if not self._buffer:
             return
 
+        # Try RQ first for reliable background processing
+        if self._use_rq and self._rq_queue:
+            try:
+                from datetime import datetime
+
+                # Enqueue job for background processing
+                job_id = f"audit-{datetime.utcnow().timestamp()}"
+                self._rq_queue.enqueue(
+                    "src.workers.rq_worker.process_audit_batch",
+                    self._buffer.copy(),
+                    job_id=job_id,
+                )
+                self._logger.info(f"Enqueued audit batch to RQ: {len(self._buffer)} events")
+                self._buffer.clear()
+                return
+            except Exception as e:
+                self._logger.warning(f"RQ enqueue failed, falling back to direct DB: {e}")
+
+        # Fallback: direct PostgreSQL batch insert
         db_url = os.getenv("AUDIT_DATABASE_URL") or os.getenv("DATABASE_URL")
         if not db_url:
+            self._logger.warning("No database URL configured for audit logging")
             self._buffer.clear()
             return
 
@@ -362,8 +416,9 @@ class AuditLogger:
                 """
                 execute_batch(cur, insert_sql, self._buffer)
                 conn.commit()
+                self._logger.info(f"Audit batch written directly to DB: {len(self._buffer)} events")
         except Exception as e:
-            logger.error(f"Failed to flush audit buffer to DB: {e}")
+            self._logger.error(f"Failed to flush audit buffer to DB: {e}")
             # Events remain in structured logs; don't re-raise
         finally:
             self._buffer.clear()

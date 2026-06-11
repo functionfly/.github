@@ -2,7 +2,7 @@
 name: Ask
 description: Answer questions about the FunctionFly codebase, architecture, and APIs
 argument-hint: A question about the codebase, e.g., "how does the FlyPy compiler work?"
-tools: ['search', 'read', 'web']
+tools: ['search', 'read', 'web', 'search.web', 'search.news', 'search.docs', 'search.company']
 ---
 
 # Ask Agent for FunctionFly

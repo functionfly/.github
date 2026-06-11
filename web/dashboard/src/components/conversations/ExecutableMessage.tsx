@@ -1,9 +1,13 @@
-import type { ConversationMessage, MessageEmbeddings } from "@/api/conversations";
+import type { ConversationMessage, MessageEmbeddings, ReactionSummary } from "@/api/conversations";
 import { ExecutionPreviewCard } from "./ExecutionPreviewCard";
 import { MessageActions } from "./MessageActions";
 import { MessageAttachments } from "./MessageAttachments";
+import { ReactionBar } from "@/components/ui/reaction-bar";
+import { ReactionPicker } from "./ReactionPicker";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import { Check, CheckCheck } from "lucide-react";
+import { useState } from "react";
 
 export interface ExecutableMessageProps {
   message: ConversationMessage;
@@ -12,6 +16,9 @@ export interface ExecutableMessageProps {
   className?: string;
   username?: string;
   currentUserId?: string;
+  readReceipts?: { user_id: string; read_at: string }[];
+  onReactionAdd?: (reaction: string) => void;
+  onReactionRemove?: (reaction: string) => void;
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -33,11 +40,35 @@ export function ExecutableMessage({
   className,
   username,
   currentUserId,
+  readReceipts,
+  onReactionAdd,
+  onReactionRemove,
 }: ExecutableMessageProps) {
   const emb = parseEmbeddings(message.embeddings);
   const functionRef = emb?.function_ref;
   const hasExecutionRef =
     emb && (emb.execution_id || emb.execution_root_hash || functionRef);
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
+
+  const hasUserReacted = (reaction: string) => {
+    return message.reactions?.some(
+      (r) => r.reaction === reaction && r.user_ids.includes(currentUserId || "")
+    ) ?? false;
+  };
+
+  const handleReactionClick = (reaction: string) => {
+    if (hasUserReacted(reaction)) {
+      onReactionRemove?.(reaction);
+    } else {
+      onReactionAdd?.(reaction);
+    }
+  };
+
+  const reactions = message.reactions?.map((r) => ({
+    emoji: r.reaction,
+    count: r.count,
+    users: r.user_ids,
+  })) ?? [];
 
   if (message.deleted_at) {
     return (
@@ -93,6 +124,8 @@ export function ExecutableMessage({
               username={username}
               currentContent={message.content}
               isOwn={isOwn}
+              reactions={message.reactions}
+              currentUserId={currentUserId}
             />
           </div>
         )}
@@ -118,9 +151,61 @@ export function ExecutableMessage({
           className="w-full max-w-md"
         />
       )}
-      <span className="text-[10px] text-muted-foreground px-1">
-        {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
-      </span>
+
+      {reactions.length > 0 && (
+        <ReactionBar
+          reactions={reactions}
+          onReact={handleReactionClick}
+          onRemoveReact={handleReactionClick}
+          className="mt-1"
+        />
+      )}
+
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] text-muted-foreground px-1">
+          {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+        </span>
+
+        {isOwn && readReceipts && readReceipts.length > 0 && (
+          <div className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+            <CheckCheck className="h-3 w-3 text-brand-500" />
+            <span>{readReceipts.length}</span>
+          </div>
+        )}
+
+        {!isOwn && readReceipts && readReceipts.length > 0 && (
+          <div className="flex items-center gap-0.5 text-[10px] text-muted-foreground/60">
+            <Check className="h-3 w-3" />
+          </div>
+        )}
+
+        {onReactionAdd && (
+          <button
+            onClick={() => setShowReactionPicker(!showReactionPicker)}
+            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground p-0.5"
+            title="Add reaction"
+          >
+            <span className="text-xs">+</span>
+          </button>
+        )}
+      </div>
+
+      {showReactionPicker && onReactionAdd && (
+        <div className="flex gap-1 rounded-lg border border-border bg-card px-2 py-1 shadow-md text-sm">
+          {['👍', '❤️', '😂', '🎉', '👀', '🚀'].map((emoji) => (
+            <button
+              key={emoji}
+              onClick={() => {
+                handleReactionClick(emoji);
+                setShowReactionPicker(false);
+              }}
+              className="hover:scale-125 transition-transform p-0.5"
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -25,7 +25,7 @@ func (r *BillingRepository) HasActiveLegalHolds(ctx context.Context) (bool, erro
 	err := r.db.QueryRowContext(ctx, `
 		SELECT EXISTS (
 			SELECT 1 FROM legal_holds
-			WHERE active = true AND (expires_at IS NULL OR expires_at > NOW())
+			WHERE status = 'active' AND (expires_at IS NULL OR expires_at > NOW())
 		)
 	`).Scan(&hasHolds)
 	if err != nil {

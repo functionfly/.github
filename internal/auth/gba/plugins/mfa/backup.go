@@ -160,8 +160,10 @@ func generateBackupCode() (string, error) {
 }
 
 // hashBackupCode hashes a backup code using bcrypt
+// Uses cost 12 (higher than DefaultCost of 10) for enhanced security since
+// backup codes are high-entropy but used as a fallback when TOTP is unavailable.
 func hashBackupCode(code string) (string, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(code), 12)
 	if err != nil {
 		return "", err
 	}

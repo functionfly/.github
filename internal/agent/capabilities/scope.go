@@ -7,15 +7,21 @@ import (
 
 // Capabilities defines what an agent is allowed to do
 type Capabilities struct {
-	AgentID          string   `json:"agent_id"`
-	AllowedFunctions []string `json:"allowed_functions,omitempty"` // glob patterns: "fx://functionfly/*"
-	DeniedFunctions  []string `json:"denied_functions,omitempty"`
-	AllowedProviders []string `json:"allowed_providers,omitempty"` // ["workers", "vercel"]
-	MaxCallDepth     int      `json:"max_call_depth,omitempty"`
-	MaxConcurrent    int      `json:"max_concurrent,omitempty"`
-	AllowedRegions   []string `json:"allowed_regions,omitempty"`
-	MaxExecutionTime int      `json:"max_execution_time,omitempty"` // seconds
-	MaxMemoryMB      int      `json:"max_memory_mb,omitempty"`
+	AgentID              string   `json:"agent_id"`
+	AllowedFunctions     []string `json:"allowed_functions,omitempty"` // glob patterns: "fx://functionfly/*"
+	DeniedFunctions      []string `json:"denied_functions,omitempty"`
+	AllowedProviders     []string `json:"allowed_providers,omitempty"` // ["workers", "vercel"]
+	MaxCallDepth         int      `json:"max_call_depth,omitempty"`
+	MaxConcurrent        int      `json:"max_concurrent,omitempty"`
+	AllowedRegions       []string `json:"allowed_regions,omitempty"`
+	MaxExecutionTime     int      `json:"max_execution_time,omitempty"` // seconds
+	MaxMemoryMB          int      `json:"max_memory_mb,omitempty"`
+	// Browser automation
+	BrowserEnabled          bool     `json:"browser_enabled,omitempty"`
+	AllowedBrowserDomains   []string `json:"allowed_browser_domains,omitempty"`
+	MaxBrowserSessions      int      `json:"max_browser_sessions,omitempty"`
+	BrowserCredentialStorage bool    `json:"browser_credential_storage,omitempty"`
+	BrowserTimeoutMs        int      `json:"browser_timeout_ms,omitempty"`
 }
 
 // DefaultCapabilities returns default capabilities for an agent
@@ -104,6 +110,38 @@ func (c *Capabilities) ValidateMemory(mb int) bool {
 		return true // no limit
 	}
 	return mb <= c.MaxMemoryMB
+}
+
+// CanUseBrowser checks if the agent can use browser automation
+func (c *Capabilities) CanUseBrowser() bool {
+	return c.BrowserEnabled
+}
+
+// CanAccessBrowserDomain checks if a domain is allowed for browser automation
+func (c *Capabilities) CanAccessBrowserDomain(domain string) bool {
+	if !c.BrowserEnabled {
+		return false
+	}
+	if len(c.AllowedBrowserDomains) == 0 {
+		return true // no restrictions
+	}
+	for _, pattern := range c.AllowedBrowserDomains {
+		if matchPattern(pattern, domain) {
+			return true
+		}
+	}
+	return false
+}
+
+// ValidateBrowserSessionCount checks if the session count is within limits
+func (c *Capabilities) ValidateBrowserSessionCount(count int) bool {
+	if !c.BrowserEnabled {
+		return false
+	}
+	if c.MaxBrowserSessions == 0 {
+		return true // no limit
+	}
+	return count <= c.MaxBrowserSessions
 }
 
 // matchPattern matches a glob pattern against a value

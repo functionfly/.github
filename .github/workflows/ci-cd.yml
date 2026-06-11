@@ -346,17 +346,57 @@ jobs:
     environment: staging
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy to staging
-        env:
-          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+
+      - name: Configure kubectl for staging
         run: |
-          echo "Deploying to staging (app.staging, admin.staging, api.staging)..."
-          if [ -f ./scripts/deploy-staging.sh ]; then
-            ./scripts/deploy-staging.sh
-          else
-            echo "scripts/deploy-staging.sh not found; skipping deploy."
-          fi
+          echo "Configuring kubectl for staging cluster..."
+          echo "${{ secrets.STAGING_KUBECONFIG }}" | base64 -d > kubeconfig-staging
+          export KUBECONFIG=kubeconfig-staging
+          kubectl config get-contexts
+        shell: bash
+
+      - name: Deploy orchestrator-api to staging
+        env:
+          KUBECONFIG: kubeconfig-staging
+        run: |
+          export KUBECONFIG=kubeconfig-staging
+          echo "Deploying orchestrator-api to staging..."
+          kubectl apply -f deploy/kubernetes/orchestrator-deployment.yaml --namespace=functionfly-staging
+          kubectl rollout status deployment/orchestrator-api --namespace=functionfly-staging --timeout=300s || {
+            echo "Rollout status failed, showing events..."
+            kubectl get events --namespace=functionfly-staging --sort-by='.lastTimestamp' | tail -20
+            exit 1
+          }
+          echo "Orchestrator API deployed to staging successfully"
+
+      - name: Deploy ai-gateway to staging
+        if: contains(github.event.head_commit.message, '[deploy-ai]')
+        env:
+          KUBECONFIG: kubeconfig-staging
+        run: |
+          export KUBECONFIG=kubeconfig-staging
+          echo "Deploying ai-gateway to staging..."
+          helm upgrade --install ai-gateway deploy/kubernetes/ai-gateway \
+            --namespace=functionfly-staging \
+            --values=deploy/kubernetes/ai-gateway/values.production.yaml \
+            --set=image.tag=${{ github.sha }} \
+            --timeout=10m
+          echo "AI Gateway deployed to staging successfully"
+
+      - name: Verify staging deployment
+        env:
+          KUBECONFIG: kubeconfig-staging
+        run: |
+          export KUBECONFIG=kubeconfig-staging
+          echo "Verifying staging deployment..."
+          kubectl get pods --namespace=functionfly-staging -l app=orchestrator-api
+          kubectl get services --namespace=functionfly-staging -l app=orchestrator-api
+          echo "Staging deployment verification complete"
 
   # Deploy to Production
   deploy-production:
@@ -366,13 +406,58 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy to production
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+
+      - name: Configure kubectl for production
         run: |
-          echo "Deploying to production (app.functionfly.com, admin.functionfly.com, api.functionfly.com)..."
-          echo "Configure deploy via secrets and run your production deploy script or docker compose."
-          if [ -f ./scripts/deploy-production.sh ]; then
-            ./scripts/deploy-production.sh
-          fi
+          echo "Configuring kubectl for production cluster..."
+          echo "${{ secrets.PRODUCTION_KUBECONFIG }}" | base64 -d > kubeconfig-production
+          export KUBECONFIG=kubeconfig-production
+          kubectl config get-contexts
+        shell: bash
+
+      - name: Deploy orchestrator-api to production
+        env:
+          KUBECONFIG: kubeconfig-production
+        run: |
+          export KUBECONFIG=kubeconfig-production
+          echo "Deploying orchestrator-api to production..."
+          kubectl apply -f deploy/kubernetes/orchestrator-deployment.yaml --namespace=functionfly
+          kubectl rollout status deployment/orchestrator-api --namespace=functionfly --timeout=300s || {
+            echo "Rollout status failed, showing events..."
+            kubectl get events --namespace=functionfly --sort-by='.lastTimestamp' | tail -20
+            exit 1
+          }
+          echo "Orchestrator API deployed to production successfully"
+
+      - name: Deploy ai-gateway to production
+        if: contains(github.event.head_commit.message, '[deploy-ai]')
+        env:
+          KUBECONFIG: kubeconfig-production
+        run: |
+          export KUBECONFIG=kubeconfig-production
+          echo "Deploying ai-gateway to production..."
+          helm upgrade --install ai-gateway deploy/kubernetes/ai-gateway \
+            --namespace=functionfly \
+            --values=deploy/kubernetes/ai-gateway/values.production.yaml \
+            --set=image.tag=${{ github.sha }} \
+            --timeout=10m
+          echo "AI Gateway deployed to production successfully"
+
+      - name: Verify production deployment
+        env:
+          KUBECONFIG: kubeconfig-production
+        run: |
+          export KUBECONFIG=kubeconfig-production
+          echo "Verifying production deployment..."
+          kubectl get pods --namespace=functionfly -l app=orchestrator-api
+          kubectl get services --namespace=functionfly -l app=orchestrator-api
+          kubectl get hpa --namespace=functionfly -l app=orchestrator-api
+          echo "Production deployment verification complete"
 
   # Security Scan
   security:

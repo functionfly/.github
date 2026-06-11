@@ -1,4 +1,7 @@
 import react from "@astrojs/react";
+import sitemap from "@astrojs/sitemap";
+import sentry from "@sentry/astro";
+import vercel from "@astrojs/vercel";
 import { defineConfig } from "astro/config";
 
 const site = process.env.PUBLIC_AUTH_URL || "https://auth.functionfly.com";
@@ -20,26 +23,27 @@ const CSP_VALUE = [
 
 export default defineConfig({
   site,
-  integrations: [react()],
+  integrations: [
+    react(),
+    sitemap(),
+    sentry({
+      dsn: process.env.SENTRY_DSN,
+      tracesSampleRate: 0.1,
+    }),
+  ],
+  adapter: vercel(),
   output: "server",
-  server: {
-    host: true,
-    port: 4324,
-    strictPort: true,
-  },
-  build: {
-    format: "file",
-  },
   vite: {
     server: {
+      host: true,
+      port: 4324,
+      strictPort: true,
       proxy: {
         "/api": {
           target: "http://localhost:8080",
           changeOrigin: true,
         },
       },
-      // Apply CSP headers in dev to prevent browser extensions (MetaMask, etc.) from
-      // injecting conflicting CSP that breaks Cloudflare Turnstile
       headers: {
         "Content-Security-Policy": CSP_VALUE,
         "X-Frame-Options": "DENY",

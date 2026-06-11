@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/plans"
@@ -180,6 +181,18 @@ func (h *Handler) HandleCreateReplay(w http.ResponseWriter, r *http.Request) {
 		execLimit = maxExecutions
 		if execLimit < 0 {
 			execLimit = 0
+		}
+	}
+
+	if req.IncidentURL != "" {
+		parsedURL, urlErr := url.Parse(req.IncidentURL)
+		if urlErr != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
+			h.writeError(w, http.StatusBadRequest, "INVALID_INCIDENT_URL", "incident_url must be a valid HTTP or HTTPS URL")
+			return
+		}
+		if parsedURL.Host == "" {
+			h.writeError(w, http.StatusBadRequest, "INVALID_INCIDENT_URL", "incident_url must have a valid host")
+			return
 		}
 	}
 
@@ -389,14 +402,14 @@ func (h *Handler) HandleReplayProgress(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeJSON(w, http.StatusOK, map[string]interface{}{
-		"phase":                    phase,
-		"percent":                  replay.ProgressPercent,
-		"executions_found":         replay.TotalExecutionsFound,
-		"executions_replayed":      replay.TotalExecutionsReplayed,
-		"executions_changed":       replay.TotalExecutionsChanged,
-		"executions_failed":        replay.TotalExecutionsFailed,
-		"status":                   replay.Status,
-		"error_message":            nullStringToPtr(replay.ErrorMessage),
+		"phase":               phase,
+		"percent":             replay.ProgressPercent,
+		"executions_found":    replay.TotalExecutionsFound,
+		"executions_replayed": replay.TotalExecutionsReplayed,
+		"executions_changed":  replay.TotalExecutionsChanged,
+		"executions_failed":   replay.TotalExecutionsFailed,
+		"status":              replay.Status,
+		"error_message":       nullStringToPtr(replay.ErrorMessage),
 	})
 }
 

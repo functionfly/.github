@@ -6,7 +6,7 @@ app = "functionfly-orchestrator"
 primary_region = "iad"
 
 [build]
-  dockerfile = "deploy/production/Dockerfile.orchestrator"
+  dockerfile = "deploy/docker/Dockerfile.orchestrator"
 
 [env]
   APP_ENV = "production"

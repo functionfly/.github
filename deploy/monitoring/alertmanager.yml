@@ -26,10 +26,10 @@ receivers:
   - name: "security-team"
     email_configs:
       - to: "security@functionfly.dev"
-        subject: "🚨 FunctionFly Security Alert: {{ .GroupLabels.alertname }}"
+        subject: "[CRITICAL] FunctionFly Security Alert: {{ .GroupLabels.alertname }}"
         body: |
           {{ range .Alerts }}
-          🚨 **{{ .Annotations.summary }}**
+          [CRITICAL] {{ .Annotations.summary }}
 
           {{ .Annotations.description }}
 
@@ -42,10 +42,10 @@ receivers:
   - name: "compliance-team"
     email_configs:
       - to: "compliance@functionfly.dev"
-        subject: "📋 FunctionFly Compliance Alert: {{ .GroupLabels.alertname }}"
+        subject: "[INFO] FunctionFly Compliance Alert: {{ .GroupLabels.alertname }}"
         body: |
           {{ range .Alerts }}
-          📋 **{{ .Annotations.summary }}**
+          [INFO] {{ .Annotations.summary }}
 
           {{ .Annotations.description }}
 
@@ -58,4 +58,4 @@ receivers:
   - name: "default"
     email_configs:
       - to: "ops@functionfly.dev"
-        subject: "⚠️ FunctionFly Alert: {{ .GroupLabels.alertname }}"
+        subject: "[WARNING] FunctionFly Alert: {{ .GroupLabels.alertname }}"

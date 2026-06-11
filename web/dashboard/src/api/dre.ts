@@ -180,6 +180,140 @@ export interface CertificateListParams {
   offset?: number;
 }
 
+// Certificate verification response
+export interface CertificateVerificationResponse {
+  certificate_id: string;
+  cert_level: string;
+  certificate_hash: string;
+  anchored: boolean;
+  verification: {
+    hash_valid: boolean;
+    signatures_valid: boolean;
+    anchored: boolean;
+    cert_valid: boolean;
+    verified_at: string;
+    signature_error?: string;
+  };
+  trust: {
+    trust_score: number;
+    determinism_score: number;
+    replay_consistency_score: number;
+    drift_incidents_total: number;
+    verified_executions_total: number;
+  };
+}
+
+// Certificate anchoring request
+export interface AnchorCertificateRequest {
+  chain?: string;
+}
+
+// Certificate anchoring response
+export interface AnchorCertificateResponse {
+  certificate_id: string;
+  anchored: boolean;
+  anchor_chain: string;
+  anchor_tx_hash: string;
+  anchor_block: number;
+  anchor_merkle_root: string;
+  anchored_at: string;
+}
+
+// Replay status response
+export interface ReplayStatusResponse {
+  function: string;
+  function_id: string;
+  execution_id: string;
+  execution_root_hash: string;
+  replay_root_hash: string;
+  replay_verified_at: string | null;
+  determinism_tier: string;
+  protocol_version: string;
+  component_hashes: ComponentHashes;
+  roots_match: boolean;
+  replay_status: string;
+  replay_note: string;
+}
+
+// Divergence simulation request
+export interface DivergenceSimulationRequest {
+  memory_limit?: number;
+  runtime_version?: string;
+  region?: string;
+  input?: string;
+  version?: string;
+}
+
+// Divergence simulation response
+export interface DivergenceSimulationResponse {
+  function: string;
+  function_id: string;
+  version: string;
+  simulation: {
+    modified_capsule_hash: string;
+    simulated_root_hash: string;
+    simulation_mode: string;
+    constraints: {
+      memory_limit: number;
+      runtime_version: string;
+      region: string;
+    };
+    simulated_at: string;
+    re_executed: boolean;
+    re_execution_skipped?: boolean;
+    re_execution_error?: string;
+    note?: string;
+  };
+}
+
+// Public passport response (limited data for marketplace)
+export interface PublicPassportResponse {
+  function: string;
+  passport: {
+    determinism_score: number;
+    replay_integrity_score: number;
+    performance_stability_score: number;
+    verified_executions_total: number;
+    total_executions: number;
+    determinism_tier: string;
+    capsule_version: string;
+  };
+}
+
+// DRE stats summary response
+export interface DREStatsResponse {
+  function_id: string;
+  summary: {
+    determinism_score: number;
+    replay_integrity_score: number;
+    verified_executions_total: number;
+    total_executions: number;
+    replay_drift_incidents: number;
+    drift_score: number;
+    determinism_tier: string;
+  };
+}
+
+// Drift report item
+export interface DriftReportItem {
+  id: string;
+  execution_id: string;
+  version: string;
+  drift_category: string;
+  original_root_hash: string;
+  replay_root_hash: string;
+  trust_penalty: number;
+  detected_at: string;
+}
+
+// Drift reports list response
+export interface DriftReportsResponse {
+  function: string;
+  reports: DriftReportItem[];
+  limit: number;
+  offset: number;
+}
+
 class DreApi {
   // List executions for a function
   async listExecutions(
@@ -199,7 +333,7 @@ class DreApi {
       queryParams.append("verified_only", params.verified_only.toString());
 
     const query = queryParams.toString();
-    const url = `/v1/registry/${author}/${name}/executions${query ? `?${query}` : ""}`;
+    const url = `/v1/functions/${author}/${name}/executions${query ? `?${query}` : ""}`;
     return apiClient.get<ExecutionListResponse>(url);
   }
 
@@ -210,7 +344,7 @@ class DreApi {
     executionId: string
   ): Promise<ExecutionDetailResponse> {
     return apiClient.get<ExecutionDetailResponse>(
-      `/v1/registry/${author}/${name}/executions/${executionId}`
+      `/v1/functions/${author}/${name}/executions/${executionId}`
     );
   }
 
@@ -222,7 +356,7 @@ class DreApi {
   ): Promise<ExecutionDetailResponse> {
     const q = new URLSearchParams({ execution_root_hash: executionRootHash });
     return apiClient.get<ExecutionDetailResponse>(
-      `/v1/registry/${author}/${name}/executions/by-hash?${q.toString()}`
+      `/v1/functions/${author}/${name}/executions/by-hash?${q.toString()}`
     );
   }
 
@@ -238,7 +372,7 @@ class DreApi {
     if (params?.offset !== undefined)
       queryParams.append("offset", params.offset.toString());
     const query = queryParams.toString();
-    const url = `/v1/registry/${author}/${name}/certs${query ? `?${query}` : ""}`;
+    const url = `/v1/functions/${author}/${name}/certs${query ? `?${query}` : ""}`;
     return apiClient.get<CertificateListResponse>(url);
   }
 
@@ -249,8 +383,93 @@ class DreApi {
     certId: string
   ): Promise<CertificateDetailResponse> {
     return apiClient.get<CertificateDetailResponse>(
-      `/v1/registry/${author}/${name}/cert/${encodeURIComponent(certId)}`
+      `/v1/functions/${author}/${name}/cert/${encodeURIComponent(certId)}`
     );
+  }
+
+  // Verify an FXCERT (Ed25519 signature verification)
+  async verifyCertificate(
+    author: string,
+    name: string,
+    certId: string
+  ): Promise<CertificateVerificationResponse> {
+    return apiClient.post<CertificateVerificationResponse>(
+      `/v1/functions/${author}/${name}/cert/${encodeURIComponent(certId)}/verify`,
+      {}
+    );
+  }
+
+  // Anchor a certificate to the blockchain
+  async anchorCertificate(
+    author: string,
+    name: string,
+    certId: string,
+    request?: AnchorCertificateRequest
+  ): Promise<AnchorCertificateResponse> {
+    return apiClient.post<AnchorCertificateResponse>(
+      `/v1/functions/${author}/${name}/cert/${encodeURIComponent(certId)}/anchor`,
+      request || {}
+    );
+  }
+
+  // Get replay status for an execution (status-check endpoint)
+  async replayExecution(
+    author: string,
+    name: string,
+    executionId: string
+  ): Promise<ReplayStatusResponse> {
+    return apiClient.post<ReplayStatusResponse>(
+      `/v1/functions/${author}/${name}/replay/${executionId}`,
+      {}
+    );
+  }
+
+  // Simulate divergence under modified constraints
+  async divergenceSimulation(
+    author: string,
+    name: string,
+    request: DivergenceSimulationRequest
+  ): Promise<DivergenceSimulationResponse> {
+    return apiClient.post<DivergenceSimulationResponse>(
+      `/v1/functions/${author}/${name}/diverge`,
+      request
+    );
+  }
+
+  // Get public passport data (limited for marketplace)
+  async getPassportPublic(
+    author: string,
+    name: string
+  ): Promise<PublicPassportResponse> {
+    return apiClient.get<PublicPassportResponse>(
+      `/v1/functions/${author}/${name}/passport/public`
+    );
+  }
+
+  // Get DRE summary statistics
+  async getDRESummary(
+    author: string,
+    name: string
+  ): Promise<DREStatsResponse> {
+    return apiClient.get<DREStatsResponse>(
+      `/v1/functions/${author}/${name}/dre-stats`
+    );
+  }
+
+  // List drift reports for a function
+  async listDriftReports(
+    author: string,
+    name: string,
+    params?: { limit?: number; offset?: number }
+  ): Promise<DriftReportsResponse> {
+    const queryParams = new URLSearchParams();
+    if (params?.limit !== undefined)
+      queryParams.append("limit", params.limit.toString());
+    if (params?.offset !== undefined)
+      queryParams.append("offset", params.offset.toString());
+    const query = queryParams.toString();
+    const url = `/v1/functions/${author}/${name}/drift-reports${query ? `?${query}` : ""}`;
+    return apiClient.get<DriftReportsResponse>(url);
   }
 }
 

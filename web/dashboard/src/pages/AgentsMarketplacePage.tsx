@@ -2,6 +2,7 @@ import { AgentMarketplaceView } from '@/components/registry/AgentMarketplaceView
 import { MetaTags } from '@/components/seo/MetaTags';
 import { useWebVitals } from '@/hooks/useWebVitals';
 import { PublicAnalytics } from '@/components/common/PublicAnalytics';
+import '@/styles/aviation-marketplace.css';
 
 export function AgentsMarketplacePage() {
   useWebVitals((metrics) => {
@@ -9,7 +10,7 @@ export function AgentsMarketplacePage() {
   });
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="aviation-marketplace min-h-screen flex flex-col">
       <MetaTags
         title="Agent Marketplace | FunctionFly"
         description="Discover and hire AI agents for code generation, analysis, and more. Browse worker, manager, and infrastructure agents."

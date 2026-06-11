@@ -45,7 +45,7 @@ When adding API surface: add handler in `internal/api/handlers/`, register in `i
 | Service | How to run | Port |
 |---------|-----------|------|
 | **Orchestrator API** (Go) | `./bin/orchestrator-api --skip-migrations` or `make dev` | 8080 |
-| **SAR Runtime** (Rust) | `cd runtimes/sar && cargo run` (needs NATS on 4222) | 8082 |
+| **SAR Runtime** (Rust) | Separate repo: [functionfly/sar](https://github.com/functionfly/sar) (needs NATS on 4222) | 8082 |
 | **Dashboard** (Vite/React) | `cd web/dashboard && npx vite --host 0.0.0.0` | 3000 |
 | **Docs site** (Astro) | `cd web/docs && bun run dev` | 4322 |
 | **Marketing site** (Astro) | `cd web/site && bun run dev` | 4321 |

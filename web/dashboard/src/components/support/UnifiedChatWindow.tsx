@@ -32,7 +32,8 @@ import {
   Zap,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { SupportMessage, useSupportChat } from './SupportChat';
+import { SupportMessage } from './SupportChat';
+import { useSupportChat } from './useSupportChat';
 import { toast } from 'sonner';
 
 const WELCOME_SUGGESTIONS = [
@@ -42,10 +43,22 @@ const WELCOME_SUGGESTIONS = [
 ];
 
 const QUICK_ACTIONS = [
-  { icon: Wand2, label: 'Optimize code', prompt: 'Help me optimize my function for performance and lower cold-start time.' },
-  { icon: Sparkles, label: 'Explain', prompt: 'Explain how FunctionFly runs my code and how to read execution logs.' },
+  {
+    icon: Wand2,
+    label: 'Optimize code',
+    prompt: 'Help me optimize my function for performance and lower cold-start time.',
+  },
+  {
+    icon: Sparkles,
+    label: 'Explain',
+    prompt: 'Explain how FunctionFly runs my code and how to read execution logs.',
+  },
   { icon: FileCode, label: 'Debug', prompt: 'Help me debug an error in my function.' },
-  { icon: Cpu, label: 'Best practices', prompt: 'What are the best practices for writing efficient functions?' },
+  {
+    icon: Cpu,
+    label: 'Best practices',
+    prompt: 'What are the best practices for writing efficient functions?',
+  },
 ];
 
 interface UnifiedChatWindowProps {
@@ -108,8 +121,7 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
   useEffect(() => {
     if (!isOpen || isMinimized || isEmergencyDialogOpen) return;
 
-    const selector =
-      'button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])';
+    const selector = 'button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])';
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -226,13 +238,15 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
           : 'h-[min(680px,calc(100vh-6rem))] w-[min(440px,calc(100vw-2rem))]',
         className
       )}
-      style={{
-        // Use CSS variables - values automatically adapt based on data-theme
-        backgroundColor: 'var(--bg-secondary)',
-        borderColor: 'var(--border-default)',
-        // Ensure solid background by resetting any potential transparency
-        '--bg-secondary': 'var(--bg-secondary)',
-      } as React.CSSProperties}
+      style={
+        {
+          // Use CSS variables - values automatically adapt based on data-theme
+          backgroundColor: 'var(--bg-secondary)',
+          borderColor: 'var(--border-default)',
+          // Ensure solid background by resetting any potential transparency
+          '--bg-secondary': 'var(--bg-secondary)',
+        } as React.CSSProperties
+      }
       role="dialog"
       aria-label="FunctionFly support chat"
       aria-modal="true"
@@ -243,10 +257,10 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
         {/* Animated gradient background - Velocity Brand */}
         <div className="absolute inset-0 bg-gradient-to-r from-[#FF6B35] via-[#FF4F5E] to-[#00D4FF]" />
         <div className="absolute inset-0 bg-[linear-gradient(to_bottom_right,rgba(255,255,255,0.1),transparent,rgba(0,0,0,0.1))]" />
-        
+
         {/* Animated shine effect */}
         <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-        
+
         <div className="relative flex min-w-0 items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm ring-1 ring-white/30">
             <Sparkles className="h-4 w-4 text-white" />
@@ -267,7 +281,10 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
             aria-expanded={!isMinimized}
           >
             <ChevronDown
-              className={cn('h-4 w-4 transition-transform duration-200', isMinimized && 'rotate-180')}
+              className={cn(
+                'h-4 w-4 transition-transform duration-200',
+                isMinimized && 'rotate-180'
+              )}
             />
           </Button>
           <Button
@@ -324,13 +341,13 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
                       <div className="rounded-2xl rounded-tl-sm bg-[var(--bg-tertiary)] border border-[var(--border-subtle)] px-4 py-3.5 shadow-sm">
                         <p className="font-semibold text-[var(--text-primary)]">Hi there! 👋</p>
                         <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
-                          I&apos;m FlyMind — your AI copilot for everything on FunctionFly: deploying
-                          functions, debugging runs, billing, the registry, agents, and how the platform
-                          works. Ask me anything. You can also talk to a human or request an emergency
-                          fix when something is on fire.
+                          I&apos;m FlyMind — your AI copilot for everything on FunctionFly:
+                          deploying functions, debugging runs, billing, the registry, agents, and
+                          how the platform works. Ask me anything. You can also talk to a human or
+                          request an emergency fix when something is on fire.
                         </p>
                       </div>
-                      
+
                       {/* Welcome Suggestions - Pill style */}
                       <div className="flex flex-wrap gap-2">
                         {WELCOME_SUGGESTIONS.map(({ icon: Icon, text }) => (
@@ -375,10 +392,7 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
                   const role = messageRole(message);
                   if (role === 'system') {
                     return (
-                      <div
-                        key={message.id}
-                        className="flex items-center justify-center gap-2 py-2"
-                      >
+                      <div key={message.id} className="flex items-center justify-center gap-2 py-2">
                         <div className="rounded-full bg-amber-500/10 px-4 py-1.5 text-center text-xs font-medium text-amber-700 dark:text-amber-300 border border-amber-500/20">
                           {message.content}
                         </div>
@@ -387,32 +401,36 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
                   }
                   const isUser = role === 'user';
                   const isStaff = message.author_type === 'staff';
-                  const showAvatar = index === 0 || messages[index - 1]?.author_type !== message.author_type;
-                  
+                  const showAvatar =
+                    index === 0 || messages[index - 1]?.author_type !== message.author_type;
+
                   return (
                     <div
                       key={message.id}
                       className={cn('flex gap-3', isUser && 'flex-row-reverse')}
                     >
                       {/* Avatar */}
-                      <div className={cn(
-                        'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all',
-                        !showAvatar && 'opacity-0',
-                        isUser
-                          ? 'bg-[var(--bg-hover)]'
-                          : isStaff
-                            ? 'bg-[linear-gradient(to_bottom_right,#10b981,#0d9488)] shadow-lg shadow-emerald-500/20'
-                            : 'bg-[linear-gradient(to_bottom_right,#FF6B35,#FF4F5E,#00D4FF)] shadow-lg shadow-[#FF6B35]/20'
-                      )}>
+                      <div
+                        className={cn(
+                          'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all',
+                          !showAvatar && 'opacity-0',
+                          isUser
+                            ? 'bg-[var(--bg-hover)]'
+                            : isStaff
+                              ? 'bg-[linear-gradient(to_bottom_right,#10b981,#0d9488)] shadow-lg shadow-emerald-500/20'
+                              : 'bg-[linear-gradient(to_bottom_right,#FF6B35,#FF4F5E,#00D4FF)] shadow-lg shadow-[#FF6B35]/20'
+                        )}
+                      >
                         {isUser ? (
                           <User className="h-4 w-4 text-[var(--text-secondary)]" />
                         ) : (
                           <Bot className="h-4 w-4 text-white" />
                         )}
                       </div>
-                      
+
                       {/* Message Content */}
-                      <div className={cn('min-w-0 space-y-1', isUser && 'items-end text-right')}
+                      <div
+                        className={cn('min-w-0 space-y-1', isUser && 'items-end text-right')}
                         style={{ maxWidth: 'calc(100% - 48px)' }}
                       >
                         {/* Sender Name */}
@@ -421,7 +439,7 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
                             {isStaff ? 'Support Agent' : 'AI Assistant'}
                           </p>
                         )}
-                        
+
                         {/* Message Bubble */}
                         <div
                           className={cn(
@@ -439,9 +457,14 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
                             </p>
                           ))}
                         </div>
-                        
+
                         {/* Meta Info */}
-                        <div className={cn('flex items-center gap-2 text-[10px] text-[var(--text-muted)]', isUser && 'justify-end')}>
+                        <div
+                          className={cn(
+                            'flex items-center gap-2 text-[10px] text-[var(--text-muted)]',
+                            isUser && 'justify-end'
+                          )}
+                        >
                           <span>{formatMessageTime(message.created_at)}</span>
                           {message.ai_confidence != null && message.author_type === 'ai' && (
                             <span className="flex items-center gap-1">
@@ -539,7 +562,7 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
                 <Send className="h-4 w-4 text-white" />
               </Button>
             </div>
-            
+
             {/* Status Bar */}
             <div className="mt-2 flex items-center justify-between text-[10px] text-[var(--text-muted)]">
               <div className="flex items-center gap-1.5">
@@ -609,7 +632,9 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
               type="button"
               variant="destructive"
               onClick={() => void submitEmergencyFix()}
-              disabled={isRequestingEmergency || !emergencyFunctionId.trim() || !emergencyReason.trim()}
+              disabled={
+                isRequestingEmergency || !emergencyFunctionId.trim() || !emergencyReason.trim()
+              }
             >
               {isRequestingEmergency ? 'Requesting...' : 'Request Emergency Fix'}
             </Button>

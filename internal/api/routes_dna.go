@@ -21,6 +21,7 @@ func registerDNARoutes(
 	dna.HandleFunc("/mutations/{mutation_id}", dnaHandler.GetMutation).Methods("GET", "OPTIONS")
 	dna.HandleFunc("/variants/{mutation_id}/accept", dnaHandler.AcceptVariant).Methods("POST", "OPTIONS")
 	dna.HandleFunc("/variants/{mutation_id}/reject", dnaHandler.RejectVariant).Methods("POST", "OPTIONS")
+	dna.HandleFunc("/variants/{mutation_id}/rollback", dnaHandler.RollbackVariant).Methods("POST", "OPTIONS")
 	dna.HandleFunc("/insights", dnaHandler.GetInsights).Methods("GET", "OPTIONS")
 	dna.HandleFunc("/analyze", dnaHandler.TriggerAnalysis).Methods("POST", "OPTIONS")
 	dna.HandleFunc("/evolution", dnaHandler.ToggleEvolution).Methods("POST", "OPTIONS")

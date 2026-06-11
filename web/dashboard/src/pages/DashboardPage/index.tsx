@@ -1,3 +1,5 @@
+import '@/styles/aviation-dashboard.css';
+
 import { providersApi } from '@/api';
 import { appsApi } from '@/api/apps';
 import { createCheckoutSession } from '@/api/billing';
@@ -6,32 +8,31 @@ import { functionsApi } from '@/api/functions';
 import { ProviderStatus } from '@/components/common/ProviderStatus';
 import type { AgentActivityItem } from '@/components/dashboard';
 import {
-    AgentActivityFeed,
-    DraggableDashboardGrid,
-    ErrorRateWidget,
-    ExecutionRateChart,
-    LiveIndicator,
-    MemoryUsageGauge,
-    MetricCard,
-    PerformanceLeaderboard,
-    QuickActionsPanel,
-    QuickCreateAgentCard,
-    QuotaUsageWidget,
-    RegionDistributionWidget,
-    SystemHealthIndicator,
-    TrustScoreBadge,
-    UsageGraph,
-    type DraggableSection,
-    type ErrorRateDataPoint,
-    type FunctionPerformance,
-    type RegionData,
+  AgentActivityFeed,
+  DraggableDashboardGrid,
+  ErrorRateWidget,
+  ExecutionRateChart,
+  LiveIndicator,
+  MemoryUsageGauge,
+  MetricCard,
+  PerformanceLeaderboard,
+  QuickActionsPanel,
+  QuickCreateAgentCard,
+  QUOTA_ICONS,
+  QuotaUsageWidget,
+  RegionDistributionWidget,
+  SystemHealthIndicator,
+  TrustScoreBadge,
+  UsageGraph,
+  type DraggableSection,
+  type ErrorRateDataPoint,
+  type FunctionPerformance,
+  type RegionData,
 } from '@/components/dashboard';
 import { EnterpriseStatusCard, PlanSelectionModal } from '@/components/enterprise';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-    usePlan
-} from '@/hooks';
+import { usePlan } from '@/hooks';
 import { useAuthStore } from '@/stores/authStore';
 import { useOnboardingStore } from '@/stores/onboardingStore';
 import { useQueries, useQuery } from '@tanstack/react-query';
@@ -40,13 +41,15 @@ import { Activity, Building2, FunctionSquare, Globe, Loader2, Play, X, Zap } fro
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { usePageTitle } from '@/hooks';
 
 export function DashboardPage() {
+  usePageTitle('Dashboard');
   const { t } = useTranslation();
   const { canResume, completedSteps } = useOnboardingStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { isPaid: isOnPaidPlan, hasMinPlan } = usePlan();
+  const { isPaid: isOnPaidPlan, hasMinPlan, limits } = usePlan();
   const user = useAuthStore((state) => state.user);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
@@ -115,7 +118,7 @@ export function DashboardPage() {
   const trustScoresLoading =
     functionTrustQueries.some((q) => q.isLoading) &&
     functionsData &&
-    functionsData.functions.length > 0;
+    (functionsData?.functions ?? []).length > 0;
 
   const { data: providers, isLoading: providersLoading } = useQuery({
     queryKey: ['providers'],
@@ -234,7 +237,8 @@ export function DashboardPage() {
 
   const avgLatencyMs = metricsData?.avg_latency_ms;
   const avgLatencyDisplay = avgLatencyMs != null ? `${Math.round(avgLatencyMs)}ms` : '—';
-  const avgLatencyLabel = avgLatencyMs != null ? t('dashboard.last7Days') : t('dashboard.noDataYet');
+  const avgLatencyLabel =
+    avgLatencyMs != null ? t('dashboard.last7Days') : t('dashboard.noDataYet');
 
   // Pre-computed data for sections (must be at top level, not inside useMemo callback)
   const errorRateDataPrecomputed = useMemo<ErrorRateDataPoint[]>(() => {
@@ -248,10 +252,30 @@ export function DashboardPage() {
   const regionDataPrecomputed = useMemo<RegionData[]>(() => {
     if (functions.length === 0) return [];
     return [
-      { name: 'US East', value: Math.ceil(activeFunctions * 0.4), code: 'us-east', provider: 'fly' as const },
-      { name: 'US West', value: Math.ceil(activeFunctions * 0.3), code: 'us-west', provider: 'fly' as const },
-      { name: 'Europe', value: Math.ceil(activeFunctions * 0.2), code: 'eu-west', provider: 'fly' as const },
-      { name: 'Asia', value: Math.ceil(activeFunctions * 0.1), code: 'ap-south', provider: 'fly' as const },
+      {
+        name: 'US East',
+        value: Math.ceil(activeFunctions * 0.4),
+        code: 'us-east',
+        provider: 'fly' as const,
+      },
+      {
+        name: 'US West',
+        value: Math.ceil(activeFunctions * 0.3),
+        code: 'us-west',
+        provider: 'fly' as const,
+      },
+      {
+        name: 'Europe',
+        value: Math.ceil(activeFunctions * 0.2),
+        code: 'eu-west',
+        provider: 'fly' as const,
+      },
+      {
+        name: 'Asia',
+        value: Math.ceil(activeFunctions * 0.1),
+        code: 'ap-south',
+        provider: 'fly' as const,
+      },
     ];
   }, [functions, activeFunctions]);
 
@@ -277,15 +301,13 @@ export function DashboardPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+            className="dashboard-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="text-center lg:text-left">
               <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-4">
-                <span className="text-text-primary text-glow">{t('dashboard.title')}</span>
+                <span className="dashboard-title">{t('dashboard.title')}</span>
               </h1>
-              <p className="text-text-secondary text-lg">
-                {t('dashboard.welcomeMessage')}
-              </p>
+              <p className="text-text-secondary text-lg">{t('dashboard.welcomeMessage')}</p>
             </div>
             <div className="flex justify-center sm:justify-end">
               <SystemHealthIndicator
@@ -349,6 +371,7 @@ export function DashboardPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.15 }}
+            className="quick-create-card"
           >
             <QuickCreateAgentCard
               title={t('dashboard.deployAFunction')}
@@ -371,14 +394,19 @@ export function DashboardPage() {
             className="grid grid-cols-1 lg:grid-cols-2 gap-4"
           >
             {usageLoading ? (
-              <Card className="h-[280px] flex items-center justify-center">
+              <Card className="usage-graph h-[280px] flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-text-muted" />
               </Card>
             ) : (
-              <UsageGraph data={usageGraphData} title={t('dashboard.usageLast14Days')} valueLabel={t('dashboard.requests')} />
+              <UsageGraph
+                data={usageGraphData}
+                title={t('dashboard.usageLast14Days')}
+                valueLabel={t('dashboard.requests')}
+                className="usage-graph"
+              />
             )}
             {executionRateLoading ? (
-              <Card className="h-[280px] flex items-center justify-center">
+              <Card className="execution-rate-chart h-[280px] flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-text-muted" />
               </Card>
             ) : (
@@ -386,6 +414,7 @@ export function DashboardPage() {
                 data={executionRateData}
                 title={t('dashboard.executionRateLast24h')}
                 unit="exec/s"
+                className="execution-rate-chart"
               />
             )}
           </motion.div>
@@ -401,15 +430,22 @@ export function DashboardPage() {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
           >
             {memoryLoading ? (
-              <Card className="flex flex-col justify-center p-6 min-h-[140px]">
+              <Card className="memory-usage-gauge flex flex-col justify-center p-6 min-h-[140px]">
                 <Loader2 className="h-8 w-8 animate-spin text-text-muted mx-auto" />
               </Card>
             ) : (
-              <MemoryUsageGauge percent={memoryData?.percent ?? 0} label={t('dashboard.memory')} size="md" />
+              <MemoryUsageGauge
+                percent={memoryData?.percent ?? 0}
+                label={t('dashboard.memory')}
+                size="md"
+                className="memory-usage-gauge"
+              />
             )}
-            <Card className="flex flex-col justify-center p-6">
+            <Card className="trust-score-badge flex flex-col justify-center p-6">
               <CardHeader className="p-0 pb-2">
-                <CardTitle className="text-sm font-medium text-text-secondary">{t('dashboard.trustScore')}</CardTitle>
+                <CardTitle className="text-sm font-medium text-text-secondary">
+                  {t('dashboard.trustScore')}
+                </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 {functionsLoading || trustScoresLoading ? (
@@ -424,7 +460,7 @@ export function DashboardPage() {
               </CardContent>
             </Card>
             {/* Live Status */}
-            <Card className="flex flex-col justify-center p-6">
+            <Card className="live-indicator flex flex-col justify-center p-6">
               <CardHeader className="p-0 pb-3">
                 <CardTitle className="text-sm font-medium text-text-secondary">
                   {t('dashboard.realtimeStatus')}
@@ -470,10 +506,7 @@ export function DashboardPage() {
             transition={{ duration: 0.5, delay: 0.28 }}
             className="grid grid-cols-1 lg:grid-cols-3 gap-4"
           >
-            <ErrorRateWidget
-              data={errorRateDataPrecomputed}
-              className="lg:col-span-2"
-            />
+            <ErrorRateWidget data={errorRateDataPrecomputed} className="error-rate-widget lg:col-span-2" />
             <QuickActionsPanel
               onCreateFunction={() => navigate('/functions/new')}
               onCreateGraph={() => navigate('/frg')}
@@ -482,6 +515,7 @@ export function DashboardPage() {
               onViewSecrets={() => navigate('/vault')}
               onViewLogs={() => navigate('/functions')}
               onSettings={() => navigate('/settings')}
+              className="quick-actions-panel"
             />
           </motion.div>
         ),
@@ -498,11 +532,9 @@ export function DashboardPage() {
             <RegionDistributionWidget
               regions={regionDataPrecomputed}
               totalFunctions={activeFunctions}
+              className="region-distribution-widget"
             />
-            <PerformanceLeaderboard
-              functions={performanceDataPrecomputed}
-              maxItems={3}
-            />
+            <PerformanceLeaderboard functions={performanceDataPrecomputed} maxItems={3} className="performance-leaderboard" />
           </motion.div>
         ),
       },
@@ -515,28 +547,54 @@ export function DashboardPage() {
             transition={{ duration: 0.5, delay: 0.34 }}
             className="grid grid-cols-1 lg:grid-cols-3 gap-4"
           >
-            <QuotaUsageWidget
-              functionsUsed={activeFunctions}
-              functionsLimit={
-                isFree ? 3 : hasMinPlan('starter') ? 10 : hasMinPlan('professional') ? 50 : 100
-              }
-              requestsUsed={requestsThisMonth}
-              requestsLimit={
-                isFree
-                  ? 10000
-                  : hasMinPlan('starter')
-                    ? 100000
-                    : hasMinPlan('professional')
-                      ? 1000000
-                      : 10000000
-              }
-              secretsUsed={0}
-              secretsLimit={
-                isFree ? 5 : hasMinPlan('starter') ? 20 : hasMinPlan('professional') ? 100 : 500
-              }
-              onUpgradeClick={isFree ? () => setShowPlanModal(true) : undefined}
-              className="lg:col-span-2"
-            />
+            {(() => {
+              const allQuotas = [
+                {
+                  name: 'Functions',
+                  used: activeFunctions,
+                  limit: limits?.functions ?? 0,
+                  icon: QUOTA_ICONS.functions,
+                },
+                {
+                  name: 'Requests',
+                  used: requestsThisMonth,
+                  limit: limits?.requests === Infinity ? -1 : (limits?.requests ?? 0),
+                  icon: QUOTA_ICONS.requests,
+                },
+                {
+                  name: 'Secrets',
+                  used: 0,
+                  limit: limits?.secrets ?? 0,
+                  icon: QUOTA_ICONS.secrets,
+                },
+                {
+                  name: 'Providers',
+                  used: providers?.length ?? 0,
+                  limit: limits?.providers ?? 0,
+                  icon: QUOTA_ICONS.providers,
+                },
+                {
+                  name: 'State Fabrics',
+                  used: 0,
+                  limit: limits?.stateFabrics ?? 0,
+                  icon: QUOTA_ICONS.stateFabrics,
+                },
+                {
+                  name: 'Agents',
+                  used: 0,
+                  limit: limits?.agents ?? 0,
+                  icon: QUOTA_ICONS.agents,
+                },
+              ].filter((q) => q.limit > 0);
+
+              return allQuotas.length > 0 ? (
+                <QuotaUsageWidget
+                  quotas={allQuotas}
+                  onUpgradeClick={isFree ? () => setShowPlanModal(true) : undefined}
+                  className="quota-usage-widget lg:col-span-2"
+                />
+              ) : null;
+            })()}
           </motion.div>
         ) : null,
       },
@@ -549,13 +607,15 @@ export function DashboardPage() {
             transition={{ duration: 0.5, delay: 0.3 }}
           >
             {providersLoading ? (
-              <Card className="glass-card glow hover-lift flex items-center justify-center py-12">
+              <Card className="provider-status-card glass-card glow hover-lift flex items-center justify-center py-12">
                 <Loader2 className="w-6 h-6 animate-spin text-text-muted" />
               </Card>
             ) : !providerStatusList.length ? (
-              <Card className="glass-card glow hover-lift">
+              <Card className="provider-status-card glass-card glow hover-lift">
                 <CardContent className="flex flex-col items-center justify-center py-12">
-                  <p className="text-text-secondary text-sm">{t('dashboard.noProvidersConnected')}</p>
+                  <p className="text-text-secondary text-sm">
+                    {t('dashboard.noProvidersConnected')}
+                  </p>
                   <Button
                     variant="outline"
                     size="sm"
@@ -567,7 +627,10 @@ export function DashboardPage() {
                 </CardContent>
               </Card>
             ) : (
-              <ProviderStatus providers={providerStatusList} className="grid-cols-1 lg:grid-cols-2" />
+              <ProviderStatus
+                providers={providerStatusList}
+                className="provider-status-grid grid-cols-1 lg:grid-cols-2"
+              />
             )}
           </motion.div>
         ),
@@ -581,9 +644,11 @@ export function DashboardPage() {
             transition={{ duration: 0.5, delay: 0.3 }}
             className="grid grid-cols-1 lg:grid-cols-2 gap-4"
           >
-            <Card className="glass-card glow hover-lift">
+            <Card className="recent-list-card glass-card glow hover-lift">
               <CardHeader>
-                <CardTitle className="text-text-primary text-glow">{t('dashboard.recentApps')}</CardTitle>
+                <CardTitle className="recent-list-title text-text-primary text-glow">
+                  {t('dashboard.recentApps')}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 {appsLoading ? (
@@ -591,12 +656,12 @@ export function DashboardPage() {
                     <Loader2 className="w-6 h-6 animate-spin text-text-muted" />
                   </div>
                 ) : apps.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-text-secondary text-sm">{t('dashboard.noAppsYet')}</p>
+                  <div className="empty-state">
+                    <p className="empty-state-text">{t('dashboard.noAppsYet')}</p>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="mt-3"
+                      className="empty-state-btn"
                       onClick={() => navigate('/apps')}
                     >
                       {t('dashboard.createAnApp')}
@@ -610,14 +675,16 @@ export function DashboardPage() {
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.5, delay: 0.4 + index * 0.1 }}
-                        className="flex gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors duration-200 cursor-pointer"
+                        className="recent-list-item flex gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors duration-200 cursor-pointer"
                         onClick={() => navigate(`/apps/${encodeURIComponent(app.slug)}`)}
                       >
-                        <div className="w-10 h-10 shrink-0 rounded-lg bg-bg-tertiary flex items-center justify-center">
+                        <div className="recent-list-icon w-10 h-10 shrink-0 rounded-lg bg-bg-tertiary flex items-center justify-center">
                           <Building2 className="w-5 h-5 text-text-muted" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm text-text-primary font-medium truncate">{app.name}</p>
+                          <p className="recent-list-name text-sm text-text-primary font-medium truncate">
+                            {app.name}
+                          </p>
                           <p className="text-xs text-text-muted truncate">{app.slug}</p>
                         </div>
                       </motion.div>
@@ -627,9 +694,11 @@ export function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="glass-card glow hover-lift">
+            <Card className="recent-list-card glass-card glow hover-lift">
               <CardHeader>
-                <CardTitle className="text-text-primary text-glow">{t('dashboard.recentFunctions')}</CardTitle>
+                <CardTitle className="recent-list-title text-text-primary text-glow">
+                  {t('dashboard.recentFunctions')}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 {functionsLoading ? (
@@ -637,12 +706,14 @@ export function DashboardPage() {
                     <Loader2 className="w-6 h-6 animate-spin text-text-muted" />
                   </div>
                 ) : functions.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-text-secondary text-sm">{t('dashboard.noFunctionsDeployedYet')}</p>
+                  <div className="empty-state">
+                    <p className="empty-state-text">
+                      {t('dashboard.noFunctionsDeployedYet')}
+                    </p>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="mt-3"
+                      className="empty-state-btn"
                       onClick={() => navigate('/functions/new')}
                     >
                       {t('dashboard.deployAFunctionBtn')}
@@ -656,13 +727,13 @@ export function DashboardPage() {
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.5, delay: 0.5 + index * 0.1 }}
-                        className="flex gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors duration-200 cursor-pointer"
+                        className="recent-list-item flex gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors duration-200 cursor-pointer"
                         onClick={() => navigate(`/functions/${fn.id}`)}
                       >
-                        <div className="w-2 h-2 mt-2 rounded-full bg-linear-to-r from-[#6366f1] to-[#8b5cf6]" />
+                        <div className="recent-list-dot w-2 h-2 mt-2 rounded-full bg-linear-to-r from-[#6366f1] to-[#8b5cf6]" />
                         <div>
-                          <p className="text-sm text-text-primary font-medium">{fn.name}</p>
-                          <p className="text-xs text-text-muted capitalize">
+                          <p className="recent-list-name text-sm text-text-primary font-medium">{fn.name}</p>
+                          <p className="recent-list-status text-xs text-text-muted capitalize">
                             {fn.status || 'unknown'}
                           </p>
                         </div>
@@ -684,11 +755,16 @@ export function DashboardPage() {
             transition={{ duration: 0.5, delay: 0.35 }}
           >
             {activityLoading ? (
-              <Card className="flex items-center justify-center py-16">
+              <Card className="agent-activity-feed flex items-center justify-center py-16">
                 <Loader2 className="h-8 w-8 animate-spin text-text-muted" />
               </Card>
             ) : (
-              <AgentActivityFeed activities={agentActivities} title={t('dashboard.recentActivityTitle')} maxItems={5} />
+              <AgentActivityFeed
+                activities={agentActivities}
+                title={t('dashboard.recentActivityTitle')}
+                maxItems={5}
+                className="agent-activity-feed"
+              />
             )}
           </motion.div>
         ),
@@ -696,32 +772,62 @@ export function DashboardPage() {
     ];
     return sections;
   }, [
-    healthStatus, functionsLoading, activeFunctions, metricsLoading, avgLatencyDisplay, avgLatencyLabel,
-    uptimePct, uptimeChangePercent, uptimeSparkline, requestsThisMonth, requestsChangePercent,
-    formatRequests, requestsSparkline, isFree, navigate, setShowPlanModal, usageLoading, usageGraphData,
-    executionRateLoading, executionRateData, memoryLoading, memoryData, functions, trustScoresLoading,
-    aggregateTrustScore, providerStatusList, providersLoading, apps, appsLoading,
-    activityLoading, agentActivities, hasMinPlan,
-    errorRateDataPrecomputed, regionDataPrecomputed, performanceDataPrecomputed,
+    healthStatus,
+    functionsLoading,
+    activeFunctions,
+    metricsLoading,
+    avgLatencyDisplay,
+    avgLatencyLabel,
+    uptimePct,
+    uptimeChangePercent,
+    uptimeSparkline,
+    requestsThisMonth,
+    requestsChangePercent,
+    formatRequests,
+    requestsSparkline,
+    isFree,
+    navigate,
+    setShowPlanModal,
+    usageLoading,
+    usageGraphData,
+    executionRateLoading,
+    executionRateData,
+    memoryLoading,
+    memoryData,
+    functions,
+    trustScoresLoading,
+    aggregateTrustScore,
+    providerStatusList,
+    providersLoading,
+    apps,
+    appsLoading,
+    activityLoading,
+    agentActivities,
+    hasMinPlan,
+    errorRateDataPrecomputed,
+    regionDataPrecomputed,
+    performanceDataPrecomputed,
   ]);
 
   return (
-    <div className="relative space-y-6">
+    <div className="aviation-dashboard relative space-y-6">
       {/* Resume Onboarding Banner - pinned to top, not draggable */}
       {canResume() && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card glow hover-lift p-4"
+          className="onboarding-banner glow hover-lift p-4"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#6366f1]/20 rounded-full flex items-center justify-center">
+              <div className="onboarding-icon">
                 <Play className="w-5 h-5 text-[#6366f1]" />
               </div>
               <div>
-                <h3 className="font-semibold text-text-primary">{t('dashboard.completeYourSetup')}</h3>
-                <p className="text-sm text-text-secondary">
+                <h3 className="onboarding-title">
+                  {t('dashboard.completeYourSetup')}
+                </h3>
+                <p className="onboarding-description">
                   {t('dashboard.onboardingProgress', { completed: completedSteps.length })}
                 </p>
               </div>
@@ -747,10 +853,7 @@ export function DashboardPage() {
       )}
 
       {/* Draggable Dashboard Sections */}
-      <DraggableDashboardGrid
-        sections={dashboardSections}
-        storageKey="dashboard-section-order"
-      />
+      <DraggableDashboardGrid sections={dashboardSections} storageKey="dashboard-section-order" />
 
       {/* Plan Selection Modal for free users */}
       <PlanSelectionModal

@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/notification"
+	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -14,15 +16,19 @@ import (
 
 // Handler contains notification handlers
 type Handler struct {
-	service *notification.Service
-	repo    notification.Repository
+	service   *notification.Service
+	repo      notification.Repository
+	auditRepo *storage.AuditRepository
+	logger    *logrus.Logger
 }
 
 // NewHandler creates a new notifications handler
-func NewHandler(service *notification.Service, repo notification.Repository) *Handler {
+func NewHandler(service *notification.Service, repo notification.Repository, auditRepo *storage.AuditRepository, logger *logrus.Logger) *Handler {
 	return &Handler{
-		service: service,
-		repo:    repo,
+		service:   service,
+		repo:       repo,
+		auditRepo: auditRepo,
+		logger:    logger,
 	}
 }
 
@@ -67,6 +73,14 @@ func (h *Handler) HandleListNotifications(w http.ResponseWriter, r *http.Request
 	opts.Category = r.URL.Query().Get("category")
 	opts.UnreadOnly = r.URL.Query().Get("unread_only") == "true"
 
+	// Get total count with filters applied
+	totalCount, err := h.service.CountNotifications(r.Context(), user.UserID, opts)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to count notifications")
+		http.Error(w, "Failed to list notifications", http.StatusInternalServerError)
+		return
+	}
+
 	// Get notifications
 	notifications, err := h.service.ListNotifications(r.Context(), user.UserID, opts)
 	if err != nil {
@@ -85,7 +99,7 @@ func (h *Handler) HandleListNotifications(w http.ResponseWriter, r *http.Request
 
 	response := ListNotificationsResponse{
 		Notifications: notifications,
-		Total:         len(notifications),
+		Total:         totalCount,
 		UnreadCount:   unreadCount,
 	}
 
@@ -132,11 +146,11 @@ func (h *Handler) HandleGetUnreadCount(w http.ResponseWriter, r *http.Request) {
 
 	// Map backend categories to frontend expected categories
 	frontendCategories := map[string]int{
-		"trust":    categoryCounts["system"],     // System announcements/trust updates
-		"revenue":  categoryCounts["billing"],    // Billing/revenue notifications
-		"issues":   categoryCounts["deployment"], // Deployment issues
-		"messages": categoryCounts["team"],       // Team messages/invitations
-		"security": categoryCounts["security"],   // Security notifications
+		"trust":    categoryCounts["system"] + categoryCounts["function"] + categoryCounts["registry"], // System/trust + function/registry categories
+		"revenue":  categoryCounts["billing"],                                                                                       // Billing/revenue notifications
+		"issues":   categoryCounts["deployment"],                                                                                     // Deployment issues
+		"messages": categoryCounts["team"],                                                                                          // Team messages/invitations
+		"security": categoryCounts["security"],                                                                                      // Security notifications
 	}
 
 	response := map[string]interface{}{
@@ -192,6 +206,12 @@ func (h *Handler) HandleMarkAsRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Audit log for mark as read
+	h.logAuditEvent(r, "notification.mark_read", "notification", &notificationID, nil, map[string]interface{}{
+		"notification_id": notificationID.String(),
+		"user_id":         user.UserID.String(),
+	}, true)
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
 		"status": "marked_as_read",
@@ -211,6 +231,11 @@ func (h *Handler) HandleMarkAllAsRead(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to mark all as read", http.StatusInternalServerError)
 		return
 	}
+
+	// Audit log for mark all as read
+	h.logAuditEvent(r, "notification.mark_all_read", "notification", nil, nil, map[string]interface{}{
+		"user_id": user.UserID.String(),
+	}, true)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
@@ -298,6 +323,14 @@ func (h *Handler) HandleDeleteNotification(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// Audit log for delete notification
+	h.logAuditEvent(r, "notification.delete", "notification", &notificationID, map[string]interface{}{
+		"notification_id": notificationID.String(),
+		"user_id":         user.UserID.String(),
+		"notification_type": n.Type,
+		"notification_category": n.Category,
+	}, nil, true)
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
 		"status": "deleted",
@@ -339,8 +372,27 @@ func (h *Handler) HandleUpdatePreferences(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Fetch existing preferences to validate ownership when IDs are provided
+	existingPrefs, err := h.service.GetPreferences(r.Context(), user.UserID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get existing preferences for validation")
+		http.Error(w, "Failed to validate preferences", http.StatusInternalServerError)
+		return
+	}
+
+	// Build a map of existing preference IDs for quick lookup
+	existingPrefIDs := make(map[uuid.UUID]bool)
+	for _, p := range existingPrefs {
+		existingPrefIDs[p.ID] = true
+	}
+
 	// Update each preference
 	for _, pref := range req.Preferences {
+		// Validate: if preference ID is provided, ensure it belongs to this user
+		if pref.ID != uuid.Nil && !existingPrefIDs[pref.ID] {
+			http.Error(w, "Forbidden: preference does not belong to user", http.StatusForbidden)
+			return
+		}
 		pref.UserID = user.UserID // Ensure user can only update their own preferences
 		if err := h.service.SavePreference(r.Context(), &pref); err != nil {
 			logrus.WithError(err).Error("Failed to save preference")
@@ -348,6 +400,20 @@ func (h *Handler) HandleUpdatePreferences(w http.ResponseWriter, r *http.Request
 			return
 		}
 	}
+
+	// Audit log for preference update
+	prefChannels := make([]string, len(req.Preferences))
+	prefCategories := make([]string, len(req.Preferences))
+	for i, p := range req.Preferences {
+		prefChannels[i] = p.Channel
+		prefCategories[i] = p.Category
+	}
+	h.logAuditEvent(r, "notification.preferences.update", "notification_preferences", nil, nil, map[string]interface{}{
+		"user_id":     user.UserID.String(),
+		"channels":    prefChannels,
+		"categories":  prefCategories,
+		"pref_count":  len(req.Preferences),
+	}, true)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
@@ -368,4 +434,41 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	// Preference routes
 	router.HandleFunc("/v1/users/me/notification-preferences", h.HandleGetPreferences).Methods("GET")
 	router.HandleFunc("/v1/users/me/notification-preferences", h.HandleUpdatePreferences).Methods("PATCH")
+}
+
+// logAuditEvent creates an audit log entry for notification operations
+func (h *Handler) logAuditEvent(r *http.Request, action, resourceType string, resourceID *uuid.UUID, beforeState, afterState interface{}, success bool) {
+	if h.auditRepo == nil {
+		h.logger.Warn("No audit repository configured, skipping audit log")
+		return
+	}
+
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		h.logger.Warn("No authenticated user for audit logging")
+		return
+	}
+
+	event := &storage.AuditEvent{
+		ActorUserID:  &user.UserID,
+		ActorEmail:   user.Email,
+		TenantID:     &user.TenantID,
+		Action:       action,
+		ResourceType: resourceType,
+		ResourceID:   resourceID,
+		RequestID:    r.Header.Get("X-Request-ID"),
+		BeforeState:  beforeState,
+		AfterState:   afterState,
+		IPAddress:    middleware.GetRealIP(r),
+		UserAgent:    r.UserAgent(),
+		Timestamp:    time.Now(),
+		Success:      success,
+	}
+
+	if err := h.auditRepo.LogAuditEvent(r.Context(), event); err != nil {
+		h.logger.WithError(err).WithFields(logrus.Fields{
+			"action":        action,
+			"resource_type": resourceType,
+		}).Error("Failed to log audit event")
+	}
 }

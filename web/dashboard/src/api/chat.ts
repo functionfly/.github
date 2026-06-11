@@ -62,6 +62,10 @@ class ChatApi {
     await apiClient.delete(`/v1/chat/sessions/${id}`);
   }
 
+  async updateSession(id: string, updates: { title?: string; model?: string }): Promise<void> {
+    await apiClient.patch(`/v1/chat/sessions/${id}`, updates);
+  }
+
   async sendMessage(sessionId: string, content: string, stream = false): Promise<{
     message: ChatMessage;
     token_usage: number;

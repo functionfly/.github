@@ -53,6 +53,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+import './styles.css';
+
 const RUNTIMES = [
   { value: 'python', label: 'Python 3.11', icon: <PythonIcon className="w-5 h-5" /> },
   { value: 'nodejs', label: 'Node.js 20', icon: <NodeIcon className="w-5 h-5" /> },
@@ -147,9 +149,9 @@ function ComplexityProgress({ complexity, isGenerating }: { complexity?: string;
 
   if (isGenerating) {
     return (
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">Analyzing complexity...</span>
+      <div className="complexity-progress">
+        <div className="complexity-progress-header">
+          <span className="complexity-progress-label">Analyzing complexity...</span>
           <span className="animate-pulse">Processing</span>
         </div>
         <Progress value={undefined} className="h-1.5 animate-pulse" />
@@ -158,21 +160,20 @@ function ComplexityProgress({ complexity, isGenerating }: { complexity?: string;
   }
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">Complexity</span>
-        <span className={`font-medium ${colors.text}`}>{colors.label}</span>
+    <div className="complexity-progress">
+      <div className="complexity-progress-header">
+        <span className="complexity-progress-label">Complexity</span>
+        <span className={`complexity-progress-value ${colors.text}`}>{colors.label}</span>
       </div>
-      <div className="relative h-1.5 bg-muted rounded-full overflow-hidden">
-        <div 
-          className={`absolute h-full ${colors.bg} transition-all duration-500 ease-out rounded-full`}
+      <div className="complexity-progress-bar">
+        <div
+          className={`complexity-progress-fill ${colors.bg}`}
           style={{ width: `${progressValue}%` }}
         />
-        {/* Complexity markers */}
-        <div className="absolute top-0 left-[33%] w-0.5 h-full bg-white/50" />
-        <div className="absolute top-0 left-[66%] w-0.5 h-full bg-white/50" />
+        <div className="complexity-progress-marker complexity-progress-marker-1" />
+        <div className="complexity-progress-marker complexity-progress-marker-2" />
       </div>
-      <div className="flex justify-between text-[10px] text-muted-foreground">
+      <div className="complexity-progress-labels">
         <span>Simple</span>
         <span>Moderate</span>
         <span>Complex</span>
@@ -186,20 +187,17 @@ function ComplexityProgress({ complexity, isGenerating }: { complexity?: string;
  */
 function ConfidenceDisplay({ score }: { score?: number }) {
   if (score === undefined || score === null) return null;
-  
+
   const percentage = Math.round(score * 100);
-  let colorClass = 'text-green-600 dark:text-green-400';
-  let bgClass = 'bg-green-500/10';
+  let confidenceClass = 'confidence-high';
   let Icon = CheckCircle2;
-  
+
   if (percentage < 70) {
-    colorClass = 'text-yellow-600 dark:text-yellow-400';
-    bgClass = 'bg-yellow-500/10';
+    confidenceClass = 'confidence-medium';
     Icon = AlertTriangle;
   }
   if (percentage < 50) {
-    colorClass = 'text-red-600 dark:text-red-400';
-    bgClass = 'bg-red-500/10';
+    confidenceClass = 'confidence-low';
     Icon = XCircle;
   }
 
@@ -207,8 +205,8 @@ function ConfidenceDisplay({ score }: { score?: number }) {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className={`flex items-center gap-1.5 px-2 py-1 rounded-md ${bgClass} ${colorClass} text-xs font-medium`}>
-            <Icon className="w-3.5 h-3.5" />
+          <div className={`confidence-display ${confidenceClass}`}>
+            <Icon className="confidence-icon w-3.5 h-3.5" />
             <span>{percentage}% confidence</span>
           </div>
         </TooltipTrigger>
@@ -240,21 +238,21 @@ function TokenUsageDisplay({
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="flex items-center gap-3 px-3 py-2 rounded-md bg-muted/50 text-xs">
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <BarChart3 className="w-3.5 h-3.5" />
+          <div className="token-display">
+            <div className="token-display-item">
+              <BarChart3 className="token-display-icon w-3.5 h-3.5" />
               <span>{tokens_used.total.toLocaleString()} tokens</span>
             </div>
-            <Separator orientation="vertical" className="h-3" />
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <Coins className="w-3.5 h-3.5" />
+            <div className="token-display-separator" />
+            <div className="token-display-item">
+              <Coins className="token-display-icon w-3.5 h-3.5" />
               <span>~${cost.toFixed(4)}</span>
             </div>
             {latency_ms && latency_ms > 0 && (
               <>
-                <Separator orientation="vertical" className="h-3" />
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <Clock className="w-3.5 h-3.5" />
+                <div className="token-display-separator" />
+                <div className="token-display-item">
+                  <Clock className="token-display-icon w-3.5 h-3.5" />
                   <span>{(latency_ms / 1000).toFixed(2)}s</span>
                 </div>
               </>
@@ -376,19 +374,13 @@ function CapabilityToggle({
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div 
-            className={`
-              flex items-center gap-2 px-2.5 py-1.5 rounded-md border cursor-pointer transition-all
-              ${enabled 
-                ? 'bg-violet-500/10 border-violet-500/30 text-violet-700 dark:text-violet-300' 
-                : 'bg-muted/50 border-muted text-muted-foreground hover:bg-muted'
-              }
-            `}
+          <div
+            className={`capability-toggle ${enabled ? 'capability-toggle-enabled' : 'capability-toggle-disabled'}`}
             onClick={() => onToggle(capability)}
           >
-            {info.icon}
+            <span className="capability-toggle-icon">{info.icon}</span>
             <span className="text-xs font-medium capitalize">{capability}</span>
-            {enabled && <Check className="w-3 h-3 ml-auto" />}
+            {enabled && <Check className="capability-toggle-check w-3 h-3" />}
           </div>
         </TooltipTrigger>
         <TooltipContent side="top">
@@ -982,31 +974,31 @@ export function AIComposerPage() {
   const isGenerating = isStreaming || generateMutation.isPending;
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="composer-container p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="composer-header">
         <div className="flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg">
+          <div className="composer-icon-container composer-icon-container-violet">
             <Sparkles className="h-8 w-8 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">AI Composer</h1>
-            <p className="text-muted-foreground">
+            <h1 className="composer-title">AI Composer</h1>
+            <p className="composer-subtitle">
               Describe what you need. FlyMind AI generates production-ready functions.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="composer-header-actions">
           {/* Draft indicator */}
           {hasDraft && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted/50 text-xs text-muted-foreground">
-                    <Save className="w-3.5 h-3.5" />
-                    <span>Draft saved</span>
-                    <button onClick={clearDraft} className="hover:text-destructive">
+                  <div className="composer-draft-indicator">
+                    <Save className="composer-draft-indicator-icon w-3.5 h-3.5" />
+                    <span className="composer-draft-indicator-text">Draft saved</span>
+                    <button onClick={clearDraft} className="composer-draft-indicator-clear hover:text-destructive">
                       <XCircle className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -1037,9 +1029,9 @@ export function AIComposerPage() {
         </div>
       </div>
 
-      <div className={`grid gap-6 ${historySidebarOpen ? 'grid-cols-1 lg:grid-cols-[280px_1fr_1fr]' : 'grid-cols-1 lg:grid-cols-2'}`}>
+      <div className={`composer-grid gap-6 ${historySidebarOpen ? 'composer-grid-cols-3' : 'composer-grid-cols-2'}`}>
         {/* Input Panel */}
-        <Card className="border-border/50 shadow-sm">
+        <Card className="composer-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wand2 className="h-5 w-5" />
@@ -1116,7 +1108,7 @@ export function AIComposerPage() {
                 <Button
                   onClick={handleGenerate}
                   disabled={!description.trim()}
-                  className="flex-1 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700"
+                  className="flex-1 btn-composer-primary"
                 >
                   <Sparkles className="mr-2 h-4 w-4" />
                   Generate Function
@@ -1136,30 +1128,30 @@ export function AIComposerPage() {
         </Card>
 
         {/* Output Panel */}
-        <Card className="border-border/50 shadow-sm">
+        <Card className="composer-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Code2 className="h-5 w-5" />
               Generated Code
               {hasResult && !isGenerating && (
-                <Badge variant="outline" className="ml-2 text-xs">
+                <span className="composer-version-badge">
                   {refinementHistory.length > 0 ? `v${refinementHistory.length + 1}` : 'v1'}
-                </Badge>
+                </span>
               )}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {isGenerating ? (
-              <div className="flex flex-col items-center justify-center py-12 space-y-4">
-                <div className="relative">
-                  <div className="h-16 w-16 rounded-full border-4 border-violet-200 border-t-violet-500 animate-spin" />
-                  <Sparkles className="h-6 w-6 text-violet-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+              <div className="composer-loading-container">
+                <div className="composer-loading-spinner">
+                  <div className="composer-loading-spinner-ring" />
+                  <Sparkles className="composer-loading-spinner-icon h-6 w-6" />
                 </div>
-                <p className="text-muted-foreground animate-pulse">
+                <p className="composer-loading-text">
                   {isRefining ? 'FlyMind is refining your function...' : 'FlyMind is crafting your function...'}
                 </p>
                 {streamingResult.code.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="composer-loading-subtext">
                     {streamingResult.code.length} characters generated so far
                   </p>
                 )}
@@ -1199,7 +1191,7 @@ export function AIComposerPage() {
                           Edit Request
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="max-w-lg">
+                      <DialogContent className="max-w-lg composer-dialog-content">
                         <DialogHeader>
                           <DialogTitle className="flex items-center gap-2">
                             <Wand className="h-5 w-5" />
@@ -1214,18 +1206,16 @@ export function AIComposerPage() {
                           {/* Quick refinements */}
                           <div className="space-y-2">
                             <Label className="text-xs text-muted-foreground uppercase">Quick Refinements</Label>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="quick-refinement-grid">
                               {QUICK_REFINEMENTS.map((item) => (
-                                <Button
+                                <button
                                   key={item.label}
-                                  variant="outline"
-                                  size="sm"
                                   onClick={() => handleQuickRefinement(item.prompt)}
                                   disabled={isRefining}
-                                  className="text-xs"
+                                  className="quick-refinement-btn"
                                 >
                                   {item.label}
-                                </Button>
+                                </button>
                               ))}
                             </div>
                           </div>
@@ -1257,7 +1247,7 @@ export function AIComposerPage() {
                           <Button
                             onClick={handleCustomRefinement}
                             disabled={!refinementRequest.trim() || isRefining}
-                            className="bg-gradient-to-r from-violet-500 to-purple-600"
+                            className="btn-composer-primary"
                           >
                             {isRefining ? (
                               <>
@@ -1341,7 +1331,7 @@ export function AIComposerPage() {
                 {/* Code Display with Context Menu */}
                 <ContextMenu>
                   <ContextMenuTrigger className="w-full">
-                    <div className="rounded-md border bg-muted/50 overflow-hidden">
+                    <div className="composer-editor-container overflow-hidden rounded-md border">
                       <Editor
                         height="300px"
                         language={monacoLanguage}

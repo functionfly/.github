@@ -1,6 +1,5 @@
-import { getBundles, registerFounderMode, createBundleCheckout, getBundleStats, type Bundle } from '@/api/billing';
+import { getBundles, createBundleCheckout, getBundleStats, type Bundle } from '@/api/billing';
 import { PageLayout } from '@/components/layout/PageLayout';
-import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/authStore';
 import { motion } from 'framer-motion';
@@ -14,6 +13,7 @@ import { FounderModeModal } from './components/FounderModeModal';
 import { DeferredBillingSelector } from './components/DeferredBillingSelector';
 import { DeployWizard } from './components/DeployWizard';
 import { BundleComparisonTable } from './components/BundleComparisonTable';
+import './styles.css';
 
 type PricingMode = 'immediate' | 'deferred';
 
@@ -174,18 +174,13 @@ export function BundlePricingPage() {
 
   return (
     <PageLayout>
-      <PageHeader
-        title="Backend-in-a-Box Pricing"
-        subtitle="Pre-configured bundles with viral pricing: SaaS Starter, Marketplace, and AI App packs. Start free until you hit 100 users or $1K MRR."
-      />
-
-      <div className="mt-8">
+      <div className="mt-8 animate-fade-in">
         {/* Back Link */}
         <Link
           to="/pricing"
-          className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary mb-8 transition-colors"
+          className="bundle-back-link"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-4 h-4 bundle-back-icon" />
           Back to all pricing
         </Link>
 
@@ -195,26 +190,26 @@ export function BundlePricingPage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12"
         >
-          <h1 className="text-4xl sm:text-5xl font-bold text-text-primary mb-4">
+          <h1 className="text-4xl sm:text-5xl font-bold mb-4" style={{ color: 'var(--bundle-card-text)' }}>
             One Click → Full Backend
           </h1>
 
-          <p className="text-xl text-text-secondary max-w-2xl mx-auto mb-6">
+          <p className="text-xl max-w-2xl mx-auto mb-6" style={{ color: 'var(--bundle-card-text-secondary)' }}>
             Pre-configured bundles that include everything you need.
             No thinking required. Just build.
           </p>
 
           {/* Viral Pricing Badges */}
           <div className="flex flex-wrap justify-center gap-4 text-sm">
-            <div className="flex items-center gap-2 px-4 py-2 bg-success/10 dark:bg-success/20 text-success rounded-full">
+            <div className="bundle-pricing-badge bundle-pricing-badge-success">
               <Clock className="w-4 h-4" />
               Free for 3 months (Founder Mode)
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 bg-info/10 dark:bg-info/20 text-info rounded-full">
+            <div className="bundle-pricing-badge bundle-pricing-badge-info">
               <TrendingUp className="w-4 h-4" />
               Or free until $1K MRR
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 bg-brand-500/10 dark:bg-brand-500/20 text-brand-400 rounded-full">
+            <div className="bundle-pricing-badge bundle-pricing-badge-brand">
               <Zap className="w-4 h-4" />
               Or free until 100 users
             </div>
@@ -222,10 +217,12 @@ export function BundlePricingPage() {
         </motion.div>
 
         {/* Pricing Mode Selector */}
-        <DeferredBillingSelector
-          mode={pricingMode}
-          onModeChange={setPricingMode}
-        />
+        <div className="bundle-billing-toggle mb-8">
+          <DeferredBillingSelector
+            mode={pricingMode}
+            onModeChange={setPricingMode}
+          />
+        </div>
 
         {/* Live Usage Counter */}
         {!statsLoading && (bundleStats.active_founders > 0 || bundleStats.recent_deployments > 0) && (
@@ -236,17 +233,17 @@ export function BundlePricingPage() {
             className="flex justify-center gap-8 mb-8"
           >
             {bundleStats.active_founders > 0 && (
-              <div className="flex items-center gap-2 text-sm text-text-secondary">
-                <Users className="w-4 h-4 text-success" />
-                <span className="font-semibold text-text-primary">{bundleStats.active_founders.toLocaleString()}</span>
-                founders currently building
+              <div className="bundle-usage-counter">
+                <Users className="w-4 h-4 bundle-usage-icon" style={{ color: 'var(--bundle-active-text)' }} />
+                <span className="font-semibold" style={{ color: 'var(--bundle-card-text)' }}>{bundleStats.active_founders.toLocaleString()}</span>
+                <span style={{ color: 'var(--bundle-card-text-secondary)' }}>founders currently building</span>
               </div>
             )}
             {bundleStats.recent_deployments > 0 && (
-              <div className="flex items-center gap-2 text-sm text-text-secondary">
-                <Package className="w-4 h-4 text-brand-400" />
-                <span className="font-semibold text-text-primary">{bundleStats.recent_deployments.toLocaleString()}</span>
-                deployments this week
+              <div className="bundle-usage-counter">
+                <Package className="w-4 h-4 bundle-usage-icon" style={{ color: 'var(--ff-flame)' }} />
+                <span className="font-semibold" style={{ color: 'var(--bundle-card-text)' }}>{bundleStats.recent_deployments.toLocaleString()}</span>
+                <span style={{ color: 'var(--bundle-card-text-secondary)' }}>deployments this week</span>
               </div>
             )}
           </motion.div>
@@ -282,19 +279,19 @@ export function BundlePricingPage() {
 
         {/* Fallback if no bundles loaded */}
         {!loading && bundles.length === 0 && (
-          <div className="text-center py-16 px-4">
-            <div className="w-24 h-24 bg-bg-tertiary rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <Package className="w-12 h-12 text-text-muted" />
+          <div className="bundle-empty-state">
+            <div className="bundle-empty-icon">
+              <Package className="w-12 h-12" />
             </div>
-            <h3 className="text-xl font-semibold text-text-primary mb-2">
+            <h3 className="bundle-empty-title">
               No bundles available right now
             </h3>
-            <p className="text-text-secondary mb-6 max-w-md mx-auto">
+            <p className="bundle-empty-description">
               We&apos;re updating our offerings. Check back soon or reach out to our team for early access to upcoming bundles.
             </p>
             <a
               href="mailto:support@functionfly.com"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-zinc-900 font-bold rounded-lg hover:bg-zinc-100 transition-colors shadow-lg"
+              className="btn-bundle-primary"
             >
               <MessageCircle className="w-4 h-4" />
               Contact Support
@@ -307,7 +304,8 @@ export function BundlePricingPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="mt-12 py-6 border-y border-border/50"
+          className="mt-12 py-6"
+          style={{ borderTop: '1px solid var(--bundle-card-border)', borderBottom: '1px solid var(--bundle-card-border)' }}
         >
           <div className="flex flex-wrap justify-center items-center gap-6 lg:gap-12">
             {trustBadges.map((badge, index) => (
@@ -316,14 +314,14 @@ export function BundlePricingPage() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.5 + index * 0.1 }}
-                className="flex items-center gap-3 px-4 py-2 rounded-lg bg-bg-secondary/50"
+                className="bundle-trust-badge"
               >
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-brand-500/20 to-brand-400/10 flex items-center justify-center">
-                  <badge.icon className="w-5 h-5 text-brand-400" />
+                <div className="bundle-trust-icon">
+                  <badge.icon className="w-5 h-5" />
                 </div>
                 <div className="text-left">
-                  <div className="text-sm font-semibold text-text-primary">{badge.label}</div>
-                  <div className="text-xs text-text-muted">{badge.sublabel}</div>
+                  <div className="bundle-trust-label">{badge.label}</div>
+                  <div className="bundle-trust-sublabel">{badge.sublabel}</div>
                 </div>
               </motion.div>
             ))}
@@ -337,17 +335,17 @@ export function BundlePricingPage() {
           transition={{ delay: 0.5 }}
           className="mt-16 text-center"
         >
-          <div className="bg-bg-secondary rounded-2xl p-8 shadow-lg">
-            <h3 className="text-2xl font-bold text-text-primary mb-4">
+          <div className="analytics-card p-8 aviation-panel-glow">
+            <h3 className="text-2xl font-bold mb-4" style={{ color: 'var(--bundle-card-text)' }}>
               Why founders love this
             </h3>
             <div className="grid sm:grid-cols-3 gap-6">
               {trustStats.map((stat, index) => (
                 <div key={index}>
-                  <div className="text-3xl font-bold text-brand-400 mb-2">
+                  <div className="bundle-stat-value mb-2">
                     {stat.value}
                   </div>
-                  <p className="text-text-secondary">
+                  <p style={{ color: 'var(--bundle-card-text-secondary)' }}>
                     {stat.label}
                   </p>
                 </div>
@@ -363,7 +361,7 @@ export function BundlePricingPage() {
           transition={{ delay: 0.6 }}
           className="mt-12 max-w-3xl mx-auto"
         >
-          <h3 className="text-2xl font-bold text-text-primary text-center mb-6">
+          <h3 className="text-2xl font-bold text-center mb-6" style={{ color: 'var(--bundle-card-text)' }}>
             Frequently Asked Questions
           </h3>
           <div className="space-y-4">
@@ -425,47 +423,57 @@ function FAQItem({ question, answer, index }: { question: string; answer: string
   const id = `faq-${index}`;
 
   return (
-    <div className="bg-bg-secondary rounded-lg shadow-sm overflow-hidden">
+    <div className="bundle-faq-item">
       <button
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
         aria-controls={id}
-        className="w-full px-6 py-4 flex items-center justify-between text-left hover:text-ff-flame transition-colors"
+        className="bundle-faq-trigger"
       >
-        <span className="font-semibold text-text-primary">
+        <span style={{ color: 'var(--bundle-card-text)' }}>
           {question}
         </span>
-        <span className="text-text-muted text-xl leading-none" aria-hidden="true">
+        <span className={`bundle-faq-icon ${isOpen ? 'bundle-faq-icon-open' : ''}`} aria-hidden="true">
           {isOpen ? '−' : '+'}
         </span>
       </button>
       {isOpen && (
-        <div id={id} className="px-6 pb-4">
-          <p className="text-text-secondary">{answer}</p>
+        <div id={id} className="bundle-faq-content">
+          <p>{answer}</p>
         </div>
       )}
+      {/* Aviation corner accents */}
+      <div className="aviation-corner aviation-corner-tl" />
+      <div className="aviation-corner aviation-corner-tr" />
+      <div className="aviation-corner aviation-corner-bl" />
+      <div className="aviation-corner aviation-corner-br" />
     </div>
   );
 }
 
 function BundleCardSkeleton() {
   return (
-    <div className="bg-bg-secondary rounded-2xl shadow-lg border border-border overflow-hidden">
+    <div className="bundle-card aviation-panel-glow">
       {/* Header skeleton */}
-      <div className="bg-gradient-to-r from-gray-400 to-gray-500 p-6 h-36" />
+      <div className="bg-gradient-to-r from-brand-500/30 to-brand-400/20 p-6 h-36" />
       {/* Content skeleton */}
       <div className="p-6 space-y-4">
-        <div className="h-4 bg-bg-tertiary rounded w-3/4" />
+        <div className="bundle-skeleton h-4 w-3/4" />
         <div className="space-y-2">
-          <div className="h-3 bg-bg-tertiary rounded w-1/2" />
-          <div className="h-3 bg-bg-tertiary rounded w-2/3" />
-          <div className="h-3 bg-bg-tertiary rounded w-1/2" />
+          <div className="bundle-skeleton h-3 w-1/2" />
+          <div className="bundle-skeleton h-3 w-2/3" />
+          <div className="bundle-skeleton h-3 w-1/2" />
         </div>
         <div className="pt-4 space-y-2">
-          <div className="h-10 bg-bg-tertiary rounded" />
-          <div className="h-10 bg-bg-tertiary rounded" />
+          <div className="bundle-skeleton h-10 w-full" />
+          <div className="bundle-skeleton h-10 w-full" />
         </div>
       </div>
+      {/* Aviation corner accents */}
+      <div className="aviation-corner aviation-corner-tl" />
+      <div className="aviation-corner aviation-corner-tr" />
+      <div className="aviation-corner aviation-corner-bl" />
+      <div className="aviation-corner aviation-corner-br" />
     </div>
   );
 }

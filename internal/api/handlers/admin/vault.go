@@ -260,7 +260,15 @@ func (h *VaultHandler) HandleGetSecretAuditLogs(w http.ResponseWriter, r *http.R
 		offset = 0
 	}
 
-	logs, err := h.vaultRepo.GetAuditLogsBySecret(r.Context(), *secretID, secret.TenantID, limit)
+	// Get total count for proper pagination
+	total, err := h.vaultRepo.CountAuditLogsBySecret(r.Context(), *secretID, secret.TenantID)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to count audit logs")
+		h.respondError(w, http.StatusInternalServerError, "GET_FAILED", "Failed to get audit logs")
+		return
+	}
+
+	logs, err := h.vaultRepo.GetAuditLogsBySecret(r.Context(), *secretID, secret.TenantID, limit, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get audit logs")
 		h.respondError(w, http.StatusInternalServerError, "GET_FAILED", "Failed to get audit logs")
@@ -302,7 +310,7 @@ func (h *VaultHandler) HandleGetSecretAuditLogs(w http.ResponseWriter, r *http.R
 
 	h.respondJSON(w, http.StatusOK, map[string]interface{}{
 		"entries": entries,
-		"total":   len(entries),
+		"total":   total,
 		"limit":   limit,
 		"offset":  offset,
 	})

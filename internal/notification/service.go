@@ -65,6 +65,21 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (*Notification, err
 		priority = PriorityNormal
 	}
 
+	// Check for duplicate notification within a 5-minute window
+	// Skip deduplication for critical/urgent priority notifications
+	if priority != PriorityUrgent && priority != PriorityCritical {
+		if existing, err := s.repo.CheckDuplicate(ctx, req.UserID, req.Type, req.Category, req.Data, 5*time.Minute); err != nil {
+			s.logger.WithError(err).Warn("Failed to check for duplicate notification, proceeding with send")
+		} else if existing != nil {
+			s.logger.WithFields(logrus.Fields{
+				"existing_notification_id": existing.ID,
+				"user_id":                 req.UserID,
+				"type":                    req.Type,
+			}).Info("Duplicate notification skipped")
+			return existing, nil
+		}
+	}
+
 	// Build notification from request
 	notification := &Notification{
 		UserID:   req.UserID,
@@ -353,6 +368,11 @@ func (s *Service) ListNotifications(ctx context.Context, userID uuid.UUID, opts 
 	return s.repo.ListNotifications(ctx, userID, opts)
 }
 
+// CountNotifications returns the total count of notifications matching the filters
+func (s *Service) CountNotifications(ctx context.Context, userID uuid.UUID, opts ListOptions) (int, error) {
+	return s.repo.CountNotifications(ctx, userID, opts)
+}
+
 // MarkAsRead marks a notification as read
 func (s *Service) MarkAsRead(ctx context.Context, id uuid.UUID) error {
 	return s.repo.MarkAsRead(ctx, id)
@@ -408,16 +428,59 @@ func (s *Service) RegisterChannel(name string, channel Channel) {
 	s.channels[name] = channel
 }
 
-// Start begins processing the notification queue
+// Start begins processing the notification queue and cleanup scheduler
 func (s *Service) Start(ctx context.Context) {
 	s.logger.Info("Starting notification service")
 	s.queue.Start(ctx, s.dispatcher)
+	// Start the cleanup scheduler to run every hour
+	s.StartCleanupScheduler(ctx, time.Hour)
 }
 
 // Stop stops the notification service
 func (s *Service) Stop() {
 	s.logger.Info("Stopping notification service")
 	s.queue.Stop()
+}
+
+// CleanupExpired removes expired notifications that are not already read.
+// This is a no-op for read notifications as they have already been processed.
+func (s *Service) CleanupExpired(ctx context.Context) error {
+	deleted, err := s.repo.DeleteExpired(ctx, time.Now())
+	if err != nil {
+		s.logger.WithError(err).Error("Failed to cleanup expired notifications")
+		return err
+	}
+	if deleted > 0 {
+		s.logger.WithFields(logrus.Fields{
+			"deleted_count": deleted,
+		}).Info("Cleaned up expired notifications")
+	}
+	return nil
+}
+
+// StartCleanupScheduler starts a background job that periodically cleans up
+// expired notifications. The cleanup runs every hour by default.
+func (s *Service) StartCleanupScheduler(ctx context.Context, interval time.Duration) {
+	if interval == 0 {
+		interval = time.Hour // Default to hourly cleanup
+	}
+	s.logger.WithField("interval", interval).Info("Starting notification cleanup scheduler")
+
+	ticker := time.NewTicker(interval)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				ticker.Stop()
+				s.logger.Info("Notification cleanup scheduler stopped")
+				return
+			case <-ticker.C:
+				if err := s.CleanupExpired(ctx); err != nil {
+					s.logger.WithError(err).Error("Scheduled cleanup failed")
+				}
+			}
+		}
+	}()
 }
 
 
@@ -1098,6 +1161,32 @@ func (s *Service) SendPayoutCancelled(ctx context.Context, userID uuid.UUID, amo
 		},
 		Channels: []string{ChannelInApp},
 		Priority: PriorityNormal,
+	})
+	return err
+}
+
+// Insert satisfies receipt.Notifier by delegating to Send.
+func (s *Service) Insert(ctx context.Context, userID uuid.UUID, kind, title, body string, data map[string]interface{}) error {
+	_, err := s.Send(ctx, SendRequest{
+		UserID:   userID,
+		Type:     kind,
+		Title:    title,
+		Body:     body,
+		Data:     data,
+		Channels: []string{ChannelInApp},
+	})
+	return err
+}
+
+// SendEmail satisfies receipt.Notifier. For now it delegates to Send with
+// the email channel; actual email rendering happens via the email service.
+func (s *Service) SendEmail(ctx context.Context, toUserID uuid.UUID, subject, htmlBody, plainBody string) error {
+	_, err := s.Send(ctx, SendRequest{
+		UserID:   toUserID,
+		Type:     "email",
+		Title:    subject,
+		Body:     plainBody,
+		Channels: []string{ChannelEmail},
 	})
 	return err
 }
