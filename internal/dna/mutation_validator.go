@@ -4,8 +4,11 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"os"
+	"strconv"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/tracing"
 	"github.com/sirupsen/logrus"
 )
 
@@ -66,17 +69,39 @@ type PerformanceDiff struct {
 
 // NewMutationValidator creates a new mutation validator.
 func NewMutationValidator(sandbox SandboxExecutor, logger *logrus.Logger) *MutationValidator {
+	timeout := 30 * time.Second
+	if v := os.Getenv("DNA_SANDBOX_TIMEOUT_SECONDS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			timeout = time.Duration(n) * time.Second
+		}
+	}
+
+	maxTests := 50
+	if v := os.Getenv("DNA_VALIDATION_MAX_TESTS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			maxTests = n
+		}
+	}
+
 	return &MutationValidator{
 		sandbox:  sandbox,
 		logger:   logger,
-		timeout:  30 * time.Second,
-		maxTests: 50,
+		timeout:  timeout,
+		maxTests: maxTests,
 	}
 }
 
 // ValidateMutation runs behavioral tests comparing original and mutated code.
 // Returns a validation report indicating whether the mutation is safe to deploy.
 func (v *MutationValidator) ValidateMutation(ctx context.Context, originalCode, mutatedCode, runtime string, testInputs []TestInput) (*ValidationReport, error) {
+	ctx, span := tracing.StartSpan(ctx, "dna.validate_mutation")
+	defer tracing.Finish(ctx)
+
+	startTime := time.Now()
+	defer func() {
+		RecordMutationValidation("completed", time.Since(startTime))
+	}()
+
 	report := &ValidationReport{
 		SecurityChecks: []SecurityCheck{},
 		Errors:         []string{},
@@ -91,6 +116,7 @@ func (v *MutationValidator) ValidateMutation(ctx context.Context, originalCode, 
 	}
 
 	report.TotalTests = len(testInputs)
+	tracing.SetAttribute(ctx, "total_tests", report.TotalTests)
 
 	// Run security checks first
 	securityChecks := v.runSecurityChecks(mutatedCode, runtime)
@@ -115,6 +141,10 @@ func (v *MutationValidator) ValidateMutation(ctx context.Context, originalCode, 
 		origResult, origErr := v.sandbox.Execute(origCtx, runtime, originalCode, test.Input)
 		origCancel()
 
+		if err := ctx.Err(); err != nil {
+			return report, err
+		}
+
 		if origErr != nil {
 			report.Errors = append(report.Errors, fmt.Sprintf("Original code failed: %v", origErr))
 			report.FailedTests++
@@ -126,6 +156,10 @@ func (v *MutationValidator) ValidateMutation(ctx context.Context, originalCode, 
 		mutCtx, mutCancel := context.WithTimeout(ctx, v.timeout)
 		mutResult, mutErr := v.sandbox.Execute(mutCtx, runtime, mutatedCode, test.Input)
 		mutCancel()
+
+		if err := ctx.Err(); err != nil {
+			return report, err
+		}
 
 		if mutErr != nil {
 			report.Errors = append(report.Errors, fmt.Sprintf("Mutated code failed on test '%s': %v", test.Description, mutErr))

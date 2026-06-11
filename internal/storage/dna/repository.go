@@ -20,6 +20,11 @@ func NewRepository(db *sql.DB) *Repository {
 	return &Repository{db: db}
 }
 
+// BeginTx starts a new database transaction.
+func (r *Repository) BeginTx(ctx context.Context) (*sql.Tx, error) {
+	return r.db.BeginTx(ctx, nil)
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // DNA Profile
 // ──────────────────────────────────────────────────────────────────────────────
@@ -359,10 +364,10 @@ type Mutation struct {
 }
 
 // ListMutations returns mutations for a function with optional filters.
-func (r *Repository) ListMutations(ctx context.Context, functionID, status string, limit, offset int) ([]*Mutation, int, error) {
-	where := "function_id = $1"
-	args := []interface{}{functionID}
-	argIdx := 2
+func (r *Repository) ListMutations(ctx context.Context, functionID, tenantID, status string, limit, offset int) ([]*Mutation, int, error) {
+	where := "function_id = $1 AND tenant_id = $2"
+	args := []interface{}{functionID, tenantID}
+	argIdx := 3
 
 	if status != "" {
 		where += fmt.Sprintf(" AND status = $%d", argIdx)
@@ -505,15 +510,81 @@ func (r *Repository) UpdateMutationStatus(ctx context.Context, mutationID, statu
 	return err
 }
 
+// AcceptMutationTx atomically accepts a mutation and returns the mutation ID if successful.
+// Returns (nil, nil) if the mutation was already accepted by another process (race condition lost).
+// Uses FOR UPDATE to lock the mutation row and prevent concurrent acceptance.
+func (r *Repository) AcceptMutationTx(ctx context.Context, tx *sql.Tx, mutationID, userID string) (*Mutation, error) {
+	m := &Mutation{}
+	var actualImpact sql.NullString
+	err := tx.QueryRowContext(ctx, `
+		SELECT id, function_id, function_type, tenant_id, generation, mutation_type,
+			status, trigger_reason, original_code, mutated_code, original_hash,
+			mutated_hash, diff, estimated_impact, actual_impact, confidence,
+			model_used, analysis_window_hours, executions_analyzed,
+			accepted_by, accepted_at, deployed_at, rolled_back_at, rejected_reason, created_at
+		FROM function_dna_mutations
+		WHERE id = $1 AND status = 'proposed'
+		FOR UPDATE
+	`, mutationID).Scan(
+		&m.ID, &m.FunctionID, &m.FunctionType, &m.TenantID, &m.Generation,
+		&m.MutationType, &m.Status, &m.TriggerReason,
+		&m.OriginalCode, &m.MutatedCode, &m.OriginalHash, &m.MutatedHash,
+		&m.Diff, &m.EstimatedImpact, &actualImpact, &m.Confidence,
+		&m.ModelUsed, &m.AnalysisWindowHours, &m.ExecutionsAnalyzed,
+		&m.AcceptedBy, &m.AcceptedAt, &m.DeployedAt, &m.RolledBackAt,
+		&m.RejectedReason, &m.CreatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get mutation for accept: %w", err)
+	}
+
+	_, err = tx.ExecContext(ctx, `
+		UPDATE function_dna_mutations
+		SET status = 'accepted', accepted_by = $2, accepted_at = NOW()
+		WHERE id = $1
+	`, mutationID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("accept mutation: %w", err)
+	}
+	m.Status = "accepted"
+	return m, nil
+}
+
+// RejectMutationTx atomically rejects a mutation using FOR UPDATE.
+func (r *Repository) RejectMutationTx(ctx context.Context, tx *sql.Tx, mutationID, reason string) error {
+	result, err := tx.ExecContext(ctx, `
+		UPDATE function_dna_mutations
+		SET status = 'rejected', rejected_reason = $2
+		WHERE id = $1 AND status = 'proposed'
+	`, mutationID, reason)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("mutation not found or not in proposed status")
+	}
+	return nil
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Analysis Queue
 // ──────────────────────────────────────────────────────────────────────────────
 
 // EnqueueAnalysis adds a function to the analysis queue.
+// Uses ON CONFLICT DO NOTHING to prevent duplicate queue entries for the same function
+// when status is 'pending' or 'processing'. This ensures idempotency.
 func (r *Repository) EnqueueAnalysis(ctx context.Context, functionID, functionType, tenantID string, priority int) error {
 	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO function_dna_analysis_queue (function_id, analysis_type, tenant_id, priority)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO function_dna_analysis_queue (function_id, analysis_type, tenant_id, priority, status, scheduled_at)
+		VALUES ($1, $2, $3, $4, 'pending', NOW())
+		ON CONFLICT (function_id) WHERE status IN ('pending', 'processing') DO NOTHING
 	`, functionID, functionType, tenantID, priority)
 	return err
 }
@@ -526,12 +597,12 @@ func (r *Repository) DequeueAnalysis(ctx context.Context) (string, string, strin
 		SET status = 'processing', started_at = NOW(), attempts = attempts + 1
 		WHERE id = (
 			SELECT id FROM function_dna_analysis_queue
-			WHERE status = 'pending' AND queued_at <= NOW() AND attempts < max_attempts
-			ORDER BY priority ASC, queued_at ASC
+			WHERE status = 'pending' AND scheduled_at <= NOW() AND attempts < max_attempts
+			ORDER BY priority ASC, scheduled_at ASC
 			LIMIT 1
 			FOR UPDATE SKIP LOCKED
 		)
-		RETURNING id, function_id, analysis_type, tenant_id
+		RETURNING id, function_id, function_type, tenant_id
 	`).Scan(&id, &functionID, &functionType, &tenantID)
 	if err == sql.ErrNoRows {
 		return "", "", "", nil
@@ -548,13 +619,31 @@ func (r *Repository) CompleteAnalysis(ctx context.Context, queueID string) error
 	return err
 }
 
-// FailAnalysis marks an analysis task as failed.
+// FailAnalysis marks an analysis task as failed and schedules a retry with exponential backoff.
+// The backoff interval is: attempts * 30 seconds (e.g., attempt 1 = 30s, attempt 2 = 60s, etc.)
 func (r *Repository) FailAnalysis(ctx context.Context, queueID, errMsg string) error {
 	_, err := r.db.ExecContext(ctx, `
-		UPDATE function_dna_analysis_queue SET status = 'failed', last_error = $2
+		UPDATE function_dna_analysis_queue
+		SET status = 'pending',
+		    last_error = $2,
+		    scheduled_at = NOW() + (attempts * INTERVAL '30 seconds')
 		WHERE id = $1
 	`, queueID, errMsg)
 	return err
+}
+
+
+// GetQueueDepth returns the number of pending analyses in the queue.
+func (r *Repository) GetQueueDepth(ctx context.Context) int {
+	var count int
+	err := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM function_dna_analysis_queue
+		WHERE status = 'pending' AND scheduled_at <= NOW() AND attempts < max_attempts
+	`).Scan(&count)
+	if err != nil {
+		return 0
+	}
+	return count
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -681,6 +770,7 @@ func (r *Repository) GetTenantInsights(ctx context.Context, tenantID string, sin
 // for the given number of months ahead from the current month.
 func (r *Repository) CreateFuturePartitions(ctx context.Context, monthsAhead int) (int, error) {
 	created := 0
+	var errs []error
 	now := time.Now()
 
 	for i := 0; i < monthsAhead; i++ {
@@ -695,9 +785,14 @@ func (r *Repository) CreateFuturePartitions(ctx context.Context, monthsAhead int
 			FOR VALUES FROM ('%s') TO ('%s')
 		`, partName, fromDate.Format("2006-01-02"), toDate.Format("2006-01-02")))
 		if err != nil {
-			return created, fmt.Errorf("create partition %s: %w", partName, err)
+			errs = append(errs, fmt.Errorf("create partition %s: %w", partName, err))
+			continue
 		}
 		created++
+	}
+
+	if len(errs) > 0 {
+		return created, fmt.Errorf("partition creation errors: %v", errs)
 	}
 
 	return created, nil
@@ -813,4 +908,44 @@ func (r *Repository) GetDistinctTenantIDs(ctx context.Context) ([]string, error)
 		return nil, fmt.Errorf("get distinct tenants iteration: %w", err)
 	}
 	return tenants, nil
+}
+
+// CleanupOldMutations deletes mutations older than retentionDays that are in terminal states.
+// Only deletes 'rejected' or 'rolled_back' mutations to preserve accepted/deployed mutation history.
+func (r *Repository) CleanupOldMutations(ctx context.Context, retentionDays int) (int64, error) {
+	cutoff := time.Now().AddDate(0, 0, -retentionDays)
+	result, err := r.db.ExecContext(ctx, `
+		DELETE FROM function_dna_mutations
+		WHERE created_at < $1 AND status IN ('rejected', 'rolled_back')
+	`, cutoff)
+	if err != nil {
+		return 0, fmt.Errorf("cleanup old mutations: %w", err)
+	}
+	return result.RowsAffected()
+}
+
+// CleanupOldInsights deletes insights older than retentionDays.
+func (r *Repository) CleanupOldInsights(ctx context.Context, retentionDays int) (int64, error) {
+	cutoff := time.Now().AddDate(0, 0, -retentionDays)
+	result, err := r.db.ExecContext(ctx, `
+		DELETE FROM function_dna_insights
+		WHERE period_end < $1
+	`, cutoff)
+	if err != nil {
+		return 0, fmt.Errorf("cleanup old insights: %w", err)
+	}
+	return result.RowsAffected()
+}
+
+// CleanupStaleQueueEntries deletes completed or failed queue entries older than maxAgeDays.
+func (r *Repository) CleanupStaleQueueEntries(ctx context.Context, maxAgeDays int) (int64, error) {
+	cutoff := time.Now().AddDate(0, 0, -maxAgeDays)
+	result, err := r.db.ExecContext(ctx, `
+		DELETE FROM function_dna_analysis_queue
+		WHERE status IN ('completed', 'failed') AND created_at < $1
+	`, cutoff)
+	if err != nil {
+		return 0, fmt.Errorf("cleanup stale queue entries: %w", err)
+	}
+	return result.RowsAffected()
 }

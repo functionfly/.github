@@ -320,7 +320,7 @@ func TestIntegration_ListMutations(t *testing.T) {
 		}
 	}
 
-	mutations, total, err := repo.ListMutations(ctx, fid, "", 10, 0)
+	mutations, total, err := repo.ListMutations(ctx, fid, "test-tenant", "", 10, 0)
 	if err != nil {
 		t.Fatalf("ListMutations: %v", err)
 	}
@@ -331,7 +331,7 @@ func TestIntegration_ListMutations(t *testing.T) {
 		t.Errorf("len(mutations) = %d, want 5", len(mutations))
 	}
 
-	mutations, total, _ = repo.ListMutations(ctx, fid, "proposed", 2, 0)
+	mutations, total, _ = repo.ListMutations(ctx, fid, "test-tenant", "proposed", 2, 0)
 	if total != 5 {
 		t.Errorf("total with status filter = %d, want 5", total)
 	}

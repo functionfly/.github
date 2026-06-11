@@ -9,9 +9,12 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
+	"sync"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage/dna"
+	"github.com/functionfly/functionfly/internal/tracing"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
@@ -57,17 +60,61 @@ type Service struct {
 	serverCtx context.Context
 	// aiCircuitBreaker prevents cascading failures when the AI service is down.
 	aiCircuitBreaker *circuitBreaker
+	// rollbacker handles mutation rollback operations.
+	rollbacker *Rollbacker
+	workerCount         int
+	dnaMutationCostUSD  float64
+	validationTimeout   time.Duration
+	aiTimeout           time.Duration
 }
+
 
 // NewService creates a new DNA service.
 func NewService(repo *dna.Repository, logger *logrus.Logger) *Service {
+	timeout := 2 * time.Minute
+	if v := os.Getenv("AI_SERVICE_TIMEOUT_SECONDS"); v != "" {
+		if seconds, err := strconv.Atoi(v); err == nil && seconds > 0 {
+			timeout = time.Duration(seconds) * time.Second
+		}
+	}
+
+	workerCount := 1
+	if v := os.Getenv("DNA_WORKER_COUNT"); v != "" {
+		if count, err := strconv.Atoi(v); err == nil && count > 0 && count <= 10 {
+			workerCount = count
+		}
+	}
+
+	dnaMutationCostUSD := 50.0 // default
+	if v := os.Getenv("DNA_MUTATION_COST_USD"); v != "" {
+		if cost, err := strconv.ParseFloat(v, 64); err == nil && cost > 0 {
+			dnaMutationCostUSD = cost
+		}
+	}
+
+	validationTimeout := 60 * time.Second // default
+	if v := os.Getenv("DNA_VALIDATION_TIMEOUT_SECONDS"); v != "" {
+		if seconds, err := strconv.Atoi(v); err == nil && seconds > 0 {
+			validationTimeout = time.Duration(seconds) * time.Second
+		}
+	}
+
+	aiBaseURL := getEnvOrDefault("AI_SERVICE_URL", "")
+	if aiBaseURL == "" {
+		logger.Warn("DNA service: AI_SERVICE_URL is not set — AI-powered features will be disabled")
+	}
+
 	return &Service{
-		repo:      repo,
-		logger:    logger,
-		aiBaseURL: getEnvOrDefault("AI_SERVICE_URL", ""), // Must be set explicitly
-		aiAPIKey:  os.Getenv("AI_SERVICE_API_KEY"),
-		httpClient: &http.Client{Timeout: 2 * time.Minute},
-		aiCircuitBreaker: newCircuitBreaker(5, 2*time.Minute),
+		repo:         repo,
+		logger:       logger,
+		aiBaseURL:    aiBaseURL,
+		aiAPIKey:     os.Getenv("AI_SERVICE_API_KEY"),
+		httpClient:   &http.Client{Timeout: timeout},
+		aiCircuitBreaker: newCircuitBreaker(20, 2*time.Minute),
+		workerCount:        workerCount,
+		dnaMutationCostUSD: dnaMutationCostUSD,
+		validationTimeout:   validationTimeout,
+		aiTimeout:           timeout,
 	}
 }
 
@@ -94,6 +141,11 @@ func (s *Service) SetCanaryTriggerer(triggerer CanaryTriggerer) {
 // SetMutationValidator sets the validator for pre-acceptance mutation testing.
 func (s *Service) SetMutationValidator(validator *MutationValidator) {
 	s.mutationValidator = validator
+}
+
+// SetRollbacker sets the rollbacker for mutation rollback operations.
+func (s *Service) SetRollbacker(rollbacker *Rollbacker) {
+	s.rollbacker = rollbacker
 }
 
 // SetPlatformSettingsProvider sets the provider for user platform settings.
@@ -132,8 +184,8 @@ func (s *Service) GetProfile(ctx context.Context, functionID, functionType, tena
 }
 
 // ListMutations returns mutations with filtering.
-func (s *Service) ListMutations(ctx context.Context, functionID, status string, limit, offset int) ([]*dna.Mutation, int, error) {
-	return s.repo.ListMutations(ctx, functionID, status, limit, offset)
+func (s *Service) ListMutations(ctx context.Context, functionID, tenantID, status string, limit, offset int) ([]*dna.Mutation, int, error) {
+	return s.repo.ListMutations(ctx, functionID, tenantID, status, limit, offset)
 }
 
 // GetMutation returns a single mutation with full details.
@@ -148,18 +200,18 @@ func (s *Service) AcceptMutation(ctx context.Context, mutationID, userID, tenant
 		return fmt.Errorf("get mutation: %w", err)
 	}
 	if m == nil {
-		return fmt.Errorf("mutation not found")
+		return ErrMutationNotFound
 	}
 	if m.TenantID != tenantID {
-		return fmt.Errorf("access denied")
+		return ErrAccessDenied
 	}
 	if m.Status != "proposed" {
-		return fmt.Errorf("mutation is not in proposed status: %s", m.Status)
+		return fmt.Errorf("%w: %s", ErrMutationNotProposed, m.Status)
 	}
 
 	// Validate mutation in sandbox before acceptance
 	if s.mutationValidator != nil && m.OriginalCode != nil && m.MutatedCode != nil {
-		validationCtx, validationCancel := context.WithTimeout(ctx, 60*time.Second)
+		validationCtx, validationCancel := context.WithTimeout(ctx, s.validationTimeout)
 		defer validationCancel()
 
 		runtime := "python"
@@ -203,26 +255,6 @@ func (s *Service) AcceptMutation(ctx context.Context, mutationID, userID, tenant
 		}).Info("dna: mutation passed validation")
 	}
 
-	// Update status first (cheap, atomic). If debit fails after this,
-	// the mutation is accepted but unpaid — safer than the reverse.
-	if err := s.repo.UpdateMutationStatus(ctx, mutationID, "accepted", map[string]interface{}{
-		"accepted_by": userID,
-	}); err != nil {
-		return fmt.Errorf("update mutation status: %w", err)
-	}
-
-	// Debit credits from wallet (50 credits per architecture doc)
-	if s.walletDebiter != nil {
-		if err := s.walletDebiter.DebitForDNAMutation(ctx, userID, 50.0, m.FunctionID); err != nil {
-			s.logger.WithError(err).WithFields(logrus.Fields{
-				"mutation_id":  mutationID,
-				"user_id":      userID,
-				"function_id":  m.FunctionID,
-			}).Error("dna: mutation accepted but wallet debit failed — manual review required")
-			// Don't revert the acceptance. Log for manual reconciliation.
-		}
-	}
-
 	// Get platform settings to determine canary percentage and approval mode
 	canaryPctToUse := canaryPct
 	requireApproval := true
@@ -242,7 +274,7 @@ func (s *Service) AcceptMutation(ctx context.Context, mutationID, userID, tenant
 			"mutation_id": mutationID,
 			"function_id": m.FunctionID,
 		}).Info("dna: auto-approving mutation (require_approval=false)")
-		// Mark as auto-approved
+		// Mark as auto-approved using atomic transaction
 		if err := s.repo.UpdateMutationStatus(ctx, mutationID, "accepted", map[string]interface{}{
 			"accepted_by": "system-auto",
 		}); err != nil {
@@ -252,15 +284,49 @@ func (s *Service) AcceptMutation(ctx context.Context, mutationID, userID, tenant
 		return nil
 	}
 
-	// Trigger canary deployment if triggerer is configured
+	// Start transaction for atomic mutation acceptance and wallet debit
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Debit credits FIRST within transaction - if this fails, mutation won't be accepted
+	if s.walletDebiter != nil {
+		if err := s.walletDebiter.DebitForDNAMutation(ctx, userID, s.dnaMutationCostUSD, m.FunctionID); err != nil {
+			s.logger.WithError(err).WithFields(logrus.Fields{
+				"mutation_id":  mutationID,
+				"user_id":      userID,
+				"function_id":  m.FunctionID,
+			}).Error("dna: insufficient credits for mutation acceptance")
+			return fmt.Errorf("insufficient credits: %w", err)
+		}
+	}
+
+	// Use atomic AcceptMutationTx with FOR UPDATE lock to prevent race conditions
+	// Only succeeds if mutation is still in 'proposed' status
+	acceptedMutation, err := s.repo.AcceptMutationTx(ctx, tx, mutationID, userID)
+	if err != nil {
+		return fmt.Errorf("accept mutation: %w", err)
+	}
+	if acceptedMutation == nil {
+		return fmt.Errorf("%w: mutation was already accepted by another process", ErrMutationNotProposed)
+	}
+
+	// Commit transaction - mutation accepted and wallet debited atomically
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit transaction: %w", err)
+	}
+
+	// Trigger canary deployment if triggerer is configured (async, outside transaction)
 	if s.canaryTriggerer != nil {
 		srvCtx := s.serverContext()
 		go func() {
-			version := safePrefix(mutationID, 8)
+			version := mutationID
 			if m.MutatedHash != nil && *m.MutatedHash != "" {
-				version = safePrefix(*m.MutatedHash, 8)
+				version = *m.MutatedHash
 			}
-			version = "dna-" + version
+			version = fmt.Sprintf("dna-%s-%s", safePrefix(version, 8), safePrefix(mutationID, 8))
 			if err := s.canaryTriggerer.TriggerCanary(srvCtx, m.FunctionID, version, canaryPctToUse); err != nil {
 				s.logger.WithError(err).WithFields(logrus.Fields{
 					"mutation_id":  mutationID,
@@ -281,19 +347,28 @@ func (s *Service) RejectMutation(ctx context.Context, mutationID, tenantID, reas
 		return fmt.Errorf("get mutation: %w", err)
 	}
 	if m == nil {
-		return fmt.Errorf("mutation not found")
+		return ErrMutationNotFound
 	}
 	if m.TenantID != tenantID {
-		return fmt.Errorf("access denied")
+		return ErrAccessDenied
 	}
 	if m.Status != "proposed" {
-		return fmt.Errorf("mutation is not in proposed status: %s", m.Status)
+		return fmt.Errorf("%w: %s", ErrMutationNotProposed, m.Status)
 	}
 
 	return s.repo.UpdateMutationStatus(ctx, mutationID, "rejected", map[string]interface{}{
 		"reason": reason,
 	})
 }
+
+// RollbackMutation rolls back a deployed mutation to the previous version.
+func (s *Service) RollbackMutation(ctx context.Context, mutationID, tenantID, reason string) error {
+	if s.rollbacker == nil {
+		return fmt.Errorf("rollbacker not configured")
+	}
+	return s.rollbacker.RollbackMutation(ctx, mutationID, tenantID, reason)
+}
+
 
 // SetEvolutionEnabled toggles evolution for a function.
 func (s *Service) SetEvolutionEnabled(ctx context.Context, functionID, functionType string, enabled bool) error {
@@ -304,12 +379,15 @@ func (s *Service) SetEvolutionEnabled(ctx context.Context, functionID, functionT
 // Returns nil if the profile doesn't exist (function has no DNA yet) or belongs to the tenant.
 // Returns an error if the profile exists but belongs to a different tenant.
 func (s *Service) CheckFunctionOwnership(ctx context.Context, functionID, functionType, tenantID string) error {
+	if s.repo == nil {
+		return fmt.Errorf("repository not configured")
+	}
 	profile, err := s.repo.GetProfileReadOnly(ctx, functionID, functionType)
 	if err != nil {
 		return fmt.Errorf("check ownership: %w", err)
 	}
 	if profile != nil && profile.TenantID != tenantID {
-		return fmt.Errorf("access denied")
+		return ErrAccessDenied
 	}
 	return nil
 }
@@ -374,6 +452,7 @@ func (s *Service) RecordExecutionFromPipeline(ctx context.Context, functionID, f
 	}
 	if err := s.RecordExecution(ctx, m); err != nil {
 		s.logger.WithError(err).WithField("function_id", functionID).Warn("dna: failed to record execution from pipeline")
+		RecordExecutionRecordingFailure()
 	}
 }
 
@@ -384,12 +463,14 @@ func (s *Service) RecordExecution(ctx context.Context, m *dna.ExecutionMetric) e
 	}
 
 	// Check if we should trigger analysis (every 10,000 executions)
-	profile, err := s.repo.GetOrCreateProfile(ctx, m.FunctionID, m.FunctionType, "")
+	// Use GetProfileReadOnly to avoid creating a profile with empty tenantID
+	profile, err := s.repo.GetProfileReadOnly(ctx, m.FunctionID, m.FunctionType)
 	if err != nil {
 		s.logger.WithError(err).Warn("dna: failed to get profile for analysis check")
 		return nil
 	}
-	if profile.EvolutionEnabled && profile.TotalExecutions > 0 && profile.TotalExecutions%10000 == 0 {
+	// Only trigger analysis if profile exists and has a valid tenantID
+	if profile != nil && profile.TenantID != "" && profile.EvolutionEnabled && profile.TotalExecutions > 0 && profile.TotalExecutions%10000 == 0 {
 		if err := s.repo.EnqueueAnalysis(ctx, m.FunctionID, m.FunctionType, profile.TenantID, 5); err != nil {
 			s.logger.WithError(err).Warn("dna: failed to enqueue analysis")
 		}
@@ -398,12 +479,12 @@ func (s *Service) RecordExecution(ctx context.Context, m *dna.ExecutionMetric) e
 }
 
 // TriggerAnalysis manually queues a DNA analysis for a function.
-func (s *Service) TriggerAnalysis(ctx context.Context, functionID, functionType, tenantID string) error {
-	return s.repo.EnqueueAnalysis(ctx, functionID, functionType, tenantID, 1)
+func (s *Service) TriggerAnalysis(ctx context.Context, functionID, functionType, tenantID string, priority int) error {
+	return s.repo.EnqueueAnalysis(ctx, functionID, functionType, tenantID, priority)
 }
 
 // GetInsights returns time-series DNA insights for a function.
-func (s *Service) GetInsights(ctx context.Context, functionID, period string) (map[string]interface{}, error) {
+func (s *Service) GetInsights(ctx context.Context, functionID, tenantID, period string) (map[string]interface{}, error) {
 	var since time.Duration
 	switch period {
 	case "7d":
@@ -421,7 +502,7 @@ func (s *Service) GetInsights(ctx context.Context, functionID, period string) (m
 		return nil, err
 	}
 
-	mutations, total, err := s.repo.ListMutations(ctx, functionID, "", 100, 0)
+	mutations, total, err := s.repo.ListMutations(ctx, functionID, tenantID, "", 100, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -460,57 +541,94 @@ func (s *Service) GetEnterpriseInsights(ctx context.Context, tenantID, period st
 	return s.repo.GetTenantInsights(ctx, tenantID, since)
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Analysis Worker
-// ──────────────────────────────────────────────────────────────────────────────
-
-// RunAnalysisWorker starts the background analysis worker loop.
+// RunAnalysisWorker starts the background analysis worker loop with a configurable worker pool.
 func (s *Service) RunAnalysisWorker(ctx context.Context) {
-	s.logger.Info("dna: analysis worker started")
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
+	s.logger.WithField("worker_count", s.workerCount).Info("dna: analysis worker pool started")
+	SetActiveWorkers(float64(s.workerCount))
+	defer SetActiveWorkers(0)
 
-	for {
-		select {
-		case <-ctx.Done():
-			s.logger.Info("dna: analysis worker stopped")
-			return
-		case <-ticker.C:
-			s.processNextAnalysis(ctx)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	worker := func(workerID int) {
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				s.logger.WithField("worker_id", workerID).Info("dna: analysis worker stopped")
+				return
+			case <-ticker.C:
+				s.processNextAnalysisWithWorker(ctx, workerID)
+			}
 		}
 	}
+
+	var wg sync.WaitGroup
+	for i := 0; i < s.workerCount; i++ {
+		wg.Add(1)
+		go func(workerID int) {
+			defer wg.Done()
+			worker(workerID)
+		}(i)
+	}
+
+	wg.Wait()
 }
 
-func (s *Service) processNextAnalysis(ctx context.Context) {
+func (s *Service) processNextAnalysisWithWorker(ctx context.Context, workerID int) {
+	ctx, span := tracing.StartSpan(ctx, "dna.process_next_analysis")
+	defer tracing.Finish(ctx)
+	tracing.SetAttribute(ctx, "worker_id", workerID)
+
 	queueID, functionID, functionType, err := s.repo.DequeueAnalysis(ctx)
 	if err != nil {
 		s.logger.WithError(err).Error("dna: dequeue analysis failed")
+		tracing.RecordError(ctx, err)
 		return
 	}
 	if queueID == "" {
-		return // nothing to process
+		return
 	}
 
+	tracing.SetAttribute(ctx, "queue_id", queueID)
+	tracing.SetAttribute(ctx, "function_id", functionID)
+	tracing.SetAttribute(ctx, "function_type", functionType)
+
 	s.logger.WithFields(logrus.Fields{
-		"queue_id":     queueID,
-		"function_id":  functionID,
-		"function_type": functionType,
+		"worker_id":     workerID,
+		"queue_id":      queueID,
+		"function_id":   functionID,
+		"function_type":  functionType,
 	}).Info("dna: processing analysis")
+
+	recorder := NewMetricsRecorder(functionID, "")
+	startTime := time.Now()
 
 	if err := s.runAnalysis(ctx, functionID, functionType); err != nil {
 		s.logger.WithError(err).Error("dna: analysis failed")
+		tracing.RecordError(ctx, err)
+		recorder.RecordAnalysis("error")
 		if failErr := s.repo.FailAnalysis(ctx, queueID, err.Error()); failErr != nil {
 			s.logger.WithError(failErr).Error("dna: failed to mark analysis as failed")
 		}
 		return
 	}
 
+	recorder.RecordAnalysis("success")
+	RecordAnalysisDuration(functionID, "success", time.Since(startTime))
+
 	if err := s.repo.CompleteAnalysis(ctx, queueID); err != nil {
 		s.logger.WithError(err).Error("dna: failed to mark analysis as completed")
 	}
 }
-
 func (s *Service) runAnalysis(ctx context.Context, functionID, functionType string) error {
+	ctx, span := tracing.StartSpan(ctx, "dna.run_analysis")
+	defer tracing.Finish(ctx)
+	tracing.SetAttribute(ctx, "function_id", functionID)
+	tracing.SetAttribute(ctx, "function_type", functionType)
+
 	// 1. Aggregate metrics over 48h window
 	metrics, err := s.repo.AggregateMetrics(ctx, functionID, 48*time.Hour)
 	if err != nil {
@@ -620,6 +738,8 @@ func (s *Service) runAnalysis(ctx context.Context, functionID, functionType stri
 		return fmt.Errorf("create mutation: %w", err)
 	}
 
+	RecordMutationProposed(functionID, profile.TenantID, mutationType)
+
 	s.logger.WithFields(logrus.Fields{
 		"function_id":  functionID,
 		"mutation_id":  mutation.ID,
@@ -629,18 +749,6 @@ func (s *Service) runAnalysis(ctx context.Context, functionID, functionType stri
 
 	// Send notification if configured
 	if s.mutationNotifier != nil && s.shouldNotifyProposal(ctx, profile.TenantID) {
-		srvCtx := s.serverContext()
-		go func() {
-			if err := s.mutationNotifier.NotifyMutationProposed(
-				srvCtx, profile.TenantID, functionID, mutationType, reason,
-			); err != nil {
-				s.logger.WithError(err).Warn("dna: failed to send mutation notification")
-			}
-		}()
-	}
-
-	// Send real-time notification to the developer
-	if s.mutationNotifier != nil {
 		srvCtx := s.serverContext()
 		go func() {
 			if err := s.mutationNotifier.NotifyMutationProposed(
@@ -770,9 +878,18 @@ type variantResponse struct {
 }
 
 func (s *Service) callAIForVariant(ctx context.Context, functionID, functionType, mutationType, reason string, metrics *dna.AggregatedMetrics) (*variantResponse, error) {
+	ctx, span := tracing.StartSpan(ctx, "dna.call_ai_service")
+	defer tracing.Finish(ctx)
+	tracing.SetAttribute(ctx, "function_id", functionID)
+	tracing.SetAttribute(ctx, "mutation_type", mutationType)
+
 	if !s.aiCircuitBreaker.allow() {
+		RecordAIServiceCall("circuit_open")
+		SetCircuitBreakerState(1) // open
 		return nil, fmt.Errorf("ai service circuit breaker open — service temporarily unavailable")
 	}
+
+	SetCircuitBreakerState(2) // half-open
 
 	reqBody := variantRequest{
 		FunctionID:    functionID,
@@ -807,27 +924,41 @@ func (s *Service) callAIForVariant(ctx context.Context, functionID, functionType
 	}
 	req.Header.Set("X-Function-ID", functionID)
 	req.Header.Set("X-Mutation-Type", mutationType)
+	req.Header.Set("X-Request-Timeout", fmt.Sprintf("%.0f", s.aiTimeout.Seconds()))
 
+	aiStart := time.Now()
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		s.aiCircuitBreaker.recordFailure()
+		RecordAIServiceCall("failure")
+		RecordAIResponseTime(time.Since(aiStart))
+		tracing.RecordError(ctx, err)
 		return nil, fmt.Errorf("ai service call: %w", err)
 	}
 	defer resp.Body.Close()
 
+	RecordAIResponseTime(time.Since(aiStart))
+
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
 		s.aiCircuitBreaker.recordFailure()
-		return nil, fmt.Errorf("ai service returned %d: %s", resp.StatusCode, string(respBody))
+		RecordAIServiceCall("failure")
+		err := fmt.Errorf("ai service returned %d: %s", resp.StatusCode, string(respBody))
+		tracing.RecordError(ctx, err)
+		return nil, err
 	}
 
 	var result variantResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		s.aiCircuitBreaker.recordFailure()
+		RecordAIServiceCall("failure")
+		tracing.RecordError(ctx, err)
 		return nil, fmt.Errorf("decode ai response: %w", err)
 	}
 
 	s.aiCircuitBreaker.recordSuccess()
+	RecordAIServiceCall("success")
+	SetCircuitBreakerState(0) // closed
 	return &result, nil
 }
 
@@ -876,4 +1007,17 @@ func DefaultPlatformSettings() *PlatformSettings {
 		AutoRollbackOnError:      true,
 		AutoRollbackErrorThreshold: 5,
 	}
+}
+
+// GetCircuitBreakerState returns the current circuit breaker state (0=closed, 1=open, 2=half-open).
+func (s *Service) GetCircuitBreakerState() int {
+	if s.aiCircuitBreaker == nil {
+		return -1
+	}
+	return s.aiCircuitBreaker.GetState()
+}
+
+// GetWorkerCount returns the configured number of analysis workers.
+func (s *Service) GetWorkerCount() int {
+	return s.workerCount
 }
