@@ -157,64 +157,85 @@ func (s *CleanupService) cleanupExpiredSnapshots(ctx context.Context) int64 {
 			break
 		}
 
-		// Delete expired snapshots in a transaction
-		err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-			// First, get R2 object keys for potential cleanup
-			var r2Objects []struct {
-				ID          uuid.UUID
-				R2ObjectKey *string
-			}
-			if err := tx.Model(&StateFabricSnapshot{}).
-				Where("id IN ?", expiredIDs).
-				Find(&r2Objects).Error; err != nil {
-				return err
-			}
+		// Delete expired snapshots - handle R2 deletion failures properly
+		// Track which snapshots had R2 deletion failures
+		var r2DeletionFailures []uuid.UUID
 
-			// Delete R2 data for expired snapshots
-			for _, obj := range r2Objects {
-				if obj.R2ObjectKey != nil && *obj.R2ObjectKey != "" {
-					if s.r2Backend != nil {
-						if err := s.r2Backend.DeleteSnapshotData(ctx, *obj.R2ObjectKey); err != nil {
-							s.logger.WithError(err).WithFields(logrus.Fields{
-								"snapshot_id":   obj.ID,
-								"r2_object_key": *obj.R2ObjectKey,
-							}).Warn("Failed to delete R2 snapshot data")
-						} else if s.config.Verbose {
-							s.logger.WithFields(logrus.Fields{
-								"snapshot_id":   obj.ID,
-								"r2_object_key": *obj.R2ObjectKey,
-							}).Debug("Deleted R2 snapshot data")
-						}
-					}
-				}
-			}
-
-			// Delete the snapshots
-			result := tx.Where("id IN ?", expiredIDs).Delete(&StateFabricSnapshot{})
-			if result.Error != nil {
-				return result.Error
-			}
-
-			return nil
-		})
-
-		if err != nil {
-			s.logger.WithError(err).Error("Failed to delete expired state fabric snapshots")
+		// First, get R2 object keys and attempt deletion
+		var r2Objects []struct {
+			ID          uuid.UUID
+			R2ObjectKey *string
+		}
+		if err := s.db.WithContext(ctx).
+			Model(&StateFabricSnapshot{}).
+			Where("id IN ?", expiredIDs).
+			Find(&r2Objects).Error; err != nil {
+			s.logger.WithError(err).Error("Failed to query R2 object keys for cleanup")
 			break
 		}
 
-		deleted := int64(len(expiredIDs))
-		totalDeleted += deleted
+		// Attempt R2 deletion for each snapshot
+		for _, obj := range r2Objects {
+			if obj.R2ObjectKey != nil && *obj.R2ObjectKey != "" {
+				if s.r2Backend != nil {
+					if err := s.r2Backend.DeleteSnapshotData(ctx, *obj.R2ObjectKey); err != nil {
+						s.logger.WithError(err).WithFields(logrus.Fields{
+							"snapshot_id":   obj.ID,
+							"r2_object_key": *obj.R2ObjectKey,
+						}).Warn("Failed to delete R2 snapshot data - will retry in next cycle")
+						r2DeletionFailures = append(r2DeletionFailures, obj.ID)
+					} else if s.config.Verbose {
+						s.logger.WithFields(logrus.Fields{
+							"snapshot_id":   obj.ID,
+							"r2_object_key": *obj.R2ObjectKey,
+						}).Debug("Deleted R2 snapshot data")
+					}
+				}
+			}
+		}
+
+		// Remove failed deletions from the list to delete
+		idsToDelete := make([]uuid.UUID, 0, len(expiredIDs))
+		for _, id := range expiredIDs {
+			failed := false
+			for _, failID := range r2DeletionFailures {
+				if id == failID {
+					failed = true
+					break
+				}
+			}
+			if !failed {
+				idsToDelete = append(idsToDelete, id)
+			}
+		}
+
+		// Delete only snapshots that had successful R2 deletion (or no R2 data)
+		if len(idsToDelete) > 0 {
+			if err := s.db.WithContext(ctx).
+				Where("id IN ?", idsToDelete).
+				Delete(&StateFabricSnapshot{}).Error; err != nil {
+				s.logger.WithError(err).Error("Failed to delete expired state fabric snapshots from DB")
+				break
+			}
+			totalDeleted += int64(len(idsToDelete))
+		}
+
+		// If all R2 deletions failed, stop processing to avoid data inconsistency
+		if len(r2DeletionFailures) == len(expiredIDs) && len(expiredIDs) > 0 {
+			s.logger.Warn("All R2 snapshot deletions failed - stopping cleanup to prevent orphaned data")
+			break
+		}
 
 		if s.config.Verbose {
 			s.logger.WithFields(logrus.Fields{
-				"batchDeleted": deleted,
-				"totalDeleted": totalDeleted,
+				"batchDeleted":  len(idsToDelete),
+				"r2Failures":    len(r2DeletionFailures),
+				"totalDeleted":  totalDeleted,
 			}).Debug("Deleted batch of expired state fabric snapshots")
 		}
 
 		// Check if we need to continue
-		if deleted < int64(s.config.BatchSize) {
+		if int64(len(idsToDelete)) < int64(s.config.BatchSize) {
 			break
 		}
 	}

@@ -770,6 +770,7 @@
         "astro-seo-schema": "^6.0.0",
         "astro-svg-loaders": "^1.2.1",
         "expressive-code-collapsible": "^0.1.0",
+        "mermaid": "^11.15.0",
         "react": "^19.2.5",
         "react-dom": "^19.2.5",
         "react-router-dom": "^7.14.0",

@@ -3,20 +3,22 @@ package rbac
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
-
-	"github.com/functionfly/functionfly/internal/storage"
 )
 
+type capabilityEnvironment interface {
+	GetCapabilities(ctx context.Context, subjectID string) ([]string, error)
+	GetUsers(ctx context.Context) ([]struct{ ID string }, error)
+}
+
 type UserCapabilityProvider struct {
-	env              storage.Environment
+	env              capabilityEnvironment
 	cacheEnabled     bool
 	cacheTTL         time.Duration
 	fallbackToRoleCap bool
 }
 
-func NewUserCapabilityProvider(env storage.Environment, fallbackToRoleCap bool) *UserCapabilityProvider {
+func NewUserCapabilityProvider(env capabilityEnvironment, fallbackToRoleCap bool) *UserCapabilityProvider {
 	return &UserCapabilityProvider{
 		env:              env,
 		cacheEnabled:     true,

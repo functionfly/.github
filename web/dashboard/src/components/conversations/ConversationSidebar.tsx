@@ -85,10 +85,23 @@ export function ConversationSidebar({
         {loading ? (
           <SkeletonConversationList count={6} />
         ) : conversations.length === 0 ? (
-          <div className="p-4 text-center text-sm text-muted-foreground">
-            <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p>No conversations yet.</p>
-            <p className="text-xs mt-1">Start one from a function or profile.</p>
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+            <div className="relative flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-[var(--color-aviation-amber-subtle)] to-[rgba(0,212,255,0.08)] border border-[var(--color-aviation-amber-dim)] mb-4">
+              <MessageSquare className="h-5 w-5 text-[var(--color-aviation-amber)]" />
+              <div className="absolute inset-0 rounded-xl bg-[var(--color-aviation-amber)] opacity-10 animate-pulse" />
+            </div>
+            <p className="text-sm font-medium text-[var(--conv-aviation-card-text)] mb-1">No conversations yet</p>
+            <p className="text-xs text-[var(--conv-aviation-card-text-secondary)] max-w-[14rem] leading-relaxed">
+              Start one from a function or profile.
+            </p>
+            <button
+              type="button"
+              onClick={onNewConversation}
+              className="mt-3 px-3 py-1.5 text-xs font-semibold font-mono uppercase tracking-wide rounded-md border border-[var(--color-aviation-amber-dim)] text-[var(--color-aviation-amber)] bg-[var(--color-aviation-amber-subtle)] hover:bg-[var(--color-aviation-amber-dim)] transition-colors"
+            >
+              <Plus className="h-3 w-3 inline mr-1" />
+              New
+            </button>
           </div>
         ) : (
           <ul className="p-1">

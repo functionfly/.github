@@ -7,33 +7,128 @@
       "createdAt": "2026-03-30T00:51:41.652Z",
       "remote": "origin"
     },
-    "wt-1776295702424-1": {
-      "branch": "vine-fine",
-      "path": "/home/micro/projects/functionfly/.kilo/worktrees/vine-fine",
+    "wt-1781157349295-1": {
+      "branch": "sulky-anatosaurus",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/sulky-anatosaurus",
       "parentBranch": "develop",
-      "createdAt": "2026-04-15T23:28:22.424Z",
+      "createdAt": "2026-06-11T05:55:49.295Z",
       "remote": "origin"
     },
-    "wt-1776722653391-2": {
-      "branch": "helpful-liquid",
-      "path": "/home/micro/projects/functionfly/.kilo/worktrees/helpful-liquid",
+    "wt-1781168278255-2": {
+      "branch": "dune-dill",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/dune-dill",
       "parentBranch": "develop",
-      "createdAt": "2026-04-20T22:04:13.391Z",
+      "createdAt": "2026-06-11T08:57:58.255Z",
       "remote": "origin"
+    },
+    "wt-1781168507028-3": {
+      "branch": "humorous-forgery",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/humorous-forgery",
+      "parentBranch": "develop",
+      "createdAt": "2026-06-11T09:01:47.028Z",
+      "remote": "origin"
+    },
+    "wt-1781170525739-4": {
+      "branch": "hot-factory",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/hot-factory",
+      "parentBranch": "develop",
+      "createdAt": "2026-06-11T09:35:25.750Z",
+      "remote": "origin"
+    },
+    "wt-1781172431312-5": {
+      "branch": "dramatic-argon",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/dramatic-argon",
+      "parentBranch": "develop",
+      "createdAt": "2026-06-11T10:07:11.312Z",
+      "remote": "origin"
+    },
+    "wt-1781196472020-1": {
+      "branch": "stitch-wilderness",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/stitch-wilderness",
+      "parentBranch": "develop",
+      "createdAt": "2026-06-11T16:47:52.020Z",
+      "remote": "origin"
+    },
+    "wt-1781197740397-2": {
+      "branch": "pie-abstract",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/pie-abstract",
+      "parentBranch": "develop",
+      "createdAt": "2026-06-11T17:09:00.397Z",
+      "remote": "origin"
+    },
+    "wt-1781198764745-3": {
+      "branch": "fluorescent-salt",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/fluorescent-salt",
+      "parentBranch": "develop",
+      "createdAt": "2026-06-11T17:26:04.745Z",
+      "remote": "origin"
+    },
+    "wt-1781201753307-4": {
+      "branch": "amused-marionberry",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/amused-marionberry",
+      "parentBranch": "develop",
+      "createdAt": "2026-06-11T18:15:53.307Z",
+      "remote": "origin"
+    },
+    "wt-1781208476444-5": {
+      "branch": "muddy-thief",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/muddy-thief",
+      "parentBranch": "develop",
+      "createdAt": "2026-06-11T20:07:56.444Z",
+      "remote": "origin"
+    },
+    "wt-1781212835044-6": {
+      "branch": "diamond-paint",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/diamond-paint",
+      "parentBranch": "develop",
+      "createdAt": "2026-06-11T21:20:35.044Z",
+      "remote": "origin"
+    },
+    "wt-1781212933980-7": {
+      "branch": "db-context-auth",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/db-context-auth",
+      "parentBranch": "develop",
+      "createdAt": "2026-06-11T21:22:13.980Z",
+      "remote": "origin",
+      "label": "auth repos"
+    },
+    "wt-1781212940096-8": {
+      "branch": "db-context-user-tenant",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/db-context-user-tenant",
+      "parentBranch": "develop",
+      "createdAt": "2026-06-11T21:22:20.096Z",
+      "remote": "origin",
+      "label": "user tenant"
+    },
+    "wt-1781212947583-9": {
+      "branch": "db-context-registry",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/db-context-registry",
+      "parentBranch": "develop",
+      "createdAt": "2026-06-11T21:22:27.583Z",
+      "remote": "origin",
+      "label": "registry functions"
+    },
+    "wt-1781212955467-10": {
+      "branch": "db-context-billing",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/db-context-billing",
+      "parentBranch": "develop",
+      "createdAt": "2026-06-11T21:22:35.467Z",
+      "remote": "origin",
+      "label": "billing revenue"
+    },
+    "wt-1781212962784-11": {
+      "branch": "db-context-monitoring",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/db-context-monitoring",
+      "parentBranch": "develop",
+      "createdAt": "2026-06-11T21:22:42.784Z",
+      "remote": "origin",
+      "label": "monitoring other"
     }
   },
   "sessions": {
     "ses_2c3c65b87ffemHArCWN1o0vfZs": {
       "worktreeId": "wt-1774831901652-1",
       "createdAt": "2026-03-30T00:51:48.714Z"
-    },
-    "ses_26c868d25ffe8VpgrUffYztA3v": {
-      "worktreeId": "wt-1776295702424-1",
-      "createdAt": "2026-04-15T23:28:24.621Z"
-    },
-    "ses_25313cf17ffeonxvwwm2VPJDA3": {
-      "worktreeId": "wt-1776722653391-2",
-      "createdAt": "2026-04-20T22:04:13.422Z"
     },
     "ses_1e1f2e43affenKeeH7J5DdSKLD": {
       "worktreeId": null,
@@ -87,17 +182,173 @@
       "worktreeId": null,
       "createdAt": "2026-06-10T04:46:50.443Z"
     },
-    "ses_150249d71ffexpiFomnvzbsNtU": {
-      "worktreeId": null,
-      "createdAt": "2026-06-10T04:47:30.967Z"
+    "ses_14abfb3f9ffeHDUHhXVRu1A69g": {
+      "worktreeId": "wt-1781157349295-1",
+      "createdAt": "2026-06-11T05:55:50.420Z"
     },
-    "ses_150249cfcffe1Tp0J8vUS4fxcU": {
-      "worktreeId": null,
-      "createdAt": "2026-06-10T04:47:31.094Z"
+    "ses_14abeb797ffeOMj6P41cxjECXS": {
+      "worktreeId": "wt-1781157349295-1",
+      "createdAt": "2026-06-11T05:56:55.032Z"
     },
-    "ses_14bb5f234ffebcAp8UsUZAUjRR": {
-      "worktreeId": null,
-      "createdAt": "2026-06-11T01:26:52.686Z"
+    "ses_14a18f407ffeg1tdRz387FQgGu": {
+      "worktreeId": "wt-1781168278255-2",
+      "createdAt": "2026-06-11T08:57:58.525Z"
+    },
+    "ses_14a149f06ffew6YJMEKr7n02Ta": {
+      "worktreeId": "wt-1781168278255-2",
+      "createdAt": "2026-06-11T09:02:42.428Z"
+    },
+    "ses_149f8eec3ffeIx6SZ3OmUS15LS": {
+      "worktreeId": "wt-1781168278255-2",
+      "createdAt": "2026-06-11T09:32:57.024Z"
+    },
+    "ses_149f69de8ffed5PuaN6qRah5yX": {
+      "worktreeId": "wt-1781170525739-4",
+      "createdAt": "2026-06-11T09:35:28.794Z"
+    },
+    "ses_149e86bc4ffeeKbZHDuY2TPerN": {
+      "worktreeId": "wt-1781168278255-2",
+      "createdAt": "2026-06-11T09:50:59.134Z"
+    },
+    "ses_149e39c54ffeHjB0BNXQyTSDrt": {
+      "worktreeId": "wt-1781168507028-3",
+      "createdAt": "2026-06-11T09:56:14.382Z"
+    },
+    "ses_149e2c043ffe4ApuFk21mEgF6K": {
+      "worktreeId": "wt-1781168507028-3",
+      "createdAt": "2026-06-11T09:57:10.720Z"
+    },
+    "ses_149e2bffaffeov6uU7p1ce6n23": {
+      "worktreeId": "wt-1781168507028-3",
+      "createdAt": "2026-06-11T09:57:10.806Z"
+    },
+    "ses_149d991c4ffeMTNi8CnDCq5xbi": {
+      "worktreeId": "wt-1781172431312-5",
+      "createdAt": "2026-06-11T10:07:12.449Z"
+    },
+    "ses_149c2416bffenjHfUU8MxYcj8e": {
+      "worktreeId": "wt-1781170525739-4",
+      "createdAt": "2026-06-11T10:32:40.343Z"
+    },
+    "ses_149c141a0ffev0Utvxlc0dzGJv": {
+      "worktreeId": "wt-1781170525739-4",
+      "createdAt": "2026-06-11T10:33:45.834Z"
+    },
+    "ses_149d4d4aaffeWRoDCgAPvITWgZ": {
+      "worktreeId": "wt-1781168507028-3",
+      "createdAt": "2026-06-11T16:21:52.596Z"
+    },
+    "ses_14a85e3d0ffeu0TKKASQGcq64A": {
+      "worktreeId": "wt-1781157349295-1",
+      "createdAt": "2026-06-11T16:21:52.597Z"
+    },
+    "ses_1486ab662ffeArribVcl9i0zVx": {
+      "worktreeId": "wt-1781196472020-1",
+      "createdAt": "2026-06-11T16:47:54.964Z"
+    },
+    "ses_148690e71ffeU9OOSZ2qhZZpha": {
+      "worktreeId": "wt-1781172431312-5",
+      "createdAt": "2026-06-11T16:49:43.317Z"
+    },
+    "ses_14864b4d1ffeqM9E3vL7pOla05": {
+      "worktreeId": "wt-1781172431312-5",
+      "createdAt": "2026-06-11T16:54:28.403Z"
+    },
+    "ses_1485e7d35ffebYWXx2LYWcmjRW": {
+      "worktreeId": "wt-1781172431312-5",
+      "createdAt": "2026-06-11T17:01:16.462Z"
+    },
+    "ses_1485b811dffegazXsWM3UatUHp": {
+      "worktreeId": "wt-1781196472020-1",
+      "createdAt": "2026-06-11T17:04:31.491Z"
+    },
+    "ses_1485721fbffeO6inTrYV5sYYLM": {
+      "worktreeId": "wt-1781197740397-2",
+      "createdAt": "2026-06-11T17:09:18.181Z"
+    },
+    "ses_14847c396ffemuViyz7KlM86LW": {
+      "worktreeId": "wt-1781198764745-3",
+      "createdAt": "2026-06-11T17:26:05.249Z"
+    },
+    "ses_14839d686ffeQvgkb3A6YxaDtu": {
+      "worktreeId": "wt-1781196472020-1",
+      "createdAt": "2026-06-11T17:41:17.821Z"
+    },
+    "ses_148331478ffeXfjLljZA4mRa6d": {
+      "worktreeId": "wt-1781197740397-2",
+      "createdAt": "2026-06-11T17:48:40.721Z"
+    },
+    "ses_14832b97cffeO8La3i5dlZvaQR": {
+      "worktreeId": "wt-1781198764745-3",
+      "createdAt": "2026-06-11T17:49:04.006Z"
+    },
+    "ses_1481a2959ffe0pW5jFU8ianlIV": {
+      "worktreeId": "wt-1781201753307-4",
+      "createdAt": "2026-06-11T18:15:53.770Z"
+    },
+    "ses_14804eb10ffe9c6LA6z7JL736n": {
+      "worktreeId": "wt-1781197740397-2",
+      "createdAt": "2026-06-11T18:39:05.970Z"
+    },
+    "ses_14801cbd1ffePszmSlaoVn21p5": {
+      "worktreeId": "wt-1781201753307-4",
+      "createdAt": "2026-06-11T18:42:30.577Z"
+    },
+    "ses_147b39428ffekGEHiMHdZhDJ3p": {
+      "worktreeId": "wt-1781208476444-5",
+      "createdAt": "2026-06-11T20:07:56.636Z"
+    },
+    "ses_147b307dcffei4y4t5Gf1kKDgi": {
+      "worktreeId": "wt-1781208476444-5",
+      "createdAt": "2026-06-11T20:08:32.562Z"
+    },
+    "ses_147b15bbaffeNJ2oj846xULBON": {
+      "worktreeId": "wt-1781197740397-2",
+      "createdAt": "2026-06-11T20:10:22.155Z"
+    },
+    "ses_147ad9358ffeMBNrco1GQa7jOV": {
+      "worktreeId": "wt-1781197740397-2",
+      "createdAt": "2026-06-11T20:14:30.070Z"
+    },
+    "ses_147869e5fffeA0clkHQKyjhCO3": {
+      "worktreeId": "wt-1781208476444-5",
+      "createdAt": "2026-06-11T20:57:03.153Z"
+    },
+    "ses_147793718ffeMybftAgCuS69mP": {
+      "worktreeId": "wt-1781208476444-5",
+      "createdAt": "2026-06-11T21:11:41.547Z"
+    },
+    "ses_147710aabffe43UB0kWp1v9JB0": {
+      "worktreeId": "wt-1781212835044-6",
+      "createdAt": "2026-06-11T21:20:37.215Z"
+    },
+    "ses_1476f8fa0ffeEiSi8y4TZsGxLQ": {
+      "worktreeId": "wt-1781212933980-7",
+      "createdAt": "2026-06-11T21:22:14.257Z"
+    },
+    "ses_1476f7819ffe65V2k6cX3qLtQx": {
+      "worktreeId": "wt-1781212940096-8",
+      "createdAt": "2026-06-11T21:22:20.298Z"
+    },
+    "ses_1476f5a06ffeKg9f8k1lOxtGOB": {
+      "worktreeId": "wt-1781212947583-9",
+      "createdAt": "2026-06-11T21:22:27.981Z"
+    },
+    "ses_1476f3a8bffe8VVahlck63NQWx": {
+      "worktreeId": "wt-1781212955467-10",
+      "createdAt": "2026-06-11T21:22:36.313Z"
+    },
+    "ses_14753dcf3ffeZcW8a37VQAsUqb": {
+      "worktreeId": "wt-1781212962784-11",
+      "createdAt": "2026-06-11T21:52:29.468Z"
+    },
+    "ses_14748dd12ffe25pMrAsgkqu0xR": {
+      "worktreeId": "wt-1781201753307-4",
+      "createdAt": "2026-06-11T22:04:30.321Z"
+    },
+    "ses_1473a67d6ffe3PUnsvc7uBZ7KJ": {
+      "worktreeId": "wt-1781201753307-4",
+      "createdAt": "2026-06-11T22:20:17.836Z"
     }
   },
   "tabOrder": {
@@ -273,7 +524,6 @@
       "ses_15123d9f7ffe7e877fmy0GR5Tm",
       "ses_1512348caffemo77biQfDj5Dr8",
       "ses_1512011baffe9uI0unz7VOJ68L",
-      "pending:17",
       "ses_150302b5dffeLHT0me3Zy8ose8",
       "ses_1502e6222ffeq4QG0gvpAs28RY",
       "ses_1502c9d96ffe7ImljRNUSc701b",
@@ -296,12 +546,121 @@
       "ses_14be50b53ffeoLl3Epp4An4abI",
       "ses_14bd07039ffePuFgaPGP7MVnCD",
       "ses_14bc623a9ffeuazGDnQIOLGI3q",
-      "ses_14bb5f234ffebcAp8UsUZAUjRR"
+      "ses_14bb5f234ffebcAp8UsUZAUjRR",
+      "ses_14b8f8067ffepaDXt6dGhqT6DB",
+      "ses_14b881c09ffej2XmCv0bTbo3K7",
+      "ses_14b840e12ffemi1SJNVnU7Upn8",
+      "ses_14b7f3b52ffe6bPp3ydrdhTOnj",
+      "ses_14b727a8affeK4VcKAw0A9ZY88",
+      "ses_14b6e63b3ffegvpXmarFWJW0b7",
+      "ses_14b575e70ffeMb9xUvW9Z0zNKF",
+      "ses_14b4ed84fffejela7VhWeOwzgN",
+      "ses_14b4ad4f3ffeqEJBdOr2M5hnQ1",
+      "ses_14b44721dffeo9ciDF45N5H0jF",
+      "ses_14b430a3bffeJd2uxspeopa4YT",
+      "ses_14b4252e8ffeSEt9Kd4Yhu1uCf",
+      "ses_14b3f46e0ffeRJatN1LAMlhDFU",
+      "ses_14b1a3041ffeS8qt3H6QNRzlOb",
+      "ses_14b19c160ffe9m69iFAod6V3xC",
+      "ses_14b1364e5ffeE3AfFo0s9NH19I",
+      "ses_14b10ad97ffeSd7317zRlcFV4Q",
+      "ses_14b0ef4c4ffezZeEyJNiZls53g",
+      "ses_14b0c6d6dffe44U08wZ461i9y1",
+      "ses_14b085f82ffeNqZohE8KCC5lK1",
+      "ses_14b04b7b2ffe9otT5wL0o7H2zv",
+      "ses_14b045d9affe5cqjAk0ngMnYa8",
+      "ses_14afdd7beffe4Q9jsrh0kFk0Ke",
+      "ses_14afb98aeffe0e5JF5gh8PAloB",
+      "ses_14af9c435ffepfgwnYp5APuHEX",
+      "ses_14af92eacffex0chjNixRRD0IG",
+      "ses_14af50915ffelpZTsEJoyX5woO",
+      "ses_14af4115cffeR25gfi5w6slUlY",
+      "ses_14af24883ffeJVb2gw9iBMIfqF",
+      "ses_14af13a15ffeVCc8i0NMSEQTb9",
+      "ses_14aee5ebfffef24BTA0eLAiuGF",
+      "ses_14aed88e3ffeJf41a6h1PahZ2l",
+      "ses_14acfd31dffev7SE11ISLaGPLF",
+      "ses_14acf5671ffecdQk9uILNNh8w9",
+      "ses_14a8275c6ffeig8zOQiCMC6x11",
+      "ses_14a6d8e2affe3hHFQuIubWmJKb",
+      "ses_14a00e812ffeF6TgO90eOpNWiE",
+      "ses_149fcf3beffeXN7d5RIcYbgY1M"
+    ],
+    "wt-1781157349295-1": [
+      "ses_14abfb3f9ffeHDUHhXVRu1A69g",
+      "ses_14abeb797ffeOMj6P41cxjECXS"
+    ],
+    "wt-1781168507028-3": [
+      "ses_149e39c54ffeHjB0BNXQyTSDrt",
+      "ses_149e2c043ffe4ApuFk21mEgF6K",
+      "ses_149e2bffaffeov6uU7p1ce6n23"
+    ],
+    "wt-1781168278255-2": [
+      "ses_14a18f407ffeg1tdRz387FQgGu",
+      "ses_14a149f06ffew6YJMEKr7n02Ta",
+      "ses_149f8eec3ffeIx6SZ3OmUS15LS",
+      "ses_149e86bc4ffeeKbZHDuY2TPerN"
+    ],
+    "wt-1781170525739-4": [
+      "ses_149f69de8ffed5PuaN6qRah5yX",
+      "ses_149c2416bffenjHfUU8MxYcj8e",
+      "ses_149c141a0ffev0Utvxlc0dzGJv"
+    ],
+    "wt-1781172431312-5": [
+      "ses_149d991c4ffeMTNi8CnDCq5xbi",
+      "ses_148690e71ffeU9OOSZ2qhZZpha",
+      "ses_14864b4d1ffeqM9E3vL7pOla05",
+      "ses_1485e7d35ffebYWXx2LYWcmjRW"
+    ],
+    "wt-1781196472020-1": [
+      "ses_1486ab662ffeArribVcl9i0zVx",
+      "ses_1485b811dffegazXsWM3UatUHp",
+      "ses_14839d686ffeQvgkb3A6YxaDtu"
+    ],
+    "wt-1781198764745-3": [
+      "ses_14847c396ffemuViyz7KlM86LW",
+      "ses_14832b97cffeO8La3i5dlZvaQR"
+    ],
+    "wt-1781197740397-2": [
+      "ses_1485721fbffeO6inTrYV5sYYLM",
+      "ses_148331478ffeXfjLljZA4mRa6d",
+      "ses_14804eb10ffe9c6LA6z7JL736n",
+      "ses_147b15bbaffeNJ2oj846xULBON",
+      "ses_147ad9358ffeMBNrco1GQa7jOV"
+    ],
+    "wt-1781201753307-4": [
+      "ses_1481a2959ffe0pW5jFU8ianlIV",
+      "ses_14801cbd1ffePszmSlaoVn21p5",
+      "ses_14748dd12ffe25pMrAsgkqu0xR",
+      "ses_1473a67d6ffe3PUnsvc7uBZ7KJ"
+    ],
+    "wt-1781208476444-5": [
+      "ses_147b39428ffekGEHiMHdZhDJ3p",
+      "ses_147b307dcffei4y4t5Gf1kKDgi",
+      "ses_147869e5fffeA0clkHQKyjhCO3",
+      "ses_147793718ffeMybftAgCuS69mP"
+    ],
+    "wt-1781212962784-11": [
+      "ses_14753dcf3ffeZcW8a37VQAsUqb"
     ]
   },
   "worktreeOrder": [
     "wt-1774831901652-1",
-    "wt-1776295702424-1",
-    "wt-1776722653391-2"
+    "wt-1781157349295-1",
+    "wt-1781168278255-2",
+    "wt-1781168507028-3",
+    "wt-1781170525739-4",
+    "wt-1781172431312-5",
+    "wt-1781196472020-1",
+    "wt-1781197740397-2",
+    "wt-1781198764745-3",
+    "wt-1781201753307-4",
+    "wt-1781208476444-5",
+    "wt-1781212835044-6",
+    "wt-1781212933980-7",
+    "wt-1781212940096-8",
+    "wt-1781212947583-9",
+    "wt-1781212955467-10",
+    "wt-1781212962784-11"
   ]
 }

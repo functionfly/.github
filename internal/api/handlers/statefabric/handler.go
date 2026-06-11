@@ -746,7 +746,12 @@ func (h *Handler) HandleCreateReplay(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	item, err := h.repo.CreateReplay(r.Context(), tenantID, fabricID, repo.ReplayCreateRequest(req))
+	item, err := h.repo.CreateReplay(r.Context(), tenantID, fabricID, repo.ReplayCreateRequest{
+		TenantID:    tenantID,
+		SnapshotID:   req.SnapshotID,
+		StartEventID: req.StartEventID,
+		EndEventID:   req.EndEventID,
+	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

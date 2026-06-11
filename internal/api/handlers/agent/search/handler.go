@@ -1,7 +1,6 @@
 package search
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,8 +8,8 @@ import (
 	"time"
 
 	agenttools "github.com/functionfly/functionfly/internal/agent/tools"
-	searchtools "github.com/functionfly/functionfly/internal/agent/tools/search"
-	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/agent/tools/search"
+	"github.com/functionfly/functionfly/internal/agent/tools/search/providers"
 	searchrepo "github.com/functionfly/functionfly/internal/storage/search"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -20,7 +19,7 @@ import (
 
 // SearchHandler handles search tool HTTP requests
 type SearchHandler struct {
-	toolRegistry  *searchtools.Registry
+	toolRegistry  *search.Registry
 	execRepo      *searchrepo.ExecutionRepository
 	cacheRepo     *searchrepo.CacheRepository
 	quotaEnforcer agenttools.QuotaEnforcer
@@ -37,13 +36,13 @@ func NewSearchHandler(
 	cacheRepo := searchrepo.NewCacheRepository(db, cacheTTLSeconds)
 
 	// Initialize search registry with mock provider by default
-	provider := searchtools.NewMockProvider()
-	if err := searchtools.Initialize(provider); err != nil {
+	provider := providers.NewMockProvider()
+	if err := search.Initialize(provider); err != nil {
 		logrus.WithError(err).Error("failed to initialize search tools")
 	}
 
 	return &SearchHandler{
-		toolRegistry:  searchtools.GetRegistry(),
+		toolRegistry:  search.GetRegistry(),
 		execRepo:       execRepo,
 		cacheRepo:     cacheRepo,
 		quotaEnforcer: quotaEnforcer,
@@ -51,8 +50,8 @@ func NewSearchHandler(
 }
 
 // SetProvider sets the search provider (for testing or custom providers)
-func (h *SearchHandler) SetProvider(provider searchtools.SearchProvider) {
-	if err := searchtools.Initialize(provider); err != nil {
+func (h *SearchHandler) SetProvider(provider search.SearchProvider) {
+	if err := search.Initialize(provider); err != nil {
 		logrus.WithError(err).Error("failed to set search provider")
 	}
 }
@@ -167,24 +166,29 @@ func (h *SearchHandler) HandleExecuteTool(w http.ResponseWriter, r *http.Request
 
 	// Create execution context
 	startTime := time.Now()
-	execCtx := &tools.SimpleExecutionContext{
-		Context:   r.Context(),
+	execCtx := &agenttools.ExecutionContext{
 		AgentID:   agentIDStr,
 		SessionID: sessionID,
-		Timeout:   45 * time.Second,
+		CallDepth: 0,
 	}
 
 	// Execute tool
-	result, err := tool.Execute(r.Context(), req.Parameters, execCtx)
+	toolResult, err := tool.Execute(r.Context(), req.Parameters, execCtx.AgentID, "", execCtx.SessionID, execCtx.CallDepth)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "EXECUTION_FAILED", err.Error())
 		return
 	}
 
+	// Extract result data
+	result := toolResult.Data
+
 	// Calculate execution time and cost
 	executionTime := time.Since(startTime)
 	resultCount := getResultCount(result)
-	cost := tool.Cost(req.Parameters, resultCount)
+	cost := toolResult.CostUSD
+	if cost == 0 {
+		cost = tool.Cost(req.Parameters, resultCount)
+	}
 
 	// Log execution
 	execution := &searchrepo.Execution{
@@ -340,19 +344,19 @@ func getResultCount(result interface{}) int {
 
 	// Try to extract result count from common response types
 	switch r := result.(type) {
-	case *searchtools.WebSearchResponse:
+	case *search.WebSearchResponse:
 		if r != nil {
 			return len(r.Results)
 		}
-	case *searchtools.NewsSearchResponse:
+	case *search.NewsSearchResponse:
 		if r != nil {
 			return len(r.Articles)
 		}
-	case *searchtools.DocsSearchResponse:
+	case *search.DocsSearchResponse:
 		if r != nil {
 			return len(r.Documents)
 		}
-	case *searchtools.CompanySearchResponse:
+	case *search.CompanySearchResponse:
 		if r != nil {
 			count := 0
 			if r.Company != nil {

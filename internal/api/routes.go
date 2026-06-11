@@ -231,18 +231,10 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	githubRepo := storage.NewGitHubRepository(s.postgresDB.DB)
 	githubVaultKey := os.Getenv("GITHUB_VAULT_KEY")
 	if githubVaultKey == "" {
-		if os.Getenv("DEVELOPMENT") == "true" {
-			githubVaultKey = "default-dev-key-must-be-32-bytes!" // 32 bytes for dev
-			logrus.Warn("Using default dev GITHUB_VAULT_KEY - NOT FOR PRODUCTION")
-		} else {
-			logrus.Fatal("FATAL: GITHUB_VAULT_KEY environment variable is required in production. It must be exactly 32 bytes for AES-256-GCM encryption.")
-		}
-	} else if len(githubVaultKey) != 32 {
-		if os.Getenv("DEVELOPMENT") == "true" {
-			logrus.Warn("GITHUB_VAULT_KEY is not 32 bytes - this will cause encryption issues in production")
-		} else {
-			logrus.Fatalf("FATAL: GITHUB_VAULT_KEY must be exactly 32 bytes for AES-256-GCM encryption. Got %d bytes.", len(githubVaultKey))
-		}
+		logrus.Fatal("FATAL: GITHUB_VAULT_KEY environment variable is required. It must be exactly 32 bytes for AES-256-GCM encryption.")
+	}
+	if len(githubVaultKey) != 32 {
+		logrus.Fatalf("FATAL: GITHUB_VAULT_KEY must be exactly 32 bytes for AES-256-GCM encryption. Got %d bytes.", len(githubVaultKey))
 	}
 	githubBaseURL := os.Getenv("FRONTEND_URL")
 	if githubBaseURL == "" {
@@ -1315,11 +1307,11 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	s.registerA2ARoutes(s.router, api, s.postgresDB.GORM, registryRepo, nil, authMiddleware, s.authSvc)
 	s.registerExtendedWellKnown(s.router)
 
-	s.router.HandleFunc("/health", healthRateLimiter.Limit(http.HandlerFunc(s.handleHealth))).Methods("GET", "OPTIONS")
-	s.router.HandleFunc("/healthz", healthRateLimiter.Limit(http.HandlerFunc(s.handleHealth))).Methods("GET", "OPTIONS")
-	s.router.HandleFunc("/api/health", healthRateLimiter.Limit(http.HandlerFunc(s.handleHealth))).Methods("GET", "OPTIONS")
-	s.router.HandleFunc("/health/detailed", healthRateLimiter.Limit(http.HandlerFunc(s.handleDetailedHealth))).Methods("GET", "OPTIONS")
-	s.router.HandleFunc("/health/check", healthRateLimiter.Limit(http.HandlerFunc(s.handleHealthCheck))).Methods("GET", "OPTIONS")
+	s.router.Handle("/health", healthRateLimiter.Limit(http.HandlerFunc(s.handleHealth))).Methods("GET", "OPTIONS")
+	s.router.Handle("/healthz", healthRateLimiter.Limit(http.HandlerFunc(s.handleHealth))).Methods("GET", "OPTIONS")
+	s.router.Handle("/api/health", healthRateLimiter.Limit(http.HandlerFunc(s.handleHealth))).Methods("GET", "OPTIONS")
+	s.router.Handle("/health/detailed", healthRateLimiter.Limit(http.HandlerFunc(s.handleDetailedHealth))).Methods("GET", "OPTIONS")
+	s.router.Handle("/health/check", healthRateLimiter.Limit(http.HandlerFunc(s.handleHealthCheck))).Methods("GET", "OPTIONS")
 	s.router.Handle("/metrics", middleware.RequireAuthInProduction(authMiddleware)(promhttp.Handler())).Methods("GET")
 	s.router.HandleFunc("/ws/v1/status", statusHandlerInst.HandleWebSocketStatus).Methods("GET")
 

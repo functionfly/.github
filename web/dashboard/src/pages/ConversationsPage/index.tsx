@@ -27,7 +27,7 @@ import { useRealtimeMessages } from '@/hooks/useConversations';
 import { useDebounce } from '@/hooks/useInfiniteScroll';
 import { useAuthStore } from '@/stores/authStore';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Coins, Play, MessageSquare } from 'lucide-react';
+import { Coins, Play, MessageSquare, Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -322,18 +322,37 @@ export default function ConversationsPage() {
         participantInputRef={participantInputRef}
       />
 
-      <main className="conv-aviation-main flex-1 flex flex-col min-w-0">
+      <main className="conv-aviation-main flex-1 flex flex-col min-w-0 relative">
         {!conversationId ? (
-          <div className="conv-aviation-empty-state flex-1 flex flex-col items-center justify-center text-muted-foreground">
+          <div className="conv-aviation-empty-state">
             {conversations.length > 0 ? (
               <>
-                <MessageSquare className="conv-aviation-empty-icon h-12 w-12 mb-4 opacity-50" />
-                <p className="text-sm font-mono">Select a conversation</p>
+                <div className="conv-aviation-empty-icon-wrap">
+                  <MessageSquare />
+                </div>
+                <h2 className="conv-aviation-empty-title">Select a conversation</h2>
+                <p className="conv-aviation-empty-description">
+                  Choose a thread from the sidebar to start collaborating.
+                </p>
               </>
             ) : (
               <>
-                <MessageSquare className="conv-aviation-empty-icon h-12 w-12 mb-4 opacity-50" />
-                <p className="text-sm font-mono">Your executable conversations will appear here.</p>
+                <div className="conv-aviation-empty-icon-wrap">
+                  <MessageSquare />
+                </div>
+                <h2 className="conv-aviation-empty-title">Your conversations</h2>
+                <p className="conv-aviation-empty-description">
+                  Executable threads for functions, fixes, bounties, and DMs — all in one place.
+                </p>
+                <div className="conv-aviation-empty-cta">
+                  <Button
+                    onClick={() => setNewConversationModalOpen(true)}
+                    className="conv-aviation-btn-primary"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Start a conversation
+                  </Button>
+                </div>
               </>
             )}
           </div>

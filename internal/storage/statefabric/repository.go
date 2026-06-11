@@ -3,6 +3,7 @@ package statefabric
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -20,7 +21,9 @@ import (
 )
 
 const (
-	MaxStoreSizeBytes = 500 * 1024 * 1024 * 1024 // 500 GB max store size
+	MaxStoreSizeBytes    = 500 * 1024 * 1024 * 1024 // 500 GB max store size
+	MaxSnapshotSizeBytes = 1 * 1024 * 1024 * 1024   // 1 GB max snapshot size
+	MaxEventListLimit    = 1000                     // Max events returned per query
 )
 
 type Repository struct {
@@ -44,9 +47,14 @@ func NewRepository(db *gorm.DB) *Repository {
 		}
 	}
 
-	// Initialize HTTP client for function execution
+	// Initialize HTTP client for function execution with TLS configuration
 	repo.httpClient = &http.Client{
 		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				MinVersion: tls.VersionTLS12,
+			},
+		},
 	}
 
 	return repo
@@ -60,6 +68,11 @@ func NewRepositoryWithR2(db *gorm.DB, r2Backend *R2StorageBackend) *Repository {
 		r2Backend: r2Backend,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					MinVersion: tls.VersionTLS12,
+				},
+			},
 		},
 	}
 }
@@ -189,6 +202,7 @@ type EventListOptions struct {
 }
 
 type ReplayCreateRequest struct {
+	TenantID    uuid.UUID
 	SnapshotID   string
 	StartEventID string
 	EndEventID   string
@@ -337,7 +351,7 @@ func (r *Repository) ListFabrics(ctx context.Context, opts ListOptions) ([]Fabri
 }
 
 func (r *Repository) CreateFabric(ctx context.Context, tenantID uuid.UUID, name, description, fabricType string, settings map[string]interface{}) (*Fabric, error) {
-	storageType := "keyvalue"
+	var storageType string
 	switch fabricType {
 	case "catalog":
 		storageType = "document"
@@ -345,6 +359,8 @@ func (r *Repository) CreateFabric(ctx context.Context, tenantID uuid.UUID, name,
 		storageType = "timeseries"
 	case "custom":
 		storageType = "graph"
+	default:
+		return nil, fmt.Errorf("unknown fabric type: %s", fabricType)
 	}
 	state := &statestore.State{
 		TenantID:    tenantID,
@@ -929,6 +945,9 @@ func (r *Repository) ListEvents(ctx context.Context, tenantID, fabricID uuid.UUI
 	if limit <= 0 {
 		limit = 100
 	}
+	if limit > MaxEventListLimit {
+		limit = MaxEventListLimit
+	}
 	var events []statestore.StateEvent
 	if err := query.Order("sequence_num DESC").Limit(limit).Offset(opts.Offset).Find(&events).Error; err != nil {
 		return nil, 0, err
@@ -1025,6 +1044,14 @@ func (r *Repository) CreateSnapshot(ctx context.Context, tenantID, fabricID uuid
 	created, err := r.stateRepo.CreateSnapshot(ctx, fabricID, name)
 	if err != nil {
 		return nil, err
+	}
+
+	// Check snapshot size limit after creation
+	stateDataSize := estimateJSONSize(created.StateData)
+	if stateDataSize > MaxSnapshotSizeBytes {
+		// Delete the created snapshot since it exceeds size limit
+		r.db.WithContext(ctx).Delete(&StateFabricSnapshot{}, "id = ?", created.ID)
+		return nil, fmt.Errorf("snapshot size exceeds maximum allowed size of %d bytes", MaxSnapshotSizeBytes)
 	}
 
 	snapshotName := name
@@ -1197,8 +1224,10 @@ func (r *Repository) CreateReplay(ctx context.Context, tenantID, fabricID uuid.U
 }
 
 func (r *Repository) executeReplay(replayID, fabricID uuid.UUID, req ReplayCreateRequest) {
-	ctx := context.Background()
-	logger := logrus.WithFields(logrus.Fields{"replay_id": replayID, "fabric_id": fabricID})
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	defer cancel()
+
+	logger := logrus.WithFields(logrus.Fields{"replay_id": replayID, "fabric_id": fabricID, "tenant_id": req.TenantID})
 
 	var events []statestore.StateEvent
 	var err error
