@@ -1,0 +1,169 @@
+---
+import Layout from '../layouts/Layout.astro';
+import '../styles/trust.css';
+import { APP_DASHBOARD_ORIGIN, AUTH_ORIGIN } from '../config';
+---
+
+<Layout
+  title="State Fabric — Durable State for Serverless — FunctionFly"
+  description="State Fabric adds structured state to serverless functions. Snapshots, replay, hot cache, and multi-region replication for production AI workloads."
+>
+  <section class="trust-hero">
+    <div class="container">
+      <div class="badge">State Fabric</div>
+      <h1>Durable State for Serverless</h1>
+      <p class="lead">
+        Functions are stateless by default—but production AI workloads need state. State Fabric adds structured,
+        durable state to serverless with snapshots, replay, hot cache, and multi-region replication.
+      </p>
+
+      <div class="hero-actions">
+        <a class="trust-btn trust-btn-primary" href="/pricing#state-fabric">View pricing</a>
+        <a class="trust-btn trust-btn-secondary" href="/for-agents#state-fabric-agents">For AI agents</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="trust-section">
+    <div class="container trust-grid-2">
+      <div class="trust-card">
+        <h2 id="state-objects">State objects</h2>
+        <p class="muted">Structured state containers that persist across function invocations.</p>
+        <ul class="trust-list">
+          <li><strong>Key-value with schema:</strong> Define structure for type-safe state.</li>
+          <li><strong>Atomic operations:</strong> Increment, append, merge without race conditions.</li>
+          <li><strong>TTL support:</strong> Auto-expire state objects when needed.</li>
+          <li><strong>Namespacing:</strong> Organize state by session, user, or workflow.</li>
+        </ul>
+
+        <div class="trust-callout">
+          <div class="trust-callout-title">Scaling</div>
+          <div class="trust-callout-body">
+            From 1 state object in Sandbox to unlimited in Enterprise—with per-object access controls.
+          </div>
+        </div>
+      </div>
+
+      <div class="trust-card">
+        <h2 id="snapshots">Snapshots &amp; replay</h2>
+        <p class="muted">Point-in-time snapshots let you replay events and recover state instantly.</p>
+        <ul class="trust-list">
+          <li><strong>Automatic snapshots:</strong> Schedule captures or trigger on events.</li>
+          <li><strong>Deterministic replay:</strong> Replay from any snapshot with full fidelity.</li>
+          <li><strong>Replay API:</strong> Programmatic replay for testing and recovery.</li>
+          <li><strong>Retention policies:</strong> 7 days to 365 days based on your tier.</li>
+        </ul>
+
+        <div class="trust-callout">
+          <div class="trust-callout-title">Use cases</div>
+          <div class="trust-callout-body">
+            Debug production issues, test against real state, recover from errors, train ML models on historical sequences.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="trust-section trust-section--alt">
+    <div class="container trust-grid-2">
+      <div class="trust-card">
+        <h2 id="hot-cache">Hot cache tier</h2>
+        <p class="muted">Sub-millisecond access to frequently-read state without cold storage penalties.</p>
+        <ul class="trust-list">
+          <li><strong>LRU eviction:</strong> Automatically keeps hot data in fast tier.</li>
+          <li><strong>Write-through:</strong> Writes propagate immediately to cache.</li>
+          <li><strong>Dedicated cache:</strong> Business and Enterprise get dedicated cache nodes.</li>
+          <li><strong>Consistent reads:</strong> No stale data between cache and storage.</li>
+        </ul>
+      </div>
+
+      <div class="trust-card">
+        <h2 id="replication">Multi-region replication</h2>
+        <p class="muted">State that survives datacenter failures with synchronous replication.</p>
+        <ul class="trust-list">
+          <li><strong>Sync replication:</strong> Write acknowledgment before returning success.</li>
+          <li><strong>Automatic failover:</strong> Read from nearest replica automatically.</li>
+          <li><strong>Consistency model:</strong> Configurable per state object—strong or eventual.</li>
+          <li><strong>Edge replication:</strong> Enterprise includes edge nodes for global low-latency.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="trust-section">
+    <div class="container">
+      <div class="trust-grid-2">
+        <div class="trust-card">
+          <h2 id="event-storage">Event storage</h2>
+          <p class="muted">Every state change is logged as an immutable event for audit and analytics.</p>
+          <ul class="trust-list">
+            <li><strong>Append-only log:</strong> Events cannot be modified or deleted.</li>
+            <li><strong>Structured metadata:</strong> Timestamps, actor, correlation ID.</li>
+            <li><strong>Queryable:</strong> Filter and aggregate events via API.</li>
+            <li><strong>Archive tier:</strong> Business and Enterprise can archive cold events to object storage.</li>
+          </ul>
+        </div>
+
+        <div class="trust-card">
+          <h2 id="ops-throughput">Ops throughput</h2>
+          <p class="muted">State Fabric is built for high-throughput AI workloads—millions of ops per second.</p>
+          <ul class="trust-list">
+            <li><strong>Batch operations:</strong> Multi-key reads/writes in single round-trip.</li>
+            <li><strong>Conditional writes:</strong> Optimistic locking for concurrent updates.</li>
+            <li><strong>Rate limiting:</strong> Per-tenant QoS ensures fair access.</li>
+            <li><strong>Auto-scaling:</strong> Compute scales with your throughput automatically.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="trust-section trust-section--alt">
+    <div class="container trust-center">
+      <div class="trust-card trust-card--wide">
+        <h2 id="security">Security &amp; compliance</h2>
+        <p class="muted">Enterprise-grade security for sensitive workloads.</p>
+        <div class="trust-grid-2" style="margin-top: 2rem;">
+          <ul class="trust-list">
+            <li><strong>BYOK key management:</strong> Bring your own encryption keys.</li>
+            <li><strong>Immutable audit logs:</strong> Every access and mutation logged.</li>
+            <li><strong>Data residency:</strong> Choose which regions store your state.</li>
+            <li><strong>SOC 2 ready:</strong> Controls aligned with SOC 2 Type II.</li>
+          </ul>
+          <ul class="trust-list">
+            <li><strong>Private networking:</strong> VPC isolation for sensitive data.</li>
+            <li><strong>Access controls:</strong> Role-based state object permissions.</li>
+            <li><strong>Encryption at rest:</strong> AES-256 for all stored state.</li>
+            <li><strong>TLS in transit:</strong> All API calls encrypted end-to-end.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="trust-section">
+    <div class="container trust-center">
+      <div class="trust-card trust-card--wide">
+        <h2 id="get-started">Get started with State Fabric</h2>
+        <p class="muted">Start free with Sandbox—no credit card required.</p>
+        <div class="hero-actions" style="justify-content: center; margin-top: 2rem;">
+          <a class="trust-btn trust-btn-primary" href={`${AUTH_ORIGIN}/signup`}>Try free — no card needed</a>
+          <a class="trust-btn trust-btn-secondary" href="/pricing#state-fabric">View all plans</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .trust-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .trust-card--wide {
+    max-width: 800px;
+    width: 100%;
+  }
+</style>

@@ -155,6 +155,7 @@ const pricingSchemas = [faqSchema, productSchema];
             <li><span class="check" aria-hidden="true">✓</span> Community support</li>
             <li class="tm-feature"><span class="check" aria-hidden="true">✓</span> <strong>Time Machine:</strong> 24h replay window, 100 executions</li>
             <li class="consciousness-feature"><span aria-hidden="true">—</span> <strong>Consciousness:</strong> Not included on Free</li>
+            <li class="dna-feature"><span aria-hidden="true">—</span> <strong>Function DNA:</strong> Not included on Free</li>
           </ul>
           <a class="btn btn-secondary full-width" href={`${AUTH_ORIGIN}/signup`}>Start free</a>
         </article>
@@ -176,6 +177,7 @@ const pricingSchemas = [faqSchema, productSchema];
             <li><span class="check" aria-hidden="true">✓</span> AI Agents: 10 agents, 100K calls/mo, 10 concurrency</li>
             <li><span class="check" aria-hidden="true">✓</span> Email support &amp; basic analytics</li>
             <li class="tm-feature"><span class="check" aria-hidden="true">✓</span> <strong>Time Machine:</strong> 72h window, 1,000 execs/replay</li>
+            <li class="dna-feature"><span aria-hidden="true">—</span> <strong>Function DNA:</strong> Not included on Starter</li>
           </ul>
           <a class="btn btn-primary full-width" href={`${AUTH_ORIGIN}/signup?plan=starter`}>Choose Starter</a>
         </article>
@@ -199,6 +201,7 @@ const pricingSchemas = [faqSchema, productSchema];
             <li><span class="check" aria-hidden="true">✓</span> Advanced analytics &amp; team collaboration</li>
             <li class="tm-feature"><span class="check" aria-hidden="true">✓</span> <strong>Time Machine:</strong> 30-day window, 10K execs, dry-run reconciliation</li>
             <li class="consciousness-feature"><span class="check" aria-hidden="true">✓</span> <strong>Consciousness:</strong> system awareness score, daily digest, 7-day lookback</li>
+            <li class="dna-feature"><span class="check" aria-hidden="true">✓</span> <strong>Function DNA:</strong> execution patterns, fitness scores, AI optimization proposals</li>
           </ul>
           <a class="btn btn-primary full-width" href={`${APP_DASHBOARD_ORIGIN}/pricing?tab=functions&plan=professional`}>Choose Professional</a>
         </article>
@@ -218,8 +221,10 @@ const pricingSchemas = [faqSchema, productSchema];
             <li><span class="check" aria-hidden="true">✓</span> AI Agents: 500 agents, 5M calls/mo, 500 concurrency</li>
             <li><span class="check" aria-hidden="true">✓</span> 99.99% SLA &amp; dedicated support</li>
             <li><span class="check" aria-hidden="true">✓</span> Custom integrations &amp; onboarding</li>
+            <li><span class="check" aria-hidden="true">✓</span> Collaborative Playground Sessions</li>
             <li class="tm-feature"><span class="check" aria-hidden="true">✓</span> <strong>Time Machine:</strong> 90-day window, 100K execs, live reconciliation, SOC2/HIPAA audit certs</li>
             <li class="consciousness-feature"><span class="check" aria-hidden="true">✓</span> <strong>Consciousness:</strong> real-time insights, predictive alerts, Slack &amp; webhook, auto-fix proposals, 30-day lookback</li>
+            <li class="dna-feature"><span class="check" aria-hidden="true">✓</span> <strong>Function DNA:</strong> real-time tracking, auto-evolution, mutation pipeline, 90-day history</li>
           </ul>
           <a class="btn btn-secondary full-width" href="/contact">Contact sales</a>
         </article>
@@ -249,11 +254,25 @@ const pricingSchemas = [faqSchema, productSchema];
               <td>Unlimited</td>
             </tr>
             <tr>
+              <td>Apps</td>
+              <td>1</td>
+              <td>3</td>
+              <td>10</td>
+              <td>Unlimited</td>
+            </tr>
+            <tr>
               <td>Providers</td>
               <td>2</td>
               <td>2</td>
               <td>3</td>
               <td>5</td>
+            </tr>
+            <tr>
+              <td>Connector availability</td>
+              <td>GitHub (all)</td>
+              <td>GitHub (all), Notion, Slack</td>
+              <td>GitHub (all), Notion, Slack, Gmail, Linear</td>
+              <td>All</td>
             </tr>
             <tr>
               <td>Custom domains</td>
@@ -312,6 +331,13 @@ const pricingSchemas = [faqSchema, productSchema];
               <td>30-day lookback</td>
             </tr>
             <tr>
+              <td>Function DNA</td>
+              <td>—</td>
+              <td>—</td>
+              <td>Fitness scores, AI proposals</td>
+              <td>Auto-evolution, mutation pipeline</td>
+            </tr>
+            <tr>
               <td>SLA</td>
               <td>—</td>
               <td>—</td>
@@ -324,6 +350,13 @@ const pricingSchemas = [faqSchema, productSchema];
               <td>Email</td>
               <td>Priority</td>
               <td>Dedicated</td>
+            </tr>
+            <tr>
+              <td>Collaborative Playground Sessions</td>
+              <td>—</td>
+              <td>—</td>
+              <td>—</td>
+              <td>✓</td>
             </tr>
           </tbody>
         </table>

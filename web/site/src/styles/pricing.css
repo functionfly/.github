@@ -397,6 +397,25 @@
   color: #c084fc;
 }
 
+/* Function DNA feature row (teal/green accent for evolution theme) */
+.dna-feature {
+  margin-top: 0.5rem;
+  padding-top: 0.75rem !important;
+  border-top: 1px dashed rgba(20, 197, 160, 0.3) !important;
+  color: #14c9a0 !important;
+  font-size: 0.8125rem !important;
+}
+
+.dna-feature .check {
+  background: linear-gradient(135deg, rgba(20, 197, 160, 0.25), rgba(20, 197, 160, 0.15)) !important;
+  border-color: rgba(20, 197, 160, 0.4) !important;
+  color: #14c9a0 !important;
+}
+
+.dna-feature strong {
+  color: #14c9a0;
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
