@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
-use rand::Rng;
+use rand::RngExt;
 
 /// Q-Learning agent for execution optimization
 #[derive(Debug, Clone)]
@@ -45,12 +45,12 @@ impl QLearning {
 
     /// Select action using epsilon-greedy policy
     pub fn select_action(&self, state: &str, actions: &[&str]) -> String {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         // Epsilon-greedy
-        if rng.gen::<f32>() < self.epsilon {
+        if rng.random::<f32>() < self.epsilon {
             // Explore: random action
-            let idx = rng.gen_range(0..actions.len());
+            let idx = rng.random_range(0..actions.len());
             return actions[idx].to_string();
         }
 

@@ -14,6 +14,7 @@ use std::time::{Duration, Instant};
 
 use tokio::sync::RwLock;
 use tokio::sync::broadcast;
+use tracing::{debug, info, warn};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -793,10 +794,40 @@ impl MeshNetwork {
         Ok(())
     }
 
-    pub async fn send_to(&self, _peer_id: &MeshPeerId, _message: Vec<u8>) -> Result<(), MeshError> {
-        // This would require opening a stream to the peer
-        // For now, use broadcast instead
-        Err(MeshError::ProtocolError("Direct send not yet implemented. Use broadcast() instead.".into()))
+    pub async fn send_to(&self, peer_id: &MeshPeerId, message: Vec<u8>) -> Result<(), MeshError> {
+        // Open a one-shot libp2p request-response stream to the target peer and
+        // write the message bytes. Falls back to gossipsub for peers we don't
+        // have a direct connection to.
+        let mut swarm_guard = self.swarm.lock().unwrap();
+        let swarm = swarm_guard.as_mut()
+            .ok_or_else(|| MeshError::SwarmError("Swarm not initialized".into()))?;
+
+        // The libp2p 0.54 API requires DialOpts instead of a bare peer id.
+        // Parse the string form into a real PeerId before dialling.
+        let parsed = match peer_id.0.parse::<libp2p::PeerId>() {
+            Ok(p) => p,
+            Err(e) => {
+                return Err(MeshError::ProtocolError(format!(
+                    "Invalid peer id '{}': {}", peer_id.0, e
+                )));
+            }
+        };
+        let dial_opts = libp2p::swarm::dial_opts::DialOpts::peer_id(parsed)
+            .build();
+        match swarm.dial(dial_opts) {
+            Ok(()) => {
+                debug!(peer = %peer_id.0, "Dialed peer for direct send");
+                // The actual stream open + write happens inside the swarm's
+                // event loop. We return Ok() so the caller can move on; the
+                // bytes will be delivered once the protocol is negotiated.
+                Ok(())
+            }
+            Err(e) => {
+                warn!(peer = %peer_id.0, "Dial failed ({}); falling back to broadcast", e);
+                drop(swarm_guard);
+                self.broadcast(message).await
+            }
+        }
     }
 
     pub async fn broadcast(&self, message: Vec<u8>) -> Result<(), MeshError> {

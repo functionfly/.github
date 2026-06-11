@@ -8,16 +8,15 @@
 
 ## Overview
 
-FunctionFly Prism is a next-generation distributed runtime designed specifically for AI-native execution, autonomous agents, robotics, edge systems, and cross-language functions. Unlike traditional serverless or container platforms, Prism treats every execution unit as a living, migratable, AI-aware component within a larger intelligent fabric.
+FunctionFly Prism is a distributed runtime for AI-native execution, autonomous agents, robotics, edge systems, and cross-language functions. Prism treats every execution unit as a self-describing, portable, AI-aware component within an intelligent execution fabric.
 
 ### Key Differentiators
 
-- **Not "just another WASM runtime"** — Prism understands AI workflows, dynamically adapts execution, and coordinates distributed intelligence
-- **Adaptive Execution Cells (AECs)** — Self-describing, portable, hot-swappable WASM cells that can migrate across systems live
+- **Adaptive Execution Cells (AECs)** — Self-describing, portable WASM cells with lifecycle management, migration support, and status tracking
 - **Universal Capability Discovery** — "The DNS of AI capabilities" — robots, AI agents, browsers, drones, SaaS apps, and IDEs can all discover compatible functions dynamically
-- **StateStream Memory Fabric** — Distributed streaming memory with CRDT synchronization, event sourcing, and deterministic replay
-- **Quantum Snapshotting** — VM live migration + game save states + AI memory persistence
-- **Neural Execution Optimization** — The runtime literally optimizes itself over time using reinforcement learning
+- **StateStream Memory Fabric** — Distributed streaming memory with CRDT synchronization and event sourcing
+- **Quantum Snapshotting** — Cell freeze, state serialization, and migration support
+- **Neural Execution Optimization** — Q-learning based optimizer with reinforcement learning structure for self-optimization
 
 ---
 
@@ -53,7 +52,7 @@ FunctionFly Prism is a next-generation distributed runtime designed specifically
 
 ### 1. HyperCore Scheduler
 
-An AI-aware distributed scheduler that serves as the "compute traffic controller" for Prism. Decisions include:
+An AI-aware distributed scheduler that decides:
 
 - **Where** functions execute (cloud, edge, browser, robotic, mobile, IoT)
 - **GPU vs CPU** placement based on workload characteristics
@@ -65,24 +64,22 @@ An AI-aware distributed scheduler that serves as the "compute traffic controller
 **Key Features:**
 - Multi-tenant isolation with resource guarantees
 - Placement scoring based on latency, cost, GPU affinity, and availability
-- Support for up to 100,000 concurrent executions
-- Backpressure handling when queue depth exceeds thresholds
+- Configurable concurrent execution limit (default: 64)
+- Node registration limiting based on max queue size
 
 ### 2. WASM Fusion Engine
 
-Not standard WASM execution. The Fusion Engine:
+Dynamic execution graphs with WASM module composition:
 
-- **Merges multiple WASM modules live** — enables dynamic execution graphs
-- **Creates streaming function compositions** — chain AI pipelines without separate infra
-- **Enables runtime patching** — update running functions without restart
-- **Supports fluid execution** — seamless transitions between modules
+- **Streaming function compositions** — Chain AI pipelines without separate infrastructure
+- **Directed graph execution** — Multiple WASM modules executed in topological order
+- **Optional runtime patching** — Live patching support (disabled by default)
+- **WASI preview1 and preview2 support** — Standard WASI interfaces
 
 **Example Pipeline:**
 ```text
 Speech Input → Transcription WASM → Reasoning Agent → Action Planner → Robot Control
 ```
-
-Without spawning separate infrastructure stacks.
 
 ### 3. Universal Capability Layer (UCL)
 
@@ -108,17 +105,14 @@ This enables:
 
 ### 4. StateStream Memory Fabric
 
-One of the hardest problems in AI systems: shared state.
+Distributed streaming memory with:
 
-**Features:**
 - Event-sourced state for audit and replay
 - Resumable execution after interruption
-- Temporal rollback (time-travel debugging)
 - Memory snapshots for migration
-- Vector-aware state for ML workloads
-- CRDT synchronization for distributed consistency
+- CRDT synchronization for distributed consistency (LWW, GCounter, PnCounter)
 - Offline reconciliation
-- Deterministic replay for reproducibility
+- Redis-backed persistence (optional)
 
 **Enables:**
 - Long-running AI agents with persistent memory
@@ -128,60 +122,59 @@ One of the hardest problems in AI systems: shared state.
 
 ### 5. Quantum Snapshotting
 
-**Killer Feature:** Live Function Teleportation
+Cell state persistence and migration:
 
-Execution cells can:
-- **Freeze instantly** — pause execution at any point
-- **Serialize full runtime state** — memory, CPU, open handles
-- **Migrate to another machine** — resume in milliseconds
-- **Resume transparently** — continue execution seamlessly
+- **Freeze execution** — Pause cell at any checkpoint
+- **Serialize runtime state** — Memory, CPU, open handles
+- **Migration support** — Move cells between nodes
+- **Compression** — zstd and lz4 compression for snapshots
 
 **Use Cases:**
 - **Failover** — Move from a failing node to a healthy one
-- **Cost optimization** — Migrate from expensive cloud to cheap edge when load is low
+- **Cost optimization** — Migrate based on load
 - **Mobile robotics** — Handoff cognition between local and cloud nodes
 - **Edge handoff** — Seamlessly transfer execution as devices move
 
 ### 6. Mesh Networking
 
-P2P capability mesh using libp2p and QUIC:
+P2P capability mesh using libp2p:
 
 - Peer-to-peer communication without central brokers
 - Capability discovery through Kademlia DHT
-- NAT traversal for edge devices
-- Relay support for restricted networks
+- Local peer discovery via mDNS
+- NAT traversal via relay
 - State synchronization via CRDT-based protocols
+- TCP transport with noise encryption and yamux multiplexing
 
 ### 7. Neural Execution Optimization
 
-The runtime learns from execution patterns:
+The runtime has Q-learning based optimization:
 
-- Optimal execution paths
-- Hot functions (cache-worthy)
-- Memory behavior patterns
-- GPU allocation strategies
-- Agent coordination patterns
+- Optimal execution path suggestions
+- Hot function identification (cache-worthy)
+- Memory behavior profiling
+- GPU allocation strategy hints
+- Agent coordination pattern learning
 
-Using **reinforcement learning**, the runtime:
-- Updates Q-tables based on execution outcomes
-- Adjusts memory/timeout multipliers dynamically
-- Selects optimal placement locations
-- Improves cache hit rates over time
+**Implementation:**
+- Q-learning structure exists for optimization decisions
+- Execution profiles track duration, memory, input size
+- Optimization suggestions include memory, timeout, and placement recommendations
 
 ### 8. Autonomous Function Swarms
 
 Functions can:
-- **Spawn sub-functions** — decompose complex tasks
-- **Negotiate resources** — dynamic allocation
-- **Delegate workloads** — distribute based on capability
-- **Form temporary clusters** — collaborate on shared goals
-- **Self-heal** — detect and replace failed cells
+
+- **Spawn sub-functions** — Decompose complex tasks
+- **Delegate workloads** — Distribute based on capability
+- **Form temporary clusters** — Collaborate on shared goals
+- **Self-heal** — Detect and replace failed cells via health monitoring
 
 ---
 
 ## Adaptive Execution Cells (AECs)
 
-Every execution unit becomes a self-describing, portable, AI-aware, hot-swappable, state-streaming WASM cell.
+Every execution unit is a self-describing, portable, AI-aware WASM cell.
 
 **Structure:**
 ```
@@ -237,29 +230,27 @@ A standard package format for Prism:
 ## Security
 
 **Zero-Trust Execution:**
-- Every function is cryptographically signed
-- Execution is verified through remote attestation
-- Capabilities are scope-limited
+- Every function can be cryptographically signed (Ed25519)
+- WASM bytecode validation via wasmparser
+- Execution scope-limiting via capability permissions
 - Policies constrain resource access
 
-**Supported:**
-- Secure enclaves (via WASM sandboxing)
-- Post-quantum signatures
-- Deterministic audit logs
-- Landlock/seccomp for system call filtering
+**OS-Level Enforcement (Linux):**
+- **seccomp** — Syscall allowlisting via libseccomp
+- **landlock** — Filesystem access restrictions (Linux 5.13+)
+- **Resource limits** — Memory, CPU, file descriptors, processes
+
+**Enclave Detection:**
+- SGX, SEV, and TrustZone detection support
+- Actual TEE runtime integration is detection-only
+
+**Not Yet Implemented:**
+- Post-quantum signatures (roadmap item)
+- Deterministic audit logs (standard logging present)
 
 ---
 
 ## Developer Experience
-
-### FunctionFly Studio (Future)
-
-Visual development environment:
-- Build execution graphs visually
-- Configure memory streams
-- Design swarm behaviors
-- Set up capability routing
-- Deploy instantly to the mesh
 
 ### CLI
 
@@ -267,16 +258,63 @@ Visual development environment:
 # Start runtime
 prism start --address 0.0.0.0:8080 --mesh
 
-# Create cell
+# Cell management
 prism cell create --module detector.wasm --memory 128
+prism cell list
+prism cell terminate <cell_id>
+prism cell snapshot <cell_id>
+prism cell migrate <cell_id> --target <node>
 
-# Discover capabilities
+# Capability discovery
+prism capability register --name vision.detect --category AI
 prism capability discover "image classification"
+prism capability list
 
 # Swarm operations
 prism swarm create my-swarm
+prism swarm join my-swarm
+prism swarm leave my-swarm
+prism swarm list
 prism swarm command my-swarm --cmd coordinate
+
+# Package management
+prism package build --source ./src --output my-package.ffpkg
+prism package inspect my-package.ffpkg
+prism package sign my-package.ffpkg --key key.pem
+
+# Interactive REPL
+prism repl
+
+# Runtime status
+prism status
+
+# Generate documentation
+prism doc --output ./docs
 ```
+
+### HTTP API
+
+The runtime exposes a JSON HTTP API:
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check |
+| POST | `/cells` | Create cell |
+| GET | `/cells` | List all cells |
+| GET | `/cells/{id}` | Get specific cell |
+| POST | `/cells/{id}/snapshot` | Snapshot cell |
+| GET | `/cells/{id}/snapshots` | List cell snapshots |
+| POST | `/execute` | Execute cell |
+| POST | `/snapshots/{id}/restore` | Restore from snapshot |
+| DELETE | `/snapshots/{id}` | Delete snapshot |
+| POST | `/capabilities` | Register capability |
+| POST | `/capabilities/invoke` | Invoke capability |
+| GET | `/capabilities` | List capabilities |
+| POST | `/swarms` | Create swarm |
+| GET | `/swarms` | List swarms |
+| POST | `/swarms/{id}/join` | Join swarm |
+| POST | `/swarms/{id}/leave` | Leave swarm |
+| GET | `/optimize/{cell_id}` | Get optimization suggestion |
 
 ---
 
@@ -284,46 +322,15 @@ prism swarm command my-swarm --cmd coordinate
 
 | Component | Technology |
 |-----------|------------|
-| **Runtime Core** | Rust, Wasmtime, Tokio |
-| **WASM Engine** | wasmtime 44.0 with pooling |
-| **Networking** | libp2p, QUIC, NATS |
-| **State** | CRDT (automerge), Event sourcing |
-| **Storage** | LMDB, RocksDB, Redis |
-| **Serialization** | Protobuf, MsgPack, CBOR, JSON |
-| **ML/AI** | tract-onnx, candle-core |
-| **Security** | ring, libseccomp, landlock |
-
----
-
-## Revenue Model
-
-**Open Source (Core Runtime):**
-- Basic WASM execution
-- Local capability registry
-- State streams
-- CLI tooling
-
-**Premium (Enterprise):**
-- Distributed mesh networking
-- GPU federation
-- Secure enclaves
-- Enterprise orchestration
-- Advanced telemetry
-- Agent memory fabric
-- Swarm coordination
-- Edge orchestration
-
----
-
-## Future Vision
-
-Eventually:
-- Robots discover FunctionFly capabilities autonomously
-- AI agents rent/sell capabilities on a marketplace
-- Autonomous systems compose functions dynamically
-- FunctionFly evolves from platform → ecosystem
-
-**"Not infrastructure. Not hosting. A programmable intelligence fabric, universal execution layer, capability mesh, and AI-native compute substrate."**
+| **Runtime Core** | Rust, Wasmtime 45.0.1, Tokio |
+| **WASM Engine** | wasmtime 45.0.1 (WASI preview1/preview2) |
+| **Networking** | libp2p 0.54 (TCP + noise + yamux), async-nats client |
+| **State** | Custom CRDT (LWW, GCounter, PnCounter), Event sourcing |
+| **Storage** | Redis (optional, via state-stream feature) |
+| **Serialization** | Protobuf (prost), MsgPack (rmp-serde), CBOR (ciborium), JSON |
+| **AI/Optimization** | Q-learning reinforcement learning (custom implementation) |
+| **Security** | libseccomp, landlock, ed25519-dalek, wasmparser |
+| **Compression** | zstd, lz4 |
 
 ---
 
@@ -336,7 +343,7 @@ runtimes/prism/
 ├── proto/
 │   └── prism.proto          # Protocol Buffer definitions
 ├── src/
-│   ├── main.rs              # CLI binary
+│   ├── main.rs              # CLI binary and HTTP server
 │   ├── lib.rs               # Library root
 │   ├── core/                # Core types (cells, errors, metrics)
 │   ├── hypercore/           # Scheduler and placement
@@ -347,8 +354,15 @@ runtimes/prism/
 │   ├── mesh/                # P2P networking
 │   ├── neural/              # RL-based optimization
 │   ├── swarm/               # Autonomous coordination
-│   └── cli/                 # CLI and REPL
-├── benches/                 # Benchmarks
+│   ├── cli/                 # CLI and REPL
+│   ├── codec/               # Serialization codecs
+│   ├── security/            # Security enforcement
+│   ├── proto/               # Protobuf generated types
+│   ├── runtime.rs           # Runtime context
+│   ├── nats_client.rs       # NATS client
+│   ├── integration_tests.rs # Integration tests
+│   └── benches/             # Benchmark functions
+├── benches/                 # Criterion benchmark harness
 └── README.md
 ```
 
@@ -356,32 +370,37 @@ runtimes/prism/
 
 ## Status
 
-**Implemented:** All core runtime systems are functional and tested.
-
-### ✅ Core Systems Implemented
+### Core Systems Implemented
 
 | Component | Status | Description |
 |-----------|--------|-------------|
 | **Adaptive Execution Cells** | ✅ | Cell lifecycle, migration, status tracking |
 | **HyperCore Scheduler** | ✅ | AI-aware placement, node management, scoring |
-| **WASM Fusion Engine** | ✅ | Real wasmtime execution, graph composition |
+| **WASM Fusion Engine** | ✅ | wasmtime execution, graph composition |
 | **Universal Capability Layer** | ✅ | Registry, discovery, trust scoring, matching |
 | **StateStream Memory** | ✅ | CRDT sync, event sourcing, Redis persistence |
-| **Quantum Snapshotting** | ✅ | Live migration, checkpoint/restore, compression |
+| **Quantum Snapshotting** | ✅ | Checkpoint/restore, compression, migration |
 | **Mesh Networking** | ✅ | libp2p P2P, DHT discovery, mDNS, relay |
-| **Neural Optimization** | ✅ | Q-Learning RL, feedback loop, profiling |
+| **Neural Optimization** | ✅ | Q-learning structure, feedback loop, profiling |
 | **Autonomous Swarms** | ✅ | Coordinator, self-healing, swarm commands |
 | **NATS Integration** | ✅ | Orchestrator communication |
 | **HTTP API Server** | ✅ | REST endpoints for all runtime operations |
-| **Comprehensive Test Suite** | ✅ | **77 tests passing** (27 integration + 50 unit) |
-| **Performance Benchmarks** | ✅ | **50+ benchmarks** covering cells, scheduler, CRDT, neural, WASM |
+| **Security Enforcement** | ✅ | seccomp, landlock, WASM validation |
+| **Integration Tests** | ✅ | **26 integration tests** |
+| **Performance Benchmarks** | ✅ | **58+ benchmark functions** |
 
-### 📋 Potential Enhancements
+### Running Tests
 
-| Enhancement | Priority | Notes |
-|-------------|----------|-------|
-| Visual Studio (FunctionFly Studio) | Low | Future roadmap item |
-| Secure enclave features | Low | Feature flag exists, not fully implemented |
+```bash
+# Run all tests
+cd runtimes/prism && cargo test
+
+# Run with output
+cargo test -- --nocapture
+
+# Run integration tests only
+cargo test integration_tests
+```
 
 ### Running Benchmarks
 
@@ -410,7 +429,7 @@ Benchmarks cover:
 This is a ground-up implementation. See the FunctionFly contributing guidelines for details.
 
 **Design Philosophy:**
-- Keep code DRY — leverage existing patterns in `runtimes/local` and `runtimes/sar`
+- Keep code DRY — leverage existing patterns in `runtimes/local` and [functionfly/sar](https://github.com/functionfly/sar)
 - Use protobuf for service definitions
 - Design for scale from day one
 - Prefer composable services over monoliths

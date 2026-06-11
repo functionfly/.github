@@ -56,8 +56,10 @@ impl FusionLinker {
 
 impl Default for FusionLinker {
     fn default() -> Self {
-        // This won't work for default, but we need an Engine
-        // In practice, callers should use new() with a proper engine
-        panic!("FusionLinker::default() is not supported, use new() with an Engine")
+        // The Default impl cannot construct a valid FusionLinker because the
+        // underlying wasmtime::Engine must be configured. Build a fresh
+        // Engine with default settings so the linker is still usable for
+        // test/utility code that just needs *some* linker.
+        Self::new(&wasmtime::Engine::default())
     }
 }

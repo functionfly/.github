@@ -296,8 +296,13 @@ impl WasmComposer {
 
         info!(source_modules = ?module_ids, used_stubs = used_stubs, "Module composition complete (walrus)");
 
+        // Serialize the merged module back to bytes via walrus's emit_wasm.
+        // Without this, callers that try to instantiate the composed module
+        // would get a zero-length WASM payload.
+        let wasm_bytes = new_module.emit_wasm();
+
         Ok(CompositionResult {
-            wasm_bytes: vec![], // Would need to serialize new_module
+            wasm_bytes,
             source_modules: module_ids.iter().map(|s| s.to_string()).collect(),
             export_mapping: export_aliases,
             used_stubs,

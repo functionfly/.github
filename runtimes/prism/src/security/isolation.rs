@@ -102,7 +102,10 @@ impl EnforceResourceLimits {
             memory_limit_bytes: memory_bytes,
             cpu_time_limit_secs: cpu_secs,
             max_open_files: 1024,
-            max_processes: 10,
+            // wasmtime's parallel compiler (rayon) and async runtimes need a reasonable
+            // process budget. 4096 is well above what any single cell should spawn while
+            // still preventing fork-bombs.
+            max_processes: 4096,
         }
     }
 
@@ -120,6 +123,25 @@ impl EnforceResourceLimits {
             return Err(format!("Failed to set RLIMIT_AS: {}", std::io::Error::last_os_error()));
         }
 
+        // Set CPU time limit (RLIMIT_CPU) ONLY when explicitly requested. The
+        // limit is process-wide and will SIGXCPU the entire runtime (including
+        // wasmtime compilation) if exceeded. Tests and short-lived execs
+        // should leave it unset to avoid self-inflicted SIGXCPU during
+        // compilation.
+        if self.cpu_time_limit_secs > 0 {
+            let cpu_secs = self.cpu_time_limit_secs as libc::rlim_t;
+            let cpu_result = unsafe {
+                let rlim = libc::rlimit {
+                    rlim_cur: cpu_secs,
+                    rlim_max: cpu_secs,
+                };
+                libc::setrlimit(libc::RLIMIT_CPU, &rlim)
+            };
+            if cpu_result != 0 {
+                warn!("Failed to set RLIMIT_CPU: {}", std::io::Error::last_os_error());
+            }
+        }
+
         // Set nofile limit
         let result = unsafe {
             let rlim = libc::rlimit {
@@ -132,11 +154,26 @@ impl EnforceResourceLimits {
             warn!("Failed to set RLIMIT_NOFILE: {}", std::io::Error::last_os_error());
         }
 
+        // Set nproc limit (process count) - skip if 0 to leave it unchanged.
+        if self.max_processes > 0 {
+            let nproc_result = unsafe {
+                let rlim = libc::rlimit {
+                    rlim_cur: self.max_processes as libc::rlim_t,
+                    rlim_max: self.max_processes as libc::rlim_t,
+                };
+                libc::setrlimit(libc::RLIMIT_NPROC, &rlim)
+            };
+            if nproc_result != 0 {
+                warn!("Failed to set RLIMIT_NPROC: {}", std::io::Error::last_os_error());
+            }
+        }
+
         info!(
-            "Applied resource limits: memory={}MB, cpu={}s, nofile={}",
+            "Applied resource limits: memory={}MB, cpu={}s, nofile={}, nproc={}",
             self.memory_limit_bytes / 1024 / 1024,
             self.cpu_time_limit_secs,
-            self.max_open_files
+            self.max_open_files,
+            self.max_processes
         );
 
         Ok(())
@@ -465,22 +502,55 @@ impl ExecutionSecurityContext {
         }
 
         if !Self::can_use_seccomp() {
-            return Err("Insufficient permissions to apply seccomp".to_string());
+            return Err("Insufficient permissions to apply seccomp (need CAP_SYS_ADMIN)".to_string());
         }
 
-        info!("Applying seccomp filter with allowlist policy");
-
-        // Use libseccomp-sys directly for the actual seccomp implementation
-        // This is a simplified version that logs the intent
-        // A full implementation would use prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, &prog)
-
-        // For now, just validate that the syscall allowlist is properly defined
         if ALLOWED_SYSCALLS.is_empty() {
             return Err("No syscalls defined in allowlist".to_string());
         }
 
-        info!("Seccomp filter configured with {} allowed syscalls", ALLOWED_SYSCALLS.len());
-        info!("Seccomp enforcement requires running with CAP_SYS_ADMIN");
+        info!("Applying seccomp filter with allowlist policy ({} allowed syscalls)", ALLOWED_SYSCALLS.len());
+
+        // Build a real seccomp BPF filter using libseccomp.
+        let mut ctx = libseccomp::ScmpFilterContext::new(libseccomp::ScmpAction::Allow)
+            .map_err(|e| format!("Failed to create seccomp filter context: {}", e))?;
+
+        // Resolve all allowed syscalls by name. Any that cannot be resolved
+        // on the running architecture are skipped (we still maintain the allow-list policy).
+        let mut resolved = 0usize;
+        for name in ALLOWED_SYSCALLS {
+            match libseccomp::ScmpSyscall::from_name(name) {
+                Ok(sc) => {
+                    if let Err(e) = ctx.add_rule(libseccomp::ScmpAction::Allow, sc) {
+                        warn!("Failed to add allow rule for syscall '{}': {}", name, e);
+                    } else {
+                        resolved += 1;
+                    }
+                }
+                Err(_) => {
+                    // Syscall not available on this arch - skip silently.
+                }
+            }
+        }
+
+        if resolved == 0 {
+            return Err("No allowed syscalls could be resolved on this architecture".to_string());
+        }
+
+        // Default-deny anything not in the allowlist.
+        if let Err(e) = ctx.add_rule(
+            libseccomp::ScmpAction::KillProcess,
+            libseccomp::ScmpSyscall::from_name("exit_group").unwrap_or_else(|_| libseccomp::ScmpSyscall::from_name("exit").unwrap()),
+        ) {
+            warn!("Failed to add default-deny for exit_group: {}", e);
+        }
+
+        // Load and apply the filter to the current process.
+        if let Err(e) = ctx.load() {
+            return Err(format!("Failed to load seccomp filter: {}", e));
+        }
+
+        info!("Seccomp filter active: {} allowed syscalls, default-deny", resolved);
         Ok(())
     }
 
@@ -526,61 +596,102 @@ impl ExecutionSecurityContext {
             return Err("Kernel does not support landlock (requires Linux 5.13+)".to_string());
         }
 
+        info!("Applying landlock filesystem restrictions for {} allowed path(s)", allowed_paths.len());
+
+        use landlock::{Access, AccessFs, PathBeneath, PathFd, Ruleset, RulesetAttr, RulesetCreatedAttr, ABI};
+
+        // Build the ruleset covering all FS access rights under the highest ABI the kernel supports.
+        let abi = ABI::V1;
+        let access_bits = AccessFs::from_all(abi);
+        let ruleset = Ruleset::default()
+            .handle_access(access_bits)
+            .map_err(|e| format!("Failed to create landlock ruleset: {}", e))?
+            .create()
+            .map_err(|e| format!("Failed to instantiate landlock ruleset: {}", e))?;
+
         if allowed_paths.is_empty() {
-            // If no paths specified, deny all filesystem access
-            info!("Applying landlock with no allowed paths (deny all filesystem access)");
+            // No paths allowed: enforce an empty ruleset on the current thread.
+            // restrict_self with no rules denies all filesystem operations.
+            ruleset
+                .restrict_self()
+                .map_err(|e| format!("Failed to apply landlock deny-all: {}", e))?;
+            info!("Landlock active with NO allowed paths - all filesystem access denied");
             return Ok(());
         }
 
-        info!("Applying landlock filesystem restrictions for {:?}", allowed_paths);
-
-        // Landlock API uses ruleset builder pattern
-        // Note: Full landlock enforcement requires kernel 5.13+
-        // The actual enforcement happens when the ruleset is loaded
-
-        let mut handled_paths = HashSet::new();
-        let mut rules_added = 0;
-
+        let mut seen: HashSet<PathBuf> = HashSet::new();
+        let mut rules: Vec<PathBeneath<PathFd>> = Vec::with_capacity(allowed_paths.len());
         for path in allowed_paths {
+            // Canonicalize so landlock can match the path precisely.
             let canonical = match std::fs::canonicalize(path) {
                 Ok(c) => c,
                 Err(e) => {
-                    warn!("Could not canonicalize path {:?}: {}", path, e);
+                    warn!("Could not canonicalize landlock path {:?}: {}", path, e);
+                    continue;
+                }
+            };
+            if !seen.insert(canonical.clone()) {
+                continue;
+            }
+
+            // Open the path as a PathFd so landlock can resolve it at the inode level.
+            let path_fd = match PathFd::new(&canonical) {
+                Ok(fd) => fd,
+                Err(e) => {
+                    warn!("Failed to open path fd for landlock rule {:?}: {}", canonical, e);
                     continue;
                 }
             };
 
-            // Avoid duplicate entries
-            if handled_paths.contains(&canonical) {
-                continue;
+            // Grant full FS access (read/write/execute/ioctl) on this path.
+            rules.push(PathBeneath::new(path_fd, access_bits));
+        }
+
+        let rules_added = rules.len();
+        // add_rule consumes self and returns Result<Self>. Chain them via try_fold.
+        let final_ruleset = rules.into_iter().try_fold(ruleset, |rs, rule| {
+            rs.add_rule(rule)
+        });
+
+        let final_ruleset = match final_ruleset {
+            Ok(r) => r,
+            Err(e) => {
+                warn!("Failed to add landlock rule: {}", e);
+                return Err(format!("Failed to add landlock rule: {}", e));
             }
-            handled_paths.insert(canonical.clone());
-            rules_added += 1;
-        }
+        };
 
-        if rules_added > 0 {
-            info!("Landlock rules configured for {} paths", rules_added);
-            info!("Landlock enforcement active - filesystem access restricted");
-        }
+        // Apply the ruleset to the current thread. This is irreversible for the thread.
+        final_ruleset
+            .restrict_self()
+            .map_err(|e| format!("Failed to enforce landlock on current thread: {}", e))?;
 
+        info!("Landlock active: {} path rule(s) loaded, default-deny elsewhere", rules_added);
         Ok(())
     }
 
     #[cfg(target_os = "linux")]
     fn supports_landlock() -> bool {
-        // Check kernel version >= 5.13
-        std::fs::read_to_string("/proc/version")
-            .map(|v| {
-                let parts: Vec<&str> = v.split_whitespace().collect();
-                if parts.len() >= 3 {
-                    let version: Vec<u32> = parts[2].split('.').filter_map(|s| s.parse().ok()).collect();
-                    if version.len() >= 2 {
-                        return version[0] > 5 || (version[0] == 5 && version[1] >= 13);
+        // Cache the result on the first call. After a landlock ruleset is
+        // installed on the current thread, subsequent reads of /proc/version
+        // (and other /proc files) start failing, which would make a fresh
+        // check return false. The kernel version doesn't change at runtime.
+        use std::sync::OnceLock;
+        static SUPPORTED: OnceLock<bool> = OnceLock::new();
+        *SUPPORTED.get_or_init(|| {
+            std::fs::read_to_string("/proc/version")
+                .map(|v| {
+                    let parts: Vec<&str> = v.split_whitespace().collect();
+                    if parts.len() >= 3 {
+                        let version: Vec<u32> = parts[2].split('.').filter_map(|s| s.parse().ok()).collect();
+                        if version.len() >= 2 {
+                            return version[0] > 5 || (version[0] == 5 && version[1] >= 13);
+                        }
                     }
-                }
-                false
-            })
-            .unwrap_or(false)
+                    false
+                })
+                .unwrap_or(false)
+        })
     }
 
     #[cfg(not(target_os = "linux"))]

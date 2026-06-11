@@ -23,8 +23,8 @@ production = ["secure-sandbox"]
 [dependencies]
 # === Core Runtime ===
 tokio = { version = "1.49", features = ["full", "sync", "rt-multi-thread"] }
-wasmtime = { version = "44.0", features = ["std"] }
-wasmtime-wasi = { version = "44.0", features = ["p1", "p2"] }
+wasmtime = { version = "45.0.1", features = ["std"] }
+wasmtime-wasi = { version = "45.0.1", features = ["p1", "p2"] }
 anyhow = "1.0"
 thiserror = "2.0"
 tracing = "0.1"
@@ -36,32 +36,33 @@ futures = "0.3"
 futures-util = "0.3"
 tokio-stream = "0.1"
 tokio-util = { version = "0.7", features = ["codec", "io"] }
-hyper = { version = "1.5", features = ["full"] }
+hyper = { version = "1.10.1", features = ["full"] }
 hyper-util = { version = "0.1", features = ["full"] }
 tower = "0.5"
-tower-http = { version = "0.6", features = ["trace", "cors", "limit", "compression-gzip"] }
+tower-http = { version = "0.6.11", features = ["trace", "cors", "limit", "compression-gzip"] }
+
+# === gRPC & Protobuf ===
+tonic = { version = "0.14", features = ["tls-ring", "tls-native-roots"] }
+tonic-prost = "0.14.6"
+prost = "0.14.4"
+prost-build = "0.14.4"
+prost-types = "0.14.4"
 
 # === Serialization ===
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json = "1.0.150"
 serde_yaml = "0.9"
-bincode = "1.3"
+bincode = "1.3.3"
 postcard = "1.1"
 ciborium = "0.2"
 bytes = "1.9"
 rmp-serde = "1.1"
 
-# === gRPC & Protobuf ===
-tonic = { version = "0.14", features = ["tls-ring", "tls-native-roots"] }
-prost = "0.14"
-prost-build = "0.14"
-prost-types = "0.14"
-
 # === NATS ===
-async-nats = { version = "0.35", optional = true }
+async-nats = { version = "0.49.1", optional = true }
 
 # === Storage ===
-redis = { version = "1.2", features = ["tokio-comp", "connection-manager"], optional = true }
+redis = { version = "1.2.2", features = ["tokio-comp", "connection-manager"], optional = true }
 lru = { version = "0.18", optional = true }
 
 # === Mesh Networking ===
@@ -72,56 +73,56 @@ void = { version = "1.0", optional = true }
 # === Security ===
 ed25519-dalek = "2.1"
 libseccomp = { version = "0.4", optional = true }
-landlock = { version = "0.4", optional = true }
-wasmparser = { version = "0.220", optional = true }
+landlock = { version = "0.4.5", optional = true }
+wasmparser = { version = "0.251.0", optional = true }
 libc = "0.2"
 
 # === Observability ===
 prometheus = { version = "0.14", optional = true }
-opentelemetry = "0.29"
-opentelemetry_sdk = "0.28"
-opentelemetry-otlp = { version = "0.28", features = ["grpc-tonic", "trace"] }
-tracing-opentelemetry = "0.29"
+opentelemetry = "0.32.0"
+opentelemetry_sdk = "0.32.0"
+opentelemetry-otlp = { version = "0.32.0", features = ["grpc-tonic", "trace"] }
+tracing-opentelemetry = "0.33.0"
 
 # === Compression ===
 zstd = "0.13"
 lz4 = "1.25"
 
 # === Utilities ===
-uuid = { version = "1.21", features = ["v4", "serde"] }
-chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.23.3", features = ["v4", "serde"] }
+chrono = { version = "0.4.45", features = ["serde"] }
 sha2 = "0.11"
 hmac = "0.13"
 base64 = "0.22"
-rand = "0.8"
+rand = "0.10.1"
 hex = "0.4"
 url = "2.5"
-regex = "1.12"
+regex = "1.12.4"
 once_cell = "1.21"
-dashmap = "6.1"
+dashmap = "6.2.1"
 parking_lot = "0.12"
-indexmap = { version = "2.7", features = ["serde"] }
+indexmap = { version = "2.14.0", features = ["serde"] }
 clap = { version = "4.5", features = ["derive", "env"] }
 tempfile = "3.25"
 
 # === WASM Tools ===
-walrus = { version = "0.4", optional = true }
+walrus = { version = "0.26.4", optional = true }
 
 # === CLI & REPL ===
 indicatif = { version = "0.18", optional = true }
 dialoguer = { version = "0.12", optional = true }
-rustyline = "14.0"
+rustyline = "18.0.0"
 
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }
 tokio-test = "0.4"
 proptest = "1.5"
 quickcheck = "1.0"
-wat = "1.0"
+wat = "1.251.0"
 
 [build-dependencies]
 prost-build = "0.14"
-tonic-build = "0.14"
+tonic-prost-build = "0.14.6"
 
 [lib]
 name = "prism_runtime"

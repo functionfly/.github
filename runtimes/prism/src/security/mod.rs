@@ -380,11 +380,35 @@ impl SecurityManager {
                 }
                 Ok(wasmparser::Payload::ImportSection(s)) => {
                     for i in s {
-                        if let Ok(import) = i {
-                            let module = import.module;
-                            let field = import.name;
+                        if let Ok(imports) = i {
+                            // In wasmparser >= 0.244 the iterator yields an
+                            // `Imports` enum (Single / Compact1 / Compact2).
+                            // Match on it and pull the module + name for each
+                            // individual import.
+                            let entries: Vec<(String, String)> = match imports {
+                                wasmparser::Imports::Single(_, imp) => {
+                                    vec![(imp.module.to_string(), imp.name.to_string())]
+                                }
+                                wasmparser::Imports::Compact1 { module, items } => items
+                                    .into_iter()
+                                    .map(|item_res| {
+                                        item_res
+                                            .map(|item| (module.to_string(), item.name.to_string()))
+                                            .unwrap_or_default()
+                                    })
+                                    .collect(),
+                                wasmparser::Imports::Compact2 { module, names, .. } => names
+                                    .into_iter()
+                                    .map(|name_res| {
+                                        name_res
+                                            .map(|name| (module.to_string(), name.to_string()))
+                                            .unwrap_or_default()
+                                    })
+                                    .collect(),
+                            };
 
-                            let dangerous = match (module, field) {
+                            for (module, field) in entries {
+                            let dangerous = match (module.as_str(), field.as_str()) {
                                 ("env", "ptrace") => ("Process introspection via ptrace", ViolationSeverity::Critical),
                                 ("env", "mount") => ("Filesystem mounting", ViolationSeverity::Critical),
                                 ("env", "syslog") => ("System logging", ViolationSeverity::Critical),
@@ -409,6 +433,7 @@ impl SecurityManager {
                                 description: dangerous.0.to_string(),
                                 position: None,
                             });
+                            } // end for (module, field) in entries
                         }
                     }
                 }

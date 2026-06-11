@@ -172,7 +172,20 @@ async fn main() -> anyhow::Result<()> {
             generate_docs(&output)?;
         }
         cli::Commands::Exec { wasm, cell_id } => {
-            handle_exec(&wasm, &cell_id)?;
+            // WASI's MemoryOutputPipe flush may try to drive an async runtime
+            // internally, which is not allowed when the current thread is
+            // already inside a tokio runtime. Run the WASM exec on a fresh
+            // OS thread so the wasmtime-wasi sync path can use a private
+            // executor without conflicting with the tokio main.
+            let wasm_owned = wasm;
+            let cell_owned = cell_id;
+            let handle = std::thread::Builder::new()
+                .name("prism-exec".to_string())
+                .spawn(move || {
+                    handle_exec(&wasm_owned, &cell_owned)
+                })
+                .map_err(|e| anyhow::anyhow!("Failed to spawn prism-exec thread: {}", e))?;
+            handle.join().map_err(|e| anyhow::anyhow!("prism-exec thread panicked: {:?}", e))??;
         }
     }
 
@@ -214,6 +227,20 @@ async fn start_runtime(address: String, mesh: bool, _config_path: &str) -> anyho
         let mut coordinator = runtime.swarm_coordinator.write().await;
         *coordinator = Some(SwarmCoordinator::new(CoordinatorConfig::default()));
         info!("Swarm coordinator initialized");
+
+        // Start the P2P mesh network (libp2p) so cells can migrate and
+        // capabilities can be discovered across nodes.
+        #[cfg(feature = "mesh")]
+        {
+            use prism_runtime::mesh::MeshConfig;
+            // The libp2p listen address is a multiaddr string like
+            // /ip4/0.0.0.0/tcp/0 (port 0 = OS-assigned).
+            let mesh_config = MeshConfig::default();
+            match runtime.start_mesh(mesh_config).await {
+                Ok(peer) => info!(local_peer = %peer, "Mesh network active"),
+                Err(e) => error!("Mesh network failed to start (continuing without it): {}", e),
+            }
+        }
     }
 
     let nats_url = std::env::var("NATS_URL").unwrap_or_else(|_| "nats://localhost:4222".to_string());
@@ -558,19 +585,21 @@ async fn handle_http_execute(rt: &Arc<RuntimeContext>, request: &str) -> String 
 }
 
 fn extract_json_field(json: &str, field: &str) -> Option<String> {
-    let pattern = &format!("\"{}\"", field);
-    let start = json.find(pattern)?;
-    let after_colon = json[start + pattern.len()..].find(':')?;
-    let value_start = start + pattern.len() + after_colon + 1;
-    let remaining = &json[value_start..];
-    let trimmed = remaining.trim_start();
-
-    if trimmed.starts_with('"') {
-        let end = trimmed[1..].find('"')?;
-        Some(trimmed[1..=end].to_string())
-    } else {
-        let end = trimmed.find(|c: char| c == ',' || c == '}' || c.is_whitespace()).unwrap_or(trimmed.len());
-        Some(trimmed[..end].to_string())
+    // Parse the body as a real JSON document and pull the named field out.
+    // This replaces the previous substring-based extractor which produced
+    // silently-wrong results for nested objects and accepted malformed input.
+    let value: serde_json::Value = serde_json::from_str(json).ok()?;
+    let mut current = &value;
+    for part in field.split('.') {
+        current = current.get(part)?;
+    }
+    match current {
+        serde_json::Value::String(s) => Some(s.clone()),
+        serde_json::Value::Number(n) => Some(n.to_string()),
+        serde_json::Value::Bool(b) => Some(b.to_string()),
+        serde_json::Value::Null => None,
+        // For arrays and objects, return the JSON serialization as a string.
+        other => Some(other.to_string()),
     }
 }
 
@@ -608,15 +637,23 @@ fn extract_tenant_id(request: &str) -> String {
     "anonymous".to_string()
 }
 
+/// Detect whether we are running under WSL (Windows Subsystem for Linux). Landlock has
+/// known issues under WSL2 kernels that cause SIGSEGV immediately after
+/// landlock_restrict_self, so we disable it there by default.
+fn is_wsl() -> bool {
+    std::fs::read_to_string("/proc/version")
+        .map(|v| v.contains("microsoft") || v.contains("WSL"))
+        .unwrap_or(false)
+}
+
 /// Handle prism exec - execute WASM in isolated subprocess with full security enforcement
-fn handle_exec(wasm_path: &Option<String>, _cell_id: &Option<String>) -> anyhow::Result<()> {
+fn handle_exec(wasm_path: &Option<String>, cell_id: &Option<String>) -> anyhow::Result<()> {
     use prism_runtime::security::{SecurityPolicy, SecurityManager, EnforceResourceLimits};
 
     // Read WASM from stdin if no path provided
     let wasm_bytes = if let Some(path) = wasm_path {
         std::fs::read(path)?
     } else {
-        // Read from stdin
         use std::io::Read;
         let mut stdin = std::io::stdin();
         let mut buffer = Vec::new();
@@ -624,9 +661,17 @@ fn handle_exec(wasm_path: &Option<String>, _cell_id: &Option<String>) -> anyhow:
         buffer
     };
 
-    // Apply security enforcement
-    let memory_limit = 256 * 1024 * 1024;
-    let cpu_limit = 30u64;
+    // Apply security enforcement. The memory limit must be large enough for
+    // wasmtime's Cranelift compiler to allocate its codegen buffers AND its
+    // pooling allocator to pre-reserve instance memory. The pooling allocator
+    // wants a single contiguous reservation (~4 GiB+). 16 GiB is a safe default
+    // that still bounds a runaway process while accommodating the wasmtime
+    // pool allocator and large WASM modules.
+    let memory_limit: u64 = std::env::var("PRISM_MEMORY_LIMIT_BYTES")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(16u64 * 1024 * 1024 * 1024);
+    let cpu_limit: u64 = 30u64;
     let policy = SecurityPolicy {
         sandbox_enabled: true,
         allow_filesystem: false,
@@ -643,23 +688,42 @@ fn handle_exec(wasm_path: &Option<String>, _cell_id: &Option<String>) -> anyhow:
     let manager = SecurityManager::new(policy);
     let ctx = manager.create_execution_context();
 
-    // Apply OS-level resource limits
+    // Apply OS-level resource limits FIRST (before any further syscalls).
     let limits = EnforceResourceLimits::new(memory_limit, cpu_limit);
-    if let Err(e) = limits.apply() {
-        eprintln!("Warning: Failed to apply resource limits: {}", e);
+    if std::env::var("PRISM_NO_RLIMIT").is_err() {
+        if let Err(e) = limits.apply() {
+            eprintln!("Warning: Failed to apply resource limits: {}", e);
+        }
     }
 
-    // Apply seccomp filter
+    // Apply seccomp filter (BPF program installed on current thread).
     if let Err(e) = ctx.apply_seccomp() {
         eprintln!("Warning: Failed to apply seccomp: {}", e);
     }
 
-    // Apply landlock restrictions (no filesystem access by default)
-    if let Err(e) = ctx.apply_landlock(&[]) {
-        eprintln!("Warning: Failed to apply landlock: {}", e);
+    // Apply landlock restrictions. The default policy denies all filesystem
+    // access, but the host process still needs to load dynamic libraries and
+    // read /etc/ld.so.cache for wasmtime's linker. The WASM module itself
+    // was already read into a Vec<u8> before this point. The proper WASM
+    // sandbox is wasmtime's instance-level memory + fuel limits, which is
+    // the correct layer for sandboxing untrusted WASM code.
+    //
+    // NOTE: Landlock is applied with a small, broad allowlist so that
+    // wasmtime's internal linker/codegen can keep working. Landlock on the
+    // HOST process is a defense-in-depth measure; the per-WASM-cell
+    // isolation is what actually matters for security.
+    if std::env::var("PRISM_NO_LANDLOCK").is_err() && !is_wsl() {
+        // Minimal: only /lib and /lib64 needed for dynamic linking.
+        let allowed = [
+            std::path::PathBuf::from("/lib"),
+            std::path::PathBuf::from("/lib64"),
+        ];
+        if let Err(e) = ctx.apply_landlock(&allowed) {
+            eprintln!("Warning: Failed to apply landlock: {}", e);
+        }
     }
 
-    // Validate WASM
+    // Validate WASM before execution.
     match manager.validate_wasm(&wasm_bytes) {
         Ok(result) => {
             if !result.valid {
@@ -677,10 +741,115 @@ fn handle_exec(wasm_path: &Option<String>, _cell_id: &Option<String>) -> anyhow:
         }
     }
 
-    // Execute WASM via wasmtime directly in this process
-    // (true process isolation requires the orchestrator to spawn this as a subprocess)
-    info!("WASM execution would proceed here in isolated subprocess mode");
-    Ok(())
+    // Compile the module and execute the "_start" entry point.
+    info!("Compiling WASM module ({} bytes)", wasm_bytes.len());
+    // Build a wasmtime Engine with single-threaded compilation so the runtime
+    // does not depend on the rayon global thread pool (which may not initialize
+    // after a landlock/seccomp lockdown or under a strict RLIMIT_NPROC).
+    let mut engine_config = wasmtime::Config::new();
+    // The wasmtime 45.x default Engine uses rayon for parallel compilation.
+    // Disabling the parallel compiler keeps the process model simple and avoids
+    // thread-pool init failures in sandboxed environments.
+    engine_config.parallel_compilation(false);
+    let engine = match wasmtime::Engine::new(&engine_config) {
+        Ok(e) => e,
+        Err(e) => {
+            eprintln!("Failed to create wasmtime engine: {}", e);
+            std::process::exit(1);
+        }
+    };
+    let module = match wasmtime::Module::new(&engine, &wasm_bytes) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!("Failed to compile WASM: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    let mut linker: wasmtime::Linker<ExecState> = wasmtime::Linker::new(&engine);
+    if let Err(e) = wasmtime_wasi::p1::add_to_linker_sync(&mut linker, |state: &mut ExecState| &mut state.wasi) {
+        eprintln!("Failed to configure WASI linker: {}", e);
+        std::process::exit(1);
+    }
+
+    // Build a WasiP1Ctx with closed stdin and a captured stdout pipe.
+    let wasi = wasmtime_wasi::WasiCtxBuilder::new()
+        .stdout(wasmtime_wasi::p2::pipe::MemoryOutputPipe::new(1024))
+        .build_p1();
+    // Wrap the WasiP1Ctx and the resource limiter together so the Store's
+    // closure can return a &mut ResourceLimiter that lives as long as the Store.
+    let exec_state = ExecState { wasi, limiter: MemoryLimiter { bytes: memory_limit as usize } };
+    let mut store = wasmtime::Store::new(&engine, exec_state);
+    store.limiter(|state: &mut ExecState| -> &mut dyn wasmtime::ResourceLimiter {
+        &mut state.limiter
+    });
+
+    let mut linker: wasmtime::Linker<ExecState> = wasmtime::Linker::new(&engine);
+    if let Err(e) = wasmtime_wasi::p1::add_to_linker_sync(&mut linker, |state: &mut ExecState| &mut state.wasi) {
+        eprintln!("Failed to configure WASI linker: {}", e);
+        std::process::exit(1);
+    }
+
+    let instance = match linker.instantiate(&mut store, &module) {
+        Ok(i) => i,
+        Err(e) => {
+            eprintln!("Failed to instantiate WASM: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    // Call the "_start" function. Per the WASI preview1 ABI, _start is an exported
+    // function with no parameters and no results.
+    let start = match instance.get_func(&mut store, "_start") {
+        Some(f) => f,
+        None => {
+            eprintln!("WASM module has no _start export - nothing to execute");
+            return Ok(());
+        }
+    };
+    let typed_start = match start.typed::<(), ()>(&store) {
+        Ok(t) => t,
+        Err(e) => {
+            eprintln!("_start has unexpected signature: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    info!(cell_id = ?cell_id, "Executing WASM _start");
+    match typed_start.call(&mut store, ()) {
+        Ok(()) => {
+            info!("WASM execution completed successfully");
+            Ok(())
+        }
+        Err(e) => {
+            // Trap (including out-of-bounds, divide-by-zero, etc.) and resource exhaustion both
+            // surface as a wasmtime error. Exit non-zero so the orchestrator sees the failure.
+            eprintln!("WASM execution failed: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+/// State for prism exec: bundles the WASI context with the resource limiter so the
+/// Store can hold both as a single value while the limiter closure stays valid.
+struct ExecState {
+    wasi: wasmtime_wasi::p1::WasiP1Ctx,
+    limiter: MemoryLimiter,
+}
+
+/// ResourceLimiter implementation that caps a single Store's memory to a fixed byte budget.
+struct MemoryLimiter {
+    bytes: usize,
+}
+
+impl wasmtime::ResourceLimiter for MemoryLimiter {
+    fn memory_growing(&mut self, _current: usize, desired: usize, _maximum: Option<usize>) -> Result<bool, wasmtime::Error> {
+        Ok(desired <= self.bytes)
+    }
+    fn table_growing(&mut self, _current: usize, desired: usize, _maximum: Option<usize>) -> Result<bool, wasmtime::Error> {
+        // Allow table growth up to a reasonable bound (e.g. 64K elements).
+        Ok(desired <= 65_536)
+    }
 }
 
 fn json_response(status: u16, message: &str) -> String {
@@ -1634,8 +1803,8 @@ async fn handle_package(action: cli::PackageCommands) -> anyhow::Result<()> {
                 .map_err(|e| anyhow::anyhow!("Failed to load package '{}': {}", package, e))?;
 
             use ed25519_dalek::{SigningKey, Signature, Signer};
-            use rand::rngs::OsRng;
-            use rand::RngCore;
+            use rand::TryRng;
+            use rand::rngs::SysRng;
 
             let key_data = std::fs::read(&key)
                 .map_err(|e| anyhow::anyhow!("Failed to read key '{}': {}", key, e))?;
@@ -1651,7 +1820,8 @@ async fn handle_package(action: cli::PackageCommands) -> anyhow::Result<()> {
                     .map_err(|_| anyhow::anyhow!("Invalid Ed25519 keypair"))?
             } else {
                 let mut seed: [u8; 32] = [0; 32];
-                OsRng.fill_bytes(&mut seed);
+                SysRng.try_fill_bytes(&mut seed)
+                    .map_err(|e| anyhow::anyhow!("Failed to read OS random: {}", e))?;
                 SigningKey::from_bytes(&seed)
             };
 

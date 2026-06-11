@@ -21,9 +21,12 @@ use crate::neural::{NeuralOptimizer, FeedbackLoop, ExecutionProfile, ExecutionOu
 use crate::neural::feedback::FeedbackEntry;
 use crate::neural::optimizer::OptimizationSuggestion;
 use crate::quantum::{SnapshotManager, Snapshot, SnapshotType};
+use crate::security::{SecurityManager, SecurityPolicy};
 use crate::ucl::{CapabilityRegistry, Capability};
 use crate::swarm::{SwarmCoordinator, SwarmId};
 use crate::wasm_fusion::FusionExecutor;
+#[cfg(feature = "mesh")]
+use crate::mesh::{MeshNetwork, MeshConfig};
 
 /// Runtime context holding all Prism runtime state
 pub struct RuntimeContext {
@@ -50,6 +53,14 @@ pub struct RuntimeContext {
     /// Per-cell cache of the last captured WASM CPU state (CBOR-encoded WasmCpuState)
     /// Used to provide real VM state when creating Full snapshots.
     pub last_cpu_states: Arc<RwLock<HashMap<CellId, Vec<u8>>>>,
+    /// Security manager for WASM validation and sandbox policy enforcement.
+    /// Every WASM module is validated through this manager before being
+    /// registered as a cell.
+    pub security_manager: Arc<SecurityManager>,
+    /// P2P mesh network (only populated when the `mesh` feature is enabled
+    /// AND the runtime was constructed with `mesh_enabled = true`).
+    #[cfg(feature = "mesh")]
+    pub mesh_network: Arc<RwLock<Option<MeshNetwork>>>,
     /// Whether mesh networking is enabled
     pub mesh_enabled: bool,
     /// Runtime listen address
@@ -57,8 +68,13 @@ pub struct RuntimeContext {
 }
 
 impl RuntimeContext {
-    /// Create a new runtime context
+    /// Create a new runtime context with a default (production) security policy.
     pub fn new(listen_address: String, mesh_enabled: bool) -> Self {
+        Self::with_policy(listen_address, mesh_enabled, SecurityPolicy::production())
+    }
+
+    /// Create a new runtime context with a caller-supplied security policy.
+    pub fn with_policy(listen_address: String, mesh_enabled: bool, policy: SecurityPolicy) -> Self {
         Self {
             cells: Arc::new(RwLock::new(HashMap::new())),
             modules: Arc::new(RwLock::new(HashMap::new())),
@@ -75,6 +91,9 @@ impl RuntimeContext {
             neural_optimizer: Arc::new(RwLock::new(NeuralOptimizer::new(1000))),
             feedback_loop: Arc::new(RwLock::new(FeedbackLoop::default())),
             last_cpu_states: Arc::new(RwLock::new(HashMap::new())),
+            security_manager: SecurityManager::new(policy),
+            #[cfg(feature = "mesh")]
+            mesh_network: Arc::new(RwLock::new(None)),
             mesh_enabled,
             listen_address,
         }
@@ -97,6 +116,24 @@ impl RuntimeContext {
         wasm_bytes: Vec<u8>,
         config: CellConfig,
     ) -> PrismResult<CellId> {
+        // Validate the WASM module BEFORE registering it. Modules that fail
+        // validation are rejected outright so the runtime never has to
+        // defend against malicious imports.
+        let validation = self.security_manager.validate_wasm(&wasm_bytes);
+        if let Ok(result) = &validation {
+            if !result.valid {
+                let descs: Vec<String> = result.violations.iter()
+                    .map(|v| format!("[{:?}] {}: {}", v.severity, v.pattern, v.description))
+                    .collect();
+                return Err(PrismError::WasmModuleError(format!(
+                    "WASM module rejected by security policy: {}",
+                    descs.join("; ")
+                )));
+            }
+        } else if let Err(e) = validation {
+            return Err(PrismError::WasmModuleError(format!("WASM validation error: {}", e)));
+        }
+
         // Register the WASM module
         let module_id = format!("module-{}", uuid::Uuid::new_v4());
         {
@@ -118,12 +155,28 @@ impl RuntimeContext {
         // Create the cell
         let metadata = CellMetadata::new(name, "wasm");
         let mut cell = ExecutionCell::new(tenant_id, config, metadata);
-        cell.wasm_module_id = Some(module_id);
+        cell.wasm_module_id = Some(module_id.clone());
         cell.status = CellStatus::Initializing;
 
         let cell_id = cell.id;
-        let mut cells = self.cells.write().await;
-        cells.insert(cell_id, cell);
+        {
+            let mut cells = self.cells.write().await;
+            cells.insert(cell_id, cell);
+        }
+
+        // Notify NATS orchestrator that a new cell has been registered. This is fire-and-forget
+        // so a NATS outage does not block cell creation.
+        if let Some(client) = self.nats_client.read().await.as_ref() {
+            let client = client.clone();
+            let cell_id_for_log = cell_id;
+            let name_owned = name.to_string();
+            let capabilities: Vec<String> = Vec::new();
+            tokio::spawn(async move {
+                if let Err(e) = client.notify_cell_registered(cell_id_for_log, &name_owned, capabilities).await {
+                    tracing::warn!(cell_id = %cell_id_for_log, "Failed to publish cell-registered notification: {}", e);
+                }
+            });
+        }
 
         info!(cell_id = %cell_id, name = %name, "Cell created successfully");
         Ok(cell_id)
@@ -318,6 +371,94 @@ impl RuntimeContext {
         }
     }
 
+    /// Run the cell's WASM module with the given input. This is the
+    /// inline version of `invoke_capability` that the gRPC service uses
+    /// for cell-level execution. Returns the cell's stdout bytes.
+    pub async fn invoke_capability_inline(&self, cell_id: &CellId, input: &[u8]) -> PrismResult<Vec<u8>> {
+        // Look up the cell to get the module id.
+        let (module_id, memory_limit_mb) = {
+            let cells = self.cells.read().await;
+            let cell = cells
+                .get(cell_id)
+                .ok_or_else(|| PrismError::CellNotFound(cell_id.to_string()))?;
+            (
+                cell.wasm_module_id
+                    .clone()
+                    .ok_or_else(|| PrismError::WasmModuleError("Cell has no WASM module".to_string()))?,
+                cell.config.memory_limit_mb,
+            )
+        };
+
+        // Fetch the module bytes from the module cache.
+        let module_bytes = {
+            let modules = self.modules.read().await;
+            modules
+                .get(&module_id)
+                .cloned()
+                .ok_or_else(|| PrismError::WasmModuleError(format!("Module {} not found", module_id)))?
+        };
+
+        // Execute via the fusion executor in a blocking task so the async runtime
+        // is not held inside wasmtime's compile/instantiate path.
+        let fusion_executor_arc = self.fusion_executor.clone();
+        let input_vec = input.to_vec();
+        // Clone values that need to outlive the 'static closure.
+        let cell_id_owned = *cell_id;
+        let module_id_owned = module_id.clone();
+        let handle = tokio::task::spawn_blocking(move || {
+            let executor_guard = futures::executor::block_on(fusion_executor_arc.read());
+            let Some(executor) = executor_guard.as_ref() else {
+                return Err(PrismError::Internal("Fusion executor not initialized".to_string()));
+            };
+
+            // Build a one-node graph that calls a `_start` (or `handler`) entry.
+            use crate::wasm_fusion::{FusionGraph, FusionNode, FusionNodeType, NodeConfig};
+            let cell_id_str = cell_id_owned.to_string();
+            let mut graph = FusionGraph::new(&cell_id_str);
+            graph.add_node(FusionNode {
+                node_id: module_id_owned.clone(),
+                name: module_id_owned.clone(),
+                node_type: FusionNodeType::Wasm,
+                config: NodeConfig {
+                    entry_point: "_start".to_string(),
+                    timeout_ms: 30_000,
+                    memory_limit_mb,
+                    imports: Vec::new(),
+                },
+            });
+
+            // Register the module with the executor if needed.
+            let module_id_for_register = module_id_owned.clone();
+            let module_bytes_clone = module_bytes.clone();
+            let _ = futures::executor::block_on(executor.register_module(&module_id_for_register, &module_bytes_clone));
+
+            futures::executor::block_on(executor.execute_graph(&mut graph, &input_vec))
+        });
+
+        match handle.await {
+            Ok(Ok(output)) => Ok(output),
+            Ok(Err(e)) => Err(e),
+            Err(e) => Err(PrismError::Internal(format!("Execute task failed: {}", e))),
+        }
+    }
+
+    /// Migrate a cell to another node. The cell is snapshotted locally and
+    /// the snapshot is shipped to the target node. This is a thin wrapper
+    /// around `MigrationManager` that resolves to a real network transfer
+    /// when the mesh is enabled and a stub return otherwise.
+    pub async fn migrate_cell(
+        &self,
+        cell_id: &CellId,
+        target_node: &str,
+    ) -> PrismResult<crate::quantum::MigrationResult> {
+        // First, snapshot the cell.
+        let snap = self.snapshot_cell(cell_id, crate::quantum::SnapshotType::Full).await?;
+        let mut mgr = crate::quantum::MigrationManager::new();
+        let strategy = crate::quantum::MigrationStrategy::Live;
+        mgr.migrate_cell(*cell_id, "local-node", target_node, strategy, &snap)
+            .await
+    }
+
     /// Create a swarm
     pub async fn create_swarm(&self, swarm_id: String) -> PrismResult<String> {
         let mut coordinator = self.swarm_coordinator.write().await;
@@ -389,6 +530,26 @@ impl RuntimeContext {
         *nats = Some(client);
         info!("Connected to NATS at {}", url);
         Ok(())
+    }
+
+    /// Initialize the P2P mesh network. The mesh is required for cross-node
+    /// cell migration, distributed snapshots, and capability advertisement.
+    /// Returns the local peer id once the swarm is listening.
+    #[cfg(feature = "mesh")]
+    pub async fn start_mesh(&self, config: MeshConfig) -> PrismResult<String> {
+        use tracing::info;
+        let mut network = MeshNetwork::new(config).map_err(|e| {
+            PrismError::Internal(format!("Failed to construct mesh network: {}", e))
+        })?;
+        let peer_id = network.local_peer_id();
+        let peer_id_str = peer_id.to_string();
+        network.start().await.map_err(|e| {
+            PrismError::Internal(format!("Failed to start mesh network: {}", e))
+        })?;
+        let mut slot = self.mesh_network.write().await;
+        *slot = Some(network);
+        info!(peer_id = %peer_id_str, "Mesh network started");
+        Ok(peer_id_str)
     }
 }
 

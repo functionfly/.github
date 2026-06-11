@@ -156,6 +156,7 @@ pub enum ConnectionState {
 
 /// NATS client for communicating with the orchestrator
 /// Production-ready implementation with connection management and retry logic
+#[derive(Clone)]
 pub struct NatsOrchestratorClient {
     client: Arc<RwLock<Option<Client>>>,
     cell_id: Arc<RwLock<Option<String>>>,
@@ -253,14 +254,20 @@ impl NatsOrchestratorClient {
     /// Publish a raw message to NATS
     #[cfg(feature = "nats")]
     pub async fn publish(&self, subject: &str, payload: &[u8]) -> Result<(), NatsClientError> {
-        let state = self.state.read();
-        if *state != ConnectionState::Connected {
-            return Err(NatsClientError::NotConnected);
+        // Verify state without holding the parking_lot guard across await (parking_lot guards are !Send).
+        {
+            let state = self.state.read();
+            if *state != ConnectionState::Connected {
+                return Err(NatsClientError::NotConnected);
+            }
         }
-        drop(state);
 
-        let client = self.client.read();
-        let client = client.as_ref().ok_or(NatsClientError::NotConnected)?;
+        // Clone out of the optional client to release the guard before the async call.
+        let client = {
+            let client_guard = self.client.read();
+            client_guard.as_ref().cloned()
+        }
+        .ok_or(NatsClientError::NotConnected)?;
 
         client.publish(subject.to_string(), payload.to_vec().into())
             .await
