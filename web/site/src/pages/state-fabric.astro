@@ -1,169 +1,270 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import '../styles/trust.css';
-import { APP_DASHBOARD_ORIGIN, AUTH_ORIGIN } from '../config';
+import '../styles/pricing.css';
+import { APP_DASHBOARD_ORIGIN, AUTH_ORIGIN, SITE_ORIGIN } from '../config';
 ---
 
 <Layout
-  title="State Fabric — Durable State for Serverless — FunctionFly"
-  description="State Fabric adds structured state to serverless functions. Snapshots, replay, hot cache, and multi-region replication for production AI workloads."
+  title="State Fabric Pricing — FunctionFly"
+  description="State Fabric plans, add-ons, and storage pricing. Stateful capabilities for serverless from Sandbox to Enterprise."
 >
-  <section class="trust-hero">
+  <section class="details-hero">
     <div class="container">
       <div class="badge">State Fabric</div>
-      <h1>Durable State for Serverless</h1>
+      <h1>Stateful capabilities for serverless</h1>
       <p class="lead">
-        Functions are stateless by default—but production AI workloads need state. State Fabric adds structured,
-        durable state to serverless with snapshots, replay, hot cache, and multi-region replication.
+        From sandbox experimentation to enterprise-grade state management. Start free and scale up as your application grows.
+        <a href="/pricing">← Back to simplified pricing</a>
       </p>
-
-      <div class="hero-actions">
-        <a class="trust-btn trust-btn-primary" href="/pricing#state-fabric">View pricing</a>
-        <a class="trust-btn trust-btn-secondary" href="/for-agents#state-fabric-agents">For AI agents</a>
-      </div>
     </div>
   </section>
 
-  <section class="trust-section">
-    <div class="container trust-grid-2">
-      <div class="trust-card">
-        <h2 id="state-objects">State objects</h2>
-        <p class="muted">Structured state containers that persist across function invocations.</p>
-        <ul class="trust-list">
-          <li><strong>Key-value with schema:</strong> Define structure for type-safe state.</li>
-          <li><strong>Atomic operations:</strong> Increment, append, merge without race conditions.</li>
-          <li><strong>TTL support:</strong> Auto-expire state objects when needed.</li>
-          <li><strong>Namespacing:</strong> Organize state by session, user, or workflow.</li>
-        </ul>
-
-        <div class="trust-callout">
-          <div class="trust-callout-title">Scaling</div>
-          <div class="trust-callout-body">
-            From 1 state object in Sandbox to unlimited in Enterprise—with per-object access controls.
-          </div>
-        </div>
-      </div>
-
-      <div class="trust-card">
-        <h2 id="snapshots">Snapshots &amp; replay</h2>
-        <p class="muted">Point-in-time snapshots let you replay events and recover state instantly.</p>
-        <ul class="trust-list">
-          <li><strong>Automatic snapshots:</strong> Schedule captures or trigger on events.</li>
-          <li><strong>Deterministic replay:</strong> Replay from any snapshot with full fidelity.</li>
-          <li><strong>Replay API:</strong> Programmatic replay for testing and recovery.</li>
-          <li><strong>Retention policies:</strong> 7 days to 365 days based on your tier.</li>
-        </ul>
-
-        <div class="trust-callout">
-          <div class="trust-callout-title">Use cases</div>
-          <div class="trust-callout-body">
-            Debug production issues, test against real state, recover from errors, train ML models on historical sequences.
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="trust-section trust-section--alt">
-    <div class="container trust-grid-2">
-      <div class="trust-card">
-        <h2 id="hot-cache">Hot cache tier</h2>
-        <p class="muted">Sub-millisecond access to frequently-read state without cold storage penalties.</p>
-        <ul class="trust-list">
-          <li><strong>LRU eviction:</strong> Automatically keeps hot data in fast tier.</li>
-          <li><strong>Write-through:</strong> Writes propagate immediately to cache.</li>
-          <li><strong>Dedicated cache:</strong> Business and Enterprise get dedicated cache nodes.</li>
-          <li><strong>Consistent reads:</strong> No stale data between cache and storage.</li>
-        </ul>
-      </div>
-
-      <div class="trust-card">
-        <h2 id="replication">Multi-region replication</h2>
-        <p class="muted">State that survives datacenter failures with synchronous replication.</p>
-        <ul class="trust-list">
-          <li><strong>Sync replication:</strong> Write acknowledgment before returning success.</li>
-          <li><strong>Automatic failover:</strong> Read from nearest replica automatically.</li>
-          <li><strong>Consistency model:</strong> Configurable per state object—strong or eventual.</li>
-          <li><strong>Edge replication:</strong> Enterprise includes edge nodes for global low-latency.</li>
-        </ul>
-      </div>
-    </div>
-  </section>
-
-  <section class="trust-section">
+  <section class="section">
     <div class="container">
-      <div class="trust-grid-2">
-        <div class="trust-card">
-          <h2 id="event-storage">Event storage</h2>
-          <p class="muted">Every state change is logged as an immutable event for audit and analytics.</p>
-          <ul class="trust-list">
-            <li><strong>Append-only log:</strong> Events cannot be modified or deleted.</li>
-            <li><strong>Structured metadata:</strong> Timestamps, actor, correlation ID.</li>
-            <li><strong>Queryable:</strong> Filter and aggregate events via API.</li>
-            <li><strong>Archive tier:</strong> Business and Enterprise can archive cold events to object storage.</li>
+      <div class="statefabric-grid">
+        <article class="price-card">
+          <h3 class="tier-name">Sandbox</h3>
+          <div class="price-row">
+            <span class="price-amount">$0</span>
+            <span class="price-period">/ month</span>
+          </div>
+          <p class="tier-desc">Great for experimentation &amp; onboarding.</p>
+          <ul class="feature-list">
+            <li><span class="check" aria-hidden="true">✓</span> Stateless usage</li>
+            <li><span class="check" aria-hidden="true">✓</span> 1 state object</li>
+            <li><span class="check" aria-hidden="true">✓</span> 1 GB event storage</li>
+            <li><span class="check" aria-hidden="true">✓</span> 10,000 state ops</li>
+            <li><span class="check" aria-hidden="true">✓</span> 7-day snapshot retention</li>
+            <li><span class="check" aria-hidden="true">✓</span> Community support</li>
           </ul>
+          <a class="btn btn-secondary full-width" href={`${AUTH_ORIGIN}/signup`}>Try now — free</a>
+        </article>
+
+        <article class="price-card">
+          <h3 class="tier-name">Starter</h3>
+          <div class="price-row">
+            <span class="price-amount">$19</span>
+            <span class="price-period">/ month</span>
+          </div>
+          <p class="tier-desc">Internal dev &amp; small side projects.</p>
+          <div class="tier-desc tier-desc--tight">Storage: $0.10/GB · Ops: $0.50/100k</div>
+          <ul class="feature-list">
+            <li><span class="check" aria-hidden="true">✓</span> Up to 5 state objects</li>
+            <li><span class="check" aria-hidden="true">✓</span> 10 GB event storage</li>
+            <li><span class="check" aria-hidden="true">✓</span> 100,000 state ops</li>
+            <li><span class="check" aria-hidden="true">✓</span> 30-day snapshot retention</li>
+            <li><span class="check" aria-hidden="true">✓</span> Basic snapshot scheduling</li>
+            <li><span class="check" aria-hidden="true">✓</span> Replay engine (limited)</li>
+          </ul>
+          <a class="btn btn-primary full-width" href={`${APP_DASHBOARD_ORIGIN}/pricing?tab=state-fabric&plan=sf_starter`}>Choose Starter</a>
+        </article>
+
+        <article class="price-card price-card--featured">
+          <h3 class="tier-name">Pro</h3>
+          <div class="price-row">
+            <span class="price-amount">$99</span>
+            <span class="price-period">/ month</span>
+          </div>
+          <p class="tier-desc">Production apps &amp; team projects.</p>
+          <div class="tier-desc tier-desc--tight">Storage: $0.08/GB · Ops: $0.35/100k</div>
+          <ul class="feature-list">
+            <li><span class="check" aria-hidden="true">✓</span> Up to 50 state objects</li>
+            <li><span class="check" aria-hidden="true">✓</span> 100 GB event storage</li>
+            <li><span class="check" aria-hidden="true">✓</span> 1M state ops</li>
+            <li><span class="check" aria-hidden="true">✓</span> 90-day snapshot retention</li>
+            <li><span class="check" aria-hidden="true">✓</span> Hot cache tier</li>
+            <li><span class="check" aria-hidden="true">✓</span> Fast deterministic replay</li>
+            <li><span class="check" aria-hidden="true">✓</span> Replay API + billing analytics</li>
+          </ul>
+          <a class="btn btn-primary full-width" href={`${APP_DASHBOARD_ORIGIN}/pricing?tab=state-fabric&plan=sf_pro`}>Choose Pro</a>
+        </article>
+
+        <article class="price-card">
+          <h3 class="tier-name">Business</h3>
+          <div class="price-row">
+            <span class="price-amount">$499</span>
+            <span class="price-period">/ month</span>
+          </div>
+          <p class="tier-desc">Business-critical systems.</p>
+          <div class="tier-desc tier-desc--tight">Storage: $0.06/GB · Archive: $30/TB/mo</div>
+          <ul class="feature-list">
+            <li><span class="check" aria-hidden="true">✓</span> Up to 500 state objects</li>
+            <li><span class="check" aria-hidden="true">✓</span> 1 TB event storage</li>
+            <li><span class="check" aria-hidden="true">✓</span> 10M state ops</li>
+            <li><span class="check" aria-hidden="true">✓</span> 180-day retention</li>
+            <li><span class="check" aria-hidden="true">✓</span> Multi-region replication</li>
+            <li><span class="check" aria-hidden="true">✓</span> Dedicated hot cache</li>
+            <li><span class="check" aria-hidden="true">✓</span> SLA + advanced analytics</li>
+            <li><span class="check" aria-hidden="true">✓</span> Event subscription streams</li>
+          </ul>
+          <a class="btn btn-primary full-width" href={`${APP_DASHBOARD_ORIGIN}/pricing?tab=state-fabric&plan=sf_business`}>Choose Business</a>
+        </article>
+
+        <article class="price-card">
+          <h3 class="tier-name">Enterprise</h3>
+          <div class="price-row">
+            <span class="price-amount price-amount--custom">Custom</span>
+          </div>
+          <p class="tier-desc">Large enterprises &amp; regulated industries.</p>
+          <ul class="feature-list">
+            <li><span class="check" aria-hidden="true">✓</span> Unlimited state objects</li>
+            <li><span class="check" aria-hidden="true">✓</span> Unlimited event storage</li>
+            <li><span class="check" aria-hidden="true">✓</span> Unlimited ops</li>
+            <li><span class="check" aria-hidden="true">✓</span> 365-day retention</li>
+            <li><span class="check" aria-hidden="true">✓</span> Multi-region + edge replication</li>
+            <li><span class="check" aria-hidden="true">✓</span> Enterprise key management (BYOK)</li>
+            <li><span class="check" aria-hidden="true">✓</span> Immutable audit logs</li>
+            <li><span class="check" aria-hidden="true">✓</span> Replay export · Dedicated support</li>
+          </ul>
+          <a class="btn btn-secondary full-width" href="/contact">Contact sales</a>
+        </article>
+      </div>
+
+      <div class="statefabric-table-wrap">
+        <h3 class="comparison-title">Compare State Fabric plans</h3>
+        <table class="agent-table statefabric-table">
+          <thead>
+            <tr>
+              <th scope="col">Feature</th>
+              <th scope="col">Sandbox</th>
+              <th scope="col">Starter</th>
+              <th scope="col">Pro</th>
+              <th scope="col">Business</th>
+              <th scope="col">Enterprise</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>State objects</td>
+              <td>1</td>
+              <td>5</td>
+              <td>50</td>
+              <td>500</td>
+              <td>Unlimited</td>
+            </tr>
+            <tr>
+              <td>Event storage</td>
+              <td>1 GB</td>
+              <td>10 GB</td>
+              <td>100 GB</td>
+              <td>1 TB</td>
+              <td>Unlimited</td>
+            </tr>
+            <tr>
+              <td>State ops</td>
+              <td>10K</td>
+              <td>100K</td>
+              <td>1M</td>
+              <td>10M</td>
+              <td>Unlimited</td>
+            </tr>
+            <tr>
+              <td>Snapshot retention</td>
+              <td>7 days</td>
+              <td>30 days</td>
+              <td>90 days</td>
+              <td>180 days</td>
+              <td>365 days</td>
+            </tr>
+            <tr>
+              <td>Replay</td>
+              <td>—</td>
+              <td>Limited</td>
+              <td>Fast + API</td>
+              <td>Full</td>
+              <td>Export</td>
+            </tr>
+            <tr>
+              <td>Multi-region</td>
+              <td>—</td>
+              <td>—</td>
+              <td>—</td>
+              <td>Yes</td>
+              <td>Yes + edge</td>
+            </tr>
+            <tr>
+              <td>Hot cache</td>
+              <td>—</td>
+              <td>—</td>
+              <td>Yes</td>
+              <td>Dedicated</td>
+              <td>Dedicated</td>
+            </tr>
+            <tr>
+              <td>Support</td>
+              <td>Community</td>
+              <td>Email</td>
+              <td>Priority</td>
+              <td>SLA</td>
+              <td>Dedicated</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="statefabric-addons">
+        <h3 class="statefabric-addons-title">Optional add-ons</h3>
+        <p class="muted statefabric-addons-sub">
+          Enhance any State Fabric plan with performance, security, or analytics add-ons.
+        </p>
+
+        <div class="addon-grid">
+          <article class="addon-card">
+            <div class="addon-top">
+              <h4>Hot Cache Booster</h4>
+              <div class="addon-price">
+                $49 <span>/mo per 5GB</span>
+              </div>
+            </div>
+            <p class="addon-desc">Reduces replay and read costs.</p>
+          </article>
+
+          <article class="addon-card">
+            <div class="addon-top">
+              <h4>Advanced Security Pack</h4>
+              <div class="addon-price">
+                $99 <span>/mo</span>
+              </div>
+            </div>
+            <p class="addon-desc">SOC2-friendly logs, key rotation, audit streams.</p>
+          </article>
+
+          <article class="addon-card">
+            <div class="addon-top">
+              <h4>AI Memory Pack</h4>
+              <div class="addon-price">
+                $149 <span>/mo</span>
+              </div>
+            </div>
+            <p class="addon-desc">Vector index, embeddings storage, fast read engine.</p>
+          </article>
+
+          <article class="addon-card">
+            <div class="addon-top">
+              <h4>Advanced Insights</h4>
+              <div class="addon-price">
+                $79 <span>/mo</span>
+              </div>
+            </div>
+            <p class="addon-desc">Cost forecasting, anomaly detection, hot path alerts.</p>
+          </article>
         </div>
 
-        <div class="trust-card">
-          <h2 id="ops-throughput">Ops throughput</h2>
-          <p class="muted">State Fabric is built for high-throughput AI workloads—millions of ops per second.</p>
-          <ul class="trust-list">
-            <li><strong>Batch operations:</strong> Multi-key reads/writes in single round-trip.</li>
-            <li><strong>Conditional writes:</strong> Optimistic locking for concurrent updates.</li>
-            <li><strong>Rate limiting:</strong> Per-tenant QoS ensures fair access.</li>
-            <li><strong>Auto-scaling:</strong> Compute scales with your throughput automatically.</li>
-          </ul>
-        </div>
+        <p class="statefabric-note">
+          Add-on prices can change over time. Always confirm current rates in your billing page.
+        </p>
       </div>
     </div>
   </section>
 
-  <section class="trust-section trust-section--alt">
-    <div class="container trust-center">
-      <div class="trust-card trust-card--wide">
-        <h2 id="security">Security &amp; compliance</h2>
-        <p class="muted">Enterprise-grade security for sensitive workloads.</p>
-        <div class="trust-grid-2" style="margin-top: 2rem;">
-          <ul class="trust-list">
-            <li><strong>BYOK key management:</strong> Bring your own encryption keys.</li>
-            <li><strong>Immutable audit logs:</strong> Every access and mutation logged.</li>
-            <li><strong>Data residency:</strong> Choose which regions store your state.</li>
-            <li><strong>SOC 2 ready:</strong> Controls aligned with SOC 2 Type II.</li>
-          </ul>
-          <ul class="trust-list">
-            <li><strong>Private networking:</strong> VPC isolation for sensitive data.</li>
-            <li><strong>Access controls:</strong> Role-based state object permissions.</li>
-            <li><strong>Encryption at rest:</strong> AES-256 for all stored state.</li>
-            <li><strong>TLS in transit:</strong> All API calls encrypted end-to-end.</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="trust-section">
-    <div class="container trust-center">
-      <div class="trust-card trust-card--wide">
-        <h2 id="get-started">Get started with State Fabric</h2>
-        <p class="muted">Start free with Sandbox—no credit card required.</p>
-        <div class="hero-actions" style="justify-content: center; margin-top: 2rem;">
-          <a class="trust-btn trust-btn-primary" href={`${AUTH_ORIGIN}/signup`}>Try free — no card needed</a>
-          <a class="trust-btn trust-btn-secondary" href="/pricing#state-fabric">View all plans</a>
-        </div>
+  <section class="cta">
+    <div class="container">
+      <h2>Ready to add state to your functions?</h2>
+      <p class="muted">Start with the free Sandbox or choose a plan that fits your scale.</p>
+      <div class="actions">
+        <a class="btn primary" href={`${AUTH_ORIGIN}/signup`}>Try now — free</a>
+        <a class="btn secondary" href="/contact">Talk to sales</a>
       </div>
     </div>
   </section>
 </Layout>
-
-<style>
-  .trust-center {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .trust-card--wide {
-    max-width: 800px;
-    width: 100%;
-  }
-</style>

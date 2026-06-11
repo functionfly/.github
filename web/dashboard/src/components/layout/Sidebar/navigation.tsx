@@ -17,6 +17,7 @@ import {
   CheckCircle,
   Cloud,
   Code,
+  CreditCard,
   Database,
   Dna,
   Flame,
@@ -40,7 +41,6 @@ import {
   Wallet,
   Wand,
   Workflow,
-  Zap,
   type LucideIcon,
 } from 'lucide-react';
 import { ROUTES } from '@/lib/constants';
@@ -106,34 +106,34 @@ export const navigationSections: NavSection[] = [
         onboardingHint: 'Start here to explore functions',
       },
       {
-        path: ROUTES.FUNCTIONS_HOT,
+        path: '/functions/hot',
         label: 'Hot',
         icon: Flame,
         shortcut: 'H',
         description: 'Trending hot functions right now',
       },
       {
-        path: ROUTES.FUNCTIONS_TRENDING,
+        path: '/functions/trending',
         label: 'Trending',
         icon: TrendingUp,
         shortcut: 'T',
         description: 'Functions gaining popularity',
       },
       {
-        path: ROUTES.FUNCTIONS_NEW,
+        path: '/functions/explore/new',
         label: 'New',
         icon: Sparkles,
         shortcut: 'N',
         description: 'Recently added functions',
       },
       {
-        path: ROUTES.FUNCTIONS_FAVORITES,
+        path: '/functions/favorites',
         label: 'Favorites',
         icon: Star,
         description: 'Your starred functions',
       },
       {
-        path: ROUTES.NOTIFICATIONS,
+        path: '/notifications',
         label: 'Notifications',
         icon: Bell,
         description: 'View your notifications',
@@ -154,7 +154,7 @@ export const navigationSections: NavSection[] = [
     collapsible: true,
     items: [
       {
-        path: ROUTES.FUNCTIONS + '/my',
+        path: '/functions/my',
         label: 'My Functions',
         icon: Code,
         description: 'Functions you created',
@@ -168,7 +168,7 @@ export const navigationSections: NavSection[] = [
         description: 'AI-powered function generation',
       },
       {
-        path: ROUTES.STUDIO,
+        path: '/studio',
         label: 'Studio',
         icon: Wand,
         badge: 'beta',
@@ -176,7 +176,7 @@ export const navigationSections: NavSection[] = [
         description: 'AI-powered code & function studio',
       },
       {
-        path: ROUTES.FRG,
+        path: '/frg',
         label: 'Graph Editor',
         icon: Network,
         badge: 'beta',
@@ -190,14 +190,14 @@ export const navigationSections: NavSection[] = [
         description: 'Function state management',
       },
       {
-        path: ROUTES.GITHUB_IMPORT,
+        path: '/github',
         label: 'GitHub Import',
         icon: GitHubIcon,
         badge: 'new',
         description: 'Import functions from GitHub repositories',
       },
       {
-        path: ROUTES.FUNCTIONS_PASTE,
+        path: '/functions/paste',
         label: 'Paste Code',
         icon: Code,
         description: 'Paste and import code snippets',
@@ -286,14 +286,7 @@ export const navigationSections: NavSection[] = [
         description: 'Resource usage & cost analytics',
       },
       {
-        path: '/mcp',
-        label: 'MCP Center',
-        icon: Zap,
-        badge: 'new',
-        description: 'Model Context Protocol integration',
-      },
-      {
-        path: ROUTES.BRAIN,
+        path: '/brain',
         label: 'Brain',
         icon: Brain,
         badge: 'new',
@@ -312,28 +305,28 @@ export const navigationSections: NavSection[] = [
         description: 'System status',
       },
       {
-        path: ROUTES.DNA_OVERVIEW,
+        path: '/dna/overview',
         label: 'Function DNA',
         icon: Dna,
         badge: 'new',
         description: 'Living code that evolves itself',
       },
       {
-        path: ROUTES.TIME_MACHINE,
+        path: '/time-machine',
         label: 'Time Machine',
         icon: History,
         badge: 'new',
         description: 'Rewind and fix production bugs',
       },
       {
-        path: ROUTES.CERTIFICATION,
+        path: '/certification',
         label: 'Certification',
         icon: Award,
         badge: 'new',
         description: 'Earn verifiable developer credentials',
       },
       {
-        path: ROUTES.CREDENTIALS,
+        path: '/credentials',
         label: 'My Credentials',
         icon: BadgeCheck,
         description: 'View earned certifications',
@@ -398,8 +391,14 @@ export const navigationSections: NavSection[] = [
         path: ROUTES.SETTINGS,
         label: 'Settings',
         icon: Settings,
-        shortcut: 'E',
+        shortcut: 'S',
         description: 'Account settings',
+      },
+      {
+        path: '/billing',
+        label: 'Billing',
+        icon: CreditCard,
+        description: 'Manage subscription, invoices, and payments',
       },
       {
         path: ROUTES.ENTERPRISE_SUPPORT,
@@ -411,15 +410,61 @@ export const navigationSections: NavSection[] = [
   },
 ];
 
-export { NAV_LABEL_KEYS } from './navigation.constants';
+// ============================================================================
+// Translation keys map
+// All labels are hardcoded here (not user-controlled) so XSS risk is LOW.
+// We still escape output as defense-in-depth.
+// ============================================================================
+
+export const NAV_LABEL_KEYS: Record<string, string> = {
+  'Discover': 'nav.discover',
+  'Hot': 'nav.hot',
+  'Trending': 'nav.trending',
+  'New': 'nav.new',
+  'Notifications': 'nav.notifications',
+  'Conversations': 'nav.conversations',
+  'My Functions': 'nav.myFunctions',
+  'AI Composer': 'nav.aiComposer',
+  'Graph Editor': 'nav.graphEditor',
+  'State': 'nav.state',
+  'Apps': 'nav.apps',
+  'Agents': 'nav.agents',
+  'Providers': 'nav.providers',
+  'SDK': 'nav.sdk',
+  'Secrets': 'nav.secrets',
+  'API Keys': 'nav.apiKeys',
+  'Connectors': 'nav.connectors',
+  'Bundles': 'nav.bundles',
+  'Analytics': 'nav.analytics',
+  'Usage': 'nav.usage',
+  'Wallet': 'nav.wallet',
+  'Status': 'nav.status',
+  'Time Machine': 'nav.timeMachine',
+  'Evolution': 'nav.evolution',
+  'Marketplace': 'nav.marketplace',
+  'Brain': 'nav.brain',
+  'Memory': 'nav.memory',
+  'Teams': 'nav.teams',
+  'Decisions': 'nav.decisions',
+  'State Fabric': 'nav.stateFabric',
+  'GitHub Import': 'nav.githubImport',
+  'Settings': 'nav.settings',
+  'Billing': 'nav.billing',
+  'Support': 'nav.support',
+  'Recent': 'nav.recent',
+  'Getting Started': 'nav.gettingStarted',
+  'Sign Out': 'nav.signOut',
+  'Search Results': 'nav.search',
+  'Favorites': 'nav.favorites',
+};
 
 // ============================================================================
 // Animation variants (shared across sidebar)
 // ============================================================================
 
 export const SECTION_VARIANTS = {
-  collapsed: { gridTemplateRows: '0fr', opacity: 0 },
-  expanded: { gridTemplateRows: '1fr', opacity: 1 },
+  collapsed: { height: 0, opacity: 0 },
+  expanded: { height: 'auto' as const, opacity: 1 },
 };
 
 export const LG_BREAKPOINT = 1024;
