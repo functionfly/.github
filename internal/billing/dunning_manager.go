@@ -423,7 +423,12 @@ type DunningInitiationParams struct {
 // Notification helpers
 
 func (m *DunningManager) sendInitialFailureNotification(ctx context.Context, retry *storage.PaymentRetry, customerEmail string) error {
-	if m.notificationSvc == nil || customerEmail == "" {
+	if m.notificationSvc == nil {
+		logrus.Warn("DunningManager: notification service not configured, skipping payment failure notification")
+		return nil
+	}
+	if customerEmail == "" {
+		logrus.Warn("DunningManager: no customer email provided, skipping notification")
 		return nil
 	}
 
@@ -441,6 +446,7 @@ func (m *DunningManager) sendInitialFailureNotification(ctx context.Context, ret
 
 func (m *DunningManager) sendRetryReminderNotification(ctx context.Context, retry *storage.PaymentRetry, attemptNumber int) error {
 	if m.notificationSvc == nil {
+		logrus.Warn("DunningManager: notification service not configured, skipping retry reminder notification")
 		return nil
 	}
 
@@ -488,6 +494,7 @@ func (m *DunningManager) sendRetryReminderNotification(ctx context.Context, retr
 
 func (m *DunningManager) sendFinalFailureNotification(ctx context.Context, retry *storage.PaymentRetry) error {
 	if m.notificationSvc == nil {
+		logrus.Warn("DunningManager: notification service not configured, skipping final failure notification")
 		return nil
 	}
 
@@ -528,6 +535,7 @@ func (m *DunningManager) sendFinalFailureNotification(ctx context.Context, retry
 
 func (m *DunningManager) sendAdminFinalFailureNotification(ctx context.Context, retry *storage.PaymentRetry) error {
 	if m.notificationSvc == nil {
+		logrus.Warn("DunningManager: notification service not configured, skipping admin final failure notification")
 		return nil
 	}
 
@@ -630,6 +638,7 @@ func (m *DunningManager) getAdminEmails(ctx context.Context, tenantID uuid.UUID)
 
 func (m *DunningManager) sendPaymentRecoveredNotification(ctx context.Context, retry *storage.PaymentRetry) error {
 	if m.notificationSvc == nil {
+		logrus.Warn("DunningManager: notification service not configured, skipping payment recovered notification")
 		return nil
 	}
 
@@ -665,6 +674,7 @@ func (m *DunningManager) sendPaymentRecoveredNotification(ctx context.Context, r
 
 func (m *DunningManager) sendServiceSuspendedNotification(ctx context.Context, suspension *storage.ServiceSuspension) error {
 	if m.notificationSvc == nil {
+		logrus.Warn("DunningManager: notification service not configured, skipping service suspended notification")
 		return nil
 	}
 
@@ -697,6 +707,7 @@ func (m *DunningManager) sendServiceSuspendedNotification(ctx context.Context, s
 
 func (m *DunningManager) sendServiceRestoredNotification(ctx context.Context, tenantID uuid.UUID, suspension *storage.ServiceSuspension) error {
 	if m.notificationSvc == nil {
+		logrus.Warn("DunningManager: notification service not configured, skipping service restored notification")
 		return nil
 	}
 

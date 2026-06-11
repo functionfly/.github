@@ -2,8 +2,11 @@ package notifications
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
+	"sync"
+	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/notification"
@@ -12,17 +15,97 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type notificationRateLimiter struct {
+	mu       sync.Mutex
+	requests map[string][]time.Time
+	limit    int
+	window   time.Duration
+}
+
+func newNotificationRateLimiter() *notificationRateLimiter {
+	return &notificationRateLimiter{
+		requests: make(map[string][]time.Time),
+		limit:    100,
+		window:   time.Minute,
+	}
+}
+
+func (rl *notificationRateLimiter) Allow(key string) bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	now := time.Now()
+	windowStart := now.Add(-rl.window)
+
+	if requests, ok := rl.requests[key]; ok {
+		var validRequests []time.Time
+		for _, t := range requests {
+			if t.After(windowStart) {
+				validRequests = append(validRequests, t)
+			}
+		}
+		rl.requests[key] = validRequests
+		if len(validRequests) >= rl.limit {
+			return false
+		}
+	}
+
+	rl.requests[key] = append(rl.requests[key], now)
+	return true
+}
+
+type notificationAuditLogger struct {
+	logger *logrus.Logger
+}
+
+func newNotificationAuditLogger() *notificationAuditLogger {
+	return &notificationAuditLogger{
+		logger: logrus.New(),
+	}
+}
+
+func (l *notificationAuditLogger) log(userID uuid.UUID, action string, notificationID uuid.UUID, ipAddress, userAgent string, success bool, err error) {
+	fields := logrus.Fields{
+		"event":            "notification_access",
+		"user_id":          userID.String(),
+		"action":           action,
+		"notification_id": notificationID.String(),
+		"ip_address":       ipAddress,
+		"user_agent":       userAgent,
+		"success":          success,
+	}
+	if err != nil {
+		fields["error"] = err.Error()
+	}
+	l.logger.WithFields(fields).Info("Notification audit event")
+}
+
+func getClientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		return xff
+	}
+	return r.RemoteAddr
+}
+
+func getUserAgent(r *http.Request) string {
+	return r.UserAgent()
+}
+
 // Handler contains notification handlers
 type Handler struct {
-	service *notification.Service
-	repo    notification.Repository
+	service     *notification.Service
+	repo        notification.Repository
+	rateLimiter *notificationRateLimiter
+	auditLogger *notificationAuditLogger
 }
 
 // NewHandler creates a new notifications handler
 func NewHandler(service *notification.Service, repo notification.Repository) *Handler {
 	return &Handler{
-		service: service,
-		repo:    repo,
+		service:     service,
+		repo:        repo,
+		rateLimiter: newNotificationRateLimiter(),
+		auditLogger: newNotificationAuditLogger(),
 	}
 }
 
@@ -46,7 +129,11 @@ func (h *Handler) HandleListNotifications(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Parse query parameters
+	if !h.rateLimiter.Allow(user.UserID.String()) {
+		http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+		return
+	}
+
 	opts := notification.ListOptions{}
 
 	if limit := r.URL.Query().Get("limit"); limit != "" {
@@ -67,7 +154,6 @@ func (h *Handler) HandleListNotifications(w http.ResponseWriter, r *http.Request
 	opts.Category = r.URL.Query().Get("category")
 	opts.UnreadOnly = r.URL.Query().Get("unread_only") == "true"
 
-	// Get notifications
 	notifications, err := h.service.ListNotifications(r.Context(), user.UserID, opts)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list notifications")
@@ -75,11 +161,9 @@ func (h *Handler) HandleListNotifications(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Get unread count
 	unreadCount, err := h.service.GetUnreadCount(r.Context(), user.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get unread count")
-		// Don't fail the request, just log the error
 		unreadCount = 0
 	}
 
@@ -101,7 +185,11 @@ func (h *Handler) HandleGetUnreadCount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get total count (all notifications)
+	if !h.rateLimiter.Allow(user.UserID.String()) {
+		http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+		return
+	}
+
 	totalCount, err := h.service.GetTotalCount(r.Context(), user.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get total count")
@@ -109,7 +197,6 @@ func (h *Handler) HandleGetUnreadCount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get unread count
 	unreadCount, err := h.service.GetUnreadCount(r.Context(), user.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get unread count")
@@ -117,26 +204,22 @@ func (h *Handler) HandleGetUnreadCount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get unread counts by category
 	categoryCounts, err := h.service.GetUnreadCountsByCategory(r.Context(), user.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get category counts, using defaults")
-		// Don't fail the request, just use empty counts
 		categoryCounts = make(map[string]int)
 	}
 
-	// Ensure categoryCounts is not nil
 	if categoryCounts == nil {
 		categoryCounts = make(map[string]int)
 	}
 
-	// Map backend categories to frontend expected categories
 	frontendCategories := map[string]int{
-		"trust":    categoryCounts["system"],     // System announcements/trust updates
-		"revenue":  categoryCounts["billing"],    // Billing/revenue notifications
-		"issues":   categoryCounts["deployment"], // Deployment issues
-		"messages": categoryCounts["team"],       // Team messages/invitations
-		"security": categoryCounts["security"],   // Security notifications
+		"trust":    categoryCounts["system"],
+		"revenue":  categoryCounts["billing"],
+		"issues":   categoryCounts["deployment"],
+		"messages": categoryCounts["team"],
+		"security": categoryCounts["security"],
 	}
 
 	response := map[string]interface{}{
@@ -144,12 +227,6 @@ func (h *Handler) HandleGetUnreadCount(w http.ResponseWriter, r *http.Request) {
 		"unread":     unreadCount,
 		"byCategory": frontendCategories,
 	}
-
-	logrus.WithFields(logrus.Fields{
-		"total":      totalCount,
-		"unread":     unreadCount,
-		"byCategory": frontendCategories,
-	}).Debug("Sending notification counts response")
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
@@ -167,6 +244,11 @@ func (h *Handler) HandleMarkAsRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !h.rateLimiter.Allow(user.UserID.String()) {
+		http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+		return
+	}
+
 	vars := mux.Vars(r)
 	notificationID, err := uuid.Parse(vars["id"])
 	if err != nil {
@@ -174,7 +256,6 @@ func (h *Handler) HandleMarkAsRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify notification belongs to user
 	n, err := h.service.GetNotification(r.Context(), notificationID)
 	if err != nil {
 		http.Error(w, "Notification not found", http.StatusNotFound)
@@ -192,6 +273,8 @@ func (h *Handler) HandleMarkAsRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.auditLogger.log(user.UserID, "mark_as_read", notificationID, getClientIP(r), getUserAgent(r), true, nil)
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
 		"status": "marked_as_read",
@@ -206,11 +289,18 @@ func (h *Handler) HandleMarkAllAsRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !h.rateLimiter.Allow(user.UserID.String()) {
+		http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+		return
+	}
+
 	if err := h.service.MarkAllAsRead(r.Context(), user.UserID); err != nil {
 		logrus.WithError(err).Error("Failed to mark all notifications as read")
 		http.Error(w, "Failed to mark all as read", http.StatusInternalServerError)
 		return
 	}
+
+	h.auditLogger.log(user.UserID, "mark_all_as_read", uuid.Nil, getClientIP(r), getUserAgent(r), true, nil)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
@@ -230,26 +320,36 @@ func (h *Handler) HandlePatchNotification(w http.ResponseWriter, r *http.Request
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+
+	if !h.rateLimiter.Allow(user.UserID.String()) {
+		http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+		return
+	}
+
 	vars := mux.Vars(r)
 	notificationID, err := uuid.Parse(vars["id"])
 	if err != nil {
 		http.Error(w, "Invalid notification ID", http.StatusBadRequest)
 		return
 	}
+
 	n, err := h.service.GetNotification(r.Context(), notificationID)
 	if err != nil {
 		http.Error(w, "Notification not found", http.StatusNotFound)
 		return
 	}
+
 	if n.UserID != user.UserID {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
+
 	var req patchNotificationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
+
 	switch req.Status {
 	case "archived":
 		if err := h.service.ArchiveNotification(r.Context(), notificationID); err != nil {
@@ -257,10 +357,12 @@ func (h *Handler) HandlePatchNotification(w http.ResponseWriter, r *http.Request
 			http.Error(w, "Failed to archive notification", http.StatusInternalServerError)
 			return
 		}
+		h.auditLogger.log(user.UserID, "archive", notificationID, getClientIP(r), getUserAgent(r), true, nil)
 	default:
 		http.Error(w, "Unsupported status", http.StatusBadRequest)
 		return
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": req.Status})
 }
@@ -273,6 +375,11 @@ func (h *Handler) HandleDeleteNotification(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	if !h.rateLimiter.Allow(user.UserID.String()) {
+		http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+		return
+	}
+
 	vars := mux.Vars(r)
 	notificationID, err := uuid.Parse(vars["id"])
 	if err != nil {
@@ -280,7 +387,6 @@ func (h *Handler) HandleDeleteNotification(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Verify notification belongs to user
 	n, err := h.service.GetNotification(r.Context(), notificationID)
 	if err != nil {
 		http.Error(w, "Notification not found", http.StatusNotFound)
@@ -298,6 +404,8 @@ func (h *Handler) HandleDeleteNotification(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	h.auditLogger.log(user.UserID, "delete", notificationID, getClientIP(r), getUserAgent(r), true, nil)
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
 		"status": "deleted",
@@ -309,6 +417,11 @@ func (h *Handler) HandleGetPreferences(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if !h.rateLimiter.Allow(user.UserID.String()) {
+		http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
 		return
 	}
 
@@ -333,20 +446,66 @@ func (h *Handler) HandleUpdatePreferences(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	if !h.rateLimiter.Allow(user.UserID.String()) {
+		http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+		return
+	}
+
 	var req UpdatePreferencesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	// Update each preference
+	if len(req.Preferences) == 0 {
+		http.Error(w, "No preferences provided", http.StatusBadRequest)
+		return
+	}
+
+	validChannels := map[string]bool{
+		"email":   true,
+		"in_app":  true,
+		"webhook": true,
+		"push":    true,
+	}
+	validCategories := map[string]bool{
+		"system":     true,
+		"security":   true,
+		"billing":    true,
+		"deployment": true,
+		"function":   true,
+		"team":       true,
+		"messages":   true,
+		"registry":   true,
+		"failover":   true,
+		"provider":   true,
+	}
+	validFrequencies := map[string]bool{
+		"immediate":     true,
+		"digest_daily":  true,
+		"digest_weekly": true,
+	}
+
 	for _, pref := range req.Preferences {
-		pref.UserID = user.UserID // Ensure user can only update their own preferences
+		if !validChannels[pref.Channel] {
+			http.Error(w, fmt.Sprintf("Invalid channel: %s", pref.Channel), http.StatusBadRequest)
+			return
+		}
+		if !validCategories[pref.Category] {
+			http.Error(w, fmt.Sprintf("Invalid category: %s", pref.Category), http.StatusBadRequest)
+			return
+		}
+		if pref.Frequency != "" && !validFrequencies[pref.Frequency] {
+			http.Error(w, fmt.Sprintf("Invalid frequency: %s", pref.Frequency), http.StatusBadRequest)
+			return
+		}
+		pref.UserID = user.UserID
 		if err := h.service.SavePreference(r.Context(), &pref); err != nil {
 			logrus.WithError(err).Error("Failed to save preference")
 			http.Error(w, "Failed to save preferences", http.StatusInternalServerError)
 			return
 		}
+		h.auditLogger.log(user.UserID, "update_preference", uuid.Nil, getClientIP(r), getUserAgent(r), true, nil)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -357,7 +516,6 @@ func (h *Handler) HandleUpdatePreferences(w http.ResponseWriter, r *http.Request
 
 // RegisterRoutes registers the notification routes
 func (h *Handler) RegisterRoutes(router *mux.Router) {
-	// Notification routes
 	router.HandleFunc("/v1/notifications", h.HandleListNotifications).Methods("GET")
 	router.HandleFunc("/v1/notifications/unread-count", h.HandleGetUnreadCount).Methods("GET")
 	router.HandleFunc("/v1/notifications/read-all", h.HandleMarkAllAsRead).Methods("POST")
@@ -365,7 +523,6 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/v1/notifications/{id}", h.HandlePatchNotification).Methods("PATCH")
 	router.HandleFunc("/v1/notifications/{id}", h.HandleDeleteNotification).Methods("DELETE")
 
-	// Preference routes
 	router.HandleFunc("/v1/users/me/notification-preferences", h.HandleGetPreferences).Methods("GET")
 	router.HandleFunc("/v1/users/me/notification-preferences", h.HandleUpdatePreferences).Methods("PATCH")
 }

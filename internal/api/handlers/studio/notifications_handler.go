@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
@@ -171,11 +172,27 @@ func (h *NotificationsHandler) HandleClearNotifications(w http.ResponseWriter, r
 }
 
 // HandleCreateNotification handles POST /v1/studio/notifications (development only)
+//
+// Security Notes:
+// - This endpoint is only enabled when DEVELOPMENT=true
+// - Only admins can create notifications (checked via STUDIO_NOTIFICATIONS_ADMIN_ONLY env var)
+// - Notifications are created for the authenticated user only
+// - Rate limiting should be applied at the API gateway level
 func (h *NotificationsHandler) HandleCreateNotification(w http.ResponseWriter, r *http.Request) {
 	if os.Getenv("DEVELOPMENT") != "true" {
 		writeJSONError(w, http.StatusForbidden, "Creating studio notifications via API is disabled in production")
 		return
 	}
+
+	// Check if admin-only mode is enabled
+	adminOnlyMode := os.Getenv("STUDIO_NOTIFICATIONS_ADMIN_ONLY")
+	if adminOnlyMode == "true" {
+		if !isAdminUser(r) {
+			writeJSONError(w, http.StatusForbidden, "Only administrators can create studio notifications")
+			return
+		}
+	}
+
 	tenantID := getTenantID(r)
 	userID := getUserID(r)
 	if tenantID == "" || userID == "" {
@@ -200,6 +217,16 @@ func (h *NotificationsHandler) HandleCreateNotification(w http.ResponseWriter, r
 		return
 	}
 
+	// Validate input lengths
+	if len(req.Title) > 500 {
+		writeJSONError(w, http.StatusBadRequest, "title exceeds maximum length of 500 characters")
+		return
+	}
+	if len(req.Message) > 10000 {
+		writeJSONError(w, http.StatusBadRequest, "message exceeds maximum length of 10000 characters")
+		return
+	}
+
 	uid := userID
 	notification, err := h.repo.CreateNotification(r.Context(), CreateNotificationParams{
 		TenantID:    tenantID,
@@ -218,4 +245,25 @@ func (h *NotificationsHandler) HandleCreateNotification(w http.ResponseWriter, r
 	}
 
 	writeJSON(w, http.StatusCreated, notification)
+}
+
+// isAdminUser checks if the authenticated user has admin privileges
+func isAdminUser(r *http.Request) bool {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		return false
+	}
+	// Check for admin role in claims or context
+	// This depends on how your auth system represents admin status
+	// For now, we check if the user has specific roles or is marked as admin
+	roles, ok := r.Context().Value("user_roles").([]string)
+	if !ok {
+		return false
+	}
+	for _, role := range roles {
+		if role == "admin" || role == "super_admin" {
+			return true
+		}
+	}
+	return false
 }

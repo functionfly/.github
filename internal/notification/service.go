@@ -12,6 +12,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	MaxTitleLength = 500
+	MaxBodyLength  = 10000
+)
+
 // Service is the main notification service
 type Service struct {
 	repo       Repository
@@ -53,6 +58,20 @@ func NewService(repo Repository, db *storage.PostgresDB, emailSvc email.Service,
 
 // Send creates and sends a notification
 func (s *Service) Send(ctx context.Context, req SendRequest) (*Notification, error) {
+	// Validate and sanitize input
+	title := req.Title
+	if len(title) > MaxTitleLength {
+		title = title[:MaxTitleLength]
+	}
+	if title == "" {
+		return nil, fmt.Errorf("notification title is required")
+	}
+
+	body := req.Body
+	if len(body) > MaxBodyLength {
+		body = body[:MaxBodyLength]
+	}
+
 	// Determine channels if not specified
 	channels := req.Channels
 	if len(channels) == 0 {
@@ -70,8 +89,8 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (*Notification, err
 		UserID:   req.UserID,
 		Type:     req.Type,
 		Category: req.Category,
-		Title:    req.Title,
-		Body:     req.Body,
+		Title:    title,
+		Body:     body,
 		Data:     req.Data,
 		Channels: channels,
 		Priority: priority,
@@ -97,6 +116,8 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (*Notification, err
 
 // Broadcast sends a notification to multiple users
 func (s *Service) Broadcast(ctx context.Context, req BroadcastRequest) error {
+	var lastErr error
+	failedCount := 0
 	for _, userID := range req.UserIDs {
 		sendReq := SendRequest{
 			UserID:   userID,
@@ -110,7 +131,15 @@ func (s *Service) Broadcast(ctx context.Context, req BroadcastRequest) error {
 		}
 		if _, err := s.Send(ctx, sendReq); err != nil {
 			s.logger.WithError(err).WithField("user_id", userID).Error("Failed to send broadcast notification")
+			lastErr = err
+			failedCount++
 		}
+	}
+	if failedCount == len(req.UserIDs) && len(req.UserIDs) > 0 {
+		return fmt.Errorf("broadcast failed for all %d recipients: %w", len(req.UserIDs), lastErr)
+	}
+	if failedCount > 0 {
+		s.logger.WithField("failed_count", failedCount).Warnf("Broadcast partially failed: %d of %d recipients failed", failedCount, len(req.UserIDs))
 	}
 	return nil
 }
@@ -420,7 +449,29 @@ func (s *Service) Stop() {
 	s.queue.Stop()
 }
 
+// HealthCheck returns the health status of the notification service
+func (s *Service) HealthCheck() map[string]interface{} {
+	queueHealth := s.queue.HealthCheck()
 
+	channels := make(map[string]bool)
+	s.mu.RLock()
+	for name, ch := range s.channels {
+		channels[name] = ch.IsConfigured()
+	}
+	s.mu.RUnlock()
+
+	status := "healthy"
+	if queueSat, ok := queueHealth["saturation_pct"].(float64); ok && queueSat > 90 {
+		status = "degraded"
+	}
+
+	return map[string]interface{}{
+		"status":           status,
+		"queue":            queueHealth,
+		"channels":        channels,
+		"email_configured": s.dispatcher != nil && s.channels[ChannelEmail] != nil,
+	}
+}
 
 // SendLowBalance sends a low balance alert to a user via email
 func (s *Service) SendLowBalance(ctx context.Context, userEmail string, data map[string]interface{}) error {

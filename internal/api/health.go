@@ -103,6 +103,10 @@ func (s *Server) handleDetailedHealth(w http.ResponseWriter, r *http.Request) {
 		"timestamp": time.Now().Format(time.RFC3339),
 	}
 
+	// Check notification service
+	notificationHealth := s.checkNotificationHealth(ctx)
+	servicesMap["notification"] = notificationHealth
+
 	// Perform system health checks
 	checks := []map[string]interface{}{}
 
@@ -216,6 +220,10 @@ func (s *Server) handleHealthCheck(w http.ResponseWriter, r *http.Request) {
 		}
 		statusCode = s.statusCodeFromHealth(healthy)
 
+	case "notification":
+		checkResult = s.checkNotificationHealth(r.Context())
+		statusCode = s.statusCodeFromCheck(checkResult)
+
 	default:
 		http.Error(w, "Unknown health check: "+checkName, http.StatusBadRequest)
 		return
@@ -252,6 +260,35 @@ func (s *Server) checkMonitoringHealth(ctx context.Context) bool {
 func (s *Server) checkRoutingHealth(ctx context.Context) bool {
 	// Check if routing service is responsive
 	return s.routingSvc != nil
+}
+
+// checkNotificationHealth verifies notification service health
+func (s *Server) checkNotificationHealth(ctx context.Context) map[string]interface{} {
+	result := map[string]interface{}{
+		"status":    "healthy",
+		"timestamp": time.Now().Format(time.RFC3339),
+	}
+
+	if s.notificationSvc == nil {
+		result["status"] = "unhealthy"
+		result["message"] = "notification service not initialized"
+		return result
+	}
+
+	health := s.notificationSvc.HealthCheck()
+	if status, ok := health["status"].(string); ok {
+		result["status"] = status
+	}
+	result["queue"] = health["queue"]
+	result["channels"] = health["channels"]
+
+	if queueSat, ok := health["queue"].(map[string]interface{})["saturation_pct"].(float64); ok && queueSat > 90 {
+		result["message"] = "notification queue saturation critical"
+	} else {
+		result["message"] = "notification service operational"
+	}
+
+	return result
 }
 
 // checkMemoryUsage performs memory usage health check

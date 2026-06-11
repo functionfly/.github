@@ -56,9 +56,8 @@ func (c *InAppChannel) Send(ctx context.Context, n *Notification, user *storage.
 	channelName := fmt.Sprintf("user_notifications_%s", n.UserID.String())
 
 	if err := c.pgNotify(channelName, string(payload)); err != nil {
-		c.logger.WithError(err).Warn("Failed to send pg_notify, but notification is stored in database")
-		// Don't return error here - the notification is already saved in DB
-		// The client will pick it up on next poll
+		c.logger.WithError(err).WithField("notification_id", n.ID).Error("Failed to send pg_notify for in-app notification")
+		return fmt.Errorf("failed to send pg_notify: %w", err)
 	}
 
 	c.logger.WithFields(logrus.Fields{
@@ -156,7 +155,14 @@ func (m *WebSocketManager) Run() {
 				}
 			}
 			m.mu.Unlock()
-			close(client.Send)
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						m.logger.WithField("user_id", client.UserID).Warn("Recovered from panic closing WebSocket send channel")
+					}
+				}()
+				close(client.Send)
+			}()
 			m.logger.WithField("user_id", client.UserID).Debug("WebSocket client unregistered")
 
 		case message := <-m.broadcast:

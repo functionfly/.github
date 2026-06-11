@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/notification"
@@ -100,11 +101,12 @@ type PayoutApprovalSummary struct {
 
 // PayoutApprovalService manages the payout approval workflow
 type PayoutApprovalService struct {
-	db                *sql.DB
-	logger            *logrus.Logger
-	notifySvc         *notification.Service
-	payoutRepo        *storage.PayoutRepository
-	approvalThreshold float64
+	db                     *sql.DB
+	logger                 *logrus.Logger
+	notifySvc              *notification.Service
+	payoutRepo             *storage.PayoutRepository
+	approvalThreshold      float64
+	adminNotificationEmail string
 }
 
 // PayoutApprovalConfig holds configuration for the approval service
@@ -113,15 +115,21 @@ type PayoutApprovalConfig struct {
 	RequireSecondApprovalUSD   float64
 	DefaultFirstApproverRoles  []string
 	DefaultSecondApproverRoles []string
+	AdminNotificationEmail     string
 }
 
 // DefaultPayoutApprovalConfig returns default configuration
 func DefaultPayoutApprovalConfig() *PayoutApprovalConfig {
+	adminEmail := os.Getenv("ADMIN_NOTIFICATION_EMAIL")
+	if adminEmail == "" {
+		adminEmail = "admin@functionfly.local"
+	}
 	return &PayoutApprovalConfig{
 		ApprovalThresholdUSD:       getEnvFloat64("PAYOUT_APPROVAL_THRESHOLD_USD", 1000.0),
 		RequireSecondApprovalUSD:   getEnvFloat64("PAYOUT_SECOND_APPROVAL_THRESHOLD_USD", 10000.0),
 		DefaultFirstApproverRoles:  []string{"finance", "admin"},
 		DefaultSecondApproverRoles: []string{"finance_manager", "admin"},
+		AdminNotificationEmail:     adminEmail,
 	}
 }
 
@@ -130,11 +138,12 @@ func NewPayoutApprovalService(db *sql.DB, payoutRepo *storage.PayoutRepository, 
 	cfg := DefaultPayoutApprovalConfig()
 
 	return &PayoutApprovalService{
-		db:                db,
-		logger:            logrus.New(),
-		notifySvc:         notifySvc,
-		payoutRepo:        payoutRepo,
-		approvalThreshold: cfg.ApprovalThresholdUSD,
+		db:                     db,
+		logger:                 logrus.New(),
+		notifySvc:              notifySvc,
+		payoutRepo:             payoutRepo,
+		approvalThreshold:     cfg.ApprovalThresholdUSD,
+		adminNotificationEmail: cfg.AdminNotificationEmail,
 	}
 }
 
@@ -710,8 +719,7 @@ func (s *PayoutApprovalService) notifyApprovers(ctx context.Context, record *Pay
 	}
 
 	// Notify admins with approval roles - use billing alert for admin notifications
-	// The empty email means it will be routed to configured admin channels
-	if err := s.notifySvc.SendBillingAlert(ctx, "admin@functionfly.local", "payout_approval_needed", data); err != nil {
+	if err := s.notifySvc.SendBillingAlert(ctx, s.adminNotificationEmail, "payout_approval_needed", data); err != nil {
 		s.logger.WithError(err).Warn("Failed to send approval notification")
 	}
 }
