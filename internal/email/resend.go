@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/resend/resend-go/v2"
 	"github.com/sirupsen/logrus"
 )
@@ -16,6 +18,54 @@ const (
 	maxRetries    = 3
 	retryBaseWait = 1 * time.Second
 )
+
+var resendMetrics *ResendMetrics
+var metricsOnce sync.Once
+
+type ResendMetrics struct {
+	SendDuration  prometheus.Histogram
+	SendTotal     *prometheus.CounterVec
+	SendErrors    *prometheus.CounterVec
+	RetryTotal    *prometheus.CounterVec
+}
+
+func getResendMetrics() *ResendMetrics {
+	metricsOnce.Do(func() {
+		resendMetrics = &ResendMetrics{
+			SendDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
+				Namespace: "functionfly",
+				Subsystem: "email",
+				Name:      "send_duration_seconds",
+				Help:      "Duration of email send operations",
+				Buckets:   []float64{0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30},
+			}),
+			SendTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
+				Namespace: "functionfly",
+				Subsystem: "email",
+				Name:      "send_total",
+				Help:      "Total number of email send operations",
+			}, []string{"status"}),
+			SendErrors: prometheus.NewCounterVec(prometheus.CounterOpts{
+				Namespace: "functionfly",
+				Subsystem: "email",
+				Name:      "send_errors_total",
+				Help:      "Total number of email send errors",
+			}, []string{"error_type"}),
+			RetryTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
+				Namespace: "functionfly",
+				Subsystem: "email",
+				Name:      "retry_total",
+				Help:      "Total number of email retry attempts",
+			}, []string{"status"}),
+		}
+	})
+	return resendMetrics
+}
+
+func RegisterResendMetrics(r prometheus.Registerer) error {
+	m := getResendMetrics()
+	return r.Register(m.SendDuration, m.SendTotal, m.SendErrors, m.RetryTotal)
+}
 
 // ResendConfig holds configuration for the Resend email service
 type ResendConfig struct {
@@ -141,16 +191,20 @@ func (s *ResendService) SendEmailToMultiple(to []string, subject, textBody, html
 
 // sendWithRetry sends an email with exponential backoff retry for transient errors.
 func (s *ResendService) sendWithRetry(ctx context.Context, params *resend.SendEmailRequest) error {
+	metrics := getResendMetrics()
+	start := time.Now()
 	var lastErr error
+
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		_, err := s.client.Emails.SendWithContext(ctx, params)
 		if err == nil {
+			metrics.SendDuration.Observe(time.Since(start).Seconds())
+			metrics.SendTotal.WithLabelValues("success").Inc()
 			return nil
 		}
 
 		lastErr = err
 
-		// Log detailed error for debugging
 		logrus.WithError(err).
 			WithField("attempt", attempt).
 			WithField("to", params.To).
@@ -159,10 +213,14 @@ func (s *ResendService) sendWithRetry(ctx context.Context, params *resend.SendEm
 			Warn("Email send attempt failed")
 
 		if !s.isRetryableError(err) {
+			metrics.SendDuration.Observe(time.Since(start).Seconds())
+			metrics.SendTotal.WithLabelValues("failure").Inc()
+			metrics.SendErrors.WithLabelValues(classifyEmailError(err)).Inc()
 			return fmt.Errorf("email send failed: %w", err)
 		}
 
 		if attempt < maxRetries {
+			metrics.RetryTotal.WithLabelValues("retry").Inc()
 			wait := retryBaseWait * time.Duration(1<<(attempt-1))
 			select {
 			case <-ctx.Done():
@@ -172,6 +230,10 @@ func (s *ResendService) sendWithRetry(ctx context.Context, params *resend.SendEm
 		}
 	}
 
+	metrics.SendDuration.Observe(time.Since(start).Seconds())
+	metrics.SendTotal.WithLabelValues("failure").Inc()
+	metrics.SendErrors.WithLabelValues(classifyEmailError(lastErr)).Inc()
+
 	logrus.WithError(lastErr).
 		WithField("to", params.To).
 		WithField("from", params.From).
@@ -179,6 +241,31 @@ func (s *ResendService) sendWithRetry(ctx context.Context, params *resend.SendEm
 		WithField("attempts", maxRetries).
 		Error("Email send failed after all retries")
 	return fmt.Errorf("failed to send email after %d attempts: %w", maxRetries, lastErr)
+}
+
+func classifyEmailError(err error) string {
+	if err == nil {
+		return "none"
+	}
+	msg := err.Error()
+	switch {
+	case strings.Contains(msg, "rate limit") || strings.Contains(msg, "429"):
+		return "rate_limited"
+	case strings.Contains(msg, "500"):
+		return "server_error"
+	case strings.Contains(msg, "503"):
+		return "service_unavailable"
+	case strings.Contains(msg, "401") || strings.Contains(msg, "unauthorized"):
+		return "unauthorized"
+	case strings.Contains(msg, "403") || strings.Contains(msg, "forbidden"):
+		return "forbidden"
+	case strings.Contains(msg, "connection") || strings.Contains(msg, "dial"):
+		return "connection_error"
+	case strings.Contains(msg, "timeout"):
+		return "timeout"
+	default:
+		return "unknown"
+	}
 }
 
 func (s *ResendService) SendWaitlistConfirmationEmail(email string) error {

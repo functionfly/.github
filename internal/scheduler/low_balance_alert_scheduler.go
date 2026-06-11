@@ -256,6 +256,8 @@ func (s *LowBalanceAlertScheduler) runLowBalanceCheck(ctx context.Context) *LowB
 		s.lastResultMu.Lock()
 		s.lastResult = result
 		s.lastResultMu.Unlock()
+		GetSchedulerMetrics().UpdateFromMetrics(s.metrics)
+		GetSchedulerMetrics().UpdateFromResult(result)
 	}()
 
 	s.metrics.TotalChecks++

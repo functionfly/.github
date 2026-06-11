@@ -9,11 +9,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/functionfly/functionfly/internal/tracing"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
+
+var webhookChannelMetrics = GetNotificationMetrics()
 
 // WebhookChannel handles webhook notification delivery
 type WebhookChannel struct {
@@ -32,6 +38,63 @@ func NewWebhookChannel(logger *logrus.Logger) *WebhookChannel {
 	}
 }
 
+// validateWebhookURL validates a webhook URL for security
+// Prevents SSRF attacks by blocking private/internal IP ranges and requiring HTTPS
+func validateWebhookURL(urlStr string) error {
+	parsedURL, err := url.Parse(urlStr)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+
+	if parsedURL.Scheme != "https" {
+		return fmt.Errorf("webhook URL must use HTTPS for security")
+	}
+
+	if parsedURL.Host == "" {
+		return fmt.Errorf("webhook URL must have a valid host")
+	}
+
+	host := parsedURL.Hostname()
+	if host == "localhost" || host == "127.0.0.1" || host == "::1" {
+		return fmt.Errorf("webhook URL cannot point to localhost")
+	}
+
+	if isPrivateOrInternalIP(host) {
+		return fmt.Errorf("webhook URL cannot point to private or internal IP addresses")
+	}
+
+	return nil
+}
+
+// isPrivateOrInternalIP checks if a host is a private or internal IP
+func isPrivateOrInternalIP(host string) bool {
+	lowerHost := strings.ToLower(host)
+
+	privatePrefixes := []string{
+		"10.",
+		"172.16.", "172.17.", "172.18.", "172.19.",
+		"172.20.", "172.21.", "172.22.", "172.23.",
+		"172.24.", "172.25.", "172.26.", "172.27.",
+		"172.28.", "172.29.", "172.30.", "172.31.",
+		"192.168.",
+		"127.",
+		"0.",
+		"::1",
+		"fc00:",
+		"fe80:",
+		"169.254.", // AWS metadata endpoint
+		"metadata.google.internal.", // GCP metadata
+	}
+
+	for _, prefix := range privatePrefixes {
+		if strings.HasPrefix(lowerHost, prefix) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // Name returns the channel name
 func (c *WebhookChannel) Name() string {
 	return ChannelWebhook
@@ -39,25 +102,35 @@ func (c *WebhookChannel) Name() string {
 
 // Send sends a notification via webhook
 func (c *WebhookChannel) Send(ctx context.Context, n *Notification, user *storage.User) error {
-	// Get user's webhook preferences
+	traceID := uuid.New().String()
+	spanID := uuid.New().String()
+	ctx = tracing.WithTraceContext(ctx, traceID, spanID, "")
+	defer tracing.Finish(ctx)
+	tracing.SetAttribute(ctx, "notification_id", n.ID.String())
+	tracing.SetAttribute(ctx, "channel", ChannelWebhook)
+
 	pref, err := c.repo.GetPreference(ctx, n.UserID, ChannelWebhook, n.Category)
 	if err != nil {
 		return fmt.Errorf("failed to get webhook preference: %w", err)
 	}
 
-	// If no preference or webhook not configured, skip
 	if pref == nil || pref.WebhookURL == nil || *pref.WebhookURL == "" {
 		c.logger.Debug("No webhook URL configured for user")
 		return nil
 	}
 
-	// Check if webhook is enabled for this category
 	if !pref.Enabled {
 		c.logger.Debug("Webhook disabled for this category")
 		return nil
 	}
 
-	// Build webhook payload
+	if err := validateWebhookURL(*pref.WebhookURL); err != nil {
+		c.logger.WithError(err).WithField("webhook_url", *pref.WebhookURL).Warn("Invalid webhook URL rejected")
+		return fmt.Errorf("webhook URL validation failed: %w", err)
+	}
+
+	tracing.SetAttribute(ctx, "webhook_url", *pref.WebhookURL)
+
 	payload := WebhookPayload{
 		ID:        n.ID.String(),
 		Type:      n.Type,
@@ -75,61 +148,80 @@ func (c *WebhookChannel) Send(ctx context.Context, n *Notification, user *storag
 		return fmt.Errorf("failed to marshal webhook payload: %w", err)
 	}
 
-	// Create request
 	req, err := http.NewRequestWithContext(ctx, "POST", *pref.WebhookURL, bytes.NewBuffer(payloadBytes))
 	if err != nil {
 		return fmt.Errorf("failed to create webhook request: %w", err)
 	}
 
-	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "FunctionFly-Webhook/1.0")
 	req.Header.Set("X-FunctionFly-Event", n.Type)
 	req.Header.Set("X-FunctionFly-Delivery", n.ID.String())
 
-	// Sign payload if secret is configured
 	if pref.WebhookSecret != nil && *pref.WebhookSecret != "" {
 		signature := c.signPayload(payloadBytes, *pref.WebhookSecret)
 		req.Header.Set("X-FunctionFly-Signature", signature)
 	}
 
-	// Send request with retries
 	var lastErr error
+	retryBaseWait := time.Second
 	for attempt := 0; attempt < 3; attempt++ {
 		if attempt > 0 {
-			time.Sleep(time.Duration(attempt) * time.Second)
+			backoffDuration := retryBaseWait * time.Duration(1<<(attempt-1))
+			time.Sleep(backoffDuration)
 		}
 
+		start := time.Now()
 		resp, err := c.client.Do(req)
+		duration := time.Since(start)
+
 		if err != nil {
 			lastErr = err
+			webhookChannelMetrics.RecordWebhookLatency(duration)
+			webhookChannelMetrics.RecordRetry(ChannelWebhook, "retry")
 			c.logger.WithError(err).WithField("attempt", attempt+1).Warn("Webhook request failed")
 			continue
 		}
 		defer resp.Body.Close()
 
-		// Check response status
+		webhookChannelMetrics.RecordWebhookLatency(duration)
+
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			contentType := resp.Header.Get("Content-Type")
+			if contentType != "" && !strings.Contains(contentType, "application/json") {
+				c.logger.WithFields(logrus.Fields{
+					"webhook_url":     *pref.WebhookURL,
+					"content_type":   contentType,
+					"notification_id": n.ID,
+				}).Warn("Webhook response Content-Type is not application/json")
+			}
+			webhookChannelMetrics.RecordWebhookResult("success")
 			c.logger.WithFields(logrus.Fields{
 				"webhook_url":     *pref.WebhookURL,
 				"status_code":     resp.StatusCode,
 				"notification_id": n.ID,
+				"duration_ms":      duration.Milliseconds(),
 			}).Debug("Webhook delivered successfully")
 			return nil
 		}
 
 		lastErr = fmt.Errorf("webhook returned status %d", resp.StatusCode)
+		webhookChannelMetrics.RecordWebhookResult("failure")
+
+		if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+			webhookChannelMetrics.RecordWebhookError("client_error")
+			return lastErr
+		}
+
+		webhookChannelMetrics.RecordRetry(ChannelWebhook, "retry")
 		c.logger.WithFields(logrus.Fields{
 			"status_code": resp.StatusCode,
 			"attempt":     attempt + 1,
 		}).Warn("Webhook returned non-success status")
-
-		// Don't retry on 4xx errors (client errors)
-		if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-			return lastErr
-		}
 	}
 
+	tracing.RecordError(ctx, lastErr)
+	webhookChannelMetrics.RecordWebhookError("server_error")
 	return fmt.Errorf("webhook delivery failed after retries: %w", lastErr)
 }
 

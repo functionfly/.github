@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 	"runtime"
@@ -13,7 +12,6 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/monitoring"
-	"github.com/nats-io/nats.go"
 	"github.com/sirupsen/logrus"
 )
 
@@ -32,51 +30,6 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"status": "ok"}`))
-}
-
-// handleLiveness returns a liveness probe response
-// Kubernetes liveness probe: returns 200 if the process is alive
-// Should return 503 if the process is in a bad state and needs restart
-func (s *Server) handleLiveness(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	// Basic liveness check - process is running and can respond
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"status": "alive", "probe": "liveness"}`))
-}
-
-// handleReadiness returns a readiness probe response
-// Kubernetes readiness probe: returns 200 if the service is ready to accept traffic
-// Should return 503 if dependencies (DB, Redis) are not available
-func (s *Server) handleReadiness(ctx context.Context) (string, string) {
-	// Check database connectivity
-	dbHealthy := true
-	if s.repo != nil {
-		if err := s.repo.Ping(ctx); err != nil {
-			logrus.WithError(err).Warn("Readiness probe: database ping failed")
-			dbHealthy = false
-		}
-	}
-
-	if !dbHealthy {
-		return "unhealthy", "database unavailable"
-	}
-
-	return "healthy", "ready"
-}
-
-// handleReadinessEndpoint HTTP handler for readiness probe
-func (s *Server) handleReadinessEndpoint(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	status, msg := s.handleReadiness(r.Context())
-
-	if status == "healthy" {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status": "ready"}`))
-	} else {
-		w.WriteHeader(http.StatusServiceUnavailable)
-		w.Write([]byte(fmt.Sprintf(`{"status": "not_ready", "reason": "%s"}`, msg)))
-	}
 }
 
 // handleEdgeStatus returns edge (edge.functionfly.com) health, uptime, and request stats.
@@ -150,12 +103,9 @@ func (s *Server) handleDetailedHealth(w http.ResponseWriter, r *http.Request) {
 		"timestamp": time.Now().Format(time.RFC3339),
 	}
 
-	// Check NATS service
-	natsHealthy := s.checkNATSHealth(ctx)
-	health["services"].(map[string]interface{})["nats"] = map[string]interface{}{
-		"status":    natsHealthy,
-		"timestamp": time.Now().Format(time.RFC3339),
-	}
+	// Check notification service
+	notificationHealth := s.checkNotificationHealth(ctx)
+	servicesMap["notification"] = notificationHealth
 
 	// Perform system health checks
 	checks := []map[string]interface{}{}
@@ -270,6 +220,10 @@ func (s *Server) handleHealthCheck(w http.ResponseWriter, r *http.Request) {
 		}
 		statusCode = s.statusCodeFromHealth(healthy)
 
+	case "notification":
+		checkResult = s.checkNotificationHealth(r.Context())
+		statusCode = s.statusCodeFromCheck(checkResult)
+
 	default:
 		http.Error(w, "Unknown health check: "+checkName, http.StatusBadRequest)
 		return
@@ -308,33 +262,33 @@ func (s *Server) checkRoutingHealth(ctx context.Context) bool {
 	return s.routingSvc != nil
 }
 
-// checkNATSHealth verifies NATS messaging service health
-func (s *Server) checkNATSHealth(ctx context.Context) bool {
-	natsURL := os.Getenv("NATS_URL")
-	if natsURL == "" {
-		// NATS not configured, consider it healthy (optional service)
-		return true
+// checkNotificationHealth verifies notification service health
+func (s *Server) checkNotificationHealth(ctx context.Context) map[string]interface{} {
+	result := map[string]interface{}{
+		"status":    "healthy",
+		"timestamp": time.Now().Format(time.RFC3339),
 	}
 
-	// Try to connect and ping NATS
-	nc, err := nats.Connect(natsURL, nats.Name("health-check"))
-	if err != nil {
-		logrus.WithError(err).Warn("NATS health check failed to connect")
-		return false
-	}
-	defer nc.Close()
-
-	// Check if connected
-	if !nc.IsConnected() {
-		return false
+	if s.notificationSvc == nil {
+		result["status"] = "unhealthy"
+		result["message"] = "notification service not initialized"
+		return result
 	}
 
-	// Perform a simple ping
-	if nc.Ping() != nil {
-		return false
+	health := s.notificationSvc.HealthCheck()
+	if status, ok := health["status"].(string); ok {
+		result["status"] = status
+	}
+	result["queue"] = health["queue"]
+	result["channels"] = health["channels"]
+
+	if queueSat, ok := health["queue"].(map[string]interface{})["saturation_pct"].(float64); ok && queueSat > 90 {
+		result["message"] = "notification queue saturation critical"
+	} else {
+		result["message"] = "notification service operational"
 	}
 
-	return true
+	return result
 }
 
 // checkMemoryUsage performs memory usage health check
