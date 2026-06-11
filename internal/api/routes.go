@@ -44,6 +44,7 @@ import (
 	categorizationhandler "github.com/functionfly/functionfly/internal/api/handlers/categorization"
 	"github.com/functionfly/functionfly/internal/api/handlers/certification"
 	"github.com/functionfly/functionfly/internal/api/handlers/chat"
+	consciousnesshandler "github.com/functionfly/functionfly/internal/api/handlers/consciousness"
 	connectorhandler "github.com/functionfly/functionfly/internal/api/handlers/connectors"
 	"github.com/functionfly/functionfly/internal/api/handlers/content"
 	"github.com/functionfly/functionfly/internal/api/handlers/dashboard"
@@ -573,6 +574,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	chatHandler := chat.NewHandler(chatRepo, chatService, chatWSHub, logrus.New())
 	chatConnectorHandler := chat.NewConnectorHandler(chatRepo, chatConnectorRegistry, logrus.New())
 
+	// Consciousness handler initialization
+	consciousnessHandler := consciousnesshandler.NewHandler(s.postgresDB.DB, s.repo, logrus.New())
+
 	aepHandler := agenthandler.NewHandler(s.postgresDB.GORM, s.redisClient, registryRepo, s.repo, s.notificationSvc)
 
 	// R-Sim simulation engine handler
@@ -846,6 +850,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// ── Middleware initialization ─────────────────────────────────────────────
 	authMiddleware := middleware.NewAuthMiddleware(s.authSvc)
 	advancedSecurityMiddleware := middleware.NewAdvancedSecurityMiddleware(s.repo)
+	featureMiddleware := middleware.NewFeatureMiddleware()
 
 	captchaService := captcha.NewCaptchaService(nil)
 	if recaptchaV2SiteKey := os.Getenv("RECAPTCHA_V2_SITE_KEY"); recaptchaV2SiteKey != "" {
@@ -1120,6 +1125,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Privacy API routes (GDPR compliance, data export/deletion, consent management)
 	registerPrivacyRoutes(api, authMiddleware, privacyHandler)
 
+	// ── Function Consciousness ─────────────────────────────────────────────
+	registerConsciousnessRoutes(api, authMiddleware, featureMiddleware, consciousnessHandler)
+
 	// ── Time Machine ──────────────────────────────────────────────────────
 	tmRepo := timemachine.NewRepository(s.postgresDB.GORM)
 	tmHandler := newTimeMachineHandler(tmRepo, s.repo, s.redisClient, realtimeUsageTracker, s.notificationSvc, s.authSvc)
@@ -1142,6 +1150,39 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	s.certCredExpiryScheduler = scheduler.NewCertCredentialExpiryScheduler(certRepo)
 	if err := s.certCredExpiryScheduler.Start(context.Background()); err != nil {
 		logrus.WithError(err).Error("failed to start cert credential expiry scheduler")
+	}
+
+	// Consciousness scheduler for periodic awareness analysis
+	s.consciousnessScheduler = scheduler.NewConsciousnessScheduler(s.postgresDB.DB)
+	consciousnessSchedulerEnabled := os.Getenv("CONSCIOUSNESS_SCHEDULER_ENABLED") != "false" // Default: enabled
+	consciousnessSchedulerCron := os.Getenv("CONSCIOUSNESS_SCHEDULER_CRON")
+	if consciousnessSchedulerCron == "" {
+		consciousnessSchedulerCron = "*/30 * * * *" // Default: every 30 minutes
+	}
+	consciousnessConfig := scheduler.ConsciousnessSchedulerConfig{
+		Enabled: consciousnessSchedulerEnabled,
+		Cron:    consciousnessSchedulerCron,
+	}
+	if err := s.consciousnessScheduler.Start(context.Background()); err != nil {
+		logrus.WithError(err).Error("failed to start consciousness scheduler")
+	} else if consciousnessSchedulerEnabled {
+		logrus.Infof("consciousness scheduler started with cron: %s", consciousnessSchedulerCron)
+	}
+
+	// Consciousness data retention cleanup scheduler
+	s.consciousnessCleanupScheduler = scheduler.NewCleanupScheduler(s.postgresDB.DB)
+	if err := s.consciousnessCleanupScheduler.Start(context.Background()); err != nil {
+		logrus.WithError(err).Error("failed to start consciousness cleanup scheduler")
+	} else {
+		logrus.Info("Consciousness data retention cleanup scheduler started")
+	}
+
+	// Consciousness delivery retry scheduler
+	s.consciousnessRetryScheduler = scheduler.NewRetryScheduler(s.postgresDB.DB, logrus.New())
+	if err := s.consciousnessRetryScheduler.Start(context.Background()); err != nil {
+		logrus.WithError(err).Error("failed to start consciousness retry scheduler")
+	} else {
+		logrus.Info("Consciousness delivery retry scheduler started")
 	}
 
 	{

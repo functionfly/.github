@@ -140,6 +140,11 @@ type Server struct {
 	// Certification schedulers (use repo directly, not handler)
 	certExamExpiryScheduler *scheduler.CertExamExpiryScheduler
 	certCredExpiryScheduler *scheduler.CertCredentialExpiryScheduler
+
+	// Consciousness scheduler for periodic awareness analysis
+	consciousnessScheduler    *scheduler.ConsciousnessScheduler
+	consciousnessCleanupScheduler *scheduler.CleanupScheduler
+	consciousnessRetryScheduler *scheduler.RetryScheduler
 }
 
 func NewServer(db *storage.PostgresDB) *Server {
@@ -822,6 +827,18 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	if s.exportScheduler != nil {
 		s.exportScheduler.Stop()
 		logrus.Info("Export scheduler stopped")
+	}
+	if s.consciousnessCleanupScheduler != nil {
+		s.consciousnessCleanupScheduler.Stop()
+		logrus.Info("Consciousness cleanup scheduler stopped")
+	}
+	if s.consciousnessScheduler != nil {
+		s.consciousnessScheduler.Stop()
+		logrus.Info("Consciousness scheduler stopped")
+	}
+	if s.consciousnessRetryScheduler != nil {
+		s.consciousnessRetryScheduler.Stop()
+		logrus.Info("Consciousness retry scheduler stopped")
 	}
 
 	// Shutdown the HTTP server gracefully

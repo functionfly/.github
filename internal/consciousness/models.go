@@ -3,10 +3,13 @@ package consciousness
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+var ErrInsightNotFound = errors.New("insight not found or not active")
 
 // InsightCategory classifies the type of insight.
 type InsightCategory string

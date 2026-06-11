@@ -501,3 +501,105 @@ func scanInsight(rows *sql.Rows) (*Insight, error) {
 
 	return insight, nil
 }
+
+// ErrInsightNotFound is returned when an insight is not found.
+var ErrInsightNotFound = fmt.Errorf("insight not found")
+
+// DeleteInsight permanently deletes an insight (GDPR Article 17).
+func (r *Repository) DeleteInsight(ctx context.Context, id, tenantID uuid.UUID) error {
+	query := `DELETE FROM consciousness_insights WHERE id = $1 AND tenant_id = $2`
+	result, err := r.db.ExecContext(ctx, query, id, tenantID)
+	if err != nil {
+		return fmt.Errorf("delete insight: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("get rows affected: %w", err)
+	}
+	if rows == 0 {
+		return ErrInsightNotFound
+	}
+	return nil
+}
+
+// DeleteInsightsOlderThan physically deletes insights older than the specified days.
+func (r *Repository) DeleteInsightsOlderThan(ctx context.Context, retentionDays int) (int64, error) {
+	if retentionDays <= 0 {
+		retentionDays = 90
+	}
+	cutoff := time.Now().AddDate(0, 0, -retentionDays)
+	query := `DELETE FROM consciousness_insights WHERE created_at < $1`
+	result, err := r.db.ExecContext(ctx, query, cutoff)
+	if err != nil {
+		return 0, fmt.Errorf("delete old insights: %w", err)
+	}
+	return result.RowsAffected()
+}
+
+// CleanupOldDeliveryLogs removes delivery log entries older than the retention period.
+func (r *Repository) CleanupOldDeliveryLogs(ctx context.Context, retentionDays int) (int64, error) {
+	if retentionDays <= 0 {
+		retentionDays = 30
+	}
+	cutoff := time.Now().AddDate(0, 0, -retentionDays)
+	query := `DELETE FROM consciousness_delivery_log WHERE sent_at < $1`
+	result, err := r.db.ExecContext(ctx, query, cutoff)
+	if err != nil {
+		return 0, fmt.Errorf("cleanup delivery logs: %w", err)
+	}
+	return result.RowsAffected()
+}
+
+// ExportData holds all consciousness data for a tenant (GDPR data portability).
+type ExportData struct {
+	TenantID     uuid.UUID             `json:"tenant_id"`
+	ExportedAt   time.Time             `json:"exported_at"`
+	Insights     []*Insight            `json:"insights"`
+	Score        *SystemAwarenessScore `json:"score,omitempty"`
+	Preferences *Preferences          `json:"preferences,omitempty"`
+	DeliveryLogs []*DeliveryLogExport  `json:"delivery_logs,omitempty"`
+}
+
+// DeliveryLogExport is a stripped-down delivery log for GDPR export.
+type DeliveryLogExport struct {
+	ID      uuid.UUID `json:"id"`
+	Channel string   `json:"channel"`
+	Status  string   `json:"status"`
+	SentAt  time.Time `json:"sent_at"`
+}
+
+// ExportTenantConsciousnessData returns all consciousness data for a tenant (GDPR Article 20).
+func (r *Repository) ExportTenantConsciousnessData(ctx context.Context, tenantID uuid.UUID) (*ExportData, error) {
+	export := &ExportData{
+		TenantID:   tenantID,
+		ExportedAt: time.Now(),
+	}
+
+	// Export insights
+	insights, _, err := r.ListInsights(ctx, ListInsightsParams{TenantID: tenantID, Limit: 10000})
+	if err != nil {
+		return nil, fmt.Errorf("export insights: %w", err)
+	}
+	export.Insights = insights
+
+	// Export score
+	score, err := r.GetScore(ctx, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("export score: %w", err)
+	}
+	export.Score = score
+
+	// Export preferences
+	prefs, err := r.GetPreferences(ctx, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("export preferences: %w", err)
+	}
+	export.Preferences = prefs
+
+	return export, nil
+}
+
+// Ping checks database connectivity.
+func (r *Repository) Ping(ctx context.Context) error {
+	return r.db.PingContext(ctx)
+}

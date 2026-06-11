@@ -13,18 +13,35 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Handler provides HTTP handlers for the consciousness API.
 type Handler struct {
-	repo   *consciousness.Repository
-	engine *consciousness.Engine
-	logger *logrus.Logger
+	repo        *consciousness.Repository
+	engine      *consciousness.Engine
+	logger      *logrus.Logger
+	engineOwner bool
+}
+
+func NewHandler(db *sql.DB, logger *logrus.Logger) *Handler {
+	return &Handler{
+		repo:   consciousness.NewRepository(db, logger),
+		engine: consciousness.NewEngine(db, logger),
+		logger: logger,
+	}
+}
+
+func NewHandlerWithEngine(db *sql.DB, logger *logrus.Logger, engine *consciousness.Engine) *Handler {
+	return &Handler{
+		repo:        consciousness.NewRepository(db, logger),
+		engine:      engine,
+		logger:      logger,
+		engineOwner: false,
+	}
 }
 
 // NewHandler creates a new consciousness handler.
-func NewHandler(db *sql.DB, logger *logrus.Logger) *Handler {
+func NewHandler(db *sql.DB, repo storage.Repository, logger *logrus.Logger) *Handler {
 	repo := consciousness.NewRepository(db, logger)
 	engine := consciousness.NewEngine(db, logger)
-	return &Handler{repo: repo, engine: engine, logger: logger}
+	return &Handler{repo: repo, engine: engine, logger: logger, auditRepo: repo}
 }
 
 // RegisterRoutes registers consciousness API routes on the given router.
@@ -33,11 +50,13 @@ func (h *Handler) RegisterRoutes(r *mux.Router) {
 	s.HandleFunc("/score", h.GetAwarenessScore).Methods("GET")
 	s.HandleFunc("/insights", h.ListInsights).Methods("GET")
 	s.HandleFunc("/insights/{id}", h.GetInsight).Methods("GET")
+	s.HandleFunc("/insights/{id}", h.DeleteInsight).Methods("DELETE")
 	s.HandleFunc("/insights/{id}/dismiss", h.DismissInsight).Methods("POST")
 	s.HandleFunc("/insights/{id}/apply", h.ApplyAction).Methods("POST")
 	s.HandleFunc("/preferences", h.GetPreferences).Methods("GET")
 	s.HandleFunc("/preferences", h.UpdatePreferences).Methods("PUT")
 	s.HandleFunc("/run", h.RunAnalysis).Methods("POST")
+	s.HandleFunc("/export", h.ExportData).Methods("GET")
 }
 
 // GetAwarenessScore returns the System Awareness Score for the tenant.
@@ -168,7 +187,12 @@ func (h *Handler) DismissInsight(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.repo.DismissInsight(r.Context(), id, tenantID); err != nil {
-		writeError(w, http.StatusNotFound, err.Error())
+		if errors.Is(err, consciousness.ErrInsightNotFound) {
+			writeError(w, http.StatusNotFound, "insight not found or already dismissed")
+			return
+		}
+		h.logger.WithError(err).Error("Failed to dismiss insight")
+		writeError(w, http.StatusInternalServerError, "failed to dismiss insight")
 		return
 	}
 
@@ -214,6 +238,11 @@ func (h *Handler) ApplyAction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.repo.ApplyInsight(r.Context(), id, tenantID); err != nil {
+		if errors.Is(err, consciousness.ErrInsightNotFound) {
+			writeError(w, http.StatusNotFound, "insight not found or already applied")
+			return
+		}
+		h.logger.WithError(err).Error("Failed to apply insight")
 		writeError(w, http.StatusInternalServerError, "failed to apply action")
 		return
 	}
@@ -312,4 +341,82 @@ func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 
 func writeError(w http.ResponseWriter, status int, message string) {
 	writeJSON(w, status, map[string]string{"error": message})
+}
+// DeleteInsight permanently deletes an insight (GDPR Article 17 - Right to Erasure).
+func (h *Handler) DeleteInsight(w http.ResponseWriter, r *http.Request) {
+	tenantID, _ := middleware.GetTenantID(r)
+	idStr := mux.Vars(r)["id"]
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid insight ID")
+		return
+	}
+
+	// Get insight before deletion for audit logging
+	insight, err := h.repo.GetInsight(r.Context(), id, tenantID)
+	if err != nil || insight == nil {
+		writeError(w, http.StatusNotFound, "insight not found")
+		return
+	}
+
+	if err := h.repo.DeleteInsight(r.Context(), id, tenantID); err != nil {
+		if errors.Is(err, consciousness.ErrInsightNotFound) {
+			writeError(w, http.StatusNotFound, "insight not found")
+			return
+		}
+		h.logger.WithError(err).Error("Failed to delete insight")
+		writeError(w, http.StatusInternalServerError, "failed to delete insight")
+		return
+	}
+
+	// Audit log the deletion
+	utils.LogAuditEvent(r.Context(), h.auditRepo, r, "consciousness.insight.deleted", "consciousness_insight", &id, insight, nil, true)
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+}
+// ExportData returns all consciousness data for the tenant (GDPR Article 20 - Data Portability).
+func (h *Handler) ExportData(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := middleware.GetTenantID(r)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "tenant not found")
+		return
+	}
+
+	export, err := h.repo.ExportTenantConsciousnessData(r.Context(), tenantID)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to export consciousness data")
+		writeError(w, http.StatusInternalServerError, "failed to export data")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, export)
+}
+
+// HealthCheck returns the health status of the consciousness service.
+func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Check database connectivity
+	if err := h.repo.Ping(ctx); err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]interface{}{
+			"status": "unhealthy",
+			"error":  "database connection failed",
+		})
+		return
+	}
+
+	// Get scheduler status if available
+	schedulerStatus := map[string]interface{}{}
+	if s := h.engine.GetSchedulerStatus(); s != nil {
+		schedulerStatus = s
+	}
+
+	// Get retry queue size
+	retryQueueSize, _ := h.repo.GetRetryQueueSize(ctx)
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status":          "healthy",
+		"retry_queue_size": retryQueueSize,
+		"scheduler":        schedulerStatus,
+	})
 }

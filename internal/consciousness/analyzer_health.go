@@ -56,7 +56,7 @@ func (a *HealthAnalyzer) Analyze(ctx context.Context, tenantID uuid.UUID, params
 		if err := rows.Scan(&functionID, &functionType, &fitnessScore, &totalExecutions,
 			&avgLatency, &p99Latency, &successRate, &coldStartRate,
 			&errorDist, &bottleneck); err != nil {
-			a.logger.WithError(err).Warn("Failed to scan DNA profile")
+			a.logger.WithError(err).Error("Failed to scan DNA profile")
 			continue
 		}
 

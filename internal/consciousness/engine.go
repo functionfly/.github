@@ -4,11 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+)
+
+const (
+	DefaultAnalysisTimeout = 5 * time.Minute
+	DefaultDedupWindow     = 6 * time.Hour
+	DefaultInsightExpiry   = 7 * 24 * time.Hour
 )
 
 // Engine is the main orchestrator that runs all analyzers, computes the
@@ -45,7 +50,14 @@ func NewEngine(db *sql.DB, logger *logrus.Logger) *Engine {
 	}
 }
 
-// AnalysisResult holds the output of an analysis run for one tenant.
+// NewEngineWithConfig creates a new consciousness engine with custom configuration.
+func NewEngineWithConfig(db *sql.DB, logger *logrus.Logger, maxConcurrent int) *Engine {
+	engine := NewEngine(db, logger)
+	engine.maxConcurrent = maxConcurrent
+	return engine
+}
+
+// AnalyzeResult holds the output of an analysis run for one tenant.
 type AnalysisResult struct {
 	TenantID       uuid.UUID
 	Insights       []*Insight
@@ -53,6 +65,157 @@ type AnalysisResult struct {
 	AnalyzedAt     time.Time
 	DurationMs     int64
 	AnalyzerErrors map[string]error
+}
+
+// analyzerResult holds the result from a single analyzer goroutine.
+type analyzerResult struct {
+	insights []*Insight
+	name     string
+	err      error
+}
+
+// AnalyzeTenant runs all analyzers for a single tenant and produces insights.
+func (e *Engine) AnalyzeTenant(ctx context.Context, tenantID uuid.UUID, params AnalysisParams) (*AnalysisResult, error) {
+	return e.AnalyzeTenantWithTimeout(ctx, tenantID, params, DefaultAnalysisTimeout)
+}
+
+// AnalyzeTenantWithTimeout runs all analyzers with a custom timeout.
+func (e *Engine) AnalyzeTenantWithTimeout(ctx context.Context, tenantID uuid.UUID, params AnalysisParams, timeout time.Duration) (*AnalysisResult, error) {
+	analysisCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	start := time.Now()
+	result := &AnalysisResult{
+		TenantID:       tenantID,
+		AnalyzedAt:     start,
+		AnalyzerErrors: make(map[string]error),
+	}
+
+	prefs, err := e.repo.GetPreferences(analysisCtx, tenantID)
+	if err != nil {
+		e.logger.WithError(err).WithField("tenant_id", tenantID).Warn("Failed to load preferences, using defaults")
+		prefs = DefaultPreferences(tenantID)
+	}
+
+	resultsCh := make(chan analyzerResult, len(e.analyzers))
+	sem := make(chan struct{}, e.maxConcurrent)
+
+	for _, a := range e.analyzers {
+		if !categoryEnabled(string(a.Category()), prefs.EnabledCategories) {
+			continue
+		}
+
+		select {
+		case sem <- struct{}{}:
+		case <-analysisCtx.Done():
+			result.AnalyzerErrors[a.Name()] = analysisCtx.Err()
+			continue
+		}
+
+		go func(a Analyzer) {
+			defer func() { <-sem }()
+
+			analyzerCtx, cancel := context.WithTimeout(analysisCtx, 30*time.Second)
+			defer cancel()
+
+			insights, err := a.Analyze(analyzerCtx, tenantID, params)
+			resultsCh <- analyzerResult{
+				insights: insights,
+				name:     a.Name(),
+				err:      err,
+			}
+		}(a)
+	}
+
+	for i := 0; i < len(e.analyzers); i++ {
+		select {
+		case res := <-resultsCh:
+			if res.err != nil {
+				result.AnalyzerErrors[res.name] = res.err
+				e.logger.WithError(res.err).WithField("analyzer", res.name).Warn("Analyzer failed")
+			} else if len(res.insights) > 0 {
+				result.Insights = append(result.Insights, res.insights...)
+			}
+		case <-analysisCtx.Done():
+			e.logger.WithError(analysisCtx.Err()).Warn("Analysis context cancelled while waiting for results")
+			break
+		}
+	}
+	close(resultsCh)
+
+	if analysisCtx.Err() != nil {
+		e.logger.WithError(analysisCtx.Err()).WithField("tenant_id", tenantID).Warn("Analysis timed out")
+	}
+
+	var deduped []*Insight
+	for _, insight := range result.Insights {
+		exists, err := e.repo.HasRecentInsight(analysisCtx, tenantID, insight.Category, insight.FunctionID, DefaultDedupWindow)
+		if err != nil {
+			e.logger.WithError(err).Warn("Dedup check failed")
+		}
+		if exists {
+			continue
+		}
+
+		if insight.ExpiresAt == nil {
+			t := time.Now().Add(DefaultInsightExpiry)
+			insight.ExpiresAt = &t
+		}
+		if insight.Status == "" {
+			insight.Status = StatusActive
+		}
+
+		if err := e.repo.CreateInsight(analysisCtx, insight); err != nil {
+			e.logger.WithError(err).Warn("Failed to persist insight")
+			continue
+		}
+		deduped = append(deduped, insight)
+	}
+
+	result.Insights = deduped
+
+	score, err := e.scoreComputer.Compute(analysisCtx, tenantID)
+	if err != nil {
+		e.logger.WithError(err).WithField("tenant_id", tenantID).Warn("Failed to compute score")
+	} else {
+		previousScore, _ := e.repo.GetScore(analysisCtx, tenantID)
+		if previousScore != nil {
+			score.PreviousScore = &previousScore.OverallScore
+			trend := computeTrend(previousScore.OverallScore, score.OverallScore)
+			score.Trend = &trend
+		}
+
+		if err := e.repo.UpsertScore(analysisCtx, score); err != nil {
+			e.logger.WithError(err).Warn("Failed to persist score")
+		}
+		result.Score = score
+	}
+
+	result.DurationMs = time.Since(start).Milliseconds()
+
+	if len(deduped) > 0 {
+		prefs, prefsErr := e.repo.GetPreferences(analysisCtx, tenantID)
+		if prefsErr != nil {
+			e.logger.WithError(prefsErr).Warn("Failed to load preferences for dispatch")
+			prefs = DefaultPreferences(tenantID)
+		}
+
+		for _, insight := range deduped {
+			channels := e.dispatcher.Dispatch(analysisCtx, insight, prefs)
+			if len(channels) > 0 {
+				_ = e.repo.MarkChannelsSent(analysisCtx, insight.ID, channels)
+			}
+		}
+	}
+
+	e.logger.WithFields(logrus.Fields{
+		"tenant_id":       tenantID,
+		"insights":        len(deduped),
+		"analyzer_errors": len(result.AnalyzerErrors),
+		"duration_ms":     result.DurationMs,
+	}).Info("Consciousness analysis completed")
+
+	return result, nil
 }
 
 // AnalyzeTenant runs all analyzers for a single tenant and produces insights.
@@ -67,7 +230,7 @@ func (e *Engine) AnalyzeTenant(ctx context.Context, tenantID uuid.UUID, params A
 	// Load preferences for category filtering
 	prefs, err := e.repo.GetPreferences(ctx, tenantID)
 	if err != nil {
-		e.logger.WithError(err).WithField("tenant_id", tenantID).Warn("Failed to load preferences, using defaults")
+		e.logger.WithError(err).WithField("tenant_id", tenantID).Error("Failed to load preferences, using defaults")
 		prefs = DefaultPreferences(tenantID)
 	}
 
@@ -97,7 +260,10 @@ func (e *Engine) AnalyzeTenant(ctx context.Context, tenantID uuid.UUID, params A
 				mu.Lock()
 				result.AnalyzerErrors[a.Name()] = err
 				mu.Unlock()
-				e.logger.WithError(err).WithField("analyzer", a.Name()).Warn("Analyzer failed")
+				e.logger.WithError(err).WithFields(logrus.Fields{
+					"tenant_id": tenantID,
+					"analyzer":  a.Name(),
+				}).Error("Analyzer failed")
 				return
 			}
 
@@ -116,7 +282,11 @@ func (e *Engine) AnalyzeTenant(ctx context.Context, tenantID uuid.UUID, params A
 	for _, insight := range allInsights {
 		exists, err := e.repo.HasRecentInsight(ctx, tenantID, insight.Category, insight.FunctionID, 6*time.Hour)
 		if err != nil {
-			e.logger.WithError(err).Warn("Dedup check failed")
+			e.logger.WithError(err).WithFields(logrus.Fields{
+				"tenant_id":    tenantID,
+				"category":     insight.Category,
+				"function_id":  insight.FunctionID,
+			}).Warn("Dedup check failed")
 		}
 		if exists {
 			continue
@@ -133,7 +303,11 @@ func (e *Engine) AnalyzeTenant(ctx context.Context, tenantID uuid.UUID, params A
 
 		// Persist
 		if err := e.repo.CreateInsight(ctx, insight); err != nil {
-			e.logger.WithError(err).Warn("Failed to persist insight")
+			e.logger.WithError(err).WithFields(logrus.Fields{
+				"tenant_id": tenantID,
+				"category":  insight.Category,
+				"title":     insight.Title,
+			}).Error("Failed to persist insight")
 			continue
 		}
 		deduped = append(deduped, insight)
@@ -144,7 +318,7 @@ func (e *Engine) AnalyzeTenant(ctx context.Context, tenantID uuid.UUID, params A
 	// Compute awareness score
 	score, err := e.scoreComputer.Compute(ctx, tenantID)
 	if err != nil {
-		e.logger.WithError(err).WithField("tenant_id", tenantID).Warn("Failed to compute score")
+		e.logger.WithError(err).WithField("tenant_id", tenantID).Error("Failed to compute score")
 	} else {
 		// Get previous score for trend detection
 		previousScore, _ := e.repo.GetScore(ctx, tenantID)
@@ -155,7 +329,7 @@ func (e *Engine) AnalyzeTenant(ctx context.Context, tenantID uuid.UUID, params A
 		}
 
 		if err := e.repo.UpsertScore(ctx, score); err != nil {
-			e.logger.WithError(err).Warn("Failed to persist score")
+			e.logger.WithError(err).WithField("tenant_id", tenantID).Error("Failed to persist score")
 		}
 		result.Score = score
 	}
@@ -166,7 +340,7 @@ func (e *Engine) AnalyzeTenant(ctx context.Context, tenantID uuid.UUID, params A
 	if len(deduped) > 0 {
 		prefs, prefsErr := e.repo.GetPreferences(ctx, tenantID)
 		if prefsErr != nil {
-			e.logger.WithError(prefsErr).Warn("Failed to load preferences for dispatch")
+			e.logger.WithError(prefsErr).WithField("tenant_id", tenantID).Warn("Failed to load preferences for dispatch")
 			prefs = DefaultPreferences(tenantID)
 		}
 
@@ -217,6 +391,7 @@ func (e *Engine) AnalyzeAllTenants(ctx context.Context) error {
 
 			if _, err := e.AnalyzeTenant(ctx, tid, params); err != nil {
 				e.logger.WithError(err).WithField("tenant_id", tid).Error("Tenant analysis failed")
+				return err
 			}
 		}(tenantID)
 	}
@@ -252,6 +427,7 @@ func (e *Engine) getConsciousnessTenants(ctx context.Context) ([]uuid.UUID, erro
 	for rows.Next() {
 		var id uuid.UUID
 		if err := rows.Scan(&id); err != nil {
+			e.logger.WithError(err).Error("Failed to scan tenant UUID")
 			continue
 		}
 		tenants = append(tenants, id)
@@ -287,5 +463,13 @@ func computeTrend(previous, current float64) string {
 		return "declining"
 	default:
 		return "stable"
+	}
+}
+
+// GetSchedulerStatus returns the current scheduler status for health checks.
+func (e *Engine) GetSchedulerStatus() map[string]interface{} {
+	return map[string]interface{}{
+		"max_concurrent": e.maxConcurrent,
+		"analyzer_count": len(e.analyzers),
 	}
 }

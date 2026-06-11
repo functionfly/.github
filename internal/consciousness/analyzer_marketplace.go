@@ -5,10 +5,19 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+)
+
+const (
+	MarketplaceSimilarityThresholdEnv  = "CONSCIOUSNESS_MARKETPLACE_SIMILARITY_THRESHOLD"
+	MarketplaceMaxInsightsEnv          = "CONSCIOUSNESS_MARKETPLACE_MAX_INSIGHTS"
+	DefaultMarketplaceSimilarityThreshold = 0.75
+	DefaultMarketplaceMaxInsights         = 5
 )
 
 // MarketplaceAnalyzer discovers marketplace functions that could replace or
@@ -21,31 +30,46 @@ import (
 //  2. Category trending — surfaces recently published, high-trust functions
 //     in categories where the tenant already has functions.
 type MarketplaceAnalyzer struct {
-	db     *sql.DB
-	logger *logrus.Logger
+	db                  *sql.DB
+	logger              *logrus.Logger
+	maxInsights         int
+	similarityThreshold float64
 }
 
 func NewMarketplaceAnalyzer(db *sql.DB, logger *logrus.Logger) *MarketplaceAnalyzer {
-	return &MarketplaceAnalyzer{db: db, logger: logger}
+	return &MarketplaceAnalyzer{
+		db:                  db,
+		logger:              logger,
+		maxInsights:         loadMarketplaceMaxInsights(),
+		similarityThreshold: loadMarketplaceSimilarityThreshold(),
+	}
 }
 
 func (a *MarketplaceAnalyzer) Name() string          { return "marketplace" }
 func (a *MarketplaceAnalyzer) Category() InsightCategory { return CategoryMarketplace }
 
-const (
-	// marketplaceSimilarityThreshold is the minimum FlyEmbed combined score
-	// to consider a marketplace function as a replacement candidate.
-	marketplaceSimilarityThreshold = 0.75
+func loadMarketplaceSimilarityThreshold() float64 {
+	if v := os.Getenv(MarketplaceSimilarityThresholdEnv); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil && f > 0 && f <= 1 {
+			return f
+		}
+	}
+	return DefaultMarketplaceSimilarityThreshold
+}
 
-	// marketplaceMaxInsights caps output per analysis run.
-	marketplaceMaxInsights = 5
-)
+func loadMarketplaceMaxInsights() int {
+	if v := os.Getenv(MarketplaceMaxInsightsEnv); v != "" {
+		if i, err := strconv.Atoi(v); err == nil && i > 0 {
+			return i
+		}
+	}
+	return DefaultMarketplaceMaxInsights
+}
 
 // Analyze finds marketplace functions that match the tenant's existing functions.
 func (a *MarketplaceAnalyzer) Analyze(ctx context.Context, tenantID uuid.UUID, params AnalysisParams) ([]*Insight, error) {
 	var insights []*Insight
 
-	// ── Strategy 1: FlyEmbed triple-vector marketplace matching ──────────────
 	embedInsights, err := a.findFlyEmbedMatches(ctx, tenantID)
 	if err != nil {
 		a.logger.WithError(err).Warn("FlyEmbed marketplace matching failed")
@@ -53,7 +77,6 @@ func (a *MarketplaceAnalyzer) Analyze(ctx context.Context, tenantID uuid.UUID, p
 		insights = append(insights, embedInsights...)
 	}
 
-	// ── Strategy 2: Category trending — new high-trust functions ─────────────
 	trendInsights, err := a.findCategoryTrends(ctx, tenantID, params)
 	if err != nil {
 		a.logger.WithError(err).Warn("Category trend scan failed")
@@ -61,8 +84,8 @@ func (a *MarketplaceAnalyzer) Analyze(ctx context.Context, tenantID uuid.UUID, p
 		insights = append(insights, trendInsights...)
 	}
 
-	if len(insights) > marketplaceMaxInsights {
-		insights = insights[:marketplaceMaxInsights]
+	if len(insights) > a.maxInsights {
+		insights = insights[:a.maxInsights]
 	}
 
 	return insights, nil
@@ -71,13 +94,10 @@ func (a *MarketplaceAnalyzer) Analyze(ctx context.Context, tenantID uuid.UUID, p
 // findFlyEmbedMatches finds registry functions with high triple-vector similarity
 // to the tenant's managed functions. These are potential drop-in replacements.
 func (a *MarketplaceAnalyzer) findFlyEmbedMatches(ctx context.Context, tenantID uuid.UUID) ([]*Insight, error) {
-	// For each of the tenant's functions that has a triple embedding,
-	// find the closest marketplace function that is NOT owned by the tenant.
-	// Use weighted MaxSim across contract, semantic, and code vectors.
 	query := `
 		WITH tenant_triples AS (
 			SELECT t.function_id, t.contract_embedding, t.semantic_embedding, t.code_embedding,
-				rf.name, rf.title, rf.price_per_call
+				rf.name, rf.title, rf.price_per_call, rf.category
 			FROM function_embedding_triples t
 			JOIN registry_functions rf ON rf.id = t.function_id
 			WHERE rf.tenant_id = $1
@@ -85,6 +105,10 @@ func (a *MarketplaceAnalyzer) findFlyEmbedMatches(ctx context.Context, tenantID 
 			AND t.contract_embedding IS NOT NULL
 			AND t.semantic_embedding IS NOT NULL
 			AND t.code_embedding IS NOT NULL
+			LIMIT 50
+		),
+		tenant_categories AS (
+			SELECT DISTINCT category FROM tenant_triples WHERE category IS NOT NULL
 		),
 		marketplace_triples AS (
 			SELECT t.function_id, t.contract_embedding, t.semantic_embedding, t.code_embedding,
@@ -99,28 +123,45 @@ func (a *MarketplaceAnalyzer) findFlyEmbedMatches(ctx context.Context, tenantID 
 			AND t.contract_embedding IS NOT NULL
 			AND t.semantic_embedding IS NOT NULL
 			AND t.code_embedding IS NOT NULL
+			AND rf.category IN (SELECT category FROM tenant_categories)
+			LIMIT 500
+		),
+		scored_matches AS (
+			SELECT
+				tt.function_id AS tenant_func_id, tt.name AS tenant_func_name, tt.title AS tenant_func_title,
+				tt.price_per_call AS tenant_price,
+				mt.function_id AS market_func_id, mt.author AS market_author, mt.name AS market_name,
+				mt.title AS market_title, mt.description AS market_description,
+				mt.category AS market_category,
+				mt.price_per_call AS market_price, mt.reliability_score AS market_reliability,
+				mt.trust_score AS market_trust, mt.popularity_score AS market_popularity,
+				mt.created_at AS market_published,
+				(0.35 * (1 - (tt.contract_embedding <=> mt.contract_embedding)) +
+				  0.40 * (1 - (tt.semantic_embedding <=> mt.semantic_embedding)) +
+				  0.25 * (1 - (tt.code_embedding <=> mt.code_embedding))) AS combined_sim
+			FROM tenant_triples tt
+			CROSS JOIN LATERAL (
+				SELECT * FROM marketplace_triples mt
+				WHERE (0.35 * (1 - (tt.contract_embedding <=> mt.contract_embedding)) +
+					   0.40 * (1 - (tt.semantic_embedding <=> mt.semantic_embedding)) +
+					   0.25 * (1 - (tt.code_embedding <=> mt.code_embedding))) > $2
+				ORDER BY (0.35 * (1 - (tt.contract_embedding <=> mt.contract_embedding)) +
+					     0.40 * (1 - (tt.semantic_embedding <=> mt.semantic_embedding)) +
+					     0.25 * (1 - (tt.code_embedding <=> mt.code_embedding))) DESC
+				LIMIT 5
+			) mt
 		)
 		SELECT
-			tt.function_id AS tenant_func_id, tt.name AS tenant_func_name, tt.title AS tenant_func_title,
-			tt.price_per_call AS tenant_price,
-			mt.function_id AS market_func_id, mt.author AS market_author, mt.name AS market_name,
-			mt.title AS market_title, mt.description AS market_description,
-			mt.category AS market_category,
-			mt.price_per_call AS market_price, mt.reliability_score AS market_reliability,
-			mt.trust_score AS market_trust, mt.popularity_score AS market_popularity,
-			mt.created_at AS market_published,
-			(0.35 * (1 - (tt.contract_embedding <=> mt.contract_embedding)) +
-			 0.40 * (1 - (tt.semantic_embedding <=> mt.semantic_embedding)) +
-			 0.25 * (1 - (tt.code_embedding <=> mt.code_embedding))) AS combined_sim
-		FROM tenant_triples tt
-		CROSS JOIN marketplace_triples mt
-		WHERE (0.35 * (1 - (tt.contract_embedding <=> mt.contract_embedding)) +
-			   0.40 * (1 - (tt.semantic_embedding <=> mt.semantic_embedding)) +
-			   0.25 * (1 - (tt.code_embedding <=> mt.code_embedding))) > $2
+			tenant_func_id, tenant_func_name, tenant_func_title, tenant_price,
+			market_func_id, market_author, market_name,
+			market_title, market_description, market_category,
+			market_price, market_reliability, market_trust, market_popularity,
+			market_published, combined_sim
+		FROM scored_matches
 		ORDER BY combined_sim DESC
 		LIMIT $3`
 
-	rows, err := a.db.QueryContext(ctx, query, tenantID, marketplaceSimilarityThreshold, marketplaceMaxInsights)
+	rows, err := a.db.QueryContext(ctx, query, tenantID, a.similarityThreshold, a.maxInsights)
 	if err != nil {
 		return nil, fmt.Errorf("flyembed marketplace query: %w", err)
 	}
@@ -150,7 +191,7 @@ func (a *MarketplaceAnalyzer) findFlyEmbedMatches(ctx context.Context, tenantID 
 			&marketPrice, &marketReliability, &marketTrust, &marketPopularity,
 			&marketPublished, &combinedSim,
 		); err != nil {
-			a.logger.WithError(err).Warn("Failed to scan marketplace match row")
+			a.logger.WithError(err).Error("Failed to scan marketplace match row")
 			continue
 		}
 
@@ -299,6 +340,7 @@ func (a *MarketplaceAnalyzer) findCategoryTrends(ctx context.Context, tenantID u
 			&funcID, &author, &name, &title, &description,
 			&category, &price, &reliability, &trust, &popularity, &createdAt,
 		); err != nil {
+			a.logger.WithError(err).Error("Failed to scan category trend row")
 			continue
 		}
 

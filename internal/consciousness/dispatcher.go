@@ -50,10 +50,14 @@ func (d *NotificationDispatcher) Dispatch(ctx context.Context, insight *Insight,
 	// In-app (always first — fast, local DB write)
 	if prefs.InAppEnabled {
 		if err := d.sendInApp(ctx, insight); err != nil {
-			d.logDelivery(insight.ID, insight.TenantID, "in_app", "failed", err)
-			d.logger.WithError(err).Warn("Failed to send consciousness in-app notification")
+			d.logDelivery(ctx, insight.ID, insight.TenantID, "in_app", "failed", err)
+			d.logger.WithError(err).WithFields(logrus.Fields{
+				"insight_id": insight.ID,
+				"tenant_id":  insight.TenantID,
+				"channel":    "in_app",
+			}).Error("Failed to send consciousness in-app notification")
 		} else {
-			d.logDelivery(insight.ID, insight.TenantID, "in_app", "sent", nil)
+			d.logDelivery(ctx, insight.ID, insight.TenantID, "in_app", "sent", nil)
 			sent = append(sent, "in_app")
 		}
 	}
@@ -61,10 +65,14 @@ func (d *NotificationDispatcher) Dispatch(ctx context.Context, insight *Insight,
 	// Email
 	if prefs.EmailEnabled {
 		if err := d.sendEmail(ctx, insight); err != nil {
-			d.logDelivery(insight.ID, insight.TenantID, "email", "failed", err)
-			d.logger.WithError(err).Warn("Failed to send consciousness email")
+			d.logDelivery(ctx, insight.ID, insight.TenantID, "email", "failed", err)
+			d.logger.WithError(err).WithFields(logrus.Fields{
+				"insight_id": insight.ID,
+				"tenant_id":  insight.TenantID,
+				"channel":    "email",
+			}).Error("Failed to send consciousness email")
 		} else {
-			d.logDelivery(insight.ID, insight.TenantID, "email", "sent", nil)
+			d.logDelivery(ctx, insight.ID, insight.TenantID, "email", "sent", nil)
 			sent = append(sent, "email")
 		}
 	}
@@ -72,10 +80,14 @@ func (d *NotificationDispatcher) Dispatch(ctx context.Context, insight *Insight,
 	// Slack
 	if prefs.SlackEnabled && prefs.SlackWebhookURL != nil && *prefs.SlackWebhookURL != "" {
 		if err := d.sendSlack(ctx, insight, *prefs.SlackWebhookURL); err != nil {
-			d.logDelivery(insight.ID, insight.TenantID, "slack", "failed", err)
-			d.logger.WithError(err).Warn("Failed to send consciousness Slack notification")
+			d.logDelivery(ctx, insight.ID, insight.TenantID, "slack", "failed", err)
+			d.logger.WithError(err).WithFields(logrus.Fields{
+				"insight_id": insight.ID,
+				"tenant_id":  insight.TenantID,
+				"channel":    "slack",
+			}).Error("Failed to send consciousness Slack notification")
 		} else {
-			d.logDelivery(insight.ID, insight.TenantID, "slack", "sent", nil)
+			d.logDelivery(ctx, insight.ID, insight.TenantID, "slack", "sent", nil)
 			sent = append(sent, "slack")
 		}
 	}
@@ -87,10 +99,14 @@ func (d *NotificationDispatcher) Dispatch(ctx context.Context, insight *Insight,
 			secret = *prefs.WebhookSecret
 		}
 		if err := d.sendWebhook(ctx, insight, *prefs.WebhookURL, secret); err != nil {
-			d.logDelivery(insight.ID, insight.TenantID, "webhook", "failed", err)
-			d.logger.WithError(err).Warn("Failed to send consciousness webhook")
+			d.logDelivery(ctx, insight.ID, insight.TenantID, "webhook", "failed", err)
+			d.logger.WithError(err).WithFields(logrus.Fields{
+				"insight_id": insight.ID,
+				"tenant_id":  insight.TenantID,
+				"channel":    "webhook",
+			}).Error("Failed to send consciousness webhook")
 		} else {
-			d.logDelivery(insight.ID, insight.TenantID, "webhook", "sent", nil)
+			d.logDelivery(ctx, insight.ID, insight.TenantID, "webhook", "sent", nil)
 			sent = append(sent, "webhook")
 		}
 	}
@@ -104,7 +120,7 @@ func (d *NotificationDispatcher) DispatchDigest(ctx context.Context, digest *Dig
 
 	if prefs.InAppEnabled {
 		if err := d.sendDigestInApp(ctx, digest); err != nil {
-			d.logger.WithError(err).Warn("Failed to send consciousness digest in-app")
+			d.logger.WithError(err).WithField("tenant_id", digest.TenantID).Error("Failed to send consciousness digest in-app")
 		} else {
 			sent = append(sent, "in_app")
 		}
@@ -112,7 +128,7 @@ func (d *NotificationDispatcher) DispatchDigest(ctx context.Context, digest *Dig
 
 	if prefs.EmailEnabled {
 		if err := d.sendDigestEmail(ctx, digest); err != nil {
-			d.logger.WithError(err).Warn("Failed to send consciousness digest email")
+			d.logger.WithError(err).WithField("tenant_id", digest.TenantID).Error("Failed to send consciousness digest email")
 		} else {
 			sent = append(sent, "email")
 		}
@@ -120,7 +136,7 @@ func (d *NotificationDispatcher) DispatchDigest(ctx context.Context, digest *Dig
 
 	if prefs.SlackEnabled && prefs.SlackWebhookURL != nil && *prefs.SlackWebhookURL != "" {
 		if err := d.sendDigestSlack(ctx, digest, *prefs.SlackWebhookURL); err != nil {
-			d.logger.WithError(err).Warn("Failed to send consciousness digest Slack")
+			d.logger.WithError(err).WithField("tenant_id", digest.TenantID).Error("Failed to send consciousness digest Slack")
 		} else {
 			sent = append(sent, "slack")
 		}
@@ -486,7 +502,7 @@ func (d *NotificationDispatcher) getTenantOwnerEmail(ctx context.Context, tenant
 	return email, nil
 }
 
-func (d *NotificationDispatcher) logDelivery(insightID, tenantID uuid.UUID, channel, status string, err error) {
+func (d *NotificationDispatcher) logDelivery(ctx context.Context, insightID, tenantID uuid.UUID, channel, status string, err error) {
 	log := &DeliveryLog{
 		InsightID: insightID,
 		TenantID:  tenantID,
@@ -498,8 +514,8 @@ func (d *NotificationDispatcher) logDelivery(insightID, tenantID uuid.UUID, chan
 		errMsg := err.Error()
 		log.ErrorMsg = &errMsg
 	}
-	if logErr := d.repo.LogDelivery(context.Background(), log); logErr != nil {
-		d.logger.WithError(logErr).Warn("Failed to log delivery attempt")
+	if logErr := d.repo.LogDelivery(ctx, log); logErr != nil {
+		d.logger.WithError(logErr).Error("Failed to log delivery attempt")
 	}
 }
 
@@ -696,4 +712,109 @@ func derefFloat64(p *float64) float64 {
 		return 0
 	}
 	return *p
+}
+
+// RetryDelivery attempts to deliver a previously failed notification.
+func (d *NotificationDispatcher) RetryDelivery(ctx context.Context, retry *DeliveryRetry) error {
+	// Reconstruct the insight from the stored payload
+	var insight struct {
+		ID        uuid.UUID
+		TenantID  uuid.UUID
+		Category  InsightCategory
+		Severity  InsightSeverity
+		Title     string
+		Message   string
+		ActionType ActionType
+		CreatedAt time.Time
+	}
+
+	if err := json.Unmarshal(retry.Payload, &insight); err != nil {
+		return fmt.Errorf("unmarshal retry payload: %w", err)
+	}
+
+	ins := &Insight{
+		ID:         insight.ID,
+		TenantID:   insight.TenantID,
+		Category:   insight.Category,
+		Severity:   insight.Severity,
+		Title:      insight.Title,
+		Message:    insight.Message,
+		ActionType: insight.ActionType,
+		CreatedAt:  insight.CreatedAt,
+	}
+
+	// Get tenant preferences
+	prefs, err := d.repo.GetPreferences(ctx, retry.TenantID)
+	if err != nil {
+		return fmt.Errorf("get preferences: %w", err)
+	}
+
+	// Retry the specific channel
+	switch retry.Channel {
+	case "in_app":
+		return d.sendInApp(ctx, ins)
+	case "email":
+		return d.sendEmail(ctx, ins)
+	case "slack":
+		if prefs.SlackWebhookURL != nil && *prefs.SlackWebhookURL != "" {
+			return d.sendSlack(ctx, ins, *prefs.SlackWebhookURL)
+		}
+		return fmt.Errorf("slack webhook not configured")
+	case "webhook":
+		secret := ""
+		if prefs.WebhookSecret != nil {
+			secret = *prefs.WebhookSecret
+		}
+		if prefs.WebhookURL != nil && *prefs.WebhookURL != "" {
+			return d.sendWebhook(ctx, ins, *prefs.WebhookURL, secret)
+		}
+		return fmt.Errorf("webhook URL not configured")
+	default:
+		return fmt.Errorf("unknown channel: %s", retry.Channel)
+	}
+}
+
+// ScheduleRetryIfFailed checks if delivery failed and schedules a retry if appropriate.
+func (d *NotificationDispatcher) ScheduleRetryIfFailed(ctx context.Context, insight *Insight, channel string, err error, maxRetries int) {
+	if err == nil {
+		return
+	}
+
+	// Serialize the insight for retry
+	payload, marshalErr := json.Marshal(map[string]interface{}{
+		"id":         insight.ID,
+		"tenant_id":  insight.TenantID,
+		"category":   insight.Category,
+		"severity":   insight.Severity,
+		"title":      insight.Title,
+		"message":    insight.Message,
+		"action":     insight.ActionType,
+		"created_at": insight.CreatedAt,
+	})
+	if marshalErr != nil {
+		d.logger.WithError(marshalErr).WithField("insight_id", insight.ID).Error("Failed to marshal insight for retry")
+		return
+	}
+
+	errMsg := err.Error()
+	retry := &DeliveryRetry{
+		InsightID:    insight.ID,
+		TenantID:     insight.TenantID,
+		Channel:      channel,
+		Payload:      payload,
+		AttemptCount: 1,
+		MaxAttempts:  maxRetries,
+		NextRetryAt:  time.Now().Add(5 * time.Minute), // Initial delay
+		LastError:    &errMsg,
+	}
+
+	if scheduleErr := d.repo.ScheduleRetry(ctx, retry); scheduleErr != nil {
+		d.logger.WithError(scheduleErr).WithField("insight_id", insight.ID).Error("Failed to schedule retry")
+	} else {
+		d.logger.WithFields(logrus.Fields{
+			"insight_id": insight.ID,
+			"channel":    channel,
+			"next_retry": retry.NextRetryAt,
+		}).Info("Scheduled delivery retry")
+	}
 }

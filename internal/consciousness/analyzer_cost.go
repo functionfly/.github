@@ -61,6 +61,7 @@ func (a *CostAnalyzer) Analyze(ctx context.Context, tenantID uuid.UUID, params A
 	for rows.Next() {
 		var fc funcCost
 		if err := rows.Scan(&fc.FunctionID, &fc.TotalCost, &fc.ExecCount, &fc.AvgDuration); err != nil {
+			a.logger.WithError(err).Error("Failed to scan cost allocation row")
 			continue
 		}
 		costs = append(costs, fc)
