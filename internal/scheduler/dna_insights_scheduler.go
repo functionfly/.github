@@ -9,6 +9,7 @@ import (
 	"time"
 
 	dnaStorage "github.com/functionfly/functionfly/internal/storage/dna"
+	"github.com/functionfly/functionfly/internal/tracing"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
 )
@@ -112,14 +113,20 @@ func (s *DNAInsightsScheduler) Stop() error {
 // runInsightsAggregation computes and stores insights for each tenant.
 // Processes tenants in parallel (up to 5 concurrent) for faster completion.
 func (s *DNAInsightsScheduler) runInsightsAggregation(ctx context.Context) {
+	ctx, span := tracing.StartSpan(ctx, "dna.insights_aggregation")
+	defer tracing.Finish(ctx)
+
 	start := time.Now()
 	s.logger.Info("Starting DNA insights aggregation")
 
 	tenants, err := s.repo.GetDistinctTenantIDs(ctx)
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to get tenant list for insights aggregation")
+		tracing.RecordError(ctx, err)
 		return
 	}
+
+	tracing.SetAttribute(ctx, "tenant_count", len(tenants))
 
 	// Aggregate for the previous 24-hour period
 	periodEnd := time.Now().Truncate(time.Hour)
@@ -129,6 +136,7 @@ func (s *DNAInsightsScheduler) runInsightsAggregation(ctx context.Context) {
 	var (
 		mu           sync.Mutex
 		successCount int
+		failedTenants []string
 	)
 
 	// Process up to 5 tenants concurrently
@@ -145,11 +153,17 @@ func (s *DNAInsightsScheduler) runInsightsAggregation(ctx context.Context) {
 			insights, err := s.repo.GetTenantInsights(ctx, tid, since)
 			if err != nil {
 				s.logger.WithError(err).WithField("tenant_id", tid).Error("Failed to compute insights for tenant")
+				mu.Lock()
+				failedTenants = append(failedTenants, tid)
+				mu.Unlock()
 				return
 			}
 
 			if err := s.repo.InsertInsight(ctx, insights, tid, periodStart, periodEnd); err != nil {
 				s.logger.WithError(err).WithField("tenant_id", tid).Error("Failed to insert insights for tenant")
+				mu.Lock()
+				failedTenants = append(failedTenants, tid)
+				mu.Unlock()
 				return
 			}
 
@@ -161,13 +175,18 @@ func (s *DNAInsightsScheduler) runInsightsAggregation(ctx context.Context) {
 
 	wg.Wait()
 
-	s.logger.WithFields(logrus.Fields{
+	logFields := logrus.Fields{
 		"tenants_processed": successCount,
 		"tenants_total":     len(tenants),
+		"tenants_failed":    len(failedTenants),
 		"period_start":      periodStart.Format(time.RFC3339),
 		"period_end":        periodEnd.Format(time.RFC3339),
 		"duration_ms":       time.Since(start).Milliseconds(),
-	}).Info("DNA insights aggregation completed")
+	}
+	if len(failedTenants) > 0 {
+		logFields["failed_tenant_ids"] = failedTenants
+	}
+	s.logger.WithFields(logFields).Info("DNA insights aggregation completed")
 }
 
 // RunNow triggers an immediate insights aggregation (for admin/manual use).

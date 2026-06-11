@@ -38,14 +38,18 @@ func (cb *circuitBreaker) allow() bool {
 
 	switch cb.state {
 	case stateClosed:
+		SetCircuitBreakerState(0)
 		return true
 	case stateOpen:
+		SetCircuitBreakerState(1)
 		if time.Since(cb.lastFailure) > cb.cooldown {
 			cb.state = stateHalfOpen
+			SetCircuitBreakerState(2)
 			return true
 		}
 		return false
 	case stateHalfOpen:
+		SetCircuitBreakerState(2)
 		return true
 	default:
 		return true
@@ -58,6 +62,9 @@ func (cb *circuitBreaker) recordSuccess() {
 	defer cb.mu.Unlock()
 	cb.failures = 0
 	cb.state = stateClosed
+	SetCircuitBreakerState(0)
+	SetCircuitBreakerSuccesses(1) // increment success counter for monitoring
+	SetCircuitBreakerFailures(0)  // reset failure counter
 }
 
 // recordFailure increments the failure counter and trips the breaker if threshold is reached.
@@ -66,7 +73,16 @@ func (cb *circuitBreaker) recordFailure() {
 	defer cb.mu.Unlock()
 	cb.failures++
 	cb.lastFailure = time.Now()
+	SetCircuitBreakerFailures(float64(cb.failures)) // expose failure count for early warning
 	if cb.failures >= cb.threshold {
 		cb.state = stateOpen
+		SetCircuitBreakerState(1)
 	}
+}
+
+// GetState returns the current circuit breaker state for health checks.
+func (cb *circuitBreaker) GetState() int {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+	return cb.state
 }

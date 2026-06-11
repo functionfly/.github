@@ -564,3 +564,55 @@ func (s *Server) isCriticalCheck(checkName string) bool {
 	}
 	return false
 }
+
+// handleDNAServiceHealth returns DNA service health status
+func (s *Server) handleDNAServiceHealth(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var queueDepth float64
+	if s.dnaRepo != nil {
+		queueDepth = float64(s.dnaRepo.GetQueueDepth(r.Context()))
+	}
+	SetQueueDepth(queueDepth)
+
+	circuitBreakerState := 0
+	workerCount := 0
+	if s.dnaService != nil {
+		circuitBreakerState = s.dnaService.GetCircuitBreakerState()
+		workerCount = s.dnaService.GetWorkerCount()
+	}
+	SetCircuitBreakerState(float64(circuitBreakerState))
+
+	partitionStatus := map[string]interface{}{}
+	if s.dnaPartitionScheduler != nil {
+		partitionStatus = s.dnaPartitionScheduler.GetStatus(r.Context())
+	}
+
+	insightsStatus := map[string]interface{}{}
+	if s.dnaInsightsScheduler != nil {
+		insightsStatus = s.dnaInsightsScheduler.GetStatus()
+	}
+
+	health := map[string]interface{}{
+		"status":    "ok",
+		"timestamp": time.Now().Format(time.RFC3339),
+		"services": map[string]interface{}{
+			"dna_service": map[string]interface{}{
+				"status":              "ok",
+				"queue_depth":         queueDepth,
+				"worker_count":        workerCount,
+				"circuit_breaker":     circuitBreakerState,
+				"partition_scheduler": partitionStatus,
+				"insights_scheduler":  insightsStatus,
+			},
+		},
+	}
+
+	statusCode := http.StatusOK
+	if circuitBreakerState == 1 {
+		health["status"] = "degraded"
+	}
+
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(health)
+}

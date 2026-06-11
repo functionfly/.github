@@ -9,6 +9,7 @@ import (
 	"time"
 
 	dnaStorage "github.com/functionfly/functionfly/internal/storage/dna"
+	"github.com/functionfly/functionfly/internal/tracing"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
 )
@@ -131,29 +132,42 @@ func (s *DNAPartitionScheduler) Stop() error {
 
 // runPartitionMaintenance creates future partitions and drops old ones.
 func (s *DNAPartitionScheduler) runPartitionMaintenance(ctx context.Context) {
+	ctx, span := tracing.StartSpan(ctx, "dna.partition_maintenance")
+	defer tracing.Finish(ctx)
+
 	start := time.Now()
 	s.logger.Info("Starting DNA partition maintenance")
+
+	tracing.SetAttribute(ctx, "months_ahead", s.config.MonthsAhead)
+	tracing.SetAttribute(ctx, "retention_months", s.config.RetentionMonths)
 
 	// Create future partitions
 	created, err := s.repo.CreateFuturePartitions(ctx, s.config.MonthsAhead)
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to create future DNA partitions")
+		tracing.RecordError(ctx, err)
 	} else {
 		s.logger.WithField("partitions_created", created).Info("Future DNA partitions created")
 	}
+	tracing.SetAttribute(ctx, "partitions_created", created)
 
 	// Drop old partitions
 	dropped, err := s.repo.DropOldPartitions(ctx, s.config.RetentionMonths)
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to drop old DNA partitions")
+		tracing.RecordError(ctx, err)
 	} else {
 		s.logger.WithField("partitions_dropped", dropped).Info("Old DNA partitions dropped")
 	}
+	tracing.SetAttribute(ctx, "partitions_dropped", dropped)
+
+	duration := time.Since(start)
+	tracing.SetAttribute(ctx, "duration_ms", duration.Milliseconds())
 
 	s.logger.WithFields(logrus.Fields{
-		"created":    created,
-		"dropped":    dropped,
-		"duration_ms": time.Since(start).Milliseconds(),
+		"created":      created,
+		"dropped":      dropped,
+		"duration_ms":  duration.Milliseconds(),
 	}).Info("DNA partition maintenance completed")
 }
 

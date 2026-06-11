@@ -12,7 +12,6 @@ import (
 	"syscall"
 	"time"
 
-	agentbrowser "github.com/functionfly/functionfly/internal/agent/browser"
 	"github.com/functionfly/functionfly/internal/adapters/aws"
 	"github.com/functionfly/functionfly/internal/adapters/cloudflare"
 	"github.com/functionfly/functionfly/internal/adapters/common"
@@ -22,6 +21,7 @@ import (
 	"github.com/functionfly/functionfly/internal/adapters/vercel"
 	"github.com/functionfly/functionfly/internal/analytics/unified"
 	"github.com/functionfly/functionfly/internal/api/handlers/billing"
+	"github.com/functionfly/functionfly/internal/api/handlers/dna"
 	"github.com/functionfly/functionfly/internal/api/handlers/notifications"
 	regexec "github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	"github.com/functionfly/functionfly/internal/api/handlers/trustapi"
@@ -29,9 +29,8 @@ import (
 	billingpkg "github.com/functionfly/functionfly/internal/billing"
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/config"
-	"github.com/functionfly/functionfly/internal/deployment"
 	"github.com/functionfly/functionfly/internal/dna"
-	dnahandler "github.com/functionfly/functionfly/internal/api/handlers/dna"
+	"github.com/functionfly/functionfly/internal/deployment"
 	"github.com/functionfly/functionfly/internal/email"
 	"github.com/functionfly/functionfly/internal/health"
 	"github.com/functionfly/functionfly/internal/monitoring"
@@ -58,9 +57,6 @@ type Server struct {
 
 	// Repository (unified interface)
 	repo storage.Repository
-
-	// Content repository (for blog analytics and content management)
-	contentRepo *storage.ContentRepository
 
 	router              *mux.Router
 	authSvc             *auth.AuthService
@@ -115,9 +111,6 @@ type Server struct {
 	// Vault repository for token cleanup job (set in setupRoutes)
 	vaultRepo *vaultstorage.Repository
 
-	// Secret version cleanup service for vault secrets
-	secretVersionCleanup *vaultstorage.CleanupService
-
 	// Deferred billing checker for Backend-in-a-Box founder mode
 	deferredBillingChecker *billing.DeferredBillingChecker
 
@@ -150,14 +143,12 @@ type Server struct {
 	certExamExpiryScheduler *scheduler.CertExamExpiryScheduler
 	certCredExpiryScheduler *scheduler.CertCredentialExpiryScheduler
 
-	// DNA service for Function DNA analysis and mutation management
-	dnaService *dna.Service
-
-	// DNA handler for Function DNA HTTP endpoints (has background cleanup goroutines)
-	dnaHandler *dnahandler.Handler
-
-	// Browser automation service for agent browser capabilities
-	browserSvc agentbrowser.Browser
+	// DNA service and schedulers
+	dnaRepo               *dna.Repository
+	dnaService            *dna.Service
+	dnaPartitionScheduler *scheduler.DNAPartitionScheduler
+	dnaInsightsScheduler  *scheduler.DNAInsightsScheduler
+	dnaHandler            *dnahandler.Handler
 }
 
 func NewServer(db *storage.PostgresDB) *Server {
@@ -182,7 +173,6 @@ func NewServer(db *storage.PostgresDB) *Server {
 
 	// Use PostgreSQL as the database backend
 	repo := db.Repository()
-	contentRepo := storage.NewContentRepository(db)
 	logrus.Info("Using PostgreSQL as database backend")
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
@@ -350,11 +340,6 @@ func NewServer(db *storage.PostgresDB) *Server {
 		stateFabricCleanup = statefabricrepo.NewCleanupService(db.GORM, stateFabricCleanupConfig)
 	}
 
-	// Initialize secret version cleanup service for vault (prunes old versions, keeps latest N)
-	vaultRetentionConfig := vaultstorage.DefaultRetentionConfig()
-	vaultRepoForCleanup := vaultstorage.NewRepository(db.GORM)
-	secretVersionCleanup := vaultstorage.NewCleanupService(vaultRepoForCleanup, vaultRetentionConfig)
-
 	// Initialize verification service
 	clamAVURL := os.Getenv("CLAMAV_URL")
 	if clamAVURL == "" {
@@ -418,7 +403,6 @@ func NewServer(db *storage.PostgresDB) *Server {
 	s := &Server{
 		postgresDB:             db,
 		repo:                   repo,
-		contentRepo:            contentRepo,
 		router:                 router,
 		authSvc:                authSvc,
 		routingSvc:             routing.NewRouter(repo),
@@ -433,7 +417,6 @@ func NewServer(db *storage.PostgresDB) *Server {
 		executionLogCleanup:    executionLogCleanup,
 		stateCleanup:           stateCleanup,
 		stateFabricCleanup:     stateFabricCleanup,
-		secretVersionCleanup:   secretVersionCleanup,
 		healthMonitor:          healthMonitor,
 		redisClient:            redisClient,
 		upstashRedis:           upstashRedis,
@@ -521,7 +504,7 @@ func (w *corsResponseWriter) Write(b []byte) (int, error) {
 func localhostCORSWrapper(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
-		isDev := os.Getenv("DEVELOPMENT") == "true" && os.Getenv("NODE_ENV") != "production" && os.Getenv("ENVIRONMENT") != "production"
+		isDev := os.Getenv("DEVELOPMENT") == "true"
 		isLocalhost := origin != "" && (strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://127.0.0.1:"))
 
 		// SECURITY: Reject localhost origins in production even via this wrapper
@@ -698,16 +681,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	// Start vault expired-token cleanup (runs daily; prunes tokens expired/revoked > 30 days ago)
 	if s.vaultRepo != nil {
 		go runVaultTokenCleanup(ctx, s.vaultRepo, 24*time.Hour, 30*24*time.Hour)
-	}
-
-	// Start secret version cleanup routine (prunes old secret versions, keeps latest N per secret)
-	if s.secretVersionCleanup != nil {
-		go s.secretVersionCleanup.StartCleanupRoutine(ctx)
-		logrus.WithFields(logrus.Fields{
-			"retention_days": s.secretVersionCleanup.GetConfig().RetentionDays,
-			"keep_latest":     s.secretVersionCleanup.GetConfig().KeepLatestVersions,
-			"interval":        s.secretVersionCleanup.GetConfig().CleanupInterval.String(),
-		}).Info("Secret version cleanup routine started")
+		logrus.Info("Vault token cleanup routine started")
 	}
 
 	// Function log retention (default 90 days; FUNCTION_LOG_RETENTION_DAYS=0 disables)
@@ -858,10 +832,8 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		s.exportScheduler.Stop()
 		logrus.Info("Export scheduler stopped")
 	}
-
-	// Stop DNA handler background cleanup goroutines
 	if s.dnaHandler != nil {
-		s.dnaHandler.Shutdown()
+		s.dnaHandler.Stop()
 		logrus.Info("DNA handler stopped")
 	}
 

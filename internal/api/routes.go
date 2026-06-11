@@ -45,7 +45,6 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/certification"
 	"github.com/functionfly/functionfly/internal/api/handlers/chat"
 	connectorhandler "github.com/functionfly/functionfly/internal/api/handlers/connectors"
-	consciousnesshandler "github.com/functionfly/functionfly/internal/api/handlers/consciousness"
 	"github.com/functionfly/functionfly/internal/api/handlers/content"
 	"github.com/functionfly/functionfly/internal/api/handlers/dashboard"
 	"github.com/functionfly/functionfly/internal/api/handlers/decisions"
@@ -110,6 +109,8 @@ import (
 	timemachine "github.com/functionfly/functionfly/internal/storage/timemachine"
 	trustapirepo "github.com/functionfly/functionfly/internal/storage/trustapi"
 	decisionsrepo "github.com/functionfly/functionfly/internal/storage/trustapi/decisions"
+	dnaStorage "github.com/functionfly/functionfly/internal/storage/dna"
+	"github.com/functionfly/functionfly/internal/dna"
 	vaultstorage "github.com/functionfly/functionfly/internal/storage/vault"
 	"github.com/functionfly/functionfly/internal/support"
 	"github.com/functionfly/functionfly/internal/versioning"
@@ -809,8 +810,6 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	analyticsSvc := analytics.NewService(s.postgresDB.GORM, analytics.DefaultServiceConfig(factoryConfig.AgentID))
 	analyticsHandler := analyticshandler.NewHandler(analyticsSvc, s.authSvc)
 
-	consciousnessHandler := consciousnesshandler.NewHandler(s.postgresDB.DB, logrus.New(), consciousnessRateLimiter, authMiddleware)
-
 	// Initialize learning and deployment services for swarm
 	agentLearningRepo := learning.NewRepository(s.postgresDB.GORM)
 	agentAnalyzer := learning.NewAnalyzer(s.postgresDB.GORM)
@@ -954,7 +953,6 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	providerRateLimiter := middleware.NewProviderRateLimiter()
 	walletRateLimiter := middleware.NewWalletRateLimiter()
 	mfaRateLimiter := middleware.NewMFARateLimiter()
-	consciousnessRateLimiter := middleware.NewConsciousnessRateLimiter()
 
 	// Initialize CSRF middleware early for billing route protection
 	csrfMiddleware := middleware.NewCSRFMiddleware(s.upstashRedis, s.authSvc)
@@ -1081,9 +1079,6 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// R-Sim simulation engine routes
 	registerSimulationRoutes(api, authMiddleware, simHandler)
 
-	// Consciousness API routes
-	consciousnessHandler.RegisterRoutes(api)
-
 	// Ghost Mode autonomous building routes
 	registerGhostRoutes(api, authMiddleware, ghostHandler)
 
@@ -1157,6 +1152,30 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		logrus.Info("Cert grading worker started")
 	}
 
+	// ── DNA Service and Schedulers ─────────────────────────────────────────────
+	s.dnaRepo = dnaStorage.NewRepository(s.postgresDB.DB)
+	s.dnaService = dna.NewService(s.dnaRepo, logrus.StandardLogger())
+	s.dnaService.SetServerContext(context.Background())
+
+	// DNA partition scheduler for monthly partition maintenance
+	s.dnaPartitionScheduler = scheduler.NewDNAPartitionScheduler(s.dnaRepo)
+	if err := s.dnaPartitionScheduler.Start(context.Background()); err != nil {
+		logrus.WithError(err).Error("failed to start DNA partition scheduler")
+	}
+
+	// DNA insights scheduler for daily aggregation
+	s.dnaInsightsScheduler = scheduler.NewDNAInsightsScheduler(s.dnaRepo)
+	if err := s.dnaInsightsScheduler.Start(context.Background()); err != nil {
+		logrus.WithError(err).Error("failed to start DNA insights scheduler")
+	}
+
+	// DNA handler
+	s.dnaHandler = dnahandler.NewHandler(s.dnaService, logrus.StandardLogger())
+
+	// Register DNA routes
+	registerDNARoutes(s, api, protected, authMiddleware, s.dnaHandler)
+
+
 	// Payout scheduler for auto-payouts
 	payoutSchedulerConfig := scheduler.EnvPayoutScheduleConfig()
 	payoutScheduler := scheduler.NewPayoutScheduler(payoutServiceExtended)
@@ -1216,8 +1235,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	s.router.HandleFunc("/healthz", s.handleHealth).Methods("GET", "OPTIONS")
 	s.router.HandleFunc("/health/detailed", s.handleDetailedHealth).Methods("GET", "OPTIONS")
 	s.router.HandleFunc("/health/check", s.handleHealthCheck).Methods("GET", "OPTIONS")
-	s.router.HandleFunc("/live", s.handleLiveness).Methods("GET", "OPTIONS")
-	s.router.HandleFunc("/ready", s.handleReadinessEndpoint).Methods("GET", "OPTIONS")
+	s.router.HandleFunc("/health/dna", s.handleDNAServiceHealth).Methods("GET", "OPTIONS")
 	s.router.Handle("/metrics", middleware.RequireAuthInProduction(authMiddleware)(promhttp.Handler())).Methods("GET")
 	s.router.HandleFunc("/ws/v1/status", statusHandlerInst.HandleWebSocketStatus).Methods("GET")
 
