@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -21,14 +22,14 @@ func (h *Handler) HandleBillingSummary(w http.ResponseWriter, r *http.Request) {
 	invoices, err := h.repo.ListAllInvoices(10000, 0)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list invoices for billing summary")
-		http.Error(w, "Failed to get billing summary", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get billing summary"))
 		return
 	}
 
 	subs, err := h.repo.ListAllSubscriptions(10000, 0)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list subscriptions for billing summary")
-		http.Error(w, "Failed to get billing summary", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get billing summary"))
 		return
 	}
 
@@ -75,7 +76,7 @@ func (h *Handler) HandleListPricingTiers(w http.ResponseWriter, r *http.Request)
 	tiers, err := h.repo.ListPricingTiers()
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list pricing tiers")
-		http.Error(w, "Failed to list pricing tiers", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list pricing tiers"))
 		return
 	}
 
@@ -96,7 +97,7 @@ func (h *Handler) HandleCreatePricingTier(w http.ResponseWriter, r *http.Request
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
@@ -112,7 +113,7 @@ func (h *Handler) HandleCreatePricingTier(w http.ResponseWriter, r *http.Request
 	createdTier, err := h.repo.CreatePricingTier(r.Context(), tier)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create pricing tier")
-		http.Error(w, "Failed to create pricing tier", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create pricing tier"))
 		return
 	}
 
@@ -127,18 +128,18 @@ func (h *Handler) HandleGetPricingTier(w http.ResponseWriter, r *http.Request) {
 	tierIDStr := vars["tierId"]
 	tierID, err := uuid.Parse(tierIDStr)
 	if err != nil {
-		http.Error(w, "Invalid tier ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tier ID"))
 		return
 	}
 
 	tier, err := h.repo.GetPricingTierByID(tierID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get pricing tier")
-		http.Error(w, "Failed to get pricing tier", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get pricing tier"))
 		return
 	}
 	if tier == nil {
-		http.Error(w, "Pricing tier not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Pricing tier not found"))
 		return
 	}
 
@@ -152,20 +153,20 @@ func (h *Handler) HandleUpdatePricingTier(w http.ResponseWriter, r *http.Request
 	tierIDStr := vars["tierId"]
 	tierID, err := uuid.Parse(tierIDStr)
 	if err != nil {
-		http.Error(w, "Invalid tier ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tier ID"))
 		return
 	}
 
 	var updates map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	tier, err := h.repo.UpdatePricingTier(r.Context(), tierID, updates)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to update pricing tier")
-		http.Error(w, "Failed to update pricing tier", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update pricing tier"))
 		return
 	}
 
@@ -179,14 +180,14 @@ func (h *Handler) HandleDeletePricingTier(w http.ResponseWriter, r *http.Request
 	tierIDStr := vars["tierId"]
 	tierID, err := uuid.Parse(tierIDStr)
 	if err != nil {
-		http.Error(w, "Invalid tier ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tier ID"))
 		return
 	}
 
 	err = h.repo.DeletePricingTier(r.Context(), tierID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to delete pricing tier")
-		http.Error(w, "Failed to delete pricing tier", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete pricing tier"))
 		return
 	}
 
@@ -210,7 +211,7 @@ func (h *Handler) HandleListSubscriptions(w http.ResponseWriter, r *http.Request
 	subs, err := h.repo.ListAllSubscriptions(limit, offset)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list subscriptions")
-		http.Error(w, "Failed to list subscriptions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list subscriptions"))
 		return
 	}
 
@@ -229,7 +230,7 @@ func (h *Handler) HandleCreateSubscription(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
@@ -237,11 +238,11 @@ func (h *Handler) HandleCreateSubscription(w http.ResponseWriter, r *http.Reques
 	existing, err := h.repo.GetSubscriptionByTenantID(req.TenantID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check existing subscription")
-		http.Error(w, "Failed to create subscription", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create subscription"))
 		return
 	}
 	if existing != nil {
-		http.Error(w, "Tenant already has an active subscription", http.StatusConflict)
+		apierror.WriteError(w, apierror.NewConflict("Tenant already has an active subscription"))
 		return
 	}
 
@@ -257,7 +258,7 @@ func (h *Handler) HandleCreateSubscription(w http.ResponseWriter, r *http.Reques
 	createdSub, err := h.repo.CreateSubscription(r.Context(), sub)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create subscription")
-		http.Error(w, "Failed to create subscription", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create subscription"))
 		return
 	}
 
@@ -272,18 +273,18 @@ func (h *Handler) HandleGetSubscription(w http.ResponseWriter, r *http.Request) 
 	subIDStr := vars["subscriptionId"]
 	subID, err := uuid.Parse(subIDStr)
 	if err != nil {
-		http.Error(w, "Invalid subscription ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid subscription ID"))
 		return
 	}
 
 	subscription, err := h.repo.GetSubscriptionByID(r.Context(), subID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get subscription")
-		http.Error(w, "Failed to get subscription", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get subscription"))
 		return
 	}
 	if subscription == nil {
-		http.Error(w, "Subscription not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Subscription not found"))
 		return
 	}
 
@@ -297,20 +298,20 @@ func (h *Handler) HandleUpdateSubscription(w http.ResponseWriter, r *http.Reques
 	subIDStr := vars["subscriptionId"]
 	subID, err := uuid.Parse(subIDStr)
 	if err != nil {
-		http.Error(w, "Invalid subscription ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid subscription ID"))
 		return
 	}
 
 	var updates map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	subscription, err := h.repo.UpdateSubscription(r.Context(), subID, updates)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to update subscription")
-		http.Error(w, "Failed to update subscription", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update subscription"))
 		return
 	}
 
@@ -324,14 +325,14 @@ func (h *Handler) HandleCancelSubscription(w http.ResponseWriter, r *http.Reques
 	subIDStr := vars["subscriptionId"]
 	subID, err := uuid.Parse(subIDStr)
 	if err != nil {
-		http.Error(w, "Invalid subscription ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid subscription ID"))
 		return
 	}
 
 	err = h.repo.CancelSubscription(r.Context(), subID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to cancel subscription")
-		http.Error(w, "Failed to cancel subscription", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to cancel subscription"))
 		return
 	}
 
@@ -355,7 +356,7 @@ func (h *Handler) HandleListInvoices(w http.ResponseWriter, r *http.Request) {
 	invoices, err := h.repo.ListAllInvoices(limit, offset)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list invoices")
-		http.Error(w, "Failed to list invoices", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list invoices"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -376,7 +377,7 @@ func (h *Handler) HandleCreateInvoice(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
@@ -394,7 +395,7 @@ func (h *Handler) HandleCreateInvoice(w http.ResponseWriter, r *http.Request) {
 	createdInvoice, err := h.repo.CreateInvoice(r.Context(), invoice)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create invoice")
-		http.Error(w, "Failed to create invoice", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create invoice"))
 		return
 	}
 
@@ -409,18 +410,18 @@ func (h *Handler) HandleGetInvoice(w http.ResponseWriter, r *http.Request) {
 	invoiceIDStr := vars["invoiceId"]
 	invoiceID, err := uuid.Parse(invoiceIDStr)
 	if err != nil {
-		http.Error(w, "Invalid invoice ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid invoice ID"))
 		return
 	}
 
 	invoice, err := h.repo.GetInvoiceByID(invoiceID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get invoice")
-		http.Error(w, "Failed to get invoice", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get invoice"))
 		return
 	}
 	if invoice == nil {
-		http.Error(w, "Invoice not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Invoice not found"))
 		return
 	}
 
@@ -434,20 +435,20 @@ func (h *Handler) HandleUpdateInvoice(w http.ResponseWriter, r *http.Request) {
 	invoiceIDStr := vars["invoiceId"]
 	invoiceID, err := uuid.Parse(invoiceIDStr)
 	if err != nil {
-		http.Error(w, "Invalid invoice ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid invoice ID"))
 		return
 	}
 
 	var updates map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	invoice, err := h.repo.UpdateInvoice(r.Context(), invoiceID, updates)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to update invoice")
-		http.Error(w, "Failed to update invoice", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update invoice"))
 		return
 	}
 
@@ -464,13 +465,13 @@ func (h *Handler) HandleGetUsage(w http.ResponseWriter, r *http.Request) {
 	endStr := r.URL.Query().Get("end")
 
 	if tenantIDStr == "" || eventType == "" {
-		http.Error(w, "tenant_id and event_type are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("tenant_id and event_type are required"))
 		return
 	}
 
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
-		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tenant ID"))
 		return
 	}
 
@@ -487,7 +488,7 @@ func (h *Handler) HandleGetUsage(w http.ResponseWriter, r *http.Request) {
 	usage, err := h.repo.GetUsageByTenant(tenantID, eventType, start, end)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get usage")
-		http.Error(w, "Failed to get usage", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get usage"))
 		return
 	}
 
@@ -507,7 +508,7 @@ func (h *Handler) HandleRecordUsage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
@@ -521,7 +522,7 @@ func (h *Handler) HandleRecordUsage(w http.ResponseWriter, r *http.Request) {
 	err := h.repo.RecordUsageEvent(r.Context(), event)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to record usage event")
-		http.Error(w, "Failed to record usage event", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to record usage event"))
 		return
 	}
 
@@ -534,7 +535,7 @@ func (h *Handler) HandleListCoupons(w http.ResponseWriter, r *http.Request) {
 	coupons, err := h.repo.ListCoupons()
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list coupons")
-		http.Error(w, "Failed to list coupons", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list coupons"))
 		return
 	}
 
@@ -558,7 +559,7 @@ func (h *Handler) HandleCreateCoupon(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
@@ -577,7 +578,7 @@ func (h *Handler) HandleCreateCoupon(w http.ResponseWriter, r *http.Request) {
 	createdCoupon, err := h.repo.CreateCoupon(r.Context(), coupon)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create coupon")
-		http.Error(w, "Failed to create coupon", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create coupon"))
 		return
 	}
 
@@ -592,7 +593,7 @@ func (h *Handler) HandleRedeemCoupon(w http.ResponseWriter, r *http.Request) {
 	couponIDStr := vars["couponId"]
 	couponID, err := uuid.Parse(couponIDStr)
 	if err != nil {
-		http.Error(w, "Invalid coupon ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid coupon ID"))
 		return
 	}
 
@@ -602,14 +603,14 @@ func (h *Handler) HandleRedeemCoupon(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	redemption, err := h.repo.RedeemCoupon(r.Context(), couponID, req.TenantID, req.SubscriptionID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to redeem coupon")
-		http.Error(w, "Failed to redeem coupon", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to redeem coupon"))
 		return
 	}
 
@@ -627,7 +628,7 @@ func (h *Handler) HandleListAffiliateCodes(w http.ResponseWriter, r *http.Reques
 	codes, err := h.repo.ListAffiliateCodes()
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list affiliate codes")
-		http.Error(w, "Failed to list affiliate codes", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list affiliate codes"))
 		return
 	}
 
@@ -657,7 +658,7 @@ func (h *Handler) HandleCreateAffiliateCode(w http.ResponseWriter, r *http.Reque
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
@@ -681,7 +682,7 @@ func (h *Handler) HandleCreateAffiliateCode(w http.ResponseWriter, r *http.Reque
 	createdCode, err := h.repo.CreateAffiliateCode(r.Context(), code)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create affiliate code")
-		http.Error(w, "Failed to create affiliate code", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create affiliate code"))
 		return
 	}
 
@@ -696,18 +697,18 @@ func (h *Handler) HandleGetAffiliateCode(w http.ResponseWriter, r *http.Request)
 	vars := mux.Vars(r)
 	codeID, err := uuid.Parse(vars["codeId"])
 	if err != nil {
-		http.Error(w, "Invalid code ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid code ID"))
 		return
 	}
 
 	code, err := h.repo.GetAffiliateCodeByID(codeID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get affiliate code")
-		http.Error(w, "Failed to get affiliate code", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get affiliate code"))
 		return
 	}
 	if code == nil {
-		http.Error(w, "Affiliate code not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Affiliate code not found"))
 		return
 	}
 
@@ -721,18 +722,18 @@ func (h *Handler) HandleUpdateAffiliateCode(w http.ResponseWriter, r *http.Reque
 	vars := mux.Vars(r)
 	codeID, err := uuid.Parse(vars["codeId"])
 	if err != nil {
-		http.Error(w, "Invalid code ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid code ID"))
 		return
 	}
 
 	code, err := h.repo.GetAffiliateCodeByID(codeID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get affiliate code")
-		http.Error(w, "Failed to get affiliate code", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get affiliate code"))
 		return
 	}
 	if code == nil {
-		http.Error(w, "Affiliate code not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Affiliate code not found"))
 		return
 	}
 
@@ -751,7 +752,7 @@ func (h *Handler) HandleUpdateAffiliateCode(w http.ResponseWriter, r *http.Reque
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
@@ -783,7 +784,7 @@ func (h *Handler) HandleUpdateAffiliateCode(w http.ResponseWriter, r *http.Reque
 
 	if err := h.repo.UpdateAffiliateCode(r.Context(), code); err != nil {
 		logrus.WithError(err).Error("Failed to update affiliate code")
-		http.Error(w, "Failed to update affiliate code", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update affiliate code"))
 		return
 	}
 
@@ -797,14 +798,14 @@ func (h *Handler) HandleListAffiliateReferrals(w http.ResponseWriter, r *http.Re
 	vars := mux.Vars(r)
 	codeID, err := uuid.Parse(vars["codeId"])
 	if err != nil {
-		http.Error(w, "Invalid code ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid code ID"))
 		return
 	}
 
 	referrals, err := h.repo.ListAffiliateReferralsByCode(codeID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list affiliate referrals")
-		http.Error(w, "Failed to list affiliate referrals", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list affiliate referrals"))
 		return
 	}
 
@@ -820,14 +821,14 @@ func (h *Handler) HandleListAffiliateCommissions(w http.ResponseWriter, r *http.
 	vars := mux.Vars(r)
 	codeID, err := uuid.Parse(vars["codeId"])
 	if err != nil {
-		http.Error(w, "Invalid code ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid code ID"))
 		return
 	}
 
 	commissions, err := h.repo.ListAffiliateCommissionsByCode(codeID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list affiliate commissions")
-		http.Error(w, "Failed to list affiliate commissions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list affiliate commissions"))
 		return
 	}
 
@@ -853,18 +854,18 @@ func (h *Handler) HandleRecordAffiliateReferral(w http.ResponseWriter, r *http.R
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	code, err := h.repo.GetAffiliateCodeByCode(req.AffiliateCode)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get affiliate code")
-		http.Error(w, "Failed to get affiliate code", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get affiliate code"))
 		return
 	}
 	if code == nil {
-		http.Error(w, "Affiliate code not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Affiliate code not found"))
 		return
 	}
 
@@ -885,7 +886,7 @@ func (h *Handler) HandleRecordAffiliateReferral(w http.ResponseWriter, r *http.R
 	createdReferral, err := h.repo.CreateAffiliateReferral(r.Context(), referral)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create affiliate referral")
-		http.Error(w, "Failed to create affiliate referral", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create affiliate referral"))
 		return
 	}
 
@@ -900,7 +901,7 @@ func (h *Handler) HandleUpdateAffiliateReferralStatus(w http.ResponseWriter, r *
 	vars := mux.Vars(r)
 	referralID, err := uuid.Parse(vars["referralId"])
 	if err != nil {
-		http.Error(w, "Invalid referral ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid referral ID"))
 		return
 	}
 
@@ -909,13 +910,13 @@ func (h *Handler) HandleUpdateAffiliateReferralStatus(w http.ResponseWriter, r *
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	if err := h.repo.UpdateAffiliateReferralStatus(r.Context(), referralID, req.Status); err != nil {
 		logrus.WithError(err).Error("Failed to update referral status")
-		http.Error(w, "Failed to update referral status", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update referral status"))
 		return
 	}
 
@@ -929,13 +930,13 @@ func (h *Handler) HandleApproveAffiliateCommission(w http.ResponseWriter, r *htt
 	vars := mux.Vars(r)
 	commissionID, err := uuid.Parse(vars["commissionId"])
 	if err != nil {
-		http.Error(w, "Invalid commission ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid commission ID"))
 		return
 	}
 
 	if err := h.repo.UpdateAffiliateCommissionStatus(r.Context(), commissionID, storage.CommissionStatusApproved); err != nil {
 		logrus.WithError(err).Error("Failed to approve commission")
-		http.Error(w, "Failed to approve commission", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to approve commission"))
 		return
 	}
 
@@ -949,13 +950,13 @@ func (h *Handler) HandleMarkAffiliateCommissionPaid(w http.ResponseWriter, r *ht
 	vars := mux.Vars(r)
 	commissionID, err := uuid.Parse(vars["commissionId"])
 	if err != nil {
-		http.Error(w, "Invalid commission ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid commission ID"))
 		return
 	}
 
 	if err := h.repo.UpdateAffiliateCommissionStatus(r.Context(), commissionID, storage.CommissionStatusPaid); err != nil {
 		logrus.WithError(err).Error("Failed to mark commission as paid")
-		http.Error(w, "Failed to mark commission as paid", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to mark commission as paid"))
 		return
 	}
 
@@ -972,18 +973,18 @@ func (h *Handler) HandleCalculateAffiliateCommission(w http.ResponseWriter, r *h
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	code, err := h.repo.GetAffiliateCodeByCode(req.AffiliateCode)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get affiliate code")
-		http.Error(w, "Failed to get affiliate code", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get affiliate code"))
 		return
 	}
 	if code == nil {
-		http.Error(w, "Affiliate code not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Affiliate code not found"))
 		return
 	}
 
@@ -1032,12 +1033,12 @@ func (h *Handler) HandleCreateCreditNote(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	if req.TenantID == uuid.Nil {
-		http.Error(w, "tenant_id is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("tenant_id is required"))
 		return
 	}
 
@@ -1062,7 +1063,7 @@ func (h *Handler) HandleCreateCreditNote(w http.ResponseWriter, r *http.Request)
 	created, err := h.repo.CreateCreditNote(r.Context(), creditNote)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create credit note")
-		http.Error(w, "Failed to create credit note", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create credit note"))
 		return
 	}
 
@@ -1131,7 +1132,7 @@ func (h *Handler) HandleListCreditNotes(w http.ResponseWriter, r *http.Request) 
 	creditNotes, total, err := h.repo.ListCreditNotes(r.Context(), filter, limit, offset)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list credit notes")
-		http.Error(w, "Failed to list credit notes", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list credit notes"))
 		return
 	}
 
@@ -1151,18 +1152,18 @@ func (h *Handler) HandleGetCreditNote(w http.ResponseWriter, r *http.Request) {
 	creditNoteIDStr := vars["creditNoteId"]
 	creditNoteID, err := uuid.Parse(creditNoteIDStr)
 	if err != nil {
-		http.Error(w, "Invalid credit note ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid credit note ID"))
 		return
 	}
 
 	creditNote, err := h.repo.GetCreditNoteWithRelations(r.Context(), creditNoteID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get credit note")
-		http.Error(w, "Failed to get credit note", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get credit note"))
 		return
 	}
 	if creditNote == nil {
-		http.Error(w, "Credit note not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Credit note not found"))
 		return
 	}
 
@@ -1177,7 +1178,7 @@ func (h *Handler) HandleUpdateCreditNote(w http.ResponseWriter, r *http.Request)
 	creditNoteIDStr := vars["creditNoteId"]
 	creditNoteID, err := uuid.Parse(creditNoteIDStr)
 	if err != nil {
-		http.Error(w, "Invalid credit note ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid credit note ID"))
 		return
 	}
 
@@ -1188,18 +1189,18 @@ func (h *Handler) HandleUpdateCreditNote(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	creditNote, err := h.repo.GetCreditNoteByID(r.Context(), creditNoteID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get credit note")
-		http.Error(w, "Failed to get credit note", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get credit note"))
 		return
 	}
 	if creditNote == nil {
-		http.Error(w, "Credit note not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Credit note not found"))
 		return
 	}
 
@@ -1215,7 +1216,7 @@ func (h *Handler) HandleUpdateCreditNote(w http.ResponseWriter, r *http.Request)
 
 	if err := h.repo.UpdateCreditNote(r.Context(), creditNote); err != nil {
 		logrus.WithError(err).Error("Failed to update credit note")
-		http.Error(w, "Failed to update credit note", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update credit note"))
 		return
 	}
 
@@ -1230,13 +1231,13 @@ func (h *Handler) HandleVoidCreditNote(w http.ResponseWriter, r *http.Request) {
 	creditNoteIDStr := vars["creditNoteId"]
 	creditNoteID, err := uuid.Parse(creditNoteIDStr)
 	if err != nil {
-		http.Error(w, "Invalid credit note ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid credit note ID"))
 		return
 	}
 
 	if err := h.repo.VoidCreditNote(r.Context(), creditNoteID); err != nil {
 		logrus.WithError(err).Error("Failed to void credit note")
-		http.Error(w, "Failed to void credit note", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to void credit note"))
 		return
 	}
 
@@ -1255,13 +1256,13 @@ func (h *Handler) HandleApplyCreditNote(w http.ResponseWriter, r *http.Request) 
 	creditNoteIDStr := vars["creditNoteId"]
 	creditNoteID, err := uuid.Parse(creditNoteIDStr)
 	if err != nil {
-		http.Error(w, "Invalid credit note ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid credit note ID"))
 		return
 	}
 
 	if err := h.repo.ApplyCreditNote(r.Context(), creditNoteID); err != nil {
 		logrus.WithError(err).Error("Failed to apply credit note")
-		http.Error(w, "Failed to apply credit note", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to apply credit note"))
 		return
 	}
 
@@ -1286,7 +1287,7 @@ func (h *Handler) HandleGetCreditNoteStats(w http.ResponseWriter, r *http.Reques
 	stats, err := h.repo.GetCreditNoteStats(r.Context(), tenantID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get credit note stats")
-		http.Error(w, "Failed to get credit note stats", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get credit note stats"))
 		return
 	}
 

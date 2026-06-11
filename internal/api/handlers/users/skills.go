@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/functionfly/functionfly/internal/api/apierror"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
@@ -17,7 +18,7 @@ import (
 func (h *Handler) HandleGetUserSkills(w http.ResponseWriter, r *http.Request) {
 	username := mux.Vars(r)["username"]
 	if username == "" {
-		writeJSONError(w, http.StatusBadRequest, "username is required")
+		apierror.WriteError(w, apierror.NewBadRequest("username is required"))
 		return
 	}
 
@@ -25,11 +26,11 @@ func (h *Handler) HandleGetUserSkills(w http.ResponseWriter, r *http.Request) {
 	user, err := h.repo.GetUserByUsername(username)
 	if err != nil {
 		logrus.WithError(err).WithField("username", username).Error("Failed to get user by username")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve user")
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve user"))
 		return
 	}
 	if user == nil {
-		writeJSONError(w, http.StatusNotFound, "User not found")
+		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
 	}
 
@@ -64,7 +65,7 @@ func (h *Handler) HandleGetUserSkills(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleAddUserSkill(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -76,19 +77,19 @@ func (h *Handler) HandleAddUserSkill(w http.ResponseWriter, r *http.Request) {
 
 	var req addSkillRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if req.Name == "" {
-		writeJSONError(w, http.StatusBadRequest, "name is required")
+		apierror.WriteError(w, apierror.NewBadRequest("name is required"))
 		return
 	}
 
 	// Validate level
 	validLevels := map[string]bool{"beginner": true, "intermediate": true, "advanced": true, "expert": true}
 	if req.Level != "" && !validLevels[req.Level] {
-		writeJSONError(w, http.StatusBadRequest, "level must be one of: beginner, intermediate, advanced, expert")
+		apierror.WriteError(w, apierror.NewBadRequest("level must be one of: beginner, intermediate, advanced, expert"))
 		return
 	}
 	if req.Level == "" {
@@ -104,16 +105,16 @@ func (h *Handler) HandleAddUserSkill(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.repo.AddUserSkill(skill); err != nil {
 		if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
-			writeJSONError(w, http.StatusConflict, "Skill already exists")
+			apierror.WriteError(w, apierror.NewConflict("Skill already exists"))
 			return
 		}
 		if strings.Contains(err.Error(), "does not exist") {
 			logrus.WithError(err).WithField("userID", claims.UserID).Warn("user_skills table missing; run migrations")
-			writeJSONError(w, http.StatusServiceUnavailable, "Profile features are not available yet. Run database migrations.")
+			apierror.WriteError(w, apierror.NewServiceUnavailable("Profile features are not available yet. Run database migrations."))
 			return
 		}
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to add user skill")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to add skill")
+		apierror.WriteError(w, apierror.NewInternal("Failed to add skill"))
 		return
 	}
 
@@ -130,19 +131,19 @@ func (h *Handler) HandleAddUserSkill(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleRemoveUserSkill(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	skillIDStr := mux.Vars(r)["id"]
 	if skillIDStr == "" {
-		writeJSONError(w, http.StatusBadRequest, "skill id is required")
+		apierror.WriteError(w, apierror.NewBadRequest("skill id is required"))
 		return
 	}
 
 	skillID, err := uuid.Parse(skillIDStr)
 	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid skill id")
+		apierror.WriteError(w, apierror.NewBadRequest("invalid skill id"))
 		return
 	}
 
@@ -151,11 +152,11 @@ func (h *Handler) HandleRemoveUserSkill(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		if strings.Contains(err.Error(), "does not exist") {
 			logrus.WithError(err).WithField("userID", claims.UserID).Warn("user_skills table missing; run migrations")
-			writeJSONError(w, http.StatusServiceUnavailable, "Profile features are not available yet. Run database migrations.")
+			apierror.WriteError(w, apierror.NewServiceUnavailable("Profile features are not available yet. Run database migrations."))
 			return
 		}
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to get user skills")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to verify skill ownership")
+		apierror.WriteError(w, apierror.NewInternal("Failed to verify skill ownership"))
 		return
 	}
 
@@ -168,18 +169,18 @@ func (h *Handler) HandleRemoveUserSkill(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if !found {
-		writeJSONError(w, http.StatusNotFound, "Skill not found")
+		apierror.WriteError(w, apierror.NewNotFound("Skill not found"))
 		return
 	}
 
 	if err := h.repo.RemoveUserSkill(skillID); err != nil {
 		if strings.Contains(err.Error(), "does not exist") {
 			logrus.WithError(err).WithField("skillID", skillID).Warn("user_skills table missing; run migrations")
-			writeJSONError(w, http.StatusServiceUnavailable, "Profile features are not available yet. Run database migrations.")
+			apierror.WriteError(w, apierror.NewServiceUnavailable("Profile features are not available yet. Run database migrations."))
 			return
 		}
 		logrus.WithError(err).WithField("skillID", skillID).Error("Failed to remove user skill")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to remove skill")
+		apierror.WriteError(w, apierror.NewInternal("Failed to remove skill"))
 		return
 	}
 

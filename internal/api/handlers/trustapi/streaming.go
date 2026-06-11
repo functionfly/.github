@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -264,7 +265,7 @@ func (s *TrustScoreStreamer) HandleSSEFunction(w http.ResponseWriter, r *http.Re
 
 	// Validate function ID
 	if _, err := uuid.Parse(functionID); err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteErrorWithStatus(w, http.StatusBadRequest, "INVALID_FUNCTION_ID", "Invalid function ID")
 		return
 	}
 

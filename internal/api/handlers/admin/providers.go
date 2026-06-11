@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/gorilla/mux"
@@ -91,7 +92,7 @@ func (h *ProvidersHandler) HandleUpdateProvider(w http.ResponseWriter, r *http.R
 	vars := mux.Vars(r)
 	providerID := vars["providerId"]
 	if providerID == "" {
-		http.Error(w, "Provider ID required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Provider ID required"))
 		return
 	}
 
@@ -102,7 +103,7 @@ func (h *ProvidersHandler) HandleUpdateProvider(w http.ResponseWriter, r *http.R
 		TeamID   *string `json:"team_id,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -110,11 +111,11 @@ func (h *ProvidersHandler) HandleUpdateProvider(w http.ResponseWriter, r *http.R
 	provider, err := h.repo.GetProviderByID(providerID)
 	if err != nil {
 		logrus.WithError(err).WithField("provider_id", providerID).Error("Failed to get provider")
-		http.Error(w, "Provider not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Provider not found"))
 		return
 	}
 	if provider == nil {
-		http.Error(w, "Provider not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Provider not found"))
 		return
 	}
 
@@ -134,7 +135,7 @@ func (h *ProvidersHandler) HandleUpdateProvider(w http.ResponseWriter, r *http.R
 	updatedProvider, err := h.repo.UpdateProvider(ctx, providerID, updates)
 	if err != nil {
 		logrus.WithError(err).WithField("provider_id", providerID).Error("Failed to update provider")
-		http.Error(w, "Failed to update provider", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update provider"))
 		return
 	}
 
@@ -159,7 +160,7 @@ func (h *ProvidersHandler) HandleDeleteProvider(w http.ResponseWriter, r *http.R
 	vars := mux.Vars(r)
 	providerID := vars["providerId"]
 	if providerID == "" {
-		http.Error(w, "Provider ID required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Provider ID required"))
 		return
 	}
 
@@ -167,11 +168,11 @@ func (h *ProvidersHandler) HandleDeleteProvider(w http.ResponseWriter, r *http.R
 	provider, err := h.repo.GetProviderByID(providerID)
 	if err != nil {
 		logrus.WithError(err).WithField("provider_id", providerID).Error("Failed to get provider")
-		http.Error(w, "Provider not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Provider not found"))
 		return
 	}
 	if provider == nil {
-		http.Error(w, "Provider not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Provider not found"))
 		return
 	}
 
@@ -184,7 +185,7 @@ func (h *ProvidersHandler) HandleDeleteProvider(w http.ResponseWriter, r *http.R
 	_, err = h.repo.UpdateProvider(ctx, providerID, updates)
 	if err != nil {
 		logrus.WithError(err).WithField("provider_id", providerID).Error("Failed to deactivate provider")
-		http.Error(w, "Failed to deactivate provider", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to deactivate provider"))
 		return
 	}
 

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/functionfly/functionfly/internal/apierror"
 	storagetrustapi "github.com/functionfly/functionfly/internal/storage/trustapi"
 	"github.com/sirupsen/logrus"
 	"github.com/stripe/stripe-go/v83"
@@ -35,7 +36,7 @@ func (h *StripeWebhookHandler) HandleStripeWebhook(w http.ResponseWriter, r *htt
 	payload, err := io.ReadAll(r.Body)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to read webhook body")
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		apierror.WriteErrorWithStatus(w, http.StatusBadRequest, apierror.ErrCodeBadRequest, "Failed to read request body")
 		return
 	}
 
@@ -52,13 +53,13 @@ func (h *StripeWebhookHandler) HandleStripeWebhook(w http.ResponseWriter, r *htt
 	var event stripe.Event
 	if webhookSecret == "" {
 		logrus.Error("STRIPE_WEBHOOK_SECRET not set - rejecting webhook")
-		http.Error(w, "Webhook authentication not configured", http.StatusInternalServerError)
+		apierror.WriteErrorWithStatus(w, http.StatusInternalServerError, apierror.ErrCodeInternal, "Webhook authentication not configured")
 		return
 	}
 	event, err = webhook.ConstructEvent(payload, r.Header.Get("Stripe-Signature"), webhookSecret)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to verify webhook signature")
-		http.Error(w, "Invalid signature", http.StatusBadRequest)
+		apierror.WriteErrorWithStatus(w, http.StatusBadRequest, "INVALID_SIGNATURE", "Invalid signature")
 		return
 	}
 
@@ -95,7 +96,7 @@ func (h *StripeWebhookHandler) handleCheckoutSessionCompleted(w http.ResponseWri
 	var session stripe.CheckoutSession
 	if err := json.Unmarshal(event.Data.Raw, &session); err != nil {
 		logrus.WithError(err).Error("Failed to parse checkout session")
-		http.Error(w, "Failed to parse session", http.StatusBadRequest)
+		apierror.WriteErrorWithStatus(w, http.StatusBadRequest, "INVALID_SESSION", "Failed to parse session")
 		return
 	}
 
@@ -108,7 +109,7 @@ func (h *StripeWebhookHandler) handleCheckoutSessionCompleted(w http.ResponseWri
 	// Process the successful checkout
 	if err := h.service.HandleCheckoutSuccess(r.Context(), session.ID); err != nil {
 		logrus.WithError(err).WithField("session_id", session.ID).Error("Failed to process checkout success")
-		http.Error(w, "Failed to process checkout", http.StatusInternalServerError)
+		apierror.WriteErrorWithStatus(w, http.StatusInternalServerError, apierror.ErrCodeInternal, "Failed to process checkout")
 		return
 	}
 
@@ -122,9 +123,9 @@ func (h *StripeWebhookHandler) handleCheckoutSessionCompleted(w http.ResponseWri
 // handleInvoicePaid processes paid invoices
 func (h *StripeWebhookHandler) handleInvoicePaid(w http.ResponseWriter, r *http.Request, event stripe.Event) {
 	var invoice stripe.Invoice
-	if err := json.Unmarshal(event.Data.Raw, &invoice); err != nil {
+if err := json.Unmarshal(event.Data.Raw, &invoice); err != nil {
 		logrus.WithError(err).Error("Failed to parse invoice")
-		http.Error(w, "Failed to parse invoice", http.StatusBadRequest)
+		apierror.WriteErrorWithStatus(w, http.StatusBadRequest, "INVALID_INVOICE", "Failed to parse invoice")
 		return
 	}
 
@@ -134,7 +135,7 @@ func (h *StripeWebhookHandler) handleInvoicePaid(w http.ResponseWriter, r *http.
 	records, err := h.repo.GetBillingRecordsByStripeInvoice(ctx, invoice.ID)
 	if err != nil {
 		logrus.WithError(err).WithField("invoice_id", invoice.ID).Error("Failed to find billing records")
-		http.Error(w, "Failed to process invoice", http.StatusInternalServerError)
+		apierror.WriteErrorWithStatus(w, http.StatusInternalServerError, apierror.ErrCodeInternal, "Failed to process invoice")
 		return
 	}
 
@@ -165,7 +166,7 @@ func (h *StripeWebhookHandler) handleInvoiceFinalized(w http.ResponseWriter, r *
 	}
 	if err := json.Unmarshal(event.Data.Raw, &invoice); err != nil {
 		logrus.WithError(err).Error("Failed to parse invoice")
-		http.Error(w, "Failed to parse invoice", http.StatusBadRequest)
+		apierror.WriteErrorWithStatus(w, http.StatusBadRequest, "INVALID_INVOICE", "Failed to parse invoice")
 		return
 	}
 
@@ -233,7 +234,7 @@ func (h *StripeWebhookHandler) handlePaymentIntentSucceeded(w http.ResponseWrite
 	}
 	if err := json.Unmarshal(event.Data.Raw, &paymentIntent); err != nil {
 		logrus.WithError(err).Error("Failed to parse payment intent")
-		http.Error(w, "Failed to parse payment intent", http.StatusBadRequest)
+		apierror.WriteErrorWithStatus(w, http.StatusBadRequest, "INVALID_PAYMENT_INTENT", "Failed to parse payment intent")
 		return
 	}
 
@@ -290,7 +291,7 @@ func (h *StripeWebhookHandler) handleCustomerTaxIdUpdated(w http.ResponseWriter,
 	}
 	if err := json.Unmarshal(event.Data.Raw, &customer); err != nil {
 		logrus.WithError(err).Error("Failed to parse customer")
-		http.Error(w, "Failed to parse customer", http.StatusBadRequest)
+		apierror.WriteErrorWithStatus(w, http.StatusBadRequest, "INVALID_CUSTOMER", "Failed to parse customer")
 		return
 	}
 
@@ -335,7 +336,7 @@ func (h *StripeWebhookHandler) handleInvoicePaymentFailed(w http.ResponseWriter,
 	var invoice stripe.Invoice
 	if err := json.Unmarshal(event.Data.Raw, &invoice); err != nil {
 		logrus.WithError(err).Error("Failed to parse invoice")
-		http.Error(w, "Failed to parse invoice", http.StatusBadRequest)
+		apierror.WriteErrorWithStatus(w, http.StatusBadRequest, "INVALID_INVOICE", "Failed to parse invoice")
 		return
 	}
 
@@ -344,7 +345,7 @@ func (h *StripeWebhookHandler) handleInvoicePaymentFailed(w http.ResponseWriter,
 	records, err := h.repo.GetBillingRecordsByStripeInvoice(ctx, invoice.ID)
 	if err != nil {
 		logrus.WithError(err).WithField("invoice_id", invoice.ID).Error("Failed to find billing records")
-		http.Error(w, "Failed to process invoice", http.StatusInternalServerError)
+		apierror.WriteErrorWithStatus(w, http.StatusInternalServerError, apierror.ErrCodeInternal, "Failed to process invoice")
 		return
 	}
 
@@ -366,7 +367,7 @@ func (h *StripeWebhookHandler) handleSubscriptionUpdated(w http.ResponseWriter, 
 	var sub stripe.Subscription
 	if err := json.Unmarshal(event.Data.Raw, &sub); err != nil {
 		logrus.WithError(err).Error("Failed to parse subscription")
-		http.Error(w, "Failed to parse subscription", http.StatusBadRequest)
+		apierror.WriteErrorWithStatus(w, http.StatusBadRequest, "INVALID_SUBSCRIPTION", "Failed to parse subscription")
 		return
 	}
 
@@ -392,7 +393,7 @@ func (h *StripeWebhookHandler) handleSubscriptionDeleted(w http.ResponseWriter, 
 	var sub stripe.Subscription
 	if err := json.Unmarshal(event.Data.Raw, &sub); err != nil {
 		logrus.WithError(err).Error("Failed to parse subscription")
-		http.Error(w, "Failed to parse subscription", http.StatusBadRequest)
+		apierror.WriteErrorWithStatus(w, http.StatusBadRequest, "INVALID_SUBSCRIPTION", "Failed to parse subscription")
 		return
 	}
 

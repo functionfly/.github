@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/functionfly/functionfly/internal/types"
@@ -34,7 +35,7 @@ func (h *MaintenanceHandler) HandleGetMaintenanceStatus(w http.ResponseWriter, r
 	maintenance, err := h.maintenanceRepo.GetPlatformMaintenance(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get maintenance status")
-		http.Error(w, "Failed to get maintenance status", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get maintenance status"))
 		return
 	}
 
@@ -83,7 +84,7 @@ func (h *MaintenanceHandler) HandleEnableMaintenance(w http.ResponseWriter, r *h
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -91,7 +92,7 @@ func (h *MaintenanceHandler) HandleEnableMaintenance(w http.ResponseWriter, r *h
 	maintenance, err := h.maintenanceRepo.GetPlatformMaintenance(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get maintenance config")
-		http.Error(w, "Failed to get maintenance config", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get maintenance config"))
 		return
 	}
 
@@ -112,7 +113,7 @@ func (h *MaintenanceHandler) HandleEnableMaintenance(w http.ResponseWriter, r *h
 		err = h.maintenanceRepo.UpdatePlatformMaintenance(r.Context(), maintenance)
 		if err != nil {
 			logrus.WithError(err).Error("Failed to create maintenance config")
-			http.Error(w, "Failed to create maintenance config", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to create maintenance config"))
 			return
 		}
 	}
@@ -154,7 +155,7 @@ func (h *MaintenanceHandler) HandleEnableMaintenance(w http.ResponseWriter, r *h
 	err = h.maintenanceRepo.EnableMaintenance(r.Context(), maintenance)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to enable maintenance")
-		http.Error(w, "Failed to enable maintenance", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to enable maintenance"))
 		return
 	}
 
@@ -176,12 +177,12 @@ func (h *MaintenanceHandler) HandleDisableMaintenance(w http.ResponseWriter, r *
 	maintenance, err := h.maintenanceRepo.GetPlatformMaintenance(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get maintenance config")
-		http.Error(w, "Failed to get maintenance config", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get maintenance config"))
 		return
 	}
 
 	if maintenance == nil {
-		http.Error(w, "No maintenance configuration found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("No maintenance configuration found"))
 		return
 	}
 
@@ -191,7 +192,7 @@ func (h *MaintenanceHandler) HandleDisableMaintenance(w http.ResponseWriter, r *
 	err = h.maintenanceRepo.DisableMaintenance(r.Context(), maintenance)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to disable maintenance")
-		http.Error(w, "Failed to disable maintenance", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to disable maintenance"))
 		return
 	}
 
@@ -226,19 +227,19 @@ func (h *MaintenanceHandler) HandleUpdateMaintenance(w http.ResponseWriter, r *h
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	maintenance, err := h.maintenanceRepo.GetPlatformMaintenance(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get maintenance config")
-		http.Error(w, "Failed to get maintenance config", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get maintenance config"))
 		return
 	}
 
 	if maintenance == nil {
-		http.Error(w, "No maintenance configuration found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("No maintenance configuration found"))
 		return
 	}
 
@@ -274,7 +275,7 @@ func (h *MaintenanceHandler) HandleUpdateMaintenance(w http.ResponseWriter, r *h
 	err = h.maintenanceRepo.UpdatePlatformMaintenance(r.Context(), maintenance)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to update maintenance")
-		http.Error(w, "Failed to update maintenance", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update maintenance"))
 		return
 	}
 
@@ -295,7 +296,7 @@ func (h *MaintenanceHandler) HandleGetTemplates(w http.ResponseWriter, r *http.R
 	templates, err := h.maintenanceRepo.ListTemplates(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list templates")
-		http.Error(w, "Failed to list templates", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list templates"))
 		return
 	}
 
@@ -322,7 +323,7 @@ func (h *MaintenanceHandler) HandleCreateTemplate(w http.ResponseWriter, r *http
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -343,7 +344,7 @@ func (h *MaintenanceHandler) HandleCreateTemplate(w http.ResponseWriter, r *http
 	err := h.maintenanceRepo.CreateTemplate(r.Context(), template)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create template")
-		http.Error(w, "Failed to create template", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create template"))
 		return
 	}
 
@@ -358,7 +359,7 @@ func (h *MaintenanceHandler) HandleUpdateTemplate(w http.ResponseWriter, r *http
 	vars := mux.Vars(r)
 	templateID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid template ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid template ID"))
 		return
 	}
 
@@ -377,19 +378,19 @@ func (h *MaintenanceHandler) HandleUpdateTemplate(w http.ResponseWriter, r *http
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	template, err := h.maintenanceRepo.GetTemplateByID(r.Context(), templateID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get template")
-		http.Error(w, "Failed to get template", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get template"))
 		return
 	}
 
 	if template == nil {
-		http.Error(w, "Template not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Template not found"))
 		return
 	}
 
@@ -431,7 +432,7 @@ func (h *MaintenanceHandler) HandleUpdateTemplate(w http.ResponseWriter, r *http
 	err = h.maintenanceRepo.UpdateTemplate(r.Context(), template)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to update template")
-		http.Error(w, "Failed to update template", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update template"))
 		return
 	}
 
@@ -446,14 +447,14 @@ func (h *MaintenanceHandler) HandleDeleteTemplate(w http.ResponseWriter, r *http
 	vars := mux.Vars(r)
 	templateID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid template ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid template ID"))
 		return
 	}
 
 	err = h.maintenanceRepo.DeleteTemplate(r.Context(), templateID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to delete template")
-		http.Error(w, "Failed to delete template", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete template"))
 		return
 	}
 
@@ -468,7 +469,7 @@ func (h *MaintenanceHandler) HandleGetScheduledMaintenance(w http.ResponseWriter
 	maintenances, err := h.maintenanceRepo.GetScheduledMaintenance(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get scheduled maintenance")
-		http.Error(w, "Failed to get scheduled maintenance", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get scheduled maintenance"))
 		return
 	}
 
@@ -491,7 +492,7 @@ func (h *MaintenanceHandler) HandleGetAuditLog(w http.ResponseWriter, r *http.Re
 	logs, err := h.maintenanceRepo.GetAuditLog(r.Context(), limit)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get audit log")
-		http.Error(w, "Failed to get audit log", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get audit log"))
 		return
 	}
 

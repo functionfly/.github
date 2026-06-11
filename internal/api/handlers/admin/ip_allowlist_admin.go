@@ -1,15 +1,11 @@
 package admin
 
 import (
-	"context"
-	"database/sql"
 	"encoding/json"
-	"net"
 	"net/http"
-	"time"
 
-	"github.com/functionfly/functionfly/internal/api/middleware"
-	"github.com/functionfly/functionfly/internal/auth"
+	"github.com/functionfly/functionfly/internal/apierror"
+	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -48,12 +44,12 @@ func (h *AdminIPAllowlistHandler) HandleListIPAllowlist(w http.ResponseWriter, r
 	// Check permission
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !auth.IsAdminRole(claims.Role) {
-		http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden: insufficient permissions"))
 		return
 	}
 
@@ -67,7 +63,7 @@ func (h *AdminIPAllowlistHandler) HandleListIPAllowlist(w http.ResponseWriter, r
 	rows, err := h.db.QueryContext(ctx, query)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list IP allowlist entries")
-		http.Error(w, "Failed to list IP allowlist entries", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list IP allowlist entries"))
 		return
 	}
 	defer rows.Close()
@@ -119,12 +115,12 @@ func (h *AdminIPAllowlistHandler) HandleGetIPAllowlist(w http.ResponseWriter, r 
 	// Check permission
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !auth.IsAdminRole(claims.Role) {
-		http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden: insufficient permissions"))
 		return
 	}
 
@@ -132,7 +128,7 @@ func (h *AdminIPAllowlistHandler) HandleGetIPAllowlist(w http.ResponseWriter, r 
 	idStr := vars["id"]
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid ID"))
 		return
 	}
 
@@ -152,11 +148,11 @@ func (h *AdminIPAllowlistHandler) HandleGetIPAllowlist(w http.ResponseWriter, r 
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			http.Error(w, "IP allowlist entry not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("IP allowlist entry not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to get IP allowlist entry")
-		http.Error(w, "Failed to get IP allowlist entry", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get IP allowlist entry"))
 		return
 	}
 
@@ -176,12 +172,12 @@ func (h *AdminIPAllowlistHandler) HandleCreateIPAllowlist(w http.ResponseWriter,
 	// Check permission
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !auth.IsAdminRole(claims.Role) {
-		http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden: insufficient permissions"))
 		return
 	}
 
@@ -193,17 +189,17 @@ func (h *AdminIPAllowlistHandler) HandleCreateIPAllowlist(w http.ResponseWriter,
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if req.Name == "" {
-		http.Error(w, "Name is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Name is required"))
 		return
 	}
 
 	if req.CIDR == "" {
-		http.Error(w, "CIDR is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("CIDR is required"))
 		return
 	}
 
@@ -212,7 +208,7 @@ func (h *AdminIPAllowlistHandler) HandleCreateIPAllowlist(w http.ResponseWriter,
 		// Try parsing as a single IP
 		ip := net.ParseIP(req.CIDR)
 		if ip == nil {
-			http.Error(w, "Invalid CIDR format", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid CIDR format"))
 			return
 		}
 		// Convert single IP to CIDR notation
@@ -259,7 +255,7 @@ func (h *AdminIPAllowlistHandler) HandleCreateIPAllowlist(w http.ResponseWriter,
 
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create IP allowlist entry")
-		http.Error(w, "Failed to create IP allowlist entry", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create IP allowlist entry"))
 		return
 	}
 
@@ -285,12 +281,12 @@ func (h *AdminIPAllowlistHandler) HandleUpdateIPAllowlist(w http.ResponseWriter,
 	// Check permission
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !auth.IsAdminRole(claims.Role) {
-		http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden: insufficient permissions"))
 		return
 	}
 
@@ -298,7 +294,7 @@ func (h *AdminIPAllowlistHandler) HandleUpdateIPAllowlist(w http.ResponseWriter,
 	idStr := vars["id"]
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid ID"))
 		return
 	}
 
@@ -310,7 +306,7 @@ func (h *AdminIPAllowlistHandler) HandleUpdateIPAllowlist(w http.ResponseWriter,
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -333,7 +329,7 @@ func (h *AdminIPAllowlistHandler) HandleUpdateIPAllowlist(w http.ResponseWriter,
 		if err != nil {
 			ip := net.ParseIP(*req.CIDR)
 			if ip == nil {
-				http.Error(w, "Invalid CIDR format", http.StatusBadRequest)
+				apierror.WriteError(w, apierror.NewBadRequest("Invalid CIDR format"))
 				return
 			}
 			if ip.To4() != nil {
@@ -360,7 +356,7 @@ func (h *AdminIPAllowlistHandler) HandleUpdateIPAllowlist(w http.ResponseWriter,
 	}
 
 	if len(updates) == 0 {
-		http.Error(w, "No fields to update", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("No fields to update"))
 		return
 	}
 
@@ -379,13 +375,13 @@ func (h *AdminIPAllowlistHandler) HandleUpdateIPAllowlist(w http.ResponseWriter,
 	result, err := h.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to update IP allowlist entry")
-		http.Error(w, "Failed to update IP allowlist entry", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update IP allowlist entry"))
 		return
 	}
 
 	rowsAff, _ := result.RowsAffected()
 	if rowsAff == 0 {
-		http.Error(w, "IP allowlist entry not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("IP allowlist entry not found"))
 		return
 	}
 
@@ -404,7 +400,7 @@ func (h *AdminIPAllowlistHandler) HandleUpdateIPAllowlist(w http.ResponseWriter,
 	)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to fetch updated IP allowlist entry")
-		http.Error(w, "Failed to fetch updated entry", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to fetch updated entry"))
 		return
 	}
 
@@ -429,12 +425,12 @@ func (h *AdminIPAllowlistHandler) HandleDeleteIPAllowlist(w http.ResponseWriter,
 	// Check permission
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !auth.IsAdminRole(claims.Role) {
-		http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden: insufficient permissions"))
 		return
 	}
 
@@ -442,7 +438,7 @@ func (h *AdminIPAllowlistHandler) HandleDeleteIPAllowlist(w http.ResponseWriter,
 	idStr := vars["id"]
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid ID"))
 		return
 	}
 
@@ -450,13 +446,13 @@ func (h *AdminIPAllowlistHandler) HandleDeleteIPAllowlist(w http.ResponseWriter,
 	result, err := h.db.ExecContext(ctx, "DELETE FROM ip_allowlist WHERE id = $1", id)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to delete IP allowlist entry")
-		http.Error(w, "Failed to delete IP allowlist entry", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete IP allowlist entry"))
 		return
 	}
 
 	rowsAff, _ := result.RowsAffected()
 	if rowsAff == 0 {
-		http.Error(w, "IP allowlist entry not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("IP allowlist entry not found"))
 		return
 	}
 
@@ -474,12 +470,12 @@ func (h *AdminIPAllowlistHandler) HandleToggleIPAllowlist(w http.ResponseWriter,
 	// Check permission
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !auth.IsAdminRole(claims.Role) {
-		http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden: insufficient permissions"))
 		return
 	}
 
@@ -487,7 +483,7 @@ func (h *AdminIPAllowlistHandler) HandleToggleIPAllowlist(w http.ResponseWriter,
 	idStr := vars["id"]
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid ID"))
 		return
 	}
 
@@ -511,11 +507,11 @@ func (h *AdminIPAllowlistHandler) HandleToggleIPAllowlist(w http.ResponseWriter,
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			http.Error(w, "IP allowlist entry not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("IP allowlist entry not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to toggle IP allowlist entry")
-		http.Error(w, "Failed to toggle IP allowlist entry", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to toggle IP allowlist entry"))
 		return
 	}
 
@@ -539,7 +535,7 @@ func (h *AdminIPAllowlistHandler) HandleToggleIPAllowlist(w http.ResponseWriter,
 func (h *AdminIPAllowlistHandler) HandleCheckMyIPAccess(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 

@@ -1,14 +1,12 @@
 package admin
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
-	"time"
+	"strconv"
+	"strings"
 
-	"github.com/functionfly/functionfly/internal/api/utils"
-	"github.com/functionfly/functionfly/internal/plans"
-	"github.com/functionfly/functionfly/internal/services/membership"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -37,18 +35,18 @@ func (h *Handler) HandleGetTenant(w http.ResponseWriter, r *http.Request) {
 	tenantIDStr := vars["tenantId"]
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
-		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tenant ID"))
 		return
 	}
 
 	tenant, err := h.repo.GetTenantByID(tenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to get tenant")
-		http.Error(w, "Failed to get tenant", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get tenant"))
 		return
 	}
 	if tenant == nil {
-		http.Error(w, "Tenant not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Tenant not found"))
 		return
 	}
 
@@ -63,19 +61,19 @@ func (h *Handler) HandleCreateTenant(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	if req.Name == "" {
-		http.Error(w, "Tenant name is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Tenant name is required"))
 		return
 	}
 
 	tenant, err := h.repo.CreateTenant(r.Context(), req.Name)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create tenant")
-		http.Error(w, "Failed to create tenant", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create tenant"))
 		return
 	}
 
@@ -93,20 +91,20 @@ func (h *Handler) HandleUpdateTenant(w http.ResponseWriter, r *http.Request) {
 	tenantIDStr := vars["tenantId"]
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
-		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tenant ID"))
 		return
 	}
 
 	var updates map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	// Get before state for audit
 	beforeTenant, _ := h.repo.GetTenantByID(tenantID)
 	if beforeTenant == nil {
-		http.Error(w, "Tenant not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Tenant not found"))
 		return
 	}
 
@@ -127,7 +125,7 @@ func (h *Handler) HandleUpdateTenant(w http.ResponseWriter, r *http.Request) {
 	tenant, err := h.repo.UpdateTenant(r.Context(), tenantID, updates)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to update tenant")
-		http.Error(w, "Failed to update tenant", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update tenant"))
 		return
 	}
 
@@ -190,7 +188,7 @@ func (h *Handler) HandleDeleteTenant(w http.ResponseWriter, r *http.Request) {
 	tenantIDStr := vars["tenantId"]
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
-		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tenant ID"))
 		return
 	}
 
@@ -201,9 +199,9 @@ func (h *Handler) HandleDeleteTenant(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to delete tenant")
 		if err.Error() == "cannot delete tenant with existing users" {
-			http.Error(w, "Cannot delete tenant with existing users", http.StatusConflict)
+			apierror.WriteError(w, apierror.NewConflict("Cannot delete tenant with existing users"))
 		} else {
-			http.Error(w, "Failed to delete tenant", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to delete tenant"))
 		}
 		return
 	}
@@ -221,18 +219,18 @@ func (h *Handler) HandleGetSeatUsage(w http.ResponseWriter, r *http.Request) {
 	tenantIDStr := vars["tenantId"]
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
-		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tenant ID"))
 		return
 	}
 
 	tenant, err := h.repo.GetTenantByID(tenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to get tenant")
-		http.Error(w, "Failed to get tenant", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get tenant"))
 		return
 	}
 	if tenant == nil {
-		http.Error(w, "Tenant not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Tenant not found"))
 		return
 	}
 
@@ -240,7 +238,7 @@ func (h *Handler) HandleGetSeatUsage(w http.ResponseWriter, r *http.Request) {
 	activeUserCount, err := h.repo.CountActiveUsersByTenant(r.Context(), tenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to count active users")
-		http.Error(w, "Failed to get seat usage", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get seat usage"))
 		return
 	}
 
@@ -274,14 +272,14 @@ func (h *Handler) HandleListTenantApps(w http.ResponseWriter, r *http.Request) {
 	tenantIDStr := vars["tenantId"]
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
-		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tenant ID"))
 		return
 	}
 
 	apps, err := h.repo.ListAppsByTenant(tenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to list tenant apps")
-		http.Error(w, "Failed to list apps", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list apps"))
 		return
 	}
 
@@ -296,18 +294,18 @@ func (h *Handler) HandleGetTenantApp(w http.ResponseWriter, r *http.Request) {
 
 	appID, err := uuid.Parse(appIDStr)
 	if err != nil {
-		http.Error(w, "Invalid app ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid app ID"))
 		return
 	}
 
 	app, err := h.repo.GetAppByID(appID)
 	if err != nil {
 		logrus.WithError(err).WithField("app_id", appID).Error("Failed to get app")
-		http.Error(w, "Failed to get app", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get app"))
 		return
 	}
 	if app == nil {
-		http.Error(w, "App not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("App not found"))
 		return
 	}
 
@@ -322,14 +320,14 @@ func (h *Handler) HandleListTenantBackends(w http.ResponseWriter, r *http.Reques
 
 	appID, err := uuid.Parse(appIDStr)
 	if err != nil {
-		http.Error(w, "Invalid app ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid app ID"))
 		return
 	}
 
 	backends, err := h.repo.ListBackendsByAppID(appID)
 	if err != nil {
 		logrus.WithError(err).WithField("app_id", appID).Error("Failed to list backends")
-		http.Error(w, "Failed to list backends", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list backends"))
 		return
 	}
 
@@ -344,7 +342,7 @@ func (h *Handler) HandleListTenantDeployments(w http.ResponseWriter, r *http.Req
 
 	appID, err := uuid.Parse(appIDStr)
 	if err != nil {
-		http.Error(w, "Invalid app ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid app ID"))
 		return
 	}
 
@@ -352,7 +350,7 @@ func (h *Handler) HandleListTenantDeployments(w http.ResponseWriter, r *http.Req
 	deployments, err := h.repo.ListDeploymentsByAppID(appID, 50)
 	if err != nil {
 		logrus.WithError(err).WithField("app_id", appID).Error("Failed to list deployments")
-		http.Error(w, "Failed to list deployments", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list deployments"))
 		return
 	}
 
@@ -367,7 +365,7 @@ func (h *Handler) HandleTenantDeploymentRollback(w http.ResponseWriter, r *http.
 
 	deploymentID, err := uuid.Parse(deploymentIDStr)
 	if err != nil {
-		http.Error(w, "Invalid deployment ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid deployment ID"))
 		return
 	}
 
@@ -375,11 +373,11 @@ func (h *Handler) HandleTenantDeploymentRollback(w http.ResponseWriter, r *http.
 	deployment, err := h.repo.GetDeploymentByID(deploymentID)
 	if err != nil {
 		logrus.WithError(err).WithField("deployment_id", deploymentID).Error("Failed to get deployment")
-		http.Error(w, "Failed to get deployment", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get deployment"))
 		return
 	}
 	if deployment == nil {
-		http.Error(w, "Deployment not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Deployment not found"))
 		return
 	}
 
@@ -387,7 +385,7 @@ func (h *Handler) HandleTenantDeploymentRollback(w http.ResponseWriter, r *http.
 	err = h.repo.UpdateDeploymentStatus(deploymentID, "rolled_back", "Manually rolled back by admin", nil)
 	if err != nil {
 		logrus.WithError(err).WithField("deployment_id", deploymentID).Error("Failed to rollback deployment")
-		http.Error(w, "Failed to rollback deployment", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to rollback deployment"))
 		return
 	}
 
@@ -407,18 +405,18 @@ func (h *Handler) HandleTenantMetrics(w http.ResponseWriter, r *http.Request) {
 	tenantIDStr := vars["tenantId"]
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
-		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tenant ID"))
 		return
 	}
 
 	tenant, err := h.repo.GetTenantByID(tenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to get tenant for metrics")
-		http.Error(w, "Failed to get tenant", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get tenant"))
 		return
 	}
 	if tenant == nil {
-		http.Error(w, "Tenant not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Tenant not found"))
 		return
 	}
 
@@ -476,18 +474,18 @@ func (h *Handler) HandleTenantHealth(w http.ResponseWriter, r *http.Request) {
 	tenantIDStr := vars["tenantId"]
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
-		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tenant ID"))
 		return
 	}
 
 	tenant, err := h.repo.GetTenantByID(tenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to get tenant for health check")
-		http.Error(w, "Failed to get tenant", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get tenant"))
 		return
 	}
 	if tenant == nil {
-		http.Error(w, "Tenant not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Tenant not found"))
 		return
 	}
 

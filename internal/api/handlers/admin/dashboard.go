@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/sirupsen/logrus"
 )
 
@@ -149,7 +150,7 @@ func (h *Handler) HandleDashboardRevenue(w http.ResponseWriter, r *http.Request)
 	invoices, err := h.repo.ListAllInvoices(5000, 0)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list invoices for dashboard revenue")
-		http.Error(w, "Failed to get revenue", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get revenue"))
 		return
 	}
 

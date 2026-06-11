@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/functionfly/functionfly/internal/api/utils"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/statefabricaddons"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -24,17 +25,17 @@ func (h *Handler) HandleListStateFabricAddonCatalog(w http.ResponseWriter, r *ht
 // GET /v1/admin/billing/state-fabric-add-ons/entitlements/{tenantId}
 func (h *Handler) HandleListStateFabricTenantEntitlements(w http.ResponseWriter, r *http.Request) {
 	if h.sfAddons == nil {
-		http.Error(w, "state fabric add-on repository not configured", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("state fabric add-on repository not configured"))
 		return
 	}
 	tenantID, err := uuid.Parse(mux.Vars(r)["tenantId"])
 	if err != nil {
-		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tenant ID"))
 		return
 	}
 	items, err := h.sfAddons.ListEntitlementsByTenant(r.Context(), tenantID)
 	if err != nil {
-		http.Error(w, "Failed to list entitlements", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list entitlements"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -54,37 +55,37 @@ type adminUpsertAddonEntitlementRequest struct {
 // PATCH /v1/admin/billing/state-fabric-add-ons/entitlements/{tenantId}/{addonId}
 func (h *Handler) HandleUpsertStateFabricTenantEntitlement(w http.ResponseWriter, r *http.Request) {
 	if h.sfAddons == nil {
-		http.Error(w, "state fabric add-on repository not configured", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("state fabric add-on repository not configured"))
 		return
 	}
 	vars := mux.Vars(r)
 	tenantID, err := uuid.Parse(vars["tenantId"])
 	if err != nil {
-		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tenant ID"))
 		return
 	}
 	addonID := vars["addonId"]
 	if _, ok := statefabricaddons.GetByID(addonID); !ok {
-		http.Error(w, "Invalid addon ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid addon ID"))
 		return
 	}
 
 	var req adminUpsertAddonEntitlementRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 	if req.Status == "" {
 		req.Status = "active"
 	}
 	if req.Status != "active" && req.Status != "inactive" && req.Status != "suspended" {
-		http.Error(w, "Invalid status", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid status"))
 		return
 	}
 
 	before, err := h.sfAddons.GetEntitlement(r.Context(), tenantID, addonID)
 	if err != nil {
-		http.Error(w, "Failed to load entitlement", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to load entitlement"))
 		return
 	}
 
@@ -106,7 +107,7 @@ func (h *Handler) HandleUpsertStateFabricTenantEntitlement(w http.ResponseWriter
 			},
 			false,
 		)
-		http.Error(w, "Failed to update entitlement", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update entitlement"))
 		return
 	}
 

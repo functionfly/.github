@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
@@ -95,12 +96,12 @@ func (h *Handler) getPublishedFunctions(username string) []map[string]interface{
 func (h *Handler) requireSelfUsername(w http.ResponseWriter, r *http.Request, pathUsername string) (*storage.User, bool) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return nil, false
 	}
 	user, err := h.repo.GetUserByID(claims.UserID)
 	if err != nil || user == nil {
-		writeJSONError(w, http.StatusNotFound, "User not found")
+		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return nil, false
 	}
 	usernameStr := ""
@@ -108,7 +109,7 @@ func (h *Handler) requireSelfUsername(w http.ResponseWriter, r *http.Request, pa
 		usernameStr = *user.Username
 	}
 	if pathUsername == "" || !strings.EqualFold(pathUsername, usernameStr) {
-		writeJSONError(w, http.StatusForbidden, "You can only access your own settings")
+		apierror.WriteError(w, apierror.NewForbidden("You can only access your own settings"))
 		return nil, false
 	}
 	return user, true

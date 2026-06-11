@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/sirupsen/logrus"
 )
 
@@ -48,33 +49,33 @@ type signRequestResponse struct {
 func (h *Handler) HandleSignRequest(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	var req signRequestRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-	if req.Method == "" || req.Path == "" {
-		http.Error(w, "method and path are required", http.StatusBadRequest)
-		return
-	}
-	if !isMethodAllowedForSigning(req.Method) {
-		http.Error(w, "method not allowed for signing", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	// Defense-in-depth: do not allow signing of cross-origin paths. The browser
 	// only ever needs to sign paths under /v1/admin (the admin base path), so
 	// any other path is suspicious.
-	if !isPathAllowedForSigning(req.Path) {
+	if !isPathAllowedForSigning(r.URL.Path) {
 		logrus.WithFields(logrus.Fields{
 			"user_id": claims.UserID.String(),
-			"path":    req.Path,
+			"path":    r.URL.Path,
 		}).Warn("Rejected sign-request for disallowed path")
-		http.Error(w, "Path not allowed for signing", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Path not allowed for signing"))
+		return
+	}
+
+	var req signRequestRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
+		return
+	}
+	if req.Method == "" || req.Path == "" {
+		apierror.WriteError(w, apierror.NewBadRequest("method and path are required"))
+		return
+	}
+	if !isMethodAllowedForSigning(req.Method) {
+		apierror.WriteError(w, apierror.NewBadRequest("method not allowed for signing"))
 		return
 	}
 
@@ -85,7 +86,7 @@ func (h *Handler) HandleSignRequest(w http.ResponseWriter, r *http.Request) {
 	if req.Timestamp != 0 {
 		drift := now.Unix() - req.Timestamp
 		if drift < -60 || drift > 60 {
-			http.Error(w, "Timestamp drift too large", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Timestamp drift too large"))
 			return
 		}
 	}
@@ -93,7 +94,7 @@ func (h *Handler) HandleSignRequest(w http.ResponseWriter, r *http.Request) {
 	sharedSecret := os.Getenv("API_SHARED_SECRET")
 	if sharedSecret == "" {
 		logrus.Error("API_SHARED_SECRET not configured — cannot sign admin requests")
-		http.Error(w, "Service misconfigured", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Service misconfigured"))
 		return
 	}
 

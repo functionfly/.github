@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/functionfly/functionfly/internal/api/apierror"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -23,21 +24,21 @@ func (h *Handler) HandleLookupUsersByIDs(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if middleware.GetUserFromContext(r) == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	var req lookupByIDsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid JSON body")
+		apierror.WriteError(w, apierror.NewBadRequest("invalid JSON body"))
 		return
 	}
 	if len(req.UserIDs) == 0 {
-		writeJSONError(w, http.StatusBadRequest, "user_ids is required")
+		apierror.WriteError(w, apierror.NewBadRequest("user_ids is required"))
 		return
 	}
 	if len(req.UserIDs) > maxLookupUserIDs {
-		writeJSONError(w, http.StatusBadRequest, "too many user_ids")
+		apierror.WriteError(w, apierror.NewBadRequest("too many user_ids"))
 		return
 	}
 

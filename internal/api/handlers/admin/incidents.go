@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -41,7 +42,7 @@ func (h *Handler) HandleListIncidents(w http.ResponseWriter, r *http.Request) {
 	incidents, err := h.repo.ListIncidents(r.Context(), limit, offset, statusPtr)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list incidents")
-		http.Error(w, "Failed to list incidents", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list incidents"))
 		return
 	}
 
@@ -60,13 +61,13 @@ func (h *Handler) HandleCreateIncident(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	// Validate required fields
 	if req.Title == "" || req.Severity == "" || req.Description == "" {
-		http.Error(w, "Title, severity, and description are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Title, severity, and description are required"))
 		return
 	}
 
@@ -78,7 +79,7 @@ func (h *Handler) HandleCreateIncident(w http.ResponseWriter, r *http.Request) {
 		"low":      true,
 	}
 	if !validSeverities[req.Severity] {
-		http.Error(w, "Invalid severity. Must be one of: critical, high, medium, low", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid severity. Must be one of: critical, high, medium, low"))
 		return
 	}
 
@@ -92,7 +93,7 @@ func (h *Handler) HandleCreateIncident(w http.ResponseWriter, r *http.Request) {
 	createdIncident, err := h.repo.CreateIncident(r.Context(), incident)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create incident")
-		http.Error(w, "Failed to create incident", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create incident"))
 		return
 	}
 
@@ -108,18 +109,18 @@ func (h *Handler) HandleGetIncident(w http.ResponseWriter, r *http.Request) {
 
 	incidentID, err := uuid.Parse(incidentIDStr)
 	if err != nil {
-		http.Error(w, "Invalid incident ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid incident ID"))
 		return
 	}
 
 	incident, err := h.repo.GetIncidentByID(r.Context(), incidentID)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			http.Error(w, "Incident not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Incident not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to get incident")
-		http.Error(w, "Failed to get incident", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get incident"))
 		return
 	}
 
@@ -134,13 +135,13 @@ func (h *Handler) HandleUpdateIncident(w http.ResponseWriter, r *http.Request) {
 
 	incidentID, err := uuid.Parse(incidentIDStr)
 	if err != nil {
-		http.Error(w, "Invalid incident ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid incident ID"))
 		return
 	}
 
 	var updates map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
@@ -152,7 +153,7 @@ func (h *Handler) HandleUpdateIncident(w http.ResponseWriter, r *http.Request) {
 			"monitoring":    true,
 		}
 		if !validStatuses[status] {
-			http.Error(w, "Invalid status. Must be one of: resolved, investigating, monitoring", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid status. Must be one of: resolved, investigating, monitoring"))
 			return
 		}
 	}
@@ -166,7 +167,7 @@ func (h *Handler) HandleUpdateIncident(w http.ResponseWriter, r *http.Request) {
 			"low":      true,
 		}
 		if !validSeverities[severity] {
-			http.Error(w, "Invalid severity. Must be one of: critical, high, medium, low", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid severity. Must be one of: critical, high, medium, low"))
 			return
 		}
 	}
@@ -174,11 +175,11 @@ func (h *Handler) HandleUpdateIncident(w http.ResponseWriter, r *http.Request) {
 	updatedIncident, err := h.repo.UpdateIncident(r.Context(), incidentID, updates)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			http.Error(w, "Incident not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Incident not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to update incident")
-		http.Error(w, "Failed to update incident", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update incident"))
 		return
 	}
 
@@ -193,18 +194,18 @@ func (h *Handler) HandleResolveIncident(w http.ResponseWriter, r *http.Request) 
 
 	incidentID, err := uuid.Parse(incidentIDStr)
 	if err != nil {
-		http.Error(w, "Invalid incident ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid incident ID"))
 		return
 	}
 
 	resolvedIncident, err := h.repo.ResolveIncident(r.Context(), incidentID)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			http.Error(w, "Incident not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Incident not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to resolve incident")
-		http.Error(w, "Failed to resolve incident", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to resolve incident"))
 		return
 	}
 

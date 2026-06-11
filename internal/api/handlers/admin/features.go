@@ -1,10 +1,10 @@
 package admin
 
 import (
-	"encoding/json"
 	"net/http"
 
-	"github.com/functionfly/functionfly/internal/plans"
+	"github.com/functionfly/functionfly/internal/apierror"
+	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -26,14 +26,14 @@ func (h *Handler) HandleListPlanFeatures(w http.ResponseWriter, r *http.Request)
 	plan := vars["plan"]
 
 	if plan == "" {
-		http.Error(w, "Plan is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Plan is required"))
 		return
 	}
 
 	// Validate plan exists
 	features := plans.GetFeaturesForPlan(plan)
 	if features == nil {
-		http.Error(w, "Invalid plan", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid plan"))
 		return
 	}
 
@@ -50,13 +50,13 @@ func (h *Handler) HandleGetPlanInfo(w http.ResponseWriter, r *http.Request) {
 	plan := vars["plan"]
 
 	if plan == "" {
-		http.Error(w, "Plan is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Plan is required"))
 		return
 	}
 
 	features := plans.GetFeaturesForPlan(plan)
 	if features == nil {
-		http.Error(w, "Invalid plan", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid plan"))
 		return
 	}
 
@@ -84,7 +84,7 @@ func (h *Handler) HandleCheckFeature(w http.ResponseWriter, r *http.Request) {
 	feature := vars["feature"]
 
 	if plan == "" || feature == "" {
-		http.Error(w, "Plan and feature are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Plan and feature are required"))
 		return
 	}
 
@@ -139,13 +139,13 @@ func (h *Handler) HandleGetFeatureDefinition(w http.ResponseWriter, r *http.Requ
 	feature := vars["feature"]
 
 	if feature == "" {
-		http.Error(w, "Feature is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Feature is required"))
 		return
 	}
 
 	def, ok := plans.GetFeatureDefinition(feature)
 	if !ok {
-		http.Error(w, "Feature not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Feature not found"))
 		return
 	}
 
@@ -159,13 +159,13 @@ func (h *Handler) HandleCheckTenantFeatures(w http.ResponseWriter, r *http.Reque
 	tenantID := vars["tenantId"]
 
 	if tenantID == "" {
-		http.Error(w, "Tenant ID is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Tenant ID is required"))
 		return
 	}
 
 	id, err := uuid.Parse(tenantID)
 	if err != nil {
-		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tenant ID"))
 		return
 	}
 
@@ -173,12 +173,12 @@ func (h *Handler) HandleCheckTenantFeatures(w http.ResponseWriter, r *http.Reque
 	tenant, err := h.repo.GetTenantByID(id)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get tenant")
-		http.Error(w, "Failed to get tenant", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get tenant"))
 		return
 	}
 
 	if tenant == nil {
-		http.Error(w, "Tenant not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Tenant not found"))
 		return
 	}
 

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/sirupsen/logrus"
 )
 
@@ -145,7 +146,7 @@ func (h *Handler) HandleCloudflareAnalytics(w http.ResponseWriter, r *http.Reque
 	zoneID := os.Getenv("CF_ZONE_ID")
 
 	if apiToken == "" || zoneID == "" {
-		http.Error(w, `{"error":"Cloudflare not configured. Set CF_API_TOKEN and CF_ZONE_ID."}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Cloudflare not configured. Set CF_API_TOKEN and CF_ZONE_ID."))
 		return
 	}
 
@@ -207,14 +208,14 @@ func (h *Handler) HandleCloudflareAnalytics(w http.ResponseWriter, r *http.Reque
 	body, err := cfGraphQLQuery(apiToken, query)
 	if err != nil {
 		logrus.WithError(err).Error("Cloudflare GraphQL request failed")
-		http.Error(w, `{"error":"Failed to fetch Cloudflare analytics"}`, http.StatusBadGateway)
+		apierror.WriteError(w, apierror.NewInternal("Failed to fetch Cloudflare analytics"))
 		return
 	}
 
 	var gqlResp cfGraphQLResponse
 	if err := json.Unmarshal(body, &gqlResp); err != nil {
 		logrus.WithError(err).Error("Failed to parse Cloudflare GraphQL response")
-		http.Error(w, `{"error":"Failed to parse Cloudflare response"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to parse Cloudflare response"))
 		return
 	}
 
@@ -224,12 +225,12 @@ func (h *Handler) HandleCloudflareAnalytics(w http.ResponseWriter, r *http.Reque
 			errMsgs = append(errMsgs, e.Message)
 		}
 		logrus.WithField("errors", errMsgs).Error("Cloudflare GraphQL returned errors")
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, strings.Join(errMsgs, "; ")), http.StatusBadGateway)
+		apierror.WriteError(w, apierror.NewBadRequest(strings.Join(errMsgs, "; ")))
 		return
 	}
 
 	if gqlResp.Data == nil || len(gqlResp.Data.Viewer.Zones) == 0 {
-		http.Error(w, `{"error":"No zone data returned"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("No zone data returned"))
 		return
 	}
 

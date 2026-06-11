@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/functionfly/functionfly/internal/storage/vault"
 	"github.com/google/uuid"
@@ -30,30 +31,30 @@ const maxEncryptedPayloadBytes = 64 * 1024 // 64 KB
 func (h *Handler) HandleCreateSecret(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		h.respondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	var req CreateSecretRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.respondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	// Validate secret type
 	if !req.SecretType.Valid() {
-		h.respondError(w, http.StatusBadRequest, "INVALID_SECRET_TYPE", "Invalid secret type")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid secret type"))
 		return
 	}
 
 	// Validate name: trim, non-empty, max length
 	req.Name = strings.TrimSpace(req.Name)
 	if req.Name == "" {
-		h.respondError(w, http.StatusBadRequest, "INVALID_NAME", "Secret name is required")
+		apierror.WriteError(w, apierror.NewBadRequest("Secret name is required"))
 		return
 	}
 	if len(req.Name) > maxSecretNameLen {
-		h.respondError(w, http.StatusBadRequest, "INVALID_NAME", fmt.Sprintf("Secret name must be at most %d characters", maxSecretNameLen))
+		apierror.WriteError(w, apierror.NewBadRequest(fmt.Sprintf("Secret name must be at most %d characters", maxSecretNameLen)))
 		return
 	}
 
@@ -65,30 +66,29 @@ func (h *Handler) HandleCreateSecret(w http.ResponseWriter, r *http.Request) {
 	count, err := h.repo.CountSecretsByTenant(r.Context(), claims.TenantID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to count secrets")
-		h.respondError(w, http.StatusInternalServerError, "COUNT_FAILED", "Failed to verify secret limit")
+		apierror.WriteError(w, apierror.NewInternal("Failed to verify secret limit"))
 		return
 	}
 
 	if count >= int64(maxSecrets) {
-		h.respondError(w, http.StatusForbidden, "SECRET_LIMIT_EXCEEDED",
-			fmt.Sprintf("Maximum number of secrets (%d) exceeded for your plan", maxSecrets))
+		apierror.WriteError(w, apierror.NewForbidden(fmt.Sprintf("Maximum number of secrets (%d) exceeded for your plan", maxSecrets)))
 		return
 	}
 
 	// Decode base64 encrypted data
 	ciphertext, err := base64.StdEncoding.DecodeString(req.EncryptedData.Ciphertext)
 	if err != nil {
-		h.respondError(w, http.StatusBadRequest, "INVALID_CIPHERTEXT", "Ciphertext must be base64 encoded")
+		apierror.WriteError(w, apierror.NewBadRequest("Ciphertext must be base64 encoded"))
 		return
 	}
 	saltBytes, err := base64.StdEncoding.DecodeString(req.EncryptedData.Salt)
 	if err != nil {
-		h.respondError(w, http.StatusBadRequest, "INVALID_SALT", "Salt must be base64 encoded")
+		apierror.WriteError(w, apierror.NewBadRequest("Salt must be base64 encoded"))
 		return
 	}
 	ivBytes, err := base64.StdEncoding.DecodeString(req.EncryptedData.IV)
 	if err != nil {
-		h.respondError(w, http.StatusBadRequest, "INVALID_IV", "IV must be base64 encoded")
+		apierror.WriteError(w, apierror.NewBadRequest("IV must be base64 encoded"))
 		return
 	}
 	var authTagBytes []byte
@@ -96,7 +96,7 @@ func (h *Handler) HandleCreateSecret(w http.ResponseWriter, r *http.Request) {
 		var errTag error
 		authTagBytes, errTag = base64.StdEncoding.DecodeString(req.EncryptedData.Tag)
 		if errTag != nil {
-			h.respondError(w, http.StatusBadRequest, "INVALID_TAG", "Tag must be base64 encoded")
+			apierror.WriteError(w, apierror.NewBadRequest("Tag must be base64 encoded"))
 			return
 		}
 	}
@@ -107,8 +107,7 @@ func (h *Handler) HandleCreateSecret(w http.ResponseWriter, r *http.Request) {
 	// Reject oversized payloads to prevent DoS and storage blow-up
 	totalPayloadSize := len(ciphertext) + len(saltBytes) + len(ivBytes) + len(authTagBytes)
 	if totalPayloadSize > maxEncryptedPayloadBytes {
-		h.respondError(w, http.StatusBadRequest, "PAYLOAD_TOO_LARGE",
-			fmt.Sprintf("Encrypted payload must not exceed %d bytes", maxEncryptedPayloadBytes))
+		apierror.WriteError(w, apierror.NewBadRequest(fmt.Sprintf("Encrypted payload must not exceed %d bytes", maxEncryptedPayloadBytes)))
 		return
 	}
 
@@ -131,7 +130,7 @@ func (h *Handler) HandleCreateSecret(w http.ResponseWriter, r *http.Request) {
 	// Create secret in database
 	if err := h.repo.CreateSecret(r.Context(), secret); err != nil {
 		h.logger.WithError(err).Error("Failed to create secret")
-		h.respondError(w, http.StatusInternalServerError, "CREATE_FAILED", "Failed to create secret")
+		apierror.WriteError(w, apierror.NewInternal("Failed to create secret"))
 		return
 	}
 
@@ -164,7 +163,7 @@ func (h *Handler) HandleCreateSecret(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleListSecrets(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		h.respondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
@@ -202,7 +201,7 @@ func (h *Handler) HandleListSecrets(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to count secrets")
-		h.respondError(w, http.StatusInternalServerError, "LIST_FAILED", "Failed to list secrets")
+		apierror.WriteError(w, apierror.NewInternal("Failed to list secrets"))
 		return
 	}
 
@@ -214,7 +213,7 @@ func (h *Handler) HandleListSecrets(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to list secrets")
-		h.respondError(w, http.StatusInternalServerError, "LIST_FAILED", "Failed to list secrets")
+		apierror.WriteError(w, apierror.NewInternal("Failed to list secrets"))
 		return
 	}
 
@@ -237,14 +236,14 @@ func (h *Handler) HandleListSecrets(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetSecret(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		h.respondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	secretID := parseUUID(vars["id"])
 	if secretID == nil {
-		h.respondError(w, http.StatusBadRequest, "INVALID_ID", "Invalid secret ID")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid secret ID"))
 		return
 	}
 
@@ -252,11 +251,11 @@ func (h *Handler) HandleGetSecret(w http.ResponseWriter, r *http.Request) {
 	secret, err := h.repo.GetSecretByID(r.Context(), *secretID, claims.TenantID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get secret")
-		h.respondError(w, http.StatusInternalServerError, "GET_FAILED", "Failed to get secret")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get secret"))
 		return
 	}
 	if secret == nil {
-		h.respondError(w, http.StatusNotFound, "NOT_FOUND", "Secret not found")
+		apierror.WriteError(w, apierror.NewNotFound("Secret not found"))
 		return
 	}
 
@@ -292,20 +291,20 @@ func (h *Handler) HandleGetSecret(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleUpdateSecret(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		h.respondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	secretID := parseUUID(vars["id"])
 	if secretID == nil {
-		h.respondError(w, http.StatusBadRequest, "INVALID_ID", "Invalid secret ID")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid secret ID"))
 		return
 	}
 
 	var req UpdateSecretRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.respondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -313,11 +312,11 @@ func (h *Handler) HandleUpdateSecret(w http.ResponseWriter, r *http.Request) {
 	secret, err := h.repo.GetSecretByID(r.Context(), *secretID, claims.TenantID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get secret")
-		h.respondError(w, http.StatusInternalServerError, "GET_FAILED", "Failed to get secret")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get secret"))
 		return
 	}
 	if secret == nil {
-		h.respondError(w, http.StatusNotFound, "NOT_FOUND", "Secret not found")
+		apierror.WriteError(w, apierror.NewNotFound("Secret not found"))
 		return
 	}
 
@@ -326,11 +325,11 @@ func (h *Handler) HandleUpdateSecret(w http.ResponseWriter, r *http.Request) {
 	if req.Name != nil {
 		trimmed := strings.TrimSpace(*req.Name)
 		if trimmed == "" {
-			h.respondError(w, http.StatusBadRequest, "INVALID_NAME", "Secret name cannot be empty")
+			apierror.WriteError(w, apierror.NewBadRequest("Secret name cannot be empty"))
 			return
 		}
 		if len(trimmed) > maxSecretNameLen {
-			h.respondError(w, http.StatusBadRequest, "INVALID_NAME", fmt.Sprintf("Secret name must be at most %d characters", maxSecretNameLen))
+			apierror.WriteError(w, apierror.NewBadRequest(fmt.Sprintf("Secret name must be at most %d characters", maxSecretNameLen)))
 			return
 		}
 		secret.Name = trimmed
@@ -346,7 +345,7 @@ func (h *Handler) HandleUpdateSecret(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !updated {
-		h.respondError(w, http.StatusBadRequest, "NO_UPDATES", "No valid fields to update")
+		apierror.WriteError(w, apierror.NewBadRequest("No valid fields to update"))
 		return
 	}
 
@@ -394,7 +393,7 @@ func (h *Handler) HandleUpdateSecret(w http.ResponseWriter, r *http.Request) {
 	// Update secret
 	if err := h.repo.UpdateSecret(r.Context(), secret); err != nil {
 		h.logger.WithError(err).Error("Failed to update secret")
-		h.respondError(w, http.StatusInternalServerError, "UPDATE_FAILED", "Failed to update secret")
+		apierror.WriteError(w, apierror.NewInternal("Failed to update secret"))
 		return
 	}
 
@@ -450,14 +449,14 @@ func (h *Handler) HandleUpdateSecret(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleDeleteSecret(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		h.respondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	secretID := parseUUID(vars["id"])
 	if secretID == nil {
-		h.respondError(w, http.StatusBadRequest, "INVALID_ID", "Invalid secret ID")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid secret ID"))
 		return
 	}
 
@@ -465,15 +464,15 @@ func (h *Handler) HandleDeleteSecret(w http.ResponseWriter, r *http.Request) {
 	secret, err := h.repo.GetSecretByID(r.Context(), *secretID, claims.TenantID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			h.respondError(w, http.StatusNotFound, "NOT_FOUND", "Secret not found")
+			apierror.WriteError(w, apierror.NewNotFound("Secret not found"))
 			return
 		}
 		h.logger.WithError(err).Error("Failed to get secret")
-		h.respondError(w, http.StatusInternalServerError, "GET_FAILED", "Failed to get secret")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get secret"))
 		return
 	}
 	if secret == nil {
-		h.respondError(w, http.StatusNotFound, "NOT_FOUND", "Secret not found")
+		apierror.WriteError(w, apierror.NewNotFound("Secret not found"))
 		return
 	}
 
@@ -496,7 +495,7 @@ func (h *Handler) HandleDeleteSecret(w http.ResponseWriter, r *http.Request) {
 	// Soft-delete the secret
 	if err := h.repo.DeleteSecret(r.Context(), *secretID, claims.TenantID); err != nil {
 		h.logger.WithError(err).Error("Failed to delete secret")
-		h.respondError(w, http.StatusInternalServerError, "DELETE_FAILED", "Failed to delete secret")
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete secret"))
 		return
 	}
 
@@ -547,20 +546,20 @@ func (h *Handler) logAuditError(ctx context.Context, tenantID uuid.UUID, action 
 func (h *Handler) HandleRotateSecret(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		h.respondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	secretID := parseUUID(vars["id"])
 	if secretID == nil {
-		h.respondError(w, http.StatusBadRequest, "INVALID_ID", "Invalid secret ID")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid secret ID"))
 		return
 	}
 
 	var req RotateSecretRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.respondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -568,35 +567,35 @@ func (h *Handler) HandleRotateSecret(w http.ResponseWriter, r *http.Request) {
 	secret, err := h.repo.GetSecretByID(r.Context(), *secretID, claims.TenantID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get secret")
-		h.respondError(w, http.StatusInternalServerError, "GET_FAILED", "Failed to get secret")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get secret"))
 		return
 	}
 	if secret == nil {
-		h.respondError(w, http.StatusNotFound, "NOT_FOUND", "Secret not found")
+		apierror.WriteError(w, apierror.NewNotFound("Secret not found"))
 		return
 	}
 
 	// Decode new encrypted data
 	ciphertext, err := base64.StdEncoding.DecodeString(req.EncryptedData.Ciphertext)
 	if err != nil {
-		h.respondError(w, http.StatusBadRequest, "INVALID_CIPHERTEXT", "Ciphertext must be base64 encoded")
+		apierror.WriteError(w, apierror.NewBadRequest("Ciphertext must be base64 encoded"))
 		return
 	}
 	saltBytes, err := base64.StdEncoding.DecodeString(req.EncryptedData.Salt)
 	if err != nil {
-		h.respondError(w, http.StatusBadRequest, "INVALID_SALT", "Salt must be base64 encoded")
+		apierror.WriteError(w, apierror.NewBadRequest("Salt must be base64 encoded"))
 		return
 	}
 	ivBytes, err := base64.StdEncoding.DecodeString(req.EncryptedData.IV)
 	if err != nil {
-		h.respondError(w, http.StatusBadRequest, "INVALID_IV", "IV must be base64 encoded")
+		apierror.WriteError(w, apierror.NewBadRequest("IV must be base64 encoded"))
 		return
 	}
 	var authTagBytes []byte
 	if req.EncryptedData.Tag != "" {
 		authTagBytes, err = base64.StdEncoding.DecodeString(req.EncryptedData.Tag)
 		if err != nil {
-			h.respondError(w, http.StatusBadRequest, "INVALID_TAG", "Tag must be base64 encoded")
+			apierror.WriteError(w, apierror.NewBadRequest("Tag must be base64 encoded"))
 			return
 		}
 	}
@@ -607,8 +606,7 @@ func (h *Handler) HandleRotateSecret(w http.ResponseWriter, r *http.Request) {
 	// Reject oversized payloads
 	totalPayloadSize := len(ciphertext) + len(saltBytes) + len(ivBytes) + len(authTagBytes)
 	if totalPayloadSize > maxEncryptedPayloadBytes {
-		h.respondError(w, http.StatusBadRequest, "PAYLOAD_TOO_LARGE",
-			fmt.Sprintf("Encrypted payload must not exceed %d bytes", maxEncryptedPayloadBytes))
+		apierror.WriteError(w, apierror.NewBadRequest(fmt.Sprintf("Encrypted payload must not exceed %d bytes", maxEncryptedPayloadBytes)))
 		return
 	}
 
@@ -645,7 +643,7 @@ func (h *Handler) HandleRotateSecret(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.repo.UpdateSecret(r.Context(), secret); err != nil {
 		h.logger.WithError(err).Error("Failed to rotate secret")
-		h.respondError(w, http.StatusInternalServerError, "ROTATE_FAILED", "Failed to rotate secret")
+		apierror.WriteError(w, apierror.NewInternal("Failed to rotate secret"))
 		return
 	}
 

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -88,7 +89,7 @@ func formatLastActive(t time.Time) string {
 func (h *Handler) HandleListSessions(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -106,7 +107,7 @@ func (h *Handler) HandleListSessions(w http.ResponseWriter, r *http.Request) {
 	sessions, err := h.repo.ListUserSessions(ctx, claims.UserID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to list sessions")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to load sessions")
+		apierror.WriteError(w, apierror.NewInternal("Failed to load sessions"))
 		return
 	}
 
@@ -130,30 +131,30 @@ func (h *Handler) HandleListSessions(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleRevokeSession(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	sessionIDStr := vars["id"]
 	if sessionIDStr == "" {
-		writeJSONError(w, http.StatusBadRequest, "session id required")
+		apierror.WriteError(w, apierror.NewBadRequest("session id required"))
 		return
 	}
 
 	sessionID, err := uuid.Parse(sessionIDStr)
 	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid session id")
+		apierror.WriteError(w, apierror.NewBadRequest("invalid session id"))
 		return
 	}
 
 	if err := h.repo.DeleteSessionByID(r.Context(), sessionID, claims.UserID); err != nil {
 		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "access denied") {
-			writeJSONError(w, http.StatusNotFound, "Session not found")
+			apierror.WriteError(w, apierror.NewNotFound("Session not found"))
 			return
 		}
 		logrus.WithError(err).WithField("sessionID", sessionID).Error("Failed to revoke session")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to revoke session")
+		apierror.WriteError(w, apierror.NewInternal("Failed to revoke session"))
 		return
 	}
 
@@ -164,7 +165,7 @@ func (h *Handler) HandleRevokeSession(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleRevokeOtherSessions(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -182,7 +183,7 @@ func (h *Handler) HandleRevokeOtherSessions(w http.ResponseWriter, r *http.Reque
 	sessions, err := h.repo.ListUserSessions(ctx, claims.UserID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to list sessions for revoke-others")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to revoke sessions")
+		apierror.WriteError(w, apierror.NewInternal("Failed to revoke sessions"))
 		return
 	}
 

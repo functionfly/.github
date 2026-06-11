@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage/vault"
 	"github.com/gorilla/mux"
 )
@@ -17,20 +18,20 @@ import (
 func (h *Handler) HandleGenerateToken(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		h.respondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	secretID := parseUUID(vars["id"])
 	if secretID == nil {
-		h.respondError(w, http.StatusBadRequest, "INVALID_ID", "Invalid secret ID")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid secret ID"))
 		return
 	}
 
 	var req GenerateTokenRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.respondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -38,11 +39,11 @@ func (h *Handler) HandleGenerateToken(w http.ResponseWriter, r *http.Request) {
 	secret, err := h.repo.GetSecretByID(r.Context(), *secretID, claims.TenantID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get secret")
-		h.respondError(w, http.StatusInternalServerError, "GET_FAILED", "Failed to verify secret")
+		apierror.WriteError(w, apierror.NewInternal("Failed to verify secret"))
 		return
 	}
 	if secret == nil {
-		h.respondError(w, http.StatusNotFound, "NOT_FOUND", "Secret not found")
+		apierror.WriteError(w, apierror.NewNotFound("Secret not found"))
 		return
 	}
 
@@ -50,7 +51,7 @@ func (h *Handler) HandleGenerateToken(w http.ResponseWriter, r *http.Request) {
 	rawToken, err := generateSecureToken()
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to generate secure token")
-		h.respondError(w, http.StatusInternalServerError, "TOKEN_GEN_FAILED", "Failed to generate token")
+		apierror.WriteError(w, apierror.NewInternal("Failed to generate token"))
 		return
 	}
 
@@ -80,7 +81,7 @@ func (h *Handler) HandleGenerateToken(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.repo.CreateAccessToken(r.Context(), token); err != nil {
 		h.logger.WithError(err).Error("Failed to create access token")
-		h.respondError(w, http.StatusInternalServerError, "TOKEN_CREATE_FAILED", "Failed to create token")
+		apierror.WriteError(w, apierror.NewInternal("Failed to create token"))
 		return
 	}
 
@@ -123,14 +124,14 @@ func (h *Handler) HandleGenerateToken(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleRevokeToken(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		h.respondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	tokenID := parseUUID(vars["id"])
 	if tokenID == nil {
-		h.respondError(w, http.StatusBadRequest, "INVALID_ID", "Invalid token ID")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid token ID"))
 		return
 	}
 
@@ -138,11 +139,11 @@ func (h *Handler) HandleRevokeToken(w http.ResponseWriter, r *http.Request) {
 	token, err := h.repo.GetAccessTokenByID(r.Context(), *tokenID, claims.TenantID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get token")
-		h.respondError(w, http.StatusInternalServerError, "GET_FAILED", "Failed to get token")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get token"))
 		return
 	}
 	if token == nil {
-		h.respondError(w, http.StatusNotFound, "NOT_FOUND", "Token not found")
+		apierror.WriteError(w, apierror.NewNotFound("Token not found"))
 		return
 	}
 
@@ -158,7 +159,7 @@ func (h *Handler) HandleRevokeToken(w http.ResponseWriter, r *http.Request) {
 	// Revoke the token
 	if err := h.repo.RevokeAccessToken(r.Context(), *tokenID, req.Reason); err != nil {
 		h.logger.WithError(err).Error("Failed to revoke token")
-		h.respondError(w, http.StatusInternalServerError, "REVOKE_FAILED", "Failed to revoke token")
+		apierror.WriteError(w, apierror.NewInternal("Failed to revoke token"))
 		return
 	}
 
@@ -195,14 +196,14 @@ func (h *Handler) HandleRevokeToken(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleListTokens(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		h.respondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	secretID := parseUUID(vars["id"])
 	if secretID == nil {
-		h.respondError(w, http.StatusBadRequest, "INVALID_ID", "Invalid secret ID")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid secret ID"))
 		return
 	}
 
@@ -210,11 +211,11 @@ func (h *Handler) HandleListTokens(w http.ResponseWriter, r *http.Request) {
 	secret, err := h.repo.GetSecretByID(r.Context(), *secretID, claims.TenantID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get secret")
-		h.respondError(w, http.StatusInternalServerError, "GET_FAILED", "Failed to verify secret")
+		apierror.WriteError(w, apierror.NewInternal("Failed to verify secret"))
 		return
 	}
 	if secret == nil {
-		h.respondError(w, http.StatusNotFound, "NOT_FOUND", "Secret not found")
+		apierror.WriteError(w, apierror.NewNotFound("Secret not found"))
 		return
 	}
 
@@ -222,7 +223,7 @@ func (h *Handler) HandleListTokens(w http.ResponseWriter, r *http.Request) {
 	tokens, err := h.repo.ListAccessTokensBySecret(r.Context(), *secretID, claims.TenantID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to list tokens")
-		h.respondError(w, http.StatusInternalServerError, "LIST_FAILED", "Failed to list tokens")
+		apierror.WriteError(w, apierror.NewInternal("Failed to list tokens"))
 		return
 	}
 
@@ -245,13 +246,13 @@ func (h *Handler) ValidateTokenForRuntime(next http.HandlerFunc) http.HandlerFun
 		// Extract token from Authorization header
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			h.respondError(w, http.StatusUnauthorized, "MISSING_TOKEN", "Authorization header required")
+			apierror.WriteError(w, apierror.NewUnauthorized("Authorization header required"))
 			return
 		}
 
 		// Expected format: "Bearer <token>"
 		if len(authHeader) < 7 || authHeader[:7] != "Bearer " {
-			h.respondError(w, http.StatusUnauthorized, "INVALID_AUTH", "Invalid authorization format")
+			apierror.WriteError(w, apierror.NewUnauthorized("Invalid authorization format"))
 			return
 		}
 		rawToken := authHeader[7:]
@@ -263,25 +264,25 @@ func (h *Handler) ValidateTokenForRuntime(next http.HandlerFunc) http.HandlerFun
 		token, err := h.repo.GetAccessTokenByHash(r.Context(), tokenHash)
 		if err != nil {
 			h.logger.WithError(err).Error("Failed to validate token")
-			h.respondError(w, http.StatusInternalServerError, "VALIDATION_FAILED", "Token validation failed")
+			apierror.WriteError(w, apierror.NewInternal("Token validation failed"))
 			return
 		}
 		if token == nil {
-			h.respondError(w, http.StatusUnauthorized, "INVALID_TOKEN", "Invalid or revoked token")
+			apierror.WriteError(w, apierror.NewUnauthorized("Invalid or revoked token"))
 			return
 		}
 		// Constant-time comparison to prevent timing leakage
 		if !constantTimeCompare(token.TokenHash, tokenHash) {
-			h.respondError(w, http.StatusUnauthorized, "INVALID_TOKEN", "Invalid or revoked token")
+			apierror.WriteError(w, apierror.NewUnauthorized("Invalid or revoked token"))
 			return
 		}
 
 		// Check if token is valid (not expired, not revoked)
 		if !token.IsValid() {
 			if token.IsRevoked {
-				h.respondError(w, http.StatusUnauthorized, "REVOKED_TOKEN", "Token has been revoked")
+				apierror.WriteError(w, apierror.NewUnauthorized("Token has been revoked"))
 			} else {
-				h.respondError(w, http.StatusUnauthorized, "EXPIRED_TOKEN", "Token has expired")
+				apierror.WriteError(w, apierror.NewUnauthorized("Token has expired"))
 			}
 			return
 		}

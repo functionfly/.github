@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
@@ -124,39 +125,39 @@ type BulkCreateResponse struct {
 func (h *Handler) HandleCreateMemory(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	teamID, err := uuid.Parse(vars["teamId"])
 	if err != nil {
-		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
 		return
 	}
 
 	// Check team membership
 	if !h.isTeamMember(user.UserID, teamID) {
-		http.Error(w, "Access denied", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
 
 	var req CreateMemoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	// Validate required fields
 	if req.MemoryType == "" || req.Summary == "" {
-		http.Error(w, "memory_type and summary are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("memory_type and summary are required"))
 		return
 	}
 
 	// Validate memory type
 	validTypes := map[string]bool{"decision": true, "preference": true, "process": true, "client_context": true}
 	if !validTypes[req.MemoryType] {
-		http.Error(w, "Invalid memory_type. Must be: decision, preference, process, client_context", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid memory_type. Must be: decision, preference, process, client_context"))
 		return
 	}
 
@@ -184,23 +185,23 @@ func (h *Handler) HandleCreateMemory(w http.ResponseWriter, r *http.Request) {
 	if req.IsEncrypted {
 		// Handle encrypted memory creation
 		if req.EncryptedData == nil {
-			http.Error(w, "encrypted_data required when is_encrypted=true", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("encrypted_data required when is_encrypted=true"))
 			return
 		}
 		// Decode base64
 		cipherBytes, err := decodeBase64(req.EncryptedData.Ciphertext)
 		if err != nil {
-			http.Error(w, "Invalid ciphertext encoding", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid ciphertext encoding"))
 			return
 		}
 		ivBytes, err := decodeBase64(req.EncryptedData.IV)
 		if err != nil {
-			http.Error(w, "Invalid IV encoding", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid IV encoding"))
 			return
 		}
 		tagBytes, err := decodeBase64(req.EncryptedData.Tag)
 		if err != nil {
-			http.Error(w, "Invalid tag encoding", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid tag encoding"))
 			return
 		}
 
@@ -211,7 +212,7 @@ func (h *Handler) HandleCreateMemory(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create team memory")
-		http.Error(w, "Failed to create memory", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create memory"))
 		return
 	}
 
@@ -224,20 +225,20 @@ func (h *Handler) HandleCreateMemory(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleListMemories(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	teamID, err := uuid.Parse(vars["teamId"])
 	if err != nil {
-		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
 		return
 	}
 
 	// Check team membership
 	if !h.isTeamMember(user.UserID, teamID) {
-		http.Error(w, "Access denied", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
 
@@ -266,7 +267,7 @@ func (h *Handler) HandleListMemories(w http.ResponseWriter, r *http.Request) {
 	memories, total, err := h.repo.ListTeamMemories(r.Context(), user.TenantID, teamID, filter)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list team memories")
-		http.Error(w, "Failed to list memories", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list memories"))
 		return
 	}
 
@@ -283,36 +284,36 @@ func (h *Handler) HandleListMemories(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetMemory(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	teamID, err := uuid.Parse(vars["teamId"])
 	if err != nil {
-		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
 		return
 	}
 	memoryID, err := uuid.Parse(vars["memoryId"])
 	if err != nil {
-		http.Error(w, "Invalid memory ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid memory ID"))
 		return
 	}
 
 	// Check team membership
 	if !h.isTeamMember(user.UserID, teamID) {
-		http.Error(w, "Access denied", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
 
 	memory, err := h.repo.GetTeamMemoryByID(r.Context(), user.TenantID, teamID, memoryID)
 	if err != nil {
 		if err.Error() == "team memory not found" {
-			http.Error(w, "Memory not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Memory not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to get team memory")
-		http.Error(w, "Failed to get memory", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get memory"))
 		return
 	}
 
@@ -327,25 +328,25 @@ func (h *Handler) HandleGetMemory(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleUpdateMemory(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	teamID, err := uuid.Parse(vars["teamId"])
 	if err != nil {
-		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
 		return
 	}
 	memoryID, err := uuid.Parse(vars["memoryId"])
 	if err != nil {
-		http.Error(w, "Invalid memory ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid memory ID"))
 		return
 	}
 
 	// Check team membership
 	if !h.isTeamMember(user.UserID, teamID) {
-		http.Error(w, "Access denied", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
 
@@ -353,23 +354,23 @@ func (h *Handler) HandleUpdateMemory(w http.ResponseWriter, r *http.Request) {
 	memory, err := h.repo.GetTeamMemoryByID(r.Context(), user.TenantID, teamID, memoryID)
 	if err != nil {
 		if err.Error() == "team memory not found" {
-			http.Error(w, "Memory not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Memory not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to get team memory for update")
-		http.Error(w, "Failed to get memory", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get memory"))
 		return
 	}
 
 	// Cannot update encrypted memories via this endpoint (client-side only)
 	if memory.IsEncrypted {
-		http.Error(w, "Cannot update encrypted memory via API. Use client-side operations.", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Cannot update encrypted memory via API. Use client-side operations."))
 		return
 	}
 
 	var req UpdateMemoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -399,7 +400,7 @@ func (h *Handler) HandleUpdateMemory(w http.ResponseWriter, r *http.Request) {
 	updated, err := h.repo.UpdateTeamMemory(r.Context(), memory)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to update team memory")
-		http.Error(w, "Failed to update memory", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update memory"))
 		return
 	}
 
@@ -411,40 +412,40 @@ func (h *Handler) HandleUpdateMemory(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleDeleteMemory(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	teamID, err := uuid.Parse(vars["teamId"])
 	if err != nil {
-		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
 		return
 	}
 	memoryID, err := uuid.Parse(vars["memoryId"])
 	if err != nil {
-		http.Error(w, "Invalid memory ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid memory ID"))
 		return
 	}
 
 	// Check team admin/owner for deletion
 	membership, err := h.repo.GetTeamMembership(teamID, user.UserID)
 	if err != nil {
-		http.Error(w, "Access denied", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
 	if membership.Role != auth.TeamRoleOwner && membership.Role != auth.TeamRoleAdmin {
-		http.Error(w, "Only team owners or admins can delete memories", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Only team owners or admins can delete memories"))
 		return
 	}
 
 	if err := h.repo.DeleteTeamMemory(r.Context(), user.TenantID, teamID, memoryID); err != nil {
 		if err.Error() == "team memory not found" {
-			http.Error(w, "Memory not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Memory not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to delete team memory")
-		http.Error(w, "Failed to delete memory", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete memory"))
 		return
 	}
 
@@ -455,31 +456,31 @@ func (h *Handler) HandleDeleteMemory(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleSearchMemories(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	teamID, err := uuid.Parse(vars["teamId"])
 	if err != nil {
-		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
 		return
 	}
 
 	// Check team membership
 	if !h.isTeamMember(user.UserID, teamID) {
-		http.Error(w, "Access denied", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
 
 	var req SearchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if req.Query == "" {
-		http.Error(w, "query is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("query is required"))
 		return
 	}
 
@@ -494,7 +495,7 @@ func (h *Handler) HandleSearchMemories(w http.ResponseWriter, r *http.Request) {
 	results, err := h.repo.SearchTeamMemories(r.Context(), user.TenantID, teamID, req.Query, limit)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to search team memories")
-		http.Error(w, "Failed to search memories", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to search memories"))
 		return
 	}
 
@@ -516,31 +517,31 @@ func (h *Handler) HandleSearchMemories(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleQueryMemories(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	teamID, err := uuid.Parse(vars["teamId"])
 	if err != nil {
-		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
 		return
 	}
 
 	// Check team membership
 	if !h.isTeamMember(user.UserID, teamID) {
-		http.Error(w, "Access denied", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
 
 	var req QueryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if req.Query == "" {
-		http.Error(w, "query is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("query is required"))
 		return
 	}
 
@@ -556,7 +557,7 @@ func (h *Handler) HandleQueryMemories(w http.ResponseWriter, r *http.Request) {
 	results, err := h.repo.SearchTeamMemories(r.Context(), user.TenantID, teamID, req.Query, limit)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to query team memories")
-		http.Error(w, "Failed to query memories", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to query memories"))
 		return
 	}
 
@@ -583,36 +584,36 @@ func (h *Handler) HandleQueryMemories(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleValidateMemory(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	teamID, err := uuid.Parse(vars["teamId"])
 	if err != nil {
-		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
 		return
 	}
 	memoryID, err := uuid.Parse(vars["memoryId"])
 	if err != nil {
-		http.Error(w, "Invalid memory ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid memory ID"))
 		return
 	}
 
 	// Check team admin/owner for validation
 	membership, err := h.repo.GetTeamMembership(teamID, user.UserID)
 	if err != nil {
-		http.Error(w, "Access denied", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
 	if membership.Role != auth.TeamRoleOwner && membership.Role != auth.TeamRoleAdmin {
-		http.Error(w, "Only team owners or admins can validate memories", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Only team owners or admins can validate memories"))
 		return
 	}
 
 	var req ValidateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -622,7 +623,7 @@ func (h *Handler) HandleValidateMemory(w http.ResponseWriter, r *http.Request) {
 		// Unvalidate - set is_validated to false
 		memory, err := h.repo.GetTeamMemoryByID(r.Context(), user.TenantID, teamID, memoryID)
 		if err != nil {
-			http.Error(w, "Memory not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Memory not found"))
 			return
 		}
 		memory.IsValidated = false
@@ -632,7 +633,7 @@ func (h *Handler) HandleValidateMemory(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logrus.WithError(err).Error("Failed to validate team memory")
-		http.Error(w, "Failed to validate memory", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to validate memory"))
 		return
 	}
 
@@ -643,20 +644,20 @@ func (h *Handler) HandleValidateMemory(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleListExtractions(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	teamID, err := uuid.Parse(vars["teamId"])
 	if err != nil {
-		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
 		return
 	}
 
 	// Check team membership
 	if !h.isTeamMember(user.UserID, teamID) {
-		http.Error(w, "Access denied", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
 
@@ -675,7 +676,7 @@ func (h *Handler) HandleListExtractions(w http.ResponseWriter, r *http.Request) 
 	extractions, err := h.repo.GetMemoryExtractionsByTeam(r.Context(), teamID, status, limit)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list memory extractions")
-		http.Error(w, "Failed to list extractions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list extractions"))
 		return
 	}
 
@@ -687,32 +688,32 @@ func (h *Handler) HandleListExtractions(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) HandleApproveExtraction(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	teamID, err := uuid.Parse(vars["teamId"])
 	if err != nil {
-		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
 		return
 	}
 	extractionID, err := uuid.Parse(vars["extractionId"])
 	if err != nil {
-		http.Error(w, "Invalid extraction ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid extraction ID"))
 		return
 	}
 
 	// Check team membership
 	if !h.isTeamMember(user.UserID, teamID) {
-		http.Error(w, "Access denied", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
 
 	memory, err := h.repo.ApproveMemoryExtraction(r.Context(), extractionID, user.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to approve extraction")
-		http.Error(w, "Failed to approve extraction", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to approve extraction"))
 		return
 	}
 
@@ -724,25 +725,25 @@ func (h *Handler) HandleApproveExtraction(w http.ResponseWriter, r *http.Request
 func (h *Handler) HandleRejectExtraction(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	teamID, err := uuid.Parse(vars["teamId"])
 	if err != nil {
-		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
 		return
 	}
 	extractionID, err := uuid.Parse(vars["extractionId"])
 	if err != nil {
-		http.Error(w, "Invalid extraction ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid extraction ID"))
 		return
 	}
 
 	// Check team membership
 	if !h.isTeamMember(user.UserID, teamID) {
-		http.Error(w, "Access denied", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
 
@@ -753,7 +754,7 @@ func (h *Handler) HandleRejectExtraction(w http.ResponseWriter, r *http.Request)
 
 	if err := h.repo.RejectMemoryExtraction(r.Context(), extractionID, user.UserID, req.Reason); err != nil {
 		logrus.WithError(err).Error("Failed to reject extraction")
-		http.Error(w, "Failed to reject extraction", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to reject extraction"))
 		return
 	}
 

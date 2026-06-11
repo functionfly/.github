@@ -40,6 +40,7 @@ type Repository interface {
 	GetUserSettings(userID uuid.UUID) (map[string]interface{}, error)
 	DeactivateUser(ctx context.Context, userID, deactivatedBy uuid.UUID) error
 	ReactivateUser(ctx context.Context, userID uuid.UUID) error
+	IncrementUserTokenVersion(ctx context.Context, userID uuid.UUID) (int, error)
 	// MFA operations
 	UpdateUserMFA(userID uuid.UUID, secret *string, enabled bool, backupCodes []string, lastUsed *time.Time) error
 	UpdateUserMFAEnabled(userID uuid.UUID, enabled bool) error

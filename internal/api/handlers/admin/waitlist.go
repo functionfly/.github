@@ -3,8 +3,9 @@ package admin
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
+	"time"
 
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -38,7 +39,7 @@ func (h *Handler) HandleListWaitlist(w http.ResponseWriter, r *http.Request) {
 	entries, total, err := h.repo.ListWaitlistEntries(r.Context(), status, limit, offset)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list waitlist entries")
-		http.Error(w, "Failed to list waitlist entries", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list waitlist entries"))
 		return
 	}
 
@@ -56,7 +57,7 @@ func (h *Handler) HandleGetWaitlistStats(w http.ResponseWriter, r *http.Request)
 	stats, err := h.repo.GetWaitlistStats(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get waitlist stats")
-		http.Error(w, "Failed to get waitlist stats", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get waitlist stats"))
 		return
 	}
 
@@ -69,7 +70,7 @@ func (h *Handler) HandleUpdateWaitlistStatus(w http.ResponseWriter, r *http.Requ
 	idStr := mux.Vars(r)["id"]
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		http.Error(w, "Invalid id", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid id"))
 		return
 	}
 
@@ -78,23 +79,23 @@ func (h *Handler) HandleUpdateWaitlistStatus(w http.ResponseWriter, r *http.Requ
 		Notes  string `json:"notes,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	validStatuses := map[string]bool{"pending": true, "approved": true, "rejected": true, "invited": true}
 	if !validStatuses[req.Status] {
-		http.Error(w, "Invalid status", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid status"))
 		return
 	}
 
 	if err := h.repo.UpdateWaitlistEntryStatus(r.Context(), id, req.Status, req.Notes); err != nil {
 		if err == storage.ErrWaitlistEntryNotFound {
-			http.Error(w, "Entry not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Entry not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to update waitlist entry status")
-		http.Error(w, "Failed to update status", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update status"))
 		return
 	}
 
@@ -107,7 +108,7 @@ func (h *Handler) HandleIssueInviteToWaitlistEntry(w http.ResponseWriter, r *htt
 	idStr := mux.Vars(r)["id"]
 	entryID, err := uuid.Parse(idStr)
 	if err != nil {
-		http.Error(w, "Invalid id", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid id"))
 		return
 	}
 
@@ -125,18 +126,18 @@ func (h *Handler) HandleIssueInviteToWaitlistEntry(w http.ResponseWriter, r *htt
 	inviteID, plainCode, err := h.repo.CreateSignupInvite(r.Context(), req.Label, req.MaxUses, nil, nil)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create signup invite")
-		http.Error(w, "Failed to create invite", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create invite"))
 		return
 	}
 
 	// Update the waitlist entry with the invite
 	if err := h.repo.IssueInviteToWaitlistEntry(r.Context(), entryID, inviteID); err != nil {
 		if err == storage.ErrWaitlistEntryNotFound {
-			http.Error(w, "Waitlist entry not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Waitlist entry not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to issue invite to waitlist entry")
-		http.Error(w, "Failed to issue invite", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to issue invite"))
 		return
 	}
 
@@ -155,17 +156,17 @@ func (h *Handler) HandleDeleteWaitlistEntry(w http.ResponseWriter, r *http.Reque
 	idStr := mux.Vars(r)["id"]
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		http.Error(w, "Invalid id", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid id"))
 		return
 	}
 
 	if err := h.repo.DeleteWaitlistEntry(r.Context(), id); err != nil {
 		if err == storage.ErrWaitlistEntryNotFound {
-			http.Error(w, "Entry not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Entry not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to delete waitlist entry")
-		http.Error(w, "Failed to delete entry", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete entry"))
 		return
 	}
 

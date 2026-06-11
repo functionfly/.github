@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/gorilla/mux"
@@ -55,14 +56,14 @@ func extractClaimsFromRequest(r *http.Request, authSvc *auth.AuthService) (*auth
 func (h *Handler) HandleGetPublicProfile(w http.ResponseWriter, r *http.Request) {
 	username := mux.Vars(r)["username"]
 	if username == "" {
-		writeJSONError(w, http.StatusBadRequest, "username is required")
+		apierror.WriteError(w, apierror.NewBadRequest("username is required"))
 		return
 	}
 
 	if username == "me" {
 		claims, err := extractClaimsFromRequest(r, h.authSvc)
 		if err != nil {
-			writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+			apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 			return
 		}
 		r = middleware.SetUserInContext(r, claims)
@@ -73,11 +74,11 @@ func (h *Handler) HandleGetPublicProfile(w http.ResponseWriter, r *http.Request)
 	user, err := h.repo.GetUserForPublicProfile(username)
 	if err != nil {
 		logrus.WithError(err).WithField("username", username).Error("Failed to get user by username")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve profile")
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve profile"))
 		return
 	}
 	if user == nil {
-		writeJSONError(w, http.StatusNotFound, "User not found")
+		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
 	}
 
@@ -164,7 +165,7 @@ func (h *Handler) HandleGetPublicProfile(w http.ResponseWriter, r *http.Request)
 func (h *Handler) HandleGetPublicProfileByAt(w http.ResponseWriter, r *http.Request) {
 	username := mux.Vars(r)["username"]
 	if username == "" {
-		writeJSONError(w, http.StatusBadRequest, "username is required")
+		apierror.WriteError(w, apierror.NewBadRequest("username is required"))
 		return
 	}
 
@@ -176,11 +177,11 @@ func (h *Handler) HandleGetPublicProfileByAt(w http.ResponseWriter, r *http.Requ
 	user, err := h.repo.GetUserForPublicProfile(username)
 	if err != nil {
 		logrus.WithError(err).WithField("username", username).Error("Failed to get user by username")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve profile")
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve profile"))
 		return
 	}
 	if user == nil {
-		writeJSONError(w, http.StatusNotFound, "User not found")
+		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
 	}
 
@@ -274,18 +275,18 @@ func (h *Handler) HandleGetPublicProfileByAt(w http.ResponseWriter, r *http.Requ
 func (h *Handler) HandleGetMe(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	user, err := h.repo.GetUserByID(claims.UserID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to get user")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve profile")
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve profile"))
 		return
 	}
 	if user == nil {
-		writeJSONError(w, http.StatusNotFound, "User not found")
+		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
 	}
 
@@ -341,22 +342,22 @@ func (h *Handler) HandleGetMe(w http.ResponseWriter, r *http.Request) {
 	lastActive := "Just now"
 
 	resp := map[string]interface{}{
-		"id":            user.ID,
-		"tenantId":      user.TenantID,
-		"email":         user.Email,
-		"name":          name,
-		"username":      usernameStr,
-		"companyName":   companyName,
-		"avatar":        avatar,
-		"plan":          plan,
-		"bio":           getString(user.Bio),
-		"location":      getString(user.Location),
-		"website":       getString(user.Website),
-		"jobTitle":      getString(user.JobTitle),
-		"socialLinks":   user.SocialLinks,
-		"twitterUrl":    getString(user.TwitterURL),
-		"githubUrl":     getString(user.GithubURL),
-		"linkedinUrl":   getString(user.LinkedInURL),
+		"id":          user.ID,
+		"tenantId":    user.TenantID,
+		"email":       user.Email,
+		"name":        name,
+		"username":    usernameStr,
+		"companyName": companyName,
+		"avatar":      avatar,
+		"plan":        plan,
+		"bio":         getString(user.Bio),
+		"location":    getString(user.Location),
+		"website":     getString(user.Website),
+		"jobTitle":    getString(user.JobTitle),
+		"socialLinks": user.SocialLinks,
+		"twitterUrl":  getString(user.TwitterURL),
+		"githubUrl":   getString(user.GithubURL),
+		"linkedinUrl": getString(user.LinkedInURL),
 		"dateOfBirth": func() interface{} {
 			if user.DateOfBirth == nil {
 				return nil
@@ -397,13 +398,13 @@ type UpdateMeRequest struct {
 func (h *Handler) HandleUpdateMe(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	var req UpdateMeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -417,16 +418,16 @@ func (h *Handler) HandleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		clean := strings.ToLower(strings.TrimSpace(req.Username))
 		for _, c := range clean {
 			if !((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_') {
-				writeJSONError(w, http.StatusBadRequest, "Username may only contain lowercase letters, numbers, hyphens, and underscores")
+				apierror.WriteError(w, apierror.NewBadRequest("Username may only contain lowercase letters, numbers, hyphens, and underscores"))
 				return
 			}
 		}
 		if len(clean) < 3 {
-			writeJSONError(w, http.StatusBadRequest, "Username must be at least 3 characters")
+			apierror.WriteError(w, apierror.NewBadRequest("Username must be at least 3 characters"))
 			return
 		}
 		if len(clean) > 30 {
-			writeJSONError(w, http.StatusBadRequest, "Username must be 30 characters or fewer")
+			apierror.WriteError(w, apierror.NewBadRequest("Username must be 30 characters or fewer"))
 			return
 		}
 		updates["username"] = clean
@@ -505,7 +506,7 @@ func (h *Handler) HandleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		} else {
 			dob, err := time.Parse("2006-01-02", dobStr)
 			if err != nil {
-				writeJSONError(w, http.StatusBadRequest, "dateOfBirth must be in YYYY-MM-DD format")
+				apierror.WriteError(w, apierror.NewBadRequest("dateOfBirth must be in YYYY-MM-DD format"))
 				return
 			}
 			updates["date_of_birth"] = &dob
@@ -541,7 +542,7 @@ func (h *Handler) HandleUpdateMe(w http.ResponseWriter, r *http.Request) {
 	if len(updates) == 0 && req.Avatar == nil {
 		updatedUser, _ := h.repo.GetUserByID(claims.UserID)
 		if updatedUser == nil {
-			writeJSONError(w, http.StatusInternalServerError, "Failed to load profile")
+			apierror.WriteError(w, apierror.NewInternal("Failed to load profile"))
 			return
 		}
 		avatar := ""
@@ -593,8 +594,8 @@ func (h *Handler) HandleUpdateMe(w http.ResponseWriter, r *http.Request) {
 					}
 					return updatedUser.DateOfBirth.Format("2006-01-02")
 				}(),
-				"updatedAt":   updatedUser.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
-				"role":        updatedUser.Role, // Platform admin role for badge display
+				"updatedAt": updatedUser.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+				"role":      updatedUser.Role, // Platform admin role for badge display
 			},
 		})
 		return
@@ -606,18 +607,18 @@ func (h *Handler) HandleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		updatedUser, err = h.repo.UpdateUser(context.Background(), claims.UserID, updates)
 		if err != nil {
 			if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
-				writeJSONError(w, http.StatusConflict, "Username is already taken")
+				apierror.WriteError(w, apierror.NewConflict("Username is already taken"))
 				return
 			}
 			logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update user")
-			writeJSONError(w, http.StatusInternalServerError, "Failed to update profile")
+			apierror.WriteError(w, apierror.NewInternal("Failed to update profile"))
 			return
 		}
 	} else {
 		updatedUser, _ = h.repo.GetUserByID(claims.UserID)
 	}
 	if updatedUser == nil {
-		writeJSONError(w, http.StatusInternalServerError, "Failed to load profile")
+		apierror.WriteError(w, apierror.NewInternal("Failed to load profile"))
 		return
 	}
 
@@ -677,8 +678,8 @@ func (h *Handler) HandleUpdateMe(w http.ResponseWriter, r *http.Request) {
 				}
 				return updatedUser.DateOfBirth.Format("2006-01-02")
 			}(),
-			"updatedAt":   updatedUser.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
-			"role":        updatedUser.Role, // Platform admin role for badge display
+			"updatedAt": updatedUser.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			"role":      updatedUser.Role, // Platform admin role for badge display
 		},
 	})
 }

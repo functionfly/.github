@@ -1,14 +1,11 @@
 package admin
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
-	"strconv"
-	"time"
 
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage"
-	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
@@ -35,7 +32,7 @@ func (h *AdminAuditHandler) HandleListAuditLogs(w http.ResponseWriter, r *http.R
 	defer func() {
 		if rec := recover(); rec != nil {
 			logrus.WithField("panic", rec).Error("HandleListAuditLogs panic")
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Internal server error"))
 			return
 		}
 		writeAuditLogsResponse(w, events, limit, offset, filters)
@@ -110,18 +107,18 @@ func (h *AdminAuditHandler) HandleGetAuditLog(w http.ResponseWriter, r *http.Req
 
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		http.Error(w, `{"error": "invalid audit log ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid audit log ID"))
 		return
 	}
 
 	event, err := h.repo.GetAuditEventByID(id)
 	if err != nil {
 		logrus.WithError(err).WithField("id", id).Error("HandleGetAuditLog: failed to get audit event")
-		http.Error(w, `{"error": "failed to retrieve audit log"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to retrieve audit log"))
 		return
 	}
 	if event == nil {
-		http.Error(w, `{"error": "audit log not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("audit log not found"))
 		return
 	}
 

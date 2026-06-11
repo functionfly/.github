@@ -3,6 +3,7 @@ package users
 import (
 	"net/http"
 
+	"github.com/functionfly/functionfly/internal/api/apierror"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
@@ -12,7 +13,7 @@ import (
 func (h *Handler) HandleGetUserAnalytics(w http.ResponseWriter, r *http.Request) {
 	username := mux.Vars(r)["username"]
 	if username == "" {
-		writeJSONError(w, http.StatusBadRequest, "username is required")
+		apierror.WriteError(w, apierror.NewBadRequest("username is required"))
 		return
 	}
 
@@ -20,11 +21,11 @@ func (h *Handler) HandleGetUserAnalytics(w http.ResponseWriter, r *http.Request)
 	user, err := h.repo.GetUserByUsername(username)
 	if err != nil {
 		logrus.WithError(err).WithField("username", username).Error("Failed to get user by username")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve user")
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve user"))
 		return
 	}
 	if user == nil {
-		writeJSONError(w, http.StatusNotFound, "User not found")
+		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
 	}
 

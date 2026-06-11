@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage/trustapi"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -35,7 +36,7 @@ func (h *BillingHandler) HandleGetTierPricing(w http.ResponseWriter, r *http.Req
 	tiers, err := h.service.ListTierPricing(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list tier pricing")
-		writeBillingError(w, http.StatusInternalServerError, "Failed to retrieve pricing tiers", "internal_error")
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve pricing tiers"))
 		return
 	}
 
@@ -83,14 +84,14 @@ type TierPricingResponse struct {
 func (h *BillingHandler) HandleGetBillingStatus(w http.ResponseWriter, r *http.Request) {
 	partner := getPartnerFromContext(r)
 	if partner == nil {
-		writeBillingError(w, http.StatusUnauthorized, "Unauthorized", "unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	usage, err := h.service.GetCurrentUsage(r.Context(), partner.ID)
 	if err != nil {
 		logrus.WithError(err).WithField("partner_id", partner.ID).Error("Failed to get billing usage")
-		writeBillingError(w, http.StatusInternalServerError, "Failed to retrieve billing status", "internal_error")
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve billing status"))
 		return
 	}
 
@@ -147,24 +148,24 @@ type BillingStatusResponse struct {
 func (h *BillingHandler) HandleCreateCheckout(w http.ResponseWriter, r *http.Request) {
 	partner := getPartnerFromContext(r)
 	if partner == nil {
-		writeBillingError(w, http.StatusUnauthorized, "Unauthorized", "unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	var req CheckoutRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeBillingError(w, http.StatusBadRequest, "Invalid request body", "invalid_request")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if req.Tier == "" {
-		writeBillingError(w, http.StatusBadRequest, "Tier is required", "validation_error")
+		apierror.WriteError(w, apierror.NewValidation("Tier is required"))
 		return
 	}
 
 	// Validate tier
 	if req.Tier == "developer" {
-		writeBillingError(w, http.StatusBadRequest, "Cannot checkout for free tier", "invalid_tier")
+		apierror.WriteErrorWithStatus(w, http.StatusBadRequest, "INVALID_TIER", "Cannot checkout for free tier")
 		return
 	}
 
@@ -174,7 +175,7 @@ func (h *BillingHandler) HandleCreateCheckout(w http.ResponseWriter, r *http.Req
 			"partner_id": partner.ID,
 			"tier":       req.Tier,
 		}).Error("Failed to create checkout session")
-		writeBillingError(w, http.StatusInternalServerError, "Failed to create checkout session", "stripe_error")
+		apierror.WriteError(w, apierror.NewBillingError("Failed to create checkout session"))
 		return
 	}
 
@@ -206,13 +207,13 @@ type CheckoutResponse struct {
 func (h *BillingHandler) HandleEnrollFounderMode(w http.ResponseWriter, r *http.Request) {
 	partner := getPartnerFromContext(r)
 	if partner == nil {
-		writeBillingError(w, http.StatusUnauthorized, "Unauthorized", "unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	var req FounderModeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeBillingError(w, http.StatusBadRequest, "Invalid request body", "invalid_request")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -227,10 +228,10 @@ func (h *BillingHandler) HandleEnrollFounderMode(w http.ResponseWriter, r *http.
 	if err := h.service.EnrollFounderMode(r.Context(), partner.ID, req.UsageThreshold, req.FreeDays); err != nil {
 		logrus.WithError(err).WithField("partner_id", partner.ID).Error("Failed to enroll in founder mode")
 		if err.Error() == "partner is already in founder mode" {
-			writeBillingError(w, http.StatusConflict, err.Error(), "already_enrolled")
+			apierror.WriteError(w, apierror.NewConflict(err.Error()))
 			return
 		}
-		writeBillingError(w, http.StatusInternalServerError, "Failed to enroll in founder mode", "internal_error")
+		apierror.WriteError(w, apierror.NewInternal("Failed to enroll in founder mode"))
 		return
 	}
 
@@ -255,14 +256,14 @@ type FounderModeRequest struct {
 func (h *BillingHandler) HandleGetUsageReport(w http.ResponseWriter, r *http.Request) {
 	partner := getPartnerFromContext(r)
 	if partner == nil {
-		writeBillingError(w, http.StatusUnauthorized, "Unauthorized", "unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	report, err := h.repo.GetUsageSummaryForPartner(r.Context(), partner.ID)
 	if err != nil {
 		logrus.WithError(err).WithField("partner_id", partner.ID).Error("Failed to get usage report")
-		writeBillingError(w, http.StatusInternalServerError, "Failed to retrieve usage report", "internal_error")
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve usage report"))
 		return
 	}
 
@@ -276,7 +277,7 @@ func (h *BillingHandler) HandleGetUsageReport(w http.ResponseWriter, r *http.Req
 func (h *BillingHandler) HandleGetInvoices(w http.ResponseWriter, r *http.Request) {
 	partner := getPartnerFromContext(r)
 	if partner == nil {
-		writeBillingError(w, http.StatusUnauthorized, "Unauthorized", "unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -297,7 +298,7 @@ func (h *BillingHandler) HandleGetInvoices(w http.ResponseWriter, r *http.Reques
 	records, total, err := h.repo.ListBillingRecordsByPartner(r.Context(), partner.ID, limit, offset)
 	if err != nil {
 		logrus.WithError(err).WithField("partner_id", partner.ID).Error("Failed to list invoices")
-		writeBillingError(w, http.StatusInternalServerError, "Failed to retrieve invoices", "internal_error")
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve invoices"))
 		return
 	}
 
@@ -366,7 +367,7 @@ func (h *BillingHandler) HandleListPartnerBilling(w http.ResponseWriter, r *http
 	partners, total, err := h.repo.ListPartnersWithFilters(status, tier, pageSize, offset)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list partners")
-		writeBillingError(w, http.StatusInternalServerError, "Failed to list partners", "internal_error")
+		apierror.WriteError(w, apierror.NewInternal("Failed to list partners"))
 		return
 	}
 
@@ -419,23 +420,4 @@ type PartnerBillingSummary struct {
 	CreatedAt            time.Time `json:"created_at"`
 }
 
-// ============================================
-// Helper Functions
-// ============================================
 
-func writeBillingError(w http.ResponseWriter, status int, message, code string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(BillingErrorResponse{
-		Error:  message,
-		Code:   code,
-		Status: status,
-	})
-}
-
-// BillingErrorResponse represents a billing error response
-type BillingErrorResponse struct {
-	Error  string `json:"error"`
-	Code   string `json:"code,omitempty"`
-	Status int    `json:"status"`
-}

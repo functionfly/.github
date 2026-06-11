@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/utils"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -17,7 +18,7 @@ func (h *Handler) HandleGetAnalyticsSettings(w http.ResponseWriter, r *http.Requ
 	allSettings, err := h.analyticsRepo.GetAllAnalyticsSettings()
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get analytics settings from database")
-		http.Error(w, "Failed to retrieve analytics settings", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve analytics settings"))
 		return
 	}
 
@@ -60,7 +61,7 @@ func (h *Handler) HandleGetAnalyticsSettings(w http.ResponseWriter, r *http.Requ
 func (h *Handler) HandleUpdateAnalyticsSettings(w http.ResponseWriter, r *http.Request) {
 	var req map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
@@ -72,7 +73,7 @@ func (h *Handler) HandleUpdateAnalyticsSettings(w http.ResponseWriter, r *http.R
 		})
 		if err != nil {
 			logrus.WithError(err).Error("Failed to update Google Analytics settings")
-			http.Error(w, "Failed to update Google Analytics settings", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to update Google Analytics settings"))
 			return
 		}
 	}
@@ -85,7 +86,7 @@ func (h *Handler) HandleUpdateAnalyticsSettings(w http.ResponseWriter, r *http.R
 		})
 		if err != nil {
 			logrus.WithError(err).Error("Failed to update Hotjar settings")
-			http.Error(w, "Failed to update Hotjar settings", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to update Hotjar settings"))
 			return
 		}
 	}
@@ -162,7 +163,7 @@ func (h *Handler) HandleTenantAnalyticsSummary(w http.ResponseWriter, r *http.Re
 
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
-		http.Error(w, `{"error":"invalid tenant ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid tenant ID"))
 		return
 	}
 
@@ -252,7 +253,7 @@ func (h *Handler) HandleAnalyticsMRR(w http.ResponseWriter, r *http.Request) {
 	mrr, err := h.analyticsRepo.CalculateMRR(ctx, year, month)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to calculate MRR")
-		http.Error(w, "Failed to calculate MRR", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to calculate MRR"))
 		return
 	}
 
@@ -278,7 +279,7 @@ func (h *Handler) HandleAnalyticsMRRSeries(w http.ResponseWriter, r *http.Reques
 	series, err := h.analyticsRepo.GetMRRTimeseries(ctx, months)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get MRR series")
-		http.Error(w, "Failed to get MRR series", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get MRR series"))
 		return
 	}
 
@@ -311,7 +312,7 @@ func (h *Handler) HandleAnalyticsARR(w http.ResponseWriter, r *http.Request) {
 	arr, err := h.analyticsRepo.CalculateARR(ctx, year, month)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to calculate ARR")
-		http.Error(w, "Failed to calculate ARR", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to calculate ARR"))
 		return
 	}
 
@@ -344,7 +345,7 @@ func (h *Handler) HandleAnalyticsChurn(w http.ResponseWriter, r *http.Request) {
 	churn, err := h.analyticsRepo.CalculateChurnMetrics(ctx, year, month)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to calculate churn metrics")
-		http.Error(w, "Failed to calculate churn metrics", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to calculate churn metrics"))
 		return
 	}
 
@@ -370,7 +371,7 @@ func (h *Handler) HandleAnalyticsChurnSeries(w http.ResponseWriter, r *http.Requ
 	series, err := h.analyticsRepo.GetChurnMetricsTimeseries(ctx, months)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get churn series")
-		http.Error(w, "Failed to get churn series", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get churn series"))
 		return
 	}
 
@@ -389,7 +390,7 @@ func (h *Handler) HandleAnalyticsLTV(w http.ResponseWriter, r *http.Request) {
 	ltv, err := h.analyticsRepo.GetLTVMetrics(ctx)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to calculate LTV")
-		http.Error(w, "Failed to calculate LTV", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to calculate LTV"))
 		return
 	}
 
@@ -429,7 +430,7 @@ func (h *Handler) HandleFinancialReport(w http.ResponseWriter, r *http.Request) 
 	report, err := h.analyticsRepo.GenerateFinancialReport(ctx, reportType, start, end)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to generate financial report")
-		http.Error(w, "Failed to generate financial report", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to generate financial report"))
 		return
 	}
 
@@ -454,7 +455,7 @@ func (h *Handler) HandleTaxJurisdictionReport(w http.ResponseWriter, r *http.Req
 	report, err := h.analyticsRepo.GetTaxJurisdictionReport(ctx, month)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get tax jurisdiction report")
-		http.Error(w, "Failed to get tax jurisdiction report", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get tax jurisdiction report"))
 		return
 	}
 

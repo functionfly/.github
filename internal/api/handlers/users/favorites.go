@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/functionfly/functionfly/internal/api/apierror"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
@@ -24,10 +25,6 @@ func (h *FavoritesHandler) writeJSON(w http.ResponseWriter, status int, v interf
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(v)
-}
-
-func (h *FavoritesHandler) writeJSONError(w http.ResponseWriter, status int, msg string) {
-	h.writeJSON(w, status, map[string]string{"error": msg})
 }
 
 func (h *FavoritesHandler) getCurrentUserID(r *http.Request) (uuid.UUID, error) {
@@ -62,7 +59,7 @@ type ListFavoritesResponse struct {
 func (h *FavoritesHandler) HandleListFavorites(w http.ResponseWriter, r *http.Request) {
 	userID, err := h.getCurrentUserID(r)
 	if err != nil {
-		h.writeJSONError(w, http.StatusUnauthorized, "authentication required")
+		apierror.WriteError(w, apierror.NewUnauthorized("authentication required"))
 		return
 	}
 
@@ -79,7 +76,7 @@ func (h *FavoritesHandler) HandleListFavorites(w http.ResponseWriter, r *http.Re
 	favorites, total, err := h.repo.GetUserFavorites(r.Context(), userID, limit, offset)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", userID).Error("Failed to get user favorites")
-		h.writeJSONError(w, http.StatusInternalServerError, "failed to get favorites")
+		apierror.WriteError(w, apierror.NewInternal("failed to get favorites"))
 		return
 	}
 
@@ -102,19 +99,19 @@ func (h *FavoritesHandler) HandleListFavorites(w http.ResponseWriter, r *http.Re
 func (h *FavoritesHandler) HandleAddFavorite(w http.ResponseWriter, r *http.Request) {
 	userID, err := h.getCurrentUserID(r)
 	if err != nil {
-		h.writeJSONError(w, http.StatusUnauthorized, "authentication required")
+		apierror.WriteError(w, apierror.NewUnauthorized("authentication required"))
 		return
 	}
 
 	var req AddFavoriteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeJSONError(w, http.StatusBadRequest, "invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 
 	functionID, err := uuid.Parse(req.FunctionID)
 	if err != nil {
-		h.writeJSONError(w, http.StatusBadRequest, "invalid function_id")
+		apierror.WriteError(w, apierror.NewBadRequest("invalid function_id"))
 		return
 	}
 
@@ -127,7 +124,7 @@ func (h *FavoritesHandler) HandleAddFavorite(w http.ResponseWriter, r *http.Requ
 	_, err = h.repo.AddFavorite(r.Context(), userID, functionID, position)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", userID).WithField("functionID", functionID).Error("Failed to add favorite")
-		h.writeJSONError(w, http.StatusInternalServerError, "failed to add favorite")
+		apierror.WriteError(w, apierror.NewInternal("failed to add favorite"))
 		return
 	}
 
@@ -141,7 +138,7 @@ func (h *FavoritesHandler) HandleAddFavorite(w http.ResponseWriter, r *http.Requ
 func (h *FavoritesHandler) HandleRemoveFavorite(w http.ResponseWriter, r *http.Request) {
 	userID, err := h.getCurrentUserID(r)
 	if err != nil {
-		h.writeJSONError(w, http.StatusUnauthorized, "authentication required")
+		apierror.WriteError(w, apierror.NewUnauthorized("authentication required"))
 		return
 	}
 
@@ -149,14 +146,14 @@ func (h *FavoritesHandler) HandleRemoveFavorite(w http.ResponseWriter, r *http.R
 	functionIDStr := vars["functionId"]
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		h.writeJSONError(w, http.StatusBadRequest, "invalid function_id")
+		apierror.WriteError(w, apierror.NewBadRequest("invalid function_id"))
 		return
 	}
 
 	err = h.repo.RemoveFavorite(r.Context(), userID, functionID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", userID).WithField("functionID", functionID).Error("Failed to remove favorite")
-		h.writeJSONError(w, http.StatusInternalServerError, "failed to remove favorite")
+		apierror.WriteError(w, apierror.NewInternal("failed to remove favorite"))
 		return
 	}
 
@@ -170,7 +167,7 @@ func (h *FavoritesHandler) HandleRemoveFavorite(w http.ResponseWriter, r *http.R
 func (h *FavoritesHandler) HandleToggleFavorite(w http.ResponseWriter, r *http.Request) {
 	userID, err := h.getCurrentUserID(r)
 	if err != nil {
-		h.writeJSONError(w, http.StatusUnauthorized, "authentication required")
+		apierror.WriteError(w, apierror.NewUnauthorized("authentication required"))
 		return
 	}
 
@@ -178,14 +175,14 @@ func (h *FavoritesHandler) HandleToggleFavorite(w http.ResponseWriter, r *http.R
 	functionIDStr := vars["functionId"]
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		h.writeJSONError(w, http.StatusBadRequest, "invalid function_id")
+		apierror.WriteError(w, apierror.NewBadRequest("invalid function_id"))
 		return
 	}
 
 	isFav, err := h.repo.IsFavorite(r.Context(), userID, functionID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", userID).WithField("functionID", functionID).Error("Failed to check favorite status")
-		h.writeJSONError(w, http.StatusInternalServerError, "failed to check favorite status")
+		apierror.WriteError(w, apierror.NewInternal("failed to check favorite status"))
 		return
 	}
 
@@ -193,7 +190,7 @@ func (h *FavoritesHandler) HandleToggleFavorite(w http.ResponseWriter, r *http.R
 		err = h.repo.RemoveFavorite(r.Context(), userID, functionID)
 		if err != nil {
 			logrus.WithError(err).WithField("userID", userID).WithField("functionID", functionID).Error("Failed to remove favorite")
-			h.writeJSONError(w, http.StatusInternalServerError, "failed to remove favorite")
+			apierror.WriteError(w, apierror.NewInternal("failed to remove favorite"))
 			return
 		}
 		h.writeJSON(w, http.StatusOK, ToggleFavoriteResponse{Favorited: false})
@@ -203,7 +200,7 @@ func (h *FavoritesHandler) HandleToggleFavorite(w http.ResponseWriter, r *http.R
 		_, err = h.repo.AddFavorite(r.Context(), userID, functionID, position)
 		if err != nil {
 			logrus.WithError(err).WithField("userID", userID).WithField("functionID", functionID).Error("Failed to add favorite")
-			h.writeJSONError(w, http.StatusInternalServerError, "failed to add favorite")
+			apierror.WriteError(w, apierror.NewInternal("failed to add favorite"))
 			return
 		}
 		h.writeJSON(w, http.StatusOK, ToggleFavoriteResponse{Favorited: true})
@@ -213,7 +210,7 @@ func (h *FavoritesHandler) HandleToggleFavorite(w http.ResponseWriter, r *http.R
 func (h *FavoritesHandler) HandleCheckFavorite(w http.ResponseWriter, r *http.Request) {
 	userID, err := h.getCurrentUserID(r)
 	if err != nil {
-		h.writeJSONError(w, http.StatusUnauthorized, "authentication required")
+		apierror.WriteError(w, apierror.NewUnauthorized("authentication required"))
 		return
 	}
 
@@ -221,14 +218,14 @@ func (h *FavoritesHandler) HandleCheckFavorite(w http.ResponseWriter, r *http.Re
 	functionIDStr := vars["functionId"]
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		h.writeJSONError(w, http.StatusBadRequest, "invalid function_id")
+		apierror.WriteError(w, apierror.NewBadRequest("invalid function_id"))
 		return
 	}
 
 	isFav, err := h.repo.IsFavorite(r.Context(), userID, functionID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", userID).WithField("functionID", functionID).Error("Failed to check favorite status")
-		h.writeJSONError(w, http.StatusInternalServerError, "failed to check favorite status")
+		apierror.WriteError(w, apierror.NewInternal("failed to check favorite status"))
 		return
 	}
 
@@ -241,7 +238,7 @@ func (h *FavoritesHandler) HandleCheckFavorite(w http.ResponseWriter, r *http.Re
 func (h *FavoritesHandler) HandleUpdateFavoritePosition(w http.ResponseWriter, r *http.Request) {
 	userID, err := h.getCurrentUserID(r)
 	if err != nil {
-		h.writeJSONError(w, http.StatusUnauthorized, "authentication required")
+		apierror.WriteError(w, apierror.NewUnauthorized("authentication required"))
 		return
 	}
 
@@ -249,7 +246,7 @@ func (h *FavoritesHandler) HandleUpdateFavoritePosition(w http.ResponseWriter, r
 	functionIDStr := vars["functionId"]
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		h.writeJSONError(w, http.StatusBadRequest, "invalid function_id")
+		apierror.WriteError(w, apierror.NewBadRequest("invalid function_id"))
 		return
 	}
 
@@ -257,14 +254,14 @@ func (h *FavoritesHandler) HandleUpdateFavoritePosition(w http.ResponseWriter, r
 		Position int `json:"position"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeJSONError(w, http.StatusBadRequest, "invalid request body")
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 
 	err = h.repo.UpdateFavoritePosition(r.Context(), userID, functionID, req.Position)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", userID).WithField("functionID", functionID).Error("Failed to update favorite position")
-		h.writeJSONError(w, http.StatusInternalServerError, "failed to update favorite position")
+		apierror.WriteError(w, apierror.NewInternal("failed to update favorite position"))
 		return
 	}
 

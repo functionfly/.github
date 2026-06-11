@@ -160,3 +160,22 @@ func (r *UserRepository) GetOnlineUsers(ctx context.Context, withinMinutes int) 
 
 	return userIDs, nil
 }
+
+// IncrementUserTokenVersion increments the user's token_version to invalidate all existing JWTs.
+// This should be called on login to prevent session fixation attacks and token replay.
+// Returns the new token version value.
+func (r *UserRepository) IncrementUserTokenVersion(ctx context.Context, userID uuid.UUID) (int, error) {
+	var newVersion int
+	err := r.db.QueryRowContext(ctx, `
+		UPDATE users 
+		SET token_version = token_version + 1, updated_at = NOW() 
+		WHERE id = $1 
+		RETURNING token_version`,
+		userID).Scan(&newVersion)
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to increment user token version: %w", err)
+	}
+
+	return newVersion, nil
+}

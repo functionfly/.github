@@ -179,6 +179,12 @@ export const useOnboardingStore = create<OnboardingState>()(
     }),
     {
       name: "onboarding-storage",
+      version: 1,
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.lastUpdated = Date.now();
+        }
+      },
       partialize: (state) => ({
         currentStep: state.currentStep,
         completedSteps: state.completedSteps,

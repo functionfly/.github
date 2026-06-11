@@ -7,6 +7,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/api/utils"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -20,14 +21,14 @@ func (h *Handler) HandleDeactivateUser(w http.ResponseWriter, r *http.Request) {
 	userIDStr := vars["userId"]
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid user ID"))
 		return
 	}
 
 	// Get the current admin user (who is performing the deactivation)
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 	deactivatedBy := claims.UserID
@@ -36,22 +37,22 @@ func (h *Handler) HandleDeactivateUser(w http.ResponseWriter, r *http.Request) {
 	user, err := h.repo.GetUserByID(userID)
 	if err != nil {
 		logrus.WithError(err).WithField("user_id", userID).Error("Failed to get user")
-		http.Error(w, "Failed to get user", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get user"))
 		return
 	}
 	if user == nil {
-		http.Error(w, "User not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
 	}
 	if user.DeactivatedAt != nil {
-		http.Error(w, "User is already deactivated", http.StatusConflict)
+		apierror.WriteError(w, apierror.NewConflict("User is already deactivated"))
 		return
 	}
 
 	// Deactivate the user
 	if err := h.repo.DeactivateUser(r.Context(), userID, deactivatedBy); err != nil {
 		logrus.WithError(err).WithField("user_id", userID).Error("Failed to deactivate user")
-		http.Error(w, "Failed to deactivate user", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to deactivate user"))
 		return
 	}
 
@@ -73,7 +74,7 @@ func (h *Handler) HandleReactivateUser(w http.ResponseWriter, r *http.Request) {
 	userIDStr := vars["userId"]
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid user ID"))
 		return
 	}
 
@@ -81,22 +82,22 @@ func (h *Handler) HandleReactivateUser(w http.ResponseWriter, r *http.Request) {
 	user, err := h.repo.GetUserByID(userID)
 	if err != nil {
 		logrus.WithError(err).WithField("user_id", userID).Error("Failed to get user")
-		http.Error(w, "Failed to get user", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get user"))
 		return
 	}
 	if user == nil {
-		http.Error(w, "User not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
 	}
 	if user.DeactivatedAt == nil {
-		http.Error(w, "User is not deactivated", http.StatusConflict)
+		apierror.WriteError(w, apierror.NewConflict("User is not deactivated"))
 		return
 	}
 
 	// Reactivate the user
 	if err := h.repo.ReactivateUser(r.Context(), userID); err != nil {
 		logrus.WithError(err).WithField("user_id", userID).Error("Failed to reactivate user")
-		http.Error(w, "Failed to reactivate user", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to reactivate user"))
 		return
 	}
 
@@ -116,7 +117,7 @@ func (h *Handler) HandleListUsers(w http.ResponseWriter, r *http.Request) {
 	users, err := h.repo.ListUsers()
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list users")
-		http.Error(w, "Failed to list users", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list users"))
 		return
 	}
 
@@ -136,7 +137,7 @@ func (h *Handler) HandleGetUserStats(w http.ResponseWriter, r *http.Request) {
 	users, err := h.repo.ListUsers()
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get user stats")
-		http.Error(w, "Failed to get user stats", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get user stats"))
 		return
 	}
 
@@ -170,18 +171,18 @@ func (h *Handler) HandleGetUser(w http.ResponseWriter, r *http.Request) {
 	userIDStr := vars["userId"]
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid user ID"))
 		return
 	}
 
 	user, err := h.repo.GetUserByID(userID)
 	if err != nil {
 		logrus.WithError(err).WithField("user_id", userID).Error("Failed to get user")
-		http.Error(w, "Failed to get user", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get user"))
 		return
 	}
 	if user == nil {
-		http.Error(w, "User not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
 	}
 
@@ -213,7 +214,7 @@ func (h *Handler) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
@@ -221,7 +222,7 @@ func (h *Handler) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
 	hashedPassword, err := h.authSvc.HashPassword(req.Password)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to hash password")
-		http.Error(w, "Failed to create user", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create user"))
 		return
 	}
 
@@ -238,7 +239,7 @@ func (h *Handler) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
 	createdUser, err := h.repo.CreateUserWithRole(r.Context(), user)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create user")
-		http.Error(w, "Failed to create user", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create user"))
 		return
 	}
 
@@ -256,17 +257,17 @@ func (h *Handler) HandleInviteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	if req.Email == "" {
-		http.Error(w, "Email is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Email is required"))
 		return
 	}
 
 	if req.TenantID == uuid.Nil {
-		http.Error(w, "Tenant ID is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Tenant ID is required"))
 		return
 	}
 
@@ -274,12 +275,12 @@ func (h *Handler) HandleInviteUser(w http.ResponseWriter, r *http.Request) {
 	existingUser, err := h.repo.GetUserByEmail(req.Email)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check existing user")
-		http.Error(w, "Failed to invite user", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to invite user"))
 		return
 	}
 
 	if existingUser != nil {
-		http.Error(w, "User already exists", http.StatusConflict)
+		apierror.WriteError(w, apierror.NewConflict("User already exists"))
 		return
 	}
 
@@ -297,7 +298,7 @@ func (h *Handler) HandleInviteUser(w http.ResponseWriter, r *http.Request) {
 	invitedUser, err := h.repo.CreateUserWithRole(r.Context(), user)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to invite user")
-		http.Error(w, "Failed to invite user", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to invite user"))
 		return
 	}
 
@@ -312,13 +313,13 @@ func (h *Handler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	userIDStr := vars["userId"]
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid user ID"))
 		return
 	}
 
 	var updates map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
@@ -328,11 +329,11 @@ func (h *Handler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		user, err := h.repo.GetUserByID(userID)
 		if err != nil {
 			logrus.WithError(err).WithField("user_id", userID).Error("Failed to get user for plan update")
-			http.Error(w, "Failed to get user", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to get user"))
 			return
 		}
 		if user == nil {
-			http.Error(w, "User not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("User not found"))
 			return
 		}
 		logrus.WithFields(logrus.Fields{"tenant_id": user.TenantID, "new_plan": newPlan}).Info("Updating tenant plan")
@@ -341,7 +342,7 @@ func (h *Handler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		updatedTenant, err := h.repo.UpdateTenant(r.Context(), user.TenantID, tenantUpdates)
 		if err != nil {
 			logrus.WithError(err).WithField("tenant_id", user.TenantID).Error("Failed to update tenant plan")
-			http.Error(w, "Failed to update plan", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to update plan"))
 			return
 		}
 		logrus.WithFields(logrus.Fields{"tenant_id": user.TenantID, "new_plan": updatedTenant.Plan}).Info("Tenant plan updated successfully")
@@ -354,7 +355,7 @@ func (h *Handler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		user, err := h.repo.UpdateUser(r.Context(), userID, updates)
 		if err != nil {
 			logrus.WithError(err).WithField("user_id", userID).Error("Failed to update user")
-			http.Error(w, "Failed to update user", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to update user"))
 			return
 		}
 		// Fetch tenant to get current plan and attach to response
@@ -380,7 +381,7 @@ func (h *Handler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	user, err := h.repo.GetUserByID(userID)
 	if err != nil {
 		logrus.WithError(err).WithField("user_id", userID).Error("Failed to get user after plan update")
-		http.Error(w, "Failed to get user", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get user"))
 		return
 	}
 	// Fetch the tenant to get the updated plan
@@ -411,14 +412,14 @@ func (h *Handler) HandleDeleteUser(w http.ResponseWriter, r *http.Request) {
 	userIDStr := vars["userId"]
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid user ID"))
 		return
 	}
 
 	// Get current user to check if it's not deleting themselves
 	currentUser := middleware.GetUserFromContext(r)
 	if currentUser != nil && currentUser.UserID == userID {
-		http.Error(w, "Cannot delete your own account", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Cannot delete your own account"))
 		return
 	}
 
@@ -430,7 +431,7 @@ func (h *Handler) HandleDeleteUser(w http.ResponseWriter, r *http.Request) {
 	_, err = h.repo.UpdateUser(r.Context(), userID, updates)
 	if err != nil {
 		logrus.WithError(err).WithField("user_id", userID).Error("Failed to delete user")
-		http.Error(w, "Failed to delete user", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete user"))
 		return
 	}
 

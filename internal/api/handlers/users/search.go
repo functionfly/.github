@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/functionfly/functionfly/internal/api/apierror"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/sirupsen/logrus"
 )
@@ -17,7 +18,7 @@ func (h *Handler) HandleSearchUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if middleware.GetUserFromContext(r) == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -40,7 +41,7 @@ func (h *Handler) HandleSearchUsers(w http.ResponseWriter, r *http.Request) {
 	hits, err := h.repo.SearchUsersByUsernamePrefix(r.Context(), q, limit)
 	if err != nil {
 		logrus.WithError(err).WithField("q", q).Warn("user search failed")
-		writeJSONError(w, http.StatusInternalServerError, "Search failed")
+		apierror.WriteError(w, apierror.NewInternal("Search failed"))
 		return
 	}
 
