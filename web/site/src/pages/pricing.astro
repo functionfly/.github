@@ -26,14 +26,6 @@ const faqSchema = {
     },
     {
       '@type': 'Question',
-      name: 'Where does State Fabric pricing show up?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'State Fabric tiers are billed alongside your workspace plan. Optional add-ons can be enabled to increase performance, security, or analytics—confirm live rates in your billing page.',
-      },
-    },
-    {
-      '@type': 'Question',
       name: 'Can we upgrade or downgrade?',
       acceptedAnswer: {
         '@type': 'Answer',
@@ -107,7 +99,7 @@ const pricingSchemas = [faqSchema, productSchema];
 
 <Layout
   title="Pricing — FunctionFly"
-  description="Platform plans for functions, providers, and requests—plus State Fabric and agent execution tiers for AI workloads. Start free; scale with Starter, Professional, or Enterprise."
+  description="Platform plans for functions, providers, and AI agents. Start free; scale with Starter, Professional, or Enterprise. State Fabric and advanced agent execution on the details page."
   schema={pricingSchemas}
   ogImage="/og-pricing.svg"
 >
@@ -263,13 +255,6 @@ const pricingSchemas = [faqSchema, productSchema];
               <td>Unlimited</td>
             </tr>
             <tr>
-              <td>State Fabric instances</td>
-              <td>—</td>
-              <td>Up to 3</td>
-              <td>Up to 10</td>
-              <td>Unlimited</td>
-            </tr>
-            <tr>
               <td>Requests / month</td>
               <td>500</td>
               <td>1M</td>
@@ -329,289 +314,7 @@ const pricingSchemas = [faqSchema, productSchema];
         </table>
       </div>
 
-      {/* Backend-in-a-Box Bundles Promo */}
-      <div class="bundles-promo">
-        <div class="bundles-badge">
-          <span class="sparkle">✨</span> NEW: Backend-in-a-Box
-        </div>
-        <h3 class="bundles-title">One Click → Full Backend</h3>
-        <p class="bundles-desc">
-          Skip the decision fatigue. Get pre-configured bundles with Auth, Payments, User DB, and more.
-          <strong>Start free</strong> until you hit 100 users or $1K MRR.
-        </p>
-        <div class="bundles-grid">
-          <div class="bundle-item">
-            <span class="bundle-icon">🚀</span>
-            <strong>SaaS Starter</strong> — $29/mo
-            <span class="bundle-features">Auth · Payments · User DB · Email · Analytics</span>
-          </div>
-          <div class="bundle-item">
-            <span class="bundle-icon">🛒</span>
-            <strong>Marketplace</strong> — $49/mo
-            <span class="bundle-features">Listings · Payments · Messaging · Notifications</span>
-          </div>
-          <div class="bundle-item">
-            <span class="bundle-icon">🤖</span>
-            <strong>AI App</strong> — $39/mo
-            <span class="bundle-features">Vector DB · Embeddings · Chat · Memory</span>
-          </div>
-        </div>
-        <div class="bundles-cta">
-          <a class="btn btn-gradient" href={`${APP_DASHBOARD_ORIGIN}/pricing/bundles`}>
-            Explore Bundles →
-          </a>
-          <span class="bundles-trust">
-            <span class="pill">🎯 100 users free</span>
-            <span class="pill">💰 $1K MRR free</span>
-            <span class="pill">⏰ 3 months free</span>
-          </span>
-        </div>
       </div>
-    </div>
-  </section>
-
-  <section class="section statefabric-section">
-    <div class="container">
-      <div class="section-head">
-        <h2 id="state-fabric">State Fabric</h2>
-        <p class="muted">
-          Stateful capabilities for serverless. Start with Sandbox and scale up to Enterprise. Optional add-ons can be enabled in your workspace.
-        </p>
-      </div>
-
-      <div class="statefabric-grid">
-        <article class="price-card">
-          <h3 class="tier-name">Sandbox</h3>
-          <div class="price-row">
-            <span class="price-amount">$0</span>
-            <span class="price-period">/ month</span>
-          </div>
-          <p class="tier-desc">Great for experimentation &amp; onboarding.</p>
-          <ul class="feature-list">
-            <li><span class="check" aria-hidden="true">✓</span> Stateless usage</li>
-            <li><span class="check" aria-hidden="true">✓</span> 1 state object</li>
-            <li><span class="check" aria-hidden="true">✓</span> 1 GB event storage</li>
-            <li><span class="check" aria-hidden="true">✓</span> 10,000 state ops</li>
-            <li><span class="check" aria-hidden="true">✓</span> 7-day snapshot retention</li>
-            <li><span class="check" aria-hidden="true">✓</span> Community support</li>
-          </ul>
-          <a class="btn btn-secondary full-width" href={`${AUTH_ORIGIN}/signup`}>Try now — free</a>
-        </article>
-
-        <article class="price-card">
-          <h3 class="tier-name">Starter</h3>
-          <div class="price-row">
-            <span class="price-amount">$19</span>
-            <span class="price-period">/ month</span>
-          </div>
-          <p class="tier-desc">Internal dev &amp; small side projects.</p>
-          <div class="tier-desc tier-desc--tight">Storage: $0.10/GB · Ops: $0.50/100k</div>
-          <ul class="feature-list">
-            <li><span class="check" aria-hidden="true">✓</span> Up to 5 state objects</li>
-            <li><span class="check" aria-hidden="true">✓</span> 10 GB event storage</li>
-            <li><span class="check" aria-hidden="true">✓</span> 100,000 state ops</li>
-            <li><span class="check" aria-hidden="true">✓</span> 30-day snapshot retention</li>
-            <li><span class="check" aria-hidden="true">✓</span> Basic snapshot scheduling</li>
-            <li><span class="check" aria-hidden="true">✓</span> Replay engine (limited)</li>
-          </ul>
-          <a class="btn btn-primary full-width" href={`${APP_DASHBOARD_ORIGIN}/pricing?tab=state-fabric&plan=sf_starter`}>Choose Starter</a>
-        </article>
-
-        <article class="price-card price-card--featured">
-          <h3 class="tier-name">Pro</h3>
-          <div class="price-row">
-            <span class="price-amount">$99</span>
-            <span class="price-period">/ month</span>
-          </div>
-          <p class="tier-desc">Production apps &amp; team projects.</p>
-          <div class="tier-desc tier-desc--tight">Storage: $0.08/GB · Ops: $0.35/100k</div>
-          <ul class="feature-list">
-            <li><span class="check" aria-hidden="true">✓</span> Up to 50 state objects</li>
-            <li><span class="check" aria-hidden="true">✓</span> 100 GB event storage</li>
-            <li><span class="check" aria-hidden="true">✓</span> 1M state ops</li>
-            <li><span class="check" aria-hidden="true">✓</span> 90-day snapshot retention</li>
-            <li><span class="check" aria-hidden="true">✓</span> Hot cache tier</li>
-            <li><span class="check" aria-hidden="true">✓</span> Fast deterministic replay</li>
-            <li><span class="check" aria-hidden="true">✓</span> Replay API + billing analytics</li>
-          </ul>
-          <a class="btn btn-primary full-width" href={`${APP_DASHBOARD_ORIGIN}/pricing?tab=state-fabric&plan=sf_pro`}>Choose Pro</a>
-        </article>
-
-        <article class="price-card">
-          <h3 class="tier-name">Business</h3>
-          <div class="price-row">
-            <span class="price-amount">$499</span>
-            <span class="price-period">/ month</span>
-          </div>
-          <p class="tier-desc">Business-critical systems.</p>
-          <div class="tier-desc tier-desc--tight">Storage: $0.06/GB · Archive: $30/TB/mo</div>
-          <ul class="feature-list">
-            <li><span class="check" aria-hidden="true">✓</span> Up to 500 state objects</li>
-            <li><span class="check" aria-hidden="true">✓</span> 1 TB event storage</li>
-            <li><span class="check" aria-hidden="true">✓</span> 10M state ops</li>
-            <li><span class="check" aria-hidden="true">✓</span> 180-day retention</li>
-            <li><span class="check" aria-hidden="true">✓</span> Multi-region replication</li>
-            <li><span class="check" aria-hidden="true">✓</span> Dedicated hot cache</li>
-            <li><span class="check" aria-hidden="true">✓</span> SLA + advanced analytics</li>
-            <li><span class="check" aria-hidden="true">✓</span> Event subscription streams</li>
-          </ul>
-          <a class="btn btn-primary full-width" href={`${APP_DASHBOARD_ORIGIN}/pricing?tab=state-fabric&plan=sf_business`}>Choose Business</a>
-        </article>
-
-        <article class="price-card">
-          <h3 class="tier-name">Enterprise</h3>
-          <div class="price-row">
-            <span class="price-amount price-amount--custom">Custom</span>
-          </div>
-          <p class="tier-desc">Large enterprises &amp; regulated industries.</p>
-          <ul class="feature-list">
-            <li><span class="check" aria-hidden="true">✓</span> Unlimited state objects</li>
-            <li><span class="check" aria-hidden="true">✓</span> Unlimited event storage</li>
-            <li><span class="check" aria-hidden="true">✓</span> Unlimited ops</li>
-            <li><span class="check" aria-hidden="true">✓</span> 365-day retention</li>
-            <li><span class="check" aria-hidden="true">✓</span> Multi-region + edge replication</li>
-            <li><span class="check" aria-hidden="true">✓</span> Enterprise key management (BYOK)</li>
-            <li><span class="check" aria-hidden="true">✓</span> Immutable audit logs</li>
-            <li><span class="check" aria-hidden="true">✓</span> Replay export · Dedicated support</li>
-          </ul>
-          <a class="btn btn-secondary full-width" href="/contact">Contact sales</a>
-        </article>
-      </div>
-
-      <div class="statefabric-table-wrap">
-        <table class="agent-table statefabric-table">
-          <thead>
-            <tr>
-              <th scope="col">Feature</th>
-              <th scope="col">Sandbox</th>
-              <th scope="col">Starter</th>
-              <th scope="col">Pro</th>
-              <th scope="col">Business</th>
-              <th scope="col">Enterprise</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>State objects</td>
-              <td>1</td>
-              <td>5</td>
-              <td>50</td>
-              <td>500</td>
-              <td>Unlimited</td>
-            </tr>
-            <tr>
-              <td>Event storage</td>
-              <td>1 GB</td>
-              <td>10 GB</td>
-              <td>100 GB</td>
-              <td>1 TB</td>
-              <td>Unlimited</td>
-            </tr>
-            <tr>
-              <td>State ops</td>
-              <td>10K</td>
-              <td>100K</td>
-              <td>1M</td>
-              <td>10M</td>
-              <td>Unlimited</td>
-            </tr>
-            <tr>
-              <td>Snapshot retention</td>
-              <td>7 days</td>
-              <td>30 days</td>
-              <td>90 days</td>
-              <td>180 days</td>
-              <td>365 days</td>
-            </tr>
-            <tr>
-              <td>Replay</td>
-              <td>—</td>
-              <td>Limited</td>
-              <td>Fast + API</td>
-              <td>Full</td>
-              <td>Export</td>
-            </tr>
-            <tr>
-              <td>Multi-region</td>
-              <td>—</td>
-              <td>—</td>
-              <td>—</td>
-              <td>Yes</td>
-              <td>Yes + edge</td>
-            </tr>
-            <tr>
-              <td>Hot cache</td>
-              <td>—</td>
-              <td>—</td>
-              <td>Yes</td>
-              <td>Dedicated</td>
-              <td>Dedicated</td>
-            </tr>
-            <tr>
-              <td>Support</td>
-              <td>Community</td>
-              <td>Email</td>
-              <td>Priority</td>
-              <td>SLA</td>
-              <td>Dedicated</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="statefabric-addons">
-        <h3 class="statefabric-addons-title">Optional add-ons</h3>
-        <p class="muted statefabric-addons-sub">
-          Enhance any State Fabric plan with performance, security, or analytics add-ons.
-        </p>
-
-        <div class="addon-grid">
-          <article class="addon-card">
-            <div class="addon-top">
-              <h4>Hot Cache Booster</h4>
-              <div class="addon-price">
-                $49 <span>/mo per 5GB</span>
-              </div>
-            </div>
-            <p class="addon-desc">Reduces replay and read costs.</p>
-          </article>
-
-          <article class="addon-card">
-            <div class="addon-top">
-              <h4>Advanced Security Pack</h4>
-              <div class="addon-price">
-                $99 <span>/mo</span>
-              </div>
-            </div>
-            <p class="addon-desc">SOC2-friendly logs, key rotation, audit streams.</p>
-          </article>
-
-          <article class="addon-card">
-            <div class="addon-top">
-              <h4>AI Memory Pack</h4>
-              <div class="addon-price">
-                $149 <span>/mo</span>
-              </div>
-            </div>
-            <p class="addon-desc">Vector index, embeddings storage, fast read engine.</p>
-          </article>
-
-          <article class="addon-card">
-            <div class="addon-top">
-              <h4>Advanced Insights</h4>
-              <div class="addon-price">
-                $79 <span>/mo</span>
-              </div>
-            </div>
-            <p class="addon-desc">Cost forecasting, anomaly detection, hot path alerts.</p>
-          </article>
-        </div>
-
-        <p class="statefabric-note">
-          Add-on prices can change over time. Always confirm current rates in your billing page.
-        </p>
-      </div>
-    </div>
   </section>
 
   <section class="section section--alt">
@@ -638,19 +341,14 @@ const pricingSchemas = [faqSchema, productSchema];
               <td class="muted-cell">3 agents, basic discovery</td>
             </tr>
             <tr>
-              <td><strong>Starter</strong> (bundled)</td>
+              <td><strong>Bundled</strong> (Starter &amp; Professional)</td>
               <td class="agent-price-cell"><span class="price-amount" data-monthly="Included" data-annual="Included">Included</span></td>
-              <td class="muted-cell">100K AI calls/mo, 10 agents, 100 calls/min</td>
-            </tr>
-            <tr>
-              <td><strong>Professional</strong> (bundled)</td>
-              <td class="agent-price-cell"><span class="price-amount" data-monthly="Included" data-annual="Included">Included</span></td>
-              <td class="muted-cell">1M AI calls/mo, 100 agents, 500 calls/min</td>
+              <td class="muted-cell">10–100 agents, 100K–1M calls/mo, up to 500 concurrency</td>
             </tr>
             <tr>
               <td><strong>Enterprise</strong></td>
               <td class="agent-price-cell"><span class="price-amount" data-monthly="$299 / mo" data-annual="$249 / mo">$299 / mo</span></td>
-              <td class="muted-cell">5M AI calls/mo, 500 agents, 2K calls/min, $0.05/1K overage</td>
+              <td class="muted-cell">500 agents, 5M calls/mo, 2K calls/min, $0.05/1K overage</td>
             </tr>
             <tr>
               <td><strong>Agent Enterprise</strong></td>
@@ -667,6 +365,31 @@ const pricingSchemas = [faqSchema, productSchema];
     </div>
   </section>
 
+  <section class="section">
+    <div class="container">
+      <div class="details-cta">
+        <h3>Need more details?</h3>
+        <div class="details-cta-links">
+          <a class="details-cta-card" href="/state-fabric">
+            <span class="details-cta-icon">🧵</span>
+            <span class="details-cta-label">State Fabric</span>
+            <span class="details-cta-sub">5 plans, add-ons &amp; storage pricing</span>
+          </a>
+          <a class="details-cta-card" href="/pricing-details?tab=agents">
+            <span class="details-cta-icon">🤖</span>
+            <span class="details-cta-label">Agent execution</span>
+            <span class="details-cta-sub">Full agent table &amp; overage rates</span>
+          </a>
+          <a class="details-cta-card" href="/pricing-details?tab=bundles">
+            <span class="details-cta-icon">📦</span>
+            <span class="details-cta-label">Bundles</span>
+            <span class="details-cta-sub">Backend-in-a-Box plans</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="section faq-section">
     <div class="container container--narrow">
       <h2>Frequently asked questions</h2>
@@ -679,12 +402,6 @@ const pricingSchemas = [faqSchema, productSchema];
           <dt>How does the Trust API and verification billing work?</dt>
           <dd>
             Trust scores, attestations, and verification levels are part of the trust layer. Usage-based components are metered separately so you only pay for what agents and policies query—details appear alongside your workspace usage.
-          </dd>
-        </div>
-        <div class="faq-item">
-          <dt>Where does State Fabric pricing show up?</dt>
-          <dd>
-            State Fabric tiers are billed alongside your workspace plan. Optional add-ons can be enabled to increase performance, security, or analytics—confirm live rates in your billing page.
           </dd>
         </div>
         <div class="faq-item">

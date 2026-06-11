@@ -17,6 +17,7 @@ import {
   CheckCircle,
   Cloud,
   Code,
+  CreditCard,
   Database,
   Dna,
   Flame,
@@ -394,6 +395,12 @@ export const navigationSections: NavSection[] = [
         description: 'Account settings',
       },
       {
+        path: '/billing',
+        label: 'Billing',
+        icon: CreditCard,
+        description: 'Manage subscription, invoices, and payments',
+      },
+      {
         path: ROUTES.ENTERPRISE_SUPPORT,
         label: 'Support',
         icon: LifeBuoy,
@@ -442,6 +449,7 @@ export const NAV_LABEL_KEYS: Record<string, string> = {
   'State Fabric': 'nav.stateFabric',
   'GitHub Import': 'nav.githubImport',
   'Settings': 'nav.settings',
+  'Billing': 'nav.billing',
   'Support': 'nav.support',
   'Recent': 'nav.recent',
   'Getting Started': 'nav.gettingStarted',

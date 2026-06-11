@@ -38,6 +38,7 @@ import { MagicLinkVerifyPage } from '@/pages/AuthPage/MagicLinkVerifyPage';
 import { BrowseFunctionsPage } from '@/pages/BrowseFunctionsPage';
 import { BundlePricingPage } from '@/pages/BundlePricingPage';
 import BundleProvisioningPage from '@/pages/BundleProvisioningPage';
+import { BillingHubPage } from '@/pages/BillingHubPage';
 import { BrainPage } from '@/pages/BrainPage';
 import { CertificationPage } from '@/pages/CertificationPage';
 import ChangelogPage from '@/pages/ChangelogPage';
@@ -633,6 +634,7 @@ function AppContent() {
           <Route path="agent-memories/new" element={<AgentMemoryDetailPage />} />
           <Route path="agent-memories/:id" element={<AgentMemoryDetailPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="billing" element={<BillingHubPage />} />
           <Route path="api-keys" element={<APIKeysPage />} />
           <Route path="api-keys/:keyId" element={<APIKeyDetailPage />} />
           {/* Same pages at /dashboard/api-keys for consistent nav links */}
