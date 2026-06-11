@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -36,7 +37,7 @@ func (c *GitHubConnector) Authenticate(ctx context.Context, creds map[string]str
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
@@ -69,7 +70,7 @@ func (c *GitHubConnector) FetchData(ctx context.Context, config map[string]inter
 	}
 	req.Header.Set("Authorization", "Bearer "+token.(string))
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -97,7 +98,7 @@ func (c *GitHubConnector) Search(ctx context.Context, query string, config map[s
 	}
 	req.Header.Set("Authorization", "Bearer "+token.(string))
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err

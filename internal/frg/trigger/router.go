@@ -242,7 +242,8 @@ func (r *Router) GetWebhookHandler() http.HandlerFunc {
 			// Execute synchronously and return result
 			result, err := r.engine.ExecuteSync(ctx, graphDef, inputData)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				logrus.WithError(err).WithField("graph", trigger.GraphName).Error("Sync execution failed")
+				http.Error(w, "Graph execution failed", http.StatusInternalServerError)
 				return
 			}
 
@@ -253,7 +254,8 @@ func (r *Router) GetWebhookHandler() http.HandlerFunc {
 			// Start async execution and return instance ID
 			instance, err := r.engine.ExecuteAsync(ctx, graphDef, inputData)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				logrus.WithError(err).WithField("graph", trigger.GraphName).Error("Async execution failed")
+				http.Error(w, "Graph execution failed", http.StatusInternalServerError)
 				return
 			}
 

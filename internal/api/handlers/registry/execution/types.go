@@ -149,7 +149,7 @@ type ExecutionMetadata struct {
 type ExecutionOutcome string
 
 const (
-	OutcomeSuccess ExecutionOutcome = "success"
+	OutcomeSuccess   ExecutionOutcome = "success"
 	OutcomeError     ExecutionOutcome = "error"
 	OutcomeTimeout   ExecutionOutcome = "timeout"
 	OutcomeOOM       ExecutionOutcome = "oom"

@@ -3,10 +3,8 @@ package statefabric
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,86 +18,14 @@ import (
 )
 
 type Handler struct {
-	repo          *repo.Repository
-	sfAddons      *statefabricaddons.Repository
-	cleanupSvc    *repo.CleanupService
+	repo         *repo.Repository
+	sfAddons     *statefabricaddons.Repository
+	cleanupSvc   *repo.CleanupService
 	planResolver  PlanResolver
-	rateLimiters  map[string]*pipelineRateLimiter
-	rateLimitLock sync.RWMutex
 }
 
 type PlanResolver interface {
 	GetTenantPlan(ctx context.Context, tenantID uuid.UUID) string
-}
-
-type pipelineRateLimiter struct {
-	mu       sync.Mutex
-	counts   map[uuid.UUID]int
-	window   time.Duration
-	limit    int
-	lastReset time.Time
-}
-
-func newPipelineRateLimiter(window time.Duration, limit int) *pipelineRateLimiter {
-	return &pipelineRateLimiter{
-		counts:    make(map[uuid.UUID]int),
-		window:    window,
-		limit:     limit,
-		lastReset: time.Now(),
-	}
-}
-
-func (rl *pipelineRateLimiter) Allow(pipelineID uuid.UUID) bool {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-
-	now := time.Now()
-	if now.Sub(rl.lastReset) >= rl.window {
-		rl.counts = make(map[uuid.UUID]int)
-		rl.lastReset = now
-	}
-
-	if rl.counts[pipelineID] >= rl.limit {
-		return false
-	}
-
-	rl.counts[pipelineID]++
-	return true
-}
-
-func (rl *pipelineRateLimiter) GetRemaining(pipelineID uuid.UUID) int {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-	remaining := rl.limit - rl.counts[pipelineID]
-	if remaining < 0 {
-		return 0
-	}
-	return remaining
-}
-
-func (rl *pipelineRateLimiter) GetResetTime() time.Time {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-	return rl.lastReset.Add(rl.window)
-}
-
-func (h *Handler) getOrCreatePipelineRateLimiter(pipelineID uuid.UUID, window time.Duration, limit int) *pipelineRateLimiter {
-	key := pipelineID.String()
-
-	h.rateLimitLock.Lock()
-	defer h.rateLimitLock.Unlock()
-
-	if h.rateLimiters == nil {
-		h.rateLimiters = make(map[string]*pipelineRateLimiter)
-	}
-
-	if limiter, exists := h.rateLimiters[key]; exists {
-		return limiter
-	}
-
-	limiter := newPipelineRateLimiter(window, limit)
-	h.rateLimiters[key] = limiter
-	return limiter
 }
 
 func NewHandler(r *repo.Repository, sfAddons *statefabricaddons.Repository) *Handler {
@@ -238,7 +164,7 @@ func (h *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 		Search:   r.URL.Query().Get("search"),
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to list fabric items", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, items)
@@ -260,7 +186,7 @@ func (h *Handler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	item, err := h.repo.CreateFabric(r.Context(), tenantID, req.Name, req.Description, req.Type, req.Settings)
 	if err != nil {
 		monitoring.RecordStateFabricOperation(tenantID.String(), "", "create", "error")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to create fabric item", http.StatusInternalServerError)
 		return
 	}
 
@@ -289,7 +215,7 @@ func (h *Handler) HandleGet(w http.ResponseWriter, r *http.Request) {
 	item, err := h.repo.GetFabric(r.Context(), tenantID, fabricID)
 	if err != nil {
 		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "read", "not_found")
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, "Fabric item not found", http.StatusNotFound)
 		return
 	}
 	monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "read", "success")
@@ -328,7 +254,8 @@ func (h *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	item, err := h.repo.UpdateFabric(r.Context(), tenantID, fabricID, updates)
 	if err != nil {
 		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "update", "error")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to update state fabric")
+		http.Error(w, "Failed to update state fabric", http.StatusInternalServerError)
 		return
 	}
 	monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "update", "success")
@@ -350,7 +277,8 @@ func (h *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.repo.DeleteFabric(r.Context(), tenantID, fabricID); err != nil {
 		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "delete", "error")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to delete state fabric")
+		http.Error(w, "Failed to delete state fabric", http.StatusInternalServerError)
 		return
 	}
 	monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "delete", "success")
@@ -373,14 +301,14 @@ func (h *Handler) HandleGetMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 	item, err := h.repo.GetFabric(r.Context(), tenantID, fabricID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to get state fabric metrics")
+		http.Error(w, "State fabric not found", http.StatusNotFound)
 		return
 	}
 	writeJSON(w, http.StatusOK, item.Metrics)
 }
 
 func (h *Handler) HandleListStores(w http.ResponseWriter, r *http.Request) {
-	start := time.Now()
 	tenantID, _, ok := tenantAndUser(r, w)
 	if !ok {
 		return
@@ -391,17 +319,14 @@ func (h *Handler) HandleListStores(w http.ResponseWriter, r *http.Request) {
 	}
 	stores, err := h.repo.ListStores(r.Context(), tenantID, fabricID)
 	if err != nil {
-		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "list_stores", "error")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to list stores")
+		http.Error(w, "Stores not found", http.StatusNotFound)
 		return
 	}
-	monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "list_stores", "success")
-	monitoring.RecordStateFabricOperationDuration(tenantID.String(), fabricID.String(), "list_stores", time.Since(start))
 	writeJSON(w, http.StatusOK, stores)
 }
 
 func (h *Handler) HandleCreateStore(w http.ResponseWriter, r *http.Request) {
-	start := time.Now()
 	tenantID, _, ok := tenantAndUser(r, w)
 	if !ok {
 		return
@@ -412,7 +337,6 @@ func (h *Handler) HandleCreateStore(w http.ResponseWriter, r *http.Request) {
 	}
 	var req createStoreRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "create_store", "bad_request")
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
@@ -424,18 +348,14 @@ func (h *Handler) HandleCreateStore(w http.ResponseWriter, r *http.Request) {
 	}
 	store, err := h.repo.CreateStore(r.Context(), tenantID, fabricID, req.Name, req.Type, req.MaxSize, req.Region)
 	if err != nil {
-		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "create_store", "error")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to create store")
+		http.Error(w, "Failed to create store", http.StatusInternalServerError)
 		return
 	}
-	monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "create_store", "success")
-	monitoring.RecordStateFabricOperationDuration(tenantID.String(), fabricID.String(), "create_store", time.Since(start))
-	monitoring.UpdateStateFabricStoreCount(tenantID.String(), fabricID.String(), 1)
 	writeJSON(w, http.StatusCreated, store)
 }
 
 func (h *Handler) HandleDeleteStore(w http.ResponseWriter, r *http.Request) {
-	start := time.Now()
 	tenantID, _, ok := tenantAndUser(r, w)
 	if !ok {
 		return
@@ -445,17 +365,14 @@ func (h *Handler) HandleDeleteStore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.repo.DeleteStore(r.Context(), tenantID, fabricID, mux.Vars(r)["storeId"]); err != nil {
-		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "delete_store", "error")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to delete store")
+		http.Error(w, "Failed to delete store", http.StatusInternalServerError)
 		return
 	}
-	monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "delete_store", "success")
-	monitoring.RecordStateFabricOperationDuration(tenantID.String(), fabricID.String(), "delete_store", time.Since(start))
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) HandleListPipelines(w http.ResponseWriter, r *http.Request) {
-	start := time.Now()
 	tenantID, _, ok := tenantAndUser(r, w)
 	if !ok {
 		return
@@ -466,12 +383,10 @@ func (h *Handler) HandleListPipelines(w http.ResponseWriter, r *http.Request) {
 	}
 	item, err := h.repo.GetFabric(r.Context(), tenantID, fabricID)
 	if err != nil {
-		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "list_pipelines", "error")
-		http.Error(w, err.Error(), http.StatusNotFound)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to list pipelines")
+		http.Error(w, "State fabric not found", http.StatusNotFound)
 		return
 	}
-	monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "list_pipelines", "success")
-	monitoring.RecordStateFabricOperationDuration(tenantID.String(), fabricID.String(), "list_pipelines", time.Since(start))
 	writeJSON(w, http.StatusOK, item.Pipelines)
 }
 
@@ -491,7 +406,8 @@ func (h *Handler) HandleCreatePipeline(w http.ResponseWriter, r *http.Request) {
 	}
 	pipeline, err := h.repo.CreatePipeline(r.Context(), tenantID, fabricID, req.Name, req.Description, req.Steps)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to create pipeline")
+		http.Error(w, "Failed to create pipeline", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusCreated, pipeline)
@@ -531,7 +447,8 @@ func (h *Handler) HandleUpdatePipeline(w http.ResponseWriter, r *http.Request) {
 	}
 	pipeline, err := h.repo.UpdatePipeline(r.Context(), tenantID, fabricID, pipelineID, updates)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).WithField("pipelineID", pipelineID).Error("Failed to update pipeline")
+		http.Error(w, "Failed to update pipeline", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, pipeline)
@@ -552,7 +469,8 @@ func (h *Handler) HandleDeletePipeline(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.repo.DeletePipeline(r.Context(), tenantID, fabricID, pipelineID); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).WithField("pipelineID", pipelineID).Error("Failed to delete pipeline")
+		http.Error(w, "Failed to delete pipeline", http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -572,37 +490,15 @@ func (h *Handler) HandleExecutePipeline(w http.ResponseWriter, r *http.Request) 
 	if !parsed {
 		return
 	}
-
-	rateLimiter := h.getOrCreatePipelineRateLimiter(pipelineID, time.Minute, 60)
-
-	if !rateLimiter.Allow(pipelineID) {
-		logrus.WithFields(logrus.Fields{
-			"tenant_id":   tenantID,
-			"fabric_id":   fabricID,
-			"pipeline_id": pipelineID,
-		}).Warn("Pipeline execution rate limit exceeded")
-		w.Header().Set("X-RateLimit-Limit", fmt.Sprintf("%d", rateLimiter.limit))
-		w.Header().Set("X-RateLimit-Remaining", "0")
-		w.Header().Set("X-RateLimit-Reset", fmt.Sprintf("%d", rateLimiter.GetResetTime().Unix()))
-		monitoring.RecordStateFabricPipelineExecution(tenantID.String(), fabricID.String(), pipelineID.String(), "rate_limited")
-		http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
-		return
-	}
-
 	var input map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-
-	remaining := rateLimiter.GetRemaining(pipelineID)
-	w.Header().Set("X-RateLimit-Limit", fmt.Sprintf("%d", rateLimiter.limit))
-	w.Header().Set("X-RateLimit-Remaining", fmt.Sprintf("%d", remaining))
-	w.Header().Set("X-RateLimit-Reset", fmt.Sprintf("%d", rateLimiter.GetResetTime().Unix()))
-
 	result, err := h.repo.ExecutePipeline(r.Context(), tenantID, fabricID, pipelineID, input)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).WithField("pipelineID", pipelineID).Error("Failed to execute pipeline")
+		http.Error(w, "Failed to execute pipeline", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, result)
@@ -643,7 +539,8 @@ func (h *Handler) HandleListEvents(w http.ResponseWriter, r *http.Request) {
 		Offset:    offset,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to list events")
+		http.Error(w, "Failed to list events", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{"events": events, "total": total})
@@ -660,7 +557,8 @@ func (h *Handler) HandleListSnapshots(w http.ResponseWriter, r *http.Request) {
 	}
 	items, err := h.repo.ListSnapshots(r.Context(), tenantID, fabricID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to list snapshots")
+		http.Error(w, "Failed to list snapshots", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, items)
@@ -682,7 +580,8 @@ func (h *Handler) HandleCreateSnapshot(w http.ResponseWriter, r *http.Request) {
 	}
 	item, err := h.repo.CreateSnapshot(r.Context(), tenantID, fabricID, req.Name)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to create snapshot")
+		http.Error(w, "Failed to create snapshot", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusCreated, item)
@@ -703,7 +602,8 @@ func (h *Handler) HandleDeleteSnapshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.repo.DeleteSnapshot(r.Context(), tenantID, fabricID, snapshotID); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).WithField("snapshotID", snapshotID).Error("Failed to delete snapshot")
+		http.Error(w, "Failed to delete snapshot", http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -723,7 +623,8 @@ func (h *Handler) HandleListReplays(w http.ResponseWriter, r *http.Request) {
 	}
 	items, err := h.repo.ListReplays(r.Context(), tenantID, fabricID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to list replays")
+		http.Error(w, "Failed to list replays", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, items)
@@ -746,14 +647,10 @@ func (h *Handler) HandleCreateReplay(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	item, err := h.repo.CreateReplay(r.Context(), tenantID, fabricID, repo.ReplayCreateRequest{
-		TenantID:    tenantID,
-		SnapshotID:   req.SnapshotID,
-		StartEventID: req.StartEventID,
-		EndEventID:   req.EndEventID,
-	})
+	item, err := h.repo.CreateReplay(r.Context(), tenantID, fabricID, repo.ReplayCreateRequest(req))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to create replay")
+		http.Error(w, "Failed to create replay", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusCreated, item)
@@ -774,7 +671,8 @@ func (h *Handler) HandleGetReplay(w http.ResponseWriter, r *http.Request) {
 	}
 	item, err := h.repo.GetReplay(r.Context(), tenantID, fabricID, vars["replayId"])
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		logrus.WithError(err).WithField("fabricID", fabricID).WithField("replayId", vars["replayId"]).Error("Failed to get replay")
+		http.Error(w, "Replay not found", http.StatusNotFound)
 		return
 	}
 	writeJSON(w, http.StatusOK, item)

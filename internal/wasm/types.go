@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 )
 
 // FetchRequest represents an HTTP request from WASM
@@ -112,7 +113,7 @@ func (h *DefaultHostHandler) Fetch(request string) (string, error) {
 	for key, value := range req.Headers {
 		httpReq.Header.Set(key, value)
 	}
-	client := &http.Client{}
+	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(httpReq)
 	if err != nil {
 		return "", fmt.Errorf("failed to make HTTP request: %w", err)

@@ -17,6 +17,13 @@ type CommunityRepository struct {
 	db *gorm.DB
 }
 
+func escapeLikeWildcards(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `%`, `\%`)
+	s = strings.ReplaceAll(s, `_`, `\_`)
+	return s
+}
+
 // NewCommunityRepository creates a CommunityRepository.
 func NewCommunityRepository(db *gorm.DB) *CommunityRepository {
 	return &CommunityRepository{db: db}
@@ -123,8 +130,8 @@ func (r *CommunityRepository) ListPosts(ctx context.Context, opts ListPostsOptio
 		q = q.Where("c.slug = ?", opts.CategorySlug)
 	}
 	if opts.Query != "" {
-		like := "%" + strings.ToLower(opts.Query) + "%"
-		q = q.Where("(LOWER(p.title) LIKE ? OR LOWER(p.body) LIKE ?)", like, like)
+		like := "%" + escapeLikeWildcards(strings.ToLower(opts.Query)) + "%"
+		q = q.Where("(LOWER(p.title) LIKE ? ESCAPE '\' OR LOWER(p.body) LIKE ? ESCAPE '\')", like, like)
 	}
 
 	switch opts.Sort {

@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -25,9 +26,9 @@ func NewSessionCleanupService(repo Repository) *SessionCleanupService {
 }
 
 // CleanupExpiredSessions removes all expired sessions from the database
-func (s *SessionCleanupService) CleanupExpiredSessions() error {
+func (s *SessionCleanupService) CleanupExpiredSessions(ctx context.Context) error {
 	start := time.Now()
-	deletedCount, err := s.repo.DeleteExpiredSessions()
+	deletedCount, err := s.repo.DeleteExpiredSessions(ctx)
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to cleanup expired sessions")
 		return err
@@ -54,18 +55,26 @@ func (s *SessionCleanupService) StartCleanupRoutine(interval time.Duration) {
 	s.logger.WithField("interval", interval).Info("Starting session cleanup routine")
 
 	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				s.logger.WithFields(logrus.Fields{
+					"panic": rec,
+					"stack": fmt.Sprintf("%v", rec),
+				}).Error("Session cleanup goroutine panicked")
+			}
+		}()
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 
 		// Run cleanup immediately on startup
-		if err := s.CleanupExpiredSessions(); err != nil {
+		if err := s.CleanupExpiredSessions(context.Background()); err != nil {
 			s.logger.WithError(err).Error("Initial session cleanup failed")
 		}
 
 		for {
 			select {
 			case <-ticker.C:
-				if err := s.CleanupExpiredSessions(); err != nil {
+				if err := s.CleanupExpiredSessions(context.Background()); err != nil {
 					s.logger.WithError(err).Error("Periodic session cleanup failed")
 				}
 			case <-s.stop:
@@ -82,14 +91,14 @@ func (s *SessionCleanupService) Stop() {
 }
 
 // CleanupUserSessions removes all sessions for a specific user (useful when user logs out or is deactivated)
-func (s *SessionCleanupService) CleanupUserSessions(userID string) error {
+func (s *SessionCleanupService) CleanupUserSessions(ctx context.Context, userID string) error {
 	uid, err := uuid.Parse(userID)
 	if err != nil {
 		return fmt.Errorf("invalid user ID: %w", err)
 	}
 
 	start := time.Now()
-	if err := s.repo.DeleteUserSessions(uid); err != nil {
+	if err := s.repo.DeleteUserSessions(ctx, uid); err != nil {
 		s.logger.WithError(err).Error("Failed to cleanup user sessions")
 		return err
 	}

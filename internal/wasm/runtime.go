@@ -239,6 +239,15 @@ func (r *PythonRuntime) ExecuteWithContext(ctx context.Context, input []byte) ([
 	errorChan := make(chan error, 1)
 
 	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				logrus.WithFields(logrus.Fields{
+					"panic": rec,
+					"stack": string(debug.Stack()),
+				}).Error("WASM execution goroutine panicked")
+				errorChan <- fmt.Errorf("execution panicked: %v", rec)
+			}
+		}()
 		res, err := r.executeInternal(input)
 		if err != nil {
 			errorChan <- err

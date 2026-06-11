@@ -389,10 +389,16 @@ func (e *ReplayEngine) replayPhase(ctx context.Context, replay *tmstorage.Replay
 		retries := 0
 		for execErr != nil && retries < maxItemRetries {
 			retries++
+			backoff := time.Duration(retries) * 100 * time.Millisecond
+			if backoff > 2*time.Second {
+				backoff = 2 * time.Second
+			}
+			time.Sleep(backoff)
 			logrus.WithFields(logrus.Fields{
 				"item_id": item.ID,
 				"attempt": retries + 1,
 				"error":   execErr.Error(),
+				"backoff": backoff.String(),
 			}).Warn("Retrying failed replay item")
 			newOutput, durationMs, execErr = e.exec.Execute(fnVersion, item.OriginalInput, timeoutMs)
 		}

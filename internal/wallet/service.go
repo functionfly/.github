@@ -4,27 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
-	"github.com/sirupsen/logrus"
-)
-
-const (
-	spendCapFailModeEnvKey          = "SPEND_CAP_FAIL_MODE"
-	lowBalanceAlertThresholdEnvKey  = "AGENT_WALLET_LOW_BALANCE_USD"
-	cacheRetryMaxAttemptsEnvKey     = "CACHE_RETRY_MAX_ATTEMPTS"
-	cacheRetryBaseDelayMsEnvKey     = "CACHE_RETRY_BASE_DELAY_MS"
-	walletLockTTLSeconds            = 5
-)
-
-var (
-	defaultSpendCapFailMode          = "closed"
-	defaultLowBalanceAlertThreshold  = 5.0
-	defaultCacheRetryMaxAttempts     = 3
-	defaultCacheRetryBaseDelayMs     = 100
 )
 
 // Service provides high-level wallet operations with caching and notifications
@@ -32,67 +15,13 @@ type Service struct {
 	repo       *Repository
 	redis      *redis.Client
 	notifyFunc func(ctx context.Context, userID uuid.UUID, notificationType string, data map[string]interface{}) error
-
-	// Configuration
-	spendCapFailMode         string
-	lowBalanceAlertThreshold float64
-	cacheRetryMaxAttempts    int
-	cacheRetryBaseDelay      time.Duration
 }
 
 // NewService creates a new wallet service
 func NewService(repo *Repository, redisClient *redis.Client) *Service {
-	s := &Service{
+	return &Service{
 		repo:  repo,
 		redis: redisClient,
-	}
-	s.loadConfig()
-	return s
-}
-
-// loadConfig loads configuration from environment variables
-func (s *Service) loadConfig() {
-	// Spend cap fail mode
-	if v := os.Getenv(spendCapFailModeEnvKey); v != "" {
-		s.spendCapFailMode = v
-	} else {
-		s.spendCapFailMode = defaultSpendCapFailMode
-	}
-
-	// Low balance alert threshold
-	if v := os.Getenv(lowBalanceAlertThresholdEnvKey); v != "" {
-		var f float64
-		if _, err := fmt.Sscanf(v, "%f", &f); err == nil && f > 0 {
-			s.lowBalanceAlertThreshold = f
-		} else {
-			s.lowBalanceAlertThreshold = defaultLowBalanceAlertThreshold
-		}
-	} else {
-		s.lowBalanceAlertThreshold = defaultLowBalanceAlertThreshold
-	}
-
-	// Cache retry max attempts
-	if v := os.Getenv(cacheRetryMaxAttemptsEnvKey); v != "" {
-		var i int
-		if _, err := fmt.Sscanf(v, "%d", &i); err == nil && i > 0 {
-			s.cacheRetryMaxAttempts = i
-		} else {
-			s.cacheRetryMaxAttempts = defaultCacheRetryMaxAttempts
-		}
-	} else {
-		s.cacheRetryMaxAttempts = defaultCacheRetryMaxAttempts
-	}
-
-	// Cache retry base delay
-	if v := os.Getenv(cacheRetryBaseDelayMsEnvKey); v != "" {
-		var i int
-		if _, err := fmt.Sscanf(v, "%d", &i); err == nil && i > 0 {
-			s.cacheRetryBaseDelay = time.Duration(i) * time.Millisecond
-		} else {
-			s.cacheRetryBaseDelay = time.Duration(defaultCacheRetryBaseDelayMs) * time.Millisecond
-		}
-	} else {
-		s.cacheRetryBaseDelay = time.Duration(defaultCacheRetryBaseDelayMs) * time.Millisecond
 	}
 }
 
@@ -212,10 +141,10 @@ func (s *Service) CreditAgentWallet(ctx context.Context, agentID string, amountU
 	// Send notification if callback is set and we have initiating user
 	if s.notifyFunc != nil && initiatingUserID != nil {
 		notificationData := map[string]interface{}{
-			"agent_id":        agentID,
-			"amount_usd":      amountUSD,
-			"balance_usd":     update.CurrentBalance,
-			"transaction_id":  update.TransactionID.String(),
+			"agent_id":       agentID,
+			"amount_usd":     amountUSD,
+			"balance_usd":    update.CurrentBalance,
+			"transaction_id": update.TransactionID.String(),
 		}
 		go s.notifyFunc(context.Background(), *initiatingUserID, "wallet_top_up", notificationData)
 	}
@@ -356,13 +285,14 @@ func (s *Service) ConsumeAgentCredits(ctx context.Context, agentID string, amoun
 
 	s.invalidateWalletCache(ctx, wallet.ID)
 
-	// Check for low balance notification using configurable threshold
-	if s.notifyFunc != nil && update.CurrentBalance < s.lowBalanceAlertThreshold {
+	// Check for low balance notification
+	if s.notifyFunc != nil && update.CurrentBalance < 5.0 {
+		// Parse owner as user ID for notification (if applicable)
 		if wallet.UserID != nil {
 			notificationData := map[string]interface{}{
 				"agent_id":      agentID,
 				"balance_usd":   update.CurrentBalance,
-				"threshold_usd": s.lowBalanceAlertThreshold,
+				"threshold_usd": 5.0,
 			}
 			go s.notifyFunc(context.Background(), *wallet.UserID, "wallet_low_balance", notificationData)
 		}
@@ -445,27 +375,15 @@ func (s *Service) GetAgentBalance(ctx context.Context, agentID string) (float64,
 func (s *Service) CheckAgentSpendCap(ctx context.Context, agentID string, estimatedCost float64) (bool, error) {
 	wallet, err := s.GetAgentWallet(ctx, agentID)
 	if err != nil {
-		if s.spendCapFailMode == "closed" {
-			return false, fmt.Errorf("wallet not found: %w", err)
-		}
-		// Fail-open mode: allow but log warning
-		logrus.Warn("Spend cap check failed, allowing due to fail-open mode", "agent_id", agentID, "error", err)
+		// Non-fatal: allow execution if wallet can't be loaded
 		return true, nil
 	}
 	if wallet == nil {
-		if s.spendCapFailMode == "closed" {
-			return false, fmt.Errorf("wallet not found for agent: %s", agentID)
-		}
-		logrus.Warn("Spend cap check: wallet not found, allowing due to fail-open mode", "agent_id", agentID)
 		return true, nil
 	}
 
 	check, err := s.repo.CheckSpendCap(ctx, wallet.ID, estimatedCost)
 	if err != nil {
-		if s.spendCapFailMode == "closed" {
-			return false, fmt.Errorf("spend cap check failed: %w", err)
-		}
-		logrus.Warn("Spend cap check failed, allowing due to fail-open mode", "agent_id", agentID, "error", err)
 		return true, nil
 	}
 
@@ -540,42 +458,13 @@ func (s *Service) GetBalanceHistory(ctx context.Context, query BalanceHistoryQue
 // Cache Operations
 // ============================================
 
-func (s *Service) invalidateWalletCache(ctx context.Context, walletID uuid.UUID) error {
+func (s *Service) invalidateWalletCache(ctx context.Context, walletID uuid.UUID) {
 	if s.redis == nil {
-		return nil
+		return
 	}
-
-	keys := []string{
-		fmt.Sprintf("wallet:%s", walletID.String()),
-		fmt.Sprintf("wallet:summary:%s", walletID.String()),
-	}
-
-	var lastErr error
-	for attempt := 0; attempt < s.cacheRetryMaxAttempts; attempt++ {
-		if attempt > 0 {
-			delay := s.cacheRetryBaseDelay * time.Duration(1<<(attempt-1))
-			time.Sleep(delay)
-		}
-
-		for _, key := range keys {
-			if err := s.redis.Del(ctx, key).Err(); err != nil {
-				lastErr = err
-				logrus.Warn("Cache invalidation retry",
-					"attempt", attempt+1,
-					"key", key,
-					"wallet_id", walletID,
-					"err", err)
-				continue
-			}
-		}
-		return nil
-	}
-
-	logrus.Error("Cache invalidation failed after max retries",
-		"wallet_id", walletID,
-		"max_attempts", s.cacheRetryMaxAttempts,
-		"err", lastErr)
-	return lastErr
+	// Cache invalidation is fire-and-forget
+	_ = s.redis.Del(ctx, fmt.Sprintf("wallet:%s", walletID.String()))
+	_ = s.redis.Del(ctx, fmt.Sprintf("wallet:summary:%s", walletID.String()))
 }
 
 // CacheWalletBalance caches wallet balance in Redis
@@ -611,42 +500,6 @@ func (s *Service) GetCachedWalletBalance(ctx context.Context, walletID uuid.UUID
 }
 
 // ============================================
-// Distributed Lock Operations
-// ============================================
-
-// AcquireWalletLock acquires a distributed lock for a wallet
-func (s *Service) AcquireWalletLock(ctx context.Context, walletID uuid.UUID, ttl time.Duration) (bool, error) {
-	if s.redis == nil {
-		return true, nil
-	}
-	key := fmt.Sprintf("wallet:lock:%s", walletID.String())
-	return s.redis.SetNX(ctx, key, "1", ttl).Result()
-}
-
-// ReleaseWalletLock releases a distributed lock for a wallet
-func (s *Service) ReleaseWalletLock(ctx context.Context, walletID uuid.UUID) error {
-	if s.redis == nil {
-		return nil
-	}
-	key := fmt.Sprintf("wallet:lock:%s", walletID.String())
-	return s.redis.Del(ctx, key).Err()
-}
-
-// WithWalletLock executes a function while holding a distributed lock on the wallet
-func (s *Service) WithWalletLock(ctx context.Context, walletID uuid.UUID, fn func() error) error {
-	acquired, err := s.AcquireWalletLock(ctx, walletID, time.Duration(walletLockTTLSeconds)*time.Second)
-	if err != nil {
-		return fmt.Errorf("failed to acquire wallet lock: %w", err)
-	}
-	if !acquired {
-		return fmt.Errorf("could not acquire wallet lock for %s", walletID)
-	}
-	defer s.ReleaseWalletLock(ctx, walletID)
-
-	return fn()
-}
-
-// ============================================
 // Admin Operations
 // ============================================
 
@@ -675,18 +528,9 @@ func (s *Service) GetLowBalanceWallets(ctx context.Context, threshold float64, o
 // ============================================
 
 // AdminCredit adds credits to a wallet by admin (for adjustments)
-// Requires explicit idempotency key to be passed by the caller
-func (s *Service) AdminCredit(ctx context.Context, walletID uuid.UUID, amountUSD float64, reference, reason, idempotencyKey string, adminUserID uuid.UUID) (*BalanceUpdate, error) {
+func (s *Service) AdminCredit(ctx context.Context, walletID uuid.UUID, amountUSD float64, reference, reason string, adminUserID uuid.UUID) (*BalanceUpdate, error) {
 	if amountUSD <= 0 {
 		return nil, fmt.Errorf("credit amount must be positive")
-	}
-
-	if idempotencyKey == "" {
-		return nil, fmt.Errorf("idempotency_key is required for admin credit operations")
-	}
-
-	if len(idempotencyKey) > 64 {
-		return nil, fmt.Errorf("idempotency_key must be 64 characters or less")
 	}
 
 	wallet, err := s.repo.GetWalletByID(ctx, walletID)
@@ -702,7 +546,7 @@ func (s *Service) AdminCredit(ctx context.Context, walletID uuid.UUID, amountUSD
 		WalletID:       walletID,
 		AmountUSD:      amountUSD,
 		Reference:      reference,
-		IdempotencyKey: idempotencyKey,
+		IdempotencyKey: fmt.Sprintf("admin:%s:%d", adminID, time.Now().Unix()),
 		TriggeredBy: TriggeredByInfo{
 			Type: "admin",
 			ID:   adminID,
@@ -710,7 +554,7 @@ func (s *Service) AdminCredit(ctx context.Context, walletID uuid.UUID, amountUSD
 		Metadata: map[string]interface{}{
 			"type":          "admin_adjustment",
 			"reason":        reason,
-			"admin_user_id":  adminID,
+			"admin_user_id": adminID,
 			"is_credit":     true,
 		},
 	}
@@ -731,18 +575,9 @@ func (s *Service) AdminCredit(ctx context.Context, walletID uuid.UUID, amountUSD
 }
 
 // AdminDebit debits a wallet by admin (for adjustments)
-// Requires explicit idempotency key to be passed by the caller
-func (s *Service) AdminDebit(ctx context.Context, walletID uuid.UUID, amountUSD float64, reference, reason, idempotencyKey string, adminUserID uuid.UUID) (*BalanceUpdate, error) {
+func (s *Service) AdminDebit(ctx context.Context, walletID uuid.UUID, amountUSD float64, reference, reason string, adminUserID uuid.UUID) (*BalanceUpdate, error) {
 	if amountUSD <= 0 {
 		return nil, fmt.Errorf("debit amount must be positive")
-	}
-
-	if idempotencyKey == "" {
-		return nil, fmt.Errorf("idempotency_key is required for admin debit operations")
-	}
-
-	if len(idempotencyKey) > 64 {
-		return nil, fmt.Errorf("idempotency_key must be 64 characters or less")
 	}
 
 	wallet, err := s.repo.GetWalletByID(ctx, walletID)
@@ -764,11 +599,10 @@ func (s *Service) AdminDebit(ctx context.Context, walletID uuid.UUID, amountUSD 
 			ID:   adminID,
 		},
 		Metadata: map[string]interface{}{
-			"type":           "admin_adjustment",
-			"reason":         reason,
-			"admin_user_id":  adminID,
-			"is_debit":       true,
-			"idempotency_key": idempotencyKey,
+			"type":          "admin_adjustment",
+			"reason":        reason,
+			"admin_user_id": adminID,
+			"is_debit":      true,
 		},
 	}
 
@@ -789,16 +623,16 @@ func (s *Service) AdminDebit(ctx context.Context, walletID uuid.UUID, amountUSD 
 
 // WalletFilter defines filters for listing wallets
 type WalletFilter struct {
-	OwnerType   string
-	OwnerIDs    []string
-	Status      string
-	MinBalance  *float64
-	MaxBalance  *float64
-	WalletType  string
-	WalletIDs   []string
-	Currency    string
-	Limit       int
-	Offset      int
+	OwnerType  string
+	OwnerIDs   []string
+	Status     string
+	MinBalance *float64
+	MaxBalance *float64
+	WalletType string
+	WalletIDs  []string
+	Currency   string
+	Limit      int
+	Offset     int
 }
 
 // WalletListResult holds the result of a wallet list query

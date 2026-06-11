@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 type ExtensionUpdate struct {
@@ -427,19 +428,12 @@ func (r *MarketplaceRepository) GetInstallCounts(ctx context.Context, ids []stri
 		return make(map[string]int), nil
 	}
 
-	placeholders := make([]string, len(ids))
-	args := make([]interface{}, len(ids))
-	for i, id := range ids {
-		placeholders[i] = fmt.Sprintf("$%d", i+1)
-		args[i] = id
-	}
-
-	query := fmt.Sprintf(`
+	query := `
 		SELECT id, install_count FROM marketplace_extensions
-		WHERE id IN (%s)
-	`, strings.Join(placeholders, ","))
+		WHERE id = ANY($1)
+	`
 
-	rows, err := r.db.QueryContext(ctx, query, args...)
+	rows, err := r.db.QueryContext(ctx, query, pq.Array(ids))
 	if err != nil {
 		return nil, fmt.Errorf("get install counts: %w", err)
 	}

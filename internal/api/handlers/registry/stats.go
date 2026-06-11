@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -22,11 +23,11 @@ func (h *Handler) HandleGetFunctionStats(w http.ResponseWriter, r *http.Request)
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
-			http.Error(w, "Function not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to get function")
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Internal error"))
 		return
 	}
 
@@ -34,7 +35,7 @@ func (h *Handler) HandleGetFunctionStats(w http.ResponseWriter, r *http.Request)
 	rating, err := h.repo.GetOrCreateRating(fn.ID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get rating")
-		http.Error(w, "Failed to get stats", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get stats"))
 		return
 	}
 
@@ -79,11 +80,11 @@ func (h *Handler) HandleGetFunctionStatsAt(w http.ResponseWriter, r *http.Reques
 	fn, err := h.repo.GetFunctionByAuthorName(username, functionName)
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
-			http.Error(w, "Function not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to get function")
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Internal error"))
 		return
 	}
 
@@ -91,7 +92,7 @@ func (h *Handler) HandleGetFunctionStatsAt(w http.ResponseWriter, r *http.Reques
 	rating, err := h.repo.GetOrCreateRating(fn.ID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get rating")
-		http.Error(w, "Failed to get stats", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get stats"))
 		return
 	}
 
@@ -103,20 +104,20 @@ func (h *Handler) HandleGetFunctionStatsAt(w http.ResponseWriter, r *http.Reques
 	}
 
 	response := map[string]interface{}{
-		"function_id":        fn.ID,
-		"author":             username,
-		"name":               functionName,
-		"total_calls":        totalCalls,
-		"success_rate":       successRate,
-		"avg_latency_ms":     avgLatency,
-		"p95_latency_ms":     p95Latency,
-		"reliability_score":  rating.ReliabilityScore,
-		"latency_score":      rating.LatencyScore,
-		"overall_score":      rating.OverallScore,
-		"total_ratings":      rating.TotalRatings,
-		"popularity_score":   fn.PopularityScore,
+		"function_id":       fn.ID,
+		"author":            username,
+		"name":              functionName,
+		"total_calls":       totalCalls,
+		"success_rate":      successRate,
+		"avg_latency_ms":    avgLatency,
+		"p95_latency_ms":    p95Latency,
+		"reliability_score": rating.ReliabilityScore,
+		"latency_score":     rating.LatencyScore,
+		"overall_score":     rating.OverallScore,
+		"total_ratings":     rating.TotalRatings,
+		"popularity_score":  fn.PopularityScore,
 		// SEO enhancement
-		"function_url":       fmt.Sprintf("/@%s/v1/fx/%s", username, functionName),
+		"function_url": fmt.Sprintf("/@%s/v1/fx/%s", username, functionName),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -127,7 +128,7 @@ func (h *Handler) HandleGetFunctionStatsAt(w http.ResponseWriter, r *http.Reques
 func (h *Handler) HandleSubmitRating(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -137,7 +138,7 @@ func (h *Handler) HandleSubmitRating(w http.ResponseWriter, r *http.Request) {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Failed to read request body"))
 		return
 	}
 	defer r.Body.Close()
@@ -150,20 +151,20 @@ func (h *Handler) HandleSubmitRating(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.Unmarshal(body, &ratingReq); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	rating, err := h.repo.GetOrCreateRating(fn.ID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get rating")
-		http.Error(w, "Failed to submit rating", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to submit rating"))
 		return
 	}
 
@@ -201,7 +202,7 @@ func (h *Handler) HandleSubmitRating(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.repo.UpdateRating(rating); err != nil {
 		logrus.WithError(err).Error("Failed to update rating")
-		http.Error(w, "Failed to submit rating", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to submit rating"))
 		return
 	}
 
@@ -233,13 +234,13 @@ func (h *Handler) HandleAggregateStats(w http.ResponseWriter, r *http.Request) {
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	if err := h.updateStats(fn.ID); err != nil {
 		logrus.WithError(err).Error("Failed to update stats")
-		http.Error(w, "Failed to update stats", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update stats"))
 		return
 	}
 

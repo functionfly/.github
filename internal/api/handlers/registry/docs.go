@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/functionregistry"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/gorilla/mux"
@@ -86,7 +87,7 @@ func (h *DocumentationHandler) HandleOpenAPISpec(w http.ResponseWriter, r *http.
 	spec, err := h.generateOpenAPISpec(r)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to generate OpenAPI spec")
-		http.Error(w, "Failed to generate OpenAPI specification", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to generate OpenAPI specification"))
 		return
 	}
 
@@ -107,17 +108,17 @@ func (h *DocumentationHandler) HandleFunctionDocs(w http.ResponseWriter, r *http
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		if strings.Contains(err.Error(), "no rows") {
-			http.Error(w, "Function not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to get function")
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Internal error"))
 		return
 	}
 
 	fnVersion, err := h.repo.GetLatestFunctionVersion(fn.ID)
 	if err != nil {
-		http.Error(w, "Function version not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function version not found"))
 		return
 	}
 
@@ -145,17 +146,17 @@ func (h *DocumentationHandler) HandleFunctionHTMLDocs(w http.ResponseWriter, r *
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		if strings.Contains(err.Error(), "no rows") {
-			http.Error(w, "Function not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to get function")
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Internal error"))
 		return
 	}
 
 	fnVersion, err := h.repo.GetLatestFunctionVersion(fn.ID)
 	if err != nil {
-		http.Error(w, "Function version not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function version not found"))
 		return
 	}
 
@@ -179,7 +180,7 @@ func (h *DocumentationHandler) HandleIndex(w http.ResponseWriter, r *http.Reques
 	functions, _, err := h.repo.ListFunctions("", "", nil, "public", 100, 0)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list functions")
-		http.Error(w, "Failed to list functions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list functions"))
 		return
 	}
 
@@ -969,18 +970,18 @@ func (h *DocumentationHandler) HandleFunctionVersions(w http.ResponseWriter, r *
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		if strings.Contains(err.Error(), "no rows") {
-			http.Error(w, "Function not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to get function")
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Internal error"))
 		return
 	}
 
 	versions, err := h.repo.ListFunctionVersions(fn.ID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list function versions")
-		http.Error(w, "Failed to list versions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list versions"))
 		return
 	}
 

@@ -65,13 +65,13 @@ func (h *Handler) HandleTriggerVerification(w http.ResponseWriter, r *http.Reque
 
 	// Persist the job record before running (pipeline runs async in production; here we run synchronously)
 	job := &registry.VerificationJob{
-		ID:                 uuid.New(),
-		FunctionID:         functionID,
-		FunctionVersionID:  versionID,
+		ID:                uuid.New(),
+		FunctionID:        functionID,
+		FunctionVersionID: versionID,
 		Level:             level.String(),
 		Status:            "pending",
 		Priority:          "normal",
-		RequestedAt:        time.Now(),
+		RequestedAt:       time.Now(),
 		ResultStatus:      "pending",
 		IsAutoVerify:      false,
 	}
@@ -141,13 +141,13 @@ func (h *Handler) HandleGetFunctionVerification(w http.ResponseWriter, r *http.R
 	if status == nil {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"function_id":          functionID,
-			"status":              "unverified",
-			"verification_level":  "unverified",
-			"latest_version":      latest.Version,
+			"function_id":           functionID,
+			"status":                "unverified",
+			"verification_level":    "unverified",
+			"latest_version":        latest.Version,
 			"content_hash_verified": false,
-			"signature_verified":   false,
-			"malware_scanned":      false,
+			"signature_verified":    false,
+			"malware_scanned":       false,
 		})
 		return
 	}
@@ -155,16 +155,16 @@ func (h *Handler) HandleGetFunctionVerification(w http.ResponseWriter, r *http.R
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"function_id":           functionID,
-		"version_id":           latest.ID.String(),
-		"latest_version":       latest.Version,
-		"status":               status.OverallStatus,
-		"verification_level":   status.ApprovalStatus,
+		"version_id":            latest.ID.String(),
+		"latest_version":        latest.Version,
+		"status":                status.OverallStatus,
+		"verification_level":    status.ApprovalStatus,
 		"content_hash_verified": status.ContentHashVerified,
-		"signature_verified":   status.SignatureVerified,
-		"malware_scanned":      status.MalwareScanned,
-		"malware_status":       status.MalwareStatus,
-		"last_verified_at":    status.LastVerifiedAt,
-		"next_verification_at": status.NextVerificationAt,
+		"signature_verified":    status.SignatureVerified,
+		"malware_scanned":       status.MalwareScanned,
+		"malware_status":        status.MalwareStatus,
+		"last_verified_at":      status.LastVerifiedAt,
+		"next_verification_at":  status.NextVerificationAt,
 	})
 }
 
@@ -176,13 +176,13 @@ func (h *Handler) HandleGetVerificationLevels(w http.ResponseWriter, r *http.Req
 	response := make([]map[string]interface{}, len(levels))
 	for i, level := range levels {
 		response[i] = map[string]interface{}{
-			"level":                   level.Level,
-			"name":                    level.Name,
-			"description":             level.Description,
-			"requires_malware_scan":   level.RequiresMalwareScan,
-			"requires_dre":            level.RequiresDRE,
-			"requires_fxcert":         level.RequiresFXCERT,
-			"requires_manual_review":  level.RequiresManualReview,
+			"level":                  level.Level,
+			"name":                   level.Name,
+			"description":            level.Description,
+			"requires_malware_scan":  level.RequiresMalwareScan,
+			"requires_dre":           level.RequiresDRE,
+			"requires_fxcert":        level.RequiresFXCERT,
+			"requires_manual_review": level.RequiresManualReview,
 			"trust_bonus":            level.TrustBonus,
 		}
 	}
@@ -218,18 +218,18 @@ func (h *Handler) HandleGetVerificationJob(w http.ResponseWriter, r *http.Reques
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"job_id":         job.ID,
+		"job_id":        job.ID,
 		"function_id":   job.FunctionID,
 		"version_id":    job.FunctionVersionID,
-		"level":        job.Level,
-		"status":       job.Status,
-		"priority":     job.Priority,
+		"level":         job.Level,
+		"status":        job.Status,
+		"priority":      job.Priority,
 		"result_status": job.ResultStatus,
-		"result_data":  stages,
-		"error":       job.Error,
-		"requested_at": job.RequestedAt,
-		"started_at":  job.StartedAt,
-		"completed_at": job.CompletedAt,
+		"result_data":   stages,
+		"error":         job.Error,
+		"requested_at":  job.RequestedAt,
+		"started_at":    job.StartedAt,
+		"completed_at":  job.CompletedAt,
 	})
 }
 

@@ -136,6 +136,17 @@ func (m *Monitor) probeAllBackends() {
 	for _, backend := range backends {
 		wg.Add(1)
 		go func(b *storage.Backend) {
+			defer func() {
+				if rec := recover(); rec != nil {
+					logrus.WithFields(logrus.Fields{
+						"panic":      rec,
+						"stack":      string(debug.Stack()),
+						"backend_id": b.ID,
+						"backend":    b.URL,
+					}).Error("Health monitor probeBackend goroutine panicked")
+					wg.Done()
+				}
+			}()
 			defer wg.Done()
 			m.probeBackend(b)
 		}(backend)

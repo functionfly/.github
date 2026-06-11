@@ -20,7 +20,7 @@ type mockPlatformFeeRepo struct {
 	getOrCreateErr  error
 	debitErr        error
 	creditErr       error
-	insufficientBal  bool
+	insufficientBal bool
 }
 
 func newMockPlatformFeeRepo() *mockPlatformFeeRepo {
@@ -242,11 +242,11 @@ func TestFeeCalculation_Commission(t *testing.T) {
 		saleAmount   float64
 		expectedComm float64
 	}{
-		{saleAmount: 100.00, expectedComm: 15.00},  // 15% of $100 = $15
-		{saleAmount: 10.00, expectedComm: 1.50},    // 15% of $10 = $1.50
-		{saleAmount: 1.00, expectedComm: 0.15},     // 15% of $1 = $0.15
-		{saleAmount: 0.00, expectedComm: 0.00},     // 15% of $0 = $0
-		{saleAmount: 33.33, expectedComm: 5.00},    // 15% of $33.33 ≈ $5.00
+		{saleAmount: 100.00, expectedComm: 15.00}, // 15% of $100 = $15
+		{saleAmount: 10.00, expectedComm: 1.50},   // 15% of $10 = $1.50
+		{saleAmount: 1.00, expectedComm: 0.15},    // 15% of $1 = $0.15
+		{saleAmount: 0.00, expectedComm: 0.00},    // 15% of $0 = $0
+		{saleAmount: 33.33, expectedComm: 5.00},   // 15% of $33.33 ≈ $5.00
 	}
 
 	for _, tt := range tests {
@@ -288,9 +288,9 @@ func TestPlatformFeeExemptAuthors_List(t *testing.T) {
 // TestPublishRequest_JSON tests publish request JSON marshaling
 func TestPublishRequest_JSON(t *testing.T) {
 	req := functionregistry.PublishRequest{
-		Author:  "testauthor",
-		Name:    "myfunction",
-		Version: "1.0.0",
+		Author:   "testauthor",
+		Name:     "myfunction",
+		Version:  "1.0.0",
 		Manifest: json.RawMessage(`{"title":"Test","runtime":"python"}`),
 		Source: &functionregistry.FunctionSource{
 			Code: "def handler(): return {}",

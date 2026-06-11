@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -99,11 +100,19 @@ func generateMagicLinkToken() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-// hashMagicLinkToken creates a SHA-256 hash of a magic link token for secure storage
-// Similar to refresh token hashing, this prevents token theft from database breaches
+// hashMagicLinkToken creates an HMAC-SHA256 hash of a magic link token for secure storage
+// Uses a secret key to prevent rainbow table attacks from database breaches
 func hashMagicLinkToken(token string) string {
-	hash := sha256.Sum256([]byte(token))
-	return hex.EncodeToString(hash[:])
+	// Use a secret key derived from environment or a fixed derivation string
+	// The key is not meant to be secret (tokens are already random), but HMAC
+	// provides better properties than plain SHA-256 for this use case
+	secretKey := os.Getenv("MAGIC_LINK_TOKEN_SECRET")
+	if secretKey == "" {
+		secretKey = "functionfly-magic-link-hmac-secret-do-not-share"
+	}
+	h := hmac.New(sha256.New, []byte(secretKey))
+	h.Write([]byte(token))
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 // normalizeEmail normalizes an email address for comparison

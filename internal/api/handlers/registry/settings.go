@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/gorilla/mux"
 )
@@ -39,7 +40,7 @@ type FunctionSettingsPatchRequest struct {
 func (h *Handler) HandleGetFunctionSettings(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -47,18 +48,18 @@ func (h *Handler) HandleGetFunctionSettings(w http.ResponseWriter, r *http.Reque
 	author := vars["author"]
 	name := vars["name"]
 	if author == "" || name == "" {
-		http.Error(w, "author and name are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("author and name are required"))
 		return
 	}
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	if fn.TenantID == nil || *fn.TenantID != user.TenantID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
@@ -108,7 +109,7 @@ func (h *Handler) HandleGetFunctionSettings(w http.ResponseWriter, r *http.Reque
 func (h *Handler) HandlePatchFunctionSettings(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -116,24 +117,24 @@ func (h *Handler) HandlePatchFunctionSettings(w http.ResponseWriter, r *http.Req
 	author := vars["author"]
 	name := vars["name"]
 	if author == "" || name == "" {
-		http.Error(w, "author and name are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("author and name are required"))
 		return
 	}
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	if fn.TenantID == nil || *fn.TenantID != user.TenantID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
 	var req FunctionSettingsPatchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -178,7 +179,7 @@ func (h *Handler) HandlePatchFunctionSettings(w http.ResponseWriter, r *http.Req
 		settings["custom_domains"] = *req.CustomDomains
 
 		if err := h.repo.UpdateFunctionSettings(fn.ID, settings); err != nil {
-			http.Error(w, "Failed to update settings", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to update settings"))
 			return
 		}
 	}

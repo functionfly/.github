@@ -337,7 +337,13 @@ func (r *Repository) Revoke(ctx context.Context, publicID string, revokedBy uuid
 	now := time.Now()
 	tx := r.db.WithContext(ctx).Begin()
 	defer func() {
-		if r := recover(); r != nil {
+		if rec := recover(); rec != nil {
+			logrus.WithFields(logrus.Fields{
+				"panic":   rec,
+				"stack":   string(debug.Stack()),
+				"method":  "Revoke",
+				"public_id": publicID,
+			}).Error("Receipt repository Revoke panicked, rolling back transaction")
 			tx.Rollback()
 		}
 	}()

@@ -308,7 +308,7 @@ func (m *SecurityMiddleware) Middleware(next http.Handler) http.Handler {
 		// Validate request
 		if err := m.validator.ValidateRequest(r); err != nil {
 			logrus.WithError(err).Warn("Request validation failed")
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, "Invalid request", http.StatusBadRequest)
 			return
 		}
 

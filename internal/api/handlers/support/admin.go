@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/support"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -30,16 +31,16 @@ func NewAdminHandler(repo *support.PostgresRepository, logger *logrus.Logger) *A
 
 // SupportMetrics represents support system metrics
 type SupportMetrics struct {
-	TotalConversations   int64 `json:"total_conversations"`
-	ActiveConversations  int64 `json:"active_conversations"`
-	PendingConversations int64 `json:"pending_conversations"`
-	ResolvedConversations int64 `json:"resolved_conversations"`
-	EscalatedConversations int64 `json:"escalated_conversations"`
-	EmergencyRequests    int64 `json:"emergency_requests"`
-	PendingEmergencies   int64 `json:"pending_emergencies"`
-	AverageResolutionTime float64 `json:"average_resolution_time_minutes"`
-	TotalMessages        int64 `json:"total_messages"`
-	OnlineStaffCount     int   `json:"online_staff_count"`
+	TotalConversations     int64   `json:"total_conversations"`
+	ActiveConversations    int64   `json:"active_conversations"`
+	PendingConversations   int64   `json:"pending_conversations"`
+	ResolvedConversations  int64   `json:"resolved_conversations"`
+	EscalatedConversations int64   `json:"escalated_conversations"`
+	EmergencyRequests      int64   `json:"emergency_requests"`
+	PendingEmergencies     int64   `json:"pending_emergencies"`
+	AverageResolutionTime  float64 `json:"average_resolution_time_minutes"`
+	TotalMessages          int64   `json:"total_messages"`
+	OnlineStaffCount       int     `json:"online_staff_count"`
 }
 
 // GetSupportMetrics returns support system metrics
@@ -53,7 +54,7 @@ func (h *AdminHandler) GetSupportMetrics(w http.ResponseWriter, r *http.Request)
 	conversations, err := h.repo.ListConversations(ctx, uuid.Nil, 1000, 0)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to list conversations for metrics")
-		http.Error(w, "Failed to get metrics", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get metrics"))
 		return
 	}
 
@@ -109,19 +110,19 @@ func (h *AdminHandler) GetSupportMetrics(w http.ResponseWriter, r *http.Request)
 
 // ConversationSummary represents a conversation summary for admin view
 type ConversationSummary struct {
-	ID                uuid.UUID `json:"id"`
-	UserID            uuid.UUID `json:"user_id"`
-	Type              string    `json:"type"`
-	Status            string    `json:"status"`
-	Priority          string    `json:"priority"`
-	Title             string    `json:"title"`
-	AIHandled         bool      `json:"ai_handled"`
-	IsEmergency       bool      `json:"is_emergency"`
-	StaffID          *uuid.UUID `json:"staff_id,omitempty"`
-	MessageCount      int       `json:"message_count"`
-	CreatedAt         time.Time `json:"created_at"`
-	LastMessageAt     time.Time `json:"last_message_at"`
-	ResolutionTimeMin float64   `json:"resolution_time_minutes,omitempty"`
+	ID                uuid.UUID  `json:"id"`
+	UserID            uuid.UUID  `json:"user_id"`
+	Type              string     `json:"type"`
+	Status            string     `json:"status"`
+	Priority          string     `json:"priority"`
+	Title             string     `json:"title"`
+	AIHandled         bool       `json:"ai_handled"`
+	IsEmergency       bool       `json:"is_emergency"`
+	StaffID           *uuid.UUID `json:"staff_id,omitempty"`
+	MessageCount      int        `json:"message_count"`
+	CreatedAt         time.Time  `json:"created_at"`
+	LastMessageAt     time.Time  `json:"last_message_at"`
+	ResolutionTimeMin float64    `json:"resolution_time_minutes,omitempty"`
 }
 
 // ListAllConversations returns all conversations for admin view
@@ -133,7 +134,7 @@ func (h *AdminHandler) ListAllConversations(w http.ResponseWriter, r *http.Reque
 	conversations, err := h.repo.ListConversations(ctx, uuid.Nil, 100, 0)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to list conversations")
-		http.Error(w, "Failed to list conversations", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list conversations"))
 		return
 	}
 
@@ -147,9 +148,9 @@ func (h *AdminHandler) ListAllConversations(w http.ResponseWriter, r *http.Reque
 			Priority:    string(conv.Priority),
 			Title:       conv.Title,
 			AIHandled:   conv.AIHandled,
-			IsEmergency:  conv.IsEmergency,
+			IsEmergency: conv.IsEmergency,
 			StaffID:     conv.StaffID,
-			CreatedAt:    conv.CreatedAt,
+			CreatedAt:   conv.CreatedAt,
 		}
 
 		if conv.ResolvedAt != nil {
@@ -164,11 +165,11 @@ func (h *AdminHandler) ListAllConversations(w http.ResponseWriter, r *http.Reque
 
 // StaffStatus represents staff availability status
 type StaffStatus struct {
-	StaffID      uuid.UUID `json:"staff_id"`
-	IsOnline     bool      `json:"is_online"`
-	ActiveChats  int       `json:"active_chats"`
-	MaxChats     int       `json:"max_chats"`
-	LastSeen     time.Time `json:"last_seen"`
+	StaffID     uuid.UUID `json:"staff_id"`
+	IsOnline    bool      `json:"is_online"`
+	ActiveChats int       `json:"active_chats"`
+	MaxChats    int       `json:"max_chats"`
+	LastSeen    time.Time `json:"last_seen"`
 }
 
 // ListStaffStatus returns all staff status
@@ -179,7 +180,7 @@ func (h *AdminHandler) ListStaffStatus(w http.ResponseWriter, r *http.Request) {
 	onlineStaff, err := h.repo.ListOnlineStaff(ctx)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to list online staff")
-		http.Error(w, "Failed to list staff", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list staff"))
 		return
 	}
 
@@ -203,12 +204,12 @@ func (h *AdminHandler) ListStaffStatus(w http.ResponseWriter, r *http.Request) {
 type EmergencyRequest struct {
 	ID             uuid.UUID  `json:"id"`
 	ConversationID uuid.UUID  `json:"conversation_id"`
-	UserID        uuid.UUID  `json:"user_id"`
-	FunctionID    uuid.UUID  `json:"function_id"`
-	Reason        string     `json:"reason"`
-	Status        string     `json:"status"`
-	StaffID       *uuid.UUID `json:"staff_id,omitempty"`
-	CreatedAt     time.Time  `json:"created_at"`
+	UserID         uuid.UUID  `json:"user_id"`
+	FunctionID     uuid.UUID  `json:"function_id"`
+	Reason         string     `json:"reason"`
+	Status         string     `json:"status"`
+	StaffID        *uuid.UUID `json:"staff_id,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
 }
 
 // ListEmergencyRequests returns all emergency requests
@@ -219,7 +220,7 @@ func (h *AdminHandler) ListEmergencyRequests(w http.ResponseWriter, r *http.Requ
 	emergencies, err := h.repo.ListPendingEmergencies(ctx)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to list emergencies")
-		http.Error(w, "Failed to list emergencies", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list emergencies"))
 		return
 	}
 
@@ -230,10 +231,10 @@ func (h *AdminHandler) ListEmergencyRequests(w http.ResponseWriter, r *http.Requ
 			ConversationID: e.ConversationID,
 			UserID:         e.UserID,
 			FunctionID:     e.FunctionID,
-			Reason:        e.Reason,
-			Status:        e.Status,
-			StaffID:       e.StaffID,
-			CreatedAt:     e.CreatedAt,
+			Reason:         e.Reason,
+			Status:         e.Status,
+			StaffID:        e.StaffID,
+			CreatedAt:      e.CreatedAt,
 		}
 	}
 

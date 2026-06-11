@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -70,7 +71,7 @@ func (h *ResendWebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Requ
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to read webhook body")
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Failed to read request body"))
 		return
 	}
 	defer r.Body.Close()
@@ -80,13 +81,13 @@ func (h *ResendWebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Requ
 		signature := r.Header.Get("X-Resend-Signature")
 		if signature == "" {
 			logrus.Warn("Webhook signature missing")
-			http.Error(w, "Missing webhook signature", http.StatusUnauthorized)
+			apierror.WriteError(w, apierror.NewUnauthorized("Missing webhook signature"))
 			return
 		}
 
 		if !h.verifySignature(body, signature) {
 			logrus.Warn("Webhook signature verification failed")
-			http.Error(w, "Invalid webhook signature", http.StatusUnauthorized)
+			apierror.WriteError(w, apierror.NewUnauthorized("Invalid webhook signature"))
 			return
 		}
 	}
@@ -95,7 +96,7 @@ func (h *ResendWebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Requ
 	var event ResendWebhookEvent
 	if err := json.Unmarshal(body, &event); err != nil {
 		logrus.WithError(err).Error("Failed to parse webhook event")
-		http.Error(w, "Invalid webhook payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid webhook payload"))
 		return
 	}
 
@@ -109,7 +110,7 @@ func (h *ResendWebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Requ
 	// Process the event based on type
 	if err := h.processEvent(r, &event); err != nil {
 		logrus.WithError(err).WithField("event_type", event.Type).Error("Failed to process webhook event")
-		http.Error(w, "Failed to process event", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to process event"))
 		return
 	}
 

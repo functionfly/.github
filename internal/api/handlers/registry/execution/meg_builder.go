@@ -20,15 +20,15 @@ type megInputPayload struct {
 
 // megEnvironmentPayload is the canonical environment structure for MEG hashing.
 type megEnvironmentPayload struct {
-	RuntimeVersion string                    `json:"runtime_version"`
+	RuntimeVersion string                     `json:"runtime_version"`
 	Capsule        *capsule.CapsuleDescriptor `json:"capsule"`
 }
 
 // megResourcePayload is the canonical resource usage structure for MEG hashing.
 type megResourcePayload struct {
-	CPUTimeMs      int     `json:"cpu_time_ms"`
-	MemoryPeakMB   float64 `json:"memory_peak_mb"`
-	WallTimeMs     int     `json:"wall_time_ms"`
+	CPUTimeMs    int     `json:"cpu_time_ms"`
+	MemoryPeakMB float64 `json:"memory_peak_mb"`
+	WallTimeMs   int     `json:"wall_time_ms"`
 }
 
 // megOutputPayload is the canonical output structure for MEG hashing.

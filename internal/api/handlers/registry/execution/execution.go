@@ -100,8 +100,8 @@ func (h *Handler) createExecuteFunction(fnVersion *storage.RegistryFunctionVersi
 		// 3. Legacy direct-execution fallback (router not wired).
 		logrus.Info("Execution path: RuntimeRouter is NIL, using LEGACY execution")
 		logrus.WithFields(logrus.Fields{
-			"wasm_binary_len": len(fnVersion.WasmBinary),
-			"runtime":         fnVersion.Runtime,
+			"wasm_binary_len":   len(fnVersion.WasmBinary),
+			"runtime":           fnVersion.Runtime,
 			"source_code_valid": fnVersion.SourceCode.Valid,
 		}).Info("Legacy execution path: checking fnVersion state")
 		if len(fnVersion.WasmBinary) > 0 {
@@ -120,4 +120,3 @@ func (h *Handler) createExecuteFunction(fnVersion *storage.RegistryFunctionVersi
 		return nil, fmt.Errorf("function is not executable")
 	}
 }
-

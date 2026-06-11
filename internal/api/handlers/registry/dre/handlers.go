@@ -26,18 +26,18 @@ import (
 
 // DREStatsResponse is the response shape for the DRE summary endpoint.
 type DREStatsResponse struct {
-	FunctionID              uuid.UUID `json:"function_id"`
-	Summary                 DREStatsSummary `json:"summary"`
+	FunctionID uuid.UUID       `json:"function_id"`
+	Summary    DREStatsSummary `json:"summary"`
 }
 
 type DREStatsSummary struct {
-	DeterminismScore          float64 `json:"determinism_score"`
-	ReplayIntegrityScore      float64 `json:"replay_integrity_score"`
-	VerifiedExecutionsTotal   int64   `json:"verified_executions_total"`
-	TotalExecutions           int64   `json:"total_executions"`
-	ReplayDriftIncidents      int     `json:"replay_drift_incidents"`
-	DriftScore               float64 `json:"drift_score"`
-	DeterminismTier          string  `json:"determinism_tier"`
+	DeterminismScore        float64 `json:"determinism_score"`
+	ReplayIntegrityScore    float64 `json:"replay_integrity_score"`
+	VerifiedExecutionsTotal int64   `json:"verified_executions_total"`
+	TotalExecutions         int64   `json:"total_executions"`
+	ReplayDriftIncidents    int     `json:"replay_drift_incidents"`
+	DriftScore              float64 `json:"drift_score"`
+	DeterminismTier         string  `json:"determinism_tier"`
 }
 
 // DRERepository defines the subset of the registry repository used by DRE handlers.
@@ -61,8 +61,8 @@ type DRERepository interface {
 
 // Handler contains dependencies for DRE API handlers.
 type Handler struct {
-	repo              DRERepository
-	anchoringService  AnchorServicer
+	repo             DRERepository
+	anchoringService AnchorServicer
 }
 
 // AnchorServicer defines the interface for blockchain anchoring operations.
@@ -308,13 +308,13 @@ func (h *Handler) HandleAnchorCertificate(w http.ResponseWriter, r *http.Request
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"certificate_id":   cert.CertificateID,
-		"anchored":         true,
-		"anchor_chain":     receipt.Chain,
-		"anchor_tx_hash":   receipt.TxHash,
-		"anchor_block":     receipt.BlockNumber,
+		"certificate_id":     cert.CertificateID,
+		"anchored":           true,
+		"anchor_chain":       receipt.Chain,
+		"anchor_tx_hash":     receipt.TxHash,
+		"anchor_block":       receipt.BlockNumber,
 		"anchor_merkle_root": receipt.MerkleRoot,
-		"anchored_at":      receipt.AnchoredAt.Format(time.RFC3339),
+		"anchored_at":        receipt.AnchoredAt.Format(time.RFC3339),
 	})
 }
 
@@ -528,11 +528,11 @@ func (h *Handler) HandleGetPassportPublic(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"function": fmt.Sprintf("fx://%s/%s", author, name),
 			"passport": map[string]interface{}{
-				"determinism_score":            0,
-				"replay_integrity_score":      0,
-				"verified_executions_total":   0,
-				"determinism_tier":            "unknown",
-				"capsule_version":             "dcc/1.0",
+				"determinism_score":         0,
+				"replay_integrity_score":    0,
+				"verified_executions_total": 0,
+				"determinism_tier":          "unknown",
+				"capsule_version":           "dcc/1.0",
 			},
 		})
 		return
@@ -847,10 +847,10 @@ func (h *Handler) HandleGetExecution(w http.ResponseWriter, r *http.Request) {
 		var fxcert drecert.FXCert
 		if err := json.Unmarshal(cert.CertJSON, &fxcert); err == nil {
 			trustInfo = map[string]interface{}{
-				"trust_score":                fxcert.Trust.TrustScore,
-				"determinism_score":          fxcert.Trust.DeterminismScore,
-				"replay_consistency_score":   fxcert.Trust.ReplayConsistencyScore,
-				"drift_incidents_total":      fxcert.Trust.DriftIncidentsTotal,
+				"trust_score":               fxcert.Trust.TrustScore,
+				"determinism_score":         fxcert.Trust.DeterminismScore,
+				"replay_consistency_score":  fxcert.Trust.ReplayConsistencyScore,
+				"drift_incidents_total":     fxcert.Trust.DriftIncidentsTotal,
 				"verified_executions_total": fxcert.Trust.VerifiedExecutionsTotal,
 			}
 		}
@@ -937,10 +937,10 @@ func (h *Handler) HandleGetExecutionByHash(w http.ResponseWriter, r *http.Reques
 		var fxcert drecert.FXCert
 		if err := json.Unmarshal(cert.CertJSON, &fxcert); err == nil {
 			trustInfo = map[string]interface{}{
-				"trust_score":                fxcert.Trust.TrustScore,
-				"determinism_score":          fxcert.Trust.DeterminismScore,
-				"replay_consistency_score":   fxcert.Trust.ReplayConsistencyScore,
-				"drift_incidents_total":      fxcert.Trust.DriftIncidentsTotal,
+				"trust_score":               fxcert.Trust.TrustScore,
+				"determinism_score":         fxcert.Trust.DeterminismScore,
+				"replay_consistency_score":  fxcert.Trust.ReplayConsistencyScore,
+				"drift_incidents_total":     fxcert.Trust.DriftIncidentsTotal,
 				"verified_executions_total": fxcert.Trust.VerifiedExecutionsTotal,
 			}
 		}
@@ -1071,7 +1071,7 @@ func (h *Handler) HandleListDriftReports(w http.ResponseWriter, r *http.Request)
 	items := make([]map[string]interface{}, len(reports))
 	for i, report := range reports {
 		items[i] = map[string]interface{}{
-			"id":                  report.ID.String(),
+			"id":                 report.ID.String(),
 			"execution_id":       report.ExecutionID.String(),
 			"version":            report.Version,
 			"drift_category":     report.DriftCategory,
@@ -1114,13 +1114,13 @@ func (h *Handler) HandleGetDRESummary(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, DREStatsResponse{
 			FunctionID: fn.ID,
 			Summary: DREStatsSummary{
-				DeterminismScore:         0,
-				ReplayIntegrityScore:     0,
-				VerifiedExecutionsTotal:  0,
+				DeterminismScore:        0,
+				ReplayIntegrityScore:    0,
+				VerifiedExecutionsTotal: 0,
 				TotalExecutions:         0,
-				ReplayDriftIncidents:     0,
+				ReplayDriftIncidents:    0,
 				DriftScore:              1.0,
-				DeterminismTier:          "unknown",
+				DeterminismTier:         "unknown",
 			},
 		})
 		return
@@ -1129,8 +1129,8 @@ func (h *Handler) HandleGetDRESummary(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, DREStatsResponse{
 		FunctionID: fn.ID,
 		Summary: DREStatsSummary{
-			DeterminismScore:         passport.DeterminismScore,
-			ReplayIntegrityScore:     passport.ReplayIntegrityScore,
+			DeterminismScore:        passport.DeterminismScore,
+			ReplayIntegrityScore:    passport.ReplayIntegrityScore,
 			VerifiedExecutionsTotal: passport.VerifiedExecutionsTotal,
 			TotalExecutions:         passport.TotalExecutions,
 			ReplayDriftIncidents:    passport.ReplayDriftIncidents,
@@ -1173,8 +1173,8 @@ func (h *Handler) HandleGetPassportByFunctionID(w http.ResponseWriter, r *http.R
 				"performance_stability_score": 0,
 				"drift_score":                 1.0,
 				"capsule_version":             "dcc/1.0",
-				"determinism_tier":           "full",
-				"last_verified_at":           nil,
+				"determinism_tier":            "full",
+				"last_verified_at":            nil,
 			},
 		})
 		return
@@ -1190,10 +1190,10 @@ func (h *Handler) HandleGetPassportByFunctionID(w http.ResponseWriter, r *http.R
 			"determinism_score":           passport.DeterminismScore,
 			"replay_integrity_score":      passport.ReplayIntegrityScore,
 			"performance_stability_score": passport.PerformanceStabilityScore,
-			"drift_score":                passport.DriftScore,
+			"drift_score":                 passport.DriftScore,
 			"capsule_version":             "dcc/1.0",
-			"determinism_tier":           "full",
-			"last_verified_at":           passport.LastVerifiedAt,
+			"determinism_tier":            "full",
+			"last_verified_at":            passport.LastVerifiedAt,
 		},
 	})
 }

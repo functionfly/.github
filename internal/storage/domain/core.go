@@ -61,41 +61,41 @@ type UserRepository interface {
 
 // SessionRepository handles session and token operations
 type SessionRepository interface {
-	CreateSession(userID uuid.UUID, sessionToken string, ipAddress, userAgent string, expiresAt time.Time) (*storage.Session, error)
-	GetSessionByToken(sessionToken string) (*storage.Session, error)
-	GetSessionByID(sessionID uuid.UUID) (*storage.Session, error)
-	UpdateSessionMFAStatus(sessionToken string, mfaVerified bool) error
-	UpdateSessionActivity(sessionToken string) error
-	DeleteSession(sessionToken string) error
-	DeleteSessionByID(sessionID, userID uuid.UUID) error
-	DeleteSessionByIDOnly(sessionID uuid.UUID, userID uuid.UUID) error
-	DeleteExpiredSessions() (int64, error)
-	DeleteUserSessions(userID uuid.UUID) error
-	ListUserSessions(userID uuid.UUID) ([]*storage.Session, error)
-	CountActiveUserSessions(userID uuid.UUID) (int, error)
-	ListTenantSessions(tenantID uuid.UUID, limit, offset int) ([]*storage.Session, error)
+	CreateSession(ctx context.Context, userID uuid.UUID, sessionToken string, ipAddress, userAgent string, expiresAt time.Time) (*storage.Session, error)
+	GetSessionByToken(ctx context.Context, sessionToken string) (*storage.Session, error)
+	GetSessionByID(ctx context.Context, sessionID uuid.UUID) (*storage.Session, error)
+	UpdateSessionMFAStatus(ctx context.Context, sessionToken string, mfaVerified bool) error
+	UpdateSessionActivity(ctx context.Context, sessionToken string) error
+	DeleteSession(ctx context.Context, sessionToken string) error
+	DeleteSessionByID(ctx context.Context, sessionID, userID uuid.UUID) error
+	DeleteSessionByIDOnly(ctx context.Context, sessionID uuid.UUID, userID uuid.UUID) error
+	DeleteExpiredSessions(ctx context.Context) (int64, error)
+	DeleteUserSessions(ctx context.Context, userID uuid.UUID) error
+	ListUserSessions(ctx context.Context, userID uuid.UUID) ([]*storage.Session, error)
+	CountActiveUserSessions(ctx context.Context, userID uuid.UUID) (int, error)
+	ListTenantSessions(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*storage.Session, error)
 
 	// Refresh token operations
-	CreateRefreshToken(userID uuid.UUID, tokenHash string, ipAddress, userAgent string, expiresAt time.Time) (*storage.RefreshToken, error)
-	GetRefreshTokenByHash(tokenHash string) (*storage.RefreshToken, error)
-	RevokeRefreshToken(tokenID uuid.UUID) error
-	RevokeUserRefreshTokens(userID uuid.UUID) error
-	DeleteExpiredRefreshTokens() (int64, error)
-	ListUserRefreshTokens(userID uuid.UUID) ([]*storage.RefreshToken, error)
+	CreateRefreshToken(ctx context.Context, userID uuid.UUID, tokenHash string, ipAddress, userAgent string, expiresAt time.Time) (*storage.RefreshToken, error)
+	GetRefreshTokenByHash(ctx context.Context, tokenHash string) (*storage.RefreshToken, error)
+	RevokeRefreshToken(ctx context.Context, tokenID uuid.UUID) error
+	RevokeUserRefreshTokens(ctx context.Context, userID uuid.UUID) error
+	DeleteExpiredRefreshTokens(ctx context.Context) (int64, error)
+	ListUserRefreshTokens(ctx context.Context, userID uuid.UUID) ([]*storage.RefreshToken, error)
 
 	// Login attempt tracking
-	CreateLoginAttempt(userID uuid.UUID, ipAddress, userAgent string, successful bool, lockoutUntil *time.Time) (*storage.LoginAttempt, error)
-	GetRecentFailedLoginAttempts(userID uuid.UUID, since time.Time) (int, error)
-	GetUserLockoutStatus(userID uuid.UUID) (*time.Time, error)
-	ClearUserLockout(userID uuid.UUID) error
-	DeleteOldLoginAttempts(before time.Time) (int64, error)
+	CreateLoginAttempt(ctx context.Context, userID uuid.UUID, ipAddress, userAgent string, successful bool, lockoutUntil *time.Time) (*storage.LoginAttempt, error)
+	GetRecentFailedLoginAttempts(ctx context.Context, userID uuid.UUID, since time.Time) (int, error)
+	GetUserLockoutStatus(ctx context.Context, userID uuid.UUID) (*time.Time, error)
+	ClearUserLockout(ctx context.Context, userID uuid.UUID) error
+	DeleteOldLoginAttempts(ctx context.Context, before time.Time) (int64, error)
 
 	// Auth events
-	LogAuthEvent(event *storage.AuthEvent) error
-	GetAuthEventsForUser(userID uuid.UUID, limit, offset int) ([]*storage.AuthEvent, error)
-	GetAuthEventsByType(eventType string, limit, offset int) ([]*storage.AuthEvent, error)
-	GetRecentAuthEvents(since time.Time, limit int) ([]*storage.AuthEvent, error)
-	DeleteOldAuthEvents(before time.Time) (int64, error)
+	LogAuthEvent(ctx context.Context, event *storage.AuthEvent) error
+	GetAuthEventsForUser(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*storage.AuthEvent, error)
+	GetAuthEventsByType(ctx context.Context, eventType string, limit, offset int) ([]*storage.AuthEvent, error)
+	GetRecentAuthEvents(ctx context.Context, since time.Time, limit int) ([]*storage.AuthEvent, error)
+	DeleteOldAuthEvents(ctx context.Context, before time.Time) (int64, error)
 }
 
 // TenantRepository handles tenant/organization operations

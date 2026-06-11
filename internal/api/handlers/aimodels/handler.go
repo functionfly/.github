@@ -69,7 +69,8 @@ func (h *Handler) HandleGetCatalog(w http.ResponseWriter, r *http.Request) {
 
 	models, err := h.getCatalog(r.Context(), r.URL.Query())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		logrus.WithError(err).Error("Failed to get AI model catalog")
+		http.Error(w, "Failed to retrieve model catalog", http.StatusBadGateway)
 		return
 	}
 

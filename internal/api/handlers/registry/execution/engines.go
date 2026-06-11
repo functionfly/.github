@@ -68,7 +68,7 @@ func (e *sandboxEngine) Execute(ctx context.Context, req ExecutionRequest) (Exec
 }
 
 func (e *sandboxEngine) Healthy(ctx context.Context) bool { return true }
-func (e *sandboxEngine) Close() error                   { return nil }
+func (e *sandboxEngine) Close() error                     { return nil }
 
 // pythonCPythonEngine routes Python execution through CPython-WASM when available.
 type pythonCPythonEngine struct {
@@ -758,11 +758,11 @@ func (e *nodeJSEngine) startDaemon() error {
 // and disposes the cell.  For Python runtimes an optional InstancePool is
 // used for cell reuse; TypeScript always creates a fresh cell.
 type WasmCellExecutor struct {
-	pool         *wasm.InstancePool
-	bundleSvc    *bundler.BundleService
-	pythonPath   string // path to MicroPython/CPython wasm runtime
-	healthy      bool
-	healthyOnce  sync.Once
+	pool        *wasm.InstancePool
+	bundleSvc   *bundler.BundleService
+	pythonPath  string // path to MicroPython/CPython wasm runtime
+	healthy     bool
+	healthyOnce sync.Once
 }
 
 // NewWasmCellExecutor creates a cell executor backed by an optional pool.
@@ -946,10 +946,10 @@ func BuildRuntimeRouter(
 	var cpythonEngine RuntimeEngine
 	if cpythonPath != "" {
 		cfg := &cpythonWasmEngineConfig{
-			WasmPath:   cpythonPath,
-			StdlibPath: cpythonLib,
-			PoolSize:   4,
-			Timeout:    30 * time.Second,
+			WasmPath:    cpythonPath,
+			StdlibPath:  cpythonLib,
+			PoolSize:    4,
+			Timeout:     30 * time.Second,
 			MaxMemoryMB: 256,
 		}
 		cpythonEngine, _ = NewCPythonWasmEngine(cfg, nil)

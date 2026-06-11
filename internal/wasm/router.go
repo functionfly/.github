@@ -224,6 +224,17 @@ func (r *RuntimeRouter) ExecuteWithTimeout(ctx context.Context, runtimeType Runt
 	var execErr error
 
 	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				logrus.WithFields(logrus.Fields{
+					"panic":   rec,
+					"stack":   string(debug.Stack()),
+					"runtime": runtimeType,
+				}).Error("RuntimeRouter ExecuteWithTimeout goroutine panicked")
+				execErr = fmt.Errorf("execution panicked: %v", rec)
+				close(done)
+			}
+		}()
 		output, execErr = r.Execute(ctx, runtimeType, input)
 		close(done)
 	}()

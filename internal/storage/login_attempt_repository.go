@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -19,7 +20,7 @@ func NewLoginAttemptRepository(db *PostgresDB) *LoginAttemptRepository {
 }
 
 // CreateLoginAttempt creates a new login attempt record
-func (r *LoginAttemptRepository) CreateLoginAttempt(userID uuid.UUID, ipAddress, userAgent string, successful bool, lockoutUntil *time.Time) (*LoginAttempt, error) {
+func (r *LoginAttemptRepository) CreateLoginAttempt(ctx context.Context, userID uuid.UUID, ipAddress, userAgent string, successful bool, lockoutUntil *time.Time) (*LoginAttempt, error) {
 	attempt := &LoginAttempt{
 		ID:           uuid.New(),
 		UserID:       userID,
@@ -35,7 +36,7 @@ func (r *LoginAttemptRepository) CreateLoginAttempt(userID uuid.UUID, ipAddress,
 		INSERT INTO login_attempts (id, user_id, ip_address, user_agent, successful, attempted_at, lockout_until, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
 
-	_, err := r.db.Exec(query,
+	_, err := r.db.ExecContext(ctx, query,
 		attempt.ID, attempt.UserID, attempt.IPAddress, attempt.UserAgent,
 		attempt.Successful, attempt.AttemptedAt, attempt.LockoutUntil, attempt.CreatedAt)
 
@@ -47,9 +48,9 @@ func (r *LoginAttemptRepository) CreateLoginAttempt(userID uuid.UUID, ipAddress,
 }
 
 // GetRecentFailedLoginAttempts counts failed login attempts for a user within a time window
-func (r *LoginAttemptRepository) GetRecentFailedLoginAttempts(userID uuid.UUID, since time.Time) (int, error) {
+func (r *LoginAttemptRepository) GetRecentFailedLoginAttempts(ctx context.Context, userID uuid.UUID, since time.Time) (int, error) {
 	var count int
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT COUNT(*)
 		FROM login_attempts
 		WHERE user_id = $1 AND successful = false AND attempted_at >= $2`,
@@ -63,9 +64,9 @@ func (r *LoginAttemptRepository) GetRecentFailedLoginAttempts(userID uuid.UUID, 
 }
 
 // GetUserLockoutStatus returns the lockout expiration time for a user if they are currently locked out
-func (r *LoginAttemptRepository) GetUserLockoutStatus(userID uuid.UUID) (*time.Time, error) {
+func (r *LoginAttemptRepository) GetUserLockoutStatus(ctx context.Context, userID uuid.UUID) (*time.Time, error) {
 	var lockoutUntil sql.NullTime
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT lockout_until
 		FROM login_attempts
 		WHERE user_id = $1 AND lockout_until IS NOT NULL AND lockout_until > NOW()
@@ -88,8 +89,8 @@ func (r *LoginAttemptRepository) GetUserLockoutStatus(userID uuid.UUID) (*time.T
 }
 
 // ClearUserLockout removes all lockout records for a user
-func (r *LoginAttemptRepository) ClearUserLockout(userID uuid.UUID) error {
-	_, err := r.db.Exec(`
+func (r *LoginAttemptRepository) ClearUserLockout(ctx context.Context, userID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `
 		UPDATE login_attempts
 		SET lockout_until = NULL
 		WHERE user_id = $1 AND lockout_until IS NOT NULL`,
@@ -103,8 +104,8 @@ func (r *LoginAttemptRepository) ClearUserLockout(userID uuid.UUID) error {
 }
 
 // DeleteOldLoginAttempts removes login attempts older than the specified time
-func (r *LoginAttemptRepository) DeleteOldLoginAttempts(before time.Time) (int64, error) {
-	result, err := r.db.Exec(`
+func (r *LoginAttemptRepository) DeleteOldLoginAttempts(ctx context.Context, before time.Time) (int64, error) {
+	result, err := r.db.ExecContext(ctx, `
 		DELETE FROM login_attempts
 		WHERE created_at < $1`,
 		before)
@@ -123,9 +124,9 @@ func (r *LoginAttemptRepository) DeleteOldLoginAttempts(before time.Time) (int64
 
 // GetLastSuccessfulLogin returns the most recent successful login attempt for a user.
 // Returns nil if no successful login is found.
-func (r *LoginAttemptRepository) GetLastSuccessfulLogin(userID uuid.UUID) (*LoginAttempt, error) {
+func (r *LoginAttemptRepository) GetLastSuccessfulLogin(ctx context.Context, userID uuid.UUID) (*LoginAttempt, error) {
 	var attempt LoginAttempt
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT id, user_id, ip_address, user_agent, successful, attempted_at, lockout_until, created_at
 		FROM login_attempts
 		WHERE user_id = $1 AND successful = true

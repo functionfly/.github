@@ -41,7 +41,8 @@ func (h *Handler) HandleListTriggers(w http.ResponseWriter, r *http.Request) {
 
 	triggers, err := h.repo.ListFabricTriggers(r.Context(), tenantID, fabricID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to list triggers")
+		http.Error(w, "Failed to list triggers", http.StatusNotFound)
 		return
 	}
 	total := len(triggers)
@@ -120,7 +121,8 @@ func (h *Handler) HandleDeleteTrigger(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.repo.DeleteFabricTrigger(r.Context(), tenantID, fabricID, triggerID); err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		logrus.WithError(err).WithField("fabricID", fabricID).WithField("triggerID", triggerID).Error("Failed to delete trigger")
+		http.Error(w, "Failed to delete trigger", http.StatusNotFound)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -165,7 +167,7 @@ func (h *Handler) HandleUpdateTrigger(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		if err.Error() == "trigger not found" {
-			http.Error(w, err.Error(), http.StatusNotFound)
+			http.Error(w, "Trigger not found", http.StatusNotFound)
 			return
 		}
 		logrus.WithError(err).Error("failed to update fabric trigger")

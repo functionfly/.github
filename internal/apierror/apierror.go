@@ -12,15 +12,18 @@ type ErrorCode string
 
 const (
 	// Client errors (4xx)
-	ErrCodeBadRequest      ErrorCode = "BAD_REQUEST"
-	ErrCodeUnauthorized    ErrorCode = "UNAUTHORIZED"
-	ErrCodeForbidden       ErrorCode = "FORBIDDEN"
-	ErrCodeNotFound        ErrorCode = "NOT_FOUND"
-	ErrCodeConflict        ErrorCode = "CONFLICT"
-	ErrCodeValidation      ErrorCode = "VALIDATION_ERROR"
-	ErrCodeRateLimited     ErrorCode = "RATE_LIMITED"
-	ErrCodeUnprocessable   ErrorCode = "UNPROCESSABLE_ENTITY"
-	ErrCodeUpgradeRequired ErrorCode = "UPGRADE_REQUIRED"
+	ErrCodeBadRequest       ErrorCode = "BAD_REQUEST"
+	ErrCodeUnauthorized     ErrorCode = "UNAUTHORIZED"
+	ErrCodeForbidden        ErrorCode = "FORBIDDEN"
+	ErrCodeNotFound         ErrorCode = "NOT_FOUND"
+	ErrCodeConflict         ErrorCode = "CONFLICT"
+	ErrCodeValidation       ErrorCode = "VALIDATION_ERROR"
+	ErrCodeRateLimited      ErrorCode = "RATE_LIMITED"
+	ErrCodeUnprocessable    ErrorCode = "UNPROCESSABLE_ENTITY"
+	ErrCodeUpgradeRequired  ErrorCode = "UPGRADE_REQUIRED"
+	ErrCodeLocked           ErrorCode = "LOCKED"
+	ErrCodePrecondition     ErrorCode = "PRECONDITION_FAILED"
+	ErrCodeTooManyRequests  ErrorCode = "TOO_MANY_REQUESTS"
 
 	// Server errors (5xx)
 	ErrCodeInternal           ErrorCode = "INTERNAL_ERROR"
@@ -163,4 +166,39 @@ func ValidationFieldError(field, message string) *APIError {
 		Message: message,
 		Field:   field,
 	}
+}
+
+// NewLocked creates a 423 Locked error for locked resources
+func NewLocked(message string) *APIError {
+	return &APIError{Status: http.StatusLocked, Code: ErrCodeLocked, Message: message}
+}
+
+// NewPreconditionFailed creates a 428 Precondition Required error
+func NewPreconditionFailed(message string) *APIError {
+	return &APIError{Status: http.StatusPreconditionRequired, Code: ErrCodePrecondition, Message: message}
+}
+
+// NewTooManyRequests creates a 429 Too Many Requests error
+func NewTooManyRequests(message string) *APIError {
+	return &APIError{Status: http.StatusTooManyRequests, Code: ErrCodeTooManyRequests, Message: message}
+}
+
+// WriteAccepted writes a 202 Accepted response for async operations
+func WriteAccepted(w http.ResponseWriter, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
+	json.NewEncoder(w).Encode(data)
+}
+
+// WriteNoContent writes a 204 No Content response for DELETE operations
+func WriteNoContent(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// WritePartialContent writes a 206 Partial Content response for pagination
+func WritePartialContent(w http.ResponseWriter, data interface{}, contentRange string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Range", contentRange)
+	w.WriteHeader(http.StatusPartialContent)
+	json.NewEncoder(w).Encode(data)
 }

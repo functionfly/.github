@@ -54,6 +54,14 @@ func (r *RegistryRepository) CreateFunction(fn *RegistryFunction) error {
 	// Invalidate list and search caches so new function appears in registry list
 	if r.cache != nil {
 		go func() {
+			defer func() {
+				if rec := recover(); rec != nil {
+					logrus.WithFields(logrus.Fields{
+						"panic": rec,
+						"stack": fmt.Sprintf("%v", rec),
+					}).Error("CreateFunction cache invalidation goroutine panicked")
+				}
+			}()
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			_ = r.cache.InvalidateFunction(ctx, fn.ID.String())
@@ -107,6 +115,14 @@ func (r *RegistryRepository) GetFunctionByAuthorName(author, name string) (*Regi
 	if r.cache != nil && r.keyGen != nil {
 		cacheKey := r.keyGen.FunctionInfo(author, name)
 		go func() {
+			defer func() {
+				if rec := recover(); rec != nil {
+					logrus.WithFields(logrus.Fields{
+						"panic": rec,
+						"stack": fmt.Sprintf("%v", rec),
+					}).Error("GetFunctionByAuthorName cache set goroutine panicked")
+				}
+			}()
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			_ = r.cache.SetJSON(ctx, cacheKey, fn)
@@ -130,6 +146,14 @@ func (r *RegistryRepository) UpdateFunctionSettings(id uuid.UUID, settings map[s
 	}
 	if r.cache != nil {
 		go func() {
+			defer func() {
+				if rec := recover(); rec != nil {
+					logrus.WithFields(logrus.Fields{
+						"panic": rec,
+						"stack": fmt.Sprintf("%v", rec),
+					}).Error("UpdateFunctionSettings cache invalidation goroutine panicked")
+				}
+			}()
 			_ = r.cache.InvalidateFunction(context.Background(), id.String())
 		}()
 	}
@@ -148,6 +172,14 @@ func (r *RegistryRepository) UpdateFunctionLatestVersion(id uuid.UUID, version s
 	// Invalidate cache for this function
 	if r.cache != nil {
 		go func() {
+			defer func() {
+				if rec := recover(); rec != nil {
+					logrus.WithFields(logrus.Fields{
+						"panic": rec,
+						"stack": fmt.Sprintf("%v", rec),
+					}).Error("UpdateFunctionLatestVersion cache invalidation goroutine panicked")
+				}
+			}()
 			if err := r.cache.InvalidateFunction(context.Background(), id.String()); err != nil {
 				fmt.Printf("Failed to invalidate function cache after version update: %v\n", err)
 			}

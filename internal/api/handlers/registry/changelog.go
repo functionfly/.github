@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -51,14 +52,14 @@ func (h *Handler) HandleGetChangelogs(w http.ResponseWriter, r *http.Request) {
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get function")
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	changelogs, err := h.repo.GetFunctionVersionChangelogs(fn.ID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get changelogs")
-		http.Error(w, "Failed to get changelogs", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get changelogs"))
 		return
 	}
 
@@ -86,19 +87,19 @@ func (h *Handler) HandleGetChangelogByVersion(w http.ResponseWriter, r *http.Req
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get function")
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	changelogs, err := h.repo.GetChangelogsByVersion(fn.ID, version)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get changelog")
-		http.Error(w, "Failed to get changelog", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get changelog"))
 		return
 	}
 
 	if len(changelogs) == 0 {
-		http.Error(w, "Changelog not found for this version", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Changelog not found for this version"))
 		return
 	}
 
@@ -136,21 +137,21 @@ func (h *Handler) HandleGetChangelogByCategory(w http.ResponseWriter, r *http.Re
 	}
 
 	if !validCategories[category] {
-		http.Error(w, "Invalid category", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid category"))
 		return
 	}
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get function")
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	changelogs, err := h.repo.GetChangelogsByCategory(fn.ID, category)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get changelogs by category")
-		http.Error(w, "Failed to get changelogs", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get changelogs"))
 		return
 	}
 
@@ -177,7 +178,7 @@ func (h *Handler) HandleGetVersionHistory(w http.ResponseWriter, r *http.Request
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get function")
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
@@ -185,7 +186,7 @@ func (h *Handler) HandleGetVersionHistory(w http.ResponseWriter, r *http.Request
 	versions, err := h.repo.ListFunctionVersions(fn.ID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get versions")
-		http.Error(w, "Failed to get versions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get versions"))
 		return
 	}
 
@@ -193,7 +194,7 @@ func (h *Handler) HandleGetVersionHistory(w http.ResponseWriter, r *http.Request
 	changelogs, err := h.repo.GetFunctionVersionChangelogs(fn.ID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get changelogs")
-		http.Error(w, "Failed to get changelogs", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get changelogs"))
 		return
 	}
 

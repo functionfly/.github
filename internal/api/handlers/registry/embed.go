@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/gorilla/mux"
@@ -58,14 +59,14 @@ func (h *Handler) HandleServeEmbed(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if author == "" || name == "" {
-		http.Error(w, "author and name are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("author and name are required"))
 		return
 	}
 
 	// 1. Look up function in registry
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
@@ -75,21 +76,21 @@ func (h *Handler) HandleServeEmbed(w http.ResponseWriter, r *http.Request) {
 	embedCfg, cfgErr := h.repo.GetFunctionEmbedConfig(fn.ID)
 	if cfgErr == nil && embedCfg != nil {
 		if !embedCfg.Enabled {
-			http.Error(w, "Embed not enabled for this function", http.StatusForbidden)
+			apierror.WriteError(w, apierror.NewForbidden("Embed not enabled for this function"))
 			return
 		}
 		// SECURITY: Use Referer header (server-controlled) for origin validation,
 		// not X-Embed-Origin which can be spoofed by malicious JS.
 		origin := resolveRequestOrigin(r)
 		if origin != "" && !isOriginAllowed(origin, embedCfg.AllowedOrigins) {
-			http.Error(w, "Origin not allowed", http.StatusForbidden)
+			apierror.WriteError(w, apierror.NewForbidden("Origin not allowed"))
 			return
 		}
 		// In production, if allowed_origins is empty (fail closed), deny all cross-origin requests
 		if origin != "" && len(embedCfg.AllowedOrigins) == 0 {
 			isProd := os.Getenv("ENVIRONMENT") == "production" || os.Getenv("NODE_ENV") == "production"
 			if isProd {
-				http.Error(w, "Origin not allowed", http.StatusForbidden)
+				apierror.WriteError(w, apierror.NewForbidden("Origin not allowed"))
 				return
 			}
 		}
@@ -100,7 +101,7 @@ func (h *Handler) HandleServeEmbed(w http.ResponseWriter, r *http.Request) {
 			count, rlErr := h.repo.GetEmbedExecutionCountByOrigin(fn.ID, origin, since)
 			if rlErr == nil && count >= int64(embedCfg.RateLimitPerHour) {
 				w.Header().Set("Retry-After", "3600")
-				http.Error(w, "Embed rate limit exceeded for this origin", http.StatusTooManyRequests)
+				apierror.WriteError(w, apierror.NewRateLimited("Embed rate limit exceeded for this origin"))
 				return
 			}
 		}
@@ -109,7 +110,7 @@ func (h *Handler) HandleServeEmbed(w http.ResponseWriter, r *http.Request) {
 	// 3. Get function version metadata
 	latestVersion, err := h.repo.GetLatestFunctionVersion(fn.ID)
 	if err != nil {
-		http.Error(w, "No versions available", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("No versions available"))
 		return
 	}
 
@@ -151,7 +152,7 @@ func (h *Handler) HandleGetEmbedConfig(w http.ResponseWriter, r *http.Request) {
 	// SECURITY: Require authenticated user (config reveals allowed origins, rate limits)
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -161,19 +162,19 @@ func (h *Handler) HandleGetEmbedConfig(w http.ResponseWriter, r *http.Request) {
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	// SECURITY: Only the function owner can see embed config details
 	if fn.TenantID == nil || *fn.TenantID != user.TenantID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
 	cfg, err := h.repo.GetFunctionEmbedConfig(fn.ID)
 	if err != nil {
-		http.Error(w, "Failed to get embed config", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get embed config"))
 		return
 	}
 
@@ -190,7 +191,7 @@ func (h *Handler) HandleUpdateEmbedConfig(w http.ResponseWriter, r *http.Request
 	// SECURITY: Require authenticated user (enforced by RequireAuth middleware)
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -200,37 +201,37 @@ func (h *Handler) HandleUpdateEmbedConfig(w http.ResponseWriter, r *http.Request
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	// SECURITY: Verify the authenticated user owns this function (same pattern as settings.go)
 	if fn.TenantID == nil || *fn.TenantID != user.TenantID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
 	var cfg registry.EmbedConfig
 	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	// Validate theme
 	if cfg.UITheme != "" && cfg.UITheme != "light" && cfg.UITheme != "dark" && cfg.UITheme != "auto" {
-		http.Error(w, "Invalid ui_theme: must be 'light', 'dark', or 'auto'", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid ui_theme: must be 'light', 'dark', or 'auto'"))
 		return
 	}
 
 	// Validate allowed origins — must be valid origin format (scheme + host) or wildcard
 	if err := validateAllowedOrigins(cfg.AllowedOrigins); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest(err.Error()))
 		return
 	}
 
 	// Validate rate limit bounds
 	if cfg.RateLimitPerHour < 0 {
-		http.Error(w, "rate_limit_per_hour must be non-negative", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("rate_limit_per_hour must be non-negative"))
 		return
 	}
 	if cfg.RateLimitPerHour > 100000 {
@@ -255,7 +256,7 @@ func (h *Handler) HandleUpdateEmbedConfig(w http.ResponseWriter, r *http.Request
 	}
 
 	if err := h.repo.UpdateFunctionEmbedConfig(fn.ID, &cfg); err != nil {
-		http.Error(w, "Failed to update embed config", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update embed config"))
 		return
 	}
 
@@ -275,13 +276,13 @@ func (h *Handler) HandleGetEmbedSnippet(w http.ResponseWriter, r *http.Request) 
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	latestVersion, err := h.repo.GetLatestFunctionVersion(fn.ID)
 	if err != nil {
-		http.Error(w, "No versions available", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("No versions available"))
 		return
 	}
 
@@ -390,7 +391,7 @@ func (h *Handler) HandleGetEmbedAnalytics(w http.ResponseWriter, r *http.Request
 	// SECURITY: Require authenticated user (analytics reveals traffic patterns)
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -400,13 +401,13 @@ func (h *Handler) HandleGetEmbedAnalytics(w http.ResponseWriter, r *http.Request
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	// SECURITY: Only the function owner can see embed analytics
 	if fn.TenantID == nil || *fn.TenantID != user.TenantID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
@@ -436,7 +437,7 @@ func (h *Handler) HandleGetEmbedAnalytics(w http.ResponseWriter, r *http.Request
 	since := time.Now().AddDate(0, 0, -days)
 	stats, err := h.repo.GetEmbedAnalytics(fn.ID, since, limit)
 	if err != nil {
-		http.Error(w, "Failed to get embed analytics", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get embed analytics"))
 		return
 	}
 

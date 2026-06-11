@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/auth"
 	storageregistry "github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
@@ -84,12 +85,12 @@ func AuthorMatchesPublisher(claims *auth.Claims, author string) bool {
 
 // WriteForbidden writes a 403 response.
 func WriteForbidden(w http.ResponseWriter) {
-	http.Error(w, "Forbidden", http.StatusForbidden)
+	apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 }
 
 // WriteUnauthorized writes a 401 response.
 func WriteUnauthorized(w http.ResponseWriter) {
-	http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 }
 
 // RequireRegistryFunctionOwner loads a function by ID and ensures the caller owns it (or is admin).
@@ -107,10 +108,10 @@ func (h *Handler) RequireRegistryFunctionOwner(
 	fn, err := h.repo.GetFunctionByID(functionID)
 	if err != nil {
 		if strings.Contains(err.Error(), "record not found") || strings.Contains(err.Error(), "no rows") {
-			http.Error(w, "Function not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 			return nil, nil, false
 		}
-		http.Error(w, "Failed to load function", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to load function"))
 		return nil, nil, false
 	}
 
@@ -134,10 +135,10 @@ func (h *Handler) RequireRegistryFunctionView(
 	fn, err := h.repo.GetFunctionByID(functionID)
 	if err != nil {
 		if strings.Contains(err.Error(), "record not found") || strings.Contains(err.Error(), "no rows") {
-			http.Error(w, "Function not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 			return nil, claims, false
 		}
-		http.Error(w, "Failed to load function", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to load function"))
 		return nil, claims, false
 	}
 

@@ -24,18 +24,23 @@ type StateFabricHostHandler struct {
 }
 
 // NewStateFabricHostHandler creates a new handler with StateFabric support
+// ctx is required for cancellation and timeout propagation - do not pass context.Background()
 func NewStateFabricHostHandler(
 	baseHandler *DefaultHostHandler,
 	repo *statefabric.Repository,
 	tenantID uuid.UUID,
 	fabricID uuid.UUID,
+	ctx context.Context,
 ) *StateFabricHostHandler {
+	if ctx == nil {
+		panic("context.Context is required for StateFabricHostHandler - do not pass nil")
+	}
 	return &StateFabricHostHandler{
 		DefaultHostHandler: baseHandler,
 		repo:               repo,
 		tenantID:           tenantID,
 		fabricID:           fabricID,
-		ctx:                context.Background(),
+		ctx:                ctx,
 	}
 }
 

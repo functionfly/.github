@@ -521,7 +521,7 @@ func (w *corsResponseWriter) Write(b []byte) (int, error) {
 func localhostCORSWrapper(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
-		isDev := os.Getenv("DEVELOPMENT") == "true"
+		isDev := os.Getenv("DEVELOPMENT") == "true" && os.Getenv("NODE_ENV") != "production" && os.Getenv("ENVIRONMENT") != "production"
 		isLocalhost := origin != "" && (strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://127.0.0.1:"))
 
 		// SECURITY: Reject localhost origins in production even via this wrapper

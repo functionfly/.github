@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/gorilla/mux"
 )
 
@@ -152,7 +153,7 @@ func (h *MigrationHandler) HandleGetEndpointMigration(w http.ResponseWriter, r *
 	// Find migration info for this endpoint
 	migration := h.findMigration(endpoint, method)
 	if migration == nil {
-		http.Error(w, "No migration information found for this endpoint", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("No migration information found for this endpoint"))
 		return
 	}
 

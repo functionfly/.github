@@ -26,18 +26,18 @@ const (
 
 // BalanceHistoryEntry represents a single balance history record
 type BalanceHistoryEntry struct {
-	ID               uuid.UUID           `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	WalletID         uuid.UUID           `json:"wallet_id" gorm:"type:uuid;not null;index"`
-	BalanceUSD       float64             `json:"balance_usd" gorm:"type:decimal(14,4);not null"`
-	BalanceLocal     *float64            `json:"balance_local,omitempty" gorm:"type:decimal(14,4)"`
-	Currency         string              `json:"currency" gorm:"not null;default:'USD'"`
-	ChangeAmountUSD  float64             `json:"change_amount_usd" gorm:"type:decimal(14,4);not null;default:0"`
-	TransactionID    *uuid.UUID          `json:"transaction_id,omitempty" gorm:"type:uuid;index"`
-	RecordedAt       time.Time           `json:"recorded_at" gorm:"not null;default:NOW()"`
-	RecordedDate     time.Time           `json:"recorded_date" gorm:"type:date;not null;default:CURRENT_DATE"`
-	SnapshotType     BalanceSnapshotType `json:"snapshot_type" gorm:"type:varchar(20);not null;default:'transactional'"`
-	Metadata         []byte              `json:"metadata,omitempty" gorm:"type:jsonb;default:'{}'"`
-	CreatedAt        time.Time           `json:"created_at" gorm:"autoCreateTime"`
+	ID              uuid.UUID           `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	WalletID        uuid.UUID           `json:"wallet_id" gorm:"type:uuid;not null;index"`
+	BalanceUSD      float64             `json:"balance_usd" gorm:"type:decimal(14,4);not null"`
+	BalanceLocal    *float64            `json:"balance_local,omitempty" gorm:"type:decimal(14,4)"`
+	Currency        string              `json:"currency" gorm:"not null;default:'USD'"`
+	ChangeAmountUSD float64             `json:"change_amount_usd" gorm:"type:decimal(14,4);not null;default:0"`
+	TransactionID   *uuid.UUID          `json:"transaction_id,omitempty" gorm:"type:uuid;index"`
+	RecordedAt      time.Time           `json:"recorded_at" gorm:"not null;default:NOW()"`
+	RecordedDate    time.Time           `json:"recorded_date" gorm:"type:date;not null;default:CURRENT_DATE"`
+	SnapshotType    BalanceSnapshotType `json:"snapshot_type" gorm:"type:varchar(20);not null;default:'transactional'"`
+	Metadata        []byte              `json:"metadata,omitempty" gorm:"type:jsonb;default:'{}'"`
+	CreatedAt       time.Time           `json:"created_at" gorm:"autoCreateTime"`
 }
 
 // TableName returns the database table name
@@ -64,19 +64,19 @@ type BalanceHistoryResult struct {
 
 // BalanceAnalytics provides time-series analytics for wallet balances
 type BalanceAnalytics struct {
-	WalletID           uuid.UUID `json:"wallet_id"`
-	PeriodStart        time.Time `json:"period_start"`
-	PeriodEnd          time.Time `json:"period_end"`
-	StartingBalance    float64   `json:"starting_balance"`
-	EndingBalance      float64   `json:"ending_balance"`
-	HighestBalance     float64   `json:"highest_balance"`
-	LowestBalance      float64   `json:"lowest_balance"`
-	AverageBalance     float64   `json:"average_balance"`
-	TotalCredits       float64   `json:"total_credits"`
-	TotalDebits        float64   `json:"total_debits"`
-	NetChange          float64   `json:"net_change"`
-	TransactionCount   int       `json:"transaction_count"`
-	DaysWithActivity   int       `json:"days_with_activity"`
+	WalletID         uuid.UUID `json:"wallet_id"`
+	PeriodStart      time.Time `json:"period_start"`
+	PeriodEnd        time.Time `json:"period_end"`
+	StartingBalance  float64   `json:"starting_balance"`
+	EndingBalance    float64   `json:"ending_balance"`
+	HighestBalance   float64   `json:"highest_balance"`
+	LowestBalance    float64   `json:"lowest_balance"`
+	AverageBalance   float64   `json:"average_balance"`
+	TotalCredits     float64   `json:"total_credits"`
+	TotalDebits      float64   `json:"total_debits"`
+	NetChange        float64   `json:"net_change"`
+	TransactionCount int       `json:"transaction_count"`
+	DaysWithActivity int       `json:"days_with_activity"`
 }
 
 // RecordBalanceChange records a balance change after a transaction
@@ -107,12 +107,12 @@ func (r *Repository) RecordScheduledSnapshot(ctx context.Context, walletID uuid.
 	}
 
 	entry := &BalanceHistoryEntry{
-		WalletID:       walletID,
-		BalanceUSD:     wallet.BalanceUSD,
-		Currency:       wallet.Currency,
-		RecordedAt:     time.Now(),
-		RecordedDate:   time.Now(),
-		SnapshotType:   SnapshotTypeScheduled,
+		WalletID:     walletID,
+		BalanceUSD:   wallet.BalanceUSD,
+		Currency:     wallet.Currency,
+		RecordedAt:   time.Now(),
+		RecordedDate: time.Now(),
+		SnapshotType: SnapshotTypeScheduled,
 	}
 
 	return r.db.WithContext(ctx).Create(entry).Error

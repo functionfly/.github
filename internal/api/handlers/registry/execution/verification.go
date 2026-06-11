@@ -179,7 +179,7 @@ func (h *Handler) updatePassportVerified(functionID uuid.UUID, resourceHash stri
 	update := storage.PassportUpdate{
 		IncrementVerified: true,
 		ResourceHash:      resourceHash,
-		LastVerifiedAt:   &now,
+		LastVerifiedAt:    &now,
 	}
 	if err := h.Repo.UpdatePassport(functionID, update); err != nil {
 		fmt.Printf("DRE: failed to update passport verified: %v\n", err)

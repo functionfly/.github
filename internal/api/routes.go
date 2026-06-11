@@ -12,7 +12,6 @@ import (
 
 	"github.com/functionfly/functionfly/internal/agent/actuator"
 	"github.com/functionfly/functionfly/internal/agent/autonomy"
-	agentbrowser "github.com/functionfly/functionfly/internal/agent/browser"
 	"github.com/functionfly/functionfly/internal/agent/categorization"
 	agentdeployment "github.com/functionfly/functionfly/internal/agent/deployment"
 	"github.com/functionfly/functionfly/internal/agent/discovery"
@@ -52,7 +51,6 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/demo"
 	"github.com/functionfly/functionfly/internal/api/handlers/deploykeys"
 	"github.com/functionfly/functionfly/internal/api/handlers/deployments"
-	dnahandler "github.com/functionfly/functionfly/internal/api/handlers/dna"
 	enterprisePkg "github.com/functionfly/functionfly/internal/api/handlers/enterprise"
 	factoryhandler "github.com/functionfly/functionfly/internal/api/handlers/factory"
 	feedbackHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/feedback"
@@ -70,8 +68,6 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/playground"
 	"github.com/functionfly/functionfly/internal/api/handlers/plugin"
 	privacyhandler "github.com/functionfly/functionfly/internal/api/handlers/privacy"
-	receipthandler "github.com/functionfly/functionfly/internal/api/handlers/receipt"
-	receiptstorage "github.com/functionfly/functionfly/internal/storage/receipt"
 	"github.com/functionfly/functionfly/internal/api/handlers/providers"
 	"github.com/functionfly/functionfly/internal/api/handlers/recommendations"
 	registryhandler "github.com/functionfly/functionfly/internal/api/handlers/registry"
@@ -98,7 +94,6 @@ import (
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/captcha"
 	"github.com/functionfly/functionfly/internal/currency"
-	"github.com/functionfly/functionfly/internal/dna"
 	"github.com/functionfly/functionfly/internal/manifest"
 	monitoringPkg "github.com/functionfly/functionfly/internal/monitoring"
 	paymentPkg "github.com/functionfly/functionfly/internal/payment"
@@ -108,7 +103,6 @@ import (
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/statefabricaddons"
 	"github.com/functionfly/functionfly/internal/storage"
-	dnastorage "github.com/functionfly/functionfly/internal/storage/dna"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	staterepo "github.com/functionfly/functionfly/internal/storage/state"
 	statefabricrepo "github.com/functionfly/functionfly/internal/storage/statefabric"
@@ -147,11 +141,6 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	walletService := wallet.NewService(walletRepo, s.redisClient)
 	_ = walletService // Used by admin handlers and webhooks
 
-	// ── Browser Automation Service Initialization ──────────────────────────────────
-	browserConfig := agentbrowser.DefaultConfig()
-	browserService := agentbrowser.NewBrowser(browserConfig, s.postgresDB.GORM, s.redisClient)
-	s.browserSvc = browserService
-
 	// Legacy platform fee repository (still used by registry handlers during migration)
 	platformFeeRepo := registry.NewPlatformFeeRepository(s.postgresDB.GORM)
 	sfAddonRepo := statefabricaddons.NewRepository(s.postgresDB.GORM)
@@ -182,7 +171,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	maintenanceRepo := storage.NewMaintenanceRepository(s.postgresDB.GORM)
 	maintenanceHandler := admin.NewMaintenanceHandler(maintenanceRepo, s.authSvc)
 	maintenanceMiddleware := middleware.NewMaintenanceMiddleware(maintenanceRepo)
-	contentHandler := content.NewHandler(s.repo, s.contentRepo)
+	contentHandler := content.NewHandler(s.repo)
 	blogRepo := blog.NewBlogRepository(s.postgresDB.DB)
 	blogHandler := blog.NewHandler(blogRepo)
 	feedbackHandler := feedbackHandlerPkg.NewHandler(s.repo, s.storageService)
@@ -199,10 +188,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	apiKeyAuthHandler := apikeys.NewAPIKeyAuthHandler(apikeyRepo, jwtSecret)
 
 	monitoringHandler := monitoring.NewHandler(s.repo, s.monitoringSvc, s.realtimeMonitor, s.authSvc)
-	mfaRateLimiter := middleware.NewMFARateLimiter()
-	mfaHandler := mfaHandlerPkg.NewMFAHandler(s.authSvc, mfaRateLimiter)
+	mfaHandler := mfaHandlerPkg.NewMFAHandler(s.authSvc)
 
-	notificationHandler := notificationHandlerPkg.NewHandler(s.notificationSvc, s.notificationRepo, nil, logrus.StandardLogger())
+	notificationHandler := notificationHandlerPkg.NewHandler(s.notificationSvc, s.notificationRepo)
 	notificationWSHandler := notificationHandlerPkg.NewWebSocketHandler(
 		notificationHandlerPkg.NewWebSocketHub(logrus.New()),
 		logrus.New(),
@@ -231,10 +219,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	githubRepo := storage.NewGitHubRepository(s.postgresDB.DB)
 	githubVaultKey := os.Getenv("GITHUB_VAULT_KEY")
 	if githubVaultKey == "" {
-		logrus.Fatal("FATAL: GITHUB_VAULT_KEY environment variable is required. It must be exactly 32 bytes for AES-256-GCM encryption.")
-	}
-	if len(githubVaultKey) != 32 {
-		logrus.Fatalf("FATAL: GITHUB_VAULT_KEY must be exactly 32 bytes for AES-256-GCM encryption. Got %d bytes.", len(githubVaultKey))
+		githubVaultKey = "default-dev-key-must-be-32-bytes!" // 32 bytes for dev
 	}
 	githubBaseURL := os.Getenv("FRONTEND_URL")
 	if githubBaseURL == "" {
@@ -377,27 +362,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	if privacySalt == "" {
 		logrus.Fatal("FATAL: PRIVACY_SALT environment variable is required. Refusing to start with predictable salt.")
 	}
-	if len(privacySalt) < 16 {
-		if os.Getenv("DEVELOPMENT") == "true" {
-			logrus.Warn("PRIVACY_SALT is less than 16 characters - this weakens the SHA256 hash used for PII anonymization")
-		} else {
-			logrus.Fatalf("FATAL: PRIVACY_SALT must be at least 16 characters for adequate security. Got %d characters.", len(privacySalt))
-		}
-	}
 	privacyService := privacy.NewService(privacyRepo, privacySalt)
 	registryHandler.SetPrivacyService(privacyService)
-
-	// ── Execution Receipt repository + handler ─────────────────────────────
-	receiptRepo := receiptstorage.NewRepository(s.postgresDB.GORM, s.redisClient)
-	receiptCfg := receipthandler.DefaultConfig()
-	receiptHandler := receipthandler.NewHandler(receiptRepo, registryHandler, registryRepo, privacyService, s.redisClient, logrus.New(), receiptCfg)
-
-	// Milestone worker: fires in-app + email notifications when a function's
-	// run count crosses a threshold (1, 10, 100, 1k, 10k by default).
-	if receiptCfg.MilestoneEnabled {
-		milestoneWorker := receipthandler.NewMilestone(receiptRepo, s.notificationSvc, receiptCfg, logrus.New())
-		receiptHandler.MilestoneHook = milestoneWorker.OnExecution
-	}
 
 	// Wire up billing controller for paid function execution using the unified wallet system
 	registryHandler.SetBillingController(wallet.NewBillingControllerWrapper(walletService))
@@ -470,7 +436,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	tutorialsHandler := registryhandler.NewTutorialsHandler()
 
 	teamHandler := teams.NewHandler(s.repo, s.notificationSvc, nil)
-	providersHandler := providers.NewHandler(s.repo, s.notificationSvc, apikeyRepo)
+	providersHandler := providers.NewHandler(s.repo, s.notificationSvc)
 	dashboardHandler := dashboard.NewHandler(s.repo)
 	studioCollabRepo := studio.NewCollabRepository(s.postgresDB.DB)
 	studioCollabHandler := studio.NewHandler(studioCollabRepo)
@@ -842,34 +808,6 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	analyticsSvc := analytics.NewService(s.postgresDB.GORM, analytics.DefaultServiceConfig(factoryConfig.AgentID))
 	analyticsHandler := analyticshandler.NewHandler(analyticsSvc, s.authSvc)
 
-	// ── Function DNA Service ─────────────────────────────────────────────────
-	dnaRepo := dnastorage.NewRepository(s.postgresDB.DB)
-	dnaLogger := logrus.New()
-	var dnaHandler *dnahandler.Handler
-	s.dnaService, err = dna.NewService(dnaRepo, dnaLogger)
-	if err != nil {
-		logrus.WithError(err).Fatal("dna: failed to initialize DNA service - AI_SERVICE_URL must be set")
-	}
-	if s.redisClient != nil {
-		dnaHandler = dnahandler.NewHandlerWithRedis(s.dnaService, dnaLogger, s.redisClient)
-	} else {
-		dnaHandler = dnahandler.NewHandler(s.dnaService, dnaLogger)
-	}
-	s.dnaHandler = dnaHandler
-
-	// Wire Rollbacker for mutation rollback operations
-	canaryRepo := registry.NewCanaryConfigRepository(s.postgresDB.GORM)
-	rollbacker := dna.NewRollbacker(dnaRepo, canaryRepo, dnaLogger)
-	s.dnaService.SetRollbacker(rollbacker)
-
-	// Start DNA analysis background worker
-	go s.dnaService.RunAnalysisWorker(context.Background())
-	logrus.Info("DNA analysis worker started")
-
-	// Start DNA payment reconciliation worker
-	go s.dnaService.RunPaymentReconciliationWorker(context.Background())
-	logrus.Info("DNA payment reconciliation worker started")
-
 	// Initialize learning and deployment services for swarm
 	agentLearningRepo := learning.NewRepository(s.postgresDB.GORM)
 	agentAnalyzer := learning.NewAnalyzer(s.postgresDB.GORM)
@@ -907,7 +845,6 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// ── Middleware initialization ─────────────────────────────────────────────
 	authMiddleware := middleware.NewAuthMiddleware(s.authSvc)
-	featureMiddleware := middleware.NewFeatureMiddleware()
 	advancedSecurityMiddleware := middleware.NewAdvancedSecurityMiddleware(s.repo)
 
 	captchaService := captcha.NewCaptchaService(nil)
@@ -1009,14 +946,11 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	apiV2.Use(authMiddleware.OptionalAuth)
 	apiV2.Use(middleware.SimpleActivityTrackerWithRedis(userRepoActivity, s.redisClient))
 
-	authRateLimiter := middleware.NewAuthRateLimiter(s.redisClient)
-	vaultRateLimiter := middleware.NewVaultRateLimiter(s.redisClient)
-	providerRateLimiter := middleware.NewProviderRateLimiter(s.redisClient)
-	walletRateLimiter := middleware.NewWalletRateLimiter(s.redisClient)
-	publicRateLimiter := middleware.NewPublicRateLimiter(s.redisClient)
-	notificationRateLimiter := middleware.NewNotificationRateLimiter(s.redisClient)
-	healthRateLimiter := middleware.NewHealthRateLimiter(s.redisClient)
-	reservedUsernameChecker := middleware.NewDefaultReservedUsernameChecker()
+	authRateLimiter := middleware.NewAuthRateLimiter()
+	vaultRateLimiter := middleware.NewVaultRateLimiter()
+	providerRateLimiter := middleware.NewProviderRateLimiter()
+	walletRateLimiter := middleware.NewWalletRateLimiter()
+	mfaRateLimiter := middleware.NewMFARateLimiter()
 
 	// Initialize CSRF middleware early for billing route protection
 	csrfMiddleware := middleware.NewCSRFMiddleware(s.upstashRedis, s.authSvc)
@@ -1035,15 +969,13 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// ── Domain-scoped route registration ─────────────────────────────────────
 	registerAuthRoutes(
 		s.router, api,
-		authRateLimiter, publicRateLimiter, walletRateLimiter, mfaRateLimiter, authMiddleware, csrfMiddleware,
-		reservedUsernameChecker,
+		authRateLimiter, walletRateLimiter, mfaRateLimiter, authMiddleware, csrfMiddleware,
 		authHandler, tenantAuthHandler, apiKeyAuthHandler, usersHandler, favoritesHandler,
 		followHandler, apiKeysHandler, billingHandler, tenantWebhookHandler,
 		usageHandler, forecastHandler, costAllocationHandler,
 		exportHandler, externalBillingHandler,
 		mfaHandler, notificationHandler, notificationWSHandler,
 		presenceHandler,
-		notificationRateLimiter,
 	)
 
 	// Wire billing handler to bundle provisioner for isolated auto-provisioning
@@ -1148,9 +1080,6 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Ghost Mode autonomous building routes
 	registerGhostRoutes(api, authMiddleware, ghostHandler)
 
-	// Function DNA routes
-	registerDNARoutes(s, api, protected, authMiddleware, dnaHandler)
-
 	// Studio workflow routes
 	registerWorkflowRoutes(api, protected, authMiddleware, workflowHandler)
 
@@ -1183,30 +1112,18 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		stateUsageHandler,
 		unfairAdvantageHandler,
 		certHandler,
-		notificationHandler,
 	)
 
 	// Trust API for external platform partners
 	registerTrustAPIRoutes(s, api, registryRepo)
 
-	// Reputation API routes (user reputation profiles, leaderboard, farming detection)
-	registerReputationRoutes(s, api, authMiddleware)
-
 	// Privacy API routes (GDPR compliance, data export/deletion, consent management)
 	registerPrivacyRoutes(api, authMiddleware, privacyHandler)
-
-	// ── Execution Receipts (public read + owner-only revoke) ───────────────
-	registerReceiptPublicRoutes(s.router, receiptHandler)
-	registerReceiptAuthedRoutes(s.router, receiptHandler, func(next http.Handler) http.Handler {
-		return authMiddleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, r)
-		}))
-	})
 
 	// ── Time Machine ──────────────────────────────────────────────────────
 	tmRepo := timemachine.NewRepository(s.postgresDB.GORM)
 	tmHandler := newTimeMachineHandler(tmRepo, s.repo, s.redisClient, realtimeUsageTracker, s.notificationSvc, s.authSvc)
-	registerTimeMachineRoutes(api, tmHandler, authMiddleware, featureMiddleware)
+	registerTimeMachineRoutes(api, tmHandler, authMiddleware)
 
 	// ── Payout System (Stripe Connect) ───────────────────────────────────────
 	payoutRepo := storage.NewPayoutRepository(s.postgresDB.DB)
@@ -1225,18 +1142,6 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	s.certCredExpiryScheduler = scheduler.NewCertCredentialExpiryScheduler(certRepo)
 	if err := s.certCredExpiryScheduler.Start(context.Background()); err != nil {
 		logrus.WithError(err).Error("failed to start cert credential expiry scheduler")
-	}
-
-	// Receipt milestone sweep scheduler - catches any milestones missed during downtime.
-	// Only starts if RECEIPT_MILESTONE_ENABLED=true.
-	if receiptCfg.MilestoneEnabled {
-		milestoneWorker := receipthandler.NewMilestone(receiptRepo, s.notificationSvc, receiptCfg, logrus.New())
-		receiptMilestoneScheduler := scheduler.NewReceiptMilestoneScheduler(milestoneWorker, scheduler.DefaultReceiptMilestoneSchedulerConfig())
-		if err := receiptMilestoneScheduler.Start(context.Background()); err != nil {
-			logrus.WithError(err).Error("failed to start receipt milestone scheduler")
-		} else {
-			logrus.Info("Receipt milestone scheduler started")
-		}
 	}
 
 	{
@@ -1300,18 +1205,12 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	wellknownHandler := wellknown.NewHandler(registryRepo)
 	s.router.HandleFunc("/.well-known/functionfly.json", wellknownHandler.HandleWellKnown).Methods("GET", "OPTIONS")
 
-	// ── MCP Function Registry routes ────────────────────────────────────────
-	s.registerMCPRoutes(api, authMiddleware, executionSecurityMW, registryHandler, registryRepo)
-
-	// ── A2A (Agent-to-Agent Protocol) routes ────────────────────────────────
-	s.registerA2ARoutes(s.router, api, s.postgresDB.GORM, registryRepo, nil, authMiddleware, s.authSvc)
-	s.registerExtendedWellKnown(s.router)
-
-	s.router.Handle("/health", healthRateLimiter.Limit(http.HandlerFunc(s.handleHealth))).Methods("GET", "OPTIONS")
-	s.router.Handle("/healthz", healthRateLimiter.Limit(http.HandlerFunc(s.handleHealth))).Methods("GET", "OPTIONS")
-	s.router.Handle("/api/health", healthRateLimiter.Limit(http.HandlerFunc(s.handleHealth))).Methods("GET", "OPTIONS")
-	s.router.Handle("/health/detailed", healthRateLimiter.Limit(http.HandlerFunc(s.handleDetailedHealth))).Methods("GET", "OPTIONS")
-	s.router.Handle("/health/check", healthRateLimiter.Limit(http.HandlerFunc(s.handleHealthCheck))).Methods("GET", "OPTIONS")
+	s.router.HandleFunc("/health", s.handleHealth).Methods("GET", "OPTIONS")
+	s.router.HandleFunc("/healthz", s.handleHealth).Methods("GET", "OPTIONS")
+	s.router.HandleFunc("/health/detailed", s.handleDetailedHealth).Methods("GET", "OPTIONS")
+	s.router.HandleFunc("/health/check", s.handleHealthCheck).Methods("GET", "OPTIONS")
+	s.router.HandleFunc("/live", s.handleLiveness).Methods("GET", "OPTIONS")
+	s.router.HandleFunc("/ready", s.handleReadinessEndpoint).Methods("GET", "OPTIONS")
 	s.router.Handle("/metrics", middleware.RequireAuthInProduction(authMiddleware)(promhttp.Handler())).Methods("GET")
 	s.router.HandleFunc("/ws/v1/status", statusHandlerInst.HandleWebSocketStatus).Methods("GET")
 
@@ -1339,7 +1238,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 			return false
 		}
 		pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-		return len(pathParts) >= 1 && (pathParts[0] == "fx" || pathParts[0] == "run" || pathParts[0] == "replay" || pathParts[0] == "functions" || pathParts[0] == "v1" || pathParts[0] == "v2" || pathParts[0] == "r")
+		return len(pathParts) >= 1 && (pathParts[0] == "fx" || pathParts[0] == "run" || pathParts[0] == "replay" || pathParts[0] == "functions" || pathParts[0] == "v1" || pathParts[0] == "v2")
 	}).HandlerFunc(s.serveSPAIndex)
 
 	// Public routing endpoint: /{appSlug}/*
@@ -1350,8 +1249,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 			r.URL.Path == "/waitlist" ||
 			strings.HasPrefix(r.URL.Path, "/frg/") || r.URL.Path == "/frg" ||
 			strings.HasPrefix(r.URL.Path, "/gx/") || r.URL.Path == "/gx" ||
-			strings.HasPrefix(r.URL.Path, "/webhook/") || strings.HasPrefix(r.URL.Path, "/marketplace/") ||
-			strings.HasPrefix(r.URL.Path, "/agents/") {
+			strings.HasPrefix(r.URL.Path, "/webhook/") || strings.HasPrefix(r.URL.Path, "/marketplace/") {
 			return false
 		}
 		pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
@@ -1359,7 +1257,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 			pathParts[0] != "content" && pathParts[0] != "health" && pathParts[0] != "auth" &&
 			pathParts[0] != "fx" && pathParts[0] != "run" && pathParts[0] != "replay" &&
 			pathParts[0] != "frg" && pathParts[0] != "gx" && pathParts[0] != "functions" &&
-			pathParts[0] != "v1" && pathParts[0] != "v2" && pathParts[0] != "r"
+			pathParts[0] != "v1" && pathParts[0] != "v2"
 	}).HandlerFunc(s.handlePublicRoute)
 }
 

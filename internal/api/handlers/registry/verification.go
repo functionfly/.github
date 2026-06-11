@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/functionregistry"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/functionfly/functionfly/internal/verification"
@@ -41,7 +42,7 @@ func (h *Handler) HandleGetVerificationStatus(w http.ResponseWriter, r *http.Req
 func (h *Handler) HandleSignFunction(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -85,7 +86,7 @@ func (h *Handler) HandleSignFunction(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleVerifySignature(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -128,7 +129,7 @@ func (h *Handler) HandleVerifySignature(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) HandleRequestApproval(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -183,7 +184,7 @@ func (h *Handler) HandleRequestApproval(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) HandleMakeApprovalDecision(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -197,8 +198,8 @@ func (h *Handler) HandleMakeApprovalDecision(w http.ResponseWriter, r *http.Requ
 	}
 
 	var req struct {
-		Decision   string                     `json:"decision"`
-		Comments   string                     `json:"comments,omitempty"`
+		Decision        string                        `json:"decision"`
+		Comments        string                        `json:"comments,omitempty"`
 		RequiredActions []verification.ApprovalAction `json:"required_actions,omitempty"`
 	}
 
@@ -281,7 +282,7 @@ func (h *Handler) HandleGetApprovals(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetPendingApprovals(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -334,7 +335,7 @@ func (h *Handler) HandleGetPendingApprovals(w http.ResponseWriter, r *http.Reque
 func (h *Handler) HandleAddApprovalComment(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -348,7 +349,7 @@ func (h *Handler) HandleAddApprovalComment(w http.ResponseWriter, r *http.Reques
 	}
 
 	var req struct {
-		Comment   string `json:"comment"`
+		Comment    string `json:"comment"`
 		IsInternal bool   `json:"is_internal,omitempty"`
 	}
 

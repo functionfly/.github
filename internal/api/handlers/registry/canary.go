@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -30,19 +31,19 @@ func NewCanaryHandler(canaryRepo *registry.CanaryConfigRepository, functionRepo 
 
 // CanaryCreateRequest represents a canary deployment creation request
 type CanaryCreateRequest struct {
-	Version        string  `json:"version"`
-	TrafficPercent int     `json:"traffic_percent"`
-	AutoPromote   bool    `json:"auto_promote"`
+	Version          string  `json:"version"`
+	TrafficPercent   int     `json:"traffic_percent"`
+	AutoPromote      bool    `json:"auto_promote"`
 	PromoteThreshold float64 `json:"promote_threshold"`
-	PromoteWindow  int     `json:"promote_window"`
+	PromoteWindow    int     `json:"promote_window"`
 }
 
 // CanaryUpdateRequest represents a canary deployment update request
 type CanaryUpdateRequest struct {
-	TrafficPercent *int     `json:"traffic_percent,omitempty"`
-	AutoPromote   *bool    `json:"auto_promote,omitempty"`
+	TrafficPercent   *int     `json:"traffic_percent,omitempty"`
+	AutoPromote      *bool    `json:"auto_promote,omitempty"`
 	PromoteThreshold *float64 `json:"promote_threshold,omitempty"`
-	PromoteWindow  *int     `json:"promote_window,omitempty"`
+	PromoteWindow    *int     `json:"promote_window,omitempty"`
 }
 
 // HandleCreateCanary creates a new canary deployment
@@ -53,13 +54,13 @@ func (h *CanaryHandler) HandleCreateCanary(w http.ResponseWriter, r *http.Reques
 	name := vars["name"]
 
 	if author == "" || name == "" {
-		http.Error(w, "author and name are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("author and name are required"))
 		return
 	}
 
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -67,39 +68,39 @@ func (h *CanaryHandler) HandleCreateCanary(w http.ResponseWriter, r *http.Reques
 	fn, err := h.functionRepo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		logrus.WithError(err).Warn("Function not found for canary deployment")
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	if fn.OwnerUserID == nil || *fn.OwnerUserID != user.UserID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
 	// Check if there's already an active canary
 	existingCanary, _ := h.canaryRepo.GetByFunctionID(fn.ID)
 	if existingCanary != nil {
-		http.Error(w, "An active canary deployment already exists for this function. Cancel it first.", http.StatusConflict)
+		apierror.WriteError(w, apierror.NewConflict("An active canary deployment already exists for this function. Cancel it first."))
 		return
 	}
 
 	// Parse request body
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Failed to read request body"))
 		return
 	}
 	defer r.Body.Close()
 
 	var req CanaryCreateRequest
 	if err := json.Unmarshal(body, &req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	// Validate request
 	if req.Version == "" {
-		http.Error(w, "version is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("version is required"))
 		return
 	}
 
@@ -116,11 +117,11 @@ func (h *CanaryHandler) HandleCreateCanary(w http.ResponseWriter, r *http.Reques
 
 	// Create canary config
 	canary := &registry.CanaryConfig{
-		FunctionID:       fn.ID,
+		FunctionID: fn.ID,
 
 		Version:          req.Version,
-		TrafficPercent:  req.TrafficPercent,
-		AutoPromote:     req.AutoPromote,
+		TrafficPercent:   req.TrafficPercent,
+		AutoPromote:      req.AutoPromote,
 		PromoteThreshold: req.PromoteThreshold,
 		PromoteWindow:    req.PromoteWindow,
 		Status:           "active",
@@ -128,7 +129,7 @@ func (h *CanaryHandler) HandleCreateCanary(w http.ResponseWriter, r *http.Reques
 
 	if err := h.canaryRepo.Create(canary); err != nil {
 		logrus.WithError(err).Error("Failed to create canary config")
-		http.Error(w, "Failed to create canary deployment", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create canary deployment"))
 		return
 	}
 
@@ -145,14 +146,14 @@ func (h *CanaryHandler) HandleGetCanary(w http.ResponseWriter, r *http.Request) 
 	name := vars["name"]
 
 	if author == "" || name == "" {
-		http.Error(w, "author and name are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("author and name are required"))
 		return
 	}
 
 	// Get function
 	fn, err := h.functionRepo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
@@ -163,7 +164,7 @@ func (h *CanaryHandler) HandleGetCanary(w http.ResponseWriter, r *http.Request) 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"active": false,
+			"active":  false,
 			"message": "No active canary deployment",
 		})
 		return
@@ -180,53 +181,53 @@ func (h *CanaryHandler) HandleUpdateCanary(w http.ResponseWriter, r *http.Reques
 	name := vars["name"]
 
 	if author == "" || name == "" {
-		http.Error(w, "author and name are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("author and name are required"))
 		return
 	}
 
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	// Get function
 	fn, err := h.functionRepo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	if fn.OwnerUserID == nil || *fn.OwnerUserID != user.UserID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
 	// Get canary config
 	canary, err := h.canaryRepo.GetByFunctionID(fn.ID)
 	if err != nil {
-		http.Error(w, "No active canary deployment", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("No active canary deployment"))
 		return
 	}
 
 	// Parse request body
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Failed to read request body"))
 		return
 	}
 	defer r.Body.Close()
 
 	var req CanaryUpdateRequest
 	if err := json.Unmarshal(body, &req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	// Apply updates
 	if req.TrafficPercent != nil {
 		if *req.TrafficPercent < 0 || *req.TrafficPercent > 100 {
-			http.Error(w, "traffic_percent must be between 0 and 100", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("traffic_percent must be between 0 and 100"))
 			return
 		}
 		canary.TrafficPercent = *req.TrafficPercent
@@ -243,7 +244,7 @@ func (h *CanaryHandler) HandleUpdateCanary(w http.ResponseWriter, r *http.Reques
 
 	if err := h.canaryRepo.Update(canary); err != nil {
 		logrus.WithError(err).Error("Failed to update canary config")
-		http.Error(w, "Failed to update canary deployment", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update canary deployment"))
 		return
 	}
 
@@ -258,39 +259,39 @@ func (h *CanaryHandler) HandleCancelCanary(w http.ResponseWriter, r *http.Reques
 	name := vars["name"]
 
 	if author == "" || name == "" {
-		http.Error(w, "author and name are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("author and name are required"))
 		return
 	}
 
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	// Get function
 	fn, err := h.functionRepo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	if fn.OwnerUserID == nil || *fn.OwnerUserID != user.UserID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
 	// Get canary config
 	canary, err := h.canaryRepo.GetByFunctionID(fn.ID)
 	if err != nil {
-		http.Error(w, "No active canary deployment", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("No active canary deployment"))
 		return
 	}
 
 	// Update status to cancelled
 	if err := h.canaryRepo.UpdateStatus(canary.ID, "cancelled"); err != nil {
 		logrus.WithError(err).Error("Failed to cancel canary")
-		http.Error(w, "Failed to cancel canary deployment", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to cancel canary deployment"))
 		return
 	}
 
@@ -309,39 +310,39 @@ func (h *CanaryHandler) HandlePromoteCanary(w http.ResponseWriter, r *http.Reque
 	name := vars["name"]
 
 	if author == "" || name == "" {
-		http.Error(w, "author and name are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("author and name are required"))
 		return
 	}
 
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	// Get function
 	fn, err := h.functionRepo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	if fn.OwnerUserID == nil || *fn.OwnerUserID != user.UserID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
 	// Get canary config
 	canary, err := h.canaryRepo.GetByFunctionID(fn.ID)
 	if err != nil {
-		http.Error(w, "No active canary deployment", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("No active canary deployment"))
 		return
 	}
 
 	// Update function's latest version to canary version
 	if err := h.functionRepo.UpdateFunctionLatestVersion(fn.ID, canary.Version); err != nil {
 		logrus.WithError(err).Error("Failed to update function version")
-		http.Error(w, "Failed to promote canary", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to promote canary"))
 		return
 	}
 
@@ -370,48 +371,48 @@ func (h *CanaryHandler) HandleRollbackCanary(w http.ResponseWriter, r *http.Requ
 	name := vars["name"]
 
 	if author == "" || name == "" {
-		http.Error(w, "author and name are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("author and name are required"))
 		return
 	}
 
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	// Get function
 	fn, err := h.functionRepo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	if fn.OwnerUserID == nil || *fn.OwnerUserID != user.UserID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
 	// Get canary config
 	canary, err := h.canaryRepo.GetByFunctionID(fn.ID)
 	if err != nil {
-		http.Error(w, "No active canary deployment", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("No active canary deployment"))
 		return
 	}
 
 	// Mark canary as rolled_back
 	if err := h.canaryRepo.UpdateStatus(canary.ID, "rolled_back"); err != nil {
 		logrus.WithError(err).Error("Failed to update canary status")
-		http.Error(w, "Failed to rollback canary", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to rollback canary"))
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"message":    "Canary rolled back",
+		"message":        "Canary rolled back",
 		"canary_version": canary.Version,
-		"status":     "rolled_back",
+		"status":         "rolled_back",
 	})
 }
 
@@ -422,14 +423,14 @@ func (h *CanaryHandler) HandleGetCanaryHistory(w http.ResponseWriter, r *http.Re
 	name := vars["name"]
 
 	if author == "" || name == "" {
-		http.Error(w, "author and name are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("author and name are required"))
 		return
 	}
 
 	// Get function
 	fn, err := h.functionRepo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
@@ -437,7 +438,7 @@ func (h *CanaryHandler) HandleGetCanaryHistory(w http.ResponseWriter, r *http.Re
 	canaries, err := h.canaryRepo.GetAllByFunctionID(fn.ID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get canary history")
-		http.Error(w, "Failed to get canary history", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get canary history"))
 		return
 	}
 

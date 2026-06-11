@@ -15,14 +15,14 @@ import (
 // It processes pending sync records from billing_integration_syncs table
 // and executes the actual data synchronization with external billing systems.
 type BillingSyncJob struct {
-	exportRepo    *storage.ExportRepository
-	billingRepo   *storage.BillingRepository
-	exporters     map[storage.BillingSystemType]func() ExternalExporter
-	stopCh        chan struct{}
-	stopOnce      sync.Once
-	log           *logrus.Logger
-	workerCount   int
-	pollInterval  time.Duration
+	exportRepo   *storage.ExportRepository
+	billingRepo  *storage.BillingRepository
+	exporters    map[storage.BillingSystemType]func() ExternalExporter
+	stopCh       chan struct{}
+	stopOnce     sync.Once
+	log          *logrus.Logger
+	workerCount  int
+	pollInterval time.Duration
 }
 
 // BillingSyncJobConfig configures the billing sync job.
@@ -48,13 +48,13 @@ func NewBillingSyncJob(exportRepo *storage.ExportRepository, billingRepo *storag
 	}
 
 	return &BillingSyncJob{
-		exportRepo:    exportRepo,
-		billingRepo:   billingRepo,
-		exporters:     ExporterRegistry,
-		stopCh:        make(chan struct{}),
-		log:           logrus.New(),
-		workerCount:   cfg.WorkerCount,
-		pollInterval:  cfg.PollInterval,
+		exportRepo:   exportRepo,
+		billingRepo:  billingRepo,
+		exporters:    ExporterRegistry,
+		stopCh:       make(chan struct{}),
+		log:          logrus.New(),
+		workerCount:  cfg.WorkerCount,
+		pollInterval: cfg.PollInterval,
 	}
 }
 

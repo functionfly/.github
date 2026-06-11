@@ -18,6 +18,7 @@ func (a *AuthService) ValidateToken(tokenString string) (*Claims, error) {
 		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}),
 		jwt.WithExpirationRequired(),
 		jwt.WithIssuer(Issuer),
+		jwt.WithAudience([]string{Audience}),
 	)
 
 	token, err := parser.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
@@ -72,6 +73,7 @@ func (a *AuthService) generateToken(user *storage.User) (string, error) {
 		Role:     user.Role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    Issuer,
+			Audience:  []string{Audience},
 			Subject:   user.ID.String(),
 			ExpiresAt: jwt.NewNumericDate(now.Add(a.jwtDuration)),
 			IssuedAt:  jwt.NewNumericDate(now),

@@ -6,6 +6,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/handlers/registry"
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/auth"
 	storageregistry "github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
@@ -22,17 +23,17 @@ func (h *Handler) requireFunctionOwner(
 		return nil, nil, false
 	}
 	if h.registryRepo == nil {
-		http.Error(w, "Registry not configured", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Registry not configured"))
 		return nil, nil, false
 	}
 
 	fn, err := h.registryRepo.GetFunctionByID(functionID)
 	if err != nil {
 		if strings.Contains(err.Error(), "record not found") || strings.Contains(err.Error(), "no rows") {
-			http.Error(w, "Function not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 			return nil, nil, false
 		}
-		http.Error(w, "Failed to load function", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to load function"))
 		return nil, nil, false
 	}
 
@@ -52,17 +53,17 @@ func (h *Handler) requireFunctionView(
 	claims := middleware.GetUserFromContext(r)
 
 	if h.registryRepo == nil {
-		http.Error(w, "Registry not configured", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Registry not configured"))
 		return nil, claims, false
 	}
 
 	fn, err := h.registryRepo.GetFunctionByID(functionID)
 	if err != nil {
 		if strings.Contains(err.Error(), "record not found") || strings.Contains(err.Error(), "no rows") {
-			http.Error(w, "Function not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 			return nil, claims, false
 		}
-		http.Error(w, "Failed to load function", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to load function"))
 		return nil, claims, false
 	}
 

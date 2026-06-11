@@ -5,27 +5,16 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage/dna"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
-)
-
-// Sentinel errors for DNA operations.
-var (
-	ErrMutationNotFound       = errors.New("mutation not found")
-	ErrAccessDenied           = errors.New("access denied")
-	ErrMutationNotProposed    = errors.New("mutation is not in proposed status")
-	ErrInsufficientCredits    = errors.New("insufficient credits")
-	ErrInvalidStatus          = errors.New("invalid mutation status")
-	ErrRollbackNotEligible    = errors.New("mutation is not in a rollback-eligible status")
-	ErrRollbackerNotConfigured = errors.New("rollbacker not configured")
 )
 
 // SourceCodeFetcher retrieves function source code by ID.
@@ -69,24 +58,20 @@ type Service struct {
 	serverCtx context.Context
 	// aiCircuitBreaker prevents cascading failures when the AI service is down.
 	aiCircuitBreaker *circuitBreaker
-	// rollbacker handles mutation rollback operations.
-	rollbacker *Rollbacker
 }
 
 // NewService creates a new DNA service.
-func NewService(repo *dna.Repository, logger *logrus.Logger) (*Service, error) {
-	aiBaseURL := getEnvOrDefault("AI_SERVICE_URL", "")
-	if aiBaseURL == "" {
-		return nil, errors.New("AI_SERVICE_URL environment variable is required")
-	}
+func NewService(repo *dna.Repository, logger *logrus.Logger) *Service {
+	cbThreshold := getEnvInt("AI_CIRCUIT_BREAKER_THRESHOLD", 5)
+	cbCooldownMinutes := getEnvInt("AI_CIRCUIT_BREAKER_COOLDOWN_MINUTES", 2)
 	return &Service{
-		repo:             repo,
-		logger:           logger,
-		aiBaseURL:        aiBaseURL,
-		aiAPIKey:         os.Getenv("AI_SERVICE_API_KEY"),
-		httpClient:       &http.Client{Timeout: 2 * time.Minute},
-		aiCircuitBreaker: newCircuitBreaker(5, 2*time.Minute),
-	}, nil
+		repo:      repo,
+		logger:    logger,
+		aiBaseURL: getEnvOrDefault("AI_SERVICE_URL", ""), // Must be set explicitly
+		aiAPIKey:  os.Getenv("AI_SERVICE_API_KEY"),
+		httpClient: &http.Client{Timeout: 2 * time.Minute},
+		aiCircuitBreaker: newCircuitBreaker(cbThreshold, time.Duration(cbCooldownMinutes)*time.Minute),
+	}
 }
 
 // SetSourceCodeFetcher sets the source code fetcher for real AI code generation.
@@ -117,19 +102,6 @@ func (s *Service) SetMutationValidator(validator *MutationValidator) {
 // SetPlatformSettingsProvider sets the provider for user platform settings.
 func (s *Service) SetPlatformSettingsProvider(provider PlatformSettingsProvider) {
 	s.platformSettingsProvider = provider
-}
-
-// SetRollbacker sets the rollbacker for mutation rollback operations.
-func (s *Service) SetRollbacker(rollbacker *Rollbacker) {
-	s.rollbacker = rollbacker
-}
-
-// RollbackMutation rolls back a deployed mutation to the previous version.
-func (s *Service) RollbackMutation(ctx context.Context, mutationID, tenantID, reason string) error {
-	if s.rollbacker == nil {
-		return fmt.Errorf("rollbacker not configured")
-	}
-	return s.rollbacker.RollbackMutation(ctx, mutationID, tenantID, reason)
 }
 
 // SetServerContext sets the server-lifetime context for fire-and-forget goroutines.
@@ -179,13 +151,13 @@ func (s *Service) AcceptMutation(ctx context.Context, mutationID, userID, tenant
 		return fmt.Errorf("get mutation: %w", err)
 	}
 	if m == nil {
-		return ErrMutationNotFound
+		return fmt.Errorf("mutation not found")
 	}
 	if m.TenantID != tenantID {
-		return ErrAccessDenied
+		return fmt.Errorf("access denied")
 	}
 	if m.Status != "proposed" {
-		return fmt.Errorf("%w: %s", ErrMutationNotProposed, m.Status)
+		return fmt.Errorf("mutation is not in proposed status: %s", m.Status)
 	}
 
 	// Validate mutation in sandbox before acceptance
@@ -234,36 +206,24 @@ func (s *Service) AcceptMutation(ctx context.Context, mutationID, userID, tenant
 		}).Info("dna: mutation passed validation")
 	}
 
-	// Update status to pending_payment first. This ensures atomicity:
-	// we don't mark as accepted until payment succeeds.
-	if err := s.repo.UpdateMutationStatus(ctx, mutationID, "accepted_pending_payment", map[string]interface{}{
+	// Update status first (cheap, atomic). If debit fails after this,
+	// the mutation is accepted but unpaid — safer than the reverse.
+	if err := s.repo.UpdateMutationStatus(ctx, mutationID, "accepted", map[string]interface{}{
 		"accepted_by": userID,
 	}); err != nil {
-		return fmt.Errorf("update mutation status to pending_payment: %w", err)
+		return fmt.Errorf("update mutation status: %w", err)
 	}
 
 	// Debit credits from wallet (50 credits per architecture doc)
 	if s.walletDebiter != nil {
 		if err := s.walletDebiter.DebitForDNAMutation(ctx, userID, 50.0, m.FunctionID); err != nil {
 			s.logger.WithError(err).WithFields(logrus.Fields{
-				"mutation_id": mutationID,
-				"user_id":     userID,
-				"function_id": m.FunctionID,
-			}).Error("dna: payment failed for mutation — marking as payment_failed")
-			// Revert to payment_failed status so the mutation is not deployed without payment.
-			if revertErr := s.repo.UpdateMutationStatus(ctx, mutationID, "payment_failed", map[string]interface{}{
-				"rejected_reason": fmt.Sprintf("payment failed: %v", err),
-			}); revertErr != nil {
-				s.logger.WithError(revertErr).WithField("mutation_id", mutationID).
-					Error("dna: failed to revert mutation status to payment_failed")
-			}
-			return fmt.Errorf("wallet debit failed: %w", err)
+				"mutation_id":  mutationID,
+				"user_id":      userID,
+				"function_id":  m.FunctionID,
+			}).Error("dna: mutation accepted but wallet debit failed — manual review required")
+			// Don't revert the acceptance. Log for manual reconciliation.
 		}
-	}
-
-	// Payment succeeded — mark as fully accepted
-	if err := s.repo.UpdateMutationStatus(ctx, mutationID, "accepted", nil); err != nil {
-		return fmt.Errorf("update mutation status to accepted: %w", err)
 	}
 
 	// Get platform settings to determine canary percentage and approval mode
@@ -306,9 +266,9 @@ func (s *Service) AcceptMutation(ctx context.Context, mutationID, userID, tenant
 			version = "dna-" + version
 			if err := s.canaryTriggerer.TriggerCanary(srvCtx, m.FunctionID, version, canaryPctToUse); err != nil {
 				s.logger.WithError(err).WithFields(logrus.Fields{
-					"mutation_id": mutationID,
-					"function_id": m.FunctionID,
-					"canary_pct":  canaryPctToUse,
+					"mutation_id":  mutationID,
+					"function_id":  m.FunctionID,
+					"canary_pct":   canaryPctToUse,
 				}).Warn("dna: failed to trigger canary deployment")
 			}
 		}()
@@ -324,13 +284,13 @@ func (s *Service) RejectMutation(ctx context.Context, mutationID, tenantID, reas
 		return fmt.Errorf("get mutation: %w", err)
 	}
 	if m == nil {
-		return ErrMutationNotFound
+		return fmt.Errorf("mutation not found")
 	}
 	if m.TenantID != tenantID {
-		return ErrAccessDenied
+		return fmt.Errorf("access denied")
 	}
 	if m.Status != "proposed" {
-		return fmt.Errorf("%w: %s", ErrMutationNotProposed, m.Status)
+		return fmt.Errorf("mutation is not in proposed status: %s", m.Status)
 	}
 
 	return s.repo.UpdateMutationStatus(ctx, mutationID, "rejected", map[string]interface{}{
@@ -481,8 +441,8 @@ func (s *Service) GetInsights(ctx context.Context, functionID, period string) (m
 		"period":      period,
 		"metrics":     metrics,
 		"mutation_outcomes": map[string]interface{}{
-			"total":    total,
-			"outcomes": outcomes,
+			"total":      total,
+			"outcomes":   outcomes,
 		},
 	}, nil
 }
@@ -535,8 +495,8 @@ func (s *Service) processNextAnalysis(ctx context.Context) {
 	}
 
 	s.logger.WithFields(logrus.Fields{
-		"queue_id":      queueID,
-		"function_id":   functionID,
+		"queue_id":     queueID,
+		"function_id":  functionID,
 		"function_type": functionType,
 	}).Info("dna: processing analysis")
 
@@ -639,37 +599,51 @@ func (s *Service) runAnalysis(ctx context.Context, functionID, functionType stri
 		return nil // non-fatal
 	}
 
-	// 7. Store mutation (only hashes, not full code for security)
+	// 7. Store mutation
 	mutation := &dna.Mutation{
-		FunctionID:          functionID,
-		FunctionType:        functionType,
-		TenantID:            profile.TenantID,
-		Generation:          profile.Generation,
-		MutationType:        mutationType,
-		Status:              "proposed",
-		TriggerReason:       &reason,
-		OriginalHash:        proposal.OriginalHash,
-		MutatedHash:         proposal.MutatedHash,
-		Diff:                proposal.Diff,
-		EstimatedImpact:     proposal.EstimatedImpact,
-		Confidence:          &proposal.Confidence,
-		ModelUsed:           &proposal.ModelUsed,
+		FunctionID:         functionID,
+		FunctionType:       functionType,
+		TenantID:           profile.TenantID,
+		Generation:         profile.Generation,
+		MutationType:       mutationType,
+		Status:             "proposed",
+		TriggerReason:      &reason,
+		OriginalCode:       proposal.OriginalCode,
+		MutatedCode:        proposal.MutatedCode,
+		OriginalHash:       proposal.OriginalHash,
+		MutatedHash:        proposal.MutatedHash,
+		Diff:               proposal.Diff,
+		EstimatedImpact:    proposal.EstimatedImpact,
+		Confidence:         &proposal.Confidence,
+		ModelUsed:          &proposal.ModelUsed,
 		AnalysisWindowHours: intPtr(48),
-		ExecutionsAnalyzed:  intPtr(int(metrics.TotalExecutions)),
+		ExecutionsAnalyzed: intPtr(int(metrics.TotalExecutions)),
 	}
 	if err := s.repo.CreateMutation(ctx, mutation); err != nil {
 		return fmt.Errorf("create mutation: %w", err)
 	}
 
 	s.logger.WithFields(logrus.Fields{
-		"function_id":   functionID,
-		"mutation_id":   mutation.ID,
+		"function_id":  functionID,
+		"mutation_id":  mutation.ID,
 		"mutation_type": mutationType,
-		"confidence":    proposal.Confidence,
+		"confidence":   proposal.Confidence,
 	}).Info("dna: mutation proposed")
 
 	// Send notification if configured
 	if s.mutationNotifier != nil && s.shouldNotifyProposal(ctx, profile.TenantID) {
+		srvCtx := s.serverContext()
+		go func() {
+			if err := s.mutationNotifier.NotifyMutationProposed(
+				srvCtx, profile.TenantID, functionID, mutationType, reason,
+			); err != nil {
+				s.logger.WithError(err).Warn("dna: failed to send mutation notification")
+			}
+		}()
+	}
+
+	// Send real-time notification to the developer
+	if s.mutationNotifier != nil {
 		srvCtx := s.serverContext()
 		go func() {
 			if err := s.mutationNotifier.NotifyMutationProposed(
@@ -779,12 +753,12 @@ func (s *Service) shouldMutate(m *dna.AggregatedMetrics, p *dna.DNAProfile) (boo
 // AI Service integration
 
 type variantRequest struct {
-	FunctionID    string                 `json:"function_id"`
-	MutationType  string                 `json:"mutation_type"`
-	TriggerReason string                 `json:"trigger_reason"`
-	Metrics       *dna.AggregatedMetrics `json:"metrics"`
-	CurrentCode   string                 `json:"current_code,omitempty"`
-	Runtime       string                 `json:"runtime,omitempty"`
+	FunctionID      string                 `json:"function_id"`
+	MutationType    string                 `json:"mutation_type"`
+	TriggerReason   string                 `json:"trigger_reason"`
+	Metrics         *dna.AggregatedMetrics `json:"metrics"`
+	CurrentCode     string                 `json:"current_code,omitempty"`
+	Runtime         string                 `json:"runtime,omitempty"`
 }
 
 type variantResponse struct {
@@ -874,15 +848,15 @@ func safePrefix(s string, n int) string {
 
 // PlatformSettings defines per-user DNA platform preferences.
 type PlatformSettings struct {
-	AutoEvolve                 bool
-	RequireApproval            bool
-	SandboxValidation          bool
-	DefaultCanaryPct           int
-	MaxMutationsPerDay         int
-	NotifyOnProposal           bool
-	NotifyOnDeploy             bool
-	NotifyOnRollback           bool
-	AutoRollbackOnError        bool
+	AutoEvolve               bool
+	RequireApproval          bool
+	SandboxValidation        bool
+	DefaultCanaryPct         int
+	MaxMutationsPerDay       int
+	NotifyOnProposal         bool
+	NotifyOnDeploy          bool
+	NotifyOnRollback         bool
+	AutoRollbackOnError      bool
 	AutoRollbackErrorThreshold int // percentage, e.g. 5 = 5%
 }
 
@@ -894,124 +868,24 @@ type PlatformSettingsProvider interface {
 // DefaultPlatformSettings returns safe defaults for all settings.
 func DefaultPlatformSettings() *PlatformSettings {
 	return &PlatformSettings{
-		AutoEvolve:                 true,
-		RequireApproval:            true,
-		SandboxValidation:          true,
-		DefaultCanaryPct:           10,
-		MaxMutationsPerDay:         5,
-		NotifyOnProposal:           true,
-		NotifyOnDeploy:             true,
-		NotifyOnRollback:           true,
-		AutoRollbackOnError:        true,
+		AutoEvolve:               true,
+		RequireApproval:          true,
+		SandboxValidation:        true,
+		DefaultCanaryPct:         10,
+		MaxMutationsPerDay:       5,
+		NotifyOnProposal:         true,
+		NotifyOnDeploy:           true,
+		NotifyOnRollback:         true,
+		AutoRollbackOnError:      true,
 		AutoRollbackErrorThreshold: 5,
 	}
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Payment Reconciliation Worker
-// ──────────────────────────────────────────────────────────────────────────────
-
-const (
-	maxPaymentRetries    = 3
-	paymentRetryMaxAge   = 24 * time.Hour // retry pending payments up to 24 hours old
-	paymentCheckInterval = 10 * time.Minute
-)
-
-// RunPaymentReconciliationWorker starts the background payment reconciliation loop.
-// It retries failed wallet debits for mutations marked as accepted_pending_payment.
-func (s *Service) RunPaymentReconciliationWorker(ctx context.Context) {
-	s.logger.Info("dna: payment reconciliation worker started")
-	ticker := time.NewTicker(paymentCheckInterval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			s.logger.Info("dna: payment reconciliation worker stopped")
-			return
-		case <-ticker.C:
-			s.processPaymentReconciliation(ctx)
+func getEnvInt(key string, defaultVal int) int {
+	if v := os.Getenv(key); v != "" {
+		if intVal, err := strconv.Atoi(v); err == nil {
+			return intVal
 		}
 	}
-}
-
-func (s *Service) processPaymentReconciliation(ctx context.Context) {
-	if s.walletDebiter == nil {
-		return // No wallet debiter configured, skip reconciliation
-	}
-
-	pendingPayments, err := s.repo.GetPendingPayments(ctx, paymentRetryMaxAge, maxPaymentRetries)
-	if err != nil {
-		s.logger.WithError(err).Error("dna: failed to get pending payments for reconciliation")
-		return
-	}
-
-	for _, payment := range pendingPayments {
-		s.retryPayment(ctx, payment)
-	}
-
-	// Log failed payments for manual review
-	failedPayments, err := s.repo.GetFailedPaymentsForManualReview(ctx)
-	if err != nil {
-		s.logger.WithError(err).Error("dna: failed to get failed payments for manual review")
-		return
-	}
-
-	if len(failedPayments) > 0 {
-		s.logger.WithFields(logrus.Fields{
-			"count": len(failedPayments),
-		}).Warn("dna: some mutations have failed payments requiring manual review")
-	}
-}
-
-func (s *Service) retryPayment(ctx context.Context, payment dna.PendingPayment) {
-	s.logger.WithFields(logrus.Fields{
-		"mutation_id":      payment.ID,
-		"function_id":      payment.FunctionID,
-		"tenant_id":        payment.TenantID,
-		"retry_count":      payment.PaymentRetryCount + 1,
-		"original_failure": payment.PaymentFailureReason,
-	}).Info("dna: retrying payment for mutation")
-
-	// Attempt to debit wallet again
-	err := s.walletDebiter.DebitForDNAMutation(ctx, payment.AcceptedBy, 50.0, payment.FunctionID)
-	if err != nil {
-		s.logger.WithError(err).WithField("mutation_id", payment.ID).
-			Error("dna: payment retry failed")
-
-		// Update payment status to failed if we've exceeded max retries
-		if payment.PaymentRetryCount+1 >= maxPaymentRetries {
-			if updateErr := s.repo.UpdateMutationPaymentStatus(ctx, payment.ID, "failed",
-				fmt.Sprintf("max retries exceeded: %v", err)); updateErr != nil {
-				s.logger.WithError(updateErr).WithField("mutation_id", payment.ID).
-					Error("dna: failed to update payment status to failed")
-			}
-			// Mark mutation as payment_failed so it won't be deployed
-			if statusErr := s.repo.UpdateMutationStatus(ctx, payment.ID, "payment_failed",
-				map[string]interface{}{
-					"rejected_reason": fmt.Sprintf("payment failed after %d retries: %v", maxPaymentRetries, err),
-				}); statusErr != nil {
-				s.logger.WithError(statusErr).WithField("mutation_id", payment.ID).
-					Error("dna: failed to update mutation status to payment_failed")
-			}
-		} else {
-			// Keep as pending for next retry cycle
-			if updateErr := s.repo.UpdateMutationPaymentStatus(ctx, payment.ID, "pending",
-				err.Error()); updateErr != nil {
-				s.logger.WithError(updateErr).WithField("mutation_id", payment.ID).
-					Error("dna: failed to update payment retry count")
-			}
-		}
-		return
-	}
-
-	// Payment succeeded - mark as reconciled and mutation as accepted
-	s.logger.WithFields(logrus.Fields{
-		"mutation_id": payment.ID,
-	}).Info("dna: payment retry succeeded")
-
-	if err := s.repo.MarkMutationAsReconciled(ctx, payment.ID); err != nil {
-		s.logger.WithError(err).WithField("mutation_id", payment.ID).
-			Error("dna: failed to mark mutation as reconciled")
-	}
+	return defaultVal
 }

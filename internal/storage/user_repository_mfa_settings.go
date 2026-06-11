@@ -140,3 +140,15 @@ func (r *UserRepository) VerifyPassword(userID uuid.UUID, password string) (bool
 
 	return true, nil
 }
+
+// IncrementUserTokenVersion increments the user's token version to revoke all existing JWT tokens.
+// This should be called on successful login to prevent session fixation attacks.
+func (r *UserRepository) IncrementUserTokenVersion(userID uuid.UUID) error {
+	_, err := r.db.Exec(`
+		UPDATE users SET token_version = token_version + 1, updated_at = NOW()
+		WHERE id = $1`, userID)
+	if err != nil {
+		return fmt.Errorf("failed to increment token version: %w", err)
+	}
+	return nil
+}

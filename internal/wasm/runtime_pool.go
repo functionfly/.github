@@ -7,9 +7,10 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"sync"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 // PythonRuntimePool manages warm PythonRuntime instances keyed by wasmPath.
@@ -112,7 +113,10 @@ func (p *PythonRuntimePool) Prewarm(ctx context.Context, wasmPath string, count 
 		}
 	}
 
-	log.Printf("[WASM] PythonRuntimePool prewarmed for %s with %d instances", wasmPath, count)
+	logrus.WithFields(logrus.Fields{
+		"wasm_path": wasmPath,
+		"count":     count,
+	}).Info("PythonRuntimePool prewarmed")
 	return firstErr
 }
 

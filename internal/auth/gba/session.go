@@ -214,6 +214,6 @@ func parseSameSite(s string) http.SameSite {
 	case "None":
 		return http.SameSiteNoneMode
 	default:
-		return http.SameSiteLaxMode
+		return http.SameSiteStrictMode
 	}
 }

@@ -561,10 +561,10 @@ type ChunkedExecuteResponse struct {
 
 // ChunkedCompleteResponse is returned after the final chunk is processed.
 type ChunkedCompleteResponse struct {
-	Result            string `json:"result"`
-	TotalExecTimeMs   uint64 `json:"total_exec_time_ms"`
-	ChunksProcessed   uint32 `json:"chunks_processed"`
-	CacheHit          bool   `json:"cache_hit"`
+	Result          string `json:"result"`
+	TotalExecTimeMs uint64 `json:"total_exec_time_ms"`
+	ChunksProcessed uint32 `json:"chunks_processed"`
+	CacheHit        bool   `json:"cache_hit"`
 }
 
 // ExecuteChunked executes a function via streamed WASM chunks.
@@ -816,8 +816,8 @@ func ExecuteLocally(fnVersion *storage.RegistryFunctionVersion, input json.RawMe
 // fn and backendRepo are optional; when provided and tenant has enterprise plan, enables MicroVM for python-microvm runtime.
 func executeLocallyWithLimits(fnVersion *storage.RegistryFunctionVersion, input json.RawMessage, maxMemoryMB, maxCPUTimeMs int, fn *storage.RegistryFunction, backendRepo storage.Repository) (json.RawMessage, error) {
 	logrus.WithFields(logrus.Fields{
-		"input_len": len(input),
-		"input":     string(input),
+		"input_len":   len(input),
+		"input":       string(input),
 		"function_id": fnVersion.FunctionID,
 	}).Debug("executeLocallyWithLimits: input received")
 	start := time.Now()
@@ -826,15 +826,15 @@ func executeLocallyWithLimits(fnVersion *storage.RegistryFunctionVersion, input 
 
 	defer func() {
 		logrus.WithFields(logrus.Fields{
-			"function_id":   fnVersion.FunctionID,
-			"version":         fnVersion.Version,
-			"runtime":         fnVersion.Runtime,
-			"execution_path":  execPath,
-			"input_size":      len(input),
-			"output_size":     outputSize,
-			"duration_ms":     time.Since(start).Milliseconds(),
-			"max_memory_mb":   maxMemoryMB,
-			"max_cpu_ms":      maxCPUTimeMs,
+			"function_id":    fnVersion.FunctionID,
+			"version":        fnVersion.Version,
+			"runtime":        fnVersion.Runtime,
+			"execution_path": execPath,
+			"input_size":     len(input),
+			"output_size":    outputSize,
+			"duration_ms":    time.Since(start).Milliseconds(),
+			"max_memory_mb":  maxMemoryMB,
+			"max_cpu_ms":     maxCPUTimeMs,
 		}).Info("Local execution completed")
 	}()
 
@@ -856,8 +856,8 @@ func executeLocallyWithLimits(fnVersion *storage.RegistryFunctionVersion, input 
 	// Try the persistent daemon client first (Phase 3.1)
 	if client := getGlobalSandboxClient(); client != nil && len(fnVersion.WasmBinary) > 0 {
 		logrus.WithFields(logrus.Fields{
-			"function_id":   fnVersion.FunctionID,
-			"version":       fnVersion.Version,
+			"function_id":     fnVersion.FunctionID,
+			"version":         fnVersion.Version,
 			"wasm_binary_len": len(fnVersion.WasmBinary),
 		}).Info("executeLocallyWithLimits: using DAEMON path")
 		execPath = "daemon"
@@ -1372,12 +1372,12 @@ func (sc *SandboxClient) Execute(fnVersion *storage.RegistryFunctionVersion, inp
 	// Request body: wasm_binary (base64) + wasm_compiled (base64, optional) + input
 	// + tenant_id for KV namespace isolation.
 	type execRequest struct {
-		WasmBinary   string `json:"wasm_binary"`                 // base64-encoded
-		WasmCompiled string `json:"wasm_compiled,omitempty"`      // base64-encoded AOT .cwasm
+		WasmBinary   string `json:"wasm_binary"`             // base64-encoded
+		WasmCompiled string `json:"wasm_compiled,omitempty"` // base64-encoded AOT .cwasm
 		Input        string `json:"input"`
 		TimeoutMs    int    `json:"timeout_ms"`
 		MemoryMB     int    `json:"memory_mb"`
-		TenantID     string `json:"tenant_id,omitempty"`          // KV namespace isolation
+		TenantID     string `json:"tenant_id,omitempty"` // KV namespace isolation
 	}
 
 	reqBody := execRequest{

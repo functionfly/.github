@@ -74,6 +74,14 @@ func (r *RegistryRepository) GetLatestFunctionVersion(functionID uuid.UUID) (*Re
 	if r.cache != nil && r.keyGen != nil {
 		cacheKey := r.keyGen.FunctionVersion(functionID.String(), "latest")
 		go func() {
+			defer func() {
+				if rec := recover(); rec != nil {
+					logrus.WithFields(logrus.Fields{
+						"panic": rec,
+						"stack": fmt.Sprintf("%v", rec),
+					}).Error("GetLatestFunctionVersion cache set goroutine panicked")
+				}
+			}()
 			if err := r.cache.SetJSON(context.Background(), cacheKey, v); err != nil {
 				// Log error but don't fail the operation
 				fmt.Printf("Failed to cache latest function version: %v\n", err)

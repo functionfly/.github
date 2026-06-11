@@ -102,6 +102,17 @@ func (e *ExecutionEngine) executeNodeParallel(ctx context.Context, instance *Gra
 	for i, node := range nodes {
 		wg.Add(1)
 		go func(idx int, n *RuntimeNode) {
+			defer func() {
+				if rec := recover(); rec != nil {
+					logrus.WithFields(logrus.Fields{
+						"panic":   rec,
+						"stack":   string(debug.Stack()),
+						"node_id": n.Ref.NodeID,
+					}).Error("FRG executeNodeParallel goroutine panicked")
+					errChan <- fmt.Errorf("node %s panicked: %v", n.Ref.NodeID, rec)
+					wg.Done()
+				}
+			}()
 			defer wg.Done()
 			result, err := e.executeNode(ctx, instance, n, inputs[n.Ref.NodeID])
 			if err != nil {

@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -20,7 +21,7 @@ func NewAuthEventRepository(db *PostgresDB) *AuthEventRepository {
 }
 
 // LogAuthEvent logs an authentication event
-func (r *AuthEventRepository) LogAuthEvent(event *AuthEvent) error {
+func (r *AuthEventRepository) LogAuthEvent(ctx context.Context, event *AuthEvent) error {
 	event.ID = uuid.New()
 	event.CreatedAt = time.Now()
 
@@ -40,7 +41,7 @@ func (r *AuthEventRepository) LogAuthEvent(event *AuthEvent) error {
 			ip_address, user_agent, location_info, session_id, provider, metadata, security_flags, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`
 
-	_, err := r.db.Exec(query, event.ID, event.UserID, event.TenantID, event.EventType,
+	_, err := r.db.ExecContext(ctx, query, event.ID, event.UserID, event.TenantID, event.EventType,
 		event.Success, event.FailureReason, event.IPAddress, event.UserAgent,
 		locationInfo, event.SessionID, event.Provider, metadata, securityFlags, event.CreatedAt)
 
@@ -48,7 +49,7 @@ func (r *AuthEventRepository) LogAuthEvent(event *AuthEvent) error {
 }
 
 // GetAuthEventsForUser retrieves auth events for a specific user
-func (r *AuthEventRepository) GetAuthEventsForUser(userID uuid.UUID, limit, offset int) ([]*AuthEvent, error) {
+func (r *AuthEventRepository) GetAuthEventsForUser(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*AuthEvent, error) {
 	if limit <= 0 {
 		limit = 50
 	}
@@ -56,7 +57,7 @@ func (r *AuthEventRepository) GetAuthEventsForUser(userID uuid.UUID, limit, offs
 		limit = 1000 // Max limit
 	}
 
-	rows, err := r.db.Query(`
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, user_id, tenant_id, event_type, success, failure_reason,
 			ip_address, user_agent, location_info, session_id, provider, metadata, security_flags, created_at
 		FROM auth_events
@@ -74,7 +75,7 @@ func (r *AuthEventRepository) GetAuthEventsForUser(userID uuid.UUID, limit, offs
 }
 
 // GetAuthEventsByType retrieves auth events of a specific type
-func (r *AuthEventRepository) GetAuthEventsByType(eventType string, limit, offset int) ([]*AuthEvent, error) {
+func (r *AuthEventRepository) GetAuthEventsByType(ctx context.Context, eventType string, limit, offset int) ([]*AuthEvent, error) {
 	if limit <= 0 {
 		limit = 50
 	}
@@ -82,7 +83,7 @@ func (r *AuthEventRepository) GetAuthEventsByType(eventType string, limit, offse
 		limit = 1000
 	}
 
-	rows, err := r.db.Query(`
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, user_id, tenant_id, event_type, success, failure_reason,
 			ip_address, user_agent, location_info, session_id, provider, metadata, security_flags, created_at
 		FROM auth_events
@@ -100,7 +101,7 @@ func (r *AuthEventRepository) GetAuthEventsByType(eventType string, limit, offse
 }
 
 // GetRecentAuthEvents retrieves recent auth events across all users
-func (r *AuthEventRepository) GetRecentAuthEvents(since time.Time, limit int) ([]*AuthEvent, error) {
+func (r *AuthEventRepository) GetRecentAuthEvents(ctx context.Context, since time.Time, limit int) ([]*AuthEvent, error) {
 	if limit <= 0 {
 		limit = 100
 	}
@@ -108,7 +109,7 @@ func (r *AuthEventRepository) GetRecentAuthEvents(since time.Time, limit int) ([
 		limit = 1000
 	}
 
-	rows, err := r.db.Query(`
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, user_id, tenant_id, event_type, success, failure_reason,
 			ip_address, user_agent, location_info, session_id, provider, metadata, security_flags, created_at
 		FROM auth_events
@@ -126,8 +127,8 @@ func (r *AuthEventRepository) GetRecentAuthEvents(since time.Time, limit int) ([
 }
 
 // DeleteOldAuthEvents removes auth events older than the specified time
-func (r *AuthEventRepository) DeleteOldAuthEvents(before time.Time) (int64, error) {
-	result, err := r.db.Exec(`
+func (r *AuthEventRepository) DeleteOldAuthEvents(ctx context.Context, before time.Time) (int64, error) {
+	result, err := r.db.ExecContext(ctx, `
 		DELETE FROM auth_events
 		WHERE created_at < $1`,
 		before)

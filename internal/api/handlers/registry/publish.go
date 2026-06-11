@@ -17,6 +17,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/bundler"
 	"github.com/functionfly/functionfly/internal/functionregistry"
 	"github.com/functionfly/functionfly/internal/manifest"
@@ -39,32 +40,32 @@ func isRecordNotFound(err error) bool {
 func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Failed to read request body"))
 		return
 	}
 	defer r.Body.Close()
 
 	var req functionregistry.PublishRequest
 	if err := json.Unmarshal(body, &req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	// Validate required fields
 	if req.Author == "" || req.Name == "" || req.Version == "" {
-		http.Error(w, "author, name, and version are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("author, name, and version are required"))
 		return
 	}
 
 	// Validate semver format
 	if err := functionregistry.ValidateSemVer(req.Version); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest(err.Error()))
 		return
 	}
 
@@ -79,14 +80,14 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		case "error":
 			conflictStrategy = storage.VersionConflictError
 		default:
-			http.Error(w, "invalid conflict_strategy: must be 'error', 'overwrite', or 'create_new'", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("invalid conflict_strategy: must be 'error', 'overwrite', or 'create_new'"))
 			return
 		}
 	}
 
 	// For registry functions, source code is required for sandbox execution
 	if req.Source == nil || req.Source.Code == "" {
-		http.Error(w, "source code is required for registry functions", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("source code is required for registry functions"))
 		return
 	}
 
@@ -94,7 +95,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 	cleanManifest := manifest.StripComments(string(req.Manifest))
 	var m functionregistry.FunctionManifest
 	if err := json.Unmarshal([]byte(cleanManifest), &m); err != nil {
-		http.Error(w, "Invalid manifest JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid manifest JSON"))
 		return
 	}
 
@@ -108,7 +109,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 	existingFn, err := h.repo.GetFunctionByAuthorName(req.Author, req.Name)
 	if err != nil && !isRecordNotFound(err) {
 		logrus.WithError(err).Error("Failed to check existing function")
-		http.Error(w, "Failed to check function: "+err.Error(), http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to check function: "+err.Error()))
 		return
 	}
 
@@ -148,7 +149,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 
 		if err := h.repo.CreateFunction(fn); err != nil {
 			logrus.WithError(err).Error("Failed to create function")
-			http.Error(w, "Failed to create function: "+err.Error(), http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to create function: "+err.Error()))
 			return
 		}
 		fnID = fn.ID
@@ -209,7 +210,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 				userWallet, err := h.walletSvc.GetOrCreateUserWallet(r.Context(), user.UserID)
 				if err != nil {
 					logrus.WithError(err).Error("Failed to get or create wallet for platform fee")
-					http.Error(w, "Failed to process payment: "+err.Error(), http.StatusInternalServerError)
+					apierror.WriteError(w, apierror.NewInternal("Failed to process payment: "+err.Error()))
 					return
 				}
 				walletID = userWallet.ID
@@ -219,7 +220,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 				wallet, err := h.platformFeeRepo.GetOrCreateWallet(r.Context(), user.UserID)
 				if err != nil {
 					logrus.WithError(err).Error("Failed to get or create wallet for platform fee")
-					http.Error(w, "Failed to process payment: "+err.Error(), http.StatusInternalServerError)
+					apierror.WriteError(w, apierror.NewInternal("Failed to process payment: "+err.Error()))
 					return
 				}
 				walletBalance = wallet.BalanceUSD
@@ -227,7 +228,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 
 			// Check sufficient balance
 			if walletBalance < feeAmountUSD {
-				http.Error(w, fmt.Sprintf("Insufficient wallet balance. Required: $%.2f, Available: $%.2f", feeAmountUSD, walletBalance), 402)
+				apierror.WriteError(w, apierror.NewBadRequest(fmt.Sprintf("Insufficient wallet balance. Required: $%.2f, Available: $%.2f", feeAmountUSD, walletBalance)))
 				return
 			}
 
@@ -238,14 +239,14 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 				_, err := h.walletSvc.DebitForFeePayment(r.Context(), walletID, feeAmountUSD, feeType, description)
 				if err != nil {
 					logrus.WithError(err).Error("Failed to debit wallet for platform fee")
-					http.Error(w, "Failed to process payment: "+err.Error(), http.StatusInternalServerError)
+					apierror.WriteError(w, apierror.NewInternal("Failed to process payment: "+err.Error()))
 					return
 				}
 			} else {
 				// Fall back to legacy platform fee repo
 				if err := h.platformFeeRepo.DebitWallet(r.Context(), user.UserID, feeAmountUSD, description); err != nil {
 					logrus.WithError(err).Error("Failed to debit wallet for platform fee")
-					http.Error(w, "Failed to process payment: "+err.Error(), http.StatusInternalServerError)
+					apierror.WriteError(w, apierror.NewInternal("Failed to process payment: "+err.Error()))
 					return
 				}
 			}
@@ -284,7 +285,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 	// Validate capabilities against allowed list
 	for _, cap := range m.Capabilities {
 		if !functionregistry.IsValidCapability(cap) {
-			http.Error(w, "Invalid capability: "+cap+". Allowed: "+strings.Join(functionregistry.AllowedCapabilities, ", "), http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid capability: "+cap+". Allowed: "+strings.Join(functionregistry.AllowedCapabilities, ", ")))
 			return
 		}
 	}
@@ -317,7 +318,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		wasmBinary, decodeErr = base64.StdEncoding.DecodeString(req.Source.WasmBinary)
 		if decodeErr != nil {
 			logrus.WithError(decodeErr).Error("Failed to decode pre-compiled WASM")
-			http.Error(w, "Invalid WASM binary encoding: "+decodeErr.Error(), http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid WASM binary encoding: "+decodeErr.Error()))
 			return
 		}
 		// Calculate source hash from the code
@@ -383,10 +384,10 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 	if _, upsertErr := h.repo.UpsertFunctionVersion(version, storageregistry.VersionConflictStrategy(conflictStrategy)); upsertErr != nil {
 		logrus.WithError(upsertErr).Error("Failed to create/update function version")
 		if strings.Contains(upsertErr.Error(), "already exists") {
-			http.Error(w, upsertErr.Error(), http.StatusConflict)
+			apierror.WriteError(w, apierror.NewConflict(upsertErr.Error()))
 			return
 		}
-		http.Error(w, "Failed to create version: "+upsertErr.Error(), http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create version: "+upsertErr.Error()))
 		return
 	}
 

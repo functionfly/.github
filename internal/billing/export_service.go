@@ -394,8 +394,8 @@ func (e *QuickBooksExporter) SyncPayments(
 
 	for _, p := range payments {
 		payload := map[string]interface{}{
-			"TxnDate":  p.PaymentDate.Format("2006-01-02"),
-			"TotalAmt": float64(p.AmountCents) / 100,
+			"TxnDate":   p.PaymentDate.Format("2006-01-02"),
+			"TotalAmt":  float64(p.AmountCents) / 100,
 			"DocNumber": p.ReferenceNumber,
 		}
 
@@ -698,12 +698,12 @@ func (e *XeroExporter) SyncPayments(
 
 	for _, p := range payments {
 		payment := map[string]interface{}{
-			"Type:":      "ACCREC",
-			"Invoice":    map[string]string{"InvoiceNumber": p.InvoiceNumber},
-			"Date":       p.PaymentDate.Format("2006-01-02"),
-			"Amount":     float64(p.AmountCents) / 100,
-			"Reference":  p.ReferenceNumber,
-			"Status":     mapPaymentStatusToXero(p.Status),
+			"Type:":     "ACCREC",
+			"Invoice":   map[string]string{"InvoiceNumber": p.InvoiceNumber},
+			"Date":      p.PaymentDate.Format("2006-01-02"),
+			"Amount":    float64(p.AmountCents) / 100,
+			"Reference": p.ReferenceNumber,
+			"Status":    mapPaymentStatusToXero(p.Status),
 		}
 
 		body, err := json.Marshal([]map[string]interface{}{payment})

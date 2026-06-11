@@ -10,9 +10,10 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/auth"
-	"github.com/functionfly/functionfly/internal/versioning"
 	storageregistry "github.com/functionfly/functionfly/internal/storage/registry"
+	"github.com/functionfly/functionfly/internal/versioning"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -20,8 +21,8 @@ import (
 
 // Handler contains version management handlers
 type Handler struct {
-	repo          *versioning.Repository
-	registryRepo  *storageregistry.RegistryRepository
+	repo         *versioning.Repository
+	registryRepo *storageregistry.RegistryRepository
 }
 
 // NewHandler creates a new version handler
@@ -50,7 +51,7 @@ func (h *Handler) HandleListVersions(w http.ResponseWriter, r *http.Request) {
 	versions, err := h.repo.ListAPIVersions(r.Context(), params)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list API versions")
-		http.Error(w, "Failed to list API versions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list API versions"))
 		return
 	}
 
@@ -120,12 +121,12 @@ func (h *Handler) HandleGetVersion(w http.ResponseWriter, r *http.Request) {
 	apiVersion, err := h.repo.GetAPIVersionByVersion(r.Context(), "v"+versionStr)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get API version")
-		http.Error(w, "Failed to get API version", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get API version"))
 		return
 	}
 
 	if apiVersion == nil {
-		http.Error(w, "API version not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("API version not found"))
 		return
 	}
 
@@ -175,7 +176,7 @@ func (h *Handler) HandleListFunctionVersions(w http.ResponseWriter, r *http.Requ
 
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
@@ -188,7 +189,7 @@ func (h *Handler) HandleListFunctionVersions(w http.ResponseWriter, r *http.Requ
 	versions, err := h.repo.ListFunctionVersions(r.Context(), params)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list function versions")
-		http.Error(w, "Failed to list function versions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list function versions"))
 		return
 	}
 
@@ -247,26 +248,26 @@ func (h *Handler) HandleGetFunctionVersion(w http.ResponseWriter, r *http.Reques
 
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	if versionStr == "" {
-		http.Error(w, "Version is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Version is required"))
 		return
 	}
 
 	version, err := h.repo.GetFunctionVersionByVersion(r.Context(), functionID, versionStr)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			http.Error(w, "Function version not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Function version not found"))
 			return
 		}
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"function_id": functionID,
 			"version":     versionStr,
 		}).Error("Failed to get function version")
-		http.Error(w, "Failed to get function version", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get function version"))
 		return
 	}
 
@@ -320,7 +321,7 @@ func (h *Handler) HandleCreateChangelog(w http.ResponseWriter, r *http.Request) 
 
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
@@ -333,7 +334,7 @@ func (h *Handler) HandleCreateChangelog(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -359,7 +360,7 @@ func (h *Handler) HandleCreateChangelog(w http.ResponseWriter, r *http.Request) 
 	changelog, err := h.repo.CreateChangelog(r.Context(), params)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create changelog")
-		http.Error(w, "Failed to create changelog", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create changelog"))
 		return
 	}
 
@@ -385,14 +386,14 @@ func (h *Handler) HandleGetChangelogs(w http.ResponseWriter, r *http.Request) {
 
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	changelogs, err := h.repo.GetChangelogByFunctionID(r.Context(), functionID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get changelogs")
-		http.Error(w, "Failed to get changelogs", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get changelogs"))
 		return
 	}
 
@@ -424,7 +425,7 @@ func (h *Handler) HandleDeprecateVersion(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -432,12 +433,12 @@ func (h *Handler) HandleDeprecateVersion(w http.ResponseWriter, r *http.Request)
 	apiVersion, err := h.repo.GetAPIVersionByVersion(r.Context(), versionStr)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get API version")
-		http.Error(w, "Failed to get API version", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get API version"))
 		return
 	}
 
 	if apiVersion == nil {
-		http.Error(w, "API version not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("API version not found"))
 		return
 	}
 
@@ -447,7 +448,7 @@ func (h *Handler) HandleDeprecateVersion(w http.ResponseWriter, r *http.Request)
 	err = h.repo.DeprecateAPIVersion(r.Context(), apiVersion.ID, &sunsetAt, req.SunsetMessage)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to deprecate API version")
-		http.Error(w, "Failed to deprecate API version", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to deprecate API version"))
 		return
 	}
 
@@ -492,7 +493,7 @@ func (h *Handler) HandlePublishVersion(w http.ResponseWriter, r *http.Request) {
 
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
@@ -510,18 +511,18 @@ func (h *Handler) HandlePublishVersion(w http.ResponseWriter, r *http.Request) {
 	version, err := h.repo.GetFunctionVersionByVersion(r.Context(), functionID, versionStr)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get function version")
-		http.Error(w, "Failed to get function version", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get function version"))
 		return
 	}
 
 	if version == nil {
-		http.Error(w, "Function version not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function version not found"))
 		return
 	}
 
 	// Check if already published
 	if version.VersionState == versioning.FunctionVersionStatePublished {
-		http.Error(w, "Version already published", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Version already published"))
 		return
 	}
 
@@ -529,7 +530,7 @@ func (h *Handler) HandlePublishVersion(w http.ResponseWriter, r *http.Request) {
 	publishedVersion, err := h.repo.PublishFunctionVersion(r.Context(), version.ID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to publish function version")
-		http.Error(w, "Failed to publish version", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to publish version"))
 		return
 	}
 
@@ -581,7 +582,7 @@ func (h *Handler) HandleArchiveVersion(w http.ResponseWriter, r *http.Request) {
 
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
@@ -594,12 +595,12 @@ func (h *Handler) HandleArchiveVersion(w http.ResponseWriter, r *http.Request) {
 	version, err := h.repo.GetFunctionVersionByVersion(r.Context(), functionID, versionStr)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get function version")
-		http.Error(w, "Failed to get function version", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get function version"))
 		return
 	}
 
 	if version == nil {
-		http.Error(w, "Function version not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function version not found"))
 		return
 	}
 
@@ -607,7 +608,7 @@ func (h *Handler) HandleArchiveVersion(w http.ResponseWriter, r *http.Request) {
 	archivedVersion, err := h.repo.ArchiveFunctionVersion(r.Context(), version.ID, req.Reason)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to archive function version")
-		http.Error(w, "Failed to archive version", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to archive version"))
 		return
 	}
 
@@ -643,13 +644,13 @@ func (h *Handler) HandleDeprecateFunctionVersion(w http.ResponseWriter, r *http.
 
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	var req versioning.DeprecateVersionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -657,12 +658,12 @@ func (h *Handler) HandleDeprecateFunctionVersion(w http.ResponseWriter, r *http.
 	version, err := h.repo.GetFunctionVersionByVersion(r.Context(), functionID, versionStr)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get function version")
-		http.Error(w, "Failed to get function version", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get function version"))
 		return
 	}
 
 	if version == nil {
-		http.Error(w, "Function version not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function version not found"))
 		return
 	}
 
@@ -670,7 +671,7 @@ func (h *Handler) HandleDeprecateFunctionVersion(w http.ResponseWriter, r *http.
 	err = h.repo.DeprecateFunctionVersion(r.Context(), version.ID, req.Reason, req.ReplacedBy, req.MigrationGuide)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to deprecate function version")
-		http.Error(w, "Failed to deprecate version", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to deprecate version"))
 		return
 	}
 
@@ -715,13 +716,13 @@ func (h *Handler) HandleSetAlias(w http.ResponseWriter, r *http.Request) {
 
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	// Validate alias type
 	if aliasType != string(versioning.VersionAliasLatest) && aliasType != string(versioning.VersionAliasStable) {
-		http.Error(w, "Invalid alias type. Must be 'latest' or 'stable'", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid alias type. Must be 'latest' or 'stable'"))
 		return
 	}
 
@@ -729,18 +730,18 @@ func (h *Handler) HandleSetAlias(w http.ResponseWriter, r *http.Request) {
 	version, err := h.repo.GetFunctionVersionByVersion(r.Context(), functionID, versionStr)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get function version")
-		http.Error(w, "Failed to get function version", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get function version"))
 		return
 	}
 
 	if version == nil {
-		http.Error(w, "Function version not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function version not found"))
 		return
 	}
 
 	// Only published versions can be aliased
 	if version.VersionState != versioning.FunctionVersionStatePublished {
-		http.Error(w, "Only published versions can be aliased", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Only published versions can be aliased"))
 		return
 	}
 
@@ -748,7 +749,7 @@ func (h *Handler) HandleSetAlias(w http.ResponseWriter, r *http.Request) {
 	err = h.repo.SetVersionAlias(r.Context(), functionID, aliasType, version.ID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to set version alias")
-		http.Error(w, "Failed to set alias", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to set alias"))
 		return
 	}
 
@@ -782,7 +783,7 @@ func (h *Handler) HandleRollbackVersion(w http.ResponseWriter, r *http.Request) 
 
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
@@ -800,12 +801,12 @@ func (h *Handler) HandleRollbackVersion(w http.ResponseWriter, r *http.Request) 
 	currentVersion, err := h.repo.GetLatestFunctionVersion(r.Context(), functionID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get current version")
-		http.Error(w, "Failed to get current version", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get current version"))
 		return
 	}
 
 	if currentVersion == nil {
-		http.Error(w, "No published versions found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("No published versions found"))
 		return
 	}
 
@@ -816,11 +817,11 @@ func (h *Handler) HandleRollbackVersion(w http.ResponseWriter, r *http.Request) 
 		previousVersion, err := h.repo.GetPreviousFunctionVersion(r.Context(), functionID, currentVersion.Version)
 		if err != nil {
 			logrus.WithError(err).Error("Failed to get previous version")
-			http.Error(w, "Failed to get previous version", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to get previous version"))
 			return
 		}
 		if previousVersion == nil {
-			http.Error(w, "No previous version to rollback to", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("No previous version to rollback to"))
 			return
 		}
 		targetVersionStr = previousVersion.Version
@@ -829,11 +830,11 @@ func (h *Handler) HandleRollbackVersion(w http.ResponseWriter, r *http.Request) 
 		targetVersion, err := h.repo.GetFunctionVersionByVersion(r.Context(), functionID, targetVersionStr)
 		if err != nil {
 			logrus.WithError(err).Error("Failed to get target version")
-			http.Error(w, "Failed to get target version", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to get target version"))
 			return
 		}
 		if targetVersion == nil {
-			http.Error(w, "Target version not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Target version not found"))
 			return
 		}
 	}
@@ -861,7 +862,7 @@ func (h *Handler) HandleRollbackVersion(w http.ResponseWriter, r *http.Request) 
 	rollbackRecord, err := h.repo.CreateRollbackRecord(r.Context(), rollbackParams)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create rollback record")
-		http.Error(w, "Failed to create rollback", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create rollback"))
 		return
 	}
 
@@ -912,7 +913,7 @@ func (h *Handler) HandleRollbackLatest(w http.ResponseWriter, r *http.Request) {
 
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
@@ -930,12 +931,12 @@ func (h *Handler) HandleRollbackLatest(w http.ResponseWriter, r *http.Request) {
 	currentVersion, err := h.repo.GetLatestFunctionVersion(r.Context(), functionID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get current version")
-		http.Error(w, "Failed to get current version", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get current version"))
 		return
 	}
 
 	if currentVersion == nil {
-		http.Error(w, "No published versions found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("No published versions found"))
 		return
 	}
 
@@ -943,12 +944,12 @@ func (h *Handler) HandleRollbackLatest(w http.ResponseWriter, r *http.Request) {
 	previousVersion, err := h.repo.GetPreviousFunctionVersion(r.Context(), functionID, currentVersion.Version)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get previous version")
-		http.Error(w, "Failed to get previous version", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get previous version"))
 		return
 	}
 
 	if previousVersion == nil {
-		http.Error(w, "No previous version to rollback to", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("No previous version to rollback to"))
 		return
 	}
 
@@ -975,7 +976,7 @@ func (h *Handler) HandleRollbackLatest(w http.ResponseWriter, r *http.Request) {
 	rollbackRecord, err := h.repo.CreateRollbackRecord(r.Context(), rollbackParams)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create rollback record")
-		http.Error(w, "Failed to create rollback", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create rollback"))
 		return
 	}
 
@@ -1020,7 +1021,7 @@ func (h *Handler) HandleGetRollbackHistory(w http.ResponseWriter, r *http.Reques
 
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
@@ -1034,7 +1035,7 @@ func (h *Handler) HandleGetRollbackHistory(w http.ResponseWriter, r *http.Reques
 	records, err := h.repo.GetRollbackHistory(r.Context(), functionID, limit)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get rollback history")
-		http.Error(w, "Failed to get rollback history", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get rollback history"))
 		return
 	}
 
@@ -1058,7 +1059,7 @@ func (h *Handler) HandleGetRollbackHistory(w http.ResponseWriter, r *http.Reques
 func (h *Handler) HandleCreateAPIVersion(w http.ResponseWriter, r *http.Request) {
 	var req versioning.CreateAPIVersionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -1088,7 +1089,7 @@ func (h *Handler) HandleCreateAPIVersion(w http.ResponseWriter, r *http.Request)
 	err := h.repo.CreateAPIVersion(r.Context(), apiVersion)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create API version")
-		http.Error(w, "Failed to create API version", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create API version"))
 		return
 	}
 
@@ -1121,18 +1122,18 @@ func (h *Handler) HandleUpdateAPIVersion(w http.ResponseWriter, r *http.Request)
 	apiVersion, err := h.repo.GetAPIVersionByVersion(r.Context(), "v"+versionStr)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get API version")
-		http.Error(w, "Failed to get API version", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get API version"))
 		return
 	}
 
 	if apiVersion == nil {
-		http.Error(w, "API version not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("API version not found"))
 		return
 	}
 
 	var req versioning.UpdateAPIVersionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -1156,7 +1157,7 @@ func (h *Handler) HandleUpdateAPIVersion(w http.ResponseWriter, r *http.Request)
 	err = h.repo.UpdateAPIVersion(r.Context(), apiVersion)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to update API version")
-		http.Error(w, "Failed to update API version", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update API version"))
 		return
 	}
 
@@ -1186,22 +1187,22 @@ func (h *Handler) HandleSetDefaultAPIVersion(w http.ResponseWriter, r *http.Requ
 	apiVersion, err := h.repo.GetAPIVersionByVersion(r.Context(), "v"+versionStr)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get API version")
-		http.Error(w, "Failed to get API version", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get API version"))
 		return
 	}
 
 	if apiVersion == nil {
-		http.Error(w, "API version not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("API version not found"))
 		return
 	}
 
 	if err := h.repo.SetDefaultAPIVersion(r.Context(), apiVersion.Version); err != nil {
 		if err == sql.ErrNoRows {
-			http.Error(w, "API version not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("API version not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to set default API version")
-		http.Error(w, "Failed to set default API version", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to set default API version"))
 		return
 	}
 
@@ -1239,7 +1240,7 @@ func (h *Handler) HandleListDeployments(w http.ResponseWriter, r *http.Request) 
 
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
@@ -1259,7 +1260,7 @@ func (h *Handler) HandleListDeployments(w http.ResponseWriter, r *http.Request) 
 	deployments, err := h.repo.GetDeploymentsByFunctionVersion(r.Context(), params)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list deployments")
-		http.Error(w, "Failed to list deployments", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list deployments"))
 		return
 	}
 
@@ -1316,19 +1317,19 @@ func (h *Handler) HandleGetDeployment(w http.ResponseWriter, r *http.Request) {
 
 	deploymentID, err := uuid.Parse(deploymentIDStr)
 	if err != nil {
-		http.Error(w, "Invalid deployment ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid deployment ID"))
 		return
 	}
 
 	deployment, err := h.repo.GetDeploymentByID(r.Context(), deploymentID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get deployment")
-		http.Error(w, "Failed to get deployment", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get deployment"))
 		return
 	}
 
 	if deployment == nil {
-		http.Error(w, "Deployment not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Deployment not found"))
 		return
 	}
 
@@ -1382,7 +1383,7 @@ func (h *Handler) HandleListServiceContracts(w http.ResponseWriter, r *http.Requ
 	contracts, err := h.repo.GetAllServiceContracts(r.Context(), params)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list service contracts")
-		http.Error(w, "Failed to list service contracts", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list service contracts"))
 		return
 	}
 
@@ -1452,12 +1453,12 @@ func (h *Handler) HandleGetServiceContracts(w http.ResponseWriter, r *http.Reque
 	contracts, err := h.repo.GetAllServiceContracts(r.Context(), params)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get service contracts")
-		http.Error(w, "Failed to get service contracts", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get service contracts"))
 		return
 	}
 
 	if len(contracts) == 0 {
-		http.Error(w, "No contracts found for service", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("No contracts found for service"))
 		return
 	}
 
@@ -1507,12 +1508,12 @@ func (h *Handler) HandleGetServiceContracts(w http.ResponseWriter, r *http.Reque
 func (h *Handler) HandleNegotiateContractVersion(w http.ResponseWriter, r *http.Request) {
 	var req versioning.ContractVersionNegotiationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if req.ProviderService == "" {
-		http.Error(w, "Provider service is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Provider service is required"))
 		return
 	}
 
@@ -1520,7 +1521,7 @@ func (h *Handler) HandleNegotiateContractVersion(w http.ResponseWriter, r *http.
 	contract, err := h.repo.GetCompatibleContractVersion(r.Context(), req.ProviderService, req.SupportedVersions)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to negotiate contract version")
-		http.Error(w, "Failed to negotiate contract version", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to negotiate contract version"))
 		return
 	}
 
@@ -1569,7 +1570,7 @@ func (h *Handler) HandleGetVersionLineage(w http.ResponseWriter, r *http.Request
 
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
@@ -1583,7 +1584,7 @@ func (h *Handler) HandleGetVersionLineage(w http.ResponseWriter, r *http.Request
 	entries, err := h.repo.GetVersionLineage(r.Context(), functionID, limit)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get version lineage")
-		http.Error(w, "Failed to get version lineage", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get version lineage"))
 		return
 	}
 
@@ -1614,7 +1615,7 @@ func (h *Handler) HandleCompareVersions(w http.ResponseWriter, r *http.Request) 
 
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
@@ -1622,14 +1623,14 @@ func (h *Handler) HandleCompareVersions(w http.ResponseWriter, r *http.Request) 
 	v2 := r.URL.Query().Get("v2")
 
 	if v1 == "" || v2 == "" {
-		http.Error(w, "Both v1 and v2 query parameters are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Both v1 and v2 query parameters are required"))
 		return
 	}
 
 	diff, err := h.repo.CompareVersions(r.Context(), functionID, v1, v2)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to compare versions")
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest(err.Error()))
 		return
 	}
 

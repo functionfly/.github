@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -19,7 +20,7 @@ func NewSessionRepository(db *PostgresDB) *SessionRepository {
 }
 
 // CreateSession creates a new session
-func (r *SessionRepository) CreateSession(userID uuid.UUID, sessionToken string, ipAddress, userAgent string, expiresAt time.Time) (*Session, error) {
+func (r *SessionRepository) CreateSession(ctx context.Context, userID uuid.UUID, sessionToken string, ipAddress, userAgent string, expiresAt time.Time) (*Session, error) {
 	session := &Session{
 		ID:           uuid.New(),
 		UserID:       userID,
@@ -33,7 +34,7 @@ func (r *SessionRepository) CreateSession(userID uuid.UUID, sessionToken string,
 		UpdatedAt:    time.Now(),
 	}
 
-	_, err := r.db.Exec(`
+	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO sessions (id, user_id, session_token, mfa_verified, mfa_last_used, ip_address, user_agent, expires_at, last_activity, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
 		session.ID, session.UserID, session.SessionToken, session.MFAVerified, session.MFALastUsed, session.IPAddress, session.UserAgent, session.ExpiresAt, session.LastActivity, session.CreatedAt, session.UpdatedAt)
@@ -46,11 +47,11 @@ func (r *SessionRepository) CreateSession(userID uuid.UUID, sessionToken string,
 }
 
 // GetSessionByToken retrieves a session by its token
-func (r *SessionRepository) GetSessionByToken(sessionToken string) (*Session, error) {
+func (r *SessionRepository) GetSessionByToken(ctx context.Context, sessionToken string) (*Session, error) {
 	var session Session
 	var mfaLastUsed sql.NullTime
 
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT id, user_id, session_token, mfa_verified, mfa_last_used, ip_address, user_agent, expires_at, last_activity, created_at, updated_at
 		FROM sessions
 		WHERE session_token = $1 AND expires_at > NOW()`,
@@ -74,11 +75,11 @@ func (r *SessionRepository) GetSessionByToken(sessionToken string) (*Session, er
 }
 
 // GetSessionByID retrieves a session by its ID
-func (r *SessionRepository) GetSessionByID(sessionID uuid.UUID) (*Session, error) {
+func (r *SessionRepository) GetSessionByID(ctx context.Context, sessionID uuid.UUID) (*Session, error) {
 	var session Session
 	var mfaLastUsed sql.NullTime
 
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT id, user_id, session_token, mfa_verified, mfa_last_used, ip_address, user_agent, expires_at, last_activity, created_at, updated_at
 		FROM sessions
 		WHERE id = $1 AND expires_at > NOW()`,
@@ -102,11 +103,11 @@ func (r *SessionRepository) GetSessionByID(sessionID uuid.UUID) (*Session, error
 }
 
 // UpdateSessionMFAStatus updates the MFA verification status of a session
-func (r *SessionRepository) UpdateSessionMFAStatus(sessionToken string, mfaVerified bool) error {
+func (r *SessionRepository) UpdateSessionMFAStatus(ctx context.Context, sessionToken string, mfaVerified bool) error {
 	now := time.Now()
 	// Use distinct parameter indices: $1=mfaVerified, $2=mfa_last_used, $3=last_activity,
 	// $4=updated_at, $5=sessionToken — avoids $1 being reused in the WHERE clause.
-	_, err := r.db.Exec(`
+	_, err := r.db.ExecContext(ctx, `
 		UPDATE sessions
 		SET mfa_verified = $1, mfa_last_used = $2, last_activity = $3, updated_at = $4
 		WHERE session_token = $5 AND expires_at > NOW()`,
@@ -120,9 +121,9 @@ func (r *SessionRepository) UpdateSessionMFAStatus(sessionToken string, mfaVerif
 }
 
 // UpdateSessionActivity updates the last activity timestamp of a session
-func (r *SessionRepository) UpdateSessionActivity(sessionToken string) error {
+func (r *SessionRepository) UpdateSessionActivity(ctx context.Context, sessionToken string) error {
 	now := time.Now()
-	_, err := r.db.Exec(`
+	_, err := r.db.ExecContext(ctx, `
 		UPDATE sessions
 		SET last_activity = $1, updated_at = $2
 		WHERE session_token = $3 AND expires_at > NOW()`,
@@ -136,8 +137,8 @@ func (r *SessionRepository) UpdateSessionActivity(sessionToken string) error {
 }
 
 // DeleteSession deletes a session by its token
-func (r *SessionRepository) DeleteSession(sessionToken string) error {
-	_, err := r.db.Exec(`
+func (r *SessionRepository) DeleteSession(ctx context.Context, sessionToken string) error {
+	_, err := r.db.ExecContext(ctx, `
 		DELETE FROM sessions
 		WHERE session_token = $1`,
 		sessionToken)
@@ -150,8 +151,8 @@ func (r *SessionRepository) DeleteSession(sessionToken string) error {
 }
 
 // DeleteExpiredSessions removes all expired sessions and returns the count
-func (r *SessionRepository) DeleteExpiredSessions() (int64, error) {
-	result, err := r.db.Exec(`
+func (r *SessionRepository) DeleteExpiredSessions(ctx context.Context) (int64, error) {
+	result, err := r.db.ExecContext(ctx, `
 		DELETE FROM sessions
 		WHERE expires_at <= NOW()`)
 
@@ -168,8 +169,8 @@ func (r *SessionRepository) DeleteExpiredSessions() (int64, error) {
 }
 
 // DeleteUserSessions deletes all sessions for a specific user
-func (r *SessionRepository) DeleteUserSessions(userID uuid.UUID) error {
-	_, err := r.db.Exec(`
+func (r *SessionRepository) DeleteUserSessions(ctx context.Context, userID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `
 		DELETE FROM sessions
 		WHERE user_id = $1`,
 		userID)
@@ -182,8 +183,8 @@ func (r *SessionRepository) DeleteUserSessions(userID uuid.UUID) error {
 }
 
 // DeleteSessionByID deletes a single session by ID if it belongs to the given user
-func (r *SessionRepository) DeleteSessionByID(sessionID, userID uuid.UUID) error {
-	result, err := r.db.Exec(`
+func (r *SessionRepository) DeleteSessionByID(ctx context.Context, sessionID, userID uuid.UUID) error {
+	result, err := r.db.ExecContext(ctx, `
 		DELETE FROM sessions
 		WHERE id = $1 AND user_id = $2`,
 		sessionID, userID)
@@ -201,8 +202,8 @@ func (r *SessionRepository) DeleteSessionByID(sessionID, userID uuid.UUID) error
 }
 
 // ListUserSessions retrieves all active sessions for a user
-func (r *SessionRepository) ListUserSessions(userID uuid.UUID) ([]*Session, error) {
-	rows, err := r.db.Query(`
+func (r *SessionRepository) ListUserSessions(ctx context.Context, userID uuid.UUID) ([]*Session, error) {
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, user_id, session_token, mfa_verified, mfa_last_used, ip_address, user_agent, expires_at, last_activity, created_at, updated_at
 		FROM sessions
 		WHERE user_id = $1 AND expires_at > NOW()
@@ -243,9 +244,9 @@ func (r *SessionRepository) ListUserSessions(userID uuid.UUID) ([]*Session, erro
 }
 
 // CountActiveUserSessions counts the number of active sessions for a user
-func (r *SessionRepository) CountActiveUserSessions(userID uuid.UUID) (int, error) {
+func (r *SessionRepository) CountActiveUserSessions(ctx context.Context, userID uuid.UUID) (int, error) {
 	var count int
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT COUNT(*)
 		FROM sessions
 		WHERE user_id = $1 AND expires_at > NOW()`,
@@ -259,7 +260,7 @@ func (r *SessionRepository) CountActiveUserSessions(userID uuid.UUID) (int, erro
 }
 
 // ListTenantSessions retrieves sessions for all users in a tenant
-func (r *SessionRepository) ListTenantSessions(tenantID uuid.UUID, limit, offset int) ([]*Session, error) {
+func (r *SessionRepository) ListTenantSessions(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*Session, error) {
 	query := `
 		SELECT s.id, s.user_id, s.session_token, s.mfa_verified, s.mfa_last_used, s.ip_address, s.user_agent, s.expires_at, s.last_activity, s.created_at, s.updated_at
 		FROM sessions s
@@ -276,7 +277,7 @@ func (r *SessionRepository) ListTenantSessions(tenantID uuid.UUID, limit, offset
 		query += fmt.Sprintf(" OFFSET %d", offset)
 	}
 
-	rows, err := r.db.Query(query, args...)
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list tenant sessions: %w", err)
 	}
@@ -311,8 +312,8 @@ func (r *SessionRepository) ListTenantSessions(tenantID uuid.UUID, limit, offset
 }
 
 // DeleteSessionByIDOnly deletes a session by ID without checking user ownership
-func (r *SessionRepository) DeleteSessionByIDOnly(sessionID uuid.UUID, userID uuid.UUID) error {
-	_, err := r.db.Exec(`
+func (r *SessionRepository) DeleteSessionByIDOnly(ctx context.Context, sessionID uuid.UUID, userID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `
 		DELETE FROM sessions
 		WHERE id = $1 AND user_id = $2`,
 		sessionID, userID)

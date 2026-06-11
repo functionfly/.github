@@ -43,7 +43,7 @@ func (e *sandboxEngine) Execute(ctx context.Context, req ExecutionRequest) (Exec
 		return ExecutionResult{
 			DurationMs: durationMs,
 			Error: &ExecutionError{
-				Err:           err,
+				Err:          err,
 				TerminatedBy: "error",
 			},
 		}, err
@@ -65,20 +65,20 @@ func (e *sandboxEngine) Close() error { return nil }
 // ---------------------------------------------------------------------------
 
 const (
-	connectionTimeout = 5 * time.Second
-	maxRetries        = 3
+	connectionTimeout       = 5 * time.Second
+	maxRetries              = 3
 	circuitBreakerThreshold = 5
 	circuitBreakerResetTime = 30 * time.Second
 )
 
 // circuitBreaker tracks failures and prevents calls to failing endpoints.
 type circuitBreaker struct {
-	mu             sync.Mutex
-	failures       int
-	lastFailure    time.Time
-	circuitOpen    bool
-	threshold      int
-	resetTime      time.Duration
+	mu          sync.Mutex
+	failures    int
+	lastFailure time.Time
+	circuitOpen bool
+	threshold   int
+	resetTime   time.Duration
 }
 
 func newCircuitBreaker(threshold int, resetTime time.Duration) *circuitBreaker {
@@ -397,7 +397,7 @@ func (e *wasmCellExecutor) Execute(ctx context.Context, req ExecutionRequest) (E
 		return ExecutionResult{
 			DurationMs: durationMs,
 			Error: &ExecutionError{
-				Err:           err,
+				Err:          err,
 				TerminatedBy: "error",
 			},
 		}, err
@@ -453,7 +453,7 @@ func (e *nodeJSEngine) Execute(ctx context.Context, req ExecutionRequest) (Execu
 		return ExecutionResult{
 			DurationMs: durationMs,
 			Error: &ExecutionError{
-				Err:           err,
+				Err:          err,
 				TerminatedBy: "error",
 			},
 		}, err
@@ -479,10 +479,10 @@ func (e *nodeJSEngine) Close() error {
 // ---------------------------------------------------------------------------
 
 type cpythonWasmEngine struct {
-	client   *RuntimeClient
-	poolSize  int
-	mu        sync.Mutex
-	healthy   bool
+	client     *RuntimeClient
+	poolSize   int
+	mu         sync.Mutex
+	healthy    bool
 	lastHealth time.Time
 }
 
@@ -498,9 +498,9 @@ func newCPythonWasmEngine(endpoint string, poolSize int) *cpythonWasmEngine {
 	}
 
 	return &cpythonWasmEngine{
-		client:   NewRuntimeClient(endpoint),
-		poolSize: poolSize,
-		healthy:  true,
+		client:     NewRuntimeClient(endpoint),
+		poolSize:   poolSize,
+		healthy:    true,
 		lastHealth: time.Now(),
 	}
 }

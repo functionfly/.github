@@ -349,6 +349,10 @@
     "ses_1473a67d6ffe3PUnsvc7uBZ7KJ": {
       "worktreeId": "wt-1781201753307-4",
       "createdAt": "2026-06-11T22:20:17.836Z"
+    },
+    "ses_14738a1bdffeaV51b7IDxf20Ky": {
+      "worktreeId": "wt-1781201753307-4",
+      "createdAt": "2026-06-11T22:22:14.277Z"
     }
   },
   "tabOrder": {
@@ -632,7 +636,8 @@
       "ses_1481a2959ffe0pW5jFU8ianlIV",
       "ses_14801cbd1ffePszmSlaoVn21p5",
       "ses_14748dd12ffe25pMrAsgkqu0xR",
-      "ses_1473a67d6ffe3PUnsvc7uBZ7KJ"
+      "ses_1473a67d6ffe3PUnsvc7uBZ7KJ",
+      "ses_14738a1bdffeaV51b7IDxf20Ky"
     ],
     "wt-1781208476444-5": [
       "ses_147b39428ffekGEHiMHdZhDJ3p",

@@ -6,10 +6,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 // PoolMetrics holds pool metrics for monitoring
@@ -196,6 +197,17 @@ func (p *InstancePool) Prewarm(ctx context.Context, tenantID, runtime string, co
 	for i := 0; i < count; i++ {
 		wg.Add(1)
 		go func() {
+			defer func() {
+				if rec := recover(); rec != nil {
+					logrus.WithFields(logrus.Fields{
+						"panic":   rec,
+						"stack":   fmt.Sprintf("%v", rec),
+						"tenant":  tenantID,
+						"runtime": runtime,
+					}).Error("WASM pool prewarm goroutine panicked")
+					wg.Done()
+				}
+			}()
 			defer wg.Done()
 			inst, err := p.factory()
 			if err != nil {
@@ -232,7 +244,11 @@ func (p *InstancePool) Prewarm(ctx context.Context, tenantID, runtime string, co
 	p.prewarmCount = count
 	p.prewarmMu.Unlock()
 
-	log.Printf("[WASM] Pool prewarmed for %s:%s with %d instances", tenantID, runtime, count)
+	logrus.WithFields(logrus.Fields{
+		"tenant":  tenantID,
+		"runtime": runtime,
+		"count":   count,
+	}).Info("WASM pool prewarmed")
 	return firstErr
 }
 
@@ -240,10 +256,23 @@ func (p *InstancePool) Prewarm(ctx context.Context, tenantID, runtime string, co
 func (p *InstancePool) PrewarmAll(ctx context.Context, tenants []string, runtimes []string) {
 	for _, tenant := range tenants {
 		for _, runtime := range runtimes {
-			type runtimeType string
 			go func(t, r string) {
+				defer func() {
+					if rec := recover(); rec != nil {
+						logrus.WithFields(logrus.Fields{
+							"panic":   rec,
+							"stack":   fmt.Sprintf("%v", rec),
+							"tenant":  t,
+							"runtime": r,
+						}).Error("WASM pool PrewarmAll goroutine panicked")
+					}
+				}()
 				if err := p.Prewarm(ctx, t, r, p.defaultSize); err != nil {
-					log.Printf("[WASM] Warning: Failed to prewarm pool for %s:%s: %v", t, r, err)
+					logrus.WithFields(logrus.Fields{
+						"error":   err,
+						"tenant":  t,
+						"runtime": r,
+					}).Warn("Failed to prewarm pool")
 				}
 			}(tenant, runtime)
 		}
