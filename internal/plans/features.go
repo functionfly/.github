@@ -29,21 +29,21 @@ type Feature struct {
 
 // Enterprise-only features
 const (
-	FeatureMicroVMs         = "micro_vms"
-	FeatureDedicatedPool    = "dedicated_pool"
-	FeatureCustomLimits     = "custom_limits"
-	FeatureAdvancedSecurity = "advanced_security"
-	FeatureSLA              = "sla"
-	FeaturePrioritySupport = "priority_support"
-	FeatureCustomDomains   = "custom_domains"
-	FeatureSSOSAML         = "sso_saml"
-	FeatureAuditLogs       = "audit_logs"
-	FeatureDataResidency   = "data_residency"
-	FeatureAPIRateLimits   = "api_rate_limits"
-	FeatureWebhookSigning  = "webhook_signing"
+	FeatureMicroVMs          = "micro_vms"
+	FeatureDedicatedPool     = "dedicated_pool"
+	FeatureCustomLimits      = "custom_limits"
+	FeatureAdvancedSecurity  = "advanced_security"
+	FeatureSLA               = "sla"
+	FeaturePrioritySupport   = "priority_support"
+	FeatureCustomDomains     = "custom_domains"
+	FeatureSSOSAML           = "sso_saml"
+	FeatureAuditLogs         = "audit_logs"
+	FeatureDataResidency     = "data_residency"
+	FeatureAPIRateLimits     = "api_rate_limits"
+	FeatureWebhookSigning    = "webhook_signing"
 	FeatureAdvancedAnalytics = "advanced_analytics"
-	FeatureTeamRBAC        = "team_rbac"
-	FeatureSecretRotation  = "secret_rotation"
+	FeatureTeamRBAC          = "team_rbac"
+	FeatureSecretRotation    = "secret_rotation"
 	// Playground features
 	FeatureCollaborativeSessions = "collaborative_sessions"
 )
@@ -60,9 +60,9 @@ const (
 	FeatureTimeMachineBasic      = "time_machine_basic"      // Free+: 24h window, basic diff
 	FeatureTimeMachineExtended   = "time_machine_extended"   // Starter+: 72h window
 	FeatureTimeMachinePro        = "time_machine_pro"        // Pro+: 30d window, full diffs, dry-run reconciliation
-	FeatureTimeMachineEnterprise = "time_machine_enterprise"  // Enterprise+: 90d window, live reconciliation, audit certs
-	FeatureTimeMachineUnlimited  = "time_machine_unlimited"   // Agent Enterprise: unlimited everything
-	FeatureTimeMachineInsurance  = "time_machine_insurance"   // Agent Enterprise: dedicated incident engineer
+	FeatureTimeMachineEnterprise = "time_machine_enterprise" // Enterprise+: 90d window, live reconciliation, audit certs
+	FeatureTimeMachineUnlimited  = "time_machine_unlimited"  // Agent Enterprise: unlimited everything
+	FeatureTimeMachineInsurance  = "time_machine_insurance"  // Agent Enterprise: dedicated incident engineer
 )
 
 // Pro-only features
@@ -507,6 +507,7 @@ var (
 		FeaturePublishFunctions,
 		FeatureTimeMachineBasic,
 		FeatureTimeMachineExtended,
+		FeatureConsciousnessBasic,
 	}
 
 	freeFeatures = []string{

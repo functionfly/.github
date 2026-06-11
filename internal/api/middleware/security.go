@@ -325,9 +325,70 @@ func BodySizeLimitMiddleware(maxBytes int64) func(http.HandlerFunc) http.Handler
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
-			next.ServeHTTP(w, r)
-		}
+next.ServeHTTP(w, r)
 	}
+}
+
+// ConsciousnessRateLimiter applies per-tenant rate limits for consciousness operations.
+type ConsciousnessRateLimiter struct {
+	scoreLimiter      *RateLimiter // GET /score - 100/hour per tenant
+	listInsightsLimiter *RateLimiter // GET /insights - 60/minute per tenant
+	runAnalysisLimiter *RateLimiter // POST /run - 5/hour per tenant (expensive operation)
+}
+
+// NewConsciousnessRateLimiter creates a limiter for consciousness operations per tenant.
+func NewConsciousnessRateLimiter() *ConsciousnessRateLimiter {
+	return &ConsciousnessRateLimiter{
+		scoreLimiter:       NewRateLimiter(time.Hour, 100),    // 100 score checks per hour per tenant
+		listInsightsLimiter: NewRateLimiter(time.Minute, 60), // 60 insight queries per minute per tenant
+		runAnalysisLimiter: NewRateLimiter(time.Hour, 5),     // 5 analysis runs per hour per tenant
+	}
+}
+
+// LimitScore wraps a handler with per-tenant rate limiting for awareness score.
+func (c *ConsciousnessRateLimiter) LimitScore(next http.HandlerFunc) http.HandlerFunc {
+	return c.limitByTenant("consciousness_score", c.scoreLimiter, next)
+}
+
+// LimitListInsights wraps a handler with per-tenant rate limiting for listing insights.
+func (c *ConsciousnessRateLimiter) LimitListInsights(next http.HandlerFunc) http.HandlerFunc {
+	return c.limitByTenant("consciousness_insights", c.listInsightsLimiter, next)
+}
+
+// LimitRunAnalysis wraps a handler with per-tenant rate limiting for running analysis.
+func (c *ConsciousnessRateLimiter) LimitRunAnalysis(next http.HandlerFunc) http.HandlerFunc {
+	return c.limitByTenant("consciousness_run", c.runAnalysisLimiter, next)
+}
+
+func (c *ConsciousnessRateLimiter) limitByTenant(prefix string, limiter *RateLimiter, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims := GetUserFromContext(r)
+		if claims == nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		key := fmt.Sprintf("%s:tenant:%s", prefix, claims.TenantID.String())
+
+		if !limiter.Allow(key) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(limiter.window.Seconds())))
+			w.WriteHeader(http.StatusTooManyRequests)
+			logrus.WithFields(logrus.Fields{
+				"tenant_id": claims.TenantID.String(),
+				"prefix":    prefix,
+				"ip":        getClientIP(r),
+			}).Warn("Consciousness operation rate limit exceeded")
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":   "rate_limit_exceeded",
+				"message": "Too many consciousness operations. Please try again later.",
+			})
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
+}
 }
 
 // SecurityHeaders middleware adds security headers to responses

@@ -29,7 +29,7 @@ func NewMarketplaceAnalyzer(db *sql.DB, logger *logrus.Logger) *MarketplaceAnaly
 	return &MarketplaceAnalyzer{db: db, logger: logger}
 }
 
-func (a *MarketplaceAnalyzer) Name() string          { return "marketplace" }
+func (a *MarketplaceAnalyzer) Name() string              { return "marketplace" }
 func (a *MarketplaceAnalyzer) Category() InsightCategory { return CategoryMarketplace }
 
 const (
@@ -212,14 +212,14 @@ func (a *MarketplaceAnalyzer) findFlyEmbedMatches(ctx context.Context, tenantID 
 			Summary:    strPtr(fmt.Sprintf("%s/%s — %s", marketAuthor, marketName, improvementText)),
 			FunctionID: &tenantFuncID,
 			InsightData: JSONMap{
-				"tenant_function_id":   tenantFuncID.String(),
-				"tenant_function_name": tenantFuncName,
-				"tenant_price":         tenantPrice,
-				"marketplace_author":   marketAuthor,
-				"marketplace_name":     marketName,
-				"marketplace_title":    displayMarket,
-				"marketplace_price":    marketPrice,
-				"marketplace_trust":    marketTrust,
+				"tenant_function_id":      tenantFuncID.String(),
+				"tenant_function_name":    tenantFuncName,
+				"tenant_price":            tenantPrice,
+				"marketplace_author":      marketAuthor,
+				"marketplace_name":        marketName,
+				"marketplace_title":       displayMarket,
+				"marketplace_price":       marketPrice,
+				"marketplace_trust":       marketTrust,
 				"marketplace_reliability": marketReliability,
 				"marketplace_popularity":  marketPopularity,
 				"combined_similarity":     combinedSim,
@@ -286,13 +286,13 @@ func (a *MarketplaceAnalyzer) findCategoryTrends(ctx context.Context, tenantID u
 	var insights []*Insight
 	for rows.Next() {
 		var (
-			funcID                                      uuid.UUID
-			author, name                                string
-			title, description, category                sql.NullString
-			price                                       float64
-			reliability, trust                          float64
-			popularity                                  int
-			createdAt                                   time.Time
+			funcID                       uuid.UUID
+			author, name                 string
+			title, description, category sql.NullString
+			price                        float64
+			reliability, trust           float64
+			popularity                   int
+			createdAt                    time.Time
 		)
 
 		if err := rows.Scan(
@@ -337,15 +337,15 @@ func (a *MarketplaceAnalyzer) findCategoryTrends(ctx context.Context, tenantID u
 			),
 			Summary: strPtr(fmt.Sprintf("%s/%s — new in %s", author, name, catName)),
 			InsightData: JSONMap{
-				"marketplace_author":   author,
-				"marketplace_name":     name,
-				"marketplace_title":    displayName,
-				"marketplace_category": catName,
-				"marketplace_price":    price,
-				"marketplace_trust":    trust,
+				"marketplace_author":     author,
+				"marketplace_name":       name,
+				"marketplace_title":      displayName,
+				"marketplace_category":   catName,
+				"marketplace_price":      price,
+				"marketplace_trust":      trust,
 				"marketplace_popularity": popularity,
-				"published_ago":        publishedAgo.String(),
-				"signal":               "category_trend",
+				"published_ago":          publishedAgo.String(),
+				"signal":                 "category_trend",
 			},
 			Trajectory: &trajectory,
 			Confidence: &confidence,
