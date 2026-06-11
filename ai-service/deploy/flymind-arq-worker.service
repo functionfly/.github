@@ -1,0 +1,30 @@
+# ARQ Worker systemd unit for FlyMind AI Service
+# Place in /etc/systemd/system/flymind-arq-worker.service
+
+[Unit]
+Description=FlyMind AI Service ARQ Background Worker
+After=network.target redis.service
+Requires=redis.service
+
+[Service]
+Type=simple
+User=flymind
+WorkingDirectory=/opt/flymind/ai-service
+Environment=PYTHONPATH=/opt/flymind/ai-service/src
+EnvironmentFile=/opt/flymind/ai-service/.env.production
+ExecStart=/opt/flymind/ai-service/.venv/bin/arq src.workers.arq_worker.AuditWorker
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=flymind-arq
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/flymind/ai-service/logs
+
+[Install]
+WantedBy=multi-user.target

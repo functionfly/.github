@@ -1,0 +1,36 @@
+# Fly.io configuration for FlyMind AI Service RQ Worker
+# Deploy with: fly deploy --config fly-rq-worker.toml (from ai-service directory)
+#
+# This runs the RQ background worker for audit log processing
+# as a separate Fly.io app (sidecar pattern).
+
+app = "functionfly-ai-service-rq"
+primary_region = "ord"
+
+[build]
+  dockerfile = "Dockerfile"
+
+# No public HTTP - this is a background worker only
+[[vm]]
+  size = "shared-cpu-2x"
+  memory = "512mb"
+  cpus = 1
+  cpu_kind = "shared"
+
+[env]
+  LOG_LEVEL = "info"
+  SERVICE_NAME = "flymind-ai-service-rq"
+  SERVICE_VERSION = "1.0.0"
+
+  # Disable HTTP server features in worker mode
+  FLYMIND_WORKER_MODE = "true"
+
+# Secrets to set via `fly secrets set`:
+# - DATABASE_URL
+# - REDIS_ADDR (and REDIS_PASSWORD if required)
+# - AUDIT_DATABASE_URL (optional, defaults to DATABASE_URL)
+
+# Secrets required for RQ worker
+[secrets]
+  DATABASE_URL = ""  # Required
+  REDIS_ADDR = ""   # Required
