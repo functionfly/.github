@@ -21,7 +21,7 @@ func NewMonitoringRepository(db *PostgresDB) *MonitoringRepository {
 }
 
 // InsertPerformanceMetric inserts a performance metric into the database
-func (r *MonitoringRepository) InsertPerformanceMetric(metric *PerformanceMetric) error {
+func (r *MonitoringRepository) InsertPerformanceMetric(ctx context.Context, metric *PerformanceMetric) error {
 	labelsJSON, err := json.Marshal(metric.Labels)
 	if err != nil {
 		return err
@@ -32,7 +32,7 @@ func (r *MonitoringRepository) InsertPerformanceMetric(metric *PerformanceMetric
 			metric_type, tenant_id, app_id, backend_id, value, unit, labels, timestamp
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
 
-	_, err = r.db.Exec(query,
+	_, err = r.db.ExecContext(ctx, query,
 		metric.MetricType,
 		metric.TenantID,
 		metric.AppID,
@@ -47,7 +47,7 @@ func (r *MonitoringRepository) InsertPerformanceMetric(metric *PerformanceMetric
 }
 
 // InsertAlert inserts an alert into the database
-func (r *MonitoringRepository) InsertAlert(alert *Alert) error {
+func (r *MonitoringRepository) InsertAlert(ctx context.Context, alert *Alert) error {
 	metadataJSON, err := json.Marshal(alert.Metadata)
 	if err != nil {
 		return err
@@ -58,7 +58,7 @@ func (r *MonitoringRepository) InsertAlert(alert *Alert) error {
 			alert_type, severity, tenant_id, app_id, backend_id, title, message, status, metadata
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
-	_, err = r.db.Exec(query,
+	_, err = r.db.ExecContext(ctx, query,
 		alert.AlertType,
 		alert.Severity,
 		alert.TenantID,
@@ -74,7 +74,7 @@ func (r *MonitoringRepository) InsertAlert(alert *Alert) error {
 }
 
 // InsertSystemHealthCheck inserts a system health check into the database
-func (r *MonitoringRepository) InsertSystemHealthCheck(check *SystemHealthCheck) error {
+func (r *MonitoringRepository) InsertSystemHealthCheck(ctx context.Context, check *SystemHealthCheck) error {
 	metadataJSON, err := json.Marshal(check.Metadata)
 	if err != nil {
 		return err
@@ -85,7 +85,7 @@ func (r *MonitoringRepository) InsertSystemHealthCheck(check *SystemHealthCheck)
 			check_type, component_name, status, response_time_ms, message, metadata, checked_at
 		) VALUES ($1, $2, $3, $4, $5, $6, $7)`
 
-	_, err = r.db.Exec(query,
+	_, err = r.db.ExecContext(ctx, query,
 		check.CheckType,
 		check.ComponentName,
 		check.Status,
@@ -99,7 +99,7 @@ func (r *MonitoringRepository) InsertSystemHealthCheck(check *SystemHealthCheck)
 }
 
 // InsertMonitoringEvent inserts a monitoring event into the database
-func (r *MonitoringRepository) InsertMonitoringEvent(event *MonitoringEvent) error {
+func (r *MonitoringRepository) InsertMonitoringEvent(ctx context.Context, event *MonitoringEvent) error {
 	dataJSON, err := json.Marshal(event.Data)
 	if err != nil {
 		return err
@@ -110,7 +110,7 @@ func (r *MonitoringRepository) InsertMonitoringEvent(event *MonitoringEvent) err
 			event_type, tenant_id, app_id, backend_id, request_id, user_id, data, timestamp
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
 
-	_, err = r.db.Exec(query,
+	_, err = r.db.ExecContext(ctx, query,
 		event.EventType,
 		event.TenantID,
 		event.AppID,
@@ -125,7 +125,7 @@ func (r *MonitoringRepository) InsertMonitoringEvent(event *MonitoringEvent) err
 }
 
 // QueryMonitoringEvents retrieves monitoring events with filtering
-func (r *MonitoringRepository) QueryMonitoringEvents(eventType string, tenantID *uuid.UUID, since time.Time, limit int) ([]*MonitoringEvent, error) {
+func (r *MonitoringRepository) QueryMonitoringEvents(ctx context.Context, eventType string, tenantID *uuid.UUID, since time.Time, limit int) ([]*MonitoringEvent, error) {
 	var rows *sql.Rows
 	var err error
 
@@ -137,7 +137,7 @@ func (r *MonitoringRepository) QueryMonitoringEvents(eventType string, tenantID 
 			WHERE event_type = $1 AND tenant_id = $2 AND timestamp >= $3
 			ORDER BY timestamp DESC
 			LIMIT $4`
-		rows, err = r.db.Query(query, eventType, tenantID, since, limit)
+		rows, err = r.db.QueryContext(ctx, query, eventType, tenantID, since, limit)
 	} else if tenantID != nil {
 		query := `
 			SELECT id, event_type, tenant_id, app_id, backend_id, request_id, user_id, data, timestamp, created_at
@@ -145,7 +145,7 @@ func (r *MonitoringRepository) QueryMonitoringEvents(eventType string, tenantID 
 			WHERE tenant_id = $1 AND timestamp >= $2
 			ORDER BY timestamp DESC
 			LIMIT $3`
-		rows, err = r.db.Query(query, tenantID, since, limit)
+		rows, err = r.db.QueryContext(ctx, query, tenantID, since, limit)
 	} else if eventType != "" {
 		query := `
 			SELECT id, event_type, tenant_id, app_id, backend_id, request_id, user_id, data, timestamp, created_at
@@ -153,7 +153,7 @@ func (r *MonitoringRepository) QueryMonitoringEvents(eventType string, tenantID 
 			WHERE event_type = $1 AND timestamp >= $2
 			ORDER BY timestamp DESC
 			LIMIT $3`
-		rows, err = r.db.Query(query, eventType, since, limit)
+		rows, err = r.db.QueryContext(ctx, query, eventType, since, limit)
 	} else {
 		query := `
 			SELECT id, event_type, tenant_id, app_id, backend_id, request_id, user_id, data, timestamp, created_at
@@ -161,7 +161,7 @@ func (r *MonitoringRepository) QueryMonitoringEvents(eventType string, tenantID 
 			WHERE timestamp >= $1
 			ORDER BY timestamp DESC
 			LIMIT $2`
-		rows, err = r.db.Query(query, since, limit)
+		rows, err = r.db.QueryContext(ctx, query, since, limit)
 	}
 
 	if err != nil {
@@ -205,18 +205,18 @@ func (r *MonitoringRepository) QueryMonitoringEvents(eventType string, tenantID 
 }
 
 // UpdateAlertStatus updates an alert's status
-func (r *MonitoringRepository) UpdateAlertStatus(alert *Alert) error {
+func (r *MonitoringRepository) UpdateAlertStatus(ctx context.Context, alert *Alert) error {
 	query := `
 		UPDATE alerts
 		SET status = $1, resolved_at = $2, resolved_by = $3, updated_at = NOW()
 		WHERE id = $4`
 
-	_, err := r.db.Exec(query, alert.Status, alert.ResolvedAt, alert.ResolvedBy, alert.ID)
+	_, err := r.db.ExecContext(ctx, query, alert.Status, alert.ResolvedAt, alert.ResolvedBy, alert.ID)
 	return err
 }
 
 // QueryPerformanceMetrics retrieves performance metrics with filtering
-func (r *MonitoringRepository) QueryPerformanceMetrics(metricType string, tenantID *uuid.UUID, since time.Time, limit int) ([]*PerformanceMetric, error) {
+func (r *MonitoringRepository) QueryPerformanceMetrics(ctx context.Context, metricType string, tenantID *uuid.UUID, since time.Time, limit int) ([]*PerformanceMetric, error) {
 	var rows *sql.Rows
 	var err error
 
@@ -227,7 +227,7 @@ func (r *MonitoringRepository) QueryPerformanceMetrics(metricType string, tenant
 			WHERE metric_type = $1 AND tenant_id = $2 AND timestamp >= $3
 			ORDER BY timestamp DESC
 			LIMIT $4`
-		rows, err = r.db.Query(query, metricType, tenantID, since, limit)
+		rows, err = r.db.QueryContext(ctx, query, metricType, tenantID, since, limit)
 	} else {
 		query := `
 			SELECT id, metric_type, tenant_id, app_id, backend_id, value, unit, labels, timestamp, created_at
@@ -235,7 +235,7 @@ func (r *MonitoringRepository) QueryPerformanceMetrics(metricType string, tenant
 			WHERE metric_type = $1 AND timestamp >= $2
 			ORDER BY timestamp DESC
 			LIMIT $3`
-		rows, err = r.db.Query(query, metricType, since, limit)
+		rows, err = r.db.QueryContext(ctx, query, metricType, since, limit)
 	}
 
 	if err != nil {
