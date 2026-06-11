@@ -9,6 +9,7 @@ import (
 	"github.com/functionfly/functionfly/internal/agent/identity"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // Service handles agent swarm orchestration
@@ -53,20 +54,40 @@ type PolicyConfig struct {
 }
 
 // SpawnChild creates a new child agent under the parent
+// SECURITY FIX: Uses transaction with row locking to prevent TOCTOU race on capacity check
 func (s *Service) SpawnChild(ctx context.Context, req *SpawnChildRequest) (*identity.AgentIdentity, string, error) {
-	// Validate parent exists and has capacity
-	parent, err := s.identityRepo.GetAgent(ctx, req.ParentAgentID)
-	if err != nil {
+	// Start transaction for atomic operation
+	tx := s.db.WithContext(ctx).Begin()
+	if err := tx.Error; err != nil {
+		return nil, "", fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+
+	// SECURITY FIX: Lock parent row to prevent race on capacity check
+	var parent identity.AgentIdentity
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"})).
+		Where("agent_id = ? AND status = ?", req.ParentAgentID, "active").
+		First(&parent).Error; err != nil {
+		tx.Rollback()
 		return nil, "", fmt.Errorf("parent agent not found: %w", err)
 	}
 
-	// Check parent's child capacity
-	childCount, err := s.CountChildren(ctx, req.ParentAgentID)
-	if err != nil {
+	// Check parent's child capacity within transaction
+	var childCount int64
+	if err := tx.Model(&identity.AgentRelationship{}).
+		Where("parent_agent_id = ?", req.ParentAgentID).
+		Count(&childCount).Error; err != nil {
+		tx.Rollback()
 		return nil, "", fmt.Errorf("failed to count children: %w", err)
 	}
 
 	if parent.MaxChildAgents > 0 && childCount >= int64(parent.MaxChildAgents) {
+		tx.Rollback()
 		return nil, "", fmt.Errorf("parent agent has reached max child capacity (%d)", parent.MaxChildAgents)
 	}
 
@@ -76,10 +97,11 @@ func (s *Service) SpawnChild(ctx context.Context, req *SpawnChildRequest) (*iden
 	}
 	if req.SwarmRole != identity.SwarmRoleWorker && req.SwarmRole != identity.SwarmRoleManager &&
 		req.SwarmRole != identity.SwarmRoleInfrastructure {
+		tx.Rollback()
 		return nil, "", fmt.Errorf("invalid swarm role: %s", req.SwarmRole)
 	}
 
-	// Create the child agent
+	// Create the child agent (uses its own internal transaction, safe to call)
 	childReq := &identity.RegisterAgentRequest{
 		AgentID:     req.ChildAgentID,
 		Name:        req.ChildName,
@@ -88,6 +110,7 @@ func (s *Service) SpawnChild(ctx context.Context, req *SpawnChildRequest) (*iden
 
 	child, apiKey, signingKey, err := s.identityRepo.CreateAgent(ctx, parent.TenantID, childReq)
 	if err != nil {
+		tx.Rollback()
 		return nil, "", fmt.Errorf("failed to create child agent: %w", err)
 	}
 
@@ -96,7 +119,7 @@ func (s *Service) SpawnChild(ctx context.Context, req *SpawnChildRequest) (*iden
 		daemonConfig := map[string]any{
 			"signing_key": signingKey,
 		}
-		s.db.WithContext(ctx).Model(&identity.AgentIdentity{}).
+		tx.WithContext(ctx).Model(&identity.AgentIdentity{}).
 			Where("agent_id = ?", child.AgentID).
 			Update("daemon_config", daemonConfig)
 	}
@@ -111,9 +134,10 @@ func (s *Service) SpawnChild(ctx context.Context, req *SpawnChildRequest) (*iden
 		"evolution_enabled":  false,
 	}
 
-	if err := s.db.WithContext(ctx).Model(&identity.AgentIdentity{}).
+	if err := tx.WithContext(ctx).Model(&identity.AgentIdentity{}).
 		Where("agent_id = ?", req.ChildAgentID).
 		Updates(updates).Error; err != nil {
+		tx.Rollback()
 		return nil, "", fmt.Errorf("failed to update child agent swarm fields: %w", err)
 	}
 
@@ -127,16 +151,19 @@ func (s *Service) SpawnChild(ctx context.Context, req *SpawnChildRequest) (*iden
 		CreatedAt:          time.Now(),
 	}
 
-	if err := s.db.WithContext(ctx).Create(relationship).Error; err != nil {
+	if err := tx.WithContext(ctx).Create(relationship).Error; err != nil {
+		tx.Rollback()
 		return nil, "", fmt.Errorf("failed to create relationship: %w", err)
 	}
 
 	// Initialize wallet with initial budget if provided
 	if req.InitialBudgetUSD > 0 && s.walletService != nil {
 		if _, err := s.walletService.GetOrCreateWallet(ctx, req.ChildAgentID); err != nil {
+			tx.Rollback()
 			return nil, "", fmt.Errorf("failed to create wallet: %w", err)
 		}
 		if _, err := s.walletService.Credit(ctx, req.ChildAgentID, req.InitialBudgetUSD, "initial_budget", map[string]any{"parent_agent_id": req.ParentAgentID}); err != nil {
+			tx.Rollback()
 			return nil, "", fmt.Errorf("failed to credit initial budget: %w", err)
 		}
 	} else if req.InitialBudgetUSD > 0 {
@@ -150,9 +177,15 @@ func (s *Service) SpawnChild(ctx context.Context, req *SpawnChildRequest) (*iden
 			CreatedAt:        time.Now(),
 			UpdatedAt:        time.Now(),
 		}
-		if err := s.db.WithContext(ctx).Create(wallet).Error; err != nil {
+		if err := tx.WithContext(ctx).Create(wallet).Error; err != nil {
+			tx.Rollback()
 			return nil, "", fmt.Errorf("failed to create wallet: %w", err)
 		}
+	}
+
+	// SECURITY FIX: Commit the transaction to make all changes atomic
+	if err := tx.Commit().Error; err != nil {
+		return nil, "", fmt.Errorf("failed to commit spawn transaction: %w", err)
 	}
 
 	return child, apiKey, nil

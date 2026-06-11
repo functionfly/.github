@@ -2,6 +2,11 @@ package audit
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -64,8 +69,10 @@ type Repository interface {
 
 // Logger handles audit logging
 type Logger struct {
-	repo   Repository
-	logger *logrus.Logger
+	repo           Repository
+	logger         *logrus.Logger
+	fallbackPath   string
+	fallbackMu     sync.Mutex
 }
 
 // NewLogger creates a new audit logger
@@ -73,6 +80,15 @@ func NewLogger(repo Repository) *Logger {
 	return &Logger{
 		repo:   repo,
 		logger: logrus.New(),
+	}
+}
+
+// NewLoggerWithFallback creates a new audit logger with file-based fallback
+func NewLoggerWithFallback(repo Repository, fallbackPath string) *Logger {
+	return &Logger{
+		repo:         repo,
+		logger:       logrus.New(),
+		fallbackPath: fallbackPath,
 	}
 }
 
@@ -92,8 +108,11 @@ func (l *Logger) Log(ctx context.Context, event *AuditEvent) {
 	// Log to database
 	if l.repo != nil {
 		if err := l.repo.Create(ctx, event); err != nil {
-			l.logger.WithError(err).Error("failed to write audit log")
+			l.logger.WithError(err).Error("failed to write audit log to database")
+			l.writeFallback(event)
 		}
+	} else if l.fallbackPath != "" {
+		l.writeFallback(event)
 	}
 
 	// Log high-risk events to stdout
@@ -248,4 +267,30 @@ func (l *Logger) calculateRiskScore(event *AuditEvent) float64 {
 	}
 
 	return score
+}
+
+func (l *Logger) writeFallback(event *AuditEvent) {
+	if l.fallbackPath == "" {
+		return
+	}
+
+	l.fallbackMu.Lock()
+	defer l.fallbackMu.Unlock()
+
+	data, err := json.Marshal(event)
+	if err != nil {
+		l.logger.WithError(err).Error("failed to marshal audit event for fallback")
+		return
+	}
+
+	filename := filepath.Join(l.fallbackPath, "audit-"+event.ID.String()+".json")
+	if err := os.WriteFile(filename, data, 0600); err != nil {
+		l.logger.WithError(err).Error("failed to write audit event to fallback file")
+		return
+	}
+
+	l.logger.WithFields(logrus.Fields{
+		"event_id": event.ID,
+		"path":     filename,
+	}).Warn("audit event written to fallback storage")
 }

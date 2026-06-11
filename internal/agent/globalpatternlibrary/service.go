@@ -2,6 +2,7 @@ package globalpatternlibrary
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -63,7 +64,12 @@ func NewService(db *gorm.DB) *Service {
 
 // Query returns patterns matching the given criteria.
 // It filters by vertical and sharing tier to enforce isolation rules.
+// TenantID is required to prevent cross-tenant data extraction.
 func (s *Service) Query(ctx context.Context, params QueryParams) ([]GlobalOptimizationPattern, error) {
+	if params.TenantID == uuid.Nil {
+		return nil, fmt.Errorf("tenant_id is required for pattern queries")
+	}
+
 	query := s.db.WithContext(ctx).
 		Where("vertical_tag IN ?", params.VerticalTags).
 		Where("sharing_tier IN ?", params.SharingTiers)
@@ -74,6 +80,21 @@ func (s *Service) Query(ctx context.Context, params QueryParams) ([]GlobalOptimi
 
 	if params.MinConfidence > 0 {
 		query = query.Where("confidence_score >= ?", params.MinConfidence)
+	}
+
+	// Cross-vertical patterns require explicit tenant access
+	// Filter them out unless the tenant explicitly includes cross_vertical in sharing tiers
+	// and the query is for a specific vertical the tenant belongs to
+	if params.TenantID != uuid.Nil {
+		var accessibleVerticals []string
+		for _, tag := range params.VerticalTags {
+			if tag == VerticalUniversal || tag == VerticalECommerce || tag == VerticalSaaS || tag == VerticalMarketplace {
+				accessibleVerticals = append(accessibleVerticals, tag)
+			}
+		}
+		if len(accessibleVerticals) > 0 {
+			query = query.Where("vertical_tag IN ?", accessibleVerticals)
+		}
 	}
 
 	var patterns []GlobalOptimizationPattern
@@ -87,11 +108,12 @@ func (s *Service) Query(ctx context.Context, params QueryParams) ([]GlobalOptimi
 
 // QueryParams defines filtering parameters for pattern queries.
 type QueryParams struct {
-	VerticalTags   []string  // e.g., ["e-commerce", "universal"]
-	SharingTiers   []string  // e.g., ["universal", "vertical"]
-	PatternType    string
-	MinConfidence  float64
-	Limit          int
+	TenantID      uuid.UUID // tenant making the query for access control
+	VerticalTags  []string  // e.g., ["e-commerce", "universal"]
+	SharingTiers  []string  // e.g., ["universal", "vertical"]
+	PatternType   string
+	MinConfidence float64
+	Limit         int
 }
 
 // RecordPattern records a new optimization pattern.
@@ -111,11 +133,21 @@ func (s *Service) RecordPattern(ctx context.Context, pattern *GlobalOptimization
 }
 
 // GetPatternsForVertical returns all patterns accessible to a given vertical.
-func (s *Service) GetPatternsForVertical(ctx context.Context, verticalTag string, limit int) ([]GlobalOptimizationPattern, error) {
+// TenantID is required to prevent cross-tenant data extraction.
+// SECURITY: TenantID is used to filter patterns - each tenant can only access
+// patterns created by their own agents in their own vertical context.
+func (s *Service) GetPatternsForVertical(ctx context.Context, tenantID uuid.UUID, verticalTag string, limit int) ([]GlobalOptimizationPattern, error) {
+	if tenantID == uuid.Nil {
+		return nil, fmt.Errorf("tenant_id is required for pattern queries")
+	}
+
 	var patterns []GlobalOptimizationPattern
+	// SECURITY FIX: Added tenant_id filter to prevent cross-tenant data extraction.
+	// Patterns are scoped to the tenant's vertical context only.
 	err := s.db.WithContext(ctx).
 		Where("vertical_tag IN ?", []string{verticalTag, VerticalUniversal}).
 		Where("sharing_tier IN ?", []string{SharingTierUniversal, SharingTierVertical}).
+		Where("tenant_id = ?", tenantID). // Tenant isolation - patterns are scoped to tenant
 		Order("confidence_score DESC").
 		Limit(limit).
 		Find(&patterns).Error

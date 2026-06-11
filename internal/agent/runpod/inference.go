@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/agent/generation"
@@ -25,7 +24,6 @@ type SelfHostedClient struct {
 	pool       *InstancePool
 	config     *Config
 	httpClient *http.Client
-	mu         sync.Mutex
 }
 
 // NewSelfHostedClient creates a new self-hosted inference client
@@ -90,6 +88,7 @@ func (c *SelfHostedClient) GenerateCode(ctx context.Context, req *generation.Gen
 	for {
 		inst, ok := c.pool.GetInstance(instance.ID)
 		if !ok {
+			c.pool.Release(instance.ID)
 			return "", fmt.Errorf("instance not found")
 		}
 
@@ -103,11 +102,13 @@ func (c *SelfHostedClient) GenerateCode(ctx context.Context, req *generation.Gen
 		}
 
 		if state == InstanceStateFailed {
+			c.pool.Release(instance.ID)
 			return "", fmt.Errorf("instance failed to start")
 		}
 
 		select {
 		case <-waitCtx.Done():
+			c.pool.Release(instance.ID)
 			return "", fmt.Errorf("timeout waiting for instance to be ready")
 		case <-time.After(2 * time.Second):
 			// Continue waiting

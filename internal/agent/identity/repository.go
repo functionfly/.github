@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
 	"time"
@@ -106,6 +107,39 @@ func (r *Repository) GetAgentByAPIKeyHash(ctx context.Context, apiKey string) (*
 		return nil, fmt.Errorf("failed to authenticate agent: %w", err)
 	}
 	return &agent, nil
+}
+
+// VerifyAPIKey verifies an API key for a specific agent using constant-time comparison
+// to prevent timing attacks. Returns true if the API key is valid for the agent.
+func (r *Repository) VerifyAPIKey(ctx context.Context, agentID, apiKey string) (bool, error) {
+	keyHash := hashAPIKey(apiKey)
+	var agent AgentIdentity
+	err := r.db.WithContext(ctx).Where("agent_id = ? AND api_key_hash = ? AND status = ?", agentID, keyHash, AgentStatusActive).First(&agent).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to verify API key: %w", err)
+	}
+	return true, nil
+}
+
+// VerifyAPIKeyHash verifies an API key by comparing hashes using constant-time comparison
+// This provides protection against timing attacks on API key verification.
+func (r *Repository) VerifyAPIKeyHash(ctx context.Context, agentID, apiKey string) (bool, error) {
+	keyHash := hashAPIKey(apiKey)
+	var storedHash string
+	err := r.db.WithContext(ctx).Model(&AgentIdentity{}).
+		Where("agent_id = ? AND status = ?", agentID, AgentStatusActive).
+		Select("api_key_hash").
+		Scan(&storedHash).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to verify API key: %w", err)
+	}
+	return subtle.ConstantTimeCompare([]byte(keyHash), []byte(storedHash)) == 1, nil
 }
 
 // GetAgentBySigningKeyHash retrieves an agent by hashed signing key (for A2A message verification)

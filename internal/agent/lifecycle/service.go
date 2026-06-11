@@ -14,6 +14,10 @@ import (
 	"gorm.io/gorm"
 )
 
+type identityVerifier interface {
+	VerifyAPIKey(ctx context.Context, agentID, apiKey string) (bool, error)
+}
+
 type LifecycleStatus string
 
 const (
@@ -116,6 +120,7 @@ type Service struct {
 	activeAgents map[string]*AgentContext
 	stopCh       chan struct{}
 	wg           sync.WaitGroup
+	identityVerifier identityVerifier
 }
 
 type AgentContext struct {
@@ -127,7 +132,7 @@ type AgentContext struct {
 	shutdownSig   chan struct{}
 }
 
-func NewService(db *gorm.DB, redis *redis.Client, log *logrus.Logger) *Service {
+func NewService(db *gorm.DB, redis *redis.Client, log *logrus.Logger, identityVerifier identityVerifier) *Service {
 	return &Service{
 		db:           db,
 		redis:        redis,
@@ -135,6 +140,7 @@ func NewService(db *gorm.DB, redis *redis.Client, log *logrus.Logger) *Service {
 		log:          log,
 		activeAgents: make(map[string]*AgentContext),
 		stopCh:       make(chan struct{}),
+		identityVerifier: identityVerifier,
 	}
 }
 
@@ -173,7 +179,19 @@ func (s *Service) RegisterAgent(ctx context.Context, agentID string) error {
 	return result.Error
 }
 
-func (s *Service) RecordHeartbeat(ctx context.Context, agentID string, stateSnapshot JSONMap) error {
+func (s *Service) RecordHeartbeat(ctx context.Context, agentID, apiKey string, stateSnapshot JSONMap) error {
+	if s.identityVerifier != nil {
+		valid, err := s.identityVerifier.VerifyAPIKey(ctx, agentID, apiKey)
+		if err != nil {
+			s.log.WithError(err).WithField("agent_id", agentID).Warn("API key verification error")
+			return fmt.Errorf("failed to verify API key: %w", err)
+		}
+		if !valid {
+			s.log.WithField("agent_id", agentID).Warn("Invalid API key for heartbeat")
+			return fmt.Errorf("invalid API key for agent: %s", agentID)
+		}
+	}
+
 	now := time.Now()
 
 	s.mu.Lock()
