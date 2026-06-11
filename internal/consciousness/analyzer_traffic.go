@@ -20,7 +20,7 @@ func NewTrafficAnalyzer(db *sql.DB, logger *logrus.Logger) *TrafficAnalyzer {
 	return &TrafficAnalyzer{db: db, logger: logger}
 }
 
-func (a *TrafficAnalyzer) Name() string          { return "traffic" }
+func (a *TrafficAnalyzer) Name() string              { return "traffic" }
 func (a *TrafficAnalyzer) Category() InsightCategory { return CategoryTraffic }
 
 func (a *TrafficAnalyzer) Analyze(ctx context.Context, tenantID uuid.UUID, params AnalysisParams) ([]*Insight, error) {

@@ -20,7 +20,7 @@ func NewCostAnalyzer(db *sql.DB, logger *logrus.Logger) *CostAnalyzer {
 	return &CostAnalyzer{db: db, logger: logger}
 }
 
-func (a *CostAnalyzer) Name() string          { return "cost" }
+func (a *CostAnalyzer) Name() string              { return "cost" }
 func (a *CostAnalyzer) Category() InsightCategory { return CategoryCost }
 
 func (a *CostAnalyzer) Analyze(ctx context.Context, tenantID uuid.UUID, params AnalysisParams) ([]*Insight, error) {

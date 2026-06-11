@@ -45,6 +45,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/certification"
 	"github.com/functionfly/functionfly/internal/api/handlers/chat"
 	connectorhandler "github.com/functionfly/functionfly/internal/api/handlers/connectors"
+	consciousnesshandler "github.com/functionfly/functionfly/internal/api/handlers/consciousness"
 	"github.com/functionfly/functionfly/internal/api/handlers/content"
 	"github.com/functionfly/functionfly/internal/api/handlers/dashboard"
 	"github.com/functionfly/functionfly/internal/api/handlers/decisions"
@@ -808,6 +809,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	analyticsSvc := analytics.NewService(s.postgresDB.GORM, analytics.DefaultServiceConfig(factoryConfig.AgentID))
 	analyticsHandler := analyticshandler.NewHandler(analyticsSvc, s.authSvc)
 
+	consciousnessHandler := consciousnesshandler.NewHandler(s.postgresDB.DB, logrus.New(), consciousnessRateLimiter, authMiddleware)
+
 	// Initialize learning and deployment services for swarm
 	agentLearningRepo := learning.NewRepository(s.postgresDB.GORM)
 	agentAnalyzer := learning.NewAnalyzer(s.postgresDB.GORM)
@@ -951,6 +954,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	providerRateLimiter := middleware.NewProviderRateLimiter()
 	walletRateLimiter := middleware.NewWalletRateLimiter()
 	mfaRateLimiter := middleware.NewMFARateLimiter()
+	consciousnessRateLimiter := middleware.NewConsciousnessRateLimiter()
 
 	// Initialize CSRF middleware early for billing route protection
 	csrfMiddleware := middleware.NewCSRFMiddleware(s.upstashRedis, s.authSvc)
@@ -1076,6 +1080,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// R-Sim simulation engine routes
 	registerSimulationRoutes(api, authMiddleware, simHandler)
+
+	// Consciousness API routes
+	consciousnessHandler.RegisterRoutes(api)
 
 	// Ghost Mode autonomous building routes
 	registerGhostRoutes(api, authMiddleware, ghostHandler)

@@ -21,7 +21,7 @@ func NewScalingAnalyzer(db *sql.DB, logger *logrus.Logger) *ScalingAnalyzer {
 	return &ScalingAnalyzer{db: db, logger: logger}
 }
 
-func (a *ScalingAnalyzer) Name() string          { return "scaling" }
+func (a *ScalingAnalyzer) Name() string              { return "scaling" }
 func (a *ScalingAnalyzer) Category() InsightCategory { return CategoryScaling }
 
 func (a *ScalingAnalyzer) Analyze(ctx context.Context, tenantID uuid.UUID, params AnalysisParams) ([]*Insight, error) {
@@ -68,13 +68,13 @@ func (a *ScalingAnalyzer) Analyze(ctx context.Context, tenantID uuid.UUID, param
 		confidence := 1.0
 		trajectory := TrajectoryCritical
 		insights = append(insights, &Insight{
-			TenantID:  tenantID,
-			Category:  CategoryScaling,
-			Severity:  SeverityCritical,
-			Priority:  40,
-			Title:     "Monthly request limit reached",
-			Message:   fmt.Sprintf("You've used %d of your %d monthly requests. Consider upgrading your plan or optimizing your function calls.", currentUsage, limit),
-			Summary:   strPtr("Request limit reached"),
+			TenantID: tenantID,
+			Category: CategoryScaling,
+			Severity: SeverityCritical,
+			Priority: 40,
+			Title:    "Monthly request limit reached",
+			Message:  fmt.Sprintf("You've used %d of your %d monthly requests. Consider upgrading your plan or optimizing your function calls.", currentUsage, limit),
+			Summary:  strPtr("Request limit reached"),
 			InsightData: JSONMap{
 				"current_usage": currentUsage,
 				"limit":         limit,
@@ -101,13 +101,13 @@ func (a *ScalingAnalyzer) Analyze(ctx context.Context, tenantID uuid.UUID, param
 		projectedDays := int(daysUntilLimit)
 
 		insights = append(insights, &Insight{
-			TenantID:  tenantID,
-			Category:  CategoryScaling,
-			Severity:  severity,
-			Priority:  SeverityWeight(severity) * 10,
-			Title:     fmt.Sprintf("You'll hit your %d request limit in ~%d days", limit, projectedDays),
-			Message:   fmt.Sprintf("At your current rate of %.0f requests/day, you'll exhaust your %d monthly limit in roughly %d days. Consider upgrading to Enterprise or optimizing your top functions.", dailyRate, limit, projectedDays),
-			Summary:   strPtr(fmt.Sprintf("Limit hit in ~%d days", projectedDays)),
+			TenantID: tenantID,
+			Category: CategoryScaling,
+			Severity: severity,
+			Priority: SeverityWeight(severity) * 10,
+			Title:    fmt.Sprintf("You'll hit your %d request limit in ~%d days", limit, projectedDays),
+			Message:  fmt.Sprintf("At your current rate of %.0f requests/day, you'll exhaust your %d monthly limit in roughly %d days. Consider upgrading to Enterprise or optimizing your top functions.", dailyRate, limit, projectedDays),
+			Summary:  strPtr(fmt.Sprintf("Limit hit in ~%d days", projectedDays)),
 			InsightData: JSONMap{
 				"current_usage":  currentUsage,
 				"limit":          limit,

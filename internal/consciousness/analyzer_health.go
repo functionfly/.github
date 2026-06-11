@@ -20,7 +20,7 @@ func NewHealthAnalyzer(db *sql.DB, logger *logrus.Logger) *HealthAnalyzer {
 	return &HealthAnalyzer{db: db, logger: logger}
 }
 
-func (a *HealthAnalyzer) Name() string          { return "health" }
+func (a *HealthAnalyzer) Name() string              { return "health" }
 func (a *HealthAnalyzer) Category() InsightCategory { return CategoryHealth }
 
 func (a *HealthAnalyzer) Analyze(ctx context.Context, tenantID uuid.UUID, params AnalysisParams) ([]*Insight, error) {
@@ -45,12 +45,12 @@ func (a *HealthAnalyzer) Analyze(ctx context.Context, tenantID uuid.UUID, params
 
 	for rows.Next() {
 		var (
-			functionID, functionType        string
-			fitnessScore                    float64
-			totalExecutions                 int64
-			avgLatency, p99Latency          float64
-			successRate, coldStartRate      float64
-			errorDist, bottleneck           sql.NullString
+			functionID, functionType   string
+			fitnessScore               float64
+			totalExecutions            int64
+			avgLatency, p99Latency     float64
+			successRate, coldStartRate float64
+			errorDist, bottleneck      sql.NullString
 		)
 
 		if err := rows.Scan(&functionID, &functionType, &fitnessScore, &totalExecutions,
@@ -91,10 +91,10 @@ func (a *HealthAnalyzer) Analyze(ctx context.Context, tenantID uuid.UUID, params
 			Summary:    strPtr(fmt.Sprintf("Fitness %.0f — %s", fitnessScore, bottleneckText)),
 			FunctionID: &fid,
 			InsightData: JSONMap{
-				"fitness_score":   fitnessScore,
-				"success_rate":    successRate,
-				"p99_latency_ms":  p99Latency,
-				"cold_start_rate": coldStartRate,
+				"fitness_score":    fitnessScore,
+				"success_rate":     successRate,
+				"p99_latency_ms":   p99Latency,
+				"cold_start_rate":  coldStartRate,
 				"total_executions": totalExecutions,
 			},
 			ActionType: ActionOptimize,

@@ -27,3 +27,27 @@ func TestPlanHasStateFabricFeature(t *testing.T) {
 		t.Fatal("free should not include state fabric")
 	}
 }
+
+func TestAllSliceFeaturesHaveDefinitions(t *testing.T) {
+	allSlices := [][]string{
+		enterpriseFeatures,
+		proFeatures,
+		starterFeatures,
+		freeFeatures,
+		agentEnterpriseFeatures,
+		agentProFeatures,
+		agentScaleFeatures,
+		agentStarterFeatures,
+	}
+	definedKeys := make(map[string]bool)
+	for _, f := range featureDefinitions {
+		definedKeys[f.Key] = true
+	}
+	for _, slice := range allSlices {
+		for _, feature := range slice {
+			if !definedKeys[feature] {
+				t.Errorf("feature %q used in slice but not defined in featureDefinitions", feature)
+			}
+		}
+	}
+}

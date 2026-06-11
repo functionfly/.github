@@ -3,7 +3,6 @@ package consciousness
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -29,7 +28,7 @@ func NewRedundancyAnalyzer(db *sql.DB, logger *logrus.Logger) *RedundancyAnalyze
 	return &RedundancyAnalyzer{db: db, logger: logger}
 }
 
-func (a *RedundancyAnalyzer) Name() string          { return "redundancy" }
+func (a *RedundancyAnalyzer) Name() string              { return "redundancy" }
 func (a *RedundancyAnalyzer) Category() InsightCategory { return CategoryRedundancy }
 
 const (
@@ -77,8 +76,6 @@ func (a *RedundancyAnalyzer) Analyze(ctx context.Context, tenantID uuid.UUID, pa
 // findTripleSimilarPairs uses the function_embedding_triples table to find
 // functions with high combined similarity across contract, semantic, and code vectors.
 func (a *RedundancyAnalyzer) findTripleSimilarPairs(ctx context.Context, tenantID uuid.UUID) ([]*Insight, error) {
-	// Self-join on function_embedding_triples to find pairs owned by the tenant
-	// with high cosine similarity across all three vector columns.
 	query := `
 		WITH tenant_functions AS (
 			SELECT rf.id, rf.author, rf.name, rf.title, rf.description,
@@ -98,8 +95,8 @@ func (a *RedundancyAnalyzer) findTripleSimilarPairs(ctx context.Context, tenantI
 			(1 - (a.semantic_embedding <=> b.semantic_embedding)) AS semantic_sim,
 			(1 - (a.code_embedding <=> b.code_embedding)) AS code_sim,
 			(0.35 * (1 - (a.contract_embedding <=> b.contract_embedding)) +
-			 0.40 * (1 - (a.semantic_embedding <=> b.semantic_embedding)) +
-			 0.25 * (1 - (a.code_embedding <=> b.code_embedding))) AS combined_sim
+			  0.40 * (1 - (a.semantic_embedding <=> b.semantic_embedding)) +
+			  0.25 * (1 - (a.code_embedding <=> b.code_embedding))) AS combined_sim
 		FROM tenant_functions a
 		JOIN tenant_functions b ON a.id < b.id
 		WHERE (0.35 * (1 - (a.contract_embedding <=> b.contract_embedding)) +
@@ -110,6 +107,9 @@ func (a *RedundancyAnalyzer) findTripleSimilarPairs(ctx context.Context, tenantI
 
 	rows, err := a.db.QueryContext(ctx, query, tenantID, redundancySimilarityThreshold, redundancyMaxPairs)
 	if err != nil {
+		if isRelationNotExist(err) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("triple-vector redundancy query: %w", err)
 	}
 	defer rows.Close()
@@ -117,11 +117,11 @@ func (a *RedundancyAnalyzer) findTripleSimilarPairs(ctx context.Context, tenantI
 	var insights []*Insight
 	for rows.Next() {
 		var (
-			funcAID, funcBID           uuid.UUID
-			funcAName, funcBName       string
-			funcATitle, funcBTitle     sql.NullString
-			contractSim, semanticSim   float64
-			codeSim, combinedSim       float64
+			funcAID, funcBID         uuid.UUID
+			funcAName, funcBName     string
+			funcATitle, funcBTitle   sql.NullString
+			contractSim, semanticSim float64
+			codeSim, combinedSim     float64
 		)
 
 		if err := rows.Scan(
@@ -164,15 +164,15 @@ func (a *RedundancyAnalyzer) findTripleSimilarPairs(ctx context.Context, tenantI
 			),
 			Summary: strPtr(fmt.Sprintf("%.0f%% overlap — merge candidates", overlapPct)),
 			InsightData: JSONMap{
-				"function_a_id":     funcAID.String(),
-				"function_a_name":   funcAName,
-				"function_b_id":     funcBID.String(),
-				"function_b_name":   funcBName,
-				"contract_sim":      contractSim,
-				"semantic_sim":      semanticSim,
-				"code_sim":          codeSim,
-				"combined_sim":      combinedSim,
-				"signal":            "flyembed_triple_vector",
+				"function_a_id":   funcAID.String(),
+				"function_a_name": funcAName,
+				"function_b_id":   funcBID.String(),
+				"function_b_name": funcBName,
+				"contract_sim":    contractSim,
+				"semantic_sim":    semanticSim,
+				"code_sim":        codeSim,
+				"combined_sim":    combinedSim,
+				"signal":          "flyembed_triple_vector",
 			},
 			ActionType: ActionMergeFunctions,
 			ActionData: JSONMap{
@@ -180,8 +180,8 @@ func (a *RedundancyAnalyzer) findTripleSimilarPairs(ctx context.Context, tenantI
 				"merge_into": funcAID.String(),
 			},
 			ActionPreview: JSONMap{
-				"would_remove":   funcBName,
-				"would_keep":     funcAName,
+				"would_remove":                  funcBName,
+				"would_keep":                    funcAName,
 				"estimated_savings_description": "Reduced duplicate executions and maintenance",
 			},
 			RelatedFunctionIDs: []uuid.UUID{funcAID, funcBID},
@@ -289,12 +289,8 @@ func isRelationNotExist(err error) bool {
 	if err == nil {
 		return false
 	}
-	// Check for pq error code 42P01 (undefined_table)
 	if pqErr, ok := err.(*pq.Error); ok {
 		return pqErr.Code == "42P01"
 	}
 	return false
 }
-
-// unused import guard
-var _ = json.Marshal
