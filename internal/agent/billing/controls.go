@@ -143,7 +143,9 @@ func (c *Controller) GetOrCreateControls(ctx context.Context, agentID string) (*
 func (c *Controller) CheckSpendCap(ctx context.Context, agentID string, estimatedCost float64) (bool, error) {
 	controls, err := c.GetOrCreateControls(ctx, agentID)
 	if err != nil {
-		return true, nil // Non-fatal: allow execution if controls can't be loaded
+		// SECURITY FIX: Deny on error instead of allowing execution.
+		// Allowing execution when controls can't be loaded enables budget bypass attacks.
+		return false, fmt.Errorf("failed to verify spend cap for agent %s: %w", agentID, err)
 	}
 
 	// Check daily spend cap

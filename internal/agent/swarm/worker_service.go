@@ -23,6 +23,8 @@ type WorkerService struct {
 	stopChan     chan struct{}
 	workerLogs   map[string]*WorkerLog
 	mu           sync.RWMutex
+	// SECURITY FIX: Added bounded concurrency to prevent goroutine exhaustion
+	semaphore    chan struct{} // Limits concurrent child task processing
 }
 
 type WorkerLog struct {
@@ -37,12 +39,14 @@ func NewWorkerService(db *gorm.DB, messageSvc *MessageService, discoverySvc *dis
 	return &WorkerService{
 		db:           db,
 		messageSvc:   messageSvc,
-		discoverySvc: discoverySvc,
+		discoverySvc:  discoverySvc,
 		factorySvc:   factorySvc,
-		identityRepo: identityRepo,
-		stopChan:     make(chan struct{}),
-		workerLogs:   make(map[string]*WorkerLog),
+		identityRepo:  identityRepo,
+		stopChan:      make(chan struct{}),
+		workerLogs:    make(map[string]*WorkerLog),
+		semaphore:    make(chan struct{}, 100), // SECURITY FIX: Limit concurrent goroutines to 100
 	}
+}
 }
 
 func (ws *WorkerService) Start(ctx context.Context) error {
@@ -89,22 +93,20 @@ func (ws *WorkerService) processAllChildren(ctx context.Context) {
 		return
 	}
 
-	if len(children) == 0 {
-		return
-	}
-
-	// Batch-fetch all messages in a single query instead of N queries per agent
-	agentIDs := make([]string, len(children))
-	for i, child := range children {
-		agentIDs[i] = child.AgentID
-	}
-	inboxes, err := ws.messageSvc.GetInboxForAgents(ctx, agentIDs, 10)
-	if err != nil {
-		return
-	}
-
 	for _, child := range children {
-		go ws.processChildTasks(ctx, child, inboxes[child.AgentID])
+		// SECURITY FIX: Use semaphore to limit concurrent goroutines
+		// This prevents goroutine exhaustion attacks that could cause OOM
+		select {
+		case ws.semaphore <- struct{}{}:
+			go func(c *identity.AgentIdentity) {
+				defer func() { <-ws.semaphore }()
+				ws.processChildTasks(ctx, c)
+			}(child)
+		case <-ctx.Done():
+			return
+		case <-ws.stopChan:
+			return
+		}
 	}
 }
 
@@ -116,7 +118,12 @@ func (ws *WorkerService) getSwarmChildren(ctx context.Context) ([]*identity.Agen
 	return children, err
 }
 
-func (ws *WorkerService) processChildTasks(ctx context.Context, child *identity.AgentIdentity, inbox []identity.AgentMessage) {
+func (ws *WorkerService) processChildTasks(ctx context.Context, child *identity.AgentIdentity) {
+	inbox, err := ws.messageSvc.GetInbox(ctx, child.AgentID, 10)
+	if err != nil {
+		return
+	}
+
 	for _, msg := range inbox {
 		ws.handleTask(ctx, child, &msg)
 		ws.messageSvc.MarkRead(ctx, msg.ID)

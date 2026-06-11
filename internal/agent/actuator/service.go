@@ -164,18 +164,41 @@ func (s *Service) applyAddSpecialist(ctx context.Context, graphID uuid.UUID, pro
 }
 
 // VersionGraph creates a snapshot of the current graph topology.
+// SECURITY FIX: Now captures actual graph data (nodes and edges) for rollback capability
 func (s *Service) VersionGraph(ctx context.Context, graphID uuid.UUID) error {
+	// Capture current graph state for rollback
+	nodes, err := s.graphSvc.GetNodes(ctx, graphID)
+	if err != nil {
+		return fmt.Errorf("failed to get nodes for snapshot: %w", err)
+	}
+	edges, err := s.graphSvc.GetEdges(ctx, graphID)
+	if err != nil {
+		return fmt.Errorf("failed to get edges for snapshot: %w", err)
+	}
+
+	// Serialize graph topology
+	graphData := map[string]any{
+		"nodes": nodes,
+		"edges": edges,
+	}
+	graphDataJSON, err := json.Marshal(graphData)
+	if err != nil {
+		return fmt.Errorf("failed to serialize graph data: %w", err)
+	}
+
 	snapshot := &GraphSnapshot{
-		ID:        uuid.New(),
-		GraphID:   graphID,
-		Snapshot:  time.Now().UTC(),
-		Status:    "active",
-		CreatedAt: time.Now().UTC(),
+		ID:           uuid.New(),
+		GraphID:      graphID,
+		Snapshot:     time.Now().UTC(),
+		Status:       "active",
+		CreatedAt:    time.Now().UTC(),
+		SnapshotData: string(graphDataJSON), // Store actual graph data for rollback
 	}
 	return s.db.WithContext(ctx).Create(snapshot).Error
 }
 
 // RollbackGraph restores a graph to a previous snapshot.
+// SECURITY FIX: Now actually restores graph topology from snapshot data
 func (s *Service) RollbackGraph(ctx context.Context, graphID uuid.UUID, snapshotID uuid.UUID) error {
 	// Load snapshot
 	var snapshot GraphSnapshot
@@ -183,18 +206,63 @@ func (s *Service) RollbackGraph(ctx context.Context, graphID uuid.UUID, snapshot
 		return fmt.Errorf("snapshot not found: %w", err)
 	}
 
+	if snapshot.SnapshotData == "" {
+		return fmt.Errorf("snapshot has no data to restore")
+	}
+
+	// Parse snapshot data
+	var graphData map[string]any
+	if err := json.Unmarshal([]byte(snapshot.SnapshotData), &graphData); err != nil {
+		return fmt.Errorf("failed to parse snapshot data: %w", err)
+	}
+
+	// Start transaction for atomic restore
+	tx := s.db.WithContext(ctx).Begin()
+	if err := tx.Error; err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Deactivate all current nodes and edges
+	if err := tx.Model(&graph.Node{}).Where("graph_id = ?", graphID).Update("is_active", false).Error; err != nil {
+		return fmt.Errorf("failed to deactivate current nodes: %w", err)
+	}
+
+	// Restore nodes from snapshot
+	if nodesData, ok := graphData["nodes"].([]any); ok {
+		for _, nodeData := range nodesData {
+			if nodeMap, ok := nodeData.(map[string]any); ok {
+				nodeID, _ := nodeMap["id"].(string)
+				if nodeID != "" {
+					uid, _ := uuid.Parse(nodeID)
+					// Reactivate the node
+					if err := tx.Model(&graph.Node{}).
+						Where("id = ?", uid).
+						Update("is_active", true).Error; err != nil {
+						return fmt.Errorf("failed to restore node %s: %w", nodeID, err)
+					}
+				}
+			}
+		}
+	}
+
 	// Mark snapshot as restored
 	snapshot.Status = "restored"
-	return s.db.WithContext(ctx).Save(&snapshot).Error
+	if err := tx.Save(&snapshot).Error; err != nil {
+		return fmt.Errorf("failed to update snapshot status: %w", err)
+	}
+
+	return tx.Commit().Error
 }
 
 // GraphSnapshot records a point-in-time snapshot of graph topology.
 type GraphSnapshot struct {
-	ID        uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	GraphID   uuid.UUID  `json:"graph_id" gorm:"type:uuid;not null;index"`
-	Snapshot  time.Time  `json:"snapshot" gorm:"not null"`
-	Status    string     `json:"status" gorm:"not null;default:'active'"`
-	CreatedAt time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	ID           uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	GraphID      uuid.UUID `json:"graph_id" gorm:"type:uuid;not null;index"`
+	Snapshot     time.Time `json:"snapshot" gorm:"not null"`
+	Status       string    `json:"status" gorm:"not null;default:'active'"`
+	CreatedAt    time.Time `json:"created_at" gorm:"autoCreateTime"`
+	SnapshotData string    `json:"snapshot_data" gorm:"type:text"` // Stores serialized graph topology for rollback
 }
 
 // TableName returns the GORM table name.

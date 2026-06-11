@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -298,14 +299,21 @@ func hashInput(input json.RawMessage) string {
 }
 
 func matchPattern(uri, pattern string) bool {
+	// SECURITY FIX: URL-decode the URI before pattern matching
+	// This prevents bypass via URL encoding (e.g., exec%2Ffoo bypasses exec/*)
+	decodedURI, err := url.QueryUnescape(uri)
+	if err != nil {
+		decodedURI = uri // Use original if decode fails
+	}
+
 	if pattern == "*" {
 		return true
 	}
 	if strings.HasSuffix(pattern, "/*") {
 		prefix := strings.TrimSuffix(pattern, "/*")
-		return strings.HasPrefix(uri, prefix+"/")
+		return strings.HasPrefix(decodedURI, prefix+"/")
 	}
-	return uri == pattern
+	return decodedURI == pattern
 }
 
 func containsString(slice []string, s string) bool {

@@ -119,11 +119,21 @@ func (s *SwarmSecurityService) ValidateDelegation(ctx context.Context, fromAgent
 }
 
 // HasCycle checks if delegating from one agent to another would create a cycle
+// SECURITY FIX: Added maxQueueSize and maxDepth to prevent memory exhaustion attacks
 func (s *SwarmSecurityService) HasCycle(ctx context.Context, fromAgentID, toAgentID string) bool {
+	const maxQueueSize = 10000   // Maximum queue size to prevent memory exhaustion
+	const maxDepth = 20          // Maximum traversal depth as a safety cap
+
 	visited := make(map[string]bool)
 	queue := []string{toAgentID}
+	currentDepth := 0
 
 	for len(queue) > 0 {
+		// SECURITY FIX: Check queue size to prevent memory exhaustion
+		if len(queue) > maxQueueSize {
+			return false // Abort rather than exhaust memory
+		}
+
 		current := queue[0]
 		queue = queue[1:]
 
@@ -135,6 +145,12 @@ func (s *SwarmSecurityService) HasCycle(ctx context.Context, fromAgentID, toAgen
 		// If we reach the fromAgent, there's a cycle
 		if current == fromAgentID {
 			return true
+		}
+
+		// SECURITY FIX: Check depth to prevent deep chain exhaustion
+		currentDepth++
+		if currentDepth > maxDepth {
+			return false // Abort if depth exceeds safety cap
 		}
 
 		// Get all parents of current agent
@@ -303,13 +319,29 @@ func (s *SwarmSecurityService) TriggerKillSwitch(ctx context.Context, agentID st
 }
 
 // getDescendants returns all child agents recursively
+// SECURITY FIX: Added maxQueueSize and maxDepth to prevent memory exhaustion attacks
 func (s *SwarmSecurityService) getDescendants(ctx context.Context, agentID string) []string {
+	const maxQueueSize = 10000   // Maximum queue size to prevent memory exhaustion
+	const maxDepth = 20          // Maximum traversal depth as a safety cap
+
 	var descendants []string
 	queue := []string{agentID}
+	currentDepth := 0
 
 	for len(queue) > 0 {
+		// SECURITY FIX: Check queue size to prevent memory exhaustion
+		if len(queue) > maxQueueSize {
+			return descendants // Abort rather than exhaust memory
+		}
+
 		current := queue[0]
 		queue = queue[1:]
+
+		// SECURITY FIX: Check depth to prevent deep chain exhaustion
+		currentDepth++
+		if currentDepth > maxDepth {
+			return descendants // Abort if depth exceeds safety cap
+		}
 
 		var rels []identity.AgentRelationship
 		s.db.WithContext(ctx).Where("parent_agent_id = ?", current).Find(&rels)
