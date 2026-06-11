@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -11,13 +12,13 @@ import (
 )
 
 // UpdateUserMFA updates MFA fields for a user.
-func (r *UserRepository) UpdateUserMFA(userID uuid.UUID, secret *string, enabled bool, backupCodes []string, lastUsed *time.Time) error {
+func (r *UserRepository) UpdateUserMFA(ctx context.Context, userID uuid.UUID, secret *string, enabled bool, backupCodes []string, lastUsed *time.Time) error {
 	backupCodesJSON, err := json.Marshal(backupCodes)
 	if err != nil {
 		return fmt.Errorf("failed to marshal backup codes: %w", err)
 	}
 
-	_, err = r.db.Exec(`
+	_, err = r.db.ExecContext(ctx, `
 		UPDATE users SET mfa_secret = $1, mfa_enabled = $2, mfa_backup_codes = $3, mfa_last_used = $4, updated_at = NOW() WHERE id = $5`,
 		secret, enabled, string(backupCodesJSON), lastUsed, userID)
 
@@ -28,8 +29,8 @@ func (r *UserRepository) UpdateUserMFA(userID uuid.UUID, secret *string, enabled
 	return nil
 }
 
-func (r *UserRepository) UpdateUserMFAEnabled(userID uuid.UUID, enabled bool) error {
-	_, err := r.db.Exec(`
+func (r *UserRepository) UpdateUserMFAEnabled(ctx context.Context, userID uuid.UUID, enabled bool) error {
+	_, err := r.db.ExecContext(ctx, `
 		UPDATE users SET mfa_enabled = $1, updated_at = NOW() WHERE id = $2`,
 		enabled, userID)
 
@@ -40,13 +41,13 @@ func (r *UserRepository) UpdateUserMFAEnabled(userID uuid.UUID, enabled bool) er
 	return nil
 }
 
-func (r *UserRepository) UpdateUserMFABackupCodes(userID uuid.UUID, backupCodes []string) error {
+func (r *UserRepository) UpdateUserMFABackupCodes(ctx context.Context, userID uuid.UUID, backupCodes []string) error {
 	backupCodesJSON, err := json.Marshal(backupCodes)
 	if err != nil {
 		return fmt.Errorf("failed to marshal backup codes: %w", err)
 	}
 
-	_, err = r.db.Exec(`
+	_, err = r.db.ExecContext(ctx, `
 		UPDATE users SET mfa_backup_codes = $1, updated_at = NOW() WHERE id = $2`,
 		string(backupCodesJSON), userID)
 
@@ -57,8 +58,8 @@ func (r *UserRepository) UpdateUserMFABackupCodes(userID uuid.UUID, backupCodes 
 	return nil
 }
 
-func (r *UserRepository) UpdateUserMFALastUsed(userID uuid.UUID, lastUsed *time.Time) error {
-	_, err := r.db.Exec(`
+func (r *UserRepository) UpdateUserMFALastUsed(ctx context.Context, userID uuid.UUID, lastUsed *time.Time) error {
+	_, err := r.db.ExecContext(ctx, `
 		UPDATE users SET mfa_last_used = $1, updated_at = NOW() WHERE id = $2`,
 		lastUsed, userID)
 
@@ -70,13 +71,13 @@ func (r *UserRepository) UpdateUserMFALastUsed(userID uuid.UUID, lastUsed *time.
 }
 
 // UpdateUserSettings updates the settings JSONB field for a user
-func (r *UserRepository) UpdateUserSettings(userID uuid.UUID, settings map[string]interface{}) error {
+func (r *UserRepository) UpdateUserSettings(ctx context.Context, userID uuid.UUID, settings map[string]interface{}) error {
 	settingsJSON, err := json.Marshal(settings)
 	if err != nil {
 		return fmt.Errorf("failed to marshal user settings: %w", err)
 	}
 
-	_, err = r.db.Exec(`
+	_, err = r.db.ExecContext(ctx, `
 		UPDATE users SET settings = $1, updated_at = NOW() WHERE id = $2`,
 		settingsJSON, userID)
 
@@ -88,9 +89,9 @@ func (r *UserRepository) UpdateUserSettings(userID uuid.UUID, settings map[strin
 }
 
 // GetUserSettings retrieves the settings JSONB field for a user directly.
-func (r *UserRepository) GetUserSettings(userID uuid.UUID) (map[string]interface{}, error) {
+func (r *UserRepository) GetUserSettings(ctx context.Context, userID uuid.UUID) (map[string]interface{}, error) {
 	var settingsBytes []byte
-	err := r.db.QueryRow(`SELECT settings FROM users WHERE id = $1`, userID).Scan(&settingsBytes)
+	err := r.db.QueryRowContext(ctx, `SELECT settings FROM users WHERE id = $1`, userID).Scan(&settingsBytes)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return make(map[string]interface{}), nil
@@ -117,9 +118,9 @@ func (r *UserRepository) HashPassword(password string) (string, error) {
 }
 
 // VerifyPassword verifies a password against the stored hash
-func (r *UserRepository) VerifyPassword(userID uuid.UUID, password string) (bool, error) {
+func (r *UserRepository) VerifyPassword(ctx context.Context, userID uuid.UUID, password string) (bool, error) {
 	var storedHash string
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT password_hash FROM users WHERE id = $1`, userID).Scan(&storedHash)
 
 	if err == sql.ErrNoRows {

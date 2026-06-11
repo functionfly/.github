@@ -29,7 +29,7 @@ func (r *FavoriteRepository) AddFavorite(ctx context.Context, userID, functionID
 		UpdatedAt:  time.Now(),
 	}
 
-	_, err := r.db.Exec(`
+	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO function_favorites (id, user_id, function_id, position, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (user_id, function_id) DO NOTHING`,
@@ -44,7 +44,7 @@ func (r *FavoriteRepository) AddFavorite(ctx context.Context, userID, functionID
 
 // RemoveFavorite removes a function from user's favorites
 func (r *FavoriteRepository) RemoveFavorite(ctx context.Context, userID, functionID uuid.UUID) error {
-	result, err := r.db.Exec(`
+	result, err := r.db.ExecContext(ctx, `
 		DELETE FROM function_favorites WHERE user_id = $1 AND function_id = $2`,
 		userID, functionID)
 
@@ -133,7 +133,7 @@ func (r *FavoriteRepository) GetFavoriteCount(ctx context.Context, functionID uu
 
 // UpdateFavoritePosition updates the position of a favorite in user's list
 func (r *FavoriteRepository) UpdateFavoritePosition(ctx context.Context, userID, functionID uuid.UUID, position int) error {
-	_, err := r.db.Exec(`
+	_, err := r.db.ExecContext(ctx, `
 		UPDATE function_favorites SET position = $1, updated_at = NOW()
 		WHERE user_id = $2 AND function_id = $3`,
 		position, userID, functionID)

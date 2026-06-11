@@ -48,9 +48,9 @@ func (r *RegistryRepository) InvalidateListCache(ctx context.Context) {
 }
 
 // GetRecentExecutions retrieves the most recent executions for a function
-func (r *RegistryRepository) GetRecentExecutions(functionID uuid.UUID, limit int) ([]RegistryFunctionExecution, error) {
+func (r *RegistryRepository) GetRecentExecutions(ctx context.Context, functionID uuid.UUID, limit int) ([]RegistryFunctionExecution, error) {
 	var executions []RegistryFunctionExecution
-	err := r.db.Where("function_id = ?", functionID).
+	err := r.db.WithContext(ctx).Where("function_id = ?", functionID).
 		Order("timestamp DESC").
 		Limit(limit).
 		Find(&executions).Error
@@ -58,9 +58,9 @@ func (r *RegistryRepository) GetRecentExecutions(functionID uuid.UUID, limit int
 }
 
 // GetRecentFailedExecutions retrieves the most recent non-success executions for a function (outcome != 'success').
-func (r *RegistryRepository) GetRecentFailedExecutions(functionID uuid.UUID, limit int) ([]RegistryFunctionExecution, error) {
+func (r *RegistryRepository) GetRecentFailedExecutions(ctx context.Context, functionID uuid.UUID, limit int) ([]RegistryFunctionExecution, error) {
 	var executions []RegistryFunctionExecution
-	err := r.db.Where("function_id = ? AND outcome != ?", functionID, "success").
+	err := r.db.WithContext(ctx).Where("function_id = ? AND outcome != ?", functionID, "success").
 		Order("timestamp DESC").
 		Limit(limit).
 		Find(&executions).Error
@@ -68,9 +68,9 @@ func (r *RegistryRepository) GetRecentFailedExecutions(functionID uuid.UUID, lim
 }
 
 // GetRecentPublicExecutions retrieves the most recent public executions for a function
-func (r *RegistryRepository) GetRecentPublicExecutions(functionID uuid.UUID, limit int) ([]RegistryExecutionPublic, error) {
+func (r *RegistryRepository) GetRecentPublicExecutions(ctx context.Context, functionID uuid.UUID, limit int) ([]RegistryExecutionPublic, error) {
 	var executions []RegistryExecutionPublic
-	err := r.db.Where("function_id = ?", functionID).
+	err := r.db.WithContext(ctx).Where("function_id = ?", functionID).
 		Order("created_at DESC").
 		Limit(limit).
 		Find(&executions).Error
@@ -79,9 +79,9 @@ func (r *RegistryRepository) GetRecentPublicExecutions(functionID uuid.UUID, lim
 
 // GetPublicExecutionsInWindow retrieves public executions for a function within a time window.
 // Used by the Time Machine to scan historical executions for replay.
-func (r *RegistryRepository) GetPublicExecutionsInWindow(functionID uuid.UUID, from, to time.Time, limit int) ([]RegistryExecutionPublic, error) {
+func (r *RegistryRepository) GetPublicExecutionsInWindow(ctx context.Context, functionID uuid.UUID, from, to time.Time, limit int) ([]RegistryExecutionPublic, error) {
 	var executions []RegistryExecutionPublic
-	err := r.db.Where("function_id = ? AND created_at >= ? AND created_at <= ?", functionID, from, to).
+	err := r.db.WithContext(ctx).Where("function_id = ? AND created_at >= ? AND created_at <= ?", functionID, from, to).
 		Order("created_at ASC").
 		Limit(limit).
 		Find(&executions).Error
@@ -90,8 +90,8 @@ func (r *RegistryRepository) GetPublicExecutionsInWindow(functionID uuid.UUID, f
 
 // UpdateExecutionPublicOutput updates the output JSON for a public execution record.
 // Used by the Time Machine reconciliation engine to apply corrected outputs.
-func (r *RegistryRepository) UpdateExecutionPublicOutput(executionID uuid.UUID, newOutput json.RawMessage) error {
-	return r.db.Model(&RegistryExecutionPublic{}).
+func (r *RegistryRepository) UpdateExecutionPublicOutput(ctx context.Context, executionID uuid.UUID, newOutput json.RawMessage) error {
+	return r.db.WithContext(ctx).Model(&RegistryExecutionPublic{}).
 		Where("id = ?", executionID).
 		Updates(map[string]interface{}{
 			"output_json": newOutput,
@@ -99,19 +99,19 @@ func (r *RegistryRepository) UpdateExecutionPublicOutput(executionID uuid.UUID, 
 }
 
 // CreateExecutionPublic creates a new shareable execution record for playground/replay
-func (r *RegistryRepository) CreateExecutionPublic(exec *RegistryExecutionPublic) error {
+func (r *RegistryRepository) CreateExecutionPublic(ctx context.Context, exec *RegistryExecutionPublic) error {
 	exec.ID = uuid.New()
 	exec.CreatedAt = time.Now()
-	if err := r.db.Create(exec).Error; err != nil {
+	if err := r.db.WithContext(ctx).Create(exec).Error; err != nil {
 		return fmt.Errorf("failed to create public execution: %w", err)
 	}
 	return nil
 }
 
 // GetExecutionPublicByID retrieves a shareable execution by its public ID
-func (r *RegistryRepository) GetExecutionPublicByID(publicID string) (*RegistryExecutionPublic, error) {
+func (r *RegistryRepository) GetExecutionPublicByID(ctx context.Context, publicID string) (*RegistryExecutionPublic, error) {
 	var exec RegistryExecutionPublic
-	if err := r.db.Where("public_id = ? AND shareable = ?", publicID, true).First(&exec).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("public_id = ? AND shareable = ?", publicID, true).First(&exec).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("execution not found or not shareable")
 		}
@@ -121,18 +121,18 @@ func (r *RegistryRepository) GetExecutionPublicByID(publicID string) (*RegistryE
 }
 
 // GetExecutionCountForVersion returns the total number of executions for a specific function version
-func (r *RegistryRepository) GetExecutionCountForVersion(functionID uuid.UUID, version string) (int, error) {
+func (r *RegistryRepository) GetExecutionCountForVersion(ctx context.Context, functionID uuid.UUID, version string) (int, error) {
 	var count int64
-	if err := r.db.Model(&RegistryFunctionExecution{}).Where("function_id = ? AND version = ?", functionID, version).Count(&count).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&RegistryFunctionExecution{}).Where("function_id = ? AND version = ?", functionID, version).Count(&count).Error; err != nil {
 		return 0, fmt.Errorf("failed to count executions: %w", err)
 	}
 	return int(count), nil
 }
 
 // GetLastVerificationTimeForVersion returns the most recent verification time for a specific function version
-func (r *RegistryRepository) GetLastVerificationTimeForVersion(functionID uuid.UUID, version string) (*time.Time, error) {
+func (r *RegistryRepository) GetLastVerificationTimeForVersion(ctx context.Context, functionID uuid.UUID, version string) (*time.Time, error) {
 	var exec RegistryFunctionExecution
-	if err := r.db.Where("function_id = ? AND version = ? AND verified_at IS NOT NULL", functionID, version).
+	if err := r.db.WithContext(ctx).Where("function_id = ? AND version = ? AND verified_at IS NOT NULL", functionID, version).
 		Order("verified_at DESC").First(&exec).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
@@ -143,13 +143,13 @@ func (r *RegistryRepository) GetLastVerificationTimeForVersion(functionID uuid.U
 }
 
 // GetRecentVerificationFailureRate returns the failure rate for verifications in the last 7 days for a function version
-func (r *RegistryRepository) GetRecentVerificationFailureRate(functionID uuid.UUID, version string) (float64, error) {
+func (r *RegistryRepository) GetRecentVerificationFailureRate(ctx context.Context, functionID uuid.UUID, version string) (float64, error) {
 	sevenDaysAgo := time.Now().AddDate(0, 0, -7)
 
 	var total int64
 	var failed int64
 
-	if err := r.db.Model(&RegistryFunctionExecution{}).
+	if err := r.db.WithContext(ctx).Model(&RegistryFunctionExecution{}).
 		Where("function_id = ? AND version = ? AND verified_at IS NOT NULL AND verified_at > ?",
 			functionID, version, sevenDaysAgo).Count(&total).Error; err != nil {
 		return 0, fmt.Errorf("failed to count recent verifications: %w", err)
@@ -159,7 +159,7 @@ func (r *RegistryRepository) GetRecentVerificationFailureRate(functionID uuid.UU
 		return 0, nil
 	}
 
-	if err := r.db.Model(&RegistryFunctionExecution{}).
+	if err := r.db.WithContext(ctx).Model(&RegistryFunctionExecution{}).
 		Where("function_id = ? AND version = ? AND verified_at IS NOT NULL AND verified_at > ? AND verification_status = ?",
 			functionID, version, sevenDaysAgo, "failed").Count(&failed).Error; err != nil {
 		return 0, fmt.Errorf("failed to count recent verification failures: %w", err)
@@ -169,20 +169,20 @@ func (r *RegistryRepository) GetRecentVerificationFailureRate(functionID uuid.UU
 }
 
 // RecordExecution records a function execution
-func (r *RegistryRepository) RecordExecution(exec *RegistryFunctionExecution) error {
+func (r *RegistryRepository) RecordExecution(ctx context.Context, exec *RegistryFunctionExecution) error {
 	exec.ID = uuid.New()
 	exec.Timestamp = time.Now()
-	if err := r.db.Create(exec).Error; err != nil {
+	if err := r.db.WithContext(ctx).Create(exec).Error; err != nil {
 		return fmt.Errorf("failed to record execution: %w", err)
 	}
 	return nil
 }
 
 // RecordResourceUsage records resource usage for an execution
-func (r *RegistryRepository) RecordResourceUsage(usage *ExecutionResourceUsage) error {
+func (r *RegistryRepository) RecordResourceUsage(ctx context.Context, usage *ExecutionResourceUsage) error {
 	usage.ID = uuid.New()
 	usage.CreatedAt = time.Now()
-	if err := r.db.Create(usage).Error; err != nil {
+	if err := r.db.WithContext(ctx).Create(usage).Error; err != nil {
 		return fmt.Errorf("failed to record resource usage: %w", err)
 	}
 	return nil

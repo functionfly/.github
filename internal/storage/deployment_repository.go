@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -20,7 +21,7 @@ func NewDeploymentRepository(db *PostgresDB) *DeploymentRepository {
 }
 
 // CreateDeployment creates a new deployment
-func (r *DeploymentRepository) CreateDeployment(appID uuid.UUID, provider, region, deploymentID, artifactKey string, routes []string) (*Deployment, error) {
+func (r *DeploymentRepository) CreateDeployment(ctx context.Context, appID uuid.UUID, provider, region, deploymentID, artifactKey string, routes []string) (*Deployment, error) {
 	routesJSON, err := json.Marshal(routes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal routes: %w", err)
@@ -39,7 +40,7 @@ func (r *DeploymentRepository) CreateDeployment(appID uuid.UUID, provider, regio
 		UpdatedAt:    time.Now(),
 	}
 
-	_, err = r.db.Exec(`
+	_, err = r.db.ExecContext(ctx, `
 		INSERT INTO deployments (id, app_id, provider, region, deployment_id, status, artifact_key, routes, message, metadata, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
 		deployment.ID, deployment.AppID, deployment.Provider, deployment.Region,
@@ -55,13 +56,13 @@ func (r *DeploymentRepository) CreateDeployment(appID uuid.UUID, provider, regio
 }
 
 // UpdateDeploymentStatus updates deployment status
-func (r *DeploymentRepository) UpdateDeploymentStatus(id uuid.UUID, status, message string, metadata map[string]interface{}) error {
+func (r *DeploymentRepository) UpdateDeploymentStatus(ctx context.Context, id uuid.UUID, status, message string, metadata map[string]interface{}) error {
 	metadataJSON, err := json.Marshal(metadata)
 	if err != nil {
 		return fmt.Errorf("failed to marshal metadata: %w", err)
 	}
 
-	_, err = r.db.Exec(`
+	_, err = r.db.ExecContext(ctx, `
 		UPDATE deployments
 		SET status = $2, message = $3, metadata = $4, updated_at = $5
 		WHERE id = $1`,
@@ -75,12 +76,12 @@ func (r *DeploymentRepository) UpdateDeploymentStatus(id uuid.UUID, status, mess
 }
 
 // GetDeploymentByID retrieves a deployment by ID
-func (r *DeploymentRepository) GetDeploymentByID(id uuid.UUID) (*Deployment, error) {
+func (r *DeploymentRepository) GetDeploymentByID(ctx context.Context, id uuid.UUID) (*Deployment, error) {
 	var deployment Deployment
 	var routesJSON string
 	var metadataJSON string
 
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT id, app_id, provider, region, deployment_id, status, artifact_key, routes, message, metadata, created_at, updated_at
 		FROM deployments WHERE id = $1`, id).Scan(
 		&deployment.ID, &deployment.AppID, &deployment.Provider, &deployment.Region,
@@ -104,8 +105,8 @@ func (r *DeploymentRepository) GetDeploymentByID(id uuid.UUID) (*Deployment, err
 }
 
 // ListDeploymentsByAppID lists deployments for an app
-func (r *DeploymentRepository) ListDeploymentsByAppID(appID uuid.UUID, limit int) ([]*Deployment, error) {
-	rows, err := r.db.Query(`
+func (r *DeploymentRepository) ListDeploymentsByAppID(ctx context.Context, appID uuid.UUID, limit int) ([]*Deployment, error) {
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, app_id, provider, region, deployment_id, status, artifact_key, routes, message, metadata, created_at, updated_at
 		FROM deployments
 		WHERE app_id = $1
@@ -145,12 +146,12 @@ func (r *DeploymentRepository) ListDeploymentsByAppID(appID uuid.UUID, limit int
 }
 
 // GetLatestSuccessfulDeployment gets the latest successful deployment for an app and provider
-func (r *DeploymentRepository) GetLatestSuccessfulDeployment(appID uuid.UUID, provider string) (*Deployment, error) {
+func (r *DeploymentRepository) GetLatestSuccessfulDeployment(ctx context.Context, appID uuid.UUID, provider string) (*Deployment, error) {
 	var deployment Deployment
 	var routesJSON string
 	var metadataJSON string
 
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT id, app_id, provider, region, deployment_id, status, artifact_key, routes, message, metadata, created_at, updated_at
 		FROM deployments
 		WHERE app_id = $1 AND provider = $2 AND status = 'success'
@@ -177,7 +178,7 @@ func (r *DeploymentRepository) GetLatestSuccessfulDeployment(appID uuid.UUID, pr
 }
 
 // StoreDeploymentArtifact stores a deployment artifact
-func (r *DeploymentRepository) StoreDeploymentArtifact(appID uuid.UUID, provider, key, contentType, checksum string, size int64) (*DeploymentArtifact, error) {
+func (r *DeploymentRepository) StoreDeploymentArtifact(ctx context.Context, appID uuid.UUID, provider, key, contentType, checksum string, size int64) (*DeploymentArtifact, error) {
 	artifact := &DeploymentArtifact{
 		Key:         key,
 		AppID:       appID,
@@ -188,7 +189,7 @@ func (r *DeploymentRepository) StoreDeploymentArtifact(appID uuid.UUID, provider
 		CreatedAt:   time.Now(),
 	}
 
-	_, err := r.db.Exec(`
+	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO deployment_artifacts (key, app_id, provider, content_type, size, checksum, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 		artifact.Key, artifact.AppID, artifact.Provider, artifact.ContentType,
@@ -202,10 +203,10 @@ func (r *DeploymentRepository) StoreDeploymentArtifact(appID uuid.UUID, provider
 }
 
 // GetDeploymentArtifact retrieves a deployment artifact by key
-func (r *DeploymentRepository) GetDeploymentArtifact(key string) (*DeploymentArtifact, error) {
+func (r *DeploymentRepository) GetDeploymentArtifact(ctx context.Context, key string) (*DeploymentArtifact, error) {
 	var artifact DeploymentArtifact
 
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT key, app_id, provider, content_type, size, checksum, created_at
 		FROM deployment_artifacts WHERE key = $1`, key).Scan(
 		&artifact.Key, &artifact.AppID, &artifact.Provider, &artifact.ContentType,

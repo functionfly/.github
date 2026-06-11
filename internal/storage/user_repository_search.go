@@ -10,19 +10,19 @@ import (
 
 // GetUserForPublicProfile resolves a user for GET /users/{login}: by username first, then by
 // unambiguous email local-part (before @). Used when some accounts have no username set (e.g. admin).
-func (r *UserRepository) GetUserForPublicProfile(login string) (*User, error) {
+func (r *UserRepository) GetUserForPublicProfile(ctx context.Context, login string) (*User, error) {
 	login = strings.TrimSpace(login)
 	if login == "" {
 		return nil, nil
 	}
-	u, err := r.GetUserByUsername(login)
+	u, err := r.GetUserByUsername(ctx, login)
 	if err != nil {
 		return nil, err
 	}
 	if u != nil {
 		return u, nil
 	}
-	rows, err := r.db.QueryContext(context.Background(), `
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT id FROM users
 		WHERE deactivated_at IS NULL
 		  AND LOWER(SPLIT_PART(email::text, '@', 1)) = LOWER($1)
@@ -46,7 +46,7 @@ func (r *UserRepository) GetUserForPublicProfile(login string) (*User, error) {
 	if len(ids) != 1 {
 		return nil, nil
 	}
-	return r.GetUserByID(ids[0])
+	return r.GetUserByID(ctx, ids[0])
 }
 
 func escapeILikePrefix(s string) string {
@@ -106,9 +106,9 @@ func (r *UserRepository) SearchUsersByUsernamePrefix(ctx context.Context, prefix
 }
 
 // IsUsernameReserved checks if a username is reserved in the database
-func (r *UserRepository) IsUsernameReserved(username string) (bool, error) {
+func (r *UserRepository) IsUsernameReserved(ctx context.Context, username string) (bool, error) {
 	var exists bool
-	err := r.db.QueryRowContext(context.Background(), `
+	err := r.db.QueryRowContext(ctx, `
 		SELECT EXISTS(SELECT 1 FROM reserved_usernames WHERE LOWER(username) = LOWER($1))`,
 		username).Scan(&exists)
 	if err != nil {

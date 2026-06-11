@@ -11,32 +11,32 @@ import (
 // PostgresDB methods: users and OAuth CSRF state.
 
 // User operations
-func (db *PostgresDB) CreateUser(email, passwordHash string, tenantID uuid.UUID) (*User, error) {
-	return db.userRepository.CreateUser(email, passwordHash, tenantID)
+func (db *PostgresDB) CreateUser(ctx context.Context, email, passwordHash string, tenantID uuid.UUID) (*User, error) {
+	return db.userRepository.CreateUser(ctx, email, passwordHash, tenantID)
 }
 
-func (db *PostgresDB) CreateUserWithSocialAuth(email string, tenantID uuid.UUID, provider, providerID string, providerData map[string]interface{}) (*User, error) {
-	return db.userRepository.CreateUserWithSocialAuth(email, tenantID, provider, providerID, providerData)
+func (db *PostgresDB) CreateUserWithSocialAuth(ctx context.Context, email string, tenantID uuid.UUID, provider, providerID string, providerData map[string]interface{}) (*User, error) {
+	return db.userRepository.CreateUserWithSocialAuth(ctx, email, tenantID, provider, providerID, providerData)
 }
 
 func (db *PostgresDB) CreateUserWithRole(ctx context.Context, user *User) (*User, error) {
 	return db.userRepository.CreateUserWithRole(ctx, user)
 }
 
-func (db *PostgresDB) GetUserByEmail(email string) (*User, error) {
-	return db.userRepository.GetUserByEmail(email)
+func (db *PostgresDB) GetUserByEmail(ctx context.Context, email string) (*User, error) {
+	return db.userRepository.GetUserByEmail(ctx, email)
 }
 
-func (db *PostgresDB) GetUserByID(userID uuid.UUID) (*User, error) {
-	return db.userRepository.GetUserByID(userID)
+func (db *PostgresDB) GetUserByID(ctx context.Context, userID uuid.UUID) (*User, error) {
+	return db.userRepository.GetUserByID(ctx, userID)
 }
 
-func (db *PostgresDB) GetUserByUsername(username string) (*User, error) {
-	return db.userRepository.GetUserByUsername(username)
+func (db *PostgresDB) GetUserByUsername(ctx context.Context, username string) (*User, error) {
+	return db.userRepository.GetUserByUsername(ctx, username)
 }
 
-func (db *PostgresDB) GetUserForPublicProfile(login string) (*User, error) {
-	return db.userRepository.GetUserForPublicProfile(login)
+func (db *PostgresDB) GetUserForPublicProfile(ctx context.Context, login string) (*User, error) {
+	return db.userRepository.GetUserForPublicProfile(ctx, login)
 }
 
 func (db *PostgresDB) SearchUsersByUsernamePrefix(ctx context.Context, prefix string, limit int) ([]UserSearchHit, error) {
@@ -44,20 +44,20 @@ func (db *PostgresDB) SearchUsersByUsernamePrefix(ctx context.Context, prefix st
 }
 
 // IsUsernameReserved checks if a username is reserved
-func (db *PostgresDB) IsUsernameReserved(username string) (bool, error) {
-	return db.userRepository.IsUsernameReserved(username)
+func (db *PostgresDB) IsUsernameReserved(ctx context.Context, username string) (bool, error) {
+	return db.userRepository.IsUsernameReserved(ctx, username)
 }
 
-func (db *PostgresDB) GetUserByVerificationToken(token string) (*User, error) {
-	return db.userRepository.GetUserByVerificationToken(token)
+func (db *PostgresDB) GetUserByVerificationToken(ctx context.Context, token string) (*User, error) {
+	return db.userRepository.GetUserByVerificationToken(ctx, token)
 }
 
-func (db *PostgresDB) GetUserBySocialProvider(provider, providerID string) (*User, error) {
-	return db.userRepository.GetUserBySocialProvider(provider, providerID)
+func (db *PostgresDB) GetUserBySocialProvider(ctx context.Context, provider, providerID string) (*User, error) {
+	return db.userRepository.GetUserBySocialProvider(ctx, provider, providerID)
 }
 
-func (db *PostgresDB) ListUsers() ([]*User, error) {
-	return db.userRepository.ListUsers()
+func (db *PostgresDB) ListUsers(ctx context.Context) ([]*User, error) {
+	return db.userRepository.ListUsers(ctx)
 }
 
 func (db *PostgresDB) ListUserIDsByTenant(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error) {
@@ -72,16 +72,16 @@ func (db *PostgresDB) UpdateUserEmailVerification(ctx context.Context, userID uu
 	return db.userRepository.UpdateUserEmailVerification(ctx, userID, verified, token, expiresAt)
 }
 
-func (db *PostgresDB) UpdateUserProviderData(userID uuid.UUID, providerData map[string]interface{}) error {
-	return db.userRepository.UpdateUserProviderData(userID, providerData)
+func (db *PostgresDB) UpdateUserProviderData(ctx context.Context, userID uuid.UUID, providerData map[string]interface{}) error {
+	return db.userRepository.UpdateUserProviderData(ctx, userID, providerData)
 }
 
-func (db *PostgresDB) UpdateUserSettings(userID uuid.UUID, settings map[string]interface{}) error {
-	return db.userRepository.UpdateUserSettings(userID, settings)
+func (db *PostgresDB) UpdateUserSettings(ctx context.Context, userID uuid.UUID, settings map[string]interface{}) error {
+	return db.userRepository.UpdateUserSettings(ctx, userID, settings)
 }
 
-func (db *PostgresDB) GetUserSettings(userID uuid.UUID) (map[string]interface{}, error) {
-	return db.userRepository.GetUserSettings(userID)
+func (db *PostgresDB) GetUserSettings(ctx context.Context, userID uuid.UUID) (map[string]interface{}, error) {
+	return db.userRepository.GetUserSettings(ctx, userID)
 }
 
 // ListActiveUsersByTenant lists all active (non-deactivated) users for a tenant
@@ -104,24 +104,24 @@ func (db *PostgresDB) ReactivateUser(ctx context.Context, userID uuid.UUID) erro
 	return db.userRepository.ReactivateUser(ctx, userID)
 }
 
-func (db *PostgresDB) UpdateUserMFA(userID uuid.UUID, secret *string, enabled bool, backupCodes []string, lastUsed *time.Time) error {
-	return db.userRepository.UpdateUserMFA(userID, secret, enabled, backupCodes, lastUsed)
+func (db *PostgresDB) UpdateUserMFA(ctx context.Context, userID uuid.UUID, secret *string, enabled bool, backupCodes []string, lastUsed *time.Time) error {
+	return db.userRepository.UpdateUserMFA(ctx, userID, secret, enabled, backupCodes, lastUsed)
 }
 
-func (db *PostgresDB) UpdateUserMFAEnabled(userID uuid.UUID, enabled bool) error {
-	return db.userRepository.UpdateUserMFAEnabled(userID, enabled)
+func (db *PostgresDB) UpdateUserMFAEnabled(ctx context.Context, userID uuid.UUID, enabled bool) error {
+	return db.userRepository.UpdateUserMFAEnabled(ctx, userID, enabled)
 }
 
-func (db *PostgresDB) UpdateUserMFABackupCodes(userID uuid.UUID, backupCodes []string) error {
-	return db.userRepository.UpdateUserMFABackupCodes(userID, backupCodes)
+func (db *PostgresDB) UpdateUserMFABackupCodes(ctx context.Context, userID uuid.UUID, backupCodes []string) error {
+	return db.userRepository.UpdateUserMFABackupCodes(ctx, userID, backupCodes)
 }
 
-func (db *PostgresDB) UpdateUserMFALastUsed(userID uuid.UUID, lastUsed *time.Time) error {
-	return db.userRepository.UpdateUserMFALastUsed(userID, lastUsed)
+func (db *PostgresDB) UpdateUserMFALastUsed(ctx context.Context, userID uuid.UUID, lastUsed *time.Time) error {
+	return db.userRepository.UpdateUserMFALastUsed(ctx, userID, lastUsed)
 }
 
-func (db *PostgresDB) VerifyPassword(userID uuid.UUID, password string) (bool, error) {
-	return db.userRepository.VerifyPassword(userID, password)
+func (db *PostgresDB) VerifyPassword(ctx context.Context, userID uuid.UUID, password string) (bool, error) {
+	return db.userRepository.VerifyPassword(ctx, userID, password)
 }
 
 // Username change history operations

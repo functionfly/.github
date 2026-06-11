@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -47,24 +48,27 @@ func NewSCIMConfigRepository(db *PostgresDB) *SCIMConfigRepository {
 }
 
 // Create creates a new SCIM configuration
-func (r *SCIMConfigRepository) Create(config *SCIMConfig) error {
-	_, err := r.db.Exec(`
+func (r *SCIMConfigRepository) Create(ctx context.Context, config *SCIMConfig) error {
+	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO scim_configs (id, tenant_id, enabled, idp_url, idp_token, secret_key, sync_groups, sync_users, last_sync_at, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
 		config.ID, config.TenantID, config.Enabled, config.IDPURL, config.IDPToken,
 		config.SecretKey, config.SyncGroups, config.SyncUsers, config.LastSyncAt,
 		config.CreatedAt, config.UpdatedAt)
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
 		return fmt.Errorf("failed to create SCIM config: %w", err)
 	}
 	return nil
 }
 
 // GetByTenantID retrieves SCIM config by tenant ID
-func (r *SCIMConfigRepository) GetByTenantID(tenantID uuid.UUID) (*SCIMConfig, error) {
+func (r *SCIMConfigRepository) GetByTenantID(ctx context.Context, tenantID uuid.UUID) (*SCIMConfig, error) {
 	var config SCIMConfig
 
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT id, tenant_id, enabled, idp_url, idp_token, secret_key, sync_groups, sync_users, last_sync_at, created_at, updated_at
 		FROM scim_configs WHERE tenant_id = $1`, tenantID).Scan(
 		&config.ID, &config.TenantID, &config.Enabled, &config.IDPURL, &config.IDPToken,
@@ -72,6 +76,9 @@ func (r *SCIMConfigRepository) GetByTenantID(tenantID uuid.UUID) (*SCIMConfig, e
 		&config.CreatedAt, &config.UpdatedAt)
 
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("SCIM config not found for tenant")
 		}
@@ -82,33 +89,39 @@ func (r *SCIMConfigRepository) GetByTenantID(tenantID uuid.UUID) (*SCIMConfig, e
 }
 
 // Update updates an existing SCIM configuration
-func (r *SCIMConfigRepository) Update(config *SCIMConfig) error {
-	_, err := r.db.Exec(`
-		UPDATE scim_configs 
-		SET enabled = $2, idp_url = $3, idp_token = $4, secret_key = $5, 
+func (r *SCIMConfigRepository) Update(ctx context.Context, config *SCIMConfig) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE scim_configs
+		SET enabled = $2, idp_url = $3, idp_token = $4, secret_key = $5,
 		    sync_groups = $6, sync_users = $7, last_sync_at = $8, updated_at = $9
 		WHERE id = $1`,
 		config.ID, config.Enabled, config.IDPURL, config.IDPToken, config.SecretKey,
 		config.SyncGroups, config.SyncUsers, config.LastSyncAt, config.UpdatedAt)
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
 		return fmt.Errorf("failed to update SCIM config: %w", err)
 	}
 	return nil
 }
 
 // Delete deletes a SCIM configuration
-func (r *SCIMConfigRepository) Delete(id uuid.UUID) error {
-	_, err := r.db.Exec(`DELETE FROM scim_configs WHERE id = $1`, id)
+func (r *SCIMConfigRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM scim_configs WHERE id = $1`, id)
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
 		return fmt.Errorf("failed to delete SCIM config: %w", err)
 	}
 	return nil
 }
 
 // Enable enables SCIM for a tenant
-func (r *SCIMConfigRepository) Enable(tenantID uuid.UUID, idpURL, idpToken string, secretKey []byte) error {
+func (r *SCIMConfigRepository) Enable(ctx context.Context, tenantID uuid.UUID, idpURL, idpToken string, secretKey []byte) error {
 	// Check if config exists
-	_, err := r.GetByTenantID(tenantID)
+	_, err := r.GetByTenantID(ctx, tenantID)
 	if err != nil {
 		// Create new config
 		config := &SCIMConfig{
@@ -123,42 +136,51 @@ func (r *SCIMConfigRepository) Enable(tenantID uuid.UUID, idpURL, idpToken strin
 			CreatedAt:  time.Now(),
 			UpdatedAt:  time.Now(),
 		}
-		return r.Create(config)
+		return r.Create(ctx, config)
 	}
 
 	// Update existing config
-	_, err = r.db.Exec(`
-		UPDATE scim_configs 
+	_, err = r.db.ExecContext(ctx, `
+		UPDATE scim_configs
 		SET enabled = true, idp_url = $2, idp_token = $3, secret_key = $4, updated_at = $5
 		WHERE tenant_id = $1`,
 		tenantID, idpURL, idpToken, secretKey, time.Now())
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
 		return fmt.Errorf("failed to enable SCIM: %w", err)
 	}
 	return nil
 }
 
 // Disable disables SCIM for a tenant
-func (r *SCIMConfigRepository) Disable(tenantID uuid.UUID) error {
-	_, err := r.db.Exec(`
-		UPDATE scim_configs 
+func (r *SCIMConfigRepository) Disable(ctx context.Context, tenantID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE scim_configs
 		SET enabled = false, updated_at = $2
 		WHERE tenant_id = $1`,
 		tenantID, time.Now())
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
 		return fmt.Errorf("failed to disable SCIM: %w", err)
 	}
 	return nil
 }
 
 // UpdateLastSyncAt updates the last sync timestamp
-func (r *SCIMConfigRepository) UpdateLastSyncAt(tenantID uuid.UUID) error {
-	_, err := r.db.Exec(`
-		UPDATE scim_configs 
+func (r *SCIMConfigRepository) UpdateLastSyncAt(ctx context.Context, tenantID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE scim_configs
 		SET last_sync_at = $2, updated_at = $3
 		WHERE tenant_id = $1`,
 		tenantID, time.Now(), time.Now())
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
 		return fmt.Errorf("failed to update last sync time: %w", err)
 	}
 	return nil
@@ -175,27 +197,33 @@ func NewSCIMSyncLogRepository(db *PostgresDB) *SCIMSyncLogRepository {
 }
 
 // Create creates a new SCIM sync log entry
-func (r *SCIMSyncLogRepository) Create(log *SCIMSyncLog) error {
-	_, err := r.db.Exec(`
+func (r *SCIMSyncLogRepository) Create(ctx context.Context, log *SCIMSyncLog) error {
+	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO scim_sync_log (id, tenant_id, direction, resource_type, resource_id, action, success, error_message, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
 		log.ID, log.TenantID, log.Direction, log.ResourceType, log.ResourceID,
 		log.Action, log.Success, log.ErrorMessage, log.CreatedAt)
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
 		return fmt.Errorf("failed to create SCIM sync log: %w", err)
 	}
 	return nil
 }
 
 // GetByTenantID retrieves SCIM sync logs by tenant ID with pagination
-func (r *SCIMSyncLogRepository) GetByTenantID(tenantID uuid.UUID, limit, offset int) ([]SCIMSyncLog, error) {
-	rows, err := r.db.Query(`
+func (r *SCIMSyncLogRepository) GetByTenantID(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]SCIMSyncLog, error) {
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, tenant_id, direction, resource_type, resource_id, action, success, error_message, created_at
-		FROM scim_sync_log 
-		WHERE tenant_id = $1 
-		ORDER BY created_at DESC 
+		FROM scim_sync_log
+		WHERE tenant_id = $1
+		ORDER BY created_at DESC
 		LIMIT $2 OFFSET $3`, tenantID, limit, offset)
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
 		return nil, fmt.Errorf("failed to get SCIM sync logs: %w", err)
 	}
 	defer rows.Close()
@@ -215,13 +243,16 @@ func (r *SCIMSyncLogRepository) GetByTenantID(tenantID uuid.UUID, limit, offset 
 }
 
 // GetByResourceID retrieves SCIM sync logs for a specific resource
-func (r *SCIMSyncLogRepository) GetByResourceID(tenantID uuid.UUID, resourceType, resourceID string) ([]SCIMSyncLog, error) {
-	rows, err := r.db.Query(`
+func (r *SCIMSyncLogRepository) GetByResourceID(ctx context.Context, tenantID uuid.UUID, resourceType, resourceID string) ([]SCIMSyncLog, error) {
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, tenant_id, direction, resource_type, resource_id, action, success, error_message, created_at
-		FROM scim_sync_log 
+		FROM scim_sync_log
 		WHERE tenant_id = $1 AND resource_type = $2 AND resource_id = $3
 		ORDER BY created_at DESC`, tenantID, resourceType, resourceID)
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
 		return nil, fmt.Errorf("failed to get SCIM sync logs: %w", err)
 	}
 	defer rows.Close()

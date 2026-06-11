@@ -9,7 +9,7 @@ import (
 )
 
 // CreateFunction creates a new function in the registry
-func (r *RegistryRepository) CreateFunction(fn *RegistryFunction) error {
+func (r *RegistryRepository) CreateFunction(ctx context.Context, fn *RegistryFunction) error {
 	if fn.ID == uuid.Nil {
 		fn.ID = uuid.New()
 	}
@@ -21,7 +21,7 @@ func (r *RegistryRepository) CreateFunction(fn *RegistryFunction) error {
 		fn.UpdatedAt = now
 	}
 
-	if err := r.db.Create(fn).Error; err != nil {
+	if err := r.db.WithContext(ctx).Create(fn).Error; err != nil {
 		return fmt.Errorf("failed to create function: %w", err)
 	}
 
@@ -38,9 +38,9 @@ func (r *RegistryRepository) CreateFunction(fn *RegistryFunction) error {
 }
 
 // GetFunctionByID retrieves a function by ID with preloaded relationships
-func (r *RegistryRepository) GetFunctionByID(id uuid.UUID) (*RegistryFunction, error) {
+func (r *RegistryRepository) GetFunctionByID(ctx context.Context, id uuid.UUID) (*RegistryFunction, error) {
 	var fn RegistryFunction
-	if err := r.db.Preload("Versions").
+	if err := r.db.WithContext(ctx).Preload("Versions").
 		Preload("Versions.Signatures").
 		Preload("Versions.MalwareScans").
 		Preload("Versions.Approvals").
@@ -55,9 +55,9 @@ func (r *RegistryRepository) GetFunctionByID(id uuid.UUID) (*RegistryFunction, e
 }
 
 // GetFunctionByIDMinimal retrieves a function by ID without preloaded relationships (for performance)
-func (r *RegistryRepository) GetFunctionByIDMinimal(id uuid.UUID) (*RegistryFunction, error) {
+func (r *RegistryRepository) GetFunctionByIDMinimal(ctx context.Context, id uuid.UUID) (*RegistryFunction, error) {
 	var fn RegistryFunction
-	if err := r.db.First(&fn, id).Error; err != nil {
+	if err := r.db.WithContext(ctx).First(&fn, id).Error; err != nil {
 		return nil, fmt.Errorf("failed to get function by ID: %w", err)
 	}
 
@@ -65,19 +65,19 @@ func (r *RegistryRepository) GetFunctionByIDMinimal(id uuid.UUID) (*RegistryFunc
 }
 
 // GetFunctionByAuthorName retrieves a function by author and name with preloaded relationships
-func (r *RegistryRepository) GetFunctionByAuthorName(author, name string) (*RegistryFunction, error) {
+func (r *RegistryRepository) GetFunctionByAuthorName(ctx context.Context, author, name string) (*RegistryFunction, error) {
 	// Try cache first if available
 	if r.cache != nil && r.keyGen != nil {
 		cacheKey := r.keyGen.FunctionInfo(author, name)
 		var fn RegistryFunction
-		if err := r.cache.GetJSON(context.Background(), cacheKey, &fn); err == nil {
+		if err := r.cache.GetJSON(ctx, cacheKey, &fn); err == nil {
 			return &fn, nil
 		}
 		// Cache miss - continue to database
 	}
 
 	var fn RegistryFunction
-	if err := r.db.Preload("Versions").
+	if err := r.db.WithContext(ctx).Preload("Versions").
 		Preload("Versions.Signatures").
 		Preload("Versions.MalwareScans").
 		Preload("Versions.Approvals").
@@ -103,19 +103,19 @@ func (r *RegistryRepository) GetFunctionByAuthorName(author, name string) (*Regi
 }
 
 // GetFunctionByAuthorNameMinimal retrieves a function by author and name without preloaded relationships (for performance)
-func (r *RegistryRepository) GetFunctionByAuthorNameMinimal(author, name string) (*RegistryFunction, error) {
+func (r *RegistryRepository) GetFunctionByAuthorNameMinimal(ctx context.Context, author, name string) (*RegistryFunction, error) {
 	// Try cache first if available
 	if r.cache != nil && r.keyGen != nil {
 		cacheKey := r.keyGen.FunctionInfo(author, name)
 		var fn RegistryFunction
-		if err := r.cache.GetJSON(context.Background(), cacheKey, &fn); err == nil {
+		if err := r.cache.GetJSON(ctx, cacheKey, &fn); err == nil {
 			return &fn, nil
 		}
 		// Cache miss - continue to database
 	}
 
 	var fn RegistryFunction
-	if err := r.db.Where("author = ? AND name = ?", author, name).First(&fn).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("author = ? AND name = ?", author, name).First(&fn).Error; err != nil {
 		return nil, fmt.Errorf("failed to get function by author/name: %w", err)
 	}
 
@@ -134,8 +134,8 @@ func (r *RegistryRepository) GetFunctionByAuthorNameMinimal(author, name string)
 }
 
 // UpdateFunctionLatestVersion updates the latest version pointer
-func (r *RegistryRepository) UpdateFunctionLatestVersion(id uuid.UUID, version string) error {
-	if err := r.db.Model(&RegistryFunction{}).Where("id = ?", id).Updates(map[string]interface{}{
+func (r *RegistryRepository) UpdateFunctionLatestVersion(ctx context.Context, id uuid.UUID, version string) error {
+	if err := r.db.WithContext(ctx).Model(&RegistryFunction{}).Where("id = ?", id).Updates(map[string]interface{}{
 		"latest_version": version,
 		"updated_at":     time.Now(),
 	}).Error; err != nil {

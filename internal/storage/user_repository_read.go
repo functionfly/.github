@@ -9,7 +9,7 @@ import (
 )
 
 // GetUserByEmail retrieves a user by email
-func (r *UserRepository) GetUserByEmail(email string) (*User, error) {
+func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*User, error) {
 	user := &User{}
 	var username sql.NullString
 	var companyName sql.NullString
@@ -29,9 +29,9 @@ func (r *UserRepository) GetUserByEmail(email string) (*User, error) {
 
 	var row *sql.Row
 	if stmt, _ := r.db.GetPreparedStatement("getUserByEmail"); stmt != nil {
-		row = stmt.QueryRow(email)
+		row = stmt.QueryRowContext(ctx, email)
 	} else {
-		row = r.db.QueryRowContext(context.Background(), r.db.GetStatementQuery("getUserByEmail"), email)
+		row = r.db.QueryRowContext(ctx, r.db.GetStatementQuery("getUserByEmail"), email)
 	}
 	err := row.Scan(
 		&user.ID, &user.TenantID, &username, &user.Email, &user.PasswordHash, &role, &user.EmailVerified, &companyName,
@@ -59,7 +59,7 @@ func (r *UserRepository) GetUserByEmail(email string) (*User, error) {
 }
 
 // GetUserByUsername retrieves a user by their username (case-insensitive)
-func (r *UserRepository) GetUserByUsername(username string) (*User, error) {
+func (r *UserRepository) GetUserByUsername(ctx context.Context, username string) (*User, error) {
 	user := &User{}
 	var usernameNull sql.NullString
 	var companyName sql.NullString
@@ -79,7 +79,7 @@ func (r *UserRepository) GetUserByUsername(username string) (*User, error) {
 	var githubURLNull sql.NullString
 	var linkedinURLNull sql.NullString
 
-	err := r.db.QueryRowContext(context.Background(), `
+	err := r.db.QueryRowContext(ctx, `
 		SELECT id, tenant_id, username, email, password_hash, role, email_verified, company_name,
 		       provider, provider_id, provider_data, created_at, updated_at, name, bio,
 		       location, website, job_title, twitter_url, github_url, linkedin_url, last_active_at, profile_number
@@ -107,7 +107,7 @@ func (r *UserRepository) GetUserByUsername(username string) (*User, error) {
 }
 
 // GetUserByVerificationToken retrieves a user by verification token
-func (r *UserRepository) GetUserByVerificationToken(token string) (*User, error) {
+func (r *UserRepository) GetUserByVerificationToken(ctx context.Context, token string) (*User, error) {
 	user := &User{}
 	var username sql.NullString
 	var companyName sql.NullString
@@ -117,7 +117,7 @@ func (r *UserRepository) GetUserByVerificationToken(token string) (*User, error)
 	var provider sql.NullString
 	var providerID sql.NullString
 	var providerData []byte
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at, provider, provider_id, provider_data, created_at, updated_at
 		FROM users WHERE verification_token = $1`, token).Scan(
 		&user.ID, &user.TenantID, &username, &user.Email, &user.PasswordHash, &role, &user.EmailVerified, &companyName,
@@ -139,7 +139,7 @@ func (r *UserRepository) GetUserByVerificationToken(token string) (*User, error)
 }
 
 // GetUserByID retrieves a user by ID
-func (r *UserRepository) GetUserByID(userID uuid.UUID) (*User, error) {
+func (r *UserRepository) GetUserByID(ctx context.Context, userID uuid.UUID) (*User, error) {
 	user := &User{}
 	var username sql.NullString
 	var companyName sql.NullString
@@ -159,9 +159,9 @@ func (r *UserRepository) GetUserByID(userID uuid.UUID) (*User, error) {
 
 	var row *sql.Row
 	if stmt, _ := r.db.GetPreparedStatement("getUserByID"); stmt != nil {
-		row = stmt.QueryRow(userID)
+		row = stmt.QueryRowContext(ctx, userID)
 	} else {
-		row = r.db.QueryRowContext(context.Background(), r.db.GetStatementQuery("getUserByID"), userID)
+		row = r.db.QueryRowContext(ctx, r.db.GetStatementQuery("getUserByID"), userID)
 	}
 	err := row.Scan(
 		&user.ID, &user.TenantID, &username, &user.Email, &user.PasswordHash, &role, &user.EmailVerified, &companyName,
@@ -190,18 +190,18 @@ func (r *UserRepository) GetUserByID(userID uuid.UUID) (*User, error) {
 
 // ListUsers lists all users across all tenants (for admin dashboard).
 // Tries with role column first; if that fails (e.g. column missing), falls back to minimal columns.
-func (r *UserRepository) ListUsers() ([]*User, error) {
-	users, err := r.listUsersWithRole()
+func (r *UserRepository) ListUsers(ctx context.Context) ([]*User, error) {
+	users, err := r.listUsersWithRole(ctx)
 	if err == nil {
 		return users, nil
 	}
 	// Fallback: schema may lack "role" (e.g. pre-000004); list with minimal columns
-	return r.listUsersMinimal()
+	return r.listUsersMinimal(ctx)
 }
 
-func (r *UserRepository) listUsersWithRole() ([]*User, error) {
+func (r *UserRepository) listUsersWithRole(ctx context.Context) ([]*User, error) {
 	query := `SELECT id, tenant_id, email, password_hash, role, created_at, updated_at FROM users ORDER BY created_at DESC`
-	rows, err := r.db.Query(query)
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -221,9 +221,9 @@ func (r *UserRepository) listUsersWithRole() ([]*User, error) {
 	return users, nil
 }
 
-func (r *UserRepository) listUsersMinimal() ([]*User, error) {
+func (r *UserRepository) listUsersMinimal(ctx context.Context) ([]*User, error) {
 	query := `SELECT id, tenant_id, email, password_hash, created_at, updated_at FROM users ORDER BY created_at DESC`
-	rows, err := r.db.Query(query)
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list users: %w", err)
 	}
@@ -264,7 +264,7 @@ func (r *UserRepository) ListUserIDsByTenant(ctx context.Context, tenantID uuid.
 }
 
 // GetUserBySocialProvider retrieves a user by social provider and provider ID
-func (r *UserRepository) GetUserBySocialProvider(provider, providerID string) (*User, error) {
+func (r *UserRepository) GetUserBySocialProvider(ctx context.Context, provider, providerID string) (*User, error) {
 	user := &User{}
 	var username sql.NullString
 	var companyName sql.NullString
@@ -274,7 +274,7 @@ func (r *UserRepository) GetUserBySocialProvider(provider, providerID string) (*
 	var providerNull sql.NullString
 	var providerIDNull sql.NullString
 	var providerData []byte
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at, provider, provider_id, provider_data, created_at, updated_at
 		FROM users WHERE provider = $1 AND provider_id = $2`, provider, providerID).Scan(
 		&user.ID, &user.TenantID, &username, &user.Email, &user.PasswordHash, &role, &user.EmailVerified, &companyName,
