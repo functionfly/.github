@@ -279,6 +279,12 @@ export const navigationSections: NavSection[] = [
         description: 'Performance analytics',
       },
       {
+        path: '/agent-observability',
+        label: 'Observability',
+        icon: Activity,
+        description: 'Agent traces, metrics, and debugging',
+      },
+      {
         path: ROUTES.USAGE,
         label: 'Usage',
         icon: PieChart,
@@ -429,6 +435,7 @@ export const NAV_LABEL_KEYS: Record<string, string> = {
   'Connectors': 'nav.connectors',
   'Bundles': 'nav.bundles',
   'Analytics': 'nav.analytics',
+  'Observability': 'nav.observability',
   'Usage': 'nav.usage',
   'Wallet': 'nav.wallet',
   'Status': 'nav.status',

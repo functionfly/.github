@@ -250,6 +250,24 @@ class Settings(BaseSettings):
     ]
     rag_max_query_length: int = 1000
 
+    # Atlas Observability
+    atlas_enabled: bool = Field(default=True, description="Enable Atlas observability")
+    atlas_base_url: str = Field(default="http://localhost:7447", description="Atlas Cloud base URL")
+    atlas_grpc_host: str = Field(default="localhost", description="Atlas gRPC host")
+    atlas_grpc_port: int = Field(default=50051, description="Atlas gRPC port")
+    atlas_api_key: Optional[str] = Field(default=None, description="Atlas API key")
+    atlas_agent_id_prefix: str = Field(default="flymind", description="Prefix for agent IDs in Atlas")
+
+    # Atlas Sampling
+    atlas_sample_rate: float = Field(default=1.0, description="Sampling rate 0.0-1.0")
+    atlas_trace_errors_only: bool = Field(default=False, description="Only trace errors")
+    atlas_sample_head_percent: float = Field(default=100.0, description="Head-based sampling %")
+    atlas_sample_tail_count: int = Field(default=10, description="Tail-based: keep last N events")
+
+    # Atlas OpenTelemetry Export
+    atlas_otel_exporter_enabled: bool = Field(default=False, description="Export Atlas events as OTEL spans")
+    atlas_otel_endpoint: Optional[str] = Field(default=None, description="OTLP endpoint for Atlas export")
+
 
 # Global settings instance
 settings = Settings()

@@ -33,6 +33,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/admin"
 	agenthandler "github.com/functionfly/functionfly/internal/api/handlers/agent"
 	agentmemoryhandler "github.com/functionfly/functionfly/internal/api/handlers/agent_memory"
+	agentobs "github.com/functionfly/functionfly/internal/api/handlers/agent_observability"
 	analyticshandler "github.com/functionfly/functionfly/internal/api/handlers/analytics"
 	"github.com/functionfly/functionfly/internal/api/handlers/apikeys"
 	"github.com/functionfly/functionfly/internal/api/handlers/apps"
@@ -89,6 +90,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/workflow"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/apikey"
+	atlaspkg "github.com/functionfly/functionfly/internal/atlas"
 	"github.com/functionfly/functionfly/internal/billing"
 	"github.com/functionfly/functionfly/internal/bundler"
 	"github.com/functionfly/functionfly/internal/cache"
@@ -512,6 +514,13 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	memoryRepo := state.NewAgentMemoryRepository(s.postgresDB.GORM)
 	memoryHandler := state.NewAgentMemoryHandler(memoryRepo)
 	agentMemoryHandler := agentmemoryhandler.NewHandler(s.postgresDB.GORM)
+
+	agentObsAtlasClient := atlaspkg.NewClient(
+		os.Getenv("ATLAS_BASE_URL", "http://localhost:7447"),
+		os.Getenv("ATLAS_API_KEY", ""),
+		uuid.Nil,
+	)
+	agentObsHandler := agentobs.NewHandler(s.postgresDB.GORM, agentObsAtlasClient)
 
 	stateFabricRepo := statefabricrepo.NewRepository(s.postgresDB.GORM)
 	stateFabricRepo.ConfigureExecution(
@@ -1057,6 +1066,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		pluginHandler,
 		runtimeHandler,
 	)
+
+	registerAgentObservabilityRoutes(api, protected, authMiddleware, agentObsHandler)
 
 	registerMarketplaceRoutes(api, protected, authMiddleware, marketplaceHandler)
 

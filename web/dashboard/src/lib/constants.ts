@@ -100,6 +100,7 @@ export const ROUTES = {
   PAYOUTS: '/payouts',
   PLATFORM_WALLET: '/platform-wallet',
   AGENT_MEMORIES: '/agent-memories',
+  AGENT_OBSERVABILITY: '/agent-observability',
   CONVERSATIONS: '/conversations',
   STATE: '/state',
   // Time Machine routes
