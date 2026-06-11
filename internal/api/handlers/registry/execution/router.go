@@ -27,12 +27,12 @@ type ExecutionRequest struct {
 
 // ExecutionResult is the normalized output of any runtime engine.
 type ExecutionResult struct {
-	Output       json.RawMessage
-	DurationMs   int
-	CacheHit     bool
-	ColdStart    bool
+	Output        json.RawMessage
+	DurationMs    int
+	CacheHit      bool
+	ColdStart     bool
 	ResourceUsage *ResourceUsage
-	Error        *ExecutionError
+	Error         *ExecutionError
 }
 
 // RuntimeEngine is the interface that every execution backend must implement.
@@ -47,11 +47,11 @@ type RuntimeEngine interface {
 
 // RuntimeRouter selects the appropriate engine based on runtime and tier.
 type RuntimeRouter struct {
-	wasmEngine    RuntimeEngine // Wasmtime pool (Rust, Go, C, C++)
-	pythonEngine  RuntimeEngine // Firecracker MicroVM for enterprise Python
-	cpythonEngine RuntimeEngine // In-process CPython-WASM for business Python
-	nodeEngine    RuntimeEngine // Deno/Node V8 isolates
-	fallback      RuntimeEngine // Legacy executor (RustPython / per-request sandbox)
+	wasmEngine    RuntimeEngine       // Wasmtime pool (Rust, Go, C, C++)
+	pythonEngine  RuntimeEngine       // Firecracker MicroVM for enterprise Python
+	cpythonEngine RuntimeEngine       // In-process CPython-WASM for business Python
+	nodeEngine    RuntimeEngine       // Deno/Node V8 isolates
+	fallback      RuntimeEngine       // Legacy executor (RustPython / per-request sandbox)
 	cacheL1       *cache.CacheService // deterministic result cache
 	bundleService *bundler.BundleService
 }

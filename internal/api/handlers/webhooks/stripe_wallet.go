@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/functionfly/functionfly/internal/agent/billing"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/notification"
 	"github.com/functionfly/functionfly/internal/statefabricaddons"
 	"github.com/functionfly/functionfly/internal/storage"
@@ -80,14 +81,14 @@ func (h *StripeWebhookHandlerV2) handleAgentExecutionCreditsCheckoutUnified(w ht
 
 	if tenantIDStr == "" || agentID == "" {
 		logrus.Warn("agent checkout session missing required metadata")
-		http.Error(w, "Missing metadata", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Missing metadata"))
 		return
 	}
 
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
 		logrus.WithError(err).Error("invalid tenant_id in metadata")
-		http.Error(w, "Invalid tenant_id", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tenant_id"))
 		return
 	}
 
@@ -156,12 +157,12 @@ func (h *StripeWebhookHandlerV2) handleAgentExecutionCreditsCheckoutUnified(w ht
 			if h.billingCtrl != nil {
 				if err := h.billingCtrl.AddCredits(r.Context(), agentID, amountUSD); err != nil {
 					logrus.WithError(err).Error("fallback to legacy billing also failed")
-					http.Error(w, "Failed to add credits", http.StatusInternalServerError)
+					apierror.WriteError(w, apierror.NewInternal("Failed to add credits"))
 					return
 				}
 				logrus.Warn("Successfully fell back to legacy billing system")
 			} else {
-				http.Error(w, "Failed to add credits", http.StatusInternalServerError)
+				apierror.WriteError(w, apierror.NewInternal("Failed to add credits"))
 				return
 			}
 		} else {
@@ -182,13 +183,13 @@ func (h *StripeWebhookHandlerV2) handleAgentExecutionCreditsCheckoutUnified(w ht
 		// Use legacy system
 		if h.billingCtrl == nil {
 			logrus.Error("billing controller not configured and unified wallet disabled")
-			http.Error(w, "Wallet service unavailable", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Wallet service unavailable"))
 			return
 		}
 
 		if err := h.billingCtrl.AddCredits(r.Context(), agentID, amountUSD); err != nil {
 			logrus.WithError(err).Error("failed to add credits via legacy billing controller")
-			http.Error(w, "Failed to add credits", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to add credits"))
 			return
 		}
 
@@ -229,21 +230,21 @@ func (h *StripeWebhookHandlerV2) handleRegistryWalletCreditCheckoutUnified(w htt
 
 	if tenantIDStr == "" || userIDStr == "" {
 		logrus.Warn("registry wallet checkout missing tenant_id or user_id in metadata")
-		http.Error(w, "Missing metadata", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Missing metadata"))
 		return
 	}
 
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
 		logrus.WithError(err).Warn("registry wallet webhook: invalid tenant_id")
-		http.Error(w, "Invalid tenant_id", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tenant_id"))
 		return
 	}
 
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
 		logrus.WithError(err).Warn("registry wallet webhook: invalid user_id")
-		http.Error(w, "Invalid user_id", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid user_id"))
 		return
 	}
 
@@ -252,12 +253,12 @@ func (h *StripeWebhookHandlerV2) handleRegistryWalletCreditCheckoutUnified(w htt
 		user, err := h.userRepo.GetUserByID(userID)
 		if err != nil || user == nil {
 			logrus.WithError(err).WithField("session_id", session.ID).Warn("registry wallet webhook: user not found")
-			http.Error(w, "User not found", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("User not found"))
 			return
 		}
 		if user.TenantID != tenantID {
 			logrus.WithFields(logrus.Fields{"session_id": session.ID}).Warn("registry wallet webhook: tenant mismatch")
-			http.Error(w, "Invalid checkout metadata", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid checkout metadata"))
 			return
 		}
 	}
@@ -268,7 +269,7 @@ func (h *StripeWebhookHandlerV2) handleRegistryWalletCreditCheckoutUnified(w htt
 	}
 	if amountUSD <= 0 {
 		logrus.WithField("session_id", session.ID).Warn("registry wallet webhook: non-positive amount")
-		http.Error(w, "Invalid amount", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid amount"))
 		return
 	}
 
@@ -278,7 +279,7 @@ func (h *StripeWebhookHandlerV2) handleRegistryWalletCreditCheckoutUnified(w htt
 		hasRef, err := h.walletService.HasUserWalletCreditReference(r.Context(), session.ID)
 		if err != nil {
 			logrus.WithError(err).Error("registry wallet webhook: idempotency check failed")
-			http.Error(w, "Failed to verify payment", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to verify payment"))
 			return
 		}
 		if hasRef {
@@ -301,12 +302,12 @@ func (h *StripeWebhookHandlerV2) handleRegistryWalletCreditCheckoutUnified(w htt
 			if h.platformFees != nil {
 				if err := h.platformFees.CreditWallet(r.Context(), userID, amountUSD, session.ID); err != nil {
 					logrus.WithError(err).Error("fallback to legacy platform fees also failed")
-					http.Error(w, "Failed to credit wallet", http.StatusInternalServerError)
+					apierror.WriteError(w, apierror.NewInternal("Failed to credit wallet"))
 					return
 				}
 				logrus.Warn("Successfully fell back to legacy platform fees system")
 			} else {
-				http.Error(w, "Failed to credit wallet", http.StatusInternalServerError)
+				apierror.WriteError(w, apierror.NewInternal("Failed to credit wallet"))
 				return
 			}
 		} else {
@@ -321,7 +322,7 @@ func (h *StripeWebhookHandlerV2) handleRegistryWalletCreditCheckoutUnified(w htt
 		// Use legacy system
 		if h.platformFees == nil {
 			logrus.Error("registry wallet webhook: platform fee repository not configured and unified wallet disabled")
-			http.Error(w, "Wallet service unavailable", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Wallet service unavailable"))
 			return
 		}
 
@@ -329,7 +330,7 @@ func (h *StripeWebhookHandlerV2) handleRegistryWalletCreditCheckoutUnified(w htt
 		already, err := h.platformFees.HasWalletCreditReference(r.Context(), session.ID)
 		if err != nil {
 			logrus.WithError(err).Error("registry wallet webhook: idempotency check failed")
-			http.Error(w, "Failed to verify payment", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to verify payment"))
 			return
 		}
 		if already {
@@ -345,7 +346,7 @@ func (h *StripeWebhookHandlerV2) handleRegistryWalletCreditCheckoutUnified(w htt
 				"session_id": session.ID,
 				"user_id":    userID,
 			}).Error("registry wallet webhook: credit failed")
-			http.Error(w, "Failed to credit wallet", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to credit wallet"))
 			return
 		}
 
@@ -375,13 +376,13 @@ func (h *StripeWebhookHandlerV2) handleStateFabricAddonCheckout(w http.ResponseW
 	addonID := session.Metadata["addon_id"]
 	if tenantIDStr == "" || addonID == "" {
 		logrus.Warn("state fabric addon checkout missing metadata")
-		http.Error(w, "Missing metadata", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Missing metadata"))
 		return
 	}
 
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
-		http.Error(w, "Invalid tenant_id", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tenant_id"))
 		return
 	}
 
@@ -402,7 +403,7 @@ func (h *StripeWebhookHandlerV2) handleStateFabricAddonCheckout(w http.ResponseW
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"tenant_id": tenantID, "addon_id": addonID,
 		}).Error("state fabric addon: upsert entitlement")
-		http.Error(w, "Failed to persist entitlement", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to persist entitlement"))
 		return
 	}
 

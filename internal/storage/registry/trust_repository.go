@@ -897,6 +897,14 @@ func (r *RegistryRepository) InvalidateTrustScoreCache(functionID uuid.UUID) err
 		// Trust scores are derived from ratings, so invalidate the rating cache
 		cacheKey := r.keyGen.FunctionRating(functionID.String())
 		go func() {
+			defer func() {
+				if rec := recover(); rec != nil {
+					logrus.WithFields(logrus.Fields{
+						"panic": rec,
+						"stack": fmt.Sprintf("%v", rec),
+					}).Error("InvalidateTrustScoreCache goroutine panicked")
+				}
+			}()
 			if err := r.cache.Delete(context.Background(), cacheKey); err != nil {
 				logrus.Errorf("Failed to invalidate trust score cache: %v", err)
 			}

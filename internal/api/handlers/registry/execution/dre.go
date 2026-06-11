@@ -201,7 +201,7 @@ func (h *Handler) buildAndStoreMEG(
 		CertificateID:     cert.CertificateID,
 		ExecutionID:       megRecord.ID, // Use MEG record ID as proxy for execution ID
 		MEGRecordID:       megRecord.ID,
-		FunctionID:          fn.ID,
+		FunctionID:        fn.ID,
 		CertLevel:         string(drecert.CertLevelStandard),
 		CertJSON:          certJSON,
 		ExecutionRootHash: megResult.ExecutionRootHash,

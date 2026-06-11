@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/bundler"
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/dre"
@@ -182,13 +183,13 @@ func (h *Handler) HandleGetSDKCode(w http.ResponseWriter, r *http.Request) {
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	fnVersion, err := h.repo.GetLatestFunctionVersion(fn.ID)
 	if err != nil {
-		http.Error(w, "No versions available", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("No versions available"))
 		return
 	}
 

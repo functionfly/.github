@@ -147,7 +147,7 @@ func ConfigFromEnv(db *gorm.DB) (*Config, error) {
 			CookieName:     getEnv("SESSION_COOKIE_NAME", "ff_session"),
 			CookieSecure:   getEnvBool("SESSION_COOKIE_SECURE", true),
 			CookieHTTPOnly: getEnvBool("SESSION_COOKIE_HTTPONLY", true),
-			CookieSameSite: getEnv("SESSION_COOKIE_SAMESITE", "Lax"),
+			CookieSameSite: getEnv("SESSION_COOKIE_SAMESITE", "Strict"),
 		},
 		Features: FeatureFlags{
 			Enabled:  getEnvBool("GBA_ENABLED", false),

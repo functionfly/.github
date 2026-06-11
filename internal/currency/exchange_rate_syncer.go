@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage"
@@ -22,6 +23,111 @@ type RateProvider interface {
 	GetRates(ctx context.Context, base string) (map[string]float64, error)
 }
 
+// CircuitBreakerState represents the state of a circuit breaker
+type CircuitBreakerState int32
+
+const (
+	CircuitClosed CircuitBreakerState = iota
+	CircuitOpen
+	CircuitHalfOpen
+)
+
+func (s CircuitBreakerState) String() string {
+	switch s {
+	case CircuitClosed:
+		return "closed"
+	case CircuitOpen:
+		return "open"
+	case CircuitHalfOpen:
+		return "half-open"
+	default:
+		return "unknown"
+	}
+}
+
+// CircuitBreaker implements the circuit breaker pattern for external service calls
+type CircuitBreaker struct {
+	name             string
+	failureThreshold int32
+	successThreshold int32
+	openTimeout      time.Duration
+	state            atomic.Int32
+	failureCount      atomic.Int32
+	successCount      atomic.Int32
+	lastFailureTime   atomic.Int64
+	mu               sync.RWMutex
+	logger           *logrus.Logger
+}
+
+// NewCircuitBreaker creates a new circuit breaker
+func NewCircuitBreaker(name string, failureThreshold int, successThreshold int, openTimeout time.Duration) *CircuitBreaker {
+	return &CircuitBreaker{
+		name:             name,
+		failureThreshold: int32(failureThreshold),
+		successThreshold: int32(successThreshold),
+		openTimeout:      openTimeout,
+		logger:           logrus.New(),
+	}
+}
+
+// Allow checks if a request should be allowed through
+func (cb *CircuitBreaker) Allow() bool {
+	state := CircuitBreakerState(cb.state.Load())
+	switch state {
+	case CircuitClosed:
+		return true
+	case CircuitOpen:
+		// Check if timeout has passed to try half-open
+		lastFailure := time.Unix(0, cb.lastFailureTime.Load())
+		if time.Since(lastFailure) > cb.openTimeout {
+			cb.state.Store(int32(CircuitHalfOpen))
+			cb.successCount.Store(0)
+			return true
+		}
+		return false
+	case CircuitHalfOpen:
+		return true
+	default:
+		return false
+	}
+}
+
+// RecordSuccess records a successful call
+func (cb *CircuitBreaker) RecordSuccess() {
+	state := CircuitBreakerState(cb.state.Load())
+	if state == CircuitHalfOpen {
+		if cb.successCount.Add(1) >= cb.successThreshold {
+			cb.state.Store(int32(CircuitClosed))
+			cb.failureCount.Store(0)
+			cb.successCount.Store(0)
+			cb.logger.WithField("circuit", cb.name).Info("Circuit breaker closed")
+		}
+	} else if state == CircuitClosed {
+		cb.failureCount.Store(0)
+	}
+}
+
+// RecordFailure records a failed call
+func (cb *CircuitBreaker) RecordFailure() {
+	state := CircuitBreakerState(cb.state.Load())
+	if state == CircuitHalfOpen {
+		cb.state.Store(int32(CircuitOpen))
+		cb.lastFailureTime.Store(time.Now().UnixNano())
+		cb.logger.WithField("circuit", cb.name).Warn("Circuit breaker opened from half-open")
+	} else if state == CircuitClosed {
+		if cb.failureCount.Add(1) >= cb.failureThreshold {
+			cb.state.Store(int32(CircuitOpen))
+			cb.lastFailureTime.Store(time.Now().UnixNano())
+			cb.logger.WithField("circuit", cb.name).Warn("Circuit breaker opened")
+		}
+	}
+}
+
+// State returns the current state of the circuit breaker
+func (cb *CircuitBreaker) State() CircuitBreakerState {
+	return CircuitBreakerState(cb.state.Load())
+}
+
 type ExchangeRateSyncer struct {
 	repo          storage.Repository
 	redis         *redis.Client
@@ -30,16 +136,22 @@ type ExchangeRateSyncer struct {
 	effectiveDate string
 	cacheTTL      time.Duration
 	mu            sync.RWMutex
+	circuitBreakers map[string]*CircuitBreaker
 }
 
 func NewExchangeRateSyncer(repo storage.Repository, redisClient *redis.Client) *ExchangeRateSyncer {
-	return &ExchangeRateSyncer{
+	syncer := &ExchangeRateSyncer{
 		repo:      repo,
 		redis:     redisClient,
 		logger:    logrus.New(),
 		providers: []RateProvider{NewFrankfurterProvider(), NewStripeRateProvider()},
 		cacheTTL:  15 * time.Minute,
+		circuitBreakers: map[string]*CircuitBreaker{
+			"frankfurter": NewCircuitBreaker("frankfurter", 3, 2, 30*time.Second),
+			"stripe":      NewCircuitBreaker("stripe", 3, 2, 30*time.Second),
+		},
 	}
+	return syncer
 }
 
 func (s *ExchangeRateSyncer) SetLogger(logger *logrus.Logger) {
@@ -100,14 +212,28 @@ func (s *ExchangeRateSyncer) fetchAndCacheRate(ctx context.Context, from, to str
 			continue
 		}
 
+		// Check circuit breaker
+		if cb, ok := s.circuitBreakers[provider.Name()]; ok {
+			if !cb.Allow() {
+				s.logger.WithField("provider", provider.Name()).Debug("Circuit breaker open, skipping provider")
+				continue
+			}
+		}
+
 		rates, err := provider.GetRates(ctx, from)
 		if err != nil {
 			s.logger.WithError(err).WithField("provider", provider.Name()).Debug("Provider failed")
+			if cb, ok := s.circuitBreakers[provider.Name()]; ok {
+				cb.RecordFailure()
+			}
 			continue
 		}
 
 		if rate, ok := rates[to]; ok && rate > 0 {
 			s.setCachedRate(ctx, from, to, rate)
+			if cb, ok := s.circuitBreakers[provider.Name()]; ok {
+				cb.RecordSuccess()
+			}
 			return rate, nil
 		}
 	}

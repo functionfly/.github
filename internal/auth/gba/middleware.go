@@ -142,21 +142,25 @@ func (m *Middleware) nextWithLegacyAuth(w http.ResponseWriter, r *http.Request, 
 		http.Error(w, `{"message": "Authentication required"}`, http.StatusUnauthorized)
 		return
 	}
-	if claims.Role == "super_admin" || claims.Role == "admin" {
-		next.ServeHTTP(w, r)
-		return
-	}
 	isDevelopment := os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development"
 	isLocalhostRequest := m.isLocalhostRequest(r)
-	// Only bypass in development if explicitly enabled AND not in production
-	// This ensures the bypass cannot be triggered by setting DEVELOPMENT=true in production
 	productionEnv := os.Getenv("PRODUCTION_ENV")
+
+	// SECURITY FIX: Never bypass permission checks for admin/super_admin in fallback path.
+	// The previous code allowed admins to bypass all permission checks which is a security risk.
+	// Admins must still have their permissions validated even in the legacy auth fallback.
+	// Only allow development bypass for non-admin users when all safety checks are met.
 	if isDevelopment && isLocalhostRequest && productionEnv != "true" && os.Getenv("GBA_DEV_BYPASS") == "true" {
-		m.logger.WithFields(logrus.Fields{"user_id": claims.UserID, "email": claims.Email}).
-			Debug("Legacy permission check bypassed for development (localhost only)")
-		next.ServeHTTP(w, r)
-		return
+		// Only bypass for non-admin users in development
+		if claims.Role != "super_admin" && claims.Role != "admin" {
+			m.logger.WithFields(logrus.Fields{"user_id": claims.UserID, "email": claims.Email}).
+				Debug("Legacy permission check bypassed for development (localhost only, non-admin)")
+			next.ServeHTTP(w, r)
+			return
+		}
 	}
+
+	// Check permissions for all users including admins
 	for _, p := range claims.Permissions {
 		if p == permission {
 			next.ServeHTTP(w, r)

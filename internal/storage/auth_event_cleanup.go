@@ -62,6 +62,14 @@ func (s *AuthEventCleanupService) StartCleanupRoutine(interval time.Duration, re
 	}).Info("Starting auth event cleanup routine")
 
 	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				s.logger.WithFields(logrus.Fields{
+					"panic": rec,
+					"stack": fmt.Sprintf("%v", rec),
+				}).Error("Auth event cleanup goroutine panicked")
+			}
+		}()
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 

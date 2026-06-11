@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -34,7 +35,7 @@ func (c *WebConnector) FetchData(ctx context.Context, config map[string]interfac
 		return nil, fmt.Errorf("url is required")
 	}
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 30 * time.Second}
 	req, err := http.NewRequestWithContext(ctx, "GET", urlStr.(string), nil)
 	if err != nil {
 		return nil, err

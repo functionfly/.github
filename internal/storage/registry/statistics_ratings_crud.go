@@ -64,6 +64,14 @@ func (r *RegistryRepository) UpdateRating(rating *RegistryFunctionRating) error 
 	if r.cache != nil && r.keyGen != nil {
 		cacheKey := r.keyGen.FunctionRating(rating.FunctionID.String())
 		go func() {
+			defer func() {
+				if rec := recover(); rec != nil {
+					logrus.WithFields(logrus.Fields{
+						"panic": rec,
+						"stack": fmt.Sprintf("%v", rec),
+					}).Error("UpdateRating cache invalidation goroutine panicked")
+				}
+			}()
 			if err := r.cache.Delete(context.Background(), cacheKey); err != nil {
 				fmt.Printf("Failed to invalidate rating cache: %v\n", err)
 			}

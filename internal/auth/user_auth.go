@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"os"
@@ -25,6 +26,9 @@ func (a *AuthService) RequestPasswordReset(email string) error {
 		return fmt.Errorf("failed to look up user: %w", err)
 	}
 	if user == nil {
+		// SECURITY FIX: Add random delay to prevent timing oracle attacks
+		// that could reveal whether an email is registered
+		a.addTimingJitter()
 		// Don't reveal that the email doesn't exist
 		return nil
 	}
@@ -266,6 +270,12 @@ func (a *AuthService) Login(identifier, password, ipAddress, userAgent string) (
 	// SECURITY FIX: Successful login - clear any failed login attempts
 	if err := a.repo.ClearUserLockout(user.ID); err != nil {
 		logrus.WithError(err).WithField("user_id", user.ID).Warn("Failed to clear user lockout on successful login")
+	}
+
+	// SECURITY FIX: Increment token version to invalidate any existing tokens
+	// This provides session fixation protection by ensuring old tokens are revoked
+	if err := a.repo.IncrementUserTokenVersion(user.ID); err != nil {
+		logrus.WithError(err).WithField("user_id", user.ID).Warn("Failed to increment token version - old sessions may remain valid")
 	}
 
 	// Generate JWT token
@@ -818,4 +828,24 @@ func (a *AuthService) sendWelcomeNotification(ctx context.Context, userID uuid.U
 			logrus.WithError(err).WithField("user_id", userID).Warn("Failed to send welcome notification")
 		}
 	}
+}
+
+// addTimingJitter adds random delay between 50-200ms to prevent timing oracle attacks
+// that could reveal whether an email is registered in the system
+func (a *AuthService) addTimingJitter() {
+	delayMs := 50 + int(randomInt(150)) // 50-200ms random delay
+	time.Sleep(time.Duration(delayMs) * time.Millisecond)
+}
+
+// randomInt returns a cryptographically random int64 in range [0, max)
+func randomInt(max int) int64 {
+	b := make([]byte, 8)
+	if _, err := rand.Read(b); err != nil {
+		return 0
+	}
+	n := int64(0)
+	for _, byte := range b {
+		n = n*256 + int64(byte)
+	}
+	return n % int64(max)
 }

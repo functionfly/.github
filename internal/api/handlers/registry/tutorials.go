@@ -3,6 +3,7 @@ package registry
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 )
@@ -749,7 +750,7 @@ func (ff *FunctionFly) Execute(author, name string, input interface{}, version, 
         req.Header.Set("Authorization", "Bearer "+token)
     }
 
-    client := &http.Client{}
+	client := &http.Client{Timeout: 30 * time.Second}
     resp, err := client.Do(req)
     if err != nil {
         return nil, err

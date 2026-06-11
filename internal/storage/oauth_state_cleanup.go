@@ -53,6 +53,14 @@ func (s *OAuthStateCleanupService) StartCleanupRoutine(interval time.Duration) {
 	s.logger.WithField("interval", interval).Info("Starting OAuth state cleanup routine")
 
 	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				s.logger.WithFields(logrus.Fields{
+					"panic": rec,
+					"stack": fmt.Sprintf("%v", rec),
+				}).Error("OAuth state cleanup goroutine panicked")
+			}
+		}()
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 

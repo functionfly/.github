@@ -7,7 +7,8 @@ import (
 
 const (
 	// JWT claims
-	Issuer = "functionfly"
+	Issuer   = "functionfly"
+	Audience = "functionfly-api"
 	// Password hashing parameters
 	saltLength = 32
 	keyLength  = 32

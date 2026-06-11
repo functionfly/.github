@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/notification"
 	"github.com/functionfly/functionfly/internal/storage"
@@ -58,18 +59,18 @@ func NewHandler(repo storage.Repository, notify *notification.Service, realtimeM
 func (h *Handler) HandleCreateTeam(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	var req TeamCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if req.Name == "" {
-		http.Error(w, "Team name is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Team name is required"))
 		return
 	}
 
@@ -84,7 +85,7 @@ func (h *Handler) HandleCreateTeam(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.repo.CreateTeam(team); err != nil {
 		logrus.WithError(err).Error("Failed to create team")
-		http.Error(w, "Failed to create team", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create team"))
 		return
 	}
 
@@ -117,7 +118,7 @@ func (h *Handler) HandleCreateTeam(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetTeam(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -125,18 +126,18 @@ func (h *Handler) HandleGetTeam(w http.ResponseWriter, r *http.Request) {
 	teamIDStr := vars["teamId"]
 	teamID, err := uuid.Parse(teamIDStr)
 	if err != nil {
-		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
 		return
 	}
 
 	team, err := h.repo.GetTeamByID(teamID)
 	if err != nil {
 		logrus.WithError(err).WithField("team_id", teamID).Error("Failed to get team")
-		http.Error(w, "Failed to get team", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get team"))
 		return
 	}
 	if team == nil {
-		http.Error(w, "Team not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Team not found"))
 		return
 	}
 
@@ -144,12 +145,12 @@ func (h *Handler) HandleGetTeam(w http.ResponseWriter, r *http.Request) {
 	membership, err := h.repo.GetTeamMembership(teamID, user.UserID)
 	if err != nil && err.Error() != "record not found" {
 		logrus.WithError(err).Error("Failed to check team membership")
-		http.Error(w, "Failed to check permissions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to check permissions"))
 		return
 	}
 
 	if membership == nil && team.TenantID != user.TenantID {
-		http.Error(w, "Access denied", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
 
@@ -161,14 +162,14 @@ func (h *Handler) HandleGetTeam(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleListTeams(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	teams, err := h.repo.GetTeamsByTenantID(user.TenantID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list teams")
-		http.Error(w, "Failed to list teams", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list teams"))
 		return
 	}
 
@@ -182,7 +183,7 @@ func (h *Handler) HandleListTeams(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleUpdateTeam(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -190,18 +191,18 @@ func (h *Handler) HandleUpdateTeam(w http.ResponseWriter, r *http.Request) {
 	teamIDStr := vars["teamId"]
 	teamID, err := uuid.Parse(teamIDStr)
 	if err != nil {
-		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
 		return
 	}
 
 	team, err := h.repo.GetTeamByID(teamID)
 	if err != nil {
 		logrus.WithError(err).WithField("team_id", teamID).Error("Failed to get team")
-		http.Error(w, "Failed to get team", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get team"))
 		return
 	}
 	if team == nil {
-		http.Error(w, "Team not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Team not found"))
 		return
 	}
 
@@ -209,25 +210,25 @@ func (h *Handler) HandleUpdateTeam(w http.ResponseWriter, r *http.Request) {
 	isOwner, err := h.repo.IsUserTeamOwner(user.UserID, teamID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check team ownership")
-		http.Error(w, "Failed to check permissions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to check permissions"))
 		return
 	}
 
 	isAdmin, err := h.repo.IsUserTeamAdmin(user.UserID, teamID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check team admin status")
-		http.Error(w, "Failed to check permissions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to check permissions"))
 		return
 	}
 
 	if !isOwner && !isAdmin {
-		http.Error(w, "Access denied - only team owners and admins can update teams", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Access denied - only team owners and admins can update teams"))
 		return
 	}
 
 	var req TeamUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -240,7 +241,7 @@ func (h *Handler) HandleUpdateTeam(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.repo.UpdateTeam(team); err != nil {
 		logrus.WithError(err).Error("Failed to update team")
-		http.Error(w, "Failed to update team", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update team"))
 		return
 	}
 
@@ -252,7 +253,7 @@ func (h *Handler) HandleUpdateTeam(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleDeleteTeam(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -260,18 +261,18 @@ func (h *Handler) HandleDeleteTeam(w http.ResponseWriter, r *http.Request) {
 	teamIDStr := vars["teamId"]
 	teamID, err := uuid.Parse(teamIDStr)
 	if err != nil {
-		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
 		return
 	}
 
 	team, err := h.repo.GetTeamByID(teamID)
 	if err != nil {
 		logrus.WithError(err).WithField("team_id", teamID).Error("Failed to get team")
-		http.Error(w, "Failed to get team", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get team"))
 		return
 	}
 	if team == nil {
-		http.Error(w, "Team not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Team not found"))
 		return
 	}
 
@@ -279,12 +280,12 @@ func (h *Handler) HandleDeleteTeam(w http.ResponseWriter, r *http.Request) {
 	isOwner, err := h.repo.IsUserTeamOwner(user.UserID, teamID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check team ownership")
-		http.Error(w, "Failed to check permissions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to check permissions"))
 		return
 	}
 
 	if !isOwner {
-		http.Error(w, "Access denied - only team owners can delete teams", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Access denied - only team owners can delete teams"))
 		return
 	}
 
@@ -302,7 +303,7 @@ func (h *Handler) HandleDeleteTeam(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.repo.DeleteTeam(teamID); err != nil {
 		logrus.WithError(err).Error("Failed to delete team")
-		http.Error(w, "Failed to delete team", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete team"))
 		return
 	}
 
@@ -320,7 +321,7 @@ func (h *Handler) HandleDeleteTeam(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleAddTeamMember(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -328,18 +329,18 @@ func (h *Handler) HandleAddTeamMember(w http.ResponseWriter, r *http.Request) {
 	teamIDStr := vars["teamId"]
 	teamID, err := uuid.Parse(teamIDStr)
 	if err != nil {
-		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
 		return
 	}
 
 	team, err := h.repo.GetTeamByID(teamID)
 	if err != nil {
 		logrus.WithError(err).WithField("team_id", teamID).Error("Failed to get team")
-		http.Error(w, "Failed to get team", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get team"))
 		return
 	}
 	if team == nil {
-		http.Error(w, "Team not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Team not found"))
 		return
 	}
 
@@ -347,18 +348,18 @@ func (h *Handler) HandleAddTeamMember(w http.ResponseWriter, r *http.Request) {
 	isAdmin, err := h.repo.IsUserTeamAdmin(user.UserID, teamID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check team admin status")
-		http.Error(w, "Failed to check permissions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to check permissions"))
 		return
 	}
 
 	if !isAdmin {
-		http.Error(w, "Access denied - only team admins can manage members", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Access denied - only team admins can manage members"))
 		return
 	}
 
 	var req TeamMemberRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -370,18 +371,18 @@ func (h *Handler) HandleAddTeamMember(w http.ResponseWriter, r *http.Request) {
 		auth.TeamRoleViewer: true,
 	}
 	if !validRoles[req.Role] {
-		http.Error(w, "Invalid role", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid role"))
 		return
 	}
 
 	// Check if user to add exists and is in the same tenant
 	userToAdd, err := h.repo.GetUserByID(req.UserID)
 	if err != nil {
-		http.Error(w, "User not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
 	}
 	if userToAdd.TenantID != team.TenantID {
-		http.Error(w, "Cannot add users from different tenants", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Cannot add users from different tenants"))
 		return
 	}
 
@@ -389,12 +390,12 @@ func (h *Handler) HandleAddTeamMember(w http.ResponseWriter, r *http.Request) {
 	existingMembership, err := h.repo.GetTeamMembership(teamID, req.UserID)
 	if err != nil && err.Error() != "record not found" {
 		logrus.WithError(err).Error("Failed to check existing membership")
-		http.Error(w, "Failed to check membership", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to check membership"))
 		return
 	}
 
 	if existingMembership != nil {
-		http.Error(w, "User is already a team member", http.StatusConflict)
+		apierror.WriteError(w, apierror.NewConflict("User is already a team member"))
 		return
 	}
 
@@ -407,7 +408,7 @@ func (h *Handler) HandleAddTeamMember(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.repo.AddTeamMember(membership); err != nil {
 		logrus.WithError(err).Error("Failed to add team member")
-		http.Error(w, "Failed to add team member", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to add team member"))
 		return
 	}
 
@@ -431,7 +432,7 @@ func (h *Handler) HandleAddTeamMember(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleUpdateTeamMember(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -441,13 +442,13 @@ func (h *Handler) HandleUpdateTeamMember(w http.ResponseWriter, r *http.Request)
 
 	teamID, err := uuid.Parse(teamIDStr)
 	if err != nil {
-		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
 		return
 	}
 
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid user ID"))
 		return
 	}
 
@@ -455,12 +456,12 @@ func (h *Handler) HandleUpdateTeamMember(w http.ResponseWriter, r *http.Request)
 	isAdmin, err := h.repo.IsUserTeamAdmin(user.UserID, teamID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check team admin status")
-		http.Error(w, "Failed to check permissions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to check permissions"))
 		return
 	}
 
 	if !isAdmin {
-		http.Error(w, "Access denied - only team admins can manage members", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Access denied - only team admins can manage members"))
 		return
 	}
 
@@ -468,7 +469,7 @@ func (h *Handler) HandleUpdateTeamMember(w http.ResponseWriter, r *http.Request)
 		Role string `json:"role"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -480,13 +481,13 @@ func (h *Handler) HandleUpdateTeamMember(w http.ResponseWriter, r *http.Request)
 		auth.TeamRoleViewer: true,
 	}
 	if !validRoles[req.Role] {
-		http.Error(w, "Invalid role", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid role"))
 		return
 	}
 
 	if err := h.repo.UpdateTeamMember(teamID, userID, req.Role); err != nil {
 		logrus.WithError(err).Error("Failed to update team member")
-		http.Error(w, "Failed to update team member", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update team member"))
 		return
 	}
 
@@ -497,7 +498,7 @@ func (h *Handler) HandleUpdateTeamMember(w http.ResponseWriter, r *http.Request)
 func (h *Handler) HandleRemoveTeamMember(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -507,13 +508,13 @@ func (h *Handler) HandleRemoveTeamMember(w http.ResponseWriter, r *http.Request)
 
 	teamID, err := uuid.Parse(teamIDStr)
 	if err != nil {
-		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
 		return
 	}
 
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid user ID"))
 		return
 	}
 
@@ -521,12 +522,12 @@ func (h *Handler) HandleRemoveTeamMember(w http.ResponseWriter, r *http.Request)
 	isAdmin, err := h.repo.IsUserTeamAdmin(user.UserID, teamID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check team admin status")
-		http.Error(w, "Failed to check permissions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to check permissions"))
 		return
 	}
 
 	if !isAdmin {
-		http.Error(w, "Access denied - only team admins can manage members", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Access denied - only team admins can manage members"))
 		return
 	}
 
@@ -536,7 +537,7 @@ func (h *Handler) HandleRemoveTeamMember(w http.ResponseWriter, r *http.Request)
 		team, err := h.repo.GetTeamByID(teamID)
 		if err != nil {
 			logrus.WithError(err).Error("Failed to get team")
-			http.Error(w, "Failed to get team", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to get team"))
 			return
 		}
 
@@ -548,7 +549,7 @@ func (h *Handler) HandleRemoveTeamMember(w http.ResponseWriter, r *http.Request)
 		}
 
 		if ownerCount <= 1 {
-			http.Error(w, "Cannot remove the last team owner", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Cannot remove the last team owner"))
 			return
 		}
 	}
@@ -561,7 +562,7 @@ func (h *Handler) HandleRemoveTeamMember(w http.ResponseWriter, r *http.Request)
 
 	if err := h.repo.RemoveTeamMember(teamID, userID); err != nil {
 		logrus.WithError(err).Error("Failed to remove team member")
-		http.Error(w, "Failed to remove team member", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to remove team member"))
 		return
 	}
 
@@ -583,14 +584,14 @@ func (h *Handler) HandleRemoveTeamMember(w http.ResponseWriter, r *http.Request)
 func (h *Handler) HandleGetUserTeams(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	teams, err := h.repo.GetUserTeams(user.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get user teams")
-		http.Error(w, "Failed to get user teams", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get user teams"))
 		return
 	}
 
@@ -604,7 +605,7 @@ func (h *Handler) HandleGetUserTeams(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGrantTeamPermission(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -612,7 +613,7 @@ func (h *Handler) HandleGrantTeamPermission(w http.ResponseWriter, r *http.Reque
 	teamIDStr := vars["teamId"]
 	teamID, err := uuid.Parse(teamIDStr)
 	if err != nil {
-		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
 		return
 	}
 
@@ -620,18 +621,18 @@ func (h *Handler) HandleGrantTeamPermission(w http.ResponseWriter, r *http.Reque
 	isAdmin, err := h.repo.IsUserTeamAdmin(user.UserID, teamID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check team admin status")
-		http.Error(w, "Failed to check permissions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to check permissions"))
 		return
 	}
 
 	if !isAdmin {
-		http.Error(w, "Access denied - only team admins can manage permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Access denied - only team admins can manage permissions"))
 		return
 	}
 
 	var req TeamPermissionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -643,7 +644,7 @@ func (h *Handler) HandleGrantTeamPermission(w http.ResponseWriter, r *http.Reque
 		"deployment": true,
 	}
 	if !validResourceTypes[req.ResourceType] {
-		http.Error(w, "Invalid resource type", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid resource type"))
 		return
 	}
 
@@ -665,7 +666,7 @@ func (h *Handler) HandleGrantTeamPermission(w http.ResponseWriter, r *http.Reque
 
 	for _, perm := range req.Permissions {
 		if !validPermissions[perm] {
-			http.Error(w, "Invalid permission: "+perm, http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid permission: "+perm))
 			return
 		}
 	}
@@ -673,7 +674,7 @@ func (h *Handler) HandleGrantTeamPermission(w http.ResponseWriter, r *http.Reque
 	// Convert permissions array to JSON string for storage
 	permissionsJSON, err := json.Marshal(req.Permissions)
 	if err != nil {
-		http.Error(w, "Failed to encode permissions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to encode permissions"))
 		return
 	}
 
@@ -687,7 +688,7 @@ func (h *Handler) HandleGrantTeamPermission(w http.ResponseWriter, r *http.Reque
 
 	if err := h.repo.GrantTeamPermission(permission); err != nil {
 		logrus.WithError(err).Error("Failed to grant team permission")
-		http.Error(w, "Failed to grant permission", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to grant permission"))
 		return
 	}
 
@@ -700,7 +701,7 @@ func (h *Handler) HandleGrantTeamPermission(w http.ResponseWriter, r *http.Reque
 func (h *Handler) HandleRevokeTeamPermission(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -711,13 +712,13 @@ func (h *Handler) HandleRevokeTeamPermission(w http.ResponseWriter, r *http.Requ
 
 	teamID, err := uuid.Parse(teamIDStr)
 	if err != nil {
-		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
 		return
 	}
 
 	resourceID, err := uuid.Parse(resourceIDStr)
 	if err != nil {
-		http.Error(w, "Invalid resource ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid resource ID"))
 		return
 	}
 
@@ -725,18 +726,18 @@ func (h *Handler) HandleRevokeTeamPermission(w http.ResponseWriter, r *http.Requ
 	isAdmin, err := h.repo.IsUserTeamAdmin(user.UserID, teamID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check team admin status")
-		http.Error(w, "Failed to check permissions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to check permissions"))
 		return
 	}
 
 	if !isAdmin {
-		http.Error(w, "Access denied - only team admins can manage permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Access denied - only team admins can manage permissions"))
 		return
 	}
 
 	if err := h.repo.RevokeTeamPermission(teamID, resourceType, resourceID); err != nil {
 		logrus.WithError(err).Error("Failed to revoke team permission")
-		http.Error(w, "Failed to revoke permission", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to revoke permission"))
 		return
 	}
 
@@ -747,7 +748,7 @@ func (h *Handler) HandleRevokeTeamPermission(w http.ResponseWriter, r *http.Requ
 func (h *Handler) HandleGetTeamPermissions(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -755,7 +756,7 @@ func (h *Handler) HandleGetTeamPermissions(w http.ResponseWriter, r *http.Reques
 	teamIDStr := vars["teamId"]
 	teamID, err := uuid.Parse(teamIDStr)
 	if err != nil {
-		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
 		return
 	}
 
@@ -763,19 +764,19 @@ func (h *Handler) HandleGetTeamPermissions(w http.ResponseWriter, r *http.Reques
 	membership, err := h.repo.GetTeamMembership(teamID, user.UserID)
 	if err != nil && err.Error() != "record not found" {
 		logrus.WithError(err).Error("Failed to check team membership")
-		http.Error(w, "Failed to check permissions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to check permissions"))
 		return
 	}
 
 	if membership == nil {
-		http.Error(w, "Access denied - not a team member", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Access denied - not a team member"))
 		return
 	}
 
 	permissions, err := h.repo.GetTeamPermissions(teamID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get team permissions")
-		http.Error(w, "Failed to get team permissions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get team permissions"))
 		return
 	}
 
@@ -789,7 +790,7 @@ func (h *Handler) HandleGetTeamPermissions(w http.ResponseWriter, r *http.Reques
 func (h *Handler) HandleCheckUserResourcePermission(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -800,14 +801,14 @@ func (h *Handler) HandleCheckUserResourcePermission(w http.ResponseWriter, r *ht
 
 	resourceID, err := uuid.Parse(resourceIDStr)
 	if err != nil {
-		http.Error(w, "Invalid resource ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid resource ID"))
 		return
 	}
 
 	hasPermission, err := h.repo.CheckUserResourcePermission(user.UserID, resourceType, resourceID, permission)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check user resource permission")
-		http.Error(w, "Failed to check permission", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to check permission"))
 		return
 	}
 

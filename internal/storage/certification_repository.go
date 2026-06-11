@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 // CertificationRepository handles certification-related database operations
@@ -204,20 +205,12 @@ func (r *CertificationRepository) GetQuestionsByIDs(ctx context.Context, ids []u
 		return nil, nil
 	}
 
-	// Build placeholders $1, $2, ...
-	args := make([]interface{}, len(ids))
-	placeholders := make([]string, len(ids))
-	for i, id := range ids {
-		args[i] = id
-		placeholders[i] = fmt.Sprintf("$%d", i+1)
-	}
-
-	query := fmt.Sprintf(`
+	query := `
 		SELECT id, category, difficulty, question_text, question_format, options, points
 		FROM cert_questions
-		WHERE id IN (%s) AND is_active = true`, joinStrings(placeholders, ","))
+		WHERE id = ANY($1) AND is_active = true`
 
-	rows, err := r.db.QueryContext(ctx, query, args...)
+	rows, err := r.db.QueryContext(ctx, query, pq.Array(ids))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get questions by IDs: %w", err)
 	}
@@ -245,19 +238,12 @@ func (r *CertificationRepository) GetCorrectAnswers(ctx context.Context, ids []u
 		return nil, nil
 	}
 
-	args := make([]interface{}, len(ids))
-	placeholders := make([]string, len(ids))
-	for i, id := range ids {
-		args[i] = id
-		placeholders[i] = fmt.Sprintf("$%d", i+1)
-	}
-
-	query := fmt.Sprintf(`
+	query := `
 		SELECT id, correct_answers, points
 		FROM cert_questions
-		WHERE id IN (%s) AND is_active = true`, joinStrings(placeholders, ","))
+		WHERE id = ANY($1) AND is_active = true`
 
-	rows, err := r.db.QueryContext(ctx, query, args...)
+	rows, err := r.db.QueryContext(ctx, query, pq.Array(ids))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get correct answers: %w", err)
 	}

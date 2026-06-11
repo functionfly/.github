@@ -197,9 +197,9 @@ func (h *Handler) recordPaidFunctionRevenue(fn *storage.RegistryFunction, exec *
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"function":          fmt.Sprintf("%s/%s", fn.Author, fn.Name),
-		"price_usd":         fn.PricePerCall,
-		"platform_fee_usd":  float64(platformFeeCents) / 100.0,
+		"function":         fmt.Sprintf("%s/%s", fn.Author, fn.Name),
+		"price_usd":        fn.PricePerCall,
+		"platform_fee_usd": float64(platformFeeCents) / 100.0,
 		"net_earnings_usd": float64(netAmountCents) / 100.0,
 		"execution_id":     exec.ID,
 		"earning_id":       earning.ID,

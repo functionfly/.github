@@ -226,9 +226,18 @@ func getMFAEncryptionKey() []byte {
 	return nil
 }
 
+func isMFAEncryptionAvailable() bool {
+	key := getMFAEncryptionKey()
+	return len(key) == 32
+}
+
+func isProduction() bool {
+	return os.Getenv("PRODUCTION") == "true" || os.Getenv("ENVIRONMENT") == "production"
+}
+
 // encryptSecret encrypts a TOTP secret for storage using AES-256-GCM when a key is configured.
-// SECURITY: If no encryption key is set, a warning is logged but plain storage is used for backwards compatibility.
-// In production, MFA_ENCRYPTION_KEY must be set.
+// SECURITY: If no encryption key is set, plain storage is NOT allowed - returns error in production.
+// Only in development mode is plaintext storage permitted (with warning).
 func encryptSecret(secret string) (string, error) {
 	key := getMFAEncryptionKey()
 	if len(key) == 32 {
@@ -247,9 +256,10 @@ func encryptSecret(secret string) (string, error) {
 		ciphertext := gcm.Seal(nonce, nonce, []byte(secret), nil)
 		return secretPrefixEnc + base64.StdEncoding.EncodeToString(ciphertext), nil
 	}
-	// SECURITY WARNING: No encryption key configured - storing secret in plain text
-	// This should only happen in development. Production MUST set MFA_ENCRYPTION_KEY
-	fmt.Printf("WARNING: MFA_ENCRYPTION_KEY not set - TOTP secret stored without encryption. Set MFA_ENCRYPTION_KEY in production.\n")
+	if isProduction() {
+		return "", fmt.Errorf("MFA_ENCRYPTION_KEY not configured - TOTP secrets cannot be stored in production without encryption")
+	}
+	fmt.Printf("WARNING: MFA_ENCRYPTION_KEY not set - TOTP secret stored without encryption (DEV ONLY). Set MFA_ENCRYPTION_KEY in production.\n")
 	return secretPrefixPlain + base64.StdEncoding.EncodeToString([]byte(secret)), nil
 }
 

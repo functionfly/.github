@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/functionregistry"
 	storageregistry "github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
@@ -36,17 +37,17 @@ func (h *Handler) HandleGetFunction(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		errStr := err.Error()
 		if strings.Contains(errStr, "record not found") || strings.Contains(errStr, "sql: no rows in result set") {
-			http.Error(w, "Function not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to get function")
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Internal error"))
 		return
 	}
 
 	fnVersion, err := h.repo.GetLatestFunctionVersion(fn.ID)
 	if err != nil {
-		http.Error(w, "No versions available", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("No versions available"))
 		return
 	}
 
@@ -136,7 +137,7 @@ func (h *Handler) HandleGetFunctionByID(w http.ResponseWriter, r *http.Request) 
 	idStr := vars["functionId"]
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
@@ -144,17 +145,17 @@ func (h *Handler) HandleGetFunctionByID(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		errStr := err.Error()
 		if strings.Contains(errStr, "record not found") || strings.Contains(errStr, "sql: no rows in result set") {
-			http.Error(w, "Function not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to get function by ID")
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Internal error"))
 		return
 	}
 
 	fnVersion, err := h.repo.GetLatestFunctionVersion(fn.ID)
 	if err != nil {
-		http.Error(w, "No versions available", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("No versions available"))
 		return
 	}
 
@@ -216,14 +217,14 @@ func (h *Handler) HandleListFunctions(w http.ResponseWriter, r *http.Request) {
 	functions, total, err := h.repo.ListFunctions(author, category, nil, visibility, limit, offset)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list functions")
-		http.Error(w, "Failed to list functions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list functions"))
 		return
 	}
 
 	funcInfos, err := h.buildRegistryFunctionInfos(functions)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to enrich function list")
-		http.Error(w, "Failed to list functions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list functions"))
 		return
 	}
 
@@ -241,7 +242,7 @@ func (h *Handler) HandleListFunctions(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleListMyFunctions(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -257,14 +258,14 @@ func (h *Handler) HandleListMyFunctions(w http.ResponseWriter, r *http.Request) 
 	functions, total, err := h.repo.ListFunctionsByOwner(user.UserID, limit, offset)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list user's registry functions")
-		http.Error(w, "Failed to list functions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list functions"))
 		return
 	}
 
 	funcInfos, err := h.buildRegistryFunctionInfos(functions)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to enrich user's function list")
-		http.Error(w, "Failed to list functions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list functions"))
 		return
 	}
 
@@ -298,14 +299,14 @@ func (h *Handler) HandleSearchFunctions(w http.ResponseWriter, r *http.Request) 
 	functions, total, err := h.repo.SearchFunctionsWithSort(query, category, runtime, minRating, limit, offset, sortBy)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to search functions")
-		http.Error(w, "Failed to search functions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to search functions"))
 		return
 	}
 
 	funcInfos, err := h.buildRegistryFunctionInfos(functions)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to enrich search results")
-		http.Error(w, "Failed to search functions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to search functions"))
 		return
 	}
 
@@ -327,14 +328,14 @@ func (h *Handler) HandleListVersions(w http.ResponseWriter, r *http.Request) {
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	versions, err := h.repo.ListFunctionVersions(fn.ID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list versions")
-		http.Error(w, "Failed to list versions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list versions"))
 		return
 	}
 
@@ -353,7 +354,7 @@ func (h *Handler) HandleGetFunctionSource(w http.ResponseWriter, r *http.Request
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
@@ -364,7 +365,7 @@ func (h *Handler) HandleGetFunctionSource(w http.ResponseWriter, r *http.Request
 		fnVersion, err = h.repo.GetFunctionVersion(fn.ID, version)
 	}
 	if err != nil {
-		http.Error(w, "Version not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Version not found"))
 		return
 	}
 
@@ -387,14 +388,14 @@ func (h *Handler) HandleListVersionsAt(w http.ResponseWriter, r *http.Request) {
 
 	fn, err := h.repo.GetFunctionByAuthorName(username, functionName)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	versions, err := h.repo.ListFunctionVersions(fn.ID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list versions")
-		http.Error(w, "Failed to list versions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list versions"))
 		return
 	}
 
@@ -409,23 +410,23 @@ func (h *Handler) HandleDeleteFunction(w http.ResponseWriter, r *http.Request) {
 
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		if strings.Contains(err.Error(), "record not found") || strings.Contains(err.Error(), "failed to find function") {
-			http.Error(w, "Function not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to get function")
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Internal error"))
 		return
 	}
 
 	if fn.OwnerUserID == nil || *fn.OwnerUserID != user.UserID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
@@ -442,7 +443,7 @@ func (h *Handler) HandleDeleteFunction(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(response)
 			return
 		}
-		http.Error(w, "Failed to delete function", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete function"))
 		return
 	}
 
@@ -460,7 +461,7 @@ func (h *Handler) HandleDeleteAllFunctions(w http.ResponseWriter, r *http.Reques
 	err := h.repo.DeleteAllFunctions()
 	if err != nil {
 		logrus.WithError(err).Error("Failed to delete all functions")
-		http.Error(w, "Failed to delete all functions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete all functions"))
 		return
 	}
 
@@ -517,7 +518,7 @@ func (h *Handler) HandleGetSimilarFunctions(w http.ResponseWriter, r *http.Reque
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/gorilla/mux"
 )
 
@@ -124,7 +125,7 @@ func (h *DeprecationHandler) HandleGetEndpointDeprecation(w http.ResponseWriter,
 	// Find deprecation info for this endpoint
 	dep := h.findDeprecation(endpoint, method)
 	if dep == nil {
-		http.Error(w, "No deprecation information found for this endpoint", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("No deprecation information found for this endpoint"))
 		return
 	}
 

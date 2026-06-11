@@ -46,6 +46,7 @@ type Repository interface {
 	UpdateUserMFABackupCodes(userID uuid.UUID, backupCodes []string) error
 	UpdateUserMFALastUsed(userID uuid.UUID, lastUsed *time.Time) error
 	VerifyPassword(userID uuid.UUID, password string) (bool, error)
+	IncrementUserTokenVersion(userID uuid.UUID) error
 
 	// OAuth state (CSRF) — persisted for multi-instance OAuth flows
 	// redirectURI is optional; when set, callback redirects there with token (e.g. CLI local server).
@@ -407,41 +408,41 @@ type Repository interface {
 	GetVulnerabilityByID(vulnID uuid.UUID) (*Vulnerability, error)
 
 	// Session operations
-	CreateSession(userID uuid.UUID, sessionToken string, ipAddress, userAgent string, expiresAt time.Time) (*Session, error)
-	GetSessionByToken(sessionToken string) (*Session, error)
-	GetSessionByID(sessionID uuid.UUID) (*Session, error)
-	UpdateSessionMFAStatus(sessionToken string, mfaVerified bool) error
-	UpdateSessionActivity(sessionToken string) error
-	DeleteSession(sessionToken string) error
-	DeleteSessionByID(sessionID, userID uuid.UUID) error
-	DeleteSessionByIDOnly(sessionID uuid.UUID, userID uuid.UUID) error
-	DeleteExpiredSessions() (int64, error)
-	DeleteUserSessions(userID uuid.UUID) error
-	ListUserSessions(userID uuid.UUID) ([]*Session, error)
-	CountActiveUserSessions(userID uuid.UUID) (int, error)
-	ListTenantSessions(tenantID uuid.UUID, limit, offset int) ([]*Session, error)
+	CreateSession(ctx context.Context, userID uuid.UUID, sessionToken string, ipAddress, userAgent string, expiresAt time.Time) (*Session, error)
+	GetSessionByToken(ctx context.Context, sessionToken string) (*Session, error)
+	GetSessionByID(ctx context.Context, sessionID uuid.UUID) (*Session, error)
+	UpdateSessionMFAStatus(ctx context.Context, sessionToken string, mfaVerified bool) error
+	UpdateSessionActivity(ctx context.Context, sessionToken string) error
+	DeleteSession(ctx context.Context, sessionToken string) error
+	DeleteSessionByID(ctx context.Context, sessionID, userID uuid.UUID) error
+	DeleteSessionByIDOnly(ctx context.Context, sessionID uuid.UUID, userID uuid.UUID) error
+	DeleteExpiredSessions(ctx context.Context) (int64, error)
+	DeleteUserSessions(ctx context.Context, userID uuid.UUID) error
+	ListUserSessions(ctx context.Context, userID uuid.UUID) ([]*Session, error)
+	CountActiveUserSessions(ctx context.Context, userID uuid.UUID) (int, error)
+	ListTenantSessions(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*Session, error)
 
 	// Refresh token operations
-	CreateRefreshToken(userID uuid.UUID, tokenHash string, ipAddress, userAgent string, expiresAt time.Time) (*RefreshToken, error)
-	GetRefreshTokenByHash(tokenHash string) (*RefreshToken, error)
-	RevokeRefreshToken(tokenID uuid.UUID) error
-	RevokeUserRefreshTokens(userID uuid.UUID) error
-	DeleteExpiredRefreshTokens() (int64, error)
-	ListUserRefreshTokens(userID uuid.UUID) ([]*RefreshToken, error)
+	CreateRefreshToken(ctx context.Context, userID uuid.UUID, tokenHash string, ipAddress, userAgent string, expiresAt time.Time) (*RefreshToken, error)
+	GetRefreshTokenByHash(ctx context.Context, tokenHash string) (*RefreshToken, error)
+	RevokeRefreshToken(ctx context.Context, tokenID uuid.UUID) error
+	RevokeUserRefreshTokens(ctx context.Context, userID uuid.UUID) error
+	DeleteExpiredRefreshTokens(ctx context.Context) (int64, error)
+	ListUserRefreshTokens(ctx context.Context, userID uuid.UUID) ([]*RefreshToken, error)
 
 	// Login attempt operations (for account lockout protection)
-	CreateLoginAttempt(userID uuid.UUID, ipAddress, userAgent string, successful bool, lockoutUntil *time.Time) (*LoginAttempt, error)
-	GetRecentFailedLoginAttempts(userID uuid.UUID, since time.Time) (int, error)
-	GetUserLockoutStatus(userID uuid.UUID) (*time.Time, error)
-	ClearUserLockout(userID uuid.UUID) error
-	DeleteOldLoginAttempts(before time.Time) (int64, error)
+	CreateLoginAttempt(ctx context.Context, userID uuid.UUID, ipAddress, userAgent string, successful bool, lockoutUntil *time.Time) (*LoginAttempt, error)
+	GetRecentFailedLoginAttempts(ctx context.Context, userID uuid.UUID, since time.Time) (int, error)
+	GetUserLockoutStatus(ctx context.Context, userID uuid.UUID) (*time.Time, error)
+	ClearUserLockout(ctx context.Context, userID uuid.UUID) error
+	DeleteOldLoginAttempts(ctx context.Context, before time.Time) (int64, error)
 
 	// Auth event operations (for security auditing)
-	LogAuthEvent(event *AuthEvent) error
-	GetAuthEventsForUser(userID uuid.UUID, limit, offset int) ([]*AuthEvent, error)
-	GetAuthEventsByType(eventType string, limit, offset int) ([]*AuthEvent, error)
-	GetRecentAuthEvents(since time.Time, limit int) ([]*AuthEvent, error)
-	DeleteOldAuthEvents(before time.Time) (int64, error)
+	LogAuthEvent(ctx context.Context, event *AuthEvent) error
+	GetAuthEventsForUser(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*AuthEvent, error)
+	GetAuthEventsByType(ctx context.Context, eventType string, limit, offset int) ([]*AuthEvent, error)
+	GetRecentAuthEvents(ctx context.Context, since time.Time, limit int) ([]*AuthEvent, error)
+	DeleteOldAuthEvents(ctx context.Context, before time.Time) (int64, error)
 
 	// Magic link operations (passwordless authentication)
 	CreateMagicLink(ctx context.Context, email string, token string, userID *uuid.UUID, ipAddress, userAgent, redirectPath string, expiresAt time.Time) (*MagicLink, error)

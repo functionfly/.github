@@ -355,9 +355,9 @@ func (m *DunningManager) updateBundleSubscriptionStatus(ctx context.Context, ten
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"tenant_id":    tenantID,
-		"sub_id":       sub.ID,
-		"new_status":   status,
+		"tenant_id":  tenantID,
+		"sub_id":     sub.ID,
+		"new_status": status,
 	}).Info("Bundle subscription status updated")
 
 	return nil

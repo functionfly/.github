@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/support"
 	"github.com/google/uuid"
@@ -44,29 +45,34 @@ func (h *Handler) isStaff(claims *auth.Claims) bool {
 
 // CreateConversationRequest is the request body for creating a support conversation
 type CreateConversationRequest struct {
-	Type             string            `json:"type"`
-	Priority         string            `json:"priority"`
-	Title            string            `json:"title"`
-	FunctionAuthor   string            `json:"function_author,omitempty"`
-	FunctionName     string            `json:"function_name,omitempty"`
-	FunctionVersion  string            `json:"function_version,omitempty"`
-	DeploymentID     string            `json:"deployment_id,omitempty"`
-	DeploymentLogs   string            `json:"deployment_logs,omitempty"`
-	DeploymentError  string            `json:"deployment_error,omitempty"`
-	IsEmergency      bool              `json:"is_emergency"`
+	Type            string `json:"type"`
+	Priority        string `json:"priority"`
+	Title           string `json:"title"`
+	FunctionAuthor  string `json:"function_author,omitempty"`
+	FunctionName    string `json:"function_name,omitempty"`
+	FunctionVersion string `json:"function_version,omitempty"`
+	DeploymentID    string `json:"deployment_id,omitempty"`
+	DeploymentLogs  string `json:"deployment_logs,omitempty"`
+	DeploymentError string `json:"deployment_error,omitempty"`
+	IsEmergency     bool   `json:"is_emergency"`
 }
 
 // CreateConversation handles POST /v1/support/conversations
 func (h *Handler) CreateConversation(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	var req CreateConversationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
+		return
+	}
+
+	if req.Title == "" {
+		apierror.WriteError(w, apierror.ValidationFieldError("title", "Title is required"))
 		return
 	}
 
@@ -108,13 +114,15 @@ func (h *Handler) CreateConversation(w http.ResponseWriter, r *http.Request) {
 	conversation, err := h.service.CreateConversation(r.Context(), user.UserID, createReq)
 	if err != nil {
 		h.logger.WithError(err).Error("Create conversation failed")
-		msg := "Failed to create conversation"
-		if os.Getenv("DEVELOPMENT") == "true" {
-			msg = fmt.Sprintf("Failed to create conversation: %v", err)
+		requestID := middleware.GetRequestIDFromRequest(r)
+		errResp := apierror.NewInternal("Failed to create conversation")
+		if requestID != "" {
+			errResp = errResp.WithRequestID(requestID)
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": msg})
+		if os.Getenv("DEVELOPMENT") == "true" {
+			errResp = errResp.WithDetail(err.Error())
+		}
+		apierror.WriteError(w, errResp)
 		return
 	}
 
@@ -127,17 +135,28 @@ func (h *Handler) CreateConversation(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListConversations(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	limit := 20
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if parsed, err := strconv.Atoi(limitStr); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+
+	offset := 0
+	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+		if parsed, err := strconv.Atoi(offsetStr); err == nil && parsed >= 0 {
+			offset = parsed
+		}
+	}
 
 	list, err := h.service.ListConversations(r.Context(), user.UserID, limit, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("List conversations failed")
-		http.Error(w, `{"error":"Failed to list conversations"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list conversations"))
 		return
 	}
 
@@ -149,23 +168,34 @@ func (h *Handler) ListConversations(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListActiveConversations(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	// SECURITY: Require staff role
 	if !h.isStaff(user) {
-		http.Error(w, `{"error":"Staff access required"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Staff access required"))
 		return
 	}
 
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	limit := 20
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if parsed, err := strconv.Atoi(limitStr); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+
+	offset := 0
+	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+		if parsed, err := strconv.Atoi(offsetStr); err == nil && parsed >= 0 {
+			offset = parsed
+		}
+	}
 
 	list, err := h.service.ListActiveConversations(r.Context(), limit, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("List active conversations failed")
-		http.Error(w, `{"error":"Failed to list active conversations"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list active conversations"))
 		return
 	}
 
@@ -177,31 +207,31 @@ func (h *Handler) ListActiveConversations(w http.ResponseWriter, r *http.Request
 func (h *Handler) GetConversation(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	id, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 
 	conversation, err := h.service.GetConversation(r.Context(), id)
 	if err != nil {
 		h.logger.WithError(err).Error("Get conversation failed")
-		http.Error(w, `{"error":"Failed to get conversation"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get conversation"))
 		return
 	}
 	if conversation == nil {
-		http.Error(w, `{"error":"Conversation not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Conversation not found"))
 		return
 	}
 
 	// Verify user has access
 	if conversation.UserID != user.UserID && !h.isStaff(user) {
-		http.Error(w, `{"error":"Access denied"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
 
@@ -213,14 +243,14 @@ func (h *Handler) GetConversation(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetMessages(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	id, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 
@@ -230,7 +260,7 @@ func (h *Handler) GetMessages(w http.ResponseWriter, r *http.Request) {
 	messages, err := h.service.GetMessages(r.Context(), id, limit, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("Get messages failed")
-		http.Error(w, `{"error":"Failed to get messages"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get messages"))
 		return
 	}
 
@@ -247,32 +277,32 @@ type SendMessageRequest struct {
 func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	id, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 
 	var req SendMessageRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if req.Content == "" {
-		http.Error(w, `{"error":"Content is required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Content is required"))
 		return
 	}
 
 	message, err := h.service.SendMessage(r.Context(), id, user.UserID, support.AuthorUser, req.Content)
 	if err != nil {
 		h.logger.WithError(err).Error("Send message failed")
-		http.Error(w, `{"error":"Failed to send message"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to send message"))
 		return
 	}
 
@@ -285,20 +315,20 @@ func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) EscalateConversation(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	id, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 
 	if err := h.service.EscalateToHuman(r.Context(), id); err != nil {
 		h.logger.WithError(err).Error("Escalate conversation failed")
-		http.Error(w, `{"error":"Failed to escalate conversation"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to escalate conversation"))
 		return
 	}
 
@@ -315,14 +345,14 @@ type ResolveConversationRequest struct {
 func (h *Handler) ResolveConversation(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	id, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 
@@ -331,7 +361,7 @@ func (h *Handler) ResolveConversation(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.service.ResolveConversation(r.Context(), id, user.UserID, req.Note); err != nil {
 		h.logger.WithError(err).Error("Resolve conversation failed")
-		http.Error(w, `{"error":"Failed to resolve conversation"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to resolve conversation"))
 		return
 	}
 
@@ -342,33 +372,33 @@ func (h *Handler) ResolveConversation(w http.ResponseWriter, r *http.Request) {
 // EmergencyFixRequest is the request body for emergency fix
 type EmergencyFixRequest struct {
 	FunctionID string `json:"function_id"`
-	Reason    string `json:"reason"`
+	Reason     string `json:"reason"`
 }
 
 // CreateEmergencyFix handles POST /v1/support/conversations/{id}/emergency
 func (h *Handler) CreateEmergencyFix(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	conversationID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 
 	var req EmergencyFixRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	functionID, err := uuid.Parse(req.FunctionID)
 	if err != nil {
-		http.Error(w, `{"error":"Invalid function ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
@@ -380,7 +410,7 @@ func (h *Handler) CreateEmergencyFix(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		h.logger.WithError(err).Error("Create emergency fix request failed")
-		http.Error(w, `{"error":"Failed to create emergency request"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create emergency request"))
 		return
 	}
 
@@ -393,20 +423,20 @@ func (h *Handler) CreateEmergencyFix(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListEmergencies(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	// SECURITY: Require staff role
 	if !h.isStaff(user) {
-		http.Error(w, `{"error":"Staff access required"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Staff access required"))
 		return
 	}
 
 	emergencies, err := h.service.ListPendingEmergencies(r.Context())
 	if err != nil {
 		h.logger.WithError(err).Error("List emergencies failed")
-		http.Error(w, `{"error":"Failed to list emergencies"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list emergencies"))
 		return
 	}
 
@@ -418,20 +448,20 @@ func (h *Handler) ListEmergencies(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) AcceptEmergency(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	emergencyID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid emergency ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid emergency ID"))
 		return
 	}
 
 	if err := h.service.AcceptEmergency(r.Context(), emergencyID, user.UserID); err != nil {
 		h.logger.WithError(err).Error("Accept emergency failed")
-		http.Error(w, `{"error":"Failed to accept emergency"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to accept emergency"))
 		return
 	}
 
@@ -448,19 +478,19 @@ type StaffStatusRequest struct {
 func (h *Handler) SetStaffStatus(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	var req StaffStatusRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if err := h.service.SetStaffOnline(r.Context(), user.UserID, req.Online); err != nil {
 		h.logger.WithError(err).Error("Set staff status failed")
-		http.Error(w, `{"error":"Failed to set staff status"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to set staff status"))
 		return
 	}
 
@@ -472,14 +502,14 @@ func (h *Handler) SetStaffStatus(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetStaffStatus(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	status, err := h.service.GetStaffAvailability(r.Context(), user.UserID)
 	if err != nil {
 		h.logger.WithError(err).Error("Get staff status failed")
-		http.Error(w, `{"error":"Failed to get staff status"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get staff status"))
 		return
 	}
 
@@ -495,7 +525,7 @@ func (h *Handler) GetStaffStatus(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListOnlineStaff(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
@@ -504,7 +534,7 @@ func (h *Handler) ListOnlineStaff(w http.ResponseWriter, r *http.Request) {
 	staff, err := h.service.ListOnlineStaff(r.Context())
 	if err != nil {
 		h.logger.WithError(err).Error("List online staff failed")
-		http.Error(w, `{"error":"Failed to list online staff"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list online staff"))
 		return
 	}
 

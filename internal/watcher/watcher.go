@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/sirupsen/logrus"
 )
 
 // FileWatcher manages file system watching for hot reload functionality
@@ -53,6 +54,14 @@ func (fw *FileWatcher) WatchFiles(files []string) error {
 // Start begins watching for file changes
 func (fw *FileWatcher) Start() {
 	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				logrus.WithFields(logrus.Fields{
+					"panic": rec,
+					"stack": fmt.Sprintf("%v", rec),
+				}).Error("File watcher goroutine panicked")
+			}
+		}()
 		for {
 			select {
 			case event, ok := <-fw.watcher.Events:
@@ -69,7 +78,7 @@ func (fw *FileWatcher) Start() {
 				if !ok {
 					return
 				}
-				fmt.Printf("File watcher error: %v\n", err)
+				logrus.WithError(err).Warn("File watcher error")
 			}
 		}
 	}()

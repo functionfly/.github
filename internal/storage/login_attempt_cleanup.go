@@ -62,6 +62,14 @@ func (s *LoginAttemptCleanupService) StartCleanupRoutine(interval time.Duration,
 	}).Info("Starting login attempt cleanup routine")
 
 	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				s.logger.WithFields(logrus.Fields{
+					"panic": rec,
+					"stack": fmt.Sprintf("%v", rec),
+				}).Error("Login attempt cleanup goroutine panicked")
+			}
+		}()
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 

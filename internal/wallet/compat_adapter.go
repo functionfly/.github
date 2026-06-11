@@ -13,8 +13,8 @@ import (
 // while using the new unified wallet system internally.
 // This allows gradual migration without breaking existing code.
 type CompatAdapter struct {
-	service       *Service
-	legacyUserRepo storageregistry.PlatformFeeRepository
+	service         *Service
+	legacyUserRepo  storageregistry.PlatformFeeRepository
 	legacyAgentRepo *billing.Controller
 }
 

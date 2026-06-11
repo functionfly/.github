@@ -12,6 +12,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/functionregistry"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
@@ -37,13 +38,13 @@ func (h *PlaygroundHandler) HandlePlaygroundUI(w http.ResponseWriter, r *http.Re
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	fnVersion, err := h.repo.GetLatestFunctionVersion(fn.ID)
 	if err != nil {
-		http.Error(w, "Function version not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function version not found"))
 		return
 	}
 
@@ -63,13 +64,13 @@ func (h *PlaygroundHandler) HandlePlaygroundExecute(w http.ResponseWriter, r *ht
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	fnVersion, err := h.repo.GetLatestFunctionVersion(fn.ID)
 	if err != nil {
-		http.Error(w, "Function version not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function version not found"))
 		return
 	}
 
@@ -78,7 +79,7 @@ func (h *PlaygroundHandler) HandlePlaygroundExecute(w http.ResponseWriter, r *ht
 		Input json.RawMessage `json:"input"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&execReq); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -97,7 +98,7 @@ func (h *PlaygroundHandler) HandlePlaygroundExecute(w http.ResponseWriter, r *ht
 	// Marshal request for internal execution
 	reqBytes, err := json.Marshal(execRequest)
 	if err != nil {
-		http.Error(w, "Failed to marshal request", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to marshal request"))
 		return
 	}
 
@@ -115,7 +116,7 @@ func (h *PlaygroundHandler) HandlePlaygroundExecute(w http.ResponseWriter, r *ht
 
 	proxyReq, err := http.NewRequestWithContext(r.Context(), "POST", targetURL, bytes.NewReader(reqBytes))
 	if err != nil {
-		http.Error(w, "Failed to create request", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create request"))
 		return
 	}
 
@@ -203,13 +204,13 @@ func (h *PlaygroundHandler) HandlePlaygroundExecuteStream(w http.ResponseWriter,
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	fnVersion, err := h.repo.GetLatestFunctionVersion(fn.ID)
 	if err != nil {
-		http.Error(w, "Function version not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function version not found"))
 		return
 	}
 
@@ -217,7 +218,7 @@ func (h *PlaygroundHandler) HandlePlaygroundExecuteStream(w http.ResponseWriter,
 		Input json.RawMessage `json:"input"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&execReq); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -228,7 +229,7 @@ func (h *PlaygroundHandler) HandlePlaygroundExecuteStream(w http.ResponseWriter,
 	w.Header().Set("X-Accel-Buffering", "no")
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		http.Error(w, "Streaming not supported", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Streaming not supported"))
 		return
 	}
 
@@ -341,7 +342,7 @@ func (h *PlaygroundHandler) HandlePlaygroundShare(w http.ResponseWriter, r *http
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -775,13 +776,13 @@ func (h *PlaygroundHandler) HandleFunctionPage(w http.ResponseWriter, r *http.Re
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	fnVersion, err := h.repo.GetLatestFunctionVersion(fn.ID)
 	if err != nil {
-		http.Error(w, "Function version not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function version not found"))
 		return
 	}
 
@@ -808,13 +809,13 @@ func (h *PlaygroundHandler) HandleFunctionPageAt(w http.ResponseWriter, r *http.
 
 	fn, err := h.repo.GetFunctionByAuthorName(username, functionName)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	fnVersion, err := h.repo.GetLatestFunctionVersion(fn.ID)
 	if err != nil {
-		http.Error(w, "Function version not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function version not found"))
 		return
 	}
 
@@ -842,14 +843,14 @@ func (h *PlaygroundHandler) HandleFunctionPageAtVersion(w http.ResponseWriter, r
 
 	fn, err := h.repo.GetFunctionByAuthorName(username, functionName)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	// Get specific version
 	fnVersion, err := h.repo.GetFunctionVersion(fn.ID, version)
 	if err != nil {
-		http.Error(w, "Function version not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function version not found"))
 		return
 	}
 
@@ -876,13 +877,13 @@ func (h *PlaygroundHandler) HandleExecuteAt(w http.ResponseWriter, r *http.Reque
 
 	fn, err := h.repo.GetFunctionByAuthorName(username, functionName)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	fnVersion, err := h.repo.GetLatestFunctionVersion(fn.ID)
 	if err != nil {
-		http.Error(w, "Function version not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function version not found"))
 		return
 	}
 
@@ -891,7 +892,7 @@ func (h *PlaygroundHandler) HandleExecuteAt(w http.ResponseWriter, r *http.Reque
 		Input json.RawMessage `json:"input"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&bodyReq); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -904,7 +905,7 @@ func (h *PlaygroundHandler) HandleExecuteAt(w http.ResponseWriter, r *http.Reque
 	}
 	reqBytes, err := json.Marshal(execRequest)
 	if err != nil {
-		http.Error(w, "Failed to marshal request", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to marshal request"))
 		return
 	}
 	serverPort := os.Getenv("PORT")
@@ -914,7 +915,7 @@ func (h *PlaygroundHandler) HandleExecuteAt(w http.ResponseWriter, r *http.Reque
 	targetURL := fmt.Sprintf("http://localhost:%s/v1/fx/%s/%s@%s", serverPort, username, functionName, fnVersion.Version)
 	proxyReq, err := http.NewRequestWithContext(r.Context(), "POST", targetURL, bytes.NewReader(reqBytes))
 	if err != nil {
-		http.Error(w, "Failed to create request", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create request"))
 		return
 	}
 	proxyReq.Header.Set("Content-Type", "application/json")
@@ -922,13 +923,13 @@ func (h *PlaygroundHandler) HandleExecuteAt(w http.ResponseWriter, r *http.Reque
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(proxyReq)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Execution failed: %v", err), http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal(fmt.Sprintf("Execution failed: %v", err)))
 		return
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		http.Error(w, "Failed to read execution response", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to read execution response"))
 		return
 	}
 	for k, v := range resp.Header {
@@ -949,14 +950,14 @@ func (h *PlaygroundHandler) HandleReplay(w http.ResponseWriter, r *http.Request)
 	// Get execution by public ID
 	exec, err := h.repo.GetExecutionPublicByID(executionID)
 	if err != nil {
-		http.Error(w, "Execution not found or not shareable", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Execution not found or not shareable"))
 		return
 	}
 
 	// Get function info
 	fn, err := h.repo.GetFunctionByID(exec.FunctionID)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
@@ -974,13 +975,13 @@ func (h *PlaygroundHandler) HandleCodeExamples(w http.ResponseWriter, r *http.Re
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	fnVersion, err := h.repo.GetLatestFunctionVersion(fn.ID)
 	if err != nil {
-		http.Error(w, "Function version not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function version not found"))
 		return
 	}
 
@@ -1019,13 +1020,13 @@ func (h *PlaygroundHandler) HandleAIToolSchema(w http.ResponseWriter, r *http.Re
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	fnVersion, err := h.repo.GetLatestFunctionVersion(fn.ID)
 	if err != nil {
-		http.Error(w, "Function version not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function version not found"))
 		return
 	}
 

@@ -227,19 +227,19 @@ func (r *Repository) Credit(ctx context.Context, req CreditRequest) (*BalanceUpd
 		metadata, _ := json.Marshal(req.Metadata)
 
 		txRecord := WalletTransaction{
-			ID:              uuid.New(),
-			WalletID:        req.WalletID,
-			TransactionType: TransactionTypeCredit,
-			AmountUSD:       req.AmountUSD,
+			ID:               uuid.New(),
+			WalletID:         req.WalletID,
+			TransactionType:  TransactionTypeCredit,
+			AmountUSD:        req.AmountUSD,
 			BalanceBeforeUSD: update.PreviousBalance,
 			BalanceAfterUSD:  update.CurrentBalance,
-			Status:          TransactionStatusCompleted,
-			Reference:       &req.Reference,
-			TriggeredByType: &triggeredByType,
-			TriggeredByID:   &triggeredByID,
-			Metadata:        metadata,
-			IdempotencyKey:  &req.IdempotencyKey,
-			CompletedAt:     ptr(time.Now()),
+			Status:           TransactionStatusCompleted,
+			Reference:        &req.Reference,
+			TriggeredByType:  &triggeredByType,
+			TriggeredByID:    &triggeredByID,
+			Metadata:         metadata,
+			IdempotencyKey:   &req.IdempotencyKey,
+			CompletedAt:      ptr(time.Now()),
 		}
 
 		if err := tx.Create(&txRecord).Error; err != nil {
@@ -460,14 +460,14 @@ func (r *Repository) GetWalletSummary(ctx context.Context, walletID uuid.UUID) (
 
 	// Calculate aggregates
 	type aggregates struct {
-		TotalCredits       float64 `gorm:"column:total_credits"`
-		TotalDebits        float64 `gorm:"column:total_debits"`
-		TotalFees          float64 `gorm:"column:total_fees"`
-		TotalExecution     float64 `gorm:"column:total_execution"`
-		TotalCommissions   float64 `gorm:"column:total_commissions"`
-		TotalTxCount       int64   `gorm:"column:total_tx_count"`
-		PendingTxCount     int64   `gorm:"column:pending_tx_count"`
-		LastTransactionAt  *time.Time
+		TotalCredits      float64 `gorm:"column:total_credits"`
+		TotalDebits       float64 `gorm:"column:total_debits"`
+		TotalFees         float64 `gorm:"column:total_fees"`
+		TotalExecution    float64 `gorm:"column:total_execution"`
+		TotalCommissions  float64 `gorm:"column:total_commissions"`
+		TotalTxCount      int64   `gorm:"column:total_tx_count"`
+		PendingTxCount    int64   `gorm:"column:pending_tx_count"`
+		LastTransactionAt *time.Time
 	}
 
 	var agg aggregates

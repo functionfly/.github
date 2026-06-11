@@ -7,15 +7,17 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const defaultJWTSecret = "functionfly-jwt-secret-key-2026"
-
 var jwtSecretFromEnv = os.Getenv("JWT_SECRET")
 
-func getDefaultJWTSecret() string {
+func getJWTSecret() string {
 	if jwtSecretFromEnv != "" {
 		return jwtSecretFromEnv
 	}
-	return defaultJWTSecret
+	return ""
+}
+
+func getDefaultJWTSecret() string {
+	return getJWTSecret()
 }
 
 // InProduction returns true if running in production mode
@@ -84,18 +86,23 @@ func ProductionSecurityValidation() error {
 		errors = append(errors, "CORS_ALLOWED_ORIGINS must be set to specific origins in production (not wildcard)")
 	}
 
-	// 8. Content Security Policy should be configured
+	// 8. DEVELOPMENT flag should not be set in production
+	if os.Getenv("DEVELOPMENT") == "true" {
+		errors = append(errors, "DEVELOPMENT must not be set to 'true' in production - this may weaken security controls")
+	}
+
+	// 9. Content Security Policy should be configured
 	if os.Getenv("CONTENT_SECURITY_POLICY") == "" {
 		logrus.Info("Using default Content Security Policy - consider customizing for production")
 	}
 
-	// 9. Admin adjustment limits should be reviewed
+	// 10. Admin adjustment limits should be reviewed
 	limits := GetAdminAdjustmentLimits()
 	if limits.SingleOperationMax > 10000 {
 		logrus.Warnf("WALLET_ADMIN_ADJUSTMENT_SINGLE_MAX is high ($%.2f) - consider lowering for production", limits.SingleOperationMax)
 	}
 
-	// 10. Log security configuration
+	// 11. Log security configuration
 	logrus.WithFields(logrus.Fields{
 		"hmac_enabled":                     os.Getenv("API_SHARED_SECRET") != "",
 		"wallet_encryption_enabled":        enc.IsEnabled(),

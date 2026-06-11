@@ -426,32 +426,71 @@ func (h *Handler) HandleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		updates["username"] = clean
 	}
 	if req.CompanyName != nil {
-		updates["company_name"] = strings.TrimSpace(*req.CompanyName)
+		companyName := strings.TrimSpace(*req.CompanyName)
+		if len(companyName) > 200 {
+			writeJSONError(w, http.StatusBadRequest, "Company name must be 200 characters or fewer")
+			return
+		}
+		updates["company_name"] = companyName
 	}
 	if req.Bio != nil {
-		updates["bio"] = strings.TrimSpace(*req.Bio)
+		bio := strings.TrimSpace(*req.Bio)
+		if len(bio) > 500 {
+			writeJSONError(w, http.StatusBadRequest, "Bio must be 500 characters or fewer")
+			return
+		}
+		updates["bio"] = bio
 	}
 	if req.Location != nil {
-		updates["location"] = strings.TrimSpace(*req.Location)
+		location := strings.TrimSpace(*req.Location)
+		if len(location) > 100 {
+			writeJSONError(w, http.StatusBadRequest, "Location must be 100 characters or fewer")
+			return
+		}
+		updates["location"] = location
 	}
 	if req.Website != nil {
 		website := strings.TrimSpace(*req.Website)
+		if len(website) > 500 {
+			writeJSONError(w, http.StatusBadRequest, "Website must be 500 characters or fewer")
+			return
+		}
 		if website != "" && !strings.HasPrefix(website, "http://") && !strings.HasPrefix(website, "https://") {
 			website = "https://" + website
 		}
 		updates["website"] = website
 	}
 	if req.JobTitle != nil {
-		updates["job_title"] = strings.TrimSpace(*req.JobTitle)
+		jobTitle := strings.TrimSpace(*req.JobTitle)
+		if len(jobTitle) > 100 {
+			writeJSONError(w, http.StatusBadRequest, "Job title must be 100 characters or fewer")
+			return
+		}
+		updates["job_title"] = jobTitle
 	}
 	if req.TwitterURL != nil {
-		updates["twitter_url"] = strings.TrimSpace(*req.TwitterURL)
+		twitterURL := strings.TrimSpace(*req.TwitterURL)
+		if len(twitterURL) > 500 {
+			writeJSONError(w, http.StatusBadRequest, "Twitter URL must be 500 characters or fewer")
+			return
+		}
+		updates["twitter_url"] = twitterURL
 	}
 	if req.GithubURL != nil {
-		updates["github_url"] = strings.TrimSpace(*req.GithubURL)
+		githubURL := strings.TrimSpace(*req.GithubURL)
+		if len(githubURL) > 500 {
+			writeJSONError(w, http.StatusBadRequest, "GitHub URL must be 500 characters or fewer")
+			return
+		}
+		updates["github_url"] = githubURL
 	}
 	if req.LinkedInURL != nil {
-		updates["linkedin_url"] = strings.TrimSpace(*req.LinkedInURL)
+		linkedinURL := strings.TrimSpace(*req.LinkedInURL)
+		if len(linkedinURL) > 500 {
+			writeJSONError(w, http.StatusBadRequest, "LinkedIn URL must be 500 characters or fewer")
+			return
+		}
+		updates["linkedin_url"] = linkedinURL
 	}
 	if req.DateOfBirth != nil {
 		dobStr := strings.TrimSpace(*req.DateOfBirth)

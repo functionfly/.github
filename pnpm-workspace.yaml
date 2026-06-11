@@ -1,5 +1,0 @@
-packages:
-  - 'web/*'
-  - '!web/shared'
-  - 'packages/*'
-  - '!packages/shared'

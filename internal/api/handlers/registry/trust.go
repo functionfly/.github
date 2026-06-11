@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -24,14 +25,14 @@ func (h *Handler) HandleGetTrustScore(w http.ResponseWriter, r *http.Request) {
 
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	// Get the function first to verify it exists
 	fn, err := h.repo.GetFunctionByID(functionID)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
@@ -39,7 +40,7 @@ func (h *Handler) HandleGetTrustScore(w http.ResponseWriter, r *http.Request) {
 	history, err := h.repo.GetLatestTrustHistory(functionID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get trust history")
-		http.Error(w, "Failed to get trust score", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get trust score"))
 		return
 	}
 
@@ -49,7 +50,7 @@ func (h *Handler) HandleGetTrustScore(w http.ResponseWriter, r *http.Request) {
 		history, err = h.repo.CalculateTrustScore(functionID, windowStart, time.Now())
 		if err != nil {
 			logrus.WithError(err).Error("Failed to calculate trust score")
-			http.Error(w, "Failed to calculate trust score", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to calculate trust score"))
 			return
 		}
 	}
@@ -102,7 +103,7 @@ func (h *Handler) HandleGetTrustHistory(w http.ResponseWriter, r *http.Request) 
 
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
@@ -121,7 +122,7 @@ func (h *Handler) HandleGetTrustHistory(w http.ResponseWriter, r *http.Request) 
 	history, total, err := h.repo.GetTrustHistory(functionID, pageSize, offset)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get trust history")
-		http.Error(w, "Failed to get trust history", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get trust history"))
 		return
 	}
 
@@ -145,21 +146,21 @@ func (h *Handler) HandleRefreshTrustScore(w http.ResponseWriter, r *http.Request
 
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	// Verify function exists
 	fn, err := h.repo.GetFunctionByID(functionID)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	// Recalculate trust score
 	if err := h.repo.RecalculateTrustScore(functionID); err != nil {
 		logrus.WithError(err).Error("Failed to recalculate trust score")
-		http.Error(w, "Failed to recalculate trust score", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to recalculate trust score"))
 		return
 	}
 
@@ -170,7 +171,7 @@ func (h *Handler) HandleRefreshTrustScore(w http.ResponseWriter, r *http.Request
 	history, err := h.repo.GetLatestTrustHistory(functionID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get updated trust history")
-		http.Error(w, "Trust score recalculated but failed to fetch result", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Trust score recalculated but failed to fetch result"))
 		return
 	}
 
@@ -199,11 +200,11 @@ func (h *Handler) HandleGetFunctionTrustByAuthorName(w http.ResponseWriter, r *h
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
-			http.Error(w, "Function not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to get function")
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Internal error"))
 		return
 	}
 
@@ -211,7 +212,7 @@ func (h *Handler) HandleGetFunctionTrustByAuthorName(w http.ResponseWriter, r *h
 	history, err := h.repo.GetLatestTrustHistory(fn.ID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get trust history")
-		http.Error(w, "Failed to get trust score", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get trust score"))
 		return
 	}
 
@@ -221,7 +222,7 @@ func (h *Handler) HandleGetFunctionTrustByAuthorName(w http.ResponseWriter, r *h
 		history, err = h.repo.CalculateTrustScore(fn.ID, windowStart, time.Now())
 		if err != nil {
 			logrus.WithError(err).Error("Failed to calculate trust score")
-			http.Error(w, "Failed to calculate trust score", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to calculate trust score"))
 			return
 		}
 	}
@@ -271,7 +272,7 @@ func (h *Handler) HandleRefreshAllTrustScores(w http.ResponseWriter, r *http.Req
 	job, err := h.repo.RefreshAllTrustScores()
 	if err != nil {
 		logrus.WithError(err).Error("Failed to refresh all trust scores")
-		http.Error(w, "Failed to refresh trust scores", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to refresh trust scores"))
 		return
 	}
 
@@ -302,7 +303,7 @@ func (h *Handler) HandleCalculateSlidingWindow(w http.ResponseWriter, r *http.Re
 	deltas, err := h.repo.UpdateSlidingWindowScores(config)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to update sliding window scores")
-		http.Error(w, "Failed to update sliding window scores", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update sliding window scores"))
 		return
 	}
 
@@ -336,7 +337,7 @@ func (h *Handler) HandleGetSlidingWindowState(w http.ResponseWriter, r *http.Req
 
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
@@ -344,12 +345,12 @@ func (h *Handler) HandleGetSlidingWindowState(w http.ResponseWriter, r *http.Req
 	history, err := h.repo.GetLatestTrustHistory(functionID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get sliding window state")
-		http.Error(w, "Failed to get state", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get state"))
 		return
 	}
 
 	if history == nil {
-		http.Error(w, "No trust history found for function", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("No trust history found for function"))
 		return
 	}
 

@@ -3,9 +3,9 @@ package wallet
 import (
 	"context"
 	"fmt"
-	"testing"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
+	"testing"
 )
 
 func TestWalletPaymentFlow(t *testing.T) {

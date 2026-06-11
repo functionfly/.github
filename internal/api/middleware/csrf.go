@@ -203,10 +203,9 @@ func (m *CSRFMiddleware) HandleGetCSRFToken(w http.ResponseWriter, r *http.Reque
 // Security events is fire-and-forget telemetry — not a mutating action on data.
 // Signup invite revoke is HMAC-protected and intended for programmatic/API access.
 var csrfExemptPaths = map[string]bool{
-	"/v1/admin/auth/session":             true,
-	"/v1/admin/auth/last-login":          true,
-	"/v1/admin/auth/logout-all-sessions": true,
-	"/v1/admin/security/events":          true, // client telemetry, fire-and-forget
+	"/v1/admin/auth/session":    true,
+	"/v1/admin/auth/last-login":   true,
+	"/v1/admin/security/events":   true, // client telemetry, fire-and-forget
 }
 
 // isCSRFExempt checks if a path is exempt from CSRF validation

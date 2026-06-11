@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // serveSDKLocally serves SDK files from local storage
@@ -32,7 +34,7 @@ func (h *Handler) serveSDKLocally(w http.ResponseWriter, r *http.Request, sdkTyp
 	case "go":
 		content = h.generateGoSDKFile(version)
 	default:
-		http.Error(w, "Unsupported SDK type", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Unsupported SDK type"))
 		return
 	}
 
@@ -58,7 +60,7 @@ func (h *Handler) serveDocsLocally(w http.ResponseWriter, r *http.Request, docTy
 	// Generate documentation content
 	content := h.generateDocumentation(docType, version, path)
 	if content == "" {
-		http.Error(w, "Documentation not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Documentation not found"))
 		return
 	}
 
@@ -92,7 +94,7 @@ func (h *Handler) serveStaticLocally(w http.ResponseWriter, r *http.Request, cat
 	// Generate or serve static content
 	content := h.generateStaticAsset(category, path)
 	if content == "" {
-		http.Error(w, "Asset not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Asset not found"))
 		return
 	}
 

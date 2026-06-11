@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
@@ -19,7 +20,7 @@ import (
 func (h *Handler) HandleGetMCPSettings(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -29,18 +30,18 @@ func (h *Handler) HandleGetMCPSettings(w http.ResponseWriter, r *http.Request) {
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil || fn == nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 	if !userOwnsMCPSettings(user, fn) {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
 	settings, err := h.repo.GetMCPSettings(r.Context(), fn.ID)
 	if err != nil {
 		logrus.WithError(err).Error("failed to get MCP settings")
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Internal error"))
 		return
 	}
 
@@ -63,7 +64,7 @@ func (h *Handler) HandleGetMCPSettings(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleUpdateMCPSettings(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -73,28 +74,28 @@ func (h *Handler) HandleUpdateMCPSettings(w http.ResponseWriter, r *http.Request
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil || fn == nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 	if !userOwnsMCPSettings(user, fn) {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
 	body, err := io.ReadAll(io.LimitReader(r.Body, 16*1024))
 	if err != nil {
-		http.Error(w, "Failed to read body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Failed to read body"))
 		return
 	}
 	defer r.Body.Close()
 
 	var in registry.MCPSettingsInput
 	if err := json.Unmarshal(body, &in); err != nil {
-		http.Error(w, "Invalid JSON: "+err.Error(), http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON: "+err.Error()))
 		return
 	}
 	if err := in.Validate(); err != nil {
-		http.Error(w, "Invalid MCP settings: "+err.Error(), http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid MCP settings: "+err.Error()))
 		return
 	}
 
@@ -102,7 +103,7 @@ func (h *Handler) HandleUpdateMCPSettings(w http.ResponseWriter, r *http.Request
 	settings, err := h.repo.UpsertMCPSettings(r.Context(), fn.ID, in, &actorID)
 	if err != nil {
 		logrus.WithError(err).Error("failed to update MCP settings")
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Internal error"))
 		return
 	}
 
@@ -164,4 +165,3 @@ func userOwnsMCPSettings(user *auth.Claims, fn *registry.RegistryFunction) bool 
 	_ = uuid.Nil
 	return false
 }
-

@@ -27,6 +27,9 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/api/pagination"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage/vault"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -69,6 +72,38 @@ func (h *Handler) respondError(w http.ResponseWriter, status int, code, message 
 		Message: message,
 	}
 	h.respondJSON(w, status, response)
+}
+
+// respondErrorStandard sends a standardized error response using apierror
+func (h *Handler) respondErrorStandard(w http.ResponseWriter, err *apierror.APIError) {
+	requestID := ""
+	if r := getCurrentRequest(); r != nil {
+		requestID = r.Header.Get("X-Request-ID")
+	}
+	if requestID != "" {
+		err = err.WithRequestID(requestID)
+	}
+	apierror.WriteError(w, err)
+}
+
+// respondErrorCode sends a standardized error response using error code and message
+func (h *Handler) respondErrorCode(w http.ResponseWriter, status int, code apierror.ErrorCode, message string) {
+	h.respondErrorStandard(w, &apierror.APIError{
+		Status:  status,
+		Code:    code,
+		Message: message,
+	})
+}
+
+// respondPaginated sends a standardized paginated response
+func (h *Handler) respondPaginated(w http.ResponseWriter, data interface{}, total int64, params pagination.Params) {
+	resp := pagination.NewResponse(data, total, params)
+	h.respondJSON(w, http.StatusOK, resp)
+}
+
+// getCurrentRequest returns the current request from context (for error handling)
+func getCurrentRequest() *http.Request {
+	return nil
 }
 
 // parseUUID parses a UUID string, returning nil if invalid

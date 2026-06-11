@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/functionregistry"
 	"github.com/functionfly/functionfly/internal/storage"
 	storageregistry "github.com/functionfly/functionfly/internal/storage/registry"
@@ -46,7 +47,7 @@ type RemixResponse struct {
 func (h *Handler) HandleRemix(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -56,7 +57,7 @@ func (h *Handler) HandleRemix(w http.ResponseWriter, r *http.Request) {
 
 	var req RemixRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
@@ -75,17 +76,17 @@ func (h *Handler) HandleRemix(w http.ResponseWriter, r *http.Request) {
 	sourceFn, err := h.repo.GetFunctionByAuthorName(req.SourceAuthor, req.SourceName)
 	if err != nil {
 		if isRecordNotFound(err) {
-			http.Error(w, "Source function not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Source function not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to get source function")
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Internal error"))
 		return
 	}
 
 	// Only allow remixing public functions
 	if sourceFn.Visibility != "public" {
-		http.Error(w, "Cannot remix non-public functions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Cannot remix non-public functions"))
 		return
 	}
 
@@ -98,7 +99,7 @@ func (h *Handler) HandleRemix(w http.ResponseWriter, r *http.Request) {
 		userWallet, err := h.walletSvc.GetOrCreateUserWallet(r.Context(), user.UserID)
 		if err != nil {
 			logrus.WithError(err).Error("Failed to get user wallet for remix")
-			http.Error(w, "Failed to check wallet balance", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to check wallet balance"))
 			return
 		}
 		walletID = userWallet.ID
@@ -107,12 +108,12 @@ func (h *Handler) HandleRemix(w http.ResponseWriter, r *http.Request) {
 		wallet, err := h.platformFeeRepo.GetOrCreateWallet(r.Context(), user.UserID)
 		if err != nil {
 			logrus.WithError(err).Error("Failed to get user wallet for remix")
-			http.Error(w, "Failed to check wallet balance", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to check wallet balance"))
 			return
 		}
 		walletBalance = wallet.BalanceUSD
 	} else {
-		http.Error(w, "Billing system unavailable", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Billing system unavailable"))
 		return
 	}
 
@@ -135,14 +136,14 @@ func (h *Handler) HandleRemix(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("Remix of %s/%s", req.SourceAuthor, req.SourceName))
 		if err != nil {
 			logrus.WithError(err).Error("Failed to charge wallet for remix")
-			http.Error(w, "Failed to process payment for remix", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to process payment for remix"))
 			return
 		}
 	} else if h.platformFeeRepo != nil {
 		if err := h.platformFeeRepo.DebitWallet(r.Context(), user.UserID, RemixCostUSD,
 			fmt.Sprintf("Remix of %s/%s", req.SourceAuthor, req.SourceName)); err != nil {
 			logrus.WithError(err).Error("Failed to charge wallet for remix")
-			http.Error(w, "Failed to process payment for remix", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to process payment for remix"))
 			return
 		}
 	}
@@ -166,14 +167,14 @@ func (h *Handler) HandleRemix(w http.ResponseWriter, r *http.Request) {
 	// Get the latest version
 	sourceVersion, err := h.repo.GetLatestFunctionVersion(sourceFn.ID)
 	if err != nil {
-		http.Error(w, "No versions available for source function", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("No versions available for source function"))
 		return
 	}
 
 	// Get the target tenant ID
 	targetTenantID, err := uuid.Parse(req.TargetTenantID)
 	if err != nil {
-		http.Error(w, "Invalid target tenant ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid target tenant ID"))
 		return
 	}
 
@@ -181,11 +182,11 @@ func (h *Handler) HandleRemix(w http.ResponseWriter, r *http.Request) {
 	hasAccess, err := h.backendRepo.IsUserInTenant(r.Context(), user.UserID, targetTenantID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check tenant access")
-		http.Error(w, "Failed to verify tenant access", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to verify tenant access"))
 		return
 	}
 	if !hasAccess {
-		http.Error(w, "Cannot remix to tenant you don't have access to", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Cannot remix to tenant you don't have access to"))
 		return
 	}
 
@@ -200,7 +201,7 @@ func (h *Handler) HandleRemix(w http.ResponseWriter, r *http.Request) {
 	var sourceManifest functionregistry.FunctionManifest
 	if err := json.Unmarshal(sourceVersion.Manifest, &sourceManifest); err != nil {
 		logrus.WithError(err).Error("Failed to unmarshal source manifest")
-		http.Error(w, "Invalid source manifest", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Invalid source manifest"))
 		return
 	}
 
@@ -241,7 +242,7 @@ func (h *Handler) HandleRemix(w http.ResponseWriter, r *http.Request) {
 		_, err := h.functionRepo.CreateFunction(ctx, fn)
 		if err != nil {
 			logrus.WithError(err).Error("Failed to create remixed function")
-			http.Error(w, "Failed to create function", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to create function"))
 			return
 		}
 		newFnID = fn.ID
@@ -280,7 +281,7 @@ func (h *Handler) HandleRemix(w http.ResponseWriter, r *http.Request) {
 
 		if err := h.repo.CreateFunction(fn); err != nil {
 			logrus.WithError(err).Error("Failed to create remixed function")
-			http.Error(w, "Failed to create function", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to create function"))
 			return
 		}
 		newFnID = fn.ID
@@ -309,7 +310,7 @@ func (h *Handler) HandleRemix(w http.ResponseWriter, r *http.Request) {
 
 		if err := h.repo.CreateFunctionVersion(version); err != nil {
 			logrus.WithError(err).Error("Failed to create function version")
-			http.Error(w, "Failed to create function version", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to create function version"))
 			return
 		}
 
@@ -389,7 +390,7 @@ func (h *Handler) HandleGetRemixHistory(w http.ResponseWriter, r *http.Request) 
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
@@ -480,7 +481,7 @@ func (h *Handler) HandleGetRemixHistory(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) HandleGetRemixCost(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -491,11 +492,11 @@ func (h *Handler) HandleGetRemixCost(w http.ResponseWriter, r *http.Request) {
 	// Verify function exists and is public
 	sourceFn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 	if sourceFn.Visibility != "public" {
-		http.Error(w, "Cannot remix non-public functions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Cannot remix non-public functions"))
 		return
 	}
 
@@ -541,14 +542,14 @@ func (h *Handler) HandleGetTrendingFunctions(w http.ResponseWriter, r *http.Requ
 	functions, total, err := h.repo.ListTrendingFunctions(limit, 0)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list trending functions")
-		http.Error(w, "Failed to list functions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list functions"))
 		return
 	}
 
 	funcInfos, err := h.buildRegistryFunctionInfos(functions)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to build function infos")
-		http.Error(w, "Failed to list functions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list functions"))
 		return
 	}
 
@@ -567,7 +568,7 @@ func (h *Handler) HandleGetTrendingFunctions(w http.ResponseWriter, r *http.Requ
 func (h *Handler) HandleLikeFunction(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -577,7 +578,7 @@ func (h *Handler) HandleLikeFunction(w http.ResponseWriter, r *http.Request) {
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
@@ -585,7 +586,7 @@ func (h *Handler) HandleLikeFunction(w http.ResponseWriter, r *http.Request) {
 	liked, likeCount, err := h.repo.ToggleLike(fn.ID, user.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to toggle like")
-		http.Error(w, "Failed to process like", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to process like"))
 		return
 	}
 
@@ -616,7 +617,7 @@ func (h *Handler) HandleGetFunctionLikes(w http.ResponseWriter, r *http.Request)
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 

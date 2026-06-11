@@ -1,6 +1,7 @@
 package users
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -91,17 +92,18 @@ func (h *Handler) HandleListSessions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ctx := r.Context()
 	var currentSessionID uuid.UUID
 	if authHeader := r.Header.Get("Authorization"); authHeader != "" {
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) == 2 && parts[0] == "Bearer" {
-			if sess, err := h.repo.GetSessionByToken(parts[1]); err == nil && sess != nil {
+			if sess, err := h.repo.GetSessionByToken(ctx, parts[1]); err == nil && sess != nil {
 				currentSessionID = sess.ID
 			}
 		}
 	}
 
-	sessions, err := h.repo.ListUserSessions(claims.UserID)
+	sessions, err := h.repo.ListUserSessions(ctx, claims.UserID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to list sessions")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to load sessions")
@@ -145,7 +147,7 @@ func (h *Handler) HandleRevokeSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.repo.DeleteSessionByID(sessionID, claims.UserID); err != nil {
+	if err := h.repo.DeleteSessionByID(r.Context(), sessionID, claims.UserID); err != nil {
 		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "access denied") {
 			writeJSONError(w, http.StatusNotFound, "Session not found")
 			return
@@ -166,17 +168,18 @@ func (h *Handler) HandleRevokeOtherSessions(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	ctx := r.Context()
 	var currentSessionID uuid.UUID
 	if authHeader := r.Header.Get("Authorization"); authHeader != "" {
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) == 2 && parts[0] == "Bearer" {
-			if sess, err := h.repo.GetSessionByToken(parts[1]); err == nil && sess != nil {
+			if sess, err := h.repo.GetSessionByToken(ctx, parts[1]); err == nil && sess != nil {
 				currentSessionID = sess.ID
 			}
 		}
 	}
 
-	sessions, err := h.repo.ListUserSessions(claims.UserID)
+	sessions, err := h.repo.ListUserSessions(ctx, claims.UserID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to list sessions for revoke-others")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to revoke sessions")
@@ -185,7 +188,7 @@ func (h *Handler) HandleRevokeOtherSessions(w http.ResponseWriter, r *http.Reque
 
 	for _, s := range sessions {
 		if s.ID != currentSessionID {
-			_ = h.repo.DeleteSessionByID(s.ID, claims.UserID)
+			_ = h.repo.DeleteSessionByID(ctx, s.ID, claims.UserID)
 		}
 	}
 

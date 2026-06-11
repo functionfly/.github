@@ -15,6 +15,7 @@ import (
 	agentbilling "github.com/functionfly/functionfly/internal/agent/billing"
 	billingpkg "github.com/functionfly/functionfly/internal/billing"
 	billing "github.com/functionfly/functionfly/internal/api/handlers/billing"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/email"
 	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/notification"
@@ -184,7 +185,7 @@ func (h *StripeWebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Requ
 	payload, err := io.ReadAll(r.Body)
 	if err != nil {
 		logrus.WithError(err).Error("failed to read webhook body")
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Failed to read request body"))
 		return
 	}
 	defer r.Body.Close()
@@ -192,7 +193,7 @@ func (h *StripeWebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Requ
 	var event stripe.Event
 	if err := json.Unmarshal(payload, &event); err != nil {
 		logrus.WithError(err).Warn("failed to unmarshal stripe webhook event before idempotency")
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 	logrus.WithFields(logrus.Fields{
@@ -207,7 +208,7 @@ func (h *StripeWebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Requ
 	// In production, webhook secret is MANDATORY - no exceptions
 	if isProduction && h.webhookSecret == "" {
 		logrus.Error("SECURITY: STRIPE_WEBHOOK_SECRET not configured in production - rejecting webhook. This is a critical security requirement.")
-		http.Error(w, "Webhook authentication not configured", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Webhook authentication not configured"))
 		return
 	}
 
@@ -217,14 +218,14 @@ func (h *StripeWebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Requ
 		// Note: ALLOW_UNVERIFIED_WEBHOOKS is IGNORED in production due to check above
 		if os.Getenv("ALLOW_UNVERIFIED_WEBHOOKS") != "true" {
 			logrus.Error("STRIPE_WEBHOOK_SECRET not configured - rejecting webhook. Set ALLOW_UNVERIFIED_WEBHOOKS=true to allow unverified webhooks in development (not recommended)")
-			http.Error(w, "Webhook authentication not configured", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Webhook authentication not configured"))
 			return
 		}
 		// Development mode with explicit opt-in: parse without verification
 		logrus.Warn("Processing unverified webhook - ALLOW_UNVERIFIED_WEBHOOKS is enabled (development only)")
 		if err := json.Unmarshal(payload, &event); err != nil {
 			logrus.WithError(err).Warn("failed to parse stripe webhook event")
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 			return
 		}
 		// Manually extract Data.Raw from the payload for checkout.session.completed events
@@ -247,7 +248,7 @@ func (h *StripeWebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Requ
 		if err != nil {
 			logrus.WithError(err).Warn("invalid stripe webhook signature")
 			monitoring.RecordBillingWebhookSignatureFailure("invalid_signature")
-			http.Error(w, "Invalid signature", http.StatusUnauthorized)
+			apierror.WriteError(w, apierror.NewUnauthorized("Invalid signature"))
 			return
 		}
 	}
@@ -342,19 +343,19 @@ func (h *StripeWebhookHandler) handleCheckoutSessionCompleted(w http.ResponseWri
 
 	if event.Data == nil || event.Data.Raw == nil {
 		logrus.Error("checkout.session.completed: event.Data or event.Data.Raw is nil")
-		http.Error(w, "Invalid event data", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid event data"))
 		return
 	}
 
 	sessionData, err := json.Marshal(event.Data.Raw)
 	if err != nil {
 		logrus.WithError(err).Error("failed to marshal checkout session data")
-		http.Error(w, "Invalid event data", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid event data"))
 		return
 	}
 	if err := json.Unmarshal(sessionData, &session); err != nil {
 		logrus.WithError(err).Error("failed to unmarshal checkout session")
-		http.Error(w, "Invalid session data", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid session data"))
 		return
 	}
 
@@ -391,12 +392,12 @@ func (h *StripeWebhookHandler) handleStateFabricAddonCheckout(w http.ResponseWri
 	addonID := session.Metadata["addon_id"]
 	if tenantIDStr == "" || addonID == "" {
 		logrus.Warn("state fabric addon checkout missing metadata")
-		http.Error(w, "Missing metadata", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Missing metadata"))
 		return
 	}
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
-		http.Error(w, "Invalid tenant_id", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tenant_id"))
 		return
 	}
 	var subscriptionID *string
@@ -416,7 +417,7 @@ func (h *StripeWebhookHandler) handleStateFabricAddonCheckout(w http.ResponseWri
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"tenant_id": tenantID, "addon_id": addonID,
 		}).Error("state fabric addon: upsert entitlement")
-		http.Error(w, "Failed to persist entitlement", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to persist entitlement"))
 		return
 	}
 	w.WriteHeader(http.StatusOK)
@@ -434,7 +435,7 @@ func (h *StripeWebhookHandler) handleFunctionVerificationCheckout(w http.Respons
 			"session_id":       session.ID,
 			"metadata_purpose": session.Metadata["purpose"],
 		}).Warn("function verification checkout missing required metadata")
-		http.Error(w, "Missing metadata", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Missing metadata"))
 		return
 	}
 
@@ -442,7 +443,7 @@ func (h *StripeWebhookHandler) handleFunctionVerificationCheckout(w http.Respons
 	payment, err := h.userRepo.GetFunctionVerificationPaymentByCheckoutSessionID(r.Context(), session.ID)
 	if err != nil {
 		logrus.WithError(err).WithField("session_id", session.ID).Error("failed to find verification payment record")
-		http.Error(w, "Payment record not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Payment record not found"))
 		return
 	}
 
@@ -463,7 +464,7 @@ func (h *StripeWebhookHandler) handleFunctionVerificationCheckout(w http.Respons
 	// Update payment record to paid status
 	if err := h.userRepo.UpdateFunctionVerificationPaymentStatus(r.Context(), payment.ID, "paid", stripePIID, nil); err != nil {
 		logrus.WithError(err).WithField("payment_id", payment.ID).Error("failed to update verification payment status")
-		http.Error(w, "Failed to update payment status", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update payment status"))
 		return
 	}
 
@@ -539,14 +540,14 @@ func (h *StripeWebhookHandler) handleBundleSubscriptionCheckout(w http.ResponseW
 
 	if tenantIDStr == "" || bundleSlug == "" {
 		logrus.Warn("bundle subscription checkout missing required metadata")
-		http.Error(w, "Missing metadata", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Missing metadata"))
 		return
 	}
 
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
 		logrus.WithError(err).Error("invalid tenant_id in bundle metadata")
-		http.Error(w, "Invalid tenant_id", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tenant_id"))
 		return
 	}
 
@@ -560,12 +561,12 @@ func (h *StripeWebhookHandler) handleBundleSubscriptionCheckout(w http.ResponseW
 	bundle, err := h.userRepo.GetPricingBundleBySlug(r.Context(), bundleSlug)
 	if err != nil {
 		logrus.WithError(err).WithField("bundle_slug", bundleSlug).Error("failed to get bundle")
-		http.Error(w, "Failed to retrieve bundle", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve bundle"))
 		return
 	}
 	if bundle == nil {
 		logrus.WithField("bundle_slug", bundleSlug).Warn("bundle not found for subscription")
-		http.Error(w, "Bundle not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Bundle not found"))
 		return
 	}
 
@@ -641,14 +642,14 @@ func (h *StripeWebhookHandler) handleBundleSubscriptionCheckout(w http.ResponseW
 		sub.DefaultAppID = existingSub.DefaultAppID // Preserve the app created during founder mode provisioning
 		if err := h.userRepo.UpdateBundleSubscription(r.Context(), sub); err != nil {
 			logrus.WithError(err).Error("failed to update bundle subscription from deferred")
-			http.Error(w, "Failed to update subscription", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to update subscription"))
 			return
 		}
 	} else {
 		// Create new subscription
 		if err := h.userRepo.CreateBundleSubscription(r.Context(), sub); err != nil {
 			logrus.WithError(err).Error("failed to create bundle subscription")
-			http.Error(w, "Failed to create subscription", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to create subscription"))
 			return
 		}
 	}
@@ -718,28 +719,28 @@ func (h *StripeWebhookHandler) handleUsernameChangeCheckout(w http.ResponseWrite
 
 	if pendingChangeIDStr == "" || userIDStr == "" || newUsername == "" {
 		logrus.Warn("username change checkout missing required metadata")
-		http.Error(w, "Missing metadata", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Missing metadata"))
 		return
 	}
 
 	pendingChangeID, err := uuid.Parse(pendingChangeIDStr)
 	if err != nil {
 		logrus.WithError(err).Error("invalid pending_change_id in metadata")
-		http.Error(w, "Invalid pending_change_id", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid pending_change_id"))
 		return
 	}
 
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
 		logrus.WithError(err).Error("invalid user_id in metadata")
-		http.Error(w, "Invalid user_id", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid user_id"))
 		return
 	}
 
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
 		logrus.WithError(err).Error("invalid tenant_id in metadata")
-		http.Error(w, "Invalid tenant_id", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tenant_id"))
 		return
 	}
 
@@ -755,19 +756,19 @@ func (h *StripeWebhookHandler) handleUsernameChangeCheckout(w http.ResponseWrite
 	pending, err := h.userRepo.GetPendingUsernameChangeByID(r.Context(), pendingChangeID)
 	if err != nil {
 		logrus.WithError(err).WithField("pending_change_id", pendingChangeIDStr).Error("failed to get pending username change")
-		http.Error(w, "Failed to retrieve pending change", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve pending change"))
 		return
 	}
 	if pending == nil {
 		logrus.WithField("pending_change_id", pendingChangeIDStr).Warn("pending username change not found")
-		http.Error(w, "Pending change not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Pending change not found"))
 		return
 	}
 
 	// Verify pending change is still valid
 	if !pending.CanComplete() {
 		logrus.WithField("pending_change_id", pendingChangeIDStr).Warn("pending username change is expired or not pending")
-		http.Error(w, "Pending change has expired or is invalid", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Pending change has expired or is invalid"))
 		return
 	}
 
@@ -775,7 +776,7 @@ func (h *StripeWebhookHandler) handleUsernameChangeCheckout(w http.ResponseWrite
 	user, err := h.userRepo.GetUserByID(userID)
 	if err != nil || user == nil {
 		logrus.WithError(err).WithField("user_id", userIDStr).Error("user not found for username change")
-		http.Error(w, "User not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
 	}
 
@@ -784,7 +785,7 @@ func (h *StripeWebhookHandler) handleUsernameChangeCheckout(w http.ResponseWrite
 		logrus.WithFields(logrus.Fields{
 			"session_id": session.ID,
 		}).Warn("tenant mismatch for username change")
-		http.Error(w, "Invalid checkout metadata", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid checkout metadata"))
 		return
 	}
 
@@ -797,13 +798,13 @@ func (h *StripeWebhookHandler) handleUsernameChangeCheckout(w http.ResponseWrite
 	existingUser, err := h.userRepo.GetUserByUsername(newUsername)
 	if err != nil {
 		logrus.WithError(err).WithField("username", newUsername).Error("failed to check username availability")
-		http.Error(w, "Failed to verify username availability", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to verify username availability"))
 		return
 	}
 	if existingUser != nil && existingUser.ID != userID {
 		logrus.WithField("username", newUsername).Warn("username no longer available")
 		_ = h.userRepo.UpdatePendingUsernameChangeStatus(r.Context(), pending.ID, "failed")
-		http.Error(w, "Username is no longer available", http.StatusConflict)
+		apierror.WriteError(w, apierror.NewConflict("Username is no longer available"))
 		return
 	}
 
@@ -843,7 +844,7 @@ func (h *StripeWebhookHandler) handleUsernameChangeCheckout(w http.ResponseWrite
 			"user_id":      userID,
 			"new_username": newUsername,
 		}).Error("failed to update user username")
-		http.Error(w, "Failed to update username", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update username"))
 		return
 	}
 
@@ -871,7 +872,7 @@ func (h *StripeWebhookHandler) handleSubscriptionUpdated(w http.ResponseWriter, 
 	var sub stripe.Subscription
 	raw, err := event.Data.Raw.MarshalJSON()
 	if err != nil || json.Unmarshal(raw, &sub) != nil {
-		http.Error(w, "Invalid subscription payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid subscription payload"))
 		return
 	}
 
@@ -896,7 +897,7 @@ func (h *StripeWebhookHandler) handleSubscriptionCreated(w http.ResponseWriter, 
 	var sub stripe.Subscription
 	raw, err := event.Data.Raw.MarshalJSON()
 	if err != nil || json.Unmarshal(raw, &sub) != nil {
-		http.Error(w, "Invalid subscription payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid subscription payload"))
 		return
 	}
 
@@ -923,7 +924,7 @@ func (h *StripeWebhookHandler) handleSubscriptionCreated(w http.ResponseWriter, 
 		// Founder mode conversion — process via the dedicated handler
 		if err := h.handleBundleSubscriptionCreated(ctx, &sub, tenantID); err != nil {
 			logrus.WithError(err).WithField("founder_mode_id", founderModeIDStr).Error("stripe webhook: founder mode conversion failed")
-			http.Error(w, "Failed to process founder mode conversion", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to process founder mode conversion"))
 			return
 		}
 		w.WriteHeader(http.StatusOK)
@@ -948,7 +949,7 @@ func (h *StripeWebhookHandler) handleSubscriptionCreated(w http.ResponseWriter, 
 
 	if err := h.userRepo.UpdateBundleSubscription(ctx, bundleSub); err != nil {
 		logrus.WithError(err).Error("stripe webhook: failed to update bundle subscription to active")
-		http.Error(w, "Failed to update subscription", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update subscription"))
 		return
 	}
 
@@ -968,7 +969,7 @@ func (h *StripeWebhookHandler) handleStateFabricSubscriptionUpdated(w http.Respo
 	tenantIDStr := sub.Metadata["tenant_id"]
 	tenantID, parseErr := uuid.Parse(tenantIDStr)
 	if addonID == "" || parseErr != nil {
-		http.Error(w, "Invalid subscription metadata", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid subscription metadata"))
 		return
 	}
 	status := "inactive"
@@ -983,7 +984,7 @@ func (h *StripeWebhookHandler) handleStateFabricSubscriptionUpdated(w http.Respo
 	subID := sub.ID
 	if err := h.sfAddons.UpsertEntitlement(ctx, tenantID, addonID, status, &subID, itemID); err != nil {
 		logrus.WithError(err).WithField("subscription_id", sub.ID).Error("state fabric addon: subscription updated entitlement")
-		http.Error(w, "Failed to update entitlement", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update entitlement"))
 		return
 	}
 	w.WriteHeader(http.StatusOK)
@@ -998,7 +999,7 @@ func (h *StripeWebhookHandler) handleMainSubscriptionUpdated(w http.ResponseWrit
 	subscription, err := h.userRepo.GetSubscriptionByStripeID(ctx, stripeSub.ID)
 	if err != nil {
 		logrus.WithError(err).WithField("stripe_subscription_id", stripeSub.ID).Error("failed to find subscription by stripe id")
-		http.Error(w, "Failed to find subscription", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to find subscription"))
 		return
 	}
 
@@ -1060,7 +1061,7 @@ func (h *StripeWebhookHandler) updateMainSubscriptionFromStripe(ctx context.Cont
 	updated, err := h.userRepo.UpdateSubscription(ctx, subscription.ID, updates)
 	if err != nil {
 		logrus.WithError(err).WithField("subscription_id", subscription.ID).Error("failed to update subscription from stripe")
-		http.Error(w, "Failed to update subscription", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update subscription"))
 		return
 	}
 
@@ -1166,7 +1167,7 @@ func (h *StripeWebhookHandler) updateBundleSubscriptionFromStripe(ctx context.Co
 
 	if err := h.userRepo.UpdateBundleSubscription(ctx, bundleSub); err != nil {
 		logrus.WithError(err).WithField("bundle_subscription_id", bundleSub.ID).Error("failed to update bundle subscription from stripe")
-		http.Error(w, "Failed to update bundle subscription", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update bundle subscription"))
 		return
 	}
 
@@ -1439,7 +1440,7 @@ func (h *StripeWebhookHandler) handleSubscriptionDeleted(w http.ResponseWriter, 
 	var sub stripe.Subscription
 	raw, err := event.Data.Raw.MarshalJSON()
 	if err != nil || json.Unmarshal(raw, &sub) != nil {
-		http.Error(w, "Invalid subscription payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid subscription payload"))
 		return
 	}
 
@@ -1452,7 +1453,7 @@ func (h *StripeWebhookHandler) handleSubscriptionDeleted(w http.ResponseWriter, 
 	if sub.Metadata["purpose"] == "state_fabric_addon" && h.sfAddons != nil {
 		if err := h.sfAddons.SetEntitlementStatusBySubscription(ctx, sub.ID, "inactive"); err != nil {
 			logrus.WithError(err).WithField("subscription_id", sub.ID).Error("state fabric addon: subscription deleted entitlement")
-			http.Error(w, "Failed to update entitlement", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to update entitlement"))
 			return
 		}
 		w.WriteHeader(http.StatusOK)
@@ -1470,7 +1471,7 @@ func (h *StripeWebhookHandler) handleMainSubscriptionDeleted(ctx context.Context
 	subscription, err := h.userRepo.GetSubscriptionByStripeID(ctx, stripeSub.ID)
 	if err != nil {
 		logrus.WithError(err).WithField("stripe_subscription_id", stripeSub.ID).Error("failed to find subscription by stripe id")
-		http.Error(w, "Failed to find subscription", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to find subscription"))
 		return
 	}
 
@@ -1484,7 +1485,7 @@ func (h *StripeWebhookHandler) handleMainSubscriptionDeleted(ctx context.Context
 		_, err := h.userRepo.UpdateSubscription(ctx, subscription.ID, updates)
 		if err != nil {
 			logrus.WithError(err).WithField("subscription_id", subscription.ID).Error("failed to cancel subscription from stripe webhook")
-			http.Error(w, "Failed to cancel subscription", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to cancel subscription"))
 			return
 		}
 
@@ -1522,7 +1523,7 @@ func (h *StripeWebhookHandler) handleMainSubscriptionDeleted(ctx context.Context
 
 				if err := h.userRepo.UpdateBundleSubscription(ctx, bundleSub); err != nil {
 					logrus.WithError(err).WithField("bundle_subscription_id", bundleSub.ID).Error("failed to cancel bundle subscription from stripe webhook")
-					http.Error(w, "Failed to cancel bundle subscription", http.StatusInternalServerError)
+					apierror.WriteError(w, apierror.NewInternal("Failed to cancel bundle subscription"))
 					return
 				}
 
@@ -1559,14 +1560,14 @@ func (h *StripeWebhookHandler) handleAgentExecutionCreditsCheckout(w http.Respon
 
 	if tenantIDStr == "" || agentID == "" {
 		logrus.Warn("agent checkout session missing required metadata")
-		http.Error(w, "Missing metadata", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Missing metadata"))
 		return
 	}
 
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
 		logrus.WithError(err).Error("invalid tenant_id in metadata")
-		http.Error(w, "Invalid tenant_id", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tenant_id"))
 		return
 	}
 
@@ -1591,7 +1592,7 @@ func (h *StripeWebhookHandler) handleAgentExecutionCreditsCheckout(w http.Respon
 	created, err := h.financialTxRepo.CreateIdempotent(r.Context(), tx)
 	if err != nil {
 		logrus.WithError(err).Error("failed to create transaction record")
-		http.Error(w, "Failed to record transaction", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to record transaction"))
 		return
 	}
 
@@ -1605,7 +1606,7 @@ func (h *StripeWebhookHandler) handleAgentExecutionCreditsCheckout(w http.Respon
 
 	if err := h.billingCtrl.AddCredits(r.Context(), agentID, amountUSD); err != nil {
 		logrus.WithError(err).Error("failed to add credits to agent")
-		http.Error(w, "Failed to add credits", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to add credits"))
 		return
 	}
 	controls, controlsErr := h.billingCtrl.GetOrCreateControls(r.Context(), agentID)
@@ -1665,7 +1666,7 @@ func (h *StripeWebhookHandler) handleAgentExecutionCreditsCheckout(w http.Respon
 func (h *StripeWebhookHandler) handleRegistryWalletCreditCheckout(w http.ResponseWriter, r *http.Request, session *stripe.CheckoutSession) {
 	if h.platformFees == nil {
 		logrus.Error("registry wallet webhook: platform fee repository not configured")
-		http.Error(w, "Wallet service unavailable", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Wallet service unavailable"))
 		return
 	}
 
@@ -1675,33 +1676,33 @@ func (h *StripeWebhookHandler) handleRegistryWalletCreditCheckout(w http.Respons
 
 	if tenantIDStr == "" || userIDStr == "" {
 		logrus.Warn("registry wallet checkout missing tenant_id or user_id in metadata")
-		http.Error(w, "Missing metadata", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Missing metadata"))
 		return
 	}
 
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
 		logrus.WithError(err).Warn("registry wallet webhook: invalid tenant_id")
-		http.Error(w, "Invalid tenant_id", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tenant_id"))
 		return
 	}
 
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
 		logrus.WithError(err).Warn("registry wallet webhook: invalid user_id")
-		http.Error(w, "Invalid user_id", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid user_id"))
 		return
 	}
 
 	user, err := h.userRepo.GetUserByID(userID)
 	if err != nil || user == nil {
 		logrus.WithError(err).WithField("user_id", userIDStr).Warn("registry wallet webhook: user not found")
-		http.Error(w, "User not found", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("User not found"))
 		return
 	}
 	if user.TenantID != tenantID {
 		logrus.WithFields(logrus.Fields{"session_id": session.ID}).Warn("registry wallet webhook: tenant mismatch")
-		http.Error(w, "Invalid checkout metadata", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid checkout metadata"))
 		return
 	}
 
@@ -1711,14 +1712,14 @@ func (h *StripeWebhookHandler) handleRegistryWalletCreditCheckout(w http.Respons
 	}
 	if amountUSD <= 0 {
 		logrus.WithField("session_id", session.ID).Warn("registry wallet webhook: non-positive amount")
-		http.Error(w, "Invalid amount", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid amount"))
 		return
 	}
 
 	already, err := h.platformFees.HasWalletCreditReference(r.Context(), session.ID)
 	if err != nil {
 		logrus.WithError(err).Error("registry wallet webhook: idempotency check failed")
-		http.Error(w, "Failed to verify payment", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to verify payment"))
 		return
 	}
 	if already {
@@ -1733,7 +1734,7 @@ func (h *StripeWebhookHandler) handleRegistryWalletCreditCheckout(w http.Respons
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"session_id": session.ID,
 		}).Error("registry wallet webhook: credit failed")
-		http.Error(w, "Failed to credit wallet", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to credit wallet"))
 		return
 	}
 
@@ -1939,7 +1940,7 @@ func (h *StripeWebhookHandler) handleInvoicePaymentFailed(w http.ResponseWriter,
 	raw, err := event.Data.Raw.MarshalJSON()
 	if err != nil || json.Unmarshal(raw, &invoice) != nil {
 		logrus.WithError(err).Error("stripe webhook: failed to unmarshal invoice payment failed event")
-		http.Error(w, "Invalid invoice payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid invoice payload"))
 		return
 	}
 
@@ -2032,7 +2033,7 @@ func (h *StripeWebhookHandler) handleInvoiceCreated(w http.ResponseWriter, r *ht
 	raw, err := event.Data.Raw.MarshalJSON()
 	if err != nil || json.Unmarshal(raw, &invoice) != nil {
 		logrus.WithError(err).Error("stripe webhook: failed to unmarshal invoice created event")
-		http.Error(w, "Invalid invoice payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid invoice payload"))
 		return
 	}
 
@@ -2108,7 +2109,7 @@ func (h *StripeWebhookHandler) handleInvoicePaymentSucceeded(w http.ResponseWrit
 	raw, err := event.Data.Raw.MarshalJSON()
 	if err != nil || json.Unmarshal(raw, &invoice) != nil {
 		logrus.WithError(err).Error("stripe webhook: failed to unmarshal invoice payment succeeded event")
-		http.Error(w, "Invalid invoice payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid invoice payload"))
 		return
 	}
 
@@ -2294,7 +2295,7 @@ func (h *StripeWebhookHandler) handlePaymentIntentFailed(w http.ResponseWriter, 
 	raw, err := event.Data.Raw.MarshalJSON()
 	if err != nil || json.Unmarshal(raw, &pi) != nil {
 		logrus.WithError(err).Error("stripe webhook: failed to unmarshal payment intent failed event")
-		http.Error(w, "Invalid payment intent payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid payment intent payload"))
 		return
 	}
 
@@ -2445,7 +2446,7 @@ func (h *StripeWebhookHandler) handleChargeDisputeCreated(w http.ResponseWriter,
 	raw, err := event.Data.Raw.MarshalJSON()
 	if err != nil || json.Unmarshal(raw, &dispute) != nil {
 		logrus.WithError(err).Error("stripe webhook: failed to unmarshal dispute created event")
-		http.Error(w, "Invalid dispute payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid dispute payload"))
 		return
 	}
 
@@ -2518,7 +2519,7 @@ func (h *StripeWebhookHandler) handleChargeDisputeCreated(w http.ResponseWriter,
 	// Save to database
 	if err := h.disputeRepo.UpsertDispute(ctx, paymentDispute); err != nil {
 		logrus.WithError(err).WithField("dispute_id", dispute.ID).Error("stripe webhook: failed to save dispute")
-		http.Error(w, "Failed to save dispute", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to save dispute"))
 		return
 	}
 
@@ -2553,7 +2554,7 @@ func (h *StripeWebhookHandler) handleChargeDisputeUpdated(w http.ResponseWriter,
 	raw, err := event.Data.Raw.MarshalJSON()
 	if err != nil || json.Unmarshal(raw, &dispute) != nil {
 		logrus.WithError(err).Error("stripe webhook: failed to unmarshal dispute updated event")
-		http.Error(w, "Invalid dispute payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid dispute payload"))
 		return
 	}
 
@@ -2604,7 +2605,7 @@ func (h *StripeWebhookHandler) handleChargeDisputeClosed(w http.ResponseWriter, 
 	raw, err := event.Data.Raw.MarshalJSON()
 	if err != nil || json.Unmarshal(raw, &dispute) != nil {
 		logrus.WithError(err).Error("stripe webhook: failed to unmarshal dispute closed event")
-		http.Error(w, "Invalid dispute payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid dispute payload"))
 		return
 	}
 
@@ -2662,7 +2663,7 @@ func (h *StripeWebhookHandler) handleChargeDisputeFundsWithdrawn(w http.Response
 	raw, err := event.Data.Raw.MarshalJSON()
 	if err != nil || json.Unmarshal(raw, &dispute) != nil {
 		logrus.WithError(err).Error("stripe webhook: failed to unmarshal funds withdrawn event")
-		http.Error(w, "Invalid dispute payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid dispute payload"))
 		return
 	}
 
@@ -2694,7 +2695,7 @@ func (h *StripeWebhookHandler) handleChargeRefunded(w http.ResponseWriter, r *ht
 	raw, err := event.Data.Raw.MarshalJSON()
 	if err != nil || json.Unmarshal(raw, &charge) != nil {
 		logrus.WithError(err).Error("stripe webhook: failed to unmarshal charge refunded event")
-		http.Error(w, "Invalid charge payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid charge payload"))
 		return
 	}
 
@@ -2848,7 +2849,7 @@ func (h *StripeWebhookHandler) handlePaymentMethodUpdated(w http.ResponseWriter,
 	var pm stripe.PaymentMethod
 	raw, err := event.Data.Raw.MarshalJSON()
 	if err != nil || json.Unmarshal(raw, &pm) != nil {
-		http.Error(w, "Invalid payment method payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid payment method payload"))
 		return
 	}
 
@@ -2916,7 +2917,7 @@ func (h *StripeWebhookHandler) handlePaymentMethodUpdated(w http.ResponseWriter,
 			"tenant_id":      tenant.ID,
 			"payment_method": pm.ID,
 		}).Error("failed to update tenant payment method")
-		http.Error(w, "Failed to update payment method", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update payment method"))
 		return
 	}
 
@@ -2940,7 +2941,7 @@ func (h *StripeWebhookHandler) handlePaymentMethodDetached(w http.ResponseWriter
 	var pm stripe.PaymentMethod
 	raw, err := event.Data.Raw.MarshalJSON()
 	if err != nil || json.Unmarshal(raw, &pm) != nil {
-		http.Error(w, "Invalid payment method payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid payment method payload"))
 		return
 	}
 
@@ -2977,7 +2978,7 @@ func (h *StripeWebhookHandler) handleCustomerUpdated(w http.ResponseWriter, r *h
 	var customer stripe.Customer
 	raw, err := event.Data.Raw.MarshalJSON()
 	if err != nil || json.Unmarshal(raw, &customer) != nil {
-		http.Error(w, "Invalid customer payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid customer payload"))
 		return
 	}
 
@@ -3019,7 +3020,7 @@ func (h *StripeWebhookHandler) SetPayoutService(ps PayoutWebhookProcessor) {
 func (h *StripeWebhookHandler) handlePayoutPaid(w http.ResponseWriter, r *http.Request, event *stripe.Event) {
 	raw, err := event.Data.Raw.MarshalJSON()
 	if err != nil {
-		http.Error(w, "Invalid payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid payload"))
 		return
 	}
 
@@ -3030,7 +3031,7 @@ func (h *StripeWebhookHandler) handlePayoutPaid(w http.ResponseWriter, r *http.R
 		Account string `json:"account"`
 	}
 	if err := json.Unmarshal(raw, &payout); err != nil {
-		http.Error(w, "Invalid payout payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid payout payload"))
 		return
 	}
 
@@ -3056,7 +3057,7 @@ func (h *StripeWebhookHandler) handlePayoutPaid(w http.ResponseWriter, r *http.R
 func (h *StripeWebhookHandler) handlePayoutFailed(w http.ResponseWriter, r *http.Request, event *stripe.Event) {
 	raw, err := event.Data.Raw.MarshalJSON()
 	if err != nil {
-		http.Error(w, "Invalid payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid payload"))
 		return
 	}
 
@@ -3069,7 +3070,7 @@ func (h *StripeWebhookHandler) handlePayoutFailed(w http.ResponseWriter, r *http
 		FailureMessage string `json:"failure_message"`
 	}
 	if err := json.Unmarshal(raw, &payout); err != nil {
-		http.Error(w, "Invalid payout payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid payout payload"))
 		return
 	}
 
@@ -3096,7 +3097,7 @@ func (h *StripeWebhookHandler) handlePayoutFailed(w http.ResponseWriter, r *http
 func (h *StripeWebhookHandler) handleTransferReversed(w http.ResponseWriter, r *http.Request, event *stripe.Event) {
 	raw, err := event.Data.Raw.MarshalJSON()
 	if err != nil {
-		http.Error(w, "Invalid payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid payload"))
 		return
 	}
 
@@ -3107,7 +3108,7 @@ func (h *StripeWebhookHandler) handleTransferReversed(w http.ResponseWriter, r *
 		Dest     string `json:"destination"`
 	}
 	if err := json.Unmarshal(raw, &txfr); err != nil {
-		http.Error(w, "Invalid transfer payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid transfer payload"))
 		return
 	}
 
@@ -3131,7 +3132,7 @@ func (h *StripeWebhookHandler) handleTransferReversed(w http.ResponseWriter, r *
 func (h *StripeWebhookHandler) handleConnectAccountUpdated(w http.ResponseWriter, r *http.Request, event *stripe.Event) {
 	raw, err := event.Data.Raw.MarshalJSON()
 	if err != nil {
-		http.Error(w, "Invalid payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid payload"))
 		return
 	}
 
@@ -3142,7 +3143,7 @@ func (h *StripeWebhookHandler) handleConnectAccountUpdated(w http.ResponseWriter
 		ChargesEnabled bool   `json:"charges_enabled"`
 	}
 	if err := json.Unmarshal(raw, &account); err != nil {
-		http.Error(w, "Invalid account payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid account payload"))
 		return
 	}
 
@@ -3179,21 +3180,21 @@ func (h *StripeWebhookHandler) handleCertExamCheckout(w http.ResponseWriter, r *
 
 	if examIDStr == "" || userIDStr == "" {
 		logrus.Warn("cert exam checkout missing required metadata")
-		http.Error(w, "Missing metadata", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Missing metadata"))
 		return
 	}
 
 	examID, err := uuid.Parse(examIDStr)
 	if err != nil {
 		logrus.WithError(err).Error("invalid exam_id in metadata")
-		http.Error(w, "Invalid exam_id", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid exam_id"))
 		return
 	}
 
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
 		logrus.WithError(err).Error("invalid user_id in metadata")
-		http.Error(w, "Invalid user_id", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid user_id"))
 		return
 	}
 
@@ -3212,7 +3213,7 @@ func (h *StripeWebhookHandler) handleCertExamCheckout(w http.ResponseWriter, r *
 	// Update exam with Stripe payment ID and activate it
 	if err := h.certRepo.UpdateExamStripePaymentID(r.Context(), examID, paymentIntentID); err != nil {
 		logrus.WithError(err).WithField("exam_id", examIDStr).Error("failed to update exam with payment ID")
-		http.Error(w, "Failed to update exam", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update exam"))
 		return
 	}
 
@@ -3224,7 +3225,7 @@ func (h *StripeWebhookHandler) handleCertExamCheckout(w http.ResponseWriter, r *
 			"exam_id": examIDStr,
 			"user_id": userIDStr,
 		}).Error("failed to activate exam from payment")
-		http.Error(w, fmt.Sprintf("Failed to activate exam: %v", err), http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal(fmt.Sprintf("Failed to activate exam: %v", err)))
 		return
 	}
 

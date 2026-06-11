@@ -234,6 +234,14 @@ func (r *RegistryRepository) UpdateFunctionPopularityScore(ctx context.Context, 
 	// Invalidate related caches
 	if r.cache != nil {
 		go func() {
+			defer func() {
+				if rec := recover(); rec != nil {
+					logrus.WithFields(logrus.Fields{
+						"panic": rec,
+						"stack": fmt.Sprintf("%v", rec),
+					}).Error("UpdatePopularityScore cache invalidation goroutine panicked")
+				}
+			}()
 			if err := r.cache.InvalidateFunction(context.Background(), functionID.String()); err != nil {
 				fmt.Printf("Failed to invalidate function cache after popularity update: %v\n", err)
 			}

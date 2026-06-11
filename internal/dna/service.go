@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage/dna"
@@ -61,13 +62,15 @@ type Service struct {
 
 // NewService creates a new DNA service.
 func NewService(repo *dna.Repository, logger *logrus.Logger) *Service {
+	cbThreshold := getEnvInt("AI_CIRCUIT_BREAKER_THRESHOLD", 5)
+	cbCooldownMinutes := getEnvInt("AI_CIRCUIT_BREAKER_COOLDOWN_MINUTES", 2)
 	return &Service{
 		repo:      repo,
 		logger:    logger,
 		aiBaseURL: getEnvOrDefault("AI_SERVICE_URL", ""), // Must be set explicitly
 		aiAPIKey:  os.Getenv("AI_SERVICE_API_KEY"),
 		httpClient: &http.Client{Timeout: 2 * time.Minute},
-		aiCircuitBreaker: newCircuitBreaker(5, 2*time.Minute),
+		aiCircuitBreaker: newCircuitBreaker(cbThreshold, time.Duration(cbCooldownMinutes)*time.Minute),
 	}
 }
 
@@ -876,4 +879,13 @@ func DefaultPlatformSettings() *PlatformSettings {
 		AutoRollbackOnError:      true,
 		AutoRollbackErrorThreshold: 5,
 	}
+}
+
+func getEnvInt(key string, defaultVal int) int {
+	if v := os.Getenv(key); v != "" {
+		if intVal, err := strconv.Atoi(v); err == nil {
+			return intVal
+		}
+	}
+	return defaultVal
 }

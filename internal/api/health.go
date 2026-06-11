@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"runtime"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/monitoring"
+	"github.com/nats-io/nats.go"
 	"github.com/sirupsen/logrus"
 )
 
@@ -30,6 +32,51 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"status": "ok"}`))
+}
+
+// handleLiveness returns a liveness probe response
+// Kubernetes liveness probe: returns 200 if the process is alive
+// Should return 503 if the process is in a bad state and needs restart
+func (s *Server) handleLiveness(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	// Basic liveness check - process is running and can respond
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status": "alive", "probe": "liveness"}`))
+}
+
+// handleReadiness returns a readiness probe response
+// Kubernetes readiness probe: returns 200 if the service is ready to accept traffic
+// Should return 503 if dependencies (DB, Redis) are not available
+func (s *Server) handleReadiness(ctx context.Context) (string, string) {
+	// Check database connectivity
+	dbHealthy := true
+	if s.repo != nil {
+		if err := s.repo.Ping(ctx); err != nil {
+			logrus.WithError(err).Warn("Readiness probe: database ping failed")
+			dbHealthy = false
+		}
+	}
+
+	if !dbHealthy {
+		return "unhealthy", "database unavailable"
+	}
+
+	return "healthy", "ready"
+}
+
+// handleReadinessEndpoint HTTP handler for readiness probe
+func (s *Server) handleReadinessEndpoint(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	status, msg := s.handleReadiness(r.Context())
+
+	if status == "healthy" {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status": "ready"}`))
+	} else {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		w.Write([]byte(fmt.Sprintf(`{"status": "not_ready", "reason": "%s"}`, msg)))
+	}
 }
 
 // handleEdgeStatus returns edge (edge.functionfly.com) health, uptime, and request stats.
@@ -100,6 +147,13 @@ func (s *Server) handleDetailedHealth(w http.ResponseWriter, r *http.Request) {
 	routingHealthy := s.checkRoutingHealth(ctx)
 	health["services"].(map[string]interface{})["routing"] = map[string]interface{}{
 		"status":    routingHealthy,
+		"timestamp": time.Now().Format(time.RFC3339),
+	}
+
+	// Check NATS service
+	natsHealthy := s.checkNATSHealth(ctx)
+	health["services"].(map[string]interface{})["nats"] = map[string]interface{}{
+		"status":    natsHealthy,
 		"timestamp": time.Now().Format(time.RFC3339),
 	}
 
@@ -252,6 +306,35 @@ func (s *Server) checkMonitoringHealth(ctx context.Context) bool {
 func (s *Server) checkRoutingHealth(ctx context.Context) bool {
 	// Check if routing service is responsive
 	return s.routingSvc != nil
+}
+
+// checkNATSHealth verifies NATS messaging service health
+func (s *Server) checkNATSHealth(ctx context.Context) bool {
+	natsURL := os.Getenv("NATS_URL")
+	if natsURL == "" {
+		// NATS not configured, consider it healthy (optional service)
+		return true
+	}
+
+	// Try to connect and ping NATS
+	nc, err := nats.Connect(natsURL, nats.Name("health-check"))
+	if err != nil {
+		logrus.WithError(err).Warn("NATS health check failed to connect")
+		return false
+	}
+	defer nc.Close()
+
+	// Check if connected
+	if !nc.IsConnected() {
+		return false
+	}
+
+	// Perform a simple ping
+	if nc.Ping() != nil {
+		return false
+	}
+
+	return true
 }
 
 // checkMemoryUsage performs memory usage health check

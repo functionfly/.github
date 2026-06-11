@@ -15,21 +15,21 @@ import (
 type ReconciliationStatus string
 
 const (
-	ReconciliationStatusPending    ReconciliationStatus = "pending"
-	ReconciliationStatusRunning    ReconciliationStatus = "running"
+	ReconciliationStatusPending   ReconciliationStatus = "pending"
+	ReconciliationStatusRunning   ReconciliationStatus = "running"
 	ReconciliationStatusCompleted ReconciliationStatus = "completed"
 	ReconciliationStatusFailed    ReconciliationStatus = "failed"
-	ReconciliationStatusPartial  ReconciliationStatus = "partial"
+	ReconciliationStatusPartial   ReconciliationStatus = "partial"
 )
 
 // ReconciliationType represents what kind of reconciliation was performed
 type ReconciliationType string
 
 const (
-	ReconciliationTypeLedgerToBalance ReconciliationType = "ledger_to_balance"
-	ReconciliationTypeStripeToInternal  ReconciliationType = "stripe_to_internal"
-	ReconciliationTypeCrossTable      ReconciliationType = "cross_table"
-	ReconciliationTypeFull            ReconciliationType = "full"
+	ReconciliationTypeLedgerToBalance  ReconciliationType = "ledger_to_balance"
+	ReconciliationTypeStripeToInternal ReconciliationType = "stripe_to_internal"
+	ReconciliationTypeCrossTable       ReconciliationType = "cross_table"
+	ReconciliationTypeFull             ReconciliationType = "full"
 )
 
 // ReconciliationRun tracks a reconciliation execution
@@ -59,23 +59,23 @@ func (ReconciliationRun) TableName() string {
 
 // ReconciliationDiscrepancy represents a specific issue found during reconciliation
 type ReconciliationDiscrepancy struct {
-	ID                  uuid.UUID    `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	RunID               uuid.UUID    `json:"run_id" gorm:"type:uuid;not null;index"`
-	WalletID            uuid.UUID    `json:"wallet_id" gorm:"type:uuid;not null;index"`
-	DiscrepancyType     string       `json:"discrepancy_type" gorm:"not null"` // 'balance_mismatch', 'missing_transaction', 'duplicate_transaction', 'orphan_transaction'
-	Severity            string       `json:"severity" gorm:"not null;default:'warning'"` // 'warning', 'error', 'critical'
-	ExpectedBalance     float64      `json:"expected_balance" gorm:"type:decimal(14,4)"`
-	ActualBalance       float64      `json:"actual_balance" gorm:"type:decimal(14,4)"`
-	DeltaAmount         float64      `json:"delta_amount" gorm:"type:decimal(14,4)"`
-	TransactionID       *uuid.UUID   `json:"transaction_id,omitempty"`
-	StripePaymentID     *string      `json:"stripe_payment_id,omitempty"`
-	Description         string       `json:"description" gorm:"not null"`
-	Fixed               bool         `json:"fixed" gorm:"default:false"`
-	FixedAt             *time.Time   `json:"fixed_at,omitempty"`
-	FixedBy             *uuid.UUID   `json:"fixed_by,omitempty"`
-	FixMethod           *string      `json:"fix_method,omitempty"` // 'auto_adjust', 'manual_review', 'create_missing_tx'
-	Metadata            []byte       `json:"metadata,omitempty" gorm:"type:jsonb;default:'{}'"`
-	CreatedAt           time.Time    `json:"created_at" gorm:"autoCreateTime"`
+	ID              uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	RunID           uuid.UUID  `json:"run_id" gorm:"type:uuid;not null;index"`
+	WalletID        uuid.UUID  `json:"wallet_id" gorm:"type:uuid;not null;index"`
+	DiscrepancyType string     `json:"discrepancy_type" gorm:"not null"`           // 'balance_mismatch', 'missing_transaction', 'duplicate_transaction', 'orphan_transaction'
+	Severity        string     `json:"severity" gorm:"not null;default:'warning'"` // 'warning', 'error', 'critical'
+	ExpectedBalance float64    `json:"expected_balance" gorm:"type:decimal(14,4)"`
+	ActualBalance   float64    `json:"actual_balance" gorm:"type:decimal(14,4)"`
+	DeltaAmount     float64    `json:"delta_amount" gorm:"type:decimal(14,4)"`
+	TransactionID   *uuid.UUID `json:"transaction_id,omitempty"`
+	StripePaymentID *string    `json:"stripe_payment_id,omitempty"`
+	Description     string     `json:"description" gorm:"not null"`
+	Fixed           bool       `json:"fixed" gorm:"default:false"`
+	FixedAt         *time.Time `json:"fixed_at,omitempty"`
+	FixedBy         *uuid.UUID `json:"fixed_by,omitempty"`
+	FixMethod       *string    `json:"fix_method,omitempty"` // 'auto_adjust', 'manual_review', 'create_missing_tx'
+	Metadata        []byte     `json:"metadata,omitempty" gorm:"type:jsonb;default:'{}'"`
+	CreatedAt       time.Time  `json:"created_at" gorm:"autoCreateTime"`
 }
 
 // TableName returns the database table name
@@ -340,17 +340,17 @@ type CrossTableDiscrepancy struct {
 
 // LegacyBillingControls represents the legacy agent_billing_controls table structure
 type LegacyBillingControls struct {
-	ID                  uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey"`
-	AgentID             uuid.UUID  `json:"agent_id" gorm:"type:uuid;not null;index"`
-	CreditBalanceUSD    float64    `json:"credit_balance_usd" gorm:"type:decimal(14,4);default:0"`
-	TotalCreditsUSD     float64    `json:"total_credits_usd" gorm:"type:decimal(14,4);default:0"`
-	TotalDebitsUSD      float64    `json:"total_debits_usd" gorm:"type:decimal(14,4);default:0"`
-	LifetimeEarningsUSD float64    `json:"lifetime_earnings_usd" gorm:"type:decimal(14,4);default:0"`
-	LifetimeSpentUSD    float64    `json:"lifetime_spent_usd" gorm:"type:decimal(14,4);default:0"`
-	SpendCapDailyUSD    float64    `json:"spend_cap_daily_usd" gorm:"type:decimal(14,4);default:0"`
-	SpendCapMonthlyUSD  float64    `json:"spend_cap_monthly_usd" gorm:"type:decimal(14,4);default:0"`
-	CreatedAt           time.Time  `json:"created_at"`
-	UpdatedAt           time.Time  `json:"updated_at"`
+	ID                  uuid.UUID `json:"id" gorm:"type:uuid;primaryKey"`
+	AgentID             uuid.UUID `json:"agent_id" gorm:"type:uuid;not null;index"`
+	CreditBalanceUSD    float64   `json:"credit_balance_usd" gorm:"type:decimal(14,4);default:0"`
+	TotalCreditsUSD     float64   `json:"total_credits_usd" gorm:"type:decimal(14,4);default:0"`
+	TotalDebitsUSD      float64   `json:"total_debits_usd" gorm:"type:decimal(14,4);default:0"`
+	LifetimeEarningsUSD float64   `json:"lifetime_earnings_usd" gorm:"type:decimal(14,4);default:0"`
+	LifetimeSpentUSD    float64   `json:"lifetime_spent_usd" gorm:"type:decimal(14,4);default:0"`
+	SpendCapDailyUSD    float64   `json:"spend_cap_daily_usd" gorm:"type:decimal(14,4);default:0"`
+	SpendCapMonthlyUSD  float64   `json:"spend_cap_monthly_usd" gorm:"type:decimal(14,4);default:0"`
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
 }
 
 // TableName returns the legacy table name
@@ -520,10 +520,10 @@ func (s *ReconciliationService) compareCrossTableFields(
 	result *CrossTableReconcileResult,
 ) {
 	fieldComparisons := []struct {
-		field      string
-		walletVal  float64
-		legacyVal  float64
-		tolerance  float64
+		field     string
+		walletVal float64
+		legacyVal float64
+		tolerance float64
 	}{
 		{"balance_usd", wallet.BalanceUSD, legacy.CreditBalanceUSD, 0.01},
 		{"lifetime_earnings_usd", wallet.LifetimeEarningsUSD, legacy.LifetimeEarningsUSD, 0.01},

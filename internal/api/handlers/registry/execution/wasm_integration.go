@@ -31,8 +31,8 @@ func DefaultWASMExecutionConfig() *WASMExecutionConfig {
 	return &WASMExecutionConfig{
 		EnableDeterministic: false,
 		EnableStreaming:     false,
-		EnableMetrics:      true,
-		EnableAudit:        true,
+		EnableMetrics:       true,
+		EnableAudit:         true,
 	}
 }
 
@@ -60,12 +60,12 @@ func NewWASMExecutor(pool *wasm.InstancePool, router *wasm.RuntimeRouter, auditL
 
 // ExecuteResult contains the result of a WASM execution
 type ExecuteResult struct {
-	Output           json.RawMessage
-	ExecutionTimeMs  int64
-	Status           string
-	ErrorMessage     string
-	MemoryUsed       uint64
-	DeterministicID  string
+	Output          json.RawMessage
+	ExecutionTimeMs int64
+	Status          string
+	ErrorMessage    string
+	MemoryUsed      uint64
+	DeterministicID string
 }
 
 // Execute executes a WASM function with the given input

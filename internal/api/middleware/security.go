@@ -296,9 +296,11 @@ func (sm *SecurityMiddleware) CORSMiddleware(next http.HandlerFunc) http.Handler
 		}
 
 		// Set Allow-Origin only when origin is allowed (shared logic with WebSocket CheckOrigin)
+		// SECURITY: Do not set Access-Control-Allow-Credentials when using wildcard origin
 		if origin != "" {
 			if IsOriginAllowedForRequest(r) {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
 			}
 		} else if len(allowedOrigins) == 1 && allowedOrigins[0] == "*" {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -306,7 +308,6 @@ func (sm *SecurityMiddleware) CORSMiddleware(next http.HandlerFunc) http.Handler
 
 		w.Header().Set("Access-Control-Allow-Methods", allowedMethods)
 		w.Header().Set("Access-Control-Allow-Headers", allowedHeaders)
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		// Handle preflight requests (browser caches for 24h)
 		if r.Method == "OPTIONS" {

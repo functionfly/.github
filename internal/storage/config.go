@@ -93,6 +93,10 @@ func loadDatabaseConfig() (*DatabaseConfig, error) {
 		dbPassword = getEnvOrDefault("DB_PASSWORD", "postgres")
 		dbName = getEnvOrDefault("DB_NAME", "functionfly")
 		dbSSLMode = getEnvOrDefault("DB_SSLMODE", "require")
+		// Validate SSL mode even in development - reject disable/allow/prefer
+		if !isValidSSLMode(dbSSLMode) {
+			return nil, fmt.Errorf("invalid DB_SSLMODE: %q - must be one of: require, verify-full, verify-ca (disable/allow/prefer are not allowed)", dbSSLMode)
+		}
 	} else {
 		// Production: if DATABASE_URL is set, individual DB_* vars are optional
 		if os.Getenv("DATABASE_URL") == "" {
@@ -104,6 +108,11 @@ func loadDatabaseConfig() (*DatabaseConfig, error) {
 			dbSSLMode = os.Getenv("DB_SSLMODE")
 			if dbSSLMode == "" {
 				dbSSLMode = "require" // Default to require for security
+			}
+
+			// Validate SSL mode - reject insecure modes
+			if !isValidSSLMode(dbSSLMode) {
+				return nil, fmt.Errorf("invalid DB_SSLMODE: %q - must be one of: require, verify-full, verify-ca", dbSSLMode)
 			}
 
 			missingVars := []string{}
@@ -450,4 +459,16 @@ func calculateConnectionPoolSize() (maxOpen, maxIdle int) {
 	}
 
 	return maxOpen, maxIdle
+}
+
+// isValidSSLMode validates that the SSL mode is one of the secure options
+func isValidSSLMode(mode string) bool {
+	switch mode {
+	case "require", "verify-ca", "verify-full":
+		return true
+	case "disable", "allow", "prefer":
+		return false
+	default:
+		return false
+	}
 }

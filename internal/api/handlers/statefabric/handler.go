@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/monitoring"
@@ -163,7 +164,7 @@ func (h *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 		Search:   r.URL.Query().Get("search"),
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to list fabric items", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, items)
@@ -185,7 +186,7 @@ func (h *Handler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	item, err := h.repo.CreateFabric(r.Context(), tenantID, req.Name, req.Description, req.Type, req.Settings)
 	if err != nil {
 		monitoring.RecordStateFabricOperation(tenantID.String(), "", "create", "error")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to create fabric item", http.StatusInternalServerError)
 		return
 	}
 
@@ -214,7 +215,7 @@ func (h *Handler) HandleGet(w http.ResponseWriter, r *http.Request) {
 	item, err := h.repo.GetFabric(r.Context(), tenantID, fabricID)
 	if err != nil {
 		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "read", "not_found")
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, "Fabric item not found", http.StatusNotFound)
 		return
 	}
 	monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "read", "success")
@@ -253,7 +254,8 @@ func (h *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	item, err := h.repo.UpdateFabric(r.Context(), tenantID, fabricID, updates)
 	if err != nil {
 		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "update", "error")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to update state fabric")
+		http.Error(w, "Failed to update state fabric", http.StatusInternalServerError)
 		return
 	}
 	monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "update", "success")
@@ -275,7 +277,8 @@ func (h *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.repo.DeleteFabric(r.Context(), tenantID, fabricID); err != nil {
 		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "delete", "error")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to delete state fabric")
+		http.Error(w, "Failed to delete state fabric", http.StatusInternalServerError)
 		return
 	}
 	monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "delete", "success")
@@ -298,7 +301,8 @@ func (h *Handler) HandleGetMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 	item, err := h.repo.GetFabric(r.Context(), tenantID, fabricID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to get state fabric metrics")
+		http.Error(w, "State fabric not found", http.StatusNotFound)
 		return
 	}
 	writeJSON(w, http.StatusOK, item.Metrics)
@@ -315,7 +319,8 @@ func (h *Handler) HandleListStores(w http.ResponseWriter, r *http.Request) {
 	}
 	stores, err := h.repo.ListStores(r.Context(), tenantID, fabricID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to list stores")
+		http.Error(w, "Stores not found", http.StatusNotFound)
 		return
 	}
 	writeJSON(w, http.StatusOK, stores)
@@ -343,7 +348,8 @@ func (h *Handler) HandleCreateStore(w http.ResponseWriter, r *http.Request) {
 	}
 	store, err := h.repo.CreateStore(r.Context(), tenantID, fabricID, req.Name, req.Type, req.MaxSize, req.Region)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to create store")
+		http.Error(w, "Failed to create store", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusCreated, store)
@@ -359,7 +365,8 @@ func (h *Handler) HandleDeleteStore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.repo.DeleteStore(r.Context(), tenantID, fabricID, mux.Vars(r)["storeId"]); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to delete store")
+		http.Error(w, "Failed to delete store", http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -376,7 +383,8 @@ func (h *Handler) HandleListPipelines(w http.ResponseWriter, r *http.Request) {
 	}
 	item, err := h.repo.GetFabric(r.Context(), tenantID, fabricID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to list pipelines")
+		http.Error(w, "State fabric not found", http.StatusNotFound)
 		return
 	}
 	writeJSON(w, http.StatusOK, item.Pipelines)
@@ -398,7 +406,8 @@ func (h *Handler) HandleCreatePipeline(w http.ResponseWriter, r *http.Request) {
 	}
 	pipeline, err := h.repo.CreatePipeline(r.Context(), tenantID, fabricID, req.Name, req.Description, req.Steps)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to create pipeline")
+		http.Error(w, "Failed to create pipeline", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusCreated, pipeline)
@@ -438,7 +447,8 @@ func (h *Handler) HandleUpdatePipeline(w http.ResponseWriter, r *http.Request) {
 	}
 	pipeline, err := h.repo.UpdatePipeline(r.Context(), tenantID, fabricID, pipelineID, updates)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).WithField("pipelineID", pipelineID).Error("Failed to update pipeline")
+		http.Error(w, "Failed to update pipeline", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, pipeline)
@@ -459,7 +469,8 @@ func (h *Handler) HandleDeletePipeline(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.repo.DeletePipeline(r.Context(), tenantID, fabricID, pipelineID); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).WithField("pipelineID", pipelineID).Error("Failed to delete pipeline")
+		http.Error(w, "Failed to delete pipeline", http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -486,7 +497,8 @@ func (h *Handler) HandleExecutePipeline(w http.ResponseWriter, r *http.Request) 
 	}
 	result, err := h.repo.ExecutePipeline(r.Context(), tenantID, fabricID, pipelineID, input)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).WithField("pipelineID", pipelineID).Error("Failed to execute pipeline")
+		http.Error(w, "Failed to execute pipeline", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, result)
@@ -527,7 +539,8 @@ func (h *Handler) HandleListEvents(w http.ResponseWriter, r *http.Request) {
 		Offset:    offset,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to list events")
+		http.Error(w, "Failed to list events", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{"events": events, "total": total})
@@ -544,7 +557,8 @@ func (h *Handler) HandleListSnapshots(w http.ResponseWriter, r *http.Request) {
 	}
 	items, err := h.repo.ListSnapshots(r.Context(), tenantID, fabricID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to list snapshots")
+		http.Error(w, "Failed to list snapshots", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, items)
@@ -566,7 +580,8 @@ func (h *Handler) HandleCreateSnapshot(w http.ResponseWriter, r *http.Request) {
 	}
 	item, err := h.repo.CreateSnapshot(r.Context(), tenantID, fabricID, req.Name)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to create snapshot")
+		http.Error(w, "Failed to create snapshot", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusCreated, item)
@@ -587,7 +602,8 @@ func (h *Handler) HandleDeleteSnapshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.repo.DeleteSnapshot(r.Context(), tenantID, fabricID, snapshotID); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).WithField("snapshotID", snapshotID).Error("Failed to delete snapshot")
+		http.Error(w, "Failed to delete snapshot", http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -607,7 +623,8 @@ func (h *Handler) HandleListReplays(w http.ResponseWriter, r *http.Request) {
 	}
 	items, err := h.repo.ListReplays(r.Context(), tenantID, fabricID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to list replays")
+		http.Error(w, "Failed to list replays", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, items)
@@ -632,7 +649,8 @@ func (h *Handler) HandleCreateReplay(w http.ResponseWriter, r *http.Request) {
 	}
 	item, err := h.repo.CreateReplay(r.Context(), tenantID, fabricID, repo.ReplayCreateRequest(req))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logrus.WithError(err).WithField("fabricID", fabricID).Error("Failed to create replay")
+		http.Error(w, "Failed to create replay", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusCreated, item)
@@ -653,7 +671,8 @@ func (h *Handler) HandleGetReplay(w http.ResponseWriter, r *http.Request) {
 	}
 	item, err := h.repo.GetReplay(r.Context(), tenantID, fabricID, vars["replayId"])
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		logrus.WithError(err).WithField("fabricID", fabricID).WithField("replayId", vars["replayId"]).Error("Failed to get replay")
+		http.Error(w, "Replay not found", http.StatusNotFound)
 		return
 	}
 	writeJSON(w, http.StatusOK, item)

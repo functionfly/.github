@@ -15,9 +15,9 @@ import (
 type ExecutionPriority int
 
 const (
-	PriorityLow    ExecutionPriority = 1
-	PriorityNormal ExecutionPriority = 2
-	PriorityHigh   ExecutionPriority = 3
+	PriorityLow      ExecutionPriority = 1
+	PriorityNormal   ExecutionPriority = 2
+	PriorityHigh     ExecutionPriority = 3
 	PriorityCritical ExecutionPriority = 4
 )
 
@@ -39,22 +39,22 @@ func (p ExecutionPriority) String() string {
 
 // QueuedExecution represents an execution waiting in the queue
 type QueuedExecution struct {
-	ID            string                  `json:"id"`
-	FunctionID    uuid.UUID               `json:"function_id"`
-	Version       string                  `json:"version"`
-	Input         json.RawMessage         `json:"input"`
-	Priority      ExecutionPriority       `json:"priority"`
-	UserID        *uuid.UUID              `json:"user_id,omitempty"`
-	TenantID      *uuid.UUID              `json:"tenant_id,omitempty"`
-	RequestID     string                  `json:"request_id"`
-	QueuedAt      time.Time               `json:"queued_at"`
-	TimeoutMs     int                     `json:"timeout_ms"`
-	MaxRetries    int                     `json:"max_retries"`
-	RetryCount    int                     `json:"retry_count"`
-	LastAttemptAt *time.Time              `json:"last_attempt_at,omitempty"`
-	ErrorMessage  string                  `json:"error_message,omitempty"`
-	IPAddress     string                  `json:"ip_address,omitempty"`
-	UserAgent     string                  `json:"user_agent,omitempty"`
+	ID            string            `json:"id"`
+	FunctionID    uuid.UUID         `json:"function_id"`
+	Version       string            `json:"version"`
+	Input         json.RawMessage   `json:"input"`
+	Priority      ExecutionPriority `json:"priority"`
+	UserID        *uuid.UUID        `json:"user_id,omitempty"`
+	TenantID      *uuid.UUID        `json:"tenant_id,omitempty"`
+	RequestID     string            `json:"request_id"`
+	QueuedAt      time.Time         `json:"queued_at"`
+	TimeoutMs     int               `json:"timeout_ms"`
+	MaxRetries    int               `json:"max_retries"`
+	RetryCount    int               `json:"retry_count"`
+	LastAttemptAt *time.Time        `json:"last_attempt_at,omitempty"`
+	ErrorMessage  string            `json:"error_message,omitempty"`
+	IPAddress     string            `json:"ip_address,omitempty"`
+	UserAgent     string            `json:"user_agent,omitempty"`
 }
 
 // ExecutionQueue manages queued function executions
@@ -111,7 +111,7 @@ func (q *ExecutionQueue) Start(onExecution func(*QueuedExecution) error) {
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"max_workers": q.maxWorkers,
+		"max_workers":    q.maxWorkers,
 		"max_queue_size": q.maxQueueSize,
 	}).Info("Started execution queue")
 }
@@ -269,10 +269,10 @@ func (q *ExecutionQueue) GetStats() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"queue_size":     len(q.queue),
-		"max_queue_size": q.maxQueueSize,
-		"processing":     len(q.processing),
-		"workers":        q.maxWorkers,
+		"queue_size":      len(q.queue),
+		"max_queue_size":  q.maxQueueSize,
+		"processing":      len(q.processing),
+		"workers":         q.maxWorkers,
 		"priority_counts": priorityCounts,
 	}
 }

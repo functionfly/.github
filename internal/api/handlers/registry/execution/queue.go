@@ -79,16 +79,16 @@ func (h *Handler) queueExecution(r *http.Request, functionID uuid.UUID, execReq 
 		defer pub.Close()
 
 		msg := map[string]any{
-			"type":          "function_execution",
-			"function_id":   functionID.String(),
-			"author":        mux.Vars(r)["author"],
-			"name":          mux.Vars(r)["name"],
-			"version":       fnVersion.Version,
-			"input_json":    json.RawMessage(execReq.Input),
-			"requested_at":  time.Now().UTC().Format(time.RFC3339Nano),
-			"request_id":    r.Header.Get("X-Request-ID"),
-			"user_agent":    r.Header.Get("User-Agent"),
-			"queue_reason":  "high_load",
+			"type":           "function_execution",
+			"function_id":    functionID.String(),
+			"author":         mux.Vars(r)["author"],
+			"name":           mux.Vars(r)["name"],
+			"version":        fnVersion.Version,
+			"input_json":     json.RawMessage(execReq.Input),
+			"requested_at":   time.Now().UTC().Format(time.RFC3339Nano),
+			"request_id":     r.Header.Get("X-Request-ID"),
+			"user_agent":     r.Header.Get("User-Agent"),
+			"queue_reason":   "high_load",
 			"cache_eligible": fnVersion.Deterministic && fnVersion.CacheTTL > 0,
 		}
 

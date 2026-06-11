@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -136,7 +137,7 @@ func (dem *DatabaseEncryptionManager) createEncryptionTables() error {
 
 	for _, query := range queries {
 		if _, err := dem.db.Exec(query); err != nil {
-			return fmt.Errorf("failed to execute query: %s, error: %w", query, err)
+			return fmt.Errorf("failed to execute encryption table query: %w", err)
 		}
 	}
 
@@ -444,9 +445,17 @@ func (dem *DatabaseEncryptionManager) reEncryptAllFields(oldKey, newKey []byte, 
 	return nil
 }
 
+var validIdentifierChars = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
+
+func isValidIdentifier(name string) bool {
+	return validIdentifierChars.MatchString(name) && len(name) <= 63
+}
+
 // reEncryptField re-encrypts a specific field with new key
 func (dem *DatabaseEncryptionManager) reEncryptField(tableName, columnName string, oldKey, newKey []byte) error {
-	// Query all encrypted values for this field
+	if !isValidIdentifier(tableName) || !isValidIdentifier(columnName) {
+		return fmt.Errorf("invalid table or column name: %s.%s", tableName, columnName)
+	}
 	selectQuery := fmt.Sprintf("SELECT id, %s FROM %s WHERE %s LIKE 'ENC:%%'", columnName, tableName, columnName)
 	rows, err := dem.db.Query(selectQuery)
 	if err != nil {

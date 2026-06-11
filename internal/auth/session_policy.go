@@ -128,7 +128,7 @@ func (s *SessionPolicyService) EnforcePolicy(ctx context.Context, tenantID, user
 	}
 
 	// Check concurrent sessions limit
-	activeSessions, err := s.repo.CountActiveUserSessions(userID)
+	activeSessions, err := s.repo.CountActiveUserSessions(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("failed to count active sessions: %w", err)
 	}
@@ -180,7 +180,7 @@ func (s *SessionPolicyService) IsSessionIdle(session *storage.Session, tenantID 
 
 // GetActiveSessions returns all active sessions for a tenant
 func (s *SessionPolicyService) GetActiveSessions(ctx context.Context, tenantID uuid.UUID) ([]*storage.Session, error) {
-	sessions, err := s.repo.ListTenantSessions(tenantID, 10000, 0)
+	sessions, err := s.repo.ListTenantSessions(ctx, tenantID, 10000, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list tenant sessions: %w", err)
 	}
@@ -190,7 +190,7 @@ func (s *SessionPolicyService) GetActiveSessions(ctx context.Context, tenantID u
 
 // RevokeSession revokes a specific session
 func (s *SessionPolicyService) RevokeSession(ctx context.Context, sessionID, userID uuid.UUID) error {
-	err := s.repo.DeleteSessionByID(sessionID, userID)
+	err := s.repo.DeleteSessionByID(ctx, sessionID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to revoke session: %w", err)
 	}
@@ -205,14 +205,14 @@ func (s *SessionPolicyService) RevokeSession(ctx context.Context, sessionID, use
 
 // RevokeSessionByID revokes a specific session by ID only (for admin operations)
 func (s *SessionPolicyService) RevokeSessionByID(ctx context.Context, sessionID uuid.UUID) error {
-	session, err := s.repo.GetSessionByID(sessionID)
+	session, err := s.repo.GetSessionByID(ctx, sessionID)
 	if err != nil {
 		return fmt.Errorf("session not found: %w", err)
 	}
 	if session == nil {
 		return errors.New("session not found")
 	}
-	if err := s.repo.DeleteSessionByIDOnly(sessionID, session.UserID); err != nil {
+	if err := s.repo.DeleteSessionByIDOnly(ctx, sessionID, session.UserID); err != nil {
 		return fmt.Errorf("failed to revoke session: %w", err)
 	}
 
@@ -223,13 +223,13 @@ func (s *SessionPolicyService) RevokeSessionByID(ctx context.Context, sessionID 
 
 // RevokeAllSessions revokes all sessions for a tenant
 func (s *SessionPolicyService) RevokeAllSessions(ctx context.Context, tenantID uuid.UUID) error {
-	sessions, err := s.repo.ListTenantSessions(tenantID, 10000, 0)
+	sessions, err := s.repo.ListTenantSessions(ctx, tenantID, 10000, 0)
 	if err != nil {
 		return fmt.Errorf("failed to list tenant sessions: %w", err)
 	}
 
 	for _, session := range sessions {
-		err := s.repo.DeleteSessionByID(session.ID, session.UserID)
+		err := s.repo.DeleteSessionByID(ctx, session.ID, session.UserID)
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
 				"session_id": session.ID,

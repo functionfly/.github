@@ -23,7 +23,7 @@ import (
 
 // mockDRERepo is a mock implementation of the registry repository for DRE testing.
 type mockDRERepo struct {
-	certificates  map[string]*registry.ExecutionCertificate
+	certificates map[string]*registry.ExecutionCertificate
 	megRecords   map[uuid.UUID]*registry.MEGRecord
 	passports    map[uuid.UUID]*registry.ExecutionPassport
 	driftReports map[uuid.UUID][]*registry.DriftReportRecord
@@ -32,11 +32,11 @@ type mockDRERepo struct {
 
 func newMockDRERepo() *mockDRERepo {
 	return &mockDRERepo{
-		certificates:  make(map[string]*registry.ExecutionCertificate),
-		megRecords:    make(map[uuid.UUID]*registry.MEGRecord),
-		passports:     make(map[uuid.UUID]*registry.ExecutionPassport),
-		driftReports:  make(map[uuid.UUID][]*registry.DriftReportRecord),
-		functions:     make(map[string]*registry.RegistryFunction),
+		certificates: make(map[string]*registry.ExecutionCertificate),
+		megRecords:   make(map[uuid.UUID]*registry.MEGRecord),
+		passports:    make(map[uuid.UUID]*registry.ExecutionPassport),
+		driftReports: make(map[uuid.UUID][]*registry.DriftReportRecord),
+		functions:    make(map[string]*registry.RegistryFunction),
 	}
 }
 
@@ -276,13 +276,13 @@ func makeTestFXCert(certID, execRootHash string) *cert.FXCert {
 		},
 		Integrity: cert.IntegritySection{
 			ExecutionRootHash: execRootHash,
-			InputHash:        strings.Repeat("a", 64),
-			OutputHash:      strings.Repeat("b", 64),
+			InputHash:         strings.Repeat("a", 64),
+			OutputHash:        strings.Repeat("b", 64),
 		},
 		Trust: cert.TrustSection{
-			TrustScore:              0.95,
-			DeterminismScore:        0.90,
-			ReplayConsistencyScore:  0.98,
+			TrustScore:             0.95,
+			DeterminismScore:       0.90,
+			ReplayConsistencyScore: 0.98,
 		},
 		Signatures: cert.SignatureSection{},
 		Anchoring:  cert.AnchoringSection{},
@@ -291,22 +291,22 @@ func makeTestFXCert(certID, execRootHash string) *cert.FXCert {
 
 func makeTestMEGRecord(execID uuid.UUID, fnID uuid.UUID) *registry.MEGRecord {
 	return &registry.MEGRecord{
-		ID:                   uuid.New(),
-		ExecutionID:          execID,
-		FunctionID:           fnID,
-		Version:              "1.0.0",
-		ExecutionRootHash:    strings.Repeat("e", 64),
-		InputHash:           strings.Repeat("a", 64),
-		EnvironmentHash:     strings.Repeat("b", 64),
-		DependencyHash:      strings.Repeat("c", 64),
-		TraceHash:          strings.Repeat("d", 64),
-		ResourceHash:        strings.Repeat("e", 64),
-		OutputHash:         strings.Repeat("f", 64),
-		MetadataHash:       strings.Repeat("g", 64),
+		ID:                    uuid.New(),
+		ExecutionID:           execID,
+		FunctionID:            fnID,
+		Version:               "1.0.0",
+		ExecutionRootHash:     strings.Repeat("e", 64),
+		InputHash:             strings.Repeat("a", 64),
+		EnvironmentHash:       strings.Repeat("b", 64),
+		DependencyHash:        strings.Repeat("c", 64),
+		TraceHash:             strings.Repeat("d", 64),
+		ResourceHash:          strings.Repeat("e", 64),
+		OutputHash:            strings.Repeat("f", 64),
+		MetadataHash:          strings.Repeat("g", 64),
 		CapsuleDescriptorHash: strings.Repeat("h", 64),
-		DeterminismTier:    "full",
-		ProtocolVersion:    "dre/1.0",
-		CreatedAt:         time.Now().UTC(),
+		DeterminismTier:       "full",
+		ProtocolVersion:       "dre/1.0",
+		CreatedAt:             time.Now().UTC(),
 	}
 }
 
@@ -315,14 +315,14 @@ func makeTestPassport(fnID uuid.UUID) *registry.ExecutionPassport {
 		ID:                        uuid.New(),
 		FunctionID:                fnID,
 		DeterministicReliability:  0.92,
-		ReplayDriftIncidents:     1,
-		VerifiedExecutionsTotal:  46,
-		TotalExecutions:          50,
-		DeterminismScore:         0.92,
-		ReplayIntegrityScore:     0.97,
+		ReplayDriftIncidents:      1,
+		VerifiedExecutionsTotal:   46,
+		TotalExecutions:           50,
+		DeterminismScore:          0.92,
+		ReplayIntegrityScore:      0.97,
 		PerformanceStabilityScore: 0.88,
-		DriftScore:               0.9,
-		LastVerifiedAt:           timePtr(time.Now().UTC()),
+		DriftScore:                0.9,
+		LastVerifiedAt:            timePtr(time.Now().UTC()),
 	}
 }
 
@@ -384,7 +384,7 @@ func TestHandleGetCertificate_Success(t *testing.T) {
 		CertJSON:          fxcertJSON,
 		ExecutionRootHash: execRootHash,
 		CertificateHash:   strings.Repeat("c", 64),
-		CertLevel:        "standard",
+		CertLevel:         "standard",
 	}
 	repo.certificates[certID] = storedCert
 
@@ -427,7 +427,7 @@ func TestHandleListCertificates_Pagination(t *testing.T) {
 			CertJSON:          fxcertJSON,
 			ExecutionRootHash: strings.Repeat(string(rune('a'+i)), 64),
 			CertificateHash:   strings.Repeat(string(rune('b'+i)), 64),
-			CertLevel:        "standard",
+			CertLevel:         "standard",
 		}
 	}
 
@@ -593,7 +593,7 @@ func TestHandleGetExecution_Success(t *testing.T) {
 		CertJSON:          fxcertJSON,
 		ExecutionRootHash: repo.megRecords[execID].ExecutionRootHash,
 		CertificateHash:   strings.Repeat("c", 64),
-		CertLevel:        "standard",
+		CertLevel:         "standard",
 	}
 
 	h := NewHandlerFromRepo(repo)
@@ -847,7 +847,7 @@ func TestHandleVerifyCertificate_Valid(t *testing.T) {
 		CertJSON:          fxcertJSON,
 		ExecutionRootHash: executionRootHash,
 		CertificateHash:   certificateHash,
-		CertLevel:        "standard",
+		CertLevel:         "standard",
 	}
 
 	h := NewHandlerFromRepo(repo)
@@ -884,7 +884,7 @@ func TestHandleAnchorCertificate_NotImplemented(t *testing.T) {
 		CertJSON:          fxcertJSON,
 		ExecutionRootHash: strings.Repeat("e", 64),
 		CertificateHash:   strings.Repeat("c", 64),
-		CertLevel:        "standard",
+		CertLevel:         "standard",
 	}
 
 	h := NewHandlerFromRepo(repo)
@@ -917,7 +917,7 @@ func TestHandleAnchorCertificate_UnsupportedChain(t *testing.T) {
 		CertJSON:          fxcertJSON,
 		ExecutionRootHash: strings.Repeat("e", 64),
 		CertificateHash:   strings.Repeat("c", 64),
-		CertLevel:        "standard",
+		CertLevel:         "standard",
 	}
 
 	// Use a mock anchoring service that is configured but will reject unsupported chain
@@ -998,9 +998,9 @@ func TestHandleListDriftReports(t *testing.T) {
 		Version:          "1.0.0",
 		OriginalRootHash: strings.Repeat("a", 64),
 		ReplayRootHash:   strings.Repeat("b", 64),
-		DriftCategory:   "output",
-		TrustPenalty:    0.05,
-		DetectedAt:     time.Now().UTC(),
+		DriftCategory:    "output",
+		TrustPenalty:     0.05,
+		DetectedAt:       time.Now().UTC(),
 	}
 	repo.driftReports[fnID] = []*registry.DriftReportRecord{report}
 
@@ -1090,7 +1090,7 @@ func TestValidateAuthorName(t *testing.T) {
 		{"testauthor", "", true},
 		{"test author", "testfunc", true}, // space not allowed.
 		{"testauthor", "test func", true},
-		{strings.Repeat("a", 64), "testfunc", false},  // max length author.
+		{strings.Repeat("a", 64), "testfunc", false},   // max length author.
 		{"testauthor", strings.Repeat("a", 64), false}, // max length name.
 		{strings.Repeat("a", 65), "testfunc", true},    // too long author.
 	}
@@ -1107,13 +1107,13 @@ func TestValidateAuthorName(t *testing.T) {
 
 func TestValidateCertID(t *testing.T) {
 	tests := []struct {
-		certID string
+		certID  string
 		wantErr bool
 	}{
 		{"fxc_01HXXXXXXXXXXXXXXXXXXXXXXXXXXXX", false},
 		{"fxc_01HAABBCCDD", false},
 		{"", true},
-		{"fxc_notvalid", true},      // too short
+		{"fxc_notvalid", true}, // too short
 		{"invalid_prefix", true},
 		{"FXC_01HXXXXXXXXXXXXXXXXXXXXXXXXXXXX", true}, // uppercase prefix not allowed by regex
 	}
@@ -1140,8 +1140,8 @@ func TestValidateExecutionRootHash(t *testing.T) {
 		{"", true},
 		{strings.Repeat("a", 63), true}, // too short
 		{strings.Repeat("a", 65), true}, // too long
-		{strings.Repeat("g", 64), true},  // 'g' is not valid hex
-		{strings.Repeat("G", 64), true},  // uppercase 'G' not valid hex
+		{strings.Repeat("g", 64), true}, // 'g' is not valid hex
+		{strings.Repeat("G", 64), true}, // uppercase 'G' not valid hex
 	}
 
 	for _, tt := range tests {
@@ -1182,13 +1182,13 @@ func TestFXCertVerification_Valid(t *testing.T) {
 		CertificateID: "fxc_01HXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
 		Integrity: cert.IntegritySection{
 			ExecutionRootHash: executionRootHash,
-			InputHash:        componentHashes[0],
-			EnvironmentHash:  componentHashes[1],
-			DependencyHash:   componentHashes[2],
-			TraceHash:        componentHashes[3],
-			ResourceHash:     componentHashes[4],
-			OutputHash:       componentHashes[5],
-			MetadataHash:     componentHashes[6],
+			InputHash:         componentHashes[0],
+			EnvironmentHash:   componentHashes[1],
+			DependencyHash:    componentHashes[2],
+			TraceHash:         componentHashes[3],
+			ResourceHash:      componentHashes[4],
+			OutputHash:        componentHashes[5],
+			MetadataHash:      componentHashes[6],
 		},
 		Trust: cert.TrustSection{
 			TrustScore: 0.9,

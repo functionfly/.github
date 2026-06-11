@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -47,7 +48,7 @@ func (m *MFARequiredMiddleware) extractSessionToken(r *http.Request) (string, er
 }
 
 // ensureSessionExists creates or updates a session for the current request
-func (m *MFARequiredMiddleware) ensureSessionExists(r *http.Request, claims *auth.Claims) error {
+func (m *MFARequiredMiddleware) ensureSessionExists(ctx context.Context, r *http.Request, claims *auth.Claims) error {
 	sessionToken, err := m.extractSessionToken(r)
 	if err != nil {
 		return fmt.Errorf("failed to extract session token: %w", err)
@@ -63,17 +64,17 @@ func (m *MFARequiredMiddleware) ensureSessionExists(r *http.Request, claims *aut
 	userAgent := r.Header.Get("User-Agent")
 
 	// Try to get existing session
-	_, err = m.repo.GetSessionByToken(sessionToken)
+	_, err = m.repo.GetSessionByToken(ctx, sessionToken)
 	if err != nil {
 		// Session doesn't exist or is expired, create a new one
 		expiresAt := time.Now().Add(24 * time.Hour) // 24 hours from now
-		_, err = m.repo.CreateSession(claims.UserID, sessionToken, ipAddress, userAgent, expiresAt)
+		_, err = m.repo.CreateSession(ctx, claims.UserID, sessionToken, ipAddress, userAgent, expiresAt)
 		if err != nil {
 			return fmt.Errorf("failed to create session: %w", err)
 		}
 	} else {
 		// Update session activity
-		err = m.repo.UpdateSessionActivity(sessionToken)
+		err = m.repo.UpdateSessionActivity(ctx, sessionToken)
 		if err != nil {
 			m.logger.WithError(err).Warn("Failed to update session activity")
 		}
@@ -107,7 +108,7 @@ func (m *MFARequiredMiddleware) RequireMFA(next http.HandlerFunc) http.HandlerFu
 		}).Info("RequireMFA: Checking MFA for user")
 
 		// Ensure session exists and is up to date
-		if err := m.ensureSessionExists(r, claims); err != nil {
+		if err := m.ensureSessionExists(r.Context(), r, claims); err != nil {
 			m.logger.WithError(err).Error("Failed to ensure session exists")
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
@@ -146,7 +147,7 @@ func (m *MFARequiredMiddleware) RequireMFA(next http.HandlerFunc) http.HandlerFu
 		}
 
 		// Check if MFA verification has been completed for this session
-		if !m.isMFASessionVerified(r) {
+		if !m.isMFASessionVerified(r.Context(), r) {
 			m.logger.WithFields(logrus.Fields{
 				"user_id": claims.UserID,
 				"email":   claims.Email,
@@ -243,7 +244,7 @@ func (m *MFARequiredMiddleware) RequireMFAAndVerify(next http.HandlerFunc) http.
 		}
 
 		// Mark session as MFA verified
-		m.markMFASessionVerified(r)
+		m.markMFASessionVerified(r.Context(), r)
 
 		next.ServeHTTP(w, r)
 	}
@@ -271,14 +272,14 @@ func (m *MFARequiredMiddleware) extractMFACode(r *http.Request) string {
 }
 
 // isMFASessionVerified checks if the current session has been MFA verified
-func (m *MFARequiredMiddleware) isMFASessionVerified(r *http.Request) bool {
+func (m *MFARequiredMiddleware) isMFASessionVerified(ctx context.Context, r *http.Request) bool {
 	sessionToken, err := m.extractSessionToken(r)
 	if err != nil {
 		m.logger.WithError(err).Debug("Failed to extract session token for MFA verification")
 		return false
 	}
 
-	session, err := m.repo.GetSessionByToken(sessionToken)
+	session, err := m.repo.GetSessionByToken(ctx, sessionToken)
 	if err != nil {
 		m.logger.WithError(err).Debug("Failed to get session for MFA verification")
 		return false
@@ -288,14 +289,14 @@ func (m *MFARequiredMiddleware) isMFASessionVerified(r *http.Request) bool {
 }
 
 // markMFASessionVerified marks the current session as MFA verified
-func (m *MFARequiredMiddleware) markMFASessionVerified(r *http.Request) {
+func (m *MFARequiredMiddleware) markMFASessionVerified(ctx context.Context, r *http.Request) {
 	sessionToken, err := m.extractSessionToken(r)
 	if err != nil {
 		m.logger.WithError(err).Error("Failed to extract session token for MFA verification")
 		return
 	}
 
-	err = m.repo.UpdateSessionMFAStatus(sessionToken, true)
+	err = m.repo.UpdateSessionMFAStatus(ctx, sessionToken, true)
 	if err != nil {
 		m.logger.WithError(err).Error("Failed to update session MFA status")
 		return

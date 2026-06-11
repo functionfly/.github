@@ -141,10 +141,10 @@ func (s *Service) CreditAgentWallet(ctx context.Context, agentID string, amountU
 	// Send notification if callback is set and we have initiating user
 	if s.notifyFunc != nil && initiatingUserID != nil {
 		notificationData := map[string]interface{}{
-			"agent_id":        agentID,
-			"amount_usd":      amountUSD,
-			"balance_usd":     update.CurrentBalance,
-			"transaction_id":  update.TransactionID.String(),
+			"agent_id":       agentID,
+			"amount_usd":     amountUSD,
+			"balance_usd":    update.CurrentBalance,
+			"transaction_id": update.TransactionID.String(),
 		}
 		go s.notifyFunc(context.Background(), *initiatingUserID, "wallet_top_up", notificationData)
 	}
@@ -552,10 +552,10 @@ func (s *Service) AdminCredit(ctx context.Context, walletID uuid.UUID, amountUSD
 			ID:   adminID,
 		},
 		Metadata: map[string]interface{}{
-			"type":         "admin_adjustment",
-			"reason":       reason,
+			"type":          "admin_adjustment",
+			"reason":        reason,
 			"admin_user_id": adminID,
-			"is_credit":    true,
+			"is_credit":     true,
 		},
 	}
 
@@ -599,10 +599,10 @@ func (s *Service) AdminDebit(ctx context.Context, walletID uuid.UUID, amountUSD 
 			ID:   adminID,
 		},
 		Metadata: map[string]interface{}{
-			"type":         "admin_adjustment",
-			"reason":       reason,
+			"type":          "admin_adjustment",
+			"reason":        reason,
 			"admin_user_id": adminID,
-			"is_debit":     true,
+			"is_debit":      true,
 		},
 	}
 
@@ -623,16 +623,16 @@ func (s *Service) AdminDebit(ctx context.Context, walletID uuid.UUID, amountUSD 
 
 // WalletFilter defines filters for listing wallets
 type WalletFilter struct {
-	OwnerType   string
-	OwnerIDs    []string
-	Status      string
-	MinBalance  *float64
-	MaxBalance  *float64
-	WalletType  string
-	WalletIDs   []string
-	Currency    string
-	Limit       int
-	Offset      int
+	OwnerType  string
+	OwnerIDs   []string
+	Status     string
+	MinBalance *float64
+	MaxBalance *float64
+	WalletType string
+	WalletIDs  []string
+	Currency   string
+	Limit      int
+	Offset     int
 }
 
 // WalletListResult holds the result of a wallet list query

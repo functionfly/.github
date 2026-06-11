@@ -1209,6 +1209,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	s.router.HandleFunc("/healthz", s.handleHealth).Methods("GET", "OPTIONS")
 	s.router.HandleFunc("/health/detailed", s.handleDetailedHealth).Methods("GET", "OPTIONS")
 	s.router.HandleFunc("/health/check", s.handleHealthCheck).Methods("GET", "OPTIONS")
+	s.router.HandleFunc("/live", s.handleLiveness).Methods("GET", "OPTIONS")
+	s.router.HandleFunc("/ready", s.handleReadinessEndpoint).Methods("GET", "OPTIONS")
 	s.router.Handle("/metrics", middleware.RequireAuthInProduction(authMiddleware)(promhttp.Handler())).Methods("GET")
 	s.router.HandleFunc("/ws/v1/status", statusHandlerInst.HandleWebSocketStatus).Methods("GET")
 

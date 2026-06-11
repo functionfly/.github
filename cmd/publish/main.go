@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 )
 
 type FunctionSource struct {
@@ -118,7 +119,7 @@ func main() {
 	httpReq.Header.Set("Authorization", "Bearer "+token)
 	httpReq.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(httpReq)
 	if err != nil {
 		fmt.Printf("Error making request: %v\n", err)

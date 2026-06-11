@@ -86,8 +86,8 @@ type AIBillingRetryWorker struct {
 // suspendFn is called when retries are exhausted - it should suspend AI access for the tenant.
 func NewAIBillingRetryWorker(redisClient *redis.Client, billingURL string, suspendFn func(ctx context.Context, tenantID string, reason string) error) *AIBillingRetryWorker {
 	return &AIBillingRetryWorker{
-		redis:       redisClient,
-		billingURL:  billingURL,
+		redis:      redisClient,
+		billingURL: billingURL,
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -173,7 +173,7 @@ func (w *AIBillingRetryWorker) processRetryQueue(ctx context.Context) {
 		err := w.attemptCharge(ctx, payload)
 		if err == nil {
 			logrus.WithFields(logrus.Fields{
-				"tenant_id": payload.TenantID,
+				"tenant_id":    payload.TenantID,
 				"execution_id": payload.ExecutionID,
 			}).Info("ai_billing: retry succeeded")
 			// Remove from pending queue (already removed from delayed)
@@ -184,7 +184,7 @@ func (w *AIBillingRetryWorker) processRetryQueue(ctx context.Context) {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"tenant_id": payload.TenantID,
 			"attempt":   attempts,
-			"max":      maxAIRetries,
+			"max":       maxAIRetries,
 		}).Warn("ai_billing: retry charge failed")
 
 		if attempts >= maxAIRetries {
@@ -214,21 +214,21 @@ func (w *AIBillingRetryWorker) processRetryQueue(ctx context.Context) {
 func (w *AIBillingRetryWorker) attemptCharge(ctx context.Context, payload AIFailedBillingPayload) error {
 	type chargeReq struct {
 		TenantID     string `json:"tenant_id"`
-		ExecutionID string `json:"execution_id,omitempty"`
-		FunctionID  string `json:"function_id,omitempty"`
-		Provider    string `json:"provider"`
-		Model       string `json:"model"`
-		InputTokens int    `json:"input_tokens"`
+		ExecutionID  string `json:"execution_id,omitempty"`
+		FunctionID   string `json:"function_id,omitempty"`
+		Provider     string `json:"provider"`
+		Model        string `json:"model"`
+		InputTokens  int    `json:"input_tokens"`
 		OutputTokens int    `json:"output_tokens"`
 	}
 
 	reqBody := chargeReq{
 		TenantID:     payload.TenantID,
-		ExecutionID: payload.ExecutionID,
-		FunctionID:  payload.FunctionID,
-		Provider:    payload.Provider,
-		Model:      payload.Model,
-		InputTokens: payload.InputTokens,
+		ExecutionID:  payload.ExecutionID,
+		FunctionID:   payload.FunctionID,
+		Provider:     payload.Provider,
+		Model:        payload.Model,
+		InputTokens:  payload.InputTokens,
 		OutputTokens: payload.OutputTokens,
 	}
 

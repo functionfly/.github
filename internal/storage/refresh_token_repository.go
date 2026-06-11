@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
@@ -20,7 +21,7 @@ func NewRefreshTokenRepository(db *PostgresDB) *RefreshTokenRepository {
 }
 
 // CreateRefreshToken creates a new refresh token
-func (r *RefreshTokenRepository) CreateRefreshToken(userID uuid.UUID, tokenHash string, ipAddress, userAgent string, expiresAt time.Time) (*RefreshToken, error) {
+func (r *RefreshTokenRepository) CreateRefreshToken(ctx context.Context, userID uuid.UUID, tokenHash string, ipAddress, userAgent string, expiresAt time.Time) (*RefreshToken, error) {
 	token := &RefreshToken{
 		ID:        uuid.New(),
 		UserID:    userID,
@@ -33,7 +34,7 @@ func (r *RefreshTokenRepository) CreateRefreshToken(userID uuid.UUID, tokenHash 
 		UpdatedAt: time.Now(),
 	}
 
-	_, err := r.db.Exec(`
+	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO refresh_tokens (id, user_id, token_hash, ip_address, user_agent, expires_at, revoked, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
 		token.ID, token.UserID, token.TokenHash, token.IPAddress, token.UserAgent, token.ExpiresAt, token.Revoked, token.CreatedAt, token.UpdatedAt)
@@ -46,11 +47,11 @@ func (r *RefreshTokenRepository) CreateRefreshToken(userID uuid.UUID, tokenHash 
 }
 
 // GetRefreshTokenByHash retrieves a refresh token by its hash
-func (r *RefreshTokenRepository) GetRefreshTokenByHash(tokenHash string) (*RefreshToken, error) {
+func (r *RefreshTokenRepository) GetRefreshTokenByHash(ctx context.Context, tokenHash string) (*RefreshToken, error) {
 	var token RefreshToken
 	var revokedAt sql.NullTime
 
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT id, user_id, token_hash, ip_address, user_agent, expires_at, revoked, revoked_at, created_at, updated_at
 		FROM refresh_tokens
 		WHERE token_hash = $1 AND revoked = false AND expires_at > NOW()`,
@@ -70,8 +71,8 @@ func (r *RefreshTokenRepository) GetRefreshTokenByHash(tokenHash string) (*Refre
 }
 
 // RevokeRefreshToken marks a refresh token as revoked
-func (r *RefreshTokenRepository) RevokeRefreshToken(tokenID uuid.UUID) error {
-	_, err := r.db.Exec(`
+func (r *RefreshTokenRepository) RevokeRefreshToken(ctx context.Context, tokenID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `
 		UPDATE refresh_tokens
 		SET revoked = true, revoked_at = NOW(), updated_at = NOW()
 		WHERE id = $1`,
@@ -85,8 +86,8 @@ func (r *RefreshTokenRepository) RevokeRefreshToken(tokenID uuid.UUID) error {
 }
 
 // RevokeUserRefreshTokens revokes all refresh tokens for a user
-func (r *RefreshTokenRepository) RevokeUserRefreshTokens(userID uuid.UUID) error {
-	_, err := r.db.Exec(`
+func (r *RefreshTokenRepository) RevokeUserRefreshTokens(ctx context.Context, userID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `
 		UPDATE refresh_tokens
 		SET revoked = true, revoked_at = NOW(), updated_at = NOW()
 		WHERE user_id = $1 AND revoked = false`,
@@ -100,8 +101,8 @@ func (r *RefreshTokenRepository) RevokeUserRefreshTokens(userID uuid.UUID) error
 }
 
 // DeleteExpiredRefreshTokens removes expired refresh tokens
-func (r *RefreshTokenRepository) DeleteExpiredRefreshTokens() (int64, error) {
-	result, err := r.db.Exec(`
+func (r *RefreshTokenRepository) DeleteExpiredRefreshTokens(ctx context.Context) (int64, error) {
+	result, err := r.db.ExecContext(ctx, `
 		DELETE FROM refresh_tokens
 		WHERE expires_at < NOW() OR (revoked = true AND revoked_at < NOW() - INTERVAL '30 days')`)
 
@@ -118,8 +119,8 @@ func (r *RefreshTokenRepository) DeleteExpiredRefreshTokens() (int64, error) {
 }
 
 // ListUserRefreshTokens lists all refresh tokens for a user
-func (r *RefreshTokenRepository) ListUserRefreshTokens(userID uuid.UUID) ([]*RefreshToken, error) {
-	rows, err := r.db.Query(`
+func (r *RefreshTokenRepository) ListUserRefreshTokens(ctx context.Context, userID uuid.UUID) ([]*RefreshToken, error) {
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, user_id, token_hash, ip_address, user_agent, expires_at, revoked, revoked_at, created_at, updated_at
 		FROM refresh_tokens
 		WHERE user_id = $1

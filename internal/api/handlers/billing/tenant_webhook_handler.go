@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
@@ -65,7 +66,7 @@ func (h *TenantWebhookHandler) HandleTenantWebhook(w http.ResponseWriter, r *htt
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
 		logrus.WithError(err).Error("tenant webhook: invalid tenant_id")
-		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid tenant ID"))
 		return
 	}
 
@@ -73,7 +74,7 @@ func (h *TenantWebhookHandler) HandleTenantWebhook(w http.ResponseWriter, r *htt
 	payload, err := io.ReadAll(r.Body)
 	if err != nil {
 		logrus.WithError(err).Error("tenant webhook: failed to read body")
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Failed to read request body"))
 		return
 	}
 	defer r.Body.Close()
@@ -81,7 +82,7 @@ func (h *TenantWebhookHandler) HandleTenantWebhook(w http.ResponseWriter, r *htt
 	// Verify signature for tenant-isolated payments
 	if err := h.verifyTenantWebhookSignature(ctx, tenantID, payload, r.Header.Get("Stripe-Signature")); err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantIDStr).Error("tenant webhook: signature verification failed")
-		http.Error(w, "Invalid signature", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Invalid signature"))
 		return
 	}
 
@@ -89,7 +90,7 @@ func (h *TenantWebhookHandler) HandleTenantWebhook(w http.ResponseWriter, r *htt
 	var event stripe.Event
 	if err := json.Unmarshal(payload, &event); err != nil {
 		logrus.WithError(err).Error("tenant webhook: failed to parse event")
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
@@ -218,26 +219,26 @@ func (h *TenantWebhookHandler) handleTenantCheckoutSessionCompleted(ctx context.
 	sessionData, err := event.Data.Raw.MarshalJSON()
 	if err != nil {
 		logrus.WithError(err).Error("tenant webhook: failed to marshal checkout session data")
-		http.Error(w, "Invalid event data", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid event data"))
 		return
 	}
 	if err := json.Unmarshal(sessionData, &session); err != nil {
 		logrus.WithError(err).Error("tenant webhook: failed to unmarshal checkout session")
-		http.Error(w, "Invalid session data", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid session data"))
 		return
 	}
 
 	// Verify this session belongs to this tenant
 	if session.Metadata == nil {
 		logrus.WithField("session_id", session.ID).Warn("tenant webhook: checkout session has no metadata")
-		http.Error(w, "Missing metadata", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Missing metadata"))
 		return
 	}
 
 	sessionTenantID := session.Metadata["tenant_id"]
 	if sessionTenantID == "" {
 		logrus.WithField("session_id", session.ID).Warn("tenant webhook: session has no tenant_id in metadata")
-		http.Error(w, "Missing tenant_id in metadata", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Missing tenant_id in metadata"))
 		return
 	}
 
@@ -247,7 +248,7 @@ func (h *TenantWebhookHandler) handleTenantCheckoutSessionCompleted(ctx context.
 			"expected_tenant": tenantID.String(),
 			"actual_tenant": sessionTenantID,
 		}).Error("tenant webhook: tenant mismatch")
-		http.Error(w, "Tenant ID mismatch", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Tenant ID mismatch"))
 		return
 	}
 
@@ -279,7 +280,7 @@ func (h *TenantWebhookHandler) handleTenantBundleSubscriptionCheckout(ctx contex
 
 	if bundleSlug == "" {
 		logrus.WithField("session_id", session.ID).Warn("tenant webhook: bundle subscription missing bundle_slug")
-		http.Error(w, "Missing bundle_slug", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Missing bundle_slug"))
 		return
 	}
 
@@ -287,12 +288,12 @@ func (h *TenantWebhookHandler) handleTenantBundleSubscriptionCheckout(ctx contex
 	bundle, err := h.repo.GetPricingBundleBySlug(ctx, bundleSlug)
 	if err != nil {
 		logrus.WithError(err).WithField("bundle_slug", bundleSlug).Error("tenant webhook: failed to get bundle")
-		http.Error(w, "Failed to retrieve bundle", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve bundle"))
 		return
 	}
 	if bundle == nil {
 		logrus.WithField("bundle_slug", bundleSlug).Warn("tenant webhook: bundle not found")
-		http.Error(w, "Bundle not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Bundle not found"))
 		return
 	}
 
@@ -352,13 +353,13 @@ func (h *TenantWebhookHandler) handleTenantBundleSubscriptionCheckout(ctx contex
 		sub.DefaultAppID = existingSub.DefaultAppID
 		if err := h.repo.UpdateBundleSubscription(ctx, sub); err != nil {
 			logrus.WithError(err).Error("tenant webhook: failed to update bundle subscription")
-			http.Error(w, "Failed to update subscription", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to update subscription"))
 			return
 		}
 	} else {
 		if err := h.repo.CreateBundleSubscription(ctx, sub); err != nil {
 			logrus.WithError(err).Error("tenant webhook: failed to create bundle subscription")
-			http.Error(w, "Failed to create subscription", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to create subscription"))
 			return
 		}
 	}
@@ -388,14 +389,14 @@ func (h *TenantWebhookHandler) handleTenantWalletCreditCheckout(ctx context.Cont
 
 	if userIDStr == "" {
 		logrus.WithField("session_id", session.ID).Warn("tenant webhook: wallet credit missing user_id")
-		http.Error(w, "Missing user_id", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Missing user_id"))
 		return
 	}
 
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
 		logrus.WithError(err).Warn("tenant webhook: invalid user_id")
-		http.Error(w, "Invalid user_id", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid user_id"))
 		return
 	}
 
@@ -427,7 +428,7 @@ func (h *TenantWebhookHandler) handleTenantAgentCreditsCheckout(ctx context.Cont
 
 	if agentID == "" {
 		logrus.WithField("session_id", session.ID).Warn("tenant webhook: agent credits missing agent_id")
-		http.Error(w, "Missing agent_id", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Missing agent_id"))
 		return
 	}
 
@@ -453,7 +454,7 @@ func (h *TenantWebhookHandler) handleTenantInvoicePaymentSucceeded(ctx context.C
 	raw, err := event.Data.Raw.MarshalJSON()
 	if err != nil || json.Unmarshal(raw, &invoice) != nil {
 		logrus.WithError(err).Error("tenant webhook: failed to unmarshal invoice")
-		http.Error(w, "Invalid invoice payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid invoice payload"))
 		return
 	}
 
@@ -475,7 +476,7 @@ func (h *TenantWebhookHandler) handleTenantInvoicePaymentFailed(ctx context.Cont
 	raw, err := event.Data.Raw.MarshalJSON()
 	if err != nil || json.Unmarshal(raw, &invoice) != nil {
 		logrus.WithError(err).Error("tenant webhook: failed to unmarshal invoice")
-		http.Error(w, "Invalid invoice payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid invoice payload"))
 		return
 	}
 
@@ -495,7 +496,7 @@ func (h *TenantWebhookHandler) handleTenantSubscriptionUpdated(ctx context.Conte
 	var sub stripe.Subscription
 	raw, err := event.Data.Raw.MarshalJSON()
 	if err != nil || json.Unmarshal(raw, &sub) != nil {
-		http.Error(w, "Invalid subscription payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid subscription payload"))
 		return
 	}
 
@@ -514,7 +515,7 @@ func (h *TenantWebhookHandler) handleTenantSubscriptionDeleted(ctx context.Conte
 	var sub stripe.Subscription
 	raw, err := event.Data.Raw.MarshalJSON()
 	if err != nil || json.Unmarshal(raw, &sub) != nil {
-		http.Error(w, "Invalid subscription payload", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid subscription payload"))
 		return
 	}
 

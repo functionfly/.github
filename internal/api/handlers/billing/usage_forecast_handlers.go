@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
@@ -76,7 +77,7 @@ type ForecastResponse struct {
 func (h *UsageForecastHandler) GetCurrentForecast(w http.ResponseWriter, r *http.Request) {
 	tenantID, ok := middleware.GetTenantID(r)
 	if !ok {
-		http.Error(w, "Tenant not found", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Tenant not found"))
 		return
 	}
 
@@ -85,21 +86,21 @@ func (h *UsageForecastHandler) GetCurrentForecast(w http.ResponseWriter, r *http
 	// Get spend forecast
 	spendForecast, err := h.forecaster.GetForecastForTenant(ctx, tenantID, "spend")
 	if err != nil {
-		http.Error(w, "Failed to get spend forecast", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get spend forecast"))
 		return
 	}
 
 	// Get execution forecast
 	execForecast, err := h.forecaster.GetForecastForTenant(ctx, tenantID, "function_execution")
 	if err != nil {
-		http.Error(w, "Failed to get execution forecast", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get execution forecast"))
 		return
 	}
 
 	// Get compute forecast
 	computeForecast, err := h.forecaster.GetForecastForTenant(ctx, tenantID, "compute_time_ms")
 	if err != nil {
-		http.Error(w, "Failed to get compute forecast", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get compute forecast"))
 		return
 	}
 
@@ -117,7 +118,7 @@ func (h *UsageForecastHandler) GetCurrentForecast(w http.ResponseWriter, r *http
 func (h *UsageForecastHandler) GetForecastByType(w http.ResponseWriter, r *http.Request) {
 	tenantID, ok := middleware.GetTenantID(r)
 	if !ok {
-		http.Error(w, "Tenant not found", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Tenant not found"))
 		return
 	}
 
@@ -125,14 +126,14 @@ func (h *UsageForecastHandler) GetForecastByType(w http.ResponseWriter, r *http.
 	forecastType := vars["type"]
 	validTypes := map[string]bool{"spend": true, "function_execution": true, "compute_time_ms": true}
 	if !validTypes[forecastType] {
-		http.Error(w, "Invalid forecast type", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid forecast type"))
 		return
 	}
 
 	ctx := r.Context()
 	forecast, err := h.forecaster.GetForecastForTenant(ctx, tenantID, forecastType)
 	if err != nil {
-		http.Error(w, "Failed to get forecast", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get forecast"))
 		return
 	}
 
@@ -152,14 +153,14 @@ func (h *UsageForecastHandler) GetForecastByType(w http.ResponseWriter, r *http.
 func (h *UsageForecastHandler) RefreshForecast(w http.ResponseWriter, r *http.Request) {
 	tenantID, ok := middleware.GetTenantID(r)
 	if !ok {
-		http.Error(w, "Tenant not found", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Tenant not found"))
 		return
 	}
 
 	// Get subscription for period info
 	sub, err := h.billingRepo.GetSubscriptionByTenantID(tenantID)
 	if err != nil || sub == nil {
-		http.Error(w, "Subscription not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Subscription not found"))
 		return
 	}
 
@@ -167,12 +168,12 @@ func (h *UsageForecastHandler) RefreshForecast(w http.ResponseWriter, r *http.Re
 
 	// Generate new forecasts
 	if err := h.forecaster.GenerateSpendForecast(ctx, tenantID, sub); err != nil {
-		http.Error(w, "Failed to generate spend forecast", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to generate spend forecast"))
 		return
 	}
 
 	if err := h.forecaster.GenerateUsageForecast(ctx, tenantID, "function_execution", sub); err != nil {
-		http.Error(w, "Failed to generate execution forecast", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to generate execution forecast"))
 		return
 	}
 
@@ -250,20 +251,20 @@ type CreateAlertRequest struct {
 func (h *UsageForecastHandler) CreateAlert(w http.ResponseWriter, r *http.Request) {
 	tenantID, ok := middleware.GetTenantID(r)
 	if !ok {
-		http.Error(w, "Tenant not found", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Tenant not found"))
 		return
 	}
 
 	var req CreateAlertRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	// Validate
 	validTypes := map[string]bool{"spend_cap": true, "usage_spike": true, "threshold": true, "forecast_exceeded": true}
 	if !validTypes[req.AlertType] {
-		http.Error(w, "Invalid alert type", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid alert type"))
 		return
 	}
 
@@ -290,7 +291,7 @@ func (h *UsageForecastHandler) CreateAlert(w http.ResponseWriter, r *http.Reques
 
 	ctx := r.Context()
 	if err := h.alertRepo.CreateUsageAlert(ctx, alert); err != nil {
-		http.Error(w, "Failed to create alert", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create alert"))
 		return
 	}
 
@@ -303,14 +304,14 @@ func (h *UsageForecastHandler) CreateAlert(w http.ResponseWriter, r *http.Reques
 func (h *UsageForecastHandler) ListAlerts(w http.ResponseWriter, r *http.Request) {
 	tenantID, ok := middleware.GetTenantID(r)
 	if !ok {
-		http.Error(w, "Tenant not found", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Tenant not found"))
 		return
 	}
 
 	ctx := r.Context()
 	alerts, err := h.alertRepo.ListUsageAlertsByTenant(ctx, tenantID)
 	if err != nil {
-		http.Error(w, "Failed to list alerts", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list alerts"))
 		return
 	}
 
@@ -323,26 +324,26 @@ func (h *UsageForecastHandler) GetAlert(w http.ResponseWriter, r *http.Request) 
 	vars := mux.Vars(r)
 	alertID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid alert ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid alert ID"))
 		return
 	}
 
 	ctx := r.Context()
 	alert, err := h.alertRepo.GetUsageAlertByID(ctx, alertID)
 	if err != nil {
-		http.Error(w, "Failed to get alert", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get alert"))
 		return
 	}
 
 	if alert == nil {
-		http.Error(w, "Alert not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Alert not found"))
 		return
 	}
 
 	// Verify tenant ownership
 	tenantID, _ := middleware.GetTenantID(r)
 	if alert.TenantID != tenantID {
-		http.Error(w, "Not authorized", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not authorized"))
 		return
 	}
 
@@ -355,7 +356,7 @@ func (h *UsageForecastHandler) UpdateAlert(w http.ResponseWriter, r *http.Reques
 	vars := mux.Vars(r)
 	alertID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid alert ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid alert ID"))
 		return
 	}
 
@@ -363,23 +364,23 @@ func (h *UsageForecastHandler) UpdateAlert(w http.ResponseWriter, r *http.Reques
 	ctx := r.Context()
 	existing, err := h.alertRepo.GetUsageAlertByID(ctx, alertID)
 	if err != nil {
-		http.Error(w, "Failed to get alert", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get alert"))
 		return
 	}
 	if existing == nil {
-		http.Error(w, "Alert not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Alert not found"))
 		return
 	}
 
 	tenantID, _ := middleware.GetTenantID(r)
 	if existing.TenantID != tenantID {
-		http.Error(w, "Not authorized", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not authorized"))
 		return
 	}
 
 	var req CreateAlertRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -393,7 +394,7 @@ func (h *UsageForecastHandler) UpdateAlert(w http.ResponseWriter, r *http.Reques
 	existing.CooldownMinutes = req.CooldownMinutes
 
 	if err := h.alertRepo.UpdateUsageAlert(ctx, existing); err != nil {
-		http.Error(w, "Failed to update alert", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update alert"))
 		return
 	}
 
@@ -406,7 +407,7 @@ func (h *UsageForecastHandler) DeleteAlert(w http.ResponseWriter, r *http.Reques
 	vars := mux.Vars(r)
 	alertID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid alert ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid alert ID"))
 		return
 	}
 
@@ -414,22 +415,22 @@ func (h *UsageForecastHandler) DeleteAlert(w http.ResponseWriter, r *http.Reques
 	ctx := r.Context()
 	existing, err := h.alertRepo.GetUsageAlertByID(ctx, alertID)
 	if err != nil {
-		http.Error(w, "Failed to get alert", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get alert"))
 		return
 	}
 	if existing == nil {
-		http.Error(w, "Alert not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Alert not found"))
 		return
 	}
 
 	tenantID, _ := middleware.GetTenantID(r)
 	if existing.TenantID != tenantID {
-		http.Error(w, "Not authorized", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not authorized"))
 		return
 	}
 
 	if err := h.alertRepo.DeleteUsageAlert(ctx, alertID); err != nil {
-		http.Error(w, "Failed to delete alert", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete alert"))
 		return
 	}
 
@@ -440,7 +441,7 @@ func (h *UsageForecastHandler) DeleteAlert(w http.ResponseWriter, r *http.Reques
 func (h *UsageForecastHandler) GetAlertHistory(w http.ResponseWriter, r *http.Request) {
 	tenantID, ok := middleware.GetTenantID(r)
 	if !ok {
-		http.Error(w, "Tenant not found", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Tenant not found"))
 		return
 	}
 
@@ -454,7 +455,7 @@ func (h *UsageForecastHandler) GetAlertHistory(w http.ResponseWriter, r *http.Re
 	ctx := r.Context()
 	history, err := h.alertRepo.GetAlertHistoryByTenant(ctx, tenantID, limit)
 	if err != nil {
-		http.Error(w, "Failed to get alert history", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get alert history"))
 		return
 	}
 
@@ -475,21 +476,21 @@ type SpendCapRequest struct {
 func (h *UsageForecastHandler) GetSpendCap(w http.ResponseWriter, r *http.Request) {
 	tenantID, ok := middleware.GetTenantID(r)
 	if !ok {
-		http.Error(w, "Tenant not found", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Tenant not found"))
 		return
 	}
 
 	// Get subscription for period
 	sub, err := h.billingRepo.GetSubscriptionByTenantID(tenantID)
 	if err != nil || sub == nil {
-		http.Error(w, "Subscription not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Subscription not found"))
 		return
 	}
 
 	ctx := r.Context()
 	cap, err := h.alertRepo.GetSpendCapByTenant(ctx, tenantID, sub.CurrentPeriodStart)
 	if err != nil {
-		http.Error(w, "Failed to get spend cap", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get spend cap"))
 		return
 	}
 
@@ -511,26 +512,26 @@ func (h *UsageForecastHandler) GetSpendCap(w http.ResponseWriter, r *http.Reques
 func (h *UsageForecastHandler) UpdateSpendCap(w http.ResponseWriter, r *http.Request) {
 	tenantID, ok := middleware.GetTenantID(r)
 	if !ok {
-		http.Error(w, "Tenant not found", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Tenant not found"))
 		return
 	}
 
 	var req SpendCapRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	// Validate
 	if req.CapAmountCents < 0 {
-		http.Error(w, "Cap amount must be non-negative", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Cap amount must be non-negative"))
 		return
 	}
 
 	// Get subscription for period dates
 	sub, err := h.billingRepo.GetSubscriptionByTenantID(tenantID)
 	if err != nil || sub == nil {
-		http.Error(w, "Subscription not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Subscription not found"))
 		return
 	}
 
@@ -547,7 +548,7 @@ func (h *UsageForecastHandler) UpdateSpendCap(w http.ResponseWriter, r *http.Req
 
 	ctx := r.Context()
 	if err := h.alertRepo.CreateOrUpdateSpendCap(ctx, cap); err != nil {
-		http.Error(w, "Failed to update spend cap", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update spend cap"))
 		return
 	}
 
@@ -559,7 +560,7 @@ func (h *UsageForecastHandler) UpdateSpendCap(w http.ResponseWriter, r *http.Req
 func (h *UsageForecastHandler) GetUsageTrends(w http.ResponseWriter, r *http.Request) {
 	tenantID, ok := middleware.GetTenantID(r)
 	if !ok {
-		http.Error(w, "Tenant not found", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Tenant not found"))
 		return
 	}
 
@@ -583,13 +584,13 @@ func (h *UsageForecastHandler) GetUsageTrends(w http.ResponseWriter, r *http.Req
 	// Get daily usage for trend analysis
 	execHistory, err := h.alertRepo.GetDailyUsageHistory(ctx, tenantID, "function_execution", days)
 	if err != nil {
-		http.Error(w, "Failed to get usage history", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get usage history"))
 		return
 	}
 
 	spendHistory, err := h.alertRepo.GetDailySpendHistory(ctx, tenantID, days)
 	if err != nil {
-		http.Error(w, "Failed to get spend history", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get spend history"))
 		return
 	}
 

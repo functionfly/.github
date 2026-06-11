@@ -283,7 +283,8 @@ func (c *CDNService) ServeStaticAsset(w http.ResponseWriter, r *http.Request, fi
 	// Resolve and validate the file path to prevent path traversal
 	absPath, err := c.resolveFilePath(filePath)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		logrus.WithError(err).WithField("filePath", filePath).Warn("Failed to resolve file path")
+		http.Error(w, "Invalid file path", http.StatusBadRequest)
 		return
 	}
 
