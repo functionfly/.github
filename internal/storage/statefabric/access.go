@@ -47,3 +47,31 @@ func (r *Repository) PipelineExecutionStatus() map[string]interface{} {
 		"api_key_set":      r.apiKey != "",
 	}
 }
+
+// HealthCheck verifies connectivity to R2 storage and pipeline execution service.
+func (r *Repository) HealthCheck(ctx context.Context) map[string]interface{} {
+	result := map[string]interface{}{
+		"r2_storage":      map[string]interface{}{"available": false},
+		"pipeline_exec":    r.PipelineExecutionStatus(),
+	}
+
+	if r.r2Backend != nil {
+		if err := r.r2Backend.HealthCheck(ctx); err != nil {
+			result["r2_storage"] = map[string]interface{}{
+				"available": false,
+				"error":     err.Error(),
+			}
+		} else {
+			result["r2_storage"] = map[string]interface{}{
+				"available": true,
+			}
+		}
+	} else {
+		result["r2_storage"] = map[string]interface{}{
+			"available": false,
+			"error":     "R2 backend not configured",
+		}
+	}
+
+	return result
+}

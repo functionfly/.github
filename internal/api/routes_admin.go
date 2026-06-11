@@ -17,7 +17,6 @@ import (
 	feedbackHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/feedback"
 	mfaHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/mfa"
 	"github.com/functionfly/functionfly/internal/api/handlers/monitoring"
-	notificationHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/notifications"
 	registryhandler "github.com/functionfly/functionfly/internal/api/handlers/registry"
 	"github.com/functionfly/functionfly/internal/api/handlers/security"
 	"github.com/functionfly/functionfly/internal/api/handlers/statefabric"
@@ -65,7 +64,6 @@ func registerAdminRoutes(
 	stateUsageHandler *billing.StateUsageHandler,
 	unfairAdvantageHandler *agenthandler.UnfairAdvantageHandler,
 	certHandler *certification.Handler,
-	notificationHandler *notificationHandlerPkg.Handler,
 ) {
 	adminRoutes := api.PathPrefix("/admin").Subrouter()
 
@@ -462,7 +460,7 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/state-fabrics", authMiddleware.RequirePermission(auth.PermTenantsRead)(rateLimiter.RequireRateLimit(stateFabricHandler.HandleListAll))).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/state-fabrics/{id}/suspend", authMiddleware.RequirePermission(auth.PermTenantsWrite)(rateLimiter.RequireRateLimit(stateFabricHandler.HandleSuspendFabric))).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/state-fabrics/{id}/resume", authMiddleware.RequirePermission(auth.PermTenantsWrite)(rateLimiter.RequireRateLimit(stateFabricHandler.HandleResumeFabric))).Methods("POST", "OPTIONS")
-	adminRoutes.HandleFunc("/state-fabrics/cleanup", authMiddleware.RequirePermission(auth.PermSystemWrite)(rateLimiter.RequireSensitiveRateLimit(advancedSecurityMiddleware.RequireHMACSignature(stateFabricHandler.HandleRunTTLCleanup)))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/state-fabrics/cleanup", authMiddleware.RequirePermission(auth.PermSystemWrite)(rateLimiter.RequireRateLimit(advancedSecurityMiddleware.RequireHMACSignature(stateFabricHandler.HandleRunTTLCleanup)))).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/state-fabrics/cleanup/stats", authMiddleware.RequirePermission(auth.PermSystemRead)(rateLimiter.RequireRateLimit(stateFabricHandler.HandleGetTTLCleanupStats))).Methods("GET", "OPTIONS")
 
 	// Trigger Engine Admin Endpoints
@@ -648,11 +646,6 @@ func registerAdminRoutes(
 	blogAdminRoutes.HandleFunc("/authors/slug/{slug}", authMiddleware.RequirePermission(auth.PermSystemWrite)(blogHandler.HandleGetAuthorBySlug)).Methods("GET")
 	blogAdminRoutes.HandleFunc("/settings", authMiddleware.RequirePermission(auth.PermSystemWrite)(blogHandler.HandleGetSettings)).Methods("GET")
 	blogAdminRoutes.HandleFunc("/settings", authMiddleware.RequirePermission(auth.PermSystemWrite)(blogHandler.HandleUpdateSettings)).Methods("PUT")
-
-	// Admin notifications (admin-specific notification endpoints)
-	adminRoutes.HandleFunc("/notifications", authMiddleware.RequireAuth(notificationHandler.HandleListNotifications)).Methods("GET", "OPTIONS")
-	adminRoutes.HandleFunc("/notifications/mark-all-read", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(notificationHandler.HandleMarkAllAsRead))).Methods("POST", "OPTIONS")
-	adminRoutes.HandleFunc("/notifications/{id}/read", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(notificationHandler.HandleMarkAsRead))).Methods("PATCH", "OPTIONS")
 
 	// Tenant-scoped operations (admin impersonating tenant)
 	adminRoutes.HandleFunc("/tenants/{tenantId}/apps", authMiddleware.RequirePermission(auth.PermTenantsRead)(adminHandler.HandleListTenantApps)).Methods("GET")

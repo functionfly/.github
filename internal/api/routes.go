@@ -223,7 +223,11 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	githubRepo := storage.NewGitHubRepository(s.postgresDB.DB)
 	githubVaultKey := os.Getenv("GITHUB_VAULT_KEY")
 	if githubVaultKey == "" {
-		githubVaultKey = "default-dev-key-must-be-32-bytes!" // 32 bytes for dev
+		if os.Getenv("DEVELOPMENT") == "true" {
+			githubVaultKey = "default-dev-key-must-be-32-bytes!"
+		} else {
+			logrus.Fatal("FATAL: GITHUB_VAULT_KEY environment variable is required in production")
+		}
 	}
 	githubBaseURL := os.Getenv("FRONTEND_URL")
 	if githubBaseURL == "" {
@@ -529,6 +533,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		os.Getenv("FUNCTION_EXECUTION_URL"),
 		os.Getenv("FUNCTION_API_KEY"),
 	)
+	s.stateFabricRepo = stateFabricRepo
 	stateFabricHandler := statefabric.NewHandlerWithCleanup(stateFabricRepo, sfAddonRepo, s.stateFabricCleanup)
 
 	vaultRepo := vaultstorage.NewRepository(s.postgresDB.GORM)

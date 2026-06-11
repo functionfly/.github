@@ -181,6 +181,83 @@ type StateFabricPipelineExecution struct {
 
 func (StateFabricPipelineExecution) TableName() string { return "state_fabric_pipeline_executions" }
 
+// StateFabricDeadLetter represents a failed operation that couldn't be retried
+type StateFabricDeadLetter struct {
+	ID            uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	FabricID      uuid.UUID  `gorm:"type:uuid;not null;index"`
+	PipelineID    *uuid.UUID `gorm:"type:uuid;index"`
+	OperationType string     `gorm:"not null;size:50"` // "pipeline_execution", "snapshot", "replay", "key_operation"
+	InputData     JSONMap    `gorm:"type:jsonb;column:input_data"`
+	ErrorMessage  string     `gorm:"type:text"`
+	ErrorCode    string     `gorm:"size:50"`
+	Attempts      int        `gorm:"not null;default:0"`
+	MaxAttempts   int        `gorm:"not null;default:3"`
+	Status        string     `gorm:"not null;size:50;default:pending"` // "pending", "retrying", "failed", "resolved"
+	NextRetryAt   *time.Time `gorm:"column:next_retry_at;index"`
+	ResolvedAt    *time.Time `gorm:"column:resolved_at"`
+	CreatedAt    time.Time  `gorm:"autoCreateTime"`
+	UpdatedAt    time.Time  `gorm:"autoUpdateTime"`
+}
+
+func (StateFabricDeadLetter) TableName() string { return "state_fabric_dead_letters" }
+
+func (s *StateFabricDeadLetter) BeforeCreate(tx *gorm.DB) error {
+	if s.ID == uuid.Nil {
+		s.ID = uuid.New()
+	}
+	return nil
+}
+
+// StateFabricVersion represents a version snapshot of fabric configuration
+type StateFabricVersion struct {
+	ID            uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	FabricID      uuid.UUID  `gorm:"type:uuid;not null;index"`
+	VersionNumber int       `gorm:"not null"`
+	Name          string    `gorm:"size:255"`
+	Description   string    `gorm:"type:text"`
+	Type          string    `gorm:"size:50"`
+	Settings      JSONMap   `gorm:"type:jsonb"`
+	ChangeType    string    `gorm:"size:50"` // "create", "update", "delete"
+	ChangeSummary string    `gorm:"type:text"`
+	ActorID       uuid.UUID `gorm:"type:uuid"`
+	ActorType     string    `gorm:"size:50"`
+	CreatedAt    time.Time  `gorm:"autoCreateTime"`
+}
+
+func (StateFabricVersion) TableName() string { return "state_fabric_versions" }
+
+func (s *StateFabricVersion) BeforeCreate(tx *gorm.DB) error {
+	if s.ID == uuid.Nil {
+		s.ID = uuid.New()
+	}
+	return nil
+}
+
+// StateFabricKeyVersion represents a version of a key value
+type StateFabricKeyVersion struct {
+	ID            uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	FabricID      uuid.UUID  `gorm:"type:uuid;not null;index"`
+	Key           string    `gorm:"not null;size:1024;index"`
+	Value         JSONMap   `gorm:"type:jsonb"`
+	VersionNumber int       `gorm:"not null"`
+	ChangeType    string    `gorm:"size:50"` // "set", "delete"
+	ChangeSummary string    `gorm:"type:text"`
+	TTLSeconds    int       `gorm:"default:0"`
+	ExpiresAt     *time.Time `gorm:"column:expires_at;index"`
+	ActorID       uuid.UUID `gorm:"type:uuid"`
+	ActorType     string    `gorm:"size:50"`
+	CreatedAt    time.Time  `gorm:"autoCreateTime"`
+}
+
+func (StateFabricKeyVersion) TableName() string { return "state_fabric_key_versions" }
+
+func (s *StateFabricKeyVersion) BeforeCreate(tx *gorm.DB) error {
+	if s.ID == uuid.Nil {
+		s.ID = uuid.New()
+	}
+	return nil
+}
+
 // BeforeCreate sets UUIDs
 func (s *StateFabric) BeforeCreate(tx *gorm.DB) error {
 	if s.ID == uuid.Nil {

@@ -16,7 +16,8 @@ const (
 )
 
 // UserHasPermission returns true when the user may perform the requested operation.
-// Order: explicit user grant → same-tenant membership → public read (handled in CheckPermission).
+// Access requires either an explicit permission grant or the resource is public (for read only).
+// Tenant membership alone does NOT grant access - explicit permission is always required.
 func (r *StateRepository) UserHasPermission(
 	ctx context.Context,
 	state *State,
@@ -28,24 +29,11 @@ func (r *StateRepository) UserHasPermission(
 		return false, nil
 	}
 
-	// Same-tenant members have full access unless explicitly restricted via permission rows.
-	if userTenantID != uuid.Nil && userTenantID == state.TenantID {
-		return true, nil
-	}
-
 	allowed, err := r.CheckPermission(ctx, state.ID, "user", userID, requiredPermission)
 	if err != nil {
 		return false, err
 	}
-	if allowed {
-		return true, nil
-	}
-
-	if userTenantID != uuid.Nil && userTenantID == state.TenantID {
-		return true, nil
-	}
-
-	return false, nil
+	return allowed, nil
 }
 
 // GrantCreatorPermissions grants the creating user full control over a state container.

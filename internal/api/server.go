@@ -93,6 +93,9 @@ type Server struct {
 	// State fabric cleanup service for TTL-based cleanup
 	stateFabricCleanup *statefabricrepo.CleanupService
 
+	// State fabric repository for replay operations (set in setupRoutes)
+	stateFabricRepo *statefabricrepo.Repository
+
 	// Recommendations service
 	recommendationSvc *recommendations.Service
 
@@ -835,6 +838,12 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	if s.dnaHandler != nil {
 		s.dnaHandler.Stop()
 		logrus.Info("DNA handler stopped")
+	}
+
+	// Shutdown state fabric replay operations
+	if s.stateFabricRepo != nil {
+		s.stateFabricRepo.ShutdownReplays()
+		logrus.Info("State fabric replay operations stopped")
 	}
 
 	// Shutdown the HTTP server gracefully

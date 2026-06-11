@@ -2,12 +2,34 @@ package statefabric
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"strconv"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
+
+var (
+	defaultCleanupInterval  = 1 * time.Hour
+	defaultCleanupBatchSize = 1000
+)
+
+func init() {
+	if val := os.Getenv("STATEFABRIC_CLEANUP_INTERVAL"); val != "" {
+		if parsed, err := time.ParseDuration(val); err == nil && parsed > 0 {
+			defaultCleanupInterval = parsed
+		}
+	}
+	if val := os.Getenv("STATEFABRIC_CLEANUP_BATCH_SIZE"); val != "" {
+		if parsed, err := strconv.Atoi(val); err == nil && parsed > 0 {
+			defaultCleanupBatchSize = parsed
+		}
+	}
+}
 
 // CleanupConfig holds configuration for the state fabric cleanup worker
 type CleanupConfig struct {
@@ -19,21 +41,15 @@ type CleanupConfig struct {
 	Verbose bool
 	// Max age for expired snapshots (default: immediate deletion when expires_at < now)
 	MaxAge time.Duration
-	// Edge state version retention - number of versions to keep per key
-	EdgeStateVersionRetention int
-	// Edge state version max age - delete versions older than this
-	EdgeStateVersionMaxAge time.Duration
 }
 
 // DefaultCleanupConfig returns the default configuration
 func DefaultCleanupConfig() CleanupConfig {
 	return CleanupConfig{
-		Interval:                  1 * time.Hour, // Run every hour by default
-		BatchSize:                1000,
-		Verbose:                  false,
-		MaxAge:                   0, // Delete immediately when expires_at < now
-		EdgeStateVersionRetention: 10, // Keep last 10 versions of edge state per key
-		EdgeStateVersionMaxAge:   30 * 24 * time.Hour, // Delete versions older than 30 days
+		Interval:  defaultCleanupInterval,
+		BatchSize: defaultCleanupBatchSize,
+		Verbose:   false,
+		MaxAge:    0, // Delete immediately when expires_at < now
 	}
 }
 
@@ -44,6 +60,9 @@ type CleanupService struct {
 	config    CleanupConfig
 	logger    *logrus.Logger
 	stopCh    chan struct{}
+	drainCh   chan struct{}
+	isRunning bool
+	mu        sync.Mutex
 }
 
 // NewCleanupService creates a new state fabric cleanup service
@@ -56,10 +75,10 @@ func NewCleanupService(db *gorm.DB, config CleanupConfig) *CleanupService {
 	}
 
 	return &CleanupService{
-		db:        db,
-		config:    config,
-		logger:    logrus.WithField("service", "state_fabric_cleanup").Logger,
-		stopCh:    make(chan struct{}),
+		db:     db,
+		config: config,
+		logger: logrus.WithField("service", "state_fabric_cleanup").Logger,
+		stopCh: make(chan struct{}),
 	}
 }
 
@@ -88,11 +107,22 @@ func (s *CleanupService) StartCleanupRoutine(ctx context.Context) {
 		"batchSize": s.config.BatchSize,
 	}).Info("Starting state fabric TTL cleanup routine")
 
+	s.mu.Lock()
+	s.isRunning = true
+	s.drainCh = make(chan struct{})
+	s.mu.Unlock()
+
 	// Run initial cleanup
 	s.runCleanup()
 
 	ticker := time.NewTicker(s.config.Interval)
 	defer ticker.Stop()
+	defer func() {
+		s.mu.Lock()
+		s.isRunning = false
+		close(s.drainCh)
+		s.mu.Unlock()
+	}()
 
 	for {
 		select {
@@ -103,6 +133,12 @@ func (s *CleanupService) StartCleanupRoutine(ctx context.Context) {
 			s.logger.Info("State fabric cleanup routine stopping (stop signal)")
 			return
 		case <-ticker.C:
+			s.mu.Lock()
+			if !s.isRunning {
+				s.mu.Unlock()
+				continue
+			}
+			s.mu.Unlock()
 			s.runCleanup()
 		}
 	}
@@ -110,29 +146,61 @@ func (s *CleanupService) StartCleanupRoutine(ctx context.Context) {
 
 // Stop signals the cleanup routine to stop
 func (s *CleanupService) Stop() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.isRunning = false
 	close(s.stopCh)
+}
+
+// Drain waits for any in-progress cleanup to complete
+func (s *CleanupService) Drain(timeout time.Duration) error {
+	s.mu.Lock()
+	if !s.isRunning {
+		s.mu.Unlock()
+		return nil
+	}
+	s.mu.Unlock()
+
+	select {
+	case <-s.drainCh:
+		return nil
+	case <-time.After(timeout):
+		return fmt.Errorf("cleanup drain timed out after %s", timeout)
+	}
+}
+
+// IsRunning returns whether the cleanup service is currently running
+func (s *CleanupService) IsRunning() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.isRunning
 }
 
 // runCleanup performs all cleanup operations
 func (s *CleanupService) runCleanup() {
+	s.mu.Lock()
+	if s.isRunning {
+		s.mu.Unlock()
+		s.logger.Debug("Skipping cleanup run - previous run still in progress")
+		return
+	}
+	s.isRunning = true
+	s.mu.Unlock()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
+	defer func() {
+		cancel()
+		s.mu.Lock()
+		s.isRunning = false
+		s.mu.Unlock()
+	}()
 
 	s.logger.Debug("Running state fabric TTL cleanup")
 
-	// Clean up expired snapshots
 	snapshotsDeleted := s.cleanupExpiredSnapshots(ctx)
 	s.logger.WithFields(logrus.Fields{
 		"expiredSnapshotsDeleted": snapshotsDeleted,
 	}).Info("Cleaned up expired state fabric snapshots")
-
-	// Clean up old edge state versions
-	if s.config.EdgeStateVersionRetention > 0 || s.config.EdgeStateVersionMaxAge > 0 {
-		edgeStateCleaned := s.cleanupEdgeStateVersions(ctx)
-		s.logger.WithFields(logrus.Fields{
-			"edgeStateVersionsRemoved": edgeStateCleaned,
-		}).Info("Cleaned up old edge state versions")
-	}
 }
 
 // cleanupExpiredSnapshots deletes state fabric snapshots that have expired
@@ -157,202 +225,93 @@ func (s *CleanupService) cleanupExpiredSnapshots(ctx context.Context) int64 {
 			break
 		}
 
-		// Delete expired snapshots - handle R2 deletion failures properly
-		// Track which snapshots had R2 deletion failures
-		var r2DeletionFailures []uuid.UUID
+		// Delete expired snapshots in a transaction
+		err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			var r2Objects []struct {
+				ID          uuid.UUID
+				R2ObjectKey *string
+			}
+			if err := tx.Model(&StateFabricSnapshot{}).
+				Where("id IN ?", expiredIDs).
+				Find(&r2Objects).Error; err != nil {
+				return err
+			}
 
-		// First, get R2 object keys and attempt deletion
-		var r2Objects []struct {
-			ID          uuid.UUID
-			R2ObjectKey *string
-		}
-		if err := s.db.WithContext(ctx).
-			Model(&StateFabricSnapshot{}).
-			Where("id IN ?", expiredIDs).
-			Find(&r2Objects).Error; err != nil {
-			s.logger.WithError(err).Error("Failed to query R2 object keys for cleanup")
-			break
-		}
-
-		// Attempt R2 deletion for each snapshot
-		for _, obj := range r2Objects {
-			if obj.R2ObjectKey != nil && *obj.R2ObjectKey != "" {
-				if s.r2Backend != nil {
-					if err := s.r2Backend.DeleteSnapshotData(ctx, *obj.R2ObjectKey); err != nil {
-						s.logger.WithError(err).WithFields(logrus.Fields{
-							"snapshot_id":   obj.ID,
-							"r2_object_key": *obj.R2ObjectKey,
-						}).Warn("Failed to delete R2 snapshot data - will retry in next cycle")
-						r2DeletionFailures = append(r2DeletionFailures, obj.ID)
-					} else if s.config.Verbose {
-						s.logger.WithFields(logrus.Fields{
-							"snapshot_id":   obj.ID,
-							"r2_object_key": *obj.R2ObjectKey,
-						}).Debug("Deleted R2 snapshot data")
+			// Track snapshots with failed R2 deletion - these should not be deleted from DB
+			var failedR2Deletion []uuid.UUID
+			for _, obj := range r2Objects {
+				if obj.R2ObjectKey != nil && *obj.R2ObjectKey != "" {
+					if s.r2Backend != nil {
+						if err := s.r2Backend.DeleteSnapshotData(ctx, *obj.R2ObjectKey); err != nil {
+							s.logger.WithError(err).WithFields(logrus.Fields{
+								"snapshot_id":   obj.ID,
+								"r2_object_key": *obj.R2ObjectKey,
+							}).Warn("Failed to delete R2 snapshot data - keeping DB record for retry")
+							failedR2Deletion = append(failedR2Deletion, obj.ID)
+						} else if s.config.Verbose {
+							s.logger.WithFields(logrus.Fields{
+								"snapshot_id":   obj.ID,
+								"r2_object_key": *obj.R2ObjectKey,
+							}).Debug("Deleted R2 snapshot data")
+						}
 					}
 				}
 			}
-		}
 
-		// Remove failed deletions from the list to delete
-		idsToDelete := make([]uuid.UUID, 0, len(expiredIDs))
-		for _, id := range expiredIDs {
-			failed := false
-			for _, failID := range r2DeletionFailures {
-				if id == failID {
-					failed = true
-					break
+			// Build delete query excluding snapshots with failed R2 deletion
+			var idsToDelete []uuid.UUID
+			if len(failedR2Deletion) > 0 {
+				for _, id := range expiredIDs {
+					skip := false
+					for _, failedID := range failedR2Deletion {
+						if id == failedID {
+							skip = true
+							break
+						}
+					}
+					if !skip {
+						idsToDelete = append(idsToDelete, id)
+					}
 				}
+			} else {
+				idsToDelete = expiredIDs
 			}
-			if !failed {
-				idsToDelete = append(idsToDelete, id)
-			}
-		}
 
-		// Delete only snapshots that had successful R2 deletion (or no R2 data)
-		if len(idsToDelete) > 0 {
-			if err := s.db.WithContext(ctx).
-				Where("id IN ?", idsToDelete).
-				Delete(&StateFabricSnapshot{}).Error; err != nil {
-				s.logger.WithError(err).Error("Failed to delete expired state fabric snapshots from DB")
-				break
+			if len(idsToDelete) == 0 {
+				s.logger.Info("All snapshots in batch had failed R2 deletion - skipping DB deletion")
+				return nil
 			}
-			totalDeleted += int64(len(idsToDelete))
-		}
 
-		// If all R2 deletions failed, stop processing to avoid data inconsistency
-		if len(r2DeletionFailures) == len(expiredIDs) && len(expiredIDs) > 0 {
-			s.logger.Warn("All R2 snapshot deletions failed - stopping cleanup to prevent orphaned data")
+			result := tx.Where("id IN ?", idsToDelete).Delete(&StateFabricSnapshot{})
+			if result.Error != nil {
+				return result.Error
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			s.logger.WithError(err).Error("Failed to delete expired state fabric snapshots")
 			break
 		}
 
+		deleted := int64(len(expiredIDs))
+		totalDeleted += deleted
+
 		if s.config.Verbose {
 			s.logger.WithFields(logrus.Fields{
-				"batchDeleted":  len(idsToDelete),
-				"r2Failures":    len(r2DeletionFailures),
-				"totalDeleted":  totalDeleted,
+				"batchDeleted": deleted,
+				"totalDeleted": totalDeleted,
 			}).Debug("Deleted batch of expired state fabric snapshots")
 		}
 
 		// Check if we need to continue
-		if int64(len(idsToDelete)) < int64(s.config.BatchSize) {
+		if deleted < int64(s.config.BatchSize) {
 			break
 		}
 	}
 
 	return totalDeleted
-}
-
-// cleanupEdgeStateVersions cleans up old edge state versions from fabric settings
-// This removes versions beyond the retention limit and older than max age
-func (s *CleanupService) cleanupEdgeStateVersions(ctx context.Context) int64 {
-	if s.r2Backend == nil {
-		s.logger.Debug("R2 backend not configured, skipping edge state version cleanup")
-		return 0
-	}
-
-	var totalDeleted int64 = 0
-
-	// Get all fabrics with edge state
-	var fabrics []StateFabric
-	if err := s.db.WithContext(ctx).
-		Where("settings LIKE ?", "%_edge_state%").
-		Find(&fabrics).Error; err != nil {
-		s.logger.WithError(err).Error("Failed to query fabrics for edge state cleanup")
-		return 0
-	}
-
-	for _, fabric := range fabrics {
-		deleted := s.cleanupFabricEdgeState(ctx, &fabric)
-		totalDeleted += deleted
-	}
-
-	return totalDeleted
-}
-
-// cleanupFabricEdgeState cleans up edge state versions for a single fabric
-func (s *CleanupService) cleanupFabricEdgeState(ctx context.Context, fabric *StateFabric) int64 {
-	if fabric.Settings == nil {
-		return 0
-	}
-
-	edgeState, ok := fabric.Settings["_edge_state"]
-	if !ok {
-		return 0
-	}
-
-	stateMap, ok := edgeState.(map[string]interface{})
-	if !ok {
-		return 0
-	}
-
-	var deleted int64
-	now := time.Now()
-	maxAge := s.config.EdgeStateVersionMaxAge
-	retention := s.config.EdgeStateVersionRetention
-
-	for key, value := range stateMap {
-		entry, ok := value.(map[string]interface{})
-		if !ok {
-			continue
-		}
-
-		// Check if this is a versioned entry with history
-		versions, hasVersions := entry["_versions"].([]interface{})
-		if !hasVersions || len(versions) == 0 {
-			continue
-		}
-
-		filteredVersions := make([]interface{}, 0)
-		cutoffTime := now.Add(-maxAge)
-
-		for i, v := range versions {
-			versionEntry, ok := v.(map[string]interface{})
-			if !ok {
-				continue
-			}
-
-			// Check creation time
-			if createdAtStr, ok := versionEntry["createdAt"].(string); ok {
-				if createdAt, err := time.Parse(time.RFC3339, createdAtStr); err == nil {
-					// Skip if older than max age
-					if maxAge > 0 && createdAt.Before(cutoffTime) {
-						deleted++
-						continue
-					}
-				}
-			}
-
-			// Keep if within retention limit
-			if retention <= 0 || i < retention {
-				filteredVersions = append(filteredVersions, v)
-			} else {
-				deleted++
-			}
-		}
-
-		// Update the entry with filtered versions
-		if deleted > 0 {
-			if len(filteredVersions) > 0 {
-				entry["_versions"] = filteredVersions
-			} else {
-				delete(entry, "_versions")
-			}
-			stateMap[key] = entry
-		}
-	}
-
-	// If we deleted versions, update the fabric settings
-	if deleted > 0 {
-		fabric.Settings["_edge_state"] = stateMap
-		if err := s.db.WithContext(ctx).Model(&StateFabric{}).
-			Where("id = ?", fabric.ID).
-			Update("settings", fabric.Settings).Error; err != nil {
-			s.logger.WithError(err).WithField("fabric_id", fabric.ID).Error("Failed to update fabric settings after edge state cleanup")
-		}
-	}
-
-	return deleted
 }
 
 // CleanupExpiredSnapshotsOnce runs a single cleanup of expired snapshots

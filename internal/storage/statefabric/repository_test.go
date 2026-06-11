@@ -26,32 +26,230 @@ func TestStateFabricRepositoryTestSuite(t *testing.T) {
 	suite.Run(t, new(StateFabricRepositoryTestSuite))
 }
 
-// SetupTest sets up the test database
-func (s *StateFabricRepositoryTestSuite) SetupTest() {
-	// Use test database configuration - use local Postgres on 5432 per AGENTS.md
+func TestMain(m *testing.M) {
 	os.Setenv("DB_HOST", getEnvOrDefault("TEST_DB_HOST", "localhost"))
 	os.Setenv("DB_PORT", getEnvOrDefault("TEST_DB_PORT", "5432"))
 	os.Setenv("DB_USER", getEnvOrDefault("TEST_DB_USER", "postgres"))
 	os.Setenv("DB_PASSWORD", getEnvOrDefault("TEST_DB_PASSWORD", "postgres"))
 	os.Setenv("DB_NAME", getEnvOrDefault("TEST_DB_NAME", "functionfly_test"))
 	os.Setenv("DB_SSLMODE", "disable")
-
-	// Smaller connection pool for tests
 	os.Setenv("DB_MAX_OPEN_CONNS", "5")
 	os.Setenv("DB_MAX_IDLE_CONNS", "2")
 	os.Setenv("DB_CONN_MAX_LIFETIME", "5m")
 	os.Setenv("DB_CONN_MAX_IDLE_TIME", "1m")
 
 	db, err := storage.NewPostgresDB()
-	require.NoError(s.T(), err)
-	s.db = db
+	if err != nil {
+		fmt.Printf("Failed to connect to test database: %v\n", err)
+		os.Exit(1)
+	}
+	defer db.Close()
 
-	// Create tables needed for state fabric testing
-	err = s.createStateFabricTables(db)
-	require.NoError(s.T(), err)
+	createTestTables(db)
+	os.Exit(m.Run())
+}
 
-	// Create repository
-	s.repo = NewRepository(db.GORM)
+func createTestTables(db *storage.PostgresDB) {
+	tables := []string{
+		"state_fabric_events",
+		"state_fabric_snapshots",
+		"state_fabric_replays",
+		"state_fabric_pipelines",
+		"state_fabric_stores",
+	}
+	for _, table := range tables {
+		db.DB.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s CASCADE", table))
+	}
+	db.DB.Exec("DROP TABLE IF EXISTS state_triggers CASCADE")
+	db.DB.Exec("DROP TABLE IF EXISTS state_snapshots CASCADE")
+	db.DB.Exec("DROP TABLE IF EXISTS state_events CASCADE")
+	db.DB.Exec("DROP TABLE IF EXISTS states CASCADE")
+
+	db.DB.Exec(`
+		CREATE TABLE IF NOT EXISTS states (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			tenant_id UUID NOT NULL,
+			name VARCHAR(255) NOT NULL,
+			full_path VARCHAR(512),
+			function_id UUID,
+			storage_type VARCHAR(50) NOT NULL DEFAULT 'keyvalue',
+			ttl_days INTEGER NOT NULL DEFAULT 0,
+			max_size_mb INTEGER NOT NULL DEFAULT 100,
+			current_version INTEGER NOT NULL DEFAULT 1,
+			is_versioned BOOLEAN NOT NULL DEFAULT true,
+			is_encrypted BOOLEAN NOT NULL DEFAULT false,
+			is_public BOOLEAN NOT NULL DEFAULT false,
+			allow_cross_tenant BOOLEAN NOT NULL DEFAULT false,
+			description TEXT,
+			storage_used_mb BIGINT NOT NULL DEFAULT 0,
+			write_ops_month BIGINT NOT NULL DEFAULT 0,
+			read_ops_month BIGINT NOT NULL DEFAULT 0,
+			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			last_accessed_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			tags JSONB NOT NULL DEFAULT '{}',
+			UNIQUE(tenant_id, full_path)
+		)
+	`)
+
+	db.DB.Exec(`
+		CREATE TABLE state_events (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			state_id UUID NOT NULL REFERENCES states(id) ON DELETE CASCADE,
+			event_type VARCHAR(50) NOT NULL,
+			key VARCHAR(512),
+			new_value JSONB,
+			previous_value JSONB,
+			sequence_num BIGINT NOT NULL DEFAULT 0,
+			timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+			metadata JSONB,
+			is_archived BOOLEAN NOT NULL DEFAULT FALSE,
+			archived_at TIMESTAMP,
+			r2_object_key VARCHAR(512),
+			r2_bucket VARCHAR(255),
+			batch_id UUID
+		)
+	`)
+
+	db.DB.Exec(`
+		CREATE TABLE state_snapshots (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			state_id UUID NOT NULL REFERENCES states(id) ON DELETE CASCADE,
+			name VARCHAR(255),
+			state_data JSONB NOT NULL DEFAULT '{}',
+			key_count INTEGER NOT NULL DEFAULT 0,
+			state_size_bytes BIGINT NOT NULL DEFAULT 0,
+			first_sequence BIGINT NOT NULL DEFAULT 0,
+			last_sequence BIGINT NOT NULL DEFAULT 0,
+			expires_at TIMESTAMP,
+			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			r2_object_key VARCHAR(512),
+			r2_bucket VARCHAR(255),
+			r2_content_hash VARCHAR(128)
+		)
+	`)
+
+	db.DB.Exec(`
+		CREATE TABLE state_triggers (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			state_id UUID NOT NULL REFERENCES states(id) ON DELETE CASCADE,
+			name VARCHAR(255) NOT NULL,
+			description TEXT,
+			condition JSONB NOT NULL DEFAULT '{}',
+			is_active BOOLEAN NOT NULL DEFAULT true,
+			last_triggered_at TIMESTAMP,
+			trigger_count BIGINT NOT NULL DEFAULT 0,
+			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+		)
+	`)
+
+	db.DB.Exec(`
+		CREATE TABLE IF NOT EXISTS state_fabric_stores (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			tenant_id UUID NOT NULL,
+			fabric_id UUID NOT NULL,
+			name VARCHAR(255) NOT NULL,
+			store_type VARCHAR(50) NOT NULL DEFAULT 'persistent',
+			status VARCHAR(50) NOT NULL DEFAULT 'active',
+			size_bytes BIGINT NOT NULL DEFAULT 0,
+			max_size_bytes BIGINT NOT NULL DEFAULT 536870637120,
+			region VARCHAR(100) NOT NULL DEFAULT 'global',
+			provider VARCHAR(100) NOT NULL DEFAULT 'functionfly',
+			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+		)
+	`)
+
+	db.DB.Exec(`
+		CREATE TABLE IF NOT EXISTS state_fabric_pipelines (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			tenant_id UUID NOT NULL,
+			fabric_id UUID NOT NULL,
+			name VARCHAR(255) NOT NULL,
+			description TEXT,
+			condition JSONB NOT NULL DEFAULT '{}',
+			is_active BOOLEAN NOT NULL DEFAULT true,
+			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+		)
+	`)
+
+	db.DB.Exec(`
+		CREATE TABLE IF NOT EXISTS state_fabric_snapshots (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			tenant_id UUID NOT NULL,
+			fabric_id UUID NOT NULL,
+			name VARCHAR(255),
+			state_data JSONB NOT NULL DEFAULT '{}',
+			snapshot_version INTEGER NOT NULL DEFAULT 1,
+			key_count INTEGER NOT NULL DEFAULT 0,
+			state_size_bytes BIGINT NOT NULL DEFAULT 0,
+			r2_object_key VARCHAR(512),
+			r2_bucket VARCHAR(255),
+			r2_content_hash VARCHAR(128),
+			expires_at TIMESTAMP,
+			created_at TIMESTAMP NOT NULL DEFAULT NOW()
+		)
+	`)
+
+	db.DB.Exec(`
+		CREATE TABLE IF NOT EXISTS state_fabric_replays (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			tenant_id UUID NOT NULL,
+			fabric_id UUID NOT NULL,
+			snapshot_id UUID,
+			start_event_id UUID,
+			end_event_id UUID,
+			status VARCHAR(50) NOT NULL DEFAULT 'pending',
+			progress INTEGER NOT NULL DEFAULT 0,
+			events_replayed BIGINT NOT NULL DEFAULT 0,
+			error_message TEXT,
+			r2_object_key VARCHAR(512),
+			r2_bucket VARCHAR(255),
+			r2_content_hash VARCHAR(128),
+			started_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			completed_at TIMESTAMP,
+			created_at TIMESTAMP NOT NULL DEFAULT NOW()
+		)
+	`)
+
+	db.DB.Exec(`
+		CREATE TABLE IF NOT EXISTS state_fabric_events (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			tenant_id UUID NOT NULL,
+			fabric_id UUID NOT NULL,
+			event_type VARCHAR(50) NOT NULL,
+			key VARCHAR(512),
+			value JSONB,
+			sequence_num BIGINT NOT NULL DEFAULT 0,
+			timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+			metadata JSONB,
+			is_archived BOOLEAN NOT NULL DEFAULT FALSE,
+			archived_at TIMESTAMP,
+			r2_object_key VARCHAR(512),
+			r2_bucket VARCHAR(255),
+			batch_id UUID
+		)
+	`)
+}
+
+// SetupSuite runs once before all tests
+func (s *StateFabricRepositoryTestSuite) SetupSuite() {
+	s.db, _ = storage.NewPostgresDB()
+	s.repo = NewRepository(s.db.GORM)
+}
+
+// TearDownSuite runs once after all tests
+func (s *StateFabricRepositoryTestSuite) TearDownSuite() {
+	if s.db != nil {
+		s.db.Close()
+	}
+}
+
+// SetupTest runs before each test
+func (s *StateFabricRepositoryTestSuite) SetupTest() {
+	// Tables are created once in TestMain, just truncate data between tests
 }
 
 // TearDownTest cleans up after each test

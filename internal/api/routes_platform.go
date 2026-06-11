@@ -396,6 +396,9 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/agent-memories/{id}/accessed", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(agentMemoryHandler.HandleMarkAccessed))).Methods("POST", "OPTIONS")
 
 	// ── State Fabric (protected, rate-limited per-tenant) ─────────────────────
+	api.HandleFunc("/state-fabrics/health", stateFabricHandler.HandleHealth).Methods("GET", "OPTIONS")
+	api.HandleFunc("/state-fabrics/ready", stateFabricHandler.HandleReady).Methods("GET", "OPTIONS")
+	api.HandleFunc("/state-fabrics/feature-flags", stateFabricHandler.HandleGetFeatureFlags).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/state-fabrics", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleList))).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/state-fabrics", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleCreate))).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/state-fabrics/{id}", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleGet))).Methods("GET", "OPTIONS")
@@ -417,6 +420,7 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/state-fabrics/{id}/replays", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleListReplays))).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/state-fabrics/{id}/replays", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleCreateReplay))).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/state-fabrics/{id}/replays/{replayId}", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleGetReplay))).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/state-fabrics/{id}/replays/{replayId}/progress", stateFabricHandler.HandleReplayProgress).Methods("GET", "OPTIONS")
 
 	// ── Secrets Vault (protected) ─────────────────────────────────────────────
 	protected.HandleFunc("/vault/secrets", authMiddleware.RequireAuth(vaultRateLimiter.LimitList(vaultHandler.HandleListSecrets))).Methods("GET", "OPTIONS")
