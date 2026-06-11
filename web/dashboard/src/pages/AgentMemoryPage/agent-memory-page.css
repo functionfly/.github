@@ -1,0 +1,717 @@
+/**
+ * FunctionFly Agent Memory Page - Aviation Theme
+ * Aviation-inspired styling for the agent memories dashboard
+ * Wires all values to http://localhost:3000/agent-memories
+ */
+
+/* ==========================================================================
+   Agent Memory Page Container
+   ========================================================================== */
+
+.agent-memory-page {
+  position: relative;
+  min-height: 100vh;
+  padding: 32px 0;
+}
+
+/* ==========================================================================
+   Page Header - Aviation Style
+   ========================================================================== */
+
+.agent-memory-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-aviation-border-panel);
+  position: relative;
+}
+
+.agent-memory-header::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 60px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--ff-flame), transparent);
+  border-radius: 1px;
+}
+
+/* Header Title */
+.agent-memory-header-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.agent-memory-header-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-aviation-amber-subtle);
+  border: 1px solid var(--color-aviation-amber-dim);
+  color: var(--color-aviation-amber);
+  transition: all 0.3s ease;
+}
+
+.agent-memory-header-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.agent-memory-header:hover .agent-memory-header-icon {
+  background: var(--color-aviation-amber-dim);
+  box-shadow: 0 0 15px var(--color-aviation-amber-glow);
+  transform: scale(1.05);
+}
+
+.agent-memory-header-title h1 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-aviation-text-primary);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+/* Rebuild Index Button */
+.agent-memory-rebuild-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-aviation-text-secondary);
+  border: 1px solid var(--color-aviation-border-instrument);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.agent-memory-rebuild-btn:hover {
+  border-color: var(--color-aviation-amber);
+  color: var(--color-aviation-amber);
+  background: var(--color-aviation-amber-subtle);
+}
+
+.agent-memory-rebuild-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.agent-memory-rebuild-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.agent-memory-rebuild-btn.spinning svg {
+  animation: agent-memory-spin 1s linear infinite;
+}
+
+@keyframes agent-memory-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ==========================================================================
+   Search & Filter Card - Aviation Panel Style
+   ========================================================================== */
+
+.agent-memory-search-card {
+  position: relative;
+  background: var(--color-aviation-bg-panel);
+  border: 1px solid var(--color-aviation-border-panel);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.agent-memory-search-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-aviation-amber-dim) 50%,
+    transparent 100%
+  );
+}
+
+/* Search Row */
+.agent-memory-search-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Search Input */
+.agent-memory-search-input-wrapper {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+.agent-memory-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--color-aviation-text-muted);
+  pointer-events: none;
+}
+
+.agent-memory-search-input {
+  width: 100%;
+  padding: 10px 12px 10px 40px;
+  font-size: 0.875rem;
+  background: var(--color-aviation-bg-instrument);
+  border: 1px solid var(--color-aviation-border-instrument);
+  border-radius: 8px;
+  color: var(--color-aviation-text-primary);
+  transition: all 0.2s ease;
+}
+
+.agent-memory-search-input:focus {
+  outline: none;
+  border-color: var(--color-aviation-amber);
+  box-shadow: 0 0 0 3px var(--color-aviation-amber-dim);
+}
+
+.agent-memory-search-input::placeholder {
+  color: var(--color-aviation-text-dim);
+}
+
+/* Agent ID Filter */
+.agent-memory-agent-filter {
+  width: 180px;
+}
+
+.agent-memory-agent-filter-input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 0.875rem;
+  background: var(--color-aviation-bg-instrument);
+  border: 1px solid var(--color-aviation-border-instrument);
+  border-radius: 8px;
+  color: var(--color-aviation-text-primary);
+  transition: all 0.2s ease;
+}
+
+.agent-memory-agent-filter-input:focus {
+  outline: none;
+  border-color: var(--color-aviation-amber);
+  box-shadow: 0 0 0 3px var(--color-aviation-amber-dim);
+}
+
+.agent-memory-agent-filter-input::placeholder {
+  color: var(--color-aviation-text-dim);
+}
+
+/* Select Dropdown */
+.agent-memory-type-select {
+  min-width: 160px;
+}
+
+.agent-memory-type-select-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  font-size: 0.875rem;
+  background: var(--color-aviation-bg-instrument);
+  border: 1px solid var(--color-aviation-border-instrument);
+  border-radius: 8px;
+  color: var(--color-aviation-text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.agent-memory-type-select-trigger:hover {
+  border-color: var(--color-aviation-amber);
+}
+
+.agent-memory-type-select-trigger svg {
+  width: 16px;
+  height: 16px;
+  color: var(--color-aviation-text-muted);
+}
+
+/* Action Buttons */
+.agent-memory-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.agent-memory-action-btn.primary {
+  background: linear-gradient(135deg, var(--ff-flame) 0%, #ff4f5e 100%);
+  color: white;
+  border: none;
+}
+
+.agent-memory-action-btn.primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+}
+
+.agent-memory-action-btn.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.agent-memory-action-btn.outline {
+  background: transparent;
+  color: var(--color-aviation-text-secondary);
+  border: 1px solid var(--color-aviation-border-instrument);
+}
+
+.agent-memory-action-btn.outline:hover {
+  border-color: var(--color-aviation-amber);
+  color: var(--color-aviation-amber);
+  background: var(--color-aviation-amber-subtle);
+}
+
+/* ==========================================================================
+   Memory Stats
+   ========================================================================== */
+
+.agent-memory-stats {
+  font-size: 0.875rem;
+  color: var(--color-aviation-text-muted);
+  margin-bottom: 16px;
+  font-family: var(--font-mono);
+}
+
+/* ==========================================================================
+   Memory Grid - Aviation Style
+   ========================================================================== */
+
+.agent-memory-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 1024px) {
+  .agent-memory-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .agent-memory-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   Memory Card - Aviation Instrument Style
+   ========================================================================== */
+
+.agent-memory-card {
+  position: relative;
+  background: var(--color-aviation-bg-panel);
+  border: 1px solid var(--color-aviation-border-instrument);
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.agent-memory-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--card-accent, var(--color-aviation-amber)) 50%,
+    transparent 100%
+  );
+  opacity: 0.4;
+}
+
+.agent-memory-card:hover {
+  border-color: var(--card-accent, var(--color-aviation-amber));
+  box-shadow: 0 0 20px var(--card-glow, var(--color-aviation-amber-dim));
+  transform: translateY(-2px);
+}
+
+/* Card Header */
+.agent-memory-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.agent-memory-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.agent-memory-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+/* Memory Type Badge */
+.agent-memory-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid;
+}
+
+.agent-memory-badge.working {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+.agent-memory-badge.longterm {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.agent-memory-badge.context {
+  background: rgba(139, 92, 246, 0.1);
+  color: #8b5cf6;
+  border-color: rgba(139, 92, 246, 0.2);
+}
+
+.agent-memory-badge.episodic {
+  background: rgba(249, 115, 22, 0.1);
+  color: #f97316;
+  border-color: rgba(249, 115, 22, 0.2);
+}
+
+/* Agent ID */
+.agent-memory-card-agent {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-aviation-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* More Menu Button */
+.agent-memory-card-menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: var(--color-aviation-text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  opacity: 0;
+}
+
+.agent-memory-card:hover .agent-memory-card-menu-btn {
+  opacity: 1;
+}
+
+.agent-memory-card-menu-btn:hover {
+  background: var(--color-aviation-bg-instrument);
+  color: var(--color-aviation-text-primary);
+}
+
+.agent-memory-card-menu-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Card Content */
+.agent-memory-card-content {
+  margin-bottom: 12px;
+}
+
+.agent-memory-card-text {
+  font-size: 0.875rem;
+  color: var(--color-aviation-text-secondary);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.agent-memory-card-text.empty {
+  color: var(--color-aviation-text-dim);
+  font-style: italic;
+}
+
+/* Card Footer */
+.agent-memory-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-aviation-border-panel);
+}
+
+.agent-memory-card-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.agent-memory-card-stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--color-aviation-text-muted);
+  font-family: var(--font-mono);
+}
+
+.agent-memory-card-stat svg {
+  width: 12px;
+  height: 12px;
+}
+
+.agent-memory-card-stat.star {
+  color: var(--color-aviation-amber);
+}
+
+/* Expiry Date */
+.agent-memory-card-expiry {
+  font-size: 0.75rem;
+  color: var(--color-aviation-text-muted);
+  margin-top: 8px;
+}
+
+/* ==========================================================================
+   Empty State - Aviation Style
+   ========================================================================== */
+
+.agent-memory-empty-state {
+  position: relative;
+  background: var(--color-aviation-bg-panel);
+  border: 1px solid var(--color-aviation-border-panel);
+  border-radius: 16px;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.agent-memory-empty-state-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  background: var(--color-aviation-bg-instrument);
+  border: 1px solid var(--color-aviation-border-instrument);
+}
+
+.agent-memory-empty-state-icon svg {
+  width: 32px;
+  height: 32px;
+  color: var(--color-aviation-text-muted);
+}
+
+.agent-memory-empty-state-title {
+  font-family: var(--font-mono);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-aviation-text-primary);
+  margin-bottom: 8px;
+}
+
+.agent-memory-empty-state-description {
+  font-size: 0.875rem;
+  color: var(--color-aviation-text-muted);
+  max-width: 400px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+/* ==========================================================================
+   Error State
+   ========================================================================== */
+
+.agent-memory-error-state {
+  position: relative;
+  background: var(--color-aviation-bg-panel);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 16px;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.agent-memory-error-state-title {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ef4444;
+  margin-bottom: 8px;
+}
+
+.agent-memory-error-state-message {
+  font-size: 0.875rem;
+  color: var(--color-aviation-text-muted);
+}
+
+/* ==========================================================================
+   Loading State - Aviation Style
+   ========================================================================== */
+
+.agent-memory-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+.agent-memory-loading-spinner {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid var(--color-aviation-border-panel);
+  border-top-color: var(--ff-flame);
+  animation: agent-memory-spin 1s linear infinite;
+}
+
+/* ==========================================================================
+   Light Mode Adjustments
+   ========================================================================== */
+
+[data-theme='light'] .agent-memory-header {
+  border-color: var(--color-aviation-border-panel-light);
+}
+
+[data-theme='light'] .agent-memory-search-card {
+  background: var(--color-aviation-bg-panel-light);
+  border-color: var(--color-aviation-border-panel-light);
+}
+
+[data-theme='light'] .agent-memory-search-input,
+[data-theme='light'] .agent-memory-agent-filter-input {
+  background: var(--color-aviation-bg-instrument-light);
+  border-color: var(--color-aviation-border-instrument-light);
+}
+
+[data-theme='light'] .agent-memory-card {
+  background: var(--color-aviation-bg-panel-light);
+  border-color: var(--color-aviation-border-panel-light);
+}
+
+[data-theme='light'] .agent-memory-empty-state {
+  background: var(--color-aviation-bg-panel-light);
+  border-color: var(--color-aviation-border-panel-light);
+}
+
+[data-theme='light'] .agent-memory-error-state {
+  background: var(--color-aviation-bg-panel-light);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+/* ==========================================================================
+   Animations - Aviation Style
+   ========================================================================== */
+
+@keyframes agent-memory-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.agent-memory-animate-fade-in {
+  animation: agent-memory-fade-in-up 0.4s ease-out forwards;
+}
+
+/* Stagger Animation */
+.agent-memory-stagger-1 { animation-delay: 0.1s; }
+.agent-memory-stagger-2 { animation-delay: 0.2s; }
+.agent-memory-stagger-3 { animation-delay: 0.3s; }
+
+/* ==========================================================================
+   Responsive Adjustments
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .agent-memory-header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .agent-memory-search-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .agent-memory-search-input-wrapper,
+  .agent-memory-agent-filter,
+  .agent-memory-type-select {
+    width: 100%;
+  }
+
+  .agent-memory-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   Print Styles
+   ========================================================================== */
+
+@media print {
+  .agent-memory-rebuild-btn,
+  .agent-memory-card-menu-btn,
+  .agent-memory-action-btn {
+    display: none;
+  }
+
+  .agent-memory-card {
+    break-inside: avoid;
+    box-shadow: none;
+  }
+}

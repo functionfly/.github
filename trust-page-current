@@ -1,0 +1,268 @@
+- generic [active] [ref=e1]:
+  - link "Skip to main content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - banner [ref=e3]:
+    - navigation [ref=e4]:
+      - link "FunctionFly" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - img [ref=e6]
+        - generic [ref=e11]: FunctionFly
+      - generic [ref=e12]:
+        - link "Docs" [ref=e13] [cursor=pointer]:
+          - /url: http://localhost:4322/
+        - link "For AI Agents" [ref=e14] [cursor=pointer]:
+          - /url: /for-agents
+        - link "Trust" [ref=e15] [cursor=pointer]:
+          - /url: /trust
+        - link "Pricing" [ref=e16] [cursor=pointer]:
+          - /url: /pricing
+        - link "Blog" [ref=e17] [cursor=pointer]:
+          - /url: /blog
+        - link "Sign up" [ref=e18] [cursor=pointer]:
+          - /url: http://localhost:4324/signup
+        - button "Toggle theme" [ref=e19] [cursor=pointer]:
+          - img [ref=e20]
+          - img [ref=e26]
+  - main [ref=e28]:
+    - generic [ref=e30]:
+      - generic [ref=e31]: Trust, explained
+      - heading "The Trust Layer for AI Agents" [level=1] [ref=e32]
+      - paragraph [ref=e33]: Agents do not need "more tools." They need tools they can trust. FunctionFly turns functions into verified, signed, auditable building blocks with execution-backed trust scores.
+      - generic [ref=e34]:
+        - link "Verification levels" [ref=e35] [cursor=pointer]:
+          - /url: "#verification-levels"
+        - link "Trust API" [ref=e36] [cursor=pointer]:
+          - /url: "#trust-api"
+    - generic [ref=e38]:
+      - generic [ref=e39]:
+        - heading "Verification levels" [level=2] [ref=e40]
+        - paragraph [ref=e41]: Each level adds deeper assurance before a tool can be considered "trusted."
+        - generic [ref=e42]:
+          - generic [ref=e43]:
+            - generic [ref=e44]: L1
+            - generic [ref=e45]:
+              - text: Format checks
+              - generic [ref=e46]: Validate manifest structure and I/O schema.
+          - generic [ref=e47]:
+            - generic [ref=e48]: L2
+            - generic [ref=e49]:
+              - text: Security scans
+              - generic [ref=e50]: Scan for risky behaviors and validate capability constraints.
+          - generic [ref=e51]:
+            - generic [ref=e52]: L3
+            - generic [ref=e53]:
+              - text: Code review
+              - generic [ref=e54]: Manual and automated review of safety-relevant aspects.
+          - generic [ref=e55]:
+            - generic [ref=e56]: L4
+            - generic [ref=e57]:
+              - text: Platform verified
+              - generic [ref=e58]: Signed and reviewed as official/recommended tooling.
+      - generic [ref=e59]:
+        - heading "Signing, attestations, revocation" [level=2] [ref=e60]
+        - paragraph [ref=e61]: Trust is portable because verification becomes an immutable record.
+        - list [ref=e62]:
+          - listitem [ref=e63]:
+            - strong [ref=e64]: "Signing:"
+            - text: Function artifacts include platform signatures.
+          - listitem [ref=e65]:
+            - strong [ref=e66]: "Attestations:"
+            - text: Verifiable records of what was checked and when.
+          - listitem [ref=e67]:
+            - strong [ref=e68]: "Revocation:"
+            - text: If a tool is flagged, it can be downgraded or removed from trusted pools.
+        - generic [ref=e69]:
+          - generic [ref=e70]: ⓘ What agents see
+          - generic [ref=e71]: A trust score and policy-relevant metadata (capabilities, constraints, and verification level).
+    - generic [ref=e73]:
+      - generic [ref=e74]:
+        - heading "Execution-backed trust" [level=2] [ref=e75]
+        - paragraph [ref=e76]: Trust scores compound from real execution history so "it ran" and "it ran safely" are both represented.
+      - generic [ref=e77]:
+        - heading "Zero-knowledge vault" [level=2] [ref=e78]
+        - paragraph [ref=e79]: Secrets are encrypted client-side. FunctionFly stores ciphertext only, enabling agent tools without exposing plaintext secrets.
+      - generic [ref=e80]:
+        - heading "Trust API (usage-based)" [level=2] [ref=e81]
+        - paragraph [ref=e82]: Query attestations, trust scores, and revocation state. Bill on usage so agent workloads can adapt trust dynamically.
+    - generic [ref=e84]:
+      - heading "Trust score lifecycle" [level=2] [ref=e85]
+      - paragraph [ref=e86]: Trust is not a static label. It starts at publish-time, evolves with execution history, and can be updated through verification, reports, and revocations.
+      - generic [ref=e87]:
+        - generic [ref=e88]:
+          - generic [ref=e89]: "1"
+          - generic [ref=e90]: Publish
+          - generic [ref=e91]: A function is published with a manifest and a declared I/O contract.
+        - generic [ref=e92]:
+          - generic [ref=e93]: "2"
+          - generic [ref=e94]: Verify
+          - generic [ref=e95]: Verification stages validate structure, security, and safety-relevant behavior.
+        - generic [ref=e96]:
+          - generic [ref=e97]: "3"
+          - generic [ref=e98]: Sign & attest
+          - generic [ref=e99]: Attestations become immutable records that agents can reason about.
+        - generic [ref=e100]:
+          - generic [ref=e101]: "4"
+          - generic [ref=e102]: Execute
+          - generic [ref=e103]: Real execution updates trust score components over time.
+        - generic [ref=e104]:
+          - generic [ref=e105]: "5"
+          - generic [ref=e106]: Evolve
+          - generic [ref=e107]: History, reports, and revocation keep trust current for agents and clients.
+    - generic [ref=e109]:
+      - generic [ref=e110]:
+        - heading "Trust API for agents" [level=2] [ref=e111]
+        - paragraph [ref=e112]: Use a scoped API key to read trust scores and trigger verification workflows from your agent runtime.
+        - list [ref=e113]:
+          - listitem [ref=e114]:
+            - strong [ref=e115]: "Get trust score:"
+            - text: "GET /v1/trust/score/{function_id}"
+          - listitem [ref=e116]:
+            - strong [ref=e117]: "Batch scores:"
+            - text: POST /v1/trust/batch
+          - listitem [ref=e118]:
+            - strong [ref=e119]: "Get history:"
+            - text: "GET /v1/trust/history/{function_id}"
+          - listitem [ref=e120]:
+            - strong [ref=e121]: "Submit verification:"
+            - text: POST /v1/trust/verify
+        - generic [ref=e122]:
+          - generic [ref=e123]: ⓘ Scopes matter
+          - generic [ref=e124]: Trust read endpoints require an API key; verification and reporting endpoints require the corresponding scopes (e.g. verification:request and reports:submit).
+      - generic [ref=e125]:
+        - 'heading "Example: submit verification" [level=2] [ref=e126]'
+        - paragraph [ref=e127]: Trigger a verification run for a function version, then query status until the verification completes.
+        - region "Trust API example request" [ref=e128]:
+          - code [ref=e130]: "POST /v1/trust/verify Authorization: Bearer API_KEY Content-Type: application/json { \"function_id\": \"550e8400-e29b-41d4-a716-446655440002\", \"function_version\": \"1.2.0\", \"verification_level\": \"standard\", \"metadata\": { \"use_case\": \"data_processing\", \"expected_traffic\": \"high\" } }"
+        - region "Trust API example response" [ref=e131]:
+          - code [ref=e133]: "{ \"id\": \"550e8400-e29b-41d4-a716-446655440005\", \"verification_id\": \"vfy_abc123def456\", \"function_id\": \"550e8400-e29b-41d4-a716-446655440002\", \"function_author\": \"alice\", \"function_name\": \"data-processor\", \"function_version\": \"1.2.0\", \"verification_level\": \"standard\", \"status\": \"pending\", \"created_at\": \"2026-03-21T10:00:00Z\" }"
+    - generic [ref=e135]:
+      - heading "Why FunctionFly wins on trust" [level=2] [ref=e136]
+      - paragraph [ref=e137]: No other platform combines verification, trust scoring, and zero-knowledge security.
+      - generic [ref=e138]:
+        - generic [ref=e139]:
+          - generic [ref=e140]: Feature
+          - generic [ref=e141]: FunctionFly
+          - generic [ref=e142]: RapidAPI
+          - generic [ref=e143]: Toolhouse
+          - generic [ref=e144]: Theagora
+        - generic [ref=e145]:
+          - generic [ref=e146]: Trust scoring
+          - generic [ref=e148]: ✓
+          - generic [ref=e150]: —
+          - generic [ref=e152]: —
+          - generic [ref=e154]: Partial
+        - generic [ref=e155]:
+          - generic [ref=e156]: Multi-level verification
+          - generic [ref=e158]: ✓
+          - generic [ref=e160]: —
+          - generic [ref=e162]: —
+          - generic [ref=e164]: ✓
+        - generic [ref=e165]:
+          - generic [ref=e166]: Zero-knowledge vault
+          - generic [ref=e168]: ✓
+          - generic [ref=e170]: —
+          - generic [ref=e172]: —
+          - generic [ref=e174]: —
+        - generic [ref=e175]:
+          - generic [ref=e176]: Function execution
+          - generic [ref=e178]: ✓
+          - generic [ref=e180]: —
+          - generic [ref=e182]: —
+          - generic [ref=e184]: ✓
+        - generic [ref=e185]:
+          - generic [ref=e186]: Agent-native tool discovery
+          - generic [ref=e188]: ✓
+          - generic [ref=e190]: —
+          - generic [ref=e192]: ✓
+          - generic [ref=e194]: ✓
+    - generic [ref=e196]:
+      - heading "Ready to build with trusted tools?" [level=2] [ref=e197]
+      - paragraph [ref=e198]: Browse trusted functions in the marketplace, or run your own agent trust policy to select tools safely.
+      - generic [ref=e199]:
+        - link "Get Started Free" [ref=e200] [cursor=pointer]:
+          - /url: http://localhost:4324/signup
+        - link "See trust-aligned pricing" [ref=e201] [cursor=pointer]:
+          - /url: /pricing
+  - contentinfo [ref=e202]:
+    - generic [ref=e203]:
+      - generic [ref=e204]:
+        - img [ref=e205]
+        - paragraph [ref=e210]: The trust layer for AI agents. Publish once, run everywhere, get paid.
+      - generic [ref=e211]:
+        - generic [ref=e212]:
+          - heading "Product" [level=4] [ref=e213]
+          - link "Documentation" [ref=e214] [cursor=pointer]:
+            - /url: http://localhost:4322/
+          - link "Trust layer" [ref=e215] [cursor=pointer]:
+            - /url: /trust
+          - link "For AI agents" [ref=e216] [cursor=pointer]:
+            - /url: /for-agents
+          - link "Pricing" [ref=e217] [cursor=pointer]:
+            - /url: /pricing
+          - link "Changelog" [ref=e218] [cursor=pointer]:
+            - /url: /changelog
+        - generic [ref=e219]:
+          - heading "Company" [level=4] [ref=e220]
+          - link "About" [ref=e221] [cursor=pointer]:
+            - /url: /about
+          - link "Blog" [ref=e222] [cursor=pointer]:
+            - /url: /blog
+          - link "Careers" [ref=e223] [cursor=pointer]:
+            - /url: /careers
+          - link "Contact" [ref=e224] [cursor=pointer]:
+            - /url: /contact
+        - generic [ref=e225]:
+          - heading "Community" [level=4] [ref=e226]
+          - link "Discord" [ref=e227] [cursor=pointer]:
+            - /url: https://discord.gg/functionfly
+          - link "GitHub Discussions" [ref=e228] [cursor=pointer]:
+            - /url: https://github.com/functionfly/functionfly/discussions
+          - link "X (Twitter)" [ref=e229] [cursor=pointer]:
+            - /url: https://x.com/functionflycom
+          - link "LinkedIn" [ref=e230] [cursor=pointer]:
+            - /url: https://linkedin.com/company/functionfly
+        - generic [ref=e231]:
+          - heading "Legal" [level=4] [ref=e232]
+          - link "Privacy" [ref=e233] [cursor=pointer]:
+            - /url: /privacy
+          - link "Terms" [ref=e234] [cursor=pointer]:
+            - /url: /terms
+          - link "SLA" [ref=e235] [cursor=pointer]:
+            - /url: /sla
+        - generic [ref=e236]:
+          - heading "Stay Updated" [level=4] [ref=e237]
+          - paragraph [ref=e238]: Get the latest updates and news about FunctionFly.
+          - generic [ref=e239]:
+            - generic [ref=e240]: Email address
+            - textbox "Email address" [ref=e241]:
+              - /placeholder: Enter your email
+            - button "Subscribe" [ref=e242] [cursor=pointer]:
+              - img [ref=e243]
+          - paragraph [ref=e247]: We respect your privacy. Unsubscribe at any time.
+      - generic [ref=e248]:
+        - link "GitHub" [ref=e249] [cursor=pointer]:
+          - /url: https://github.com/functionfly
+          - img [ref=e250]
+        - link "Twitter / X" [ref=e252] [cursor=pointer]:
+          - /url: https://x.com/functionflycom
+          - img [ref=e253]
+        - link "LinkedIn" [ref=e255] [cursor=pointer]:
+          - /url: https://linkedin.com/company/functionfly
+          - img [ref=e256]
+        - link "Discord" [ref=e258] [cursor=pointer]:
+          - /url: https://discord.gg/functionfly
+          - img [ref=e259]
+    - paragraph [ref=e262]: © 2026 FunctionFly LLC (d/b/a FunctionFly). All rights reserved.
+  - generic [ref=e265]:
+    - button "Menu" [ref=e266]:
+      - img [ref=e268]
+      - generic: Menu
+    - button "Inspect" [ref=e272]:
+      - img [ref=e274]
+      - generic: Inspect
+    - button "Audit" [ref=e276]:
+      - img [ref=e278]
+      - generic: Audit
+    - button "Settings" [ref=e281]:
+      - img [ref=e283]
+      - generic: Settings

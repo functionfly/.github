@@ -1,0 +1,948 @@
+/**
+ * FunctionFly Decisions Page - Aviation Theme
+ * Aviation-inspired styling for the decision recorder dashboard
+ * Wires all values to http://localhost:3000/decisions
+ */
+
+/* ==========================================================================
+   Decisions Page Container
+   ========================================================================== */
+
+.decisions-page {
+  position: relative;
+  min-height: 100vh;
+  padding: 32px 0;
+}
+
+/* ==========================================================================
+   Page Header - Aviation Style
+   ========================================================================== */
+
+.decisions-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-aviation-border-panel);
+  position: relative;
+}
+
+.decisions-header::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 80px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--ff-flame), transparent);
+  border-radius: 1px;
+}
+
+.decisions-header-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.decisions-header-title {
+  font-family: var(--font-display);
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--color-aviation-text-primary);
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.decisions-header-subtitle {
+  font-size: 0.875rem;
+  color: var(--color-aviation-text-secondary);
+  max-width: 600px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Record Decision Button */
+.decisions-record-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--ff-flame) 0%, #ff4f5e 100%);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.decisions-record-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+}
+
+.decisions-record-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ==========================================================================
+   Status Summary Cards - Aviation Instrument Style
+   ========================================================================== */
+
+.decisions-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 1024px) {
+  .decisions-status-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .decisions-status-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Status Card */
+.decisions-status-card {
+  position: relative;
+  background: var(--color-aviation-bg-panel);
+  border: 1px solid var(--color-aviation-border-instrument);
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.decisions-status-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--status-color, var(--color-aviation-amber)) 50%,
+    transparent 100%
+  );
+  opacity: 0.5;
+}
+
+.decisions-status-card:hover {
+  border-color: var(--status-color, var(--color-aviation-amber));
+  box-shadow: 0 0 20px var(--status-glow, var(--color-aviation-amber-dim));
+  transform: translateY(-2px);
+}
+
+.decisions-status-card.active {
+  border-color: var(--status-color, var(--color-aviation-amber));
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-bg-panel) 0%,
+    var(--status-bg, rgba(245, 158, 11, 0.05)) 100%
+  );
+}
+
+.decisions-status-card.active::before {
+  opacity: 1;
+}
+
+/* Status Icon */
+.decisions-status-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--status-bg, rgba(245, 158, 11, 0.1));
+  margin-bottom: 12px;
+  transition: all 0.3s ease;
+}
+
+.decisions-status-card:hover .decisions-status-icon {
+  transform: scale(1.05);
+  box-shadow: 0 0 15px var(--status-glow, var(--color-aviation-amber-dim));
+}
+
+.decisions-status-icon svg {
+  width: 24px;
+  height: 24px;
+  color: var(--status-color, var(--color-aviation-amber));
+}
+
+/* Status Count */
+.decisions-status-count {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-aviation-text-primary);
+  margin-bottom: 4px;
+}
+
+.decisions-status-label {
+  font-size: 0.875rem;
+  color: var(--color-aviation-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Status Variants */
+.decisions-status-card.pending {
+  --status-color: #f59e0b;
+  --status-bg: rgba(245, 158, 11, 0.1);
+  --status-glow: rgba(245, 158, 11, 0.3);
+}
+
+.decisions-status-card.approved {
+  --status-color: #10b981;
+  --status-bg: rgba(16, 185, 129, 0.1);
+  --status-glow: rgba(16, 185, 129, 0.3);
+}
+
+.decisions-status-card.superseded {
+  --status-color: #f97316;
+  --status-bg: rgba(249, 115, 22, 0.1);
+  --status-glow: rgba(249, 115, 22, 0.3);
+}
+
+.decisions-status-card.deprecated {
+  --status-color: #6b7280;
+  --status-bg: rgba(107, 114, 128, 0.1);
+  --status-glow: rgba(107, 114, 128, 0.2);
+}
+
+/* ==========================================================================
+   Filters Section - Aviation Panel Style
+   ========================================================================== */
+
+.decisions-filters {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 16px;
+  background: var(--color-aviation-bg-panel);
+  border: 1px solid var(--color-aviation-border-panel);
+  border-radius: 12px;
+}
+
+/* Search Input */
+.decisions-search {
+  position: relative;
+  flex: 1;
+  max-width: 320px;
+}
+
+.decisions-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--color-aviation-text-muted);
+  pointer-events: none;
+}
+
+.decisions-search-input {
+  width: 100%;
+  padding: 10px 12px 10px 40px;
+  font-size: 0.875rem;
+  background: var(--color-aviation-bg-instrument);
+  border: 1px solid var(--color-aviation-border-instrument);
+  border-radius: 8px;
+  color: var(--color-aviation-text-primary);
+  transition: all 0.2s ease;
+}
+
+.decisions-search-input:focus {
+  outline: none;
+  border-color: var(--color-aviation-amber);
+  box-shadow: 0 0 0 3px var(--color-aviation-amber-dim);
+}
+
+.decisions-search-input::placeholder {
+  color: var(--color-aviation-text-dim);
+}
+
+/* Select Dropdowns */
+.decisions-select {
+  min-width: 160px;
+}
+
+.decisions-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  font-size: 0.875rem;
+  background: var(--color-aviation-bg-instrument);
+  border: 1px solid var(--color-aviation-border-instrument);
+  border-radius: 8px;
+  color: var(--color-aviation-text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.decisions-select-trigger:hover {
+  border-color: var(--color-aviation-amber);
+}
+
+.decisions-select-trigger[data-state="open"] {
+  border-color: var(--color-aviation-amber);
+  box-shadow: 0 0 0 3px var(--color-aviation-amber-dim);
+}
+
+/* View Mode Toggle */
+.decisions-view-toggle {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--color-aviation-border-instrument);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.decisions-view-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: none;
+  color: var(--color-aviation-text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.decisions-view-btn:hover {
+  color: var(--color-aviation-text-primary);
+  background: var(--color-aviation-bg-instrument);
+}
+
+.decisions-view-btn.active {
+  color: var(--color-aviation-amber);
+  background: var(--color-aviation-amber-subtle);
+}
+
+.decisions-view-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ==========================================================================
+   Content Area - Grid/List Views
+   ========================================================================== */
+
+.decisions-content {
+  min-height: 300px;
+}
+
+/* Grid View */
+.decisions-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 1024px) {
+  .decisions-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .decisions-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* List View */
+.decisions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ==========================================================================
+   Decision Card - Aviation Instrument Style
+   ========================================================================== */
+
+.decisions-card {
+  position: relative;
+  background: var(--color-aviation-bg-panel);
+  border: 1px solid var(--color-aviation-border-instrument);
+  border-radius: 16px;
+  padding: 20px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.decisions-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--card-accent, var(--color-aviation-amber)) 50%,
+    transparent 100%
+  );
+  opacity: 0.4;
+}
+
+.decisions-card:hover {
+  border-color: var(--card-accent, var(--color-aviation-amber));
+  box-shadow: 0 0 25px var(--card-glow, var(--color-aviation-amber-dim));
+  transform: translateY(-2px);
+}
+
+.decisions-card.pending {
+  --card-accent: #f59e0b;
+  --card-glow: rgba(245, 158, 11, 0.2);
+  border-left: 3px solid var(--card-accent);
+}
+
+/* Card Header */
+.decisions-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.decisions-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.decisions-card-title {
+  font-family: var(--font-mono);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-aviation-text-primary);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.decisions-card-title:hover {
+  color: var(--color-aviation-amber);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* AI Extracted Badge */
+.decisions-ai-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 9999px;
+  background: rgba(139, 92, 246, 0.1);
+  color: #8b5cf6;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+/* Card Description */
+.decisions-card-description {
+  font-size: 0.875rem;
+  color: var(--color-aviation-text-secondary);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+/* Card Content - Tags */
+.decisions-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.decisions-card-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 9999px;
+  background: var(--color-aviation-bg-instrument);
+  color: var(--color-aviation-text-secondary);
+  border: 1px solid var(--color-aviation-border-instrument);
+}
+
+.decisions-card-tag-more {
+  background: var(--color-aviation-amber-subtle);
+  color: var(--color-aviation-amber);
+  border-color: var(--color-aviation-amber-dim);
+}
+
+/* Expanded Content */
+.decisions-card-expanded {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-aviation-border-panel);
+}
+
+.decisions-card-expanded-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-aviation-text-muted);
+  margin-bottom: 4px;
+}
+
+.decisions-card-expanded-text {
+  font-size: 0.875rem;
+  color: var(--color-aviation-text-secondary);
+  line-height: 1.5;
+}
+
+/* Alternatives List */
+.decisions-card-alternatives {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-aviation-border-panel);
+}
+
+.decisions-card-alternatives-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-aviation-text-muted);
+  margin-bottom: 8px;
+}
+
+.decisions-card-alternatives-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.decisions-card-alternatives-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: var(--color-aviation-text-secondary);
+}
+
+.decisions-card-alternatives-item svg {
+  width: 14px;
+  height: 14px;
+  color: var(--color-aviation-text-muted);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Card Footer */
+.decisions-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-aviation-border-panel);
+}
+
+.decisions-card-timestamp {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--color-aviation-text-muted);
+  font-family: var(--font-mono);
+}
+
+.decisions-card-timestamp svg {
+  width: 12px;
+  height: 12px;
+}
+
+.decisions-card-approved {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: #10b981;
+  font-family: var(--font-mono);
+}
+
+.decisions-card-approved svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Show More Button */
+.decisions-show-more-btn {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  color: var(--color-aviation-text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.decisions-show-more-btn:hover {
+  color: var(--color-aviation-amber);
+}
+
+/* ==========================================================================
+   Empty State - Aviation Style
+   ========================================================================== */
+
+.decisions-empty-state {
+  position: relative;
+  background: var(--color-aviation-bg-panel);
+  border: 1px solid var(--color-aviation-border-panel);
+  border-radius: 16px;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.decisions-empty-state-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  background: var(--color-aviation-bg-instrument);
+  border: 1px solid var(--color-aviation-border-instrument);
+}
+
+.decisions-empty-state-icon svg {
+  width: 32px;
+  height: 32px;
+  color: var(--color-aviation-text-muted);
+}
+
+.decisions-empty-state-icon.success svg {
+  color: #10b981;
+}
+
+.decisions-empty-state-title {
+  font-family: var(--font-mono);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-aviation-text-primary);
+  margin-bottom: 8px;
+}
+
+.decisions-empty-state-description {
+  font-size: 0.875rem;
+  color: var(--color-aviation-text-muted);
+  max-width: 400px;
+  margin: 0 auto 16px;
+  line-height: 1.5;
+}
+
+.decisions-empty-state-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--ff-flame) 0%, #ff4f5e 100%);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.decisions-empty-state-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+}
+
+/* ==========================================================================
+   Select Team State
+   ========================================================================== */
+
+.decisions-select-team-state {
+  position: relative;
+  background: var(--color-aviation-bg-panel);
+  border: 1px solid var(--color-aviation-border-panel);
+  border-radius: 16px;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.decisions-select-team-state-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  background: var(--color-aviation-bg-instrument);
+  border: 1px solid var(--color-aviation-border-instrument);
+}
+
+.decisions-select-team-state-icon svg {
+  width: 32px;
+  height: 32px;
+  color: var(--color-aviation-text-muted);
+}
+
+.decisions-select-team-state-title {
+  font-family: var(--font-mono);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-aviation-text-primary);
+  margin-bottom: 8px;
+}
+
+.decisions-select-team-state-description {
+  font-size: 0.875rem;
+  color: var(--color-aviation-text-muted);
+  max-width: 500px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+/* ==========================================================================
+   Error State
+   ========================================================================== */
+
+.decisions-error-state {
+  position: relative;
+  background: var(--color-aviation-bg-panel);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 16px;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.decisions-error-state-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.decisions-error-state-icon svg {
+  width: 32px;
+  height: 32px;
+  color: #ef4444;
+}
+
+.decisions-error-state-text {
+  font-size: 0.875rem;
+  color: #ef4444;
+}
+
+/* ==========================================================================
+   Loading State - Aviation Style
+   ========================================================================== */
+
+.decisions-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+.decisions-loading-spinner {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid var(--color-aviation-border-panel);
+  border-top-color: var(--ff-flame);
+  animation: decisions-spin 1s linear infinite;
+}
+
+@keyframes decisions-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ==========================================================================
+   Status Badge - Aviation Style
+   ========================================================================== */
+
+.decisions-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.decisions-status-badge.pending {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.decisions-status-badge.approved {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.decisions-status-badge.superseded {
+  background: rgba(249, 115, 22, 0.15);
+  color: #f97316;
+  border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
+.decisions-status-badge.deprecated {
+  background: rgba(107, 114, 128, 0.15);
+  color: #6b7280;
+  border: 1px solid rgba(107, 114, 128, 0.2);
+}
+
+/* ==========================================================================
+   Light Mode Adjustments
+   ========================================================================== */
+
+[data-theme='light'] .decisions-header {
+  border-color: var(--color-aviation-border-panel-light);
+}
+
+[data-theme='light'] .decisions-status-card {
+  background: var(--color-aviation-bg-panel-light);
+  border-color: var(--color-aviation-border-panel-light);
+}
+
+[data-theme='light'] .decisions-filters {
+  background: var(--color-aviation-bg-panel-light);
+  border-color: var(--color-aviation-border-panel-light);
+}
+
+[data-theme='light'] .decisions-search-input {
+  background: var(--color-aviation-bg-instrument-light);
+  border-color: var(--color-aviation-border-instrument-light);
+}
+
+[data-theme='light'] .decisions-card {
+  background: var(--color-aviation-bg-panel-light);
+  border-color: var(--color-aviation-border-panel-light);
+}
+
+[data-theme='light'] .decisions-empty-state {
+  background: var(--color-aviation-bg-panel-light);
+  border-color: var(--color-aviation-border-panel-light);
+}
+
+[data-theme='light'] .decisions-select-team-state {
+  background: var(--color-aviation-bg-panel-light);
+  border-color: var(--color-aviation-border-panel-light);
+}
+
+/* ==========================================================================
+   Animations - Aviation Style
+   ========================================================================== */
+
+@keyframes decisions-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.decisions-animate-fade-in {
+  animation: decisions-fade-in-up 0.4s ease-out forwards;
+}
+
+/* Stagger Animation */
+.decisions-stagger-1 { animation-delay: 0.1s; }
+.decisions-stagger-2 { animation-delay: 0.2s; }
+.decisions-stagger-3 { animation-delay: 0.3s; }
+.decisions-stagger-4 { animation-delay: 0.4s; }
+
+/* ==========================================================================
+   Responsive Adjustments
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .decisions-header {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .decisions-header-title {
+    font-size: 1.5rem;
+  }
+
+  .decisions-filters {
+    flex-wrap: wrap;
+  }
+
+  .decisions-search {
+    width: 100%;
+    max-width: none;
+  }
+
+  .decisions-select {
+    flex: 1;
+    min-width: 140px;
+  }
+}
+
+/* ==========================================================================
+   Print Styles
+   ========================================================================== */
+
+@media print {
+  .decisions-filters,
+  .decisions-record-btn,
+  .decisions-show-more-btn,
+  .decisions-view-toggle {
+    display: none;
+  }
+
+  .decisions-card {
+    break-inside: avoid;
+    box-shadow: none;
+  }
+}

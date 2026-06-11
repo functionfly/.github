@@ -1,0 +1,1 @@
+export { TrustAPISettingsTab } from './TrustAPISettingsTab';

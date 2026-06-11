@@ -1,0 +1,815 @@
+/**
+ * FunctionFly Certification Page - Aviation Theme
+ * Aviation-inspired styling for the certification dashboard
+ * Wires all values to http://localhost:3000/certification
+ */
+
+/* ==========================================================================
+   Certification Page Container
+   ========================================================================== */
+
+.certification-page {
+  position: relative;
+  min-height: 100vh;
+}
+
+/* Aviation Grid Background for Certification Page */
+.certification-aviation-grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 107, 53, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 107, 53, 0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ==========================================================================
+   Hero Stats Section - Aviation Instrument Style
+   ========================================================================== */
+
+.certification-stat-card {
+  position: relative;
+  background: var(--color-aviation-bg-panel);
+  border: 1px solid var(--color-aviation-border-panel);
+  border-radius: 12px;
+  padding: 16px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.certification-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 30%,
+    rgba(255, 255, 255, 0.1) 70%,
+    transparent 100%
+  );
+}
+
+.certification-stat-card:hover {
+  border-color: var(--color-aviation-amber);
+  box-shadow:
+    0 0 20px var(--color-aviation-amber-dim),
+    0 8px 32px rgba(0, 0, 0, 0.5);
+  transform: translateY(-2px);
+}
+
+.certification-stat-icon {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-aviation-amber-subtle);
+  border: 1px solid var(--color-aviation-amber-dim);
+  transition: all 0.3s ease;
+}
+
+.certification-stat-card:hover .certification-stat-icon {
+  background: var(--color-aviation-amber-dim);
+  box-shadow: 0 0 15px var(--color-aviation-amber-glow);
+  transform: scale(1.05);
+}
+
+.certification-stat-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-aviation-text-muted);
+  margin-bottom: 4px;
+}
+
+.certification-stat-value {
+  font-family: var(--font-mono);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-aviation-text-primary);
+  transition: color 0.2s ease;
+}
+
+.certification-stat-card:hover .certification-stat-value {
+  color: var(--color-aviation-amber);
+}
+
+/* Stat icon colors */
+.certification-stat-icon.users {
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.certification-stat-icon.users:hover {
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.2);
+}
+
+.certification-stat-icon.trending {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.certification-stat-icon.trending:hover {
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.2);
+}
+
+.certification-stat-icon.book {
+  color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.1);
+}
+
+.certification-stat-icon.book:hover {
+  color: #a78bfa;
+  background: rgba(139, 92, 246, 0.2);
+}
+
+/* Light mode stat cards */
+[data-theme='light'] .certification-stat-card {
+  background: var(--color-aviation-bg-panel-light);
+  border-color: var(--color-aviation-border-panel-light);
+}
+
+[data-theme='light'] .certification-stat-card::before {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.05) 30%,
+    rgba(0, 0, 0, 0.05) 70%,
+    transparent 100%
+  );
+}
+
+[data-theme='light'] .certification-stat-card:hover {
+  border-color: var(--color-aviation-amber-light);
+  box-shadow:
+    0 0 20px var(--color-aviation-amber-glow-light),
+    0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='light'] .certification-stat-icon {
+  background: var(--color-aviation-amber-subtle-light);
+  border-color: var(--color-aviation-amber-dim-light);
+}
+
+[data-theme='light'] .certification-stat-icon.users {
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.1);
+}
+
+[data-theme='light'] .certification-stat-icon.trending {
+  color: #059669;
+  background: rgba(5, 150, 105, 0.1);
+}
+
+[data-theme='light'] .certification-stat-icon.book {
+  color: #7c3aed;
+  background: rgba(124, 58, 237, 0.1);
+}
+
+/* ==========================================================================
+   Tier Cards Grid - Aviation Instrument Style
+   ========================================================================== */
+
+.certification-tier-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 1024px) {
+  .certification-tier-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .certification-tier-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Tier Card - Aviation Instrument */
+.certification-tier-card {
+  position: relative;
+  background: var(--color-aviation-bg-panel);
+  border: 1px solid var(--color-aviation-border-instrument);
+  border-radius: 16px;
+  padding: 24px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.certification-tier-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--color-aviation-amber) 0%,
+    var(--color-aviation-cyan) 50%,
+    var(--color-aviation-amber) 100%
+  );
+  opacity: 0.6;
+}
+
+.certification-tier-card:hover {
+  border-color: var(--color-aviation-amber);
+  box-shadow:
+    0 0 30px var(--color-aviation-amber-dim),
+    0 12px 40px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transform: translateY(-4px) scale(1.02);
+}
+
+/* Tier Card Gradient Accent Bar */
+.certification-tier-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--tier-gradient-start, #3b82f6) 0%,
+    var(--tier-gradient-end, #06b6d4) 100%
+  );
+}
+
+/* Tier Icon Container */
+.certification-tier-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.certification-tier-icon::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 50%);
+}
+
+.certification-tier-icon svg {
+  width: 28px;
+  height: 28px;
+  color: white;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* Tier Colors */
+.certification-tier-card.blue {
+  --tier-gradient-start: #3b82f6;
+  --tier-gradient-end: #06b6d4;
+}
+
+.certification-tier-card.blue .certification-tier-icon {
+  background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+}
+
+.certification-tier-card.purple {
+  --tier-gradient-start: #8b5cf6;
+  --tier-gradient-end: #ec4899;
+}
+
+.certification-tier-card.purple .certification-tier-icon {
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+}
+
+.certification-tier-card.gold {
+  --tier-gradient-start: #f59e0b;
+  --tier-gradient-end: #eab308;
+}
+
+.certification-tier-card.gold .certification-tier-icon {
+  background: linear-gradient(135deg, #f59e0b 0%, #eab308 100%);
+}
+
+/* Tier Title */
+.certification-tier-title {
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-aviation-text-primary);
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+}
+
+.certification-tier-description {
+  font-size: 0.875rem;
+  color: var(--color-aviation-text-secondary);
+  line-height: 1.5;
+  margin-bottom: 16px;
+  min-height: 3.5rem;
+}
+
+/* Tier Stats Grid */
+.certification-tier-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.certification-tier-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.certification-tier-stat svg {
+  width: 16px;
+  height: 16px;
+  color: var(--color-aviation-text-muted);
+  flex-shrink: 0;
+}
+
+.certification-tier-stat span {
+  font-size: 0.875rem;
+  color: var(--color-aviation-text-secondary);
+}
+
+/* Tier Price & Pass Threshold */
+.certification-tier-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-aviation-border-panel);
+}
+
+/* Pass Threshold Badge */
+.certification-tier-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--color-aviation-bg-instrument);
+  color: var(--color-aviation-text-secondary);
+  border: 1px solid var(--color-aviation-border-instrument);
+}
+
+/* Price Display */
+.certification-tier-price {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.certification-tier-price svg {
+  width: 16px;
+  height: 16px;
+  color: var(--color-aviation-text-primary);
+}
+
+.certification-tier-price .price-value {
+  font-family: var(--font-mono);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-aviation-text-primary);
+}
+
+.certification-tier-price .price-free {
+  color: #10b981;
+  font-weight: 600;
+}
+
+/* CTA Buttons */
+.certification-tier-cta {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.certification-tier-cta button {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.certification-tier-cta button svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Primary CTA Button */
+.certification-tier-cta .btn-primary {
+  background: linear-gradient(135deg, var(--tier-gradient-start, #3b82f6) 0%, var(--tier-gradient-end, #06b6d4) 100%);
+  color: white;
+  border: none;
+}
+
+.certification-tier-cta .btn-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.certification-tier-cta .btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Outline CTA Button */
+.certification-tier-cta .btn-outline {
+  background: transparent;
+  color: var(--color-aviation-text-secondary);
+  border: 1px solid var(--color-aviation-border-instrument);
+  padding: 10px 12px;
+}
+
+.certification-tier-cta .btn-outline:hover {
+  border-color: var(--color-aviation-amber);
+  color: var(--color-aviation-amber);
+  background: var(--color-aviation-amber-subtle);
+}
+
+/* Coming Soon Button */
+.certification-tier-cta .btn-soon {
+  background: var(--color-aviation-bg-instrument);
+  color: var(--color-aviation-text-muted);
+  border: 1px solid var(--color-aviation-border-panel);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Light mode tier cards */
+[data-theme='light'] .certification-tier-card {
+  background: var(--color-aviation-bg-panel-light);
+  border-color: var(--color-aviation-border-panel-light);
+}
+
+[data-theme='light'] .certification-tier-card:hover {
+  border-color: var(--color-aviation-amber-light);
+  box-shadow:
+    0 0 30px var(--color-aviation-amber-glow-light),
+    0 12px 40px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='light'] .certification-tier-footer {
+  border-color: var(--color-aviation-border-panel-light);
+}
+
+[data-theme='light'] .certification-tier-badge {
+  background: var(--color-aviation-bg-instrument-light);
+  color: var(--color-aviation-text-secondary-light);
+  border-color: var(--color-aviation-border-instrument-light);
+}
+
+/* ==========================================================================
+   How It Works Section - Aviation Panel Style
+   ========================================================================== */
+
+.certification-how-it-works {
+  position: relative;
+  background: var(--color-aviation-bg-panel);
+  border: 1px solid var(--color-aviation-border-panel);
+  border-radius: 16px;
+  padding: 24px;
+  margin-top: 48px;
+  overflow: hidden;
+}
+
+.certification-how-it-works::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-aviation-amber-dim) 30%,
+    var(--color-aviation-amber-dim) 70%,
+    transparent 100%
+  );
+}
+
+/* Section Header */
+.certification-how-it-works-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.certification-how-it-works-header svg {
+  width: 24px;
+  height: 24px;
+  color: var(--ff-flame);
+  filter: drop-shadow(0 0 8px var(--ff-flame));
+}
+
+.certification-how-it-works-header h3 {
+  font-family: var(--font-mono);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-aviation-text-primary);
+  letter-spacing: -0.01em;
+}
+
+/* Steps Grid */
+.certification-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+
+@media (max-width: 1024px) {
+  .certification-steps-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .certification-steps-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Individual Step */
+.certification-step {
+  text-align: center;
+  padding: 16px;
+}
+
+.certification-step-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  background: var(--color-brand-500);
+  background: linear-gradient(135deg, var(--ff-flame) 0%, var(--ff-afterburner) 100%);
+  color: white;
+  box-shadow: 0 0 15px var(--color-aviation-amber-dim);
+}
+
+.certification-step-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-aviation-text-primary);
+  margin-bottom: 4px;
+}
+
+.certification-step-description {
+  font-size: 0.75rem;
+  color: var(--color-aviation-text-muted);
+  line-height: 1.4;
+}
+
+/* Light mode how it works */
+[data-theme='light'] .certification-how-it-works {
+  background: var(--color-aviation-bg-panel-light);
+  border-color: var(--color-aviation-border-panel-light);
+}
+
+[data-theme='light'] .certification-how-it-works::before {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-aviation-amber-dim-light) 30%,
+    var(--color-aviation-amber-dim-light) 70%,
+    transparent 100%
+  );
+}
+
+[data-theme='light'] .certification-step-number {
+  box-shadow: 0 0 15px var(--color-aviation-amber-glow-light);
+}
+
+/* ==========================================================================
+   Loading State - Aviation Style
+   ========================================================================== */
+
+.certification-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+.certification-loading-spinner {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid var(--color-aviation-border-panel);
+  border-top-color: var(--ff-flame);
+  animation: certification-spin 1s linear infinite;
+}
+
+@keyframes certification-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ==========================================================================
+   Corner Accents - Aviation Instrument Decoration
+   ========================================================================== */
+
+.certification-tier-card .corner-accent {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--color-aviation-amber);
+  opacity: 0.5;
+  transition: all 0.3s ease;
+}
+
+.certification-tier-card:hover .corner-accent {
+  width: 16px;
+  height: 16px;
+  opacity: 1;
+  box-shadow: 0 0 8px var(--color-aviation-amber-glow);
+}
+
+.corner-accent.top-left {
+  top: -1px;
+  left: -1px;
+  border-right: none;
+  border-bottom: none;
+  border-radius: 16px 0 0 0;
+}
+
+.corner-accent.top-right {
+  top: -1px;
+  right: -1px;
+  border-left: none;
+  border-bottom: none;
+  border-radius: 0 16px 0 0;
+}
+
+.corner-accent.bottom-left {
+  bottom: -1px;
+  left: -1px;
+  border-right: none;
+  border-top: none;
+  border-radius: 0 0 0 16px;
+}
+
+.corner-accent.bottom-right {
+  bottom: -1px;
+  right: -1px;
+  border-left: none;
+  border-top: none;
+  border-radius: 0 0 16px 0;
+}
+
+/* Light mode corner accents */
+[data-theme='light'] .certification-tier-card .corner-accent {
+  border-color: var(--color-aviation-amber-light);
+}
+
+[data-theme='light'] .certification-tier-card:hover .corner-accent {
+  box-shadow: 0 0 8px var(--color-aviation-amber-glow-light);
+}
+
+/* ==========================================================================
+   Page Header - Aviation Style
+   ========================================================================== */
+
+.certification-page-header {
+  position: relative;
+  margin-bottom: 32px;
+}
+
+.certification-page-header .title {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-aviation-text-primary);
+  letter-spacing: -0.03em;
+  margin-bottom: 8px;
+}
+
+.certification-page-header .subtitle {
+  font-size: 1rem;
+  color: var(--color-aviation-text-secondary);
+  max-width: 600px;
+}
+
+/* New Badge */
+.certification-badge-new {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--color-aviation-green-glow);
+  color: var(--color-aviation-green);
+  border: 1px solid var(--color-aviation-green);
+  box-shadow: 0 0 8px var(--color-aviation-green-glow);
+}
+
+/* ==========================================================================
+   Animations - Aviation Style
+   ========================================================================== */
+
+@keyframes certification-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.certification-animate-fade-in {
+  animation: certification-fade-in-up 0.5s ease-out forwards;
+}
+
+.certification-stagger-1 { animation-delay: 0.1s; }
+.certification-stagger-2 { animation-delay: 0.2s; }
+.certification-stagger-3 { animation-delay: 0.3s; }
+.certification-stagger-4 { animation-delay: 0.4s; }
+
+/* ==========================================================================
+   Responsive Adjustments
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .certification-page-header .title {
+    font-size: 1.5rem;
+  }
+
+  .certification-tier-card {
+    padding: 20px;
+  }
+
+  .certification-tier-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .certification-tier-stats {
+    gap: 8px;
+  }
+}
+
+/* ==========================================================================
+   Print Styles
+   ========================================================================== */
+
+@media print {
+  .certification-aviation-grid-bg {
+    display: none;
+  }
+
+  .certification-tier-card {
+    break-inside: avoid;
+    box-shadow: none;
+  }
+
+  .certification-tier-cta button {
+    background: var(--bg-secondary) !important;
+  }
+}
