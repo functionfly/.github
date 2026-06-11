@@ -3,14 +3,19 @@ package statefabric
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/statefabricaddons"
 	repo "github.com/functionfly/functionfly/internal/storage/statefabric"
@@ -20,7 +25,7 @@ type Handler struct {
 	repo         *repo.Repository
 	sfAddons     *statefabricaddons.Repository
 	cleanupSvc   *repo.CleanupService
-	planResolver  PlanResolver
+	planResolver PlanResolver
 }
 
 type PlanResolver interface {
@@ -94,6 +99,51 @@ func writeErr(w http.ResponseWriter, status int, message string) {
 	writeJSON(w, status, map[string]string{"error": message})
 }
 
+func serverError(w http.ResponseWriter, r *http.Request, err error) {
+	logrus.WithError(err).WithFields(logrus.Fields{
+		"request_uri": r.RequestURI,
+		"method":      r.Method,
+	}).Error("internal server error")
+	http.Error(w, "an internal error occurred", http.StatusInternalServerError)
+}
+
+func clientError(w http.ResponseWriter, err error) {
+	http.Error(w, err.Error(), http.StatusBadRequest)
+}
+
+type auditInfo struct {
+	TenantID    uuid.UUID
+	UserID      uuid.UUID
+	ResourceID  uuid.UUID
+	Action      string
+	Success     bool
+	Duration    time.Duration
+	Description string
+}
+
+func (h *Handler) auditLog(r *http.Request, info auditInfo) {
+	logrus.WithFields(logrus.Fields{
+		"service":       "statefabric",
+		"actor_user_id": info.UserID.String(),
+		"tenant_id":     info.TenantID.String(),
+		"resource_id":   info.ResourceID.String(),
+		"action":        info.Action,
+		"success":       info.Success,
+		"duration_ms":   info.Duration.Milliseconds(),
+		"ip_address":    getIPAddress(r),
+		"user_agent":    r.UserAgent(),
+		"request_id":    r.Header.Get("X-Request-ID"),
+	}).Info("state_fabric_audit")
+}
+
+func getIPAddress(r *http.Request) string {
+	xff := r.Header.Get("X-Forwarded-For")
+	if xff != "" {
+		return strings.Split(xff, ",")[0]
+	}
+	return strings.Split(r.RemoteAddr, ":")[0]
+}
+
 func (h *Handler) fabricToAPI(f repo.Fabric, stores []repo.FabricStore, pipelines []repo.Pipeline) map[string]interface{} {
 	data, _ := json.Marshal(f)
 	var out map[string]interface{}
@@ -163,7 +213,7 @@ func (h *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 		Search:   r.URL.Query().Get("search"),
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, items)
@@ -185,17 +235,30 @@ func (h *Handler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	item, err := h.repo.CreateFabric(r.Context(), tenantID, req.Name, req.Description, req.Type, req.Settings)
 	if err != nil {
 		monitoring.RecordStateFabricOperation(tenantID.String(), "", "create", "error")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 
 	fabricID := ""
+	var userID uuid.UUID
 	if item != nil {
 		fabricID = item.ID.String()
 	}
+	_, userID, _ = tenantAndUser(r, w)
 	monitoring.RecordStateFabricOperation(tenantID.String(), fabricID, "create", "success")
 	monitoring.RecordStateFabricOperationDuration(tenantID.String(), fabricID, "create", time.Since(start))
 	monitoring.UpdateStateFabricActiveCount(tenantID.String(), 1)
+
+	if item != nil {
+		h.auditLog(r, auditInfo{
+			TenantID:   tenantID,
+			UserID:     userID,
+			ResourceID: item.ID,
+			Action:     "state_fabric.create",
+			Success:    true,
+			Duration:   time.Since(start),
+		})
+	}
 
 	writeJSON(w, http.StatusCreated, item)
 }
@@ -214,7 +277,7 @@ func (h *Handler) HandleGet(w http.ResponseWriter, r *http.Request) {
 	item, err := h.repo.GetFabric(r.Context(), tenantID, fabricID)
 	if err != nil {
 		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "read", "not_found")
-		http.Error(w, err.Error(), http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("state fabric not found"))
 		return
 	}
 	monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "read", "success")
@@ -253,11 +316,21 @@ func (h *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	item, err := h.repo.UpdateFabric(r.Context(), tenantID, fabricID, updates)
 	if err != nil {
 		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "update", "error")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
+	_, userID, _ := tenantAndUser(r, w)
 	monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "update", "success")
 	monitoring.RecordStateFabricOperationDuration(tenantID.String(), fabricID.String(), "update", time.Since(start))
+
+	h.auditLog(r, auditInfo{
+		TenantID:   tenantID,
+		UserID:     userID,
+		ResourceID: fabricID,
+		Action:     "state_fabric.update",
+		Success:    true,
+		Duration:   time.Since(start),
+	})
 
 	writeJSON(w, http.StatusOK, item)
 }
@@ -275,11 +348,21 @@ func (h *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.repo.DeleteFabric(r.Context(), tenantID, fabricID); err != nil {
 		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "delete", "error")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
+	_, userID, _ := tenantAndUser(r, w)
 	monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "delete", "success")
 	monitoring.RecordStateFabricOperationDuration(tenantID.String(), fabricID.String(), "delete", time.Since(start))
+
+	h.auditLog(r, auditInfo{
+		TenantID:   tenantID,
+		UserID:     userID,
+		ResourceID: fabricID,
+		Action:     "state_fabric.delete",
+		Success:    true,
+		Duration:   time.Since(start),
+	})
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -298,7 +381,7 @@ func (h *Handler) HandleGetMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 	item, err := h.repo.GetFabric(r.Context(), tenantID, fabricID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("state fabric not found"))
 		return
 	}
 	writeJSON(w, http.StatusOK, item.Metrics)
@@ -315,7 +398,7 @@ func (h *Handler) HandleListStores(w http.ResponseWriter, r *http.Request) {
 	}
 	stores, err := h.repo.ListStores(r.Context(), tenantID, fabricID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("state fabric not found"))
 		return
 	}
 	writeJSON(w, http.StatusOK, stores)
@@ -343,7 +426,7 @@ func (h *Handler) HandleCreateStore(w http.ResponseWriter, r *http.Request) {
 	}
 	store, err := h.repo.CreateStore(r.Context(), tenantID, fabricID, req.Name, req.Type, req.MaxSize, req.Region)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, store)
@@ -359,7 +442,7 @@ func (h *Handler) HandleDeleteStore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.repo.DeleteStore(r.Context(), tenantID, fabricID, mux.Vars(r)["storeId"]); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -376,7 +459,7 @@ func (h *Handler) HandleListPipelines(w http.ResponseWriter, r *http.Request) {
 	}
 	item, err := h.repo.GetFabric(r.Context(), tenantID, fabricID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("state fabric not found"))
 		return
 	}
 	writeJSON(w, http.StatusOK, item.Pipelines)
@@ -398,7 +481,7 @@ func (h *Handler) HandleCreatePipeline(w http.ResponseWriter, r *http.Request) {
 	}
 	pipeline, err := h.repo.CreatePipeline(r.Context(), tenantID, fabricID, req.Name, req.Description, req.Steps)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, pipeline)
@@ -438,7 +521,7 @@ func (h *Handler) HandleUpdatePipeline(w http.ResponseWriter, r *http.Request) {
 	}
 	pipeline, err := h.repo.UpdatePipeline(r.Context(), tenantID, fabricID, pipelineID, updates)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, pipeline)
@@ -459,14 +542,15 @@ func (h *Handler) HandleDeletePipeline(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.repo.DeletePipeline(r.Context(), tenantID, fabricID, pipelineID); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) HandleExecutePipeline(w http.ResponseWriter, r *http.Request) {
-	tenantID, _, ok := tenantAndUser(r, w)
+	start := time.Now()
+	tenantID, userID, ok := tenantAndUser(r, w)
 	if !ok {
 		return
 	}
@@ -486,9 +570,28 @@ func (h *Handler) HandleExecutePipeline(w http.ResponseWriter, r *http.Request) 
 	}
 	result, err := h.repo.ExecutePipeline(r.Context(), tenantID, fabricID, pipelineID, input)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.auditLog(r, auditInfo{
+			TenantID:    tenantID,
+			UserID:      userID,
+			ResourceID:  pipelineID,
+			Action:      "state_fabric.pipeline.execute",
+			Success:     false,
+			Duration:    time.Since(start),
+			Description: err.Error(),
+		})
+		serverError(w, r, err)
 		return
 	}
+
+	h.auditLog(r, auditInfo{
+		TenantID:   tenantID,
+		UserID:     userID,
+		ResourceID: pipelineID,
+		Action:     "state_fabric.pipeline.execute",
+		Success:    true,
+		Duration:   time.Since(start),
+	})
+
 	writeJSON(w, http.StatusOK, result)
 }
 
@@ -527,7 +630,7 @@ func (h *Handler) HandleListEvents(w http.ResponseWriter, r *http.Request) {
 		Offset:    offset,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{"events": events, "total": total})
@@ -544,7 +647,7 @@ func (h *Handler) HandleListSnapshots(w http.ResponseWriter, r *http.Request) {
 	}
 	items, err := h.repo.ListSnapshots(r.Context(), tenantID, fabricID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, items)
@@ -566,7 +669,7 @@ func (h *Handler) HandleCreateSnapshot(w http.ResponseWriter, r *http.Request) {
 	}
 	item, err := h.repo.CreateSnapshot(r.Context(), tenantID, fabricID, req.Name)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, item)
@@ -587,7 +690,7 @@ func (h *Handler) HandleDeleteSnapshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.repo.DeleteSnapshot(r.Context(), tenantID, fabricID, snapshotID); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -607,7 +710,7 @@ func (h *Handler) HandleListReplays(w http.ResponseWriter, r *http.Request) {
 	}
 	items, err := h.repo.ListReplays(r.Context(), tenantID, fabricID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, items)
@@ -632,7 +735,7 @@ func (h *Handler) HandleCreateReplay(w http.ResponseWriter, r *http.Request) {
 	}
 	item, err := h.repo.CreateReplay(r.Context(), tenantID, fabricID, repo.ReplayCreateRequest(req))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, item)
@@ -653,8 +756,154 @@ func (h *Handler) HandleGetReplay(w http.ResponseWriter, r *http.Request) {
 	}
 	item, err := h.repo.GetReplay(r.Context(), tenantID, fabricID, vars["replayId"])
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("replay not found"))
 		return
 	}
 	writeJSON(w, http.StatusOK, item)
+}
+
+// HandleHealth handles GET /state-fabrics/health - liveness probe
+// @Summary Health check (liveness)
+// @Description Returns OK if the StateFabric service is alive
+// @Tags StateFabric
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /state-fabrics/health [get]
+func (h *Handler) HandleHealth(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status": "ok",
+	})
+}
+
+// FeatureFlags returns the current feature flags for StateFabric
+// @Summary Get feature flags
+// @Description Returns the current feature flags for StateFabric
+// @Tags StateFabric
+// @Produce json
+// @Success 200 {object} StateFabricFeatureFlags
+// @Router /state-fabrics/feature-flags [get]
+func (h *Handler) HandleGetFeatureFlags(w http.ResponseWriter, r *http.Request) {
+	flags := StateFabricFeatureFlags{
+		ReplayProgressStreaming: isFeatureEnabled("statefabric_replay_streaming"),
+		PipelineCircuitBreaker:  isFeatureEnabled("statefabric_pipeline_circuit_breaker"),
+		R2StorageOffload:        isFeatureEnabled("statefabric_r2_offload"),
+		AdvancedSecurityPack:    isFeatureEnabled("statefabric_advanced_security"),
+		HotCacheBooster:         isFeatureEnabled("statefabric_hot_cache"),
+		AIMemoryPack:            isFeatureEnabled("statefabric_ai_memory"),
+	}
+	writeJSON(w, http.StatusOK, flags)
+}
+
+// StateFabricFeatureFlags represents the feature flags for StateFabric
+type StateFabricFeatureFlags struct {
+	ReplayProgressStreaming bool `json:"replay_progress_streaming"`
+	PipelineCircuitBreaker  bool `json:"pipeline_circuit_breaker"`
+	R2StorageOffload        bool `json:"r2_storage_offload"`
+	AdvancedSecurityPack    bool `json:"advanced_security_pack"`
+	HotCacheBooster         bool `json:"hot_cache_booster"`
+	AIMemoryPack            bool `json:"ai_memory_pack"`
+}
+
+// isFeatureEnabled checks if a feature flag is enabled via environment variable
+func isFeatureEnabled(flag string) bool {
+	return os.Getenv("STATEFABRIC_FEATURE_"+strings.ToUpper(flag)) == "true"
+}
+
+// HandleReplayProgress handles GET /state-fabrics/{id}/replays/{replayId}/progress
+// Returns streaming replay progress via Server-Sent Events (SSE)
+// @Summary Get replay progress (SSE)
+// @Description Streams replay progress via Server-Sent Events
+// @Tags StateFabric
+// @Produce text/event-stream
+// @Param id path string true "State Fabric ID"
+// @Param replayId path string true "Replay ID"
+// @Success 200 {object} ReplayProgress
+// @Failure 404 {object} map[string]string
+// @Router /state-fabrics/{id}/replays/{replayId}/progress [get]
+func (h *Handler) HandleReplayProgress(w http.ResponseWriter, r *http.Request) {
+	tenantID, _, ok := tenantAndUser(r, w)
+	if !ok {
+		return
+	}
+	if !isFeatureEnabled("statefabric_replay_streaming") {
+		http.Error(w, "replay progress streaming not enabled", http.StatusForbidden)
+		return
+	}
+	vars := mux.Vars(r)
+	fabricID, parsed := parseID(w, vars["id"], "state fabric id")
+	if !parsed {
+		return
+	}
+	replayIDStr := vars["replayId"]
+
+	replay, err := h.repo.GetReplay(r.Context(), tenantID, fabricID, replayIDStr)
+	if err != nil {
+		apierror.WriteError(w, apierror.NewNotFound("replay not found"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Transfer-Encoding", "chunked")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+		return
+	}
+
+	lastProgress := -1
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-time.After(500 * time.Millisecond):
+			currentReplay, err := h.repo.GetReplay(r.Context(), tenantID, fabricID, replayIDStr)
+			if err != nil {
+				return
+			}
+
+			if currentReplay.Progress != lastProgress {
+				lastProgress = currentReplay.Progress
+				data := fmt.Sprintf("data: {\"progress\": %d, \"eventsReplayed\": %d, \"status\": \"%s\"}\n\n",
+					currentReplay.Progress, currentReplay.EventsReplayed, currentReplay.Status)
+				w.Write([]byte(data))
+				flusher.Flush()
+
+				if currentReplay.Status == "completed" || currentReplay.Status == "failed" || currentReplay.Status == "cancelled" {
+					return
+				}
+			}
+		}
+	}
+}
+
+// HandleReady handles GET /state-fabrics/ready - readiness probe
+// @Summary Health check (readiness)
+// @Description Returns OK if StateFabric is ready, including R2 connectivity and pipeline execution status
+// @Tags StateFabric
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 503 {object} map[string]interface{}
+// @Router /state-fabrics/ready [get]
+func (h *Handler) HandleReady(w http.ResponseWriter, r *http.Request) {
+	health := h.repo.HealthCheck(r.Context())
+
+	r2Storage := health["r2_storage"].(map[string]interface{})
+	r2Available, _ := r2Storage["available"].(bool)
+	if !r2Available {
+		apierror.WriteErrorWithStatus(w, http.StatusServiceUnavailable, apierror.ErrCodeServiceUnavailable, "R2 storage unavailable")
+		return
+	}
+
+	pipelineExec := health["pipeline_exec"].(map[string]interface{})
+	pipelineConfigured, _ := pipelineExec["configured"].(bool)
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status":              "ready",
+		"r2_storage":          r2Storage,
+		"pipeline_execution":  pipelineExec,
+		"pipeline_configured": pipelineConfigured,
+	})
 }

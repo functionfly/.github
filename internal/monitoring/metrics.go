@@ -375,6 +375,140 @@ var (
 		[]string{"tenant_id", "fabric_id", "pipeline_id"},
 	)
 
+	stateFabricKeyOperationsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_state_fabric_key_operations_total",
+			Help: "Total number of state fabric key operations (get, set, delete)",
+		},
+		[]string{"tenant_id", "fabric_id", "operation_type", "status"},
+	)
+
+	stateFabricKeyOperationDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "functionfly_state_fabric_key_operation_duration_seconds",
+			Help:    "State fabric key operation duration in seconds",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0},
+		},
+		[]string{"tenant_id", "fabric_id", "operation_type"},
+	)
+
+	stateFabricSnapshotOperationsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_state_fabric_snapshot_operations_total",
+			Help: "Total number of state fabric snapshot operations",
+		},
+		[]string{"tenant_id", "fabric_id", "operation_type", "status"},
+	)
+
+	stateFabricSnapshotDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "functionfly_state_fabric_snapshot_duration_seconds",
+			Help:    "State fabric snapshot operation duration in seconds",
+			Buckets: []float64{0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0},
+		},
+		[]string{"tenant_id", "fabric_id", "operation_type"},
+	)
+
+	stateFabricReplayOperationsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_state_fabric_replay_operations_total",
+			Help: "Total number of state fabric replay operations",
+		},
+		[]string{"tenant_id", "fabric_id", "status"},
+	)
+
+	stateFabricReplayDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "functionfly_state_fabric_replay_duration_seconds",
+			Help:    "State fabric replay operation duration in seconds",
+			Buckets: []float64{0.1, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 120.0},
+		},
+		[]string{"tenant_id", "fabric_id"},
+	)
+
+	stateFabricDeadLetterTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_state_fabric_dead_letter_total",
+			Help: "Total number of state fabric dead letter entries",
+		},
+		[]string{"tenant_id", "fabric_id", "reason"},
+	)
+
+	stateFabricCacheHitsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_state_fabric_cache_hits_total",
+			Help: "Total number of state fabric cache hits",
+		},
+		[]string{"tenant_id", "fabric_id", "cache_type"},
+	)
+
+	stateFabricCacheMissesTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_state_fabric_cache_misses_total",
+			Help: "Total number of state fabric cache misses",
+		},
+		[]string{"tenant_id", "fabric_id", "cache_type"},
+	)
+
+	stateFabricWebhookInvocationsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_state_fabric_webhook_invocations_total",
+			Help: "Total number of state fabric webhook invocations",
+		},
+		[]string{"tenant_id", "fabric_id", "webhook_type", "status"},
+	)
+
+	stateFabricWebhookDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "functionfly_state_fabric_webhook_duration_seconds",
+			Help:    "State fabric webhook invocation duration in seconds",
+			Buckets: []float64{0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0},
+		},
+		[]string{"tenant_id", "fabric_id", "webhook_type"},
+	)
+
+	stateFabricCleanupTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_state_fabric_cleanup_total",
+			Help: "Total number of state fabric cleanup operations",
+		},
+		[]string{"tenant_id", "operation_type", "status"},
+	)
+
+	stateFabricCleanupDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "functionfly_state_fabric_cleanup_duration_seconds",
+			Help:    "State fabric cleanup operation duration in seconds",
+			Buckets: []float64{0.1, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0},
+		},
+		[]string{"tenant_id", "operation_type"},
+	)
+
+	stateFabricBulkOperationsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_state_fabric_bulk_operations_total",
+			Help: "Total number of state fabric bulk operations",
+		},
+		[]string{"tenant_id", "operation_type", "status"},
+	)
+
+	stateFabricBulkOperationDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "functionfly_state_fabric_bulk_operation_duration_seconds",
+			Help:    "State fabric bulk operation duration in seconds",
+			Buckets: []float64{0.1, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 120.0},
+		},
+		[]string{"tenant_id", "operation_type"},
+	)
+
+	stateFabricHealthStatus = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "functionfly_state_fabric_health_status",
+			Help: "State fabric health status (1=healthy, 0=unhealthy)",
+		},
+		[]string{"tenant_id", "fabric_id", "component"},
+	)
+
 	// Trigger execution metrics
 	triggerExecutionsTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
@@ -1006,6 +1140,90 @@ func RecordStateFabricPipelineExecution(tenantID, fabricID, pipelineID, status s
 // RecordStateFabricPipelineDuration records pipeline execution duration
 func RecordStateFabricPipelineDuration(tenantID, fabricID, pipelineID string, duration time.Duration) {
 	stateFabricPipelineDuration.WithLabelValues(tenantID, fabricID, pipelineID).Observe(duration.Seconds())
+}
+
+// RecordStateFabricKeyOperation records key operation metrics (get, set, delete)
+func RecordStateFabricKeyOperation(tenantID, fabricID, operationType, status string) {
+	stateFabricKeyOperationsTotal.WithLabelValues(tenantID, fabricID, operationType, status).Inc()
+}
+
+// RecordStateFabricKeyOperationDuration records key operation duration
+func RecordStateFabricKeyOperationDuration(tenantID, fabricID, operationType string, duration time.Duration) {
+	stateFabricKeyOperationDuration.WithLabelValues(tenantID, fabricID, operationType).Observe(duration.Seconds())
+}
+
+// RecordStateFabricSnapshotOperation records snapshot operation metrics
+func RecordStateFabricSnapshotOperation(tenantID, fabricID, operationType, status string) {
+	stateFabricSnapshotOperationsTotal.WithLabelValues(tenantID, fabricID, operationType, status).Inc()
+}
+
+// RecordStateFabricSnapshotDuration records snapshot operation duration
+func RecordStateFabricSnapshotDuration(tenantID, fabricID, operationType string, duration time.Duration) {
+	stateFabricSnapshotDuration.WithLabelValues(tenantID, fabricID, operationType).Observe(duration.Seconds())
+}
+
+// RecordStateFabricReplayOperation records replay operation metrics
+func RecordStateFabricReplayOperation(tenantID, fabricID, status string) {
+	stateFabricReplayOperationsTotal.WithLabelValues(tenantID, fabricID, status).Inc()
+}
+
+// RecordStateFabricReplayDuration records replay operation duration
+func RecordStateFabricReplayDuration(tenantID, fabricID string, duration time.Duration) {
+	stateFabricReplayDuration.WithLabelValues(tenantID, fabricID).Observe(duration.Seconds())
+}
+
+// RecordStateFabricDeadLetter records dead letter entry metrics
+func RecordStateFabricDeadLetter(tenantID, fabricID, reason string) {
+	stateFabricDeadLetterTotal.WithLabelValues(tenantID, fabricID, reason).Inc()
+}
+
+// RecordStateFabricCacheHit records cache hit metrics
+func RecordStateFabricCacheHit(tenantID, fabricID, cacheType string) {
+	stateFabricCacheHitsTotal.WithLabelValues(tenantID, fabricID, cacheType).Inc()
+}
+
+// RecordStateFabricCacheMiss records cache miss metrics
+func RecordStateFabricCacheMiss(tenantID, fabricID, cacheType string) {
+	stateFabricCacheMissesTotal.WithLabelValues(tenantID, fabricID, cacheType).Inc()
+}
+
+// RecordStateFabricWebhookInvocation records webhook invocation metrics
+func RecordStateFabricWebhookInvocation(tenantID, fabricID, webhookType, status string) {
+	stateFabricWebhookInvocationsTotal.WithLabelValues(tenantID, fabricID, webhookType, status).Inc()
+}
+
+// RecordStateFabricWebhookDuration records webhook invocation duration
+func RecordStateFabricWebhookDuration(tenantID, fabricID, webhookType string, duration time.Duration) {
+	stateFabricWebhookDuration.WithLabelValues(tenantID, fabricID, webhookType).Observe(duration.Seconds())
+}
+
+// RecordStateFabricCleanup records cleanup operation metrics
+func RecordStateFabricCleanup(tenantID, operationType, status string) {
+	stateFabricCleanupTotal.WithLabelValues(tenantID, operationType, status).Inc()
+}
+
+// RecordStateFabricCleanupDuration records cleanup operation duration
+func RecordStateFabricCleanupDuration(tenantID, operationType string, duration time.Duration) {
+	stateFabricCleanupDuration.WithLabelValues(tenantID, operationType).Observe(duration.Seconds())
+}
+
+// RecordStateFabricBulkOperation records bulk operation metrics
+func RecordStateFabricBulkOperation(tenantID, operationType, status string) {
+	stateFabricBulkOperationsTotal.WithLabelValues(tenantID, operationType, status).Inc()
+}
+
+// RecordStateFabricBulkOperationDuration records bulk operation duration
+func RecordStateFabricBulkOperationDuration(tenantID, operationType string, duration time.Duration) {
+	stateFabricBulkOperationDuration.WithLabelValues(tenantID, operationType).Observe(duration.Seconds())
+}
+
+// UpdateStateFabricHealthStatus updates health status for a fabric component
+func UpdateStateFabricHealthStatus(tenantID, fabricID, component string, healthy bool) {
+	statusValue := 0.0
+	if healthy {
+		statusValue = 1.0
+	}
+	stateFabricHealthStatus.WithLabelValues(tenantID, fabricID, component).Set(statusValue)
 }
 
 // Trigger execution metrics recording functions

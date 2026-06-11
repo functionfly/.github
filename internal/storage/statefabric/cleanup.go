@@ -2,12 +2,34 @@ package statefabric
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"strconv"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
+
+var (
+	defaultCleanupInterval  = 1 * time.Hour
+	defaultCleanupBatchSize = 1000
+)
+
+func init() {
+	if val := os.Getenv("STATEFABRIC_CLEANUP_INTERVAL"); val != "" {
+		if parsed, err := time.ParseDuration(val); err == nil && parsed > 0 {
+			defaultCleanupInterval = parsed
+		}
+	}
+	if val := os.Getenv("STATEFABRIC_CLEANUP_BATCH_SIZE"); val != "" {
+		if parsed, err := strconv.Atoi(val); err == nil && parsed > 0 {
+			defaultCleanupBatchSize = parsed
+		}
+	}
+}
 
 // CleanupConfig holds configuration for the state fabric cleanup worker
 type CleanupConfig struct {
@@ -24,8 +46,8 @@ type CleanupConfig struct {
 // DefaultCleanupConfig returns the default configuration
 func DefaultCleanupConfig() CleanupConfig {
 	return CleanupConfig{
-		Interval:  1 * time.Hour, // Run every hour by default
-		BatchSize: 1000,
+		Interval:  defaultCleanupInterval,
+		BatchSize: defaultCleanupBatchSize,
 		Verbose:   false,
 		MaxAge:    0, // Delete immediately when expires_at < now
 	}
@@ -38,6 +60,9 @@ type CleanupService struct {
 	config    CleanupConfig
 	logger    *logrus.Logger
 	stopCh    chan struct{}
+	drainCh   chan struct{}
+	isRunning bool
+	mu        sync.Mutex
 }
 
 // NewCleanupService creates a new state fabric cleanup service
@@ -50,10 +75,10 @@ func NewCleanupService(db *gorm.DB, config CleanupConfig) *CleanupService {
 	}
 
 	return &CleanupService{
-		db:        db,
-		config:    config,
-		logger:    logrus.WithField("service", "state_fabric_cleanup").Logger,
-		stopCh:    make(chan struct{}),
+		db:     db,
+		config: config,
+		logger: logrus.WithField("service", "state_fabric_cleanup").Logger,
+		stopCh: make(chan struct{}),
 	}
 }
 
@@ -82,11 +107,22 @@ func (s *CleanupService) StartCleanupRoutine(ctx context.Context) {
 		"batchSize": s.config.BatchSize,
 	}).Info("Starting state fabric TTL cleanup routine")
 
+	s.mu.Lock()
+	s.isRunning = true
+	s.drainCh = make(chan struct{})
+	s.mu.Unlock()
+
 	// Run initial cleanup
 	s.runCleanup()
 
 	ticker := time.NewTicker(s.config.Interval)
 	defer ticker.Stop()
+	defer func() {
+		s.mu.Lock()
+		s.isRunning = false
+		close(s.drainCh)
+		s.mu.Unlock()
+	}()
 
 	for {
 		select {
@@ -97,6 +133,12 @@ func (s *CleanupService) StartCleanupRoutine(ctx context.Context) {
 			s.logger.Info("State fabric cleanup routine stopping (stop signal)")
 			return
 		case <-ticker.C:
+			s.mu.Lock()
+			if !s.isRunning {
+				s.mu.Unlock()
+				continue
+			}
+			s.mu.Unlock()
 			s.runCleanup()
 		}
 	}
@@ -104,17 +146,57 @@ func (s *CleanupService) StartCleanupRoutine(ctx context.Context) {
 
 // Stop signals the cleanup routine to stop
 func (s *CleanupService) Stop() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.isRunning = false
 	close(s.stopCh)
+}
+
+// Drain waits for any in-progress cleanup to complete
+func (s *CleanupService) Drain(timeout time.Duration) error {
+	s.mu.Lock()
+	if !s.isRunning {
+		s.mu.Unlock()
+		return nil
+	}
+	s.mu.Unlock()
+
+	select {
+	case <-s.drainCh:
+		return nil
+	case <-time.After(timeout):
+		return fmt.Errorf("cleanup drain timed out after %s", timeout)
+	}
+}
+
+// IsRunning returns whether the cleanup service is currently running
+func (s *CleanupService) IsRunning() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.isRunning
 }
 
 // runCleanup performs all cleanup operations
 func (s *CleanupService) runCleanup() {
+	s.mu.Lock()
+	if s.isRunning {
+		s.mu.Unlock()
+		s.logger.Debug("Skipping cleanup run - previous run still in progress")
+		return
+	}
+	s.isRunning = true
+	s.mu.Unlock()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
+	defer func() {
+		cancel()
+		s.mu.Lock()
+		s.isRunning = false
+		s.mu.Unlock()
+	}()
 
 	s.logger.Debug("Running state fabric TTL cleanup")
 
-	// Clean up expired snapshots
 	snapshotsDeleted := s.cleanupExpiredSnapshots(ctx)
 	s.logger.WithFields(logrus.Fields{
 		"expiredSnapshotsDeleted": snapshotsDeleted,
@@ -145,7 +227,6 @@ func (s *CleanupService) cleanupExpiredSnapshots(ctx context.Context) int64 {
 
 		// Delete expired snapshots in a transaction
 		err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-			// First, get R2 object keys for potential cleanup
 			var r2Objects []struct {
 				ID          uuid.UUID
 				R2ObjectKey *string
@@ -156,7 +237,8 @@ func (s *CleanupService) cleanupExpiredSnapshots(ctx context.Context) int64 {
 				return err
 			}
 
-			// Delete R2 data for expired snapshots
+			// Track snapshots with failed R2 deletion - these should not be deleted from DB
+			var failedR2Deletion []uuid.UUID
 			for _, obj := range r2Objects {
 				if obj.R2ObjectKey != nil && *obj.R2ObjectKey != "" {
 					if s.r2Backend != nil {
@@ -164,7 +246,8 @@ func (s *CleanupService) cleanupExpiredSnapshots(ctx context.Context) int64 {
 							s.logger.WithError(err).WithFields(logrus.Fields{
 								"snapshot_id":   obj.ID,
 								"r2_object_key": *obj.R2ObjectKey,
-							}).Warn("Failed to delete R2 snapshot data")
+							}).Warn("Failed to delete R2 snapshot data - keeping DB record for retry")
+							failedR2Deletion = append(failedR2Deletion, obj.ID)
 						} else if s.config.Verbose {
 							s.logger.WithFields(logrus.Fields{
 								"snapshot_id":   obj.ID,
@@ -175,8 +258,31 @@ func (s *CleanupService) cleanupExpiredSnapshots(ctx context.Context) int64 {
 				}
 			}
 
-			// Delete the snapshots
-			result := tx.Where("id IN ?", expiredIDs).Delete(&StateFabricSnapshot{})
+			// Build delete query excluding snapshots with failed R2 deletion
+			var idsToDelete []uuid.UUID
+			if len(failedR2Deletion) > 0 {
+				for _, id := range expiredIDs {
+					skip := false
+					for _, failedID := range failedR2Deletion {
+						if id == failedID {
+							skip = true
+							break
+						}
+					}
+					if !skip {
+						idsToDelete = append(idsToDelete, id)
+					}
+				}
+			} else {
+				idsToDelete = expiredIDs
+			}
+
+			if len(idsToDelete) == 0 {
+				s.logger.Info("All snapshots in batch had failed R2 deletion - skipping DB deletion")
+				return nil
+			}
+
+			result := tx.Where("id IN ?", idsToDelete).Delete(&StateFabricSnapshot{})
 			if result.Error != nil {
 				return result.Error
 			}

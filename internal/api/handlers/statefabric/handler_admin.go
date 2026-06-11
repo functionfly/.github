@@ -282,3 +282,172 @@ func (h *Handler) HandleGetTTLCleanupStats(w http.ResponseWriter, r *http.Reques
 		"snapshotsWithExpiration": stats["snapshotsWithExpiration"],
 	})
 }
+
+// HandleStateFabricHealth returns health status for StateFabric components
+func (h *Handler) HandleStateFabricHealth(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeErr(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	if !hasAdminPermission(claims, auth.PermSystemRead) {
+		writeErr(w, http.StatusForbidden, "forbidden")
+		return
+	}
+
+	ctx := r.Context()
+	health := map[string]interface{}{
+		"status":     "healthy",
+		"components": map[string]interface{}{},
+		"timestamp":  time.Now(),
+	}
+
+	// Check database connectivity
+	dbStatus := map[string]interface{}{
+		"status":    "healthy",
+		"latencyMs": 0,
+	}
+	dbStart := time.Now()
+	if err := h.repo.Ping(ctx); err != nil {
+		dbStatus["status"] = "unhealthy"
+		dbStatus["error"] = err.Error()
+		health["status"] = "degraded"
+	}
+	dbStatus["latencyMs"] = time.Since(dbStart).Milliseconds()
+	health["components"].(map[string]interface{})["database"] = dbStatus
+
+	// Check Redis cache connectivity
+	cacheStatus := map[string]interface{}{
+		"status":  "unknown",
+		"enabled": h.repo.IsCacheEnabled(),
+	}
+	if h.repo.IsCacheEnabled() {
+		cacheStatus["status"] = "healthy"
+		if err := h.repo.PingCache(ctx); err != nil {
+			cacheStatus["status"] = "unhealthy"
+			cacheStatus["error"] = err.Error()
+		}
+	} else {
+		cacheStatus["status"] = "disabled"
+	}
+	health["components"].(map[string]interface{})["cache"] = cacheStatus
+
+	// Check R2 backend connectivity
+	r2Status := map[string]interface{}{
+		"status":  "unknown",
+		"enabled": h.repo.IsR2Enabled(),
+	}
+	if h.repo.IsR2Enabled() {
+		r2Status["status"] = "healthy"
+		if err := h.repo.PingR2(ctx); err != nil {
+			r2Status["status"] = "unhealthy"
+			r2Status["error"] = err.Error()
+			health["status"] = "degraded"
+		}
+	} else {
+		r2Status["status"] = "disabled"
+	}
+	health["components"].(map[string]interface{})["r2_storage"] = r2Status
+
+	// Check cleanup service
+	cleanupStatus := map[string]interface{}{
+		"status":  "unknown",
+		"enabled": h.cleanupSvc != nil,
+	}
+	if h.cleanupSvc != nil {
+		cleanupStatus["status"] = "healthy"
+		if !h.cleanupSvc.IsRunning() {
+			cleanupStatus["status"] = "stopped"
+		}
+	} else {
+		cleanupStatus["status"] = "disabled"
+	}
+	health["components"].(map[string]interface{})["cleanup_service"] = cleanupStatus
+
+	// Check dead letter queue stats
+	dlqStatus := map[string]interface{}{
+		"status": "healthy",
+	}
+	totalDLQ, err := h.repo.CountDeadLetters(ctx)
+	if err != nil {
+		dlqStatus["status"] = "unknown"
+		dlqStatus["error"] = err.Error()
+	} else {
+		dlqStatus["total_pending"] = totalDLQ
+		if totalDLQ > 100 {
+			dlqStatus["status"] = "warning"
+			dlqStatus["message"] = "High number of pending dead letters"
+		}
+	}
+	health["components"].(map[string]interface{})["dead_letter_queue"] = dlqStatus
+
+	statusCode := http.StatusOK
+	if health["status"] == "degraded" {
+		statusCode = http.StatusServiceUnavailable
+	}
+
+	writeJSON(w, statusCode, health)
+}
+
+// HandleGetFabricHealth returns health status for a specific fabric
+func (h *Handler) HandleGetFabricHealth(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeErr(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	vars := mux.Vars(r)
+	fabricID, err := uuid.Parse(vars["id"])
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid fabric id")
+		return
+	}
+
+	ctx := r.Context()
+	fabric, err := h.repo.GetFabricByID(ctx, fabricID)
+	if err != nil {
+		writeErr(w, http.StatusNotFound, "state fabric not found")
+		return
+	}
+
+	health := map[string]interface{}{
+		"fabric_id":  fabricID.String(),
+		"name":       fabric.Name,
+		"status":     fabric.Status,
+		"timestamp":  time.Now(),
+		"components": map[string]interface{}{},
+	}
+
+	// Check fabric-specific metrics
+	metrics, _ := h.repo.GetMetrics(ctx, fabricID, "")
+	health["components"].(map[string]interface{})["metrics"] = map[string]interface{}{
+		"status":             "healthy",
+		"total_operations":   metrics.TotalOperations,
+		"operations_per_sec": metrics.OperationsPerSecond,
+		"average_latency_ms": metrics.AverageLatency,
+		"error_rate":         metrics.ErrorRate,
+	}
+
+	// Check store status
+	stores, _ := h.repo.ListStoresByFabric(ctx, fabricID)
+	health["components"].(map[string]interface{})["stores"] = map[string]interface{}{
+		"status": "healthy",
+		"count":  len(stores),
+	}
+
+	// Check pipeline status
+	pipelines, _ := h.repo.ListPipelinesByFabric(ctx, fabricID)
+	activePipelines := 0
+	for _, p := range pipelines {
+		if p.Status == "active" {
+			activePipelines++
+		}
+	}
+	health["components"].(map[string]interface{})["pipelines"] = map[string]interface{}{
+		"status": "healthy",
+		"total":  len(pipelines),
+		"active": activePipelines,
+	}
+
+	writeJSON(w, http.StatusOK, health)
+}

@@ -460,7 +460,7 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/state-fabrics", authMiddleware.RequirePermission(auth.PermTenantsRead)(rateLimiter.RequireRateLimit(stateFabricHandler.HandleListAll))).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/state-fabrics/{id}/suspend", authMiddleware.RequirePermission(auth.PermTenantsWrite)(rateLimiter.RequireRateLimit(stateFabricHandler.HandleSuspendFabric))).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/state-fabrics/{id}/resume", authMiddleware.RequirePermission(auth.PermTenantsWrite)(rateLimiter.RequireRateLimit(stateFabricHandler.HandleResumeFabric))).Methods("POST", "OPTIONS")
-	adminRoutes.HandleFunc("/state-fabrics/cleanup", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(stateFabricHandler.HandleRunTTLCleanup))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/state-fabrics/cleanup", authMiddleware.RequirePermission(auth.PermSystemWrite)(rateLimiter.RequireRateLimit(advancedSecurityMiddleware.RequireHMACSignature(stateFabricHandler.HandleRunTTLCleanup)))).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/state-fabrics/cleanup/stats", authMiddleware.RequirePermission(auth.PermSystemRead)(rateLimiter.RequireRateLimit(stateFabricHandler.HandleGetTTLCleanupStats))).Methods("GET", "OPTIONS")
 
 	// Trigger Engine Admin Endpoints

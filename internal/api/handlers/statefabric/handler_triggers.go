@@ -164,12 +164,8 @@ func (h *Handler) HandleUpdateTrigger(w http.ResponseWriter, r *http.Request) {
 		IsActive:                req.IsActive,
 	})
 	if err != nil {
-		if err.Error() == "trigger not found" {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
-		}
 		logrus.WithError(err).Error("failed to update fabric trigger")
-		http.Error(w, "failed to update trigger", http.StatusInternalServerError)
+		http.Error(w, "trigger not found", http.StatusNotFound)
 		return
 	}
 	writeJSON(w, http.StatusOK, updated)

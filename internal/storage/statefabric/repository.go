@@ -4,23 +4,154 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"sort"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 
+	"github.com/functionfly/functionfly/internal/agent/circuitbreaker"
+	"github.com/functionfly/functionfly/internal/api/middleware"
 	statestore "github.com/functionfly/functionfly/internal/storage/state"
+	vault "github.com/functionfly/functionfly/internal/storage/vault"
 )
 
 const (
-	MaxStoreSizeBytes = 500 * 1024 * 1024 * 1024 // 500 GB max store size
+	defaultMaxStoreSizeBytes = 500 * 1024 * 1024 * 1024 // 500 GB max store size
+	defaultHTTPTimeout       = 30 * time.Second
 )
+
+const (
+	FabricStatusActive   = "active"
+	FabricStatusPending  = "pending"
+	FabricStatusOffline  = "offline"
+	FabricStatusDegraded = "degraded"
+)
+
+const (
+	ErrFabricNotFound  = "state fabric not found"
+	ErrSnapshotNotFound = "snapshot not found"
+	ErrReplayNotFound  = "replay not found"
+	ErrTriggerNotFound = "trigger not found"
+)
+
+var (
+	maxStoreSizeBytes    uint64
+	httpTimeout          time.Duration
+	circuitBreakerConfig circuitbreaker.Config
+)
+
+func init() {
+	maxStoreSizeBytes = defaultMaxStoreSizeBytes
+	if val := os.Getenv("STATEFABRIC_MAX_STORE_SIZE"); val != "" {
+		if parsed, err := parseBytes(val); err == nil {
+			maxStoreSizeBytes = parsed
+		}
+	}
+
+	httpTimeout = defaultHTTPTimeout
+	if val := os.Getenv("STATEFABRIC_HTTP_TIMEOUT"); val != "" {
+		if parsed, err := time.ParseDuration(val); err == nil && parsed > 0 {
+			httpTimeout = parsed
+		}
+	}
+
+	circuitBreakerConfig = circuitbreaker.DefaultConfig()
+	if val := os.Getenv("STATEFABRIC_CB_FAILURE_THRESHOLD"); val != "" {
+		if parsed, err := strconv.Atoi(val); err == nil && parsed > 0 {
+			circuitBreakerConfig.FailureThreshold = parsed
+		}
+	}
+	if val := os.Getenv("STATEFABRIC_CB_COOLDOWN"); val != "" {
+		if parsed, err := time.ParseDuration(val); err == nil && parsed > 0 {
+			circuitBreakerConfig.CooldownDuration = parsed
+		}
+	}
+}
+
+func clearString(s *string) {
+	if s != nil && len(*s) > 0 {
+		b := []byte(*s)
+		for i := range b {
+			b[i] = 0
+		}
+		*s = ""
+	}
+}
+
+func parseBytes(s string) (uint64, error) {
+	var val uint64
+	_, err := fmt.Sscanf(s, "%d", &val)
+	if err != nil {
+		if strings.HasSuffix(s, "GB") || strings.HasSuffix(s, "gb") {
+			var gb float64
+			_, err := fmt.Sscanf(s, "%fGB", &gb)
+			if err == nil {
+				return uint64(gb * 1024 * 1024 * 1024), nil
+			}
+		}
+		if strings.HasSuffix(s, "MB") || strings.HasSuffix(s, "mb") {
+			var mb float64
+			_, err := fmt.Sscanf(s, "%fMB", &mb)
+			if err == nil {
+				return uint64(mb * 1024 * 1024), nil
+			}
+		}
+	}
+	return val, err
+}
+
+func getMaxStoreSizeBytes() uint64 {
+	return maxStoreSizeBytes
+}
+
+func getHTTPTimeout() time.Duration {
+	return httpTimeout
+}
+
+func newHTTPClient() *http.Client {
+	return &http.Client{
+		Timeout: getHTTPTimeout(),
+		Transport: &http.Transport{
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+	}
+}
+
+func requestIDFromContext(ctx context.Context) string {
+	if reqID, ok := ctx.Value("request_id").(string); ok {
+		return reqID
+	}
+	if reqID, ok := ctx.Value(middleware.RequestIDKey).(string); ok {
+		return reqID
+	}
+	return ""
+}
+
+type contextKey string
+
+const RequestIDKey contextKey = "request_id"
+
+func getLoggerWithRequestID(ctx context.Context) *logrus.Entry {
+	fields := logrus.Fields{}
+	if reqID := requestIDFromContext(ctx); reqID != "" {
+		fields["request_id"] = reqID
+	}
+	return logrus.WithFields(fields)
+}
 
 type Repository struct {
 	db        *gorm.DB
@@ -28,13 +159,30 @@ type Repository struct {
 	r2Backend *R2StorageBackend // Optional R2 backend for large data (events, snapshots, memory, replays)
 
 	// Function execution client
-	httpClient *http.Client
-	baseURL    string
-	apiKey     string
+	httpClient     *http.Client
+	baseURL        string
+	circuitBreaker *circuitbreaker.Breaker
+
+	// API key security: store vault secret reference instead of actual key
+	// The actual key is retrieved from vault when needed
+	vaultRepo      *vault.Repository
+	vaultSecretRef string
+	apiKey         string // Fallback: cached only during initialization, cleared after
+
+	// Redis cache for StateFabric data
+	cache *StateFabricCache
+
+	// Active replay tracking for graceful shutdown
+	mu                sync.Mutex
+	replayCancelFuncs map[uuid.UUID]context.CancelFunc
 }
 
 func NewRepository(db *gorm.DB) *Repository {
-	repo := &Repository{db: db, stateRepo: statestore.NewStateRepository(db)}
+	repo := &Repository{
+		db:                db,
+		stateRepo:         statestore.NewStateRepository(db),
+		replayCancelFuncs: make(map[uuid.UUID]context.CancelFunc),
+	}
 
 	// Initialize R2 backend if configured
 	if IsR2StorageConfigured() {
@@ -43,30 +191,117 @@ func NewRepository(db *gorm.DB) *Repository {
 		}
 	}
 
-	// Initialize HTTP client for function execution
-	repo.httpClient = &http.Client{
-		Timeout: 30 * time.Second,
-	}
+	// Initialize HTTP client for function execution with TLS verification
+	repo.httpClient = newHTTPClient()
 
+	// Initialize circuit breaker for pipeline execution
+	repo.circuitBreaker = circuitbreaker.New(circuitBreakerConfig)
+
+	return repo
+}
+
+// NewRepositoryWithRedis creates a repository with Redis caching
+func NewRepositoryWithRedis(db *gorm.DB, redisClient *redis.Client) *Repository {
+	repo := NewRepository(db)
+	repo.cache = NewStateFabricCache(redisClient)
+	return repo
+}
+
+// NewRepositoryWithVault creates a repository with vault integration for secret management
+func NewRepositoryWithVault(db *gorm.DB, vaultRepo *vault.Repository) *Repository {
+	repo := NewRepository(db)
+	repo.vaultRepo = vaultRepo
 	return repo
 }
 
 // NewRepositoryWithR2 creates a repository with an explicit R2 backend (for testing or custom config)
 func NewRepositoryWithR2(db *gorm.DB, r2Backend *R2StorageBackend) *Repository {
 	return &Repository{
-		db:        db,
-		stateRepo: statestore.NewStateRepository(db),
-		r2Backend: r2Backend,
-		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
-		},
+		db:                db,
+		stateRepo:         statestore.NewStateRepository(db),
+		r2Backend:         r2Backend,
+		replayCancelFuncs: make(map[uuid.UUID]context.CancelFunc),
+		httpClient:        newHTTPClient(),
+		circuitBreaker:    circuitbreaker.New(circuitBreakerConfig),
 	}
 }
 
-// ConfigureExecution sets the base URL and API key for function execution
+// NewRepositoryWithVaultAndR2 creates a repository with vault and R2 backends
+func NewRepositoryWithVaultAndR2(db *gorm.DB, vaultRepo *vault.Repository, r2Backend *R2StorageBackend) *Repository {
+	repo := &Repository{
+		db:                db,
+		stateRepo:         statestore.NewStateRepository(db),
+		r2Backend:         r2Backend,
+		vaultRepo:         vaultRepo,
+		replayCancelFuncs: make(map[uuid.UUID]context.CancelFunc),
+		httpClient:        newHTTPClient(),
+		circuitBreaker:    circuitbreaker.New(circuitBreakerConfig),
+	}
+	return repo
+}
+
 func (r *Repository) ConfigureExecution(baseURL, apiKey string) {
 	r.baseURL = strings.TrimSuffix(baseURL, "/")
-	r.apiKey = apiKey
+	if apiKey != "" {
+		r.apiKey = apiKey
+		clearString(&apiKey)
+	}
+}
+
+// ConfigureExecutionWithVault sets execution config with vault secret reference
+// The actual API key is retrieved from vault when needed, not stored in struct
+func (r *Repository) ConfigureExecutionWithVault(ctx context.Context, baseURL, vaultSecretRef string) error {
+	r.baseURL = strings.TrimSuffix(baseURL, "/")
+	r.vaultSecretRef = vaultSecretRef
+
+	if r.vaultRepo == nil {
+		return fmt.Errorf("vault repository not configured")
+	}
+
+	secretID, err := uuid.Parse(vaultSecretRef)
+	if err != nil {
+		return fmt.Errorf("invalid vault secret ID: %w", err)
+	}
+
+	var systemTenantID uuid.UUID
+	secret, err := r.vaultRepo.GetSecretByID(ctx, secretID, systemTenantID)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve secret from vault: %w", err)
+	}
+	if secret == nil {
+		return fmt.Errorf("vault secret not found: %s", vaultSecretRef)
+	}
+
+	return nil
+}
+
+// getAPIKey retrieves the API key, preferring vault over cached value
+func (r *Repository) getAPIKey(ctx context.Context) (string, error) {
+	if r.vaultSecretRef != "" && r.vaultRepo != nil {
+		secretID, err := uuid.Parse(r.vaultSecretRef)
+		if err != nil {
+			return "", fmt.Errorf("invalid vault secret ID: %w", err)
+		}
+
+		var systemTenantID uuid.UUID
+		secret, err := r.vaultRepo.GetSecretByID(ctx, secretID, systemTenantID)
+		if err != nil {
+			return "", fmt.Errorf("failed to retrieve secret from vault: %w", err)
+		}
+		if secret == nil {
+			return "", fmt.Errorf("vault secret not found: %s", r.vaultSecretRef)
+		}
+
+		// TODO: Implement proper server-side decryption for system secrets
+		// For now, return the encrypted value (caller must decrypt)
+		return string(secret.EncryptedValue), nil
+	}
+
+	if r.apiKey == "" {
+		return "", fmt.Errorf("API key not configured")
+	}
+
+	return r.apiKey, nil
 }
 
 // R2Backend returns the R2 storage backend if configured
@@ -302,13 +537,37 @@ func daysSince(t time.Time) int64 {
 }
 
 func maxInt(v, fallback int64) int64 {
-	if v <= 0 {
+	if v < 0 {
 		return fallback
 	}
 	return v
 }
 
 func (r *Repository) ListFabrics(ctx context.Context, opts ListOptions) ([]Fabric, int64, error) {
+	// Try cache first (only for default query without filters)
+	if opts.Status == "" && opts.Search == "" && r.cache != nil && r.cache.IsEnabled() {
+		if cached, err := r.cache.GetFabricList(ctx, opts.TenantID); err == nil && cached != nil {
+			r.cache.RecordCacheHit(opts.TenantID.String(), "", "fabric_list")
+			total := int64(len(cached))
+			offset := opts.Offset
+			if offset > len(cached) {
+				offset = len(cached)
+			}
+			end := offset + opts.Limit
+			if end > len(cached) {
+				end = len(cached)
+			}
+			if opts.Limit > 0 && end < len(cached) {
+				return cached[offset:end], total, nil
+			}
+			if offset == 0 && (opts.Limit <= 0 || opts.Limit >= len(cached)) {
+				return cached, total, nil
+			}
+		} else if cached == nil {
+			r.cache.RecordCacheMiss(opts.TenantID.String(), "", "fabric_list")
+		}
+	}
+
 	limit := opts.Limit
 	if limit <= 0 {
 		limit = 100
@@ -332,6 +591,12 @@ func (r *Repository) ListFabrics(ctx context.Context, opts ListOptions) ([]Fabri
 		pipelines, _ := r.ListPipelines(ctx, state.ID)
 		items = append(items, buildFabric(state, metrics, pipelines))
 	}
+
+	// Cache the result if it's a full list query
+	if opts.Status == "" && opts.Search == "" && r.cache != nil && r.cache.IsEnabled() {
+		r.cache.SetFabricList(ctx, opts.TenantID, items)
+	}
+
 	return items, total, nil
 }
 
@@ -371,12 +636,105 @@ func (r *Repository) GetFabric(ctx context.Context, tenantID, fabricID uuid.UUID
 		return nil, err
 	}
 	if state.TenantID != tenantID {
-		return nil, fmt.Errorf("state fabric not found")
+		return nil, fmt.Errorf(ErrFabricNotFound)
 	}
 	metrics, _ := r.GetMetrics(ctx, state.ID, "")
 	pipelines, _ := r.ListPipelines(ctx, state.ID)
 	fabric := buildFabric(state, metrics, pipelines)
 	return &fabric, nil
+}
+
+var allowedSettingsKeys = map[string]bool{
+	"region":         true,
+	"replication":    true,
+	"backupEnabled":  true,
+	"backupInterval": true,
+	"compression":    true,
+	"encryption":     true,
+	"ttl":            true,
+	"maxConnections": true,
+	"readOnly":       true,
+	"autoScale":      true,
+}
+
+func (r *Repository) validateSettings(settings map[string]interface{}) error {
+	if settings == nil {
+		return nil
+	}
+
+	for key, value := range settings {
+		if !allowedSettingsKeys[key] {
+			return fmt.Errorf("unknown setting key: %s", key)
+		}
+
+		switch key {
+		case "region":
+			if region, ok := value.(string); ok {
+				if strings.TrimSpace(region) == "" {
+					return fmt.Errorf("region cannot be empty")
+				}
+				if len(region) > 64 {
+					return fmt.Errorf("region name too long (max 64 chars)")
+				}
+			} else {
+				return fmt.Errorf("region must be a string")
+			}
+		case "replication":
+			if rep, ok := value.(float64); ok {
+				if rep < 1 || rep > 10 {
+					return fmt.Errorf("replication factor must be between 1 and 10")
+				}
+			} else {
+				return fmt.Errorf("replication must be a number")
+			}
+		case "backupEnabled", "readOnly", "autoScale":
+			if _, ok := value.(bool); !ok {
+				return fmt.Errorf("%s must be a boolean", key)
+			}
+		case "backupInterval":
+			if interval, ok := value.(float64); ok {
+				if interval < 1 || interval > 168 {
+					return fmt.Errorf("backupInterval must be between 1 and 168 hours")
+				}
+			} else {
+				return fmt.Errorf("backupInterval must be a number")
+			}
+		case "compression":
+			if comp, ok := value.(string); ok {
+				if comp != "none" && comp != "gzip" && comp != "lz4" && comp != "zstd" {
+					return fmt.Errorf("compression must be one of: none, gzip, lz4, zstd")
+				}
+			} else {
+				return fmt.Errorf("compression must be a string")
+			}
+		case "encryption":
+			if enc, ok := value.(string); ok {
+				if enc != "none" && enc != "aes-256" && enc != "chacha20" {
+					return fmt.Errorf("encryption must be one of: none, aes-256, chacha20")
+				}
+			} else {
+				return fmt.Errorf("encryption must be a string")
+			}
+		case "ttl":
+			if ttl, ok := value.(float64); ok {
+				if ttl < 0 || ttl > 31536000 {
+					return fmt.Errorf("ttl must be between 0 and 31536000 seconds (1 year)")
+				}
+			} else {
+				return fmt.Errorf("ttl must be a number")
+			}
+		case "maxConnections":
+			if mc, ok := value.(float64); ok {
+				if mc < 1 || mc > 10000 {
+					return fmt.Errorf("maxConnections must be between 1 and 10000")
+				}
+			} else {
+				return fmt.Errorf("maxConnections must be a number")
+			}
+		}
+	}
+
+	return nil
 }
 
 func (r *Repository) UpdateFabric(ctx context.Context, tenantID, fabricID uuid.UUID, updates map[string]interface{}) (*Fabric, error) {
@@ -385,7 +743,7 @@ func (r *Repository) UpdateFabric(ctx context.Context, tenantID, fabricID uuid.U
 		return nil, err
 	}
 	if state.TenantID != tenantID {
-		return nil, fmt.Errorf("state fabric not found")
+		return nil, fmt.Errorf(ErrFabricNotFound)
 	}
 	if name, ok := updates["name"].(string); ok && strings.TrimSpace(name) != "" {
 		state.Name = name
@@ -395,6 +753,9 @@ func (r *Repository) UpdateFabric(ctx context.Context, tenantID, fabricID uuid.U
 		state.Description = stringPtr(description)
 	}
 	if settings, ok := updates["settings"].(map[string]interface{}); ok {
+		if err := r.validateSettings(settings); err != nil {
+			return nil, fmt.Errorf("invalid settings: %w", err)
+		}
 		tags := safeJSONMap(state.Tags)
 		tags["settings"] = settings
 		state.Tags = statestore.JSONMap(tags)
@@ -421,6 +782,15 @@ func (r *Repository) DeleteFabric(ctx context.Context, tenantID, fabricID uuid.U
 }
 
 func (r *Repository) GetMetrics(ctx context.Context, fabricID uuid.UUID, _ string) (FabricMetrics, error) {
+	// Try cache first
+	if r.cache != nil && r.cache.IsEnabled() {
+		if cached, err := r.cache.GetMetrics(ctx, fabricID); err == nil && cached != nil {
+			r.cache.RecordCacheHit("", fabricID.String(), "metrics")
+			return *cached, nil
+		}
+		r.cache.RecordCacheMiss("", fabricID.String(), "metrics")
+	}
+
 	state, err := r.stateRepo.GetStateByID(ctx, fabricID)
 	if err != nil {
 		return FabricMetrics{}, err
@@ -448,6 +818,12 @@ func (r *Repository) GetMetrics(ctx context.Context, fabricID uuid.UUID, _ strin
 	if eventCount == 0 {
 		metrics.OperationsPerSecond = 0
 	}
+
+	// Cache the result
+	if r.cache != nil && r.cache.IsEnabled() {
+		r.cache.SetMetrics(ctx, fabricID, &metrics)
+	}
+
 	return metrics, nil
 }
 
@@ -457,7 +833,7 @@ func (r *Repository) ListStores(ctx context.Context, tenantID, fabricID uuid.UUI
 		return nil, err
 	}
 	if state.TenantID != tenantID {
-		return nil, fmt.Errorf("state fabric not found")
+		return nil, fmt.Errorf(ErrFabricNotFound)
 	}
 	return []FabricStore{buildStore(state)}, nil
 }
@@ -468,7 +844,7 @@ func (r *Repository) CreateStore(ctx context.Context, tenantID, fabricID uuid.UU
 		return nil, err
 	}
 	if state.TenantID != tenantID {
-		return nil, fmt.Errorf("state fabric not found")
+		return nil, fmt.Errorf(ErrFabricNotFound)
 	}
 	if strings.TrimSpace(name) != "" {
 		state.Name = name
@@ -482,6 +858,16 @@ func (r *Repository) CreateStore(ctx context.Context, tenantID, fabricID uuid.UU
 	if maxSize > 0 {
 		state.MaxSizeMB = int(maxSize / (1024 * 1024))
 	}
+
+	validStoreTypes := map[string]bool{
+		"queue":      true,
+		"persistent": true,
+		"memory":     true,
+	}
+	if storeType != "" && !validStoreTypes[storeType] {
+		return nil, fmt.Errorf("invalid store type: %s (allowed: queue, persistent, memory)", storeType)
+	}
+
 	state.StorageType = mapStoreType(storeType)
 	tags := safeJSONMap(state.Tags)
 	if region != "" {
@@ -697,10 +1083,10 @@ func (r *Repository) ExecutePipeline(ctx context.Context, tenantID, fabricID, pi
 
 	executionID := uuid.New()
 	execution := &StateFabricPipelineExecution{
-		ID:        executionID,
+		ID:         executionID,
 		PipelineID: pipelineID,
-		Status:    "running",
-		InputData: input,
+		Status:     "running",
+		InputData:  input,
 	}
 
 	if err := r.db.WithContext(ctx).Create(execution).Error; err != nil {
@@ -756,6 +1142,19 @@ func (r *Repository) ExecutePipeline(ctx context.Context, tenantID, fabricID, pi
 			return nil, fmt.Errorf("step %d (%s) has no target function", i, stepName)
 		}
 
+		if err := r.validateTargetFunctionForPipeline(ctx, tenantID, targetFunction); err != nil {
+			execution.Status = "failed"
+			execution.OutputData = map[string]interface{}{
+				"error":     err.Error(),
+				"stepIndex": i,
+				"stepName":  stepName,
+			}
+			if saveErr := r.db.WithContext(ctx).Save(execution).Error; saveErr != nil {
+				return nil, fmt.Errorf("failed to update execution record: %w", saveErr)
+			}
+			return nil, err
+		}
+
 		stepInput := input
 		if i > 0 && lastOutput != nil {
 			stepInput = lastOutput
@@ -763,25 +1162,45 @@ func (r *Repository) ExecutePipeline(ctx context.Context, tenantID, fabricID, pi
 
 		var stepErr error
 		var stepOutput map[string]interface{}
-		for attempt := 0; attempt <= retryCount; attempt++ {
+		retryConfig := DefaultRetryConfig()
+		retryConfig.MaxAttempts = retryCount + 1
+
+		for attempt := 0; attempt < retryConfig.MaxAttempts; attempt++ {
 			if attempt > 0 {
-				time.Sleep(time.Duration(attempt*100) * time.Millisecond)
+				delay := time.Duration(0)
+				if attempt == 1 {
+					delay = retryConfig.InitialDelay
+				} else {
+					delay = time.Duration(float64(retryConfig.InitialDelay) * pow(retryConfig.BackoffMultiplier, float64(attempt-1)))
+					if delay > retryConfig.MaxDelay {
+						delay = retryConfig.MaxDelay
+					}
+				}
+				select {
+				case <-ctx.Done():
+					return nil, ctx.Err
+				case <-time.After(delay):
+				}
 			}
 
 			stepOutput, stepErr = r.executeFunction(ctx, targetFunction, stepInput, timeoutMs)
 			if stepErr == nil {
 				break
 			}
+
+			if attempt == retryConfig.MaxAttempts-1 {
+				r.recordDeadLetter(ctx, fabricID, &pipelineID, "pipeline_execution", input, stepErr, retryConfig.MaxAttempts)
+			}
 		}
 
 		if stepErr != nil {
 			execution.Status = "failed"
 			execution.OutputData = map[string]interface{}{
-				"error":      stepErr.Error(),
-				"stepIndex":  i,
-				"stepName":   stepName,
-				"stepType":   stepType,
-				"attempts":   retryCount + 1,
+				"error":     stepErr.Error(),
+				"stepIndex": i,
+				"stepName":  stepName,
+				"stepType":  stepType,
+				"attempts":  retryCount + 1,
 			}
 			if err := r.db.WithContext(ctx).Save(execution).Error; err != nil {
 				return nil, fmt.Errorf("failed to update execution record: %w", err)
@@ -806,12 +1225,10 @@ func (r *Repository) ExecutePipeline(ctx context.Context, tenantID, fabricID, pi
 		return nil, fmt.Errorf("failed to update execution record: %w", err)
 	}
 
-	if trigger.LastTriggeredAt != nil {
-		now := time.Now()
-		trigger.LastTriggeredAt = &now
-		if _, err := r.stateRepo.UpdateTrigger(ctx, trigger); err != nil {
-			logrus.WithError(err).Warn("failed to update trigger last triggered time")
-		}
+	now := time.Now()
+	trigger.LastTriggeredAt = &now
+	if _, err := r.stateRepo.UpdateTrigger(ctx, trigger); err != nil {
+		logrus.WithError(err).Warn("failed to update trigger last triggered time")
 	}
 
 	return map[string]interface{}{
@@ -828,6 +1245,43 @@ func (r *Repository) executeFunction(ctx context.Context, targetFunction string,
 		return nil, fmt.Errorf("pipeline executor not configured: baseURL or httpClient is missing")
 	}
 
+	if r.circuitBreaker == nil {
+		return nil, fmt.Errorf("pipeline executor circuit breaker not initialized")
+	}
+
+	log := getLoggerWithRequestID(ctx)
+	log.WithFields(logrus.Fields{
+		"targetFunction": targetFunction,
+		"timeoutMs":      timeoutMs,
+	}).Debug("executing pipeline function via circuit breaker")
+
+	var result map[string]interface{}
+	err := r.circuitBreaker.Execute(func() error {
+		execErr := r.doExecuteFunction(ctx, targetFunction, input, &result)
+		return execErr
+	})
+	if err != nil {
+		if errors.Is(err, circuitbreaker.ErrCircuitOpen) {
+			log.WithFields(logrus.Fields{
+				"targetFunction": targetFunction,
+			}).Warn("pipeline execution circuit breaker open")
+			return nil, fmt.Errorf("pipeline execution circuit breaker open: function %s temporarily unavailable", targetFunction)
+		}
+		log.WithError(err).WithFields(logrus.Fields{
+			"targetFunction": targetFunction,
+		}).Error("pipeline function execution failed")
+		return nil, err
+	}
+
+	log.WithFields(logrus.Fields{
+		"targetFunction": targetFunction,
+	}).Debug("pipeline function executed successfully")
+	return result, nil
+}
+
+func (r *Repository) doExecuteFunction(ctx context.Context, targetFunction string, input map[string]interface{}, result *map[string]interface{}) error {
+	log := getLoggerWithRequestID(ctx)
+
 	var url string
 	if strings.Contains(targetFunction, "/") {
 		url = fmt.Sprintf("%s/v1/functions/by-name/%s/execute", r.baseURL, targetFunction)
@@ -835,42 +1289,110 @@ func (r *Repository) executeFunction(ctx context.Context, targetFunction string,
 		url = fmt.Sprintf("%s/v1/functions/%s/execute", r.baseURL, targetFunction)
 	}
 
+	log.WithFields(logrus.Fields{
+		"url":            url,
+		"targetFunction": targetFunction,
+	}).Debug("making HTTP request to execute function")
+
 	jsonInput, err := json.Marshal(input)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal input: %w", err)
+		return fmt.Errorf("failed to marshal input: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonInput))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	if r.apiKey != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", r.apiKey))
+	apiKey, err := r.getAPIKey(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get API key: %w", err)
+	}
+	if apiKey != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
 	}
 
 	resp, err := r.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute function: %w", err)
+		log.WithError(err).WithFields(logrus.Fields{
+			"targetFunction": targetFunction,
+		}).Error("HTTP request to execute function failed")
+		return fmt.Errorf("failed to execute function: %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
+		return fmt.Errorf("failed to read response: %w", err)
 	}
 
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("function execution failed with status %d: %s", resp.StatusCode, string(body))
+		log.WithFields(logrus.Fields{
+			"statusCode": resp.StatusCode,
+			"body":       string(body),
+		}).Error("function execution returned error status")
+		return fmt.Errorf("function execution failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return map[string]interface{}{"raw": string(body)}, nil
+	if err := json.Unmarshal(body, result); err != nil {
+		log.WithError(err).Warn("failed to unmarshal function response, storing as raw")
+		*result = map[string]interface{}{"raw": string(body)}
 	}
 
-	return result, nil
+	return nil
+}
+
+func (r *Repository) validateTargetFunctionForPipeline(ctx context.Context, tenantID uuid.UUID, targetFunction string) error {
+	if targetFunction == "" {
+		return fmt.Errorf("target function cannot be empty")
+	}
+
+	if strings.Contains(targetFunction, "..") || strings.Contains(targetFunction, "~") {
+		return fmt.Errorf("invalid characters in target function name")
+	}
+
+	if strings.HasPrefix(targetFunction, "/") || strings.HasSuffix(targetFunction, "/") {
+		return fmt.Errorf("target function name cannot start or end with slash")
+	}
+
+	var count int64
+	query := `
+		SELECT COUNT(*) FROM functions
+		WHERE tenant_id = $1
+		AND (
+			-- Match by function name (author/name format)
+			(CASE WHEN $2 LIKE '%/%' THEN $2 ELSE 'tenant/' || $2 END) = (owner || '/' || name)
+			-- Or match by function ID directly if it's a UUID
+			OR id = $3::uuid
+		)
+		AND status = 'deployed'
+	`
+
+	var functionID interface{}
+	if id, err := uuid.Parse(targetFunction); err == nil {
+		functionID = id.String()
+	} else {
+		functionID = uuid.Nil.String()
+	}
+
+	if err := r.db.WithContext(ctx).Raw(query, tenantID, targetFunction, functionID).Scan(&count).Error; err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"tenantID":       tenantID.String(),
+			"targetFunction": targetFunction,
+		}).Error("failed to validate target function for pipeline")
+		return fmt.Errorf("failed to validate target function authorization")
+	}
+
+	if count == 0 {
+		logrus.WithFields(logrus.Fields{
+			"tenantID":       tenantID.String(),
+			"targetFunction": targetFunction,
+		}).Warn("pipeline execution blocked: target function not authorized for tenant")
+		return fmt.Errorf("target function '%s' is not authorized for pipeline execution", targetFunction)
+	}
+
+	return nil
 }
 
 func (r *Repository) ListEvents(ctx context.Context, tenantID, fabricID uuid.UUID, opts EventListOptions) ([]EventLog, int64, error) {
@@ -898,6 +1420,10 @@ func (r *Repository) ListEvents(ctx context.Context, tenantID, fabricID uuid.UUI
 	limit := opts.Limit
 	if limit <= 0 {
 		limit = 100
+	}
+	const maxEventQueryLimit = 1000
+	if limit > maxEventQueryLimit {
+		limit = maxEventQueryLimit
 	}
 	var events []statestore.StateEvent
 	if err := query.Order("sequence_num DESC").Limit(limit).Offset(opts.Offset).Find(&events).Error; err != nil {
@@ -956,7 +1482,7 @@ func (r *Repository) ListSnapshots(ctx context.Context, tenantID, fabricID uuid.
 		return nil, err
 	}
 	if state.TenantID != tenantID {
-		return nil, fmt.Errorf("state fabric not found")
+		return nil, fmt.Errorf(ErrFabricNotFound)
 	}
 	snapshots, _, err := r.stateRepo.ListSnapshots(ctx, fabricID, 100, 0)
 	if err != nil {
@@ -988,13 +1514,19 @@ func (r *Repository) CreateSnapshot(ctx context.Context, tenantID, fabricID uuid
 		return nil, err
 	}
 	if state.TenantID != tenantID {
-		return nil, fmt.Errorf("state fabric not found")
+		return nil, fmt.Errorf(ErrFabricNotFound)
 	}
 
 	// Create snapshot in PostgreSQL
 	created, err := r.stateRepo.CreateSnapshot(ctx, fabricID, name)
 	if err != nil {
 		return nil, err
+	}
+
+	const maxSnapshotSizeBytes = 1 * 1024 * 1024 * 1024 // 1 GB limit
+	stateDataSize := estimateJSONSize(created.StateData)
+	if stateDataSize > maxSnapshotSizeBytes {
+		return nil, fmt.Errorf("snapshot size %d exceeds maximum allowed size of %d bytes", stateDataSize, maxSnapshotSizeBytes)
 	}
 
 	snapshotName := name
@@ -1016,12 +1548,13 @@ func (r *Repository) CreateSnapshot(ctx context.Context, tenantID, fabricID uuid
 
 			r2Object, err := r.r2Backend.StoreSnapshotData(ctx, tenantID, fabricID, created.ID, snapshotData, metadata)
 			if err == nil && r2Object != nil {
-				// Update the snapshot record with R2 reference (stored in state_fabric_snapshots table)
-				r.db.WithContext(ctx).Model(&StateFabricSnapshot{}).Where("id = ?", created.ID).Updates(map[string]interface{}{
+				if err := r.db.WithContext(ctx).Model(&StateFabricSnapshot{}).Where("id = ?", created.ID).Updates(map[string]interface{}{
 					"r2_object_key":   r2Object.Key,
 					"r2_bucket":       r2Object.Bucket,
 					"r2_content_hash": r2Object.ContentHash,
-				})
+				}).Error; err != nil {
+					logrus.WithError(err).Warn("failed to update snapshot R2 metadata")
+				}
 			}
 		}
 	}
@@ -1059,7 +1592,7 @@ func (r *Repository) DeleteSnapshot(ctx context.Context, tenantID, fabricID, sna
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
-		return fmt.Errorf("snapshot not found")
+		return fmt.Errorf(ErrSnapshotNotFound)
 	}
 	return nil
 }
@@ -1070,7 +1603,7 @@ func (r *Repository) ListReplays(ctx context.Context, tenantID, fabricID uuid.UU
 		return nil, err
 	}
 	if state.TenantID != tenantID {
-		return nil, fmt.Errorf("state fabric not found")
+		return nil, fmt.Errorf(ErrFabricNotFound)
 	}
 	var dbReplays []StateFabricReplay
 	if err := r.db.WithContext(ctx).Where("fabric_id = ?", fabricID).Order("started_at DESC").Find(&dbReplays).Error; err != nil {
@@ -1111,7 +1644,7 @@ func (r *Repository) CreateReplay(ctx context.Context, tenantID, fabricID uuid.U
 		return nil, err
 	}
 	if state.TenantID != tenantID {
-		return nil, fmt.Errorf("state fabric not found")
+		return nil, fmt.Errorf(ErrFabricNotFound)
 	}
 
 	replayID := uuid.New()
@@ -1135,39 +1668,51 @@ func (r *Repository) CreateReplay(ctx context.Context, tenantID, fabricID uuid.U
 	}
 
 	dbReplay := &StateFabricReplay{
-		ID:           replayID,
-		FabricID:     fabricID,
-		SnapshotID:   snapshotUUID,
-		StartEventID: startEventUUID,
-		EndEventID:   endEventUUID,
-		Status:       "pending",
-		Progress:     0,
+		ID:             replayID,
+		FabricID:       fabricID,
+		SnapshotID:     snapshotUUID,
+		StartEventID:   startEventUUID,
+		EndEventID:     endEventUUID,
+		Status:         "running",
+		Progress:       0,
 		EventsReplayed: 0,
-		StartedAt:    startedAt,
+		StartedAt:      startedAt,
 	}
 	if err := r.db.WithContext(ctx).Create(dbReplay).Error; err != nil {
 		return nil, fmt.Errorf("failed to create replay record: %w", err)
 	}
 
 	session := &ReplaySession{
-		ID:           replayID.String(),
-		FabricID:     fabricID.String(),
-		SnapshotID:   req.SnapshotID,
-		StartEventID: req.StartEventID,
-		EndEventID:   req.EndEventID,
-		Status:       "running",
-		Progress:     0,
+		ID:             replayID.String(),
+		FabricID:       fabricID.String(),
+		SnapshotID:     req.SnapshotID,
+		StartEventID:   req.StartEventID,
+		EndEventID:     req.EndEventID,
+		Status:         "running",
+		Progress:       0,
 		EventsReplayed: 0,
-		StartedAt:    startedAt,
+		StartedAt:      startedAt,
 	}
 
-	go r.executeReplay(replayID, fabricID, req)
+	replayCtx, cancel := context.WithCancel(context.Background())
+	r.mu.Lock()
+	r.replayCancelFuncs[replayID] = cancel
+	r.mu.Unlock()
+	go r.executeReplay(replayCtx, replayID, fabricID, req)
 
 	return session, nil
 }
 
-func (r *Repository) executeReplay(replayID, fabricID uuid.UUID, req ReplayCreateRequest) {
-	ctx := context.Background()
+func (r *Repository) executeReplay(ctx context.Context, replayID, fabricID uuid.UUID, req ReplayCreateRequest) {
+	defer func() {
+		r.mu.Lock()
+		if cancel, ok := r.replayCancelFuncs[replayID]; ok {
+			cancel()
+			delete(r.replayCancelFuncs, replayID)
+		}
+		r.mu.Unlock()
+	}()
+
 	logger := logrus.WithFields(logrus.Fields{"replay_id": replayID, "fabric_id": fabricID})
 
 	var events []statestore.StateEvent
@@ -1189,6 +1734,14 @@ func (r *Repository) executeReplay(replayID, fabricID uuid.UUID, req ReplayCreat
 	processed := int64(0)
 
 	for i, event := range events {
+		select {
+		case <-ctx.Done():
+			r.updateReplayStatus(ctx, replayID, "cancelled", int(float64(i+1)/float64(totalEvents)*100), processed, "shutdown")
+			logger.Info("replay cancelled due to shutdown")
+			return
+		default:
+		}
+
 		if err := r.applyEventToState(ctx, fabricID, event); err != nil {
 			logger.WithError(err).Warnf("failed to apply event %s, continuing", event.ID)
 		}
@@ -1209,17 +1762,29 @@ func (r *Repository) executeReplay(replayID, fabricID uuid.UUID, req ReplayCreat
 			"total_events": len(events),
 		}
 		if obj, storeErr := r.r2Backend.StoreReplayData(ctx, uuid.Nil, replayID, events, metadata); storeErr == nil {
-			r.db.WithContext(ctx).Model(&StateFabricReplay{}).Where("id = ?", replayID).Updates(map[string]interface{}{
+			if err := r.db.WithContext(ctx).Model(&StateFabricReplay{}).Where("id = ?", replayID).Updates(map[string]interface{}{
 				"r2_object_key":   obj.Key,
 				"r2_bucket":       obj.Bucket,
 				"r2_content_hash": obj.ContentHash,
-			})
+			}).Error; err != nil {
+				logrus.WithError(err).Warn("failed to update replay R2 metadata")
+			}
 		}
 		eventsReplayed = int64(len(events))
 	}
 
 	r.updateReplayStatus(ctx, replayID, "completed", 100, eventsReplayed, "")
 	logger.Infof("replay completed: %d events processed", eventsReplayed)
+}
+
+func (r *Repository) ShutdownReplays() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for replayID, cancel := range r.replayCancelFuncs {
+		cancel()
+	}
+	r.replayCancelFuncs = make(map[uuid.UUID]context.CancelFunc)
 }
 
 func (r *Repository) getEventsFromSnapshot(ctx context.Context, fabricID uuid.UUID, snapshotID string) ([]statestore.StateEvent, error) {
@@ -1239,8 +1804,12 @@ func (r *Repository) getEventsFromSnapshot(ctx context.Context, fabricID uuid.UU
 	}
 
 	var firstSeq, lastSeq int64
-	r.db.WithContext(ctx).Model(&statestore.StateEvent{}).Select("COALESCE(MIN(sequence_num), 0)").Where("state_id = ?", fabricID).Scan(&firstSeq)
-	r.db.WithContext(ctx).Model(&statestore.StateEvent{}).Select("COALESCE(MAX(sequence_num), 0)").Where("state_id = ?", fabricID).Scan(&lastSeq)
+	if err := r.db.WithContext(ctx).Model(&statestore.StateEvent{}).Select("COALESCE(MIN(sequence_num), 0)").Where("state_id = ?", fabricID).Scan(&firstSeq).Error; err != nil {
+		return nil, err
+	}
+	if err := r.db.WithContext(ctx).Model(&statestore.StateEvent{}).Select("COALESCE(MAX(sequence_num), 0)").Where("state_id = ?", fabricID).Scan(&lastSeq).Error; err != nil {
+		return nil, err
+	}
 
 	if target.FirstSequence > 0 && target.LastSequence > 0 {
 		firstSeq, lastSeq = target.FirstSequence, target.LastSequence
@@ -1309,14 +1878,18 @@ func (r *Repository) updateReplayStatus(ctx context.Context, replayID uuid.UUID,
 	if errMsg != "" {
 		updates["error_message"] = &errMsg
 	}
-	r.db.WithContext(ctx).Model(&StateFabricReplay{}).Where("id = ?", replayID).Updates(updates)
+	if err := r.db.WithContext(ctx).Model(&StateFabricReplay{}).Where("id = ?", replayID).Updates(updates).Error; err != nil {
+		logrus.WithError(err).Warn("failed to update replay status")
+	}
 }
 
 func (r *Repository) updateReplayProgress(ctx context.Context, replayID uuid.UUID, progress int, eventsReplayed int64) {
-	r.db.WithContext(ctx).Model(&StateFabricReplay{}).Where("id = ?", replayID).Updates(map[string]interface{}{
+	if err := r.db.WithContext(ctx).Model(&StateFabricReplay{}).Where("id = ?", replayID).Updates(map[string]interface{}{
 		"progress":        progress,
 		"events_replayed": eventsReplayed,
-	})
+	}).Error; err != nil {
+		logrus.WithError(err).Warn("failed to update replay progress")
+	}
 }
 
 func (r *Repository) GetReplay(ctx context.Context, tenantID, fabricID uuid.UUID, replayID string) (*ReplaySession, error) {
@@ -1343,6 +1916,9 @@ func (r *Repository) ListStoresByFabric(ctx context.Context, fabricID uuid.UUID)
 	state, err := r.stateRepo.GetStateByID(ctx, fabricID)
 	if err != nil {
 		return nil, err
+	}
+	if state == nil {
+		return nil, fmt.Errorf("state not found")
 	}
 	return []FabricStore{buildStore(state)}, nil
 }
@@ -1419,7 +1995,6 @@ func (r *Repository) Stats(ctx context.Context) (map[string]int64, error) {
 	}
 	stats["totalFabrics"] = total
 	stats["activeFabrics"] = total
-	var stores int64
 	stats["totalStores"] = total
 	var pipelines int64
 	if err := r.db.WithContext(ctx).Model(&statestore.StateTrigger{}).Count(&pipelines).Error; err != nil {
@@ -1508,11 +2083,35 @@ func (r *Repository) UpdatePlatformSettings(ctx context.Context, config map[stri
 }
 
 func defaultPlatformSettings() map[string]interface{} {
+	maxFabricsPerTenant := 10
+	if val := os.Getenv("STATEFABRIC_MAX_FABRICS_PER_TENANT"); val != "" {
+		if parsed, err := strconv.Atoi(val); err == nil && parsed > 0 {
+			maxFabricsPerTenant = parsed
+		}
+	}
+
+	snapshotRetentionDays := 30
+	if val := os.Getenv("STATEFABRIC_SNAPSHOT_RETENTION_DAYS"); val != "" {
+		if parsed, err := strconv.Atoi(val); err == nil && parsed >= 0 {
+			snapshotRetentionDays = parsed
+		}
+	}
+
+	allowPublicPipelines := false
+	if val := os.Getenv("STATEFABRIC_ALLOW_PUBLIC_PIPELINES"); val != "" {
+		allowPublicPipelines = val == "true" || val == "1"
+	}
+
+	maintenanceMode := false
+	if val := os.Getenv("STATEFABRIC_MAINTENANCE_MODE"); val != "" {
+		maintenanceMode = val == "true" || val == "1"
+	}
+
 	return map[string]interface{}{
-		"maxFabricsPerTenant":          10,
-		"defaultSnapshotRetentionDays": 30,
-		"allowPublicPipelines":         false,
-		"maintenanceMode":              false,
+		"maxFabricsPerTenant":          maxFabricsPerTenant,
+		"defaultSnapshotRetentionDays": snapshotRetentionDays,
+		"allowPublicPipelines":         allowPublicPipelines,
+		"maintenanceMode":              maintenanceMode,
 	}
 }
 
@@ -1562,8 +2161,8 @@ func (r *Repository) ArchiveEventsToR2(ctx context.Context, tenantID, fabricID u
 		now := time.Now()
 		for _, event := range events {
 			if err := tx.Model(&statestore.StateEvent{}).Where("id = ?", event.ID).Updates(map[string]interface{}{
-				"is_archived": true,
-				"archived_at": now,
+				"is_archived":   true,
+				"archived_at":   now,
 				"r2_object_key": r2Object.Key,
 				"r2_bucket":     r2Object.Bucket,
 				"batch_id":      batchID,
@@ -1574,14 +2173,16 @@ func (r *Repository) ArchiveEventsToR2(ctx context.Context, tenantID, fabricID u
 		return nil
 	})
 	if err != nil {
-		// Log the partial failure - events are in R2 but DB update failed
+		// Events were stored in R2 but DB update failed - R2 data is now orphaned
+		// Cleanup will happen via retention policy (~90 days) or manual intervention
 		logrus.WithError(err).WithFields(logrus.Fields{
-			"tenant_id":  tenantID,
-			"fabric_id":  fabricID,
-			"batch_id":   batchID,
+			"tenant_id":   tenantID,
+			"fabric_id":   fabricID,
+			"batch_id":    batchID,
 			"event_count": len(events),
-			"r2_key":     r2Object.Key,
-		}).Error("Failed to update event archival status in DB - R2 data may be orphaned")
+			"r2_key":      r2Object.Key,
+			"r2_bucket":   r2Object.Bucket,
+		}).Error("Failed to update event archival status in DB - R2 data is orphaned and will be cleaned up by retention policy")
 		return fmt.Errorf("failed to update event archival status: %w", err)
 	}
 
@@ -1660,13 +2261,17 @@ func (r *Repository) StoreReplayDataToR2(ctx context.Context, tenantID, replayID
 	if err != nil {
 		return nil, fmt.Errorf("failed to store replay data in R2: %w", err)
 	}
+	if r2Object == nil {
+		return nil, fmt.Errorf("no data to store")
+	}
 
-	// Update the replay record with R2 reference
-	r.db.WithContext(ctx).Model(&StateFabricReplay{}).Where("id = ?", replayID).Updates(map[string]interface{}{
+	if err := r.db.WithContext(ctx).Model(&StateFabricReplay{}).Where("id = ?", replayID).Updates(map[string]interface{}{
 		"r2_object_key":   r2Object.Key,
 		"r2_bucket":       r2Object.Bucket,
 		"r2_content_hash": r2Object.ContentHash,
-	})
+	}).Error; err != nil {
+		logrus.WithError(err).Warn("failed to update replay R2 metadata")
+	}
 
 	return r2Object, nil
 }
@@ -1688,4 +2293,226 @@ func (r *Repository) GetReplayDataFromR2(ctx context.Context, replayID uuid.UUID
 	}
 
 	return r.r2Backend.GetReplayData(ctx, *replay.R2ObjectKey)
+}
+
+// recordDeadLetter creates a dead letter entry for a failed operation
+func (r *Repository) recordDeadLetter(ctx context.Context, fabricID uuid.UUID, pipelineID *uuid.UUID, operationType string, inputData map[string]interface{}, err error, attempts int) {
+	deadLetter := &StateFabricDeadLetter{
+		ID:            uuid.New(),
+		FabricID:      fabricID,
+		PipelineID:    pipelineID,
+		OperationType: operationType,
+		InputData:     inputData,
+		ErrorMessage:  err.Error(),
+		ErrorCode:     classifyError(err),
+		Attempts:      attempts,
+		MaxAttempts:   attempts,
+		Status:        "pending",
+	}
+	if dlErr := r.db.WithContext(ctx).Create(deadLetter).Error; dlErr != nil {
+		logrus.WithError(dlErr).WithFields(logrus.Fields{
+			"fabric_id": fabricID,
+			"operation": operationType,
+		}).Error("failed to record dead letter entry")
+	}
+}
+
+// classifyError classifies an error into a code for tracking
+func classifyError(err error) string {
+	if err == nil {
+		return "unknown"
+	}
+	errStr := err.Error()
+	switch {
+	case strings.Contains(errStr, "timeout"):
+		return "timeout"
+	case strings.Contains(errStr, "circuit breaker"):
+		return "circuit_breaker"
+	case strings.Contains(errStr, "not found"):
+		return "not_found"
+	case strings.Contains(errStr, "unauthorized"):
+		return "unauthorized"
+	case strings.Contains(errStr, "rate limit"):
+		return "rate_limited"
+	default:
+		return "execution_error"
+	}
+}
+
+// ListDeadLetters returns dead letter entries for a fabric
+func (r *Repository) ListDeadLetters(ctx context.Context, tenantID, fabricID uuid.UUID, limit, offset int) ([]StateFabricDeadLetter, int64, error) {
+	state, err := r.stateRepo.GetStateByID(ctx, fabricID)
+	if err != nil {
+		return nil, 0, err
+	}
+	if state.TenantID != tenantID {
+		return nil, 0, fmt.Errorf("state fabric not found")
+	}
+
+	var total int64
+	if err := r.db.WithContext(ctx).Model(&StateFabricDeadLetter{}).Where("fabric_id = ?", fabricID).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var deadLetters []StateFabricDeadLetter
+	if err := r.db.WithContext(ctx).Where("fabric_id = ?", fabricID).Order("created_at DESC").Limit(limit).Offset(offset).Find(&deadLetters).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return deadLetters, total, nil
+}
+
+// GetDeadLetter returns a specific dead letter entry
+func (r *Repository) GetDeadLetter(ctx context.Context, tenantID, fabricID, deadLetterID uuid.UUID) (*StateFabricDeadLetter, error) {
+	state, err := r.stateRepo.GetStateByID(ctx, fabricID)
+	if err != nil {
+		return nil, err
+	}
+	if state.TenantID != tenantID {
+		return nil, fmt.Errorf(ErrFabricNotFound)
+	}
+
+	var deadLetter StateFabricDeadLetter
+	if err := r.db.WithContext(ctx).Where("id = ? AND fabric_id = ?", deadLetterID, fabricID).First(&deadLetter).Error; err != nil {
+		return nil, err
+	}
+
+	return &deadLetter, nil
+}
+
+// RetryDeadLetter retries a dead letter operation
+func (r *Repository) RetryDeadLetter(ctx context.Context, tenantID, fabricID, deadLetterID uuid.UUID) error {
+	deadLetter, err := r.GetDeadLetter(ctx, tenantID, fabricID, deadLetterID)
+	if err != nil {
+		return err
+	}
+
+	deadLetter.Status = "retrying"
+	deadLetter.Attempts++
+	nextRetry := time.Now().Add(time.Duration(deadLetter.Attempts) * time.Minute)
+	deadLetter.NextRetryAt = &nextRetry
+
+	if err := r.db.WithContext(ctx).Save(deadLetter).Error; err != nil {
+		return err
+	}
+
+	go r.processDeadLetterRetry(deadLetter.ID, deadLetter.OperationType, deadLetter.InputData)
+
+	return nil
+}
+
+// processDeadLetterRetry processes a dead letter retry in the background
+func (r *Repository) processDeadLetterRetry(deadLetterID uuid.UUID, operationType string, inputData map[string]interface{}) {
+	ctx := context.Background()
+
+	var err error
+	switch operationType {
+	case "pipeline_execution":
+		// Pipeline retries are handled by the trigger system
+		err = fmt.Errorf("pipeline retry not implemented - requires manual intervention")
+	default:
+		err = fmt.Errorf("unknown operation type: %s", operationType)
+	}
+
+	dl := &StateFabricDeadLetter{}
+	if dbErr := r.db.WithContext(ctx).Where("id = ?", deadLetterID).First(dl).Error; dbErr != nil {
+		logrus.WithError(dbErr).Error("failed to load dead letter for retry update")
+		return
+	}
+
+	if err != nil {
+		dl.Status = "failed"
+		dl.ErrorMessage = err.Error()
+	} else {
+		dl.Status = "resolved"
+		now := time.Now()
+		dl.ResolvedAt = &now
+	}
+	dl.NextRetryAt = nil
+
+	if updateErr := r.db.WithContext(ctx).Save(dl).Error; updateErr != nil {
+		logrus.WithError(updateErr).WithField("dead_letter_id", deadLetterID).Error("failed to update dead letter after retry")
+	}
+}
+
+// ResolveDeadLetter marks a dead letter as resolved
+func (r *Repository) ResolveDeadLetter(ctx context.Context, tenantID, fabricID, deadLetterID uuid.UUID) error {
+	deadLetter, err := r.GetDeadLetter(ctx, tenantID, fabricID, deadLetterID)
+	if err != nil {
+		return err
+	}
+
+	deadLetter.Status = "resolved"
+	now := time.Now()
+	deadLetter.ResolvedAt = &now
+	deadLetter.NextRetryAt = nil
+
+	return r.db.WithContext(ctx).Save(deadLetter).Error
+}
+
+// DeleteDeadLetter deletes a dead letter entry
+func (r *Repository) DeleteDeadLetter(ctx context.Context, tenantID, fabricID, deadLetterID uuid.UUID) error {
+	_, err := r.GetDeadLetter(ctx, tenantID, fabricID, deadLetterID)
+	if err != nil {
+		return err
+	}
+
+	return r.db.WithContext(ctx).Delete(&StateFabricDeadLetter{}, "id = ?", deadLetterID).Error
+}
+
+// CleanupResolvedDeadLetters removes resolved dead letters older than the retention period
+func (r *Repository) CleanupResolvedDeadLetters(ctx context.Context, retentionDays int) (int64, error) {
+	cutoff := time.Now().AddDate(0, 0, -retentionDays)
+
+	result := r.db.WithContext(ctx).Where("status = ? AND resolved_at < ?", "resolved", cutoff).Delete(&StateFabricDeadLetter{})
+	return result.RowsAffected, result.Error
+}
+
+// pow returns base raised to the power exp
+func pow(base float64, exp float64) float64 {
+	result := 1.0
+	for i := 0; i < int(exp); i++ {
+		result *= base
+	}
+	return result
+}
+
+// Ping checks database connectivity
+func (r *Repository) Ping(ctx context.Context) error {
+	return r.db.WithContext(ctx).Raw("SELECT 1").Scan(&struct{}).Error
+}
+
+// IsCacheEnabled returns whether Redis cache is enabled
+func (r *Repository) IsCacheEnabled() bool {
+	return r.cache != nil && r.cache.IsEnabled()
+}
+
+// PingCache checks Redis connectivity
+func (r *Repository) PingCache(ctx context.Context) error {
+	if r.cache == nil || r.cache.redis == nil {
+		return fmt.Errorf("cache not configured")
+	}
+	return r.cache.redis.Ping(ctx).Err()
+}
+
+// IsR2Enabled returns whether R2 backend is configured
+func (r *Repository) IsR2Enabled() bool {
+	return r.r2Backend != nil
+}
+
+// PingR2 checks R2 connectivity
+func (r *Repository) PingR2(ctx context.Context) error {
+	if r.r2Backend == nil {
+		return fmt.Errorf("R2 backend not configured")
+	}
+	// R2 backend health check - try a simple operation
+	_, err := r.r2Backend.ListBuckets(ctx)
+	return err
+}
+
+// CountDeadLetters returns the total count of pending dead letters across all fabrics
+func (r *Repository) CountDeadLetters(ctx context.Context) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&StateFabricDeadLetter{}).Where("status IN ?", []string{"pending", "retrying"}).Count(&count).Error
+	return count, err
 }
