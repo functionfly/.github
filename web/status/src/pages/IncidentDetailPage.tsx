@@ -139,48 +139,6 @@ function AnimatedBackground() {
   );
 }
 
-function Header() {
-  return (
-    <motion.header
-      className="fixed top-0 left-0 right-0 z-50 bg-bg-glass-strong/90 backdrop-blur-xl border-b border-border-subtle shadow-lg"
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.5 }}
-    >
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors group"
-          >
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            <span className="text-sm font-medium">Back to Status</span>
-          </Link>
-
-          <div className="flex items-center gap-3">
-            <Logo size="sm" showText={false} />
-            <span className="font-semibold text-text-primary hidden sm:inline">
-              Incident Report
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="hidden sm:flex"
-              onClick={() => trackEvent('incident_share_clicked', { incident_id: id })}
-            >
-              <Share2 className="w-4 h-4 mr-2" />
-              Share
-            </Button>
-          </div>
-        </div>
-      </div>
-    </motion.header>
-  );
-}
-
 function TimelineItem({
   update,
   isLast,
