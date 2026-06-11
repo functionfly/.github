@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"encoding/xml"
@@ -53,31 +54,37 @@ func NewSAMLConfigRepository(db *PostgresDB) *SAMLConfigRepository {
 }
 
 // Create creates a new SAML configuration
-func (r *SAMLConfigRepository) Create(config *SAMLConfig) error {
-	_, err := r.db.Exec(`
+func (r *SAMLConfigRepository) Create(ctx context.Context, config *SAMLConfig) error {
+	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO saml_configs (id, tenant_id, enabled, idp_metadata, idp_entity_id, idp_sso_url, idp_certificate, sp_entity_id, sp_acs_url, sp_metadata_url, name_id_format, authn_contexts, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
 		config.ID, config.TenantID, config.Enabled, config.IDPMetadata, config.IDPEntityID, config.IDPSSOURL, config.IDPCertificate,
 		config.SPEntityID, config.SPACSURL, config.SPMetadataURL, config.NameIDFormat, config.AuthnContexts, config.CreatedAt, config.UpdatedAt)
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
 		return fmt.Errorf("failed to create SAML config: %w", err)
 	}
 	return nil
 }
 
 // GetByTenantID retrieves SAML config by tenant ID
-func (r *SAMLConfigRepository) GetByTenantID(tenantID uuid.UUID) (*SAMLConfig, error) {
+func (r *SAMLConfigRepository) GetByTenantID(ctx context.Context, tenantID uuid.UUID) (*SAMLConfig, error) {
 	var config SAMLConfig
 	var idpMetadata sql.NullString
 	var authnContexts []sql.NullString
 
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT id, tenant_id, enabled, idp_metadata, idp_entity_id, idp_sso_url, idp_certificate, sp_entity_id, sp_acs_url, sp_metadata_url, name_id_format, authn_contexts, created_at, updated_at
 		FROM saml_configs WHERE tenant_id = $1`, tenantID).Scan(
 		&config.ID, &config.TenantID, &config.Enabled, &idpMetadata, &config.IDPEntityID, &config.IDPSSOURL, &config.IDPCertificate,
 		&config.SPEntityID, &config.SPACSURL, &config.SPMetadataURL, &config.NameIDFormat, &authnContexts, &config.CreatedAt, &config.UpdatedAt)
 
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("SAML config not found for tenant")
 		}
@@ -100,8 +107,8 @@ func (r *SAMLConfigRepository) GetByTenantID(tenantID uuid.UUID) (*SAMLConfig, e
 }
 
 // Update updates an existing SAML configuration
-func (r *SAMLConfigRepository) Update(config *SAMLConfig) error {
-	_, err := r.db.Exec(`
+func (r *SAMLConfigRepository) Update(ctx context.Context, config *SAMLConfig) error {
+	_, err := r.db.ExecContext(ctx, `
 		UPDATE saml_configs SET
 			enabled = $1, idp_metadata = $2, idp_entity_id = $3, idp_sso_url = $4, idp_certificate = $5,
 			sp_entity_id = $6, sp_acs_url = $7, sp_metadata_url = $8, name_id_format = $9, authn_contexts = $10, updated_at = $11
@@ -110,60 +117,78 @@ func (r *SAMLConfigRepository) Update(config *SAMLConfig) error {
 		config.SPEntityID, config.SPACSURL, config.SPMetadataURL, config.NameIDFormat, config.AuthnContexts, time.Now(),
 		config.ID, config.TenantID)
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
 		return fmt.Errorf("failed to update SAML config: %w", err)
 	}
 	return nil
 }
 
 // Delete deletes a SAML configuration
-func (r *SAMLConfigRepository) Delete(tenantID uuid.UUID) error {
-	_, err := r.db.Exec(`DELETE FROM saml_configs WHERE tenant_id = $1`, tenantID)
+func (r *SAMLConfigRepository) Delete(ctx context.Context, tenantID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM saml_configs WHERE tenant_id = $1`, tenantID)
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
 		return fmt.Errorf("failed to delete SAML config: %w", err)
 	}
 	return nil
 }
 
 // GetSPKeyPair retrieves the stored SP private key and certificate for a tenant
-func (r *SAMLConfigRepository) GetSPKeyPair(tenantID uuid.UUID) (privateKey, certificate *string, err error) {
+func (r *SAMLConfigRepository) GetSPKeyPair(ctx context.Context, tenantID uuid.UUID) (privateKey, certificate *string, err error) {
 	var config SAMLConfig
-	err = r.db.QueryRow(`
+	err = r.db.QueryRowContext(ctx, `
 		SELECT sp_private_key, sp_certificate FROM saml_configs
 		WHERE tenant_id = $1`, tenantID).Scan(&config.SPPrivateKey, &config.SPCertificate)
-	if err == sql.ErrNoRows {
-		return nil, nil, nil
-	}
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, nil, fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
+		if err == sql.ErrNoRows {
+			return nil, nil, nil
+		}
 		return nil, nil, fmt.Errorf("failed to get SAML SP key pair: %w", err)
 	}
 	return config.SPPrivateKey, config.SPCertificate, nil
 }
 
 // SaveSPKeyPair stores the SP private key and certificate for a tenant
-func (r *SAMLConfigRepository) SaveSPKeyPair(tenantID uuid.UUID, privateKey, certificate string) error {
+func (r *SAMLConfigRepository) SaveSPKeyPair(ctx context.Context, tenantID uuid.UUID, privateKey, certificate string) error {
 	// Check if config exists
 	var exists bool
-	err := r.db.QueryRow(`SELECT EXISTS(SELECT 1 FROM saml_configs WHERE tenant_id = $1)`, tenantID).Scan(&exists)
+	err := r.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM saml_configs WHERE tenant_id = $1)`, tenantID).Scan(&exists)
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
 		return fmt.Errorf("failed to check SAML config existence: %w", err)
 	}
 
 	if exists {
 		// Update existing config
-		_, err = r.db.Exec(`
+		_, err = r.db.ExecContext(ctx, `
 			UPDATE saml_configs SET sp_private_key = $1, sp_certificate = $2, updated_at = $3
 			WHERE tenant_id = $4`,
 			privateKey, certificate, time.Now(), tenantID)
 		if err != nil {
+			if ctx.Err() == context.DeadlineExceeded {
+				return fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+			}
 			return fmt.Errorf("failed to save SAML SP key pair: %w", err)
 		}
 	} else {
 		// Create minimal config with just the keys
-		_, err = r.db.Exec(`
+		_, err = r.db.ExecContext(ctx, `
 			INSERT INTO saml_configs (tenant_id, sp_private_key, sp_certificate, sp_entity_id)
 			VALUES ($1, $2, $3, 'functionfly')`,
 			tenantID, privateKey, certificate)
 		if err != nil {
+			if ctx.Err() == context.DeadlineExceeded {
+				return fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+			}
 			return fmt.Errorf("failed to create SAML config with SP key pair: %w", err)
 		}
 	}
@@ -181,27 +206,33 @@ func NewSAMLStateRepository(db *PostgresDB) *SAMLStateRepository {
 }
 
 // SaveAuthnRequestState saves an AuthnRequest state for validation
-func (r *SAMLStateRepository) SaveAuthnRequestState(stateID string, tenantID uuid.UUID, relayState string, expiresAt time.Time) error {
-	_, err := r.db.Exec(`
+func (r *SAMLStateRepository) SaveAuthnRequestState(ctx context.Context, stateID string, tenantID uuid.UUID, relayState string, expiresAt time.Time) error {
+	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO auth_events (id, event_type, tenant_id, user_id, ip_address, user_agent, success, metadata, timestamp)
 		VALUES ($1, 'saml_authn_request', $2, NULL, '', '', true, $3, $4)`,
 		stateID, tenantID, fmt.Sprintf(`{"relay_state": "%s"}`, relayState), expiresAt)
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
 		return fmt.Errorf("failed to save SAML state: %w", err)
 	}
 	return nil
 }
 
 // GetAuthnRequestState retrieves an AuthnRequest state
-func (r *SAMLStateRepository) GetAuthnRequestState(stateID string) (tenantID uuid.UUID, relayState string, err error) {
+func (r *SAMLStateRepository) GetAuthnRequestState(ctx context.Context, stateID string) (tenantID uuid.UUID, relayState string, err error) {
 	var metadata string
 	var timestamp time.Time
 
-	err = r.db.QueryRow(`
+	err = r.db.QueryRowContext(ctx, `
 		SELECT tenant_id, metadata, timestamp FROM auth_events WHERE id = $1 AND event_type = 'saml_authn_request' AND success = true`,
 		stateID).Scan(&tenantID, &metadata, &timestamp)
 
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return uuid.Nil, "", fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
 		if err == sql.ErrNoRows {
 			return uuid.Nil, "", fmt.Errorf("SAML state not found or expired")
 		}
@@ -222,9 +253,15 @@ func (r *SAMLStateRepository) GetAuthnRequestState(stateID string) (tenantID uui
 }
 
 // DeleteAuthnRequestState deletes an AuthnRequest state
-func (r *SAMLStateRepository) DeleteAuthnRequestState(stateID string) error {
-	_, err := r.db.Exec(`DELETE FROM auth_events WHERE id = $1 AND event_type = 'saml_authn_request'`, stateID)
-	return err
+func (r *SAMLStateRepository) DeleteAuthnRequestState(ctx context.Context, stateID string) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM auth_events WHERE id = $1 AND event_type = 'saml_authn_request'`, stateID)
+	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
+		return err
+	}
+	return nil
 }
 
 // ParseIDPMetadata parses IdP metadata XML
@@ -255,23 +292,29 @@ func NewSAMLSessionRepository(db *PostgresDB) *SAMLSessionRepository {
 }
 
 // Create creates a new SAML session
-func (r *SAMLSessionRepository) Create(session *SAMLSession) error {
-	_, err := r.db.Exec(`
+func (r *SAMLSessionRepository) Create(ctx context.Context, session *SAMLSession) error {
+	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO saml_sessions (id, tenant_id, user_id, saml_name_id, session_index, not_on_or_after, attributes, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
 		session.ID, session.TenantID, session.UserID, session.SAMLNameID, session.SessionIndex, session.NotOnOrAfter, session.Attributes, session.CreatedAt)
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
 		return fmt.Errorf("failed to create SAML session: %w", err)
 	}
 	return nil
 }
 
 // GetByUserID retrieves SAML sessions for a user
-func (r *SAMLSessionRepository) GetByUserID(userID uuid.UUID) ([]*SAMLSession, error) {
-	rows, err := r.db.Query(`
+func (r *SAMLSessionRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*SAMLSession, error) {
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, tenant_id, user_id, saml_name_id, session_index, not_on_or_after, attributes, created_at
 		FROM saml_sessions WHERE user_id = $1 AND not_on_or_after > NOW()`, userID)
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
 		return nil, fmt.Errorf("failed to get SAML sessions: %w", err)
 	}
 	defer rows.Close()
@@ -290,14 +333,17 @@ func (r *SAMLSessionRepository) GetByUserID(userID uuid.UUID) ([]*SAMLSession, e
 }
 
 // GetByNameID retrieves SAML session by SAML NameID
-func (r *SAMLSessionRepository) GetByNameID(tenantID uuid.UUID, nameID string) (*SAMLSession, error) {
+func (r *SAMLSessionRepository) GetByNameID(ctx context.Context, tenantID uuid.UUID, nameID string) (*SAMLSession, error) {
 	var session SAMLSession
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT id, tenant_id, user_id, saml_name_id, session_index, not_on_or_after, attributes, created_at
 		FROM saml_sessions WHERE tenant_id = $1 AND saml_name_id = $2 AND not_on_or_after > NOW()
 		ORDER BY created_at DESC LIMIT 1`, tenantID, nameID).Scan(
 		&session.ID, &session.TenantID, &session.UserID, &session.SAMLNameID, &session.SessionIndex, &session.NotOnOrAfter, &session.Attributes, &session.CreatedAt)
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
@@ -307,19 +353,37 @@ func (r *SAMLSessionRepository) GetByNameID(tenantID uuid.UUID, nameID string) (
 }
 
 // Delete deletes a SAML session
-func (r *SAMLSessionRepository) Delete(sessionID uuid.UUID) error {
-	_, err := r.db.Exec(`DELETE FROM saml_sessions WHERE id = $1`, sessionID)
-	return err
+func (r *SAMLSessionRepository) Delete(ctx context.Context, sessionID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM saml_sessions WHERE id = $1`, sessionID)
+	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
+		return err
+	}
+	return nil
 }
 
 // DeleteByUserID deletes all SAML sessions for a user
-func (r *SAMLSessionRepository) DeleteByUserID(userID uuid.UUID) error {
-	_, err := r.db.Exec(`DELETE FROM saml_sessions WHERE user_id = $1`, userID)
-	return err
+func (r *SAMLSessionRepository) DeleteByUserID(ctx context.Context, userID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM saml_sessions WHERE user_id = $1`, userID)
+	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
+		return err
+	}
+	return nil
 }
 
 // DeleteExpired deletes all expired SAML sessions
-func (r *SAMLSessionRepository) DeleteExpired() error {
-	_, err := r.db.Exec(`DELETE FROM saml_sessions WHERE not_on_or_after < NOW()`)
-	return err
+func (r *SAMLSessionRepository) DeleteExpired(ctx context.Context) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM saml_sessions WHERE not_on_or_after < NOW()`)
+	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+		}
+		return err
+	}
+	return nil
 }

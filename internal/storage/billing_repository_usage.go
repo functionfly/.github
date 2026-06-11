@@ -22,7 +22,7 @@ func (r *BillingRepository) RecordUsageEvent(ctx context.Context, event *UsageEv
 		metadata, _ = json.Marshal(event.Metadata)
 	}
 
-	_, err := r.db.Exec(query, event.ID, event.TenantID, event.EventType, event.Quantity,
+	_, err := r.db.ExecContext(ctx, query, event.ID, event.TenantID, event.EventType, event.Quantity,
 		event.UnitPriceCents, metadata, event.Timestamp)
 
 	if err != nil {
@@ -33,14 +33,14 @@ func (r *BillingRepository) RecordUsageEvent(ctx context.Context, event *UsageEv
 }
 
 // GetUsageByTenant gets usage rollups for a tenant
-func (r *BillingRepository) GetUsageByTenant(tenantID uuid.UUID, eventType string, start, end time.Time) ([]*UsageRollup, error) {
+func (r *BillingRepository) GetUsageByTenant(ctx context.Context, tenantID uuid.UUID, eventType string, start, end time.Time) ([]*UsageRollup, error) {
 	query := `
 		SELECT id, tenant_id, event_type, period_date, total_quantity, created_at, updated_at
 		FROM usage_rollups
 		WHERE tenant_id = $1 AND event_type = $2 AND period_date >= $3 AND period_date <= $4
 		ORDER BY period_date ASC`
 
-	rows, err := r.db.Query(query, tenantID, eventType, start, end)
+	rows, err := r.db.QueryContext(ctx, query, tenantID, eventType, start, end)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get usage: %w", err)
 	}
@@ -54,7 +54,7 @@ func (r *BillingRepository) GetUsageByTenant(tenantID uuid.UUID, eventType strin
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan usage rollup: %w", err)
 		}
-		rollups = append(rollups, rollup)
+		rollups = append(rollups, rollout)
 	}
 
 	return rollups, nil
@@ -70,7 +70,7 @@ type FunctionUsageRollup struct {
 }
 
 // GetUsageByTenantByFunction returns usage aggregated by function for a tenant within a time range
-func (r *BillingRepository) GetUsageByTenantByFunction(tenantID uuid.UUID, start, end time.Time) ([]*FunctionUsageRollup, error) {
+func (r *BillingRepository) GetUsageByTenantByFunction(ctx context.Context, tenantID uuid.UUID, start, end time.Time) ([]*FunctionUsageRollup, error) {
 	query := `
 		SELECT
 			cae.function_id,
@@ -83,7 +83,7 @@ func (r *BillingRepository) GetUsageByTenantByFunction(tenantID uuid.UUID, start
 		GROUP BY cae.function_id, cae.function_name
 		ORDER BY total_cost_cents DESC`
 
-	rows, err := r.db.Query(query, tenantID, start, end)
+	rows, err := r.db.QueryContext(ctx, query, tenantID, start, end)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get usage by function: %w", err)
 	}
@@ -96,7 +96,7 @@ func (r *BillingRepository) GetUsageByTenantByFunction(tenantID uuid.UUID, start
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan function usage rollup: %w", err)
 		}
-		results = append(results, rollup)
+		results = append(results, rollout)
 	}
 	return results, nil
 }
@@ -127,7 +127,6 @@ func (r *BillingRepository) CreateOrUpdateUsageRollup(ctx context.Context, rollu
 		return fmt.Errorf("failed to create or update usage rollup: %w", err)
 	}
 
-	// Update the total quantity to reflect the merged value
 	rollup.TotalQuantity = totalQuantity
 
 	return nil

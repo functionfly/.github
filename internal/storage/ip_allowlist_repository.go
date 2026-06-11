@@ -84,7 +84,7 @@ func (r *IPAllowlistRepository) CreateAllowlist(ctx context.Context, allowlist *
 }
 
 // GetAllowlistByID retrieves an IP allowlist by ID
-func (r *IPAllowlistRepository) GetAllowlistByID(allowlistID uuid.UUID) (*IPAllowlist, error) {
+func (r *IPAllowlistRepository) GetAllowlistByID(ctx context.Context, allowlistID uuid.UUID) (*IPAllowlist, error) {
 	query := `
 		SELECT id, tenant_id, name, description, default_policy, mfa_required_for_unknown_ip, created_at, updated_at
 		FROM ip_allowlists WHERE id = $1`
@@ -92,7 +92,7 @@ func (r *IPAllowlistRepository) GetAllowlistByID(allowlistID uuid.UUID) (*IPAllo
 	allowlist := &IPAllowlist{}
 	var description sql.NullString
 
-	err := r.db.QueryRow(query, allowlistID).Scan(
+	err := r.db.QueryRowContext(ctx, query, allowlistID).Scan(
 		&allowlist.ID,
 		&allowlist.TenantID,
 		&allowlist.Name,
@@ -118,7 +118,7 @@ func (r *IPAllowlistRepository) GetAllowlistByID(allowlistID uuid.UUID) (*IPAllo
 }
 
 // GetAllowlistByTenantID retrieves the active IP allowlist for a tenant
-func (r *IPAllowlistRepository) GetAllowlistByTenantID(tenantID uuid.UUID) (*IPAllowlist, error) {
+func (r *IPAllowlistRepository) GetAllowlistByTenantID(ctx context.Context, tenantID uuid.UUID) (*IPAllowlist, error) {
 	// For now, return the most recently created allowlist for the tenant
 	// In the future, this could be extended to support multiple allowlists per tenant
 	query := `
@@ -129,7 +129,7 @@ func (r *IPAllowlistRepository) GetAllowlistByTenantID(tenantID uuid.UUID) (*IPA
 	allowlist := &IPAllowlist{}
 	var description sql.NullString
 
-	err := r.db.QueryRow(query, tenantID).Scan(
+	err := r.db.QueryRowContext(ctx, query, tenantID).Scan(
 		&allowlist.ID,
 		&allowlist.TenantID,
 		&allowlist.Name,
@@ -155,13 +155,13 @@ func (r *IPAllowlistRepository) GetAllowlistByTenantID(tenantID uuid.UUID) (*IPA
 }
 
 // ListAllowlistsByTenantID lists all IP allowlists for a tenant
-func (r *IPAllowlistRepository) ListAllowlistsByTenantID(tenantID uuid.UUID) ([]*IPAllowlist, error) {
+func (r *IPAllowlistRepository) ListAllowlistsByTenantID(ctx context.Context, tenantID uuid.UUID) ([]*IPAllowlist, error) {
 	query := `
 		SELECT id, tenant_id, name, description, default_policy, mfa_required_for_unknown_ip, created_at, updated_at
 		FROM ip_allowlists WHERE tenant_id = $1
 		ORDER BY created_at DESC`
 
-	rows, err := r.db.Query(query, tenantID)
+	rows, err := r.db.QueryContext(ctx, query, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list IP allowlists: %w", err)
 	}
@@ -210,7 +210,7 @@ func (r *IPAllowlistRepository) UpdateAllowlist(ctx context.Context, allowlist *
 		description.Valid = true
 	}
 
-	err := r.db.QueryRow(query,
+	err := r.db.QueryRowContext(ctx, query,
 		allowlist.Name,
 		description,
 		allowlist.DefaultPolicy,
@@ -241,7 +241,7 @@ func (r *IPAllowlistRepository) UpdateAllowlist(ctx context.Context, allowlist *
 // DeleteAllowlist deletes an IP allowlist and all its entries
 func (r *IPAllowlistRepository) DeleteAllowlist(ctx context.Context, allowlistID uuid.UUID) error {
 	// Entries are deleted automatically due to CASCADE constraint
-	result, err := r.db.Exec("DELETE FROM ip_allowlists WHERE id = $1", allowlistID)
+	result, err := r.db.ExecContext(ctx, "DELETE FROM ip_allowlists WHERE id = $1", allowlistID)
 	if err != nil {
 		return fmt.Errorf("failed to delete IP allowlist: %w", err)
 	}
@@ -271,7 +271,7 @@ func (r *IPAllowlistRepository) CreateEntry(ctx context.Context, entry *IPAllowl
 		description.Valid = true
 	}
 
-	err := r.db.QueryRow(query,
+	err := r.db.QueryRowContext(ctx, query,
 		entry.ID,
 		entry.AllowlistID,
 		entry.Type,
@@ -298,13 +298,13 @@ func (r *IPAllowlistRepository) CreateEntry(ctx context.Context, entry *IPAllowl
 }
 
 // GetEntriesByAllowlistID retrieves all entries for an allowlist
-func (r *IPAllowlistRepository) GetEntriesByAllowlistID(allowlistID uuid.UUID) ([]*IPAllowlistEntry, error) {
+func (r *IPAllowlistRepository) GetEntriesByAllowlistID(ctx context.Context, allowlistID uuid.UUID) ([]*IPAllowlistEntry, error) {
 	query := `
 		SELECT id, allowlist_id, type, value, description, created_at
 		FROM ip_allowlist_entries WHERE allowlist_id = $1
 		ORDER BY created_at ASC`
 
-	rows, err := r.db.Query(query, allowlistID)
+	rows, err := r.db.QueryContext(ctx, query, allowlistID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get IP allowlist entries: %w", err)
 	}
@@ -338,7 +338,7 @@ func (r *IPAllowlistRepository) GetEntriesByAllowlistID(allowlistID uuid.UUID) (
 }
 
 // GetEntryByID retrieves a single entry by ID
-func (r *IPAllowlistRepository) GetEntryByID(entryID uuid.UUID) (*IPAllowlistEntry, error) {
+func (r *IPAllowlistRepository) GetEntryByID(ctx context.Context, entryID uuid.UUID) (*IPAllowlistEntry, error) {
 	query := `
 		SELECT id, allowlist_id, type, value, description, created_at
 		FROM ip_allowlist_entries WHERE id = $1`
@@ -346,7 +346,7 @@ func (r *IPAllowlistRepository) GetEntryByID(entryID uuid.UUID) (*IPAllowlistEnt
 	entry := &IPAllowlistEntry{}
 	var description sql.NullString
 
-	err := r.db.QueryRow(query, entryID).Scan(
+	err := r.db.QueryRowContext(ctx, query, entryID).Scan(
 		&entry.ID,
 		&entry.AllowlistID,
 		&entry.Type,
@@ -383,7 +383,7 @@ func (r *IPAllowlistRepository) UpdateEntry(ctx context.Context, entry *IPAllowl
 		description.Valid = true
 	}
 
-	err := r.db.QueryRow(query,
+	err := r.db.QueryRowContext(ctx, query,
 		entry.Type,
 		entry.Value,
 		description,
@@ -410,7 +410,7 @@ func (r *IPAllowlistRepository) UpdateEntry(ctx context.Context, entry *IPAllowl
 
 // DeleteEntry deletes an IP allowlist entry
 func (r *IPAllowlistRepository) DeleteEntry(ctx context.Context, entryID uuid.UUID) error {
-	result, err := r.db.Exec("DELETE FROM ip_allowlist_entries WHERE id = $1", entryID)
+	result, err := r.db.ExecContext(ctx, "DELETE FROM ip_allowlist_entries WHERE id = $1", entryID)
 	if err != nil {
 		return fmt.Errorf("failed to delete IP allowlist entry: %w", err)
 	}
@@ -429,7 +429,7 @@ func (r *IPAllowlistRepository) DeleteEntry(ctx context.Context, entryID uuid.UU
 
 // DeleteAllEntriesForAllowlist deletes all entries for an allowlist
 func (r *IPAllowlistRepository) DeleteAllEntriesForAllowlist(ctx context.Context, allowlistID uuid.UUID) error {
-	_, err := r.db.Exec("DELETE FROM ip_allowlist_entries WHERE allowlist_id = $1", allowlistID)
+	_, err := r.db.ExecContext(ctx, "DELETE FROM ip_allowlist_entries WHERE allowlist_id = $1", allowlistID)
 	if err != nil {
 		return fmt.Errorf("failed to delete IP allowlist entries: %w", err)
 	}

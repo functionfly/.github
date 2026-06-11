@@ -22,11 +22,11 @@ func NewTenantRepository(db *PostgresDB) *TenantRepository {
 }
 
 // GetTenantByID retrieves a tenant by ID
-func (r *TenantRepository) GetTenantByID(tenantID uuid.UUID) (*Tenant, error) {
+func (r *TenantRepository) GetTenantByID(ctx context.Context, tenantID uuid.UUID) (*Tenant, error) {
 	tenant := &Tenant{}
 	var plan sql.NullString
 	var stripeCustomerID sql.NullString
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT id, name, plan, status, stripe_customer_id, created_at, updated_at
 		FROM tenants WHERE id = $1`, tenantID).Scan(
 		&tenant.ID, &tenant.Name, &plan, &tenant.Status,
@@ -53,7 +53,7 @@ func (r *TenantRepository) GetTenantByID(tenantID uuid.UUID) (*Tenant, error) {
 }
 
 // GetTenantByStripeCustomerID retrieves a tenant by Stripe customer ID
-func (r *TenantRepository) GetTenantByStripeCustomerID(stripeCustomerID string) (*Tenant, error) {
+func (r *TenantRepository) GetTenantByStripeCustomerID(ctx context.Context, stripeCustomerID string) (*Tenant, error) {
 	if stripeCustomerID == "" {
 		return nil, nil
 	}
@@ -61,7 +61,7 @@ func (r *TenantRepository) GetTenantByStripeCustomerID(stripeCustomerID string) 
 	tenant := &Tenant{}
 	var plan sql.NullString
 	var stripeCID sql.NullString
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT id, name, plan, status, stripe_customer_id, created_at, updated_at
 		FROM tenants WHERE stripe_customer_id = $1`, stripeCustomerID).Scan(
 		&tenant.ID, &tenant.Name, &plan, &tenant.Status,
@@ -89,14 +89,14 @@ func (r *TenantRepository) GetTenantByStripeCustomerID(stripeCustomerID string) 
 
 // ListTenantsWithStripeCustomerID retrieves all tenants that have a Stripe customer ID
 // This is used for syncing payment methods from Stripe
-func (r *TenantRepository) ListTenantsWithStripeCustomerID() ([]*Tenant, error) {
+func (r *TenantRepository) ListTenantsWithStripeCustomerID(ctx context.Context) ([]*Tenant, error) {
 	query := `
 		SELECT id, name, plan, status, stripe_customer_id, created_at, updated_at
 		FROM tenants
 		WHERE stripe_customer_id IS NOT NULL AND stripe_customer_id != ''
 		ORDER BY created_at DESC`
 
-	rows, err := r.db.Query(query)
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list tenants with stripe customer id: %w", err)
 	}
@@ -133,9 +133,9 @@ func (r *TenantRepository) ListTenantsWithStripeCustomerID() ([]*Tenant, error) 
 }
 
 // CountRoutingEventsForTenantSince counts routing events for a tenant since a given time
-func (r *TenantRepository) CountRoutingEventsForTenantSince(tenantID uuid.UUID, since time.Time) (int, error) {
+func (r *TenantRepository) CountRoutingEventsForTenantSince(ctx context.Context, tenantID uuid.UUID, since time.Time) (int, error) {
 	var count int
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM routing_events re
 		JOIN apps a ON re.app_id = a.id
 		WHERE a.tenant_id = $1 AND re.timestamp >= $2`,
@@ -149,10 +149,10 @@ func (r *TenantRepository) CountRoutingEventsForTenantSince(tenantID uuid.UUID, 
 }
 
 // ListTenants lists all tenants
-func (r *TenantRepository) ListTenants() ([]*Tenant, error) {
+func (r *TenantRepository) ListTenants(ctx context.Context) ([]*Tenant, error) {
 	query := `SELECT id, name, plan, status, stripe_customer_id, created_at, updated_at FROM tenants ORDER BY created_at DESC`
 
-	rows, err := r.db.Query(query)
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list tenants: %w", err)
 	}
@@ -185,7 +185,7 @@ func (r *TenantRepository) ListTenants() ([]*Tenant, error) {
 // UpdateTenant updates tenant fields dynamically
 func (r *TenantRepository) UpdateTenant(ctx context.Context, tenantID uuid.UUID, updates map[string]interface{}) (*Tenant, error) {
 	// Get current tenant
-	current, err := r.GetTenantByID(tenantID)
+	current, err := r.GetTenantByID(ctx, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get current tenant: %w", err)
 	}
@@ -239,7 +239,7 @@ func (r *TenantRepository) UpdateTenant(ctx context.Context, tenantID uuid.UUID,
 	updated := &Tenant{}
 	var plan sql.NullString
 	var stripeCustomerID sql.NullString
-	err = r.db.QueryRow(query, args...).Scan(&updated.ID, &updated.Name, &plan, &updated.Status, &stripeCustomerID, &updated.CreatedAt, &updated.UpdatedAt)
+	err = r.db.QueryRowContext(ctx, query, args...).Scan(&updated.ID, &updated.Name, &plan, &updated.Status, &stripeCustomerID, &updated.CreatedAt, &updated.UpdatedAt)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to update tenant: %w", err)
@@ -271,7 +271,7 @@ func (r *TenantRepository) CreateTenant(ctx context.Context, name string) (*Tena
 
 	var plan sql.NullString
 	var stripeCustomerID sql.NullString
-	err := r.db.QueryRow(query, tenant.ID, tenant.Name, tenant.Plan, tenant.Status).Scan(
+	err := r.db.QueryRowContext(ctx, query, tenant.ID, tenant.Name, tenant.Plan, tenant.Status).Scan(
 		&tenant.ID, &tenant.Name, &plan, &tenant.Status, &stripeCustomerID, &tenant.CreatedAt, &tenant.UpdatedAt)
 
 	if err != nil {
@@ -292,7 +292,7 @@ func (r *TenantRepository) CreateTenant(ctx context.Context, name string) (*Tena
 func (r *TenantRepository) DeleteTenant(ctx context.Context, tenantID uuid.UUID) error {
 	// Check if tenant has any users
 	var userCount int
-	err := r.db.QueryRow("SELECT COUNT(*) FROM users WHERE tenant_id = $1", tenantID).Scan(&userCount)
+	err := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM users WHERE tenant_id = $1", tenantID).Scan(&userCount)
 	if err != nil {
 		return fmt.Errorf("failed to check tenant users: %w", err)
 	}
@@ -302,7 +302,7 @@ func (r *TenantRepository) DeleteTenant(ctx context.Context, tenantID uuid.UUID)
 	}
 
 	// Delete the tenant
-	result, err := r.db.Exec("DELETE FROM tenants WHERE id = $1", tenantID)
+	result, err := r.db.ExecContext(ctx, "DELETE FROM tenants WHERE id = $1", tenantID)
 	if err != nil {
 		return fmt.Errorf("failed to delete tenant: %w", err)
 	}
@@ -348,9 +348,9 @@ func (r *TenantRepository) IsUserInTenant(ctx context.Context, userID, tenantID 
 	var exists bool
 	err = r.db.QueryRowContext(ctx, `
 		SELECT EXISTS(
-			SELECT 1 FROM tenant_memberships 
-			WHERE user_id = $1 
-			AND tenant_id = $2 
+			SELECT 1 FROM tenant_memberships
+			WHERE user_id = $1
+			AND tenant_id = $2
 			AND accepted_at IS NOT NULL
 		)`, userID, tenantID).Scan(&exists)
 	if err != nil {
@@ -371,7 +371,7 @@ func (r *TenantRepository) GetUserTenants(ctx context.Context, userID uuid.UUID)
 	}
 
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT tenant_id FROM tenant_memberships 
+		SELECT tenant_id FROM tenant_memberships
 		WHERE user_id = $1 AND accepted_at IS NOT NULL`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tenant memberships: %w", err)
@@ -418,7 +418,7 @@ func (r *TenantRepository) AddTenantMember(ctx context.Context, userID, tenantID
 // AcceptTenantMembership marks a tenant membership as accepted
 func (r *TenantRepository) AcceptTenantMembership(ctx context.Context, userID, tenantID uuid.UUID) error {
 	result, err := r.db.ExecContext(ctx, `
-		UPDATE tenant_memberships 
+		UPDATE tenant_memberships
 		SET accepted_at = NOW(), updated_at = NOW()
 		WHERE user_id = $1 AND tenant_id = $2 AND accepted_at IS NULL
 	`, userID, tenantID)
@@ -435,7 +435,7 @@ func (r *TenantRepository) AcceptTenantMembership(ctx context.Context, userID, t
 // RemoveTenantMember removes a user's membership from a tenant
 func (r *TenantRepository) RemoveTenantMember(ctx context.Context, userID, tenantID uuid.UUID) error {
 	_, err := r.db.ExecContext(ctx, `
-		DELETE FROM tenant_memberships 
+		DELETE FROM tenant_memberships
 		WHERE user_id = $1 AND tenant_id = $2
 	`, userID, tenantID)
 	if err != nil {
@@ -506,7 +506,7 @@ type TenantDBConfig struct {
 // ShouldHaveDedicatedDB checks if a tenant qualifies for a dedicated database
 // based on their plan. Starter pack and above get dedicated databases.
 func (r *TenantRepository) ShouldHaveDedicatedDB(ctx context.Context, tenantID uuid.UUID) (bool, error) {
-	tenant, err := r.GetTenantByID(tenantID)
+	tenant, err := r.GetTenantByID(ctx, tenantID)
 	if err != nil {
 		return false, err
 	}

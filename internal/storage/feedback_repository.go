@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -20,34 +21,28 @@ func NewFeedbackRepository(db *PostgresDB) *FeedbackRepository {
 }
 
 // CreateFeedback creates a new feedback submission
-func (r *FeedbackRepository) CreateFeedback(feedback *Feedback) (*Feedback, error) {
+func (r *FeedbackRepository) CreateFeedback(ctx context.Context, feedback *Feedback) (*Feedback, error) {
 	feedback.ID = uuid.New()
 	feedback.Status = "submitted"
 	feedback.CreatedAt = time.Now()
 	feedback.UpdatedAt = time.Now()
 
-	// ip_address is INET; pass nil when empty so Postgres accepts NULL
 	var ipAddr interface{} = feedback.IPAddress
 	if feedback.IPAddress == "" {
 		ipAddr = nil
 	}
-	// priority has a CHECK constraint; pass nil when empty so Postgres uses the column DEFAULT ('medium')
 	var priority interface{} = feedback.Priority
 	if feedback.Priority == "" {
 		priority = nil
 	}
 
-	// Wrap in a transaction so Neon's pgBouncer (transaction pool mode) pins a single
-	// backend connection for the Parse→Bind→Execute→Sync sequence that lib/pq sends.
-	// Without this, pgBouncer can route Bind to a different backend, causing
-	// "unnamed prepared statement does not exist".
-	tx, err := r.db.Begin()
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback() //nolint:errcheck
+	defer tx.Rollback()
 
-	_, err = tx.Exec(`
+	_, err = tx.ExecContext(ctx, `
 		INSERT INTO feedback (id, user_id, user_email, feedback_type, subject, message, priority, browser_info, status, ip_address, user_agent, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
 		feedback.ID, feedback.UserID, feedback.UserEmail, feedback.FeedbackType, feedback.Subject,
@@ -65,11 +60,11 @@ func (r *FeedbackRepository) CreateFeedback(feedback *Feedback) (*Feedback, erro
 }
 
 // GetFeedbackByID retrieves a feedback submission by ID
-func (r *FeedbackRepository) GetFeedbackByID(id uuid.UUID) (*Feedback, error) {
+func (r *FeedbackRepository) GetFeedbackByID(ctx context.Context, id uuid.UUID) (*Feedback, error) {
 	feedback := &Feedback{}
 	var userID, userEmail sql.NullString
 
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT id, user_id, user_email, feedback_type, subject, message, priority, browser_info, status, ip_address, user_agent, created_at, updated_at
 		FROM feedback WHERE id = $1`, id).Scan(
 		&feedback.ID, &userID, &userEmail, &feedback.FeedbackType, &feedback.Subject,
@@ -91,10 +86,8 @@ func (r *FeedbackRepository) GetFeedbackByID(id uuid.UUID) (*Feedback, error) {
 		feedback.UserEmail = &userEmail.String
 	}
 
-	// Load attachments
-	attachments, err := r.GetFeedbackAttachments(id)
+	attachments, err := r.GetFeedbackAttachments(ctx, id)
 	if err != nil {
-		// Don't fail if attachments can't be loaded, just log
 		fmt.Printf("Warning: failed to load attachments for feedback %s: %v\n", id, err)
 	} else {
 		feedback.Attachments = attachments
@@ -104,7 +97,7 @@ func (r *FeedbackRepository) GetFeedbackByID(id uuid.UUID) (*Feedback, error) {
 }
 
 // GetFeedbackByUser retrieves feedback submissions for a user (authenticated or anonymous by email)
-func (r *FeedbackRepository) GetFeedbackByUser(userID *uuid.UUID, userEmail *string, limit, offset int) ([]Feedback, error) {
+func (r *FeedbackRepository) GetFeedbackByUser(ctx context.Context, userID *uuid.UUID, userEmail *string, limit, offset int) ([]Feedback, error) {
 	var feedbacks []Feedback
 	var query string
 	var args []interface{}
@@ -129,7 +122,7 @@ func (r *FeedbackRepository) GetFeedbackByUser(userID *uuid.UUID, userEmail *str
 		return feedbacks, fmt.Errorf("either userID or userEmail must be provided")
 	}
 
-	rows, err := r.db.Query(query, args...)
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query feedback: %w", err)
 	}
@@ -155,8 +148,7 @@ func (r *FeedbackRepository) GetFeedbackByUser(userID *uuid.UUID, userEmail *str
 			feedback.UserEmail = &userEmailVal.String
 		}
 
-		// Load attachments for each feedback
-		attachments, err := r.GetFeedbackAttachments(feedback.ID)
+		attachments, err := r.GetFeedbackAttachments(ctx, feedback.ID)
 		if err != nil {
 			fmt.Printf("Warning: failed to load attachments for feedback %s: %v\n", feedback.ID, err)
 		} else {
@@ -170,8 +162,7 @@ func (r *FeedbackRepository) GetFeedbackByUser(userID *uuid.UUID, userEmail *str
 }
 
 // ListFeedback retrieves feedback submissions with pagination (admin only).
-// typeFilter can be e.g. "launch_waitlist" to list only waitlist signups.
-func (r *FeedbackRepository) ListFeedback(limit, offset int, statusFilter *string, typeFilter *string) ([]Feedback, error) {
+func (r *FeedbackRepository) ListFeedback(ctx context.Context, limit, offset int, statusFilter *string, typeFilter *string) ([]Feedback, error) {
 	var feedbacks []Feedback
 	var query string
 	var args []interface{}
@@ -203,7 +194,7 @@ func (r *FeedbackRepository) ListFeedback(limit, offset int, statusFilter *strin
 		args = []interface{}{limit, offset}
 	}
 
-	rows, err := r.db.Query(query, args...)
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query feedback: %w", err)
 	}
@@ -229,8 +220,7 @@ func (r *FeedbackRepository) ListFeedback(limit, offset int, statusFilter *strin
 			feedback.UserEmail = &userEmailVal.String
 		}
 
-		// Load attachments for each feedback
-		attachments, err := r.GetFeedbackAttachments(feedback.ID)
+		attachments, err := r.GetFeedbackAttachments(ctx, feedback.ID)
 		if err != nil {
 			fmt.Printf("Warning: failed to load attachments for feedback %s: %v\n", feedback.ID, err)
 		} else {
@@ -244,8 +234,8 @@ func (r *FeedbackRepository) ListFeedback(limit, offset int, statusFilter *strin
 }
 
 // UpdateFeedbackStatus updates the status of a feedback submission
-func (r *FeedbackRepository) UpdateFeedbackStatus(id uuid.UUID, status string) error {
-	_, err := r.db.Exec(`
+func (r *FeedbackRepository) UpdateFeedbackStatus(ctx context.Context, id uuid.UUID, status string) error {
+	_, err := r.db.ExecContext(ctx, `
 		UPDATE feedback
 		SET status = $1, updated_at = $2
 		WHERE id = $3`,
@@ -259,11 +249,11 @@ func (r *FeedbackRepository) UpdateFeedbackStatus(id uuid.UUID, status string) e
 }
 
 // CreateFeedbackAttachment creates a new feedback attachment
-func (r *FeedbackRepository) CreateFeedbackAttachment(attachment *FeedbackAttachment) (*FeedbackAttachment, error) {
+func (r *FeedbackRepository) CreateFeedbackAttachment(ctx context.Context, attachment *FeedbackAttachment) (*FeedbackAttachment, error) {
 	attachment.ID = uuid.New()
 	attachment.CreatedAt = time.Now()
 
-	_, err := r.db.Exec(`
+	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO feedback_attachments (id, feedback_id, filename, content_type, size, s3_key, s3_bucket, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
 		attachment.ID, attachment.FeedbackID, attachment.Filename, attachment.ContentType,
@@ -277,10 +267,10 @@ func (r *FeedbackRepository) CreateFeedbackAttachment(attachment *FeedbackAttach
 }
 
 // GetFeedbackAttachments retrieves all attachments for a feedback submission
-func (r *FeedbackRepository) GetFeedbackAttachments(feedbackID uuid.UUID) ([]FeedbackAttachment, error) {
+func (r *FeedbackRepository) GetFeedbackAttachments(ctx context.Context, feedbackID uuid.UUID) ([]FeedbackAttachment, error) {
 	var attachments []FeedbackAttachment
 
-	rows, err := r.db.Query(`
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, feedback_id, filename, content_type, size, s3_key, s3_bucket, created_at
 		FROM feedback_attachments
 		WHERE feedback_id = $1
@@ -306,9 +296,9 @@ func (r *FeedbackRepository) GetFeedbackAttachments(feedbackID uuid.UUID) ([]Fee
 }
 
 // GetFeedbackAttachmentByID retrieves a single attachment by ID (for download).
-func (r *FeedbackRepository) GetFeedbackAttachmentByID(attachmentID uuid.UUID) (*FeedbackAttachment, error) {
+func (r *FeedbackRepository) GetFeedbackAttachmentByID(ctx context.Context, attachmentID uuid.UUID) (*FeedbackAttachment, error) {
 	var att FeedbackAttachment
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT id, feedback_id, filename, content_type, size, s3_key, s3_bucket, created_at
 		FROM feedback_attachments
 		WHERE id = $1`, attachmentID).Scan(
@@ -321,19 +311,17 @@ func (r *FeedbackRepository) GetFeedbackAttachmentByID(attachmentID uuid.UUID) (
 }
 
 // GetFeedbackStats returns statistics about feedback submissions
-func (r *FeedbackRepository) GetFeedbackStats() (map[string]interface{}, error) {
+func (r *FeedbackRepository) GetFeedbackStats(ctx context.Context) (map[string]interface{}, error) {
 	stats := make(map[string]interface{})
 
-	// Total feedback count
 	var totalCount int
-	err := r.db.QueryRow("SELECT COUNT(*) FROM feedback").Scan(&totalCount)
+	err := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM feedback").Scan(&totalCount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get total feedback count: %w", err)
 	}
 	stats["total"] = totalCount
 
-	// Status breakdown
-	statusRows, err := r.db.Query(`
+	statusRows, err := r.db.QueryContext(ctx, `
 		SELECT status, COUNT(*) as count
 		FROM feedback
 		GROUP BY status`)
@@ -354,8 +342,7 @@ func (r *FeedbackRepository) GetFeedbackStats() (map[string]interface{}, error) 
 	}
 	stats["status_breakdown"] = statusStats
 
-	// Type breakdown
-	typeRows, err := r.db.Query(`
+	typeRows, err := r.db.QueryContext(ctx, `
 		SELECT feedback_type, COUNT(*) as count
 		FROM feedback
 		GROUP BY feedback_type`)
@@ -380,17 +367,16 @@ func (r *FeedbackRepository) GetFeedbackStats() (map[string]interface{}, error) 
 }
 
 // GetFeedbackTrends returns feedback submission trends over time
-func (r *FeedbackRepository) GetFeedbackTrends() (map[string]interface{}, error) {
+func (r *FeedbackRepository) GetFeedbackTrends(ctx context.Context) (map[string]interface{}, error) {
 	trends := make(map[string]interface{})
 
-	// Daily trends for the last 30 days
 	dailyQuery := `
 		SELECT DATE(created_at) as date, COUNT(*) as count
 		FROM feedback
 		WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
 		GROUP BY DATE(created_at)
 		ORDER BY DATE(created_at)`
-	dailyRows, err := r.db.Query(dailyQuery)
+	dailyRows, err := r.db.QueryContext(ctx, dailyQuery)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get daily trends: %w", err)
 	}
@@ -411,14 +397,13 @@ func (r *FeedbackRepository) GetFeedbackTrends() (map[string]interface{}, error)
 	}
 	trends["daily"] = dailyTrends
 
-	// Weekly trends for the last 12 weeks
 	weeklyQuery := `
 		SELECT DATE_TRUNC('week', created_at) as week, COUNT(*) as count
 		FROM feedback
 		WHERE created_at >= CURRENT_DATE - INTERVAL '12 weeks'
 		GROUP BY DATE_TRUNC('week', created_at)
 		ORDER BY DATE_TRUNC('week', created_at)`
-	weeklyRows, err := r.db.Query(weeklyQuery)
+	weeklyRows, err := r.db.QueryContext(ctx, weeklyQuery)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get weekly trends: %w", err)
 	}
@@ -439,14 +424,13 @@ func (r *FeedbackRepository) GetFeedbackTrends() (map[string]interface{}, error)
 	}
 	trends["weekly"] = weeklyTrends
 
-	// Monthly trends for the last 12 months
 	monthlyQuery := `
 		SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as count
 		FROM feedback
 		WHERE created_at >= CURRENT_DATE - INTERVAL '12 months'
 		GROUP BY DATE_TRUNC('month', created_at)
 		ORDER BY DATE_TRUNC('month', created_at)`
-	monthlyRows, err := r.db.Query(monthlyQuery)
+	monthlyRows, err := r.db.QueryContext(ctx, monthlyQuery)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get monthly trends: %w", err)
 	}
@@ -467,12 +451,11 @@ func (r *FeedbackRepository) GetFeedbackTrends() (map[string]interface{}, error)
 	}
 	trends["monthly"] = monthlyTrends
 
-	// Priority breakdown
 	priorityQuery := `
 		SELECT priority, COUNT(*) as count
 		FROM feedback
 		GROUP BY priority`
-	priorityRows, err := r.db.Query(priorityQuery)
+	priorityRows, err := r.db.QueryContext(ctx, priorityQuery)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get priority stats: %w", err)
 	}
@@ -490,13 +473,12 @@ func (r *FeedbackRepository) GetFeedbackTrends() (map[string]interface{}, error)
 	}
 	trends["priority_breakdown"] = priorityStats
 
-	// Average response time (time from submission to resolution)
 	responseTimeQuery := `
 		SELECT AVG(EXTRACT(EPOCH FROM (updated_at - created_at))/86400) as avg_days
 		FROM feedback
 		WHERE status IN ('resolved', 'closed')`
 	var avgResponseTime *float64
-	err = r.db.QueryRow(responseTimeQuery).Scan(&avgResponseTime)
+	err = r.db.QueryRowContext(ctx, responseTimeQuery).Scan(&avgResponseTime)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, fmt.Errorf("failed to get response time: %w", err)
 	}
@@ -506,24 +488,21 @@ func (r *FeedbackRepository) GetFeedbackTrends() (map[string]interface{}, error)
 }
 
 // GetFeedbackAnalytics returns comprehensive analytics data
-func (r *FeedbackRepository) GetFeedbackAnalytics() (map[string]interface{}, error) {
+func (r *FeedbackRepository) GetFeedbackAnalytics(ctx context.Context) (map[string]interface{}, error) {
 	analytics := make(map[string]interface{})
 
-	// Get basic stats
-	basicStats, err := r.GetFeedbackStats()
+	basicStats, err := r.GetFeedbackStats(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get basic stats: %w", err)
 	}
 	analytics["stats"] = basicStats
 
-	// Get trends
-	trends, err := r.GetFeedbackTrends()
+	trends, err := r.GetFeedbackTrends(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get trends: %w", err)
 	}
 	analytics["trends"] = trends
 
-	// Top issues by frequency (subjects with similar content)
 	topIssuesQuery := `
 		SELECT LOWER(subject) as subject_lower, COUNT(*) as count
 		FROM feedback
@@ -531,7 +510,7 @@ func (r *FeedbackRepository) GetFeedbackAnalytics() (map[string]interface{}, err
 		GROUP BY LOWER(subject)
 		ORDER BY count DESC
 		LIMIT 10`
-	topIssuesRows, err := r.db.Query(topIssuesQuery)
+	topIssuesRows, err := r.db.QueryContext(ctx, topIssuesQuery)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get top issues: %w", err)
 	}
@@ -552,7 +531,6 @@ func (r *FeedbackRepository) GetFeedbackAnalytics() (map[string]interface{}, err
 	}
 	analytics["top_issues"] = topIssues
 
-	// User engagement (feedback per user)
 	userEngagementQuery := `
 		SELECT
 			CASE
@@ -562,7 +540,7 @@ func (r *FeedbackRepository) GetFeedbackAnalytics() (map[string]interface{}, err
 			COUNT(*) as count
 		FROM feedback
 		GROUP BY user_type`
-	userEngagementRows, err := r.db.Query(userEngagementQuery)
+	userEngagementRows, err := r.db.QueryContext(ctx, userEngagementQuery)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user engagement: %w", err)
 	}

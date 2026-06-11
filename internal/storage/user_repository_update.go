@@ -21,7 +21,7 @@ func nullIfEmpty(s string) interface{} {
 
 // UpdateUserEmailVerification updates user email verification status
 func (r *UserRepository) UpdateUserEmailVerification(ctx context.Context, userID uuid.UUID, verified bool, token *string, expiresAt *time.Time) error {
-	_, err := r.db.Exec(`
+	_, err := r.db.ExecContext(ctx, `
 		UPDATE users
 		SET email_verified = $1, verification_token = $2, verification_expires_at = $3, updated_at = $4
 		WHERE id = $5`,
@@ -37,7 +37,7 @@ func (r *UserRepository) UpdateUserEmailVerification(ctx context.Context, userID
 // UpdateUser updates user fields dynamically
 func (r *UserRepository) UpdateUser(ctx context.Context, userID uuid.UUID, updates map[string]interface{}) (*User, error) {
 	// Get current user
-	current, err := r.GetUserByID(userID)
+	current, err := r.GetUserByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get current user: %w", err)
 	}
@@ -184,7 +184,7 @@ func (r *UserRepository) UpdateUser(ctx context.Context, userID uuid.UUID, updat
 	var githubURLNull sql.NullString
 	var linkedinURLNull sql.NullString
 	var dateOfBirthNull sql.NullTime
-	err = r.db.QueryRow(query, args...).Scan(
+	err = r.db.QueryRowContext(ctx, query, args...).Scan(
 		&updated.ID, &updated.TenantID, &usernameNull, &updated.Email, &updated.PasswordHash, &updated.Role, &companyNameNull, &nameNull, &bioNull,
 		&locationNull, &websiteNull, &jobTitleNull, &twitterURLNull, &githubURLNull, &linkedinURLNull,
 		&dateOfBirthNull,
@@ -232,13 +232,13 @@ func (r *UserRepository) UpdateUser(ctx context.Context, userID uuid.UUID, updat
 }
 
 // UpdateUserProviderData updates the provider data for a user
-func (r *UserRepository) UpdateUserProviderData(userID uuid.UUID, providerData map[string]interface{}) error {
+func (r *UserRepository) UpdateUserProviderData(ctx context.Context, userID uuid.UUID, providerData map[string]interface{}) error {
 	dataJSON, err := json.Marshal(providerData)
 	if err != nil {
 		return fmt.Errorf("failed to marshal provider data: %w", err)
 	}
 
-	_, err = r.db.Exec(`
+	_, err = r.db.ExecContext(ctx, `
 		UPDATE users SET provider_data = $1, updated_at = NOW() WHERE id = $2`,
 		dataJSON, userID)
 

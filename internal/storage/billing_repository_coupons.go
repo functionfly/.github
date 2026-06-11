@@ -21,7 +21,7 @@ func (r *BillingRepository) CreateCoupon(ctx context.Context, coupon *Coupon) (*
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		RETURNING id, code, name, description, discount_type, discount_value, max_redemptions, times_redeemed, valid_from, valid_until, is_active, created_at, updated_at`
 
-	err := r.db.QueryRow(query, coupon.ID, coupon.Code, coupon.Name, coupon.Description,
+	err := r.db.QueryRowContext(ctx, query, coupon.ID, coupon.Code, coupon.Name, coupon.Description,
 		coupon.DiscountType, coupon.DiscountValue, coupon.MaxRedemptions, coupon.TimesRedeemed,
 		coupon.ValidFrom, coupon.ValidUntil, coupon.IsActive, coupon.CreatedAt, coupon.UpdatedAt).Scan(
 		&coupon.ID, &coupon.Code, &coupon.Name, &coupon.Description, &coupon.DiscountType,
@@ -36,11 +36,11 @@ func (r *BillingRepository) CreateCoupon(ctx context.Context, coupon *Coupon) (*
 }
 
 // ListCoupons lists all coupons
-func (r *BillingRepository) ListCoupons() ([]*Coupon, error) {
+func (r *BillingRepository) ListCoupons(ctx context.Context) ([]*Coupon, error) {
 	query := `SELECT id, code, name, description, discount_type, discount_value, max_redemptions, times_redeemed, valid_from, valid_until, is_active, created_at, updated_at
 			  FROM coupons ORDER BY created_at DESC`
 
-	rows, err := r.db.Query(query)
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list coupons: %w", err)
 	}
@@ -63,12 +63,12 @@ func (r *BillingRepository) ListCoupons() ([]*Coupon, error) {
 }
 
 // GetCouponByCode retrieves a coupon by code
-func (r *BillingRepository) GetCouponByCode(code string) (*Coupon, error) {
+func (r *BillingRepository) GetCouponByCode(ctx context.Context, code string) (*Coupon, error) {
 	query := `SELECT id, code, name, description, discount_type, discount_value, max_redemptions, times_redeemed, valid_from, valid_until, is_active, created_at, updated_at
 			  FROM coupons WHERE UPPER(code) = UPPER($1) AND is_active = true`
 
 	coupon := &Coupon{}
-	err := r.db.QueryRow(query, code).Scan(&coupon.ID, &coupon.Code, &coupon.Name,
+	err := r.db.QueryRowContext(ctx, query, code).Scan(&coupon.ID, &coupon.Code, &coupon.Name,
 		&coupon.Description, &coupon.DiscountType, &coupon.DiscountValue, &coupon.MaxRedemptions,
 		&coupon.TimesRedeemed, &coupon.ValidFrom, &coupon.ValidUntil, &coupon.IsActive,
 		&coupon.CreatedAt, &coupon.UpdatedAt)
@@ -84,12 +84,12 @@ func (r *BillingRepository) GetCouponByCode(code string) (*Coupon, error) {
 }
 
 // GetCouponByID retrieves a coupon by ID
-func (r *BillingRepository) GetCouponByID(id uuid.UUID) (*Coupon, error) {
+func (r *BillingRepository) GetCouponByID(ctx context.Context, id uuid.UUID) (*Coupon, error) {
 	query := `SELECT id, code, name, description, discount_type, discount_value, max_redemptions, times_redeemed, valid_from, valid_until, is_active, created_at, updated_at
 			  FROM coupons WHERE id = $1`
 
 	coupon := &Coupon{}
-	err := r.db.QueryRow(query, id).Scan(&coupon.ID, &coupon.Code, &coupon.Name,
+	err := r.db.QueryRowContext(ctx, query, id).Scan(&coupon.ID, &coupon.Code, &coupon.Name,
 		&coupon.Description, &coupon.DiscountType, &coupon.DiscountValue, &coupon.MaxRedemptions,
 		&coupon.TimesRedeemed, &coupon.ValidFrom, &coupon.ValidUntil, &coupon.IsActive,
 		&coupon.CreatedAt, &coupon.UpdatedAt)
@@ -106,8 +106,7 @@ func (r *BillingRepository) GetCouponByID(id uuid.UUID) (*Coupon, error) {
 
 // RedeemCoupon redeems a coupon for a tenant
 func (r *BillingRepository) RedeemCoupon(ctx context.Context, couponID, tenantID uuid.UUID, subscriptionID *uuid.UUID) (*CouponRedemption, error) {
-	// Check if coupon exists and is valid
-	coupon, err := r.GetCouponByID(couponID)
+	coupon, err := r.GetCouponByID(ctx, couponID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get coupon: %w", err)
 	}
@@ -115,9 +114,8 @@ func (r *BillingRepository) RedeemCoupon(ctx context.Context, couponID, tenantID
 		return nil, fmt.Errorf("coupon not found")
 	}
 
-	// Check if already redeemed by this tenant
 	var count int
-	err = r.db.QueryRow("SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id = $1 AND tenant_id = $2", couponID, tenantID).Scan(&count)
+	err = r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id = $1 AND tenant_id = $2", couponID, tenantID).Scan(&count)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check redemption: %w", err)
 	}
@@ -125,12 +123,10 @@ func (r *BillingRepository) RedeemCoupon(ctx context.Context, couponID, tenantID
 		return nil, fmt.Errorf("coupon already redeemed by this tenant")
 	}
 
-	// Check redemption limits
 	if coupon.MaxRedemptions != nil && coupon.TimesRedeemed >= *coupon.MaxRedemptions {
 		return nil, fmt.Errorf("coupon redemption limit exceeded")
 	}
 
-	// Create redemption record
 	redemption := &CouponRedemption{
 		ID:             uuid.New(),
 		CouponID:       couponID,
@@ -143,14 +139,13 @@ func (r *BillingRepository) RedeemCoupon(ctx context.Context, couponID, tenantID
 	query := `INSERT INTO coupon_redemptions (id, coupon_id, tenant_id, subscription_id, redeemed_at)
 			  VALUES ($1, $2, $3, $4, $5)`
 
-	_, err = r.db.Exec(query, redemption.ID, redemption.CouponID, redemption.TenantID,
+	_, err = r.db.ExecContext(ctx, query, redemption.ID, redemption.CouponID, redemption.TenantID,
 		redemption.SubscriptionID, redemption.RedeemedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create redemption: %w", err)
 	}
 
-	// Update coupon redemption count
-	_, err = r.db.Exec("UPDATE coupons SET times_redeemed = times_redeemed + 1 WHERE id = $1", couponID)
+	_, err = r.db.ExecContext(ctx, "UPDATE coupons SET times_redeemed = times_redeemed + 1 WHERE id = $1", couponID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update coupon count: %w", err)
 	}

@@ -25,7 +25,7 @@ func NewRevenueRepository(db *sql.DB) *RevenueRepository {
 // =============================================================================
 
 // GetVerificationFeeByLevel retrieves the verification fee for a given level
-func (r *RevenueRepository) GetVerificationFeeByLevel(level string) (*VerificationFee, error) {
+func (r *RevenueRepository) GetVerificationFeeByLevel(ctx context.Context, level string) (*VerificationFee, error) {
 	query := `
 		SELECT id, level, price_cents, currency, is_active, min_plan, description, created_at, updated_at
 		FROM verification_fees
@@ -33,7 +33,7 @@ func (r *RevenueRepository) GetVerificationFeeByLevel(level string) (*Verificati
 
 	fee := &VerificationFee{}
 	var minPlan sql.NullString
-	err := r.db.QueryRow(query, level).Scan(
+	err := r.db.QueryRowContext(ctx, query, level).Scan(
 		&fee.ID, &fee.Level, &fee.PriceCents, &fee.Currency, &fee.IsActive,
 		&minPlan, &fee.Description, &fee.CreatedAt, &fee.UpdatedAt,
 	)
@@ -47,14 +47,14 @@ func (r *RevenueRepository) GetVerificationFeeByLevel(level string) (*Verificati
 }
 
 // ListVerificationFees lists all active verification fees
-func (r *RevenueRepository) ListVerificationFees() ([]*VerificationFee, error) {
+func (r *RevenueRepository) ListVerificationFees(ctx context.Context) ([]*VerificationFee, error) {
 	query := `
 		SELECT id, level, price_cents, currency, is_active, min_plan, description, created_at, updated_at
 		FROM verification_fees
 		WHERE is_active = true
 		ORDER BY price_cents ASC`
 
-	rows, err := r.db.Query(query)
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func (r *RevenueRepository) CreateFunctionVerificationPayment(ctx context.Contex
 }
 
 // GetFunctionVerificationPaymentByID retrieves a verification payment by ID
-func (r *RevenueRepository) GetFunctionVerificationPaymentByID(id uuid.UUID) (*FunctionVerificationPayment, error) {
+func (r *RevenueRepository) GetFunctionVerificationPaymentByID(ctx context.Context, id uuid.UUID) (*FunctionVerificationPayment, error) {
 	query := `
 		SELECT id, function_id, verification_level, amount_cents, currency, status,
 		       stripe_payment_intent_id, stripe_checkout_session_id, tenant_id, paid_by,
@@ -116,7 +116,7 @@ func (r *RevenueRepository) GetFunctionVerificationPaymentByID(id uuid.UUID) (*F
 		WHERE id = $1`
 
 	payment := &FunctionVerificationPayment{}
-	err := r.db.QueryRow(query, id).Scan(
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&payment.ID, &payment.FunctionID, &payment.VerificationLevel, &payment.AmountCents,
 		&payment.Currency, &payment.Status, &payment.StripePaymentIntentID,
 		&payment.StripeCheckoutSessionID, &payment.TenantID, &payment.PaidBy,
@@ -635,7 +635,7 @@ func (r *RevenueRepository) GetPlatformFeesSummary(ctx context.Context) (totalCo
 // =============================================================================
 
 // ListPricingTiersExtended lists all active pricing tiers with extended fields
-func (r *RevenueRepository) ListPricingTiersExtended() ([]*PricingTierExtended, error) {
+func (r *RevenueRepository) ListPricingTiersExtended(ctx context.Context) ([]*PricingTierExtended, error) {
 	query := `
 		SELECT id, name, description, price_cents, annual_price_cents, currency,
 		       COALESCE(billing_cycle, 'monthly') as billing_cycle, features, is_active,
@@ -647,7 +647,7 @@ func (r *RevenueRepository) ListPricingTiersExtended() ([]*PricingTierExtended, 
 		WHERE is_active = true
 		ORDER BY price_cents ASC`
 
-	rows, err := r.db.Query(query)
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -711,7 +711,7 @@ func (r *RevenueRepository) ListPricingTiersExtended() ([]*PricingTierExtended, 
 }
 
 // GetPricingTierExtendedByID retrieves a pricing tier by ID with extended fields
-func (r *RevenueRepository) GetPricingTierExtendedByID(id uuid.UUID) (*PricingTierExtended, error) {
+func (r *RevenueRepository) GetPricingTierExtendedByID(ctx context.Context, id uuid.UUID) (*PricingTierExtended, error) {
 	query := `
 		SELECT id, name, description, price_cents, annual_price_cents, currency,
 		       COALESCE(billing_cycle, 'monthly') as billing_cycle, features, is_active,
@@ -730,7 +730,7 @@ func (r *RevenueRepository) GetPricingTierExtendedByID(id uuid.UUID) (*PricingTi
 	var trialDays, maxAgents, maxFunctions, maxExecutions sql.NullInt64
 	var billingCycle sql.NullString
 
-	err := r.db.QueryRow(query, id).Scan(
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&tier.ID, &tier.Name, &tier.Description, &tier.PriceCents, &annualPriceCents,
 		&tier.Currency, &billingCycle, &features, &tier.IsActive, &tierType,
 		&stripePriceID, &stripePriceIDAnnual, &trialDays,
@@ -937,22 +937,18 @@ func (r *RevenueRepository) ListAgentTierPricing(ctx context.Context, activeOnly
 
 // GetAgentTierPricingForRegion retrieves pricing for a specific region/currency
 func (r *RevenueRepository) GetAgentTierPricingForRegion(ctx context.Context, slug string, currencyCode string) (*AgentTierPricing, error) {
-	// First get the base tier
 	tier, err := r.GetAgentTierPricingBySlug(ctx, slug)
 	if err != nil || tier == nil {
 		return tier, err
 	}
 
-	// If requesting base currency, return as-is
 	if currencyCode == tier.BaseCurrency {
 		return tier, nil
 	}
 
-	// Check if there's region-specific pricing
 	if tier.RegionPricing != nil {
 		if regionPrice, ok := tier.RegionPricing[currencyCode]; ok {
 			if priceMap, ok := regionPrice.(map[string]interface{}); ok {
-				// Create a copy of the tier with region-specific prices
 				regionTier := *tier
 				if monthly, ok := priceMap["monthly"].(float64); ok {
 					regionTier.MonthlyPriceCents = int(monthly)
@@ -967,7 +963,6 @@ func (r *RevenueRepository) GetAgentTierPricingForRegion(ctx context.Context, sl
 		}
 	}
 
-	// Return base tier (caller should convert using currency service)
 	return tier, nil
 }
 
@@ -1254,13 +1249,11 @@ func (r *RevenueRepository) ConvertCurrency(ctx context.Context, amountCents int
 		return amountCents, nil
 	}
 
-	// Get exchange rate
 	rate, err := r.GetCurrencyExchangeRate(ctx, fromCurrency, toCurrency, nil)
 	if err != nil {
 		return 0, err
 	}
 	if rate == nil {
-		// Try inverse rate
 		rate, err = r.GetCurrencyExchangeRate(ctx, toCurrency, fromCurrency, nil)
 		if err != nil {
 			return 0, err
@@ -1268,7 +1261,6 @@ func (r *RevenueRepository) ConvertCurrency(ctx context.Context, amountCents int
 		if rate == nil {
 			return 0, fmt.Errorf("no exchange rate found for %s to %s", fromCurrency, toCurrency)
 		}
-		// Use inverse rate
 		converted := float64(amountCents) / rate.Rate
 		return int(converted + 0.5), nil
 	}

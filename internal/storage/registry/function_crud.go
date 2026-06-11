@@ -23,7 +23,7 @@ type FunctionInputSchema struct {
 }
 
 // CreateFunction creates a new function in the registry
-func (r *RegistryRepository) CreateFunction(fn *RegistryFunction) error {
+func (r *RegistryRepository) CreateFunction(ctx context.Context, fn *RegistryFunction) error {
 	if fn.ID == uuid.Nil {
 		fn.ID = uuid.New()
 	}
@@ -41,7 +41,7 @@ func (r *RegistryRepository) CreateFunction(fn *RegistryFunction) error {
 		"name":        fn.Name,
 	}).Debug("CreateFunction: about to insert")
 
-	if err := r.db.Create(fn).Error; err != nil {
+	if err := r.db.WithContext(ctx).Create(fn).Error; err != nil {
 		return fmt.Errorf("failed to create function: %w", err)
 	}
 
@@ -74,9 +74,9 @@ func (r *RegistryRepository) CreateFunction(fn *RegistryFunction) error {
 }
 
 // GetFunctionByID retrieves a function by ID
-func (r *RegistryRepository) GetFunctionByID(id uuid.UUID) (*RegistryFunction, error) {
+func (r *RegistryRepository) GetFunctionByID(ctx context.Context, id uuid.UUID) (*RegistryFunction, error) {
 	var fn RegistryFunction
-	if err := r.db.First(&fn, id).Error; err != nil {
+	if err := r.db.WithContext(ctx).First(&fn, id).Error; err != nil {
 		return nil, fmt.Errorf("failed to get function by ID: %w", err)
 	}
 
@@ -84,12 +84,12 @@ func (r *RegistryRepository) GetFunctionByID(id uuid.UUID) (*RegistryFunction, e
 }
 
 // GetFunctionByAuthorName retrieves a function by author and name
-func (r *RegistryRepository) GetFunctionByAuthorName(author, name string) (*RegistryFunction, error) {
+func (r *RegistryRepository) GetFunctionByAuthorName(ctx context.Context, author, name string) (*RegistryFunction, error) {
 	// Try cache first if available
 	if r.cache != nil && r.keyGen != nil {
 		cacheKey := r.keyGen.FunctionInfo(author, name)
 		var fn RegistryFunction
-		if err := r.cache.GetJSON(context.Background(), cacheKey, &fn); err == nil {
+		if err := r.cache.GetJSON(ctx, cacheKey, &fn); err == nil {
 			return &fn, nil
 		}
 		// Cache miss - continue to database
@@ -97,7 +97,7 @@ func (r *RegistryRepository) GetFunctionByAuthorName(author, name string) (*Regi
 
 	var fn RegistryFunction
 	var err error
-	err = r.db.Where("author = ? AND name = ?", author, name).First(&fn).Error
+	err = r.db.WithContext(ctx).Where("author = ? AND name = ?", author, name).First(&fn).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, gorm.ErrRecordNotFound
@@ -133,7 +133,7 @@ func (r *RegistryRepository) GetFunctionByAuthorName(author, name string) (*Regi
 }
 
 // UpdateFunctionSettings updates the settings JSONB for a registry function (e.g. custom_domains).
-func (r *RegistryRepository) UpdateFunctionSettings(id uuid.UUID, settings map[string]interface{}) error {
+func (r *RegistryRepository) UpdateFunctionSettings(ctx context.Context, id uuid.UUID, settings map[string]interface{}) error {
 	if settings == nil {
 		settings = make(map[string]interface{})
 	}
@@ -141,7 +141,7 @@ func (r *RegistryRepository) UpdateFunctionSettings(id uuid.UUID, settings map[s
 	if err != nil {
 		return fmt.Errorf("failed to marshal settings: %w", err)
 	}
-	if err := r.db.Model(&RegistryFunction{}).Where("id = ?", id).Update("settings", raw).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&RegistryFunction{}).Where("id = ?", id).Update("settings", raw).Error; err != nil {
 		return fmt.Errorf("failed to update function settings: %w", err)
 	}
 	if r.cache != nil {
@@ -161,8 +161,8 @@ func (r *RegistryRepository) UpdateFunctionSettings(id uuid.UUID, settings map[s
 }
 
 // UpdateFunctionLatestVersion updates the latest version pointer
-func (r *RegistryRepository) UpdateFunctionLatestVersion(id uuid.UUID, version string) error {
-	if err := r.db.Model(&RegistryFunction{}).Where("id = ?", id).Updates(map[string]interface{}{
+func (r *RegistryRepository) UpdateFunctionLatestVersion(ctx context.Context, id uuid.UUID, version string) error {
+	if err := r.db.WithContext(ctx).Model(&RegistryFunction{}).Where("id = ?", id).Updates(map[string]interface{}{
 		"latest_version": version,
 		"updated_at":     time.Now(),
 	}).Error; err != nil {
@@ -190,10 +190,10 @@ func (r *RegistryRepository) UpdateFunctionLatestVersion(id uuid.UUID, version s
 }
 
 // DeleteFunction deletes a function from the registry by author and name
-func (r *RegistryRepository) DeleteFunction(author, name string) error {
+func (r *RegistryRepository) DeleteFunction(ctx context.Context, author, name string) error {
 	// First get the function directly from DB without using cache to avoid cache issues
 	var fn RegistryFunction
-	if err := r.db.Where("author = ? AND name = ?", author, name).First(&fn).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("author = ? AND name = ?", author, name).First(&fn).Error; err != nil {
 		if err.Error() == "record not found" {
 			return nil // Function doesn't exist, consider it deleted
 		}
@@ -202,17 +202,17 @@ func (r *RegistryRepository) DeleteFunction(author, name string) error {
 
 	// Delete related records first (versions, ratings, etc.)
 	// Delete function versions
-	if err := r.db.Where("function_id = ?", fn.ID).Delete(&RegistryFunctionVersion{}).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("function_id = ?", fn.ID).Delete(&RegistryFunctionVersion{}).Error; err != nil {
 		return fmt.Errorf("failed to delete function versions: %w", err)
 	}
 
 	// Delete ratings
-	if err := r.db.Where("function_id = ?", fn.ID).Delete(&RegistryFunctionRating{}).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("function_id = ?", fn.ID).Delete(&RegistryFunctionRating{}).Error; err != nil {
 		return fmt.Errorf("failed to delete function ratings: %w", err)
 	}
 
 	// Delete the function itself
-	if err := r.db.Delete(&fn).Error; err != nil {
+	if err := r.db.WithContext(ctx).Delete(&fn).Error; err != nil {
 		return fmt.Errorf("failed to delete function: %w", err)
 	}
 
@@ -228,22 +228,22 @@ func (r *RegistryRepository) DeleteFunction(author, name string) error {
 }
 
 // DeleteAllFunctions deletes all functions from the registry (for testing/reset purposes)
-func (r *RegistryRepository) DeleteAllFunctions() error {
+func (r *RegistryRepository) DeleteAllFunctions(ctx context.Context) error {
 	// Get table names from GORM to avoid hardcoding
 	versionTable := (&RegistryFunctionVersion{}).TableName()
 	ratingTable := (&RegistryFunctionRating{}).TableName()
 	functionTable := (&RegistryFunction{}).TableName()
 
 	// Use raw SQL to delete all records from related tables first (to avoid FK issues)
-	if err := r.db.Exec(fmt.Sprintf("DELETE FROM %s", versionTable)).Error; err != nil {
+	if err := r.db.WithContext(ctx).Exec(fmt.Sprintf("DELETE FROM %s", versionTable)).Error; err != nil {
 		return fmt.Errorf("failed to delete all function versions: %w", err)
 	}
 
-	if err := r.db.Exec(fmt.Sprintf("DELETE FROM %s", ratingTable)).Error; err != nil {
+	if err := r.db.WithContext(ctx).Exec(fmt.Sprintf("DELETE FROM %s", ratingTable)).Error; err != nil {
 		return fmt.Errorf("failed to delete all function ratings: %w", err)
 	}
 
-	if err := r.db.Exec(fmt.Sprintf("DELETE FROM %s", functionTable)).Error; err != nil {
+	if err := r.db.WithContext(ctx).Exec(fmt.Sprintf("DELETE FROM %s", functionTable)).Error; err != nil {
 		return fmt.Errorf("failed to delete all functions: %w", err)
 	}
 
@@ -258,9 +258,9 @@ func (r *RegistryRepository) DeleteAllFunctions() error {
 }
 
 // IsFunctionVersionDeterministic checks if a function version is deterministic and cacheable
-func (r *RegistryRepository) IsFunctionVersionDeterministic(functionID uuid.UUID, version string) (bool, time.Duration, error) {
+func (r *RegistryRepository) IsFunctionVersionDeterministic(ctx context.Context, functionID uuid.UUID, version string) (bool, time.Duration, error) {
 	var functionVersion RegistryFunctionVersion
-	if err := r.db.Where("function_id = ? AND version = ?", functionID, version).First(&functionVersion).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("function_id = ? AND version = ?", functionID, version).First(&functionVersion).Error; err != nil {
 		return false, 0, fmt.Errorf("failed to get function version: %w", err)
 	}
 
@@ -282,8 +282,8 @@ func (r *RegistryRepository) IsFunctionVersionDeterministic(functionID uuid.UUID
 // SetWasmCompiled stores AOT-compiled module bytes for a function version.
 // This allows the runtime to deserialize precompiled modules in ~0.1ms
 // instead of recompiling on every cold start.
-func (r *RegistryRepository) SetWasmCompiled(functionID uuid.UUID, version string, compiled []byte) error {
-	if err := r.db.Model(&RegistryFunctionVersion{}).
+func (r *RegistryRepository) SetWasmCompiled(ctx context.Context, functionID uuid.UUID, version string, compiled []byte) error {
+	if err := r.db.WithContext(ctx).Model(&RegistryFunctionVersion{}).
 		Where("function_id = ? AND version = ?", functionID, version).
 		Update("wasm_compiled", compiled).Error; err != nil {
 		return fmt.Errorf("failed to set wasm_compiled: %w", err)
@@ -293,9 +293,9 @@ func (r *RegistryRepository) SetWasmCompiled(functionID uuid.UUID, version strin
 
 // GetWasmCompiled retrieves AOT-compiled module bytes for a function version.
 // Returns nil if no precompiled bytes are available.
-func (r *RegistryRepository) GetWasmCompiled(functionID uuid.UUID, version string) ([]byte, error) {
+func (r *RegistryRepository) GetWasmCompiled(ctx context.Context, functionID uuid.UUID, version string) ([]byte, error) {
 	var fnVersion RegistryFunctionVersion
-	if err := r.db.Select("wasm_compiled").
+	if err := r.db.WithContext(ctx).Select("wasm_compiled").
 		Where("function_id = ? AND version = ?", functionID, version).
 		First(&fnVersion).Error; err != nil {
 		return nil, fmt.Errorf("failed to get wasm_compiled: %w", err)
@@ -340,18 +340,18 @@ func (r *RegistryRepository) GetFunctionByTenantAndName(ctx context.Context, ten
 
 // UpsertFunctionInputSchema creates or updates the input JSON schema for a function version.
 // This auto-generates a permissive schema from the function's source code when none is provided.
-func (r *RegistryRepository) UpsertFunctionInputSchema(functionVersionID uuid.UUID, schema json.RawMessage, isStrict bool) error {
+func (r *RegistryRepository) UpsertFunctionInputSchema(ctx context.Context, functionVersionID uuid.UUID, schema json.RawMessage, isStrict bool) error {
 	now := time.Now()
 
 	// Try to find existing schema
 	var existing FunctionInputSchema
-	err := r.db.Where("function_version_id = ?", functionVersionID).First(&existing).Error
+	err := r.db.WithContext(ctx).Where("function_version_id = ?", functionVersionID).First(&existing).Error
 	if err == nil {
 		// Update existing
 		existing.Schema = schema
 		existing.IsStrict = isStrict
 		existing.UpdatedAt = now
-		return r.db.Save(&existing).Error
+		return r.db.WithContext(ctx).Save(&existing).Error
 	}
 
 	// Check if it's a not-found error vs other error
@@ -367,13 +367,13 @@ func (r *RegistryRepository) UpsertFunctionInputSchema(functionVersionID uuid.UU
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}
-	return r.db.Create(&newSchema).Error
+	return r.db.WithContext(ctx).Create(&newSchema).Error
 }
 
 // GetFunctionInputSchema retrieves the input schema for a function version.
-func (r *RegistryRepository) GetFunctionInputSchema(functionVersionID uuid.UUID) (*FunctionInputSchema, error) {
+func (r *RegistryRepository) GetFunctionInputSchema(ctx context.Context, functionVersionID uuid.UUID) (*FunctionInputSchema, error) {
 	var schema FunctionInputSchema
-	err := r.db.Where("function_version_id = ?", functionVersionID).First(&schema).Error
+	err := r.db.WithContext(ctx).Where("function_version_id = ?", functionVersionID).First(&schema).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil

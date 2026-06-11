@@ -17,27 +17,27 @@ import (
 // ============================================
 
 // CalculateTrustScore computes the trust score for a function based on execution metrics
-func (r *RegistryRepository) CalculateTrustScore(functionID uuid.UUID, windowStart, windowEnd time.Time) (*TrustHistory, error) {
+func (r *RegistryRepository) CalculateTrustScore(ctx context.Context, functionID uuid.UUID, windowStart, windowEnd time.Time) (*TrustHistory, error) {
 	// Get execution metrics for the window
-	metrics, err := r.GetExecutionMetrics(functionID, windowStart, windowEnd)
+	metrics, err := r.GetExecutionMetrics(ctx, functionID, windowStart, windowEnd)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get execution metrics: %w", err)
 	}
 
 	// Get consumer diversity
-	uniqueIPs, uniqueTenants, uniqueUsers, err := r.GetConsumerDiversity(functionID, windowStart)
+	uniqueIPs, uniqueTenants, uniqueUsers, err := r.GetConsumerDiversity(ctx, functionID, windowStart)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get consumer diversity: %w", err)
 	}
 
 	// Get verification status
-	isVerified, verificationLevel, err := r.GetFunctionVerificationStatus(functionID)
+	isVerified, verificationLevel, err := r.GetFunctionVerificationStatus(ctx, functionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get verification status: %w", err)
 	}
 
 	// Get user rating
-	rating, err := r.GetRatingByFunctionID(functionID)
+	rating, err := r.GetRatingByFunctionID(ctx, functionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get rating: %w", err)
 	}
@@ -205,25 +205,25 @@ func determineTrustTier(trustScore float64, isVerified bool) TrustTier {
 // ============================================
 
 // CreateTrustHistory creates a new trust history entry
-func (r *RegistryRepository) CreateTrustHistory(history *TrustHistory) error {
-	if err := r.db.Create(history).Error; err != nil {
+func (r *RegistryRepository) CreateTrustHistory(ctx context.Context, history *TrustHistory) error {
+	if err := r.db.WithContext(ctx).Create(history).Error; err != nil {
 		return fmt.Errorf("failed to create trust history: %w", err)
 	}
 	return nil
 }
 
 // GetTrustHistory retrieves trust history for a function
-func (r *RegistryRepository) GetTrustHistory(functionID uuid.UUID, limit, offset int) ([]TrustHistory, int, error) {
+func (r *RegistryRepository) GetTrustHistory(ctx context.Context, functionID uuid.UUID, limit, offset int) ([]TrustHistory, int, error) {
 	var history []TrustHistory
 	var total int64
 
 	// Count total records
-	if err := r.db.Model(&TrustHistory{}).Where("function_id = ?", functionID).Count(&total).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&TrustHistory{}).Where("function_id = ?", functionID).Count(&total).Error; err != nil {
 		return nil, 0, fmt.Errorf("failed to count trust history: %w", err)
 	}
 
 	// Get paginated results
-	if err := r.db.Where("function_id = ?", functionID).
+	if err := r.db.WithContext(ctx).Where("function_id = ?", functionID).
 		Order("calculated_at DESC").
 		Limit(limit).
 		Offset(offset).
@@ -235,9 +235,9 @@ func (r *RegistryRepository) GetTrustHistory(functionID uuid.UUID, limit, offset
 }
 
 // GetLatestTrustHistory retrieves the most recent trust history for a function
-func (r *RegistryRepository) GetLatestTrustHistory(functionID uuid.UUID) (*TrustHistory, error) {
+func (r *RegistryRepository) GetLatestTrustHistory(ctx context.Context, functionID uuid.UUID) (*TrustHistory, error) {
 	var history TrustHistory
-	if err := r.db.Where("function_id = ?", functionID).
+	if err := r.db.WithContext(ctx).Where("function_id = ?", functionID).
 		Order("calculated_at DESC").
 		First(&history).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -253,19 +253,19 @@ func (r *RegistryRepository) GetLatestTrustHistory(functionID uuid.UUID) (*Trust
 // ============================================
 
 // CreateOrUpdateExecutionMetrics creates or updates execution metrics
-func (r *RegistryRepository) CreateOrUpdateExecutionMetrics(metrics *ExecutionMetrics) error {
+func (r *RegistryRepository) CreateOrUpdateExecutionMetrics(ctx context.Context, metrics *ExecutionMetrics) error {
 	metrics.UpdatedAt = time.Now()
 
 	// Try to find existing metrics for this function and window
 	var existing ExecutionMetrics
-	err := r.db.Where("function_id = ? AND window_start = ? AND window_type = ?",
+	err := r.db.WithContext(ctx).Where("function_id = ? AND window_start = ? AND window_type = ?",
 		metrics.FunctionID, metrics.WindowStart, metrics.WindowType).First(&existing).Error
 
 	if err == gorm.ErrRecordNotFound {
 		// Create new
 		metrics.ID = uuid.New()
 		metrics.CreatedAt = time.Now()
-		if err := r.db.Create(metrics).Error; err != nil {
+		if err := r.db.WithContext(ctx).Create(metrics).Error; err != nil {
 			return fmt.Errorf("failed to create execution metrics: %w", err)
 		}
 		return nil
@@ -276,7 +276,7 @@ func (r *RegistryRepository) CreateOrUpdateExecutionMetrics(metrics *ExecutionMe
 	// Update existing
 	metrics.ID = existing.ID
 	metrics.CreatedAt = existing.CreatedAt
-	if err := r.db.Save(metrics).Error; err != nil {
+	if err := r.db.WithContext(ctx).Save(metrics).Error; err != nil {
 		return fmt.Errorf("failed to update execution metrics: %w", err)
 	}
 
@@ -284,17 +284,17 @@ func (r *RegistryRepository) CreateOrUpdateExecutionMetrics(metrics *ExecutionMe
 }
 
 // GetExecutionMetrics retrieves execution metrics for a function and time window
-func (r *RegistryRepository) GetExecutionMetrics(functionID uuid.UUID, windowStart, windowEnd time.Time) (*ExecutionMetrics, error) {
+func (r *RegistryRepository) GetExecutionMetrics(ctx context.Context, functionID uuid.UUID, windowStart, windowEnd time.Time) (*ExecutionMetrics, error) {
 	// First try to get aggregated metrics from the execution_metrics table
 	var metrics ExecutionMetrics
-	err := r.db.Where("function_id = ? AND window_start >= ? AND window_end <= ?",
+	err := r.db.WithContext(ctx).Where("function_id = ? AND window_start >= ? AND window_end <= ?",
 		functionID, windowStart, windowEnd).
 		Order("window_start DESC").
 		First(&metrics).Error
 
 	if err == gorm.ErrRecordNotFound {
 		// Fall back to calculating from raw executions
-		return r.calculateMetricsFromExecutions(functionID, windowStart, windowEnd)
+		return r.calculateMetricsFromExecutions(ctx, functionID, windowStart, windowEnd)
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to get execution metrics: %w", err)
 	}
@@ -303,7 +303,7 @@ func (r *RegistryRepository) GetExecutionMetrics(functionID uuid.UUID, windowSta
 }
 
 // calculateMetricsFromExecutions calculates metrics from raw execution data
-func (r *RegistryRepository) calculateMetricsFromExecutions(functionID uuid.UUID, windowStart, windowEnd time.Time) (*ExecutionMetrics, error) {
+func (r *RegistryRepository) calculateMetricsFromExecutions(ctx context.Context, functionID uuid.UUID, windowStart, windowEnd time.Time) (*ExecutionMetrics, error) {
 	var result struct {
 		TotalCalls    int     `json:"total_calls"`
 		SuccessRate   float64 `json:"success_rate"`
@@ -335,7 +335,7 @@ func (r *RegistryRepository) calculateMetricsFromExecutions(functionID uuid.UUID
 		WHERE function_id = ? AND timestamp >= ? AND timestamp <= ?
 	`
 
-	if err := r.db.Raw(query, functionID, windowStart, windowEnd).Scan(&result).Error; err != nil {
+	if err := r.db.WithContext(ctx).Raw(query, functionID, windowStart, windowEnd).Scan(&result).Error; err != nil {
 		return nil, fmt.Errorf("failed to calculate metrics from executions: %w", err)
 	}
 
@@ -363,13 +363,13 @@ func (r *RegistryRepository) calculateMetricsFromExecutions(functionID uuid.UUID
 }
 
 // AggregateHourlyMetrics aggregates execution data into hourly metrics
-func (r *RegistryRepository) AggregateHourlyMetrics(hour time.Time) error {
+func (r *RegistryRepository) AggregateHourlyMetrics(ctx context.Context, hour time.Time) error {
 	windowStart := hour.Truncate(time.Hour)
 	windowEnd := windowStart.Add(time.Hour)
 
 	// Get all functions with executions in this window
 	var functionIDs []uuid.UUID
-	if err := r.db.Model(&RegistryFunctionExecution{}).
+	if err := r.db.WithContext(ctx).Model(&RegistryFunctionExecution{}).
 		Where("timestamp >= ? AND timestamp < ?", windowStart, windowEnd).
 		Distinct("function_id").
 		Pluck("function_id", &functionIDs).Error; err != nil {
@@ -381,13 +381,13 @@ func (r *RegistryRepository) AggregateHourlyMetrics(hour time.Time) error {
 	}
 
 	// Batch calculate all metrics in a single query
-	allMetrics, err := r.batchCalculateMetricsFromExecutions(functionIDs, windowStart, windowEnd)
+	allMetrics, err := r.batchCalculateMetricsFromExecutions(ctx, functionIDs, windowStart, windowEnd)
 	if err != nil {
 		return fmt.Errorf("failed to batch calculate metrics: %w", err)
 	}
 
 	for _, metrics := range allMetrics {
-		if err := r.CreateOrUpdateExecutionMetrics(metrics); err != nil {
+		if err := r.CreateOrUpdateExecutionMetrics(ctx, metrics); err != nil {
 			logrus.WithError(err).WithField("function_id", metrics.FunctionID).Error("Failed to save metrics")
 		}
 	}
@@ -396,7 +396,7 @@ func (r *RegistryRepository) AggregateHourlyMetrics(hour time.Time) error {
 }
 
 // batchCalculateMetricsFromExecutions calculates metrics for multiple functions in a single query
-func (r *RegistryRepository) batchCalculateMetricsFromExecutions(functionIDs []uuid.UUID, windowStart, windowEnd time.Time) (map[uuid.UUID]*ExecutionMetrics, error) {
+func (r *RegistryRepository) batchCalculateMetricsFromExecutions(ctx context.Context, functionIDs []uuid.UUID, windowStart, windowEnd time.Time) (map[uuid.UUID]*ExecutionMetrics, error) {
 	results := make(map[uuid.UUID]*ExecutionMetrics, len(functionIDs))
 
 	query := `
@@ -418,7 +418,7 @@ func (r *RegistryRepository) batchCalculateMetricsFromExecutions(functionIDs []u
 		GROUP BY function_id
 	`
 
-	rows, err := r.db.Raw(query, pq.Array(functionIDs), windowStart, windowEnd).Rows()
+	rows, err := r.db.WithContext(ctx).Raw(query, pq.Array(functionIDs), windowStart, windowEnd).Rows()
 	if err != nil {
 		return nil, fmt.Errorf("failed to batch calculate metrics: %w", err)
 	}
@@ -477,7 +477,7 @@ func (r *RegistryRepository) batchCalculateMetricsFromExecutions(functionIDs []u
 // ============================================
 
 // UpdateFunctionTrustScore updates the trust score on the function record
-func (r *RegistryRepository) UpdateFunctionTrustScore(functionID uuid.UUID, trustScore float64, trustTier TrustTier) error {
+func (r *RegistryRepository) UpdateFunctionTrustScore(ctx context.Context, functionID uuid.UUID, trustScore float64, trustTier TrustTier) error {
 	now := time.Now()
 	updates := map[string]interface{}{
 		"trust_score":               trustScore,
@@ -486,7 +486,7 @@ func (r *RegistryRepository) UpdateFunctionTrustScore(functionID uuid.UUID, trus
 		"trust_calculation_version": gorm.Expr("trust_calculation_version + 1"),
 	}
 
-	if err := r.db.Model(&RegistryFunction{}).Where("id = ?", functionID).Updates(updates).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&RegistryFunction{}).Where("id = ?", functionID).Updates(updates).Error; err != nil {
 		return fmt.Errorf("failed to update function trust score: %w", err)
 	}
 
@@ -494,22 +494,22 @@ func (r *RegistryRepository) UpdateFunctionTrustScore(functionID uuid.UUID, trus
 }
 
 // RecalculateTrustScore recalculates and updates trust score for a single function
-func (r *RegistryRepository) RecalculateTrustScore(functionID uuid.UUID) error {
+func (r *RegistryRepository) RecalculateTrustScore(ctx context.Context, functionID uuid.UUID) error {
 	// Get the time window (last 100 executions or last 24 hours, whichever is longer)
 	since := time.Now().Add(-24 * time.Hour)
 
-	history, err := r.CalculateTrustScore(functionID, since, time.Now())
+	history, err := r.CalculateTrustScore(ctx, functionID, since, time.Now())
 	if err != nil {
 		return fmt.Errorf("failed to calculate trust score: %w", err)
 	}
 
 	// Save to history
-	if err := r.CreateTrustHistory(history); err != nil {
+	if err := r.CreateTrustHistory(ctx, history); err != nil {
 		return fmt.Errorf("failed to create trust history: %w", err)
 	}
 
 	// Update function record
-	if err := r.UpdateFunctionTrustScore(functionID, history.TrustScore, history.TrustTier); err != nil {
+	if err := r.UpdateFunctionTrustScore(ctx, functionID, history.TrustScore, history.TrustTier); err != nil {
 		return fmt.Errorf("failed to update function trust score: %w", err)
 	}
 
@@ -521,10 +521,10 @@ func (r *RegistryRepository) RecalculateTrustScore(functionID uuid.UUID) error {
 // ============================================
 
 // GetFunctionVerificationStatus retrieves verification status for a function
-func (r *RegistryRepository) GetFunctionVerificationStatus(functionID uuid.UUID) (bool, string, error) {
+func (r *RegistryRepository) GetFunctionVerificationStatus(ctx context.Context, functionID uuid.UUID) (bool, string, error) {
 	// Get the latest version's verification status
 	var version RegistryFunctionVersion
-	if err := r.db.Where("function_id = ?", functionID).
+	if err := r.db.WithContext(ctx).Where("function_id = ?", functionID).
 		Order("published_at DESC").
 		First(&version).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -534,7 +534,7 @@ func (r *RegistryRepository) GetFunctionVerificationStatus(functionID uuid.UUID)
 	}
 
 	var status RegistryFunctionVerificationStatus
-	if err := r.db.Where("function_version_id = ?", version.ID).First(&status).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("function_version_id = ?", version.ID).First(&status).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return false, "none", nil
 		}
@@ -558,29 +558,29 @@ func (r *RegistryRepository) GetFunctionVerificationStatus(functionID uuid.UUID)
 // ============================================
 
 // CreateTrustScoreJob creates a new trust score job record
-func (r *RegistryRepository) CreateTrustScoreJob(job *TrustScoreJob) error {
+func (r *RegistryRepository) CreateTrustScoreJob(ctx context.Context, job *TrustScoreJob) error {
 	job.ID = uuid.New()
 	job.CreatedAt = time.Now()
 	job.Errors, _ = json.Marshal([]string{})
 
-	if err := r.db.Create(job).Error; err != nil {
+	if err := r.db.WithContext(ctx).Create(job).Error; err != nil {
 		return fmt.Errorf("failed to create trust score job: %w", err)
 	}
 	return nil
 }
 
 // UpdateTrustScoreJob updates a trust score job
-func (r *RegistryRepository) UpdateTrustScoreJob(jobID uuid.UUID, updates map[string]interface{}) error {
-	if err := r.db.Model(&TrustScoreJob{}).Where("id = ?", jobID).Updates(updates).Error; err != nil {
+func (r *RegistryRepository) UpdateTrustScoreJob(ctx context.Context, jobID uuid.UUID, updates map[string]interface{}) error {
+	if err := r.db.WithContext(ctx).Model(&TrustScoreJob{}).Where("id = ?", jobID).Updates(updates).Error; err != nil {
 		return fmt.Errorf("failed to update trust score job: %w", err)
 	}
 	return nil
 }
 
 // GetTrustScoreJob retrieves a trust score job by ID
-func (r *RegistryRepository) GetTrustScoreJob(jobID uuid.UUID) (*TrustScoreJob, error) {
+func (r *RegistryRepository) GetTrustScoreJob(ctx context.Context, jobID uuid.UUID) (*TrustScoreJob, error) {
 	var job TrustScoreJob
-	if err := r.db.Where("id = ?", jobID).First(&job).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("id = ?", jobID).First(&job).Error; err != nil {
 		return nil, fmt.Errorf("failed to get trust score job: %w", err)
 	}
 	return &job, nil
@@ -591,18 +591,18 @@ func (r *RegistryRepository) GetTrustScoreJob(jobID uuid.UUID) (*TrustScoreJob, 
 // ============================================
 
 // CalculateTrustScoreSliding computes a trust score using sliding window with exponential smoothing
-func (r *RegistryRepository) CalculateTrustScoreSliding(functionID uuid.UUID, config SlidingWindowConfig) (*TrustHistory, *TrustScoreDelta, error) {
+func (r *RegistryRepository) CalculateTrustScoreSliding(ctx context.Context, functionID uuid.UUID, config SlidingWindowConfig) (*TrustHistory, *TrustScoreDelta, error) {
 	now := time.Now()
 	windowStart := now.Add(-config.WindowDuration)
 
 	// Get current sliding window state
-	state, err := r.getOrCreateSlidingWindowState(functionID, config)
+	state, err := r.getOrCreateSlidingWindowState(ctx, functionID, config)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get sliding window state: %w", err)
 	}
 
 	// Calculate metrics for the sliding window
-	metrics, err := r.calculateMetricsFromExecutions(functionID, windowStart, now)
+	metrics, err := r.calculateMetricsFromExecutions(ctx, functionID, windowStart, now)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to calculate window metrics: %w", err)
 	}
@@ -616,12 +616,12 @@ func (r *RegistryRepository) CalculateTrustScoreSliding(functionID uuid.UUID, co
 	}
 
 	// Get other trust components
-	isVerified, verificationLevel, err := r.GetFunctionVerificationStatus(functionID)
+	isVerified, verificationLevel, err := r.GetFunctionVerificationStatus(ctx, functionID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get verification status: %w", err)
 	}
 
-	rating, err := r.GetRatingByFunctionID(functionID)
+	rating, err := r.GetRatingByFunctionID(ctx, functionID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get rating: %w", err)
 	}
@@ -634,7 +634,7 @@ func (r *RegistryRepository) CalculateTrustScoreSliding(functionID uuid.UUID, co
 	verificationBonus := calculateVerificationBonus(isVerified, verificationLevel)
 
 	// Get diversity metrics
-	uniqueIPs, uniqueTenants, uniqueUsers, err := r.GetConsumerDiversity(functionID, windowStart)
+	uniqueIPs, uniqueTenants, uniqueUsers, err := r.GetConsumerDiversity(ctx, functionID, windowStart)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get consumer diversity: %w", err)
 	}
@@ -730,7 +730,7 @@ func (r *RegistryRepository) CalculateTrustScoreSliding(functionID uuid.UUID, co
 	state.UserRatingScore = userRatingScore
 	state.VerificationBonus = verificationBonus
 
-	if err := r.saveSlidingWindowState(state); err != nil {
+	if err := r.saveSlidingWindowState(ctx, state); err != nil {
 		logrus.WithError(err).Warn("Failed to save sliding window state")
 	}
 
@@ -738,9 +738,9 @@ func (r *RegistryRepository) CalculateTrustScoreSliding(functionID uuid.UUID, co
 }
 
 // getOrCreateSlidingWindowState retrieves or creates sliding window state for a function
-func (r *RegistryRepository) getOrCreateSlidingWindowState(functionID uuid.UUID, config SlidingWindowConfig) (*SlidingWindowState, error) {
+func (r *RegistryRepository) getOrCreateSlidingWindowState(ctx context.Context, functionID uuid.UUID, config SlidingWindowConfig) (*SlidingWindowState, error) {
 	var state SlidingWindowState
-	err := r.db.Where("function_id = ?", functionID).First(&state).Error
+	err := r.db.WithContext(ctx).Where("function_id = ?", functionID).First(&state).Error
 
 	if err == gorm.ErrRecordNotFound {
 		// Create new state
@@ -761,14 +761,14 @@ func (r *RegistryRepository) getOrCreateSlidingWindowState(functionID uuid.UUID,
 }
 
 // saveSlidingWindowState saves the sliding window state
-func (r *RegistryRepository) saveSlidingWindowState(state *SlidingWindowState) error {
-	return r.db.Save(state).Error
+func (r *RegistryRepository) saveSlidingWindowState(ctx context.Context, state *SlidingWindowState) error {
+	return r.db.WithContext(ctx).Save(state).Error
 }
 
 // UpdateSlidingWindowScores updates scores for all functions using sliding window
-func (r *RegistryRepository) UpdateSlidingWindowScores(config SlidingWindowConfig) ([]TrustScoreDelta, error) {
+func (r *RegistryRepository) UpdateSlidingWindowScores(ctx context.Context, config SlidingWindowConfig) ([]TrustScoreDelta, error) {
 	var functions []RegistryFunction
-	if err := r.db.Find(&functions).Error; err != nil {
+	if err := r.db.WithContext(ctx).Find(&functions).Error; err != nil {
 		return nil, fmt.Errorf("failed to get functions: %w", err)
 	}
 
@@ -779,19 +779,19 @@ func (r *RegistryRepository) UpdateSlidingWindowScores(config SlidingWindowConfi
 	var deltas []TrustScoreDelta
 
 	for _, fn := range functions {
-		history, delta, err := r.CalculateTrustScoreSliding(fn.ID, config)
+		history, delta, err := r.CalculateTrustScoreSliding(ctx, fn.ID, config)
 		if err != nil {
 			logrus.WithError(err).Warnf("Failed to calculate sliding window score for %s", fn.ID)
 			continue
 		}
 
 		// Save to history
-		if err := r.CreateTrustHistory(history); err != nil {
+		if err := r.CreateTrustHistory(ctx, history); err != nil {
 			logrus.WithError(err).Warnf("Failed to save trust history for %s", fn.ID)
 		}
 
 		// Update function record
-		if err := r.UpdateFunctionTrustScore(fn.ID, history.TrustScore, history.TrustTier); err != nil {
+		if err := r.UpdateFunctionTrustScore(ctx, fn.ID, history.TrustScore, history.TrustTier); err != nil {
 			logrus.WithError(err).Warnf("Failed to update function trust score for %s", fn.ID)
 		}
 
@@ -808,7 +808,7 @@ func (r *RegistryRepository) UpdateSlidingWindowScores(config SlidingWindowConfi
 // ============================================
 
 // RefreshAllTrustScores recalculates trust scores for all functions
-func (r *RegistryRepository) RefreshAllTrustScores() (*TrustScoreJob, error) {
+func (r *RegistryRepository) RefreshAllTrustScores(ctx context.Context) (*TrustScoreJob, error) {
 	// Create job record
 	job := &TrustScoreJob{
 		JobType:        "full_recalculation",
@@ -816,21 +816,21 @@ func (r *RegistryRepository) RefreshAllTrustScores() (*TrustScoreJob, error) {
 		StartedAt:      timePtr(time.Now()),
 		FunctionsTotal: 0,
 	}
-	if err := r.CreateTrustScoreJob(job); err != nil {
+	if err := r.CreateTrustScoreJob(ctx, job); err != nil {
 		return nil, fmt.Errorf("failed to create job: %w", err)
 	}
 
 	// Get all functions
 	var functions []RegistryFunction
-	if err := r.db.Find(&functions).Error; err != nil {
-		r.UpdateTrustScoreJob(job.ID, map[string]interface{}{
+	if err := r.db.WithContext(ctx).Find(&functions).Error; err != nil {
+		r.UpdateTrustScoreJob(ctx, job.ID, map[string]interface{}{
 			"status": "failed",
 		})
 		return nil, fmt.Errorf("failed to get functions: %w", err)
 	}
 
 	job.FunctionsTotal = len(functions)
-	r.UpdateTrustScoreJob(job.ID, map[string]interface{}{
+	r.UpdateTrustScoreJob(ctx, job.ID, map[string]interface{}{
 		"functions_total": len(functions),
 	})
 
@@ -838,7 +838,7 @@ func (r *RegistryRepository) RefreshAllTrustScores() (*TrustScoreJob, error) {
 	processed := 0
 
 	for _, fn := range functions {
-		if err := r.RecalculateTrustScore(fn.ID); err != nil {
+		if err := r.RecalculateTrustScore(ctx, fn.ID); err != nil {
 			errors = append(errors, fmt.Sprintf("function %s: %v", fn.ID, err))
 			logrus.Errorf("Failed to recalculate trust score for function %s: %v", fn.ID, err)
 		}
@@ -846,7 +846,7 @@ func (r *RegistryRepository) RefreshAllTrustScores() (*TrustScoreJob, error) {
 
 		// Update progress every 100 functions
 		if processed%100 == 0 {
-			r.UpdateTrustScoreJob(job.ID, map[string]interface{}{
+			r.UpdateTrustScoreJob(ctx, job.ID, map[string]interface{}{
 				"functions_processed": processed,
 			})
 		}
@@ -858,7 +858,7 @@ func (r *RegistryRepository) RefreshAllTrustScores() (*TrustScoreJob, error) {
 		status = "failed"
 	}
 	now := time.Now()
-	r.UpdateTrustScoreJob(job.ID, map[string]interface{}{
+	r.UpdateTrustScoreJob(ctx, job.ID, map[string]interface{}{
 		"status":              status,
 		"functions_processed": processed,
 		"errors":              errors,
@@ -877,10 +877,10 @@ func timePtr(t time.Time) *time.Time {
 
 // GetAllFunctionsWithTrustScores retrieves all functions with their current trust scores
 // Used for delta tracking in streaming updates
-func (r *RegistryRepository) GetAllFunctionsWithTrustScores() ([]RegistryFunction, error) {
+func (r *RegistryRepository) GetAllFunctionsWithTrustScores(ctx context.Context) ([]RegistryFunction, error) {
 	var functions []RegistryFunction
 	// Select only the fields we need for delta tracking
-	if err := r.db.Select("id, trust_score, trust_tier, trust_updated_at").Find(&functions).Error; err != nil {
+	if err := r.db.WithContext(ctx).Select("id, trust_score, trust_tier, trust_updated_at").Find(&functions).Error; err != nil {
 		return nil, fmt.Errorf("failed to get functions with trust scores: %w", err)
 	}
 	return functions, nil
@@ -892,20 +892,12 @@ func (r *RegistryRepository) GetAllFunctionsWithTrustScores() ([]RegistryFunctio
 
 // InvalidateTrustScoreCache invalidates the trust score cache for a function
 // Uses the rating cache key as a proxy since trust scores are derived from ratings
-func (r *RegistryRepository) InvalidateTrustScoreCache(functionID uuid.UUID) error {
+func (r *RegistryRepository) InvalidateTrustScoreCache(ctx context.Context, functionID uuid.UUID) error {
 	if r.cache != nil && r.keyGen != nil {
 		// Trust scores are derived from ratings, so invalidate the rating cache
 		cacheKey := r.keyGen.FunctionRating(functionID.String())
 		go func() {
-			defer func() {
-				if rec := recover(); rec != nil {
-					logrus.WithFields(logrus.Fields{
-						"panic": rec,
-						"stack": fmt.Sprintf("%v", rec),
-					}).Error("InvalidateTrustScoreCache goroutine panicked")
-				}
-			}()
-			if err := r.cache.Delete(context.Background(), cacheKey); err != nil {
+			if err := r.cache.Delete(ctx, cacheKey); err != nil {
 				logrus.Errorf("Failed to invalidate trust score cache: %v", err)
 			}
 		}()
@@ -918,7 +910,7 @@ func (r *RegistryRepository) InvalidateTrustScoreCache(functionID uuid.UUID) err
 // ============================================
 
 // RecordRemix creates a remix history record linking source and target functions
-func (r *RegistryRepository) RecordRemix(sourceFunctionID, targetFunctionID, remixedByUserID uuid.UUID, customization string, costUSD float64) error {
+func (r *RegistryRepository) RecordRemix(ctx context.Context, sourceFunctionID, targetFunctionID, remixedByUserID uuid.UUID, customization string, costUSD float64) error {
 	remix := &RemixHistory{
 		ID:               uuid.New(),
 		SourceFunctionID: sourceFunctionID,
@@ -928,16 +920,16 @@ func (r *RegistryRepository) RecordRemix(sourceFunctionID, targetFunctionID, rem
 		Customization:    customization,
 		CostUSD:          costUSD,
 	}
-	if err := r.db.Create(remix).Error; err != nil {
+	if err := r.db.WithContext(ctx).Create(remix).Error; err != nil {
 		return fmt.Errorf("failed to record remix: %w", err)
 	}
 	return nil
 }
 
 // GetRemixHistoryForFunction returns all remixes created from this function
-func (r *RegistryRepository) GetRemixHistoryForFunction(sourceFunctionID uuid.UUID) ([]RemixHistory, error) {
+func (r *RegistryRepository) GetRemixHistoryForFunction(ctx context.Context, sourceFunctionID uuid.UUID) ([]RemixHistory, error) {
 	var history []RemixHistory
-	if err := r.db.Where("source_function_id = ?", sourceFunctionID).
+	if err := r.db.WithContext(ctx).Where("source_function_id = ?", sourceFunctionID).
 		Order("remixed_at DESC").
 		Preload("TargetFunction").
 		Find(&history).Error; err != nil {
@@ -947,9 +939,9 @@ func (r *RegistryRepository) GetRemixHistoryForFunction(sourceFunctionID uuid.UU
 }
 
 // CountRemixesForFunction returns the number of remixes for a function
-func (r *RegistryRepository) CountRemixesForFunction(sourceFunctionID uuid.UUID) (int64, error) {
+func (r *RegistryRepository) CountRemixesForFunction(ctx context.Context, sourceFunctionID uuid.UUID) (int64, error) {
 	var count int64
-	if err := r.db.Model(&RemixHistory{}).Where("source_function_id = ?", sourceFunctionID).Count(&count).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&RemixHistory{}).Where("source_function_id = ?", sourceFunctionID).Count(&count).Error; err != nil {
 		return 0, fmt.Errorf("failed to count remixes: %w", err)
 	}
 	return count, nil
@@ -957,9 +949,9 @@ func (r *RegistryRepository) CountRemixesForFunction(sourceFunctionID uuid.UUID)
 
 // IsFunctionRemix checks if a function was created by remixing another function
 // Returns true if the function appears as a target in remix_history
-func (r *RegistryRepository) IsFunctionRemix(targetFunctionID uuid.UUID) (bool, *RemixHistory, error) {
+func (r *RegistryRepository) IsFunctionRemix(ctx context.Context, targetFunctionID uuid.UUID) (bool, *RemixHistory, error) {
 	var history RemixHistory
-	err := r.db.Where("target_function_id = ?", targetFunctionID).
+	err := r.db.WithContext(ctx).Where("target_function_id = ?", targetFunctionID).
 		Preload("SourceFunction").
 		First(&history).Error
 	if err != nil {
@@ -977,16 +969,16 @@ func (r *RegistryRepository) IsFunctionRemix(targetFunctionID uuid.UUID) (bool, 
 
 // ToggleLike toggles a user's like on a function. Returns (liked, totalLikes, error).
 // If the user already liked it, removes the like (unlike). Otherwise adds it.
-func (r *RegistryRepository) ToggleLike(functionID, userID uuid.UUID) (bool, int64, error) {
+func (r *RegistryRepository) ToggleLike(ctx context.Context, functionID, userID uuid.UUID) (bool, int64, error) {
 	var existing FunctionLike
-	err := r.db.Where("function_id = ? AND user_id = ?", functionID, userID).First(&existing).Error
+	err := r.db.WithContext(ctx).Where("function_id = ? AND user_id = ?", functionID, userID).First(&existing).Error
 
 	if err == nil {
 		// User already liked - remove it (unlike)
-		if err := r.db.Delete(&existing).Error; err != nil {
+		if err := r.db.WithContext(ctx).Delete(&existing).Error; err != nil {
 			return false, 0, fmt.Errorf("failed to remove like: %w", err)
 		}
-		count, _ := r.CountLikesForFunction(functionID)
+		count, _ := r.CountLikesForFunction(ctx, functionID)
 		return false, count, nil
 	} else if err == gorm.ErrRecordNotFound {
 		// User hasn't liked - add like
@@ -996,10 +988,10 @@ func (r *RegistryRepository) ToggleLike(functionID, userID uuid.UUID) (bool, int
 			UserID:     userID,
 			LikedAt:    time.Now(),
 		}
-		if err := r.db.Create(&like).Error; err != nil {
+		if err := r.db.WithContext(ctx).Create(&like).Error; err != nil {
 			return false, 0, fmt.Errorf("failed to add like: %w", err)
 		}
-		count, _ := r.CountLikesForFunction(functionID)
+		count, _ := r.CountLikesForFunction(ctx, functionID)
 		return true, count, nil
 	}
 
@@ -1007,9 +999,9 @@ func (r *RegistryRepository) ToggleLike(functionID, userID uuid.UUID) (bool, int
 }
 
 // HasUserLiked checks if a specific user has liked a function
-func (r *RegistryRepository) HasUserLiked(functionID, userID uuid.UUID) (bool, error) {
+func (r *RegistryRepository) HasUserLiked(ctx context.Context, functionID, userID uuid.UUID) (bool, error) {
 	var count int64
-	if err := r.db.Model(&FunctionLike{}).
+	if err := r.db.WithContext(ctx).Model(&FunctionLike{}).
 		Where("function_id = ? AND user_id = ?", functionID, userID).
 		Count(&count).Error; err != nil {
 		return false, fmt.Errorf("failed to check like status: %w", err)
@@ -1018,22 +1010,22 @@ func (r *RegistryRepository) HasUserLiked(functionID, userID uuid.UUID) (bool, e
 }
 
 // CountLikesForFunction returns the total number of likes for a function
-func (r *RegistryRepository) CountLikesForFunction(functionID uuid.UUID) (int64, error) {
+func (r *RegistryRepository) CountLikesForFunction(ctx context.Context, functionID uuid.UUID) (int64, error) {
 	var count int64
-	if err := r.db.Model(&FunctionLike{}).Where("function_id = ?", functionID).Count(&count).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&FunctionLike{}).Where("function_id = ?", functionID).Count(&count).Error; err != nil {
 		return 0, fmt.Errorf("failed to count likes: %w", err)
 	}
 	return count, nil
 }
 
 // CountLikesForFunctions returns a map of function IDs to their like counts
-func (r *RegistryRepository) CountLikesForFunctions(functionIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+func (r *RegistryRepository) CountLikesForFunctions(ctx context.Context, functionIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
 	type result struct {
 		FunctionID uuid.UUID
 		Count     int64
 	}
 	var results []result
-	if err := r.db.Model(&FunctionLike{}).
+	if err := r.db.WithContext(ctx).Model(&FunctionLike{}).
 		Select("function_id, COUNT(*) as count").
 		Where("function_id IN ?", functionIDs).
 		Group("function_id").
@@ -1048,13 +1040,13 @@ func (r *RegistryRepository) CountLikesForFunctions(functionIDs []uuid.UUID) (ma
 }
 
 // CountRemixesForFunctions returns a map of function IDs to their remix counts
-func (r *RegistryRepository) CountRemixesForFunctions(functionIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+func (r *RegistryRepository) CountRemixesForFunctions(ctx context.Context, functionIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
 	type result struct {
 		SourceFunctionID uuid.UUID
 		Count            int64
 	}
 	var results []result
-	if err := r.db.Model(&RemixHistory{}).
+	if err := r.db.WithContext(ctx).Model(&RemixHistory{}).
 		Select("source_function_id, COUNT(*) as count").
 		Where("source_function_id IN ?", functionIDs).
 		Group("source_function_id").
@@ -1069,15 +1061,15 @@ func (r *RegistryRepository) CountRemixesForFunctions(functionIDs []uuid.UUID) (
 }
 
 // GetLikesForFunction returns the list of users who liked a function (with pagination)
-func (r *RegistryRepository) GetLikesForFunction(functionID uuid.UUID, limit, offset int) ([]FunctionLike, int64, error) {
+func (r *RegistryRepository) GetLikesForFunction(ctx context.Context, functionID uuid.UUID, limit, offset int) ([]FunctionLike, int64, error) {
 	var likes []FunctionLike
 	var total int64
 
-	if err := r.db.Model(&FunctionLike{}).Where("function_id = ?", functionID).Count(&total).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&FunctionLike{}).Where("function_id = ?", functionID).Count(&total).Error; err != nil {
 		return nil, 0, fmt.Errorf("failed to count likes: %w", err)
 	}
 
-	if err := r.db.Where("function_id = ?", functionID).
+	if err := r.db.WithContext(ctx).Where("function_id = ?", functionID).
 		Order("liked_at DESC").
 		Limit(limit).Offset(offset).
 		Find(&likes).Error; err != nil {

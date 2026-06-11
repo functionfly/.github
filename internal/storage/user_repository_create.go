@@ -11,7 +11,7 @@ import (
 )
 
 // CreateUser creates a new user
-func (r *UserRepository) CreateUser(email, passwordHash string, tenantID uuid.UUID) (*User, error) {
+func (r *UserRepository) CreateUser(ctx context.Context, email, passwordHash string, tenantID uuid.UUID) (*User, error) {
 	user := &User{
 		ID:            uuid.New(),
 		TenantID:      tenantID,
@@ -38,7 +38,7 @@ func (r *UserRepository) CreateUser(email, passwordHash string, tenantID uuid.UU
 	}
 
 	var profileNumber int
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		INSERT INTO users (id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at, provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used, created_at, updated_at, token_version, profile_number)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 0, nextval('users_profile_number_seq'))
 		RETURNING profile_number`,
@@ -53,7 +53,7 @@ func (r *UserRepository) CreateUser(email, passwordHash string, tenantID uuid.UU
 }
 
 // CreateUserWithSocialAuth creates a new user with social authentication
-func (r *UserRepository) CreateUserWithSocialAuth(email string, tenantID uuid.UUID, provider, providerID string, providerData map[string]interface{}) (*User, error) {
+func (r *UserRepository) CreateUserWithSocialAuth(ctx context.Context, email string, tenantID uuid.UUID, provider, providerID string, providerData map[string]interface{}) (*User, error) {
 	user := &User{
 		ID:            uuid.New(),
 		TenantID:      tenantID,
@@ -82,7 +82,7 @@ func (r *UserRepository) CreateUserWithSocialAuth(email string, tenantID uuid.UU
 	}
 
 	var profileNumber int
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		INSERT INTO users (id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at, provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used, created_at, updated_at, token_version, profile_number)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 0, nextval('users_profile_number_seq'))
 		RETURNING profile_number`,
@@ -107,7 +107,7 @@ func (r *UserRepository) CreateUserWithRole(ctx context.Context, user *User) (*U
 	var username sql.NullString
 	var companyName sql.NullString
 	var profileNumber int
-	err := r.db.QueryRow(query, user.ID, user.TenantID, user.Username, user.Email, user.PasswordHash, user.Role, user.EmailVerified, user.CompanyName).Scan(
+	err := r.db.QueryRowContext(ctx, query, user.ID, user.TenantID, user.Username, user.Email, user.PasswordHash, user.Role, user.EmailVerified, user.CompanyName).Scan(
 		&user.ID, &user.TenantID, &username, &user.Email, &user.PasswordHash, &user.Role, &companyName, &user.CreatedAt, &user.UpdatedAt, &profileNumber)
 	if err == nil && username.Valid {
 		user.Username = &username.String

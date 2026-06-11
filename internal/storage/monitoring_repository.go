@@ -129,7 +129,6 @@ func (r *MonitoringRepository) QueryMonitoringEvents(ctx context.Context, eventT
 	var rows *sql.Rows
 	var err error
 
-	// Build query based on filters
 	if tenantID != nil && eventType != "" {
 		query := `
 			SELECT id, event_type, tenant_id, app_id, backend_id, request_id, user_id, data, timestamp, created_at
@@ -190,7 +189,6 @@ func (r *MonitoringRepository) QueryMonitoringEvents(ctx context.Context, eventT
 			return nil, err
 		}
 
-		// Unmarshal data JSON
 		if len(dataJSON) > 0 {
 			err = json.Unmarshal(dataJSON, &event.Data)
 			if err != nil {
@@ -264,7 +262,6 @@ func (r *MonitoringRepository) QueryPerformanceMetrics(ctx context.Context, metr
 			return nil, err
 		}
 
-		// Unmarshal labels JSON
 		if len(labelsJSON) > 0 {
 			err = json.Unmarshal(labelsJSON, &metric.Labels)
 			if err != nil {
@@ -279,7 +276,7 @@ func (r *MonitoringRepository) QueryPerformanceMetrics(ctx context.Context, metr
 }
 
 // QueryActiveAlerts retrieves currently active alerts
-func (r *MonitoringRepository) QueryActiveAlerts(tenantID *uuid.UUID) ([]*Alert, error) {
+func (r *MonitoringRepository) QueryActiveAlerts(ctx context.Context, tenantID *uuid.UUID) ([]*Alert, error) {
 	var rows *sql.Rows
 	var err error
 
@@ -290,7 +287,7 @@ func (r *MonitoringRepository) QueryActiveAlerts(tenantID *uuid.UUID) ([]*Alert,
 			FROM alerts
 			WHERE status = 'active' AND tenant_id = $1
 			ORDER BY created_at DESC`
-		rows, err = r.db.Query(query, tenantID)
+		rows, err = r.db.QueryContext(ctx, query, tenantID)
 	} else {
 		query := `
 			SELECT id, alert_type, severity, tenant_id, app_id, backend_id, title, message,
@@ -298,7 +295,7 @@ func (r *MonitoringRepository) QueryActiveAlerts(tenantID *uuid.UUID) ([]*Alert,
 			FROM alerts
 			WHERE status = 'active'
 			ORDER BY created_at DESC`
-		rows, err = r.db.Query(query)
+		rows, err = r.db.QueryContext(ctx, query)
 	}
 
 	if err != nil {
@@ -331,7 +328,6 @@ func (r *MonitoringRepository) QueryActiveAlerts(tenantID *uuid.UUID) ([]*Alert,
 			return nil, err
 		}
 
-		// Unmarshal metadata JSON
 		if len(metadataJSON) > 0 {
 			err = json.Unmarshal(metadataJSON, &alert.Metadata)
 			if err != nil {
@@ -346,14 +342,14 @@ func (r *MonitoringRepository) QueryActiveAlerts(tenantID *uuid.UUID) ([]*Alert,
 }
 
 // QueryLatestSystemHealthChecks retrieves the latest system health checks for each component
-func (r *MonitoringRepository) QueryLatestSystemHealthChecks() (map[string]*SystemHealthCheck, error) {
+func (r *MonitoringRepository) QueryLatestSystemHealthChecks(ctx context.Context) (map[string]*SystemHealthCheck, error) {
 	query := `
 		SELECT DISTINCT ON (component_name) id, check_type, component_name, status,
 			   response_time_ms, message, metadata, checked_at, created_at
 		FROM system_health_checks
 		ORDER BY component_name, checked_at DESC`
 
-	rows, err := r.db.Query(query)
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -379,7 +375,6 @@ func (r *MonitoringRepository) QueryLatestSystemHealthChecks() (map[string]*Syst
 			return nil, err
 		}
 
-		// Unmarshal metadata JSON
 		if len(metadataJSON) > 0 {
 			err = json.Unmarshal(metadataJSON, &check.Metadata)
 			if err != nil {
@@ -394,16 +389,16 @@ func (r *MonitoringRepository) QueryLatestSystemHealthChecks() (map[string]*Syst
 }
 
 // PgNotify sends a PostgreSQL notification using pg_notify
-func (r *MonitoringRepository) PgNotify(channel, payload string) error {
+func (r *MonitoringRepository) PgNotify(ctx context.Context, channel, payload string) error {
 	query := "SELECT pg_notify($1, $2)"
-	_, err := r.db.Exec(query, channel, payload)
+	_, err := r.db.ExecContext(ctx, query, channel, payload)
 	return err
 }
 
 // PgListen starts listening on a PostgreSQL channel for notifications
 func (r *MonitoringRepository) PgListen(ctx context.Context, channel string) error {
 	query := "LISTEN " + channel
-	_, err := r.db.Exec(query)
+	_, err := r.db.ExecContext(ctx, query)
 	return err
 }
 
@@ -411,18 +406,12 @@ func (r *MonitoringRepository) PgListen(ctx context.Context, channel string) err
 // Note: This is a simplified implementation. For production use, consider using pgx driver
 // which has better support for asynchronous notifications.
 func (r *MonitoringRepository) PgWaitForNotification(ctx context.Context) (*PgNotification, error) {
-	// This implementation uses polling since the standard database/sql driver
-	// doesn't support asynchronous notifications well.
-	// For production, consider switching to pgx.
-
-	// Check if there are pending notifications
 	row := r.db.QueryRowContext(ctx, "SELECT pg_notification_queue_usage()")
 	var queueUsage float64
 	if err := row.Scan(&queueUsage); err != nil {
 		return nil, fmt.Errorf("failed to check notification queue: %w", err)
 	}
 
-	// If queue has notifications, get the next one
 	if queueUsage > 0 {
 		row := r.db.QueryRowContext(ctx, `
 			SELECT pg_notify_pid, pg_notify_channel, pg_notify_payload
@@ -442,15 +431,13 @@ func (r *MonitoringRepository) PgWaitForNotification(ctx context.Context) (*PgNo
 		}, nil
 	}
 
-	return nil, nil // No notifications available
+	return nil, nil
 }
-
 
 // StoreDatabaseMetrics stores database metrics for historical analysis
 func (r *MonitoringRepository) StoreDatabaseMetrics(ctx context.Context, metrics map[string]interface{}) error {
 	now := time.Now()
 
-	// Store connection metrics
 	if connData, ok := metrics["connections"].(map[string]interface{}); ok {
 		if total, ok := connData["total"].(float64); ok {
 			_, err := r.db.ExecContext(ctx, `
@@ -466,7 +453,6 @@ func (r *MonitoringRepository) StoreDatabaseMetrics(ctx context.Context, metrics
 		}
 	}
 
-	// Store database size
 	if storageData, ok := metrics["storage"].(map[string]interface{}); ok {
 		if sizeGB, ok := storageData["usedGB"].(float64); ok {
 			_, err := r.db.ExecContext(ctx, `
@@ -479,7 +465,6 @@ func (r *MonitoringRepository) StoreDatabaseMetrics(ctx context.Context, metrics
 		}
 	}
 
-	// Store performance metrics
 	if perfData, ok := metrics["performance"].(map[string]interface{}); ok {
 		if cacheRatio, ok := perfData["cacheHitRatio"].(float64); ok {
 			_, err := r.db.ExecContext(ctx, `
@@ -549,11 +534,9 @@ func (r *MonitoringRepository) QueryDatabaseMetrics(ctx context.Context, metricT
 			return nil, fmt.Errorf("failed to scan database metric: %w", err)
 		}
 
-		// Parse metadata JSON
 		if len(metadataBytes) > 0 {
 			err = json.Unmarshal(metadataBytes, &metric.Metadata)
 			if err != nil {
-				// Log error but continue - metadata is optional
 				metric.Metadata = make(map[string]interface{})
 			}
 		} else {
@@ -574,7 +557,6 @@ func (r *MonitoringRepository) QueryDatabaseMetrics(ctx context.Context, metricT
 func (r *MonitoringRepository) GetDatabaseHealthMetrics(ctx context.Context) (map[string]interface{}, error) {
 	metrics := make(map[string]interface{})
 
-	// Get connection stats
 	stats := r.db.Stats()
 	metrics["connections"] = map[string]interface{}{
 		"active": stats.InUse,
@@ -583,7 +565,6 @@ func (r *MonitoringRepository) GetDatabaseHealthMetrics(ctx context.Context) (ma
 		"max":    stats.MaxOpenConnections,
 	}
 
-	// Query for database size and growth
 	var dbSizeGB float64
 	var dbSizeGrowth float64
 	err := r.db.QueryRowContext(ctx, `
@@ -596,36 +577,30 @@ func (r *MonitoringRepository) GetDatabaseHealthMetrics(ctx context.Context) (ma
 			END as size_gb
 	`).Scan(&dbSizeGB, &dbSizeGB)
 	if err != nil {
-		// Failed to get database size, use 0
 		dbSizeGB = 0
 	}
 
-	// Calculate growth rate based on historical data
 	dbSizeGrowth = 0
 	if dbSizeGB > 0 {
-		// Get database size from 7 days ago
 		weekAgo := time.Now().AddDate(0, 0, -7)
 		historicalSizes, err := r.QueryDatabaseMetrics(ctx, "size_gb", weekAgo, 1)
 		if err == nil && len(historicalSizes) > 0 {
 			oldSize := historicalSizes[0].Value
 			if oldSize > 0 {
-				dbSizeGrowth = ((dbSizeGB - oldSize) / oldSize) * 100 // Growth rate as percentage
+				dbSizeGrowth = ((dbSizeGB - oldSize) / oldSize) * 100
 			}
 		}
 	}
 
-	// Get active connections count
 	var activeConnCount int
 	err = r.db.QueryRowContext(ctx, `
 		SELECT count(*) FROM pg_stat_activity
 		WHERE state = 'active' AND pid <> pg_backend_pid()
 	`).Scan(&activeConnCount)
 	if err != nil {
-		// Failed to get active connection count, use 0
 		activeConnCount = 0
 	}
 
-	// Get slow queries count (queries taking more than 1 second in the last hour)
 	var slowQueriesCount int
 	err = r.db.QueryRowContext(ctx, `
 		SELECT count(*) FROM pg_stat_activity
@@ -634,11 +609,9 @@ func (r *MonitoringRepository) GetDatabaseHealthMetrics(ctx context.Context) (ma
 		AND pid <> pg_backend_pid()
 	`).Scan(&slowQueriesCount)
 	if err != nil {
-		// Failed to get slow queries count, use 0
 		slowQueriesCount = 0
 	}
 
-	// Get cache hit ratio
 	var cacheHitRatio float64
 	err = r.db.QueryRowContext(ctx, `
 		SELECT
@@ -651,11 +624,9 @@ func (r *MonitoringRepository) GetDatabaseHealthMetrics(ctx context.Context) (ma
 		WHERE datname = current_database()
 	`).Scan(&cacheHitRatio)
 	if err != nil {
-		// Failed to get cache hit ratio, use 0
 		cacheHitRatio = 0
 	}
 
-	// Estimate throughput (queries per second in last minute)
 	var queriesPerSecond float64
 	err = r.db.QueryRowContext(ctx, `
 		SELECT
@@ -668,11 +639,9 @@ func (r *MonitoringRepository) GetDatabaseHealthMetrics(ctx context.Context) (ma
 		WHERE datname = current_database()
 	`).Scan(&queriesPerSecond)
 	if err != nil {
-		// Failed to get queries per second, use 0
 		queriesPerSecond = 0
 	}
 
-	// Get average query time from pg_stat_statements if available
 	var avgQueryTime float64
 	err = r.db.QueryRowContext(ctx, `
 		SELECT COALESCE(avg(total_time / calls), 0) as avg_query_time_ms
@@ -681,50 +650,41 @@ func (r *MonitoringRepository) GetDatabaseHealthMetrics(ctx context.Context) (ma
 		LIMIT 100
 	`).Scan(&avgQueryTime)
 	if err != nil {
-		// pg_stat_statements might not be available, use a fallback
 		avgQueryTime = 0
 	}
 
-	// Check replication status and lag (for primary-replica setups)
 	var replicationLag int
 	var replicationStatus string
 	var isReplica bool
 
-	// Check if this is a replica instance
 	err = r.db.QueryRowContext(ctx, `SELECT pg_is_in_recovery()`).Scan(&isReplica)
 	if err != nil {
-		// If we can't determine, assume it's not a replica
 		isReplica = false
 	}
 
 	if isReplica {
-		// This is a replica, check replication lag
 		err = r.db.QueryRowContext(ctx, `
 			SELECT COALESCE(extract(epoch from now() - pg_last_xact_replay_timestamp())::int, 0) as lag_seconds
 		`).Scan(&replicationLag)
 		if err != nil {
-			// Failed to get replication lag
 			replicationLag = -1
 			replicationStatus = "error"
 		} else {
-			// Determine status based on lag
 			if replicationLag == -1 {
 				replicationStatus = "error"
-			} else if replicationLag > 300 { // More than 5 minutes lag
+			} else if replicationLag > 300 {
 				replicationStatus = "critical"
-			} else if replicationLag > 60 { // More than 1 minute lag
+			} else if replicationLag > 60 {
 				replicationStatus = "warning"
 			} else {
 				replicationStatus = "healthy"
 			}
 		}
 	} else {
-		// This is a primary instance
 		replicationLag = 0
 		replicationStatus = "primary"
 	}
 
-	// Calculate available disk space percentage
 	var availablePercent float64
 	err = r.db.QueryRowContext(ctx, `
 		SELECT
@@ -744,15 +704,8 @@ func (r *MonitoringRepository) GetDatabaseHealthMetrics(ctx context.Context) (ma
 		) disk_stats
 	`).Scan(&availablePercent)
 	if err != nil {
-		// Fallback: try PostgreSQL system statistics approach
-		// For production deployments, external monitoring is recommended:
-		// - Prometheus node_exporter: Direct filesystem metrics
-		// - CloudWatch/GCP Monitoring/Azure Monitor: Cloud-native monitoring
-		// - Nagios/Icinga: Traditional infrastructure monitoring
 		err = r.db.QueryRowContext(ctx, `
-			-- Use PostgreSQL system statistics and tablespace analysis for better estimation
 			WITH system_disk_stats AS (
-				-- Get tablespace locations and sizes for more accurate filesystem analysis
 				SELECT
 					spcname as tablespace_name,
 					pg_tablespace_location(oid) as location,
@@ -762,47 +715,35 @@ func (r *MonitoringRepository) GetDatabaseHealthMetrics(ctx context.Context) (ma
 				AND pg_tablespace_location(oid) != ''
 			),
 			database_metrics AS (
-				-- Calculate database size and growth patterns
 				SELECT
 					current_database() as db_name,
 					pg_database_size(current_database()) as current_size,
-					-- Use more sophisticated space estimation based on PostgreSQL best practices
-					-- Large databases (>10GB) typically need 3-5x current size for operations
-					-- Medium databases (1-10GB) typically need 5-10x current size
-					-- Small databases (<1GB) typically need 10-20x current size
 					CASE
 						WHEN pg_database_size(current_database()) > 10737418240 THEN
-							-- >10GB databases: more conservative estimate
 							pg_database_size(current_database()) * 4
 						WHEN pg_database_size(current_database()) > 1073741824 THEN
-							-- 1-10GB databases: moderate estimate
 							pg_database_size(current_database()) * 7
 						WHEN pg_database_size(current_database()) > 104857600 THEN
-							-- 100MB-1GB databases: higher estimate
 							pg_database_size(current_database()) * 12
 						ELSE
-							-- <100MB databases: generous estimate for growth
 							pg_database_size(current_database()) * 25
 					END as estimated_capacity
 			)
-			-- Calculate available percentage with safeguards
 			SELECT
 				CASE
 					WHEN estimated_capacity > 0 AND current_size <= estimated_capacity
 					THEN ((estimated_capacity - current_size)::float / estimated_capacity) * 100
 					WHEN estimated_capacity > 0 AND current_size > estimated_capacity
-					THEN 0.0  -- Database is over capacity estimate
-					ELSE 85.0  -- Default fallback percentage
+					THEN 0.0
+					ELSE 85.0
 				END as available_percent
 			FROM database_metrics
 		`).Scan(&availablePercent)
 		if err != nil {
-			// If all methods fail, use default
 			availablePercent = 100.0
 		}
 	}
 
-	// Determine overall status
 	status := "healthy"
 	if activeConnCount > stats.MaxOpenConnections/2 {
 		status = "warning"

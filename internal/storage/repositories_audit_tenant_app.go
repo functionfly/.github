@@ -27,28 +27,28 @@ func (db *PostgresDB) GetAuditEventByID(id uuid.UUID) (*AuditEvent, error) {
 }
 
 // Tenant operations
-func (db *PostgresDB) CountRoutingEventsForTenantSince(tenantID uuid.UUID, since time.Time) (int, error) {
-	return db.tenantRepository.CountRoutingEventsForTenantSince(tenantID, since)
+func (db *PostgresDB) CountRoutingEventsForTenantSince(ctx context.Context, tenantID uuid.UUID, since time.Time) (int, error) {
+	return db.tenantRepository.CountRoutingEventsForTenantSince(ctx, tenantID, since)
 }
 
 func (db *PostgresDB) CreateTenant(ctx context.Context, name string) (*Tenant, error) {
 	return db.tenantRepository.CreateTenant(ctx, name)
 }
 
-func (db *PostgresDB) GetTenantByID(tenantID uuid.UUID) (*Tenant, error) {
-	return db.tenantRepository.GetTenantByID(tenantID)
+func (db *PostgresDB) GetTenantByID(ctx context.Context, tenantID uuid.UUID) (*Tenant, error) {
+	return db.tenantRepository.GetTenantByID(ctx, tenantID)
 }
 
-func (db *PostgresDB) GetTenantByStripeCustomerID(stripeCustomerID string) (*Tenant, error) {
-	return db.tenantRepository.GetTenantByStripeCustomerID(stripeCustomerID)
+func (db *PostgresDB) GetTenantByStripeCustomerID(ctx context.Context, stripeCustomerID string) (*Tenant, error) {
+	return db.tenantRepository.GetTenantByStripeCustomerID(ctx, stripeCustomerID)
 }
 
-func (db *PostgresDB) ListTenants() ([]*Tenant, error) {
-	return db.tenantRepository.ListTenants()
+func (db *PostgresDB) ListTenants(ctx context.Context) ([]*Tenant, error) {
+	return db.tenantRepository.ListTenants(ctx)
 }
 
-func (db *PostgresDB) ListTenantsWithStripeCustomerID() ([]*Tenant, error) {
-	return db.tenantRepository.ListTenantsWithStripeCustomerID()
+func (db *PostgresDB) ListTenantsWithStripeCustomerID(ctx context.Context) ([]*Tenant, error) {
+	return db.tenantRepository.ListTenantsWithStripeCustomerID(ctx)
 }
 
 func (db *PostgresDB) UpdateTenant(ctx context.Context, tenantID uuid.UUID, updates map[string]interface{}) (*Tenant, error) {
