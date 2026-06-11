@@ -9,73 +9,15 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/lib/pq"
 	"github.com/sirupsen/logrus"
 )
 
-const (
-	maxRetries        = 3
-	retryBaseInterval = 5 * time.Minute
-	httpTimeout       = 30 * time.Second
-)
-
-func validateWebhookURL(webhookURL string) error {
-	parsedURL, err := url.Parse(webhookURL)
-	if err != nil {
-		return fmt.Errorf("invalid URL: %w", err)
-	}
-
-	if parsedURL.Scheme != "https" {
-		return fmt.Errorf("webhook URL must use HTTPS for security")
-	}
-
-	if parsedURL.Host == "" {
-		return fmt.Errorf("webhook URL must have a valid host")
-	}
-
-	host := parsedURL.Hostname()
-	if host == "localhost" || host == "127.0.0.1" || host == "::1" {
-		return fmt.Errorf("webhook URL cannot point to localhost")
-	}
-
-	if isPrivateIP(host) {
-		return fmt.Errorf("webhook URL cannot point to private IP addresses")
-	}
-
-	return nil
-}
-
-func isPrivateIP(host string) bool {
-	privatePrefixes := []string{
-		"10.",
-		"172.16.", "172.17.", "172.18.", "172.19.",
-		"172.20.", "172.21.", "172.22.", "172.23.",
-		"172.24.", "172.25.", "172.26.", "172.27.",
-		"172.28.", "172.29.", "172.30.", "172.31.",
-		"192.168.",
-		"127.",
-		"0.",
-		"::1",
-		"fc00:",
-		"fe80:",
-	}
-
-	for _, prefix := range privatePrefixes {
-		if len(host) >= len(prefix) && host[:len(prefix)] == prefix {
-			return true
-		}
-	}
-
-	return false
-}
-
+// NotificationDispatcher sends consciousness insights through configured channels.
 type NotificationDispatcher struct {
 	db         *sql.DB
 	repo       *Repository
@@ -83,27 +25,17 @@ type NotificationDispatcher struct {
 	logger     *logrus.Logger
 }
 
+// NewNotificationDispatcher creates a new notification dispatcher.
 func NewNotificationDispatcher(db *sql.DB, repo *Repository, logger *logrus.Logger) *NotificationDispatcher {
 	return &NotificationDispatcher{
-		db:   db,
-		repo: repo,
-		httpClient: &http.Client{
-			Timeout: httpTimeout,
-			Transport: &http.Transport{
-				MaxIdleConns:        100,
-				MaxIdleConnsPerHost: 10,
-				IdleConnTimeout:     90 * time.Second,
-			},
-		},
-		logger: logger,
+		db:         db,
+		repo:       repo,
+		httpClient: &http.Client{Timeout: 10 * time.Second},
+		logger:     logger,
 	}
 }
 
-func (d *NotificationDispatcher) Close() error {
-	d.httpClient.CloseIdleConnections()
-	return nil
-}
-
+// Dispatch sends an insight through all channels enabled in the tenant's preferences.
 func (d *NotificationDispatcher) Dispatch(ctx context.Context, insight *Insight, prefs *Preferences) []string {
 	var sent []string
 
@@ -115,137 +47,125 @@ func (d *NotificationDispatcher) Dispatch(ctx context.Context, insight *Insight,
 		return sent
 	}
 
+	// In-app (always first — fast, local DB write)
 	if prefs.InAppEnabled {
 		if err := d.sendInApp(ctx, insight); err != nil {
-			d.logDelivery(insight.ID, insight.TenantID, "in_app", "failed", err)
-			d.logger.WithError(err).Warn("Failed to send consciousness in-app notification")
-			d.enqueueRetry(ctx, insight, "in_app", err)
+			d.logDelivery(ctx, insight.ID, insight.TenantID, "in_app", "failed", err)
+			d.logger.WithError(err).WithFields(logrus.Fields{
+				"insight_id": insight.ID,
+				"tenant_id":  insight.TenantID,
+				"channel":    "in_app",
+			}).Error("Failed to send consciousness in-app notification")
 		} else {
-			d.logDelivery(insight.ID, insight.TenantID, "in_app", "sent", nil)
+			d.logDelivery(ctx, insight.ID, insight.TenantID, "in_app", "sent", nil)
 			sent = append(sent, "in_app")
-			dispatchTotal.WithLabelValues("in_app", "sent").Inc()
 		}
 	}
 
+	// Email
 	if prefs.EmailEnabled {
 		if err := d.sendEmail(ctx, insight); err != nil {
-			d.logDelivery(insight.ID, insight.TenantID, "email", "failed", err)
-			d.logger.WithError(err).Warn("Failed to send consciousness email")
-			d.enqueueRetry(ctx, insight, "email", err)
+			d.logDelivery(ctx, insight.ID, insight.TenantID, "email", "failed", err)
+			d.logger.WithError(err).WithFields(logrus.Fields{
+				"insight_id": insight.ID,
+				"tenant_id":  insight.TenantID,
+				"channel":    "email",
+			}).Error("Failed to send consciousness email")
 		} else {
-			d.logDelivery(insight.ID, insight.TenantID, "email", "sent", nil)
+			d.logDelivery(ctx, insight.ID, insight.TenantID, "email", "sent", nil)
 			sent = append(sent, "email")
-			dispatchTotal.WithLabelValues("email", "sent").Inc()
 		}
 	}
 
+	// Slack
 	if prefs.SlackEnabled && prefs.SlackWebhookURL != nil && *prefs.SlackWebhookURL != "" {
 		if err := d.sendSlack(ctx, insight, *prefs.SlackWebhookURL); err != nil {
-			d.logDelivery(insight.ID, insight.TenantID, "slack", "failed", err)
-			d.logger.WithError(err).Warn("Failed to send consciousness Slack notification")
-			d.enqueueRetry(ctx, insight, "slack", err)
+			d.logDelivery(ctx, insight.ID, insight.TenantID, "slack", "failed", err)
+			d.logger.WithError(err).WithFields(logrus.Fields{
+				"insight_id": insight.ID,
+				"tenant_id":  insight.TenantID,
+				"channel":    "slack",
+			}).Error("Failed to send consciousness Slack notification")
 		} else {
-			d.logDelivery(insight.ID, insight.TenantID, "slack", "sent", nil)
+			d.logDelivery(ctx, insight.ID, insight.TenantID, "slack", "sent", nil)
 			sent = append(sent, "slack")
-			dispatchTotal.WithLabelValues("slack", "sent").Inc()
 		}
 	}
 
+	// Webhook
 	if prefs.WebhookEnabled && prefs.WebhookURL != nil && *prefs.WebhookURL != "" {
 		secret := ""
 		if prefs.WebhookSecret != nil {
 			secret = *prefs.WebhookSecret
 		}
 		if err := d.sendWebhook(ctx, insight, *prefs.WebhookURL, secret); err != nil {
-			d.logDelivery(insight.ID, insight.TenantID, "webhook", "failed", err)
-			d.logger.WithError(err).Warn("Failed to send consciousness webhook")
-			d.enqueueRetry(ctx, insight, "webhook", err)
+			d.logDelivery(ctx, insight.ID, insight.TenantID, "webhook", "failed", err)
+			d.logger.WithError(err).WithFields(logrus.Fields{
+				"insight_id": insight.ID,
+				"tenant_id":  insight.TenantID,
+				"channel":    "webhook",
+			}).Error("Failed to send consciousness webhook")
 		} else {
-			d.logDelivery(insight.ID, insight.TenantID, "webhook", "sent", nil)
+			d.logDelivery(ctx, insight.ID, insight.TenantID, "webhook", "sent", nil)
 			sent = append(sent, "webhook")
-			dispatchTotal.WithLabelValues("webhook", "sent").Inc()
 		}
 	}
 
 	return sent
 }
 
+// DispatchDigest sends a compiled digest of insights through configured channels.
 func (d *NotificationDispatcher) DispatchDigest(ctx context.Context, digest *Digest, prefs *Preferences) []string {
 	var sent []string
 
 	if prefs.InAppEnabled {
 		if err := d.sendDigestInApp(ctx, digest); err != nil {
-			d.logger.WithError(err).Warn("Failed to send consciousness digest in-app")
-			dispatchTotal.WithLabelValues("in_app", "failed").Inc()
+			d.logger.WithError(err).WithField("tenant_id", digest.TenantID).Error("Failed to send consciousness digest in-app")
 		} else {
 			sent = append(sent, "in_app")
-			dispatchTotal.WithLabelValues("in_app", "sent").Inc()
 		}
 	}
 
 	if prefs.EmailEnabled {
 		if err := d.sendDigestEmail(ctx, digest); err != nil {
-			d.logger.WithError(err).Warn("Failed to send consciousness digest email")
-			dispatchTotal.WithLabelValues("email", "failed").Inc()
+			d.logger.WithError(err).WithField("tenant_id", digest.TenantID).Error("Failed to send consciousness digest email")
 		} else {
 			sent = append(sent, "email")
-			dispatchTotal.WithLabelValues("email", "sent").Inc()
 		}
 	}
 
 	if prefs.SlackEnabled && prefs.SlackWebhookURL != nil && *prefs.SlackWebhookURL != "" {
 		if err := d.sendDigestSlack(ctx, digest, *prefs.SlackWebhookURL); err != nil {
-			d.logger.WithError(err).Warn("Failed to send consciousness digest Slack")
-			dispatchTotal.WithLabelValues("slack", "failed").Inc()
+			d.logger.WithError(err).WithField("tenant_id", digest.TenantID).Error("Failed to send consciousness digest Slack")
 		} else {
 			sent = append(sent, "slack")
-			dispatchTotal.WithLabelValues("slack", "sent").Inc()
 		}
 	}
 
 	return sent
 }
 
-func (d *NotificationDispatcher) enqueueRetry(ctx context.Context, insight *Insight, channel string, err error) {
-	payload, _ := json.Marshal(insight)
-	nextRetry := time.Now().Add(retryBaseInterval)
-
-	query := `
-		INSERT INTO consciousness_dispatch_retry (
-			insight_id, tenant_id, channel, payload, attempt_count, next_retry_at, last_error
-		) VALUES ($1, $2, $3, $4, 1, $5, $6)
-		ON CONFLICT (insight_id, channel) DO UPDATE SET
-			attempt_count = consciousness_dispatch_retry.attempt_count + 1,
-			next_retry_at = $5,
-			last_error = $6,
-			updated_at = NOW()`
-
-	errMsg := err.Error()
-	_, dbErr := d.db.ExecContext(ctx, query, insight.ID, insight.TenantID, channel, payload, nextRetry, errMsg)
-	if dbErr != nil {
-		d.logger.WithError(dbErr).Warn("Failed to enqueue dispatch retry")
-	}
-
-	dispatchTotal.WithLabelValues(channel, "failed").Inc()
-}
+// ── In-App ──────────────────────────────────────────────────────────────────
 
 func (d *NotificationDispatcher) sendInApp(ctx context.Context, insight *Insight) error {
+	// Use PostgreSQL NOTIFY for real-time delivery via WebSocket hub.
 	payload := map[string]interface{}{
 		"type":      "consciousness.insight",
 		"tenant_id": insight.TenantID.String(),
 		"insight": map[string]interface{}{
-			"id":         insight.ID.String(),
-			"category":   insight.Category,
-			"severity":   insight.Severity,
-			"title":      insight.Title,
-			"message":    insight.Message,
-			"action":     insight.ActionType,
+			"id":        insight.ID.String(),
+			"category":  insight.Category,
+			"severity":  insight.Severity,
+			"title":     insight.Title,
+			"message":   insight.Message,
+			"action":    insight.ActionType,
 			"created_at": insight.CreatedAt.Format(time.RFC3339),
 		},
 	}
 
 	payloadBytes, _ := json.Marshal(payload)
 
+	// pg_notify on the tenant's channel
 	_, err := d.db.ExecContext(ctx,
 		"SELECT pg_notify($1, $2)",
 		fmt.Sprintf("consciousness:%s", insight.TenantID.String()),
@@ -254,7 +174,10 @@ func (d *NotificationDispatcher) sendInApp(ctx context.Context, insight *Insight
 	return err
 }
 
+// ── Email ───────────────────────────────────────────────────────────────────
+
 func (d *NotificationDispatcher) sendEmail(ctx context.Context, insight *Insight) error {
+	// Look up the tenant owner's email
 	email, err := d.getTenantOwnerEmail(ctx, insight.TenantID)
 	if err != nil || email == "" {
 		return fmt.Errorf("tenant owner email not found: %w", err)
@@ -275,8 +198,11 @@ func (d *NotificationDispatcher) sendEmail(ctx context.Context, insight *Insight
 
 	htmlBody := buildInsightEmailHTML(insight)
 
+	// Use the existing email sending infrastructure
 	return d.sendEmailRaw(ctx, email, subject, textBody, htmlBody)
 }
+
+// ── Slack ───────────────────────────────────────────────────────────────────
 
 func (d *NotificationDispatcher) sendSlack(ctx context.Context, insight *Insight, webhookURL string) error {
 	severityEmoji := map[InsightSeverity]string{
@@ -343,22 +269,20 @@ func (d *NotificationDispatcher) sendSlack(ctx context.Context, insight *Insight
 	return d.postSlackWebhook(ctx, webhookURL, payload)
 }
 
-func (d *NotificationDispatcher) sendWebhook(ctx context.Context, insight *Insight, webhookURL, secret string) error {
-	if err := validateWebhookURL(webhookURL); err != nil {
-		return fmt.Errorf("webhook URL validation failed: %w", err)
-	}
+// ── Webhook (HMAC-SHA256 signed) ────────────────────────────────────────────
 
+func (d *NotificationDispatcher) sendWebhook(ctx context.Context, insight *Insight, webhookURL, secret string) error {
 	payload := map[string]interface{}{
 		"event":     "consciousness.insight",
 		"tenant_id": insight.TenantID.String(),
 		"insight": map[string]interface{}{
-			"id":         insight.ID.String(),
-			"category":   insight.Category,
-			"severity":   insight.Severity,
-			"title":      insight.Title,
-			"message":    insight.Message,
-			"action":     insight.ActionType,
-			"data":       insight.InsightData,
+			"id":        insight.ID.String(),
+			"category":  insight.Category,
+			"severity":  insight.Severity,
+			"title":     insight.Title,
+			"message":   insight.Message,
+			"action":    insight.ActionType,
+			"data":      insight.InsightData,
 			"confidence": insight.Confidence,
 			"trajectory": insight.Trajectory,
 			"created_at": insight.CreatedAt.Format(time.RFC3339),
@@ -371,62 +295,42 @@ func (d *NotificationDispatcher) sendWebhook(ctx context.Context, insight *Insig
 		return err
 	}
 
-	var lastErr error
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		if attempt > 0 {
-			backoff := time.Duration(1<<uint(attempt)) * time.Second
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(backoff):
-			}
-		}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhookURL, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "FunctionFly-Consciousness/1.0")
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhookURL, bytes.NewReader(body))
-		if err != nil {
-			return err
-		}
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("User-Agent", "FunctionFly-Consciousness/1.0")
-
-		timestamp := time.Now().UTC().Format(time.RFC3339)
-		if secret != "" {
-			mac := hmac.New(sha256.New, []byte(secret))
-			mac.Write(body)
-			mac.Write([]byte(timestamp))
-			sig := hex.EncodeToString(mac.Sum(nil))
-			req.Header.Set("X-FunctionFly-Signature", "sha256="+sig)
-			req.Header.Set("X-FunctionFly-Timestamp", timestamp)
-		}
-
-		resp, err := d.httpClient.Do(req)
-		if err != nil {
-			lastErr = err
-			d.logger.WithError(err).Warnf("Webhook delivery attempt %d failed", attempt+1)
-			continue
-		}
-		defer resp.Body.Close()
-		defer io.Copy(io.Discard, resp.Body)
-
-		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			lastErr = fmt.Errorf("webhook returned status %d", resp.StatusCode)
-			d.logger.WithError(lastErr).Warnf("Webhook delivery attempt %d failed", attempt+1)
-			continue
-		}
-		return nil
+	if secret != "" {
+		mac := hmac.New(sha256.New, []byte(secret))
+		mac.Write(body)
+		sig := hex.EncodeToString(mac.Sum(nil))
+		req.Header.Set("X-FunctionFly-Signature", "sha256="+sig)
 	}
 
-	return fmt.Errorf("webhook delivery failed after %d attempts: %w", maxRetries, lastErr)
+	resp, err := d.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("webhook returned status %d", resp.StatusCode)
+	}
+	return nil
 }
+
+// ── Digest delivery ─────────────────────────────────────────────────────────
 
 func (d *NotificationDispatcher) sendDigestInApp(ctx context.Context, digest *Digest) error {
 	payload := map[string]interface{}{
-		"type":          "consciousness.digest",
-		"tenant_id":     digest.TenantID.String(),
-		"period":        digest.Period,
+		"type":      "consciousness.digest",
+		"tenant_id": digest.TenantID.String(),
+		"period":    digest.Period,
 		"insight_count": len(digest.Insights),
-		"score":         digest.Score,
-		"generated_at":  digest.GeneratedAt.Format(time.RFC3339),
+		"score":     digest.Score,
+		"generated_at": digest.GeneratedAt.Format(time.RFC3339),
 	}
 	payloadBytes, _ := json.Marshal(payload)
 	_, err := d.db.ExecContext(ctx,
@@ -529,54 +433,35 @@ func (d *NotificationDispatcher) sendDigestSlack(ctx context.Context, digest *Di
 	return d.postSlackWebhook(ctx, webhookURL, payload)
 }
 
-func (d *NotificationDispatcher) postSlackWebhook(ctx context.Context, webhookURL string, payload interface{}) error {
-	if err := validateWebhookURL(webhookURL); err != nil {
-		return fmt.Errorf("slack webhook URL validation failed: %w", err)
-	}
+// ── Internal helpers ────────────────────────────────────────────────────────
 
+func (d *NotificationDispatcher) postSlackWebhook(ctx context.Context, webhookURL string, payload interface{}) error {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
 
-	var lastErr error
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		if attempt > 0 {
-			backoff := time.Duration(1<<uint(attempt)) * time.Second
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(backoff):
-			}
-		}
-
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhookURL, bytes.NewReader(body))
-		if err != nil {
-			return err
-		}
-		req.Header.Set("Content-Type", "application/json")
-
-		resp, err := d.httpClient.Do(req)
-		if err != nil {
-			lastErr = err
-			d.logger.WithError(err).Warnf("Slack webhook delivery attempt %d failed", attempt+1)
-			continue
-		}
-		defer resp.Body.Close()
-		defer io.Copy(io.Discard, resp.Body)
-
-		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			lastErr = fmt.Errorf("slack webhook returned status %s", resp.Status)
-			d.logger.WithError(lastErr).Warnf("Slack webhook delivery attempt %d failed", attempt+1)
-			continue
-		}
-		return nil
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhookURL, bytes.NewReader(body))
+	if err != nil {
+		return err
 	}
+	req.Header.Set("Content-Type", "application/json")
 
-	return fmt.Errorf("slack webhook delivery failed after %d attempts: %w", maxRetries, lastErr)
+	resp, err := d.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("slack webhook returned status %s", resp.Status)
+	}
+	return nil
 }
 
 func (d *NotificationDispatcher) sendEmailRaw(ctx context.Context, to, subject, textBody, htmlBody string) error {
+	// Uses the same SMTP/Resend infrastructure as the rest of the platform.
+	// For now, we insert into the email queue table for async delivery.
 	query := `
 		INSERT INTO email_events (to_email, subject, text_body, html_body, status, created_at)
 		VALUES ($1, $2, $3, $4, 'pending', NOW())
@@ -585,6 +470,7 @@ func (d *NotificationDispatcher) sendEmailRaw(ctx context.Context, to, subject, 
 	var id uuid.UUID
 	err := d.db.QueryRowContext(ctx, query, to, subject, textBody, htmlBody).Scan(&id)
 	if err != nil {
+		// Fallback: if email_events table doesn't exist, log and skip
 		if isRelationNotExist(err) {
 			d.logger.WithField("to", to).Info("Email queued (no email_events table, logged only)")
 			return nil
@@ -616,7 +502,7 @@ func (d *NotificationDispatcher) getTenantOwnerEmail(ctx context.Context, tenant
 	return email, nil
 }
 
-func (d *NotificationDispatcher) logDelivery(insightID, tenantID uuid.UUID, channel, status string, err error) {
+func (d *NotificationDispatcher) logDelivery(ctx context.Context, insightID, tenantID uuid.UUID, channel, status string, err error) {
 	log := &DeliveryLog{
 		InsightID: insightID,
 		TenantID:  tenantID,
@@ -628,10 +514,12 @@ func (d *NotificationDispatcher) logDelivery(insightID, tenantID uuid.UUID, chan
 		errMsg := err.Error()
 		log.ErrorMsg = &errMsg
 	}
-	if logErr := d.repo.LogDelivery(context.Background(), log); logErr != nil {
-		d.logger.WithError(logErr).Warn("Failed to log delivery attempt")
+	if logErr := d.repo.LogDelivery(ctx, log); logErr != nil {
+		d.logger.WithError(logErr).Error("Failed to log delivery attempt")
 	}
 }
+
+// ── Email HTML templates ────────────────────────────────────────────────────
 
 func buildInsightEmailHTML(insight *Insight) string {
 	severityColor := map[InsightSeverity]string{
@@ -786,6 +674,8 @@ func buildDigestHTML(digest *Digest) string {
 	)
 }
 
+// ── Utility functions ───────────────────────────────────────────────────────
+
 func severityMeetsThreshold(severity InsightSeverity, threshold string) bool {
 	weight := map[string]int{
 		"info": 1, "warning": 2, "opportunity": 2, "critical": 3,
@@ -822,4 +712,109 @@ func derefFloat64(p *float64) float64 {
 		return 0
 	}
 	return *p
+}
+
+// RetryDelivery attempts to deliver a previously failed notification.
+func (d *NotificationDispatcher) RetryDelivery(ctx context.Context, retry *DeliveryRetry) error {
+	// Reconstruct the insight from the stored payload
+	var insight struct {
+		ID        uuid.UUID
+		TenantID  uuid.UUID
+		Category  InsightCategory
+		Severity  InsightSeverity
+		Title     string
+		Message   string
+		ActionType ActionType
+		CreatedAt time.Time
+	}
+
+	if err := json.Unmarshal(retry.Payload, &insight); err != nil {
+		return fmt.Errorf("unmarshal retry payload: %w", err)
+	}
+
+	ins := &Insight{
+		ID:         insight.ID,
+		TenantID:   insight.TenantID,
+		Category:   insight.Category,
+		Severity:   insight.Severity,
+		Title:      insight.Title,
+		Message:    insight.Message,
+		ActionType: insight.ActionType,
+		CreatedAt:  insight.CreatedAt,
+	}
+
+	// Get tenant preferences
+	prefs, err := d.repo.GetPreferences(ctx, retry.TenantID)
+	if err != nil {
+		return fmt.Errorf("get preferences: %w", err)
+	}
+
+	// Retry the specific channel
+	switch retry.Channel {
+	case "in_app":
+		return d.sendInApp(ctx, ins)
+	case "email":
+		return d.sendEmail(ctx, ins)
+	case "slack":
+		if prefs.SlackWebhookURL != nil && *prefs.SlackWebhookURL != "" {
+			return d.sendSlack(ctx, ins, *prefs.SlackWebhookURL)
+		}
+		return fmt.Errorf("slack webhook not configured")
+	case "webhook":
+		secret := ""
+		if prefs.WebhookSecret != nil {
+			secret = *prefs.WebhookSecret
+		}
+		if prefs.WebhookURL != nil && *prefs.WebhookURL != "" {
+			return d.sendWebhook(ctx, ins, *prefs.WebhookURL, secret)
+		}
+		return fmt.Errorf("webhook URL not configured")
+	default:
+		return fmt.Errorf("unknown channel: %s", retry.Channel)
+	}
+}
+
+// ScheduleRetryIfFailed checks if delivery failed and schedules a retry if appropriate.
+func (d *NotificationDispatcher) ScheduleRetryIfFailed(ctx context.Context, insight *Insight, channel string, err error, maxRetries int) {
+	if err == nil {
+		return
+	}
+
+	// Serialize the insight for retry
+	payload, marshalErr := json.Marshal(map[string]interface{}{
+		"id":         insight.ID,
+		"tenant_id":  insight.TenantID,
+		"category":   insight.Category,
+		"severity":   insight.Severity,
+		"title":      insight.Title,
+		"message":    insight.Message,
+		"action":     insight.ActionType,
+		"created_at": insight.CreatedAt,
+	})
+	if marshalErr != nil {
+		d.logger.WithError(marshalErr).WithField("insight_id", insight.ID).Error("Failed to marshal insight for retry")
+		return
+	}
+
+	errMsg := err.Error()
+	retry := &DeliveryRetry{
+		InsightID:    insight.ID,
+		TenantID:     insight.TenantID,
+		Channel:      channel,
+		Payload:      payload,
+		AttemptCount: 1,
+		MaxAttempts:  maxRetries,
+		NextRetryAt:  time.Now().Add(5 * time.Minute), // Initial delay
+		LastError:    &errMsg,
+	}
+
+	if scheduleErr := d.repo.ScheduleRetry(ctx, retry); scheduleErr != nil {
+		d.logger.WithError(scheduleErr).WithField("insight_id", insight.ID).Error("Failed to schedule retry")
+	} else {
+		d.logger.WithFields(logrus.Fields{
+			"insight_id": insight.ID,
+			"channel":    channel,
+			"next_retry": retry.NextRetryAt,
+		}).Info("Scheduled delivery retry")
+	}
 }

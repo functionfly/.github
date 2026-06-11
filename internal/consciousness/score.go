@@ -18,10 +18,24 @@ type ScoreComputer struct {
 
 // NewScoreComputer creates a new score computer.
 func NewScoreComputer(db *sql.DB, logger *logrus.Logger) *ScoreComputer {
+	weights := DefaultScoreWeights()
 	return &ScoreComputer{
 		db:      db,
 		logger:  logger,
-		weights: DefaultScoreWeights(),
+		weights: weights,
+	}
+}
+
+// NewScoreComputerWithWeights creates a new score computer with custom weights.
+func NewScoreComputerWithWeights(db *sql.DB, logger *logrus.Logger, weights ScoreWeights) *ScoreComputer {
+	if weights.Health == 0 && weights.Efficiency == 0 &&
+		weights.Scalability == 0 && weights.Reliability == 0 && weights.Optimization == 0 {
+		weights = DefaultScoreWeights()
+	}
+	return &ScoreComputer{
+		db:      db,
+		logger:  logger,
+		weights: weights,
 	}
 }
 
@@ -35,7 +49,7 @@ func (sc *ScoreComputer) Compute(ctx context.Context, tenantID uuid.UUID) (*Syst
 	// Health: Based on DNA fitness scores
 	healthScore, funcCount, err := sc.computeHealthScore(ctx, tenantID)
 	if err != nil {
-		sc.logger.WithError(err).Warn("Failed to compute health score")
+		sc.logger.WithError(err).WithField("tenant_id", tenantID).Error("Failed to compute health score")
 	}
 	score.HealthScore = healthScore
 	score.FunctionsAnalyzed = funcCount
@@ -43,21 +57,21 @@ func (sc *ScoreComputer) Compute(ctx context.Context, tenantID uuid.UUID) (*Syst
 	// Efficiency: Based on cost per execution trends
 	efficiencyScore, err := sc.computeEfficiencyScore(ctx, tenantID)
 	if err != nil {
-		sc.logger.WithError(err).Warn("Failed to compute efficiency score")
+		sc.logger.WithError(err).WithField("tenant_id", tenantID).Error("Failed to compute efficiency score")
 	}
 	score.EfficiencyScore = efficiencyScore
 
 	// Scalability: Based on headroom before plan limits
 	scalabilityScore, err := sc.computeScalabilityScore(ctx, tenantID)
 	if err != nil {
-		sc.logger.WithError(err).Warn("Failed to compute scalability score")
+		sc.logger.WithError(err).WithField("tenant_id", tenantID).Error("Failed to compute scalability score")
 	}
 	score.ScalabilityScore = scalabilityScore
 
 	// Reliability: Based on success rates and error patterns
 	reliabilityScore, err := sc.computeReliabilityScore(ctx, tenantID)
 	if err != nil {
-		sc.logger.WithError(err).Warn("Failed to compute reliability score")
+		sc.logger.WithError(err).WithField("tenant_id", tenantID).Error("Failed to compute reliability score")
 	}
 	score.ReliabilityScore = reliabilityScore
 

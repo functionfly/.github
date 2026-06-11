@@ -60,6 +60,7 @@ func (a *TrafficAnalyzer) Analyze(ctx context.Context, tenantID uuid.UUID, param
 		var dailyAvg float64
 
 		if err := rows.Scan(&functionID, &currentCount, &dailyAvg); err != nil {
+			a.logger.WithError(err).Error("Failed to scan traffic pattern row")
 			continue
 		}
 

@@ -21,7 +21,6 @@ import (
 	"github.com/functionfly/functionfly/internal/adapters/vercel"
 	"github.com/functionfly/functionfly/internal/analytics/unified"
 	"github.com/functionfly/functionfly/internal/api/handlers/billing"
-	"github.com/functionfly/functionfly/internal/api/handlers/dna"
 	"github.com/functionfly/functionfly/internal/api/handlers/notifications"
 	regexec "github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	"github.com/functionfly/functionfly/internal/api/handlers/trustapi"
@@ -29,7 +28,6 @@ import (
 	billingpkg "github.com/functionfly/functionfly/internal/billing"
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/config"
-	"github.com/functionfly/functionfly/internal/dna"
 	"github.com/functionfly/functionfly/internal/deployment"
 	"github.com/functionfly/functionfly/internal/email"
 	"github.com/functionfly/functionfly/internal/health"
@@ -93,9 +91,6 @@ type Server struct {
 	// State fabric cleanup service for TTL-based cleanup
 	stateFabricCleanup *statefabricrepo.CleanupService
 
-	// State fabric repository for replay operations (set in setupRoutes)
-	stateFabricRepo *statefabricrepo.Repository
-
 	// Recommendations service
 	recommendationSvc *recommendations.Service
 
@@ -146,12 +141,10 @@ type Server struct {
 	certExamExpiryScheduler *scheduler.CertExamExpiryScheduler
 	certCredExpiryScheduler *scheduler.CertCredentialExpiryScheduler
 
-	// DNA service and schedulers
-	dnaRepo               *dna.Repository
-	dnaService            *dna.Service
-	dnaPartitionScheduler *scheduler.DNAPartitionScheduler
-	dnaInsightsScheduler  *scheduler.DNAInsightsScheduler
-	dnaHandler            *dnahandler.Handler
+	// Consciousness scheduler for periodic awareness analysis
+	consciousnessScheduler    *scheduler.ConsciousnessScheduler
+	consciousnessCleanupScheduler *scheduler.CleanupScheduler
+	consciousnessRetryScheduler *scheduler.RetryScheduler
 }
 
 func NewServer(db *storage.PostgresDB) *Server {
@@ -835,15 +828,17 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		s.exportScheduler.Stop()
 		logrus.Info("Export scheduler stopped")
 	}
-	if s.dnaHandler != nil {
-		s.dnaHandler.Stop()
-		logrus.Info("DNA handler stopped")
+	if s.consciousnessCleanupScheduler != nil {
+		s.consciousnessCleanupScheduler.Stop()
+		logrus.Info("Consciousness cleanup scheduler stopped")
 	}
-
-	// Shutdown state fabric replay operations
-	if s.stateFabricRepo != nil {
-		s.stateFabricRepo.ShutdownReplays()
-		logrus.Info("State fabric replay operations stopped")
+	if s.consciousnessScheduler != nil {
+		s.consciousnessScheduler.Stop()
+		logrus.Info("Consciousness scheduler stopped")
+	}
+	if s.consciousnessRetryScheduler != nil {
+		s.consciousnessRetryScheduler.Stop()
+		logrus.Info("Consciousness retry scheduler stopped")
 	}
 
 	// Shutdown the HTTP server gracefully

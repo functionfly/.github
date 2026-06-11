@@ -60,11 +60,13 @@ func (a *ScalingAnalyzer) Analyze(ctx context.Context, tenantID uuid.UUID, param
 		WHERE tenant_id = $1
 		AND created_at > DATE_TRUNC('month', NOW())`
 	if err := a.db.QueryRowContext(ctx, currentQuery, tenantID).Scan(&currentUsage); err != nil && err != sql.ErrNoRows {
+		a.logger.WithError(err).Error("Failed to scan current usage")
 		return nil, err
 	}
 
 	remaining := int64(limit) - currentUsage
 	if remaining <= 0 {
+		remaining = 0
 		confidence := 1.0
 		trajectory := TrajectoryCritical
 		insights = append(insights, &Insight{
