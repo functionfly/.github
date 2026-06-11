@@ -1,0 +1,836 @@
+/* ==========================================================================
+   FunctionFly State Detail Page - Aviation Theme
+   Cockpit-inspired styling for state creation and editing
+   Uses the aviation theme CSS variables for consistent theming
+   ========================================================================== */
+
+/* ----------------------------------------
+   CSS Variables (State Detail Theme - Aviation)
+   ---------------------------------------- */
+:root {
+  /* State/Data Colors - Aviation Brand */
+  --state-detail-primary: var(--ff-flame);
+  --state-detail-primary-hover: var(--ff-flame-dark);
+  --state-detail-primary-light: rgba(255, 107, 53, 0.1);
+  --state-detail-primary-border: rgba(255, 107, 53, 0.2);
+
+  /* Operation Colors */
+  --state-op-create-bg: rgba(16, 185, 129, 0.15);
+  --state-op-create-text: #10b981;
+  --state-op-create-border: rgba(16, 185, 129, 0.3);
+
+  --state-op-update-bg: rgba(59, 130, 246, 0.15);
+  --state-op-update-text: #3b82f6;
+  --state-op-update-border: rgba(59, 130, 246, 0.3);
+
+  --state-op-delete-bg: rgba(239, 68, 68, 0.15);
+  --state-op-delete-text: #ef4444;
+  --state-op-delete-border: rgba(239, 68, 68, 0.3);
+
+  /* State Card Styles - Aviation Panel */
+  --state-detail-card-bg: var(--color-aviation-bg-panel);
+  --state-detail-card-border: var(--color-aviation-border-panel);
+  --state-detail-card-hover-border: var(--color-aviation-amber-dim);
+  --state-detail-card-text: var(--color-aviation-text-primary);
+  --state-detail-card-text-secondary: var(--color-aviation-text-secondary);
+
+  /* State Icon */
+  --state-detail-icon-bg: linear-gradient(
+    135deg,
+    rgba(255, 107, 53, 0.15) 0%,
+    rgba(59, 130, 246, 0.15) 100%
+  );
+  --state-detail-icon-border: rgba(255, 107, 53, 0.3);
+
+  /* Input/Select - Aviation Instrument */
+  --state-detail-input-bg: var(--color-aviation-bg-instrument);
+  --state-detail-input-border: var(--color-aviation-border-instrument);
+  --state-detail-input-text: var(--color-aviation-text-primary);
+  --state-detail-input-placeholder: var(--color-aviation-text-dim);
+
+  /* Animation Durations */
+  --state-detail-transition-fast: 150ms ease;
+  --state-detail-transition-normal: 250ms ease;
+  --state-detail-transition-slow: 350ms ease;
+
+  /* Shadows - Aviation Glow */
+  --state-detail-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --state-detail-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --state-detail-shadow-glow: 0 0 20px rgba(255, 107, 53, 0.15);
+}
+
+/* Light Mode Overrides */
+[data-theme='light'] {
+  --state-detail-card-bg: var(--color-aviation-bg-panel-light);
+  --state-detail-card-border: var(--color-aviation-border-panel-light);
+  --state-detail-card-hover-border: var(--color-aviation-amber-dim-light);
+  --state-detail-card-text: var(--color-aviation-text-primary-light);
+  --state-detail-card-text-secondary: var(--color-aviation-text-secondary-light);
+
+  --state-detail-icon-bg: linear-gradient(
+    135deg,
+    rgba(232, 90, 42, 0.1) 0%,
+    rgba(59, 130, 246, 0.1) 100%
+  );
+  --state-detail-icon-border: rgba(232, 90, 42, 0.25);
+
+  --state-detail-input-bg: var(--color-aviation-bg-instrument-light);
+  --state-detail-input-border: var(--color-aviation-border-instrument-light);
+  --state-detail-input-text: var(--color-aviation-text-primary-light);
+  --state-detail-input-placeholder: var(--color-aviation-text-dim-light);
+
+  --state-detail-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --state-detail-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+  --state-detail-shadow-glow: 0 0 20px rgba(232, 90, 42, 0.1);
+}
+
+/* ----------------------------------------
+   State Detail Container
+   ---------------------------------------- */
+.state-detail-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem 0;
+}
+
+.state-detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ----------------------------------------
+   State Detail Header
+   ---------------------------------------- */
+.state-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+@media (max-width: 640px) {
+  .state-detail-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.state-detail-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.state-detail-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.state-detail-back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  background-color: transparent;
+  border: none;
+  color: var(--state-detail-card-text-secondary);
+  border-radius: 6px;
+  transition: all var(--state-detail-transition-fast);
+}
+
+.state-detail-back-btn:hover {
+  background-color: var(--color-aviation-bg-secondary);
+  color: var(--state-detail-card-text);
+}
+
+.state-detail-icon-container {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.5rem;
+  background: var(--state-detail-icon-bg);
+  border: 1px solid var(--state-detail-icon-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.state-detail-icon-container::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 0.5rem;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    var(--color-aviation-amber-dim) 0%,
+    transparent 40%,
+    transparent 60%,
+    var(--color-aviation-cyan-dim) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.state-detail-icon-container:hover::after {
+  opacity: 1;
+}
+
+.state-detail-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--state-detail-primary);
+  filter: drop-shadow(0 0 4px var(--color-aviation-amber-glow));
+}
+
+.state-detail-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--state-detail-card-text);
+  line-height: 1.2;
+  font-family: var(--font-mono);
+  letter-spacing: -0.02em;
+}
+
+.state-detail-subtitle {
+  color: var(--state-detail-card-text-secondary);
+  font-size: 0.875rem;
+  margin-top: 0.125rem;
+  font-family: var(--font-mono);
+}
+
+/* ----------------------------------------
+   State Detail Card
+   ---------------------------------------- */
+.state-detail-card {
+  background-color: var(--state-detail-card-bg);
+  border: 1px solid var(--state-detail-card-border);
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.state-detail-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-aviation-border-panel) 30%,
+    var(--color-aviation-border-panel) 70%,
+    transparent 100%
+  );
+}
+
+.state-detail-card-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--state-detail-card-border);
+}
+
+.state-detail-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--state-detail-card-text);
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.state-detail-card-content {
+  padding: 1.5rem;
+}
+
+/* ----------------------------------------
+   Form Elements - Aviation Input
+   ---------------------------------------- */
+.state-detail-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.state-detail-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--state-detail-card-text);
+}
+
+.state-detail-input {
+  background-color: var(--state-detail-input-bg);
+  border: 1px solid var(--state-detail-input-border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  color: var(--state-detail-input-text);
+  transition: all var(--state-detail-transition-fast);
+  font-family: var(--font-mono);
+}
+
+.state-detail-input:focus {
+  outline: none;
+  border-color: var(--color-aviation-amber);
+  box-shadow:
+    0 0 0 3px var(--color-aviation-amber-dim),
+    0 0 20px var(--color-aviation-amber-dim);
+}
+
+.state-detail-input::placeholder {
+  color: var(--state-detail-input-placeholder);
+}
+
+.state-detail-textarea {
+  background-color: var(--state-detail-input-bg);
+  border: 1px solid var(--state-detail-input-border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  color: var(--state-detail-input-text);
+  transition: all var(--state-detail-transition-fast);
+  font-family: var(--font-mono);
+  resize: vertical;
+}
+
+.state-detail-textarea:focus {
+  outline: none;
+  border-color: var(--color-aviation-amber);
+  box-shadow:
+    0 0 0 3px var(--color-aviation-amber-dim),
+    0 0 20px var(--color-aviation-amber-dim);
+}
+
+.state-detail-textarea::placeholder {
+  color: var(--state-detail-input-placeholder);
+}
+
+.state-detail-textarea-error {
+  border-color: var(--color-aviation-red);
+}
+
+.state-detail-textarea-error:focus {
+  border-color: var(--color-aviation-red);
+  box-shadow:
+    0 0 0 3px rgba(239, 68, 68, 0.2),
+    0 0 20px rgba(239, 68, 68, 0.2);
+}
+
+.state-detail-error-text {
+  font-size: 0.875rem;
+  color: var(--color-aviation-red);
+}
+
+/* ----------------------------------------
+   Tabs - Aviation Style
+   ---------------------------------------- */
+.state-detail-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.state-detail-tabs-list {
+  display: flex;
+  gap: 0.25rem;
+  background-color: var(--color-aviation-bg-secondary);
+  padding: 0.25rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-aviation-border-subtle);
+}
+
+.state-detail-tabs-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--state-detail-card-text-secondary);
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all var(--state-detail-transition-fast);
+}
+
+.state-detail-tabs-trigger:hover {
+  color: var(--state-detail-card-text);
+  background-color: var(--color-aviation-bg-instrument);
+}
+
+.state-detail-tabs-trigger-active {
+  color: var(--color-aviation-amber);
+  background-color: var(--color-aviation-amber-subtle);
+  box-shadow: 0 0 10px var(--color-aviation-amber-dim);
+}
+
+.state-detail-tabs-trigger-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.state-detail-tabs-content {
+  animation: state-detail-fade-in 0.3s ease-out;
+}
+
+@keyframes state-detail-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ----------------------------------------
+   Table Styles - Aviation Style
+   ---------------------------------------- */
+.state-detail-table {
+  width: 100%;
+}
+
+.state-detail-table-header-row {
+  border-bottom: 1px solid var(--state-detail-card-border);
+}
+
+.state-detail-table-header-cell {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--state-detail-card-text-secondary);
+}
+
+.state-detail-table-body-row {
+  border-bottom: 1px solid var(--state-detail-card-border);
+  transition: background-color var(--state-detail-transition-fast);
+}
+
+.state-detail-table-body-row:hover {
+  background-color: var(--color-aviation-bg-secondary);
+}
+
+.state-detail-table-body-row:last-child {
+  border-bottom: none;
+}
+
+.state-detail-table-cell {
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+}
+
+.state-detail-table-cell-mono {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  max-width: 12.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.state-detail-table-cell-timestamp {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--state-detail-card-text-secondary);
+}
+
+/* ----------------------------------------
+   Operation Badges
+   ---------------------------------------- */
+.state-detail-op-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+
+.state-detail-op-badge-create {
+  background-color: var(--state-op-create-bg);
+  color: var(--state-op-create-text);
+  border-color: var(--state-op-create-border);
+}
+
+.state-detail-op-badge-update {
+  background-color: var(--state-op-update-bg);
+  color: var(--state-op-update-text);
+  border-color: var(--state-op-update-border);
+}
+
+.state-detail-op-badge-delete {
+  background-color: var(--state-op-delete-bg);
+  color: var(--state-op-delete-text);
+  border-color: var(--state-op-delete-border);
+}
+
+/* ----------------------------------------
+   Metadata Section
+   ---------------------------------------- */
+.state-detail-metadata {
+  padding-top: 1rem;
+  border-top: 1px solid var(--state-detail-card-border);
+}
+
+.state-detail-metadata-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--state-detail-card-text);
+  margin-bottom: 0.5rem;
+}
+
+.state-detail-metadata-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* ----------------------------------------
+   Empty State - Aviation Style
+   ---------------------------------------- */
+.state-detail-empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--state-detail-card-text-secondary);
+}
+
+.state-detail-empty-icon {
+  width: 2rem;
+  height: 2rem;
+  margin: 0 auto 0.5rem;
+  opacity: 0.5;
+}
+
+.state-detail-empty-title {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--state-detail-card-text);
+  margin-bottom: 0.5rem;
+}
+
+/* ----------------------------------------
+   Loading States - Aviation Animation
+   ---------------------------------------- */
+.state-detail-loading-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.state-detail-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--state-detail-card-bg) 0%,
+    var(--color-aviation-bg-instrument) 50%,
+    var(--state-detail-card-bg) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.state-detail-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 100%
+  );
+  animation: state-detail-scan 2s ease-in-out infinite;
+}
+
+@keyframes state-detail-scan {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.state-detail-skeleton-header {
+  height: 2rem;
+  width: 16rem;
+}
+
+.state-detail-skeleton-content {
+  height: 24rem;
+  width: 100%;
+}
+
+/* ----------------------------------------
+   Error State - Aviation Style
+   ---------------------------------------- */
+.state-detail-error {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--color-aviation-red);
+}
+
+/* ----------------------------------------
+   Button Variants - Aviation Style
+   ---------------------------------------- */
+.btn-state-detail-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-amber-subtle) 0%,
+    rgba(245, 158, 11, 0.05) 100%
+  );
+  border: 1px solid var(--color-aviation-amber);
+  color: var(--color-aviation-amber);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 0.875rem;
+  border-radius: 8px;
+  transition: all var(--state-detail-transition-fast);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-state-detail-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--color-aviation-amber-subtle), transparent);
+  transition: left 0.5s ease;
+}
+
+.btn-state-detail-primary:hover {
+  background: linear-gradient(145deg, rgba(245, 158, 11, 0.25) 0%, rgba(245, 158, 11, 0.1) 100%);
+  box-shadow: 0 0 30px var(--color-aviation-amber-glow);
+  transform: translateY(-1px);
+}
+
+.btn-state-detail-primary:hover::before {
+  left: 100%;
+}
+
+.btn-state-detail-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-state-detail-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: transparent;
+  border: 1px solid var(--state-detail-card-border);
+  color: var(--state-detail-card-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  border-radius: 8px;
+  transition: all var(--state-detail-transition-fast);
+}
+
+.btn-state-detail-outline:hover {
+  background-color: var(--color-aviation-bg-instrument);
+  border-color: var(--color-aviation-amber-dim);
+  color: var(--color-aviation-amber);
+}
+
+.btn-state-detail-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: var(--color-aviation-red);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  border-radius: 8px;
+  transition: all var(--state-detail-transition-fast);
+}
+
+.btn-state-detail-danger:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  box-shadow: 0 0 20px var(--color-aviation-red-glow);
+}
+
+.btn-state-detail-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  background-color: transparent;
+  border: none;
+  color: var(--state-detail-card-text-secondary);
+  border-radius: 6px;
+  transition: all var(--state-detail-transition-fast);
+}
+
+.btn-state-detail-ghost:hover {
+  background-color: var(--color-aviation-bg-secondary);
+  color: var(--state-detail-card-text);
+}
+
+/* ----------------------------------------
+   Form Layout
+   ---------------------------------------- */
+.state-detail-form-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+}
+
+.state-detail-form-row > * {
+  flex: 1;
+}
+
+.state-detail-form-actions {
+  display: flex;
+  align-items: flex-end;
+}
+
+/* ----------------------------------------
+   Responsive Adjustments
+   ---------------------------------------- */
+@media (max-width: 768px) {
+  .state-detail-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .state-detail-header-right {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .state-detail-header-right > * {
+    flex: 1;
+  }
+
+  .state-detail-form-row {
+    flex-direction: column;
+  }
+
+  .state-detail-form-row > * {
+    width: 100%;
+  }
+
+  .state-detail-tabs-list {
+    flex-direction: column;
+  }
+}
+
+/* ----------------------------------------
+   Animation Classes
+   ---------------------------------------- */
+.animate-fade-in {
+  animation: state-detail-fade-in-up 0.4s ease-out forwards;
+}
+
+@keyframes state-detail-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ----------------------------------------
+   Aviation Glow Effects
+   ---------------------------------------- */
+.aviation-glow-amber {
+  box-shadow:
+    0 0 20px var(--color-aviation-amber-dim),
+    0 0 40px var(--color-aviation-amber-glow);
+}
+
+.aviation-glow-cyan {
+  box-shadow:
+    0 0 20px var(--color-aviation-cyan-dim),
+    0 0 40px var(--color-aviation-cyan-glow);
+}
+
+.aviation-glow-green {
+  box-shadow:
+    0 0 20px rgba(16, 185, 129, 0.3),
+    0 0 40px var(--color-aviation-green-glow);
+}
+
+.aviation-glow-red {
+  box-shadow:
+    0 0 20px rgba(239, 68, 68, 0.3),
+    0 0 40px var(--color-aviation-red-glow);
+}
+
+.aviation-glow-blue {
+  box-shadow:
+    0 0 20px rgba(59, 130, 246, 0.3),
+    0 0 40px rgba(59, 130, 246, 0.5);
+}
+
+/* Light mode glows */
+[data-theme='light'] .aviation-glow-amber {
+  box-shadow:
+    0 0 20px var(--color-aviation-amber-dim-light),
+    0 0 40px var(--color-aviation-amber-glow-light);
+}
+
+[data-theme='light'] .aviation-glow-cyan {
+  box-shadow:
+    0 0 20px var(--color-aviation-cyan-dim-light),
+    0 0 40px var(--color-aviation-cyan-glow-light);
+}
+
+[data-theme='light'] .aviation-glow-green {
+  box-shadow:
+    0 0 20px rgba(5, 150, 105, 0.2),
+    0 0 40px var(--color-aviation-green-glow-light);
+}
+
+[data-theme='light'] .aviation-glow-red {
+  box-shadow:
+    0 0 20px rgba(220, 38, 38, 0.2),
+    0 0 40px var(--color-aviation-red-glow-light);
+}
+
+[data-theme='light'] .aviation-glow-blue {
+  box-shadow:
+    0 0 20px rgba(59, 130, 246, 0.2),
+    0 0 40px rgba(59, 130, 246, 0.4);
+}

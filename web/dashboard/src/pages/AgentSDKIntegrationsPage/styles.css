@@ -1,0 +1,642 @@
+/* ==========================================================================
+   FunctionFly SDK Integrations Page - Aviation Theme
+   Cockpit-inspired styling with full light/dark mode support
+   Uses the aviation theme CSS variables for consistent theming
+   ========================================================================== */
+
+/* ----------------------------------------
+   CSS Variables (SDK Theme - Aviation)
+   ---------------------------------------- */
+:root {
+  /* SDK Colors - Aviation Brand */
+  --sdk-primary: var(--ff-flame);
+  --sdk-primary-hover: var(--ff-flame-dark);
+  --sdk-primary-light: rgba(255, 107, 53, 0.1);
+  --sdk-primary-border: rgba(255, 107, 53, 0.2);
+
+  /* Status Colors - Aviation */
+  --sdk-available-bg: rgba(16, 185, 129, 0.15);
+  --sdk-available-text: var(--color-aviation-green);
+  --sdk-available-border: rgba(16, 185, 129, 0.3);
+
+  --sdk-warning-bg: rgba(245, 158, 11, 0.15);
+  --sdk-warning-text: var(--color-aviation-amber);
+  --sdk-warning-border: rgba(245, 158, 11, 0.3);
+
+  --sdk-danger-bg: rgba(239, 68, 68, 0.15);
+  --sdk-danger-text: var(--color-aviation-red);
+  --sdk-danger-border: rgba(239, 68, 68, 0.3);
+
+  /* SDK Card Styles - Aviation Panel */
+  --sdk-card-bg: var(--color-aviation-bg-panel);
+  --sdk-card-border: var(--color-aviation-border-panel);
+  --sdk-card-hover-border: var(--color-aviation-amber-dim);
+  --sdk-card-text: var(--color-aviation-text-primary);
+  --sdk-card-text-secondary: var(--color-aviation-text-secondary);
+
+  /* Code Block Styles */
+  --sdk-code-bg: var(--color-aviation-bg-instrument);
+  --sdk-code-border: var(--color-aviation-border-instrument);
+  --sdk-code-text: var(--color-aviation-text-primary);
+  --sdk-code-line-number: var(--color-aviation-text-dim);
+
+  /* Control Group */
+  --sdk-control-bg: var(--color-aviation-bg-instrument);
+  --sdk-control-border: var(--color-aviation-border-instrument);
+  --sdk-control-text: var(--color-aviation-text-primary);
+
+  /* Tab Styles */
+  --sdk-tab-bg: var(--color-aviation-bg-instrument);
+  --sdk-tab-border: var(--color-aviation-border-instrument);
+  --sdk-tab-text: var(--color-aviation-text-secondary);
+  --sdk-tab-active-bg: var(--color-aviation-bg-panel);
+  --sdk-tab-active-border: var(--color-aviation-amber-dim);
+  --sdk-tab-active-text: var(--color-aviation-text-primary);
+
+  /* Animation Durations */
+  --sdk-transition-fast: 150ms ease;
+  --sdk-transition-normal: 250ms ease;
+  --sdk-transition-slow: 350ms ease;
+
+  /* Shadows - Aviation Glow */
+  --sdk-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --sdk-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --sdk-shadow-glow: 0 0 20px rgba(255, 107, 53, 0.15);
+}
+
+/* Light Mode Overrides */
+[data-theme='light'] {
+  --sdk-card-bg: var(--color-aviation-bg-panel-light);
+  --sdk-card-border: var(--color-aviation-border-panel-light);
+  --sdk-card-hover-border: var(--color-aviation-amber-dim-light);
+  --sdk-card-text: var(--color-aviation-text-primary-light);
+  --sdk-card-text-secondary: var(--color-aviation-text-secondary-light);
+
+  --sdk-code-bg: var(--color-aviation-bg-instrument-light);
+  --sdk-code-border: var(--color-aviation-border-instrument-light);
+  --sdk-code-text: var(--color-aviation-text-primary-light);
+  --sdk-code-line-number: var(--color-aviation-text-dim-light);
+
+  --sdk-control-bg: var(--color-aviation-bg-instrument-light);
+  --sdk-control-border: var(--color-aviation-border-instrument-light);
+  --sdk-control-text: var(--color-aviation-text-primary-light);
+
+  --sdk-tab-bg: var(--color-aviation-bg-instrument-light);
+  --sdk-tab-border: var(--color-aviation-border-instrument-light);
+  --sdk-tab-text: var(--color-aviation-text-secondary-light);
+  --sdk-tab-active-bg: var(--color-aviation-bg-panel-light);
+  --sdk-tab-active-border: var(--color-aviation-amber-dim-light);
+  --sdk-tab-active-text: var(--color-aviation-text-primary-light);
+
+  --sdk-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --sdk-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+  --sdk-shadow-glow: 0 0 20px rgba(232, 90, 42, 0.1);
+}
+
+/* ----------------------------------------
+   Page Container
+   ---------------------------------------- */
+.agent-sdk-integrations-page {
+  animation: sdk-fade-in 0.3s ease-out;
+}
+
+@keyframes sdk-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ----------------------------------------
+   SDK Header
+   ---------------------------------------- */
+.sdk-header {
+  animation: sdk-slide-in 0.4s ease-out;
+}
+
+@keyframes sdk-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ----------------------------------------
+   Section Navigation
+   ---------------------------------------- */
+.sdk-section-nav {
+  background: var(--sdk-card-bg);
+  border: 1px solid var(--sdk-card-border);
+  backdrop-filter: blur(8px);
+  animation: sdk-slide-in 0.5s ease-out 0.1s both;
+}
+
+.sdk-section-link {
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--sdk-tab-text);
+  transition: all var(--sdk-transition-fast);
+  text-decoration: none;
+  position: relative;
+}
+
+.sdk-section-link:hover {
+  color: var(--sdk-card-text);
+  background: var(--sdk-control-bg);
+}
+
+.sdk-section-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 2px;
+  background: var(--sdk-primary);
+  transition: width var(--sdk-transition-normal);
+}
+
+.sdk-section-link:hover::after {
+  width: 60%;
+}
+
+/* ----------------------------------------
+   Install Banner
+   ---------------------------------------- */
+.sdk-install-banner {
+  background: var(--sdk-primary-light);
+  border: 1px solid var(--sdk-primary-border);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  animation: sdk-slide-in 0.5s ease-out 0.15s both;
+}
+
+.sdk-install-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--sdk-primary) 30%,
+    var(--sdk-primary) 70%,
+    transparent 100%
+  );
+}
+
+.sdk-quickstart-btn {
+  background: var(--sdk-primary);
+  border: 1px solid var(--sdk-primary-border);
+  transition: all var(--sdk-transition-fast);
+}
+
+.sdk-quickstart-btn:hover {
+  background: var(--sdk-primary-hover);
+  box-shadow: var(--sdk-shadow-glow);
+  transform: translateY(-1px);
+}
+
+/* ----------------------------------------
+   Policy Card
+   ---------------------------------------- */
+.sdk-policy-card {
+  background: var(--sdk-card-bg);
+  border: 1px solid var(--sdk-card-border);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  transition: all var(--sdk-transition-normal);
+  animation: sdk-slide-in 0.5s ease-out 0.2s both;
+}
+
+.sdk-policy-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--sdk-card-border) 30%,
+    var(--sdk-card-border) 70%,
+    transparent 100%
+  );
+}
+
+.sdk-policy-card:hover {
+  border-color: var(--sdk-card-hover-border);
+  box-shadow: var(--sdk-shadow-glow);
+}
+
+/* ----------------------------------------
+   Control Groups
+   ---------------------------------------- */
+.sdk-control-group {
+  padding: 0.75rem;
+  background: var(--sdk-control-bg);
+  border: 1px solid var(--sdk-control-border);
+  border-radius: 8px;
+  transition: all var(--sdk-transition-fast);
+}
+
+.sdk-control-group:hover {
+  border-color: var(--sdk-card-hover-border);
+}
+
+/* ----------------------------------------
+   Slider Ticks
+   ---------------------------------------- */
+.sdk-slider-ticks {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.sdk-slider-tick {
+  font-size: 0.625rem;
+  color: var(--sdk-tab-text);
+  position: relative;
+}
+
+.sdk-slider-tick::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1px;
+  height: 4px;
+  background: var(--sdk-tab-border);
+}
+
+.sdk-slider-tick-default {
+  color: var(--sdk-primary);
+  font-weight: 600;
+}
+
+.sdk-slider-tick-default::before {
+  background: var(--sdk-primary);
+}
+
+/* ----------------------------------------
+   Tabs
+   ---------------------------------------- */
+.sdk-tabs-list {
+  background: var(--sdk-tab-bg);
+  border: 1px solid var(--sdk-tab-border);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.sdk-tabs-list button {
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--sdk-tab-text);
+  transition: all var(--sdk-transition-fast);
+}
+
+.sdk-tabs-list button:hover {
+  color: var(--sdk-tab-active-text);
+  background: transparent;
+}
+
+.sdk-tabs-list button[data-state="active"] {
+  background: var(--sdk-tab-active-bg);
+  color: var(--sdk-tab-active-text);
+  box-shadow: 0 0 0 1px var(--sdk-tab-active-border);
+}
+
+/* ----------------------------------------
+   Available Badge
+   ---------------------------------------- */
+.sdk-available-badge {
+  background: var(--sdk-available-bg);
+  border: 1px solid var(--sdk-available-border);
+  color: var(--sdk-available-text);
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+/* ----------------------------------------
+   Preview Card
+   ---------------------------------------- */
+.sdk-preview-card {
+  background: var(--sdk-card-bg);
+  border: 1px solid var(--sdk-card-border);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  transition: all var(--sdk-transition-normal);
+}
+
+.sdk-preview-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--sdk-card-border) 30%,
+    var(--sdk-card-border) 70%,
+    transparent 100%
+  );
+}
+
+.sdk-preview-card:hover {
+  border-color: var(--sdk-card-hover-border);
+  box-shadow: var(--sdk-shadow-glow);
+}
+
+/* ----------------------------------------
+   Security Card
+   ---------------------------------------- */
+.sdk-security-card {
+  background: var(--sdk-card-bg);
+  border: 1px solid var(--sdk-card-border);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  transition: all var(--sdk-transition-normal);
+}
+
+.sdk-security-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--sdk-available-border) 30%,
+    var(--sdk-available-border) 70%,
+    transparent 100%
+  );
+}
+
+.sdk-security-card:hover {
+  border-color: var(--sdk-available-border);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);
+}
+
+/* ----------------------------------------
+   Code Block
+   ---------------------------------------- */
+.sdk-code-block {
+  background: var(--sdk-code-bg);
+  border: 1px solid var(--sdk-code-border);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: all var(--sdk-transition-normal);
+  position: relative;
+}
+
+.sdk-code-block::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--sdk-code-border) 30%,
+    var(--sdk-code-border) 70%,
+    transparent 100%
+  );
+}
+
+.sdk-code-block:hover {
+  border-color: var(--sdk-card-hover-border);
+  box-shadow: var(--sdk-shadow-glow);
+}
+
+.sdk-code-header {
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid var(--sdk-code-border);
+}
+
+.sdk-code-pre {
+  background: var(--sdk-code-bg) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  color: var(--sdk-code-text) !important;
+}
+
+.sdk-code-lines {
+  display: flex;
+  flex-direction: column;
+}
+
+.sdk-code-line {
+  display: flex;
+  min-height: 1.5rem;
+  line-height: 1.5rem;
+}
+
+.sdk-code-line-number {
+  color: var(--sdk-code-line-number);
+  min-width: 2.5rem;
+  padding-right: 1rem;
+  text-align: right;
+  user-select: none;
+  opacity: 0.5;
+}
+
+.sdk-code-line-content {
+  flex: 1;
+  white-space: pre;
+}
+
+.sdk-copy-btn {
+  transition: all var(--sdk-transition-fast);
+  color: var(--sdk-tab-text);
+}
+
+.sdk-copy-btn:hover {
+  color: var(--sdk-card-text);
+  background: var(--sdk-control-bg);
+}
+
+/* ----------------------------------------
+   Aviation Corner Accents
+   ---------------------------------------- */
+.aviation-corner {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  opacity: 0;
+  transition: opacity var(--sdk-transition-fast);
+}
+
+.sdk-policy-card:hover .aviation-corner,
+.sdk-preview-card:hover .aviation-corner,
+.sdk-security-card:hover .aviation-corner,
+.sdk-code-block:hover .aviation-corner {
+  opacity: 1;
+}
+
+.aviation-corner-tl {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid var(--sdk-primary);
+  border-left: 2px solid var(--sdk-primary);
+  border-radius: 4px 0 0 0;
+}
+
+.aviation-corner-tr {
+  top: -1px;
+  right: -1px;
+  border-top: 2px solid var(--sdk-primary);
+  border-right: 2px solid var(--sdk-primary);
+  border-radius: 0 4px 0 0;
+}
+
+.aviation-corner-bl {
+  bottom: -1px;
+  left: -1px;
+  border-bottom: 2px solid var(--sdk-primary);
+  border-left: 2px solid var(--sdk-primary);
+  border-radius: 0 0 0 4px;
+}
+
+.aviation-corner-br {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 2px solid var(--sdk-primary);
+  border-right: 2px solid var(--sdk-primary);
+  border-radius: 0 0 4px 0;
+}
+
+[data-theme='light'] .aviation-corner {
+  opacity: 0.6;
+}
+
+[data-theme='light'] .sdk-policy-card:hover .aviation-corner,
+[data-theme='light'] .sdk-preview-card:hover .aviation-corner,
+[data-theme='light'] .sdk-security-card:hover .aviation-corner,
+[data-theme='light'] .sdk-code-block:hover .aviation-corner {
+  opacity: 1;
+}
+
+/* ----------------------------------------
+   Glow Effects
+   ---------------------------------------- */
+.aviation-glow-orange {
+  box-shadow: 0 0 20px rgba(255, 107, 53, 0.2);
+}
+
+.aviation-glow-green {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+}
+
+.aviation-glow-amber {
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+}
+
+.aviation-glow-red {
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
+}
+
+[data-theme='light'] .aviation-glow-orange {
+  box-shadow: 0 0 20px rgba(232, 90, 42, 0.15);
+}
+
+[data-theme='light'] .aviation-glow-green {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);
+}
+
+[data-theme='light'] .aviation-glow-amber {
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.15);
+}
+
+[data-theme='light'] .aviation-glow-red {
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.15);
+}
+
+/* ----------------------------------------
+   Animations
+   ---------------------------------------- */
+@keyframes sdk-glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(255, 107, 53, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(255, 107, 53, 0.35);
+  }
+}
+
+.sdk-policy-card {
+  animation: sdk-glow-pulse 3s ease-in-out infinite;
+}
+
+[data-theme='light'] .sdk-policy-card {
+  animation: none;
+}
+
+/* ----------------------------------------
+   Responsive
+   ---------------------------------------- */
+@media (max-width: 768px) {
+  .sdk-section-nav {
+    top: 4rem;
+  }
+
+  .sdk-control-group {
+    padding: 0.5rem;
+  }
+
+  .sdk-code-line-number {
+    min-width: 2rem;
+    padding-right: 0.5rem;
+  }
+}
+
+/* ----------------------------------------
+   Scrollbar Styling
+   ---------------------------------------- */
+.sdk-code-block::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.sdk-code-block::-webkit-scrollbar-track {
+  background: var(--sdk-code-bg);
+}
+
+.sdk-code-block::-webkit-scrollbar-thumb {
+  background: var(--sdk-code-border);
+  border-radius: 3px;
+}
+
+.sdk-code-block::-webkit-scrollbar-thumb:hover {
+  background: var(--sdk-card-hover-border);
+}

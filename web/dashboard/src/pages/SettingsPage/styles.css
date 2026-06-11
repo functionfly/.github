@@ -1,0 +1,492 @@
+/* ==========================================================================
+   FunctionFly Settings Page - Aviation Theme
+   Cockpit-inspired settings styling with full light/dark mode support
+   Uses the aviation theme CSS variables for consistent theming
+   ========================================================================== */
+
+/* ----------------------------------------
+   CSS Variables (Settings Theme)
+   ---------------------------------------- */
+:root {
+  --settings-header-font: var(--font-display, 'Space Grotesk', system-ui, sans-serif);
+  --settings-transition-fast: 150ms ease;
+  --settings-transition-normal: 250ms ease;
+  --settings-transition-slow: 350ms ease;
+
+  --settings-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --settings-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --settings-shadow-panel: 0 0 20px rgba(59, 130, 246, 0.08);
+  --settings-shadow-tab-active: 0 0 15px rgba(59, 130, 246, 0.2);
+}
+
+[data-theme='light'] {
+  --settings-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --settings-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+  --settings-shadow-panel: 0 0 20px rgba(59, 130, 246, 0.05);
+  --settings-shadow-tab-active: 0 0 15px rgba(59, 130, 246, 0.1);
+}
+
+/* ----------------------------------------
+   Page Container - Aviation Cockpit
+   ---------------------------------------- */
+.settings-page {
+  min-height: 100vh;
+  padding: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .settings-page {
+    padding: 1.5rem;
+  }
+}
+
+/* ----------------------------------------
+   Page Header - Cockpit HUD
+   ---------------------------------------- */
+.settings-page-header {
+  position: relative;
+  padding-bottom: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.settings-page-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-aviation-amber) 20%,
+    var(--color-aviation-amber) 80%,
+    transparent 100%
+  );
+  opacity: 0.3;
+}
+
+.settings-page-title {
+  font-family: var(--settings-header-font);
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-aviation-text-primary);
+  text-shadow: 0 0 30px rgba(59, 130, 246, 0.15);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.settings-page-subtitle {
+  font-size: 0.9375rem;
+  color: var(--color-aviation-text-secondary);
+  margin-top: 0.375rem;
+  line-height: 1.5;
+}
+
+/* ----------------------------------------
+   Tabs Container - Aviation Instrument Panel
+   ---------------------------------------- */
+.settings-page-tabs {
+  background: var(--color-aviation-bg-panel);
+  border: 1px solid var(--color-aviation-border-panel);
+  border-radius: 12px;
+  padding: 0.375rem;
+  backdrop-filter: blur(8px);
+  position: relative;
+  transition: border-color var(--settings-transition-normal);
+}
+
+.settings-page-tabs::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-aviation-cyan) 30%,
+    var(--color-aviation-amber) 50%,
+    var(--color-aviation-cyan) 70%,
+    transparent 100%
+  );
+  opacity: 0.4;
+  border-radius: 12px 12px 0 0;
+}
+
+.settings-page-tabs:hover {
+  border-color: var(--color-aviation-border-instrument);
+}
+
+/* ----------------------------------------
+   Tab Trigger - Aviation Switch
+   ---------------------------------------- */
+.settings-page-tab {
+  position: relative;
+  border-radius: 8px;
+  color: var(--color-aviation-text-secondary);
+  transition: all var(--settings-transition-fast);
+}
+
+.settings-page-tab:hover {
+  color: var(--color-aviation-text-primary);
+  background: var(--color-aviation-bg-instrument);
+}
+
+.settings-page-tab[data-state='active'] {
+  color: var(--color-brand-500);
+  background: rgba(255, 107, 53, 0.08);
+  box-shadow: var(--settings-shadow-tab-active);
+}
+
+.settings-page-tab[data-state='active'] svg {
+  color: var(--color-brand-500);
+  filter: drop-shadow(0 0 4px rgba(255, 107, 53, 0.4));
+}
+
+/* Aviation indicator dot */
+.settings-page-tab::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0.5rem;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: var(--color-brand-500);
+  box-shadow: 0 0 6px var(--color-brand-500);
+  transition: all var(--settings-transition-fast);
+  opacity: 0;
+}
+
+.settings-page-tab[data-state='active']::before {
+  width: 6px;
+  height: 6px;
+  opacity: 1;
+}
+
+/* ----------------------------------------
+   Tab Content - Instrument Readout
+   ---------------------------------------- */
+.settings-tab-content {
+  animation: settings-fade-in 0.3s ease-out forwards;
+}
+
+@keyframes settings-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ----------------------------------------
+   Settings Panel - Instrument Housing
+   ---------------------------------------- */
+.settings-panel {
+  background: var(--color-aviation-bg-panel);
+  border: 1px solid var(--color-aviation-border-panel);
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  transition: all var(--settings-transition-normal);
+}
+
+.settings-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--color-aviation-cyan) 0%,
+    var(--color-aviation-amber) 50%,
+    var(--color-aviation-cyan) 100%
+  );
+  opacity: 0;
+  transition: opacity var(--settings-transition-normal);
+}
+
+.settings-panel:hover::before {
+  opacity: 0.5;
+}
+
+.settings-panel:hover {
+  border-color: var(--color-aviation-border-instrument);
+  box-shadow: var(--settings-shadow-panel);
+}
+
+/* ----------------------------------------
+   Settings Section - Readout Row
+   ---------------------------------------- */
+.settings-section {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--color-aviation-border-panel);
+}
+
+.settings-section:last-child {
+  border-bottom: none;
+}
+
+.settings-section-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-aviation-text-primary);
+  margin-bottom: 0.25rem;
+  font-family: var(--font-mono);
+  letter-spacing: 0.01em;
+}
+
+.settings-section-description {
+  font-size: 0.8125rem;
+  color: var(--color-aviation-text-muted);
+  line-height: 1.5;
+}
+
+/* ----------------------------------------
+   Settings Form Elements
+   ---------------------------------------- */
+.settings-input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  background: var(--color-aviation-bg-instrument);
+  border: 1px solid var(--color-aviation-border-instrument);
+  border-radius: 8px;
+  color: var(--color-aviation-text-primary);
+  font-size: 0.875rem;
+  transition: all var(--settings-transition-fast);
+}
+
+.settings-input:focus {
+  outline: none;
+  border-color: var(--color-aviation-cyan);
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
+}
+
+.settings-input::placeholder {
+  color: var(--color-aviation-text-muted);
+}
+
+.settings-label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-aviation-text-secondary);
+  margin-bottom: 0.375rem;
+}
+
+/* ----------------------------------------
+   Settings Button - Cockpit Control
+   ---------------------------------------- */
+.settings-button-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  background: linear-gradient(135deg, var(--color-brand-500) 0%, var(--ff-afterburner) 100%);
+  color: white;
+  font-weight: 600;
+  font-size: 0.875rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all var(--settings-transition-fast);
+  position: relative;
+  overflow: hidden;
+}
+
+.settings-button-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity var(--settings-transition-fast);
+}
+
+.settings-button-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+}
+
+.settings-button-primary:hover::before {
+  opacity: 1;
+}
+
+.settings-button-primary:active {
+  transform: translateY(0);
+}
+
+.settings-button-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  background: var(--color-aviation-bg-instrument);
+  color: var(--color-aviation-text-primary);
+  font-weight: 500;
+  font-size: 0.875rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-aviation-border-instrument);
+  cursor: pointer;
+  transition: all var(--settings-transition-fast);
+}
+
+.settings-button-secondary:hover {
+  border-color: var(--color-aviation-cyan);
+  color: var(--color-aviation-cyan);
+}
+
+/* ----------------------------------------
+   Settings Divider - Instrument Panel Line
+   ---------------------------------------- */
+.settings-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-aviation-border-panel) 20%,
+    var(--color-aviation-border-panel) 80%,
+    transparent 100%
+  );
+  margin: 1rem 0;
+}
+
+/* ----------------------------------------
+   Settings Badge - Status Indicator
+   ---------------------------------------- */
+.settings-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 6px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.settings-badge-success {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--color-aviation-green);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.settings-badge-warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--color-aviation-amber);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.settings-badge-danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--color-aviation-red);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* ----------------------------------------
+   Avatar Section
+   ---------------------------------------- */
+.settings-avatar-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.settings-avatar {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  border: 2px solid var(--color-aviation-border-instrument);
+  position: relative;
+  overflow: hidden;
+}
+
+.settings-avatar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+/* ----------------------------------------
+   Animation Classes
+   ---------------------------------------- */
+.settings-fade-in {
+  animation: settings-fade-in-up 0.4s ease-out forwards;
+}
+
+@keyframes settings-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.settings-slide-in-right {
+  animation: settings-slide-in-right 0.3s ease-out;
+}
+
+@keyframes settings-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ----------------------------------------
+   Aviation Glow Effects
+   ---------------------------------------- */
+.aviation-glow-settings {
+  box-shadow:
+    0 0 20px rgba(59, 130, 246, 0.15),
+    0 0 40px rgba(59, 130, 246, 0.08);
+}
+
+.aviation-glow-tab-active {
+  box-shadow:
+    0 0 15px rgba(255, 107, 53, 0.2),
+    0 0 30px rgba(255, 107, 53, 0.1);
+}
+
+/* ----------------------------------------
+   Responsive Adjustments
+   ---------------------------------------- */
+@media (max-width: 768px) {
+  .settings-page {
+    padding: 0.75rem;
+  }
+
+  .settings-page-title {
+    font-size: 1.5rem;
+  }
+
+  .settings-section {
+    padding: 1rem;
+  }
+}

@@ -1,0 +1,812 @@
+/**
+ * Aviation Marketplace Theme
+ * Aircraft cockpit-inspired styling for the Function Marketplace
+ * Jet Stream brand palette: Flame (#FF6B35), Cyan (#00D4FF), Afterburner (#FF4F5E)
+ */
+
+/* ==========================================================================
+   Marketplace Container
+   ========================================================================== */
+
+.aviation-marketplace {
+  position: relative;
+  isolation: isolate;
+}
+
+/* Aviation Grid Background */
+.aviation-marketplace::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(6, 182, 212, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ==========================================================================
+   Marketplace Hero Section
+   ========================================================================== */
+
+.aviation-marketplace .registry-hero {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255, 107, 53, 0.3) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 60%, rgba(255, 79, 94, 0.2) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 60% at 10% 80%, rgba(0, 212, 255, 0.1) 0%, transparent 50%),
+    var(--color-aviation-bg-primary, #08080c);
+  border-bottom: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+}
+
+.aviation-marketplace .registry-hero::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ff-cyan, #00d4ff), transparent);
+  opacity: 0.3;
+}
+
+.aviation-marketplace .registry-hero-title {
+  background: linear-gradient(
+    135deg,
+    var(--color-aviation-text-primary, #e8e8f0) 0%,
+    var(--ff-cyan, #00d4ff) 30%,
+    var(--ff-flame, #ff6b35) 70%,
+    var(--ff-afterburner, #ff4f5e) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+[data-theme='light'] .aviation-marketplace .registry-hero-title {
+  background: linear-gradient(
+    135deg,
+    var(--color-aviation-text-primary-light, #111827) 0%,
+    var(--ff-cyan-dark, #00b8e0) 30%,
+    var(--ff-flame-dark, #e85a2a) 70%,
+    var(--ff-afterburner, #d14a20) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ==========================================================================
+   Marketplace Stats Bar
+   ========================================================================== */
+
+.aviation-marketplace .registry-stats-bar {
+  background: rgba(6, 182, 212, 0.05);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  backdrop-filter: blur(20px);
+  border-radius: 12px;
+}
+
+.aviation-marketplace .registry-stats-bar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--ff-cyan, #00d4ff), transparent 50%, var(--ff-flame, #ff6b35));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.3;
+}
+
+.aviation-marketplace .registry-stat-item + .registry-stat-item::before {
+  background: linear-gradient(180deg, transparent, var(--color-aviation-cyan, #06b6d4), transparent);
+  opacity: 0.3;
+}
+
+.aviation-marketplace .registry-stat-value {
+  background: linear-gradient(135deg, var(--ff-cyan, #00d4ff) 0%, var(--ff-flame, #ff6b35) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ==========================================================================
+   Marketplace Sidebar
+   ========================================================================== */
+
+.aviation-marketplace .registry-sidebar {
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.aviation-marketplace .registry-sidebar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--ff-flame, #ff6b35), var(--ff-cyan, #00d4ff), var(--ff-flame, #ff6b35));
+  opacity: 0.6;
+}
+
+.aviation-marketplace .registry-sidebar-header {
+  background: var(--color-aviation-bg-instrument, #222232);
+  border-bottom: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.06));
+}
+
+.aviation-marketplace .registry-sidebar-title {
+  color: var(--color-aviation-amber, #f59e0b);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+}
+
+/* ==========================================================================
+   Category Items
+   ========================================================================== */
+
+.aviation-marketplace .registry-cat-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.aviation-marketplace .registry-cat-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 0;
+  background: linear-gradient(180deg, var(--ff-flame, #ff6b35), var(--ff-cyan, #00d4ff));
+  border-radius: 0 2px 2px 0;
+  transition: height 0.2s ease;
+}
+
+.aviation-marketplace .registry-cat-item:hover {
+  background: var(--color-aviation-bg-instrument, rgba(6, 182, 212, 0.1));
+}
+
+.aviation-marketplace .registry-cat-item.active {
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(0, 212, 255, 0.05) 100%);
+  border-color: rgba(255, 107, 53, 0.2);
+}
+
+.aviation-marketplace .registry-cat-item.active::before {
+  height: 60%;
+}
+
+.aviation-marketplace .registry-cat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--color-aviation-bg-instrument, #222232);
+  border: 1px solid var(--color-aviation-border-instrument, rgba(255, 255, 255, 0.12));
+}
+
+.aviation-marketplace .registry-cat-item.active .registry-cat-icon {
+  background: linear-gradient(135deg, var(--ff-flame, #ff6b35), var(--ff-cyan, #00d4ff));
+  border-color: transparent;
+}
+
+.aviation-marketplace .registry-cat-icon svg {
+  color: var(--color-aviation-cyan, #06b6d4);
+}
+
+.aviation-marketplace .registry-cat-item.active .registry-cat-icon svg {
+  color: var(--color-aviation-bg-primary, #08080c);
+}
+
+.aviation-marketplace .registry-cat-label {
+  flex: 1;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-aviation-text-secondary, #9ca3af);
+}
+
+.aviation-marketplace .registry-cat-item.active .registry-cat-label {
+  color: var(--color-aviation-text-primary, #e8e8f0);
+  font-weight: 600;
+}
+
+.aviation-marketplace .registry-cat-count {
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  background: var(--color-aviation-bg-instrument, #222232);
+  color: var(--color-aviation-text-muted, #6b7280);
+}
+
+.aviation-marketplace .registry-cat-item.active .registry-cat-count {
+  background: var(--ff-flame, #ff6b35);
+  color: var(--color-aviation-bg-primary, #08080c);
+}
+
+/* ==========================================================================
+   Function Cards - Aviation Style
+   ========================================================================== */
+
+.aviation-marketplace .registry-card {
+  position: relative;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.aviation-marketplace .registry-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  padding: 1px;
+  background: linear-gradient(135deg, transparent 30%, rgba(255, 107, 53, 0.3) 50%, transparent 70%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.aviation-marketplace .registry-card:hover {
+  border-color: rgba(255, 107, 53, 0.3);
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 25px rgba(0, 0, 0, 0.4),
+    0 0 30px rgba(255, 107, 53, 0.1);
+}
+
+.aviation-marketplace .registry-card:hover::before {
+  opacity: 1;
+}
+
+.aviation-marketplace .registry-card-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--ff-flame, #ff6b35), var(--ff-cyan, #00d4ff), var(--ff-flame, #ff6b35));
+  opacity: 0.6;
+}
+
+.aviation-marketplace .registry-card-icon {
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ==========================================================================
+   List Cards - Aviation Style
+   ========================================================================== */
+
+.aviation-marketplace .registry-list-card {
+  position: relative;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 10px;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: all 0.2s ease;
+}
+
+.aviation-marketplace .registry-list-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--ff-flame, #ff6b35), var(--ff-cyan, #00d4ff));
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  border-radius: 0 2px 2px 0;
+}
+
+.aviation-marketplace .registry-list-card:hover {
+  border-color: rgba(255, 107, 53, 0.2);
+  background: var(--color-aviation-bg-instrument, #222232);
+}
+
+.aviation-marketplace .registry-list-card:hover::before {
+  opacity: 0.6;
+}
+
+/* ==========================================================================
+   Search Input - Aviation Style
+   ========================================================================== */
+
+.aviation-marketplace .registry-search-wrapper {
+  position: relative;
+}
+
+.aviation-marketplace .registry-search-input input {
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.aviation-marketplace .registry-search-input input:focus {
+  border-color: var(--ff-cyan, #00d4ff);
+  box-shadow:
+    0 0 0 3px rgba(0, 212, 255, 0.15),
+    0 0 20px rgba(0, 212, 255, 0.1);
+  outline: none;
+}
+
+.aviation-marketplace .registry-search-shortcut {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  background: var(--color-aviation-bg-instrument, #222232);
+  border: 1px solid var(--color-aviation-border-instrument, rgba(255, 255, 255, 0.12));
+  color: var(--color-aviation-cyan, #06b6d4);
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+}
+
+/* ==========================================================================
+   View Toggle - Aviation Style
+   ========================================================================== */
+
+.aviation-marketplace .registry-view-toggle {
+  display: flex;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.aviation-marketplace .registry-view-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--color-aviation-text-muted, #6b7280);
+  transition: all 0.2s ease;
+}
+
+.aviation-marketplace .registry-view-btn:hover {
+  color: var(--color-aviation-text-secondary, #9ca3af);
+  background: var(--color-aviation-bg-instrument, #222232);
+}
+
+.aviation-marketplace .registry-view-btn.active {
+  background: linear-gradient(135deg, var(--ff-flame, #ff6b35), var(--ff-cyan, #00d4ff));
+  color: var(--color-aviation-bg-primary, #08080c);
+  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
+}
+
+/* ==========================================================================
+   Controls Bar - Aviation Style
+   ========================================================================== */
+
+.aviation-marketplace .registry-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.06));
+  border-radius: 10px;
+}
+
+/* ==========================================================================
+   Filter Chips - Aviation Style
+   ========================================================================== */
+
+.aviation-marketplace .registry-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.15) 0%, rgba(0, 212, 255, 0.1) 100%);
+  border: 1px solid rgba(255, 107, 53, 0.25);
+  color: var(--ff-flame, #ff6b35);
+  transition: all 0.2s ease;
+}
+
+.aviation-marketplace .registry-filter-chip:hover {
+  border-color: rgba(255, 107, 53, 0.4);
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.2) 0%, rgba(0, 212, 255, 0.15) 100%);
+}
+
+.aviation-marketplace .registry-filter-chip-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255, 107, 53, 0.2);
+  color: var(--ff-flame, #ff6b35);
+  transition: all 0.2s ease;
+}
+
+.aviation-marketplace .registry-filter-chip-close:hover {
+  background: var(--ff-flame, #ff6b35);
+  color: var(--color-aviation-bg-primary, #08080c);
+}
+
+/* ==========================================================================
+   Rating Bar - Aviation Style
+   ========================================================================== */
+
+.aviation-marketplace .registry-rating-bar {
+  width: 60px;
+  height: 4px;
+  background: var(--color-aviation-bg-instrument, #222232);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.aviation-marketplace .registry-rating-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--ff-flame, #ff6b35), var(--ff-cyan, #00d4ff));
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* ==========================================================================
+   Reliability Badge - Aviation Style
+   ========================================================================== */
+
+.aviation-marketplace .registry-reliability-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.aviation-marketplace .registry-reliability-badge svg {
+  width: 10px;
+  height: 10px;
+}
+
+.aviation-marketplace .registry-reliability-high {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399;
+}
+
+.aviation-marketplace .registry-reliability-mid {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: var(--color-aviation-amber, #f59e0b);
+}
+
+.aviation-marketplace .registry-reliability-low {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+/* ==========================================================================
+   Price Badge - Aviation Style
+   ========================================================================== */
+
+.aviation-marketplace .registry-price-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(0, 212, 255, 0.05) 100%);
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  color: var(--color-aviation-cyan, #06b6d4);
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+}
+
+/* ==========================================================================
+   Category Badge - Aviation Style
+   ========================================================================== */
+
+.aviation-marketplace .registry-cat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  background: var(--color-aviation-bg-instrument, #222232);
+  border: 1px solid var(--color-aviation-border-instrument, rgba(255, 255, 255, 0.12));
+  color: var(--color-aviation-text-secondary, #9ca3af);
+}
+
+.aviation-marketplace .registry-cat-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ff-flame, #ff6b35);
+  box-shadow: 0 0 6px var(--ff-flame, #ff6b35);
+}
+
+/* ==========================================================================
+   Button Styles - Aviation
+   ========================================================================== */
+
+.aviation-marketplace .btn-deploy {
+  background: linear-gradient(135deg, var(--ff-flame, #ff6b35) 0%, var(--ff-afterburner, #ff4f5e) 100%);
+  border: none;
+  box-shadow:
+    0 4px 15px rgba(255, 107, 53, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.aviation-marketplace .btn-deploy::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.aviation-marketplace .btn-deploy:hover::before {
+  left: 100%;
+}
+
+.aviation-marketplace .btn-deploy:hover {
+  filter: brightness(1.1);
+  box-shadow:
+    0 6px 20px rgba(255, 107, 53, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.aviation-marketplace .btn-try {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(91, 124, 245, 0.1) 100%);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  color: var(--color-aviation-cyan, #06b6d4);
+}
+
+.aviation-marketplace .btn-try:hover {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.25) 0%, rgba(91, 124, 245, 0.2) 100%);
+  border-color: rgba(0, 212, 255, 0.5);
+  box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+}
+
+/* ==========================================================================
+   Empty State - Aviation Style
+   ========================================================================== */
+
+.aviation-marketplace .registry-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px dashed var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+}
+
+.aviation-marketplace .registry-empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(0, 212, 255, 0.1) 100%);
+  border: 1px solid rgba(255, 107, 53, 0.2);
+  margin-bottom: 1.5rem;
+}
+
+.aviation-marketplace .registry-empty-icon svg {
+  color: var(--ff-flame, #ff6b35);
+  filter: drop-shadow(0 0 8px rgba(255, 107, 53, 0.5));
+}
+
+/* ==========================================================================
+   Skeleton Loading - Aviation Style
+   ========================================================================== */
+
+.aviation-marketplace .registry-skeleton-card {
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.06));
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.aviation-marketplace .registry-skeleton-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 212, 255, 0.08) 50%,
+    transparent 100%
+  );
+  animation: skeleton-shimmer 1.5s infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* ==========================================================================
+   Mobile Chips - Aviation Style
+   ========================================================================== */
+
+.aviation-marketplace .registry-mobile-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  color: var(--color-aviation-text-secondary, #9ca3af);
+  transition: all 0.2s ease;
+}
+
+.aviation-marketplace .registry-mobile-chip:hover {
+  border-color: rgba(255, 107, 53, 0.3);
+  color: var(--ff-flame, #ff6b35);
+}
+
+.aviation-marketplace .registry-mobile-chip.active {
+  background: linear-gradient(135deg, var(--ff-flame, #ff6b35), var(--ff-cyan, #00d4ff));
+  border-color: transparent;
+  color: var(--color-aviation-bg-primary, #08080c);
+}
+
+/* ==========================================================================
+   Results Count - Aviation Style
+   ========================================================================== */
+
+.aviation-marketplace .registry-results-count {
+  font-size: 0.75rem;
+  color: var(--color-aviation-text-muted, #6b7280);
+}
+
+.aviation-marketplace .registry-results-count strong {
+  color: var(--ff-cyan, #00d4ff);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   Live Badge - Aviation Style
+   ========================================================================== */
+
+.aviation-marketplace .registry-live-badge {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.aviation-marketplace .registry-live-dot {
+  background: var(--color-aviation-green, #10b981);
+  box-shadow: 0 0 8px var(--color-aviation-green, #10b981);
+}
+
+.aviation-marketplace .registry-live-dot::before {
+  background: rgba(16, 185, 129, 0.4);
+}
+
+/* ==========================================================================
+   Card Flash Animation - Aviation Style
+   ========================================================================== */
+
+.aviation-marketplace .registry-card-flash {
+  animation: card-aviation-flash 0.7s ease-out;
+}
+
+@keyframes card-aviation-flash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px 5px rgba(0, 212, 255, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 212, 255, 0);
+  }
+}
+
+/* ==========================================================================
+   Light Mode Overrides
+   ========================================================================== */
+
+[data-theme='light'] .aviation-marketplace::before {
+  background-image:
+    linear-gradient(rgba(0, 168, 204, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 168, 204, 0.05) 1px, transparent 1px);
+}
+
+[data-theme='light'] .aviation-marketplace .registry-hero {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(232, 90, 42, 0.2) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 60%, rgba(209, 74, 32, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 60% at 10% 80%, rgba(0, 168, 204, 0.1) 0%, transparent 50%),
+    var(--color-aviation-bg-primary-light, #f1f5f9);
+}
+
+[data-theme='light'] .aviation-marketplace .registry-sidebar {
+  background: var(--color-aviation-bg-panel-light, #ffffff);
+  border-color: var(--color-aviation-border-panel-light, rgba(0, 0, 0, 0.1));
+}
+
+[data-theme='light'] .aviation-marketplace .registry-card {
+  background: var(--color-aviation-bg-panel-light, #ffffff);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='light'] .aviation-marketplace .registry-list-card {
+  background: var(--color-aviation-bg-panel-light, #ffffff);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='light'] .aviation-marketplace .registry-search-input input {
+  background: var(--color-aviation-bg-panel-light, #ffffff);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='light'] .aviation-marketplace .registry-controls {
+  background: var(--color-aviation-bg-panel-light, #ffffff);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='light'] .aviation-marketplace .registry-view-toggle {
+  background: var(--color-aviation-bg-tertiary-light, #e2e8f0);
+}
+
+[data-theme='light'] .aviation-marketplace .registry-cat-item:hover {
+  background: rgba(0, 168, 204, 0.08);
+}
+
+[data-theme='light'] .aviation-marketplace .registry-filter-chip {
+  background: linear-gradient(135deg, rgba(232, 90, 42, 0.1) 0%, rgba(0, 168, 204, 0.08) 100%);
+  color: var(--ff-flame-dark, #e85a2a);
+}
+
+[data-theme='light'] .aviation-marketplace .registry-skeleton-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.06);
+}

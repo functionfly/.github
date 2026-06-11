@@ -1,0 +1,1521 @@
+/**
+ * Aviation Dashboard Theme
+ * Aircraft cockpit-inspired styling for the Dashboard Overview page
+ * Jet Stream brand palette: Flame (#FF6B35), Cyan (#00D4FF), Afterburner (#FF4F5E)
+ */
+
+/* ==========================================================================
+   Dashboard Container
+   ========================================================================== */
+
+.aviation-dashboard {
+  position: relative;
+  isolation: isolate;
+}
+
+/* Aviation Grid Background */
+.aviation-dashboard::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(6, 182, 212, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(6, 182, 212, 0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ==========================================================================
+   Dashboard Header Section
+   ========================================================================== */
+
+.aviation-dashboard .dashboard-header {
+  position: relative;
+  overflow: hidden;
+}
+
+.aviation-dashboard .dashboard-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ff-cyan, #00d4ff), transparent);
+  opacity: 0.2;
+}
+
+.aviation-dashboard .dashboard-title {
+  background: linear-gradient(
+    135deg,
+    var(--color-aviation-text-primary, #e8e8f0) 0%,
+    var(--ff-cyan, #00d4ff) 30%,
+    var(--ff-flame, #ff6b35) 70%,
+    var(--ff-afterburner, #ff4f5e) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ==========================================================================
+   Metric Cards - Aviation Style
+   ========================================================================== */
+
+.aviation-dashboard .metric-card {
+  position: relative;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.aviation-dashboard .metric-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  padding: 1px;
+  background: linear-gradient(135deg, transparent 30%, rgba(255, 107, 53, 0.2) 50%, transparent 70%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.aviation-dashboard .metric-card:hover {
+  border-color: rgba(255, 107, 53, 0.25);
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 25px rgba(0, 0, 0, 0.4),
+    0 0 30px rgba(255, 107, 53, 0.08);
+}
+
+.aviation-dashboard .metric-card:hover::before {
+  opacity: 1;
+}
+
+/* Metric Card Accent Bar */
+.aviation-dashboard .metric-card-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, var(--ff-flame, #ff6b35), var(--ff-cyan, #00d4ff));
+  opacity: 0.6;
+}
+
+/* Metric Card Icon Container */
+.aviation-dashboard .metric-card-icon {
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.aviation-dashboard .metric-card:hover .metric-card-icon {
+  transform: scale(1.05);
+  box-shadow: 0 0 15px var(--color-aviation-amber-dim);
+}
+
+/* Metric Card Value */
+.aviation-dashboard .metric-card-value {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Metric Card Title */
+.aviation-dashboard .metric-card-title {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-aviation-text-muted, #6b7280);
+}
+
+/* ==========================================================================
+   Enterprise Status Card - Aviation Style
+   ========================================================================== */
+
+.aviation-dashboard .enterprise-status-card {
+  position: relative;
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-bg-instrument, #222232) 0%,
+    var(--color-aviation-bg-panel, #1a1a28) 100%
+  );
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.aviation-dashboard .enterprise-status-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--ff-flame, #ff6b35), var(--ff-cyan, #00d4ff), var(--ff-flame, #ff6b35));
+  opacity: 0.6;
+}
+
+.aviation-dashboard .enterprise-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.aviation-dashboard .enterprise-status-active {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: var(--color-aviation-green, #10b981);
+}
+
+.aviation-dashboard .enterprise-status-active::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-aviation-green, #10b981);
+  box-shadow: 0 0 6px var(--color-aviation-green, #10b981);
+  animation: aviation-pulse 2s ease-in-out infinite;
+}
+
+/* ==========================================================================
+   System Health Indicator - Aviation Style
+   ========================================================================== */
+
+.aviation-dashboard .system-health-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  background: var(--color-aviation-bg-instrument, #222232);
+  border: 1px solid var(--color-aviation-border-instrument, rgba(255, 255, 255, 0.12));
+}
+
+.aviation-dashboard .system-health-led {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  position: relative;
+}
+
+.aviation-dashboard .system-health-led::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  opacity: 0.5;
+  animation: aviation-pulse 2s ease-in-out infinite;
+}
+
+.aviation-dashboard .system-health-healthy {
+  background: var(--color-aviation-green, #10b981);
+  box-shadow: 0 0 8px var(--color-aviation-green-glow);
+}
+
+.aviation-dashboard .system-health-healthy::after {
+  border-color: var(--color-aviation-green, #10b981);
+}
+
+.aviation-dashboard .system-health-degraded {
+  background: var(--color-aviation-amber, #f59e0b);
+  box-shadow: 0 0 8px var(--color-aviation-amber-glow);
+}
+
+.aviation-dashboard .system-health-degraded::after {
+  border-color: var(--color-aviation-amber, #f59e0b);
+}
+
+.aviation-dashboard .system-health-down {
+  background: var(--color-aviation-red, #ef4444);
+  box-shadow: 0 0 8px var(--color-aviation-red-glow);
+}
+
+.aviation-dashboard .system-health-down::after {
+  border-color: var(--color-aviation-red, #ef4444);
+}
+
+/* ==========================================================================
+   Quick Create Agent Card - Aviation Style
+   ========================================================================== */
+
+.aviation-dashboard .quick-create-card {
+  position: relative;
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-bg-panel, #1a1a28) 0%,
+    rgba(245, 158, 11, 0.03) 100%
+  );
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.aviation-dashboard .quick-create-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 107, 53, 0.05) 0%,
+    transparent 50%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.aviation-dashboard .quick-create-card:hover {
+  border-color: var(--color-aviation-amber-dim);
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 25px rgba(0, 0, 0, 0.4),
+    0 0 0 1px var(--color-aviation-amber-dim);
+}
+
+.aviation-dashboard .quick-create-card:hover::before {
+  opacity: 1;
+}
+
+.aviation-dashboard .quick-create-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    145deg,
+    var(--ff-flame, #ff6b35) 0%,
+    var(--ff-cyan, #00d4ff) 100%
+  );
+  box-shadow:
+    0 4px 12px var(--color-aviation-amber-dim),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: transform 0.3s ease;
+}
+
+.aviation-dashboard .quick-create-card:hover .quick-create-icon {
+  transform: scale(1.05) rotate(3deg);
+}
+
+.aviation-dashboard .quick-create-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--color-aviation-cyan-subtle);
+  color: var(--color-aviation-cyan);
+  border: 1px solid var(--color-aviation-cyan-dim);
+}
+
+/* ==========================================================================
+   Usage Graph - Aviation Style
+   ========================================================================== */
+
+.aviation-dashboard .usage-graph {
+  position: relative;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.aviation-dashboard .usage-graph::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ff-cyan-dim), transparent);
+  opacity: 0.4;
+}
+
+.aviation-dashboard .usage-graph-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.06));
+}
+
+.aviation-dashboard .usage-graph-title {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+.aviation-dashboard .usage-graph-content {
+  padding: 1.25rem;
+}
+
+/* Chart Bars */
+.aviation-dashboard .usage-graph-bar {
+  background: linear-gradient(
+    180deg,
+    var(--ff-cyan, #00d4ff) 0%,
+    rgba(0, 212, 255, 0.5) 100%
+  );
+  border-radius: 4px 4px 0 0;
+  transition: all 0.3s ease;
+}
+
+.aviation-dashboard .usage-graph-bar:hover {
+  background: linear-gradient(
+    180deg,
+    var(--ff-flame, #ff6b35) 0%,
+    rgba(255, 107, 53, 0.6) 100%
+  );
+  box-shadow: 0 0 15px var(--color-aviation-amber-dim);
+}
+
+/* ==========================================================================
+   Execution Rate Chart - Aviation Style
+   ========================================================================== */
+
+.aviation-dashboard .execution-rate-chart {
+  position: relative;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.aviation-dashboard .execution-rate-chart::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ff-flame-dim), transparent);
+  opacity: 0.4;
+}
+
+.aviation-dashboard .execution-rate-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.06));
+}
+
+.aviation-dashboard .execution-rate-title {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+.aviation-dashboard .execution-rate-content {
+  padding: 1.25rem;
+}
+
+/* ==========================================================================
+   Memory Usage Gauge - Aviation Style
+   ========================================================================== */
+
+.aviation-dashboard .memory-usage-gauge {
+  position: relative;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.aviation-dashboard .memory-usage-gauge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-aviation-cyan), transparent);
+  opacity: 0.4;
+}
+
+.aviation-dashboard .memory-gauge-ring {
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+.aviation-dashboard .memory-gauge-ring svg {
+  transform: rotate(-90deg);
+}
+
+.aviation-dashboard .memory-gauge-track {
+  fill: none;
+  stroke: var(--color-aviation-bg-instrument, #222232);
+  stroke-width: 8;
+}
+
+.aviation-dashboard .memory-gauge-fill {
+  fill: none;
+  stroke: url(#memory-gradient);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.5s ease;
+}
+
+.aviation-dashboard .memory-gauge-value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-aviation-cyan, #06b6d4);
+}
+
+.aviation-dashboard .memory-gauge-label {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-aviation-text-muted, #6b7280);
+}
+
+/* ==========================================================================
+   Trust Score Badge - Aviation Style
+   ========================================================================== */
+
+.aviation-dashboard .trust-score-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.aviation-dashboard .trust-score-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-bg-instrument, #222232) 0%,
+    var(--color-aviation-bg-panel, #1a1a28) 100%
+  );
+  border: 2px solid var(--color-aviation-border-instrument, rgba(255, 255, 255, 0.12));
+  transition: all 0.3s ease;
+}
+
+.aviation-dashboard .trust-score-icon svg {
+  color: var(--color-aviation-amber, #f59e0b);
+  filter: drop-shadow(0 0 6px var(--color-aviation-amber-glow));
+}
+
+.aviation-dashboard .trust-score-value {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-aviation-amber, #f59e0b);
+}
+
+.aviation-dashboard .trust-score-label {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--color-aviation-text-muted, #6b7280);
+}
+
+/* ==========================================================================
+   Live Indicator - Aviation Style
+   ========================================================================== */
+
+.aviation-dashboard .live-indicator {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.aviation-dashboard .live-indicator-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  position: relative;
+}
+
+.aviation-dashboard .live-indicator-dot::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  opacity: 0.4;
+  animation: aviation-pulse 2s ease-in-out infinite;
+}
+
+.aviation-dashboard .live-indicator-connected {
+  background: var(--color-aviation-green, #10b981);
+  color: var(--color-aviation-green, #10b981);
+  box-shadow: 0 0 10px var(--color-aviation-green-glow);
+}
+
+.aviation-dashboard .live-indicator-connecting {
+  background: var(--color-aviation-amber, #f59e0b);
+  color: var(--color-aviation-amber, #f59e0b);
+  box-shadow: 0 0 10px var(--color-aviation-amber-glow);
+}
+
+.aviation-dashboard .live-indicator-error {
+  background: var(--color-aviation-red, #ef4444);
+  color: var(--color-aviation-red, #ef4444);
+  box-shadow: 0 0 10px var(--color-aviation-red-glow);
+}
+
+.aviation-dashboard .live-indicator-label {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+/* ==========================================================================
+   Error Rate Widget - Aviation Style
+   ========================================================================== */
+
+.aviation-dashboard .error-rate-widget {
+  position: relative;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.aviation-dashboard .error-rate-widget::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ff-afterburner), transparent);
+  opacity: 0.4;
+}
+
+.aviation-dashboard .error-rate-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.06));
+}
+
+.aviation-dashboard .error-rate-title {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+.aviation-dashboard .error-rate-value {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-aviation-green, #10b981);
+}
+
+.aviation-dashboard .error-rate-healthy {
+  color: var(--color-aviation-green, #10b981);
+}
+
+.aviation-dashboard .error-rate-warning {
+  color: var(--color-aviation-amber, #f59e0b);
+}
+
+.aviation-dashboard .error-rate-critical {
+  color: var(--color-aviation-red, #ef4444);
+}
+
+/* ==========================================================================
+   Quick Actions Panel - Aviation Style
+   ========================================================================== */
+
+.aviation-dashboard .quick-actions-panel {
+  position: relative;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.aviation-dashboard .quick-actions-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ff-flame), transparent);
+  opacity: 0.4;
+}
+
+.aviation-dashboard .quick-actions-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.06));
+}
+
+.aviation-dashboard .quick-actions-title {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+.aviation-dashboard .quick-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: var(--color-aviation-bg-instrument, #222232);
+  border: 1px solid var(--color-aviation-border-instrument, rgba(255, 255, 255, 0.12));
+  color: var(--color-aviation-text-secondary, #9ca3af);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.aviation-dashboard .quick-action-btn:hover {
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(0, 212, 255, 0.05) 100%);
+  border-color: var(--color-aviation-amber-dim);
+  color: var(--color-aviation-text-primary, #e8e8f0);
+  transform: translateX(4px);
+}
+
+.aviation-dashboard .quick-action-btn:hover .quick-action-icon {
+  color: var(--color-aviation-amber, #f59e0b);
+  transform: scale(1.1);
+}
+
+.aviation-dashboard .quick-action-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--color-aviation-text-muted, #6b7280);
+  transition: all 0.2s ease;
+}
+
+.aviation-dashboard .quick-action-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.aviation-dashboard .quick-action-description {
+  font-size: 0.65rem;
+  color: var(--color-aviation-text-muted, #6b7280);
+}
+
+/* ==========================================================================
+   Region Distribution Widget - Aviation Style
+   ========================================================================== */
+
+.aviation-dashboard .region-distribution-widget {
+  position: relative;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.aviation-dashboard .region-distribution-widget::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ff-cyan), transparent);
+  opacity: 0.4;
+}
+
+.aviation-dashboard .region-widget-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.06));
+}
+
+.aviation-dashboard .region-widget-title {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+.aviation-dashboard .region-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--color-aviation-bg-instrument, #222232);
+  overflow: hidden;
+}
+
+.aviation-dashboard .region-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--ff-flame, #ff6b35), var(--ff-cyan, #00d4ff));
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.aviation-dashboard .region-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+}
+
+.aviation-dashboard .region-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ff-cyan, #00d4ff);
+  box-shadow: 0 0 6px var(--color-aviation-cyan-glow);
+}
+
+.aviation-dashboard .region-name {
+  font-size: 0.8rem;
+  color: var(--color-aviation-text-secondary, #9ca3af);
+}
+
+.aviation-dashboard .region-value {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+.aviation-dashboard .region-percent {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.65rem;
+  color: var(--color-aviation-text-muted, #6b7280);
+}
+
+/* ==========================================================================
+   Performance Leaderboard - Aviation Style
+   ========================================================================== */
+
+.aviation-dashboard .performance-leaderboard {
+  position: relative;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.aviation-dashboard .performance-leaderboard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ff-flame), transparent);
+  opacity: 0.4;
+}
+
+.aviation-dashboard .performance-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.06));
+}
+
+.aviation-dashboard .performance-title {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+.aviation-dashboard .performance-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.aviation-dashboard .performance-item:hover {
+  background: var(--color-aviation-bg-instrument, #222232);
+  border-color: var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+}
+
+.aviation-dashboard .performance-rank {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--color-aviation-bg-instrument, #222232);
+  border: 1px solid var(--color-aviation-border-instrument, rgba(255, 255, 255, 0.12));
+}
+
+.aviation-dashboard .performance-rank-top {
+  background: linear-gradient(135deg, var(--ff-flame), var(--ff-cyan));
+  color: var(--color-aviation-bg-primary, #08080c);
+  border-color: transparent;
+}
+
+.aviation-dashboard .performance-rank-warning {
+  background: var(--color-aviation-amber-subtle);
+  color: var(--color-aviation-amber, #f59e0b);
+  border-color: var(--color-aviation-amber-dim);
+}
+
+.aviation-dashboard .performance-name {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+.aviation-dashboard .performance-metric {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.7rem;
+  color: var(--color-aviation-text-muted, #6b7280);
+}
+
+.aviation-dashboard .performance-metric svg {
+  width: 14px;
+  height: 14px;
+}
+
+.aviation-dashboard .performance-latency {
+  color: var(--color-aviation-cyan, #06b6d4);
+}
+
+.aviation-dashboard .performance-success {
+  color: var(--color-aviation-green, #10b981);
+}
+
+/* ==========================================================================
+   Quota Usage Widget - Aviation Style
+   ========================================================================== */
+
+.aviation-dashboard .quota-usage-widget {
+  position: relative;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.aviation-dashboard .quota-usage-widget::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-aviation-cyan), transparent);
+  opacity: 0.4;
+}
+
+.aviation-dashboard .quota-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.aviation-dashboard .quota-item:hover {
+  background: var(--color-aviation-bg-instrument, #222232);
+}
+
+.aviation-dashboard .quota-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-aviation-bg-instrument, #222232);
+  border: 1px solid var(--color-aviation-border-instrument, rgba(255, 255, 255, 0.12));
+}
+
+.aviation-dashboard .quota-icon svg {
+  width: 18px;
+  height: 18px;
+  color: var(--color-aviation-amber, #f59e0b);
+}
+
+.aviation-dashboard .quota-progress {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-aviation-bg-instrument, #222232);
+  overflow: hidden;
+}
+
+.aviation-dashboard .quota-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--ff-flame, #ff6b35), var(--ff-cyan, #00d4ff));
+  transition: width 0.3s ease;
+}
+
+/* ==========================================================================
+   Agent Activity Feed - Aviation Style
+   ========================================================================== */
+
+.aviation-dashboard .agent-activity-feed {
+  position: relative;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.aviation-dashboard .agent-activity-feed::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ff-flame), transparent);
+  opacity: 0.4;
+}
+
+.aviation-dashboard .activity-feed-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.06));
+}
+
+.aviation-dashboard .activity-feed-title {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+.aviation-dashboard .activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.06));
+  transition: all 0.2s ease;
+}
+
+.aviation-dashboard .activity-item:hover {
+  background: var(--color-aviation-bg-instrument, #222232);
+}
+
+.aviation-dashboard .activity-item:last-child {
+  border-bottom: none;
+}
+
+.aviation-dashboard .activity-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-aviation-bg-instrument, #222232);
+  border: 1px solid var(--color-aviation-border-instrument, rgba(255, 255, 255, 0.12));
+}
+
+.aviation-dashboard .activity-icon svg {
+  width: 16px;
+  height: 16px;
+  color: var(--color-aviation-cyan, #06b6d4);
+}
+
+.aviation-dashboard .activity-title {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+.aviation-dashboard .activity-description {
+  font-size: 0.7rem;
+  color: var(--color-aviation-text-muted, #6b7280);
+}
+
+.aviation-dashboard .activity-timestamp {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.6rem;
+  color: var(--color-aviation-text-dim, #4b5563);
+}
+
+/* ==========================================================================
+   Draggable Grid - Aviation Style
+   ========================================================================== */
+
+.aviation-dashboard .draggable-grid {
+  position: relative;
+}
+
+.aviation-dashboard .draggable-section {
+  position: relative;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.aviation-dashboard .draggable-section:hover {
+  border-color: var(--color-aviation-border-instrument, rgba(255, 255, 255, 0.12));
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.aviation-dashboard .draggable-handle {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 0.5rem;
+  border-radius: 6px;
+  background: var(--color-aviation-bg-secondary, #0d0d14);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.aviation-dashboard .draggable-section:hover .draggable-handle {
+  opacity: 1;
+}
+
+.aviation-dashboard .draggable-handle:active {
+  cursor: grabbing;
+}
+
+.aviation-dashboard .reset-layout-btn {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: 9999px;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  color: var(--color-aviation-text-secondary, #9ca3af);
+  font-size: 0.8rem;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+  z-index: 40;
+}
+
+.aviation-dashboard .reset-layout-btn:hover {
+  background: var(--color-aviation-bg-instrument, #222232);
+  border-color: var(--color-aviation-amber-dim);
+  color: var(--color-aviation-amber, #f59e0b);
+  transform: scale(1.02);
+}
+
+.aviation-dashboard .reset-layout-btn svg {
+  transition: transform 0.5s ease;
+}
+
+.aviation-dashboard .reset-layout-btn:hover svg {
+  transform: rotate(180deg);
+}
+
+/* ==========================================================================
+   Provider Status - Aviation Style
+   ========================================================================== */
+
+.aviation-dashboard .provider-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.aviation-dashboard .provider-status-card {
+  position: relative;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 10px;
+  padding: 1rem;
+  transition: all 0.2s ease;
+}
+
+.aviation-dashboard .provider-status-card:hover {
+  border-color: var(--color-aviation-cyan-dim);
+  box-shadow: 0 0 20px var(--color-aviation-cyan-subtle);
+}
+
+.aviation-dashboard .provider-status-led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.aviation-dashboard .provider-status-connected {
+  background: var(--color-aviation-green, #10b981);
+  box-shadow: 0 0 8px var(--color-aviation-green-glow);
+}
+
+.aviation-dashboard .provider-status-disconnected {
+  background: var(--color-aviation-text-dim, #4b5563);
+}
+
+.aviation-dashboard .provider-status-connecting {
+  background: var(--color-aviation-amber, #f59e0b);
+  box-shadow: 0 0 8px var(--color-aviation-amber-glow);
+  animation: aviation-pulse 1.5s ease-in-out infinite;
+}
+
+/* ==========================================================================
+   Recent Lists (Apps & Functions) - Aviation Style
+   ========================================================================== */
+
+.aviation-dashboard .recent-list-card {
+  position: relative;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.aviation-dashboard .recent-list-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ff-cyan-dim), transparent);
+  opacity: 0.3;
+}
+
+.aviation-dashboard .recent-list-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.06));
+}
+
+.aviation-dashboard .recent-list-title {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+.aviation-dashboard .recent-list-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.aviation-dashboard .recent-list-item:hover {
+  background: var(--color-aviation-bg-instrument, #222232);
+  border-color: var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+}
+
+.aviation-dashboard .recent-list-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-aviation-bg-tertiary, #14141f);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+}
+
+.aviation-dashboard .recent-list-icon svg {
+  width: 20px;
+  height: 20px;
+  color: var(--color-aviation-text-muted, #6b7280);
+}
+
+.aviation-dashboard .recent-list-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+.aviation-dashboard .recent-list-status {
+  font-size: 0.7rem;
+  color: var(--color-aviation-text-muted, #6b7280);
+  text-transform: capitalize;
+}
+
+.aviation-dashboard .recent-list-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Empty States - Aviation Style
+   ========================================================================== */
+
+.aviation-dashboard .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.aviation-dashboard .empty-state-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(0, 212, 255, 0.1) 100%);
+  border: 1px solid rgba(255, 107, 53, 0.2);
+  margin-bottom: 1.5rem;
+}
+
+.aviation-dashboard .empty-state-icon svg {
+  width: 28px;
+  height: 28px;
+  color: var(--ff-flame, #ff6b35);
+  filter: drop-shadow(0 0 8px rgba(255, 107, 53, 0.5));
+}
+
+.aviation-dashboard .empty-state-text {
+  font-size: 0.85rem;
+  color: var(--color-aviation-text-secondary, #9ca3af);
+}
+
+.aviation-dashboard .empty-state-btn {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  background: var(--color-aviation-bg-instrument, #222232);
+  border: 1px solid var(--color-aviation-border-instrument, rgba(255, 255, 255, 0.12));
+  color: var(--color-aviation-text-secondary, #9ca3af);
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.aviation-dashboard .empty-state-btn:hover {
+  background: var(--color-aviation-amber-subtle);
+  border-color: var(--color-aviation-amber-dim);
+  color: var(--color-aviation-amber, #f59e0b);
+}
+
+/* ==========================================================================
+   Onboarding Banner - Aviation Style
+   ========================================================================== */
+
+.aviation-dashboard .onboarding-banner {
+  position: relative;
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-bg-instrument, #222232) 0%,
+    rgba(99, 102, 241, 0.1) 100%
+  );
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.aviation-dashboard .onboarding-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(99, 102, 241, 0.05) 0%,
+    transparent 50%
+  );
+}
+
+.aviation-dashboard .onboarding-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.aviation-dashboard .onboarding-icon svg {
+  width: 20px;
+  height: 20px;
+  color: #6366f1;
+}
+
+.aviation-dashboard .onboarding-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+.aviation-dashboard .onboarding-description {
+  font-size: 0.8rem;
+  color: var(--color-aviation-text-secondary, #9ca3af);
+}
+
+/* ==========================================================================
+   Light Mode Overrides
+   ========================================================================== */
+
+[data-theme='light'] .aviation-dashboard::before {
+  background-image:
+    linear-gradient(rgba(0, 168, 204, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 168, 204, 0.04) 1px, transparent 1px);
+}
+
+[data-theme='light'] .aviation-dashboard .metric-card {
+  background: var(--color-aviation-bg-panel-light, #ffffff);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='light'] .aviation-dashboard .metric-card:hover {
+  border-color: rgba(232, 90, 42, 0.25);
+  box-shadow:
+    0 8px 25px rgba(0, 0, 0, 0.1),
+    0 0 30px rgba(232, 90, 42, 0.08);
+}
+
+[data-theme='light'] .aviation-dashboard .enterprise-status-card {
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-bg-instrument-light, #f1f5f9) 0%,
+    var(--color-aviation-bg-panel-light, #ffffff) 100%
+  );
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='light'] .aviation-dashboard .usage-graph,
+[data-theme='light'] .aviation-dashboard .execution-rate-chart,
+[data-theme='light'] .aviation-dashboard .memory-usage-gauge,
+[data-theme='light'] .aviation-dashboard .error-rate-widget,
+[data-theme='light'] .aviation-dashboard .quick-actions-panel,
+[data-theme='light'] .aviation-dashboard .region-distribution-widget,
+[data-theme='light'] .aviation-dashboard .performance-leaderboard,
+[data-theme='light'] .aviation-dashboard .quota-usage-widget,
+[data-theme='light'] .aviation-dashboard .agent-activity-feed,
+[data-theme='light'] .aviation-dashboard .recent-list-card {
+  background: var(--color-aviation-bg-panel-light, #ffffff);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='light'] .aviation-dashboard .quick-create-card {
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-bg-panel-light, #ffffff) 0%,
+    rgba(217, 119, 6, 0.03) 100%
+  );
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='light'] .aviation-dashboard .dashboard-title {
+  background: linear-gradient(
+    135deg,
+    var(--color-aviation-text-primary-light, #111827) 0%,
+    var(--ff-cyan-dark, #00b8e0) 30%,
+    var(--ff-flame-dark, #e85a2a) 70%,
+    var(--ff-afterburner, #d14a20) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+[data-theme='light'] .aviation-dashboard .reset-layout-btn {
+  background: var(--color-aviation-bg-panel-light, #ffffff);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: var(--color-aviation-text-secondary-light, #374151);
+}
+
+[data-theme='light'] .aviation-dashboard .reset-layout-btn:hover {
+  background: #f1f5f9;
+  border-color: var(--color-aviation-amber-dim-light);
+  color: var(--color-aviation-amber-light, #d97706);
+}
+
+/* ==========================================================================
+   Animation Keyframes
+   ========================================================================== */
+
+@keyframes aviation-pulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes aviation-scan {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes aviation-glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px var(--color-aviation-amber-dim);
+  }
+  50% {
+    box-shadow: 0 0 40px var(--color-aviation-amber-glow);
+  }
+}
+
+/* Stagger Animation Delays */
+.aviation-dashboard .stagger-1 { animation-delay: 0.1s; }
+.aviation-dashboard .stagger-2 { animation-delay: 0.2s; }
+.aviation-dashboard .stagger-3 { animation-delay: 0.3s; }
+.aviation-dashboard .stagger-4 { animation-delay: 0.4s; }
+.aviation-dashboard .stagger-5 { animation-delay: 0.5s; }

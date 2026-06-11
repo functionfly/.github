@@ -1,0 +1,962 @@
+/* ==========================================================================
+   FunctionFly FRG (Function Runtime Graphs) Page - Aviation Theme
+   Cockpit-inspired styling for the graph workflow interface
+   Full light/dark mode support with Aviation aesthetic
+   ========================================================================== */
+
+/* ----------------------------------------
+   CSS Variables (FRG Theme - Aviation)
+   ---------------------------------------- */
+:root {
+  /* FRG Brand Colors - Aviation Palette */
+  --frg-primary: var(--ff-flame);
+  --frg-primary-hover: var(--ff-flame-dark);
+  --frg-primary-light: rgba(255, 107, 53, 0.1);
+  --frg-primary-border: rgba(255, 107, 53, 0.2);
+  --frg-cyan: var(--ff-cyan);
+  --frg-stratosphere: var(--ff-stratosphere);
+
+  /* Graph Status Colors - Aviation Status LED */
+  --frg-status-published-bg: rgba(16, 185, 129, 0.12);
+  --frg-status-published-text: var(--color-aviation-green);
+  --frg-status-published-border: rgba(16, 185, 129, 0.25);
+
+  --frg-status-draft-bg: rgba(245, 158, 11, 0.12);
+  --frg-status-draft-text: var(--color-aviation-amber);
+  --frg-status-draft-border: rgba(245, 158, 11, 0.25);
+
+  /* Graph Card Styles - Aviation Panel */
+  --frg-card-bg: var(--color-aviation-bg-panel);
+  --frg-card-border: var(--color-aviation-border-panel);
+  --frg-card-hover-border: var(--color-aviation-amber-dim);
+  --frg-card-text: var(--color-aviation-text-primary);
+  --frg-card-text-secondary: var(--color-aviation-text-secondary);
+  --frg-card-text-muted: var(--color-aviation-text-muted);
+
+  /* Template Card Colors */
+  --frg-template-ai-bg: rgba(168, 85, 247, 0.12);
+  --frg-template-ai-text: #a855f7;
+  --frg-template-ai-border: rgba(168, 85, 247, 0.25);
+
+  --frg-template-webhook-bg: rgba(59, 130, 246, 0.12);
+  --frg-template-webhook-text: #3b82f6;
+  --frg-template-webhook-border: rgba(59, 130, 246, 0.25);
+
+  --frg-template-data-bg: rgba(34, 197, 94, 0.12);
+  --frg-template-data-text: #22c55e;
+  --frg-template-data-border: rgba(34, 197, 94, 0.25);
+
+  --frg-template-etl-bg: rgba(249, 115, 22, 0.12);
+  --frg-template-etl-text: #f97316;
+  --frg-template-etl-border: rgba(249, 115, 22, 0.25);
+
+  /* Search/Select - Aviation Instrument */
+  --frg-input-bg: var(--color-aviation-bg-instrument);
+  --frg-input-border: var(--color-aviation-border-instrument);
+  --frg-input-text: var(--color-aviation-text-primary);
+  --frg-input-placeholder: var(--color-aviation-text-dim);
+
+  /* Animation Durations */
+  --frg-transition-fast: 150ms ease;
+  --frg-transition-normal: 250ms ease;
+  --frg-transition-slow: 350ms ease;
+
+  /* Shadows - Aviation Glow */
+  --frg-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --frg-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --frg-shadow-glow: 0 0 20px rgba(255, 107, 53, 0.15);
+  --frg-shadow-cyan: 0 0 20px rgba(0, 212, 255, 0.2);
+  --frg-shadow-purple: 0 0 20px rgba(168, 85, 247, 0.2);
+}
+
+/* Light Mode Overrides */
+[data-theme='light'] {
+  --frg-card-bg: var(--color-aviation-bg-panel-light);
+  --frg-card-border: var(--color-aviation-border-panel-light);
+  --frg-card-hover-border: var(--color-aviation-amber-dim-light);
+  --frg-card-text: var(--color-aviation-text-primary-light);
+  --frg-card-text-secondary: var(--color-aviation-text-secondary-light);
+  --frg-card-text-muted: var(--color-aviation-text-muted-light);
+
+  --frg-input-bg: var(--color-aviation-bg-instrument-light);
+  --frg-input-border: var(--color-aviation-border-instrument-light);
+  --frg-input-text: var(--color-aviation-text-primary-light);
+  --frg-input-placeholder: var(--color-aviation-text-dim-light);
+
+  --frg-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --frg-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+  --frg-shadow-glow: 0 0 20px rgba(232, 90, 42, 0.1);
+  --frg-shadow-cyan: 0 0 20px rgba(0, 168, 204, 0.15);
+  --frg-shadow-purple: 0 0 20px rgba(168, 85, 247, 0.15);
+}
+
+/* ----------------------------------------
+   FRG Page Container
+   ---------------------------------------- */
+.frg-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  animation: aviation-fade-in-up 0.5s ease-out forwards;
+}
+
+/* ----------------------------------------
+   FRG Header
+   ---------------------------------------- */
+.frg-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.frg-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--frg-card-text);
+  line-height: 1.2;
+  font-family: var(--font-mono);
+  letter-spacing: -0.02em;
+}
+
+.frg-subtitle {
+  color: var(--frg-card-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* ----------------------------------------
+   FRG Toolbar - Search and Actions
+   ---------------------------------------- */
+.frg-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .frg-toolbar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.frg-search-container {
+  position: relative;
+  flex: 1;
+  max-width: 28rem;
+}
+
+.frg-search-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1rem;
+  height: 1rem;
+  color: var(--frg-card-text-secondary);
+  pointer-events: none;
+}
+
+.frg-search-input {
+  width: 100%;
+  padding-left: 2.5rem;
+  background-color: var(--frg-input-bg);
+  border: 1px solid var(--frg-input-border);
+  border-radius: 8px;
+  color: var(--frg-input-text);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  height: 2.75rem;
+  transition: all var(--frg-transition-fast);
+}
+
+.frg-search-input:focus {
+  outline: none;
+  border-color: var(--color-aviation-amber);
+  box-shadow:
+    0 0 0 3px var(--color-aviation-amber-dim),
+    0 0 20px var(--color-aviation-amber-dim);
+}
+
+.frg-search-input::placeholder {
+  color: var(--frg-input-placeholder);
+}
+
+.frg-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* ----------------------------------------
+   FRG Create Button - Aviation Style
+   ---------------------------------------- */
+.frg-create-button {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    var(--ff-flame) 0%,
+    var(--ff-stratosphere) 100%
+  );
+  border: 1px solid var(--ff-flame);
+  color: white;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all var(--frg-transition-fast);
+  box-shadow: var(--frg-shadow-glow);
+}
+
+.frg-create-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.frg-create-button:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 30px rgba(255, 107, 53, 0.4),
+    0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.frg-create-button:hover::before {
+  left: 100%;
+}
+
+.frg-create-button:active {
+  transform: translateY(0);
+}
+
+/* ----------------------------------------
+   FRG Import Button - Aviation Outline
+   ---------------------------------------- */
+.frg-import-button {
+  position: relative;
+  background: var(--color-aviation-bg-instrument);
+  border: 1px solid var(--color-aviation-border-instrument);
+  color: var(--frg-card-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all var(--frg-transition-fast);
+}
+
+.frg-import-button:hover {
+  border-color: var(--color-aviation-amber);
+  color: var(--color-aviation-amber);
+  background: var(--color-aviation-amber-subtle);
+  box-shadow: 0 0 15px var(--color-aviation-amber-dim);
+}
+
+/* ----------------------------------------
+   FRG Filter Select - Aviation Style
+   ---------------------------------------- */
+.frg-filter-select {
+  background-color: var(--frg-input-bg);
+  border: 1px solid var(--frg-input-border);
+  border-radius: 8px;
+  color: var(--frg-input-text);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  height: 2.75rem;
+  transition: all var(--frg-transition-fast);
+}
+
+.frg-filter-select:focus {
+  outline: none;
+  border-color: var(--color-aviation-amber);
+  box-shadow:
+    0 0 0 3px var(--color-aviation-amber-dim),
+    0 0 20px var(--color-aviation-amber-dim);
+}
+
+/* ----------------------------------------
+   FRG Main Content Grid
+   ---------------------------------------- */
+.frg-content-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 1280px) {
+  .frg-content-grid {
+    grid-template-columns: 3fr 1fr;
+  }
+}
+
+/* ----------------------------------------
+   FRG Graph Cards Grid
+   ---------------------------------------- */
+.frg-graphs-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .frg-graphs-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .frg-graphs-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ----------------------------------------
+   FRG Graph Card - Aviation Instrument
+   ---------------------------------------- */
+.frg-graph-card {
+  position: relative;
+  background: var(--frg-card-bg);
+  border: 1px solid var(--frg-card-border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all var(--frg-transition-normal);
+}
+
+.frg-graph-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 30%,
+    rgba(255, 255, 255, 0.1) 70%,
+    transparent 100%
+  );
+}
+
+.frg-graph-card:hover {
+  border-color: var(--frg-card-hover-border);
+  transform: translateY(-4px);
+  box-shadow:
+    0 0 20px var(--color-aviation-amber-dim),
+    0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* Graph Card Thumbnail */
+.frg-graph-thumbnail {
+  position: relative;
+  height: 8rem;
+  background: var(--color-aviation-bg-tertiary);
+  overflow: hidden;
+}
+
+.frg-graph-thumbnail::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.05) 0%, rgba(91, 124, 245, 0.05) 100%);
+}
+
+.frg-graph-thumbnail-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.3;
+}
+
+.frg-graph-thumbnail-node {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 6px currentColor;
+}
+
+/* Graph Card Badge */
+.frg-graph-badge {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.frg-graph-badge-published {
+  background: var(--frg-status-published-bg);
+  color: var(--frg-status-published-text);
+  border: 1px solid var(--frg-status-published-border);
+}
+
+.frg-graph-badge-draft {
+  background: var(--frg-status-draft-bg);
+  color: var(--frg-status-draft-text);
+  border: 1px solid var(--frg-status-draft-border);
+}
+
+.frg-graph-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.frg-graph-badge-published .frg-graph-badge-dot {
+  background: var(--frg-status-published-text);
+  box-shadow: 0 0 4px var(--color-aviation-green-glow);
+}
+
+.frg-graph-badge-draft .frg-graph-badge-dot {
+  background: var(--frg-status-draft-text);
+  box-shadow: 0 0 4px var(--color-aviation-amber-glow);
+}
+
+/* Graph Card Content */
+.frg-graph-content {
+  padding: 0.75rem;
+}
+
+.frg-graph-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.frg-graph-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--frg-card-text);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.frg-graph-meta {
+  font-size: 0.75rem;
+  color: var(--frg-card-text-secondary);
+  margin-top: 0.25rem;
+}
+
+.frg-graph-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.frg-graph-tag {
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 500;
+  background: var(--color-aviation-bg-instrument);
+  color: var(--frg-card-text-secondary);
+  border: 1px solid var(--color-aviation-border-instrument);
+}
+
+.frg-graph-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-aviation-border-panel);
+  font-size: 0.75rem;
+  color: var(--frg-card-text-muted);
+}
+
+.frg-graph-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.frg-graph-stat-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.frg-graph-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-aviation-border-panel);
+  opacity: 0;
+  transition: opacity var(--frg-transition-fast);
+}
+
+.frg-graph-card:hover .frg-graph-actions {
+  opacity: 1;
+}
+
+.frg-graph-action-button {
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: transparent;
+  border: 1px solid var(--color-aviation-border-instrument);
+  color: var(--frg-card-text-secondary);
+  cursor: pointer;
+  transition: all var(--frg-transition-fast);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.frg-graph-action-button:hover {
+  border-color: var(--color-aviation-amber);
+  color: var(--color-aviation-amber);
+  background: var(--color-aviation-amber-subtle);
+}
+
+.frg-graph-action-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+/* ----------------------------------------
+   FRG Quick Start Templates Sidebar
+   ---------------------------------------- */
+.frg-templates-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.frg-templates-card {
+  background: var(--frg-card-bg);
+  border: 1px solid var(--frg-card-border);
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.frg-templates-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-aviation-amber-dim) 30%,
+    var(--color-aviation-amber-dim) 70%,
+    transparent 100%
+  );
+}
+
+.frg-templates-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--color-aviation-border-panel);
+}
+
+.frg-templates-icon {
+  width: 1rem;
+  height: 1rem;
+  color: var(--ff-flame);
+}
+
+.frg-templates-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--frg-card-text);
+  font-family: var(--font-mono);
+}
+
+.frg-templates-list {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* ----------------------------------------
+   FRG Template Card
+   ---------------------------------------- */
+.frg-template-card {
+  position: relative;
+  background: var(--color-aviation-bg-instrument);
+  border: 1px solid var(--color-aviation-border-instrument);
+  border-radius: 8px;
+  padding: 0.75rem;
+  cursor: pointer;
+  transition: all var(--frg-transition-fast);
+  overflow: hidden;
+}
+
+.frg-template-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--color-aviation-amber-subtle) 0%, transparent 50%);
+  opacity: 0;
+  transition: opacity var(--frg-transition-fast);
+}
+
+.frg-template-card:hover {
+  border-color: var(--color-aviation-amber);
+  transform: translateX(4px);
+  box-shadow: 0 0 15px var(--color-aviation-amber-dim);
+}
+
+.frg-template-card:hover::before {
+  opacity: 1;
+}
+
+.frg-template-content {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.frg-template-icon-wrapper {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.frg-template-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: white;
+}
+
+.frg-template-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.frg-template-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--frg-card-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.frg-template-description {
+  font-size: 0.75rem;
+  color: var(--frg-card-text-secondary);
+  margin-top: 0.125rem;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.frg-template-nodes {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--frg-card-text-muted);
+}
+
+.frg-template-nodes-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.frg-template-arrow {
+  width: 1rem;
+  height: 1rem;
+  color: var(--frg-card-text-muted);
+  flex-shrink: 0;
+  transition: all var(--frg-transition-fast);
+}
+
+.frg-template-card:hover .frg-template-arrow {
+  color: var(--color-aviation-amber);
+  transform: translateX(2px);
+}
+
+/* ----------------------------------------
+   FRG Empty State
+   ---------------------------------------- */
+.frg-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5rem 1rem;
+  text-align: center;
+}
+
+.frg-empty-icon-wrapper {
+  width: 6rem;
+  height: 6rem;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(91, 124, 245, 0.1) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  position: relative;
+}
+
+.frg-empty-icon-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, var(--ff-flame) 0%, var(--ff-stratosphere) 100%);
+  opacity: 0.1;
+}
+
+.frg-empty-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--ff-flame);
+  position: relative;
+}
+
+.frg-empty-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--frg-card-text);
+  margin-bottom: 0.5rem;
+}
+
+.frg-empty-description {
+  font-size: 0.875rem;
+  color: var(--frg-card-text-secondary);
+  max-width: 24rem;
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+}
+
+/* ----------------------------------------
+   FRG Error State
+   ---------------------------------------- */
+.frg-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5rem 1rem;
+  text-align: center;
+}
+
+.frg-error-icon-wrapper {
+  width: 6rem;
+  height: 6rem;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.frg-error-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--color-aviation-red);
+}
+
+.frg-error-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--frg-card-text);
+  margin-bottom: 0.5rem;
+}
+
+.frg-error-description {
+  font-size: 0.875rem;
+  color: var(--frg-card-text-secondary);
+  max-width: 24rem;
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+}
+
+.frg-retry-button {
+  position: relative;
+  background: transparent;
+  border: 1px solid var(--color-aviation-border-instrument);
+  color: var(--frg-card-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all var(--frg-transition-fast);
+}
+
+.frg-retry-button:hover {
+  border-color: var(--color-aviation-amber);
+  color: var(--color-aviation-amber);
+  background: var(--color-aviation-amber-subtle);
+}
+
+/* ----------------------------------------
+   FRG Loading State
+   ---------------------------------------- */
+.frg-loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5rem 1rem;
+}
+
+.frg-loading-spinner {
+  width: 2rem;
+  height: 2rem;
+  color: var(--ff-flame);
+  animation: frg-spin 1s linear infinite;
+}
+
+@keyframes frg-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ----------------------------------------
+   FRG Dropdown Menu - Aviation Style
+   ---------------------------------------- */
+.frg-dropdown-content {
+  background: var(--color-aviation-bg-panel);
+  border: 1px solid var(--color-aviation-border-panel);
+  border-radius: 8px;
+  padding: 0.25rem;
+  min-width: 10rem;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+}
+
+.frg-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: var(--frg-card-text-secondary);
+  cursor: pointer;
+  transition: all var(--frg-transition-fast);
+}
+
+.frg-dropdown-item:hover {
+  background: var(--color-aviation-bg-instrument);
+  color: var(--frg-card-text);
+}
+
+.frg-dropdown-item-danger {
+  color: var(--color-aviation-red);
+}
+
+.frg-dropdown-item-danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--color-aviation-red);
+}
+
+.frg-dropdown-separator {
+  height: 1px;
+  background: var(--color-aviation-border-panel);
+  margin: 0.25rem 0;
+}
+
+.frg-dropdown-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* ----------------------------------------
+   FRG More Actions Button
+   ---------------------------------------- */
+.frg-more-button {
+  opacity: 0;
+  transition: opacity var(--frg-transition-fast);
+}
+
+.frg-graph-card:hover .frg-more-button {
+  opacity: 1;
+}
+
+/* ----------------------------------------
+   FRG Animation Keyframes
+   ---------------------------------------- */
+@keyframes frg-fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes frg-glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 20px var(--color-aviation-amber-dim);
+  }
+  50% {
+    box-shadow: 0 0 40px var(--color-aviation-amber-glow);
+  }
+}
+
+/* ----------------------------------------
+   FRG Light Mode Specific Overrides
+   ---------------------------------------- */
+[data-theme='light'] .frg-graph-card:hover {
+  box-shadow:
+    0 0 20px var(--color-aviation-amber-dim-light),
+    0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='light'] .frg-template-card:hover {
+  box-shadow: 0 0 15px var(--color-aviation-amber-dim-light);
+}
+
+[data-theme='light'] .frg-create-button {
+  box-shadow: 0 4px 12px rgba(232, 90, 42, 0.25);
+}
+
+[data-theme='light'] .frg-create-button:hover {
+  box-shadow:
+    0 0 30px rgba(232, 90, 42, 0.35),
+    0 4px 12px rgba(0, 0, 0, 0.15);
+}

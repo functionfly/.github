@@ -1,0 +1,907 @@
+/**
+ * Aviation Create App Page Theme
+ * Aircraft cockpit-inspired styling for the Create App page
+ * Jet Stream brand palette: Flame (#FF6B35), Cyan (#00D4FF), Afterburner (#FF4F5E)
+ */
+
+/* ==========================================================================
+   Create App Container
+   ========================================================================== */
+
+.aviation-create-app {
+  position: relative;
+  isolation: isolate;
+}
+
+/* Aviation Grid Background */
+.aviation-create-app::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(6, 182, 212, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(6, 182, 212, 0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ==========================================================================
+   Sticky Action Bar
+   ========================================================================== */
+
+.aviation-create-app .action-bar {
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border-bottom: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  backdrop-filter: blur(12px);
+}
+
+.aviation-create-app .action-bar::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ff-cyan, #00d4ff), transparent);
+  opacity: 0.15;
+}
+
+/* Breadcrumb styling */
+.aviation-create-app .breadcrumb-link {
+  color: var(--color-aviation-text-muted, #6b7280);
+  transition: color 0.2s ease;
+}
+
+.aviation-create-app .breadcrumb-link:hover {
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+.aviation-create-app .breadcrumb-current {
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+/* Auto-save indicator */
+.aviation-create-app .autosave-indicator {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.75rem;
+  color: var(--color-aviation-text-muted, #6b7280);
+}
+
+.aviation-create-app .autosave-dirty {
+  color: var(--color-aviation-amber, #f59e0b);
+}
+
+.aviation-create-app .autosave-saved {
+  color: var(--color-aviation-green, #10b981);
+}
+
+.aviation-create-app .autosave-submitting {
+  color: var(--ff-cyan, #00d4ff);
+}
+
+/* ==========================================================================
+   Page Header
+   ========================================================================== */
+
+.aviation-create-app .page-header {
+  position: relative;
+  margin-bottom: 2rem;
+}
+
+.aviation-create-app .page-header-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.2) 0%, rgba(99, 102, 241, 0.2) 100%);
+  border: 1px solid rgba(255, 107, 53, 0.3);
+  transition: all 0.3s ease;
+}
+
+.aviation-create-app .page-header-icon svg {
+  color: var(--ff-flame, #ff6b35);
+  filter: drop-shadow(0 0 8px rgba(255, 107, 53, 0.4));
+}
+
+.aviation-create-app .page-header-title {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 1.875rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+.aviation-create-app .page-header-description {
+  font-size: 1rem;
+  color: var(--color-aviation-text-secondary, #9ca3af);
+}
+
+/* ==========================================================================
+   Section Cards
+   ========================================================================== */
+
+.aviation-create-app .section-card {
+  position: relative;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.aviation-create-app .section-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  padding: 1px;
+  background: linear-gradient(135deg, transparent 30%, rgba(255, 107, 53, 0.15) 50%, transparent 70%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.aviation-create-app .section-card:hover {
+  border-color: rgba(255, 107, 53, 0.2);
+}
+
+.aviation-create-app .section-card:hover::before {
+  opacity: 1;
+}
+
+/* Section Card Header */
+.aviation-create-app .section-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.06));
+  background: var(--color-aviation-bg-instrument, #222232);
+}
+
+.aviation-create-app .section-header-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-instrument, rgba(255, 255, 255, 0.12));
+  transition: all 0.3s ease;
+}
+
+.aviation-create-app .section-card:hover .section-header-icon {
+  transform: scale(1.05);
+  box-shadow: 0 0 12px var(--color-aviation-amber-dim);
+}
+
+.aviation-create-app .section-header-title {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+.aviation-create-app .section-header-description {
+  font-size: 0.75rem;
+  color: var(--color-aviation-text-muted, #6b7280);
+}
+
+/* Section Card Content */
+.aviation-create-app .section-content {
+  padding: 1.5rem;
+}
+
+/* ==========================================================================
+   Form Elements
+   ========================================================================== */
+
+/* Input styling */
+.aviation-create-app .form-input {
+  height: 48px;
+  font-size: 1rem;
+  background: var(--color-aviation-bg-instrument, #222232);
+  border: 1px solid var(--color-aviation-border-instrument, rgba(255, 255, 255, 0.12));
+  border-radius: 10px;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+  transition: all 0.2s ease;
+}
+
+.aviation-create-app .form-input:focus {
+  border-color: var(--ff-cyan, #00d4ff);
+  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+}
+
+.aviation-create-app .form-input::placeholder {
+  color: var(--color-aviation-text-dim, #4b5563);
+}
+
+.aviation-create-app .form-input-mono {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+}
+
+/* Textarea styling */
+.aviation-create-app .form-textarea {
+  min-height: 100px;
+  resize: none;
+  background: var(--color-aviation-bg-instrument, #222232);
+  border: 1px solid var(--color-aviation-border-instrument, rgba(255, 255, 255, 0.12));
+  border-radius: 10px;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+  transition: all 0.2s ease;
+}
+
+.aviation-create-app .form-textarea:focus {
+  border-color: var(--ff-cyan, #00d4ff);
+  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+}
+
+/* Label styling */
+.aviation-create-app .form-label {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-aviation-text-secondary, #9ca3af);
+}
+
+/* Character counter */
+.aviation-create-app .char-counter {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.7rem;
+  color: var(--color-aviation-text-dim, #4b5563);
+}
+
+.aviation-create-app .char-counter-warning {
+  color: var(--color-aviation-amber, #f59e0b);
+}
+
+.aviation-create-app .char-counter-error {
+  color: var(--color-aviation-red, #ef4444);
+}
+
+/* Validation message */
+.aviation-create-app .validation-message {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  margin-top: 0.375rem;
+}
+
+.aviation-create-app .validation-error {
+  color: var(--color-aviation-red, #ef4444);
+}
+
+.aviation-create-app .validation-success {
+  color: var(--color-aviation-green, #10b981);
+}
+
+.aviation-create-app .validation-info {
+  color: var(--color-aviation-text-muted, #6b7280);
+}
+
+/* ==========================================================================
+   Icon Selection
+   ========================================================================== */
+
+.aviation-create-app .icon-color-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.aviation-create-app .icon-color-btn:hover {
+  transform: scale(1.1);
+  opacity: 0.9;
+}
+
+.aviation-create-app .icon-color-btn-selected {
+  border-color: var(--color-aviation-text-primary, #e8e8f0);
+  transform: scale(1.15);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+}
+
+/* Icon Picker Trigger */
+.aviation-create-app .icon-picker-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  background: var(--color-aviation-bg-instrument, #222232);
+  border: 1px solid var(--color-aviation-border-instrument, rgba(255, 255, 255, 0.12));
+  color: var(--color-aviation-text-secondary, #9ca3af);
+  font-size: 1.5rem;
+  transition: all 0.2s ease;
+}
+
+.aviation-create-app .icon-picker-trigger:hover {
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border-color: var(--ff-cyan, #00d4ff);
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+/* Icon Picker Panel */
+.aviation-create-app .icon-picker-panel {
+  min-width: 280px;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.aviation-create-app .icon-picker-tab {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.aviation-create-app .icon-picker-tab-active {
+  background: var(--color-aviation-bg-instrument, #222232);
+  color: var(--color-aviation-text-primary, #e8e8f0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.aviation-create-app .icon-picker-tab-inactive {
+  color: var(--color-aviation-text-muted, #6b7280);
+}
+
+.aviation-create-app .icon-picker-tab-inactive:hover {
+  color: var(--color-aviation-text-secondary, #9ca3af);
+}
+
+.aviation-create-app .icon-option-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.aviation-create-app .icon-option-btn:hover {
+  background: var(--color-aviation-bg-instrument, #222232);
+  transform: scale(1.1);
+}
+
+.aviation-create-app .icon-option-btn-selected {
+  background: rgba(255, 107, 53, 0.2);
+  box-shadow: 0 0 0 2px var(--ff-flame, #ff6b35);
+  transform: scale(1.1);
+}
+
+/* ==========================================================================
+   Visibility Toggle
+   ========================================================================== */
+
+.aviation-create-app .visibility-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-radius: 10px;
+  background: var(--color-aviation-bg-instrument, #222232);
+  border: 1px solid var(--color-aviation-border-instrument, rgba(255, 255, 255, 0.12));
+}
+
+.aviation-create-app .visibility-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+.aviation-create-app .visibility-description {
+  font-size: 0.75rem;
+  color: var(--color-aviation-text-muted, #6b7280);
+}
+
+.aviation-create-app .visibility-icon-public {
+  color: var(--color-aviation-green, #10b981);
+}
+
+.aviation-create-app .visibility-icon-private {
+  color: var(--color-aviation-amber, #f59e0b);
+}
+
+/* ==========================================================================
+   Team Access Card
+   ========================================================================== */
+
+.aviation-create-app .team-access-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 10px;
+  background: var(--color-aviation-bg-instrument, #222232);
+  border: 1px solid var(--color-aviation-border-instrument, rgba(255, 255, 255, 0.12));
+}
+
+.aviation-create-app .team-access-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--ff-flame, #ff6b35), var(--ff-cyan, #00d4ff));
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-aviation-bg-primary, #08080c);
+}
+
+.aviation-create-app .team-access-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+.aviation-create-app .team-access-role {
+  font-size: 0.7rem;
+  color: var(--color-aviation-text-muted, #6b7280);
+}
+
+/* ==========================================================================
+   Tag Input
+   ========================================================================== */
+
+.aviation-create-app .tag-input-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 10px;
+  background: var(--color-aviation-bg-instrument, #222232);
+  border: 1px solid var(--color-aviation-border-instrument, rgba(255, 255, 255, 0.12));
+  min-height: 44px;
+  transition: all 0.2s ease;
+}
+
+.aviation-create-app .tag-input-container:focus-within {
+  border-color: var(--ff-cyan, #00d4ff);
+  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+}
+
+.aviation-create-app .tag-input-field {
+  flex: 1;
+  min-width: 100px;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 0.875rem;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+.aviation-create-app .tag-input-field::placeholder {
+  color: var(--color-aviation-text-dim, #4b5563);
+}
+
+.aviation-create-app .tag-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  background: rgba(255, 107, 53, 0.15);
+  border: 1px solid rgba(255, 107, 53, 0.2);
+  color: var(--ff-flame, #ff6b35);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.aviation-create-app .tag-remove-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.aviation-create-app .tag-remove-btn:hover {
+  color: var(--color-aviation-red, #ef4444);
+}
+
+/* ==========================================================================
+   Environment Select
+   ========================================================================== */
+
+.aviation-create-app .environment-select {
+  height: 44px;
+  background: var(--color-aviation-bg-instrument, #222232);
+  border: 1px solid var(--color-aviation-border-instrument, rgba(255, 255, 255, 0.12));
+  border-radius: 10px;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+  transition: all 0.2s ease;
+}
+
+.aviation-create-app .environment-select:focus {
+  border-color: var(--ff-cyan, #00d4ff);
+  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+}
+
+.aviation-create-app .environment-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+}
+
+/* ==========================================================================
+   AI Generate Button
+   ========================================================================== */
+
+.aviation-create-app .ai-generate-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(167, 139, 250, 0.15) 100%);
+  color: #a78bfa;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  transition: all 0.2s ease;
+}
+
+.aviation-create-app .ai-generate-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(167, 139, 250, 0.25) 100%);
+  border-color: rgba(99, 102, 241, 0.5);
+  transform: translateY(-1px);
+}
+
+.aviation-create-app .ai-generate-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   App Preview Card
+   ========================================================================== */
+
+.aviation-create-app .app-preview-card {
+  position: sticky;
+  top: 5rem;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.aviation-create-app .app-preview-header {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.06));
+  background: var(--color-aviation-bg-instrument, #222232);
+}
+
+.aviation-create-app .app-preview-label {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-aviation-text-muted, #6b7280);
+}
+
+.aviation-create-app .app-preview-content {
+  padding: 1.5rem;
+}
+
+.aviation-create-app .app-preview-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(8px);
+}
+
+.aviation-create-app .app-preview-visibility {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+}
+
+.aviation-create-app .app-preview-visibility-public {
+  background: rgba(16, 185, 129, 0.3);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+
+.aviation-create-app .app-preview-visibility-private {
+  background: rgba(245, 158, 11, 0.3);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+}
+
+.aviation-create-app .app-preview-name {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.aviation-create-app .app-preview-slug {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.aviation-create-app .app-preview-tag {
+  display: inline-flex;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.65rem;
+  font-weight: 500;
+  background: var(--color-aviation-bg-instrument, #222232);
+  color: var(--color-aviation-text-secondary, #9ca3af);
+}
+
+.aviation-create-app .app-preview-url {
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.75rem;
+  color: var(--ff-cyan, #00d4ff);
+  background: var(--color-aviation-bg-instrument, #222232);
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  word-break: break-all;
+}
+
+/* ==========================================================================
+   Getting Started Tips
+   ========================================================================== */
+
+.aviation-create-app .getting-started-section {
+  padding-top: 1rem;
+}
+
+.aviation-create-app .getting-started-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono, 'Commit Mono', monospace);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+  margin-bottom: 1rem;
+}
+
+.aviation-create-app .getting-started-tip {
+  position: relative;
+  padding: 1rem;
+  border-radius: 12px;
+  background: var(--color-aviation-bg-panel, #1a1a28);
+  border: 1px solid var(--color-aviation-border-panel, rgba(255, 255, 255, 0.08));
+  transition: all 0.3s ease;
+}
+
+.aviation-create-app .getting-started-tip:hover {
+  background: var(--color-aviation-bg-instrument, #222232);
+  border-color: var(--color-aviation-border-instrument, rgba(255, 255, 255, 0.12));
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.aviation-create-app .getting-started-tip-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 107, 53, 0.1);
+  border: 1px solid rgba(255, 107, 53, 0.2);
+  transition: all 0.3s ease;
+}
+
+.aviation-create-app .getting-started-tip:hover .getting-started-tip-icon {
+  background: rgba(255, 107, 53, 0.2);
+  transform: scale(1.05);
+}
+
+.aviation-create-app .getting-started-tip-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-aviation-text-primary, #e8e8f0);
+}
+
+.aviation-create-app .getting-started-tip-description {
+  font-size: 0.75rem;
+  color: var(--color-aviation-text-muted, #6b7280);
+}
+
+/* ==========================================================================
+   General Error Alert
+   ========================================================================== */
+
+.aviation-create-app .general-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: var(--color-aviation-red, #ef4444);
+  font-size: 0.875rem;
+}
+
+/* ==========================================================================
+   Primary Action Button
+   ========================================================================== */
+
+.aviation-create-app .create-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  font-weight: 600;
+  min-width: 120px;
+  transition: all 0.2s ease;
+}
+
+.aviation-create-app .create-btn-enabled {
+  background: linear-gradient(135deg, var(--ff-flame, #ff6b35) 0%, var(--ff-afterburner, #ff4f5e) 100%);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);
+}
+
+.aviation-create-app .create-btn-enabled:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
+}
+
+.aviation-create-app .create-btn-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Light Mode Overrides
+   ========================================================================== */
+
+[data-theme='light'] .aviation-create-app::before {
+  background-image:
+    linear-gradient(rgba(0, 168, 204, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 168, 204, 0.04) 1px, transparent 1px);
+}
+
+[data-theme='light'] .aviation-create-app .action-bar {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='light'] .aviation-create-app .section-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='light'] .aviation-create-app .section-header {
+  background: #f8fafc;
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme='light'] .aviation-create-app .form-input,
+[data-theme='light'] .aviation-create-app .form-textarea {
+  background: #f8fafc;
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #111827;
+}
+
+[data-theme='light'] .aviation-create-app .form-input:focus,
+[data-theme='light'] .aviation-create-app .form-textarea:focus {
+  border-color: var(--ff-cyan-dark, #00b8e0);
+  box-shadow: 0 0 0 3px rgba(0, 184, 224, 0.1);
+}
+
+[data-theme='light'] .aviation-create-app .form-label {
+  color: #374151;
+}
+
+[data-theme='light'] .aviation-create-app .page-header-title {
+  color: #111827;
+}
+
+[data-theme='light'] .aviation-create-app .page-header-description {
+  color: #6b7280;
+}
+
+[data-theme='light'] .aviation-create-app .app-preview-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='light'] .aviation-create-app .getting-started-tip {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='light'] .aviation-create-app .getting-started-tip:hover {
+  background: #f8fafc;
+}
+
+/* ==========================================================================
+   Animation Keyframes
+   ========================================================================== */
+
+@keyframes aviation-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes aviation-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes aviation-pulse-soft {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Animation utility classes */
+.aviation-create-app .animate-fade-in-up {
+  animation: aviation-fade-in-up 0.5s ease-out forwards;
+}
+
+.aviation-create-app .animate-slide-in-right {
+  animation: aviation-slide-in-right 0.5s ease-out forwards;
+}
+
+.aviation-create-app .animate-pulse-soft {
+  animation: aviation-pulse-soft 2s ease-in-out infinite;
+}
+
+/* Stagger delays */
+.aviation-create-app .animation-delay-100 {
+  animation-delay: 100ms;
+}
+
+.aviation-create-app .animation-delay-200 {
+  animation-delay: 200ms;
+}
+
+.aviation-create-app .animation-delay-300 {
+  animation-delay: 300ms;
+}
+
+.aviation-create-app .animation-delay-400 {
+  animation-delay: 400ms;
+}
