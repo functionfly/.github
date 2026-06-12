@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import { Check, Copy, ExternalLink, AlertTriangle, Info, CheckCircle, XCircle } from "lucide-react";
+import DOMPurify from "dompurify";
 import { DOCS_SITE_URL } from "@/lib/constants";
 import { type DocPage } from "../data/docs";
-import DOMPurify from "dompurify";
 
 interface DocsContentProps {
   page: DocPage;
@@ -169,17 +169,10 @@ export function DocsContent({ page }: DocsContentProps) {
     return () => content.removeEventListener('click', handleClick);
   }, [page.content]);
 
-  const htmlContent = parseMarkdown(page.content);
-  const sanitizedHtmlContent = DOMPurify.sanitize(htmlContent, {
-    ALLOWED_TAGS: [
-      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-      'p', 'br', 'strong', 'em', 'u',
-      'ul', 'ol', 'li',
-      'blockquote', 'pre', 'code',
-      'a', 'div', 'span', 'hr',
-      'table', 'thead', 'tbody', 'tr', 'th', 'td',
-    ],
-    ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'id', 'data-code'],
+  const rawHtml = parseMarkdown(page.content);
+  const htmlContent = DOMPurify.sanitize(rawHtml, {
+    ALLOWED_TAGS: ['h1', 'h2', 'h3', 'p', 'a', 'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'strong', 'em', 'br', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'button', 'span', 'svg', 'rect', 'path'],
+    ALLOWED_ATTR: ['href', 'class', 'id', 'data-code', 'target', 'rel', 'viewBox', 'fill', 'stroke', 'stroke-width', 'width', 'height', 'd', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry'],
     ALLOW_DATA_ATTR: false,
   });
 
@@ -207,7 +200,7 @@ export function DocsContent({ page }: DocsContentProps) {
       <div
         ref={contentRef}
         className="docs-content"
-        dangerouslySetInnerHTML={{ __html: sanitizedHtmlContent }}
+        dangerouslySetInnerHTML={{ __html: htmlContent }}
       />
 
       {/* Page Navigation */}

@@ -185,32 +185,99 @@ export function generateSecurePassphrase(length: number = 16): string {
   return result;
 }
 
-/**
- * Store passphrase in sessionStorage (more secure than localStorage)
- */
-export function storePassphrase(teamId: string, passphrase: string): void {
-  sessionStorage.setItem(`team_memory_passphrase_${teamId}`, passphrase);
+const TEAM_MEMORY_ENC_PREFIX = 'ff_team_mem_enc_';
+const TEAM_MEMORY_SALT_PREFIX = 'ff_team_mem_salt_';
+
+function getDeviceKey(): Promise<CryptoKey> {
+  const { getOrCreateDeviceKey } = require('../services/secure-vault-key-store');
+  return getOrCreateDeviceKey();
+}
+
+function b64Encode(buf: ArrayBuffer | Uint8Array): string {
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+function b64Decode(b64: string): Uint8Array {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+async function encryptValue(value: string): Promise<{ encrypted: string; iv: string }> {
+  const deviceKey = await getDeviceKey();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoder = new TextEncoder();
+
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    deviceKey,
+    encoder.encode(value)
+  );
+
+  return {
+    encrypted: b64Encode(encrypted),
+    iv: b64Encode(iv)
+  };
+}
+
+async function decryptValue(encrypted: string, iv: string): Promise<string | null> {
+  try {
+    const deviceKey = await getDeviceKey();
+    const encryptedBytes = b64Decode(encrypted);
+    const ivBytes = b64Decode(iv);
+
+    const decrypted = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: ivBytes as BufferSource },
+      deviceKey,
+      encryptedBytes as BufferSource
+    );
+
+    return new TextDecoder().decode(decrypted);
+  } catch {
+    return null;
+  }
 }
 
 /**
- * Retrieve passphrase from sessionStorage
+ * Store passphrase securely: encrypt with device-bound key before sessionStorage
  */
-export function getPassphrase(teamId: string): string | null {
-  return sessionStorage.getItem(`team_memory_passphrase_${teamId}`);
+export async function storePassphrase(teamId: string, passphrase: string): Promise<void> {
+  const { encrypted, iv } = await encryptValue(passphrase);
+  sessionStorage.setItem(`${TEAM_MEMORY_ENC_PREFIX}${teamId}`, encrypted);
+  sessionStorage.setItem(`${TEAM_MEMORY_SALT_PREFIX}${teamId}`, iv);
+}
+
+/**
+ * Retrieve and decrypt passphrase from sessionStorage
+ */
+export async function getPassphrase(teamId: string): Promise<string | null> {
+  const encrypted = sessionStorage.getItem(`${TEAM_MEMORY_ENC_PREFIX}${teamId}`);
+  const iv = sessionStorage.getItem(`${TEAM_MEMORY_SALT_PREFIX}${teamId}`);
+  if (!encrypted || !iv) return null;
+  return decryptValue(encrypted, iv);
 }
 
 /**
  * Clear passphrase from sessionStorage
  */
 export function clearPassphrase(teamId: string): void {
-  sessionStorage.removeItem(`team_memory_passphrase_${teamId}`);
+  sessionStorage.removeItem(`${TEAM_MEMORY_ENC_PREFIX}${teamId}`);
+  sessionStorage.removeItem(`${TEAM_MEMORY_SALT_PREFIX}${teamId}`);
 }
 
 /**
- * Check if passphrase exists for team
+ * Check if passphrase exists for team (sync check - may need decryption for full validation)
  */
 export function hasPassphrase(teamId: string): boolean {
-  return getPassphrase(teamId) !== null;
+  return sessionStorage.getItem(`${TEAM_MEMORY_ENC_PREFIX}${teamId}`) !== null;
 }
 
 /**
@@ -262,14 +329,21 @@ export async function initTeamMemoryCrypto(
     return crypto;
   }
 
-  // Try to get passphrase from sessionStorage
-  const storedPassphrase = passphrase || getPassphrase(teamId);
+// Try to get passphrase from sessionStorage
+  const storedPassphrase = passphrase || await getPassphrase(teamId);
 
   if (!storedPassphrase) {
     throw new Error(
       `No passphrase found for team ${teamId}. ` +
       `Please provide the team passphrase to view encrypted memories.`
     );
+  }
+
+  await crypto.initialize(storedPassphrase);
+
+  // Store in sessionStorage for this session if not already there
+  if (!hasPassphrase(teamId)) {
+    await storePassphrase(teamId, storedPassphrase);
   }
 
   await crypto.initialize(storedPassphrase);
@@ -304,7 +378,7 @@ export async function promptForPassphrase(
   const passphrase = window.prompt(message);
 
   if (passphrase) {
-    storePassphrase(teamId, passphrase);
+    await storePassphrase(teamId, passphrase);
     return passphrase;
   }
 

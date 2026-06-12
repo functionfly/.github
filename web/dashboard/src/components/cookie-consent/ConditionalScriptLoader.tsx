@@ -66,11 +66,15 @@ export function ConditionalScriptLoader({
       };
     }
 
-    // If we have children (inline script), execute them
+    // If we have children (inline script), execute them safely
     if (children && !scriptLoaded && typeof children === 'string') {
       try {
-        // eslint-disable-next-line no-eval
-        eval(children);
+        const script = document.createElement('script');
+        if (id) {
+          script.id = id;
+        }
+        script.textContent = children;
+        document.head.appendChild(script);
         setScriptLoaded(true);
         onLoad?.();
       } catch (error) {

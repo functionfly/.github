@@ -332,12 +332,11 @@ const API_KEY_SESSION_KEY = 'ff_api_key_session_v1';
 function getOrCreateSessionKey(_storage: Storage): string {
   let key = sessionStorage.getItem(API_KEY_SESSION_KEY);
   if (!key) {
-    const bytes = new Uint8Array(32);
-    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-      crypto.getRandomValues(bytes);
-    } else {
-      for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+    if (typeof crypto === 'undefined' || !crypto.getRandomValues) {
+      throw new Error('WebCrypto API not available. Cannot generate secure session key.');
     }
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
     key = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
     sessionStorage.setItem(API_KEY_SESSION_KEY, key);
   }
