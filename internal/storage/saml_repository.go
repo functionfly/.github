@@ -206,11 +206,13 @@ func NewSAMLStateRepository(db *PostgresDB) *SAMLStateRepository {
 }
 
 // SaveAuthnRequestState saves an AuthnRequest state for validation
-func (r *SAMLStateRepository) SaveAuthnRequestState(ctx context.Context, stateID string, tenantID uuid.UUID, relayState string, expiresAt time.Time) error {
+// requestID is the SAML AuthnRequest ID (InResponseTo target) for replay attack prevention
+func (r *SAMLStateRepository) SaveAuthnRequestState(ctx context.Context, stateID string, tenantID uuid.UUID, requestID string, relayState string, expiresAt time.Time) error {
+	metadata := fmt.Sprintf(`{"request_id": "%s", "relay_state": "%s"}`, requestID, relayState)
 	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO auth_events (id, event_type, tenant_id, user_id, ip_address, user_agent, success, metadata, timestamp)
 		VALUES ($1, 'saml_authn_request', $2, NULL, '', '', true, $3, $4)`,
-		stateID, tenantID, fmt.Sprintf(`{"relay_state": "%s"}`, relayState), expiresAt)
+		stateID, tenantID, metadata, expiresAt)
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
 			return fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
@@ -221,7 +223,8 @@ func (r *SAMLStateRepository) SaveAuthnRequestState(ctx context.Context, stateID
 }
 
 // GetAuthnRequestState retrieves an AuthnRequest state
-func (r *SAMLStateRepository) GetAuthnRequestState(ctx context.Context, stateID string) (tenantID uuid.UUID, relayState string, err error) {
+// Returns tenantID, requestID (AuthnRequest ID), relayState, and error
+func (r *SAMLStateRepository) GetAuthnRequestState(ctx context.Context, stateID string) (tenantID uuid.UUID, requestID string, relayState string, err error) {
 	var metadata string
 	var timestamp time.Time
 
@@ -231,25 +234,26 @@ func (r *SAMLStateRepository) GetAuthnRequestState(ctx context.Context, stateID 
 
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			return uuid.Nil, "", fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
+			return uuid.Nil, "", "", fmt.Errorf("context deadline exceeded: %w", context.DeadlineExceeded)
 		}
 		if err == sql.ErrNoRows {
-			return uuid.Nil, "", fmt.Errorf("SAML state not found or expired")
+			return uuid.Nil, "", "", fmt.Errorf("SAML state not found or expired")
 		}
-		return uuid.Nil, "", err
+		return uuid.Nil, "", "", err
 	}
 
 	if time.Now().After(timestamp) {
-		return uuid.Nil, "", fmt.Errorf("SAML state expired")
+		return uuid.Nil, "", "", fmt.Errorf("SAML state expired")
 	}
 
 	var payload struct {
+		RequestID  string `json:"request_id"`
 		RelayState string `json:"relay_state"`
 	}
 	if err := json.Unmarshal([]byte(metadata), &payload); err != nil {
-		return uuid.Nil, "", fmt.Errorf("failed to parse SAML state metadata: %w", err)
+		return uuid.Nil, "", "", fmt.Errorf("failed to parse SAML state metadata: %w", err)
 	}
-	return tenantID, payload.RelayState, nil
+	return tenantID, payload.RequestID, payload.RelayState, nil
 }
 
 // DeleteAuthnRequestState deletes an AuthnRequest state

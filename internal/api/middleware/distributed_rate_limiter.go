@@ -16,11 +16,12 @@ import (
 // DistributedRateLimiter provides Redis-backed rate limiting for distributed deployments
 // Use this instead of the in-memory RateLimiter when running multiple API instances
 type DistributedRateLimiter struct {
-	redis     *redis.Client
-	window    time.Duration
-	limit     int
-	keyPrefix string
-	enabled   bool
+	redis      *redis.Client
+	window     time.Duration
+	limit      int
+	keyPrefix  string
+	enabled    bool
+	failClosed bool // If true, deny requests when Redis is unavailable (secure default)
 }
 
 // NewDistributedRateLimiter creates a new Redis-backed rate limiter
@@ -28,13 +29,19 @@ type DistributedRateLimiter struct {
 func NewDistributedRateLimiter(redisClient *redis.Client, window time.Duration, limit int, keyPrefix string) *DistributedRateLimiter {
 	// Check if distributed rate limiting is explicitly disabled
 	disabled := os.Getenv("DISTRIBUTED_RATE_LIMITER_DISABLED") == "true"
+	// Default to failClosed=true (secure) in production, failOpen=false (permissive) in development
+	failClosed := os.Getenv("RATE_LIMITER_FAIL_CLOSED") == "true"
+	if os.Getenv("PRODUCTION_ENV") == "true" || os.Getenv("NODE_ENV") == "production" {
+		failClosed = true // Always fail closed in production
+	}
 
 	return &DistributedRateLimiter{
-		redis:     redisClient,
-		window:    window,
-		limit:     limit,
-		keyPrefix: keyPrefix,
-		enabled:   redisClient != nil && !disabled,
+		redis:      redisClient,
+		window:     window,
+		limit:      limit,
+		keyPrefix:  keyPrefix,
+		enabled:    redisClient != nil && !disabled,
+		failClosed: failClosed,
 	}
 }
 
@@ -90,8 +97,14 @@ func (rl *DistributedRateLimiter) Allow(key string) bool {
 
 	_, err := pipe.Exec(ctx)
 	if err != nil {
-		logrus.WithError(err).Warn("Redis rate limiter error, allowing request")
-		return true // Fail open on Redis error
+		logrus.WithError(err).Warn("Redis rate limiter error")
+		if rl.failClosed {
+			// Fail closed: deny request when Redis is unavailable (secure default)
+			logrus.Error("Rate limiter failing closed due to Redis error - request denied")
+			return false
+		}
+		// Fail open: allow request when Redis is unavailable (permissive for development)
+		return true
 	}
 
 	count := countCmd.Val()

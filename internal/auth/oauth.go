@@ -23,7 +23,7 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
-// allowedCallbackHosts defines the allowlist for valid redirect URIs.
+// allowedCallbackHosts defines the allowlist for valid redirect URI hosts.
 // Includes localhost for CLI flows and production domains for production.
 var allowedCallbackHosts = []string{
 	"localhost",
@@ -32,14 +32,23 @@ var allowedCallbackHosts = []string{
 	"staging.functionfly.com", // staging dashboard
 }
 
-// IsAllowedRedirectURI validates redirect_uri against an allowlist.
-// For production, validates against known hosts. For CLI flows, allows localhost/127.0.0.1.
+// allowedCallbackPaths defines the allowlist for valid callback paths per host
+var allowedCallbackPaths = map[string][]string{
+	"app.functionfly.com":     {"/auth/callback", "/auth/oauth/callback", "/callback", "/oauth/callback"},
+	"staging.functionfly.com": {"/auth/callback", "/auth/oauth/callback", "/callback", "/oauth/callback"},
+	"localhost":               {"/auth/callback", "/auth/oauth/callback", "/callback", "/oauth/callback", "/"},
+	"127.0.0.1":              {"/auth/callback", "/auth/oauth/callback", "/callback", "/oauth/callback", "/"},
+}
+
+// IsAllowedRedirectURI validates redirect_uri against a strict allowlist.
+// For production, validates against known hosts AND paths. For CLI flows, allows localhost/127.0.0.1.
 func IsAllowedRedirectURI(raw string) bool {
 	u, err := url.Parse(raw)
 	if err != nil || u.Host == "" {
 		return false
 	}
-	// Allow HTTPS for production domains, HTTP only for localhost
+
+	// Only allow https for production domains, http for localhost
 	isHTTPS := u.Scheme == "https"
 	isHTTP := u.Scheme == "http"
 	if !isHTTPS && !isHTTP {
@@ -47,26 +56,53 @@ func IsAllowedRedirectURI(raw string) bool {
 	}
 
 	host := strings.ToLower(u.Hostname())
+	path := u.Path
 
+	// Check if host is in allowlist
+	hostAllowed := false
+	isLocalhost := false
 	for _, allowed := range allowedCallbackHosts {
-		// Exact match for localhost/127.0.0.1 (any port allowed)
 		if host == allowed {
-			// Require HTTPS for production domains, allow HTTP for localhost
-			if (allowed == "app.functionfly.com" || allowed == "staging.functionfly.com") && !isHTTPS {
-				return false
-			}
-			return true
+			hostAllowed = true
+			isLocalhost = (allowed == "localhost" || allowed == "127.0.0.1")
+			break
 		}
-		// Subdomain match for production domains (e.g., *.app.functionfly.com)
+		// Subdomain match - ensure it's a proper subdomain boundary (dot prefix)
 		if strings.HasSuffix(host, "."+allowed) {
-			// Subdomains must use HTTPS
-			if !isHTTPS {
-				return false
-			}
-			return true
+			hostAllowed = true
+			break
 		}
 	}
-	return false
+
+	if !hostAllowed {
+		return false
+	}
+
+	// Require HTTPS for production domains, allow HTTP for localhost
+	if !isLocalhost && !isHTTPS {
+		return false
+	}
+
+	// For production domains, validate the path
+	if !isLocalhost {
+		allowedPaths, ok := allowedCallbackPaths[host]
+		if !ok {
+			// Unknown production host - deny
+			return false
+		}
+		pathAllowed := false
+		for _, allowedPath := range allowedPaths {
+			if path == allowedPath {
+				pathAllowed = true
+				break
+			}
+		}
+		if !pathAllowed {
+			return false
+		}
+	}
+
+	return true
 }
 
 // isAllowedRedirectURI is an alias for IsAllowedRedirectURI for internal use.

@@ -290,12 +290,6 @@ func (a *AuthService) Login(identifier, password, ipAddress, userAgent string) (
 		user.TokenVersion = newTokenVersion
 	}
 
-	// SECURITY FIX: Increment token version to invalidate any existing tokens
-	// This provides session fixation protection by ensuring old tokens are revoked
-	if err := a.repo.IncrementUserTokenVersion(user.ID); err != nil {
-		logrus.WithError(err).WithField("user_id", user.ID).Warn("Failed to increment token version - old sessions may remain valid")
-	}
-
 	// Generate JWT token
 	token, err := a.generateToken(user)
 	if err != nil {

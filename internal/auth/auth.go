@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/email"
@@ -44,6 +45,11 @@ func NewAuthService(repo storage.Repository, jwtSecret string) (*AuthService, er
 	// Validate JWT secret minimum length (32 bytes = 256 bits for HS256)
 	if len(jwtSecret) < 32 {
 		return nil, fmt.Errorf("JWT_SECRET must be at least 32 bytes (256 bits) for HS256 security, got %d bytes. Generate a secure secret with: openssl rand -hex 32", len(jwtSecret))
+	}
+
+	// Validate JWT secret strength to prevent weak secrets
+	if err := validateJWTSecretStrength(jwtSecret); err != nil {
+		return nil, err
 	}
 
 	// Default email config for testing/development
@@ -181,4 +187,80 @@ func GenerateInviteToken() (string, time.Time) {
 	token := hex.EncodeToString(b)
 	expiresAt := time.Now().Add(7 * 24 * time.Hour) // 7 days
 	return token, expiresAt
+}
+
+// validateJWTSecretStrength checks that the JWT secret has sufficient entropy
+// and is not a known weak value
+func validateJWTSecretStrength(secret string) error {
+	// Check for common weak patterns
+	weakPatterns := []string{
+		"12345678901234567890123456789012", // Sequential numeric
+		"password", "admin", "secret",      // Common words
+		"abcdefghijklmnopqrstuvwxyz12",    // Sequential alpha
+	}
+
+	secretLower := strings.ToLower(secret)
+	for _, pattern := range weakPatterns {
+		if secretLower == strings.ToLower(pattern) || strings.Contains(secretLower, pattern) {
+			// Allow if it's long enough and contains mixed characters
+			if len(secret) >= 64 {
+				break // Long enough random strings are ok even if they contain these chars
+			}
+			return fmt.Errorf("JWT_SECRET appears to be a weak or known secret. Please generate a secure secret with: openssl rand -hex 32")
+		}
+	}
+
+	// Check for low entropy (all same character, sequential, etc.)
+	if isLowEntropy(secret) {
+		return fmt.Errorf("JWT_SECRET has low entropy and appears to be a weak secret. Please generate a secure secret with: openssl rand -hex 32")
+	}
+
+	return nil
+}
+
+// isLowEntropy checks if a string has low entropy (all same, sequential, etc.)
+func isLowEntropy(s string) bool {
+	if len(s) < 32 {
+		return true
+	}
+
+	// Check if all characters are the same
+	if len(s) > 0 {
+		first := s[0]
+		allSame := true
+		for i := 1; i < len(s); i++ {
+			if s[i] != first {
+				allSame = false
+				break
+			}
+		}
+		if allSame {
+			return true
+		}
+	}
+
+	// Check for mostly sequential patterns (simple check)
+	sequentialCount := 0
+	for i := 1; i < len(s); i++ {
+		if int(s[i])-int(s[i-1]) == 1 || int(s[i])-int(s[i-1]) == -1 {
+			sequentialCount++
+		}
+	}
+	if sequentialCount > len(s)/3 {
+		return true // More than 1/3 sequential is suspicious
+	}
+
+	// Check character distribution - too uniform is suspicious
+	seen := make(map[rune]int)
+	for _, c := range s {
+		seen[c]++
+	}
+	// If more than 50% of characters are the same character, it's low entropy
+	for _, count := range seen {
+		if float64(count)/float64(len(s)) > 0.5 {
+			return true
+		}
+	}
+
+	return false
 }

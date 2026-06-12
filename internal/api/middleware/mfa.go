@@ -94,10 +94,16 @@ func (m *MFARequiredMiddleware) RequireMFA(next http.HandlerFunc) http.HandlerFu
 		}
 
 		// MFA_BYPASS_ENABLED is only for emergency access when MFA system is down
-		// It requires a separate secret to be set along with the flag
+		// SECURITY: Only allowed in non-production environments to prevent accidental bypass in production
 		if os.Getenv("MFA_BYPASS_ENABLED") == "true" && os.Getenv("MFA_BYPASS_SECRET") != "" {
-			m.logger.WithFields(logrus.Fields{"user_id": claims.UserID, "email": claims.Email}).Warn("MFA bypassed via MFA_BYPASS_ENABLED - emergency access only")
-			next.ServeHTTP(w, r)
+			isProduction := os.Getenv("PRODUCTION_ENV") == "true" || os.Getenv("NODE_ENV") == "production"
+			if isProduction {
+				m.logger.Error("MFA_BYPASS_ENABLED is set in production - rejecting request for security")
+				http.Error(w, "MFA bypass not allowed in production", http.StatusForbidden)
+				return
+			}
+			m.logger.WithFields(logrus.Fields{"user_id": claims.UserID, "email": claims.Email}).Warn("MFA bypassed via MFA_BYPASS_ENABLED - emergency access only (development mode)")
+			next(w, r)
 			return
 		}
 

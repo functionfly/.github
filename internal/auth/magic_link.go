@@ -103,12 +103,18 @@ func generateMagicLinkToken() (string, error) {
 // hashMagicLinkToken creates an HMAC-SHA256 hash of a magic link token for secure storage
 // Uses a secret key to prevent rainbow table attacks from database breaches
 func hashMagicLinkToken(token string) string {
-	// Use a secret key derived from environment or a fixed derivation string
-	// The key is not meant to be secret (tokens are already random), but HMAC
-	// provides better properties than plain SHA-256 for this use case
 	secretKey := os.Getenv("MAGIC_LINK_TOKEN_SECRET")
 	if secretKey == "" {
+		// In production, require the secret to be set - fail secure
+		if os.Getenv("PRODUCTION_ENV") == "true" {
+			logrus.Error("MAGIC_LINK_TOKEN_SECRET environment variable is required in production")
+			// Return a hash with an invalid key indicator - tokens won't match
+			// This causes verification failures which is safer than using a known secret
+			return "PRODUCTION_SECRET_REQUIRED"
+		}
+		// In development, generate a secret from a derivation string but log warning
 		secretKey = "functionfly-magic-link-hmac-secret-do-not-share"
+		logrus.Warn("MAGIC_LINK_TOKEN_SECRET not set - using insecure default for development only")
 	}
 	h := hmac.New(sha256.New, []byte(secretKey))
 	h.Write([]byte(token))

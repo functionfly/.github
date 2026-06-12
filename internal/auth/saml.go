@@ -104,7 +104,7 @@ func NewSAMLService(config SAMLServiceConfig) (*SAMLService, error) {
 	if privateKey == nil {
 		logrus.Info("Generating new SAML SP key pair (not found in environment or database)")
 		var err error
-		privateKey, err = rsa.GenerateKey(rand.Reader, 2048)
+		privateKey, err = rsa.GenerateKey(rand.Reader, 3072)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate key pair: %w", err)
 		}
@@ -206,10 +206,19 @@ func (s *SAMLService) InitiateLogin(tenantID uuid.UUID, relayState string) (stri
 		return "", fmt.Errorf("SAML is not enabled for this tenant")
 	}
 
-	// Create state for CSRF protection
-	state := uuid.New().String()
+	// Generate AuthnRequest ID (must be unique and non-guessable)
+	requestID := "_" + strings.ReplaceAll(uuid.New().String(), "-", "")
+
+	// Create cryptographically secure state token (replaces UUID-based state)
+	stateBytes := make([]byte, 32)
+	if _, err := rand.Read(stateBytes); err != nil {
+		return "", fmt.Errorf("failed to generate secure state: %w", err)
+	}
+	state := hex.EncodeToString(stateBytes)
+
 	expiresAt := time.Now().Add(10 * time.Minute)
-	if err := s.stateRepo.SaveAuthnRequestState(state, tenantID, relayState, expiresAt); err != nil {
+	// Store state with requestID for InResponseTo validation on callback
+	if err := s.stateRepo.SaveAuthnRequestState(state, tenantID, requestID, relayState, expiresAt); err != nil {
 		return "", fmt.Errorf("failed to save SAML state: %w", err)
 	}
 
@@ -223,8 +232,6 @@ func (s *SAMLService) InitiateLogin(tenantID uuid.UUID, relayState string) (stri
 		return "", fmt.Errorf("IdP SSO URL not configured")
 	}
 
-	// Generate AuthnRequest
-	requestID := "_" + strings.ReplaceAll(uuid.New().String(), "-", "")
 	spEntityID := config.SPEntityID
 	if spEntityID == "" {
 		spEntityID = "functionfly"
@@ -255,16 +262,35 @@ func (s *SAMLService) InitiateLogin(tenantID uuid.UUID, relayState string) (stri
 
 // SAMLResponse represents a parsed SAML response
 type SAMLResponse struct {
-	XMLName   xml.Name       `xml:"samlp:Response"`
-	Signature *SAMLSignature `xml:"ds:Signature,omitempty"`
-	Assertion *SAMLAssertion `xml:"saml:Assertion"`
+	XMLName       xml.Name        `xml:"samlp:Response"`
+	ID            string          `xml:"ID,attr"`
+	InResponseTo  string          `xml:"InResponseTo,attr"`
+	Signature     *SAMLSignature  `xml:"ds:Signature,omitempty"`
+	Assertion     *SAMLAssertion   `xml:"saml:Assertion"`
 }
 
 // SAMLSignature represents a digital signature (XML DSig)
 type SAMLSignature struct {
 	XMLName        xml.Name   `xml:"ds:Signature"`
+	SignedInfo     *DSSignedInfo `xml:"SignedInfo"`
 	KeyInfo        *DSKeyInfo `xml:"KeyInfo"`
 	SignatureValue string     `xml:"SignatureValue"`
+}
+
+// DSSignedInfo contains the SignedInfo element for signature verification
+// Uses proper XML namespace handling to extract canonical XML
+type DSSignedInfo struct {
+	XMLName       xml.Name    `xml:"ds:SignedInfo"`
+	CanonicalMethod string    `xml:"CanonicalizationMethod"`
+	SignatureMethod string    `xml:"SignatureMethod"`
+	Reference     DSReference `xml:"Reference"`
+}
+
+// DSReference contains reference information for the signature
+type DSReference struct {
+	URI          string `xml:"URI,attr"`
+	DigestMethod string `xml:"DigestMethod"`
+	DigestValue  string `xml:"DigestValue"`
 }
 
 // DSKeyInfo contains key information for signature verification
@@ -283,7 +309,14 @@ type SAMLAssertion struct {
 	XMLName             xml.Name                 `xml:"saml:Assertion"`
 	ID                  string                   `xml:"ID,attr"`
 	Subject             *SAMLSubject             `xml:"saml:Subject"`
+	Conditions          *SAMLConditions          `xml:"saml:Conditions"`
 	AttributeStatements []SAMLAttributeStatement `xml:"saml:AttributeStatement"`
+}
+
+// SAMLConditions represents the conditions under which the assertion is valid
+type SAMLConditions struct {
+	NotBefore    time.Time `xml:"NotBefore,attr"`
+	NotOnOrAfter time.Time `xml:"NotOnOrAfter,attr"`
 }
 
 // SAMLSubject represents the subject of a SAML assertion
@@ -313,7 +346,7 @@ type SAMLAttributeValue struct {
 	Value string `xml:",chardata"`
 }
 
-// verifySAMLSignature verifies the SAML response signature
+// verifySAMLSignature verifies the SAML response signature using proper XML parsing
 // Returns nil if signature is valid, error if verification fails or signature is missing
 func (s *SAMLService) verifySAMLSignature(decodedResponse []byte, config *storage.SAMLConfig) error {
 	// Check if IdP certificate is configured
@@ -321,11 +354,14 @@ func (s *SAMLService) verifySAMLSignature(decodedResponse []byte, config *storag
 		return fmt.Errorf("IdP certificate not configured - cannot verify SAML signature")
 	}
 
-	// Parse the XML to extract signature info
-	var result struct {
+	// Parse the XML to extract signature info using proper XML structures
+	var sigInfo struct {
 		Signature struct {
 			SignatureValue string `xml:"SignatureValue"`
-			KeyInfo        struct {
+			SignedInfo     struct {
+				CanonicalMethod string `xml:"CanonicalizationMethod,attr"`
+			} `xml:"SignedInfo"`
+			KeyInfo struct {
 				X509Data struct {
 					X509Certificate string `xml:"X509Certificate"`
 				} `xml:"X509Data"`
@@ -333,25 +369,25 @@ func (s *SAMLService) verifySAMLSignature(decodedResponse []byte, config *storag
 		} `xml:"Signature"`
 	}
 
-	if err := xml.Unmarshal(decodedResponse, &result); err != nil {
+	if err := xml.Unmarshal(decodedResponse, &sigInfo); err != nil {
 		return fmt.Errorf("failed to parse SAML signature: %w", err)
 	}
 
 	// Extract the signature value
-	if result.Signature.SignatureValue == "" {
+	if sigInfo.Signature.SignatureValue == "" {
 		return fmt.Errorf("SAML response has no signature - possible forged response")
 	}
 
-	signatureBytes, err := base64.StdEncoding.DecodeString(result.Signature.SignatureValue)
+	signatureBytes, err := base64.StdEncoding.DecodeString(sigInfo.Signature.SignatureValue)
 	if err != nil {
 		return fmt.Errorf("failed to decode signature value: %w", err)
 	}
 
 	// Get the certificate for verification
 	var certPEM string
-	if result.Signature.KeyInfo.X509Data.X509Certificate != "" {
+	if sigInfo.Signature.KeyInfo.X509Data.X509Certificate != "" {
 		// Use embedded certificate from response
-		certPEM = result.Signature.KeyInfo.X509Data.X509Certificate
+		certPEM = sigInfo.Signature.KeyInfo.X509Data.X509Certificate
 	} else {
 		// Fall back to configured IdP certificate
 		certPEM = *config.IDPCertificate
@@ -372,21 +408,15 @@ func (s *SAMLService) verifySAMLSignature(decodedResponse []byte, config *storag
 		return fmt.Errorf("failed to parse IdP certificate: %w", err)
 	}
 
-	// Extract SignedInfo content for verification
-	// The signature is over the SignedInfo element (XML DSig)
-	signedInfoRegex := regexp.MustCompile(`<ds:SignedInfo[^>]*>.*?</ds:SignedInfo>`)
-	signedInfoMatches := signedInfoRegex.Find(decodedResponse)
-	if len(signedInfoMatches) == 0 {
-		// Try without namespace
-		signedInfoRegex2 := regexp.MustCompile(`<SignedInfo[^>]*>.*?</SignedInfo>`)
-		signedInfoMatches = signedInfoRegex2.Find(decodedResponse)
-		if len(signedInfoMatches) == 0 {
-			return fmt.Errorf("could not find SignedInfo element in SAML response")
-		}
+	// Extract SignedInfo content using proper XML parsing
+	// Use XML token approach to get exact SignedInfo element content
+	signedInfoXML, err := extractSignedInfoXML(decodedResponse)
+	if err != nil {
+		return fmt.Errorf("could not find SignedInfo element in SAML response: %w", err)
 	}
 
 	// Hash the SignedInfo with SHA-256 (SHA-1 is cryptographically broken)
-	hashed := sha256.Sum256(signedInfoMatches)
+	hashed := sha256.Sum256(signedInfoXML)
 
 	// Verify the signature using RSA PKCS1v15
 	pubKey, ok := cert.PublicKey.(*rsa.PublicKey)
@@ -404,8 +434,85 @@ func (s *SAMLService) verifySAMLSignature(decodedResponse []byte, config *storag
 	return nil
 }
 
+// extractSignedInfoXML extracts the SignedInfo element content using proper XML parsing
+// This avoids regex-based extraction which can be vulnerable to malformed XML
+func extractSignedInfoXML(xmlData []byte) ([]byte, error) {
+	// Use xml.NewDecoder for streaming parse to find SignedInfo
+	decoder := xml.NewDecoder(strings.NewReader(string(xmlData)))
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse XML: %w", err)
+		}
+
+		switch se := token.(type) {
+		case xml.StartElement:
+			// Check for ds:SignedInfo or SignedInfo
+			if se.Name.Local == "SignedInfo" || se.Name.Local == "SignedInfo" &&
+				(strings.HasSuffix(se.Name.Space, "signature") || se.Name.Space == "") {
+				// Found SignedInfo, extract the element
+				var signedInfo xml.Token
+				// Get the start tag raw content
+				startBytes, _ := decoder.InputOffset()
+				// Read until end tag
+				var content []byte
+				depth := 1
+				for depth > 0 {
+					tok, err := decoder.Token()
+					if err != nil {
+						return nil, fmt.Errorf("failed to read SignedInfo: %w", err)
+					}
+					switch tok.(type) {
+					case xml.StartElement:
+						depth++
+					case xml.EndElement:
+						depth--
+						if depth == 0 && tok.(xml.EndElement).Name.Local == "SignedInfo" {
+							endBytes, _ := decoder.InputOffset()
+							return xmlData[startBytes-1:endBytes], nil
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("SignedInfo element not found")
+}
+
+// validateAssertionTimestamps validates NotBefore and NotOnOrAfter conditions in SAML assertion
+func (s *SAMLService) validateAssertionTimestamps(assertion *SAMLAssertion) error {
+	if assertion == nil || assertion.Conditions == nil {
+		return nil // No conditions to validate
+	}
+
+	now := time.Now()
+
+	// Check NotBefore - assertion is not valid yet
+	if !assertion.Conditions.NotBefore.IsZero() && now.Before(assertion.Conditions.NotBefore) {
+		return fmt.Errorf("assertion not yet valid: NotBefore=%v, now=%v", assertion.Conditions.NotBefore, now)
+	}
+
+	// Check NotOnOrAfter - assertion has expired
+	if !assertion.Conditions.NotOnOrAfter.IsZero() && now.After(assertion.Conditions.NotOnOrAfter) {
+		return fmt.Errorf("assertion has expired: NotOnOrAfter=%v, now=%v", assertion.Conditions.NotOnOrAfter, now)
+	}
+
+	return nil
+}
+
+// min returns the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 // ProcessResponse processes a SAML Response from the IdP
-func (s *SAMLService) ProcessResponse(tenantID uuid.UUID, samlResponse string) (*SAMLLoginResponse, error) {
+// relayState contains our original state token (used to look up the AuthnRequest ID for InResponseTo validation)
+func (s *SAMLService) ProcessResponse(tenantID uuid.UUID, samlResponse string, relayState string) (*SAMLLoginResponse, error) {
 	config, err := s.configRepo.GetByTenantID(tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get SAML config: %w", err)
@@ -413,6 +520,13 @@ func (s *SAMLService) ProcessResponse(tenantID uuid.UUID, samlResponse string) (
 
 	if !config.Enabled {
 		return nil, fmt.Errorf("SAML is not enabled for this tenant")
+	}
+
+	// Validate relayState and retrieve stored AuthnRequest ID
+	_, requestID, _, err := s.stateRepo.GetAuthnRequestState(context.Background(), relayState)
+	if err != nil {
+		logrus.WithError(err).WithField("relay_state", relayState[:min(8, len(relayState))]+"...").Warn("SAML state validation failed")
+		return nil, fmt.Errorf("SAML state validation failed: %w", err)
 	}
 
 	// Decode the response
@@ -435,6 +549,21 @@ func (s *SAMLService) ProcessResponse(tenantID uuid.UUID, samlResponse string) (
 
 	if resp.Assertion == nil {
 		return nil, fmt.Errorf("no assertion in SAML response")
+	}
+
+	// SECURITY: Validate InResponseTo matches our original AuthnRequest ID (replay attack prevention)
+	if resp.InResponseTo != "" && requestID != "" && resp.InResponseTo != requestID {
+		logrus.WithFields(logrus.Fields{
+			"in_response_to": resp.InResponseTo,
+			"expected_id":    requestID,
+		}).Warn("SAML InResponseTo mismatch - possible replay attack")
+		return nil, fmt.Errorf("SAML response InResponseTo does not match (replay attack prevention)")
+	}
+
+	// SECURITY: Validate assertion timestamps (NotBefore and NotOnOrAfter)
+	if err := s.validateAssertionTimestamps(resp.Assertion); err != nil {
+		logrus.WithError(err).Warn("SAML assertion timestamp validation failed")
+		return nil, fmt.Errorf("SAML assertion timestamp validation failed: %w", err)
 	}
 
 	// Extract user attributes
@@ -470,6 +599,9 @@ func (s *SAMLService) ProcessResponse(tenantID uuid.UUID, samlResponse string) (
 		return nil, fmt.Errorf("no email found in SAML response")
 	}
 
+	// Delete the state after successful validation (one-time use)
+	_ = s.stateRepo.DeleteAuthnRequestState(context.Background(), relayState)
+
 	// Find or create the user
 	user, err := s.findOrCreateSAMLUser(tenantID, email, nameID, resp.Assertion)
 	if err != nil {
@@ -503,13 +635,19 @@ func (s *SAMLService) ProcessResponse(tenantID uuid.UUID, samlResponse string) (
 		}
 	}
 
+	// Determine NotOnOrAfter from assertion conditions
+	notOnOrAfter := time.Now().Add(24 * time.Hour)
+	if resp.Assertion.Conditions != nil && !resp.Assertion.Conditions.NotOnOrAfter.IsZero() {
+		notOnOrAfter = resp.Assertion.Conditions.NotOnOrAfter
+	}
+
 	session := &storage.SAMLSession{
 		ID:           uuid.New(),
 		TenantID:     tenantID,
 		UserID:       user.ID,
 		SAMLNameID:   nameID,
 		SessionIndex: sessionIndex,
-		NotOnOrAfter: time.Now().Add(24 * time.Hour), // Default 24 hour session
+		NotOnOrAfter: notOnOrAfter,
 		Attributes:   attrs,
 		CreatedAt:    time.Now(),
 	}

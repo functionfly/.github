@@ -69,8 +69,8 @@ func NewSAMLService(db *gorm.DB, logger *logrus.Logger, entityID, acsURL string)
 
 // generateSPConfig generates a self-signed certificate for the SP
 func generateSPConfig(entityID, acsURL string) (*SPConfig, error) {
-	// Generate RSA key pair
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	// Generate RSA key pair with 3072-bit key size for future-proofing
+	privateKey, err := rsa.GenerateKey(rand.Reader, 3072)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate RSA key: %w", err)
 	}

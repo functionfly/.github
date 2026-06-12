@@ -332,7 +332,7 @@ func (s *SignatureService) updateSignature(signatureID uuid.UUID, updates map[st
 func (s *SignatureService) GenerateKeyPair(algorithm string) (privateKeyPEM, publicKeyPEM string, keyID string, err error) {
 	switch algorithm {
 	case "rsa-sha256":
-		privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+		privateKey, err := rsa.GenerateKey(rand.Reader, 3072)
 		if err != nil {
 			return "", "", "", fmt.Errorf("failed to generate RSA key: %w", err)
 		}
