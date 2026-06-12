@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Check, Copy, ExternalLink, AlertTriangle, Info, CheckCircle, XCircle } from "lucide-react";
 import { DOCS_SITE_URL } from "@/lib/constants";
 import { type DocPage } from "../data/docs";
+import DOMPurify from "dompurify";
 
 interface DocsContentProps {
   page: DocPage;
@@ -169,6 +170,18 @@ export function DocsContent({ page }: DocsContentProps) {
   }, [page.content]);
 
   const htmlContent = parseMarkdown(page.content);
+  const sanitizedHtmlContent = DOMPurify.sanitize(htmlContent, {
+    ALLOWED_TAGS: [
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'p', 'br', 'strong', 'em', 'u',
+      'ul', 'ol', 'li',
+      'blockquote', 'pre', 'code',
+      'a', 'div', 'span', 'hr',
+      'table', 'thead', 'tbody', 'tr', 'th', 'td',
+    ],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'id', 'data-code'],
+    ALLOW_DATA_ATTR: false,
+  });
 
   return (
     <article className="docs-article">
@@ -194,7 +207,7 @@ export function DocsContent({ page }: DocsContentProps) {
       <div
         ref={contentRef}
         className="docs-content"
-        dangerouslySetInnerHTML={{ __html: htmlContent }}
+        dangerouslySetInnerHTML={{ __html: sanitizedHtmlContent }}
       />
 
       {/* Page Navigation */}

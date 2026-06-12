@@ -1,6 +1,7 @@
 import { Logo } from '@/components/common/Logo';
 import { useNewsletter } from '@/hooks/useNewsletter';
 import { BLOG_SITE_URL, DOCS_SITE_URL, getMarketingPageUrl } from '@/lib/constants';
+import { isValidEmail } from '@/lib/url-utils';
 import {
   GitHubIcon,
   InstagramIcon,
@@ -11,6 +12,16 @@ import { useAuthStore } from '@/stores/authStore';
 import { motion } from 'framer-motion';
 import { AlertCircle, ArrowUp, Check, Heart, Mail } from 'lucide-react';
 import { FormEvent, useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface FooterProps {
   /** Set to false when another fixed bottom-right element (e.g. fly guide) is shown to avoid overlap. Default true. */
@@ -19,20 +30,51 @@ interface FooterProps {
 
 export function Footer({ showScrollToTop = true }: FooterProps) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const { subscribe, isLoading, isSuccess, error, reset } = useNewsletter();
+  const { subscribe, unsubscribe, isLoading, isSuccess, error, reset } = useNewsletter();
   const [email, setEmail] = useState('');
+  const [showUnsubscribeDialog, setShowUnsubscribeDialog] = useState(false);
+  const [unsubscribeEmail, setUnsubscribeEmail] = useState('');
+  const [unsubscribeLoading, setUnsubscribeLoading] = useState(false);
+  const [unsubscribeSuccess, setUnsubscribeSuccess] = useState(false);
 
   const handleSubscribe = async (e: FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || isLoading) return;
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || isLoading) return;
 
-    const success = await subscribe({ email: email.trim() });
+    if (!isValidEmail(trimmedEmail)) {
+      return;
+    }
+
+    const success = await subscribe({ email: trimmedEmail });
     if (success) {
       setEmail('');
-      // Reset success state after 5 seconds
       setTimeout(() => {
         reset();
       }, 5000);
+    }
+  };
+
+  const handleUnsubscribe = async (e: FormEvent) => {
+    e.preventDefault();
+    const trimmedEmail = unsubscribeEmail.trim();
+    if (!trimmedEmail || unsubscribeLoading) return;
+
+    if (!isValidEmail(trimmedEmail)) {
+      return;
+    }
+
+    setUnsubscribeLoading(true);
+    const success = await unsubscribe(trimmedEmail);
+    setUnsubscribeLoading(false);
+
+    if (success) {
+      setUnsubscribeSuccess(true);
+      setTimeout(() => {
+        setShowUnsubscribeDialog(false);
+        setUnsubscribeEmail('');
+        setUnsubscribeSuccess(false);
+      }, 3000);
     }
   };
 
@@ -380,7 +422,15 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                 )}
                 {!error && !isSuccess && (
                   <p className="text-text-muted text-xs">
-                    We respect your privacy. Unsubscribe at any time.
+                    We respect your privacy.{' '}
+                    <button
+                      type="button"
+                      onClick={() => setShowUnsubscribeDialog(true)}
+                      className="text-brand-500 hover:text-brand-400 underline"
+                    >
+                      Unsubscribe
+                    </button>{' '}
+                    at any time.
                   </p>
                 )}
               </form>
@@ -437,6 +487,57 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
             <ArrowUp className="w-5 h-5" />
           </motion.button>
         )}
+
+        {/* Unsubscribe Dialog */}
+        <Dialog open={showUnsubscribeDialog} onOpenChange={setShowUnsubscribeDialog}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Unsubscribe from Newsletter</DialogTitle>
+              <DialogDescription>
+                Enter your email address to unsubscribe from the FunctionFly newsletter.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleUnsubscribe} className="space-y-4">
+              <div>
+                <Input
+                  type="email"
+                  placeholder="your.email@example.com"
+                  value={unsubscribeEmail}
+                  onChange={(e) => setUnsubscribeEmail(e.target.value)}
+                  disabled={unsubscribeLoading || unsubscribeSuccess}
+                  className="w-full"
+                />
+              </div>
+              {unsubscribeSuccess ? (
+                <div className="flex items-center gap-2 text-success text-sm">
+                  <Check className="w-4 h-4" />
+                  <span>Successfully unsubscribed!</span>
+                </div>
+              ) : (
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setShowUnsubscribeDialog(false)}
+                    disabled={unsubscribeLoading}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={!unsubscribeEmail.trim() || unsubscribeLoading || !isValidEmail(unsubscribeEmail.trim())}
+                  >
+                    {unsubscribeLoading ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      'Unsubscribe'
+                    )}
+                  </Button>
+                </DialogFooter>
+              )}
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </footer>
   );
