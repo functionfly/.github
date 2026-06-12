@@ -1244,18 +1244,11 @@ func (r *CertificationRepository) RevokeCredential(ctx context.Context, id uuid.
 	return nil
 }
 
-// NextCredentialNumber generates the next sequential credential number for a tier
-func (r *CertificationRepository) NextCredentialNumber(ctx context.Context, tierSlug string) (string, error) {
-	if !isValidTierSlug(tierSlug) {
-		return "", fmt.Errorf("invalid tier slug: %s", tierSlug)
-	}
-	var seq int
-	err := r.db.QueryRowContext(ctx,
-		fmt.Sprintf(`SELECT nextval('cert_credential_seq_%s')`, tierSlug)).Scan(&seq)
-	if err != nil {
-		return "", fmt.Errorf("failed to get next credential number: %w", err)
-	}
-	return fmt.Sprintf("FFC-%d-%06d", time.Now().Year(), seq), nil
+var validTierSlugs = map[string]bool{
+	"agent-starter":    true,
+	"agent-scale":     true,
+	"agent-pro":       true,
+	"agent-enterprise": true,
 }
 
 func isValidTierSlug(slug string) bool {
@@ -1268,6 +1261,24 @@ func isValidTierSlug(slug string) bool {
 		}
 	}
 	return true
+}
+
+// NextCredentialNumber generates the next sequential credential number for a tier
+func (r *CertificationRepository) NextCredentialNumber(ctx context.Context, tierSlug string) (string, error) {
+	if !isValidTierSlug(tierSlug) {
+		return "", fmt.Errorf("invalid tier slug: %s", tierSlug)
+	}
+	if !validTierSlugs[tierSlug] {
+		return "", fmt.Errorf("invalid tier slug: %s is not a recognized tier", tierSlug)
+	}
+	var seq int
+	seqName := pq.QuoteIdentifier("cert_credential_seq_" + tierSlug)
+	err := r.db.QueryRowContext(ctx,
+		fmt.Sprintf(`SELECT nextval('%s')`, seqName)).Scan(&seq)
+	if err != nil {
+		return "", fmt.Errorf("failed to get next credential number: %w", err)
+	}
+	return fmt.Sprintf("FFC-%d-%06d", time.Now().Year(), seq), nil
 }
 
 func scanCertCredentials(rows *sql.Rows) ([]*CertCredential, error) {

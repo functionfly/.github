@@ -188,6 +188,10 @@ func (r *ContentRepository) UpdateChangelogEntry(ctx context.Context, id uuid.UU
 		return r.GetChangelogEntryByID(id)
 	}
 
+	if err := validateChangelogEntryFields(updates); err != nil {
+		return nil, fmt.Errorf("invalid field names: %w", err)
+	}
+
 	setParts := []string{}
 	args := []interface{}{}
 	argCount := 0
@@ -256,6 +260,10 @@ func (r *ContentRepository) CreateChangelogChange(ctx context.Context, change *C
 func (r *ContentRepository) UpdateChangelogChange(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*ChangelogChange, error) {
 	if len(updates) == 0 {
 		return r.getChangelogChangeByID(id)
+	}
+
+	if err := validateChangelogChangeFields(updates); err != nil {
+		return nil, fmt.Errorf("invalid field names: %w", err)
 	}
 
 	setParts := []string{}
@@ -499,6 +507,10 @@ func (r *ContentRepository) ListBlogPosts(limit, offset int, publishedOnly bool,
 func (r *ContentRepository) UpdateBlogPost(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*BlogPost, error) {
 	if len(updates) == 0 {
 		return r.GetBlogPostByID(id)
+	}
+
+	if err := validateBlogPostFields(updates); err != nil {
+		return nil, fmt.Errorf("invalid field names: %w", err)
 	}
 
 	setParts := []string{}

@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"errors"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -35,8 +34,7 @@ func (db *PostgresDB) CreateWaitlistEntry(ctx context.Context, email, name, comp
 	}
 
 	if err := db.GORM.WithContext(ctx).Create(entry).Error; err != nil {
-		// Check for unique constraint violation
-		if strings.Contains(err.Error(), "unique_waitlist_email") {
+		if IsDuplicateKeyError(err) {
 			return nil, ErrWaitlistEntryExists
 		}
 		return nil, err

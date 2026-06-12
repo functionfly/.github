@@ -13,11 +13,18 @@ import (
 )
 
 const (
-	APIURL   = "http://localhost:8080"
-	Email    = "admin@functionfly.local"
-	Password = "admin123"
-	Author   = "functionfly"
+	APIURL = "http://localhost:8080"
+	Author = "functionfly"
 )
+
+func getRequiredEnv(key string) string {
+	val := os.Getenv(key)
+	if val == "" {
+		fmt.Fprintf(os.Stderr, "Error: %s environment variable is required\n", key)
+		os.Exit(1)
+	}
+	return val
+}
 
 type Manifest struct {
 	Name         string   `json:"name"`
@@ -64,7 +71,9 @@ func readFunction(dir string) (string, string, string, error) {
 }
 
 func login() (string, error) {
-	body, _ := json.Marshal(map[string]string{"email": Email, "password": Password})
+	email := getRequiredEnv("PUBLISH_EMAIL")
+	password := getRequiredEnv("PUBLISH_PASSWORD")
+	body, _ := json.Marshal(map[string]string{"email": email, "password": password})
 	req, _ := http.NewRequest("POST", APIURL+"/auth/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)

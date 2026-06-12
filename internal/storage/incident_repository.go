@@ -111,6 +111,10 @@ func (r *IncidentRepository) UpdateIncident(ctx context.Context, incidentID uuid
 		return nil, err
 	}
 
+	if err := validateIncidentFields(updates); err != nil {
+		return nil, fmt.Errorf("invalid field names: %w", err)
+	}
+
 	// Build update query dynamically
 	setParts := []string{}
 	args := []interface{}{}

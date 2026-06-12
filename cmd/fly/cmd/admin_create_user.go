@@ -27,11 +27,11 @@ func newAdminCreateUserCmd() *cobra.Command {
 		Long: `Create a new admin user in the database.
 
 This command creates a new user with admin privileges.`,
-		Example: `  # Create an admin user
-  fly admin create-user --email admin@example.com --password secret123
+		Example: `  # Create an admin user (set PUBLISH_EMAIL and PUBLISH_PASSWORD env vars)
+  fly admin create-user --email admin@example.com --password YOUR_PASSWORD
 
   # Create a user with specific role
-  fly admin create-user --email user@example.com --password pass123 --role user`,
+  fly admin create-user --email user@example.com --password YOUR_PASSWORD --role user`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runAdminCreateUser(cmd)

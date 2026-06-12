@@ -73,7 +73,7 @@ func (r *BillingRepository) CreatePaidInvoiceForStripeCheckoutSession(ctx contex
 		id, tenantID, amountCents, curr, receiptURL, receiptURL, now, checkoutSessionID,
 	)
 	if err != nil {
-		if strings.Contains(strings.ToLower(err.Error()), "unique") || strings.Contains(err.Error(), "duplicate key") {
+		if IsDuplicateKeyError(err) {
 			return nil
 		}
 		return fmt.Errorf("insert paid invoice: %w", err)
