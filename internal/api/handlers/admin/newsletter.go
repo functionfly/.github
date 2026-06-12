@@ -9,12 +9,15 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/apierror"
+	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/email"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
+
+const contextKeyUser = 0
 
 type NewsletterHandler struct {
 	repo         storage.Repository
@@ -342,13 +345,16 @@ func (h *NewsletterHandler) SendCampaign(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success:":         true,
+		"success":          true,
 		"message":          "Campaign is being sent",
 		"subscriber_count": len(subscribers),
 	})
 }
 
 func getAdminID(ctx context.Context) uuid.UUID {
+	if claims, ok := ctx.Value(contextKeyUser).(*auth.Claims); ok {
+		return claims.UserID
+	}
 	return uuid.Nil
 }
 

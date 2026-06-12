@@ -650,11 +650,14 @@ type Repository interface {
 
 	// Newsletter operations
 	CreateNewsletterSubscriber(ctx context.Context, email, name, source, ipAddress, userAgent string) (*NewsletterSubscriber, error)
+	CreatePendingNewsletterSubscriber(ctx context.Context, email, name, source, ipAddress, userAgent string, confirmationToken string) (*NewsletterSubscriber, error)
 	GetNewsletterSubscriberByEmail(ctx context.Context, email string) (*NewsletterSubscriber, error)
 	GetNewsletterSubscriberByID(ctx context.Context, id uuid.UUID) (*NewsletterSubscriber, error)
 	ListNewsletterSubscribers(ctx context.Context, status string, limit, offset int) ([]NewsletterSubscriber, int64, error)
 	GetActiveNewsletterSubscribers(ctx context.Context) ([]NewsletterSubscriber, error)
 	UnsubscribeNewsletterSubscriber(ctx context.Context, email string) error
+	MarkNewsletterSubscriberBounced(ctx context.Context, email string) error
+	ConfirmNewsletterSubscription(ctx context.Context, email string) error
 	DeleteNewsletterSubscriber(ctx context.Context, id uuid.UUID) error
 	GetNewsletterStats(ctx context.Context) (map[string]interface{}, error)
 	CreateNewsletterCampaign(ctx context.Context, campaign *NewsletterCampaign) (*NewsletterCampaign, error)

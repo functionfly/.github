@@ -212,7 +212,11 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		logrus.WithError(err).Warn("Failed to create notification pgxpool – WebSocket push will rely on polling")
 	}
 
-	newsletterHandler := newsletter.NewHandler(s.repo, s.emailSvc)
+	newsletterBaseURL := os.Getenv("BASE_URL")
+	if newsletterBaseURL == "" {
+		newsletterBaseURL = "http://localhost:3000"
+	}
+	newsletterHandler := newsletter.NewHandler(s.repo, s.emailSvc, newsletterBaseURL)
 
 	deployKeysRepo := storage.NewDeployKeysRepository(s.postgresDB.GORM)
 	deployKeysHandler := deploykeys.NewHandler(deployKeysRepo)

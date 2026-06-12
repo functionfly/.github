@@ -134,6 +134,74 @@ func (db *PostgresDB) DeleteNewsletterSubscriber(ctx context.Context, id uuid.UU
 	return nil
 }
 
+// MarkNewsletterSubscriberBounced marks a subscriber as bounced
+func (db *PostgresDB) MarkNewsletterSubscriberBounced(ctx context.Context, email string) error {
+	email = strings.ToLower(strings.TrimSpace(email))
+	now := time.Now()
+
+	result := db.GORM.WithContext(ctx).Model(&NewsletterSubscriber{}).
+		Where("email = ?", email).
+		Updates(map[string]interface{}{
+			"status":     "bounced",
+			"updated_at": now,
+		})
+
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrSubscriberNotFound
+	}
+	return nil
+}
+
+// ConfirmNewsletterSubscription confirms a subscriber's email (double opt-in)
+func (db *PostgresDB) ConfirmNewsletterSubscription(ctx context.Context, email string) error {
+	email = strings.ToLower(strings.TrimSpace(email))
+	now := time.Now()
+
+	result := db.GORM.WithContext(ctx).Model(&NewsletterSubscriber{}).
+		Where("email = ? AND status = ?", email, "pending").
+		Updates(map[string]interface{}{
+			"status":       "active",
+			"confirmed_at": now,
+			"updated_at":   now,
+		})
+
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrSubscriberNotFound
+	}
+	return nil
+}
+
+// CreatePendingNewsletterSubscriber creates a subscriber in pending status for double opt-in
+func (db *PostgresDB) CreatePendingNewsletterSubscriber(ctx context.Context, email, name, source, ipAddress, userAgent string, confirmationToken string) (*NewsletterSubscriber, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+
+	subscriber := &NewsletterSubscriber{
+		ID:                uuid.New(),
+		Email:             email,
+		Name:              strings.TrimSpace(name),
+		Status:            "pending",
+		Source:            source,
+		IPAddress:         ipAddress,
+		UserAgent:         userAgent,
+		ConfirmationToken: &confirmationToken,
+	}
+
+	if err := db.GORM.WithContext(ctx).Create(subscriber).Error; err != nil {
+		if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
+			return nil, ErrSubscriberExists
+		}
+		return nil, err
+	}
+
+	return subscriber, nil
+}
+
 // GetNewsletterStats returns aggregate statistics for newsletter
 func (db *PostgresDB) GetNewsletterStats(ctx context.Context) (map[string]interface{}, error) {
 	stats := make(map[string]interface{})

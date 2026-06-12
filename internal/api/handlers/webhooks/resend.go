@@ -78,7 +78,7 @@ func (h *ResendWebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Requ
 
 	// Verify webhook signature if webhook secret is configured
 	if h.webhookSecret != "" {
-		signature := r.Header.Get("X-Resend-Signature")
+		signature := r.Header.Get("Svix-Signature")
 		if signature == "" {
 			logrus.Warn("Webhook signature missing")
 			apierror.WriteError(w, apierror.NewUnauthorized("Missing webhook signature"))
@@ -240,14 +240,20 @@ func (h *ResendWebhookHandler) processEvent(r *http.Request, event *ResendWebhoo
 		"user_email": recipientEmail,
 	}).Info("Email event stored successfully")
 
-	// If this is a bounce event, log additional warning
+	// If this is a bounce event, mark the newsletter subscriber as bounced
 	if event.Type == "email.bounced" {
 		logrus.WithFields(logrus.Fields{
 			"email":         recipientEmail,
 			"bounce_type":   event.Data.BounceType,
 			"bounce_reason": event.Data.BounceReason,
 			"email_id":      event.Data.EmailID,
-		}).Warn("Email bounced - requires admin review")
+		}).Warn("Email bounced - marking subscriber as bounced")
+
+		if err := h.repo.MarkNewsletterSubscriberBounced(r.Context(), recipientEmail); err != nil {
+			if err != storage.ErrSubscriberNotFound {
+				logrus.WithError(err).Warn("Failed to mark newsletter subscriber as bounced")
+			}
+		}
 	}
 
 	return nil

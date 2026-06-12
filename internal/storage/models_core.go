@@ -95,7 +95,7 @@ type UserProfileSettings struct {
 	ShowLastActive bool `json:"showLastActive"`
 
 	// Custom status settings
-	CustomStatus   string `json:"customStatus"`   // User's manually set status: "online", "away", "busy", "offline"
+	CustomStatus      string `json:"customStatus"`      // User's manually set status: "online", "away", "busy", "offline"
 	CustomStatusEmoji string `json:"customStatusEmoji"` // Optional emoji for custom status
 }
 
@@ -330,17 +330,19 @@ func (EmailEvent) TableName() string {
 
 // NewsletterSubscriber represents a newsletter subscription
 type NewsletterSubscriber struct {
-	ID             uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	Email          string     `json:"email" gorm:"uniqueIndex;not null;size:255"`
-	Name           string     `json:"name,omitempty" gorm:"size:255"`
-	Status         string     `json:"status" gorm:"size:20;not null;default:'active'"` // active, unsubscribed, bounced
-	Source         string     `json:"source,omitempty" gorm:"size:50"`                 // landing_page, admin, api
-	IPAddress      string     `json:"ip_address,omitempty" gorm:"size:45"`             // IPv4/IPv6
-	UserAgent      string     `json:"user_agent,omitempty" gorm:"size:500"`
-	SubscribedAt   time.Time  `json:"subscribed_at" gorm:"autoCreateTime"`
-	UnsubscribedAt *time.Time `json:"unsubscribed_at,omitempty"`
-	CreatedAt      time.Time  `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt      time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+	ID                uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	Email             string     `json:"email" gorm:"uniqueIndex;not null;size:255"`
+	Name              string     `json:"name,omitempty" gorm:"size:255"`
+	Status            string     `json:"status" gorm:"size:20;not null;default:'active'"` // active, pending, unsubscribed, bounced
+	Source            string     `json:"source,omitempty" gorm:"size:50"`                 // landing_page, admin, api
+	IPAddress         string     `json:"ip_address,omitempty" gorm:"size:45"`             // IPv4/IPv6
+	UserAgent         string     `json:"user_agent,omitempty" gorm:"size:500"`
+	ConfirmationToken *string    `json:"confirmation_token,omitempty" gorm:"size:255;index"`
+	SubscribedAt      time.Time  `json:"subscribed_at" gorm:"autoCreateTime"`
+	UnsubscribedAt    *time.Time `json:"unsubscribed_at,omitempty"`
+	ConfirmedAt       *time.Time `json:"confirmed_at,omitempty"`
+	CreatedAt         time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt         time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 func (NewsletterSubscriber) TableName() string {

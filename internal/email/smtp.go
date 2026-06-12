@@ -79,6 +79,13 @@ func (s *SMTPService) SendNewsletterSubscriptionConfirmation(email, name string)
 	return s.sendEmail(email, subject, tpl.Text, tpl.HTML)
 }
 
+// SendNewsletterConfirmationEmail sends a newsletter confirmation email with confirmation link
+func (s *SMTPService) SendNewsletterConfirmationEmail(email, name, confirmationURL string) error {
+	subject := "Confirm Your Newsletter Subscription — FunctionFly"
+	tpl := NewsletterConfirmationTemplate(name, confirmationURL)
+	return s.sendEmail(email, subject, tpl.Text, tpl.HTML)
+}
+
 // SendNewsletterCampaign sends a newsletter campaign email to multiple recipients
 func (s *SMTPService) SendNewsletterCampaign(to []string, subject, previewText, htmlContent string) error {
 	if len(to) == 0 {

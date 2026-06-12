@@ -25,6 +25,7 @@ type Service interface {
 	SendWaitlistConfirmationEmail(email string) error
 	SendWaitlistInviteEmail(email, inviteCode, signupURL string, expiresAt time.Time) error
 	SendNewsletterSubscriptionConfirmation(email, name string) error
+	SendNewsletterConfirmationEmail(email, name, confirmationURL string) error
 	SendNewsletterCampaign(to []string, subject, previewText, htmlContent string) error
 
 	// Platform Operations

@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -15,18 +17,36 @@ import (
 )
 
 const (
-	maxRetries    = 3
-	retryBaseWait = 1 * time.Second
+	defaultMaxRetries    = 3
+	defaultRetryBaseWait = 1 * time.Second
 )
+
+func getMaxRetries() int {
+	if v := os.Getenv("EMAIL_MAX_RETRIES"); v != "" {
+		if i, err := strconv.Atoi(v); err == nil && i > 0 {
+			return i
+		}
+	}
+	return defaultMaxRetries
+}
+
+func getRetryBaseWait() time.Duration {
+	if v := os.Getenv("EMAIL_RETRY_BASE_WAIT_SECONDS"); v != "" {
+		if i, err := strconv.Atoi(v); err == nil && i > 0 {
+			return time.Duration(i) * time.Second
+		}
+	}
+	return defaultRetryBaseWait
+}
 
 var resendMetrics *ResendMetrics
 var metricsOnce sync.Once
 
 type ResendMetrics struct {
-	SendDuration  prometheus.Histogram
-	SendTotal     *prometheus.CounterVec
-	SendErrors    *prometheus.CounterVec
-	RetryTotal    *prometheus.CounterVec
+	SendDuration prometheus.Histogram
+	SendTotal    *prometheus.CounterVec
+	SendErrors   *prometheus.CounterVec
+	RetryTotal   *prometheus.CounterVec
 }
 
 func getResendMetrics() *ResendMetrics {
@@ -194,6 +214,8 @@ func (s *ResendService) sendWithRetry(ctx context.Context, params *resend.SendEm
 	metrics := getResendMetrics()
 	start := time.Now()
 	var lastErr error
+	maxRetries := getMaxRetries()
+	retryBaseWait := getRetryBaseWait()
 
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		_, err := s.client.Emails.SendWithContext(ctx, params)
@@ -277,6 +299,12 @@ func (s *ResendService) SendWaitlistConfirmationEmail(email string) error {
 func (s *ResendService) SendNewsletterSubscriptionConfirmation(email, name string) error {
 	subject := "You're subscribed — FunctionFly"
 	tpl := NewsletterSubscriptionTemplate(name)
+	return s.SendEmail(email, subject, tpl.Text, tpl.HTML)
+}
+
+func (s *ResendService) SendNewsletterConfirmationEmail(email, name, confirmationURL string) error {
+	subject := "Confirm Your Newsletter Subscription — FunctionFly"
+	tpl := NewsletterConfirmationTemplate(name, confirmationURL)
 	return s.SendEmail(email, subject, tpl.Text, tpl.HTML)
 }
 
