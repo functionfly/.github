@@ -16,6 +16,7 @@ from .config import settings, get_settings
 from .api.routes import router
 from .providers.manager import get_provider_manager
 from .services.embeddings import get_embeddings_service
+from .middleware.security_headers import SecurityHeadersMiddleware
 
 
 # Configure logging (uppercase so "info" maps to logging.INFO, not logging.info)
@@ -192,13 +193,31 @@ app = FastAPI(
 # If cors_origins is empty (default), don't add CORS at all (restrictive)
 # If cors_origins is set, use those values
 if settings.cors_origins:
+    # Validate origins are not wildcard in production
+    if "*" in settings.cors_origins:
+        import logging
+        logging.getLogger(__name__).warning(
+            "CORSOrigins contains '*' which allows all origins. "
+            "This is insecure for production!"
+        )
+
+    # Explicitly specify allowed methods and headers (never use "*" in production)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_credentials=settings.cors_allow_credentials,
-        allow_methods=settings.cors_allow_methods if settings.cors_allow_methods != ["*"] else ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=settings.cors_allow_headers if settings.cors_allow_headers != ["*"] else ["Authorization", "Content-Type", "X-API-Key"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=[
+            "Authorization",
+            "Content-Type",
+            "X-API-Key",
+            "X-Request-ID",
+            "X-Correlation-ID",
+        ],
     )
+
+# Add security headers middleware for all responses
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 # Include API routes

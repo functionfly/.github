@@ -3,11 +3,70 @@
 Uses Pydantic Settings for environment-based configuration.
 """
 
+import os
 from pathlib import Path
 from typing import Optional
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _validate_rag_path(path: str) -> str:
+    """Validate RAG docs directory path to prevent path traversal.
+
+    Args:
+        path: The path to validate
+
+    Returns:
+        The validated path
+
+    Raises:
+        ValueError: If path is invalid or could enable path traversal
+    """
+    if not path:
+        return path
+
+    # Resolve the path to its absolute form
+    resolved_path = Path(path).resolve()
+
+    # Define allowed base directories (adjust for your deployment)
+    allowed_bases = [
+        Path("/app/docs").resolve(),
+        Path("/app/web/docs/src/content/docs").resolve(),
+        Path(__file__).resolve().parents[2] / "web" / "docs" / "src" / "content" / "docs",
+    ]
+
+    # Check if path is within an allowed directory
+    is_allowed = any(
+        resolved_path.is_relative_to(base) for base in allowed_bases
+    )
+
+    # Also allow paths that are explicitly configured and exist
+    if not is_allowed:
+        # For production, we should be strict - only allow explicitly configured paths
+        if os.getenv("ENVIRONMENT", "development") == "production":
+            raise ValueError(
+                f"RAG docs directory '{path}' is not in an allowed location. "
+                f"Path traversal is not permitted for security reasons."
+            )
+        else:
+            # In development, warn but allow
+            import logging
+            logging.getLogger(__name__).warning(
+                f"RAG docs directory '{path}' is not in a standard location. "
+                f"Ensure this is intentional for development only."
+            )
+
+    # Check for dangerous path components
+    dangerous_components = ["..", "~", "$", "`", "|", ";", "&", "\n", "\r", "\0"]
+    path_str = str(resolved_path)
+    for component in dangerous_components:
+        if component in path_str:
+            raise ValueError(
+                f"RAG docs directory contains dangerous path component: {component}"
+            )
+
+    return str(resolved_path)
 
 
 class Settings(BaseSettings):
@@ -69,6 +128,9 @@ class Settings(BaseSettings):
     # Redis configuration
     redis_url: str = "redis://localhost:6379"
     redis_cache_ttl: int = 3600  # seconds
+    redis_use_tls: bool = Field(
+        default=False, description="Enable TLS for Redis connections"
+    )
 
     # Upstash Redis configuration (alternative to standard Redis)
     # Get these from https://console.upstash.com
@@ -135,6 +197,12 @@ class Settings(BaseSettings):
         ),
         description="Directory containing markdown docs to use for RAG",
     )
+
+    @field_validator("rag_docs_dir")
+    @classmethod
+    def validate_rag_docs_dir(cls, v: str) -> str:
+        """Validate RAG docs directory path."""
+        return _validate_rag_path(v)
     rag_top_k: int = 4
     rag_candidate_chunks: int = 24
     # Limit expensive embedding rerank work per request for snappy chat UX.
@@ -197,6 +265,12 @@ class Settings(BaseSettings):
     )
     orchestrator_api_key: Optional[str] = Field(
         default=None, description="API key for orchestrator authentication"
+    )
+
+    # Internal API secret for service-to-service authentication
+    # Required for accessing internal endpoints like /internal/composer/generate
+    internal_api_secret: Optional[str] = Field(
+        default=None, description="Secret for internal API authentication"
     )
 
     # Content moderation (2026: OpenAI Moderation API recommended when key is set)

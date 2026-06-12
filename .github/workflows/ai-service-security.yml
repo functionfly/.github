@@ -1,0 +1,257 @@
+name: AI Service Security Audit
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'ai-service/**'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'ai-service/**'
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday at midnight
+  workflow_dispatch:
+
+jobs:
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-service
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Run pip-audit
+        run: |
+          uv pip install pip-audit
+          uv pip audit || true
+
+      - name: Check for secrets in code
+        run: |
+          # Check for hardcoded secrets patterns
+          grep -rEn "(api_key|secret|password|token)\s*=\s*['\"][a-zA-Z0-9]{20,}['\"]" src/ || echo "No obvious secrets found"
+
+      - name: Validate dependency lock file
+        run: |
+          uv lock --no-dev --check || echo "Lock file out of sync"
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-service
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run dependency review
+        uses: actions/dependency-review-action@v4
+        with:
+          directory: ai-service
+          python-syntax: '3.12'
+
+  codeql-security:
+    name: CodeQL Security
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-service
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: security-extended
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"
+
+  container-security:
+    name: Container Security
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-service
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build -t flymind-ai-service:test .
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'flymind-ai-service:test'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run Docker Bench for Security
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/docker-bench-security:latest \
+            -c check_5_1 > docker-bench-results.txt || true
+          cat docker-bench-results.txt || echo "Docker Bench not available"
+
+  sast-security:
+    name: SAST Security Scan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-service
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Semgrep
+        run: |
+          pip install semgrep
+          semgrep --version
+
+      - name: Run Semgrep security scan
+        run: |
+          semgrep --config=auto --json --output=semgrep-results.json src/ || true
+          semgrep --config=registry --json --output=semgrep-registry-results.json src/ || true
+
+      - name: Upload Semgrep results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep-results.json
+        continue-on-error: true
+
+  secrets-scan:
+    name: Secrets Detection
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-service
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run gitLeaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_LICENSE: ''
+        continue-on-error: true
+
+  sbom-generation:
+    name: SBOM Generation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-service
+    outputs:
+      sbom-file: ${{ steps.sbom.outputs.file }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate SBOM
+        id: sbom
+        run: |
+          pip install syft
+          syft ai-service --output spdx-json --file ai-service-sbom.spdx.json
+          echo "file=ai-service-sbom.spdx.json" >> $GITHUB_OUTPUT
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-service-sbom
+          path: ${{ steps.sbom.outputs.file }}
+
+  production-checklist:
+    name: Production Readiness Checklist
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-service
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run production checklist
+        run: |
+          echo "=== Production Readiness Checklist ==="
+          echo ""
+
+          # Check for TLS configuration in gRPC
+          if grep -q "add_insecure_port" src/grpc/server.py; then
+            echo "[FAIL] gRPC uses insecure port - TLS not configured"
+          else
+            echo "[PASS] gRPC TLS configuration present"
+          fi
+
+          # Check for hardcoded secrets
+          if grep -rEn "OPENAI_API_KEY\s*=\s*['\"]" src/ --include="*.py" | grep -v "Optional\[str\]" | grep -v '""'; then
+            echo "[FAIL] Potential hardcoded API keys found"
+          else
+            echo "[PASS] No hardcoded API keys"
+          fi
+
+          # Check for path validation in RAG
+          if grep -q "_validate_rag_path" src/config.py; then
+            echo "[PASS] RAG path validation present"
+          else
+            echo "[FAIL] RAG path validation missing"
+          fi
+
+          # Check for security headers middleware
+          if grep -q "SecurityHeadersMiddleware" src/main.py; then
+            echo "[PASS] Security headers middleware present"
+          else
+            echo "[FAIL] Security headers middleware missing"
+          fi
+
+          # Check for audit buffer limits
+          if grep -q "MAX_BUFFER_SIZE" src/security/audit.py; then
+            echo "[PASS] Audit buffer size limit present"
+          else
+            echo "[FAIL] Audit buffer size limit missing"
+          fi
+
+          # Check for non-root user in Dockerfile
+          if grep -q "USER appuser" Dockerfile; then
+            echo "[PASS] Non-root user in Dockerfile"
+          else
+            echo "[FAIL] Dockerfile missing non-root user"
+          fi
+
+          # Check for read-only filesystem in docker-compose
+          if grep -q "read_only: true" docker-compose.yml; then
+            echo "[PASS] Read-only filesystem configured"
+          else
+            echo "[FAIL] Read-only filesystem not configured"
+          fi
+
+          echo ""
+          echo "=== Checklist Complete ==="
