@@ -23,13 +23,14 @@ def get_redis_connection() -> Redis:
     import os
     redis_addr = os.getenv("REDIS_ADDR", "localhost:6379")
     redis_password = os.getenv("REDIS_PASSWORD", "")
+    redis_use_tls = os.getenv("REDIS_USE_TLS", "false").lower() == "true"
 
     if redis_password:
         redis_url = f"redis://:{redis_password}@{redis_addr}/0"
     else:
         redis_url = f"redis://{redis_addr}/0"
 
-    return Redis.from_url(redis_url)
+    return Redis.from_url(redis_url, ssl=redis_use_tls)
 
 
 def get_db_url() -> str:

@@ -336,38 +336,51 @@ _cost_tracker: Optional[CostTracker] = None
 
 class TokenBudget:
     """Token budget tracking for a tenant."""
-    
+
     def __init__(self, tokens_per_minute: int = 100000, tokens_per_hour: int = 1000000):
         self.tokens_per_minute = tokens_per_minute
         self.tokens_per_hour = tokens_per_hour
         self.minute_used = 0
         self.hour_used = 0
-        self.last_reset = time.time()
-    
+        self.minute_reset = time.time() + 60
+        self.hour_reset = time.time() + 3600
+
     def check_budget(self, requested_tokens: int) -> bool:
         """Check if requested tokens are within budget."""
         now = time.time()
-        elapsed = now - self.last_reset
-        
-        # Reset minute counter every 60 seconds
-        if elapsed >= 60:
+
+        # Reset minute counter at boundary
+        if now >= self.minute_reset:
             self.minute_used = 0
-            self.last_reset = now
-        
-        # Reset hour counter every hour (approximate)
-        if elapsed >= 3600:
+            self.minute_reset = now + 60
+
+        # Reset hour counter at boundary
+        if now >= self.hour_reset:
             self.hour_used = 0
-        
+            self.hour_reset = now + 3600
+
         # Check if adding these tokens would exceed budget
         if self.minute_used + requested_tokens > self.tokens_per_minute:
             return False
         if self.hour_used + requested_tokens > self.tokens_per_hour:
             return False
-        
+
         return True
-    
+
     def consume_tokens(self, tokens: int) -> None:
         """Consume tokens from the budget."""
+        now = time.time()
+
+        # Reset minute counter at boundary if needed
+        if now >= self.minute_reset:
+            self.minute_used = 0
+            self.minute_reset = now + 60
+
+        # Reset hour counter at boundary if needed
+        if now >= self.hour_reset:
+            self.hour_used = 0
+            self.hour_reset = now + 3600
+
         self.minute_used += tokens
         self.hour_used += tokens
 

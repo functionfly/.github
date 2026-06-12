@@ -50,6 +50,22 @@ class RedisRateLimiter:
         self._local_fallback: Dict[str, Dict] = {}
         self._use_local_fallback = False
 
+        # Load rate limits from settings
+        self._load_rate_limits()
+
+    def _load_rate_limits(self) -> None:
+        """Load rate limits from settings or use defaults."""
+        try:
+            from ..config import settings
+            self.minute_limit = settings.openai_rate_limit or 60
+            self.hour_limit = settings.openai_rate_limit * 16 if hasattr(settings, 'openai_rate_limit') else 1000  # Approximate
+            self.day_limit = settings.openai_rate_limit * 166 if hasattr(settings, 'openai_rate_limit') else 10000
+        except Exception as e:
+            self._logger.warning(f"Failed to load rate limits from settings: {e}")
+            self.minute_limit = 60
+            self.hour_limit = 1000
+            self.day_limit = 10000
+
     async def _get_redis(self) -> Optional[RedisClient]:
         """Get or create Redis client."""
         if self._redis is None:
@@ -91,9 +107,9 @@ class RedisRateLimiter:
         burst_key = self._get_key(tenant_id, "burst")
 
         try:
-            pipe = redis._client.pipeline() if hasattr(redis._client, 'pipeline') else None
-
-            if pipe:
+            # Use pipeline if available, fall back to individual commands
+            try:
+                pipe = redis._client.pipeline()
                 pipe.incr(minute_key)
                 pipe.expire(minute_key, 60)
                 pipe.incr(hour_key)
@@ -105,7 +121,8 @@ class RedisRateLimiter:
                 minute_count = results[0]
                 hour_count = results[2]
                 day_count = results[4]
-            else:
+            except (AttributeError, TypeError):
+                # Pipeline not available, use individual commands
                 minute_count = await redis._client.incr(minute_key)
                 await redis._client.expire(minute_key, 60)
                 hour_count = await redis._client.incr(hour_key)
@@ -113,32 +130,32 @@ class RedisRateLimiter:
                 day_count = await redis._client.incr(day_key)
                 await redis._client.expire(day_key, 86400)
 
-            if minute_count > 60:
+            if minute_count > self.minute_limit:
                 retry_after = 60 - (now % 60)
                 raise RateLimitExceeded(
-                    f"Rate limit exceeded: 60 requests per minute",
+                    f"Rate limit exceeded: {self.minute_limit} requests per minute",
                     tenant_id=tenant_id,
-                    limit=60,
+                    limit=self.minute_limit,
                     window_seconds=60,
                     retry_after=int(retry_after) + 1,
                 )
 
-            if hour_count > 1000:
+            if hour_count > self.hour_limit:
                 retry_after = 3600 - (now % 3600)
                 raise RateLimitExceeded(
-                    f"Rate limit exceeded: 1000 requests per hour",
+                    f"Rate limit exceeded: {self.hour_limit} requests per hour",
                     tenant_id=tenant_id,
-                    limit=1000,
+                    limit=self.hour_limit,
                     window_seconds=3600,
                     retry_after=int(retry_after) + 1,
                 )
 
-            if day_count > 10000:
+            if day_count > self.day_limit:
                 retry_after = 86400 - (now % 86400)
                 raise RateLimitExceeded(
-                    f"Rate limit exceeded: 10000 requests per day",
+                    f"Rate limit exceeded: {self.day_limit} requests per day",
                     tenant_id=tenant_id,
-                    limit=10000,
+                    limit=self.day_limit,
                     window_seconds=86400,
                     retry_after=int(retry_after) + 1,
                 )

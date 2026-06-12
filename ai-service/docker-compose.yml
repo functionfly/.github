@@ -7,9 +7,9 @@ services:
     ports:
       - "8081:8081"
     environment:
-      # API Keys (set in .env or here)
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      # API Keys - should be set via .env file or secrets manager
+      - OPENAI_API_KEY=${OPENAI_API_KEY:?OPENAI_API_KEY is required}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY is required}
 
       # Ollama (local development)
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
@@ -24,8 +24,13 @@ services:
       - REDIS_URL=${REDIS_URL:-redis://redis:6379}
       - REDIS_CACHE_TTL=${REDIS_CACHE_TTL:-3600}
 
-      # Database
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/functionfly}
+      # Database - use individual connection params for security
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:?DB_PASSWORD is required}
+      - DB_NAME=${DB_NAME:-functionfly}
+      - DB_SSLMODE=${DB_SSLMODE:-require}
 
       # Feature flags
       - ENABLE_STREAMING=${ENABLE_STREAMING:-true}
@@ -36,26 +41,45 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - DEBUG=${DEBUG:-false}
 
+      # Security settings
+      - REQUIRE_REDIS=${REQUIRE_REDIS:-false}
     depends_on:
       redis:
         condition: service_healthy
     volumes:
       - ./.env:/app/.env:ro
+      - /tmp:/tmp:ro  # Read-only tmp for security
+    tmpfs:
+      - /app/tmp:size=10M,mode=1777
     restart: unless-stopped
+    read_only: true  # Read-only filesystem for security
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8081/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     networks:
-      - flymind-network
+      - flymind-internal
+    user: "1000:1000"
 
   redis:
     image: redis:7-alpine
     container_name: flymind-redis
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"  # Bind to localhost only
     volumes:
       - redis-data:/data
     restart: unless-stopped
@@ -64,12 +88,25 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    read_only: true
+    tmpfs:
+      - /data:size=50M,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     networks:
-      - flymind-network
+      - flymind-internal
 
 networks:
-  flymind-network:
+  flymind-internal:
     driver: bridge
+    internal: false  # Allow external for Redis, but restrict in production
 
 volumes:
   redis-data:

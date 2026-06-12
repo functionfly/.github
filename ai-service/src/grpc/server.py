@@ -5,11 +5,11 @@ moderation, and health services. Requires generated stubs; run from ai-service:
 
   python scripts/generate_grpc.py
 
-Then start the server (e.g. via main app or standalone). Use TLS and
-auth interceptors in production.
+Security: TLS and auth interceptors are required in production.
 """
 
 import logging
+import os
 import time
 from typing import Optional
 
@@ -150,15 +150,98 @@ if _GRPC_AVAILABLE:
 
 
 class FlyMindGrpcServer:
-    """gRPC server for FlyMind service."""
+    """gRPC server for FlyMind service with TLS and auth support."""
 
     def __init__(self, host: str = "0.0.0.0", port: int = 50051):
         self.host = host
         self.port = port
         self._server: Optional[object] = None
 
+    def _load_tls_credentials(self):
+        """Load TLS credentials from environment or files."""
+        import grpc
+
+        tls_cert_path = os.getenv("GRPC_TLS_CERT_PATH")
+        tls_key_path = os.getenv("GRPC_TLS_KEY_PATH")
+
+        if tls_cert_path and tls_key_path:
+            try:
+                with open(tls_cert_path, "rb") as cert_file:
+                    cert = cert_file.read()
+                with open(tls_key_path, "rb") as key_file:
+                    key = key_file.read()
+               creds = grpc.ssl_server_credentials([(key, cert)])
+                logger.info("gRPC TLS credentials loaded from files")
+                return creds
+            except Exception as e:
+                logger.warning(f"Failed to load TLS credentials: {e}")
+
+        # Check for inline credentials
+        tls_cert = os.getenv("GRPC_TLS_CERT")
+        tls_key = os.getenv("GRPC_TLS_KEY")
+        if tls_cert and tls_key:
+            try:
+                creds = grpc.ssl_server_credentials([(tls_key.encode(), tls_cert.encode())])
+                logger.info("gRPC TLS credentials loaded from environment")
+                return creds
+            except Exception as e:
+                logger.warning(f"Failed to load TLS credentials from env: {e}")
+
+        return None
+
+    def _create_auth_interceptor(self):
+        """Create auth interceptor for gRPC.
+
+        Validates API key from metadata.
+        """
+        import grpc
+        from grpc import aio
+
+        async def auth_interceptor(call_details, context):
+            # Get API key from metadata
+            metadata = dict(context.invocation_metadata())
+            api_key = metadata.get("x-api-key") or metadata.get("api_key")
+
+            if not api_key:
+                # Check for bearer token
+                auth_header = metadata.get("authorization", "")
+                if auth_header.startswith("Bearer "):
+                    api_key = auth_header[7:]
+
+            if not api_key:
+                await context.abort(
+                    grpc.StatusCode.UNAUTHENTICATED,
+                    "API key required. Provide X-API-Key header or Authorization: Bearer <key>",
+                )
+                return None
+
+            # Validate key (async call to orchestrator)
+            try:
+                from ..security.auth import get_api_key_validator
+                validator = get_api_key_validator()
+                key_info = await validator.validate_key_async(api_key)
+                if not key_info:
+                    await context.abort(
+                        grpc.StatusCode.UNAUTHENTICATED,
+                        "Invalid or expired API key",
+                    )
+                    return None
+                # Store key info in context for later use
+                context.api_key_info = key_info
+            except Exception as e:
+                logger.error(f"Auth interceptor error: {e}")
+                await context.abort(
+                    grpc.StatusCode.INTERNAL,
+                    "Authentication service error",
+                )
+                return None
+
+            return call_details
+
+        return aio.unary_unary_interceptor(auth_interceptor)
+
     async def start(self):
-        """Start the gRPC server if stubs are available."""
+        """Start the gRPC server with TLS and auth if configured."""
         if not _GRPC_AVAILABLE:
             logger.warning(
                 "gRPC stubs not found. Run: python scripts/generate_grpc.py (from ai-service). %s",
@@ -172,9 +255,32 @@ class FlyMindGrpcServer:
         flymind_pb2_grpc.add_FlyMindServiceServicer_to_server(
             FlyMindServicer(), self._server
         )
-        self._server.add_insecure_port(f"{self.host}:{self.port}")
+
+        # Check if TLS is enabled
+        use_tls = os.getenv("GRPC_USE_TLS", "false").lower() == "true"
+        use_auth = os.getenv("GRPC_USE_AUTH", "true").lower() == "true"
+
+        if use_tls:
+            tls_creds = self._load_tls_credentials()
+            if tls_creds:
+                self._server.add_secure_port(f"{self.host}:{self.port}", tls_creds)
+                logger.info("gRPC server using TLS on %s:%s", self.host, self.port)
+            else:
+                logger.warning("TLS enabled but credentials not available, using insecure")
+                self._server.add_insecure_port(f"{self.host}:{self.port}")
+        else:
+            logger.warning("gRPC server starting WITHOUT TLS - configure GRPC_USE_TLS=true for production")
+            self._server.add_insecure_port(f"{self.host}:{self.port}")
+
+        # Add auth interceptor if enabled
+        if use_auth:
+            auth_interceptor = self._create_auth_interceptor()
+            self._server.add_interceptor(auth_interceptor)
+            logger.info("gRPC auth interceptor enabled")
+
         await self._server.start()
-        logger.info("gRPC server listening on %s:%s", self.host, self.port)
+        logger.info("gRPC server listening on %s:%s (TLS=%s, Auth=%s)",
+                   self.host, self.port, use_tls, use_auth)
 
     async def stop(self):
         """Stop the gRPC server."""

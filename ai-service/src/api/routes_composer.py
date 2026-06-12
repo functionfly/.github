@@ -169,7 +169,7 @@ Capabilities are strings like "http", "network", "filesystem", etc."""
             elif "```" in content:
                 json_str = content.split("```")[1].split("```")[0].strip()
             else:
-                raise ValueError(f"Failed to parse JSON response: {completion.content[:200]}")
+                raise ValueError("Failed to parse AI response as JSON. The model returned an unexpected format.")
             result_data = json.loads(json_str)
 
         manifest_data = result_data.get("manifest", {})
@@ -218,16 +218,34 @@ Capabilities are strings like "http", "network", "filesystem", etc."""
 
 
 # Internal endpoint that bypasses auth - used by FRG backend
+# SECURITY: This endpoint is protected by network-level restrictions.
+# Only allow internal service-to-service calls (from known IPs/orchestrator)
 @router.post("/internal/composer/generate", response_model=FunctionGenerationResponse)
 async def internal_generate_function(
     request: FunctionGenerationRequest,
+    X_Internal_Secret: Optional[str] = Header(None, alias="X-Internal-Secret"),
 ):
     """Internal function generation endpoint for FRG system use.
 
-    This endpoint bypasses API key auth and is intended for internal service-to-service
-    communication only. It should not be exposed publicly.
+    This endpoint bypasses API key auth but requires an internal secret header.
+    It should not be exposed publicly.
     """
-    # Copy the same logic but without auth requirement
+    from ..config import settings
+
+    if not settings.internal_api_secret:
+        logger.error("Internal endpoint called but internal_api_secret not configured")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Internal service not properly configured",
+        )
+
+    if X_Internal_Secret != settings.internal_api_secret:
+        logger.warning(f"Internal endpoint called with invalid secret")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid internal credentials",
+        )
+
     generation_id = str(uuid.uuid4())
     start_time = pytime.time()
 
@@ -308,7 +326,7 @@ Capabilities are strings like "http", "network", "filesystem", etc."""
             elif "```" in content:
                 json_str = content.split("```")[1].split("```")[0].strip()
             else:
-                raise ValueError(f"Failed to parse JSON response: {completion.content[:200]}")
+                raise ValueError("Failed to parse AI response as JSON")
             result_data = json.loads(json_str)
 
         manifest_data = result_data.get("manifest", {})
@@ -350,122 +368,7 @@ Capabilities are strings like "http", "network", "filesystem", etc."""
         latency_ms = (pytime.time() - start_time) * 1000
         return FunctionGenerationResponse(
             success=False,
-            error=str(e),
-            generation_id=generation_id,
-            latency_ms=latency_ms,
-        )
-
-        # Build the prompt for function generation
-        runtime_prompts = {
-            "python": "Generate Python 3.11+ code. Use type hints, docstrings, and modern Python patterns.",
-            "nodejs": "Generate Node.js 20+ JavaScript code. Use async/await and modern patterns.",
-            "go": "Generate Go 1.21+ code. Include proper error handling and idiomatic Go patterns.",
-            "rust": "Generate Rust code with proper error handling and modern idioms.",
-        }
-
-        runtime_guidance = runtime_prompts.get(request.runtime, f"Generate {request.runtime} code.")
-
-        system_prompt = f"""You are an expert serverless function developer.
-Your task is to generate complete, production-ready function code based on a natural language description.
-
-{runtime_guidance}
-
-The function should:
-1. Be self-contained and stateless (serverless-appropriate)
-2. Handle errors gracefully
-3. Include input validation
-4. Be secure (no code injection vulnerabilities)
-5. Follow best practices for the target runtime
-
-Respond with a JSON object containing:
-- code: The complete function code
-- manifest: Object with name, description, version, inputs (array), outputs (array), runtime, timeout_seconds, memory_mb, capabilities (array)
-- explanation: Brief explanation of what the code does
-- suggested_tests: Array of test case descriptions
-- estimated_complexity: "simple", "moderate", or "complex"
-
-Inputs should be objects with: name, type, description, required (boolean), default (optional)
-Outputs should be objects with: name, type, description
-Capabilities are strings like "http", "network", "filesystem", etc."""
-
-        user_prompt = f"Generate a {request.runtime} function that: {request.description}"
-
-        if request.constraints:
-            user_prompt += f"\n\nAdditional constraints: {request.constraints}"
-
-        if request.examples:
-            user_prompt += f"\n\nExample inputs/outputs: {chr(10).join(request.examples)}"
-
-        messages = [
-            ChatMessage(role=MessageRole.SYSTEM, content=system_prompt),
-            ChatMessage(role=MessageRole.USER, content=user_prompt),
-        ]
-
-        # Generate the function
-        # Use appropriate model based on provider
-        model = "gpt-4o" if provider_name == "openai" else "openrouter/free"
-        completion = await provider.complete(
-            messages=messages,
-            model=model,
-            temperature=0.2,
-            max_tokens=4000,
-        )
-
-        # Parse the JSON response
-        try:
-            result_data = json.loads(completion.content)
-        except json.JSONDecodeError:
-            # Try to extract JSON from markdown code blocks
-            content = completion.content
-            if "```json" in content:
-                json_str = content.split("```json")[1].split("```")[0].strip()
-            elif "```" in content:
-                json_str = content.split("```")[1].split("```")[0].strip()
-            else:
-                raise ValueError(f"Failed to parse JSON response: {completion.content[:200]}")
-            result_data = json.loads(json_str)
-
-        # Build the result
-        manifest_data = result_data.get("manifest", {})
-        manifest = FunctionManifest(
-            name=manifest_data.get("name", "generated_function"),
-            description=manifest_data.get("description", request.description[:100]),
-            version=manifest_data.get("version", "1.0.0"),
-            inputs=manifest_data.get("inputs", []),
-            outputs=manifest_data.get("outputs", []),
-            runtime=manifest_data.get("runtime", request.runtime),
-            timeout_seconds=manifest_data.get("timeout_seconds", 30),
-            memory_mb=manifest_data.get("memory_mb", 256),
-            capabilities=manifest_data.get("capabilities", []),
-        )
-
-        result = FunctionGenerationResult(
-            code=result_data.get("code", ""),
-            runtime=manifest.runtime,
-            manifest=manifest,
-            explanation=result_data.get("explanation", ""),
-            suggested_tests=result_data.get("suggested_tests", []),
-            estimated_complexity=result_data.get("estimated_complexity", "moderate"),
-        )
-
-        latency_ms = (pytime.time() - start_time) * 1000
-
-        return FunctionGenerationResponse(
-            success=True,
-            result=result,
-            generation_id=generation_id,
-            latency_ms=latency_ms,
-            tokens_used=completion.usage,
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Function generation failed: {e}")
-        latency_ms = (pytime.time() - start_time) * 1000
-        return FunctionGenerationResponse(
-            success=False,
-            error=str(e),
+            error="Function generation failed. Please try again.",
             generation_id=generation_id,
             latency_ms=latency_ms,
         )
@@ -719,20 +622,6 @@ async def ai_composer_generate_optimized_alias(
 ):
     """Optimized generation alias under /api/ai/composer namespace."""
     return await generate_function_optimized(request, api_key, tenant_id)
-
-
-# Internal endpoint that bypasses auth - used by FRG backend
-@router.post("/internal/composer/generate", response_model=FunctionGenerationResponse)
-async def internal_generate_function(
-    request: FunctionGenerationRequest,
-):
-    """Internal function generation endpoint for FRG system use.
-
-    This endpoint bypasses API key auth and is intended for internal service-to-service
-    communication only. It should not be exposed publicly.
-    """
-    # Reuse the main generate_function logic
-    return await generate_function(request, api_key=None)
 
 
 @router.post("/api/ai/composer/refine")

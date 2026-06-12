@@ -90,6 +90,10 @@ class APIKeyValidator:
     to validate keys against the database-backed storage.
     """
 
+    MAX_FAILED_ATTEMPTS = 5
+    FAILED_ATTEMPT_WINDOW_SECONDS = 300  # 5 minutes
+    FAILED_ATTEMPT_COOLDOWN_SECONDS = 900  # 15 minutes lockout after max attempts
+
     def __init__(
         self,
         orchestrator_url: str = "http://localhost:8080",
@@ -109,6 +113,7 @@ class APIKeyValidator:
 
         self._lock = threading.Lock()
         self._cache: Dict[str, tuple[Optional[APIKeyInfo], float]] = {}  # key_hash -> (info, expiry)
+        self._failed_attempts: Dict[str, tuple[int, float]] = {}  # key_hash -> (attempts, first_failure_time)
 
     def _get_cache_key(self, key: str) -> str:
         """Generate a cache key from the API key."""
@@ -205,7 +210,11 @@ class APIKeyValidator:
             return False
 
     def validate_key_sync(self, key: str) -> Optional[APIKeyInfo]:
-        """Validate an API key synchronously (for FastAPI dependencies)."""
+        """Validate an API key synchronously (for FastAPI dependencies).
+
+        Uses asyncio.run_until_complete to properly handle async validation
+        without nesting event loops. Prefer validate_key_async in async contexts.
+        """
         import asyncio
 
         cache_key = self._get_cache_key(key)
@@ -217,8 +226,84 @@ class APIKeyValidator:
                 if time.time() < expiry:
                     return cached_info
 
+        # Validate via orchestrator using existing event loop
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If loop is running, we need to use a different approach
+                # Fall back to creating a new loop in a separate thread
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(
+                        asyncio.run,
+                        self._validate_via_orchestrator(key)
+                    )
+                    info = future.result()
+            else:
+                info = loop.run_until_complete(self._validate_via_orchestrator(key))
+        except RuntimeError:
+            # No event loop, create one
+            info = asyncio.run(self._validate_via_orchestrator(key))
+
+        # Cache the result
+        with self._lock:
+            self._cache[cache_key] = (info, time.time() + self._cache_ttl)
+
+        return info
+
+    async def validate_key_async(self, key: str) -> Optional[APIKeyInfo]:
+        """Validate an API key asynchronously.
+
+        Args:
+            key: The API key to validate
+
+        Returns:
+            APIKeyInfo if valid, None otherwise
+
+        Raises:
+            HTTPException: 429 if too many failed attempts
+        """
+        cache_key = self._get_cache_key(key)
+
+        # Check rate limiting based on failed attempts
+        with self._lock:
+            if cache_key in self._failed_attempts:
+                attempts, first_failure = self._failed_attempts[cache_key]
+                elapsed = time.time() - first_failure
+
+                if attempts >= self.MAX_FAILED_ATTEMPTS:
+                    if elapsed < self.FAILED_ATTEMPT_COOLDOWN_SECONDS:
+                        logger.warning(f"Rate limited: too many failed attempts for key hash {cache_key[:8]}")
+                        raise HTTPException(
+                            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                            detail="Too many failed attempts. Please try again later.",
+                        )
+                    else:
+                        del self._failed_attempts[cache_key]
+
+                elif elapsed < self.FAILED_ATTEMPT_WINDOW_SECONDS:
+                    logger.warning(f"High failure rate for key hash {cache_key[:8]}: {attempts} failures")
+        # Check cache first
+        with self._lock:
+            if cache_key in self._cache:
+                cached_info, expiry = self._cache[cache_key]
+                if time.time() < expiry:
+                    return cached_info
+
         # Validate via orchestrator
-        info = asyncio.run(self._validate_via_orchestrator(key))
+        info = await self._validate_via_orchestrator(key)
+
+        # Track failed attempts
+        if info is None:
+            with self._lock:
+                if cache_key in self._failed_attempts:
+                    attempts, first_failure = self._failed_attempts[cache_key]
+                    if time.time() - first_failure > self.FAILED_ATTEMPT_WINDOW_SECONDS:
+                        self._failed_attempts[cache_key] = (1, time.time())
+                    else:
+                        self._failed_attempts[cache_key] = (attempts + 1, first_failure)
+                else:
+                    self._failed_attempts[cache_key] = (1, time.time())
 
         # Cache the result
         with self._lock:
@@ -307,7 +392,7 @@ async def require_api_key(
         )
 
     validator = get_api_key_validator()
-    info = validator.validate_key_sync(x_api_key)
+    info = await validator.validate_key_async(x_api_key)
 
     if not info:
         raise HTTPException(
@@ -344,7 +429,7 @@ def require_api_key_with_scope(scope: KeyScope):
             )
 
         validator = get_api_key_validator()
-        info = validator.validate_key_sync(x_api_key)
+        info = await validator.validate_key_async(x_api_key)
 
         if not info:
             raise HTTPException(

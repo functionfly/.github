@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import threading
+import time
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from typing import Dict, List, Optional, Any
@@ -16,6 +17,7 @@ from enum import Enum
 
 import psycopg2
 from psycopg2.extras import execute_batch
+from psycopg2 import pool
 
 logger = logging.getLogger(__name__)
 
@@ -136,13 +138,23 @@ class AuditLogger:
     Falls back to direct DB writes if ARQ is unavailable.
     """
 
+    # Maximum buffer size to prevent memory exhaustion
+    MAX_BUFFER_SIZE = 1000
+    # Maximum events per flush to prevent DB overload
+    MAX_FLUSH_BATCH = 100
+
     def __init__(self):
         self._logger = logging.getLogger("flymind.audit")
         self._lock = threading.Lock()
         self._buffer: List[Dict[str, Any]] = []
         self._buffer_size = 100
+        self._buffer_flush_interval = 30  # seconds
+        self._last_flush_time = time.time()
         self._rq_queue = None
         self._use_rq = False
+        self._db_pool = None
+        self._db_pool_min = 2
+        self._db_pool_max = 10
 
     def _get_rq_queue(self):
         """Get or create RQ queue for background processing."""
@@ -253,13 +265,26 @@ class AuditLogger:
                 "event_data": event.to_dict(),
             }
         )
-        
-        # Buffer for batch database writes
+
+        # Buffer for batch database writes with size limit check
         with self._lock:
-            self._buffer.append(event.to_dict())
-            if len(self._buffer) >= self._buffer_size:
+            if len(self._buffer) >= self.MAX_BUFFER_SIZE:
+                self._logger.warning("Audit buffer full, forcing flush")
+                self._lock.release()
                 self._flush_buffer()
-        
+                self._lock.acquire()
+            self._buffer.append(event.to_dict())
+
+            # Check if we should flush based on size OR time
+            should_flush = (
+                len(self._buffer) >= self._buffer_size or
+                (time.time() - self._last_flush_time) >= self._buffer_flush_interval
+            )
+            if should_flush:
+                self._lock.release()
+                self._flush_buffer()
+                self._lock.acquire()
+
         return event
     
     def log_rag_event(
@@ -326,79 +351,98 @@ class AuditLogger:
                 "event_data": event.to_dict(),
             }
         )
-        
-        # Buffer for batch database writes
+
+        # Buffer for batch database writes with size limit check
         with self._lock:
-            self._buffer.append(event.to_dict())
-            if len(self._buffer) >= self._buffer_size:
+            if len(self._buffer) >= self.MAX_BUFFER_SIZE:
+                self._logger.warning("Audit buffer full, forcing flush")
+                self._lock.release()
                 self._flush_buffer()
-        
+                self._lock.acquire()
+            self._buffer.append(event.to_dict())
+
+            # Check if we should flush based on size OR time
+            should_flush = (
+                len(self._buffer) >= self._buffer_size or
+                (time.time() - self._last_flush_time) >= self._buffer_flush_interval
+            )
+            if should_flush:
+                self._lock.release()
+                self._flush_buffer()
+                self._lock.acquire()
+
         return event
     
+    def _get_db_pool(self):
+        """Get or create database connection pool with TLS."""
+        if self._db_pool is not None:
+            return self._db_pool
+
+        db_url = os.getenv("AUDIT_DATABASE_URL") or os.getenv("DATABASE_URL")
+        if not db_url:
+            return None
+
+        try:
+            self._db_pool = pool.ThreadedConnectionPool(
+                self._db_pool_min,
+                self._db_pool_max,
+                dsn=db_url,
+                sslmode=os.getenv("DATABASE_SSLMODE", "require"),
+            )
+            self._logger.info("Database connection pool created with TLS")
+            return self._db_pool
+        except Exception as e:
+            self._logger.error(f"Failed to create database connection pool: {e}")
+            return None
+
     def _flush_buffer(self) -> None:
         """Flush audit buffer to persistent storage.
 
         Uses ARQ queue for background processing when available.
         Falls back to direct PostgreSQL batch inserts if RQ is unavailable.
+        Limits batch size to prevent DB overload.
+        Uses connection pooling for efficient database access.
         """
         if not self._buffer:
             return
+
+        # Take a snapshot of the buffer and clear it to prevent unbounded growth
+        # Process in batches to avoid memory exhaustion
+        events_to_flush = self._buffer[:self.MAX_FLUSH_BATCH]
+        remaining_events = self._buffer[self.MAX_FLUSH_BATCH:]
+
+        with self._lock:
+            self._buffer = remaining_events
 
         # Try RQ first for reliable background processing
         if self._use_rq and self._rq_queue:
             try:
                 from datetime import datetime
+                from ..workers.rq_worker import process_audit_batch
 
-                # Enqueue job for background processing
+                # Enqueue job for background processing using actual function
                 job_id = f"audit-{datetime.utcnow().timestamp()}"
                 self._rq_queue.enqueue(
-                    "src.workers.rq_worker.process_audit_batch",
-                    self._buffer.copy(),
+                    process_audit_batch,
+                    events_to_flush,
                     job_id=job_id,
                 )
-                self._logger.info(f"Enqueued audit batch to RQ: {len(self._buffer)} events")
-                self._buffer.clear()
+                self._logger.info(f"Enqueued audit batch to RQ: {len(events_to_flush)} events")
+                self._last_flush_time = time.time()
                 return
             except Exception as e:
                 self._logger.warning(f"RQ enqueue failed, falling back to direct DB: {e}")
 
-        # Fallback: direct PostgreSQL batch insert
-        db_url = os.getenv("AUDIT_DATABASE_URL") or os.getenv("DATABASE_URL")
-        if not db_url:
-            self._logger.warning("No database URL configured for audit logging")
-            self._buffer.clear()
+        # Fallback: direct PostgreSQL batch insert with connection pooling
+        db_pool = self._get_db_pool()
+        if not db_pool:
+            self._logger.warning("No database connection pool available for audit logging")
             return
 
+        conn = None
         try:
-            conn = psycopg2.connect(db_url)
+            conn = db_pool.getconn()
             with conn.cursor() as cur:
-                # Batch insert to ai_audit_logs table
-                # Assumes table: ai_audit_logs(
-                #   id uuid primary key default gen_random_uuid(),
-                #   timestamp timestamptz,
-                #   tenant_id text,
-                #   user_id text,
-                #   api_key_id text,
-                #   operation text,
-                #   function_id text,
-                #   model text,
-                #   dimensions int,
-                #   text_hash text,
-                #   success bool,
-                #   status text,
-                #   latency_ms float,
-                #   error_message text,
-                #   client_ip inet,
-                #   request_id text,
-                #   token_count int,
-                #   cost_usd decimal(10,6),
-                #   query_hash text,
-                #   chunks_retrieved int,
-                #   sources text[],
-                #   cache_hit bool,
-                #   metadata jsonb,
-                #   created_at timestamptz default now()
-                # )
                 insert_sql = """
                     INSERT INTO ai_audit_logs (
                         timestamp, tenant_id, user_id, api_key_id, operation,
@@ -414,16 +458,20 @@ class AuditLogger:
                         %(sources)s, %(cache_hit)s, %(metadata)s
                     )
                 """
-                execute_batch(cur, insert_sql, self._buffer)
+                execute_batch(cur, insert_sql, events_to_flush)
                 conn.commit()
-                self._logger.info(f"Audit batch written directly to DB: {len(self._buffer)} events")
+                self._logger.info(f"Audit batch written to DB via pool: {len(events_to_flush)} events")
+                self._last_flush_time = time.time()
         except Exception as e:
             self._logger.error(f"Failed to flush audit buffer to DB: {e}")
-            # Events remain in structured logs; don't re-raise
+            with self._lock:
+                if len(self._buffer) < self.MAX_BUFFER_SIZE:
+                    self._buffer = events_to_flush + self._buffer
+                else:
+                    self._logger.error("Audit buffer full, dropping oldest events")
         finally:
-            self._buffer.clear()
-            if 'conn' in locals():
-                conn.close()
+            if conn:
+                db_pool.putconn(conn)
     
     def flush(self) -> None:
         """Force flush the audit buffer."""

@@ -282,20 +282,36 @@ function toXml(data) {
             "keywords": ["database", "db", "sql", "query", "store", "save", "postgres", "mongodb"],
             "python": {
                 "base_code": '''import os
+import re
 import psycopg2
 
+ALLOWED_TABLE_PATTERN = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+
+def validate_table_name(table: str) -> str:
+    """Validate table name to prevent SQL injection."""
+    if not ALLOWED_TABLE_PATTERN.match(table):
+        raise ValueError(f"Invalid table name: {table}")
+    return table
+
 def handler(input):
-    """Perform database operation."""
+    """Perform database operation with parameterized queries."""
     operation = input.get("operation")
     table = input.get("table")
-    data = input.get("data")
+    data = input.get("data", {})
     condition = input.get("condition")
+    condition_params = input.get("condition_params", [])
+
+    # Validate table name to prevent SQL injection
+    table = validate_table_name(table)
 
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     try:
         with conn.cursor() as cur:
             if operation == "SELECT":
-                cur.execute(f"SELECT * FROM {table} WHERE {condition}" if condition else f"SELECT * FROM {table}")
+                if condition:
+                    cur.execute(f"SELECT * FROM {table} WHERE {condition}", condition_params)
+                else:
+                    cur.execute(f"SELECT * FROM {table}")
                 result = cur.fetchall()
             elif operation == "INSERT":
                 columns = ", ".join(data.keys())
@@ -305,11 +321,12 @@ def handler(input):
                 result = {"inserted": cur.rowcount}
             elif operation == "UPDATE":
                 set_clause = ", ".join([f"{k} = %s" for k in data.keys()])
-                cur.execute(f"UPDATE {table} SET {set_clause} WHERE {condition}", list(data.values()))
+                params = list(data.values()) + condition_params
+                cur.execute(f"UPDATE {table} SET {set_clause} WHERE {condition}", params)
                 conn.commit()
                 result = {"updated": cur.rowcount}
             elif operation == "DELETE":
-                cur.execute(f"DELETE FROM {table} WHERE {condition}")
+                cur.execute(f"DELETE FROM {table} WHERE {condition}", condition_params)
                 conn.commit()
                 result = {"deleted": cur.rowcount}
             else:
@@ -317,7 +334,7 @@ def handler(input):
         return {"result": result}
     finally:
         conn.close()''',
-                "fill_prompt": "Configure the database table name, column mappings, SQL operation type (SELECT, INSERT, UPDATE, DELETE), and WHERE clause conditions for your use case."
+                "fill_prompt": "Configure the database table name, column mappings, SQL operation type (SELECT, INSERT, UPDATE, DELETE), and WHERE clause conditions for your use case. Always use condition_params for any user-provided values in WHERE clauses."
             },
             "nodejs": {
                 "base_code": '''const { Pool } = require('pg');
@@ -326,26 +343,43 @@ const pool = new Pool({
     connectionString: process.env.DATABASE_URL
 });
 
+const ALLOWED_TABLE_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+function validateTableName(table) {
+    if (!ALLOWED_TABLE_PATTERN.test(table)) {
+        throw new Error(`Invalid table name: ${table}`);
+    }
+    return table;
+}
+
 exports.handler = async (input) => {
-    const { operation, table, data, condition } = input;
+    const { operation, table, data = {}, condition, conditionParams = [] } = input;
+
+    // Validate table name to prevent SQL injection
+    const safeTable = validateTableName(table);
 
     const client = await pool.connect();
     try {
         let result;
         switch (operation) {
             case 'SELECT':
-                const selectQuery = condition
-                    ? `SELECT * FROM ${table} WHERE ${condition}`
-                    : `SELECT * FROM ${table}`;
-                const selectResult = await client.query(selectQuery);
-                result = selectResult.rows;
+                if (condition) {
+                    const selectResult = await client.query(
+                        `SELECT * FROM ${safeTable} WHERE ${condition}`,
+                        conditionParams
+                    );
+                    result = selectResult.rows;
+                } else {
+                    const selectResult = await client.query(`SELECT * FROM ${safeTable}`);
+                    result = selectResult.rows;
+                }
                 break;
             case 'INSERT': {
                 const columns = Object.keys(data).join(', ');
                 const placeholders = Object.keys(data).map((_, i) => `$${i + 1}`).join(', ');
                 const values = Object.values(data);
                 await client.query(
-                    `INSERT INTO ${table} (${columns}) VALUES (${placeholders})`,
+                    `INSERT INTO ${safeTable} (${columns}) VALUES (${placeholders})`,
                     values
                 );
                 result = { inserted: client.rowCount };
@@ -353,16 +387,16 @@ exports.handler = async (input) => {
             }
             case 'UPDATE': {
                 const setClause = Object.keys(data).map((k, i) => `${k} = $${i + 1}`).join(', ');
-                const values = [...Object.values(data)];
+                const values = [...Object.values(data), ...conditionParams];
                 await client.query(
-                    `UPDATE ${table} SET ${setClause} WHERE ${condition}`,
+                    `UPDATE ${safeTable} SET ${setClause} WHERE ${condition}`,
                     values
                 );
                 result = { updated: client.rowCount };
                 break;
             }
             case 'DELETE':
-                await client.query(`DELETE FROM ${table} WHERE ${condition}`);
+                await client.query(`DELETE FROM ${safeTable} WHERE ${condition}`, conditionParams);
                 result = { deleted: client.rowCount };
                 break;
             default:
@@ -373,7 +407,7 @@ exports.handler = async (input) => {
         client.release();
     }
 };''',
-                "fill_prompt": "Fill in the specific SQL operations, table names, and parameter handling."
+                "fill_prompt": "Fill in the specific SQL operations, table names, and parameter handling. Always use conditionParams for any user-provided values in WHERE clauses."
             }
         },
         "auth_handler": {
