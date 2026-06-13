@@ -419,3 +419,22 @@ func (r *BackendRepository) UpdateBackendEnabled(ctx context.Context, backendID 
 
 	return nil
 }
+
+// DeleteBackend deletes a backend by ID
+func (r *BackendRepository) DeleteBackend(ctx context.Context, backendID uuid.UUID) error {
+	result, err := r.db.ExecContext(ctx, `DELETE FROM backends WHERE id = $1`, backendID)
+	if err != nil {
+		return fmt.Errorf("failed to delete backend: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("backend not found")
+	}
+
+	return nil
+}

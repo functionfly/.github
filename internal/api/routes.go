@@ -691,6 +691,12 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	factoryService.UpdateDiscoveryService(factoryDiscoveryWithThreshold)
 
+	functionScheduler := scheduler.NewFunctionScheduler(s.repo)
+	if err := functionScheduler.Start(context.Background()); err != nil {
+		logrus.WithError(err).Error("failed to start function scheduler")
+	}
+	scheduleHandler := schedule.NewHandler(functionScheduler, s.repo)
+
 	factoryHandler := factoryhandler.NewHandler(s.postgresDB.GORM, factoryService, factoryDiscovery, factoryPublisher, &factoryConfig, factoryPipelineScheduler)
 
 	platformController := swarm.NewPlatformController(
@@ -1089,6 +1095,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		studioDevOpsHandler,
 		pluginHandler,
 		runtimeHandler,
+		scheduleHandler,
 	)
 
 	registerAgentObservabilityRoutes(api, protected, authMiddleware, agentObsHandler)

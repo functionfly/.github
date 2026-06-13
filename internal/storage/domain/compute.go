@@ -48,6 +48,7 @@ type BackendRepository interface {
 	GetAllEnabledBackends() ([]*storage.Backend, error)
 	ListAllBackends(ctx context.Context) ([]*storage.Backend, error)
 	UpdateBackendEnabled(ctx context.Context, backendID uuid.UUID, enabled bool) error
+	DeleteBackend(ctx context.Context, backendID uuid.UUID) error
 }
 
 // DeploymentRepository handles deployment lifecycle

@@ -187,3 +187,304 @@ func (h *Handler) HandlePatchFunctionSettings(w http.ResponseWriter, r *http.Req
 	// Return updated settings (same as GET)
 	h.HandleGetFunctionSettings(w, r)
 }
+
+type EnvVarsRequest map[string]string
+
+type EnvVarResponse struct {
+	Key   string `json:"key"`
+	Value string `json:"value,omitempty"`
+}
+
+type EnvVarsResponse struct {
+	EnvironmentVariables map[string]string `json:"environmentVariables"`
+}
+
+func (h *Handler) HandleGetEnvVars(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
+		return
+	}
+
+	vars := mux.Vars(r)
+	author := vars["author"]
+	name := vars["name"]
+	if author == "" || name == "" {
+		apierror.WriteError(w, apierror.NewBadRequest("author and name are required"))
+		return
+	}
+
+	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	if err != nil {
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
+		return
+	}
+
+	if fn.TenantID == nil || *fn.TenantID != user.TenantID {
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
+		return
+	}
+
+	envVars := map[string]string{}
+	if len(fn.Settings) > 0 {
+		var settings map[string]interface{}
+		if err := json.Unmarshal(fn.Settings, &settings); err == nil {
+			if env, ok := settings["environment_variables"].(map[string]interface{}); ok {
+				for k, v := range env {
+					if s, ok := v.(string); ok {
+						envVars[k] = s
+					}
+				}
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(EnvVarsResponse{EnvironmentVariables: envVars})
+}
+
+func (h *Handler) HandlePutEnvVars(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
+		return
+	}
+
+	vars := mux.Vars(r)
+	author := vars["author"]
+	name := vars["name"]
+	if author == "" || name == "" {
+		apierror.WriteError(w, apierror.NewBadRequest("author and name are required"))
+		return
+	}
+
+	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	if err != nil {
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
+		return
+	}
+
+	if fn.TenantID == nil || *fn.TenantID != user.TenantID {
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
+		return
+	}
+
+	var req EnvVarsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
+		return
+	}
+
+	settings := make(map[string]interface{})
+	if len(fn.Settings) > 0 {
+		_ = json.Unmarshal(fn.Settings, &settings)
+	}
+	settings["environment_variables"] = req
+
+	if err := h.repo.UpdateFunctionSettings(fn.ID, settings); err != nil {
+		apierror.WriteError(w, apierror.NewInternal("Failed to update environment variables"))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(EnvVarsResponse{EnvironmentVariables: req})
+}
+
+func (h *Handler) HandleDeleteEnvVar(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
+		return
+	}
+
+	vars := mux.Vars(r)
+	author := vars["author"]
+	name := vars["name"]
+	key := vars["key"]
+	if author == "" || name == "" || key == "" {
+		apierror.WriteError(w, apierror.NewBadRequest("author, name, and key are required"))
+		return
+	}
+
+	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	if err != nil {
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
+		return
+	}
+
+	if fn.TenantID == nil || *fn.TenantID != user.TenantID {
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
+		return
+	}
+
+	settings := make(map[string]interface{})
+	if len(fn.Settings) > 0 {
+		_ = json.Unmarshal(fn.Settings, &settings)
+	}
+
+	if env, ok := settings["environment_variables"].(map[string]interface{}); ok {
+		delete(env, key)
+		settings["environment_variables"] = env
+	}
+
+	if err := h.repo.UpdateFunctionSettings(fn.ID, settings); err != nil {
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete environment variable"))
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+type SecretsRequest map[string]string
+
+type SecretsResponse struct {
+	Secrets []string `json:"secrets"`
+}
+
+func (h *Handler) HandleGetSecrets(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
+		return
+	}
+
+	vars := mux.Vars(r)
+	author := vars["author"]
+	name := vars["name"]
+	if author == "" || name == "" {
+		apierror.WriteError(w, apierror.NewBadRequest("author and name are required"))
+		return
+	}
+
+	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	if err != nil {
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
+		return
+	}
+
+	if fn.TenantID == nil || *fn.TenantID != user.TenantID {
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
+		return
+	}
+
+	secrets := []string{}
+	if len(fn.Settings) > 0 {
+		var settings map[string]interface{}
+		if err := json.Unmarshal(fn.Settings, &settings); err == nil {
+			if sec, ok := settings["secrets"].([]interface{}); ok {
+				for _, v := range sec {
+					if s, ok := v.(string); ok {
+						secrets = append(secrets, s)
+					}
+				}
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(SecretsResponse{Secrets: secrets})
+}
+
+func (h *Handler) HandlePutSecrets(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
+		return
+	}
+
+	vars := mux.Vars(r)
+	author := vars["author"]
+	name := vars["name"]
+	if author == "" || name == "" {
+		apierror.WriteError(w, apierror.NewBadRequest("author and name are required"))
+		return
+	}
+
+	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	if err != nil {
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
+		return
+	}
+
+	if fn.TenantID == nil || *fn.TenantID != user.TenantID {
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
+		return
+	}
+
+	var req SecretsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
+		return
+	}
+
+	secretKeys := make([]string, 0, len(req))
+	for k := range req {
+		secretKeys = append(secretKeys, k)
+	}
+
+	settings := make(map[string]interface{})
+	if len(fn.Settings) > 0 {
+		_ = json.Unmarshal(fn.Settings, &settings)
+	}
+	settings["secrets"] = secretKeys
+
+	if err := h.repo.UpdateFunctionSettings(fn.ID, settings); err != nil {
+		apierror.WriteError(w, apierror.NewInternal("Failed to update secrets"))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(SecretsResponse{Secrets: secretKeys})
+}
+
+func (h *Handler) HandleDeleteSecret(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
+		return
+	}
+
+	vars := mux.Vars(r)
+	author := vars["author"]
+	name := vars["name"]
+	key := vars["key"]
+	if author == "" || name == "" || key == "" {
+		apierror.WriteError(w, apierror.NewBadRequest("author, name, and key are required"))
+		return
+	}
+
+	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	if err != nil {
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
+		return
+	}
+
+	if fn.TenantID == nil || *fn.TenantID != user.TenantID {
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
+		return
+	}
+
+	settings := make(map[string]interface{})
+	if len(fn.Settings) > 0 {
+		_ = json.Unmarshal(fn.Settings, &settings)
+	}
+
+	if sec, ok := settings["secrets"].([]interface{}); ok {
+		newSecrets := make([]string, 0, len(sec))
+		for _, v := range sec {
+			if s, ok := v.(string); ok && s != key {
+				newSecrets = append(newSecrets, s)
+			}
+		}
+		settings["secrets"] = newSecrets
+	}
+
+	if err := h.repo.UpdateFunctionSettings(fn.ID, settings); err != nil {
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete secret"))
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}

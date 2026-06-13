@@ -15,6 +15,8 @@ import (
 	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/functionfly/functionfly/internal/routing"
 	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
@@ -456,4 +458,53 @@ func (h *Handler) HandleListSecrets(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(result)
+}
+
+// HandleDeleteBackend handles deleting a backend
+func (h *Handler) HandleDeleteBackend(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	app, resolveErr := apputil.ResolveAppForRequest(h.repo, user, r)
+	if resolveErr != nil {
+		http.Error(w, resolveErr.Message, resolveErr.Status)
+		return
+	}
+
+	vars := mux.Vars(r)
+	backendIDStr := vars["backendId"]
+	if backendIDStr == "" {
+		http.Error(w, "Backend ID is required", http.StatusBadRequest)
+		return
+	}
+
+	backendID, err := uuid.Parse(backendIDStr)
+	if err != nil {
+		http.Error(w, "Invalid backend ID", http.StatusBadRequest)
+		return
+	}
+
+	// Verify backend belongs to this app
+	backend, err := h.repo.GetBackendByID(backendID)
+	if err != nil {
+		http.Error(w, "Backend not found", http.StatusNotFound)
+		return
+	}
+
+	if backend.AppID != app.ID {
+		http.Error(w, "Backend not found", http.StatusNotFound)
+		return
+	}
+
+	// Delete using GORM directly
+	if err := h.repo.DeleteBackend(backendID); err != nil {
+		logrus.WithError(err).WithField("backend_id", backendID).Error("Failed to delete backend")
+		http.Error(w, "Failed to delete backend", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }

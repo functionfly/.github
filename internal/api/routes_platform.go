@@ -23,6 +23,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/plugin"
 	"github.com/functionfly/functionfly/internal/api/handlers/providers"
 	runtimehandler "github.com/functionfly/functionfly/internal/api/handlers/runtime"
+	"github.com/functionfly/functionfly/internal/api/handlers/schedule"
 	"github.com/functionfly/functionfly/internal/api/handlers/security"
 	"github.com/functionfly/functionfly/internal/api/handlers/state"
 	"github.com/functionfly/functionfly/internal/api/handlers/statefabric"
@@ -92,6 +93,7 @@ func registerPlatformRoutes(
 	studioDevOpsHandler *studio.DevOpsHandler,
 	pluginHandler *plugin.Handler,
 	runtimeHandler *runtimehandler.Handler,
+	scheduleHandler *schedule.Handler,
 ) {
 	// ── Metrics (public) ─────────────────────────────────────────────────────
 	api.HandleFunc("/metrics/global", s.handleGlobalMetrics).Methods("GET", "OPTIONS")
@@ -263,6 +265,15 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/functions/test", authMiddleware.RequireAuth(functionsHandler.HandleTestFunction)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/functions/parse", authMiddleware.RequireAuth(functionsHandler.HandleParseCode)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/functions/from-code", authMiddleware.RequireAuth(functionsHandler.HandleCreateFromCode)).Methods("POST", "OPTIONS")
+
+	// ── Schedules (protected) ─────────────────────────────────────────────────
+	protected.HandleFunc("/functions/{id}/schedule", authMiddleware.RequireAuth(scheduleHandler.HandleCreateSchedule)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/functions/{id}/schedule", authMiddleware.RequireAuth(scheduleHandler.HandleGetSchedule)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/functions/{id}/schedule", authMiddleware.RequireAuth(scheduleHandler.HandleUpdateSchedule)).Methods("PUT", "OPTIONS")
+	protected.HandleFunc("/functions/{id}/schedule", authMiddleware.RequireAuth(scheduleHandler.HandleDeleteSchedule)).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/functions/{id}/schedule/trigger", authMiddleware.RequireAuth(scheduleHandler.HandleTriggerManual)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/schedules", authMiddleware.RequireAuth(scheduleHandler.HandleListSchedules)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/schedules/presets", authMiddleware.RequireAuth(scheduleHandler.HandleGetPresets)).Methods("GET", "OPTIONS")
 
 	// ── Dashboard (protected, tenant-scoped) ──────────────────────────────────
 	protected.HandleFunc("/dashboard/usage", authMiddleware.RequireAuth(dashboardHandler.HandleGetUsage)).Methods("GET", "OPTIONS")
@@ -522,6 +533,7 @@ func registerPlatformRoutes(
 	// ── Backends (protected) ──────────────────────────────────────────────────
 	protected.HandleFunc("/apps/{appId}/backends", authMiddleware.RequireAuth(backendsHandler.HandleCreateBackend)).Methods("POST")
 	protected.HandleFunc("/apps/{appId}/backends", authMiddleware.RequireAuth(backendsHandler.HandleListBackends)).Methods("GET")
+	protected.HandleFunc("/apps/{appId}/backends/{backendId}", authMiddleware.RequireAuth(backendsHandler.HandleDeleteBackend)).Methods("DELETE")
 	protected.HandleFunc("/apps/{appId}/deploy/blue-green", authMiddleware.RequireAuth(advancedSecurityMiddleware.RequireHMACSignature(backendsHandler.HandleDeployBlueGreen))).Methods("POST")
 	protected.HandleFunc("/apps/{appId}/link", authMiddleware.RequireAuth(backendsHandler.HandleLinkProject)).Methods("POST")
 	protected.HandleFunc("/apps/{appId}/secrets", authMiddleware.RequireAuth(advancedSecurityMiddleware.RequireHMACSignature(backendsHandler.HandleSetSecrets))).Methods("POST")
