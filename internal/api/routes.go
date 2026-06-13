@@ -1035,6 +1035,14 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		demoHandler,
 	)
 
+	// ── Unified Function Routes (/v1/fx/*) ──────────────────────────────────
+	registerUnifiedFunctionRoutes(
+		s, api,
+		authMiddleware, executionSecurityMW,
+		registryRepo, registryHandler,
+		advancedSecurityMiddleware,
+	)
+
 	// ── FRG (Function Registry + Live Runtime Graph) ─────────────────────────
 	// Register on root router for /frg/* paths (not /v1/frg/*)
 	registerFRGRoutesOnRoot(s, s.router, authMiddleware, executionSecurityMW, registryRepo, advancedSecurityMiddleware, realtimeUsageTracker)

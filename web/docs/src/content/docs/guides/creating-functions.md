@@ -12,7 +12,7 @@ This guide walks you through creating your first serverless function on Function
 Before you begin, make sure you have:
 
 - A FunctionFly account (sign up at [functionfly.com](https://functionfly.com))
-- The FunctionFly CLI installed (`go install github.com/functionfly/functionfly/cmd/fly@latest`)
+- The FunctionFly CLI installed (see [CLI installation guide](/docs/cli/))
 - (Optional) One of the language-specific SDKs
 
 ## Step 1: Initialize a New Function
@@ -124,7 +124,7 @@ curl https://api.functionfly.com/v1/execute/<function-id> \
   -d '{"name": "FunctionFly"}'
 
 # Or using the CLI
-ffly invoke my-function --data '{"name": "FunctionFly"}'
+ff invoke my-function --data '{"name": "FunctionFly"}'
 
 ## Testing with the Playground
 

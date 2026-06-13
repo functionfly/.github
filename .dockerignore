@@ -28,8 +28,6 @@ runtimes/local/target
 # (cmd/health-monitor is needed for health-monitor image, so not excluded)
 cmd/blog-api
 cmd/create-admin
-cmd/fly
-cmd/flypy-go
 cmd/delete-functions
 cmd/ffly
 cmd/migrate

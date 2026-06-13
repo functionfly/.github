@@ -97,23 +97,11 @@ func registerRegistryRoutes(
 		executionSecurityMW.SecureExecution(fn.ID, version)(registryHandler.HandleExecute).ServeHTTP(w, r)
 	}
 	if verificationMiddleware != nil {
-		// ── Publish (protected) ─────────────────────────────────────────────
-		// Must be registered BEFORE the /{author}/{name} catchall below, otherwise
-		// POST /v1/functions/publish is matched as author="functions", name="publish"
-		// and returns "Function not found" before the publish handler ever sees it.
-		api.HandleFunc("/functions/publish", authMiddleware.RequireAuth(registryHandler.HandlePublish)).Methods("POST", "OPTIONS")
-
 		api.Handle("/{author}/{name}", verificationMiddleware.RequireVerifiedFunction("standard")(http.HandlerFunc(secureExecuteHandler))).Methods("POST", "OPTIONS")
 		api.Handle("/{author}/{name}@{version}", verificationMiddleware.RequireVerifiedFunction("standard")(http.HandlerFunc(secureExecuteHandler))).Methods("POST", "OPTIONS")
 		api.Handle("/fx/{author}/{name}", verificationMiddleware.RequireVerifiedFunction("standard")(http.HandlerFunc(secureExecuteHandler))).Methods("POST", "OPTIONS")
 		api.Handle("/fx/{author}/{name}@{version}", verificationMiddleware.RequireVerifiedFunction("standard")(http.HandlerFunc(secureExecuteHandler))).Methods("POST", "OPTIONS")
 	} else {
-		// ── Publish (protected) ─────────────────────────────────────────────
-		// Must be registered BEFORE the /{author}/{name} catchall below, otherwise
-		// POST /v1/functions/publish is matched as author="functions", name="publish"
-		// and returns "Function not found" before the publish handler ever sees it.
-		api.HandleFunc("/functions/publish", authMiddleware.RequireAuth(registryHandler.HandlePublish)).Methods("POST", "OPTIONS")
-
 		api.HandleFunc("/{author}/{name}", secureExecuteHandler).Methods("POST", "OPTIONS")
 		api.HandleFunc("/{author}/{name}@{version}", secureExecuteHandler).Methods("POST", "OPTIONS")
 		api.HandleFunc("/fx/{author}/{name}", secureExecuteHandler).Methods("POST", "OPTIONS")
