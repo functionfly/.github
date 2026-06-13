@@ -21,7 +21,7 @@
     "dev": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "vite --host 0.0.0.0 --port 3000",
+        "command": "env -i HOME=/home/micro TERM=$TERM PATH=/home/micro/.n/bin:/home/micro/.bun/bin:/usr/bin:/bin bunx vite --host 0.0.0.0 --port 3000",
         "cwd": "web/dashboard",
         "env": {
           "VITE_API_URL": "http://localhost:8080",

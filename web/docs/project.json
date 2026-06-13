@@ -16,7 +16,7 @@
     "dev": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "bun run dev",
+        "command": "env -i HOME=/home/micro TERM=$TERM PATH=/home/micro/.n/bin:/home/micro/.bun/bin:/usr/bin:/bin bun run dev",
         "cwd": "web/docs"
       }
     },

@@ -13,12 +13,8 @@ function resolveAuthUrl(): string {
 const neonAuthUrl = resolveAuthUrl();
 const neonDataApiUrl = import.meta.env.VITE_NEON_DATA_API_URL;
 
-if (!neonDataApiUrl) {
-  throw new Error('VITE_NEON_DATA_API_URL is required');
-}
-
-// Create Neon client with Supabase Auth adapter for compatibility
-export const client = createClient({
+// Neon is production-only; in dev, use the Go API backend directly
+const client = neonDataApiUrl ? createClient({
   auth: {
     url: neonAuthUrl,
     adapter: SupabaseAuthAdapter(),
@@ -26,34 +22,43 @@ export const client = createClient({
   dataApi: {
     url: neonDataApiUrl,
   },
-});
+}) : null;
+
+if (!neonDataApiUrl) {
+  console.warn('[neon] VITE_NEON_DATA_API_URL not set — Neon client disabled. Using Go API backend for all data.');
+}
 
 // Legacy alias for backward compatibility during migration
 export const supabase = client;
 
+function requireNeon(): any {
+  if (!client) throw new Error('Neon client not initialized — set VITE_NEON_DATA_API_URL for production');
+  return client;
+}
+
 // Helper function to get current user session
 export const getCurrentUser = async () => {
-  const { data: { user }, error } = await client.auth.getUser();
+  const { data: { user }, error } = await requireNeon().auth.getUser();
   if (error) throw error;
   return user;
 };
 
 // Helper function to get current session
 export const getCurrentSession = async () => {
-  const { data: { session }, error } = await client.auth.getSession();
+  const { data: { session }, error } = await requireNeon().auth.getSession();
   if (error) throw error;
   return session;
 };
 
 // Helper function to sign out
 export const signOut = async () => {
-  const { error } = await client.auth.signOut();
+  const { error } = await requireNeon().auth.signOut();
   if (error) throw error;
 };
 
 // Database query helpers using Neon Data API
 export const getUserProfile = async (userId: string) => {
-  const { data, error } = await client
+  const { data, error } = await requireNeon()
     .from('user_profiles')
     .select('*')
     .eq('user_id', userId)
@@ -64,7 +69,7 @@ export const getUserProfile = async (userId: string) => {
 };
 
 export const updateUserProfile = async (userId: string, updates: any) => {
-  const { data, error } = await client
+  const { data, error } = await requireNeon()
     .from('user_profiles')
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('user_id', userId)
@@ -76,7 +81,7 @@ export const updateUserProfile = async (userId: string, updates: any) => {
 };
 
 export const getUserNotifications = async (userId: string, includeRead = false) => {
-  let query = client
+  let query = requireNeon()
     .from('user_notifications')
     .select('*')
     .eq('user_id', userId)
@@ -92,7 +97,7 @@ export const getUserNotifications = async (userId: string, includeRead = false) 
 };
 
 export const markNotificationRead = async (notificationId: string, userId: string) => {
-  const { data, error } = await client
+  const { data, error } = await requireNeon()
     .from('user_notifications')
     .update({ read_at: new Date().toISOString() })
     .eq('id', notificationId)
@@ -105,7 +110,7 @@ export const markNotificationRead = async (notificationId: string, userId: strin
 };
 
 export const getOnlineUsers = async (tenantId?: string) => {
-  const { data, error } = await client.rpc('get_online_users', {
+  const { data, error } = await requireNeon().rpc('get_online_users', {
     tenant_filter: tenantId || null,
   });
 
@@ -116,7 +121,7 @@ export const getOnlineUsers = async (tenantId?: string) => {
 export const getUsersByIds = async (userIds: string[]) => {
   if (userIds.length === 0) return [];
 
-  const { data, error } = await client
+  const { data, error } = await requireNeon()
     .from('users')
     .select(`
       id,
@@ -148,7 +153,7 @@ export const getUsersByIds = async (userIds: string[]) => {
 };
 
 export const getUserLastActive = async (userId: string) => {
-  const { data, error } = await client
+  const { data, error } = await requireNeon()
     .from('user_profiles')
     .select('last_active_at')
     .eq('user_id', userId)
@@ -171,7 +176,7 @@ export const createNotification = async (notification: {
   data?: any;
   expires_at?: string;
 }) => {
-  const { data, error } = await client
+  const { data, error } = await requireNeon()
     .from('user_notifications')
     .insert([notification])
     .select()
@@ -191,19 +196,19 @@ export const subscribeToUserNotifications = (userId: string, callback: (payload:
 
 export const subscribeToUserProfile = (userId: string, callback: (payload: any) => void) => {
   // This is now handled by the useRealtimeSubscription hook
-  console.warn('Use useRealtimeSubscription hook instead of subscribeToUserProfile');
+  // Individual hooks should use the generic useRealtimeSubscription hook
   return { unsubscribe: () => {} };
 };
 
 export const subscribeToTenantUsers = (tenantId: string, callback: (payload: any) => void) => {
   // This is now handled by the useRealtimeSubscription hook
-  console.warn('Use useRealtimeSubscription hook instead of subscribeToTenantUsers');
+  // Individual hooks should use the generic useRealtimeSubscription hook
   return { unsubscribe: () => {} };
 };
 
 export const subscribeToUserPresence = (tenantId: string, callback: (payload: any) => void) => {
   // This is now handled by the useRealtimeSubscription hook
-  console.warn('Use useRealtimeSubscription hook instead of subscribeToUserPresence');
+  // Individual hooks should use the generic useRealtimeSubscription hook
   return {
     unsubscribe: () => {},
     track: () => {},
