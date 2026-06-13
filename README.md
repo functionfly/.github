@@ -51,7 +51,7 @@ FunctionFly™ is a comprehensive serverless platform that enables developers to
 
 | Path | Purpose |
 |------|---------|
-| `cmd/` | Go entrypoints (orchestrator-api, fly CLI, health-monitor, etc.) |
+| `cmd/` | Go entrypoints (orchestrator-api, health-monitor, etc.) |
 | `internal/` | Go application code |
 | `docs/` | Documentation and guides (see [docs/README.md](docs/README.md)) |
 | `scripts/` | Dev and ops scripts (dev.sh, migrations, publish, test helpers) |
@@ -106,44 +106,42 @@ Or use the Makefile:
 make dev
 ```
 
-1. Deploy your first function:
+1. Deploy your first function using the [ff CLI](https://github.com/functionfly/ff-cli):
 
 ```bash
-go run cmd/fly/main.go deploy --path ./examples/hello-world
+# Install the CLI
+curl -fsSL https://raw.githubusercontent.com/functionfly/ff-cli/main/scripts/install.sh | bash
+
+# Login and deploy
+fly login
+fly deploy --path ./examples/hello-world
 ```
-
-### Installing the fly CLI
-
-- **Install script (Linux/macOS):**  
-  `curl -fsSL https://raw.githubusercontent.com/functionfly/functionfly/main/scripts/install.sh | bash`
-- **Homebrew:** `brew tap functionfly/tap && brew install ffly` (when tap is configured)
-- **From source:** `go build -o bin/fly ./cmd/fly` (binary at `bin/fly`)
-
-See [packaging/README.md](packaging/README.md) for Windows (Scoop/Chocolatey), upgrade steps, and release artifacts.
 
 ### Using the CLI
 
+The `ff` CLI is now maintained in its own repository: [functionfly/ff-cli](https://github.com/functionfly/ff-cli)
+
 ```bash
 # Login to FunctionFly™
-fly login
+ff login
 
 # Initialize a new function project
-fly init my-function
+ff init my-function
 
 # Run local development environment
-fly dev
+ff dev
 
 # Publish a function to the registry
-fly publish
+ff publish
 
 # Deploy a function
-fly deploy
+ff deploy
 
 # View logs
-fly logs my-function
+ff logs my-function
 ```
 
-Configuration precedence: **environment variables (FFLY_*)** override **global config** (`~/.fly/config.yaml`). Use `fly config` to view or `fly config reset` to restore defaults. See [cmd/fly/README.md](cmd/fly/README.md) for full CLI docs.
+Configuration precedence: **environment variables (FF_*)** override **global config** (`~/.ff/config.yaml`). Use `ff config` to view or `ff config reset` to restore defaults. See the [ff-cli repository](https://github.com/functionfly/ff-cli) for full CLI docs.
 
 ## Deployment
 
