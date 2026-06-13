@@ -134,17 +134,17 @@ type Server struct {
 	}
 
 	// Bundle provisioning
-	bundleProvisioner    *provisioning.BundleProvisioner
-	provisioningHandler  *provisioning.Handler
+	bundleProvisioner   *provisioning.BundleProvisioner
+	provisioningHandler *provisioning.Handler
 
 	// Certification schedulers (use repo directly, not handler)
 	certExamExpiryScheduler *scheduler.CertExamExpiryScheduler
 	certCredExpiryScheduler *scheduler.CertCredentialExpiryScheduler
 
 	// Consciousness scheduler for periodic awareness analysis
-	consciousnessScheduler    *scheduler.ConsciousnessScheduler
+	consciousnessScheduler        *scheduler.ConsciousnessScheduler
 	consciousnessCleanupScheduler *scheduler.CleanupScheduler
-	consciousnessRetryScheduler *scheduler.RetryScheduler
+	consciousnessRetryScheduler   *scheduler.RetryScheduler
 }
 
 func NewServer(db *storage.PostgresDB) *Server {
@@ -430,7 +430,7 @@ func NewServer(db *storage.PostgresDB) *Server {
 		usageReportingRepo:     usageReportingRepo,
 		dunningManager:         dunningManager,
 		trustBillingService:    trustBillingService,
-		bundleProvisioner:       bundleProvisioner,
+		bundleProvisioner:      bundleProvisioner,
 		provisioningHandler:    provisioningHandler,
 		httpServer: &http.Server{
 			Handler:      router,
@@ -678,6 +678,64 @@ func (s *Server) ListenAndServe(addr string) error {
 	if s.vaultRepo != nil {
 		go runVaultTokenCleanup(ctx, s.vaultRepo, 24*time.Hour, 30*24*time.Hour)
 		logrus.Info("Vault token cleanup routine started")
+
+		// Phase 1.3: secret expiration sweeper (every 15m by default; honors
+		// VAULT_EXPIRATION_SWEEP_INTERVAL if set). It also expires stale
+		// break-glass grants as a side-effect.
+		sweeperInterval := 15 * time.Minute
+		if v := os.Getenv("VAULT_EXPIRATION_SWEEP_INTERVAL"); v != "" {
+			if d, err := time.ParseDuration(v); err == nil && d >= time.Minute {
+				sweeperInterval = d
+			}
+		}
+		sweeper := vaultstorage.NewExpirationSweeper(s.vaultRepo, vaultstorage.ExpirationSweeperConfig{
+			Interval:      sweeperInterval,
+			WarningWindow: 7 * 24 * time.Hour,
+			BatchSize:     200,
+			Logger:        logrus.New(),
+		})
+		go sweeper.Start(ctx)
+		logrus.WithField("interval", sweeperInterval.String()).Info("Vault expiration sweeper started")
+
+		// Phase 2.2: dynamic-lease sweeper — drops DB users whose lease
+		// has expired. Interval is configurable via env var.
+		leaseInterval := 5 * time.Minute
+		if v := os.Getenv("VAULT_DYNAMIC_LEASE_SWEEP_INTERVAL"); v != "" {
+			if d, err := time.ParseDuration(v); err == nil && d >= time.Minute {
+				leaseInterval = d
+			}
+		}
+		leaseSweeper := vaultstorage.NewDynamicLeaseSweeper(s.vaultRepo, vaultstorage.DynamicLeaseSweeperConfig{
+			Interval:  leaseInterval,
+			BatchSize: 100,
+			Logger:    logrus.New(),
+		})
+		go leaseSweeper.Start(ctx)
+		logrus.WithField("interval", leaseInterval.String()).Info("Vault dynamic-lease sweeper started")
+
+		// Phase 5.3: leader election. When running multiple API
+		// instances, only the leader runs the background sweepers
+		// above. Single-instance deployments are always leader.
+		if s.redisClient != nil {
+			leaderNS := os.Getenv("VAULT_LEADER_NAMESPACE")
+			if leaderNS == "" {
+				leaderNS = "vault-sweep"
+			}
+			elector := vaultstorage.NewLeaderElector(s.redisClient, vaultstorage.LeaderElectorConfig{
+				Namespace:       leaderNS,
+				TTL:             30 * time.Second,
+				RenewInterval:   10 * time.Second,
+				AcquireInterval: 5 * time.Second,
+				Logger:          logrus.New(),
+			})
+			// Wrap the sweepers in leader-gated funcs so only the
+			// elected instance runs them.
+			go vaultstorage.RunLeaderGatedWorkers(ctx, elector, logrus.New(),
+				func(ctx context.Context) { sweeper.Start(ctx) },
+				func(ctx context.Context) { leaseSweeper.Start(ctx) },
+			)
+			logrus.WithField("namespace", leaderNS).Info("Vault leader election started")
+		}
 	}
 
 	// Function log retention (default 90 days; FUNCTION_LOG_RETENTION_DAYS=0 disables)

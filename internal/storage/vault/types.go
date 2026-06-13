@@ -54,12 +54,20 @@ const (
 	AuditActionVersion AuditAction = "version"
 	// AuditActionRollback for secret rollback to a previous version
 	AuditActionRollback AuditAction = "rollback"
+	// AuditActionExpire for secret expiration (Phase 1.3)
+	AuditActionExpire AuditAction = "expire"
+	// AuditActionBreakGlass for break-glass emergency access (Phase 1.4)
+	AuditActionBreakGlass AuditAction = "break_glass"
+	// AuditActionMFAVerify for vault MFA verification (Phase 1.1)
+	AuditActionMFAVerify AuditAction = "mfa_verify"
 )
 
 // Valid checks if the AuditAction is valid
 func (a AuditAction) Valid() bool {
 	switch a {
-	case AuditActionCreate, AuditActionRead, AuditActionUpdate, AuditActionDelete, AuditActionUse, AuditActionRevoke, AuditActionVersion, AuditActionRollback:
+	case AuditActionCreate, AuditActionRead, AuditActionUpdate, AuditActionDelete, AuditActionUse,
+		AuditActionRevoke, AuditActionVersion, AuditActionRollback, AuditActionExpire,
+		AuditActionBreakGlass, AuditActionMFAVerify:
 		return true
 	}
 	return false

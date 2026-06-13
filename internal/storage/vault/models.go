@@ -29,13 +29,22 @@ type Secret struct {
 	EncryptedValue []byte `gorm:"type:bytea;not null"`
 
 	// Encryption metadata (column names match migration: encryption_iv, encryption_salt; BYTEA in DB)
-	EncryptionSalt    []byte `gorm:"column:encryption_salt;type:bytea;not null"`     // PBKDF2 salt
-	IV                []byte `gorm:"column:encryption_iv;type:bytea;not null"`       // AES-GCM IV/nonce
-	EncryptionAuthTag []byte `gorm:"column:encryption_auth_tag;type:bytea;not null"` // GCM auth tag (required by DB)
-	KeyVersion        int    `gorm:"not null;default:1"`                             // 1=passphrase, 2=KMS, 3=HSM
+	EncryptionSalt    []byte  `gorm:"column:encryption_salt;type:bytea;not null"`     // PBKDF2 salt
+	IV                []byte  `gorm:"column:encryption_iv;type:bytea;not null"`       // AES-GCM IV/nonce
+	EncryptionAuthTag []byte  `gorm:"column:encryption_auth_tag;type:bytea;not null"` // GCM auth tag (required by DB)
+	KeyVersion        int     `gorm:"not null;default:1"`                             // 1=PBKDF2, 2=Argon2id, 3=KMS, 4=HSM
+	KDFMethod         string  `gorm:"column:kdf_method;size:20;not null;default:'pbkdf2-sha256'"`
+	KDFParams         JSONMap `gorm:"column:kdf_params;type:jsonb;not null;default:'{}'::jsonb"`
 
 	// Access control scopes (JSONB for flexibility)
 	Scopes JSONMap `gorm:"type:jsonb;not null;default:'[]'::jsonb"`
+
+	// Lifecycle / expiration (Phase 1.3)
+	Status              SecretStatus `gorm:"size:20;not null;default:'active'"`
+	AutoExpire          bool         `gorm:"column:auto_expire;not null;default:true"`
+	ExpireAfterDays     *int         `gorm:"column:expire_after_days"`
+	LastExpiryWarningAt *time.Time   `gorm:"column:last_expiry_warning_at"`
+	ExpiredNotifiedAt   *time.Time   `gorm:"column:expired_notified_at"`
 
 	// Extensibility metadata
 	Metadata JSONMap `gorm:"type:jsonb;not null;default:'{}'::jsonb"`
@@ -151,6 +160,11 @@ type AccessToken struct {
 	IsRevoked     bool       `gorm:"not null;default:false"`
 	RevokedAt     *time.Time `gorm:"column:revoked_at"`
 	RevokedReason string     `gorm:"column:revoked_reason;type:text"`
+
+	// Phase 1.2 — IP allowlist / denylist for token-bound network access
+	AllowedIPs           StringArray `gorm:"column:allowed_ips;type:jsonb;not null;default:'[]'::jsonb"`
+	DeniedIPs            StringArray `gorm:"column:denied_ips;type:jsonb;not null;default:'[]'::jsonb"`
+	IPRestrictionEnabled bool        `gorm:"column:ip_restriction_enabled;not null;default:false"`
 
 	// Usage tracking
 	LastUsedAt *time.Time `gorm:"column:last_used_at"`
@@ -281,9 +295,9 @@ func (sd *SecretDependency) BeforeCreate(tx *gorm.DB) error {
 // DependentType constants
 const (
 	DependentTypeFunction    = "function"
-	DependentTypeService      = "service"
-	DependentTypeIntegration  = "integration"
-	DependentTypeWorkflow     = "workflow"
+	DependentTypeService     = "service"
+	DependentTypeIntegration = "integration"
+	DependentTypeWorkflow    = "workflow"
 )
 
 // Criticality constants

@@ -37,8 +37,13 @@ import (
 
 // Handler handles vault API requests
 type Handler struct {
-	repo   *vault.Repository
-	logger *logrus.Logger
+	repo           *vault.Repository
+	logger         *logrus.Logger
+	DynamicService *vault.DynamicSecretService
+	RBAC           *vault.RBACEngine
+	SIEM           *vault.SIEMDispatcher
+	Cache          *vault.SecretCache
+	AuditKey       string
 }
 
 // NewHandler creates a new vault handler
@@ -47,8 +52,12 @@ func NewHandler(repo *vault.Repository, logger *logrus.Logger) *Handler {
 		logger = logrus.New()
 	}
 	return &Handler{
-		repo:   repo,
-		logger: logger,
+		repo:           repo,
+		logger:         logger,
+		DynamicService: vault.NewDynamicSecretService(repo),
+		RBAC:           vault.NewRBACEngine(repo),
+		SIEM:           vault.NewSIEMDispatcher(repo),
+		Cache:          vault.NewSecretCache(nil, vault.CacheConfig{}),
 	}
 }
 

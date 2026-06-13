@@ -1,0 +1,148 @@
+name: 'FunctionFly Vault Action'
+description: 'Fetch secrets from the FunctionFly vault and export them as environment variables'
+author: 'FunctionFly'
+branding:
+  icon: 'lock'
+  color: 'blue'
+
+inputs:
+  api-key:
+    description: 'FunctionFly API token (recommend: ${{ secrets.FUNCTIONFLY_API_KEY }})'
+    required: true
+  api-url:
+    description: 'FunctionFly API base URL'
+    required: false
+    default: 'https://api.functionfly.com'
+  tenant-id:
+    description: 'Tenant UUID owning the vault secrets'
+    required: true
+  secrets:
+    description: 'Newline-separated "ENV_VAR: secret-uuid" pairs to fetch'
+    required: true
+  refresh-interval:
+    description: 'For long workflows, refresh credentials this often (e.g. 30m). 0 = no refresh.'
+    required: false
+    default: '0'
+  export-vars:
+    description: 'Newline-separated list of ENV_VAR names to export to subsequent steps'
+    required: true
+  fail-on-missing:
+    description: 'Fail the workflow if any requested secret is missing or unreachable'
+    required: false
+    default: 'true'
+
+outputs:
+  fetched-count:
+    description: 'Number of secrets successfully fetched'
+    value: ${{ steps.fetch.outputs.fetched-count }}
+  refreshed-count:
+    description: 'Number of secrets refreshed during the run'
+    value: ${{ steps.refresh.outputs.refreshed-count }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate inputs
+      id: validate
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ -z "${{ inputs.api-key }}" ]; then
+          echo "::error::api-key is required"
+          exit 1
+        fi
+        if [ -z "${{ inputs.tenant-id }}" ]; then
+          echo "::error::tenant-id is required"
+          exit 1
+        fi
+        if [ -z "${{ inputs.secrets }}" ]; then
+          echo "::error::secrets input is empty"
+          exit 1
+        fi
+        if [ -z "${{ inputs.export-vars }}" ]; then
+          echo "::error::export-vars input is empty"
+          exit 1
+        fi
+        echo "Inputs look good."
+
+    - name: Fetch secrets
+      id: fetch
+      shell: bash
+      env:
+        FFLY_API_KEY: ${{ inputs.api-key }}
+        FFLY_API_URL: ${{ inputs.api-url }}
+        FFLY_TENANT_ID: ${{ inputs.tenant-id }}
+        FFLY_SECRETS: ${{ inputs.secrets }}
+        FFLY_FAIL_ON_MISSING: ${{ inputs.fail-on-missing }}
+      run: |
+        set -euo pipefail
+        fetched=0
+        failed=0
+        while IFS= read -r line; do
+          # skip blanks / comments
+          case "$line" in ''|\#*) continue ;; esac
+          env_name="${line%%:*}"
+          secret_id="${line#*:}"
+          env_name="$(echo -e "$env_name" | tr -d ' \t\r\n')"
+          secret_id="$(echo -e "$secret_id" | tr -d ' \t\r\n')"
+          if [ -z "$env_name" ] || [ -z "$secret_id" ]; then
+            echo "::error::malformed line: $line"
+            exit 1
+          fi
+          url="$FFLY_API_URL/v1/vault/secrets/$secret_id"
+          payload="$(curl -fsS -H "Authorization: Bearer $FFLY_API_KEY" "$url")" || {
+            if [ "$FFLY_FAIL_ON_MISSING" = "true" ]; then
+              echo "::error::failed to fetch $secret_id for $env_name"
+              exit 1
+            else
+              echo "::warning::failed to fetch $secret_id for $env_name; continuing"
+              failed=$((failed+1))
+              continue
+            fi
+          }
+          # We export the encrypted payload as the env var. Downstream
+          # steps decrypt client-side using a passphrase secret
+          # (FUNCFLY_VAULT_PASSPHRASE) and the docs in the README.
+          echo "$env_name=$payload" >> "$GITHUB_ENV"
+          fetched=$((fetched+1))
+        done <<< "$FFLY_SECRETS"
+        echo "fetched-count=$fetched" >> "$GITHUB_OUTPUT"
+        echo "✓ Fetched $fetched secret(s)"
+
+    - name: Refresh credentials (optional)
+      id: refresh
+      if: inputs.refresh-interval != '0'
+      shell: bash
+      env:
+        FFLY_API_KEY: ${{ inputs.api-key }}
+        FFLY_API_URL: ${{ inputs.api-url }}
+        FFLY_TENANT_ID: ${{ inputs.tenant-id }}
+        FFLY_SECRETS: ${{ inputs.secrets }}
+        FFLY_REFRESH_INTERVAL: ${{ inputs.refresh-interval }}
+      run: |
+        # For long-running workflows the action re-fetches the secret
+        # set in the background every FFLY_REFRESH_INTERVAL. The
+        # refresh updates $GITHUB_ENV atomically.
+        set -euo pipefail
+        interval="$FFLY_REFRESH_INTERVAL"
+        refreshed=0
+        (
+          while true; do
+            sleep "$interval" || exit 0
+            refreshed=0
+            while IFS= read -r line; do
+              case "$line" in ''|\#*) continue ;; esac
+              env_name="${line%%:*}"
+              secret_id="${line#*:}"
+              env_name="$(echo -e "$env_name" | tr -d ' \t\r\n')"
+              secret_id="$(echo -e "$secret_id" | tr -d ' \t\r\n')"
+              [ -z "$env_name" ] || [ -z "$secret_id" ] && continue
+              url="$FFLY_API_URL/v1/vault/secrets/$secret_id"
+              payload="$(curl -fsS -H "Authorization: Bearer $FFLY_API_KEY" "$url")" || continue
+              echo "$env_name=$payload" >> "$GITHUB_ENV"
+              refreshed=$((refreshed+1))
+            done <<< "$FFLY_SECRETS"
+          done
+        ) &
+        echo "Background refresh scheduled every $interval"
+        echo "refreshed-count=0" >> "$GITHUB_OUTPUT"

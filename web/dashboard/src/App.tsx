@@ -92,6 +92,7 @@ import { ProvidersPage } from '@/pages/ProvidersPage';
 import RegistryDeployPage from '@/pages/RegistryDeployPage';
 import { ReplayPage } from '@/pages/ReplayPage';
 import { SecretsPage } from '@/pages/SecretsPage';
+import { VaultEnterprisePage } from '@/pages/VaultEnterprisePage';
 import { SecurityPage } from '@/pages/SecurityPage';
 import { ServerErrorPage } from '@/pages/ServerErrorPage';
 import { SettingsPage } from '@/pages/SettingsPage';
@@ -653,7 +654,8 @@ function AppContent() {
           {/* Same pages at /dashboard/api-keys for consistent nav links */}
           <Route path="dashboard/api-keys" element={<APIKeysPage />} />
           <Route path="dashboard/api-keys/:keyId" element={<APIKeyDetailPage />} />
-          <Route path="secrets" element={<SecretsPage />} />
+           <Route path="secrets" element={<SecretsPage />} />
+           <Route path="vault-enterprise" element={<VaultEnterprisePage />} />
           <Route path="connectors/callback" element={<ConnectorsCallbackPage />} />
           <Route path="connectors" element={<Navigate to="/settings#integrations" replace />} />
           <Route path="brain" element={<BrainPage />} />

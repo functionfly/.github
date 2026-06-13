@@ -1,0 +1,25 @@
+{
+  "name": "@functionfly/vault",
+  "version": "0.1.0",
+  "description": "Official Node.js SDK for the FunctionFly zero-knowledge secrets vault",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test dist/__tests__/*.test.js"
+  },
+  "keywords": ["functionfly", "vault", "secrets", "zero-knowledge"],
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0"
+  }
+}

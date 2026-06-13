@@ -770,10 +770,10 @@ func (h *Handler) HandleBulkDeleteSecrets(w http.ResponseWriter, r *http.Request
 		IPAddress: getClientIP(r),
 		UserAgent: r.UserAgent(),
 		Metadata: vault.JSONMap{
-			"operation":   "bulk_delete",
-			"secret_ids":  len(req.SecretIDs),
-			"deleted":     deleted,
-			"failed":      len(errs),
+			"operation":  "bulk_delete",
+			"secret_ids": len(req.SecretIDs),
+			"deleted":    deleted,
+			"failed":     len(errs),
 		},
 		Success: true,
 	}
