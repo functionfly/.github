@@ -10,7 +10,7 @@
     "!packages/shared"
   ],
   "scripts": {
-    "dev": "bun run --cwd web/dashboard dev & bun run --cwd web/site dev & bun run --cwd web/docs dev & wait",
+    "dev": "bun run --cwd web/dashboard dev & bun run --cwd web/site dev & bun run --cwd web/docs dev & bun run --cwd web/auth dev & bun run --cwd web/blog dev & bun run --cwd web/status dev & wait",
     "dev:all": "bun run --cwd web/dashboard dev & bun run --cwd web/site dev & bun run --cwd web/docs dev & bun run --cwd web/blog dev & bun run --cwd web/admin-dashboard dev & bun run --cwd web/auth dev & wait",
     "dev:site": "bun run --cwd web/site dev",
     "dev:dashboard": "bun run --cwd web/dashboard dev",

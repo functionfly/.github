@@ -31,7 +31,10 @@
       "cache": true
     },
     "dev": {
-      "cache": false
+      "cache": false,
+      "env": {
+        "PATH": "/home/micro/.n/bin:/home/micro/.bun/bin:/usr/bin:/bin"
+      }
     },
     "@nx/js:tsc": {
       "cache": true,

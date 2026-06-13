@@ -1,0 +1,23 @@
+{
+  "name": "functionfly-status",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "web/status/src",
+  "projectType": "application",
+  "tags": ["type:app", "platform:web"],
+  "targets": {
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "env -i HOME=/home/micro TERM=$TERM PATH=/home/micro/.n/bin:/home/micro/.bun/bin:/usr/bin:/bin bunx vite --port 3001",
+        "cwd": "web/status"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bun run build",
+        "cwd": "web/status"
+      }
+    }
+  }
+}
