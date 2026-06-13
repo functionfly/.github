@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/bundler"
@@ -29,7 +28,7 @@ Examples:
   ff deploy --env=staging
   ff deploy --preview
   ff deploy --force`,
-	Run: deployRun,
+	RunE: deployRunE,
 }
 
 var deployFlags struct {
@@ -55,8 +54,8 @@ func init() {
 	deployCmd.Flags().BoolVar(&deployFlags.skipTypeCheck, "skip-type-check", false, "Skip TypeScript type checking during deployment")
 }
 
-// deployRun implements the deploy command
-func deployRun(cmd *cobra.Command, args []string) {
+// deployRunE implements the deploy command
+func deployRunE(cmd *cobra.Command, args []string) error {
 	if deployFlags.preview {
 		fmt.Println("Previewing deployment...")
 	} else if deployFlags.rollbackID != "" {
@@ -68,42 +67,43 @@ func deployRun(cmd *cobra.Command, args []string) {
 	// 1. Load and validate manifest
 	m, err := manifest.Load("")
 	if err != nil {
-		log.Fatalf("No functionfly.json found. Run 'fly init' first: %v", err)
+		return fmt.Errorf("no functionfly.json found: %w\n   → Run 'ff init' to create a new function", err)
 	}
 
 	if err := m.Validate(); err != nil {
-		log.Fatalf("Manifest validation failed: %v", err)
+		return fmt.Errorf("manifest validation failed: %w\n   → Check functionfly.json for errors", err)
 	}
 
 	// 2. Load credentials
 	creds, err := credentials.Load()
 	if err != nil {
-		log.Fatalf("Not logged in. Run 'fly login' first: %v", err)
+		return fmt.Errorf("not logged in: %w\n   → Run 'ff login' to authenticate", err)
 	}
 
 	// 3. Handle rollback if specified
 	if deployFlags.rollbackID != "" {
 		err := performRollback(creds.User.Username, m.Name, deployFlags.rollbackID, deployFlags.jsonOutput)
 		if err != nil {
-			log.Fatalf("Rollback failed: %v", err)
+			return fmt.Errorf("rollback failed: %w", err)
 		}
-		return
+		return nil
 	}
 
 	// 4. Preview mode
 	if deployFlags.preview {
 		err := performPreview(m, creds.User.Username, deployFlags.env, deployFlags.jsonOutput)
 		if err != nil {
-			log.Fatalf("Preview failed: %v", err)
+			return fmt.Errorf("preview failed: %w", err)
 		}
-		return
+		return nil
 	}
 
 	// 5. Perform deployment
 	err = performDeployment(m, creds, deployFlags.env, deployFlags.force, deployFlags.wait, deployFlags.jsonOutput)
 	if err != nil {
-		log.Fatalf("Deployment failed: %v", err)
+		return fmt.Errorf("deployment failed: %w", err)
 	}
+	return nil
 }
 
 // performDeployment handles the actual deployment process
@@ -123,7 +123,7 @@ func performDeployment(m *manifest.Manifest, creds *credentials.Credentials, env
 
 	bundle, err := bundler.BundleWithOptionsAndWorkingDirectory(m, bundleOptions, "")
 	if err != nil {
-		return fmt.Errorf("bundling failed: %v", err)
+		return fmt.Errorf("bundling failed: %w\n   → Check your function code for syntax errors", err)
 	}
 
 	bundleSize := len(bundle)
@@ -154,7 +154,7 @@ func performDeployment(m *manifest.Manifest, creds *credentials.Credentials, env
 
 	result, err := client.Deploy("1", deployReq) // App ID would come from config
 	if err != nil {
-		return fmt.Errorf("deployment failed: %v", err)
+		return fmt.Errorf("deployment failed: %w\n   → Check your network connection and try again", err)
 	}
 
 	// 8. Wait for completion if requested
@@ -168,7 +168,7 @@ func performDeployment(m *manifest.Manifest, creds *credentials.Credentials, env
 		for {
 			select {
 			case <-timeout:
-				return fmt.Errorf("deployment timed out after 5 minutes")
+				return fmt.Errorf("deployment timed out after 5 minutes\n   → Use 'ff deploy --wait=false' to skip waiting")
 
 			case <-ticker.C:
 				status, err := client.GetDeploymentStatus(result.DeploymentID)
@@ -180,7 +180,7 @@ func performDeployment(m *manifest.Manifest, creds *credentials.Credentials, env
 				case "completed", "success", "healthy":
 					fmt.Printf("✓ Deployment %s completed\n", result.DeploymentID)
 				case "failed", "error":
-					return fmt.Errorf("deployment failed: %s", status.Message)
+					return fmt.Errorf("deployment failed: %s\n   → Check 'ff logs' for error details", status.Message)
 				case "pending", "building", "deploying":
 					fmt.Printf("  • Status: %s...\n", status.Status)
 				default:
@@ -232,7 +232,10 @@ func performPreview(m *manifest.Manifest, author, env string, jsonOutput bool) e
 // performRollback handles rollback to a previous deployment
 func performRollback(author, name, rollbackID string, jsonOutput bool) error {
 	apiURL := getAPIURL()
-	creds, _ := credentials.Load()
+	creds, err := credentials.Load()
+	if err != nil {
+		return fmt.Errorf("not logged in: %w", err)
+	}
 	client := cli.NewClient(apiURL, creds.Token)
 
 	result, err := client.Rollback(rollbackID)

@@ -84,7 +84,9 @@ func runPublish(access string, force, build, dryRun, asJSON, skipTypeCheck bool)
 	}
 	if dryRun {
 		if asJSON {
-			printJSON(map[string]interface{}{"dry_run": true, "name": manifest.Name, "version": manifest.Version, "hash": hash, "size": len(bundle), "public": isPublic})
+			if err := printJSON(map[string]interface{}{"dry_run": true, "name": manifest.Name, "version": manifest.Version, "hash": hash, "size": len(bundle), "public": isPublic}); err != nil {
+				return err
+			}
 		} else {
 			fmt.Printf("\n✅ Dry run complete\n")
 			fmt.Printf("   Name:    %s\n", manifest.Name)
@@ -125,7 +127,9 @@ func runPublish(access string, force, build, dryRun, asJSON, skipTypeCheck bool)
 	}
 
 	if asJSON {
-		printJSON(map[string]interface{}{"success": true, "function_id": result.FunctionID, "version": result.Version, "url": result.URL, "hash": result.Hash, "deployed_regions": result.DeployedRegions, "deployed_at": result.DeployedAt})
+		if err := printJSON(map[string]interface{}{"success": true, "function_id": result.FunctionID, "version": result.Version, "url": result.URL, "hash": result.Hash, "deployed_regions": result.DeployedRegions, "deployed_at": result.DeployedAt}); err != nil {
+			return err
+		}
 		return nil
 	}
 	fmt.Printf("\n✅ Published %s/%s@%s\n\n", creds.User.Username, manifest.Name, manifest.Version)
@@ -154,16 +158,16 @@ func runBuildStep(manifest *Manifest) error {
 
 func validateManifest(m *Manifest) error {
 	if m.Name == "" {
-		return fmt.Errorf("name is required")
+		return fmt.Errorf("name is required\n   → Check functionfly.jsonc")
 	}
 	if !isValidFunctionName(m.Name) {
-		return fmt.Errorf("name must be lowercase letters, numbers, and hyphens only; max 63 characters; no leading or trailing hyphens")
+		return fmt.Errorf("name must be lowercase letters, numbers, and hyphens only; max 63 characters; no leading or trailing hyphens\n   → Check functionfly.jsonc")
 	}
 	if m.Version == "" {
-		return fmt.Errorf("version is required")
+		return fmt.Errorf("version is required\n   → Check functionfly.jsonc")
 	}
 	if m.Runtime == "" {
-		return fmt.Errorf("runtime is required")
+		return fmt.Errorf("runtime is required\n   → Check functionfly.jsonc")
 	}
 	return nil
 }
@@ -176,7 +180,7 @@ func bundleFunction(manifest *Manifest) ([]byte, error) {
 			return data, nil
 		}
 	}
-	return nil, fmt.Errorf("no function file found\n   → Expected one of: %v", candidates)
+	return nil, fmt.Errorf("no function file found\n   → Expected one of: %v\n   → Run 'ff init' to create a new function", candidates)
 }
 
 func computeHash(data []byte) string {
@@ -191,7 +195,11 @@ func accessStr(public bool) string {
 	return "private"
 }
 
-func printJSON(v interface{}) {
-	data, _ := json.MarshalIndent(v, "", "  ")
+func printJSON(v interface{}) error {
+	data, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON: %w", err)
+	}
 	fmt.Println(string(data))
+	return nil
 }

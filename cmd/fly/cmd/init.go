@@ -6,7 +6,6 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,7 +33,7 @@ Examples:
   fly init slugify
   fly init --template=typescript slugify
   fly init --template=python myfunction`,
-	Run: initRun,
+	RunE: initRunE,
 }
 
 // Template represents a function template
@@ -114,13 +113,13 @@ func init() {
 	initCmd.Flags().StringP("template", "t", "javascript", "Template to use (javascript, typescript, python)")
 }
 
-// initRun implements the init command
-func initRun(cmd *cobra.Command, args []string) {
+// initRunE implements the init command
+func initRunE(cmd *cobra.Command, args []string) error {
 	template, _ := cmd.Flags().GetString("template")
 
 	// Validate template
 	if _, exists := templates[template]; !exists {
-		log.Fatalf("Invalid template '%s'. Supported templates: javascript, typescript, python", template)
+		return fmt.Errorf("invalid template: %s\n   → Supported templates: javascript, typescript, python", template)
 	}
 
 	// Get function name from args or use current directory name
@@ -136,7 +135,7 @@ func initRun(cmd *cobra.Command, args []string) {
 
 	// Validate name format
 	if !isValidFunctionName(name) {
-		log.Fatalf("Invalid function name '%s'. Name must contain only lowercase letters, numbers, and hyphens", name)
+		return fmt.Errorf("invalid function name: %s\n   → Use lowercase letters, numbers, and hyphens only; max 63 characters; no leading or trailing hyphens", name)
 	}
 
 	fmt.Printf("Creating function '%s' with %s template...\n", name, template)
@@ -144,13 +143,13 @@ func initRun(cmd *cobra.Command, args []string) {
 	// Create function file
 	tmpl := templates[template]
 	if err := os.WriteFile(tmpl.File, []byte(tmpl.Content), 0644); err != nil {
-		log.Fatalf("Failed to create %s: %v", tmpl.File, err)
+		return fmt.Errorf("failed to create %s: %w", tmpl.File, err)
 	}
 
 	// Create manifest file
 	manifestContent := fmt.Sprintf(tmpl.Manifest, name)
 	if err := os.WriteFile("functionfly.jsonc", []byte(manifestContent), 0644); err != nil {
-		log.Fatalf("Failed to create functionfly.jsonc: %v", err)
+		return fmt.Errorf("failed to create functionfly.jsonc: %w", err)
 	}
 
 	// Create test file
@@ -159,14 +158,15 @@ Content-Type: text/plain
 
 Hello World`
 	if err := os.WriteFile("test.http", []byte(testContent), 0644); err != nil {
-		log.Fatalf("Failed to create test.http: %v", err)
+		return fmt.Errorf("failed to create test.http: %w", err)
 	}
 
 	fmt.Printf("✓ Created %s\n", tmpl.File)
 	fmt.Printf("✓ Created functionfly.jsonc\n")
 	fmt.Printf("✓ Created test.http\n")
 	fmt.Printf("\nFunction '%s' initialized successfully!\n", name)
-	fmt.Printf("Run 'fly dev' to start local development server\n")
+	fmt.Printf("Run 'ff dev' to start local development server\n")
+	return nil
 }
 
 // isValidFunctionName validates function name format

@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -34,7 +33,7 @@ Flow:
 4. Token is saved to ~/.functionfly/credentials.json
 
 Namespace: fx://username/* (e.g., fx://superfly/slugify)`,
-	Run: loginRun,
+	RunE: loginRunE,
 }
 
 func init() {
@@ -45,14 +44,104 @@ func init() {
 	loginCmd.Flags().Bool("no-browser", false, "Print the login URL instead of opening the browser")
 }
 
-// loginRun implements the login command (Cursor-style: browser → site login → callback with token).
-func loginRun(cmd *cobra.Command, args []string) {
+// loginRunE implements the login command (Cursor-style: browser → site login → callback with token).
+func loginRunE(cmd *cobra.Command, args []string) error {
 	provider, _ := cmd.Flags().GetString("provider")
 	openBrowser, _ := cmd.Flags().GetBool("browser")
 	noBrowser, _ := cmd.Flags().GetBool("no-browser")
 	if noBrowser {
 		openBrowser = false
 	}
+
+	if provider != "github" && provider != "google" {
+		return fmt.Errorf("invalid provider: %s\n   → Supported providers: github, google", provider)
+	}
+
+	// Local server to receive the redirect with token
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return fmt.Errorf("could not start callback server: %w\n   → Check that port 127.0.0.1 is available", err)
+	}
+	port := listener.Addr().(*net.TCPAddr).Port
+	callbackURL := fmt.Sprintf("http://127.0.0.1:%d/callback", port)
+
+	// Use auth.functionfly.com directly (like the dashboard)
+	authURL := buildAuthSiteLoginURL(provider, callbackURL)
+
+	fmt.Printf("Logging in with %s...\n", provider)
+	if openBrowser {
+		fmt.Println("Opening browser to sign in...")
+		if err := openBrowserTo(authURL); err != nil {
+			fmt.Printf("Could not open browser. Open this URL manually:\n%s\n\n", authURL)
+		}
+	} else {
+		fmt.Printf("\nOpen this URL in your browser:\n%s\n\n", authURL)
+	}
+	fmt.Println("Waiting for you to sign in (Ctrl+C to cancel)...")
+
+	tokenCh := make(chan string, 1)
+	errCh := make(chan error, 1)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
+		token := r.URL.Query().Get("token")
+		if token == "" {
+			errMsg := r.URL.Query().Get("error_description")
+			if errMsg == "" {
+				errMsg = r.URL.Query().Get("error")
+			}
+			if errMsg == "" {
+				errMsg = "no token received"
+			}
+			http.Error(w, "Login failed: "+errMsg, http.StatusBadRequest)
+			errCh <- fmt.Errorf("login failed: %s", errMsg)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		fmt.Fprint(w, `<!DOCTYPE html><html><head><title>Success</title></head><body><h2>✅ You are logged in.</h2><p>You can close this tab and return to the terminal.</p></body></html>`)
+		tokenCh <- token
+	})
+	server := &http.Server{Handler: mux}
+	go func() {
+		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
+			errCh <- fmt.Errorf("callback server error: %w", err)
+		}
+	}()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	var token string
+	select {
+	case token = <-tokenCh:
+	case err := <-errCh:
+		_ = server.Shutdown(ctx)
+		return fmt.Errorf("login failed: %w", err)
+	case <-ctx.Done():
+		_ = server.Shutdown(context.Background())
+		return fmt.Errorf("login timed out after 5 minutes\n   → Try again or use --no-browser flag")
+	}
+	_ = server.Shutdown(context.Background())
+
+	// Fetch user info and save credentials
+	baseURL := os.Getenv("FFLY_API_URL")
+	if baseURL == "" {
+		baseURL = "https://api.functionfly.com"
+	}
+	creds, err := fetchUserAndBuildCredentials(baseURL, token, provider)
+	if err != nil {
+		return fmt.Errorf("failed to fetch user info: %w", err)
+	}
+	if err := credentials.Save(creds); err != nil {
+		return fmt.Errorf("failed to save credentials: %w\n   → Check file permissions", err)
+	}
+
+	username := creds.User.Username
+	if username == "" {
+		username = "unknown"
+	}
+	fmt.Printf("\n✅ Logged in as %s\n", creds.User.Email)
+	fmt.Printf("   Namespace: fx://%s/*\n", username)
+	return nil
+}
 
 	if provider != "github" && provider != "google" {
 		log.Fatalf("Invalid provider '%s'. Supported: github, google", provider)
@@ -103,7 +192,9 @@ func loginRun(cmd *cobra.Command, args []string) {
 	})
 	server := &http.Server{Handler: mux}
 	go func() {
-		_ = server.Serve(listener)
+		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
+			errCh <- fmt.Errorf("callback server error: %w", err)
+		}
 	}()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()

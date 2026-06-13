@@ -7,7 +7,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/functionfly/functionfly/internal/bundler"
 	"github.com/functionfly/functionfly/internal/cli"
@@ -48,7 +47,7 @@ Curl:
 curl https://api.functionfly.com/trase/slugify -d "Hello World"
 
 Stats will be available in 30 seconds`,
-	Run: publishRun,
+	RunE: publishRunE,
 }
 
 func init() {
@@ -59,38 +58,38 @@ func init() {
 	publishCmd.Flags().BoolP("force", "f", false, "Force publish even if version exists")
 }
 
-// publishRun implements the publish command
-func publishRun(cmd *cobra.Command, args []string) {
+// publishRunE implements the publish command
+func publishRunE(cmd *cobra.Command, args []string) error {
 	_, _ = cmd.Flags().GetString("access")  // access flag for future implementation
 	_, _ = cmd.Flags().GetBool("force")     // force flag for future implementation
 
 	fmt.Println("✓ Validating manifest...")
 
 	// 1. Load and validate manifest
-	manifest, err := manifest.Load("")
+	m, err := manifest.Load("")
 	if err != nil {
-		log.Fatalf("Failed to load manifest: %v", err)
+		return fmt.Errorf("failed to load manifest: %w\n   → Run 'ff init' if you don't have a functionfly.json", err)
 	}
 
-	if err := manifest.Validate(); err != nil {
-		log.Fatalf("Manifest validation failed: %v", err)
+	if err := m.Validate(); err != nil {
+		return fmt.Errorf("manifest validation failed: %w\n   → Check functionfly.json for errors", err)
 	}
 
-	fmt.Printf("✓ Manifest valid: %s\n", manifest.String())
+	fmt.Printf("✓ Manifest valid: %s\n", m.String())
 
 	// 2. Load credentials
 	creds, err := credentials.Load()
 	if err != nil {
-		log.Fatalf("Not logged in. Run 'fly login' first: %v", err)
+		return fmt.Errorf("not logged in: %w\n   → Run 'ff login' to authenticate", err)
 	}
 
 	fmt.Println("✓ Credentials loaded")
 
 	// 3. Bundle code
 	fmt.Println("✓ Bundling code...")
-	bundle, err := bundler.BundleWithWorkingDirectory(manifest, "")
+	bundle, err := bundler.BundleWithWorkingDirectory(m, "")
 	if err != nil {
-		log.Fatalf("Bundling failed: %v", err)
+		return fmt.Errorf("bundling failed: %w\n   → Check your function code for syntax errors", err)
 	}
 
 	bundleSize := len(bundle)
@@ -105,9 +104,9 @@ func publishRun(cmd *cobra.Command, args []string) {
 	client := cli.NewClient(apiURL, creds.Token)
 
 	// 6. Prepare manifest for API
-	manifestBytes, err := json.Marshal(manifest)
+	manifestBytes, err := json.Marshal(m)
 	if err != nil {
-		log.Fatalf("Failed to marshal manifest: %v", err)
+		return fmt.Errorf("failed to marshal manifest: %w", err)
 	}
 
 	// 7. Publish to registry
@@ -115,28 +114,29 @@ func publishRun(cmd *cobra.Command, args []string) {
 
 	publishReq := &cli.PublishRequest{
 		Author:   creds.User.Username,
-		Name:     manifest.Name,
-		Version:  manifest.Version,
+		Name:     m.Name,
+		Version:  m.Version,
 		Manifest: manifestBytes,
 	}
 
 	result, err := client.PublishFunction(publishReq)
 	if err != nil {
-		log.Fatalf("Publish failed: %v", err)
+		return fmt.Errorf("publish failed: %w\n   → Check your network connection and try again", err)
 	}
 
 	// 8. Print success
-	fmt.Printf("✓ Published %s/%s@%s\n", creds.User.Username, manifest.Name, manifest.Version)
+	fmt.Printf("✓ Published %s/%s@%s\n", creds.User.Username, m.Name, m.Version)
 	if result.Message != "" {
 		fmt.Printf("✓ %s\n", result.Message)
 	}
 	fmt.Println()
 	fmt.Printf("Public URL:\n")
-	fmt.Printf("https://api.functionfly.com/%s/%s\n", creds.User.Username, manifest.Name)
+	fmt.Printf("https://api.functionfly.com/%s/%s\n", creds.User.Username, m.Name)
 	fmt.Println()
 	fmt.Printf("Curl:\n")
-	fmt.Printf("curl https://api.functionfly.com/%s/%s -d \"Hello World\"\n", creds.User.Username, manifest.Name)
+	fmt.Printf("curl https://api.functionfly.com/%s/%s -d \"Hello World\"\n", creds.User.Username, m.Name)
 	fmt.Println()
 	fmt.Println("Stats will be available in 30 seconds")
+	return nil
 }
 

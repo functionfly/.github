@@ -61,7 +61,9 @@ func runBackendList(cmd *cobra.Command) error {
 
 	// Handle JSON output
 	if asJSON {
-		printJSON(status)
+		if err := printJSON(status); err != nil {
+			return err
+		}
 		return nil
 	}
 
@@ -108,9 +110,13 @@ func runBackendList(cmd *cobra.Command) error {
 	return nil
 }
 
-func printJSON(v interface{}) {
-	data, _ := json.MarshalIndent(v, "", "  ")
+func printJSON(v interface{}) error {
+	data, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON: %w", err)
+	}
 	fmt.Println(string(data))
+	return nil
 }
 
 // Global variable for JSON flag
