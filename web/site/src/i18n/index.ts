@@ -12,7 +12,7 @@ import esCommon from "@/locales/es/common.json";
 
 type TranslationDict = Record<string, unknown>;
 
-const LOCALE_DATA: Record<string, TranslationDict> = {
+export const LOCALE_DATA: Record<string, TranslationDict> = {
   en: enCommon as TranslationDict,
   es: esCommon as TranslationDict,
 };

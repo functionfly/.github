@@ -259,7 +259,7 @@ var featureDefinitions = map[string]Feature{
 	FeatureHigherRequests: {
 		Key:         FeatureHigherRequests,
 		Name:        "Higher Requests",
-		Description: "500K requests/month (vs 100K)",
+		Description: "2.5M requests/month (vs 250K)",
 		Category:    CategoryCore,
 		Type:        FeatureTypeBoolean,
 		Default:     false,

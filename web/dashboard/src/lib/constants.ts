@@ -415,7 +415,7 @@ export const PLANS = {
     features: [
       '3 functions',
       '2 providers',
-      '500 requests/month',
+      '25K requests/month',
       'Community support',
       '24h Time Machine replay',
     ],
@@ -425,7 +425,7 @@ export const PLANS = {
     limits: {
       functions: 3,
       providers: 2,
-      requests: 500,
+      requests: 25000,
       customDomains: 0,
       stateFabrics: 0,
       agents: 3,
@@ -467,7 +467,7 @@ export const PLANS = {
     limits: {
       functions: 5,
       providers: 3,
-      requests: 1000000,
+      requests: 250000,
       customDomains: 1,
       stateFabrics: 1,
       agents: 10,
@@ -517,7 +517,7 @@ export const PLANS = {
     limits: {
       functions: 25,
       providers: 5,
-      requests: 10000000,
+      requests: 2500000,
       customDomains: 5,
       sla: '99.9%',
       stateFabrics: 5,
@@ -567,7 +567,7 @@ export const PLANS = {
     limits: {
       functions: Infinity,
       providers: Infinity,
-      requests: Infinity,
+      requests: 25000000,
       customDomains: Infinity,
       sla: '99.99%',
       stateFabrics: Infinity,
