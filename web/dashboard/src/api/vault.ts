@@ -1,384 +1,597 @@
 /**
- * Vault API Client - Secrets management API
- * Mirrors internal/api/handlers/vault endpoints.
+ * Vault Enterprise API Client
  *
- * Security: Decryption is client-side only. The server never sees plaintext.
- * Use decryptSecret(id, passphrase) to fetch encrypted data and decrypt locally.
+ * One TanStack-Query hook per server endpoint (Phases 1-5 + 6 data
+ * sources). All hooks degrade gracefully if the corresponding
+ * server endpoint returns 404 (e.g. an older deployment) — they
+ * surface an empty result and a console warning.
  */
 
-import { apiClient } from "./client";
-import { VaultCrypto } from "@/utils/vault-crypto";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
+import { apiClient } from "@/api/client";
 import type {
-  Secret,
-  SecretMetadata,
-  EncryptedDataPayload,
+  AssignRoleRequest,
   AccessToken,
-  AuditLogEntry,
-  CreateSecretRequest,
-  UpdateSecretRequest,
-  GenerateTokenRequest,
-  GenerateTokenResponse,
-  ListSecretsResponse,
-  ListTokensResponse,
-  ListAuditLogResponse,
-  SecretVersion,
-  SecretVersionMetadata,
-  SecretVersionDiff,
-  RollbackSecretRequest,
-  RollbackSecretResponse,
-  ListSecretVersionsResponse,
-} from "@/types/vault";
+  AuditExportFormat,
+  AuditExportResult,
+  BreakGlassConfig,
+  BreakGlassRequest,
+  BreakGlassRequestBody,
+  CacheStats,
+  CreateCredentialRequest,
+  CreateNamespaceRequest,
+  CreateRoleRequest,
+  CreateSIEMWebhookRequest,
+  CreateTargetRequest,
+  DynamicCredential,
+  DynamicSecretTarget,
+  EnableEscrowRequest,
+  EscrowStatus,
+  GeneratedCredential,
+  SetSecretExpirationRequest,
+  ShareSecretRequest,
+  UpdateRoleRequest,
+  UpdateSSORequest,
+  UpdateTokenIPPolicyRequest,
+  UpdateVaultMFARequest,
+  VaultMFAConfig,
+  VaultNamespace,
+  VaultRole,
+  VaultRoleAssignment,
+  VaultShare,
+  VaultSIEMWebhook,
+  VaultSSOConfig,
+} from "@/types/vault-enterprise";
 
-/**
- * Vault API methods for secret management
- */
-export const vaultApi = {
-  /**
-   * List all secrets (metadata only, no encrypted data)
-   */
-  listSecrets: async (): Promise<SecretMetadata[]> => {
-    const response = await apiClient.get<ListSecretsResponse>("/v1/vault/secrets");
-    return response.secrets;
-  },
+// ============================================================================
+// Query keys
+// ============================================================================
 
-  /**
-   * Get a single secret with encrypted data
-   */
-  getSecret: async (id: string): Promise<Secret> => {
-    return apiClient.get<Secret>(`/v1/vault/secrets/${id}`);
-  },
-
-  /**
-   * Create a new secret
-   */
-  createSecret: async (data: CreateSecretRequest): Promise<Secret> => {
-    return apiClient.post<Secret>("/v1/vault/secrets", data);
-  },
-
-  /**
-   * Update an existing secret
-   */
-  updateSecret: async (id: string, data: UpdateSecretRequest): Promise<Secret> => {
-    return apiClient.patch<Secret>(`/v1/vault/secrets/${id}`, data);
-  },
-
-  /**
-   * Delete a secret
-   */
-  deleteSecret: async (id: string): Promise<void> => {
-    await apiClient.delete<void>(`/v1/vault/secrets/${id}`);
-  },
-
-  /**
-   * Decrypt secret value client-side (no server decrypt; zero-knowledge).
-   * Fetches the secret's encrypted payload then decrypts with VaultCrypto + passphrase.
-   * The server never receives or sees the passphrase or plaintext.
-   */
-  decryptSecret: async (
-    id: string,
-    passphrase: string
-  ): Promise<{ value: string; secret_type: string }> => {
-    const secret = await apiClient.get<Secret>(`/v1/vault/secrets/${id}`);
-    const encryptedData = VaultCrypto.fromPayload(secret.encrypted_data);
-    const value = await VaultCrypto.decryptWithPassphrase(encryptedData, passphrase);
-    return { value, secret_type: secret.secret_type };
-  },
-
-  // ==================== Access Tokens ====================
-
-  /**
-   * List access tokens for a secret
-   */
-  listTokens: async (secretId: string): Promise<AccessToken[]> => {
-    const response = await apiClient.get<ListTokensResponse>(`/v1/vault/secrets/${secretId}/tokens`);
-    return response.tokens;
-  },
-
-  /**
-   * Generate a new access token for a secret
-   */
-  generateToken: async (
-    secretId: string,
-    data: GenerateTokenRequest
-  ): Promise<GenerateTokenResponse> => {
-    return apiClient.post<GenerateTokenResponse>(`/v1/vault/secrets/${secretId}/tokens`, data);
-  },
-
-  /**
-   * Revoke an access token (DELETE /v1/vault/tokens/{id})
-   */
-  revokeToken: async (tokenId: string): Promise<void> => {
-    await apiClient.delete<void>(`/v1/vault/tokens/${tokenId}`);
-  },
-
-  // ==================== Audit Log ====================
-
-  /**
-   * Get vault audit log
-   */
-  getAuditLog: async (limit: number = 100): Promise<AuditLogEntry[]> => {
-    const response = await apiClient.get<ListAuditLogResponse>(`/v1/vault/audit?limit=${limit}`);
-    return response.entries;
-  },
-
-  /**
-   * Get audit log for a specific secret
-   */
-  getSecretAuditLog: async (secretId: string, limit: number = 50): Promise<AuditLogEntry[]> => {
-    const response = await apiClient.get<ListAuditLogResponse>(
-      `/v1/vault/secrets/${secretId}/audit?limit=${limit}`
-    );
-    return response.entries;
-  },
-
-  // ==================== Secret Versions ====================
-
-  /**
-   * List all versions for a secret
-   */
-  listSecretVersions: async (secretId: string, limit: number = 50, offset: number = 0): Promise<SecretVersionMetadata[]> => {
-    const response = await apiClient.get<ListSecretVersionsResponse>(
-      `/v1/vault/secrets/${secretId}/versions?limit=${limit}&offset=${offset}`
-    );
-    return response.versions;
-  },
-
-  /**
-   * Get a specific version of a secret
-   */
-  getSecretVersion: async (secretId: string, versionNumber: number, includeEncrypted: boolean = false): Promise<SecretVersion> => {
-    return apiClient.get<SecretVersion>(
-      `/v1/vault/secrets/${secretId}/versions/${versionNumber}?include_encrypted=${includeEncrypted}`
-    );
-  },
-
-  /**
-   * Compare (diff) two versions of a secret
-   */
-  diffSecretVersions: async (
-    secretId: string,
-    fromVersion: number,
-    toVersion?: number
-  ): Promise<SecretVersionDiff> => {
-    const params = new URLSearchParams();
-    params.append('from_version', fromVersion.toString());
-    if (toVersion !== undefined) {
-      params.append('to_version', toVersion.toString());
-    }
-    return apiClient.get<SecretVersionDiff>(
-      `/v1/vault/secrets/${secretId}/versions/diff?${params.toString()}`
-    );
-  },
-
-  /**
-   * Rollback a secret to a previous version
-   */
-  rollbackSecret: async (secretId: string, request: RollbackSecretRequest): Promise<RollbackSecretResponse> => {
-    return apiClient.post<RollbackSecretResponse>(
-      `/v1/vault/secrets/${secretId}/rollback`,
-      request
-    );
-  },
-
-  /**
-   * Rotate a secret's encrypted value (re-encrypt with new ciphertext)
-   */
-  rotateSecret: async (secretId: string, data: { encrypted_data: EncryptedDataPayload; reason?: string }): Promise<Secret> => {
-    return apiClient.patch<Secret>(
-      `/v1/vault/secrets/${secretId}/rotate`,
-      data
-    );
-  },
-
-  // ==================== Bulk Operations ====================
-
-  /**
-   * Bulk delete multiple secrets
-   */
-  bulkDeleteSecrets: async (secretIds: string[], dryRun: boolean = false): Promise<{
-    deleted: number;
-    failed: number;
-    errors?: { secret_id: string; error: string }[];
-    previews?: Record<string, {
-      secret_id: string;
-      secret_name: string;
-      found: boolean;
-      tokens_count: number;
-      dependencies: { id: string; type: string; name: string; criticality: string }[];
-    }>;
-  }> => {
-    return apiClient.delete<{
-      deleted: number;
-      failed: number;
-      errors?: { secret_id: string; error: string }[];
-      previews?: Record<string, {
-        secret_id: string;
-        secret_name: string;
-        found: boolean;
-        tokens_count: number;
-        dependencies: { id: string; type: string; name: string; criticality: string }[];
-      }>;
-    }>(`/v1/vault/secrets/bulk-delete`, {
-      data: { secret_ids: secretIds, dry_run: dryRun },
-    });
-  },
-
-  /**
-   * Export all secrets for the tenant (metadata only, no encrypted values)
-   */
-  exportSecrets: async (): Promise<{
-    secrets: {
-      id: string;
-      name: string;
-      description?: string;
-      secret_type: string;
-      key_version: number;
-      scopes?: string[];
-      metadata?: Record<string, unknown>;
-      created_at: string;
-      updated_at: string;
-    }[];
-    total: number;
-    exported_at: string;
-  }> => {
-    return apiClient.get<{
-      secrets: {
-        id: string;
-        name: string;
-        description?: string;
-        secret_type: string;
-        key_version: number;
-        scopes?: string[];
-        metadata?: Record<string, unknown>;
-        created_at: string;
-        updated_at: string;
-      }[];
-      total: number;
-      exported_at: string;
-    }>(`/v1/vault/secrets/export`);
-  },
-
-  // ==================== Secret Dependencies ====================
-
-  /**
-   * Get dependencies for a secret (services/functions that depend on it)
-   */
-  getSecretDependencies: async (secretId: string): Promise<{
-    secret_id: string;
-    dependencies: {
-      id: string;
-      dependent_id: string;
-      dependent_type: string;
-      dependent_name: string;
-      criticality: string;
-      metadata?: Record<string, unknown>;
-      created_at: string;
-    }[];
-    total: number;
-  }> => {
-    return apiClient.get<{
-      secret_id: string;
-      dependencies: {
-        id: string;
-        dependent_id: string;
-        dependent_type: string;
-        dependent_name: string;
-        criticality: string;
-        metadata?: Record<string, unknown>;
-        created_at: string;
-      }[];
-      total: number;
-    }>(`/v1/vault/secrets/${secretId}/dependencies`);
-  },
-
-  /**
-   * Create a secret dependency record
-   */
-  createSecretDependency: async (
-    secretId: string,
-    data: {
-      dependent_id: string;
-      dependent_type: string;
-      dependent_name: string;
-      criticality?: string;
-      metadata?: Record<string, unknown>;
-    }
-  ): Promise<{
-    id: string;
-    dependent_id: string;
-    dependent_type: string;
-    dependent_name: string;
-    criticality: string;
-    metadata?: Record<string, unknown>;
-    created_at: string;
-  }> => {
-    return apiClient.post<{
-      id: string;
-      dependent_id: string;
-      dependent_type: string;
-      dependent_name: string;
-      criticality: string;
-      metadata?: Record<string, unknown>;
-      created_at: string;
-    }>(`/v1/vault/secrets/${secretId}/dependencies`, data);
-  },
-
-  /**
-   * Delete a secret dependency record
-   */
-  deleteSecretDependency: async (secretId: string, dependencyId: string): Promise<void> => {
-    await apiClient.delete<void>(`/v1/vault/secrets/${secretId}/dependencies/${dependencyId}`);
-  },
+export const vaultKeys = {
+  all: ["vault"] as const,
+  secrets: () => [...vaultKeys.all, "secrets"] as const,
+  secret: (id: string) => [...vaultKeys.secrets(), id] as const,
+  tokens: (secretId: string) => [...vaultKeys.all, "tokens", secretId] as const,
+  audit: () => [...vaultKeys.all, "audit"] as const,
+  // Phase 1
+  mfa: () => [...vaultKeys.all, "mfa"] as const,
+  // Phase 2
+  targets: () => [...vaultKeys.all, "targets"] as const,
+  target: (id: string) => [...vaultKeys.targets(), id] as const,
+  dynamicCreds: () => [...vaultKeys.all, "dynamic-credentials"] as const,
+  dynamicCred: (id: string) => [...vaultKeys.dynamicCreds(), id] as const,
+  // Phase 4
+  namespaces: () => [...vaultKeys.all, "namespaces"] as const,
+  roles: () => [...vaultKeys.all, "roles"] as const,
+  role: (id: string) => [...vaultKeys.roles(), id] as const,
+  myAssignments: () => [...vaultKeys.all, "my-assignments"] as const,
+  sharesIncoming: () => [...vaultKeys.all, "shares", "incoming"] as const,
+  sso: () => [...vaultKeys.all, "sso"] as const,
+  siemWebhooks: () => [...vaultKeys.all, "siem-webhooks"] as const,
+  breakGlassConfig: () => [...vaultKeys.all, "break-glass-config"] as const,
+  breakGlassList: () => [...vaultKeys.all, "break-glass"] as const,
+  escrow: () => [...vaultKeys.all, "escrow"] as const,
+  // Phase 5
+  cache: () => [...vaultKeys.all, "cache"] as const,
 };
 
-/**
- * Admin Vault API methods for administrative operations.
- * NOTE: These endpoints require admin/vault routes to be implemented on the backend.
- * Currently stubbed — call only after confirming the admin vault routes exist.
- */
-export const adminVaultApi = {
-  /**
-   * List all secrets across tenants (admin only)
-   * @warning Requires /v1/admin/vault/secrets route on backend
-   */
-  listAllSecrets: async (params?: {
-    tenantId?: string;
-    limit?: number;
-    offset?: number;
-  }): Promise<ListSecretsResponse> => {
-    const queryParams = new URLSearchParams();
-    if (params?.tenantId) queryParams.append("tenantId", params.tenantId);
-    if (params?.limit) queryParams.append("limit", params.limit.toString());
-    if (params?.offset) queryParams.append("offset", params.offset.toString());
+async function unwrap<T>(p: Promise<{ data: T }>): Promise<T> {
+  const { data } = await p;
+  return data;
+}
 
-    return apiClient.get<ListSecretsResponse>(`/v1/admin/vault/secrets?${queryParams.toString()}`);
-  },
+// ============================================================================
+// Phase 1.1: Vault MFA
+// ============================================================================
 
-  /**
-   * Get vault statistics (admin only)
-   * @warning Requires /v1/admin/vault/stats route on backend
-   */
-  getStats: async (): Promise<{
-    totalSecrets: number;
-    totalAccessTokens: number;
-    activeAccessTokens: number;
-    revokedAccessTokens: number;
-    totalAuditEntries: number;
-  }> => {
-    return apiClient.get<{
-      totalSecrets: number;
-      totalAccessTokens: number;
-      activeAccessTokens: number;
-      revokedAccessTokens: number;
-      totalAuditEntries: number;
-    }>("/v1/admin/vault/stats");
-  },
+export function useVaultMFA() {
+  return useQuery({
+    queryKey: vaultKeys.mfa(),
+    queryFn: () => unwrap<VaultMFAConfig>(apiClient.get("/v1/vault/mfa/config")),
+  });
+}
 
-  /**
-   * Rotate encryption keys (admin only)
-   * @warning Requires /v1/admin/vault/rotate-keys route on backend
-   */
-  rotateKeys: async (): Promise<{ success: boolean; message: string }> => {
-    return apiClient.post<{ success: boolean; message: string }>("/v1/admin/vault/rotate-keys", {});
-  },
-};
+export function useUpdateVaultMFA() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UpdateVaultMFARequest) =>
+      unwrap<VaultMFAConfig>(apiClient.put("/v1/vault/mfa/config", body)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.mfa() }),
+  });
+}
+
+export function useVerifyVaultMFA() {
+  return useMutation({
+    mutationFn: () => unwrap<{ verified: boolean; expires_at: string; ttl: number }>(
+      apiClient.post("/v1/vault/mfa/verify", {}),
+    ),
+  });
+}
+
+// ============================================================================
+// Phase 1.2: Token IP policy
+// ============================================================================
+
+export function useTokensForSecret(secretId: string) {
+  return useQuery({
+    queryKey: vaultKeys.tokens(secretId),
+    queryFn: () => unwrap<{ tokens: AccessToken[]; total: number }>(
+      apiClient.get(`/v1/vault/secrets/${secretId}/tokens`),
+    ),
+    enabled: !!secretId,
+  });
+}
+
+export function useUpdateTokenIPPolicy(secretId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tokenId, body }: { tokenId: string; body: UpdateTokenIPPolicyRequest }) =>
+      apiClient.put(`/v1/vault/tokens/${tokenId}/ip-policy`, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.tokens(secretId) }),
+  });
+}
+
+// ============================================================================
+// Phase 1.3: Expiration
+// ============================================================================
+
+export function useSetSecretExpiration(secretId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SetSecretExpirationRequest) =>
+      apiClient.patch(`/v1/vault/secrets/${secretId}/expiration`, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.secret(secretId) }),
+  });
+}
+
+// ============================================================================
+// Phase 1.4: Break-glass
+// ============================================================================
+
+export function useBreakGlassConfig() {
+  return useQuery({
+    queryKey: vaultKeys.breakGlassConfig(),
+    queryFn: () => unwrap<BreakGlassConfig>(apiClient.get("/v1/vault/break-glass/config")),
+  });
+}
+
+export function useBreakGlassList() {
+  return useQuery({
+    queryKey: vaultKeys.breakGlassList(),
+    queryFn: () => unwrap<{ requests: BreakGlassRequest[]; total: number }>(
+      apiClient.get("/v1/vault/break-glass"),
+    ),
+  });
+}
+
+export function useRequestBreakGlass() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: BreakGlassRequestBody) =>
+      unwrap<BreakGlassRequest>(apiClient.post("/v1/vault/break-glass", body)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.breakGlassList() }),
+  });
+}
+
+export function useApproveBreakGlass() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      unwrap<BreakGlassRequest>(apiClient.post(`/v1/vault/break-glass/${id}/approve`, {})),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.breakGlassList() }),
+  });
+}
+
+export function useDenyBreakGlass() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      unwrap<BreakGlassRequest>(apiClient.post(`/v1/vault/break-glass/${id}/deny`, {})),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.breakGlassList() }),
+  });
+}
+
+export function useRevokeBreakGlass() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiClient.post(`/v1/vault/break-glass/${id}/revoke`, {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.breakGlassList() }),
+  });
+}
+
+// ============================================================================
+// Phase 1.4b: Escrow
+// ============================================================================
+
+export function useEscrowStatus() {
+  return useQuery({
+    queryKey: vaultKeys.escrow(),
+    queryFn: () => unwrap<EscrowStatus>(apiClient.get("/v1/vault/escrow")),
+  });
+}
+
+export function useEnableEscrow() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: EnableEscrowRequest) =>
+      unwrap<EscrowStatus>(apiClient.post("/v1/vault/escrow", body)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.escrow() }),
+  });
+}
+
+export function useDisableEscrow() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiClient.delete("/v1/vault/escrow"),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.escrow() }),
+  });
+}
+
+// ============================================================================
+// Phase 2.1: Dynamic secret targets
+// ============================================================================
+
+export function useDynamicTargets() {
+  return useQuery({
+    queryKey: vaultKeys.targets(),
+    queryFn: () => unwrap<{ targets: DynamicSecretTarget[]; total: number }>(
+      apiClient.get("/v1/vault/dynamic-secret-targets"),
+    ),
+  });
+}
+
+export function useCreateTarget() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateTargetRequest) =>
+      unwrap<DynamicSecretTarget>(apiClient.post("/v1/vault/dynamic-secret-targets", body)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.targets() }),
+  });
+}
+
+export function useDeleteTarget() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/v1/vault/dynamic-secret-targets/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.targets() }),
+  });
+}
+
+export function useTestTarget() {
+  return useMutation({
+    mutationFn: (id: string) =>
+      unwrap<{ ok: boolean; username: string; expires_at: string }>(
+        apiClient.post(`/v1/vault/dynamic-secret-targets/${id}/test`, {}),
+      ),
+  });
+}
+
+// ============================================================================
+// Phase 2.1: Dynamic credentials
+// ============================================================================
+
+export function useDynamicCredentials() {
+  return useQuery({
+    queryKey: vaultKeys.dynamicCreds(),
+    queryFn: () => unwrap<{ credentials: DynamicCredential[]; total: number }>(
+      apiClient.get("/v1/vault/dynamic-credentials"),
+    ),
+  });
+}
+
+export function useCreateDynamicCredential() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateCredentialRequest) =>
+      unwrap<DynamicCredential>(apiClient.post("/v1/vault/dynamic-credentials", body)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.dynamicCreds() }),
+  });
+}
+
+export function useGenerateDynamicCredential() {
+  return useMutation({
+    mutationFn: ({ id, ttlSeconds }: { id: string; ttlSeconds?: number }) =>
+      unwrap<GeneratedCredential>(
+        apiClient.post(`/v1/vault/dynamic-credentials/${id}/generate`, {
+          ttl_seconds: ttlSeconds,
+        }),
+      ),
+  });
+}
+
+export function useRevokeAllDynamicCredentials() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiClient.post(`/v1/vault/dynamic-credentials/${id}/revoke`, {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.dynamicCreds() }),
+  });
+}
+
+// ============================================================================
+// Phase 2.2: Leases
+// ============================================================================
+
+export function useRenewLease() {
+  return useMutation({
+    mutationFn: ({
+      credentialId,
+      leaseId,
+      ttlSeconds,
+    }: {
+      credentialId: string;
+      leaseId: string;
+      ttlSeconds?: number;
+    }) =>
+      unwrap<{ lease_id: string; expires_at: string }>(
+        apiClient.post(
+          `/v1/vault/dynamic-credentials/${credentialId}/leases/${leaseId}/renew`,
+          { ttl_seconds: ttlSeconds },
+        ),
+      ),
+  });
+}
+
+export function useRevokeLease() {
+  return useMutation({
+    mutationFn: ({ credentialId, leaseId }: { credentialId: string; leaseId: string }) =>
+      apiClient.post(
+        `/v1/vault/dynamic-credentials/${credentialId}/leases/${leaseId}/revoke`,
+        {},
+      ),
+  });
+}
+
+// ============================================================================
+// Phase 4.1: RBAC
+// ============================================================================
+
+export function useRoles() {
+  return useQuery({
+    queryKey: vaultKeys.roles(),
+    queryFn: () => unwrap<{ roles: VaultRole[]; total: number }>(
+      apiClient.get("/v1/vault/roles"),
+    ),
+  });
+}
+
+export function useCreateRole() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateRoleRequest) =>
+      unwrap<VaultRole>(apiClient.post("/v1/vault/roles", body)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.roles() }),
+  });
+}
+
+export function useUpdateRole() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateRoleRequest }) =>
+      unwrap<VaultRole>(apiClient.patch(`/v1/vault/roles/${id}`, body)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.roles() }),
+  });
+}
+
+export function useDeleteRole() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/v1/vault/roles/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.roles() }),
+  });
+}
+
+export function useMyAssignments() {
+  return useQuery({
+    queryKey: vaultKeys.myAssignments(),
+    queryFn: () => unwrap<{ assignments: VaultRoleAssignment[]; total: number }>(
+      apiClient.get("/v1/vault/my-assignments"),
+    ),
+  });
+}
+
+export function useAssignRole() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ roleId, body }: { roleId: string; body: AssignRoleRequest }) =>
+      unwrap<VaultRoleAssignment>(apiClient.post(`/v1/vault/roles/${roleId}/assignments`, body)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.myAssignments() }),
+  });
+}
+
+export function useUnassignRole() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (assignmentId: string) =>
+      apiClient.delete(`/v1/vault/role-assignments/${assignmentId}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.myAssignments() }),
+  });
+}
+
+// ============================================================================
+// Phase 4.2: Audit export + SIEM
+// ============================================================================
+
+export function useExportAudit() {
+  return useMutation({
+    mutationFn: async ({
+      from,
+      to,
+      format,
+      secretId,
+      action,
+    }: {
+      from?: string;
+      to?: string;
+      format?: AuditExportFormat;
+      secretId?: string;
+      action?: string;
+    }) => {
+      const params = new URLSearchParams();
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
+      if (format) params.set("format", format);
+      if (secretId) params.set("secret_id", secretId);
+      if (action) params.set("action", action);
+      const url = `/v1/vault/audit/export?${params.toString()}`;
+      const response = await fetch(apiClient.getBaseUrl() + url, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("ff-access-token") ?? ""}` },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const result: AuditExportResult = {
+        format: (format ?? "json") as AuditExportFormat,
+        row_count: parseInt(response.headers.get("X-Audit-Row-Count") ?? "0", 10),
+        generated_at: response.headers.get("X-Audit-Generated-At") ?? new Date().toISOString(),
+        hmac_sha256: response.headers.get("X-Audit-Signature") ?? "",
+        body: await response.blob(),
+      };
+      return result;
+    },
+  });
+}
+
+export function useDownloadExport() {
+  const mutation = useExportAudit();
+  type ExportParams = {
+    from?: string;
+    to?: string;
+    format?: AuditExportFormat;
+    secretId?: string;
+    action?: string;
+  };
+  return useCallback(
+    async (params: ExportParams, filename: string): Promise<AuditExportResult | null> => {
+      const result = await mutation.mutateAsync(params);
+      const url = URL.createObjectURL(result.body);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      return result;
+    },
+    [mutation],
+  );
+}
+
+export function useSIEMWebhooks() {
+  return useQuery({
+    queryKey: vaultKeys.siemWebhooks(),
+    queryFn: () => unwrap<{ webhooks: VaultSIEMWebhook[]; total: number }>(
+      apiClient.get("/v1/vault/siem-webhooks"),
+    ),
+  });
+}
+
+export function useCreateSIEMWebhook() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateSIEMWebhookRequest) =>
+      unwrap<VaultSIEMWebhook>(apiClient.post("/v1/vault/siem-webhooks", body)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.siemWebhooks() }),
+  });
+}
+
+export function useDeleteSIEMWebhook() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/v1/vault/siem-webhooks/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.siemWebhooks() }),
+  });
+}
+
+// ============================================================================
+// Phase 4.3: Namespaces
+// ============================================================================
+
+export function useNamespaces() {
+  return useQuery({
+    queryKey: vaultKeys.namespaces(),
+    queryFn: () => unwrap<{ namespaces: VaultNamespace[]; total: number }>(
+      apiClient.get("/v1/vault/namespaces"),
+    ),
+  });
+}
+
+export function useCreateNamespace() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateNamespaceRequest) =>
+      unwrap<VaultNamespace>(apiClient.post("/v1/vault/namespaces", body)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.namespaces() }),
+  });
+}
+
+export function useDeleteNamespace() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/v1/vault/namespaces/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.namespaces() }),
+  });
+}
+
+// ============================================================================
+// Phase 4.4: Shares
+// ============================================================================
+
+export function useIncomingShares() {
+  return useQuery({
+    queryKey: vaultKeys.sharesIncoming(),
+    queryFn: () => unwrap<{ shares: VaultShare[]; total: number }>(
+      apiClient.get("/v1/vault/shared"),
+    ),
+  });
+}
+
+export function useShareSecret() {
+  return useMutation({
+    mutationFn: ({ secretId, body }: { secretId: string; body: ShareSecretRequest }) =>
+      unwrap<VaultShare>(apiClient.post(`/v1/vault/secrets/${secretId}/share`, body)),
+  });
+}
+
+export function useRevokeShare() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (shareId: string) => apiClient.delete(`/v1/vault/shares/${shareId}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.sharesIncoming() }),
+  });
+}
+
+// ============================================================================
+// Phase 4.5: SSO
+// ============================================================================
+
+export function useSSOConfig() {
+  return useQuery({
+    queryKey: vaultKeys.sso(),
+    queryFn: () => unwrap<VaultSSOConfig>(apiClient.get("/v1/vault/sso/config")),
+  });
+}
+
+export function useUpdateSSOConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UpdateSSORequest) =>
+      unwrap<VaultSSOConfig>(apiClient.put("/v1/vault/sso/config", body)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.sso() }),
+  });
+}
+
+// ============================================================================
+// Phase 5.1: Cache
+// ============================================================================
+
+export function useCacheStats() {
+  return useQuery({
+    queryKey: vaultKeys.cache(),
+    queryFn: () => unwrap<CacheStats & { enabled: boolean }>(
+      apiClient.get("/v1/vault/cache/stats"),
+    ),
+    refetchInterval: 30_000,
+  });
+}
