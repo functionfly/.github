@@ -17,7 +17,7 @@ TEST_COUNT := -count=1
 # Detect available CPUs for parallel builds
 NCPU := $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
-.PHONY: help build build-fast build-ci build-local-runtime build-microvm-orchestrator build-python-runtime test test-short test-parallel test-fast test-changed test-watch clean docker-up docker-down dev dev-neon api api-local health-monitor migrate migrate-local migrate-down migrate-status migrate-version wasm-bundle staging-up staging-down staging-logs staging-migrate staging-api staging-health-monitor test-db-setup test-db-up test-db-migrate test-db-status test-api-cmds load-test-init load-test-tpcb load-test-mixed load-test-custom load-test-stress bench bench-db bench-db-profile db-maintenance venv build-fly build-fly-release release-dry-run release release-snapshot install-locally dist build-coming-soon deploy-coming-soon deploy-admin-dashboard
+.PHONY: help build build-fast build-ci build-local-runtime build-microvm-orchestrator build-python-runtime test test-short test-parallel test-fast test-changed test-watch clean docker-up docker-down dev dev-neon api api-local health-monitor migrate migrate-local migrate-down migrate-status migrate-version staging-up staging-down staging-logs staging-migrate staging-api staging-health-monitor test-db-setup test-db-up test-db-migrate test-db-status test-api-cmds load-test-init load-test-tpcb load-test-mixed load-test-custom load-test-stress bench bench-db bench-db-profile db-maintenance venv build-coming-soon deploy-coming-soon deploy-admin-dashboard
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -28,17 +28,14 @@ help: ## Show this help message
 build: ## Build all services (optimized with trimpath)
 	go build $(BUILD_FLAGS) -o bin/orchestrator-api ./cmd/orchestrator-api
 	go build $(BUILD_FLAGS) -o bin/health-monitor ./cmd/health-monitor
-	go build $(BUILD_FLAGS) -o bin/ff ./cmd/fly
 
 build-fast: ## Fast build for development (allows multiple errors, smaller binaries)
 	go build $(BUILD_FLAGS) $(GC_FLAGS) -o bin/orchestrator-api ./cmd/orchestrator-api
 	go build $(BUILD_FLAGS) $(GC_FLAGS) -o bin/health-monitor ./cmd/health-monitor
-	go build $(BUILD_FLAGS) $(GC_FLAGS) -o bin/ff ./cmd/fly
 
 build-ci: ## CI-optimized build (cached, parallel, no cgo)
 	CGO_ENABLED=0 go build $(BUILD_FLAGS) $(LD_FLAGS) -o bin/orchestrator-api ./cmd/orchestrator-api
 	CGO_ENABLED=0 go build $(BUILD_FLAGS) $(LD_FLAGS) -o bin/health-monitor ./cmd/health-monitor
-	CGO_ENABLED=0 go build $(BUILD_FLAGS) $(LD_FLAGS) -o bin/ff ./cmd/fly
 
 build-local-runtime: ## Build the local Rust runtime
 	cd runtimes/local && cargo build --release
@@ -94,32 +91,7 @@ run-microvm: build-microvm-orchestrator ## Run MicroVM orchestrator in productio
 		--port "$${MICROVM_PORT:-9091}" \
 		--max-vms "$${MICROVM_MAX_VMS:-20}"
 
-build-ff: ## Build the ff CLI (bin/ff)
-	go build $(BUILD_FLAGS) -o bin/ff ./cmd/fly
 
-build-ff-fast: ## Fast build of ff CLI for development
-	go build $(BUILD_FLAGS) $(GC_FLAGS) -o bin/ff ./cmd/fly
-
-build-ff-release: ## Build the ff CLI with version ldflags (for release-like local binary)
-	@v=$$(git describe --tags --always 2>/dev/null || echo "0.0.0"); \
-	c=$$(git rev-parse --short HEAD 2>/dev/null || echo "unknown"); \
-	d=$$(date -u +%Y-%m-%dT%H:%M:%SZ); \
-	go build $(BUILD_FLAGS) -ldflags "-s -w -X github.com/functionfly/functionfly/internal/version.Version=$$v -X github.com/functionfly/functionfly/internal/version.Commit=$$c -X github.com/functionfly/functionfly/internal/version.Date=$$d" ./cmd/fly
-
-release-dry-run: ## Run GoReleaser in dry-run mode (no publish)
-	goreleaser release --clean --dry-run
-
-release: ## Create and publish a CLI release (requires GITHUB_TOKEN, tag e.g. v1.0.0)
-	goreleaser release --clean
-
-release-snapshot: ## Create a snapshot release (no tag required)
-	goreleaser release --clean --snapshot
-
-install-locally: ## Install ff CLI to GOPATH/bin (optimized)
-	go install $(BUILD_FLAGS) ./cmd/fly
-
-dist: ## Build distribution packages for current platform only (no publish)
-	goreleaser build --clean --single-target
 
 build-all-modules: ## Build all workspace modules
 	go build $(BUILD_FLAGS) ./cmd/...
@@ -156,15 +128,7 @@ test-functions: ## Run unit tests for functions/functionfly (stdlib handlers)
 test-functions-e2e: ## Run unit + e2e tests for functions/functionfly
 	@cd functions/functionfly && (test -d .venv || python3 -m venv .venv) && .venv/bin/pip install -q -r requirements-test.txt && .venv/bin/pytest tests/ -v --tb=short
 
-publish-stdlib: build-fly ## Dev login then publish all functions in functions/functionfly. Requires FFLY_API_URL, FFLY_DEV_EMAIL, FFLY_DEV_PASSWORD. API must be running with DEVELOPMENT=true (see AGENTS.md) or restarted after middleware changes.
-	@test -n "$$FFLY_API_URL" || (echo "FFLY_API_URL is required (e.g. http://localhost:8080)"; exit 1)
-	@test -n "$$FFLY_DEV_EMAIL" || (echo "FFLY_DEV_EMAIL is required (e.g. admin@functionfly.local)"; exit 1)
-	@test -n "$$FFLY_DEV_PASSWORD" || (echo "FFLY_DEV_PASSWORD is required"; exit 1)
-	FFLY_API_URL=$$FFLY_API_URL FFLY_DEV_EMAIL=$$FFLY_DEV_EMAIL FFLY_DEV_PASSWORD=$$FFLY_DEV_PASSWORD ./bin/fly login --dev
-	FFLY_API_URL=$$FFLY_API_URL ./bin/fly publish-batch functions/functionfly --conflict-strategy overwrite --concurrency 5
 
-wasm-bundle: ## Bundle function to Wasm for testing
-	go run ./cmd/ffly bundle --wasm
 
 test: ## Run tests (cached, parallel)
 	go test $(TEST_PARALLEL) ./...
@@ -254,7 +218,7 @@ security-scan: ## Run security vulnerability scan
 
 clean: ## Clean build artifacts (bin/ and any binaries/logs in project root)
 	rm -rf bin/
-	rm -f api-test create-admin ffly fly flypy-test functionfly functionfly-server health-monitor migrate orchestrator-api server setup-bin simple_server *.test
+	rm -f api-test create-admin ffly flypy-test functionfly functionfly-server health-monitor migrate orchestrator-api server setup-bin simple_server *.test
 	rm -f api_startup.log api_test.log dev_test.log runtime.log server_output.log coverage.out
 
 docker-up: ## Start docker services

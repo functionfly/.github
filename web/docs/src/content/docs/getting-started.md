@@ -10,20 +10,20 @@ Welcome to FunctionFly™, a production-ready serverless function platform built
 ## Quick Start
 
 ```bash
-# Install the ffly CLI
-curl -fsSL https://raw.githubusercontent.com/functionfly/functionfly/main/scripts/install.sh | bash
+# Install the ff CLI
+curl -fsSL https://raw.githubusercontent.com/functionfly/ff-cli/main/scripts/install.sh | bash
 
 # Login
-ffly login
+ff login
 
 # Initialize a function
-ffly init my-function
+ff init my-function
 
 # Run locally
-ffly dev
+ff dev
 
 # Publish to registry
-ffly publish
+ff publish
 
 # Or test your function instantly in the [Playground](/guides/playground/)
 ```
@@ -34,21 +34,21 @@ ffly publish
 
 ```bash
 # Linux/macOS
-curl -fsSL https://raw.githubusercontent.com/functionfly/functionfly/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/functionfly/ff-cli/main/scripts/install.sh | bash
 
 # Homebrew (macOS)
 brew tap functionfly/tap
-brew install ffly
+brew install ff
 
-# From source
-go build -o bin/fly ./cmd/fly
+# Windows (PowerShell)
+iwr -useb https://raw.githubusercontent.com/functionfly/ff-cli/main/scripts/install.ps1 | iex
 ```
 
 ### Verify Installation
 
 ```bash
-fly --version
-ffly login --help
+ff --version
+ff login --help
 ```
 
 ## Your First Function
@@ -66,10 +66,10 @@ export default async function(req) {
 ```
 
 ```bash
-ffly init hello-world
+ff init hello-world
 cd hello-world
-ffly dev  # Test locally
-ffly publish  # Deploy to production
+ff dev  # Test locally
+ff publish  # Deploy to production
 ```
 
 ## Next Steps

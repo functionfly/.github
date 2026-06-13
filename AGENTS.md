@@ -34,7 +34,7 @@ Then in another terminal: `curl http://localhost:8080/api/health`
 | **Cloudflare** | `docs/CLOUDFLARE.md`, `deploy/dns/` | DNS, CDN, R2, Workers, Tunnel, Pages |
 | **Repo docs (Markdown)** | `docs/` | Design, ops, internal guides (not the public docs site) |
 | **Local PG 17 + pgvector** | `docs/LOCAL_POSTGRES_17.md` | PostgreSQL 17 with pgvector and extensions for local dev |
-| **Go modules** | `go.work`, `go.mod` | Workspace with main module + `cmd/flypy-go/` + `cmd/delete-functions/` for incremental builds |
+| **Go modules** | `go.work`, `go.mod` | Workspace with main module + `cmd/delete-functions/` for incremental builds |
 
 When adding API surface: add handler in `internal/api/handlers/`, register in `internal/api/routes.go`, and use existing storage/auth patterns.
 
