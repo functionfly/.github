@@ -297,6 +297,7 @@ type Repository interface {
 	GetAllEnabledBackends() ([]*Backend, error)
 	ListAllBackends(ctx context.Context) ([]*Backend, error)
 	UpdateBackendEnabled(ctx context.Context, backendID uuid.UUID, enabled bool) error
+	DeleteBackend(backendID uuid.UUID) error
 
 	// Platform feature measures (admin security/features page)
 	ListFeatureMeasures(ctx context.Context) ([]*FeatureMeasure, error)

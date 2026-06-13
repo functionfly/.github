@@ -227,6 +227,16 @@ func registerRegistryRoutes(
 	api.HandleFunc("/functions/{author}/{name}/settings", authMiddleware.RequireAuth(registryHandler.HandleGetFunctionSettings)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/functions/{author}/{name}/settings", authMiddleware.RequireAuth(registryHandler.HandlePatchFunctionSettings)).Methods("PATCH", "OPTIONS")
 
+	// Environment variables (protected)
+	api.HandleFunc("/functions/{author}/{name}/env", authMiddleware.RequireAuth(registryHandler.HandleGetEnvVars)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/functions/{author}/{name}/env", authMiddleware.RequireAuth(registryHandler.HandlePutEnvVars)).Methods("PUT", "OPTIONS")
+	api.HandleFunc("/functions/{author}/{name}/env/{key}", authMiddleware.RequireAuth(registryHandler.HandleDeleteEnvVar)).Methods("DELETE", "OPTIONS")
+
+	// Secrets (protected)
+	api.HandleFunc("/functions/{author}/{name}/secrets", authMiddleware.RequireAuth(registryHandler.HandleGetSecrets)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/functions/{author}/{name}/secrets", authMiddleware.RequireAuth(registryHandler.HandlePutSecrets)).Methods("PUT", "OPTIONS")
+	api.HandleFunc("/functions/{author}/{name}/secrets/{key}", authMiddleware.RequireAuth(registryHandler.HandleDeleteSecret)).Methods("DELETE", "OPTIONS")
+
 	// ── MCP Settings (per-function) ──────────────────────────────────────────
 	api.HandleFunc("/functions/{author}/{name}/mcp", authMiddleware.RequireAuth(registryHandler.HandleGetMCPSettings)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/functions/{author}/{name}/mcp", authMiddleware.RequireAuth(registryHandler.HandleUpdateMCPSettings)).Methods("PATCH", "OPTIONS")

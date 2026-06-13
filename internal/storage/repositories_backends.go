@@ -34,6 +34,10 @@ func (db *PostgresDB) UpdateBackendEnabled(ctx context.Context, backendID uuid.U
 	return db.backendRepository.UpdateBackendEnabled(ctx, backendID, enabled)
 }
 
+func (db *PostgresDB) DeleteBackend(backendID uuid.UUID) error {
+	return db.backendRepository.DeleteBackend(context.Background(), backendID)
+}
+
 func (db *PostgresDB) ListFeatureMeasures(ctx context.Context) ([]*FeatureMeasure, error) {
 	return db.featureMeasureRepository.ListFeatureMeasures(ctx)
 }
