@@ -7,7 +7,7 @@ export const DOCS_ORIGIN =
   "https://docs.functionfly.com";
 export const AUTH_ORIGIN =
   (import.meta.env.PUBLIC_AUTH_URL as string | undefined)?.replace(/\/$/, "") ||
-  (import.meta.env.DEV ? "http://localhost:4324" : "https://auth.functionfly.com");
+  "https://auth.functionfly.com";
 
 /** Dashboard / app origin (nav “Dashboard”, Get Started, etc.). Dev: PUBLIC_APP_URL=http://localhost:3000 */
 export const APP_DASHBOARD_ORIGIN =

@@ -28,13 +28,6 @@ function t(key: string): string {
 
 const current = getLanguage(currentLang) ?? getLanguage('en')!;
 const isRtl = current.dir === 'rtl';
-
-// Detect if browser lang differs from current (for "detected" badge)
-const browserLang = Astro.request.headers.get('accept-language') ?? '';
-import { detectLanguage } from '../lib/i18n/languages';
-const detectedCode = detectLanguage(browserLang);
-const showDetected = detectedCode !== currentLang && detectedCode !== 'en';
-const detectedLang = getLanguage(detectedCode);
 ---
 
 <!-- Language Picker -->
@@ -60,13 +53,6 @@ const detectedLang = getLanguage(detectedCode);
       </svg>
       <span>{t('language.title')}</span>
     </div>
-
-    {showDetected && (
-      <div class="lang-detected">
-        <span class="lang-detected-badge">{t('language.detected')}</span>
-        <span class="lang-detected-name">{detectedLang?.flag} {detectedLang?.name}</span>
-      </div>
-    )}
 
     <div class="lang-list">
       {LANGUAGES_BY_NATIVE_NAME.map((lang: Language) => {
@@ -100,7 +86,27 @@ const detectedLang = getLanguage(detectedCode);
   </div>
 </div>
 
-<script define:vars={{ detectedCode, detectedLang: detectedLang ?? null }}>
+<script define:vars={{ currentLang }}>
+  import { detectLanguage } from '../lib/i18n/languages';
+
+  const browserLang = navigator.language ?? '';
+  const detectedCode = detectLanguage(browserLang);
+  const showDetected = detectedCode !== currentLang && detectedCode !== 'en';
+
+  if (showDetected) {
+    const dropdown = document.getElementById('lang-dropdown');
+    const header = dropdown?.querySelector('.lang-dropdown-header');
+    if (dropdown && header) {
+      const detectedEl = document.createElement('div');
+      detectedEl.className = 'lang-detected';
+      detectedEl.innerHTML = `
+        <span class="lang-detected-badge">Detected</span>
+        <span class="lang-detected-name">${detectedCode}</span>
+      `;
+      dropdown.insertBefore(detectedEl, header.nextSibling);
+    }
+  }
+
   // Persist language to localStorage + cookie, then reload
   document.querySelectorAll('.lang-option[data-lang]').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -108,9 +114,7 @@ const detectedLang = getLanguage(detectedCode);
       if (!lang) return;
       localStorage.setItem('ff_lang', lang);
       document.cookie = `ff_lang=${lang}; path=/; max-age=31536000; SameSite=Lax`;
-      // For instant UI update without reload, post a custom event
       window.dispatchEvent(new CustomEvent('ff:lang-change', { detail: { lang } }));
-      // Reload to let the server re-render with the new locale
       window.location.reload();
     });
   });

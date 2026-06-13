@@ -1,6 +1,5 @@
 import react from "@astrojs/react";
 import sitemap from "@astrojs/sitemap";
-import sentry from "@sentry/astro";
 import vercel from "@astrojs/vercel";
 import { defineConfig } from "astro/config";
 
@@ -14,15 +13,13 @@ const SUPPORTED_LOCALES = [
   "pt", "ar", "ru", "hi", "nl", "pl", "tr", "vi",
 ];
 
+const isDev = process.env.NODE_ENV === "development" || !process.env.NODE_ENV;
+
 // https://astro.build/config
 export default defineConfig({
   site,
   integrations: [
     react(),
-    sentry({
-      dsn: process.env.SENTRY_DSN,
-      tracesSampleRate: 0.1,
-    }),
     sitemap({
       changefreq: "weekly",
       priority: 0.7,
@@ -49,7 +46,10 @@ export default defineConfig({
   server: {
     host: true,
     port: 4321,
-    strictPort: false,
+    strictPort: true,
+    hmr: {
+      overlay: true,
+    },
   },
   build: {
     format: "directory",
@@ -73,10 +73,16 @@ export default defineConfig({
           rewrite: (path) => path.replace(/^\/docs/, ""),
         },
       },
+      watch: {
+        ignored: ["**/node_modules/**", "**/.astro/**"],
+      },
     },
     build: {
       cssMinify: true,
       minify: "esbuild",
+    },
+    optimizeDeps: {
+      include: ["react", "react-dom", "three", "@react-three/fiber", "@react-three/drei"],
     },
   },
 });

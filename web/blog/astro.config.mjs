@@ -40,7 +40,7 @@ export default defineConfig({
   server: {
     host: true,
     port: 4327,
-    strictPort: false,
+    strictPort: true,
   },
   build: {
     format: "directory",

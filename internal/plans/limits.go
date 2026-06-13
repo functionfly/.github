@@ -21,10 +21,11 @@ const (
 
 	// Default request limits per month
 	// NOTE: These must match the frontend PLANS limits in web/dashboard/src/lib/constants.ts
-	FreeMaxRequestsPerMonth                 = 500         // Free tier: 500 requests/month
-	StarterMaxRequestsPerMonth              = 1_000_000   // 1M requests - matches frontend Starter
-	DefaultProMaxRequestsPerMonth           = 10_000_000 // 10M requests - matches frontend Professional
-	DefaultEnterpriseMaxRequestsPerMonth    = -1          // Unlimited (-1 = unlimited in our system)
+	// Option B (Balanced): 25K Free, 250K Starter, 2.5M Pro, 25M Enterprise
+	FreeMaxRequestsPerMonth                 = 25_000      // Free tier: 25K requests/month
+	StarterMaxRequestsPerMonth              = 250_000     // 250K requests - matches frontend Starter
+	DefaultProMaxRequestsPerMonth           = 2_500_000   // 2.5M requests - matches frontend Professional
+	DefaultEnterpriseMaxRequestsPerMonth    = 25_000_000  // 25M requests - Enterprise tier
 
 	// Function limits
 	FreeMaxFunctions           = 3
@@ -785,18 +786,18 @@ type UsagePricingTier struct {
 	MaxRequestsPerMonth     int     // -1 for unlimited
 }
 
-// Usage-based pricing tiers for the main platform - 2026 optimized (Option C Hybrid)
+// Usage-based pricing tiers for the main platform - 2026 optimized (Option B Balanced)
 var UsagePricingTiers = map[string]UsagePricingTier{
 "free": {
 		Name:                    "Free",
-		IncludedRequestsMonthly: 500,
+		IncludedRequestsMonthly: 25_000,
 		MonthlyPriceCents:       0,
 		OveragePricePer1000:     0, // Hard stop
-		MaxRequestsPerMonth:     500,
+		MaxRequestsPerMonth:     25_000,
 	},
 	"starter": {
 		Name:                    "Starter",
-		IncludedRequestsMonthly: 100_000,
+		IncludedRequestsMonthly: 250_000,
 		MonthlyPriceCents:       StarterPriceCents, // $24/month
 		OveragePricePer1000:     StarterOveragePer1000Cents, // $0.15/1K
 		AnnualDiscountPercent:   0.17, // 17% off (2 months free)
@@ -804,7 +805,7 @@ var UsagePricingTiers = map[string]UsagePricingTier{
 	},
 	"professional": {
 		Name:                    "Professional",
-		IncludedRequestsMonthly: 1_000_000,
+		IncludedRequestsMonthly: 2_500_000,
 		MonthlyPriceCents:       ProPriceCents, // $79/month
 		OveragePricePer1000:     ProOveragePer1000Cents, // $0.08/1K
 		AnnualDiscountPercent:   0.17, // 17% off
@@ -812,9 +813,9 @@ var UsagePricingTiers = map[string]UsagePricingTier{
 	},
 	"enterprise": {
 		Name:                    "Enterprise",
-		IncludedRequestsMonthly: 10_000_000,
-		MonthlyPriceCents:       EnterprisePriceCents, // $199/month
-		OveragePricePer1000:     EnterpriseOveragePer1000Cents, // $0.04/1K
+		IncludedRequestsMonthly: 25_000_000,
+		MonthlyPriceCents:       EnterprisePriceCents, // $299/month
+		OveragePricePer1000:     EnterpriseOveragePer1000Cents, // $0.05/1K
 		AnnualDiscountPercent:   0.17, // 17% off
 		MaxRequestsPerMonth:     -1,
 	},
