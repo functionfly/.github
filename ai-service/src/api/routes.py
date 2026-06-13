@@ -140,6 +140,16 @@ async def health_check():
     )
 
 
+@router.get("/api/health", response_model=HealthResponse)
+async def api_health_check():
+    """Health check endpoint at /api/health path.
+
+    Returns:
+        Health status of the service and its dependencies
+    """
+    return await health_check()
+
+
 @router.get("/api/providers", response_model=ProviderStatusResponse)
 async def get_providers():
     """Get status of all available providers.

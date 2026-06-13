@@ -6,7 +6,7 @@ import time as pytime
 import logging
 from typing import AsyncGenerator, Optional, List, Dict, Any
 
-from fastapi import APIRouter, HTTPException, Query, status, Depends
+from fastapi import APIRouter, HTTPException, Query, status, Depends, Header
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
