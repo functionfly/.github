@@ -1,0 +1,85 @@
+# CRD manifest for VaultSecret + VaultDynamicCredential.
+# Apply before installing the operator.
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: vaultsecrets.functionfly.io
+spec:
+  group: functionfly.io
+  scope: Namespaced
+  names:
+    plural: vaultsecrets
+    singular: vaultsecret
+    kind: VaultSecret
+    shortNames: [vsec]
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [secretId, tenantId, apiTokenRef]
+              properties:
+                secretId: { type: string }
+                tenantId: { type: string }
+                apiServer: { type: string }
+                refreshInterval: { type: string }
+                secretType: { type: string }
+                apiTokenRef:
+                  type: object
+                  required: [name]
+                  properties:
+                    name: { type: string }
+                    namespace: { type: string }
+                    key: { type: string }
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: vaultdynamiccredentials.functionfly.io
+spec:
+  group: functionfly.io
+  scope: Namespaced
+  names:
+    plural: vaultdynamiccredentials
+    singular: vaultdynamiccredential
+    kind: VaultDynamicCredential
+    shortNames: [vdyn]
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [credentialId, tenantId, apiTokenRef, env]
+              properties:
+                credentialId: { type: string }
+                tenantId: { type: string }
+                apiServer: { type: string }
+                ttlSeconds: { type: integer, minimum: 60 }
+                renewBeforeSeconds: { type: integer, minimum: 30 }
+                apiTokenRef:
+                  type: object
+                  required: [name]
+                  properties:
+                    name: { type: string }
+                    namespace: { type: string }
+                    key: { type: string }
+                env:
+                  type: object
+                  required: [username, password, host, port, database]
+                  properties:
+                    username: { type: string }
+                    password: { type: string }
+                    host: { type: string }
+                    port: { type: string }
+                    database: { type: string }
+                    expiresAt: { type: string }

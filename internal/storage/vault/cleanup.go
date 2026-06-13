@@ -113,11 +113,11 @@ func (s *CleanupService) StartCleanupRoutine(ctx context.Context) {
 	}
 
 	s.logger.WithFields(logrus.Fields{
-		"interval":            s.config.CleanupInterval.String(),
-		"batch_size":          s.config.BatchSize,
-		"retention_days":      s.config.RetentionDays,
-		"keep_latest":         s.config.KeepLatestVersions,
-		"dry_run":             s.config.DryRun,
+		"interval":       s.config.CleanupInterval.String(),
+		"batch_size":     s.config.BatchSize,
+		"retention_days": s.config.RetentionDays,
+		"keep_latest":    s.config.KeepLatestVersions,
+		"dry_run":        s.config.DryRun,
 	}).Info("Starting secret version cleanup routine")
 
 	s.runCleanup(ctx)

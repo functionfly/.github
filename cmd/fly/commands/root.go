@@ -26,6 +26,7 @@ Go from idea → global API in under 60 seconds.
   ff rollback           Roll back to a previous version
   ff env                Manage environment variables
   ff secrets            Manage secrets
+  ff vault              Manage zero-knowledge vault secrets
   ff whoami             Show current logged-in user
   ff logout             Clear stored credentials
   ff completion         Generate shell completion scripts`,
@@ -72,6 +73,7 @@ Go from idea → global API in under 60 seconds.
 		NewRollbackCmd(),
 		NewEnvCmd(),
 		NewSecretsCmd(),
+		NewVaultCmd(),
 		NewScheduleCmd(),
 		NewDreCmd(),
 		NewCompletionCmd(root),

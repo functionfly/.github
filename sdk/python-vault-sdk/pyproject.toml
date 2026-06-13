@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "functionfly-vault"
+version = "0.1.0"
+description = "Official Python SDK for the FunctionFly zero-knowledge secrets vault"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.9"
+authors = [{ name = "FunctionFly" }]
+keywords = ["functionfly", "vault", "secrets", "zero-knowledge"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/functionfly/functionfly"
+Issues = "https://github.com/functionfly/functionfly/issues"
+
+[tool.setuptools]
+packages = ["functionfly_vault"]

@@ -287,6 +287,36 @@ func (h *Handler) ValidateTokenForRuntime(next http.HandlerFunc) http.HandlerFun
 			return
 		}
 
+		// Phase 1.2: IP allowlist enforcement.
+		if token.IPRestrictionEnabled {
+			clientIP := getClientIP(r)
+			allowed := vault.IsAllowed(clientIP,
+				[]string(token.AllowedIPs), []string(token.DeniedIPs))
+			if !allowed {
+				auditLog := &vault.AuditLog{
+					SecretID:  &token.SecretID,
+					TenantID:  token.TenantID,
+					Action:    vault.AuditActionUse,
+					ActorID:   token.ID.String(),
+					ActorType: vault.ActorTypeToken,
+					RequestID: r.Header.Get("X-Request-ID"),
+					IPAddress: clientIP,
+					UserAgent: r.UserAgent(),
+					Metadata: vault.JSONMap{
+						"token_id": token.ID.String(),
+						"reason":   "ip_not_allowed",
+					},
+					Success:      false,
+					ErrorMessage: "client ip not allowed by token policy",
+				}
+				if err := h.repo.CreateAuditLog(r.Context(), auditLog); err != nil {
+					h.logger.WithError(err).Warn("Failed to write ip-deny audit log")
+				}
+				apierror.WriteError(w, apierror.NewForbidden("Client IP not allowed for this token"))
+				return
+			}
+		}
+
 		// Record token use
 		if err := h.repo.RecordTokenUse(r.Context(), token.ID); err != nil {
 			h.logger.WithError(err).Warn("Failed to record token use")

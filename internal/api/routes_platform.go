@@ -448,6 +448,73 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/vault/secrets/{id}/dependencies", authMiddleware.RequireAuth(vaultHandler.HandleCreateSecretDependency)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/vault/secrets/{id}/dependencies/{dep_id}", authMiddleware.RequireAuth(vaultHandler.HandleDeleteSecretDependency)).Methods("DELETE", "OPTIONS")
 
+	// ── Vault Security Hardening (Phase 1) ─────────────────────────────────
+	// 1.1 MFA
+	protected.HandleFunc("/vault/mfa/config", authMiddleware.RequireAuth(vaultHandler.HandleGetMFAConfig)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/vault/mfa/config", authMiddleware.RequireAuth(vaultHandler.HandleUpdateMFAConfig)).Methods("PUT", "OPTIONS")
+	protected.HandleFunc("/vault/mfa/verify", authMiddleware.RequireAuth(vaultHandler.HandleVerifyMFA)).Methods("POST", "OPTIONS")
+	// 1.2 Token IP policy
+	protected.HandleFunc("/vault/tokens/{id}/ip-policy", authMiddleware.RequireAuth(vaultHandler.HandleUpdateTokenIPPolicy)).Methods("PUT", "OPTIONS")
+	// 1.3 Expiration
+	protected.HandleFunc("/vault/secrets/{id}/expiration", authMiddleware.RequireAuth(vaultHandler.HandleSetSecretExpiration)).Methods("PUT", "OPTIONS")
+	// 1.4 Break-glass
+	protected.HandleFunc("/vault/break-glass", authMiddleware.RequireAuth(vaultHandler.HandleListBreakGlass)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/vault/break-glass", authMiddleware.RequireAuth(vaultHandler.HandleRequestBreakGlass)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/vault/break-glass/config", authMiddleware.RequireAuth(vaultHandler.HandleGetBreakGlassConfig)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/vault/break-glass/{id}/approve", authMiddleware.RequireAuth(vaultHandler.HandleApproveBreakGlass)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/vault/break-glass/{id}/deny", authMiddleware.RequireAuth(vaultHandler.HandleDenyBreakGlass)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/vault/break-glass/{id}/revoke", authMiddleware.RequireAuth(vaultHandler.HandleRevokeBreakGlass)).Methods("POST", "OPTIONS")
+	// 1.4b Escrow
+	protected.HandleFunc("/vault/escrow", authMiddleware.RequireAuth(vaultHandler.HandleGetEscrowStatus)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/vault/escrow", authMiddleware.RequireAuth(vaultHandler.HandleEnableEscrow)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/vault/escrow", authMiddleware.RequireAuth(vaultHandler.HandleDisableEscrow)).Methods("DELETE", "OPTIONS")
+
+	// ── Vault Dynamic Secrets (Phase 2) ────────────────────────────────────
+	// 2.3 Database targets
+	protected.HandleFunc("/vault/dynamic-secret-targets", authMiddleware.RequireAuth(vaultHandler.HandleListTargets)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/vault/dynamic-secret-targets", authMiddleware.RequireAuth(vaultHandler.HandleCreateTarget)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/vault/dynamic-secret-targets/{id}", authMiddleware.RequireAuth(vaultHandler.HandleDeleteTarget)).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/vault/dynamic-secret-targets/{id}/test", authMiddleware.RequireAuth(vaultHandler.HandleTestTarget)).Methods("POST", "OPTIONS")
+	// 2.1 Credential templates
+	protected.HandleFunc("/vault/dynamic-credentials", authMiddleware.RequireAuth(vaultHandler.HandleListCredentials)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/vault/dynamic-credentials", authMiddleware.RequireAuth(vaultHandler.HandleCreateCredential)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/vault/dynamic-credentials/{id}/generate", authMiddleware.RequireAuth(vaultHandler.HandleGenerateCredential)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/vault/dynamic-credentials/{id}/revoke", authMiddleware.RequireAuth(vaultHandler.HandleRevokeCredential)).Methods("POST", "OPTIONS")
+	// 2.2 Leases
+	protected.HandleFunc("/vault/dynamic-credentials/{id}/leases/{lease_id}/renew", authMiddleware.RequireAuth(vaultHandler.HandleRenewLease)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/vault/dynamic-credentials/{id}/leases/{lease_id}/revoke", authMiddleware.RequireAuth(vaultHandler.HandleRevokeLease)).Methods("POST", "OPTIONS")
+
+	// ── Vault Enterprise (Phase 4) ─────────────────────────────────────────
+	// 4.3 Namespaces
+	protected.HandleFunc("/vault/namespaces", authMiddleware.RequireAuth(vaultHandler.HandleListNamespaces)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/vault/namespaces", authMiddleware.RequireAuth(vaultHandler.HandleCreateNamespace)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/vault/namespaces/{id}", authMiddleware.RequireAuth(vaultHandler.HandleDeleteNamespace)).Methods("DELETE", "OPTIONS")
+	// 4.1 RBAC
+	protected.HandleFunc("/vault/roles", authMiddleware.RequireAuth(vaultHandler.HandleListRoles)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/vault/roles", authMiddleware.RequireAuth(vaultHandler.HandleCreateRole)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/vault/roles/{id}", authMiddleware.RequireAuth(vaultHandler.HandleUpdateRole)).Methods("PATCH", "OPTIONS")
+	protected.HandleFunc("/vault/roles/{id}", authMiddleware.RequireAuth(vaultHandler.HandleDeleteRole)).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/vault/roles/{id}/assignments", authMiddleware.RequireAuth(vaultHandler.HandleAssignRole)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/vault/role-assignments/{assignment_id}", authMiddleware.RequireAuth(vaultHandler.HandleUnassignRole)).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/vault/my-assignments", authMiddleware.RequireAuth(vaultHandler.HandleListMyAssignments)).Methods("GET", "OPTIONS")
+	// 4.4 Shares
+	protected.HandleFunc("/vault/secrets/{id}/share", authMiddleware.RequireAuth(vaultHandler.HandleShareSecret)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/vault/shared", authMiddleware.RequireAuth(vaultHandler.HandleListSharedWithMe)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/vault/shares/{share_id}", authMiddleware.RequireAuth(vaultHandler.HandleRevokeShare)).Methods("DELETE", "OPTIONS")
+	// 4.5 SSO
+	protected.HandleFunc("/vault/sso/config", authMiddleware.RequireAuth(vaultHandler.HandleGetSSOConfig)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/vault/sso/config", authMiddleware.RequireAuth(vaultHandler.HandleUpdateSSOConfig)).Methods("PUT", "OPTIONS")
+	// 4.2 SIEM webhooks
+	protected.HandleFunc("/vault/siem-webhooks", authMiddleware.RequireAuth(vaultHandler.HandleListSIEMWebhooks)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/vault/siem-webhooks", authMiddleware.RequireAuth(vaultHandler.HandleCreateSIEMWebhook)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/vault/siem-webhooks/{id}", authMiddleware.RequireAuth(vaultHandler.HandleDeleteSIEMWebhook)).Methods("DELETE", "OPTIONS")
+	// 4.2 Audit export
+	protected.HandleFunc("/vault/audit/export", authMiddleware.RequireAuth(vaultHandler.HandleExportAudit)).Methods("GET", "OPTIONS")
+
+	// ── Vault Performance & Reliability (Phase 5) ───────────────────────
+	// 5.1 Cache stats
+	protected.HandleFunc("/vault/cache/stats", authMiddleware.RequireAuth(vaultHandler.HandleCacheStats)).Methods("GET", "OPTIONS")
+
 	// ── Bulk Operations (protected) ─────────────────────────────────────────
 	protected.HandleFunc("/vault/secrets/bulk-delete", authMiddleware.RequireAuth(vaultRateLimiter.LimitCreate(vaultHandler.HandleBulkDeleteSecrets))).Methods("DELETE", "OPTIONS")
 	protected.HandleFunc("/vault/secrets/export", authMiddleware.RequireAuth(vaultHandler.HandleExportSecrets)).Methods("GET", "OPTIONS")

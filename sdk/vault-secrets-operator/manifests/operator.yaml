@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vault-secrets-operator
+  namespace: functionfly-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vault-secrets-operator
+rules:
+  - apiGroups: [functionfly.io]
+    resources: [vaultsecrets, vaultdynamiccredentials]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [functionfly.io]
+    resources: [vaultsecrets/status, vaultdynamiccredentials/status]
+    verbs: [get, update, patch]
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [""]
+    resources: [serviceaccounts]
+    verbs: [get]  # for service-account-token auth
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vault-secrets-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: vault-secrets-operator
+subjects:
+  - kind: ServiceAccount
+    name: vault-secrets-operator
+    namespace: functionfly-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vault-secrets-operator
+  namespace: functionfly-system
+  labels: { app: vault-secrets-operator }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: vault-secrets-operator }
+  template:
+    metadata:
+      labels: { app: vault-secrets-operator }
+    spec:
+      serviceAccountName: vault-secrets-operator
+      containers:
+        - name: operator
+          image: ghcr.io/functionfly/vault-secrets-operator:v1
+          args: ["-watch-namespaces=*"]
+          env:
+            - name: POD_NAMESPACE
+              valueFrom: { fieldRef: { fieldPath: metadata.namespace } }
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits:   { cpu: 200m, memory: 256Mi }

@@ -658,7 +658,7 @@ func (r *Repository) GetVaultStats(ctx context.Context) (map[string]interface{},
 	r.db.WithContext(ctx).Model(&SecretVersion{}).Count(&totalVersions)
 
 	return map[string]interface{}{
-		"total_secrets": totalCount,
+		"total_secrets":  totalCount,
 		"total_versions": totalVersions,
 	}, nil
 }
@@ -916,10 +916,10 @@ func (r *Repository) BulkDeleteSecretsDryRun(ctx context.Context, secretIDs []uu
 			First(&secret).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				previews[secretID] = BulkDeletePreview{
-					SecretID:    secretID,
-					SecretName:  "",
-					Found:       false,
-					TokensCount: 0,
+					SecretID:     secretID,
+					SecretName:   "",
+					Found:        false,
+					TokensCount:  0,
 					Dependencies: []DependencyInfo{},
 				}
 				continue
@@ -942,10 +942,10 @@ func (r *Repository) BulkDeleteSecretsDryRun(ctx context.Context, secretIDs []uu
 		depInfos := make([]DependencyInfo, len(deps))
 		for i, d := range deps {
 			depInfos[i] = DependencyInfo{
-				ID:            d.DependentID,
-				Type:          d.DependentType,
-				Name:          d.DependentName,
-				Criticality:   d.Criticality,
+				ID:          d.DependentID,
+				Type:        d.DependentType,
+				Name:        d.DependentName,
+				Criticality: d.Criticality,
 			}
 		}
 
@@ -963,10 +963,10 @@ func (r *Repository) BulkDeleteSecretsDryRun(ctx context.Context, secretIDs []uu
 
 // BulkDeletePreview contains preview information for bulk delete
 type BulkDeletePreview struct {
-	SecretID     uuid.UUID       `json:"secret_id"`
-	SecretName   string          `json:"secret_name"`
-	Found        bool            `json:"found"`
-	TokensCount  int             `json:"tokens_count"`
+	SecretID     uuid.UUID        `json:"secret_id"`
+	SecretName   string           `json:"secret_name"`
+	Found        bool             `json:"found"`
+	TokensCount  int              `json:"tokens_count"`
 	Dependencies []DependencyInfo `json:"dependencies"`
 }
 
@@ -999,7 +999,7 @@ func (r *Repository) ExportSecrets(ctx context.Context, tenantID uuid.UUID) ([]S
 			Name:        s.Name,
 			Description: s.Description,
 			SecretType:  s.SecretType,
-			KeyVersion: s.KeyVersion,
+			KeyVersion:  s.KeyVersion,
 			Scopes:      s.Scopes,
 			Metadata:    s.Metadata,
 			CreatedAt:   s.CreatedAt,
