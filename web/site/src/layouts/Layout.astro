@@ -1,10 +1,12 @@
 ---
-import { SITE_ORIGIN, API_ORIGIN, DOCS_ORIGIN } from '../config';
+import { SITE_ORIGIN, API_ORIGIN, DOCS_ORIGIN, BLOG_ORIGIN, STATUS_ORIGIN } from '../config';
 import { SEO } from 'astro-seo';
 import { Schema } from 'astro-seo-schema';
 import { t, getLocale, SUPPORTED_LOCALES, isRtl, LOCALE_DATA } from '../i18n';
 import LanguagePicker from '../components/LanguagePicker.astro';
+import Header from '../components/Header.astro';
 import '../styles/design-system.css';
+import '../components/ChangelogPage/changelog.css';
 
 const mixpanelToken = import.meta.env.PUBLIC_MIXPANEL_TOKEN as string | undefined;
 
@@ -149,7 +151,8 @@ const finalSchemas = schema
           { rel: 'stylesheet', href: 'https://cdn.jsdelivr.net/gh/nickolay8857/CommitMono@main/CommitMono.css' },
           // Favicons
           { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
-          { rel: 'apple-touch-icon', href: '/apple-touch-icon.svg' },
+          { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+          { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
           // Canonical self-reference
           { rel: 'canonical', href: canonicalURL },
           // Alternate languages for i18n
@@ -277,14 +280,7 @@ const finalSchemas = schema
           }
         }
 
-        window.ffThemeSync = {
-          toggle: function() {
-            var current = _cached ? _cached.resolved : getSystemTheme();
-            var next = current === 'dark' ? 'light' : 'dark';
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode: next }));
-            var resolved = resolveTheme(next);
-            _cached = { mode: next, resolved: resolved };
-            document.documentElement.setAttribute('data-theme', resolved);
+                    document.documentElement.setAttribute('data-theme', resolved);
             window.dispatchEvent(new CustomEvent('ff-theme-change', { detail: _cached }));
             updateThemeIcon();
           },
@@ -293,43 +289,7 @@ const finalSchemas = schema
       })();
     </script>
 
-    <header class="header">
-      <nav class="nav">
-        <a href="/" class="logo">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect class="logo-bg" width="32" height="32" rx="6" fill="#0D1117"/>
-            <path d="M16 5L27 16L16 27L5 16L16 5Z" fill="#FF6B35"/>
-            <path d="M16 9.5L22.5 16L16 22.5L9.5 16L16 9.5Z" fill="white"/>
-            <path d="M16 12.5L19.5 16L16 19.5L12.5 16L16 12.5Z" fill="#00D4FF"/>
-          </svg>
-          <span>FunctionFly</span>
-        </a>
-        <div class="nav-links">
-          <a href={`${DOCS_ORIGIN}/`} class:list={[navClass('/docs')]}>Docs</a>
-          <a href="/for-agents" class:list={[navClass('/for-agents')]}>For AI Agents</a>
-          <a href="/trust" class:list={[navClass('/trust')]}>Trust</a>
-          <a href="/pricing" class:list={[navClass('/pricing')]}>Pricing</a>
-          <a href="/blog" class:list={[navClass('/blog')]}>Blog</a>
-          <a href={`${import.meta.env.PUBLIC_AUTH_URL || 'https://auth.functionfly.com'}/signup`} class="nav-cta">Sign up</a>
-          <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
-            <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="5"/>
-              <line x1="12" y1="1" x2="12" y2="3"/>
-              <line x1="12" y1="21" x2="12" y2="23"/>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-              <line x1="1" y1="12" x2="3" y2="12"/>
-              <line x1="21" y1="12" x2="23" y2="12"/>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-            </svg>
-            <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-            </svg>
-          </button>
-        </div>
-      </nav>
-    </header>
+    <Header />
     <main id="main-content">
       <slot />
     </main>
@@ -337,21 +297,19 @@ const finalSchemas = schema
       <div class="footer-content">
         <div class="footer-top">
           <div class="footer-brand">
-            <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect class="logo-bg" width="32" height="32" rx="6" fill="#0D1117"/>
-              <path d="M16 5L27 16L16 27L5 16L16 5Z" fill="#FF6B35"/>
-              <path d="M16 9.5L22.5 16L16 22.5L9.5 16L16 9.5Z" fill="white"/>
-              <path d="M16 12.5L19.5 16L16 19.5L12.5 16L16 12.5Z" fill="#00D4FF"/>
-            </svg>
+            <img src="/favicon.svg" alt="" width="24" height="24" />
             <p>The trust layer for AI agents.</p>
           </div>
           <div class="footer-links">
             <div class="footer-column">
               <h4>Product</h4>
               <a href={`${DOCS_ORIGIN}/`}>Documentation</a>
+              <a href="/registry">Function Registry</a>
               <a href="/trust">Trust layer</a>
               <a href="/state-fabric">State Fabric</a>
               <a href="/for-agents">For AI agents</a>
+              <a href="/mcp">MCP</a>
+              <a href="/plans">Plans</a>
               <a href="/pricing">Pricing</a>
               <a href="/changelog">Changelog</a>
             </div>
@@ -361,15 +319,23 @@ const finalSchemas = schema
               <a href={`${DOCS_ORIGIN}/sdks`}>SDKs</a>
               <a href={`${DOCS_ORIGIN}/openapi`}>OpenAPI Spec</a>
               <a href={`${DOCS_ORIGIN}/sandbox`}>Sandbox</a>
-              <a href="https://status.functionfly.com" target="_blank" rel="noopener">Status</a>
+              <a href={`${STATUS_ORIGIN}`} target="_blank" rel="noopener">Status</a>
               <a href="/rss.xml">RSS Feed</a>
+            </div>
+            <div class="footer-column">
+              <h4>MCP</h4>
+              <a href={`${DOCS_ORIGIN}/mcp`}>MCP Docs</a>
+              <a href={`${DOCS_ORIGIN}/mcp/publish-mcp`}>Publish a Function</a>
+              <a href={`${DOCS_ORIGIN}/mcp/server`}>MCP Server</a>
+              <a href={`${DOCS_ORIGIN}/mcp/manifest`}>Manifest Spec</a>
             </div>
             <div class="footer-column">
               <h4>Company</h4>
               <a href="/about">About</a>
-              <a href="/blog">Blog</a>
+              <a href={BLOG_ORIGIN}>Blog</a>
               <a href="/careers">Careers</a>
               <a href="/contact">Contact</a>
+              <a href="/partnerships">Partnerships</a>
             </div>
             <div class="footer-column">
               <h4>Community</h4>
@@ -462,23 +428,7 @@ const finalSchemas = schema
         });
       }
 
-      // Theme toggle - uses unified ff-user-theme storage
-      const themeToggle = document.getElementById('theme-toggle');
-      function updateThemeIcon() {
-        const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-        if (themeToggle) themeToggle.classList.toggle('is-light', isLight);
-      }
-
-      updateThemeIcon();
-
-      if (themeToggle) {
-        themeToggle.addEventListener('click', () => {
-          if (window.ffThemeSync && window.ffThemeSync.toggle) {
-            window.ffThemeSync.toggle();
-          }
-        });
-      }
-    </script>
+      </script>
 
     {/* Newsletter Form Handler */}
     <script is:inline define:vars={{ newsletterSubscribeUrl }}>
@@ -794,7 +744,7 @@ const finalSchemas = schema
     min-width: 180px;
   }
 
-  .footer-brand svg {
+  .footer-brand img {
     margin-bottom: 0.5rem;
   }
 

@@ -1,0 +1,37 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { SITE_ORIGIN } from '../config';
+import McpPage from '../components/McpPage.tsx';
+
+const title = 'MCP — Model Context Protocol for AI Agents — FunctionFly';
+const description = 'Make your functions discoverable by any MCP-compatible agent. FunctionFly\'s MCP integration lets agents find and call your tools with zero glue code.';
+
+const organizationSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'FunctionFly',
+  url: SITE_ORIGIN,
+  description,
+};
+
+const softwareSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'FunctionFly MCP',
+  applicationCategory: 'DeveloperApplication',
+  operatingSystem: 'Any (Cloud-based)',
+  description,
+  url: SITE_ORIGIN,
+};
+
+const schemas = [organizationSchema, softwareSchema];
+---
+
+<Layout
+  title={title}
+  description={description}
+  schema={schemas}
+  ogImage="/og-home.svg"
+>
+  <McpPage client:load />
+</Layout>

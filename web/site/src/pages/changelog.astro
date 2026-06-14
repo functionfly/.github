@@ -1,13 +1,14 @@
 ---
-import ContentPage from '../layouts/ContentPage.astro';
+import Layout from '../layouts/Layout.astro';
+import ChangelogPage from '../components/ChangelogPage/ChangelogPage';
 import { SITE_ORIGIN } from '../config';
+import '../components/homepage.css';
 
-// Article schema for changelog/release notes
 const changelogSchema = {
   '@context': 'https://schema.org',
   '@type': 'Article',
   headline: 'FunctionFly Changelog',
-  description: 'FunctionFly release history and notable changes.',
+  description: 'FunctionFly release history and notable changes. Stay updated with new features, improvements, and fixes.',
   author: {
     '@type': 'Organization',
     name: 'FunctionFly',
@@ -22,7 +23,6 @@ const changelogSchema = {
     },
   },
   datePublished: '2026-04-13',
-  dateModified: '2026-04-13',
   mainEntityOfPage: {
     '@type': 'WebPage',
     '@id': `${SITE_ORIGIN}/changelog`,
@@ -30,20 +30,11 @@ const changelogSchema = {
 };
 ---
 
-<ContentPage
+<Layout
   title="Changelog — FunctionFly"
-  description="FunctionFly release history and notable changes."
+  description="FunctionFly release history and notable changes. Stay updated with new features, improvements, and fixes."
   schema={changelogSchema}
   ogImage="/og-changelog.svg"
 >
-  <h1>Changelog</h1>
-  <p class="lead">High-level product and API changes are published here and in GitHub releases.</p>
-  <h2>Releases</h2>
-  <p>
-    CLI and server artifacts:
-    <a href="https://github.com/functionfly/functionfly/releases" rel="noopener noreferrer">GitHub Releases</a>
-  </p>
-  <h2>2026</h2>
-  <p><strong>Launch</strong> — Public dashboard, trust layer positioning, and documentation site alignment.</p>
-  <p class="muted">Detailed per-service changelogs may move to the docs site over time.</p>
-</ContentPage>
+  <ChangelogPage client:load />
+</Layout>

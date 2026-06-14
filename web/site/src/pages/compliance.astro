@@ -1,10 +1,10 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { SITE_ORIGIN } from '../config';
-import CareersPage from '../components/CareersPage.tsx';
+import CompliancePage from '../components/CompliancePage.tsx';
 
-const title = 'Careers — FunctionFly';
-const description = 'Careers at FunctionFly. We are not hiring right now, but we welcome interest.';
+const title = 'Compliance & Security — FunctionFly';
+const description = 'Enterprise-grade security and compliance. SOC 2 Type II, GDPR, CCPA, COPPA compliant with zero-knowledge vault and custom security options.';
 
 const organizationSchema = {
   '@context': 'https://schema.org',
@@ -23,5 +23,5 @@ const schemas = [organizationSchema];
   schema={schemas}
   ogImage="/og-home.svg"
 >
-  <CareersPage client:load />
+  <CompliancePage client:load />
 </Layout>

@@ -157,8 +157,8 @@ const pricingSchemas = [faqSchema, productSchema];
       </div>
 
       <div class="pricing-grid">
-        <article class="pricing-card">
-          <h3 class="pricing-tier-name">Free</h3>
+<article class="pricing-card">
+          <h3 class="pricing-tierName">Free</h3>
           <div class="pricing-price">
             <span class="pricing-price-amount">$0</span>
             <span class="pricing-price-period">/ month</span>
@@ -170,6 +170,7 @@ const pricingSchemas = [faqSchema, productSchema];
             <li><span class="pricing-feature-check" aria-hidden="true">✓</span> 25K requests / month</li>
             <li><span class="pricing-feature-check" aria-hidden="true">✓</span> 3 AI agents, 10K calls/mo</li>
             <li><span class="pricing-feature-check" aria-hidden="true">✓</span> Community support</li>
+            <li><span class="pricing-feature-check" aria-hidden="true">✓</span> <strong>Zero-Knowledge Vault:</strong> 25 secrets, expiration</li>
             <li class="pricing-feature-special"><span class="pricing-feature-check" aria-hidden="true">✓</span> <strong>Time Machine:</strong> 24h replay window, 100 executions</li>
             <li class="pricing-feature-special"><span aria-hidden="true">—</span> <strong>Consciousness:</strong> Not included on Free</li>
           </ul>
@@ -192,6 +193,7 @@ const pricingSchemas = [faqSchema, productSchema];
             <li><span class="pricing-feature-check" aria-hidden="true">✓</span> State Fabric: up to 3 instances</li>
             <li><span class="pricing-feature-check" aria-hidden="true">✓</span> AI Agents: 10 agents, 100K calls/mo, 10 concurrency</li>
             <li><span class="pricing-feature-check" aria-hidden="true">✓</span> Email support &amp; basic analytics</li>
+            <li><span class="pricing-feature-check" aria-hidden="true">✓</span> <strong>Zero-Knowledge Vault:</strong> 500 secrets, expiration</li>
             <li class="pricing-feature-special"><span class="pricing-feature-check" aria-hidden="true">✓</span> <strong>Time Machine:</strong> 72h window, 1,000 execs/replay</li>
             <li class="pricing-feature-special"><span class="pricing-feature-check" aria-hidden="true">✓</span> <strong>Consciousness:</strong> system awareness score, daily digest, 7-day lookback</li>
           </ul>
@@ -216,6 +218,7 @@ const pricingSchemas = [faqSchema, productSchema];
             <li><span class="pricing-feature-check" aria-hidden="true">✓</span> AI Agents: 100 agents, 1M calls/mo, 100 concurrency</li>
             <li><span class="pricing-feature-check" aria-hidden="true">✓</span> 99.9% SLA, priority support</li>
             <li><span class="pricing-feature-check" aria-hidden="true">✓</span> Advanced analytics &amp; team collaboration</li>
+            <li><span class="pricing-feature-check" aria-hidden="true">✓</span> <strong>Zero-Knowledge Vault:</strong> 5K secrets, MFA, IP allowlist, break-glass</li>
             <li class="pricing-feature-special"><span class="pricing-feature-check" aria-hidden="true">✓</span> <strong>Time Machine:</strong> 30-day window, 10K execs, dry-run reconciliation</li>
             <li class="pricing-feature-special"><span class="pricing-feature-check" aria-hidden="true">✓</span> <strong>Consciousness:</strong> system awareness score, daily digest, 7-day lookback</li>
           </ul>
@@ -237,6 +240,7 @@ const pricingSchemas = [faqSchema, productSchema];
             <li><span class="pricing-feature-check" aria-hidden="true">✓</span> AI Agents: 500 agents, 5M calls/mo, 500 concurrency</li>
             <li><span class="pricing-feature-check" aria-hidden="true">✓</span> 99.99% SLA &amp; dedicated support</li>
             <li><span class="pricing-feature-check" aria-hidden="true">✓</span> Custom integrations &amp; onboarding</li>
+            <li><span class="pricing-feature-check" aria-hidden="true">✓</span> <strong>Zero-Knowledge Vault:</strong> 1M secrets, MFA, IP allowlist, break-glass, RBAC, SIEM, escrow</li>
             <li class="pricing-feature-special"><span class="pricing-feature-check" aria-hidden="true">✓</span> <strong>Time Machine:</strong> 90-day window, 100K execs, live reconciliation, SOC2/HIPAA audit certs</li>
             <li class="pricing-feature-special"><span class="pricing-feature-check" aria-hidden="true">✓</span> <strong>Consciousness:</strong> real-time insights, predictive alerts, Slack &amp; webhook, auto-fix proposals, 30-day lookback</li>
           </ul>
@@ -337,6 +341,13 @@ const pricingSchemas = [faqSchema, productSchema];
               <td>Priority</td>
               <td>Dedicated</td>
             </tr>
+            <tr>
+              <td>Zero-Knowledge Vault</td>
+              <td>25 secrets</td>
+              <td>500 secrets</td>
+              <td>5,000 secrets</td>
+              <td>1M secrets</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -366,22 +377,22 @@ const pricingSchemas = [faqSchema, productSchema];
             <tr>
               <td><strong>Free</strong></td>
               <td><span class="pricing-price-amount" data-monthly="Included" data-annual="Included">Included</span></td>
-              <td>3 agents, basic discovery</td>
+              <td>3 agents, 10K calls/mo, dynamic creds (PostgreSQL)</td>
             </tr>
             <tr>
               <td><strong>Bundled</strong> (Starter &amp; Professional)</td>
               <td><span class="pricing-price-amount" data-monthly="Included" data-annual="Included">Included</span></td>
-              <td>10–100 agents, 100K–1M calls/mo, up to 500 concurrency</td>
+              <td>10–100 agents, 100K–1M calls/mo, up to 500 concurrency, dynamic creds</td>
             </tr>
             <tr>
               <td><strong>Enterprise</strong></td>
               <td><span class="pricing-price-amount" data-monthly="$299 / mo" data-annual="$249 / mo">$299 / mo</span></td>
-              <td>500 agents, 5M calls/mo, 2K calls/min, $0.05/1K overage</td>
+              <td>500 agents, 5M calls/mo, 2K calls/min, dynamic creds (PostgreSQL + MySQL)</td>
             </tr>
             <tr>
               <td><strong>Agent Enterprise</strong></td>
               <td><span class="pricing-price-amount" data-monthly="$499 / mo" data-annual="$399 / mo">$499 / mo</span></td>
-              <td>Unlimited AI calls, unlimited agents, dedicated infrastructure</td>
+              <td>Unlimited AI calls, unlimited agents, dedicated infrastructure, SSO, HA status</td>
             </tr>
           </tbody>
         </table>
@@ -404,12 +415,12 @@ const pricingSchemas = [faqSchema, productSchema];
           <span class="pricing-detail-label">State Fabric</span>
           <span class="pricing-detail-sub">5 plans, add-ons &amp; storage pricing</span>
         </a>
-        <a class="pricing-detail-card" href="/pricing-details?tab=agents">
+<a class="pricing-detail-card" href="/agent-execution">
           <span class="pricing-detail-icon">🤖</span>
           <span class="pricing-detail-label">Agent execution</span>
-          <span class="pricing-detail-sub">Full agent table &amp; overage rates</span>
+          <span class="pricing-detail-sub">Tool calls, state, memory & credentials</span>
         </a>
-        <a class="pricing-detail-card" href="/pricing-details?tab=bundles">
+        <a class="pricing-detail-card" href="/bundles">
           <span class="pricing-detail-icon">📦</span>
           <span class="pricing-detail-label">Bundles</span>
           <span class="pricing-detail-sub">Backend-in-a-Box plans</span>
@@ -443,6 +454,12 @@ const pricingSchemas = [faqSchema, productSchema];
           <dt class="pricing-faq-question">What does Enterprise include?</dt>
           <dd class="pricing-faq-answer">
             Volume pricing, custom SLAs, security questionnaires, SSO, and tailored trust policies. <a href="/contact">Contact sales</a> with your requirements.
+          </dd>
+        </div>
+        <div class="pricing-faq-item">
+          <dt class="pricing-faq-question">What is the Zero-Knowledge Vault?</dt>
+          <dd class="pricing-faq-answer">
+            Client-side encrypted secrets storage—your passphrase and secrets are never sent to our servers. All encryption uses AES-256-GCM in your browser. Free includes 25 secrets, Starter 500, Professional 5,000, and Enterprise unlimited.
           </dd>
         </div>
       </dl>

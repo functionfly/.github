@@ -11,15 +11,24 @@ export const AUTH_ORIGIN =
 
 /** Dashboard / app origin (nav “Dashboard”, Get Started, etc.). Dev: PUBLIC_APP_URL=http://localhost:3000 */
 export const APP_DASHBOARD_ORIGIN =
-  // Astro pages are compiled by Vite; depending on how the dev server is started,
-  // env exposure can differ. Prefer import.meta.env, but fall back to process.env.
   (
     (import.meta.env.PUBLIC_APP_URL as string | undefined) ||
-    process.env.PUBLIC_APP_URL ||
-    (process.env.NODE_ENV === "development"
-      ? "http://localhost:3000"
-      : undefined)
+    (import.meta.env.DEV ? "http://localhost:3000" : undefined)
   )?.replace(/\/$/, "") || "https://app.functionfly.com";
+
+/** Blog origin. Dev: http://localhost:4327, Prod: https://blog.functionfly.com */
+export const BLOG_ORIGIN =
+  (
+    (import.meta.env.PUBLIC_BLOG_URL as string | undefined) ||
+    (import.meta.env.DEV ? "http://localhost:4327" : undefined)
+  )?.replace(/\/$/, "") || "https://blog.functionfly.com";
+
+/** Status page origin. Dev: http://localhost:3001, Prod: https://status.functionfly.com */
+export const STATUS_ORIGIN =
+  (
+    (import.meta.env.PUBLIC_STATUS_URL as string | undefined) ||
+    (import.meta.env.DEV ? "http://localhost:3001" : undefined)
+  )?.replace(/\/$/, "") || "https://status.functionfly.com";
 
 /**
  * NestJS blog API base URL (no path). Set PUBLIC_BLOG_API_URL in .env for local/prod builds.

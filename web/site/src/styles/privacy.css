@@ -18,13 +18,13 @@
   --privacy-success: var(--ff-success);
   --privacy-glow: var(--accent-glow);
 
-  /* Card gradients */
-  --privacy-card-bg: linear-gradient(145deg, rgba(22, 27, 34, 0.9), rgba(13, 17, 23, 0.95));
+  /* Card gradients - matching homepage style */
+  --privacy-card-bg: var(--ff-tarmac);
   --privacy-card-border: rgba(255, 107, 53, 0.15);
   --privacy-card-border-hover: rgba(255, 107, 53, 0.35);
 
   /* Light theme overrides */
-  --privacy-card-bg-light: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(246, 248, 250, 0.9));
+  --privacy-card-bg-light: white;
   --privacy-card-border-light: rgba(232, 90, 42, 0.2);
   --privacy-card-border-hover-light: rgba(232, 90, 42, 0.4);
 }
@@ -58,8 +58,9 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255, 107, 53, 0.15) 0%, transparent 55%),
-    radial-gradient(ellipse 60% 40% at 30% 30%, rgba(0, 212, 255, 0.08) 0%, transparent 50%);
+    radial-gradient(ellipse at 20% 0%, rgba(255, 107, 53, 0.25) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(0, 212, 255, 0.15) 0%, transparent 40%),
+    radial-gradient(ellipse at 50% 100%, rgba(255, 79, 94, 0.1) 0%, transparent 30%);
   pointer-events: none;
   z-index: 0;
 }
@@ -114,7 +115,7 @@
   background: rgba(255, 107, 53, 0.1);
   border: 1px solid rgba(255, 107, 53, 0.25);
   border-radius: 100px;
-  color: var(--fg-default);
+  color: var(--ff-primary-text);
   font-size: 0.875rem;
   font-weight: 500;
   text-decoration: none;
@@ -159,7 +160,7 @@
 
 .legal-header .lead {
   font-size: 1.15rem;
-  color: var(--fg-subtle);
+  color: var(--ff-secondary-text);
   max-width: 600px;
   margin: 0 auto 0.75rem;
   line-height: 1.6;
@@ -168,7 +169,7 @@
 }
 
 .legal-header .muted {
-  color: var(--fg-muted);
+  color: var(--ff-muted-text);
   font-size: 0.875rem;
   position: relative;
   z-index: 1;
@@ -271,7 +272,7 @@ article .legal-card h2,
   font-size: 1.5rem;
   font-weight: 700;
   margin-bottom: 1.25rem;
-  color: var(--fg-default);
+  color: var(--ff-primary-text);
   position: relative;
   z-index: 1;
   display: flex;
@@ -314,7 +315,7 @@ article .legal-card h4,
 article .legal-card p,
 .content-inner .legal-card p,
 .legal-card p {
-  color: var(--fg-subtle);
+  color: var(--ff-secondary-text);
   line-height: 1.7;
   margin-bottom: 1rem;
   position: relative;
@@ -324,7 +325,7 @@ article .legal-card p,
 article .legal-card ul,
 .content-inner .legal-card ul,
 .legal-card ul {
-  color: var(--fg-subtle);
+  color: var(--ff-secondary-text);
   line-height: 1.8;
   margin-bottom: 1.25rem;
   padding-left: 1.5rem;
@@ -347,7 +348,7 @@ article .legal-card li::marker,
 article .legal-card strong,
 .content-inner .legal-card strong,
 .legal-card strong {
-  color: var(--fg-default);
+  color: var(--ff-primary-text);
   font-weight: 600;
 }
 
@@ -507,7 +508,7 @@ article .legal-card a:hover,
 .cookie-header strong {
   font-size: 1.1rem;
   font-weight: 700;
-  color: var(--fg-default);
+  color: var(--ff-primary-text);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -523,7 +524,7 @@ article .legal-card a:hover,
 }
 
 .cookie-desc {
-  color: var(--fg-subtle);
+  color: var(--ff-secondary-text);
   font-size: 0.9375rem;
   line-height: 1.7;
   margin-bottom: 1rem;
@@ -533,7 +534,7 @@ article .legal-card a:hover,
 }
 
 .cookie-meta {
-  color: var(--fg-muted);
+  color: var(--ff-muted-text);
   font-size: 0.8125rem;
   font-family: var(--font-mono);
   padding: 1rem 1.5rem;
@@ -636,7 +637,7 @@ article .legal-card a:hover,
 .badge-muted {
   background: linear-gradient(135deg, rgba(255, 107, 53, 0.12), rgba(0, 212, 255, 0.08));
   border: 1px solid rgba(255, 107, 53, 0.25);
-  color: var(--fg-subtle);
+  color: var(--ff-secondary-text);
   box-shadow: 0 2px 8px rgba(255, 107, 53, 0.1);
 }
 
@@ -766,7 +767,7 @@ article .legal-card a:hover,
   background: linear-gradient(145deg, rgba(22, 27, 34, 0.6), rgba(13, 17, 23, 0.8));
   border: 1px solid rgba(255, 107, 53, 0.2);
   border-radius: 100px;
-  color: var(--fg-subtle);
+  color: var(--ff-secondary-text);
   font-size: 0.9375rem;
   font-weight: 500;
   text-decoration: none;
@@ -782,7 +783,7 @@ article .legal-card a:hover,
 .back-home:hover {
   background: linear-gradient(145deg, rgba(255, 107, 53, 0.1), rgba(0, 212, 255, 0.08));
   border-color: rgba(255, 107, 53, 0.4);
-  color: var(--fg-default);
+  color: var(--ff-primary-text);
   box-shadow: 0 0 20px rgba(255, 107, 53, 0.15);
   transform: translateY(-2px);
 }
@@ -922,13 +923,13 @@ article .legal-card a:hover,
 .btn-print {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  color: var(--fg-subtle);
+  color: var(--ff-secondary-text);
 }
 
 .btn-print:hover {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.25);
-  color: var(--fg-default);
+  color: var(--ff-primary-text);
   transform: translateY(-2px);
 }
 
@@ -977,7 +978,7 @@ article .legal-card a:hover,
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 107, 53, 0.2);
   border-radius: 100px;
-  color: var(--fg-default);
+  color: var(--ff-primary-text);
   font-size: 0.9375rem;
   font-family: inherit;
   transition: transform 0.25s, opacity 0.25s, border-color 0.25s, background 0.25s, box-shadow 0.25s;
@@ -991,7 +992,7 @@ article .legal-card a:hover,
 }
 
 .privacy-search input::placeholder {
-  color: var(--fg-muted);
+  color: var(--ff-muted-text);
 }
 
 .search-clear {
@@ -1143,7 +1144,7 @@ article .legal-card a:hover,
 .subprocessor-table td {
   padding: 1rem 1.25rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  color: var(--fg-subtle);
+  color: var(--ff-secondary-text);
 }
 
 .subprocessor-table tr:hover {
@@ -1281,7 +1282,7 @@ article .legal-card a:hover,
 .legal-footer h3 {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--fg-muted);
+  color: var(--ff-muted-text);
   margin-bottom: 1.25rem;
   font-family: var(--font-mono);
   letter-spacing: 0.05em;
@@ -1304,7 +1305,7 @@ article .legal-card a:hover,
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 100px;
-  color: var(--fg-subtle);
+  color: var(--ff-secondary-text);
   font-size: 0.875rem;
   text-decoration: none;
   transition: transform 0.25s, opacity 0.25s, border-color 0.25s, background 0.25s, box-shadow 0.25s;

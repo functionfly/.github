@@ -1,10 +1,10 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { SITE_ORIGIN } from '../config';
-import CareersPage from '../components/CareersPage.tsx';
+import AgentExecutionPage from '../components/AgentExecutionPage.tsx';
 
-const title = 'Careers — FunctionFly';
-const description = 'Careers at FunctionFly. We are not hiring right now, but we welcome interest.';
+const title = 'Agent Execution Pricing — FunctionFly';
+const description = 'Agent execution plans, tool calls, dynamic credentials, and memory for AI agents. From free to enterprise scale.';
 
 const organizationSchema = {
   '@context': 'https://schema.org',
@@ -23,5 +23,5 @@ const schemas = [organizationSchema];
   schema={schemas}
   ogImage="/og-home.svg"
 >
-  <CareersPage client:load />
+  <AgentExecutionPage client:load />
 </Layout>

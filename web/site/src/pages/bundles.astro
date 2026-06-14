@@ -1,10 +1,10 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { SITE_ORIGIN } from '../config';
-import CareersPage from '../components/CareersPage.tsx';
+import BundlesPage from '../components/BundlesPage.tsx';
 
-const title = 'Careers — FunctionFly';
-const description = 'Careers at FunctionFly. We are not hiring right now, but we welcome interest.';
+const title = 'Backend-in-a-Box Bundles — FunctionFly';
+const description = 'Pre-configured backend bundles for SaaS, AI apps, and marketplaces. Auth, payments, database, and more. Free until you grow.';
 
 const organizationSchema = {
   '@context': 'https://schema.org',
@@ -23,5 +23,5 @@ const schemas = [organizationSchema];
   schema={schemas}
   ogImage="/og-home.svg"
 >
-  <CareersPage client:load />
+  <BundlesPage client:load />
 </Layout>

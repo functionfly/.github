@@ -916,3 +916,435 @@
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.5; transform: scale(0.85); }
 }
+
+/* ── LIGHT MODE OVERRIDES ── */
+[data-theme='light'] .pricing-faq-item {
+  background: white;
+  border-color: var(--ff-sky-elevated);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='light'] .pricing-faq-item:hover {
+  border-color: var(--ff-flame);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme='light'] .pricing-faq-question {
+  color: var(--ff-primary-text);
+}
+
+[data-theme='light'] .pricing-faq-question::before {
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.15), rgba(0, 212, 255, 0.1));
+  border-color: rgba(255, 107, 53, 0.3);
+  color: var(--ff-flame);
+}
+
+[data-theme='light'] .pricing-faq-answer {
+  color: var(--ff-secondary-text);
+}
+
+[data-theme='light'] .pricing-faq-answer::before {
+  color: var(--ff-cyan);
+}
+
+[data-theme='light'] .pricing-faq-answer a {
+  color: var(--ff-flame);
+}
+
+[data-theme='light'] .pricing-faq-answer a:hover {
+  border-bottom-color: var(--ff-flame);
+}
+
+/* ── LIGHT MODE SECTION OVERRIDES ── */
+[data-theme='light'] .pricing-section {
+  background: var(--ff-sky-subtle);
+}
+
+[data-theme='light'] .pricing-section--alt {
+  background: var(--ff-sky);
+}
+
+[data-theme='light'] .pricing-section-title {
+  color: var(--ff-dark-text);
+}
+
+[data-theme='light'] .pricing-section-sub {
+  color: var(--ff-dark-secondary);
+}
+
+[data-theme='light'] .pricing-section-label {
+  color: var(--ff-flame);
+}
+
+[data-theme='light'] .pricing-hero {
+  background: var(--ff-sky-subtle);
+}
+
+[data-theme='light'] .pricing-hero h1 {
+  color: var(--ff-dark-text);
+}
+
+[data-theme='light'] .pricing-hero-lead {
+  color: var(--ff-dark-secondary);
+}
+
+[data-theme='light'] .pricing-cta {
+  background: var(--ff-sky-subtle);
+}
+
+[data-theme='light'] .pricing-cta h2 {
+  color: var(--ff-dark-text);
+}
+
+[data-theme='light'] .pricing-cta-sub {
+  color: var(--ff-dark-secondary);
+}
+
+[data-theme='light'] .pricing-compare-table {
+  background: white;
+  border-color: var(--ff-sky-elevated);
+}
+
+[data-theme='light'] .pricing-compare-table th,
+[data-theme='light'] .pricing-compare-table td {
+  color: var(--ff-dark-secondary);
+}
+
+[data-theme='light'] .pricing-compare-table th {
+  color: var(--ff-dark-text);
+}
+
+[data-theme='light'] .pricing-table-wrap {
+  background: white;
+  border-color: var(--ff-sky-elevated);
+}
+
+[data-theme='light'] .pricing-table th,
+[data-theme='light'] .pricing-table td {
+  color: var(--ff-dark-secondary);
+}
+
+[data-theme='light'] .pricing-table th {
+  color: var(--ff-dark-text);
+}
+
+[data-theme='light'] .pricing-details-grid {
+  background: transparent;
+}
+
+[data-theme='light'] .pricing-detail-card {
+  background: white;
+  border-color: var(--ff-sky-elevated);
+}
+
+[data-theme='light'] .pricing-detail-card:hover {
+  border-color: var(--ff-flame);
+}
+
+[data-theme='light'] .pricing-detail-label {
+  color: var(--ff-dark-text);
+}
+
+[data-theme='light'] .pricing-detail-sub {
+  color: var(--ff-dark-secondary);
+}
+
+/* ── LIGHT MODE CARD OVERRIDES ── */
+[data-theme='light'] .pricing-card {
+  background: white;
+  border-color: var(--ff-sky-elevated);
+}
+
+[data-theme='light'] .pricing-card:hover {
+  background: white;
+  border-color: var(--ff-flame);
+}
+
+[data-theme='light'] .pricing-card--featured {
+  background: linear-gradient(180deg, rgba(255, 107, 53, 0.05) 0%, white 100%);
+  border-color: var(--ff-flame);
+}
+
+[data-theme='light'] .pricing-tier-name,
+[data-theme='light'] .pricing-tierName {
+  color: var(--ff-dark-text);
+}
+
+[data-theme='light'] .pricing-price-amount {
+  color: var(--ff-dark-text);
+}
+
+[data-theme='light'] .pricing-price-period {
+  color: var(--ff-dark-secondary);
+}
+
+[data-theme='light'] .pricing-tier-desc {
+  color: var(--ff-dark-secondary);
+}
+
+[data-theme='light'] .pricing-features li {
+  color: var(--ff-dark-secondary);
+}
+
+[data-theme='light'] .pricing-feature-check {
+  color: var(--ff-success);
+}
+
+[data-theme='light'] .pricing-toggle {
+  background: white;
+  border-color: var(--ff-sky-elevated);
+}
+
+[data-theme='light'] .pricing-toggle-btn {
+  color: var(--ff-dark-secondary);
+}
+
+[data-theme='light'] .pricing-toggle-btn.active {
+  background: var(--ff-flame);
+  color: white;
+}
+
+[data-theme='light'] .pricing-faq-question {
+  color: var(--ff-dark-text);
+}
+
+[data-theme='light'] .pricing-faq-answer {
+  color: var(--ff-dark-secondary);
+}
+
+[data-theme='light'] .pricing-compare-title {
+  color: var(--ff-dark-text);
+}
+
+[data-theme='light'] .pricing-footnote {
+  color: var(--ff-dark-secondary);
+}
+
+[data-theme='light'] .pricing-footnote a {
+  color: var(--ff-flame);
+}
+
+/* ── LIGHT MODE BODY/WRAPPER OVERRIDES ── */
+[data-theme='light'] body.ff-grid-bg {
+  background-color: var(--ff-sky);
+}
+
+[data-theme='light'] .pricing-section-inner {
+  background: transparent;
+}
+
+[data-theme='light'] .pricing-hero-inner {
+  background: transparent;
+}
+
+[data-theme='light'] .pricing-cta-inner {
+  background: transparent;
+}
+
+[data-theme='light'] .pricing-grid {
+  background: transparent;
+}
+
+[data-theme='light'] .pricing-agent-cta {
+  background: transparent;
+}
+
+[data-theme='light'] .pricing-faq {
+  background: transparent;
+}
+
+[data-theme='light'] .pricing-hero-eyebrow {
+  color: var(--ff-flame);
+}
+
+[data-theme='light'] .pricing-hero-eyebrow::before {
+  background: var(--ff-flame);
+}
+
+[data-theme='light'] .ff-live-badge {
+  background: rgba(232, 90, 42, 0.15);
+  border-color: rgba(232, 90, 42, 0.3);
+  color: var(--ff-flame);
+}
+
+[data-theme='light'] .pricing-save-badge {
+  background: var(--ff-flame);
+  color: white;
+}
+
+[data-theme='light'] .pricing-save-badge::before {
+  border-top-color: var(--ff-flame);
+}
+
+[data-theme='light'] .pricing-annual-note {
+  color: var(--ff-dark-muted);
+}
+
+[data-theme='light'] .pricing-featured-badge {
+  background: var(--ff-flame);
+  color: white;
+}
+
+[data-theme='light'] .pricing-faq-item::before {
+  background: linear-gradient(90deg, transparent, rgba(232, 90, 42, 0.4) 30%, rgba(0, 168, 204, 0.4) 70%, transparent);
+}
+
+[data-theme='light'] .pricing-btn {
+  background: var(--ff-flame);
+  color: white;
+}
+
+[data-theme='light'] .pricing-btn-secondary {
+  background: transparent;
+  border-color: var(--ff-flame);
+  color: var(--ff-flame);
+}
+
+[data-theme='light'] .pricing-btn-secondary:hover {
+  background: var(--ff-flame);
+  color: white;
+}
+
+/* ── LIGHT MODE CTA OVERRIDES ── */
+[data-theme='light'] .pricing-cta-actions {
+  background: white;
+  border-color: var(--ff-sky-elevated);
+}
+
+[data-theme='light'] .pricing-cta-actions::before {
+  background: linear-gradient(135deg, rgba(232, 90, 42, 0.3), rgba(0, 168, 204, 0.2), rgba(224, 62, 77, 0.3));
+}
+
+[data-theme='light'] .pricing-cta .pricing-btn {
+  background: var(--ff-flame);
+  color: white;
+  border-color: var(--ff-flame);
+}
+
+[data-theme='light'] .pricing-cta .pricing-btn:hover {
+  background: var(--ff-flame-dark);
+  border-color: var(--ff-flame-dark);
+}
+
+[data-theme='light'] .pricing-cta .pricing-btn-secondary {
+  background: transparent;
+  color: var(--ff-flame);
+  border-color: var(--ff-flame);
+}
+
+[data-theme='light'] .pricing-cta .pricing-btn-secondary:hover {
+  background: var(--ff-flame);
+  color: white;
+}
+
+/* ── LIGHT MODE COMPARE TABLE OVERRIDES ── */
+[data-theme='light'] .pricing-compare-table {
+  border: 1px solid var(--ff-sky-elevated);
+}
+
+[data-theme='light'] .pricing-compare-table th,
+[data-theme='light'] .pricing-compare-table td {
+  border-bottom: 1px solid var(--ff-sky-elevated);
+}
+
+[data-theme='light'] .pricing-compare-table th {
+  background: var(--ff-sky-subtle);
+  color: var(--ff-dark-text);
+  border-bottom: 2px solid var(--ff-sky-elevated);
+}
+
+[data-theme='light'] .pricing-compare-table th:first-child {
+  background: var(--ff-sky-subtle);
+  color: var(--ff-dark-secondary);
+  border-bottom: 2px solid var(--ff-sky-elevated);
+}
+
+[data-theme='light'] .pricing-compare-table td:first-child {
+  color: var(--ff-flame);
+}
+
+[data-theme='light'] .pricing-compare-table tbody tr:hover td {
+  background: rgba(232, 90, 42, 0.05);
+}
+
+[data-theme='light'] .pricing-compare-table tbody tr:hover td:first-child {
+  color: var(--ff-flame);
+}
+
+/* ── LIGHT MODE COMPARE WRAP OVERRIDES ── */
+[data-theme='light'] .pricing-compare-wrap {
+  background: white;
+  border: 1px solid var(--ff-sky-elevated);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* ── LIGHT MODE AGENT TABLE OVERRIDES ── */
+[data-theme='light'] .pricing-table-wrap {
+  background: white;
+  border: 1px solid var(--ff-sky-elevated);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='light'] .pricing-table thead th {
+  background: var(--ff-sky-subtle);
+  color: var(--ff-dark-text);
+  border-bottom: 2px solid var(--ff-sky-elevated);
+}
+
+[data-theme='light'] .pricing-table thead th:nth-child(2) {
+  background: var(--ff-sky-subtle);
+  color: var(--ff-dark-text);
+}
+
+[data-theme='light'] .pricing-table thead th:nth-child(3) {
+  background: var(--ff-sky-subtle);
+  color: var(--ff-dark-text);
+}
+
+[data-theme='light'] .pricing-table tbody td {
+  border-bottom: 1px solid var(--ff-sky-elevated);
+  color: var(--ff-dark-secondary);
+}
+
+[data-theme='light'] .pricing-table tbody td:first-child {
+  color: var(--ff-dark-text);
+  font-weight: 600;
+}
+
+[data-theme='light'] .pricing-table tbody td:nth-child(2) {
+  color: var(--ff-flame);
+}
+
+[data-theme='light'] .pricing-table tbody tr:hover td {
+  background: rgba(232, 90, 42, 0.05);
+}
+
+[data-theme='light'] .pricing-agent-cta {
+  background: transparent;
+}
+
+/* ── LIGHT MODE INCLUDED TEXT FIX ── */
+[data-theme='light'] .pricing-table tbody td:nth-child(2) {
+  color: var(--ff-flame);
+}
+
+/* ── LIGHT MODE PRICING AMOUNT TEXT FIX ── */
+[data-theme='light'] .pricing-price-amount {
+  background: none;
+  -webkit-text-fill-color: var(--ff-dark-text);
+  color: var(--ff-dark-text);
+}
+
+[data-theme="light"] .pricing-price-amount {
+  background: none !important;
+  -webkit-text-fill-color: var(--ff-dark-text) !important;
+  color: var(--ff-dark-text) !important;
+}
+
+/* ── LIGHT MODE CHECK MARK FIX ── */
+[data-theme="light"] .pricing-feature-check {
+  color: #059669;
+}
+[data-theme="light"] .ff-check {
+  color: #059669;
+}
