@@ -89,7 +89,7 @@ func (h *Handler) HandleGetTaxSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenant, err := h.repo.GetTenantByID(claims.TenantID)
+	tenant, err := h.repo.GetTenantByID(r.Context(), claims.TenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Warn("tax settings: failed to get tenant")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve tax settings")
@@ -189,7 +189,7 @@ func (h *Handler) HandleUpdateTaxSettings(w http.ResponseWriter, r *http.Request
 	}
 
 	// Get updated settings
-	tenant, err := h.repo.GetTenantByID(claims.TenantID)
+	tenant, err := h.repo.GetTenantByID(r.Context(), claims.TenantID)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve updated settings")
 		return
@@ -268,7 +268,7 @@ func (h *Handler) HandleCalculateTax(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenant, err := h.repo.GetTenantByID(claims.TenantID)
+	tenant, err := h.repo.GetTenantByID(r.Context(), claims.TenantID)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve tenant")
 		return

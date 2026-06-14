@@ -396,9 +396,9 @@ func (h *WalletHandler) HandleAdjustWalletBalance(w http.ResponseWriter, r *http
 	// Perform adjustment using admin credit/debit
 	var update *wallet.BalanceUpdate
 	if req.Amount > 0 {
-		update, err = h.walletService.AdminCredit(ctx, walletID, req.Amount, req.Reference, req.Reason, req.Reference, adminUser.UserID)
+		update, err = h.walletService.AdminCredit(ctx, walletID, req.Amount, req.Reference, req.Reason, adminUser.UserID)
 	} else {
-		update, err = h.walletService.AdminDebit(ctx, walletID, -req.Amount, req.Reference, req.Reason, req.Reference, adminUser.UserID)
+		update, err = h.walletService.AdminDebit(ctx, walletID, -req.Amount, req.Reference, req.Reason, adminUser.UserID)
 	}
 
 	if err != nil {

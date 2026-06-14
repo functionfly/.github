@@ -169,7 +169,7 @@ func (h *Handler) provisionVectorCollections(ctx context.Context, tenantID uuid.
 		UpdatedAt:   time.Now(),
 	}
 
-	if err := h.repo.CreateTeam(team); err != nil {
+	if err := h.repo.CreateTeam(ctx, team); err != nil {
 		// Don't fail if team already exists
 		if !strings.Contains(err.Error(), "duplicate") {
 			return fmt.Errorf("failed to create default team: %w", err)
@@ -532,7 +532,7 @@ func (h *Handler) provisionAIApp(tenantID uuid.UUID) {
 		Token:    "placeholder-set-your-api-key",
 		Status:   "inactive",
 	}
-	if err := h.repo.CreateProvider(provider); err != nil {
+	if err := h.repo.CreateProvider(ctx, provider); err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"tenant_id": tenantID,
 		}).Warn("Failed to create OpenRouter provider preset")
@@ -586,10 +586,10 @@ func ProvisionBundleAppAndBackend(repo storage.Repository, tenantID uuid.UUID, b
 	}
 
 	// Create the default app
-	app, err := repo.CreateApp(appName, appSlug, tenantID)
+	app, err := repo.CreateApp(ctx, appName, appSlug, tenantID)
 	if err != nil {
 		if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
-			apps, listErr := repo.ListAppsByTenant(tenantID)
+			apps, listErr := repo.ListAppsByTenant(ctx, tenantID)
 			if listErr == nil && len(apps) > 0 {
 				for _, a := range apps {
 					if a.Slug == appSlug {
@@ -612,7 +612,7 @@ func ProvisionBundleAppAndBackend(repo storage.Repository, tenantID uuid.UUID, b
 	url := "https://api.functionfly.io/v1/apps/" + app.ID.String()
 
 	// Create default backend
-	backend, err := repo.CreateBackend(app.ID, "functionfly", region, url, "", nil)
+	backend, err := repo.CreateBackend(ctx, app.ID, "functionfly", region, url, "", nil)
 	if err != nil {
 		if !strings.Contains(err.Error(), "unique") && !strings.Contains(err.Error(), "duplicate") {
 			logrus.WithError(err).WithFields(logrus.Fields{

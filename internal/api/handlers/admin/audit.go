@@ -1,11 +1,15 @@
 package admin
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
@@ -37,6 +41,7 @@ func (h *AdminAuditHandler) HandleListAuditLogs(w http.ResponseWriter, r *http.R
 		}
 		writeAuditLogsResponse(w, events, limit, offset, filters)
 	}()
+	ctx := r.Context()
 
 	limit = 50
 	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
@@ -93,7 +98,7 @@ func (h *AdminAuditHandler) HandleListAuditLogs(w http.ResponseWriter, r *http.R
 		}
 	}
 
-	events, err := h.repo.ListAuditEventsFiltered(limit, offset, filters)
+	events, err := h.repo.ListAuditEventsFiltered(ctx, limit, offset, filters)
 	if err != nil {
 		logrus.WithError(err).Warn("HandleListAuditLogs: failed to query audit events")
 		events = []*storage.AuditEvent{}
@@ -104,6 +109,7 @@ func (h *AdminAuditHandler) HandleListAuditLogs(w http.ResponseWriter, r *http.R
 func (h *AdminAuditHandler) HandleGetAuditLog(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	idStr := vars["id"]
+	ctx := r.Context()
 
 	id, err := uuid.Parse(idStr)
 	if err != nil {
@@ -111,7 +117,7 @@ func (h *AdminAuditHandler) HandleGetAuditLog(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	event, err := h.repo.GetAuditEventByID(id)
+	event, err := h.repo.GetAuditEventByID(ctx, id)
 	if err != nil {
 		logrus.WithError(err).WithField("id", id).Error("HandleGetAuditLog: failed to get audit event")
 		apierror.WriteError(w, apierror.NewInternal("failed to retrieve audit log"))
@@ -156,6 +162,7 @@ func (h *Handler) HandleListAuditEvents(w http.ResponseWriter, r *http.Request) 
 		writeAuditEventsResponse(w, events, limit, offset, filters)
 	}()
 
+	ctx := r.Context()
 	limit = 50
 	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
 		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 1000 {
@@ -212,7 +219,7 @@ func (h *Handler) HandleListAuditEvents(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var err error
-	events, err = h.repo.ListAuditEventsFiltered(limit, offset, filters)
+	events, err = h.repo.ListAuditEventsFiltered(ctx, limit, offset, filters)
 	if err != nil {
 		logrus.WithError(err).Warn("Failed to list audit events; returning empty list (e.g. audit_events table missing or schema mismatch)")
 		events = []*storage.AuditEvent{}

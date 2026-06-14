@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -138,7 +139,7 @@ func (h *SAMLHandler) HandleSSO(w http.ResponseWriter, r *http.Request) {
 		logrus.Warn("SAML SSO failed: missing SAMLResponse parameter")
 
 		// Log authentication failure
-		h.logSAMLAuthEvent(nil, nil, false, "saml_login", clientIP, userAgent, &failureReason, time.Since(startTime), map[string]interface{}{"relay_state": relayState})
+		h.logSAMLAuthEvent(r.Context(), nil, nil, false, "saml_login", clientIP, userAgent, &failureReason, time.Since(startTime), map[string]interface{}{"relay_state": relayState})
 
 		result := &auth.AuthCallbackResult{
 			Success:   false,
@@ -170,7 +171,7 @@ func (h *SAMLHandler) HandleSSO(w http.ResponseWriter, r *http.Request) {
 			logrus.WithError(err).Warn("SAML SSO failed: invalid tenant ID")
 
 			// Log authentication failure
-			h.logSAMLAuthEvent(nil, &tenantID, false, "saml_login", clientIP, userAgent, &failureReason, time.Since(startTime), map[string]interface{}{"relay_state": relayState, "parse_error": err.Error()})
+			h.logSAMLAuthEvent(r.Context(), nil, &tenantID, false, "saml_login", clientIP, userAgent, &failureReason, time.Since(startTime), map[string]interface{}{"relay_state": relayState, "parse_error": err.Error()})
 
 			result := &auth.AuthCallbackResult{
 				Success:   false,
@@ -193,7 +194,7 @@ func (h *SAMLHandler) HandleSSO(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Process the SAML response
-	resp, err := h.samlSvc.ProcessResponse(tenantID, samlResponse)
+	resp, err := h.samlSvc.ProcessResponse(tenantID, samlResponse, relayState)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to process SAML response")
 
@@ -221,7 +222,7 @@ func (h *SAMLHandler) HandleSSO(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Log authentication failure
-		h.logSAMLAuthEvent(nil, &tenantID, false, "saml_login", clientIP, userAgent, &errorDesc, time.Since(startTime), map[string]interface{}{
+		h.logSAMLAuthEvent(r.Context(), nil, &tenantID, false, "saml_login", clientIP, userAgent, &errorDesc, time.Since(startTime), map[string]interface{}{
 			"error_code":  string(errorCode),
 			"relay_state": relayState,
 			"raw_error":   err.Error(),
@@ -255,7 +256,7 @@ func (h *SAMLHandler) HandleSSO(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Store refresh token in database
 		refreshExpiresAt := time.Now().Add(30 * 24 * time.Hour)
-		_, err = h.samlSvc.Repo().CreateRefreshToken(resp.User.ID, refreshTokenHash, "saml", "saml-callback", refreshExpiresAt)
+		_, err = h.samlSvc.Repo().CreateRefreshToken(r.Context(), resp.User.ID, refreshTokenHash, "saml", "saml-callback", refreshExpiresAt)
 		if err != nil {
 			logrus.WithError(err).WithField("userID", resp.User.ID).Warn("Failed to store SAML refresh token")
 			refreshToken = ""
@@ -263,7 +264,7 @@ func (h *SAMLHandler) HandleSSO(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Log successful SAML login with metadata including latency
-	h.logSAMLAuthEvent(&resp.User.ID, &resp.User.TenantID, true, "saml_login", clientIP, userAgent, nil, time.Since(startTime), map[string]interface{}{
+	h.logSAMLAuthEvent(r.Context(), &resp.User.ID, &resp.User.TenantID, true, "saml_login", clientIP, userAgent, nil, time.Since(startTime), map[string]interface{}{
 		"name_id":        resp.NameID,
 		"relay_state":    relayState,
 		"refresh_issued": refreshToken != "",
@@ -438,7 +439,7 @@ func (h *SAMLHandler) HandleUpdateConfig(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Save config
-	if err := h.samlSvc.SaveConfig(config); err != nil {
+	if err := h.samlSvc.SaveConfig(r.Context(), config); err != nil {
 		logrus.WithError(err).Error("Failed to save SAML config")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to save SAML configuration")
 		return
@@ -464,7 +465,7 @@ func containsAny(s string, substrs []string) bool {
 // logSAMLAuthEvent logs a SAML authentication event for security auditing.
 // Records success/failure, provider type, IP + user agent, user ID (on success),
 // failure reason (on failure), and time taken (for latency monitoring).
-func (h *SAMLHandler) logSAMLAuthEvent(userID, tenantID *uuid.UUID, success bool, eventType, clientIP, userAgent string, failureReason *string, duration time.Duration, metadata map[string]interface{}) {
+func (h *SAMLHandler) logSAMLAuthEvent(ctx context.Context, userID, tenantID *uuid.UUID, success bool, eventType, clientIP, userAgent string, failureReason *string, duration time.Duration, metadata map[string]interface{}) {
 	// Add latency information to metadata
 	if metadata == nil {
 		metadata = make(map[string]interface{})
@@ -486,7 +487,7 @@ func (h *SAMLHandler) logSAMLAuthEvent(userID, tenantID *uuid.UUID, success bool
 		authEvent.FailureReason = failureReason
 	}
 
-	if logErr := h.samlSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+	if logErr := h.samlSvc.Repo().LogAuthEvent(ctx, authEvent); logErr != nil {
 		fields := logrus.Fields{
 			"event_type":  eventType,
 			"success":     success,

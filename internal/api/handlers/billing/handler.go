@@ -150,7 +150,7 @@ func (h *Handler) HandleCreatePortalSession(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	user, err := h.repo.GetUserByID(claims.UserID)
+	user, err := h.repo.GetUserByID(r.Context(), claims.UserID)
 	if err != nil || user == nil {
 		logrus.WithError(err).WithField("user_id", claims.UserID).Warn("billing portal: user not found")
 		apierror.WriteError(w, apierror.NewNotFound("User not found"))
@@ -237,7 +237,7 @@ func (h *Handler) HandleCreateCheckoutSession(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	user, err := h.repo.GetUserByID(claims.UserID)
+	user, err := h.repo.GetUserByID(r.Context(), claims.UserID)
 	if err != nil || user == nil {
 		logrus.WithError(err).WithField("user_id", claims.UserID).Warn("billing checkout: user not found")
 		writeJSONError(w, http.StatusNotFound, "User not found")
@@ -311,7 +311,7 @@ func (h *Handler) HandleGetSubscription(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	subscription, err := h.repo.GetSubscriptionByTenantID(claims.TenantID)
+	subscription, err := h.repo.GetSubscriptionByTenantID(r.Context(), claims.TenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Warn("billing: failed to get subscription")
 		writeJSONError(w, http.StatusNotFound, "No subscription found")
@@ -323,7 +323,7 @@ func (h *Handler) HandleGetSubscription(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Get tenant to access Stripe customer ID for payment method info
-	tenant, err := h.repo.GetTenantByID(claims.TenantID)
+	tenant, err := h.repo.GetTenantByID(r.Context(), claims.TenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Warn("billing: failed to get tenant")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve subscription details")
@@ -393,6 +393,38 @@ func (h *Handler) HandleGetSubscription(w http.ResponseWriter, r *http.Request) 
 	json.NewEncoder(w).Encode(response)
 }
 
+// HandleGetTenantPlan returns the current tenant's plan.
+// GET /v1/tenants/plan
+func (h *Handler) HandleGetTenantPlan(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil || claims.TenantID == uuid.Nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	tenant, err := h.repo.GetTenantByID(r.Context(), claims.TenantID)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Warn("billing: failed to get tenant")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to get tenant")
+		return
+	}
+	if tenant == nil {
+		writeJSONError(w, http.StatusNotFound, "Tenant not found")
+		return
+	}
+
+	plan := tenant.Plan
+	if plan == "" {
+		plan = "free"
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"plan": plan,
+	})
+}
+
 // HandleListInvoices returns the current user's invoices.
 // GET /v1/billing/invoices
 func (h *Handler) HandleListInvoices(w http.ResponseWriter, r *http.Request) {
@@ -415,14 +447,14 @@ func (h *Handler) HandleListInvoices(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	invoices, err := h.repo.ListInvoicesByTenant(claims.TenantID, limit, offset)
+	invoices, err := h.repo.ListInvoicesByTenant(r.Context(), claims.TenantID, limit, offset)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Warn("billing: failed to list invoices")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve invoices")
 		return
 	}
 
-	total, err := h.repo.CountInvoicesByTenant(claims.TenantID)
+	total, err := h.repo.CountInvoicesByTenant(r.Context(), claims.TenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Warn("billing: failed to count invoices")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve invoices")
@@ -513,7 +545,7 @@ func (h *Handler) HandleGetUsage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	usage, err := h.repo.GetUsageByTenant(claims.TenantID, "", start, end)
+	usage, err := h.repo.GetUsageByTenant(r.Context(), claims.TenantID, "", start, end)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Warn("billing: failed to get usage")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve usage")
@@ -554,11 +586,15 @@ func (h *Handler) HandleCancelSubscription(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Get subscription to find Stripe subscription ID
-	subscription, err := h.repo.GetSubscriptionByTenantID(claims.TenantID)
-	if err != nil || subscription == nil {
-		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Warn("billing cancel: no subscription found")
-		writeJSONError(w, http.StatusNotFound, "No active subscription found")
+// Get subscription to find Stripe subscription ID
+	subscription, err := h.repo.GetSubscriptionByTenantID(r.Context(), claims.TenantID)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Warn("billing: failed to get subscription")
+		writeJSONError(w, http.StatusNotFound, "No subscription found")
+		return
+	}
+	if subscription == nil {
+		writeJSONError(w, http.StatusNotFound, "No subscription found")
 		return
 	}
 
@@ -668,7 +704,7 @@ func (h *Handler) HandleSubscriptionWebhook(w http.ResponseWriter, r *http.Reque
 			IsPublic: true,
 		}
 
-		if err := h.repo.CreateUserActivity(activity); err != nil {
+		if err := h.repo.CreateUserActivity(r.Context(), activity); err != nil {
 			logrus.WithError(err).WithFields(logrus.Fields{
 				"user_id":   user.ID,
 				"tenant_id": req.TenantID,
@@ -677,7 +713,7 @@ func (h *Handler) HandleSubscriptionWebhook(w http.ResponseWriter, r *http.Reque
 
 		// Award enterprise achievement if upgrading to enterprise
 		if isEnterprisePlan(req.NewPlan) && !isEnterprisePlan(req.OldPlan) {
-			if err := awardEnterpriseAchievement(h.repo, user.ID); err != nil {
+			if err := awardEnterpriseAchievement(r.Context(), h.repo, user.ID); err != nil {
 				logrus.WithError(err).WithFields(logrus.Fields{
 					"user_id":   user.ID,
 					"tenant_id": req.TenantID,
@@ -734,7 +770,7 @@ func (h *Handler) HandleListPaymentMethods(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	tenant, err := h.repo.GetTenantByID(claims.TenantID)
+	tenant, err := h.repo.GetTenantByID(r.Context(), claims.TenantID)
 	if err != nil || tenant == nil {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to get tenant")
 		return
@@ -773,7 +809,7 @@ func (h *Handler) HandleCreateSetupIntent(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	user, err := h.repo.GetUserByID(claims.UserID)
+	user, err := h.repo.GetUserByID(r.Context(), claims.UserID)
 	if err != nil || user == nil {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to get user")
 		return
@@ -822,7 +858,7 @@ func (h *Handler) HandleSetDefaultPaymentMethod(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	tenant, err := h.repo.GetTenantByID(claims.TenantID)
+	tenant, err := h.repo.GetTenantByID(r.Context(), claims.TenantID)
 	if err != nil || tenant == nil {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to get tenant")
 		return
@@ -928,7 +964,7 @@ func (h *Handler) HandleGetMyAffiliateCodes(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	codes, err := h.repo.ListAffiliateCodesByPublisher(claims.UserID)
+	codes, err := h.repo.ListAffiliateCodesByPublisher(r.Context(), claims.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list affiliate codes for user")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve affiliate codes")
@@ -950,7 +986,7 @@ func (h *Handler) HandleGetMyAffiliateCommissions(w http.ResponseWriter, r *http
 		return
 	}
 
-	commissions, err := h.repo.ListAffiliateCommissionsByPublisher(claims.UserID)
+	commissions, err := h.repo.ListAffiliateCommissionsByPublisher(r.Context(), claims.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list affiliate commissions for user")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve commissions")
@@ -972,7 +1008,7 @@ func (h *Handler) HandleGetMyAffiliateReferrals(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	codes, err := h.repo.ListAffiliateCodesByPublisher(claims.UserID)
+	codes, err := h.repo.ListAffiliateCodesByPublisher(r.Context(), claims.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list affiliate codes for user")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve referrals")
@@ -981,7 +1017,7 @@ func (h *Handler) HandleGetMyAffiliateReferrals(w http.ResponseWriter, r *http.R
 
 	var allReferrals []*storage.AffiliateReferral
 	for _, code := range codes {
-		referrals, err := h.repo.ListAffiliateReferralsByCode(code.ID)
+		referrals, err := h.repo.ListAffiliateReferralsByCode(r.Context(), code.ID)
 		if err != nil {
 			logrus.WithError(err).WithField("code_id", code.ID).Warn("Failed to list referrals for code")
 			continue
@@ -1004,7 +1040,7 @@ func (h *Handler) HandleGetAffiliateEarningsSummary(w http.ResponseWriter, r *ht
 		return
 	}
 
-	codes, err := h.repo.ListAffiliateCodesByPublisher(claims.UserID)
+	codes, err := h.repo.ListAffiliateCodesByPublisher(r.Context(), claims.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list affiliate codes for user")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve earnings summary")
@@ -1063,7 +1099,7 @@ func (h *Handler) HandleApplyAffiliateCode(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	code, err := h.repo.GetAffiliateCodeByCode(req.Code)
+	code, err := h.repo.GetAffiliateCodeByCode(r.Context(), req.Code)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to look up affiliate code")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to validate affiliate code")
@@ -1091,8 +1127,8 @@ func (h *Handler) HandleApplyAffiliateCode(w http.ResponseWriter, r *http.Reques
 }
 
 // awardEnterpriseAchievement awards the "Enterprise Pioneer" achievement to a user.
-func awardEnterpriseAchievement(repo storage.Repository, userID uuid.UUID) error {
-	achievement, err := repo.GetAchievementBySlug("enterprise_pioneer")
+func awardEnterpriseAchievement(ctx context.Context, repo storage.Repository, userID uuid.UUID) error {
+	achievement, err := repo.GetAchievementBySlug(ctx, "enterprise_pioneer")
 	if err != nil {
 		return fmt.Errorf("failed to get enterprise pioneer achievement: %w", err)
 	}
@@ -1103,7 +1139,7 @@ func awardEnterpriseAchievement(repo storage.Repository, userID uuid.UUID) error
 	}
 
 	// Check if user already has this achievement
-	existingAchievements, err := repo.GetUserAchievements(userID)
+	existingAchievements, err := repo.GetUserAchievements(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("failed to check existing achievements: %w", err)
 	}

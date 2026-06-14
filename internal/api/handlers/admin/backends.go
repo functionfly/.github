@@ -3,8 +3,10 @@ package admin
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/functionfly/functionfly/internal/apierror"
+	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -42,14 +44,14 @@ func (h *BackendsHandler) HandleListPlatformBackends(w http.ResponseWriter, r *h
 
 	for _, backend := range backends {
 		// Get app details
-		app, err := h.repo.GetAppByID(backend.AppID)
+		app, err := h.repo.GetAppByID(ctx, backend.AppID)
 		if err != nil {
 			logrus.WithError(err).WithField("app_id", backend.AppID).Warn("Failed to get app details for backend")
 			continue
 		}
 
 		// Get tenant details
-		tenant, err := h.repo.GetTenantByID(app.TenantID)
+		tenant, err := h.repo.GetTenantByID(ctx, app.TenantID)
 		if err != nil {
 			logrus.WithError(err).WithField("tenant_id", app.TenantID).Warn("Failed to get tenant details for backend")
 			continue
@@ -116,7 +118,7 @@ func (h *BackendsHandler) HandleUpdateBackendEnabled(w http.ResponseWriter, r *h
 	}
 
 	// Verify backend exists
-	backend, err := h.repo.GetBackendByID(backendID)
+	backend, err := h.repo.GetBackendByID(ctx, backendID)
 	if err != nil {
 		logrus.WithError(err).WithField("backend_id", backendID).Error("Failed to get backend")
 		apierror.WriteError(w, apierror.NewNotFound("Backend not found"))
@@ -135,7 +137,7 @@ func (h *BackendsHandler) HandleUpdateBackendEnabled(w http.ResponseWriter, r *h
 	}
 
 	// Get updated backend
-	updatedBackend, err := h.repo.GetBackendByID(backendID)
+	updatedBackend, err := h.repo.GetBackendByID(ctx, backendID)
 	if err != nil {
 		logrus.WithError(err).WithField("backend_id", backendID).Error("Failed to get updated backend")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get updated backend"))

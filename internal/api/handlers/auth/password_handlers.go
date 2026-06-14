@@ -25,7 +25,7 @@ func (h *Handler) HandlePasswordResetRequest(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	err := h.authSvc.RequestPasswordReset(req.Email)
+	err := h.authSvc.RequestPasswordReset(r.Context(), req.Email)
 
 	authEvent := &storage.AuthEvent{
 		EventType: "password_reset_request",
@@ -39,7 +39,7 @@ func (h *Handler) HandlePasswordResetRequest(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		authEvent.FailureReason = stringPtr("reset_request_failed")
 	}
-	if logErr := h.authSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+	if logErr := h.authSvc.Repo().LogAuthEvent(r.Context(), authEvent); logErr != nil {
 		logrus.WithError(logErr).Warn("Failed to log password reset request")
 	}
 
@@ -64,7 +64,7 @@ func (h *Handler) HandlePasswordResetConfirm(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	err := h.authSvc.ConfirmPasswordReset(req.Token, req.NewPassword)
+	err := h.authSvc.ConfirmPasswordReset(r.Context(), req.Token, req.NewPassword)
 	if err != nil {
 		logrus.WithError(err).Debug("Password reset confirm failed")
 
@@ -75,7 +75,7 @@ func (h *Handler) HandlePasswordResetConfirm(w http.ResponseWriter, r *http.Requ
 			IPAddress:     getClientIP(r),
 			UserAgent:     r.Header.Get("User-Agent"),
 		}
-		if logErr := h.authSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+		if logErr := h.authSvc.Repo().LogAuthEvent(r.Context(), authEvent); logErr != nil {
 			logrus.WithError(logErr).Warn("Failed to log password reset confirmation failure")
 		}
 
@@ -89,7 +89,7 @@ func (h *Handler) HandlePasswordResetConfirm(w http.ResponseWriter, r *http.Requ
 		IPAddress: getClientIP(r),
 		UserAgent: r.Header.Get("User-Agent"),
 	}
-	if logErr := h.authSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+	if logErr := h.authSvc.Repo().LogAuthEvent(r.Context(), authEvent); logErr != nil {
 		logrus.WithError(logErr).Warn("Failed to log password reset confirmation success")
 	}
 
@@ -109,7 +109,7 @@ func (h *Handler) HandleVerifyPassword(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusUnauthorized, "Invalid authorization header")
 		return
 	}
-	claims, err := h.authSvc.ValidateToken(parts[1])
+	claims, err := h.authSvc.ValidateToken(r.Context(), parts[1])
 	if err != nil {
 		writeJSONError(w, http.StatusUnauthorized, "Invalid or expired token")
 		return
@@ -121,7 +121,7 @@ func (h *Handler) HandleVerifyPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.authSvc.Repo().GetUserByID(claims.UserID)
+	user, err := h.authSvc.Repo().GetUserByID(r.Context(), claims.UserID)
 	if err != nil || user == nil {
 		writeJSONError(w, http.StatusUnauthorized, "User not found")
 		return

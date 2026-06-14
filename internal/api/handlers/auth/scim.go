@@ -72,7 +72,7 @@ func (h *SCIMHandler) HandleListUsers(w http.ResponseWriter, r *http.Request) {
 	startIndex := getStartIndex(r)
 	count := getCount(r)
 
-	result, err := h.scimSvc.ListUsers(tenantID, startIndex, count)
+	result, err := h.scimSvc.ListUsers(r.Context(), tenantID, startIndex, count)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list SCIM users")
 		writeSCIMError(w, http.StatusInternalServerError, "Failed to list users")
@@ -104,7 +104,7 @@ func (h *SCIMHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.scimSvc.CreateUser(tenantID, &scimUser)
+	result, err := h.scimSvc.CreateUser(r.Context(), tenantID, &scimUser)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create SCIM user")
 		if scimErr, ok := err.(*auth.SCIMError); ok {
@@ -137,7 +137,7 @@ func (h *SCIMHandler) HandleGetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.scimSvc.GetUser(tenantID, userID)
+	result, err := h.scimSvc.GetUser(r.Context(), tenantID, userID)
 	if err != nil {
 		writeSCIMError(w, http.StatusNotFound, "User not found")
 		return
@@ -177,7 +177,7 @@ func (h *SCIMHandler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.scimSvc.UpdateUser(tenantID, userID, &scimUser)
+	result, err := h.scimSvc.UpdateUser(r.Context(), tenantID, userID, &scimUser)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to update SCIM user")
 		if scimErr, ok := err.(*auth.SCIMError); ok {
@@ -228,7 +228,7 @@ func (h *SCIMHandler) HandlePatchUser(w http.ResponseWriter, r *http.Request) {
 		operations = []auth.SCIMPatchOperation{op}
 	}
 
-	result, err := h.scimSvc.PatchUser(tenantID, userID, operations)
+	result, err := h.scimSvc.PatchUser(r.Context(), tenantID, userID, operations)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to patch SCIM user")
 		if scimErr, ok := err.(*auth.SCIMError); ok {
@@ -261,7 +261,7 @@ func (h *SCIMHandler) HandleDeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.scimSvc.DeleteUser(tenantID, userID)
+	err = h.scimSvc.DeleteUser(r.Context(), tenantID, userID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to delete SCIM user")
 		writeSCIMError(w, http.StatusInternalServerError, "Failed to delete user")
@@ -282,7 +282,7 @@ func (h *SCIMHandler) HandleListGroups(w http.ResponseWriter, r *http.Request) {
 	startIndex := getStartIndex(r)
 	count := getCount(r)
 
-	result, err := h.scimSvc.ListGroups(tenantID, startIndex, count)
+	result, err := h.scimSvc.ListGroups(r.Context(), tenantID, startIndex, count)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list SCIM groups")
 		writeSCIMError(w, http.StatusInternalServerError, "Failed to list groups")
@@ -314,7 +314,7 @@ func (h *SCIMHandler) HandleCreateGroup(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	result, err := h.scimSvc.CreateGroup(tenantID, &scimGroup)
+	result, err := h.scimSvc.CreateGroup(r.Context(), tenantID, &scimGroup)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create SCIM group")
 		if scimErr, ok := err.(*auth.SCIMError); ok {
@@ -347,7 +347,7 @@ func (h *SCIMHandler) HandleGetGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.scimSvc.GetGroup(tenantID, groupID)
+	result, err := h.scimSvc.GetGroup(r.Context(), tenantID, groupID)
 	if err != nil {
 		writeSCIMError(w, http.StatusNotFound, "Group not found")
 		return
@@ -393,7 +393,7 @@ func (h *SCIMHandler) HandleUpdateGroup(w http.ResponseWriter, r *http.Request) 
 		operations = []auth.SCIMPatchOperation{op}
 	}
 
-	result, err := h.scimSvc.PatchGroup(tenantID, groupID, operations)
+	result, err := h.scimSvc.PatchGroup(r.Context(), tenantID, groupID, operations)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to patch SCIM group")
 		if scimErr, ok := err.(*auth.SCIMError); ok {
@@ -426,7 +426,7 @@ func (h *SCIMHandler) HandleDeleteGroup(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err = h.scimSvc.DeleteGroup(tenantID, groupID)
+	err = h.scimSvc.DeleteGroup(r.Context(), tenantID, groupID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to delete SCIM group")
 		writeSCIMError(w, http.StatusInternalServerError, "Failed to delete group")
@@ -444,7 +444,7 @@ func (h *SCIMHandler) HandleGetConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config, err := h.scimSvc.GetConfig(tenantID)
+	config, err := h.scimSvc.GetConfig(r.Context(), tenantID)
 	if err != nil {
 		// Return empty config if not found
 		w.Header().Set("Content-Type", "application/json")

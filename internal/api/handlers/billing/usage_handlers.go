@@ -143,14 +143,14 @@ func (h *UsageHandler) GetUsageHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get usage rollups from database
-	execRollups, err := h.repo.GetUsageByTenant(tenantID, "function_execution", start, end)
+	execRollups, err := h.repo.GetUsageByTenant(r.Context(), tenantID, "function_execution", start, end)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get execution rollups")
 		h.writeError(w, http.StatusInternalServerError, "Internal Error", "Failed to retrieve usage data")
 		return
 	}
 
-	computeRollups, err := h.repo.GetUsageByTenant(tenantID, "compute_time_ms", start, end)
+	computeRollups, err := h.repo.GetUsageByTenant(r.Context(), tenantID, "compute_time_ms", start, end)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get compute rollups")
 		h.writeError(w, http.StatusInternalServerError, "Internal Error", "Failed to retrieve usage data")
@@ -213,7 +213,7 @@ func (h *UsageHandler) GetUsageByFunction(w http.ResponseWriter, r *http.Request
 		end = now
 	}
 
-	functions, err := h.repo.GetUsageByTenantByFunction(tenantID, start, end)
+	functions, err := h.repo.GetUsageByTenantByFunction(r.Context(), tenantID, start, end)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get usage by function")
 		h.writeError(w, http.StatusInternalServerError, "Internal Error", "Failed to retrieve function usage")
@@ -255,7 +255,7 @@ func (h *UsageHandler) GetCurrentPeriodUsage(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Get subscription to determine period
-	sub, err := h.repo.GetSubscriptionByTenantID(tenantID)
+	sub, err := h.repo.GetSubscriptionByTenantID(r.Context(), tenantID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get subscription")
 		h.writeError(w, http.StatusInternalServerError, "Internal Error", "Failed to retrieve subscription")
@@ -275,14 +275,14 @@ func (h *UsageHandler) GetCurrentPeriodUsage(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Get usage from database for the period
-	execRollups, err := h.repo.GetUsageByTenant(tenantID, "function_execution", periodStart, periodEnd)
+	execRollups, err := h.repo.GetUsageByTenant(r.Context(), tenantID, "function_execution", periodStart, periodEnd)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get execution rollups")
 		h.writeError(w, http.StatusInternalServerError, "Internal Error", "Failed to retrieve usage data")
 		return
 	}
 
-	computeRollups, err := h.repo.GetUsageByTenant(tenantID, "compute_time_ms", periodStart, periodEnd)
+	computeRollups, err := h.repo.GetUsageByTenant(r.Context(), tenantID, "compute_time_ms", periodStart, periodEnd)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get compute rollups")
 		h.writeError(w, http.StatusInternalServerError, "Internal Error", "Failed to retrieve usage data")
@@ -437,7 +437,7 @@ func (h *UsageHandler) parseDateRange(r *http.Request) (time.Time, time.Time, er
 
 func (h *UsageHandler) getUsageFromDB(ctx context.Context, tenantID uuid.UUID) (*services.RealtimeQuotaStatus, error) {
 	// Get subscription for limits
-	sub, err := h.repo.GetSubscriptionByTenantID(tenantID)
+	sub, err := h.repo.GetSubscriptionByTenantID(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -449,12 +449,12 @@ func (h *UsageHandler) getUsageFromDB(ctx context.Context, tenantID uuid.UUID) (
 	periodEnd := time.Date(nextMonth.Year(), nextMonth.Month(), 1, 0, 0, 0, 0, time.UTC).Add(-time.Second)
 
 	// Get usage from database
-	execRollups, err := h.repo.GetUsageByTenant(tenantID, "function_execution", periodStart, periodEnd)
+	execRollups, err := h.repo.GetUsageByTenant(ctx, tenantID, "function_execution", periodStart, periodEnd)
 	if err != nil {
 		return nil, err
 	}
 
-	computeRollups, err := h.repo.GetUsageByTenant(tenantID, "compute_time_ms", periodStart, periodEnd)
+	computeRollups, err := h.repo.GetUsageByTenant(ctx, tenantID, "compute_time_ms", periodStart, periodEnd)
 	if err != nil {
 		return nil, err
 	}

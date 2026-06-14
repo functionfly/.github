@@ -41,7 +41,7 @@ func (h *Handler) HandleGetTenantDedicatedDBStatus(w http.ResponseWriter, r *htt
 	}
 
 	// Check if tenant exists
-	tenant, err := h.repo.GetTenantByID(tenantID)
+	tenant, err := h.repo.GetTenantByID(r.Context(), tenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to get tenant")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get tenant"))
@@ -113,7 +113,7 @@ func (h *Handler) HandleProvisionTenantDedicatedDB(w http.ResponseWriter, r *htt
 	}
 
 	// Check if tenant exists
-	tenant, err := h.repo.GetTenantByID(tenantID)
+	tenant, err := h.repo.GetTenantByID(r.Context(), tenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to get tenant")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get tenant"))
@@ -183,7 +183,7 @@ func (h *Handler) HandleSuspendTenantDedicatedDB(w http.ResponseWriter, r *http.
 	}
 
 	// Check if tenant exists
-	tenant, err := h.repo.GetTenantByID(tenantID)
+	tenant, err := h.repo.GetTenantByID(r.Context(), tenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to get tenant")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get tenant"))
@@ -235,7 +235,7 @@ func (h *Handler) HandleResumeTenantDedicatedDB(w http.ResponseWriter, r *http.R
 	}
 
 	// Check if tenant exists
-	tenant, err := h.repo.GetTenantByID(tenantID)
+	tenant, err := h.repo.GetTenantByID(r.Context(), tenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to get tenant")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get tenant"))
@@ -287,7 +287,7 @@ func (h *Handler) HandleDeprovisionTenantDedicatedDB(w http.ResponseWriter, r *h
 	}
 
 	// Check if tenant exists
-	tenant, err := h.repo.GetTenantByID(tenantID)
+	tenant, err := h.repo.GetTenantByID(r.Context(), tenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to get tenant")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get tenant"))

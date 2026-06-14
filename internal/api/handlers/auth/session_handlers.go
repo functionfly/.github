@@ -48,7 +48,7 @@ func (h *Handler) HandleGetSession(w http.ResponseWriter, r *http.Request) {
 
 	tokenString := parts[1]
 
-	claims, err := h.authSvc.ValidateToken(tokenString)
+	claims, err := h.authSvc.ValidateToken(r.Context(), tokenString)
 	if err != nil {
 		logrus.WithError(err).Warn("Token validation failed")
 		response := map[string]interface{}{
@@ -61,7 +61,7 @@ func (h *Handler) HandleGetSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.authSvc.Repo().GetUserByID(claims.UserID)
+	user, err := h.authSvc.Repo().GetUserByID(r.Context(), claims.UserID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Warn("Failed to get user by ID")
 		response := map[string]interface{}{
@@ -157,14 +157,14 @@ func (h *Handler) HandleValidateToken(w http.ResponseWriter, r *http.Request) {
 
 	tokenString := parts[1]
 
-	claims, err := h.authSvc.ValidateToken(tokenString)
+	claims, err := h.authSvc.ValidateToken(r.Context(), tokenString)
 	if err != nil {
 		logrus.WithError(err).Warn("Token validation failed")
 		writeJSONError(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
-	user, err := h.authSvc.Repo().GetUserByID(claims.UserID)
+	user, err := h.authSvc.Repo().GetUserByID(r.Context(), claims.UserID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Warn("Failed to get user by ID")
 		writeJSONError(w, http.StatusUnauthorized, "User not found")
@@ -176,7 +176,7 @@ func (h *Handler) HandleValidateToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	plan := ""
-	if tenant, err := h.authSvc.Repo().GetTenantByID(user.TenantID); err == nil && tenant != nil && tenant.Plan != "" {
+	if tenant, err := h.authSvc.Repo().GetTenantByID(r.Context(), user.TenantID); err == nil && tenant != nil && tenant.Plan != "" {
 		plan = tenant.Plan
 	}
 
@@ -231,17 +231,17 @@ func (h *Handler) HandleLogout(w http.ResponseWriter, r *http.Request) {
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) == 2 && parts[0] == "Bearer" {
 			tokenString := parts[1]
-			if claims, err := h.authSvc.ValidateToken(tokenString); err == nil {
+			if claims, err := h.authSvc.ValidateToken(r.Context(), tokenString); err == nil {
 				userID = &claims.UserID
 			}
-			if err := h.authSvc.Repo().DeleteSession(tokenString); err != nil {
+			if err := h.authSvc.Repo().DeleteSession(r.Context(), tokenString); err != nil {
 				logrus.WithError(err).Debug("Logout: failed to delete session (may already be expired)")
 			}
 		}
 	}
 
 	if userID != nil {
-		if err := h.authSvc.Repo().RevokeUserRefreshTokens(*userID); err != nil {
+		if err := h.authSvc.Repo().RevokeUserRefreshTokens(r.Context(), *userID); err != nil {
 			logrus.WithError(err).WithField("userID", userID).Warn("Logout: failed to revoke refresh tokens")
 		}
 
@@ -252,7 +252,7 @@ func (h *Handler) HandleLogout(w http.ResponseWriter, r *http.Request) {
 			IPAddress: getClientIP(r),
 			UserAgent: r.Header.Get("User-Agent"),
 		}
-		if logErr := h.authSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+		if logErr := h.authSvc.Repo().LogAuthEvent(r.Context(), authEvent); logErr != nil {
 			logrus.WithError(logErr).WithField("userID", userID).Warn("Failed to log logout event")
 		}
 	}
@@ -284,7 +284,7 @@ func (h *Handler) HandleRefreshToken(w http.ResponseWriter, r *http.Request) {
 
 	tokenHash := storage.HashRefreshToken(req.RefreshToken)
 
-	refreshToken, err := h.authSvc.Repo().GetRefreshTokenByHash(tokenHash)
+	refreshToken, err := h.authSvc.Repo().GetRefreshTokenByHash(r.Context(), tokenHash)
 	if err != nil {
 		logrus.WithError(err).Warn("Refresh token lookup failed")
 		writeJSONError(w, http.StatusUnauthorized, "Invalid refresh token")
@@ -302,7 +302,7 @@ func (h *Handler) HandleRefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.authSvc.Repo().GetUserByID(refreshToken.UserID)
+	user, err := h.authSvc.Repo().GetUserByID(r.Context(), refreshToken.UserID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", refreshToken.UserID).Warn("Failed to get user for refresh token")
 		writeJSONError(w, http.StatusUnauthorized, "User not found")
@@ -323,7 +323,7 @@ func (h *Handler) HandleRefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.authSvc.Repo().RevokeRefreshToken(refreshToken.ID); err != nil {
+	if err := h.authSvc.Repo().RevokeRefreshToken(r.Context(), refreshToken.ID); err != nil {
 		logrus.WithError(err).WithField("tokenID", refreshToken.ID).Warn("Failed to revoke old refresh token")
 	}
 
@@ -331,7 +331,7 @@ func (h *Handler) HandleRefreshToken(w http.ResponseWriter, r *http.Request) {
 	userAgent := r.Header.Get("User-Agent")
 
 	newExpiresAt := time.Now().Add(30 * 24 * time.Hour)
-	_, err = h.authSvc.Repo().CreateRefreshToken(user.ID, newRefreshTokenHash, ipAddress, userAgent, newExpiresAt)
+	_, err = h.authSvc.Repo().CreateRefreshToken(r.Context(), user.ID, newRefreshTokenHash, ipAddress, userAgent, newExpiresAt)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", user.ID).Error("Failed to store new refresh token")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to store refresh token")
@@ -355,7 +355,7 @@ func (h *Handler) HandleRefreshToken(w http.ResponseWriter, r *http.Request) {
 		safeUser["company_name"] = *user.CompanyName
 	}
 
-	if tenant, err := h.authSvc.Repo().GetTenantByID(user.TenantID); err == nil && tenant != nil && tenant.Plan != "" {
+	if tenant, err := h.authSvc.Repo().GetTenantByID(r.Context(), user.TenantID); err == nil && tenant != nil && tenant.Plan != "" {
 		safeUser["plan"] = tenant.Plan
 	}
 
@@ -386,14 +386,14 @@ func (h *Handler) HandleTrustedDeviceRequest(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	claims, err := h.authSvc.ValidateToken(parts[1])
+	claims, err := h.authSvc.ValidateToken(r.Context(), parts[1])
 	if err != nil {
 		writeJSONError(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	// Verify rememberDevices is enabled for this user
-	settings, err := h.authSvc.Repo().GetUserSettings(claims.UserID)
+	settings, err := h.authSvc.Repo().GetUserSettings(r.Context(), claims.UserID)
 	if err == nil && settings != nil {
 		if val, ok := settings["rememberDevices"]; ok {
 			if b, ok := val.(bool); ok && !b {

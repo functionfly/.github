@@ -155,7 +155,7 @@ type AgentSubscription struct {
 // =============================================================================
 
 func (h *Handler) HandleGetPlans(w http.ResponseWriter, r *http.Request) {
-	plans, err := h.repo.ListPricingTiersExtended()
+	plans, err := h.repo.ListPricingTiersExtended(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("billing: failed to list pricing tiers")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve pricing plans")
@@ -212,7 +212,7 @@ func (h *Handler) HandleGetPlans(w http.ResponseWriter, r *http.Request) {
 // =============================================================================
 
 func (h *Handler) HandleGetVerificationCost(w http.ResponseWriter, r *http.Request) {
-	fees, err := h.repo.ListVerificationFees()
+	fees, err := h.repo.ListVerificationFees(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("billing: failed to list verification fees")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve verification costs")
@@ -264,7 +264,7 @@ func (h *Handler) HandleVerifyFunction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get verification fee for the requested level
-	fee, err := h.repo.GetVerificationFeeByLevel(req.Level)
+	fee, err := h.repo.GetVerificationFeeByLevel(r.Context(), req.Level)
 	if err != nil {
 		logrus.WithError(err).WithField("level", req.Level).Warn("billing: verification fee not found")
 		writeJSONError(w, http.StatusBadRequest, "Invalid verification level")
@@ -310,7 +310,7 @@ func (h *Handler) HandleVerifyFunction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get user for Stripe customer creation
-	user, err := h.repo.GetUserByID(claims.UserID)
+	user, err := h.repo.GetUserByID(r.Context(), claims.UserID)
 	if err != nil || user == nil {
 		logrus.WithError(err).WithField("user_id", claims.UserID).Warn("billing: user not found")
 		writeJSONError(w, http.StatusNotFound, "User not found")

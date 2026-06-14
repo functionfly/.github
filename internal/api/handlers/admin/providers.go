@@ -3,13 +3,23 @@ package admin
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
+	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
+
+type ProviderSettingsResponse struct {
+	Provider       string  `json:"provider"`
+	Disabled       bool    `json:"disabled"`
+	DisabledReason *string `json:"disabled_reason,omitempty"`
+	DisabledAt     *string `json:"disabled_at,omitempty"`
+	DisabledBy     *string `json:"disabled_by,omitempty"`
+}
 
 // ProvidersHandler handles admin provider management endpoints
 type ProvidersHandler struct {
@@ -42,7 +52,7 @@ func (h *ProvidersHandler) HandleListProviders(w http.ResponseWriter, r *http.Re
 
 	for _, provider := range providers {
 		// Get user information
-		user, err := h.repo.GetUserByID(provider.UserID)
+		user, err := h.repo.GetUserByID(r.Context(), provider.UserID)
 		if err != nil {
 			logrus.WithError(err).WithField("user_id", provider.UserID).Warn("Failed to get user for provider")
 			continue
@@ -53,7 +63,7 @@ func (h *ProvidersHandler) HandleListProviders(w http.ResponseWriter, r *http.Re
 		}
 
 		// Get tenant information
-		tenant, err := h.repo.GetTenantByID(user.TenantID)
+		tenant, err := h.repo.GetTenantByID(r.Context(), user.TenantID)
 		if err != nil {
 			logrus.WithError(err).WithField("tenant_id", user.TenantID).Warn("Failed to get tenant for provider")
 			continue
@@ -108,7 +118,7 @@ func (h *ProvidersHandler) HandleUpdateProvider(w http.ResponseWriter, r *http.R
 	}
 
 	// Verify provider exists
-	provider, err := h.repo.GetProviderByID(providerID)
+	provider, err := h.repo.GetProviderByID(r.Context(), providerID)
 	if err != nil {
 		logrus.WithError(err).WithField("provider_id", providerID).Error("Failed to get provider")
 		apierror.WriteError(w, apierror.NewNotFound("Provider not found"))
@@ -165,7 +175,7 @@ func (h *ProvidersHandler) HandleDeleteProvider(w http.ResponseWriter, r *http.R
 	}
 
 	// Verify provider exists
-	provider, err := h.repo.GetProviderByID(providerID)
+	provider, err := h.repo.GetProviderByID(r.Context(), providerID)
 	if err != nil {
 		logrus.WithError(err).WithField("provider_id", providerID).Error("Failed to get provider")
 		apierror.WriteError(w, apierror.NewNotFound("Provider not found"))
@@ -193,4 +203,87 @@ func (h *ProvidersHandler) HandleDeleteProvider(w http.ResponseWriter, r *http.R
 	json.NewEncoder(w).Encode(map[string]string{
 		"message": "Provider deactivated successfully",
 	})
+}
+
+// HandleListProviderSettings handles GET /admin/providers/settings - returns all provider settings
+func (h *ProvidersHandler) HandleListProviderSettings(w http.ResponseWriter, r *http.Request) {
+	settings, err := h.repo.ListProviderSettings(r.Context())
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list provider settings")
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve provider settings"))
+		return
+	}
+
+	response := make([]ProviderSettingsResponse, 0, len(settings))
+	for _, s := range settings {
+		response = append(response, ProviderSettingsResponse{
+			Provider:       s.Provider,
+			Disabled:       s.Disabled,
+			DisabledReason: s.DisabledReason,
+			DisabledAt:     nullableTimeToString(s.DisabledAt),
+			DisabledBy:     s.DisabledBy,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"settings": response,
+	})
+}
+
+// HandleUpdateProviderSettings handles PATCH /admin/providers/settings/{provider} - update disabled state
+func (h *ProvidersHandler) HandleUpdateProviderSettings(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	provider := vars["provider"]
+	if provider == "" {
+		apierror.WriteError(w, apierror.NewBadRequest("Provider is required"))
+		return
+	}
+
+	var req struct {
+		Disabled bool   `json:"disabled"`
+		Reason   string `json:"reason,omitempty"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
+		return
+	}
+
+	disabledBy := ""
+	if claims := middleware.GetUserFromContext(r); claims != nil {
+		disabledBy = claims.UserID.String()
+	}
+
+	err := h.repo.SetProviderDisabled(r.Context(), provider, req.Disabled, req.Reason, disabledBy)
+	if err != nil {
+		logrus.WithError(err).WithField("provider", provider).Error("Failed to update provider settings")
+		apierror.WriteError(w, apierror.NewInternal("Failed to update provider settings"))
+		return
+	}
+
+	updatedSettings, err := h.repo.GetProviderSettings(r.Context(), provider)
+	if err != nil {
+		logrus.WithError(err).WithField("provider", provider).Error("Failed to get updated provider settings")
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve updated provider settings"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"settings": ProviderSettingsResponse{
+			Provider:       updatedSettings.Provider,
+			Disabled:       updatedSettings.Disabled,
+			DisabledReason: updatedSettings.DisabledReason,
+			DisabledAt:     nullableTimeToString(updatedSettings.DisabledAt),
+			DisabledBy:     updatedSettings.DisabledBy,
+		},
+	})
+}
+
+func nullableTimeToString(t *time.Time) *string {
+	if t == nil {
+		return nil
+	}
+	s := t.Format(time.RFC3339)
+	return &s
 }

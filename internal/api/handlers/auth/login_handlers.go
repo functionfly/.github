@@ -1,14 +1,15 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"runtime/debug"
 	"strings"
 	"time"
-	"fmt"
 
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage"
@@ -42,12 +43,12 @@ func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	ipAddress := getClientIP(r)
 	userAgent := r.Header.Get("User-Agent")
 
-	user, _ := h.authSvc.Repo().GetUserByEmail(identifier)
+	user, _ := h.authSvc.Repo().GetUserByEmail(context.Background(), identifier)
 	if user == nil {
-		user, _ = h.authSvc.Repo().GetUserByUsername(identifier)
+		user, _ = h.authSvc.Repo().GetUserByUsername(context.Background(), identifier)
 	}
 	if user != nil {
-		lockoutUntil, err := h.authSvc.Repo().GetUserLockoutStatus(user.ID)
+		lockoutUntil, err := h.authSvc.Repo().GetUserLockoutStatus(context.Background(), user.ID)
 		if err != nil {
 			logrus.WithError(err).WithField("userID", user.ID).Warn("Failed to check lockout status")
 		} else if lockoutUntil != nil && time.Now().Before(*lockoutUntil) {
@@ -65,7 +66,7 @@ func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 				IPAddress:     ipAddress,
 				UserAgent:     userAgent,
 			}
-			if logErr := h.authSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+			if logErr := h.authSvc.Repo().LogAuthEvent(context.Background(), authEvent); logErr != nil {
 				logrus.WithError(logErr).WithField("userID", user.ID).Warn("Failed to log lockout auth event")
 			}
 
@@ -74,10 +75,10 @@ func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	response, err := h.authSvc.Login(identifier, req.Password, ipAddress, userAgent)
+	response, err := h.authSvc.Login(context.Background(), identifier, req.Password, ipAddress, userAgent)
 
 	if user != nil {
-		_, recordErr := h.authSvc.Repo().CreateLoginAttempt(user.ID, ipAddress, userAgent, err == nil, nil)
+		_, recordErr := h.authSvc.Repo().CreateLoginAttempt(context.Background(), user.ID, ipAddress, userAgent, err == nil, nil)
 		if recordErr != nil {
 			logrus.WithError(recordErr).WithField("userID", user.ID).Warn("Failed to record login attempt")
 		}
@@ -99,7 +100,7 @@ func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 			UserAgent:     userAgent,
 		}
 
-		if logErr := h.authSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+		if logErr := h.authSvc.Repo().LogAuthEvent(context.Background(), authEvent); logErr != nil {
 			logrus.WithError(logErr).WithField("userID", user.ID).Warn("Failed to log auth event")
 		}
 
@@ -165,7 +166,7 @@ func (h *Handler) handleFailedLoginAttempt(userID uuid.UUID, ipAddress, userAgen
 	const lockoutDuration = 15 * time.Minute
 	const failureWindow = 15 * time.Minute
 
-	failedCount, err := h.authSvc.Repo().GetRecentFailedLoginAttempts(userID, time.Now().Add(-failureWindow))
+	failedCount, err := h.authSvc.Repo().GetRecentFailedLoginAttempts(context.Background(), userID, time.Now().Add(-failureWindow))
 	if err != nil {
 		logrus.WithError(err).WithField("userID", userID).Warn("Failed to count recent failed login attempts")
 		return
@@ -174,7 +175,7 @@ func (h *Handler) handleFailedLoginAttempt(userID uuid.UUID, ipAddress, userAgen
 	if failedCount >= maxFailedAttempts {
 		lockoutUntil := time.Now().Add(lockoutDuration)
 
-		_, err = h.authSvc.Repo().CreateLoginAttempt(userID, ipAddress, userAgent, false, &lockoutUntil)
+		_, err = h.authSvc.Repo().CreateLoginAttempt(context.Background(), userID, ipAddress, userAgent, false, &lockoutUntil)
 		if err != nil {
 			logrus.WithError(err).WithField("userID", userID).Warn("Failed to record lockout")
 			return
@@ -192,7 +193,7 @@ func (h *Handler) handleFailedLoginAttempt(userID uuid.UUID, ipAddress, userAgen
 				"lockout_duration_minutes": 15,
 			},
 		}
-		if logErr := h.authSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+		if logErr := h.authSvc.Repo().LogAuthEvent(context.Background(), authEvent); logErr != nil {
 			logrus.WithError(logErr).WithField("userID", userID).Warn("Failed to log account lockout event")
 		}
 

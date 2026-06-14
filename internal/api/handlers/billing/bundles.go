@@ -128,7 +128,7 @@ func (h *Handler) HandleGetBundleUsageStatus(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	execRollups, _ := h.repo.GetUsageByTenant(claims.TenantID, "function_execution", periodStart, periodEnd)
+	execRollups, _ := h.repo.GetUsageByTenant(ctx, claims.TenantID, "function_execution", periodStart, periodEnd)
 	totalExecutions := 0
 	for _, rollup := range execRollups {
 		totalExecutions += rollup.TotalQuantity
@@ -255,7 +255,7 @@ func (h *Handler) HandleChangeBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.repo.GetUserByID(claims.UserID)
+	user, err := h.repo.GetUserByID(ctx, claims.UserID)
 	if err != nil || user == nil {
 		writeJSONError(w, http.StatusNotFound, "User not found")
 		return
@@ -433,6 +433,7 @@ func (h *Handler) HandleRegisterFounderMode(w http.ResponseWriter, r *http.Reque
 // POST /v1/billing/bundles/:slug/checkout
 func (h *Handler) HandleCreateBundleCheckout(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
+	ctx := r.Context()
 	if claims == nil || claims.TenantID == uuid.Nil {
 		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
@@ -479,7 +480,7 @@ func (h *Handler) HandleCreateBundleCheckout(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	user, err := h.repo.GetUserByID(claims.UserID)
+	user, err := h.repo.GetUserByID(ctx, claims.UserID)
 	if err != nil || user == nil {
 		logrus.WithError(err).WithField("user_id", claims.UserID).Warn("billing bundle checkout: user not found")
 		writeJSONError(w, http.StatusNotFound, "User not found")
@@ -567,6 +568,7 @@ func (h *Handler) HandleGetDeferredBillingStatus(w http.ResponseWriter, r *http.
 		return
 	}
 
+	ctx := r.Context()
 	// Get active founder mode
 	registrations, err := h.repo.ListActiveFounderModesByTenant(r.Context(), claims.TenantID)
 	if err != nil {
@@ -594,7 +596,7 @@ func (h *Handler) HandleGetDeferredBillingStatus(w http.ResponseWriter, r *http.
 	periodStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 	periodEnd := periodStart.AddDate(0, 1, 0).Add(-time.Second)
 
-	execRollups, _ := h.repo.GetUsageByTenant(claims.TenantID, "function_execution", periodStart, periodEnd)
+	execRollups, _ := h.repo.GetUsageByTenant(ctx, claims.TenantID, "function_execution", periodStart, periodEnd)
 	totalExecutions := 0
 	for _, rollup := range execRollups {
 		totalExecutions += rollup.TotalQuantity
@@ -678,6 +680,7 @@ func (h *Handler) HandleConvertToPaid(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
+	ctx := r.Context()
 
 	if !payment.IsConfigured() {
 		writeJSONError(w, http.StatusServiceUnavailable, "Billing is not configured")
@@ -722,7 +725,7 @@ func (h *Handler) HandleConvertToPaid(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get user for checkout
-	user, err := h.repo.GetUserByID(claims.UserID)
+	user, err := h.repo.GetUserByID(ctx, claims.UserID)
 	if err != nil || user == nil {
 		logrus.WithError(err).WithField("user_id", claims.UserID).Warn("billing convert: user not found")
 		writeJSONError(w, http.StatusNotFound, "User not found")

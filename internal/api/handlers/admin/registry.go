@@ -1,15 +1,18 @@
 package admin
 
 import (
+	"bytes"
 	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/apierror"
-	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/functionfly/functionfly/internal/cache"
+	"github.com/functionfly/functionfly/internal/storage/registry"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
@@ -17,12 +20,12 @@ import (
 // RegistryHandler handles admin registry API (stats, list, get, update, delete, visibility, pricing).
 // Uses the same registry repo as the public registry handler.
 type RegistryHandler struct {
-	registryRepo *registryrepo.RegistryRepository
+	registryRepo *registry.RegistryRepository
 	cacheService *cache.CacheService
 }
 
 // NewRegistryHandler creates a new admin registry handler.
-func NewRegistryHandler(registryRepo *registryrepo.RegistryRepository, cacheService *cache.CacheService) *RegistryHandler {
+func NewRegistryHandler(registryRepo *registry.RegistryRepository, cacheService *cache.CacheService) *RegistryHandler {
 	return &RegistryHandler{
 		registryRepo: registryRepo,
 		cacheService: cacheService,
@@ -139,7 +142,7 @@ func (h *RegistryHandler) HandleGetRegistryFunction(w http.ResponseWriter, r *ht
 		return
 	}
 
-	fn, err := h.registryRepo.GetFunctionByID(functionID)
+	fn, err := h.registryRepo.GetFunctionByID(r.Context(), functionID)
 	if err != nil {
 		logrus.WithError(err).WithField("function_id", functionID).Error("Failed to get registry function (admin)")
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
@@ -278,7 +281,7 @@ func (h *RegistryHandler) HandleUpdateRegistryFunction(w http.ResponseWriter, r 
 		return
 	}
 
-	updated, err := h.registryRepo.UpdateRegistryFunction(functionID, updates)
+	updated, err := h.registryRepo.UpdateRegistryFunction(r.Context(), functionID, updates)
 	if err != nil {
 		logrus.WithError(err).WithField("function_id", functionID).Error("Failed to update registry function (admin)")
 		apierror.WriteError(w, apierror.NewInternal("Failed to update function"))
@@ -331,13 +334,13 @@ func (h *RegistryHandler) HandleDeleteRegistryFunction(w http.ResponseWriter, r 
 		return
 	}
 
-	fn, err := h.registryRepo.GetFunctionByID(functionID)
+	fn, err := h.registryRepo.GetFunctionByID(r.Context(), functionID)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
-	if err := h.registryRepo.DeleteFunction(fn.Author, fn.Name); err != nil {
+	if err := h.registryRepo.DeleteFunction(r.Context(), fn.Author, fn.Name); err != nil {
 		logrus.WithError(err).WithField("function_id", functionID).Error("Failed to delete registry function (admin)")
 		apierror.WriteError(w, apierror.NewInternal("Failed to delete function"))
 		return
@@ -368,7 +371,7 @@ func (h *RegistryHandler) HandleUpdateRegistryVisibility(w http.ResponseWriter, 
 		return
 	}
 
-	updated, err := h.registryRepo.UpdateRegistryFunction(functionID, map[string]interface{}{"visibility": body.Visibility})
+	updated, err := h.registryRepo.UpdateRegistryFunction(r.Context(), functionID, map[string]interface{}{"visibility": body.Visibility})
 	if err != nil {
 		logrus.WithError(err).WithField("function_id", functionID).Error("Failed to update visibility (admin)")
 		apierror.WriteError(w, apierror.NewInternal("Failed to update visibility"))
@@ -425,7 +428,7 @@ func (h *RegistryHandler) HandleUpdateRegistryPricing(w http.ResponseWriter, r *
 		return
 	}
 
-	updated, err := h.registryRepo.UpdateRegistryFunction(functionID, map[string]interface{}{"price_per_call": body.PricePerCall})
+	updated, err := h.registryRepo.UpdateRegistryFunction(r.Context(), functionID, map[string]interface{}{"price_per_call": body.PricePerCall})
 	if err != nil {
 		logrus.WithError(err).WithField("function_id", functionID).Error("Failed to update pricing (admin)")
 		apierror.WriteError(w, apierror.NewInternal("Failed to update pricing"))
@@ -474,7 +477,7 @@ func (h *RegistryHandler) HandleFlagRegistryFunction(w http.ResponseWriter, r *h
 		return
 	}
 
-	fn, err := h.registryRepo.GetFunctionByID(functionID)
+	fn, err := h.registryRepo.GetFunctionByID(r.Context(), functionID)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -494,7 +497,7 @@ func (h *RegistryHandler) HandleFlagRegistryFunction(w http.ResponseWriter, r *h
 		return
 	}
 
-	flagReason := registryrepo.FlagFunctionFlags(body.Reason)
+	flagReason := registry.FlagFunctionFlags(body.Reason)
 	var reviewerID uuid.UUID
 	if body.AdminID != "" {
 		reviewerID, _ = uuid.Parse(body.AdminID)

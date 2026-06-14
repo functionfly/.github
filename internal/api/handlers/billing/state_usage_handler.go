@@ -124,21 +124,21 @@ func (h *StateUsageHandler) GetStateUsageHistory(w http.ResponseWriter, r *http.
 	}
 
 	// Get usage rollups from the billing repository
-	storageRollups, err := h.repo.GetUsageByTenant(tenantID, "state_storage", start, end)
+	storageRollups, err := h.repo.GetUsageByTenant(r.Context(), tenantID, "state_storage", start, end)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get storage usage rollups")
 		writeError(w, http.StatusInternalServerError, "Failed to retrieve usage data")
 		return
 	}
 
-	readRollups, err := h.repo.GetUsageByTenant(tenantID, "state_read_ops", start, end)
+	readRollups, err := h.repo.GetUsageByTenant(r.Context(), tenantID, "state_read_ops", start, end)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get read ops rollups")
 		writeError(w, http.StatusInternalServerError, "Failed to retrieve usage data")
 		return
 	}
 
-	writeRollups, err := h.repo.GetUsageByTenant(tenantID, "state_write_ops", start, end)
+	writeRollups, err := h.repo.GetUsageByTenant(r.Context(), tenantID, "state_write_ops", start, end)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get write ops rollups")
 		writeError(w, http.StatusInternalServerError, "Failed to retrieve usage data")
@@ -344,7 +344,7 @@ func (h *StateUsageHandler) GetStateQuotaStatus(w http.ResponseWriter, r *http.R
 	}
 
 	// Get subscription for limits
-	sub, err := h.repo.GetSubscriptionByTenantID(tenantID)
+	sub, err := h.repo.GetSubscriptionByTenantID(r.Context(), tenantID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get subscription")
 		writeError(w, http.StatusInternalServerError, "Failed to retrieve quota limits")

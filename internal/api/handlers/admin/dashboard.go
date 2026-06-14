@@ -39,7 +39,7 @@ func (h *Handler) HandleDashboardActivity(w http.ResponseWriter, r *http.Request
 		"start_time": start,
 		"end_time":   end,
 	}
-	events, err := h.repo.ListAuditEventsFiltered(2000, 0, filters)
+	events, err := h.repo.ListAuditEventsFiltered(r.Context(), 2000, 0, filters)
 	if err != nil {
 		logrus.WithError(err).Warn("Failed to list audit events for dashboard activity; returning empty series")
 		// Return empty data so the dashboard still loads (e.g. if audit_events table is missing or DB error)
@@ -147,7 +147,7 @@ func (h *Handler) HandleDashboardRevenue(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	invoices, err := h.repo.ListAllInvoices(5000, 0)
+	invoices, err := h.repo.ListAllInvoices(r.Context(), 5000, 0)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list invoices for dashboard revenue")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get revenue"))
@@ -215,10 +215,10 @@ func (h *Handler) HandleDashboardQuickStats(w http.ResponseWriter, r *http.Reque
 		"pending_incidents": 0,
 	}
 
-	if tenants, err := h.repo.ListTenants(); err == nil {
+	if tenants, err := h.repo.ListTenants(r.Context()); err == nil {
 		stats["total_tenants"] = len(tenants)
 	}
-	if users, err := h.repo.ListUsers(); err == nil {
+	if users, err := h.repo.ListUsers(r.Context()); err == nil {
 		stats["total_users"] = len(users)
 	}
 

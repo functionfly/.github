@@ -158,7 +158,7 @@ func (h *UsageForecastHandler) RefreshForecast(w http.ResponseWriter, r *http.Re
 	}
 
 	// Get subscription for period info
-	sub, err := h.billingRepo.GetSubscriptionByTenantID(tenantID)
+	sub, err := h.billingRepo.GetSubscriptionByTenantID(r.Context(), tenantID)
 	if err != nil || sub == nil {
 		apierror.WriteError(w, apierror.NewNotFound("Subscription not found"))
 		return
@@ -481,7 +481,7 @@ func (h *UsageForecastHandler) GetSpendCap(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Get subscription for period
-	sub, err := h.billingRepo.GetSubscriptionByTenantID(tenantID)
+	sub, err := h.billingRepo.GetSubscriptionByTenantID(r.Context(), tenantID)
 	if err != nil || sub == nil {
 		apierror.WriteError(w, apierror.NewNotFound("Subscription not found"))
 		return
@@ -529,7 +529,7 @@ func (h *UsageForecastHandler) UpdateSpendCap(w http.ResponseWriter, r *http.Req
 	}
 
 	// Get subscription for period dates
-	sub, err := h.billingRepo.GetSubscriptionByTenantID(tenantID)
+	sub, err := h.billingRepo.GetSubscriptionByTenantID(r.Context(), tenantID)
 	if err != nil || sub == nil {
 		apierror.WriteError(w, apierror.NewNotFound("Subscription not found"))
 		return

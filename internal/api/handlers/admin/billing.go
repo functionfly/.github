@@ -19,14 +19,15 @@ import (
 // HandleBillingSummary returns summary stats for the admin billing page.
 // GET /v1/admin/billing/summary
 func (h *Handler) HandleBillingSummary(w http.ResponseWriter, r *http.Request) {
-	invoices, err := h.repo.ListAllInvoices(10000, 0)
+	ctx := r.Context()
+	invoices, err := h.repo.ListAllInvoices(ctx, 10000, 0)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list invoices for billing summary")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get billing summary"))
 		return
 	}
 
-	subs, err := h.repo.ListAllSubscriptions(10000, 0)
+	subs, err := h.repo.ListAllSubscriptions(ctx, 10000, 0)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list subscriptions for billing summary")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get billing summary"))
@@ -73,7 +74,8 @@ func (h *Handler) HandleBillingSummary(w http.ResponseWriter, r *http.Request) {
 
 // HandleListPricingTiers lists all pricing tiers
 func (h *Handler) HandleListPricingTiers(w http.ResponseWriter, r *http.Request) {
-	tiers, err := h.repo.ListPricingTiers()
+	ctx := r.Context()
+	tiers, err := h.repo.ListPricingTiers(ctx)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list pricing tiers")
 		apierror.WriteError(w, apierror.NewInternal("Failed to list pricing tiers"))
@@ -131,8 +133,9 @@ func (h *Handler) HandleGetPricingTier(w http.ResponseWriter, r *http.Request) {
 		apierror.WriteError(w, apierror.NewBadRequest("Invalid tier ID"))
 		return
 	}
+	ctx := r.Context()
 
-	tier, err := h.repo.GetPricingTierByID(tierID)
+	tier, err := h.repo.GetPricingTierByID(ctx, tierID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get pricing tier")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get pricing tier"))
@@ -208,7 +211,7 @@ func (h *Handler) HandleListSubscriptions(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	subs, err := h.repo.ListAllSubscriptions(limit, offset)
+	subs, err := h.repo.ListAllSubscriptions(r.Context(), limit, offset)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list subscriptions")
 		apierror.WriteError(w, apierror.NewInternal("Failed to list subscriptions"))
@@ -235,7 +238,7 @@ func (h *Handler) HandleCreateSubscription(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Check if tenant already has an active subscription
-	existing, err := h.repo.GetSubscriptionByTenantID(req.TenantID)
+	existing, err := h.repo.GetSubscriptionByTenantID(r.Context(), req.TenantID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check existing subscription")
 		apierror.WriteError(w, apierror.NewInternal("Failed to create subscription"))
@@ -353,7 +356,7 @@ func (h *Handler) HandleListInvoices(w http.ResponseWriter, r *http.Request) {
 			offset = n
 		}
 	}
-	invoices, err := h.repo.ListAllInvoices(limit, offset)
+	invoices, err := h.repo.ListAllInvoices(r.Context(), limit, offset)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list invoices")
 		apierror.WriteError(w, apierror.NewInternal("Failed to list invoices"))
@@ -414,7 +417,7 @@ func (h *Handler) HandleGetInvoice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	invoice, err := h.repo.GetInvoiceByID(invoiceID)
+	invoice, err := h.repo.GetInvoiceByID(r.Context(), invoiceID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get invoice")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get invoice"))
@@ -485,7 +488,7 @@ func (h *Handler) HandleGetUsage(w http.ResponseWriter, r *http.Request) {
 		end = time.Now() // Default to now
 	}
 
-	usage, err := h.repo.GetUsageByTenant(tenantID, eventType, start, end)
+	usage, err := h.repo.GetUsageByTenant(r.Context(), tenantID, eventType, start, end)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get usage")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get usage"))
@@ -532,7 +535,7 @@ func (h *Handler) HandleRecordUsage(w http.ResponseWriter, r *http.Request) {
 
 // HandleListCoupons lists coupons
 func (h *Handler) HandleListCoupons(w http.ResponseWriter, r *http.Request) {
-	coupons, err := h.repo.ListCoupons()
+	coupons, err := h.repo.ListCoupons(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list coupons")
 		apierror.WriteError(w, apierror.NewInternal("Failed to list coupons"))
@@ -625,7 +628,8 @@ func (h *Handler) HandleRedeemCoupon(w http.ResponseWriter, r *http.Request) {
 // HandleListAffiliateCodes lists all affiliate codes
 // GET /v1/admin/billing/affiliate-codes
 func (h *Handler) HandleListAffiliateCodes(w http.ResponseWriter, r *http.Request) {
-	codes, err := h.repo.ListAffiliateCodes()
+	ctx := r.Context()
+	codes, err := h.repo.ListAffiliateCodes(ctx)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list affiliate codes")
 		apierror.WriteError(w, apierror.NewInternal("Failed to list affiliate codes"))
@@ -701,7 +705,7 @@ func (h *Handler) HandleGetAffiliateCode(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	code, err := h.repo.GetAffiliateCodeByID(codeID)
+	code, err := h.repo.GetAffiliateCodeByID(r.Context(), codeID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get affiliate code")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get affiliate code"))
@@ -726,7 +730,7 @@ func (h *Handler) HandleUpdateAffiliateCode(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	code, err := h.repo.GetAffiliateCodeByID(codeID)
+	code, err := h.repo.GetAffiliateCodeByID(r.Context(), codeID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get affiliate code")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get affiliate code"))
@@ -802,7 +806,7 @@ func (h *Handler) HandleListAffiliateReferrals(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	referrals, err := h.repo.ListAffiliateReferralsByCode(codeID)
+	referrals, err := h.repo.ListAffiliateReferralsByCode(r.Context(), codeID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list affiliate referrals")
 		apierror.WriteError(w, apierror.NewInternal("Failed to list affiliate referrals"))
@@ -825,7 +829,7 @@ func (h *Handler) HandleListAffiliateCommissions(w http.ResponseWriter, r *http.
 		return
 	}
 
-	commissions, err := h.repo.ListAffiliateCommissionsByCode(codeID)
+	commissions, err := h.repo.ListAffiliateCommissionsByCode(r.Context(), codeID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list affiliate commissions")
 		apierror.WriteError(w, apierror.NewInternal("Failed to list affiliate commissions"))
@@ -858,7 +862,7 @@ func (h *Handler) HandleRecordAffiliateReferral(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	code, err := h.repo.GetAffiliateCodeByCode(req.AffiliateCode)
+	code, err := h.repo.GetAffiliateCodeByCode(r.Context(), req.AffiliateCode)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get affiliate code")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get affiliate code"))
@@ -977,7 +981,7 @@ func (h *Handler) HandleCalculateAffiliateCommission(w http.ResponseWriter, r *h
 		return
 	}
 
-	code, err := h.repo.GetAffiliateCodeByCode(req.AffiliateCode)
+	code, err := h.repo.GetAffiliateCodeByCode(r.Context(), req.AffiliateCode)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get affiliate code")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get affiliate code"))
@@ -989,7 +993,7 @@ func (h *Handler) HandleCalculateAffiliateCommission(w http.ResponseWriter, r *h
 	}
 
 	baseAmountUSD := float64(req.BaseAmountCents) / 100.0
-	commissionCents, commissionUSD := h.repo.CalculateCommission(code.CommissionType, code.CommissionValue, baseAmountUSD)
+	commissionCents, commissionUSD := h.repo.CalculateCommission(r.Context(), code.CommissionType, code.CommissionValue, baseAmountUSD)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{

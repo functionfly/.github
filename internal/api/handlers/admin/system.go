@@ -40,7 +40,7 @@ func (h *Handler) HandleSystemHealth(w http.ResponseWriter, r *http.Request) {
 	// Repository connectivity check
 	repoHealthy := true
 	repoStart := time.Now()
-	if _, err := h.repo.ListTenants(); err != nil {
+	if _, err := h.repo.ListTenants(r.Context()); err != nil {
 		repoHealthy = false
 		logrus.WithError(err).Error("Repository health check failed")
 	}
@@ -110,7 +110,7 @@ func (h *Handler) HandleSystemHealth(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleSystemMetrics(w http.ResponseWriter, r *http.Request) {
 	repoHealthy := true
 	repoStart := time.Now()
-	if _, err := h.repo.ListTenants(); err != nil {
+	if _, err := h.repo.ListTenants(r.Context()); err != nil {
 		repoHealthy = false
 		logrus.WithError(err).Error("Repository health check failed for system metrics")
 	}

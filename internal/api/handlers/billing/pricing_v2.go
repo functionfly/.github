@@ -172,7 +172,7 @@ func (h *Handler) HandleGetCurrentUsage(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Get subscription for tier info and period
-	sub, err := h.repo.GetSubscriptionByTenantID(claims.TenantID)
+	sub, err := h.repo.GetSubscriptionByTenantID(r.Context(), claims.TenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Warn("billing: failed to get subscription")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to get subscription")
@@ -185,9 +185,9 @@ func (h *Handler) HandleGetCurrentUsage(w http.ResponseWriter, r *http.Request) 
 	periodEnd := periodStart.AddDate(0, 1, 0).Add(-time.Second)
 
 	// Pull usage metrics from existing rollups
-	execRollups, _ := h.repo.GetUsageByTenant(claims.TenantID, "function_execution", periodStart, periodEnd)
-	aiRollups, _ := h.repo.GetUsageByTenant(claims.TenantID, "ai_call", periodStart, periodEnd)
-	workflowRollups, _ := h.repo.GetUsageByTenant(claims.TenantID, "workflow_run", periodStart, periodEnd)
+	execRollups, _ := h.repo.GetUsageByTenant(r.Context(), claims.TenantID, "function_execution", periodStart, periodEnd)
+	aiRollups, _ := h.repo.GetUsageByTenant(r.Context(), claims.TenantID, "ai_call", periodStart, periodEnd)
+	workflowRollups, _ := h.repo.GetUsageByTenant(r.Context(), claims.TenantID, "workflow_run", periodStart, periodEnd)
 
 	totalExecutions := 0
 	for _, rollup := range execRollups {

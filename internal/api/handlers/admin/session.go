@@ -1,7 +1,11 @@
 package admin
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/apierror"
@@ -16,7 +20,7 @@ func (h *Handler) HandleGetAdminSession(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	user, err := h.repo.GetUserByID(claims.UserID)
+	user, err := h.repo.GetUserByID(r.Context(), claims.UserID)
 	if err != nil || user == nil {
 		logrus.WithError(err).WithField("user_id", claims.UserID).Warn("Failed to resolve admin user for session bootstrap")
 		apierror.WriteError(w, apierror.NewUnauthorized("User not found"))
@@ -24,7 +28,7 @@ func (h *Handler) HandleGetAdminSession(w http.ResponseWriter, r *http.Request) 
 	}
 
 	plan := ""
-	if tenant, terr := h.repo.GetTenantByID(user.TenantID); terr == nil && tenant != nil {
+	if tenant, terr := h.repo.GetTenantByID(r.Context(), user.TenantID); terr == nil && tenant != nil {
 		plan = tenant.Plan
 	}
 
@@ -100,7 +104,7 @@ func (h *Handler) HandleGetAdminLastLogin(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	lastAttempt, err := h.loginAttemptRepo.GetLastSuccessfulLogin(claims.UserID)
+	lastAttempt, err := h.loginAttemptRepo.GetLastSuccessfulLogin(r.Context(), claims.UserID)
 	if err != nil {
 		logrus.WithError(err).WithField("user_id", claims.UserID).Warn("Failed to fetch last login")
 		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve last login"))
@@ -139,7 +143,7 @@ func (h *Handler) HandleExtendAdminSession(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	user, err := h.repo.GetUserByID(claims.UserID)
+	user, err := h.repo.GetUserByID(r.Context(), claims.UserID)
 	if err != nil || user == nil {
 		logrus.WithError(err).WithField("user_id", claims.UserID).Warn("Failed to resolve admin user for session extend")
 		apierror.WriteError(w, apierror.NewUnauthorized("User not found"))
@@ -154,7 +158,7 @@ func (h *Handler) HandleExtendAdminSession(w http.ResponseWriter, r *http.Reques
 	}
 
 	plan := ""
-	if tenant, terr := h.repo.GetTenantByID(user.TenantID); terr == nil && tenant != nil {
+	if tenant, terr := h.repo.GetTenantByID(r.Context(), user.TenantID); terr == nil && tenant != nil {
 		plan = tenant.Plan
 	}
 

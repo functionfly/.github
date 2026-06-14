@@ -77,7 +77,7 @@ func (h *CostAllocationHandler) GetCostSummary(w http.ResponseWriter, r *http.Re
 	}
 
 	// Get tenant name
-	tenant, err := h.repo.GetTenantByID(tenantID)
+	tenant, err := h.repo.GetTenantByID(ctx, tenantID)
 	if err == nil && tenant != nil {
 		summary.TenantName = tenant.Name
 	}
@@ -553,7 +553,7 @@ func (h *CostAllocationHandler) AdminGetTenantCostSummary(w http.ResponseWriter,
 	}
 
 	// Get tenant name
-	tenant, err := h.repo.GetTenantByID(tenantID)
+	tenant, err := h.repo.GetTenantByID(ctx, tenantID)
 	if err == nil && tenant != nil {
 		summary.TenantName = tenant.Name
 	}

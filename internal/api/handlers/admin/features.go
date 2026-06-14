@@ -1,10 +1,11 @@
 package admin
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/functionfly/functionfly/internal/apierror"
-	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -170,7 +171,7 @@ func (h *Handler) HandleCheckTenantFeatures(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Get tenant from repository
-	tenant, err := h.repo.GetTenantByID(id)
+	tenant, err := h.repo.GetTenantByID(r.Context(), id)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get tenant")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get tenant"))

@@ -1,13 +1,16 @@
 package admin
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
-	"strconv"
-	"strings"
+	"time"
 
 	"github.com/functionfly/functionfly/internal/apierror"
+	"github.com/functionfly/functionfly/internal/plans"
+	"github.com/functionfly/functionfly/internal/services/membership"
 	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/functionfly/functionfly/internal/api/utils"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -15,7 +18,7 @@ import (
 
 // HandleListTenants lists all tenants
 func (h *Handler) HandleListTenants(w http.ResponseWriter, r *http.Request) {
-	tenants, err := h.repo.ListTenants()
+	tenants, err := h.repo.ListTenants(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list tenants")
 		// Return empty list so admin UI can load; caller can retry or check logs
@@ -39,7 +42,7 @@ func (h *Handler) HandleGetTenant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenant, err := h.repo.GetTenantByID(tenantID)
+	tenant, err := h.repo.GetTenantByID(r.Context(), tenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to get tenant")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get tenant"))
@@ -102,7 +105,7 @@ func (h *Handler) HandleUpdateTenant(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get before state for audit
-	beforeTenant, _ := h.repo.GetTenantByID(tenantID)
+	beforeTenant, _ := h.repo.GetTenantByID(r.Context(), tenantID)
 	if beforeTenant == nil {
 		apierror.WriteError(w, apierror.NewNotFound("Tenant not found"))
 		return
@@ -193,7 +196,7 @@ func (h *Handler) HandleDeleteTenant(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get before state for audit
-	beforeTenant, _ := h.repo.GetTenantByID(tenantID)
+	beforeTenant, _ := h.repo.GetTenantByID(r.Context(), tenantID)
 
 	err = h.repo.DeleteTenant(r.Context(), tenantID)
 	if err != nil {
@@ -223,10 +226,10 @@ func (h *Handler) HandleGetSeatUsage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenant, err := h.repo.GetTenantByID(tenantID)
+tenant, err := h.repo.GetTenantByID(r.Context(), tenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to get tenant")
-		apierror.WriteError(w, apierror.NewInternal("Failed to get tenant"))
+		apierror.WriteError(w, apierror.NewInternal("Failed to get seat usage"))
 		return
 	}
 	if tenant == nil {
@@ -276,7 +279,7 @@ func (h *Handler) HandleListTenantApps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apps, err := h.repo.ListAppsByTenant(tenantID)
+	apps, err := h.repo.ListAppsByTenant(r.Context(), tenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to list tenant apps")
 		apierror.WriteError(w, apierror.NewInternal("Failed to list apps"))
@@ -298,7 +301,7 @@ func (h *Handler) HandleGetTenantApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app, err := h.repo.GetAppByID(appID)
+	app, err := h.repo.GetAppByID(r.Context(), appID)
 	if err != nil {
 		logrus.WithError(err).WithField("app_id", appID).Error("Failed to get app")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get app"))
@@ -324,7 +327,7 @@ func (h *Handler) HandleListTenantBackends(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	backends, err := h.repo.ListBackendsByAppID(appID)
+	backends, err := h.repo.ListBackendsByAppID(r.Context(), appID)
 	if err != nil {
 		logrus.WithError(err).WithField("app_id", appID).Error("Failed to list backends")
 		apierror.WriteError(w, apierror.NewInternal("Failed to list backends"))
@@ -347,7 +350,7 @@ func (h *Handler) HandleListTenantDeployments(w http.ResponseWriter, r *http.Req
 	}
 
 	// Default limit of 50 deployments
-	deployments, err := h.repo.ListDeploymentsByAppID(appID, 50)
+	deployments, err := h.repo.ListDeploymentsByAppID(r.Context(), appID, 50)
 	if err != nil {
 		logrus.WithError(err).WithField("app_id", appID).Error("Failed to list deployments")
 		apierror.WriteError(w, apierror.NewInternal("Failed to list deployments"))
@@ -370,7 +373,7 @@ func (h *Handler) HandleTenantDeploymentRollback(w http.ResponseWriter, r *http.
 	}
 
 	// Get deployment to verify it exists
-	deployment, err := h.repo.GetDeploymentByID(deploymentID)
+	deployment, err := h.repo.GetDeploymentByID(r.Context(), deploymentID)
 	if err != nil {
 		logrus.WithError(err).WithField("deployment_id", deploymentID).Error("Failed to get deployment")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get deployment"))
@@ -382,7 +385,7 @@ func (h *Handler) HandleTenantDeploymentRollback(w http.ResponseWriter, r *http.
 	}
 
 	// Update deployment status to rolled back
-	err = h.repo.UpdateDeploymentStatus(deploymentID, "rolled_back", "Manually rolled back by admin", nil)
+	err = h.repo.UpdateDeploymentStatus(r.Context(), deploymentID, "rolled_back", "Manually rolled back by admin", nil)
 	if err != nil {
 		logrus.WithError(err).WithField("deployment_id", deploymentID).Error("Failed to rollback deployment")
 		apierror.WriteError(w, apierror.NewInternal("Failed to rollback deployment"))
@@ -409,7 +412,7 @@ func (h *Handler) HandleTenantMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenant, err := h.repo.GetTenantByID(tenantID)
+	tenant, err := h.repo.GetTenantByID(r.Context(), tenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to get tenant for metrics")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get tenant"))
@@ -478,7 +481,7 @@ func (h *Handler) HandleTenantHealth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenant, err := h.repo.GetTenantByID(tenantID)
+	tenant, err := h.repo.GetTenantByID(r.Context(), tenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to get tenant for health check")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get tenant"))

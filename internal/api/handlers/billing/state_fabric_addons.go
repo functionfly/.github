@@ -100,7 +100,7 @@ func (h *Handler) HandleCreateStateFabricAddOnCheckout(w http.ResponseWriter, r 
 		writeJSONError(w, http.StatusServiceUnavailable, "Add-on checkout is not configured")
 		return
 	}
-	user, err := h.repo.GetUserByID(claims.UserID)
+	user, err := h.repo.GetUserByID(r.Context(), claims.UserID)
 	if err != nil || user == nil {
 		logrus.WithError(err).WithField("user_id", claims.UserID).Warn("billing addon checkout: user not found")
 		writeJSONError(w, http.StatusNotFound, "User not found")

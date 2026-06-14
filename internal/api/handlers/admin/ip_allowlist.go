@@ -34,7 +34,7 @@ func (h *IPAllowlistHandler) HandleListTenantIPAllowlists(w http.ResponseWriter,
 		return
 	}
 
-	allowlists, err := h.repo.ListAllowlistsByTenantID(tenantID)
+	allowlists, err := h.repo.ListAllowlistsByTenantID(r.Context(), tenantID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list IP allowlists")
 		apierror.WriteError(w, apierror.NewInternal("Failed to list IP allowlists"))
@@ -124,7 +124,7 @@ func (h *IPAllowlistHandler) HandleGetIPAllowlist(w http.ResponseWriter, r *http
 		return
 	}
 
-	allowlist, err := h.repo.GetAllowlistByID(allowlistID)
+	allowlist, err := h.repo.GetAllowlistByID(r.Context(), allowlistID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get IP allowlist")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get IP allowlist"))
@@ -151,7 +151,7 @@ func (h *IPAllowlistHandler) HandleUpdateIPAllowlist(w http.ResponseWriter, r *h
 	}
 
 	// Get existing allowlist
-	allowlist, err := h.repo.GetAllowlistByID(allowlistID)
+	allowlist, err := h.repo.GetAllowlistByID(r.Context(), allowlistID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get IP allowlist")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get IP allowlist"))
@@ -236,7 +236,7 @@ func (h *IPAllowlistHandler) HandleListIPAllowlistEntries(w http.ResponseWriter,
 	}
 
 	// Verify the allowlist exists
-	allowlist, err := h.repo.GetAllowlistByID(allowlistID)
+	allowlist, err := h.repo.GetAllowlistByID(r.Context(), allowlistID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get IP allowlist")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get IP allowlist"))
@@ -247,7 +247,7 @@ func (h *IPAllowlistHandler) HandleListIPAllowlistEntries(w http.ResponseWriter,
 		return
 	}
 
-	entries, err := h.repo.GetEntriesByAllowlistID(allowlistID)
+	entries, err := h.repo.GetEntriesByAllowlistID(r.Context(), allowlistID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get IP allowlist entries")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get IP allowlist entries"))
@@ -277,7 +277,7 @@ func (h *IPAllowlistHandler) HandleCreateIPAllowlistEntry(w http.ResponseWriter,
 	}
 
 	// Verify the allowlist exists
-	allowlist, err := h.repo.GetAllowlistByID(allowlistID)
+	allowlist, err := h.repo.GetAllowlistByID(r.Context(), allowlistID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get IP allowlist")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get IP allowlist"))
@@ -352,7 +352,7 @@ func (h *IPAllowlistHandler) HandleUpdateIPAllowlistEntry(w http.ResponseWriter,
 	}
 
 	// Get existing entry
-	entry, err := h.repo.GetEntryByID(entryID)
+	entry, err := h.repo.GetEntryByID(r.Context(), entryID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get IP allowlist entry")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get IP allowlist entry"))
@@ -425,7 +425,7 @@ func (h *IPAllowlistHandler) HandleDeleteIPAllowlistEntry(w http.ResponseWriter,
 	}
 
 	// Get existing entry
-	entry, err := h.repo.GetEntryByID(entryID)
+	entry, err := h.repo.GetEntryByID(r.Context(), entryID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get IP allowlist entry")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get IP allowlist entry"))

@@ -119,7 +119,7 @@ func (h *ExternalBillingHandler) CreateExternalBillingSystem(w http.ResponseWrit
 
 	// Store credentials securely using AES-256-GCM encryption
 	if req.APIKey != "" {
-		encryptedKey, err := h.repo.EncryptField(req.APIKey)
+		encryptedKey, err := h.repo.EncryptField(r.Context(), req.APIKey)
 		if err != nil {
 			h.logger.WithError(err).Error("Failed to encrypt API credential")
 			h.writeError(w, http.StatusInternalServerError, "Internal Error", "Failed to secure credentials")
@@ -308,7 +308,7 @@ func (h *ExternalBillingHandler) UpdateExternalBillingSystem(w http.ResponseWrit
 
 	// Update credentials if provided - encrypt before storing
 	if updates.APIKey != "" {
-		encryptedKey, err := h.repo.EncryptField(updates.APIKey)
+		encryptedKey, err := h.repo.EncryptField(r.Context(), updates.APIKey)
 		if err != nil {
 			h.logger.WithError(err).Error("Failed to encrypt API credential")
 			h.writeError(w, http.StatusInternalServerError, "Internal Error", "Failed to secure credentials")
@@ -395,7 +395,7 @@ func (h *ExternalBillingHandler) TestExternalBillingSystem(w http.ResponseWriter
 	}
 
 	// Test the connection
-	testResult := h.testConnection(system)
+	testResult := h.testConnection(r, system)
 
 	response := map[string]interface{}{
 		"success":   testResult.Success,
@@ -680,18 +680,18 @@ type ConnectionTestResult struct {
 	Message string
 }
 
-func (h *ExternalBillingHandler) testConnection(system *storage.ExternalBillingSystem) ConnectionTestResult {
+func (h *ExternalBillingHandler) testConnection(r *http.Request, system *storage.ExternalBillingSystem) ConnectionTestResult {
 	// Decrypt credentials for validation (if encrypted)
 	apiKey := system.APICredentialKey
 	oauthToken := system.OAuthToken
 	if apiKey != "" {
-		decrypted, err := h.repo.DecryptField(apiKey)
+		decrypted, err := h.repo.DecryptField(r.Context(), apiKey)
 		if err == nil && decrypted != apiKey {
 			apiKey = decrypted
 		}
 	}
 	if system.OAuthToken != "" {
-		decrypted, err := h.repo.DecryptField(system.OAuthToken)
+		decrypted, err := h.repo.DecryptField(r.Context(), system.OAuthToken)
 		if err == nil && decrypted != system.OAuthToken {
 			oauthToken = decrypted
 		}

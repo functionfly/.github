@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
@@ -79,7 +80,7 @@ func (h *Handler) HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 
 	if provider == "" {
 		failureReason := "Provider is required"
-		h.logOAuthAuthEvent(nil, nil, false, "oauth_login", clientIP, userAgent, &failureReason, time.Since(startTime), provider, map[string]interface{}{"error_phase": "validation"})
+		h.logOAuthAuthEvent(r.Context(), nil, nil, false, "oauth_login", clientIP, userAgent, &failureReason, time.Since(startTime), provider, map[string]interface{}{"error_phase": "validation"})
 		writeJSONError(w, http.StatusBadRequest, failureReason)
 		return
 	}
@@ -87,7 +88,7 @@ func (h *Handler) HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 	if code == "" {
 		failureReason := "Authorization code is required"
-		h.logOAuthAuthEvent(nil, nil, false, "oauth_login", clientIP, userAgent, &failureReason, time.Since(startTime), provider, map[string]interface{}{"error_phase": "validation"})
+		h.logOAuthAuthEvent(r.Context(), nil, nil, false, "oauth_login", clientIP, userAgent, &failureReason, time.Since(startTime), provider, map[string]interface{}{"error_phase": "validation"})
 		writeJSONError(w, http.StatusBadRequest, failureReason)
 		return
 	}
@@ -95,7 +96,7 @@ func (h *Handler) HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	state := r.URL.Query().Get("state")
 	if state == "" {
 		failureReason := "State parameter is required"
-		h.logOAuthAuthEvent(nil, nil, false, "oauth_login", clientIP, userAgent, &failureReason, time.Since(startTime), provider, map[string]interface{}{"error_phase": "validation"})
+		h.logOAuthAuthEvent(r.Context(), nil, nil, false, "oauth_login", clientIP, userAgent, &failureReason, time.Since(startTime), provider, map[string]interface{}{"error_phase": "validation"})
 		writeJSONError(w, http.StatusBadRequest, failureReason)
 		return
 	}
@@ -103,7 +104,7 @@ func (h *Handler) HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	// Generate device fingerprint from current request for session binding validation
 	deviceFingerprint := generateDeviceFingerprint(r)
 
-	response, err := h.authSvc.HandleOAuthCallback(provider, code, state, deviceFingerprint)
+	response, err := h.authSvc.HandleOAuthCallback(r.Context(), provider, code, state, deviceFingerprint)
 	if err != nil {
 		logrus.WithError(err).WithField("provider", provider).Warn("OAuth callback failed")
 
@@ -119,7 +120,7 @@ func (h *Handler) HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 			errorDesc = "An unexpected error occurred during authentication"
 		}
 
-		h.logOAuthAuthEvent(nil, nil, false, "oauth_login", clientIP, userAgent, &errorDesc, time.Since(startTime), provider, map[string]interface{}{
+		h.logOAuthAuthEvent(r.Context(), nil, nil, false, "oauth_login", clientIP, userAgent, &errorDesc, time.Since(startTime), provider, map[string]interface{}{
 			"error_code":  string(errorCode),
 			"error_type":  err.Error(),
 			"error_phase": "callback_processing",
@@ -134,7 +135,7 @@ func (h *Handler) HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.logOAuthAuthEvent(&response.User.ID, &response.User.TenantID, true, "oauth_login", clientIP, userAgent, nil, time.Since(startTime), provider, map[string]interface{}{
+	h.logOAuthAuthEvent(r.Context(), &response.User.ID, &response.User.TenantID, true, "oauth_login", clientIP, userAgent, nil, time.Since(startTime), provider, map[string]interface{}{
 		"new_user":       response.NewUser,
 		"redirect_uri":   response.RedirectURI,
 		"login_hint":     response.LoginHint,
@@ -236,7 +237,7 @@ func (h *Handler) HandleConfirmAccountLinking(w http.ResponseWriter, r *http.Req
 		AvatarURL: req.AvatarURL,
 	}
 
-	response, err := h.authSvc.ConfirmAccountLinking(req.LinkToken, req.Provider, req.ProviderID, userInfo)
+	response, err := h.authSvc.ConfirmAccountLinking(r.Context(), req.LinkToken, req.Provider, req.ProviderID, userInfo)
 	if err != nil {
 		logrus.WithError(err).Warn("Account linking confirmation failed")
 
@@ -357,7 +358,7 @@ func buildTenantRedirectURL(loginHint string) string {
 }
 
 // logOAuthAuthEvent logs an OAuth authentication event for security auditing.
-func (h *Handler) logOAuthAuthEvent(userID, tenantID *uuid.UUID, success bool, eventType, clientIP, userAgent string, failureReason *string, duration time.Duration, provider string, metadata map[string]interface{}) {
+func (h *Handler) logOAuthAuthEvent(ctx context.Context, userID, tenantID *uuid.UUID, success bool, eventType, clientIP, userAgent string, failureReason *string, duration time.Duration, provider string, metadata map[string]interface{}) {
 	if metadata == nil {
 		metadata = make(map[string]interface{})
 	}
@@ -379,7 +380,7 @@ func (h *Handler) logOAuthAuthEvent(userID, tenantID *uuid.UUID, success bool, e
 		authEvent.FailureReason = failureReason
 	}
 
-	if logErr := h.authSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+	if logErr := h.authSvc.Repo().LogAuthEvent(ctx, authEvent); logErr != nil {
 		fields := logrus.Fields{
 			"event_type":  eventType,
 			"success":     success,

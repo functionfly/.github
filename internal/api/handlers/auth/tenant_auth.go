@@ -162,7 +162,7 @@ func (h *TenantAuthHandler) ConfigureOAuthProvider(w http.ResponseWriter, r *htt
 	}
 
 	// Encrypt client secret using repo's encryption
-	encryptedSecret, err := 	h.repo.EncryptField(config.ClientSecret)
+	encryptedSecret, err := 	h.repo.EncryptField(r.Context(), config.ClientSecret)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to encrypt client secret")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to encrypt secret")
@@ -325,7 +325,7 @@ func (h *TenantAuthHandler) InviteMember(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Check if user already has a membership
-	existingUser, err := 	h.repo.GetUserByEmail(req.Email)
+	existingUser, err := 	h.repo.GetUserByEmail(r.Context(), req.Email)
 	if err == nil && existingUser != nil {
 		membership, err := 	h.repo.GetMembership(ctx, claims.TenantID, existingUser.ID)
 		if err == nil && membership != nil {

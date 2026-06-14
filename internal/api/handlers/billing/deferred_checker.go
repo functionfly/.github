@@ -249,7 +249,7 @@ func (d *DeferredBillingChecker) getTenantMetrics(ctx context.Context, tenantID 
 	periodStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 	periodEnd := periodStart.AddDate(0, 1, 0).Add(-time.Second)
 
-	execRollups, err := d.repo.GetUsageByTenant(tenantID, "function_execution", periodStart, periodEnd)
+	execRollups, err := d.repo.GetUsageByTenant(ctx, tenantID, "function_execution", periodStart, periodEnd)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Warn("Failed to get usage rollups")
 	} else {
@@ -259,7 +259,7 @@ func (d *DeferredBillingChecker) getTenantMetrics(ctx context.Context, tenantID 
 	}
 
 	// Get MRR from Stripe if customer ID exists
-	tenant, err := d.repo.GetTenantByID(tenantID)
+	tenant, err := d.repo.GetTenantByID(ctx, tenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Warn("Failed to get tenant for MRR lookup")
 	} else if tenant != nil && tenant.StripeCustomerID != nil && *tenant.StripeCustomerID != "" {

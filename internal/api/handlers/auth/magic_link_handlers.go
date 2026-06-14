@@ -74,7 +74,7 @@ func (h *Handler) HandleMagicLinkVerify(w http.ResponseWriter, r *http.Request) 
 		logrus.WithError(err).Warn("Magic link verification failed")
 
 		// Log the auth event
-		if authEventErr := h.authSvc.Repo().LogAuthEvent(&storage.AuthEvent{
+		if authEventErr := h.authSvc.Repo().LogAuthEvent(r.Context(), &storage.AuthEvent{
 			EventType:     "magic_link_verify_failed",
 			Success:       false,
 			FailureReason: &errMsg,

@@ -226,7 +226,7 @@ func (h *Handler) HandleWalletTopUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.repo.GetUserByID(claims.UserID)
+	user, err := h.repo.GetUserByID(r.Context(), claims.UserID)
 	if err != nil || user == nil {
 		logrus.WithError(err).WithField("user_id", claims.UserID).Warn("billing wallet top-up: user not found")
 		writeJSONError(w, http.StatusNotFound, "User not found")

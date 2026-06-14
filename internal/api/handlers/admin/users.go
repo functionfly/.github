@@ -34,7 +34,7 @@ func (h *Handler) HandleDeactivateUser(w http.ResponseWriter, r *http.Request) {
 	deactivatedBy := claims.UserID
 
 	// Get user before deactivation for audit
-	user, err := h.repo.GetUserByID(userID)
+	user, err := h.repo.GetUserByID(r.Context(), userID)
 	if err != nil {
 		logrus.WithError(err).WithField("user_id", userID).Error("Failed to get user")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get user"))
@@ -79,7 +79,7 @@ func (h *Handler) HandleReactivateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get user before reactivation for audit
-	user, err := h.repo.GetUserByID(userID)
+	user, err := h.repo.GetUserByID(r.Context(), userID)
 	if err != nil {
 		logrus.WithError(err).WithField("user_id", userID).Error("Failed to get user")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get user"))
@@ -114,7 +114,7 @@ func (h *Handler) HandleReactivateUser(w http.ResponseWriter, r *http.Request) {
 
 // HandleListUsers lists all platform users (all tenants) for admin management.
 func (h *Handler) HandleListUsers(w http.ResponseWriter, r *http.Request) {
-	users, err := h.repo.ListUsers()
+	users, err := h.repo.ListUsers(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list users")
 		apierror.WriteError(w, apierror.NewInternal("Failed to list users"))
@@ -134,7 +134,7 @@ func (h *Handler) HandleListUsers(w http.ResponseWriter, r *http.Request) {
 
 // HandleGetUserStats returns user statistics
 func (h *Handler) HandleGetUserStats(w http.ResponseWriter, r *http.Request) {
-	users, err := h.repo.ListUsers()
+	users, err := h.repo.ListUsers(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get user stats")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get user stats"))
@@ -175,7 +175,7 @@ func (h *Handler) HandleGetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.repo.GetUserByID(userID)
+	user, err := h.repo.GetUserByID(r.Context(), userID)
 	if err != nil {
 		logrus.WithError(err).WithField("user_id", userID).Error("Failed to get user")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get user"))
@@ -187,7 +187,7 @@ func (h *Handler) HandleGetUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch tenant to get plan and attach to response
-	tenant, _ := h.repo.GetTenantByID(user.TenantID)
+	tenant, _ := h.repo.GetTenantByID(r.Context(), user.TenantID)
 	response := map[string]interface{}{}
 	bytes, _ := json.Marshal(user)
 	json.Unmarshal(bytes, &response)
@@ -272,7 +272,7 @@ func (h *Handler) HandleInviteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if user already exists
-	existingUser, err := h.repo.GetUserByEmail(req.Email)
+	existingUser, err := h.repo.GetUserByEmail(r.Context(), req.Email)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check existing user")
 		apierror.WriteError(w, apierror.NewInternal("Failed to invite user"))
@@ -326,7 +326,7 @@ func (h *Handler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	// Handle plan update separately since plan is a tenant field, not a user field
 	if newPlan, ok := updates["plan"].(string); ok {
 		logrus.WithFields(logrus.Fields{"user_id": userID, "new_plan": newPlan}).Info("Plan update request received")
-		user, err := h.repo.GetUserByID(userID)
+		user, err := h.repo.GetUserByID(r.Context(), userID)
 		if err != nil {
 			logrus.WithError(err).WithField("user_id", userID).Error("Failed to get user for plan update")
 			apierror.WriteError(w, apierror.NewInternal("Failed to get user"))
@@ -359,7 +359,7 @@ func (h *Handler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Fetch tenant to get current plan and attach to response
-		tenant, _ := h.repo.GetTenantByID(user.TenantID)
+		tenant, _ := h.repo.GetTenantByID(r.Context(), user.TenantID)
 		response := map[string]interface{}{}
 		bytes, _ := json.Marshal(user)
 		json.Unmarshal(bytes, &response)
@@ -378,14 +378,14 @@ func (h *Handler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If only plan was updated, fetch and return the updated user with tenant plan
-	user, err := h.repo.GetUserByID(userID)
+	user, err := h.repo.GetUserByID(r.Context(), userID)
 	if err != nil {
 		logrus.WithError(err).WithField("user_id", userID).Error("Failed to get user after plan update")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get user"))
 		return
 	}
 	// Fetch the tenant to get the updated plan
-	tenant, err := h.repo.GetTenantByID(user.TenantID)
+	tenant, err := h.repo.GetTenantByID(r.Context(), user.TenantID)
 	if err == nil && tenant != nil {
 		user.Tenant = tenant
 	}
