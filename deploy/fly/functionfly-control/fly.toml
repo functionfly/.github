@@ -1,0 +1,81 @@
+# FunctionFly Control Plane - Cost-Optimized Configuration
+# Single primary region with manual standby activation
+# Estimated cost: $5-15/month
+
+app = "functionfly-control"
+kill_signal = "SIGINT"
+kill_timeout = 30
+
+[build]
+  dockerfile = "Dockerfile"
+
+# Use a single primary region (iad) - $5/month
+[env]
+  REGION = "iad"
+  PRIMARY_REGION = "iad"
+  LOG_LEVEL = "info"
+  DEVELOPMENT = "false"
+
+# VM configuration for memory-intensive operations
+[vm]
+  size = "shared-cpu-1x"
+  memory_mb = 512
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8080
+  processes = ["app"]
+
+  # HTTP health checks (grace_period allows Neon cold start / DB connect)
+  http_checks = [
+    { path = "/healthz", interval = "30s", timeout = "10s", grace_period = "30s" }
+  ]
+
+  [services.concurrency]
+    hard_limit = 25
+    soft_limit = 20
+    type = "connections"
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = "80"
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = "443"
+
+# Single region - all traffic goes here
+[[regions]]
+  code = "iad"
+  weight = 100
+
+# Standby regions (disabled by default) - activate via CLI when needed
+# [[regions]]
+#   code = "lax"
+#   weight = 0
+# [[regions]]
+#   code = "fra"
+#   weight = 0
+
+[metrics]
+  port = 9090
+  path = "/metrics"
+
+# Health check configuration
+[checks]
+  [checks.http]
+    type = "http"
+    port = 8080
+    path = "/healthz"
+    interval = "30s"
+    timeout = "10s"
+    grace_period = "30s"
+
+# Auto-scaling for cost efficiency
+[autoscaling]
+  min_count = 1
+  max_count = 3
+  balance_regions = false
+
+[build.args]
+  GOTOOLCHAIN = "auto"

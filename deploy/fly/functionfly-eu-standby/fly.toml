@@ -1,0 +1,105 @@
+# FunctionFly Control Plane - EU Standby / Secondary Orchestrator
+# This deployment serves as a warm standby for disaster recovery
+# and provides lower latency for EU-based users.
+#
+# Deployment:
+#   fly deploy --config deploy/fly/functionfly-eu-standby/fly.toml
+#
+# Activation on primary failure:
+#   fly scale count 3 --app functionfly-control  # Scale primary
+#   OR
+#   Update DNS/Load Balancer to route to this endpoint
+#
+# Estimated cost: $5-10/month when active (can scale to 0 when not needed)
+
+app = "functionfly-control-eu"
+primary_region = "fra"
+kill_signal = "SIGINT"
+kill_timeout = 30
+
+[build]
+  dockerfile = "../../deploy/production/Dockerfile.orchestrator"
+  context = "../../"
+
+[env]
+  REGION = "fra"
+  PRIMARY_REGION = "iad"  # Points to US primary for writes
+  LOG_LEVEL = "info"
+  DEVELOPMENT = "false"
+  # Enable read replica mode - this instance prefers EU read replica
+  DB_READ_REPLICA_ENABLED = "true"
+  # Read replica configuration (EU replica gets priority)
+  DB_REPLICA_1_HOST = "postgres-replica-eu.fly.dev"
+  DB_REPLICA_1_PORT = "5432"
+  DB_REPLICA_1_WEIGHT = "100"
+  DB_REPLICA_1_PRIORITY = "1"
+  DB_REPLICA_1_REGION = "eu-west-1"
+  # Primary as fallback
+  DB_REPLICA_2_HOST = "postgres-primary.functionfly.svc.cluster.local"
+  DB_REPLICA_2_PORT = "5432"
+  DB_REPLICA_2_WEIGHT = "50"
+  DB_REPLICA_2_PRIORITY = "2"
+  DB_REPLICA_2_REGION = "us-east-1"
+  # Use R2 for artifact storage (cross-region accessible)
+  R2_AUTO_ARCHIVE_ENABLED = "true"
+  R2_ARCHIVE_SYNC = "false"  # Async for better performance
+  # Redis for caching (can use EU-based Redis or global Redis)
+  REDIS_ADDR = "redis.functionfly.svc.cluster.local:6379"
+  # Health check reporting
+  HEALTH_CHECK_INTERVAL = "30s"
+
+# VM configuration - smaller than primary since it's standby
+[vm]
+  size = "shared-cpu-1x"
+  memory_mb = 512
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8080
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0  # Scale to 0 when not needed to save costs
+  processes = ["app"]
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+# Region configuration - EU only
+[[regions]]
+  code = "fra"  # Frankfurt, Germany
+  weight = 100
+
+# Health checks
+[[checks]]
+  name = "http"
+  type = "http"
+  port = 8080
+  path = "/healthz"
+  interval = "30s"
+  timeout = "10s"
+  grace_period = "30s"
+
+[checks.http.headers]
+  X-Region = "eu-standby"
+  X-Role = "secondary"
+
+# Auto-scaling - can scale up during failover
+[autoscaling]
+  min_count = 0  # Scale to 0 when idle (cost optimization)
+  max_count = 3  # Scale up during failover or high load
+  balance_regions = false
+
+# Metrics endpoint
+[metrics]
+  port = 9090
+  path = "/metrics"
