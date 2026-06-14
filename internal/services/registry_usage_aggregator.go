@@ -486,7 +486,7 @@ func (a *RegistryUsageAggregator) GenerateDraftInvoices(ctx context.Context) err
 	a.logger.WithField("period_end", yesterday).Info("Generating draft invoices")
 
 	// Get all active subscriptions
-	subs, err := a.repo.ListAllSubscriptions(1000, 0)
+	subs, err := a.repo.ListAllSubscriptions(ctx, 1000, 0)
 	if err != nil {
 		return fmt.Errorf("failed to list subscriptions: %w", err)
 	}
@@ -522,7 +522,7 @@ func (a *RegistryUsageAggregator) generateInvoiceForSubscription(ctx context.Con
 	}
 
 	// Get usage rollups for this period
-	rollups, err := a.repo.GetUsageByTenant(sub.TenantID, "", periodStart, periodEnd)
+	rollups, err := a.repo.GetUsageByTenant(ctx, sub.TenantID, "", periodStart, periodEnd)
 	if err != nil {
 		return fmt.Errorf("failed to get usage: %w", err)
 	}
@@ -734,7 +734,7 @@ func (a *RegistryUsageAggregator) updateLastRollupDate(ctx context.Context, date
 
 // GetUsageSummary returns a summary of usage for a tenant
 func (a *RegistryUsageAggregator) GetUsageSummary(ctx context.Context, tenantID uuid.UUID, start, end time.Time) (*UsageSummary, error) {
-	rollups, err := a.repo.GetUsageByTenant(tenantID, "", start, end)
+	rollups, err := a.repo.GetUsageByTenant(ctx, tenantID, "", start, end)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get usage: %w", err)
 	}

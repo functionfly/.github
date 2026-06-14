@@ -35,7 +35,7 @@ type CheckAccessResult struct {
 // - err: any error that occurred
 func (s *IPAllowlistService) CheckAccess(ctx context.Context, tenantID uuid.UUID, clientIP string) (allowed bool, mfaRequired bool, err error) {
 	// Get the allowlist for the tenant
-	allowlist, err := s.repo.GetAllowlistByTenantID(tenantID)
+	allowlist, err := s.repo.GetAllowlistByTenantID(ctx, tenantID)
 	if err != nil {
 		return false, false, fmt.Errorf("failed to get IP allowlist: %w", err)
 	}
@@ -46,7 +46,7 @@ func (s *IPAllowlistService) CheckAccess(ctx context.Context, tenantID uuid.UUID
 	}
 
 	// Get all entries for the allowlist
-	entries, err := s.repo.GetEntriesByAllowlistID(allowlist.ID)
+	entries, err := s.repo.GetEntriesByAllowlistID(ctx, allowlist.ID)
 	if err != nil {
 		return false, false, fmt.Errorf("failed to get IP allowlist entries: %w", err)
 	}

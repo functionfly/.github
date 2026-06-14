@@ -58,7 +58,7 @@ func (s *FollowService) FollowUser(ctx context.Context, req FollowUserRequest) (
 
 	// Resolve target user ID from username if provided
 	if req.FollowedUsername != "" {
-		targetUser, err := s.repo.GetUserByUsername(req.FollowedUsername)
+		targetUser, err := s.repo.GetUserByUsername(ctx, req.FollowedUsername)
 		if err != nil {
 			return nil, ErrUserNotFound
 		}
@@ -82,7 +82,7 @@ func (s *FollowService) FollowUser(ctx context.Context, req FollowUserRequest) (
 	}
 
 	// Check if target user exists
-	if _, err := s.repo.GetUserByID(targetUserID); err != nil {
+	if _, err := s.repo.GetUserByID(ctx, targetUserID); err != nil {
 		return nil, ErrUserNotFound
 	}
 

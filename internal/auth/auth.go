@@ -139,28 +139,28 @@ func (a *AuthService) SetAuthURL(url string) {
 }
 
 // MFA methods
-func (a *AuthService) SetupMFA(req MFASetupRequest) (*MFASetupResponse, error) {
-	return a.mfaSvc.SetupMFA(req)
+func (a *AuthService) SetupMFA(ctx context.Context, req MFASetupRequest) (*MFASetupResponse, error) {
+	return a.mfaSvc.SetupMFA(ctx, req)
 }
 
-func (a *AuthService) VerifyMFA(req MFAVerifyRequest) (*MFAVerifyResponse, error) {
-	return a.mfaSvc.VerifyMFA(req)
+func (a *AuthService) VerifyMFA(ctx context.Context, req MFAVerifyRequest) (*MFAVerifyResponse, error) {
+	return a.mfaSvc.VerifyMFA(ctx, req)
 }
 
-func (a *AuthService) EnableMFA(userID uuid.UUID) error {
-	return a.mfaSvc.EnableMFA(userID)
+func (a *AuthService) EnableMFA(ctx context.Context, userID uuid.UUID) error {
+	return a.mfaSvc.EnableMFA(ctx, userID)
 }
 
-func (a *AuthService) DisableMFA(req MFADisableRequest) error {
-	return a.mfaSvc.DisableMFA(req)
+func (a *AuthService) DisableMFA(ctx context.Context, req MFADisableRequest) error {
+	return a.mfaSvc.DisableMFA(ctx, req)
 }
 
-func (a *AuthService) GetMFAStatus(userID uuid.UUID) (*MFAStatus, error) {
-	return a.mfaSvc.GetMFAStatus(userID)
+func (a *AuthService) GetMFAStatus(ctx context.Context, userID uuid.UUID) (*MFAStatus, error) {
+	return a.mfaSvc.GetMFAStatus(ctx, userID)
 }
 
-func (a *AuthService) IsMFARequired(userID uuid.UUID) (bool, error) {
-	return a.mfaSvc.IsMFARequired(userID)
+func (a *AuthService) IsMFARequired(ctx context.Context, userID uuid.UUID) (bool, error) {
+	return a.mfaSvc.IsMFARequired(ctx, userID)
 }
 
 // GetTenantOAuthProviders returns the list of enabled OAuth provider names for a tenant

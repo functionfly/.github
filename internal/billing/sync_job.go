@@ -246,7 +246,7 @@ func (j *BillingSyncJob) syncCustomers(ctx context.Context, exporter ExternalExp
 func (j *BillingSyncJob) syncInvoices(ctx context.Context, exporter ExternalExporter,
 	system *storage.ExternalBillingSystem, sync *storage.BillingIntegrationSync) (*ExportResult, error) {
 
-	invoices, err := j.billingRepo.ListInvoicesByTenant(sync.TenantID, 100, 0)
+	invoices, err := j.billingRepo.ListInvoicesByTenant(ctx, sync.TenantID, 100, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get invoices for tenant: %w", err)
 	}
@@ -308,7 +308,7 @@ func (j *BillingSyncJob) syncUsage(ctx context.Context, exporter ExternalExporte
 func (j *BillingSyncJob) syncPayments(ctx context.Context, exporter ExternalExporter,
 	system *storage.ExternalBillingSystem, sync *storage.BillingIntegrationSync) (*ExportResult, error) {
 
-	invoices, err := j.billingRepo.ListInvoicesByTenant(sync.TenantID, 100, 0)
+	invoices, err := j.billingRepo.ListInvoicesByTenant(ctx, sync.TenantID, 100, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get invoices for tenant: %w", err)
 	}

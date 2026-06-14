@@ -169,8 +169,8 @@ func (e *SCIMError) ToError() error {
 }
 
 // GetUser retrieves a user by ID for a tenant
-func (s *SCIMService) GetUser(tenantID, userID uuid.UUID) (*SCIMUser, error) {
-	user, err := s.userRepo.GetUserByID(userID)
+func (s *SCIMService) GetUser(ctx context.Context, tenantID, userID uuid.UUID) (*SCIMUser, error) {
+	user, err := s.userRepo.GetUserByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("user not found: %w", err)
 	}
@@ -180,11 +180,11 @@ func (s *SCIMService) GetUser(tenantID, userID uuid.UUID) (*SCIMUser, error) {
 		return nil, fmt.Errorf("user not found")
 	}
 
-	return s.userToSCIM(user)
+	return s.userToSCIM(ctx, user)
 }
 
 // ListUsers lists users for a tenant with pagination
-func (s *SCIMService) ListUsers(tenantID uuid.UUID, startIndex, count int) (*SCIMListResponse, error) {
+func (s *SCIMService) ListUsers(ctx context.Context, tenantID uuid.UUID, startIndex, count int) (*SCIMListResponse, error) {
 	if startIndex < 1 {
 		startIndex = 1
 	}
@@ -214,7 +214,7 @@ func (s *SCIMService) ListUsers(tenantID uuid.UUID, startIndex, count int) (*SCI
 
 	scimUsers := make([]SCIMUser, len(users))
 	for i, user := range users {
-		scimUser, err := s.userToSCIM(user)
+		scimUser, err := s.userToSCIM(ctx, user)
 		if err != nil {
 			s.logger.WithError(err).Warnf("failed to convert user %s to SCIM", user.ID)
 			continue
@@ -231,14 +231,14 @@ func (s *SCIMService) ListUsers(tenantID uuid.UUID, startIndex, count int) (*SCI
 }
 
 // CreateUser creates a new user from SCIM request
-func (s *SCIMService) CreateUser(tenantID uuid.UUID, scimUser *SCIMUser) (*SCIMUser, error) {
+func (s *SCIMService) CreateUser(ctx context.Context, tenantID uuid.UUID, scimUser *SCIMUser) (*SCIMUser, error) {
 	// Validate required fields
 	if scimUser.UserName == "" {
 		return nil, NewSCIMError(400, "userName is required").ToError()
 	}
 
 	// Check if user already exists
-	existingUser, _ := s.userRepo.GetUserByEmail(scimUser.UserName)
+	existingUser, _ := s.userRepo.GetUserByEmail(ctx, scimUser.UserName)
 	if existingUser != nil && existingUser.TenantID == tenantID {
 		return nil, NewSCIMError(409, "user already exists").ToError()
 	}
@@ -267,7 +267,7 @@ func (s *SCIMService) CreateUser(tenantID uuid.UUID, scimUser *SCIMUser) (*SCIMU
 	}
 
 	// Create user with empty password (SCIM-provisioned users will need password reset)
-	user, err := s.userRepo.CreateUser(email, "", tenantID)
+	user, err := s.userRepo.CreateUser(ctx, email, "", tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
@@ -281,18 +281,18 @@ func (s *SCIMService) CreateUser(tenantID uuid.UUID, scimUser *SCIMUser) (*SCIMU
 		if err != nil {
 			s.logger.WithError(err).Warnf("failed to update user name")
 		}
-		user, _ = s.userRepo.GetUserByID(user.ID)
+		user, _ = s.userRepo.GetUserByID(ctx, user.ID)
 	}
 
 	// Log the sync
-	s.logSync(tenantID, "User", user.ID.String(), "create", true, "")
+	s.logSync(ctx, tenantID, "User", user.ID.String(), "create", true, "")
 
-	return s.userToSCIM(user)
+	return s.userToSCIM(ctx, user)
 }
 
 // UpdateUser updates an existing user from SCIM request
-func (s *SCIMService) UpdateUser(tenantID, userID uuid.UUID, scimUser *SCIMUser) (*SCIMUser, error) {
-	user, err := s.userRepo.GetUserByID(userID)
+func (s *SCIMService) UpdateUser(ctx context.Context, tenantID, userID uuid.UUID, scimUser *SCIMUser) (*SCIMUser, error) {
+	user, err := s.userRepo.GetUserByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("user not found: %w", err)
 	}
@@ -348,14 +348,14 @@ func (s *SCIMService) UpdateUser(tenantID, userID uuid.UUID, scimUser *SCIMUser)
 	}
 
 	// Log the sync
-	s.logSync(tenantID, "User", user.ID.String(), "update", true, "")
+	s.logSync(ctx, tenantID, "User", user.ID.String(), "update", true, "")
 
-	return s.userToSCIM(user)
+	return s.userToSCIM(ctx, user)
 }
 
 // PatchUser applies a PATCH operation to a user
-func (s *SCIMService) PatchUser(tenantID, userID uuid.UUID, operations []SCIMPatchOperation) (*SCIMUser, error) {
-	user, err := s.userRepo.GetUserByID(userID)
+func (s *SCIMService) PatchUser(ctx context.Context, tenantID, userID uuid.UUID, operations []SCIMPatchOperation) (*SCIMUser, error) {
+	user, err := s.userRepo.GetUserByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("user not found: %w", err)
 	}
@@ -422,14 +422,14 @@ func (s *SCIMService) PatchUser(tenantID, userID uuid.UUID, operations []SCIMPat
 	}
 
 	// Log the sync
-	s.logSync(tenantID, "User", user.ID.String(), "update", true, "")
+	s.logSync(ctx, tenantID, "User", user.ID.String(), "update", true, "")
 
-	return s.userToSCIM(user)
+	return s.userToSCIM(ctx, user)
 }
 
 // DeleteUser deletes a user with proper cascade deletion of related records
-func (s *SCIMService) DeleteUser(tenantID, userID uuid.UUID) error {
-	user, err := s.userRepo.GetUserByID(userID)
+func (s *SCIMService) DeleteUser(ctx context.Context, tenantID, userID uuid.UUID) error {
+	user, err := s.userRepo.GetUserByID(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("user not found: %w", err)
 	}
@@ -482,14 +482,14 @@ func (s *SCIMService) DeleteUser(tenantID, userID uuid.UUID) error {
 	}
 
 	// Log the sync
-	s.logSync(tenantID, "User", userID.String(), "delete", true, "")
+	s.logSync(ctx, tenantID, "User", userID.String(), "delete", true, "")
 
 	return nil
 }
 
 // GetGroup retrieves a group by ID for a tenant
-func (s *SCIMService) GetGroup(tenantID, groupID uuid.UUID) (*SCIMGroup, error) {
-	group, err := s.teamRepo.GetTeamByID(groupID)
+func (s *SCIMService) GetGroup(ctx context.Context, tenantID, groupID uuid.UUID) (*SCIMGroup, error) {
+	group, err := s.teamRepo.GetTeamByID(ctx, groupID)
 	if err != nil {
 		return nil, fmt.Errorf("group not found: %w", err)
 	}
@@ -503,7 +503,7 @@ func (s *SCIMService) GetGroup(tenantID, groupID uuid.UUID) (*SCIMGroup, error) 
 }
 
 // ListGroups lists groups for a tenant with pagination
-func (s *SCIMService) ListGroups(tenantID uuid.UUID, startIndex, count int) (*SCIMListResponse, error) {
+func (s *SCIMService) ListGroups(ctx context.Context, tenantID uuid.UUID, startIndex, count int) (*SCIMListResponse, error) {
 	if startIndex < 1 {
 		startIndex = 1
 	}
@@ -514,7 +514,7 @@ func (s *SCIMService) ListGroups(tenantID uuid.UUID, startIndex, count int) (*SC
 		count = 1000
 	}
 
-	groups, err := s.teamRepo.GetTeamsByTenantID(tenantID)
+	groups, err := s.teamRepo.GetTeamsByTenantID(ctx, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list groups: %w", err)
 	}
@@ -550,7 +550,7 @@ func (s *SCIMService) ListGroups(tenantID uuid.UUID, startIndex, count int) (*SC
 }
 
 // CreateGroup creates a new group from SCIM request
-func (s *SCIMService) CreateGroup(tenantID uuid.UUID, scimGroup *SCIMGroup) (*SCIMGroup, error) {
+func (s *SCIMService) CreateGroup(ctx context.Context, tenantID uuid.UUID, scimGroup *SCIMGroup) (*SCIMGroup, error) {
 	// Validate required fields
 	if scimGroup.DisplayName == "" {
 		return nil, NewSCIMError(400, "displayName is required").ToError()
@@ -565,7 +565,7 @@ func (s *SCIMService) CreateGroup(tenantID uuid.UUID, scimGroup *SCIMGroup) (*SC
 		CreatedBy:   tenantID, // Use tenant ID as created by for SCIM-provisioned teams
 	}
 
-	err := s.teamRepo.CreateTeam(team)
+	err := s.teamRepo.CreateTeam(ctx, team)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create group: %w", err)
 	}
@@ -583,18 +583,18 @@ func (s *SCIMService) CreateGroup(tenantID uuid.UUID, scimGroup *SCIMGroup) (*SC
 			Role:    "member",
 			AddedBy: tenantID,
 		}
-		_ = s.teamRepo.AddTeamMember(membership)
+		_ = s.teamRepo.AddTeamMember(ctx, membership)
 	}
 
 	// Log the sync
-	s.logSync(tenantID, "Group", team.ID.String(), "create", true, "")
+	s.logSync(ctx, tenantID, "Group", team.ID.String(), "create", true, "")
 
 	return s.groupToSCIM(team)
 }
 
 // UpdateGroup updates an existing group from SCIM request
-func (s *SCIMService) UpdateGroup(tenantID, groupID uuid.UUID, scimGroup *SCIMGroup) (*SCIMGroup, error) {
-	group, err := s.teamRepo.GetTeamByID(groupID)
+func (s *SCIMService) UpdateGroup(ctx context.Context, tenantID, groupID uuid.UUID, scimGroup *SCIMGroup) (*SCIMGroup, error) {
+	group, err := s.teamRepo.GetTeamByID(ctx, groupID)
 	if err != nil {
 		return nil, fmt.Errorf("group not found: %w", err)
 	}
@@ -608,20 +608,20 @@ func (s *SCIMService) UpdateGroup(tenantID, groupID uuid.UUID, scimGroup *SCIMGr
 		group.Name = scimGroup.DisplayName
 	}
 
-	err = s.teamRepo.UpdateTeam(group)
+	err = s.teamRepo.UpdateTeam(ctx, group)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update group: %w", err)
 	}
 
 	// Log the sync
-	s.logSync(tenantID, "Group", group.ID.String(), "update", true, "")
+	s.logSync(ctx, tenantID, "Group", group.ID.String(), "update", true, "")
 
 	return s.groupToSCIM(group)
 }
 
 // PatchGroup applies a PATCH operation to a group
-func (s *SCIMService) PatchGroup(tenantID, groupID uuid.UUID, operations []SCIMPatchOperation) (*SCIMGroup, error) {
-	group, err := s.teamRepo.GetTeamByID(groupID)
+func (s *SCIMService) PatchGroup(ctx context.Context, tenantID, groupID uuid.UUID, operations []SCIMPatchOperation) (*SCIMGroup, error) {
+	group, err := s.teamRepo.GetTeamByID(ctx, groupID)
 	if err != nil {
 		return nil, fmt.Errorf("group not found: %w", err)
 	}
@@ -653,7 +653,7 @@ func (s *SCIMService) PatchGroup(tenantID, groupID uuid.UUID, operations []SCIMP
 						continue
 					}
 					// Check if already a member
-					_, err = s.teamRepo.GetTeamMembership(groupID, memberID)
+					_, err = s.teamRepo.GetTeamMembership(ctx, groupID, memberID)
 					if err != nil {
 						membership := &storage.TeamMembership{
 							ID:      uuid.New(),
@@ -662,7 +662,7 @@ func (s *SCIMService) PatchGroup(tenantID, groupID uuid.UUID, operations []SCIMP
 							Role:    "member",
 							AddedBy: tenantID,
 						}
-						_ = s.teamRepo.AddTeamMember(membership)
+						_ = s.teamRepo.AddTeamMember(ctx, membership)
 					}
 				}
 			}
@@ -678,26 +678,26 @@ func (s *SCIMService) PatchGroup(tenantID, groupID uuid.UUID, operations []SCIMP
 					if err != nil {
 						continue
 					}
-					_ = s.teamRepo.RemoveTeamMember(groupID, memberID)
+					_ = s.teamRepo.RemoveTeamMember(ctx, groupID, memberID)
 				}
 			}
 		}
 	}
 
-	err = s.teamRepo.UpdateTeam(group)
+	err = s.teamRepo.UpdateTeam(ctx, group)
 	if err != nil {
 		return nil, fmt.Errorf("failed to patch group: %w", err)
 	}
 
 	// Log the sync
-	s.logSync(tenantID, "Group", group.ID.String(), "update", true, "")
+	s.logSync(ctx, tenantID, "Group", group.ID.String(), "update", true, "")
 
 	return s.groupToSCIM(group)
 }
 
 // DeleteGroup deletes a group
-func (s *SCIMService) DeleteGroup(tenantID, groupID uuid.UUID) error {
-	group, err := s.teamRepo.GetTeamByID(groupID)
+func (s *SCIMService) DeleteGroup(ctx context.Context, tenantID, groupID uuid.UUID) error {
+	group, err := s.teamRepo.GetTeamByID(ctx, groupID)
 	if err != nil {
 		return fmt.Errorf("group not found: %w", err)
 	}
@@ -706,32 +706,32 @@ func (s *SCIMService) DeleteGroup(tenantID, groupID uuid.UUID) error {
 		return fmt.Errorf("group not found")
 	}
 
-	err = s.teamRepo.DeleteTeam(groupID)
+	err = s.teamRepo.DeleteTeam(ctx, groupID)
 	if err != nil {
 		return fmt.Errorf("failed to delete group: %w", err)
 	}
 
 	// Log the sync
-	s.logSync(tenantID, "Group", groupID.String(), "delete", true, "")
+	s.logSync(ctx, tenantID, "Group", groupID.String(), "delete", true, "")
 
 	return nil
 }
 
 // GetConfig retrieves SCIM config for a tenant
-func (s *SCIMService) GetConfig(tenantID uuid.UUID) (*storage.SCIMConfig, error) {
-	return s.configRepo.GetByTenantID(tenantID)
+func (s *SCIMService) GetConfig(ctx context.Context, tenantID uuid.UUID) (*storage.SCIMConfig, error) {
+	return s.configRepo.GetByTenantID(ctx, tenantID)
 }
 
 // UpdateConfig updates SCIM config for a tenant
-func (s *SCIMService) UpdateConfig(tenantID uuid.UUID, config *storage.SCIMConfig) error {
-	existing, err := s.configRepo.GetByTenantID(tenantID)
+func (s *SCIMService) UpdateConfig(ctx context.Context, tenantID uuid.UUID, config *storage.SCIMConfig) error {
+	existing, err := s.configRepo.GetByTenantID(ctx, tenantID)
 	if err != nil {
 		// Create new config
 		config.TenantID = tenantID
 		config.ID = uuid.New()
 		config.CreatedAt = time.Now()
 		config.UpdatedAt = time.Now()
-		return s.configRepo.Create(config)
+		return s.configRepo.Create(ctx, config)
 	}
 
 	// Update existing
@@ -739,21 +739,21 @@ func (s *SCIMService) UpdateConfig(tenantID uuid.UUID, config *storage.SCIMConfi
 	config.TenantID = tenantID
 	config.CreatedAt = existing.CreatedAt
 	config.UpdatedAt = time.Now()
-	return s.configRepo.Update(config)
+	return s.configRepo.Update(ctx, config)
 }
 
 // EnableSCIM enables SCIM for a tenant
-func (s *SCIMService) EnableSCIM(tenantID uuid.UUID, idpURL, idpToken string, secretKey []byte) error {
-	return s.configRepo.Enable(tenantID, idpURL, idpToken, secretKey)
+func (s *SCIMService) EnableSCIM(ctx context.Context, tenantID uuid.UUID, idpURL, idpToken string, secretKey []byte) error {
+	return s.configRepo.Enable(ctx, tenantID, idpURL, idpToken, secretKey)
 }
 
 // DisableSCIM disables SCIM for a tenant
-func (s *SCIMService) DisableSCIM(tenantID uuid.UUID) error {
-	return s.configRepo.Disable(tenantID)
+func (s *SCIMService) DisableSCIM(ctx context.Context, tenantID uuid.UUID) error {
+	return s.configRepo.Disable(ctx, tenantID)
 }
 
 // userToSCIM converts a storage.User to SCIMUser
-func (s *SCIMService) userToSCIM(user *storage.User) (*SCIMUser, error) {
+func (s *SCIMService) userToSCIM(ctx context.Context, user *storage.User) (*SCIMUser, error) {
 	scimUser := &SCIMUser{
 		ID:       user.ID.String(),
 		UserName: user.Email,
@@ -784,7 +784,7 @@ func (s *SCIMService) userToSCIM(user *storage.User) (*SCIMUser, error) {
 	}
 
 	// Get user's groups
-	teams, err := s.teamRepo.GetUserTeams(user.ID)
+	teams, err := s.teamRepo.GetUserTeams(ctx, user.ID)
 	if err == nil && len(teams) > 0 {
 		scimUser.Groups = make([]SCIMGroupRef, len(teams))
 		for i, team := range teams {
@@ -832,7 +832,7 @@ func (s *SCIMService) groupToSCIM(team *storage.Team) (*SCIMGroup, error) {
 }
 
 // logSync logs a SCIM sync operation
-func (s *SCIMService) logSync(tenantID uuid.UUID, resourceType, resourceID, action string, success bool, errorMsg string) {
+func (s *SCIMService) logSync(ctx context.Context, tenantID uuid.UUID, resourceType, resourceID, action string, success bool, errorMsg string) {
 	log := &storage.SCIMSyncLog{
 		ID:           uuid.New(),
 		TenantID:     tenantID,
@@ -847,5 +847,5 @@ func (s *SCIMService) logSync(tenantID uuid.UUID, resourceType, resourceID, acti
 		log.ErrorMessage = &errorMsg
 	}
 
-	_ = s.syncLogRepo.Create(log)
+	_ = s.syncLogRepo.Create(ctx, log)
 }

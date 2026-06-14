@@ -183,3 +183,7 @@ func BundleWelcomeTemplate(bundleName, dashboardURL string) EmailTemplate {
 func BundleEmailWorkflows(bundleSlug string) []templates.EmailWorkflow {
 	return templates.BundleEmailWorkflows(bundleSlug)
 }
+
+func NewsletterConfirmationTemplate(name, confirmationURL string) EmailTemplate {
+	return templates.NewsletterConfirmationTemplate(name, confirmationURL)
+}

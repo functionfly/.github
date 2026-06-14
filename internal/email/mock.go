@@ -425,3 +425,11 @@ func (m *MockService) SendReferralReward(email, rewardType, rewardValue, claimUR
 	text := TestBannerText(tpl.Text)
 	return m.sendEmail(email, subject, text, html)
 }
+
+func (m *MockService) SendNewsletterConfirmationEmail(email, name, confirmationURL string) error {
+	subject := "[TEST] Confirm Your Newsletter Subscription — FunctionFly"
+	tpl := NewsletterConfirmationTemplate(name, confirmationURL)
+	html := TestBannerHTML(tpl.HTML)
+	text := TestBannerText(tpl.Text)
+	return m.sendEmail(email, subject, text, html)
+}

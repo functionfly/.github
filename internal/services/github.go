@@ -110,7 +110,7 @@ func (s *GitHubService) SyncReleases(ctx context.Context, repo storage.Repositor
 		}
 
 		// Check if release already exists
-		existing, err := repo.GetChangelogEntryByVersion(release.TagName)
+		existing, err := repo.GetChangelogEntryByVersion(ctx, release.TagName)
 		if err != nil && !strings.Contains(err.Error(), "not found") {
 			logrus.WithError(err).WithField("version", release.TagName).Warn("Failed to check existing changelog entry")
 			continue

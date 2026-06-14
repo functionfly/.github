@@ -150,7 +150,7 @@ func (a *AuthService) RequestMagicLink(req MagicLinkRequest, ipAddress, userAgen
 	}
 
 	// Look up user by email
-	user, err := a.repo.GetUserByEmail(email)
+	user, err := a.repo.GetUserByEmail(ctx, email)
 	if err != nil {
 		logrus.WithError(err).WithField("email", email).Warn("Failed to lookup user for magic link")
 		// Don't reveal error - return success message
@@ -288,7 +288,7 @@ func (a *AuthService) VerifyMagicLink(req MagicLinkVerifyRequest) (*MagicLinkVer
 
 	if magicLink.UserID != nil {
 		// Existing user
-		user, err = a.repo.GetUserByID(*magicLink.UserID)
+		user, err = a.repo.GetUserByID(ctx, *magicLink.UserID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get user: %w", err)
 		}
@@ -314,7 +314,7 @@ func (a *AuthService) VerifyMagicLink(req MagicLinkVerifyRequest) (*MagicLinkVer
 		hashedPassword, _ := a.HashPassword(hex.EncodeToString(passwordBytes))
 
 		// Create user with verified email
-		user, err = a.repo.CreateUser(magicLink.Email, hashedPassword, tenant.ID)
+		user, err = a.repo.CreateUser(ctx, magicLink.Email, hashedPassword, tenant.ID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create user: %w", err)
 		}
@@ -348,7 +348,7 @@ func (a *AuthService) VerifyMagicLink(req MagicLinkVerifyRequest) (*MagicLinkVer
 
 	// Store refresh token
 	refreshExpiresAt := time.Now().Add(30 * 24 * time.Hour)
-	_, err = a.repo.CreateRefreshToken(user.ID, refreshTokenHash, req.IPAddress, req.UserAgent, refreshExpiresAt)
+	_, err = a.repo.CreateRefreshToken(ctx, user.ID, refreshTokenHash, req.IPAddress, req.UserAgent, refreshExpiresAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to store refresh token: %w", err)
 	}
@@ -365,7 +365,7 @@ func (a *AuthService) VerifyMagicLink(req MagicLinkVerifyRequest) (*MagicLinkVer
 			"is_new_user": isNewUser,
 		},
 	}
-	if logErr := a.repo.LogAuthEvent(authEvent); logErr != nil {
+	if logErr := a.repo.LogAuthEvent(ctx, authEvent); logErr != nil {
 		logrus.WithError(logErr).WithField("userID", user.ID).Warn("Failed to log magic link auth event")
 	}
 

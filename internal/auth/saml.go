@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -10,9 +11,9 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"encoding/xml"
+	"encoding/hex"
 	"fmt"
 	"math/big"
-	"regexp"
 	"strings"
 	"time"
 
@@ -76,7 +77,7 @@ func NewSAMLService(config SAMLServiceConfig) (*SAMLService, error) {
 	if privateKey == nil && config.ConfigRepo != nil {
 		// Use a nil/empty tenant ID to look for platform-wide keys
 		// Try to get any config that has SP keys stored
-		dbPrivateKey, dbCertificate, err := config.ConfigRepo.GetSPKeyPair(uuid.Nil)
+		dbPrivateKey, dbCertificate, err := config.ConfigRepo.GetSPKeyPair(context.Background(), uuid.Nil)
 		if err != nil {
 			logrus.WithError(err).Warn("Failed to load SAML SP key pair from database")
 		}
@@ -144,7 +145,7 @@ func NewSAMLService(config SAMLServiceConfig) (*SAMLService, error) {
 				Bytes: certDER,
 			})
 
-			if err := config.ConfigRepo.SaveSPKeyPair(uuid.Nil, string(privateKeyPEM), string(certPEM)); err != nil {
+			if err := config.ConfigRepo.SaveSPKeyPair(context.Background(), uuid.Nil, string(privateKeyPEM), string(certPEM)); err != nil {
 				logrus.WithError(err).Warn("Failed to persist generated SAML SP key pair to database")
 			} else {
 				logrus.Info("Persisted generated SAML SP key pair to database")
@@ -168,7 +169,7 @@ func NewSAMLService(config SAMLServiceConfig) (*SAMLService, error) {
 
 // GetSPMetadata returns the Service Provider metadata XML
 func (s *SAMLService) GetSPMetadata(tenantID uuid.UUID) (string, error) {
-	config, err := s.configRepo.GetByTenantID(tenantID)
+	config, err := s.configRepo.GetByTenantID(context.Background(), tenantID)
 	if err != nil {
 		return "", err
 	}
@@ -197,7 +198,7 @@ func (s *SAMLService) GetSPMetadata(tenantID uuid.UUID) (string, error) {
 
 // InitiateLogin initiates a SAML login by generating an AuthnRequest
 func (s *SAMLService) InitiateLogin(tenantID uuid.UUID, relayState string) (string, error) {
-	config, err := s.configRepo.GetByTenantID(tenantID)
+	config, err := s.configRepo.GetByTenantID(context.Background(), tenantID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get SAML config: %w", err)
 	}
@@ -218,7 +219,7 @@ func (s *SAMLService) InitiateLogin(tenantID uuid.UUID, relayState string) (stri
 
 	expiresAt := time.Now().Add(10 * time.Minute)
 	// Store state with requestID for InResponseTo validation on callback
-	if err := s.stateRepo.SaveAuthnRequestState(state, tenantID, requestID, relayState, expiresAt); err != nil {
+	if err := s.stateRepo.SaveAuthnRequestState(context.Background(), state, tenantID, requestID, relayState, expiresAt); err != nil {
 		return "", fmt.Errorf("failed to save SAML state: %w", err)
 	}
 
@@ -452,11 +453,11 @@ func extractSignedInfoXML(xmlData []byte) ([]byte, error) {
 			if se.Name.Local == "SignedInfo" || se.Name.Local == "SignedInfo" &&
 				(strings.HasSuffix(se.Name.Space, "signature") || se.Name.Space == "") {
 				// Found SignedInfo, extract the element
-				var signedInfo xml.Token
+				// var signedInfo xml.Token // removed as unused
 				// Get the start tag raw content
-				startBytes, _ := decoder.InputOffset()
+				startBytes := decoder.InputOffset()
 				// Read until end tag
-				var content []byte
+				// var content []byte // removed as unused
 				depth := 1
 				for depth > 0 {
 					tok, err := decoder.Token()
@@ -469,7 +470,7 @@ func extractSignedInfoXML(xmlData []byte) ([]byte, error) {
 					case xml.EndElement:
 						depth--
 						if depth == 0 && tok.(xml.EndElement).Name.Local == "SignedInfo" {
-							endBytes, _ := decoder.InputOffset()
+							endBytes := decoder.InputOffset()
 							return xmlData[startBytes-1:endBytes], nil
 						}
 					}
@@ -513,7 +514,7 @@ func min(a, b int) int {
 // ProcessResponse processes a SAML Response from the IdP
 // relayState contains our original state token (used to look up the AuthnRequest ID for InResponseTo validation)
 func (s *SAMLService) ProcessResponse(tenantID uuid.UUID, samlResponse string, relayState string) (*SAMLLoginResponse, error) {
-	config, err := s.configRepo.GetByTenantID(tenantID)
+	config, err := s.configRepo.GetByTenantID(context.Background(), tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get SAML config: %w", err)
 	}
@@ -652,7 +653,7 @@ func (s *SAMLService) ProcessResponse(tenantID uuid.UUID, samlResponse string, r
 		CreatedAt:    time.Now(),
 	}
 
-	if err := s.sessionRepo.Create(session); err != nil {
+	if err := s.sessionRepo.Create(context.Background(), session); err != nil {
 		logrus.WithError(err).Warn("Failed to create SAML session")
 	}
 
@@ -667,7 +668,7 @@ func (s *SAMLService) ProcessResponse(tenantID uuid.UUID, samlResponse string, r
 // findOrCreateSAMLUser finds or creates a user based on SAML attributes
 func (s *SAMLService) findOrCreateSAMLUser(tenantID uuid.UUID, email, nameID string, assertion *SAMLAssertion) (*storage.User, error) {
 	// Try to find existing user by email
-	user, err := s.repo.GetUserByEmail(email)
+	user, err := s.repo.GetUserByEmail(context.Background(), email)
 	if err == nil && user != nil {
 		return user, nil
 	}
@@ -690,7 +691,7 @@ func (s *SAMLService) findOrCreateSAMLUser(tenantID uuid.UUID, email, nameID str
 	providerData := map[string]interface{}{
 		"saml": true,
 	}
-	user, err = s.repo.CreateUserWithSocialAuth(email, tenantID, "saml", nameID, providerData)
+	user, err = s.repo.CreateUserWithSocialAuth(context.Background(), email, tenantID, "saml", nameID, providerData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
@@ -708,11 +709,11 @@ func (s *SAMLService) findOrCreateSAMLUser(tenantID uuid.UUID, email, nameID str
 
 // GetConfig retrieves SAML configuration for a tenant
 func (s *SAMLService) GetConfig(tenantID uuid.UUID) (*storage.SAMLConfig, error) {
-	return s.configRepo.GetByTenantID(tenantID)
+	return s.configRepo.GetByTenantID(context.Background(), tenantID)
 }
 
 // SaveConfig saves SAML configuration for a tenant
-func (s *SAMLService) SaveConfig(config *storage.SAMLConfig) error {
+func (s *SAMLService) SaveConfig(ctx context.Context, config *storage.SAMLConfig) error {
 	// Set default values
 	if config.SPEntityID == "" {
 		config.SPEntityID = "functionfly"
@@ -733,26 +734,26 @@ func (s *SAMLService) SaveConfig(config *storage.SAMLConfig) error {
 	}
 
 	// Try to get existing config
-	existing, err := s.configRepo.GetByTenantID(config.TenantID)
+	existing, err := s.configRepo.GetByTenantID(ctx, config.TenantID)
 	if err != nil {
 		// Config doesn't exist, create new
 		config.ID = uuid.New()
 		config.CreatedAt = time.Now()
 		config.UpdatedAt = time.Now()
-		return s.configRepo.Create(config)
+		return s.configRepo.Create(context.Background(), config)
 	}
 
 	// Update existing config
 	config.ID = existing.ID
 	config.CreatedAt = existing.CreatedAt
 	config.UpdatedAt = time.Now()
-	return s.configRepo.Update(config)
+	return s.configRepo.Update(ctx, config)
 }
 
 // HandleSLO handles Single Logout
-func (s *SAMLService) HandleSLO(tenantID, userID uuid.UUID) error {
+func (s *SAMLService) HandleSLO(ctx context.Context, tenantID, userID uuid.UUID) error {
 	// Delete SAML sessions for the user
-	return s.sessionRepo.DeleteByUserID(userID)
+	return s.sessionRepo.DeleteByUserID(ctx, userID)
 }
 
 // SAMLLoginResponse represents the response after successful SAML login

@@ -542,7 +542,7 @@ func (m *DunningManager) sendAdminFinalFailureNotification(ctx context.Context, 
 	amountDue := float64(retry.AmountDueCents) / 100.0
 
 	// Get tenant information for the notification
-	tenant, err := m.userRepo.GetTenantByID(retry.TenantID)
+	tenant, err := m.userRepo.GetTenantByID(ctx, retry.TenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", retry.TenantID).Warn("Failed to get tenant for admin notification")
 		// Continue anyway - we can still notify with the tenant ID

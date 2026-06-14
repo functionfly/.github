@@ -697,7 +697,7 @@ func (s *ExportService) deliverViaEmail(ctx context.Context, job *storage.UsageE
 		recipients = config.EmailRecipients
 	} else {
 		// Fallback: get the user who created the configuration
-		user, err := s.billingRepo.GetUserByID(config.CreatedBy)
+		user, err := s.billingRepo.GetUserByID(ctx, config.CreatedBy)
 		if err != nil {
 			return fmt.Errorf("failed to get user for email delivery: %w", err)
 		}

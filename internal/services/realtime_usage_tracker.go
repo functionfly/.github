@@ -334,7 +334,7 @@ func (t *RealtimeUsageTracker) GetQuotaStatus(ctx context.Context, tenantID uuid
 	}
 
 	// Get subscription for limits
-	sub, err := t.repo.GetSubscriptionByTenantID(tenantID)
+	sub, err := t.repo.GetSubscriptionByTenantID(ctx, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get subscription: %w", err)
 	}
@@ -625,7 +625,7 @@ func (t *RealtimeUsageTracker) sendQuotaAlert(ctx context.Context, tenantID uuid
 
 // getQuotaStatusFromDB retrieves quota status from database (fallback)
 func (t *RealtimeUsageTracker) getQuotaStatusFromDB(ctx context.Context, tenantID uuid.UUID) (*RealtimeQuotaStatus, error) {
-	sub, err := t.repo.GetSubscriptionByTenantID(tenantID)
+	sub, err := t.repo.GetSubscriptionByTenantID(ctx, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get subscription: %w", err)
 	}
@@ -638,7 +638,7 @@ func (t *RealtimeUsageTracker) getQuotaStatusFromDB(ctx context.Context, tenantI
 	periodStart := getPeriodStart()
 	periodEnd := getPeriodEnd()
 
-	rollups, err := t.repo.GetUsageByTenant(tenantID, "function_execution", periodStart, periodEnd)
+	rollups, err := t.repo.GetUsageByTenant(ctx, tenantID, "function_execution", periodStart, periodEnd)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get usage: %w", err)
 	}

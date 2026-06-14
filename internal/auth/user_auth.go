@@ -20,8 +20,8 @@ import (
 
 // RequestPasswordReset sends a password reset email to the given address.
 // Returns nil even if the email doesn't exist to avoid account enumeration.
-func (a *AuthService) RequestPasswordReset(email string) error {
-	user, err := a.repo.GetUserByEmail(email)
+func (a *AuthService) RequestPasswordReset(ctx context.Context, email string) error {
+	user, err := a.repo.GetUserByEmail(ctx, email)
 	if err != nil {
 		return fmt.Errorf("failed to look up user: %w", err)
 	}
@@ -55,7 +55,7 @@ func (a *AuthService) RequestPasswordReset(email string) error {
 }
 
 // ConfirmPasswordReset validates the reset token and sets a new password.
-func (a *AuthService) ConfirmPasswordReset(token, newPassword string) error {
+func (a *AuthService) ConfirmPasswordReset(ctx context.Context, token, newPassword string) error {
 	if token == "" || newPassword == "" {
 		return fmt.Errorf("token and new password are required")
 	}
@@ -65,7 +65,7 @@ func (a *AuthService) ConfirmPasswordReset(token, newPassword string) error {
 	}
 
 	// Look up user by the reset token (stored in verification_token column)
-	user, err := a.repo.GetUserByVerificationToken(token)
+	user, err := a.repo.GetUserByVerificationToken(ctx, token)
 	if err != nil {
 		return fmt.Errorf("failed to look up reset token: %w", err)
 	}
@@ -159,19 +159,19 @@ func getAccountLockoutDuration() time.Duration {
 }
 
 // recordFailedLoginAttempt records a failed login attempt and locks the account if threshold is exceeded
-func (a *AuthService) recordFailedLoginAttempt(userID uuid.UUID, email, ipAddress, userAgent string) {
+func (a *AuthService) recordFailedLoginAttempt(ctx context.Context, userID uuid.UUID, email, ipAddress, userAgent string) {
 	maxAttempts := getMaxLoginAttempts()
 	lockoutDuration := getAccountLockoutDuration()
 
 	// Record the failed attempt
-	_, err := a.repo.CreateLoginAttempt(userID, ipAddress, userAgent, false, nil)
+	_, err := a.repo.CreateLoginAttempt(ctx, userID, ipAddress, userAgent, false, nil)
 	if err != nil {
 		logrus.WithError(err).WithField("user_id", userID).Error("Failed to record failed login attempt")
 		return
 	}
 
 	// Count recent failed attempts
-	recentFailures, err := a.repo.GetRecentFailedLoginAttempts(userID, time.Now().Add(-lockoutDuration))
+	recentFailures, err := a.repo.GetRecentFailedLoginAttempts(ctx, userID, time.Now().Add(-lockoutDuration))
 	if err != nil {
 		logrus.WithError(err).WithField("user_id", userID).Error("Failed to get recent failed login attempts")
 		return
@@ -181,7 +181,7 @@ func (a *AuthService) recordFailedLoginAttempt(userID uuid.UUID, email, ipAddres
 	if recentFailures >= maxAttempts {
 		lockoutUntil := time.Now().Add(lockoutDuration)
 		// Create a login attempt with the lockout
-		_, err := a.repo.CreateLoginAttempt(userID, ipAddress, userAgent, false, &lockoutUntil)
+		_, err := a.repo.CreateLoginAttempt(ctx, userID, ipAddress, userAgent, false, &lockoutUntil)
 		if err != nil {
 			logrus.WithError(err).WithField("user_id", userID).Error("Failed to record account lockout")
 			return
@@ -206,7 +206,7 @@ func (a *AuthService) recordFailedLoginAttempt(userID uuid.UUID, email, ipAddres
 
 // Login authenticates a user and returns a JWT token.
 // The identifier can be either an email address or a username.
-func (a *AuthService) Login(identifier, password, ipAddress, userAgent string) (res *LoginResponse, err error) {
+func (a *AuthService) Login(ctx context.Context, identifier, password, ipAddress, userAgent string) (res *LoginResponse, err error) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			logrus.WithField("panic", rec).WithField("stack", string(debug.Stack())).Error("Login panic")
@@ -220,13 +220,13 @@ func (a *AuthService) Login(identifier, password, ipAddress, userAgent string) (
 	}
 
 	// Try to get user by email first, then by username
-	user, err := a.repo.GetUserByEmail(identifier)
+	user, err := a.repo.GetUserByEmail(ctx, identifier)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 	// If not found by email, try username (case-insensitive)
 	if user == nil {
-		user, err = a.repo.GetUserByUsername(identifier)
+		user, err = a.repo.GetUserByUsername(ctx, identifier)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get user: %w", err)
 		}
@@ -242,7 +242,7 @@ func (a *AuthService) Login(identifier, password, ipAddress, userAgent string) (
 
 	// SECURITY FIX: Check if account is locked due to too many failed login attempts
 	// Lockout status is checked via login_attempts table
-	if lockoutUntil, lockoutErr := a.repo.GetUserLockoutStatus(user.ID); lockoutErr == nil && lockoutUntil != nil {
+	if lockoutUntil, lockoutErr := a.repo.GetUserLockoutStatus(ctx, user.ID); lockoutErr == nil && lockoutUntil != nil {
 		if time.Now().Before(*lockoutUntil) {
 			logrus.WithFields(logrus.Fields{
 				"user_id":       user.ID,
@@ -258,23 +258,23 @@ func (a *AuthService) Login(identifier, password, ipAddress, userAgent string) (
 	if err != nil {
 		logrus.WithError(err).WithField("identifier", identifier).Debug("Password verification error")
 		// SECURITY FIX: Record failed login attempt
-		a.recordFailedLoginAttempt(user.ID, user.Email, ipAddress, userAgent)
+		a.recordFailedLoginAttempt(ctx, user.ID, user.Email, ipAddress, userAgent)
 		return nil, fmt.Errorf("invalid credentials")
 	}
 	if !valid {
 		// SECURITY FIX: Record failed login attempt
-		a.recordFailedLoginAttempt(user.ID, user.Email, ipAddress, userAgent)
+		a.recordFailedLoginAttempt(ctx, user.ID, user.Email, ipAddress, userAgent)
 		return nil, fmt.Errorf("invalid credentials")
 	}
 
 	// SECURITY FIX: Successful login - clear any failed login attempts
-	if err := a.repo.ClearUserLockout(user.ID); err != nil {
+	if err := a.repo.ClearUserLockout(ctx, user.ID); err != nil {
 		logrus.WithError(err).WithField("user_id", user.ID).Warn("Failed to clear user lockout on successful login")
 	}
 	// SECURITY FIX: Session regeneration - revoke all existing refresh tokens and increment
 	// TokenVersion to invalidate all existing JWTs. This prevents session fixation attacks
 	// and token replay attacks where an attacker had obtained a previous token.
-	if err := a.repo.RevokeUserRefreshTokens(user.ID); err != nil {
+	if err := a.repo.RevokeUserRefreshTokens(ctx, user.ID); err != nil {
 		logrus.WithError(err).WithField("user_id", user.ID).Warn("Failed to revoke old refresh tokens - continuing with login")
 	} else {
 		logrus.WithField("user_id", user.ID).Debug("Revoked all existing refresh tokens for user")
@@ -304,7 +304,7 @@ func (a *AuthService) Login(identifier, password, ipAddress, userAgent string) (
 
 	// Store refresh token in database (expires in 30 days)
 	refreshExpiresAt := time.Now().Add(30 * 24 * time.Hour)
-	_, err = a.repo.CreateRefreshToken(user.ID, refreshTokenHash, ipAddress, userAgent, refreshExpiresAt)
+	_, err = a.repo.CreateRefreshToken(ctx, user.ID, refreshTokenHash, ipAddress, userAgent, refreshExpiresAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to store refresh token: %w", err)
 	}
@@ -313,7 +313,7 @@ func (a *AuthService) Login(identifier, password, ipAddress, userAgent string) (
 	loginUser := userToLoginUser(user)
 
 	// Set tenant plan for billing/UI
-	if tenant, err := a.repo.GetTenantByID(user.TenantID); err == nil && tenant != nil && tenant.Plan != "" {
+	if tenant, err := a.repo.GetTenantByID(ctx, user.TenantID); err == nil && tenant != nil && tenant.Plan != "" {
 		loginUser.Plan = tenant.Plan
 	}
 
@@ -413,7 +413,7 @@ func parseDateOfBirthForSignup(s string) (time.Time, error) {
 }
 
 // Signup creates a new user account (unverified, requires email confirmation)
-func (a *AuthService) Signup(req SignupRequest) (*SignupResponse, error) {
+func (a *AuthService) Signup(ctx context.Context, req SignupRequest) (*SignupResponse, error) {
 	// Validate required fields
 	if req.Email == "" || req.Password == "" || req.Username == "" {
 		return nil, fmt.Errorf("email, password, and username are required")
@@ -432,7 +432,7 @@ func (a *AuthService) Signup(req SignupRequest) (*SignupResponse, error) {
 	}
 
 	// Check if user already exists
-	existingUser, err := a.repo.GetUserByEmail(req.Email)
+	existingUser, err := a.repo.GetUserByEmail(ctx, req.Email)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check existing user: %w", err)
 	}
@@ -526,7 +526,7 @@ func (a *AuthService) Signup(req SignupRequest) (*SignupResponse, error) {
 	}
 
 	// Create user with verification token
-	user, err := a.repo.CreateUser(req.Email, hashedPassword, tenantID)
+	user, err := a.repo.CreateUser(ctx, req.Email, hashedPassword, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
@@ -589,7 +589,7 @@ func (a *AuthService) Signup(req SignupRequest) (*SignupResponse, error) {
 }
 
 // CheckUsernameAvailability checks if a username is available for registration
-func (a *AuthService) CheckUsernameAvailability(username string) (bool, error) {
+func (a *AuthService) CheckUsernameAvailability(ctx context.Context, username string) (bool, error) {
 	if username == "" {
 		return false, fmt.Errorf("username is required")
 	}
@@ -610,7 +610,7 @@ func (a *AuthService) CheckUsernameAvailability(username string) (bool, error) {
 	}
 
 	// Check if username is already taken
-	existingUser, err := a.repo.GetUserByUsername(username)
+	existingUser, err := a.repo.GetUserByUsername(ctx, username)
 	if err != nil {
 		return false, fmt.Errorf("failed to check username availability: %w", err)
 	}
@@ -740,7 +740,7 @@ func (a *AuthService) ChangeUsername(ctx context.Context, userID uuid.UUID, req 
 	}
 
 	// Get current user
-	user, err := a.repo.GetUserByID(userID)
+	user, err := a.repo.GetUserByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
@@ -765,7 +765,7 @@ func (a *AuthService) ChangeUsername(ctx context.Context, userID uuid.UUID, req 
 	}
 
 	// Check if username is available
-	existingUser, err := a.repo.GetUserByUsername(clean)
+	existingUser, err := a.repo.GetUserByUsername(ctx, clean)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check username availability: %w", err)
 	}

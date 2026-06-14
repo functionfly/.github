@@ -203,7 +203,7 @@ func (a *AuthService) getTenantOAuthProvider(ctx context.Context, provider strin
 	}
 
 	// Decrypt the client secret
-	clientSecret, err := a.repo.DecryptField(tenantProvider.EncryptedClientSecret)
+	clientSecret, err := a.repo.DecryptField(ctx, tenantProvider.EncryptedClientSecret)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt client secret: %w", err)
 	}
@@ -349,7 +349,7 @@ func (a *AuthService) GetOAuthURL(provider, redirectURI, inviteCode, loginHint, 
 // The returned RedirectURI (if set) should be used to redirect the user with the token (e.g. CLI callback).
 // The returned LoginHint can be used to redirect back to tenant subdomain post-auth.
 // deviceFingerprint must match the fingerprint stored when the OAuth flow was initiated.
-func (a *AuthService) HandleOAuthCallback(provider, code, state, deviceFingerprint string) (*OAuthCallbackResponse, error) {
+func (a *AuthService) HandleOAuthCallback(ctx context.Context, provider, code, state, deviceFingerprint string) (*OAuthCallbackResponse, error) {
 	// Validate CSRF state token — must match one issued by GetOAuthURL (persisted, one-time use)
 	if state == "" {
 		return nil, &OAuthError{
@@ -443,7 +443,7 @@ func (a *AuthService) HandleOAuthCallback(provider, code, state, deviceFingerpri
 	}
 
 	// Check if user exists by social provider
-	existingUser, err := a.repo.GetUserBySocialProvider(provider, userInfo.ID)
+	existingUser, err := a.repo.GetUserBySocialProvider(ctx, provider, userInfo.ID)
 	if err != nil {
 		return nil, &OAuthError{
 			Type:        "database_error",
@@ -467,13 +467,13 @@ func (a *AuthService) HandleOAuthCallback(provider, code, state, deviceFingerpri
 			"verified_email": userInfo.VerifiedEmail,
 			"last_login":     time.Now(),
 		}
-		if err := a.repo.UpdateUserProviderData(user.ID, providerData); err != nil {
+		if err := a.repo.UpdateUserProviderData(ctx, user.ID, providerData); err != nil {
 			// Log error but don't fail - this is not critical
 			fmt.Printf("Warning: failed to update provider data: %v\n", err)
 		}
 	} else {
 		// Check if user exists by email
-		existingUserByEmail, err := a.repo.GetUserByEmail(userInfo.Email)
+		existingUserByEmail, err := a.repo.GetUserByEmail(ctx, userInfo.Email)
 		if err != nil {
 			return nil, &OAuthError{
 				Type:        "database_error",
@@ -569,7 +569,7 @@ func (a *AuthService) HandleOAuthCallback(provider, code, state, deviceFingerpri
 			}
 			tenantID := tenant.ID
 
-			user, err = a.repo.CreateUserWithSocialAuth(userInfo.Email, tenantID, provider, userInfo.ID, map[string]interface{}{
+			user, err = a.repo.CreateUserWithSocialAuth(ctx, userInfo.Email, tenantID, provider, userInfo.ID, map[string]interface{}{
 				"name":           userInfo.Name,
 				"avatar_url":     userInfo.AvatarURL,
 				"verified_email": userInfo.VerifiedEmail,
@@ -612,7 +612,7 @@ func (a *AuthService) HandleOAuthCallback(provider, code, state, deviceFingerpri
 
 	// Store refresh token in database (expires in 30 days)
 	refreshExpiresAt := time.Now().Add(30 * 24 * time.Hour)
-	_, err = a.repo.CreateRefreshToken(user.ID, refreshTokenHash, "oauth", "oauth-callback", refreshExpiresAt)
+	_, err = a.repo.CreateRefreshToken(ctx, user.ID, refreshTokenHash, "oauth", "oauth-callback", refreshExpiresAt)
 	if err != nil {
 		return nil, &OAuthError{
 			Type:        "token_storage_failed",
@@ -784,7 +784,7 @@ func (a *AuthService) generateLinkToken(userID uuid.UUID, provider, providerID s
 
 // ConfirmAccountLinking confirms linking a social account to an existing user.
 // This should be called after the user has explicitly confirmed they want to link accounts.
-func (a *AuthService) ConfirmAccountLinking(linkToken, provider, providerID string, userInfo *OAuthUserInfo) (*OAuthAccountLinkResponse, error) {
+func (a *AuthService) ConfirmAccountLinking(ctx context.Context, linkToken, provider, providerID string, userInfo *OAuthUserInfo) (*OAuthAccountLinkResponse, error) {
 	// Validate the link token
 	if linkToken == "" {
 		return nil, &OAuthError{
@@ -849,7 +849,7 @@ func (a *AuthService) ConfirmAccountLinking(linkToken, provider, providerID stri
 	}
 
 	// Look up the user by email to get their ID
-	existingUser, err := a.repo.GetUserByEmail(userInfo.Email)
+	existingUser, err := a.repo.GetUserByEmail(ctx, userInfo.Email)
 	if err != nil {
 		return nil, &OAuthError{
 			Type:        "database_error",
@@ -911,7 +911,7 @@ func (a *AuthService) ConfirmAccountLinking(linkToken, provider, providerID stri
 
 	// Store refresh token
 	refreshExpiresAt := time.Now().Add(30 * 24 * time.Hour)
-	_, err = a.repo.CreateRefreshToken(existingUser.ID, refreshTokenHash, "oauth_link", "link-confirmation", refreshExpiresAt)
+	_, err = a.repo.CreateRefreshToken(ctx, existingUser.ID, refreshTokenHash, "oauth_link", "link-confirmation", refreshExpiresAt)
 	if err != nil {
 		// Log but don't fail - access token is still valid
 		fmt.Printf("Warning: failed to store refresh token: %v\n", err)

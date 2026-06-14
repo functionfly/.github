@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -40,7 +41,7 @@ func NewBreachNotificationService(emailSvc email.Service, repo storage.Repositor
 
 // NotifyBreach sends breach notifications to required recipients
 // GDPR Article 33 requires notification within 72 hours of becoming aware of the breach
-func (b *BreachNotificationService) NotifyBreach(breach BreachDetails) error {
+func (b *BreachNotificationService) NotifyBreach(ctx context.Context, breach BreachDetails) error {
 	b.logger.WithFields(logrus.Fields{
 		"breach_type":    breach.Type,
 		"affected_users": breach.AffectedUsers,
@@ -48,7 +49,7 @@ func (b *BreachNotificationService) NotifyBreach(breach BreachDetails) error {
 	}).Warn("Initiating GDPR Article 33 breach notification process")
 
 	// Get notification recipients
-	recipients, err := b.getNotificationRecipients()
+	recipients, err := b.getNotificationRecipients(ctx)
 	if err != nil {
 		b.logger.WithError(err).Error("Failed to get breach notification recipients")
 		return fmt.Errorf("failed to get notification recipients: %w", err)
@@ -91,7 +92,7 @@ func (b *BreachNotificationService) NotifyBreach(breach BreachDetails) error {
 }
 
 // getNotificationRecipients returns the list of email addresses that should receive breach notifications
-func (b *BreachNotificationService) getNotificationRecipients() ([]string, error) {
+func (b *BreachNotificationService) getNotificationRecipients(ctx context.Context) ([]string, error) {
 	var recipients []string
 
 	// Primary security contact from environment
@@ -110,7 +111,7 @@ func (b *BreachNotificationService) getNotificationRecipients() ([]string, error
 	}
 
 	// Get admin users from database
-	admins, err := b.repo.ListUsers()
+	admins, err := b.repo.ListUsers(ctx)
 	if err != nil {
 		b.logger.WithError(err).Warn("Failed to get admin users for breach notification")
 	} else {

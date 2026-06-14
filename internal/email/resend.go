@@ -84,7 +84,16 @@ func getResendMetrics() *ResendMetrics {
 
 func RegisterResendMetrics(r prometheus.Registerer) error {
 	m := getResendMetrics()
-	return r.Register(m.SendDuration, m.SendTotal, m.SendErrors, m.RetryTotal)
+	if err := r.Register(m.SendDuration); err != nil {
+		return err
+	}
+	if err := r.Register(m.SendTotal); err != nil {
+		return err
+	}
+	if err := r.Register(m.SendErrors); err != nil {
+		return err
+	}
+	return r.Register(m.RetryTotal)
 }
 
 // ResendConfig holds configuration for the Resend email service

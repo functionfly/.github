@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"time"
@@ -54,9 +55,9 @@ type MFADisableRequest struct {
 }
 
 // SetupMFA generates a TOTP secret and backup codes for a user
-func (m *MFAService) SetupMFA(req MFASetupRequest) (*MFASetupResponse, error) {
+func (m *MFAService) SetupMFA(ctx context.Context, req MFASetupRequest) (*MFASetupResponse, error) {
 	// Get user
-	user, err := m.repo.GetUserByID(req.UserID)
+	user, err := m.repo.GetUserByID(ctx, req.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
@@ -92,7 +93,7 @@ func (m *MFAService) SetupMFA(req MFASetupRequest) (*MFASetupResponse, error) {
 
 	// Update user with MFA setup
 	secret := key.Secret()
-	err = m.repo.UpdateUserMFA(req.UserID, &secret, false, hashedBackupCodes, nil)
+	err = m.repo.UpdateUserMFA(ctx, req.UserID, &secret, false, hashedBackupCodes, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update user MFA: %w", err)
 	}
@@ -105,9 +106,9 @@ func (m *MFAService) SetupMFA(req MFASetupRequest) (*MFASetupResponse, error) {
 }
 
 // VerifyMFA verifies a TOTP code or backup code
-func (m *MFAService) VerifyMFA(req MFAVerifyRequest) (*MFAVerifyResponse, error) {
+func (m *MFAService) VerifyMFA(ctx context.Context, req MFAVerifyRequest) (*MFAVerifyResponse, error) {
 	// Get user
-	user, err := m.repo.GetUserByID(req.UserID)
+	user, err := m.repo.GetUserByID(ctx, req.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
@@ -122,14 +123,14 @@ func (m *MFAService) VerifyMFA(req MFAVerifyRequest) (*MFAVerifyResponse, error)
 	// Check if it's a backup code first
 	if m.isValidBackupCode(user.MFABackupCodes, req.Code) {
 		// Remove used backup code
-		err = m.consumeBackupCode(req.UserID, req.Code)
+		err = m.consumeBackupCode(ctx, req.UserID, req.Code)
 		if err != nil {
 			return nil, fmt.Errorf("failed to consume backup code: %w", err)
 		}
 
 		// Update last used timestamp
 		now := time.Now()
-		err = m.repo.UpdateUserMFALastUsed(req.UserID, &now)
+		err = m.repo.UpdateUserMFALastUsed(ctx, req.UserID, &now)
 		if err != nil {
 			return nil, fmt.Errorf("failed to update MFA last used: %w", err)
 		}
@@ -145,7 +146,7 @@ func (m *MFAService) VerifyMFA(req MFAVerifyRequest) (*MFAVerifyResponse, error)
 
 	// Update last used timestamp
 	now := time.Now()
-	err = m.repo.UpdateUserMFALastUsed(req.UserID, &now)
+	err = m.repo.UpdateUserMFALastUsed(ctx, req.UserID, &now)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update MFA last used: %w", err)
 	}
@@ -154,14 +155,14 @@ func (m *MFAService) VerifyMFA(req MFAVerifyRequest) (*MFAVerifyResponse, error)
 }
 
 // EnableMFA enables MFA for a user after successful verification
-func (m *MFAService) EnableMFA(userID uuid.UUID) error {
-	return m.repo.UpdateUserMFAEnabled(userID, true)
+func (m *MFAService) EnableMFA(ctx context.Context, userID uuid.UUID) error {
+	return m.repo.UpdateUserMFAEnabled(ctx, userID, true)
 }
 
 // DisableMFA disables MFA for a user
-func (m *MFAService) DisableMFA(req MFADisableRequest) error {
+func (m *MFAService) DisableMFA(ctx context.Context, req MFADisableRequest) error {
 	// Get user
-	user, err := m.repo.GetUserByID(req.UserID)
+	user, err := m.repo.GetUserByID(ctx, req.UserID)
 	if err != nil {
 		return fmt.Errorf("failed to get user: %w", err)
 	}
@@ -170,7 +171,7 @@ func (m *MFAService) DisableMFA(req MFADisableRequest) error {
 	}
 
 	// Verify password
-	valid, err := m.repo.VerifyPassword(req.UserID, req.Password)
+	valid, err := m.repo.VerifyPassword(ctx, req.UserID, req.Password)
 	if err != nil {
 		return fmt.Errorf("failed to verify password: %w", err)
 	}
@@ -191,12 +192,12 @@ func (m *MFAService) DisableMFA(req MFADisableRequest) error {
 	}
 
 	// Disable MFA
-	return m.repo.UpdateUserMFA(req.UserID, nil, false, nil, nil)
+	return m.repo.UpdateUserMFA(ctx, req.UserID, nil, false, nil, nil)
 }
 
 // IsMFARequired checks if MFA is required for a user (admin users)
-func (m *MFAService) IsMFARequired(userID uuid.UUID) (bool, error) {
-	user, err := m.repo.GetUserByID(userID)
+func (m *MFAService) IsMFARequired(ctx context.Context, userID uuid.UUID) (bool, error) {
+	user, err := m.repo.GetUserByID(ctx, userID)
 	if err != nil {
 		return false, fmt.Errorf("failed to get user: %w", err)
 	}
@@ -209,8 +210,8 @@ func (m *MFAService) IsMFARequired(userID uuid.UUID) (bool, error) {
 }
 
 // GetMFAStatus returns the MFA status for a user
-func (m *MFAService) GetMFAStatus(userID uuid.UUID) (*MFAStatus, error) {
-	user, err := m.repo.GetUserByID(userID)
+func (m *MFAService) GetMFAStatus(ctx context.Context, userID uuid.UUID) (*MFAStatus, error) {
+	user, err := m.repo.GetUserByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
@@ -271,8 +272,8 @@ func (m *MFAService) isValidBackupCode(storedCodes []string, code string) bool {
 }
 
 // consumeBackupCode removes a used backup code
-func (m *MFAService) consumeBackupCode(userID uuid.UUID, code string) error {
-	user, err := m.repo.GetUserByID(userID)
+func (m *MFAService) consumeBackupCode(ctx context.Context, userID uuid.UUID, code string) error {
+	user, err := m.repo.GetUserByID(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -291,5 +292,5 @@ func (m *MFAService) consumeBackupCode(userID uuid.UUID, code string) error {
 		// If err == nil, this code matches and we don't add it to remainingCodes (removing it)
 	}
 
-	return m.repo.UpdateUserMFABackupCodes(userID, remainingCodes)
+	return m.repo.UpdateUserMFABackupCodes(ctx, userID, remainingCodes)
 }

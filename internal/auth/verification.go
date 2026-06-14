@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
@@ -17,9 +18,9 @@ func (a *AuthService) generateVerificationToken() (string, error) {
 }
 
 // VerifyEmail verifies a user's email address using a verification token
-func (a *AuthService) VerifyEmail(token string) error {
+func (a *AuthService) VerifyEmail(ctx context.Context, token string) error {
 	// Get user by verification token
-	user, err := a.repo.GetUserByVerificationToken(token)
+	user, err := a.repo.GetUserByVerificationToken(ctx, token)
 	if err != nil {
 		return fmt.Errorf("failed to get user by verification token: %w", err)
 	}
@@ -44,9 +45,9 @@ func (a *AuthService) VerifyEmail(token string) error {
 // ResendVerificationEmail resends verification email to an unverified user.
 // Returns a generic error for non-existent and already-verified accounts to
 // avoid leaking account existence information to callers.
-func (a *AuthService) ResendVerificationEmail(email string) error {
+func (a *AuthService) ResendVerificationEmail(ctx context.Context, email string) error {
 	// Get user by email
-	user, err := a.repo.GetUserByEmail(email)
+	user, err := a.repo.GetUserByEmail(ctx, email)
 	if err != nil {
 		return fmt.Errorf("failed to get user: %w", err)
 	}

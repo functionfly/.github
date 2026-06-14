@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -12,13 +13,13 @@ import (
 )
 
 // ValidateToken validates a JWT token and returns the claims
-func (a *AuthService) ValidateToken(tokenString string) (*Claims, error) {
+func (a *AuthService) ValidateToken(ctx context.Context, tokenString string) (*Claims, error) {
 	// Create a parser with validation options
 	parser := jwt.NewParser(
 		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}),
 		jwt.WithExpirationRequired(),
 		jwt.WithIssuer(Issuer),
-		jwt.WithAudience([]string{Audience}),
+		jwt.WithAudience(Audience),
 	)
 
 	token, err := parser.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
@@ -34,7 +35,7 @@ func (a *AuthService) ValidateToken(tokenString string) (*Claims, error) {
 		// If the token has a TokenVersion, verify it matches the user's current version
 		// This allows invalidating tokens when password is changed or logout all is triggered
 		if claims.TokenVersion > 0 && a.repo != nil {
-			user, err := a.repo.GetUserByID(claims.UserID)
+			user, err := a.repo.GetUserByID(ctx, claims.UserID)
 			if err != nil {
 				// Database error - fail closed for security
 				// An attacker could exploit a DB outage to use revoked tokens

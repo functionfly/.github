@@ -135,7 +135,7 @@ func (a *UsageAlerter) CheckAllAlerts(ctx context.Context) error {
 	start := time.Now()
 
 	// Get all active subscriptions
-	subs, err := a.billingRepo.ListAllSubscriptions(1000, 0)
+	subs, err := a.billingRepo.ListAllSubscriptions(ctx, 1000, 0)
 	if err != nil {
 		return fmt.Errorf("failed to list subscriptions: %w", err)
 	}
@@ -488,7 +488,7 @@ func (a *UsageAlerter) getAlertPeriod(alert *storage.UsageAlert, sub *storage.Su
 // getCurrentSpend retrieves current spend for a tenant in a period
 func (a *UsageAlerter) getCurrentSpend(ctx context.Context, tenantID uuid.UUID, start, end time.Time) (float64, error) {
 	// Get invoices for the period
-	invoices, err := a.billingRepo.ListInvoicesByTenant(tenantID, 100, 0)
+	invoices, err := a.billingRepo.ListInvoicesByTenant(ctx, tenantID, 100, 0)
 	if err != nil {
 		return 0, err
 	}

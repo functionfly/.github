@@ -153,7 +153,7 @@ func (f *UsageForecaster) GenerateAllForecasts(ctx context.Context) error {
 	start := time.Now()
 
 	// Get all active subscriptions
-	subs, err := f.billingRepo.ListAllSubscriptions(1000, 0)
+	subs, err := f.billingRepo.ListAllSubscriptions(ctx, 1000, 0)
 	if err != nil {
 		return fmt.Errorf("failed to list subscriptions: %w", err)
 	}

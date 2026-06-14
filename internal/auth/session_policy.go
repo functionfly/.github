@@ -52,7 +52,7 @@ func DefaultSessionPolicy() *SessionPolicy {
 
 // GetSessionPolicy retrieves the session policy for a tenant
 func (s *SessionPolicyService) GetSessionPolicy(ctx context.Context, tenantID uuid.UUID) (*SessionPolicy, error) {
-	tenant, err := s.repo.GetTenantByID(tenantID)
+	tenant, err := s.repo.GetTenantByID(ctx, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tenant: %w", err)
 	}
