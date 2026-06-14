@@ -81,7 +81,7 @@ func FunctionDeploySuccessTemplate(functionName, version, runtime string, deploy
     </td></tr>
   </table>
 </body>
-</html>`, functionName, version, runtime, timeStr, functionName, functionName, TransactionalEmailCopyrightOrangeHTML())
+</html>`, functionName, version, runtime, timeStr, functionName, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`Deployment Successful — FunctionFly
 
@@ -174,7 +174,7 @@ func FunctionDeployFailureTemplate(functionName, errorMsg string, retryCount int
     </td></tr>
   </table>
 </body>
-</html>`, functionName, errorMsg, retryCount, functionName, functionName, TransactionalEmailCopyrightOrangeHTML())
+</html>`, functionName, errorMsg, retryCount, functionName, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`Deployment Failed — FunctionFly
 
@@ -269,7 +269,7 @@ func ExecutionFailedTemplate(functionName, version, errorMsg string, failedAt ti
     </td></tr>
   </table>
 </body>
-</html>`, functionName, version, errorMsg, timeStr, functionName, functionName, TransactionalEmailCopyrightOrangeHTML())
+</html>`, functionName, version, errorMsg, timeStr, functionName, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`Execution Failed — FunctionFly
 
@@ -367,7 +367,7 @@ func RateLimitExceededTemplate(limitType string, currentUsage, limit int64, wind
     </td></tr>
   </table>
 </body>
-</html>`, limitType, limitType, currentUsage, limit, percentUsed, windowDescription, upgradeURL, upgradeURL, TransactionalEmailCopyrightOrangeHTML())
+</html>`, limitType, currentUsage, limit, percentUsed, windowDescription, upgradeURL, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`Rate Limit Exceeded — FunctionFly
 
@@ -460,7 +460,7 @@ func FunctionDeletedTemplate(functionName string, deletedAt time.Time, restoreUR
     </td></tr>
   </table>
 </body>
-</html>`, functionName, functionName, timeStr, restoreURL, restoreURL, TransactionalEmailCopyrightOrangeHTML())
+</html>`, functionName, timeStr, restoreURL, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`Function Deleted — FunctionFly
 
@@ -518,7 +518,7 @@ func UsageAlertTemplate(usageType string, currentUsage, limit int64, percentageU
               </table>
             </td></tr>
             <tr><td style="padding:24px 40px 0;">
-              <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">Usage Alert: %s%% Used</h1>
+              <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">Usage Alert: %d%% Used</h1>
               <p style="margin:0;font-size:15px;color:#a1a1aa;line-height:1.6;">
                 Your <strong style="color:#fafafa;">%s</strong> usage has reached %d%% of your plan limit. Consider upgrading to avoid service interruption.
               </p>
@@ -551,7 +551,7 @@ func UsageAlertTemplate(usageType string, currentUsage, limit int64, percentageU
     </td></tr>
   </table>
 </body>
-</html>`, percentageUsed, usageType, percentageUsed, usageType, currentUsage, limit, resetDate, upgradeURL, upgradeURL, TransactionalEmailCopyrightOrangeHTML())
+</html>`, percentageUsed, usageType, currentUsage, limit, resetDate, upgradeURL, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`Usage Alert: %d%% Used — FunctionFly
 
@@ -646,7 +646,7 @@ func UsageExportReadyTemplate(exportID, downloadURL string, expiresAt time.Time,
     </td></tr>
   </table>
 </body>
-</html>`, exportID, sizeMB, expiresStr, downloadURL, downloadURL, TransactionalEmailCopyrightOrangeHTML())
+</html>`, exportID, sizeMB, expiresStr, downloadURL, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`Export Ready — FunctionFly
 

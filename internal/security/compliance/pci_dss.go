@@ -47,7 +47,7 @@ func (p *PCIDSSChecker) CheckCompliance(ctx context.Context) []ComplianceIssue {
 			Title:       "Cardholder Data Not Encrypted",
 			Description: "Sensitive cardholder data is not properly encrypted during transmission and storage",
 			Severity:    "critical",
-			CheckFunc: func() bool {
+			CheckFunc: func(ctx context.Context) bool {
 				// PCI DSS Requirement 3: Protect stored cardholder data
 				// Check if sensitive payment data is properly encrypted
 
@@ -70,14 +70,14 @@ func (p *PCIDSSChecker) CheckCompliance(ctx context.Context) []ComplianceIssue {
 				// 3. Verify no sensitive cardholder data is stored locally
 				// In a PCI-compliant system, cardholder data should not be stored
 				// Check if any potentially sensitive payment data exists in database
-				_, err := p.db.ListInvoicesByTenant(uuid.Nil, 100, 0) // Check recent invoices
+				_, err := p.db.ListInvoicesByTenant(ctx, uuid.Nil, 100, 0) // Check recent invoices
 				if err != nil {
 					p.logger.WithError(err).Warn("Failed to check invoices for PCI DSS compliance")
 					return true // Can't verify - assume vulnerability
 				}
 
 				// 4. Check for any plain text payment data in audit logs
-				auditEvents, err := p.db.ListAuditEventsFiltered(50, 0, map[string]interface{}{
+				auditEvents, err := p.db.ListAuditEventsFiltered(ctx, 50, 0, map[string]interface{}{
 					"action": []string{"billing.*", "payment.*", "invoice.*"},
 				})
 				if err != nil {
@@ -149,7 +149,7 @@ func (p *PCIDSSChecker) CheckCompliance(ctx context.Context) []ComplianceIssue {
 			Title:       "Insecure Payment Processing",
 			Description: "Payment processing does not use secure protocols and methods",
 			Severity:    "high",
-			CheckFunc: func() bool {
+			CheckFunc: func(ctx context.Context) bool {
 				// PCI DSS Requirement 4: Encrypt transmission of cardholder data across open networks
 				// Check if payment processing uses secure protocols and methods
 
@@ -186,7 +186,7 @@ func (p *PCIDSSChecker) CheckCompliance(ctx context.Context) []ComplianceIssue {
 
 				// 4. Check payment audit logging
 				// Verify that payment operations are properly logged
-				paymentAuditEvents, err := p.db.ListAuditEventsFiltered(20, 0, map[string]interface{}{
+				paymentAuditEvents, err := p.db.ListAuditEventsFiltered(ctx, 20, 0, map[string]interface{}{
 					"action": []string{"billing.payment.*", "billing.invoice.*", "billing.subscription.*"},
 				})
 				if err != nil {
@@ -237,15 +237,15 @@ func (p *PCIDSSChecker) CheckCompliance(ctx context.Context) []ComplianceIssue {
 			Title:       "Access Control Not Implemented for Cardholder Data",
 			Description: "Access to cardholder data is not properly restricted",
 			Severity:    "high",
-			CheckFunc: func() bool {
+			CheckFunc: func(ctx context.Context) bool {
 				// Check access controls for payment data using sophisticated RBAC analysis
-				users, err := p.db.ListUsers()
+				users, err := p.db.ListUsers(ctx)
 				if err != nil {
 					return true // Can't verify - assume vulnerability
 				}
 
 				// Check recent audit events for payment/billing access patterns
-				events, err := p.db.ListAuditEvents(100, 0)
+				events, err := p.db.ListAuditEvents(ctx, 100, 0)
 				if err != nil {
 					p.logger.WithError(err).Error("Failed to check audit events for RBAC analysis")
 					return true // Can't verify audit trail - assume vulnerability
@@ -294,7 +294,7 @@ func (p *PCIDSSChecker) CheckCompliance(ctx context.Context) []ComplianceIssue {
 
 						// Check if non-admin user performed privileged action
 						if event.ActorUserID != nil {
-							user, err := p.db.GetUserByID(*event.ActorUserID)
+							user, err := p.db.GetUserByID(ctx, *event.ActorUserID)
 							if err == nil && user != nil {
 								if user.Role != "admin" && user.Role != "super_admin" {
 									unauthorizedAccessAttempts++
@@ -329,9 +329,9 @@ func (p *PCIDSSChecker) CheckCompliance(ctx context.Context) []ComplianceIssue {
 			Title:       "Security Logs Not Maintained",
 			Description: "Audit logs for payment system access are not properly maintained",
 			Severity:    "medium",
-			CheckFunc: func() bool {
+			CheckFunc: func(ctx context.Context) bool {
 				// Check if payment-related audit logging is implemented
-				events, err := p.db.ListAuditEvents(50, 0)
+				events, err := p.db.ListAuditEvents(ctx, 50, 0)
 				if err != nil {
 					return true // Can't verify - assume vulnerability
 				}
@@ -355,12 +355,12 @@ func (p *PCIDSSChecker) CheckCompliance(ctx context.Context) []ComplianceIssue {
 			Title:       "Vulnerability Scanning Not Performed",
 			Description: "Regular vulnerability scans of payment systems are not performed",
 			Severity:    "medium",
-			CheckFunc: func() bool {
+			CheckFunc: func(ctx context.Context) bool {
 				// Check if vulnerability scanning is performed regularly
 				// For PCI DSS compliance, vulnerability scans should be performed at least quarterly
 
 				// Look for recent security scans in audit events
-				events, err := p.db.ListAuditEvents(200, 0) // Get more events to check scan history
+				events, err := p.db.ListAuditEvents(ctx, 200, 0) // Get more events to check scan history
 				if err != nil {
 					p.logger.WithError(err).Error("Failed to check vulnerability scan history")
 					return true // Can't verify - assume vulnerability
@@ -389,7 +389,7 @@ func (p *PCIDSSChecker) CheckCompliance(ctx context.Context) []ComplianceIssue {
 	}
 
 	for _, check := range checks {
-		if check.CheckFunc() {
+		if check.CheckFunc(ctx) {
 			vulnerabilities = append(vulnerabilities, ComplianceIssue{
 				ID:          generateVulnID(),
 				Title:       check.Title,

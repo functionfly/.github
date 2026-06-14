@@ -5,9 +5,8 @@
 //
 //   - ResourceQuota enforces hard caps (e.g. "max 25 secrets per
 //     tenant", "max 100 dynamic creds per month"). Quotas are
-//     read from the tenant's plan (Free / Pro / Team / Enterprise)
-//     but can be overridden by an admin in the
-//     vault_rate_limits table.
+//     read from the tenant's plan but can be overridden by an
+//     admin in the vault_rate_limits table.
 //
 //   - SlidingWindowLimiter applies a per-tenant rate cap on
 //     individual operations. The cap is in the form
@@ -20,21 +19,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
-)
-
-// Plan is a tenant's pricing plan. Quotas are derived from the plan
-// by GetPlanQuota(); an admin override lives in the
-// vault_rate_limits table.
-type Plan string
-
-const (
-	PlanFree       Plan = "free"
-	PlanPro        Plan = "pro"
-	PlanTeam       Plan = "team"
-	PlanEnterprise Plan = "enterprise"
 )
 
 // Resource is one of the billable dimensions.
@@ -57,49 +45,23 @@ type Quota struct {
 	Window time.Duration `json:"window,omitempty"`
 }
 
-// GetPlanQuota returns the default quota for a plan + resource, per
-// the Phase 5.2 pricing table.
-func GetPlanQuota(plan Plan, resource Resource) Quota {
-	type pair struct {
-		limit  int64
-		window time.Duration
-	}
-	matrix := map[Plan]map[Resource]pair{
-		PlanFree: {
-			ResourceSecrets:         {25, 0},
-			ResourceDynamicCreds:    {100, 30 * 24 * time.Hour},
-			ResourceTokensPerSecret: {5, 0},
-			ResourceAuditExports:    {1, 24 * time.Hour},
-		},
-		PlanPro: {
-			ResourceSecrets:         {500, 0},
-			ResourceDynamicCreds:    {5000, 30 * 24 * time.Hour},
-			ResourceTokensPerSecret: {25, 0},
-			ResourceAuditExports:    {10, 24 * time.Hour},
-		},
-		PlanTeam: {
-			ResourceSecrets:         {5000, 0},
-			ResourceDynamicCreds:    {50_000, 30 * 24 * time.Hour},
-			ResourceTokensPerSecret: {100, 0},
-			ResourceAuditExports:    {50, 24 * time.Hour},
-		},
-		PlanEnterprise: {
-			ResourceSecrets:         {1_000_000, 0},
-			ResourceDynamicCreds:    {1_000_000, 30 * 24 * time.Hour},
-			ResourceTokensPerSecret: {1000, 0},
-			ResourceAuditExports:    {1000, 24 * time.Hour},
-		},
-	}
-	p, ok := matrix[plan]
-	if !ok {
+// GetPlanQuota returns the default quota for a plan + resource.
+// Uses the unified plans package for all plan limits.
+func GetPlanQuota(plan string, resource Resource) Quota {
+	switch resource {
+	case ResourceSecrets:
+		return Quota{Resource: resource, Limit: int64(plans.GetMaxSecrets(plan)), Window: 0}
+	case ResourceDynamicCreds:
+		return Quota{Resource: resource, Limit: int64(plans.GetMaxDynamicCreds(plan)), Window: 30 * 24 * time.Hour}
+	case ResourceTokensPerSecret:
+		return Quota{Resource: resource, Limit: int64(plans.GetMaxTokensPerSecret(plan)), Window: 0}
+	case ResourceAuditExports:
+		return Quota{Resource: resource, Limit: int64(plans.GetMaxAuditExportsPerDay(plan)), Window: 24 * time.Hour}
+	default:
 		return Quota{Resource: resource, Limit: 0}
 	}
-	q, ok := p[resource]
-	if !ok {
-		return Quota{Resource: resource, Limit: 0}
-	}
-	return Quota{Resource: resource, Limit: q.limit, Window: q.window}
 }
+
 
 // Redis is a minimal interface that the *quota.Store* and
 // *Limiter* need. We keep it small so tests can supply an
@@ -119,7 +81,7 @@ type Redis interface {
 // run against the in-memory cache for tests.
 type Store interface {
 	// GetTenantPlan returns the tenant's current plan slug.
-	GetTenantPlan(ctx context.Context, tenantID uuid.UUID) (Plan, error)
+	GetTenantPlan(ctx context.Context, tenantID uuid.UUID) (string, error)
 	// GetOverride returns an admin-set override for the resource,
 	// or (0, false, nil) when no override exists.
 	GetOverride(ctx context.Context, tenantID uuid.UUID, resource Resource) (int64, time.Duration, bool, error)
@@ -176,7 +138,7 @@ func (e *Enforcer) CheckTokensPerSecret(ctx context.Context, secretID uuid.UUID)
 		// given a *secret* ID, not a tenant ID; the caller passes
 		// the tenant via context. If absent, we fall back to a
 		// safe plan-less default.
-		limit = int64(GetPlanQuota(PlanFree, ResourceTokensPerSecret).Limit)
+		limit = int64(GetPlanQuota("free", ResourceTokensPerSecret).Limit)
 		window = 0
 	}
 	current, err := e.store.CountActiveTokens(ctx, secretID)

@@ -179,7 +179,7 @@ func InvoiceReadyTemplate(period string, amount float64, invoiceURL string) Emai
     </td></tr>
   </table>
 </body>
-</html>`, period, amount, invoiceURL, TransactionalEmailCopyrightOrangeHTML())
+</html>`, period, amount, invoiceURL, period, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`Invoice Ready — FunctionFly
 
@@ -399,11 +399,6 @@ Your card won't be charged during the trial.
 
 func SubscriptionChangeTemplate(changeType string, oldPlan, newPlan string, effectiveDate time.Time, manageURL string) EmailTemplate {
 	dateStr := effectiveDate.Format("Jan 2, 2006")
-	isUpgrade := changeType == "upgrade"
-	arrow := "&uarr;"
-	if !isUpgrade {
-		arrow = "&darr;"
-	}
 
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
@@ -438,7 +433,7 @@ func SubscriptionChangeTemplate(changeType string, oldPlan, newPlan string, effe
               <table role="presentation" cellpadding="0" cellspacing="0">
                 <tr>
                   <td style="width:56px;height:56px;background:rgba(249,115,22,0.1);border-radius:50%%;text-align:center;vertical-align:middle;">
-                    <div style="font-size:24px;line-height:56px;">%s</div>
+                    <div style="font-size:24px;line-height:56px;">📋</div>
                   </td>
                 </tr>
               </table>
@@ -477,7 +472,7 @@ func SubscriptionChangeTemplate(changeType string, oldPlan, newPlan string, effe
     </td></tr>
   </table>
 </body>
-</html>`, arrow, titleCase(changeType), changeType, oldPlan, newPlan, dateStr, manageURL, TransactionalEmailCopyrightOrangeHTML())
+</html>`, titleCase(changeType), changeType, oldPlan, newPlan, dateStr, manageURL, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`Subscription %s — FunctionFly
 

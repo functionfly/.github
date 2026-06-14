@@ -315,7 +315,7 @@ func WaitlistInviteTemplate(inviteCode, signupURL string, expiresAt time.Time) E
     </td></tr>
   </table>
 </body>
-</html>`, inviteCode, expiresStr, signupURL, signupURL, TransactionalEmailCopyrightOrangeHTML())
+</html>`, inviteCode, expiresStr, signupURL, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`You're In! — FunctionFly Early Access
 
@@ -410,7 +410,7 @@ func BundleWelcomeTemplate(bundleName, dashboardURL string) EmailTemplate {
     </td></tr>
   </table>
 </body>
-</html>`, bundleName, bundleName, bundleName, dashboardURL, dashboardURL, TransactionalEmailCopyrightOrangeHTML())
+</html>`, bundleName, dashboardURL, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`Welcome to %s — FunctionFly
 

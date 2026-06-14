@@ -77,7 +77,7 @@ func TeamInviteTemplate(orgName, invitedBy, role string, acceptURL string) Email
     </td></tr>
   </table>
 </body>
-</html>`, invitedBy, orgName, orgName, role, invitedBy, acceptURL, acceptURL, TransactionalEmailCopyrightOrangeHTML())
+</html>`, invitedBy, orgName, orgName, role, invitedBy, acceptURL, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`Team Invitation — FunctionFly
 
@@ -171,7 +171,7 @@ func VaultSecretSharedTemplate(secretName, sharedBy, accessLevel string, viewURL
     </td></tr>
   </table>
 </body>
-</html>`, secretName, sharedBy, accessLevel, viewURL, viewURL, TransactionalEmailCopyrightOrangeHTML())
+</html>`, secretName, sharedBy, accessLevel, viewURL, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`Secret Shared — FunctionFly
 
@@ -263,7 +263,7 @@ func InviteEmailTemplate(inviterName, orgName, role, acceptURL string) EmailTemp
     </td></tr>
   </table>
 </body>
-</html>`, orgName, inviterName, orgName, role, orgName, role, inviterName, acceptURL, acceptURL, TransactionalEmailCopyrightOrangeHTML())
+</html>`, orgName, inviterName, orgName, role, orgName, role, inviterName, acceptURL, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`You're Invited to Join %s — FunctionFly
 

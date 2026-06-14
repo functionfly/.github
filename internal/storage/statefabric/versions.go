@@ -125,9 +125,9 @@ func (r *Repository) CreateFabricVersion(ctx context.Context, tenantID, fabricID
 		FabricID:      fabricID,
 		VersionNumber: maxVersion + 1,
 		Name:          state.Name,
-		Description:   state.Description,
+		Description:   normalizeDescription(state.Description),
 		Type:          state.StorageType,
-		Settings:      state.Tags,
+		Settings:      JSONMap(state.Tags),
 		ChangeType:    changeType,
 		ChangeSummary: changeSummary,
 		ActorID:       actorID,
@@ -424,8 +424,10 @@ func (r *Repository) RollbackKey(ctx context.Context, tenantID, fabricID uuid.UU
 	}
 
 	// Record the rollback as a new version
-	summary := fmt.Sprintf("Rolled back key %s to version %d", key, targetVersion)
-	r.CreateKeyVersion(ctx, tenantID, fabricID, key, "rollback", version.Value, actorID, actorType)
+	_, err = r.CreateKeyVersion(ctx, tenantID, fabricID, key, "rollback", version.Value, actorID, actorType)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

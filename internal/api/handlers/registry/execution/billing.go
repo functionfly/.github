@@ -37,7 +37,7 @@ func (h *Handler) loadPricingConfig(ctx context.Context, tenantID uuid.UUID) (*E
 	defaultConfig := DefaultExecutionPricing()
 
 	// Get tenant's subscription
-	subscription, err := h.BackendRepo.GetSubscriptionByTenantID(tenantID)
+	subscription, err := h.BackendRepo.GetSubscriptionByTenantID(ctx, tenantID)
 	if err != nil {
 		return defaultConfig, nil // Use defaults if no subscription found
 	}
@@ -46,7 +46,7 @@ func (h *Handler) loadPricingConfig(ctx context.Context, tenantID uuid.UUID) (*E
 	}
 
 	// Get pricing tier
-	tier, err := h.BackendRepo.GetPricingTierByID(subscription.PricingTierID)
+	tier, err := h.BackendRepo.GetPricingTierByID(ctx, subscription.PricingTierID)
 	if err != nil {
 		return defaultConfig, nil // Use defaults if tier not found
 	}

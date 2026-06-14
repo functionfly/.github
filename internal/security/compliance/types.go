@@ -19,7 +19,7 @@ type ComplianceCheck struct {
 	Title       string
 	Description string
 	Severity    string
-	CheckFunc   func() bool
+	CheckFunc   func(context.Context) bool
 }
 
 // ComplianceIssue represents a compliance issue found during checking

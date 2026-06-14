@@ -34,7 +34,7 @@ func (h *Handler) verifyReplay(fnVersion *storage.RegistryFunctionVersion, origi
 			return executeLocally(fnVersion, originalInput)
 		} else if fnVersion.BackendID != nil {
 			// Execute via backend
-			backend, err := h.BackendRepo.GetBackendByID(*fnVersion.BackendID)
+			backend, err := h.BackendRepo.GetBackendByID(context.Background(), *fnVersion.BackendID)
 			if err != nil {
 				return nil, fmt.Errorf("backend not found: %w", err)
 			}

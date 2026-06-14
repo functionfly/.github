@@ -80,7 +80,7 @@ func TrustRevocationTemplate(functionName, reason string, revokedAt time.Time) E
     </td></tr>
   </table>
 </body>
-</html>`, functionName, timeStr, reason, functionName, functionName, TransactionalEmailCopyrightOrangeHTML())
+</html>`, functionName, timeStr, reason, functionName, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`Trust Status Revoked — FunctionFly
 
@@ -169,7 +169,7 @@ func DataRequestConfirmationTemplate(requestType, requestID string, estimatedCom
     </td></tr>
   </table>
 </body>
-</html>`, requestType, requestID, requestType, estStr, TransactionalEmailCopyrightOrangeHTML())
+</html>`, requestType, requestID, estStr, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`Data Request Received — FunctionFly
 

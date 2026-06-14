@@ -1,6 +1,7 @@
 package apputil
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -37,7 +38,7 @@ func appSegmentFromRequest(r *http.Request) string {
 }
 
 // ResolveAppForRequest resolves the app from the request path: UUID (existing access rules) or tenant-scoped slug.
-func ResolveAppForRequest(repo storage.Repository, user *auth.Claims, r *http.Request) (*storage.App, *HTTPError) {
+func ResolveAppForRequest(ctx context.Context, repo storage.Repository, user *auth.Claims, r *http.Request) (*storage.App, *HTTPError) {
 	if user == nil {
 		return nil, &HTTPError{http.StatusUnauthorized, "Unauthorized"}
 	}
@@ -46,7 +47,7 @@ func ResolveAppForRequest(repo storage.Repository, user *auth.Claims, r *http.Re
 		return nil, &HTTPError{http.StatusBadRequest, "Invalid app ID"}
 	}
 	if id, err := uuid.Parse(idOrSlug); err == nil {
-		app, dberr := repo.GetAppByID(id)
+		app, dberr := repo.GetAppByID(ctx, id)
 		if dberr != nil {
 			return nil, &HTTPError{http.StatusInternalServerError, "Failed to get app"}
 		}
@@ -58,7 +59,7 @@ func ResolveAppForRequest(repo storage.Repository, user *auth.Claims, r *http.Re
 		}
 		return app, nil
 	}
-	app, dberr := repo.GetAppBySlugAndTenant(idOrSlug, user.TenantID)
+	app, dberr := repo.GetAppBySlugAndTenant(ctx, idOrSlug, user.TenantID)
 	if dberr != nil {
 		return nil, &HTTPError{http.StatusInternalServerError, "Failed to get app"}
 	}

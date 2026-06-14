@@ -404,3 +404,19 @@ func (c *Client) GetCompareDiff(ctx context.Context, owner, repo, base, head str
 	}
 	return result, nil
 }
+
+func (c *Client) FetchCommits(ctx context.Context, owner, repo, sha string, perPage int) ([]GitHubCommit, error) {
+	if perPage <= 0 {
+		perPage = 30
+	}
+	path := fmt.Sprintf("/repos/%s/%s/commits?sha=%s&per_page=%d", owner, repo, sha, perPage)
+	data, err := c.get(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+	var commits []GitHubCommit
+	if err := json.Unmarshal(data, &commits); err != nil {
+		return nil, fmt.Errorf("unmarshal commits: %w", err)
+	}
+	return commits, nil
+}

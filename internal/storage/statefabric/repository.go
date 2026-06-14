@@ -27,15 +27,8 @@ import (
 )
 
 const (
-	defaultMaxStoreSizeBytes = 500 * 1024 * 1024 * 1024 // 500 GB max store size
+	defaultmaxStoreSizeBytes = 500 * 1024 * 1024 * 1024 // 500 GB max store size
 	defaultHTTPTimeout       = 30 * time.Second
-)
-
-const (
-	FabricStatusActive   = "active"
-	FabricStatusPending  = "pending"
-	FabricStatusOffline  = "offline"
-	FabricStatusDegraded = "degraded"
 )
 
 const (
@@ -52,7 +45,7 @@ var (
 )
 
 func init() {
-	maxStoreSizeBytes = defaultMaxStoreSizeBytes
+	maxStoreSizeBytes = defaultmaxStoreSizeBytes
 	if val := os.Getenv("STATEFABRIC_MAX_STORE_SIZE"); val != "" {
 		if parsed, err := parseBytes(val); err == nil {
 			maxStoreSizeBytes = parsed
@@ -111,7 +104,7 @@ func parseBytes(s string) (uint64, error) {
 	return val, err
 }
 
-func getMaxStoreSizeBytes() uint64 {
+func getmaxStoreSizeBytes() uint64 {
 	return maxStoreSizeBytes
 }
 
@@ -852,8 +845,8 @@ func (r *Repository) CreateStore(ctx context.Context, tenantID, fabricID uuid.UU
 	if maxSize < 0 {
 		return nil, fmt.Errorf("maxSize cannot be negative")
 	}
-	if maxSize > MaxStoreSizeBytes {
-		return nil, fmt.Errorf("maxSize exceeds maximum allowed size of %d bytes", MaxStoreSizeBytes)
+	if maxSize > 0 && maxSize > int64(maxStoreSizeBytes) {
+		return nil, fmt.Errorf("maxSize exceeds maximum allowed size of %d bytes", maxStoreSizeBytes)
 	}
 	if maxSize > 0 {
 		state.MaxSizeMB = int(maxSize / (1024 * 1024))
@@ -1178,7 +1171,7 @@ func (r *Repository) ExecutePipeline(ctx context.Context, tenantID, fabricID, pi
 				}
 				select {
 				case <-ctx.Done():
-					return nil, ctx.Err
+					return nil, ctx.Err()
 				case <-time.After(delay):
 				}
 			}
@@ -1781,7 +1774,7 @@ func (r *Repository) ShutdownReplays() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	for replayID, cancel := range r.replayCancelFuncs {
+	for _, cancel := range r.replayCancelFuncs {
 		cancel()
 	}
 	r.replayCancelFuncs = make(map[uuid.UUID]context.CancelFunc)
@@ -2011,7 +2004,6 @@ func (r *Repository) Stats(ctx context.Context) (map[string]int64, error) {
 		return nil, err
 	}
 	stats["storageUsed"] = storageUsed
-	_ = stores
 	return stats, nil
 }
 
@@ -2479,7 +2471,8 @@ func pow(base float64, exp float64) float64 {
 
 // Ping checks database connectivity
 func (r *Repository) Ping(ctx context.Context) error {
-	return r.db.WithContext(ctx).Raw("SELECT 1").Scan(&struct{}).Error
+	var result int
+	return r.db.WithContext(ctx).Raw("SELECT 1").Scan(&result).Error
 }
 
 // IsCacheEnabled returns whether Redis cache is enabled
@@ -2506,8 +2499,7 @@ func (r *Repository) PingR2(ctx context.Context) error {
 		return fmt.Errorf("R2 backend not configured")
 	}
 	// R2 backend health check - try a simple operation
-	_, err := r.r2Backend.ListBuckets(ctx)
-	return err
+	return r.r2Backend.HealthCheck(ctx)
 }
 
 // CountDeadLetters returns the total count of pending dead letters across all fabrics

@@ -83,15 +83,20 @@ type WebhookPayload struct {
 }
 
 func (r *Repository) CreateWebhook(ctx context.Context, fabricID uuid.UUID, name, url, secret string, eventTypes []string, headers map[string]interface{}) (*StateFabricWebhook, error) {
+	eventTypesMap := JSONMap{}
+	for _, et := range eventTypes {
+		eventTypesMap[et] = true
+	}
+
 	webhook := &StateFabricWebhook{
 		ID:         uuid.New(),
 		FabricID:   fabricID,
 		Name:       name,
 		URL:        url,
 		Secret:     secret,
-		EventTypes: eventTypes,
+		EventTypes: eventTypesMap,
 		Active:     true,
-		Headers:    headers,
+		Headers:    JSONMap(headers),
 		RetryPolicy: map[string]interface{}{
 			"max_attempts":    3,
 			"retry_delay_ms": 1000,
@@ -151,13 +156,8 @@ func (r *Repository) TriggerWebhooks(ctx context.Context, fabricID uuid.UUID, ev
 			continue
 		}
 
-		eventTypes, ok := webhook.EventTypes.([]string)
-		if !ok {
-			continue
-		}
-
 		found := false
-		for _, et := range eventTypes {
+		for et := range webhook.EventTypes {
 			if et == eventType || et == "*" {
 				found = true
 				break
@@ -204,11 +204,9 @@ func (r *Repository) deliverWebhook(webhook StateFabricWebhook, fabricID, tenant
 		req.Header.Set("X-StateFabric-Signature", signature)
 	}
 
-	if headers, ok := webhook.Headers.(map[string]interface{}); ok {
-		for k, v := range headers {
-			if s, ok := v.(string); ok {
-				req.Header.Set(k, s)
-			}
+	for k, v := range webhook.Headers {
+		if s, ok := v.(string); ok {
+			req.Header.Set(k, s)
 		}
 	}
 

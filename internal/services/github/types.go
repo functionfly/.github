@@ -329,5 +329,19 @@ type WebhookPROvent struct {
 	Repository struct {
 		ID       int64  `json:"id"`
 		FullName string `json:"full_name"`
+		Name     string `json:"name"`
+		Owner    struct {
+			Login string `json:"login"`
+		} `json:"owner"`
 	} `json:"repository"`
+}
+
+type GitHubCommit struct {
+	SHA      string     `json:"sha"`
+	Message  string     `json:"message"`
+	Author   GitHubUser `json:"author"`
+	Date     time.Time  `json:"date"`
+	Added    []string   `json:"added,omitempty"`
+	Removed  []string   `json:"removed,omitempty"`
+	Modified []string   `json:"modified,omitempty"`
 }

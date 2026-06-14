@@ -80,7 +80,7 @@ func ReferralInviteTemplate(referrerName string, inviteURL string, rewardDescrip
     </td></tr>
   </table>
 </body>
-</html>`, referrerName, rewardDescription, expiresStr, inviteURL, inviteURL, TransactionalEmailCopyrightOrangeHTML())
+</html>`, referrerName, rewardDescription, expiresStr, inviteURL, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`You've Been Invited! — FunctionFly
 
@@ -174,7 +174,7 @@ func ReferralRewardTemplate(rewardType string, rewardValue string, claimURL stri
     </td></tr>
   </table>
 </body>
-</html>`, rewardType, rewardValue, expiresStr, claimURL, claimURL, TransactionalEmailCopyrightOrangeHTML())
+</html>`, rewardType, rewardValue, expiresStr, claimURL, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`You Earned a Reward! — FunctionFly
 

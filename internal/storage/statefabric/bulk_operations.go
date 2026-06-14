@@ -269,7 +269,7 @@ func (r *Repository) BulkSetKeys(ctx context.Context, req BulkKeyRequest) (*Bulk
 
 	for idx, entry := range req.Keys {
 		keyStart := time.Now()
-		err := r.SetFabricValue(ctx, req.TenantID, req.FabricID, entry.Key, entry.Value, "bulk")
+		_, err := r.SetFabricValue(ctx, req.TenantID, req.FabricID, entry.Key, entry.Value, "bulk")
 		duration := time.Since(keyStart)
 
 		if err != nil {

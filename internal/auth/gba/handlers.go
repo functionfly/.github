@@ -1,6 +1,7 @@
 package gba
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -832,7 +833,7 @@ func (h *Handler) HandleResendVerification(w http.ResponseWriter, r *http.Reques
 
 // shouldRememberDevice returns true if the user has enabled "remember trusted devices" in their settings.
 func (h *Handler) shouldRememberDevice(userID uuid.UUID) bool {
-	settings, err := h.userRepo.GetUserSettings(userID)
+	settings, err := h.userRepo.GetUserSettings(context.Background(), userID)
 	if err != nil || settings == nil {
 		return true // default to enabled
 	}

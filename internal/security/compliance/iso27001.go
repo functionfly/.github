@@ -34,7 +34,7 @@ func (i *ISO27001Checker) CheckCompliance(ctx context.Context) []ComplianceIssue
 			Title:       "Information Security Policy Not Defined",
 			Description: "No documented information security policy found",
 			Severity:    "high",
-			CheckFunc: func() bool {
+			CheckFunc: func(ctx context.Context) bool {
 				// Check if security policy files exist
 				// Look for common security policy document names and locations
 				policyFiles := []string{
@@ -88,9 +88,9 @@ func (i *ISO27001Checker) CheckCompliance(ctx context.Context) []ComplianceIssue
 			Title:       "Access Control Policy Not Implemented",
 			Description: "Access control policies are not properly implemented across all systems",
 			Severity:    "high",
-			CheckFunc: func() bool {
+			CheckFunc: func(ctx context.Context) bool {
 				// Check if role-based access control is properly configured
-				users, err := i.db.ListUsers()
+				users, err := i.db.ListUsers(ctx)
 				if err != nil {
 					return true // Can't verify - assume vulnerability
 				}
@@ -111,12 +111,12 @@ func (i *ISO27001Checker) CheckCompliance(ctx context.Context) []ComplianceIssue
 			Title:       "Cryptographic Controls Not Implemented",
 			Description: "Encryption is not properly implemented for sensitive data",
 			Severity:    "high",
-			CheckFunc: func() bool {
+			CheckFunc: func(ctx context.Context) bool {
 				// Check if encryption is enabled for sensitive data
 				// This includes database encryption, password hashing, and API encryption
 
 				// 1. Check password hashing implementation
-				users, err := i.db.ListUsers()
+				users, err := i.db.ListUsers(ctx)
 				if err != nil {
 					i.logger.WithError(err).Error("Failed to check user password encryption")
 					return true // Can't verify - assume vulnerability
@@ -192,7 +192,7 @@ func (i *ISO27001Checker) CheckCompliance(ctx context.Context) []ComplianceIssue
 	}
 
 	for _, check := range checks {
-		if check.CheckFunc() {
+		if check.CheckFunc(ctx) {
 			vulnerabilities = append(vulnerabilities, ComplianceIssue{
 				ID:          generateVulnID(),
 				Title:       check.Title,

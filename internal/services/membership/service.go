@@ -37,7 +37,7 @@ type PlanUpgradeData struct {
 // This should be called whenever a user's plan is upgraded.
 func (s *Service) HandlePlanUpgrade(ctx context.Context, data PlanUpgradeData) error {
 	// Create activity feed item for the upgrade
-	if err := s.createMembershipUpgradeActivity(data); err != nil {
+	if err := s.createMembershipUpgradeActivity(ctx, data); err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"user_id":   data.UserID,
 			"tenant_id": data.TenantID,
@@ -49,7 +49,7 @@ func (s *Service) HandlePlanUpgrade(ctx context.Context, data PlanUpgradeData) e
 
 	// Award enterprise achievement if upgrading to enterprise
 	if isEnterprisePlan(data.NewPlan) && !isEnterprisePlan(data.OldPlan) {
-		if err := s.awardEnterpriseAchievement(data.UserID); err != nil {
+		if err := s.awardEnterpriseAchievement(ctx, data.UserID); err != nil {
 			logrus.WithError(err).WithFields(logrus.Fields{
 				"user_id":   data.UserID,
 				"tenant_id": data.TenantID,
@@ -69,7 +69,7 @@ func (s *Service) HandlePlanUpgrade(ctx context.Context, data PlanUpgradeData) e
 }
 
 // createMembershipUpgradeActivity creates an activity feed item for a plan upgrade.
-func (s *Service) createMembershipUpgradeActivity(data PlanUpgradeData) error {
+func (s *Service) createMembershipUpgradeActivity(ctx context.Context, data PlanUpgradeData) error {
 	// Format plan names for display
 	newPlanDisplay := formatPlanName(data.NewPlan)
 
@@ -94,7 +94,7 @@ func (s *Service) createMembershipUpgradeActivity(data PlanUpgradeData) error {
 		IsPublic:     true,
 	}
 
-	if err := s.repo.CreateUserActivity(activity); err != nil {
+	if err := s.repo.CreateUserActivity(ctx, activity); err != nil {
 		return fmt.Errorf("failed to create user activity: %w", err)
 	}
 
@@ -108,9 +108,9 @@ func (s *Service) createMembershipUpgradeActivity(data PlanUpgradeData) error {
 }
 
 // awardEnterpriseAchievement awards the "Enterprise Pioneer" achievement to a user.
-func (s *Service) awardEnterpriseAchievement(userID uuid.UUID) error {
+func (s *Service) awardEnterpriseAchievement(ctx context.Context, userID uuid.UUID) error {
 	// Get the achievement by slug
-	achievement, err := s.repo.GetAchievementBySlug("enterprise_pioneer")
+	achievement, err := s.repo.GetAchievementBySlug(ctx, "enterprise_pioneer")
 	if err != nil {
 		return fmt.Errorf("failed to get enterprise pioneer achievement: %w", err)
 	}
@@ -122,7 +122,7 @@ func (s *Service) awardEnterpriseAchievement(userID uuid.UUID) error {
 	}
 
 	// Check if user already has this achievement
-	existingAchievements, err := s.repo.GetUserAchievements(userID)
+	existingAchievements, err := s.repo.GetUserAchievements(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("failed to check existing achievements: %w", err)
 	}

@@ -3,7 +3,6 @@ package docs
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"reflect"
 	"strings"
 	"time"
@@ -166,15 +165,60 @@ func (g *SwaggerGenerator) AddPath(path string, method string, op *Operation) {
 
 	switch strings.ToUpper(method) {
 	case "GET":
-		g.spec.Paths[path].Get = op
+		g.spec.Paths[path] = PathItem{
+			Summary:     g.spec.Paths[path].Summary,
+			Description: g.spec.Paths[path].Description,
+			Get:         op,
+			Post:        g.spec.Paths[path].Post,
+			Put:         g.spec.Paths[path].Put,
+			Delete:      g.spec.Paths[path].Delete,
+			Patch:       g.spec.Paths[path].Patch,
+			Parameters:  g.spec.Paths[path].Parameters,
+		}
 	case "POST":
-		g.spec.Paths[path].Post = op
+		g.spec.Paths[path] = PathItem{
+			Summary:     g.spec.Paths[path].Summary,
+			Description: g.spec.Paths[path].Description,
+			Get:         g.spec.Paths[path].Get,
+			Post:        op,
+			Put:         g.spec.Paths[path].Put,
+			Delete:      g.spec.Paths[path].Delete,
+			Patch:       g.spec.Paths[path].Patch,
+			Parameters:  g.spec.Paths[path].Parameters,
+		}
 	case "PUT":
-		g.spec.Paths[path].Put = op
+		g.spec.Paths[path] = PathItem{
+			Summary:     g.spec.Paths[path].Summary,
+			Description: g.spec.Paths[path].Description,
+			Get:         g.spec.Paths[path].Get,
+			Post:        g.spec.Paths[path].Post,
+			Put:         op,
+			Delete:      g.spec.Paths[path].Delete,
+			Patch:       g.spec.Paths[path].Patch,
+			Parameters:  g.spec.Paths[path].Parameters,
+		}
 	case "DELETE":
-		g.spec.Paths[path].Delete = op
+		g.spec.Paths[path] = PathItem{
+			Summary:     g.spec.Paths[path].Summary,
+			Description: g.spec.Paths[path].Description,
+			Get:         g.spec.Paths[path].Get,
+			Post:        g.spec.Paths[path].Post,
+			Put:         g.spec.Paths[path].Put,
+			Delete:      op,
+			Patch:       g.spec.Paths[path].Patch,
+			Parameters:  g.spec.Paths[path].Parameters,
+		}
 	case "PATCH":
-		g.spec.Paths[path].Patch = op
+		g.spec.Paths[path] = PathItem{
+			Summary:     g.spec.Paths[path].Summary,
+			Description: g.spec.Paths[path].Description,
+			Get:         g.spec.Paths[path].Get,
+			Post:        g.spec.Paths[path].Post,
+			Put:         g.spec.Paths[path].Put,
+			Delete:      g.spec.Paths[path].Delete,
+			Patch:       op,
+			Parameters:  g.spec.Paths[path].Parameters,
+		}
 	}
 }
 

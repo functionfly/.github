@@ -102,12 +102,12 @@ func (g *GDPRChecker) CheckCompliance(ctx context.Context) []ComplianceIssue {
 			Title:       "Data Protection Officer Not Designated",
 			Description: "No Data Protection Officer (DPO) designated for GDPR compliance",
 			Severity:    "medium",
-			CheckFunc: func() bool {
+			CheckFunc: func(ctx context.Context) bool {
 				// Check if there's a designated DPO (Data Protection Officer)
 				// GDPR requires DPO designation for certain organizations
 
 				// 1. Check for users with DPO role
-				users, err := g.db.ListUsers()
+				users, err := g.db.ListUsers(ctx)
 				if err != nil {
 					g.logger.WithError(err).Error("Failed to check for DPO designation in users")
 					return true // Can't verify - assume vulnerability
@@ -169,7 +169,7 @@ func (g *GDPRChecker) CheckCompliance(ctx context.Context) []ComplianceIssue {
 				}
 
 				// 4. Check audit events for DPO-related activities
-				events, err := g.db.ListAuditEvents(50, 0)
+				events, err := g.db.ListAuditEvents(ctx, 50, 0)
 				if err == nil {
 					dpoActivities := 0
 					for _, event := range events {
@@ -194,7 +194,7 @@ func (g *GDPRChecker) CheckCompliance(ctx context.Context) []ComplianceIssue {
 			Title:       "Data Processing Records Not Maintained",
 			Description: "Records of processing activities are not properly maintained",
 			Severity:    "medium",
-			CheckFunc: func() bool {
+			CheckFunc: func(ctx context.Context) bool {
 				// Check if data processing records are maintained
 				// GDPR requires documentation of processing activities
 
@@ -231,7 +231,7 @@ func (g *GDPRChecker) CheckCompliance(ctx context.Context) []ComplianceIssue {
 				}
 
 				// 3. Check audit events for data processing activities
-				events, err := g.db.ListAuditEvents(100, 0)
+				events, err := g.db.ListAuditEvents(ctx, 100, 0)
 				if err != nil {
 					g.logger.WithError(err).Error("Failed to check audit events for processing records")
 					return true // Can't verify - assume vulnerability
@@ -301,7 +301,7 @@ func (g *GDPRChecker) CheckCompliance(ctx context.Context) []ComplianceIssue {
 			Title:       "Data Subject Rights Not Implemented",
 			Description: "Data subject rights (access, rectification, erasure) are not properly implemented",
 			Severity:    "high",
-			CheckFunc: func() bool {
+			CheckFunc: func(ctx context.Context) bool {
 				// Check if data subject rights are implemented
 				// GDPR requires implementation of data subject rights
 
@@ -370,7 +370,7 @@ func (g *GDPRChecker) CheckCompliance(ctx context.Context) []ComplianceIssue {
 				}
 
 				// 4. Check audit events for GDPR rights usage
-				events, err := g.db.ListAuditEvents(50, 0)
+				events, err := g.db.ListAuditEvents(ctx, 50, 0)
 				if err == nil {
 					gdprRightsActivities := 0
 					gdprRightsTerms := []string{
@@ -416,9 +416,9 @@ func (g *GDPRChecker) CheckCompliance(ctx context.Context) []ComplianceIssue {
 			Title:       "Personal Data Not Properly Protected",
 			Description: "Personal data is not adequately protected against unauthorized access",
 			Severity:    "high",
-			CheckFunc: func() bool {
+			CheckFunc: func(ctx context.Context) bool {
 				// Check data protection measures
-				users, err := g.db.ListUsers()
+				users, err := g.db.ListUsers(ctx)
 				if err != nil {
 					return true // Can't verify - assume vulnerability
 				}
@@ -474,7 +474,7 @@ func (g *GDPRChecker) CheckCompliance(ctx context.Context) []ComplianceIssue {
 			Title:       "Data Breach Notification Process Not Established",
 			Description: "No established process for notifying data breaches within 72 hours",
 			Severity:    "medium",
-			CheckFunc: func() bool {
+			CheckFunc: func(ctx context.Context) bool {
 				// Check if breach notification process is established
 				// GDPR Article 33 requires notification within 72 hours
 
@@ -630,7 +630,7 @@ func (g *GDPRChecker) CheckCompliance(ctx context.Context) []ComplianceIssue {
 	}
 
 	for _, check := range checks {
-		if check.CheckFunc() {
+		if check.CheckFunc(ctx) {
 			vulnerabilities = append(vulnerabilities, ComplianceIssue{
 				ID:          generateVulnID(),
 				Title:       check.Title,

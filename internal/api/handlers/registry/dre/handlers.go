@@ -51,8 +51,8 @@ type DRERepository interface {
 	GetPassportByFunctionID(functionID uuid.UUID) (*registry.ExecutionPassport, error)
 	GetOrCreatePassport(functionID uuid.UUID) (*registry.ExecutionPassport, error)
 	GetDriftReportsByFunctionID(functionID uuid.UUID, limit, offset int) ([]*registry.DriftReportRecord, error)
-	GetFunctionByAuthorName(author, name string) (*registry.RegistryFunction, error)
-	GetFunctionByID(id uuid.UUID) (*registry.RegistryFunction, error)
+	GetFunctionByAuthorName(ctx context.Context, author, name string) (*registry.RegistryFunction, error)
+	GetFunctionByID(ctx context.Context, id uuid.UUID) (*registry.RegistryFunction, error)
 	GetLatestFunctionVersion(functionID uuid.UUID) (*registry.RegistryFunctionVersion, error)
 	GetFunctionVersion(functionID uuid.UUID, version string) (*registry.RegistryFunctionVersion, error)
 	GetExecutionTimelineBuckets(functionID uuid.UUID, from, to time.Time, metric string) ([]registry.ExecutionTimelineBucket, error)
@@ -341,7 +341,7 @@ func (h *Handler) HandleListCertificates(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Get function
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(r.Context(), author, name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "function not found")
 		return
@@ -395,7 +395,7 @@ func (h *Handler) HandleReplay(w http.ResponseWriter, r *http.Request) {
 	executionIDStr := vars["execution_id"]
 
 	// Get function
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(r.Context(), author, name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "function not found")
 		return
@@ -452,7 +452,7 @@ func (h *Handler) HandleGetPassport(w http.ResponseWriter, r *http.Request) {
 	name := vars["name"]
 
 	// Get function
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(r.Context(), author, name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "function not found")
 		return
@@ -512,7 +512,7 @@ func (h *Handler) HandleGetPassportPublic(w http.ResponseWriter, r *http.Request
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(r.Context(), author, name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "function not found")
 		return
@@ -577,7 +577,7 @@ func (h *Handler) HandleDivergenceSimulation(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Get function
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(r.Context(), author, name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "function not found")
 		return
@@ -712,7 +712,7 @@ func (h *Handler) HandleListExecutions(w http.ResponseWriter, r *http.Request) {
 	name := vars["name"]
 
 	// Get function
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(r.Context(), author, name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "function not found")
 		return
@@ -801,7 +801,7 @@ func (h *Handler) HandleGetExecution(w http.ResponseWriter, r *http.Request) {
 	executionIDStr := vars["execution_id"]
 
 	// Get function
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(r.Context(), author, name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "function not found")
 		return
@@ -902,7 +902,7 @@ func (h *Handler) HandleGetExecutionByHash(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(r.Context(), author, name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "function not found")
 		return
@@ -988,7 +988,7 @@ func (h *Handler) HandleGetExecutionTimeline(w http.ResponseWriter, r *http.Requ
 		metric = "latency"
 	}
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(r.Context(), author, name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "function not found")
 		return
@@ -1056,7 +1056,7 @@ func (h *Handler) HandleListDriftReports(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(r.Context(), author, name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "function not found")
 		return
@@ -1098,7 +1098,7 @@ func (h *Handler) HandleGetDRESummary(w http.ResponseWriter, r *http.Request) {
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(r.Context(), author, name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "function not found")
 		return

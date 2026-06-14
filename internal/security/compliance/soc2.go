@@ -32,9 +32,9 @@ func (s *SOC2Checker) CheckCompliance(ctx context.Context) []ComplianceIssue {
 			Title:       "Access Control Not Properly Configured",
 			Description: "Multi-factor authentication not enforced for all administrative access",
 			Severity:    "high",
-			CheckFunc: func() bool {
+			CheckFunc: func(ctx context.Context) bool {
 				// Check if any admin users don't have MFA enabled
-				users, err := s.db.ListUsers()
+				users, err := s.db.ListUsers(ctx)
 				if err != nil {
 					s.logger.WithError(err).Error("Failed to list users for MFA compliance check")
 					return false // Don't report as vulnerability if we can't check
@@ -56,12 +56,12 @@ func (s *SOC2Checker) CheckCompliance(ctx context.Context) []ComplianceIssue {
 			Title:       "Audit Logging Insufficient",
 			Description: "Audit logs do not capture all required security events",
 			Severity:    "medium",
-			CheckFunc: func() bool {
+			CheckFunc: func(ctx context.Context) bool {
 				// Check if audit logs capture required security events
 				// For SOC 2, we need to log: authentication events, admin actions, user management, permission changes
 
 				// Get recent audit events to check what events are being logged
-				events, err := s.db.ListAuditEvents(100, 0) // Get last 100 events
+				events, err := s.db.ListAuditEvents(ctx, 100, 0) // Get last 100 events
 				if err != nil {
 					s.logger.WithError(err).Error("Failed to list audit events for compliance check")
 					return true // Can't verify - assume insufficient logging
@@ -98,7 +98,7 @@ func (s *SOC2Checker) CheckCompliance(ctx context.Context) []ComplianceIssue {
 	}
 
 	for _, check := range checks {
-		if check.CheckFunc() {
+		if check.CheckFunc(ctx) {
 			vulnerabilities = append(vulnerabilities, ComplianceIssue{
 				ID:          generateVulnID(),
 				Title:       check.Title,

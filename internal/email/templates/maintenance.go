@@ -82,7 +82,7 @@ func KeyRotationReminderTemplate(keyName, keyID string, expiresAt time.Time, rot
     </td></tr>
   </table>
 </body>
-</html>`, daysUntil, keyName, keyID, expiresStr, rotationURL, rotationURL, TransactionalEmailCopyrightOrangeHTML())
+</html>`, daysUntil, keyName, keyID, expiresStr, rotationURL, TransactionalEmailCopyrightOrangeHTML())
 
 	text := fmt.Sprintf(`API Key Expiring — FunctionFly
 

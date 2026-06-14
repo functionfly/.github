@@ -316,6 +316,6 @@ func (m *MockRepository) ExecutePipeline(ctx context.Context, tenantID, fabricID
 	}, nil
 }
 
-func (m *MockRepository) LogStateFabricAudit(ctx context.Context, event *StateFabricAuditEvent) error {
+func (m *MockRepository) LogStateFabricAudit(ctx context.Context, event interface{}) error {
 	return nil
 }

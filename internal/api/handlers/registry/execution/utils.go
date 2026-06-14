@@ -1,6 +1,7 @@
 package execution
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -33,7 +34,7 @@ func validateRuntimeForPlan(tenantPlan string, runtime string) error {
 // getTenantPlanFromContext retrieves the tenant's plan from the billing system
 func getTenantPlanFromContext(repo storage.Repository, tenantID uuid.UUID) string {
 	// Query the billing system for the tenant's active subscription
-	subscription, err := repo.GetSubscriptionByTenantID(tenantID)
+	subscription, err := repo.GetSubscriptionByTenantID(context.Background(), tenantID)
 	if err != nil {
 		// Log the error but fall back to starter plan for safety
 		logrus.WithError(err).WithField("tenant_id", tenantID).Warn("Failed to get tenant subscription, falling back to starter plan")

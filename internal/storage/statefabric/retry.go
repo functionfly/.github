@@ -52,7 +52,7 @@ func RetryWithBackoff(ctx context.Context, config RetryConfig, operation string,
 		if attempt > 0 {
 			select {
 			case <-ctx.Done():
-				return ctx.Err
+				return ctx.Err()
 			case <-time.After(delay):
 			}
 

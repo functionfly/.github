@@ -126,7 +126,7 @@ func (e *Emitter) Emit(ctx context.Context, req EmitRequest) (*EmitResult, error
 	}
 
 	// Insert via the existing registry repository.
-	if err := e.registryRepo.CreateExecutionPublic(exec); err != nil {
+	if err := e.registryRepo.CreateExecutionPublic(ctx, exec); err != nil {
 		e.logger.WithError(err).WithField("public_id", publicID).Error("receipt emit: insert failed")
 		return nil, err
 	}

@@ -37,16 +37,16 @@ type FabricStatusTransition struct {
 }
 
 var allowedFabricTransitions = map[FabricStatusTransition]bool{
-	{Pending, Online}:   true,
-	{Pending, Suspended}: true,
-	{Online, Degraded}:  true,
-	{Online, Offline}:   true,
-	{Online, Suspended}: true,
-	{Degraded, Online}:  true,
-	{Degraded, Offline}: true,
-	{Degraded, Suspended}: true,
-	{Offline, Online}: true,
-	{Suspended, Online}: true,
+	{FabricStatusPending, FabricStatusOnline}:   true,
+	{FabricStatusPending, FabricStatusSuspended}: true,
+	{FabricStatusOnline, FabricStatusDegraded}:  true,
+	{FabricStatusOnline, FabricStatusOffline}:   true,
+	{FabricStatusOnline, FabricStatusSuspended}: true,
+	{FabricStatusDegraded, FabricStatusOnline}:  true,
+	{FabricStatusDegraded, FabricStatusOffline}: true,
+	{FabricStatusDegraded, FabricStatusSuspended}: true,
+	{FabricStatusOffline, FabricStatusOnline}: true,
+	{FabricStatusSuspended, FabricStatusOnline}: true,
 }
 
 type StoreStatusTransition struct {
@@ -55,12 +55,12 @@ type StoreStatusTransition struct {
 }
 
 var allowedStoreTransitions = map[StoreStatusTransition]bool{
-	{Active, Paused}:  true,
-	{Active, Stopped}: true,
-	{Paused, Active}:  true,
-	{Paused, Stopped}: true,
-	{Stopped, Active}: true,
-	{Stopped, Paused}: true,
+	{StoreStatusActive, StoreStatusPaused}:  true,
+	{StoreStatusActive, StoreStatusStopped}: true,
+	{StoreStatusPaused, StoreStatusActive}:  true,
+	{StoreStatusPaused, StoreStatusStopped}: true,
+	{StoreStatusStopped, StoreStatusActive}: true,
+	{StoreStatusStopped, StoreStatusPaused}: true,
 }
 
 type PipelineStatusTransition struct {
@@ -69,14 +69,14 @@ type PipelineStatusTransition struct {
 }
 
 var allowedPipelineTransitions = map[PipelineStatusTransition]bool{
-	{Draft, Active}:   true,
-	{Draft, Stopped}:  true,
-	{Active, Paused}:  true,
-	{Active, Stopped}: true,
-	{Paused, Active}:  true,
-	{Paused, Stopped}: true,
-	{Stopped, Draft}:  true,
-	{Stopped, Active}: true,
+	{PipelineStatusDraft, PipelineStatusActive}:   true,
+	{PipelineStatusDraft, PipelineStatusStopped}:  true,
+	{PipelineStatusActive, PipelineStatusPaused}:  true,
+	{PipelineStatusActive, PipelineStatusStopped}: true,
+	{PipelineStatusPaused, PipelineStatusActive}:  true,
+	{PipelineStatusPaused, PipelineStatusStopped}: true,
+	{PipelineStatusStopped, PipelineStatusDraft}:  true,
+	{PipelineStatusStopped, PipelineStatusActive}: true,
 }
 
 type StateTransitionValidator struct{}
@@ -111,7 +111,7 @@ func (v *StateTransitionValidator) ValidatePipelineTransition(from, to PipelineS
 
 func (v *StateTransitionValidator) IsValidFabricStatus(status FabricStatus) bool {
 	switch status {
-	case Pending, Online, Degraded, Offline, Suspended:
+	case FabricStatusPending, FabricStatusOnline, FabricStatusDegraded, FabricStatusOffline, FabricStatusSuspended:
 		return true
 	default:
 		return false
@@ -120,7 +120,7 @@ func (v *StateTransitionValidator) IsValidFabricStatus(status FabricStatus) bool
 
 func (v *StateTransitionValidator) IsValidStoreStatus(status StoreStatus) bool {
 	switch status {
-	case Active, Paused, Stopped:
+	case StoreStatusActive, StoreStatusPaused, StoreStatusStopped:
 		return true
 	default:
 		return false
@@ -129,7 +129,7 @@ func (v *StateTransitionValidator) IsValidStoreStatus(status StoreStatus) bool {
 
 func (v *StateTransitionValidator) IsValidPipelineStatus(status PipelineStatus) bool {
 	switch status {
-	case Draft, Active, Paused, Stopped:
+	case PipelineStatusDraft, PipelineStatusActive, PipelineStatusPaused, PipelineStatusStopped:
 		return true
 	default:
 		return false
@@ -139,15 +139,15 @@ func (v *StateTransitionValidator) IsValidPipelineStatus(status PipelineStatus) 
 func fabricStatusFromString(s string) FabricStatus {
 	switch s {
 	case "pending":
-		return Pending
+		return FabricStatusPending
 	case "online":
-		return Online
+		return FabricStatusOnline
 	case "degraded":
-		return Degraded
+		return FabricStatusDegraded
 	case "offline":
-		return Offline
+		return FabricStatusOffline
 	case "suspended":
-		return Suspended
+		return FabricStatusSuspended
 	default:
 		return ""
 	}
@@ -156,11 +156,11 @@ func fabricStatusFromString(s string) FabricStatus {
 func storeStatusFromString(s string) StoreStatus {
 	switch s {
 	case "active":
-		return Active
+		return StoreStatusActive
 	case "paused":
-		return Paused
+		return StoreStatusPaused
 	case "stopped":
-		return Stopped
+		return StoreStatusStopped
 	default:
 		return ""
 	}
@@ -169,13 +169,13 @@ func storeStatusFromString(s string) StoreStatus {
 func pipelineStatusFromString(s string) PipelineStatus {
 	switch s {
 	case "draft":
-		return Draft
+		return PipelineStatusDraft
 	case "active":
-		return Active
+		return PipelineStatusActive
 	case "paused":
-		return Paused
+		return PipelineStatusPaused
 	case "stopped":
-		return Stopped
+		return PipelineStatusStopped
 	default:
 		return ""
 	}

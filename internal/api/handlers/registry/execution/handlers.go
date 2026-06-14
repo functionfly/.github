@@ -52,7 +52,7 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get function by author and name
-	fn, err := h.Repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.Repo.GetFunctionByAuthorName(r.Context(), author, name)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			h.writeError(w, http.StatusNotFound, functionregistry.ErrCodeNotFound, "Function not found")
@@ -312,7 +312,7 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 	execRecord := h.createExecutionRecord(fn, fnVersion, durationMs, statusCode, cached, outcome, errorCode, r, verificationResult)
 
 	// Save execution record and trigger async updates
-	if err := h.Repo.RecordExecution(execRecord); err != nil {
+	if err := h.Repo.RecordExecution(r.Context(), execRecord); err != nil {
 		logrus.WithError(err).Error("Failed to record execution")
 	} else {
 		// Async updates
@@ -364,7 +364,7 @@ func (h *Handler) performReplayVerification(
 	durationMs int,
 ) *ReplayVerificationResult {
 	// Get execution statistics for verification scheduling
-	executionCount, err := h.Repo.GetExecutionCountForVersion(fn.ID, fnVersion.Version)
+	executionCount, err := h.Repo.GetExecutionCountForVersion(context.Background(), fn.ID, fnVersion.Version)
 	if err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"function_id": fn.ID,
@@ -373,7 +373,7 @@ func (h *Handler) performReplayVerification(
 		executionCount = 0
 	}
 
-	lastVerified, err := h.Repo.GetLastVerificationTimeForVersion(fn.ID, fnVersion.Version)
+	lastVerified, err := h.Repo.GetLastVerificationTimeForVersion(context.Background(), fn.ID, fnVersion.Version)
 	if err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"function_id": fn.ID,
@@ -381,7 +381,7 @@ func (h *Handler) performReplayVerification(
 		}).Warn("Failed to get last verification time")
 	}
 
-	recentFailureRate, err := h.Repo.GetRecentVerificationFailureRate(fn.ID, fnVersion.Version)
+	recentFailureRate, err := h.Repo.GetRecentVerificationFailureRate(context.Background(), fn.ID, fnVersion.Version)
 	if err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"function_id": fn.ID,
@@ -522,7 +522,7 @@ func (h *Handler) recordResourceUsage(executionID uuid.UUID, resourceUsage *Reso
 		}
 	}
 
-	if err := h.Repo.RecordResourceUsage(resourceRecord); err != nil {
+	if err := h.Repo.RecordResourceUsage(context.Background(), resourceRecord); err != nil {
 		logrus.WithError(err).Error("Failed to record resource usage")
 	}
 
@@ -627,7 +627,7 @@ func (h *Handler) generateExecutionID(
 		}
 	}
 
-	if err := h.Repo.CreateExecutionPublic(publicExec); err != nil {
+	if err := h.Repo.CreateExecutionPublic(r.Context(), publicExec); err != nil {
 		logrus.WithError(err).Error("Failed to create public execution")
 		return nil
 	}
@@ -741,7 +741,7 @@ func (h *Handler) HandleTest(w http.ResponseWriter, r *http.Request) {
 	name := vars["name"]
 
 	// Get function by author and name
-	fn, err := h.Repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.Repo.GetFunctionByAuthorName(r.Context(), author, name)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			h.writeError(w, http.StatusNotFound, functionregistry.ErrCodeNotFound, "Function not found")
@@ -854,7 +854,7 @@ func (h *Handler) HandleGetReplay(w http.ResponseWriter, r *http.Request) {
 	execID := vars["execId"]
 
 	// Get execution by public ID
-	exec, err := h.Repo.GetExecutionPublicByID(execID)
+	exec, err := h.Repo.GetExecutionPublicByID(r.Context(), execID)
 	if err != nil {
 		if err.Error() == "execution not found or not shareable" {
 			h.writeError(w, http.StatusNotFound, functionregistry.ErrCodeNotFound, "Execution not found or not shareable")
@@ -866,7 +866,7 @@ func (h *Handler) HandleGetReplay(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get function details
-	fn, err := h.Repo.GetFunctionByID(exec.FunctionID)
+	fn, err := h.Repo.GetFunctionByID(r.Context(), exec.FunctionID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get function")
 		h.writeError(w, http.StatusInternalServerError, functionregistry.ErrCodeInternalError, "Internal error")
@@ -897,7 +897,7 @@ func (h *Handler) HandleVerifyReplay(w http.ResponseWriter, r *http.Request) {
 	execID := vars["execId"]
 
 	// Get execution by public ID
-	exec, err := h.Repo.GetExecutionPublicByID(execID)
+	exec, err := h.Repo.GetExecutionPublicByID(r.Context(), execID)
 	if err != nil {
 		if err.Error() == "execution not found or not shareable" {
 			h.writeError(w, http.StatusNotFound, functionregistry.ErrCodeNotFound, "Execution not found or not shareable")

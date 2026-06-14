@@ -22,7 +22,7 @@ func (h *Handler) createExecuteFunction(fnVersion *storage.RegistryFunctionVersi
 	return func() (json.RawMessage, error) {
 		// 1. Remote execution paths (backend / deployment) — always bypass router.
 		if fnVersion.BackendID != nil {
-			backend, err := h.BackendRepo.GetBackendByID(*fnVersion.BackendID)
+			backend, err := h.BackendRepo.GetBackendByID(r.Context(), *fnVersion.BackendID)
 			if err != nil {
 				return nil, fmt.Errorf("backend not found: %w", err)
 			}
