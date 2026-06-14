@@ -190,6 +190,34 @@
 
   /* Status indicator colors */
   --color-status-pending: #6b7280;
+
+  /* Aviation Theme Colors - Dark Mode values */
+  --color-aviation-bg-primary: #08080c;
+  --color-aviation-bg-secondary: #0d0d14;
+  --color-aviation-bg-tertiary: #14141f;
+  --color-aviation-bg-panel: #1a1a28;
+  --color-aviation-bg-instrument: #222232;
+  --color-aviation-amber: #f59e0b;
+  --color-aviation-amber-glow: rgba(245, 158, 11, 0.5);
+  --color-aviation-amber-dim: rgba(245, 158, 11, 0.2);
+  --color-aviation-amber-subtle: rgba(245, 158, 11, 0.1);
+  --color-aviation-cyan: #06b6d4;
+  --color-aviation-cyan-glow: rgba(6, 182, 212, 0.5);
+  --color-aviation-cyan-dim: rgba(6, 182, 212, 0.2);
+  --color-aviation-cyan-subtle: rgba(6, 182, 212, 0.1);
+  --color-aviation-green: #10b981;
+  --color-aviation-green-glow: rgba(16, 185, 129, 0.5);
+  --color-aviation-red: #ef4444;
+  --color-aviation-red-glow: rgba(239, 68, 68, 0.5);
+  --color-aviation-text-primary: #e8e8f0;
+  --color-aviation-text-secondary: #9ca3af;
+  --color-aviation-text-muted: #6b7280;
+  --color-aviation-text-dim: #4b5563;
+  --color-aviation-border-panel: rgba(255, 255, 255, 0.08);
+  --color-aviation-border-instrument: rgba(255, 255, 255, 0.12);
+  --color-aviation-border-glow: rgba(245, 158, 11, 0.3);
+  --color-aviation-border-cyan: rgba(6, 182, 212, 0.3);
+  --color-aviation-stratosphere: #5b7cf5;
 }
 
 /* Base body styles */

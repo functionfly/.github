@@ -76,33 +76,33 @@
      Cards themselves stay bg-transparent so they sit on the page bg
      and never appear as a "floating gray panel" in either mode.
   */
-  --metric-tint-neutral: rgba(255, 255, 255, 0.06);
-  --metric-border-neutral: rgba(255, 255, 255, 0.18);
-  --metric-value-neutral: #ffffff;
+  --metric-tint-neutral: rgba(255, 255, 255, 0.04);
+  --metric-border-neutral: rgba(255, 255, 255, 0.12);
+  --metric-value-neutral: #a0a0b0;
 
-  --metric-tint-indigo: rgba(99, 102, 241, 0.22);
-  --metric-border-indigo: rgba(99, 102, 241, 0.65);
-  --metric-value-indigo: #a5b4fc;
+  --metric-tint-indigo: rgba(99, 102, 241, 0.12);
+  --metric-border-indigo: rgba(99, 102, 241, 0.35);
+  --metric-value-indigo: #818cf8;
 
-  --metric-tint-amber: rgba(245, 158, 11, 0.22);
-  --metric-border-amber: rgba(245, 158, 11, 0.65);
-  --metric-value-amber: #fcd34d;
+  --metric-tint-amber: rgba(245, 158, 11, 0.12);
+  --metric-border-amber: rgba(245, 158, 11, 0.35);
+  --metric-value-amber: #fbbf24;
 
-  --metric-tint-emerald: rgba(16, 185, 129, 0.22);
-  --metric-border-emerald: rgba(16, 185, 129, 0.65);
-  --metric-value-emerald: #6ee7b7;
+  --metric-tint-emerald: rgba(16, 185, 129, 0.12);
+  --metric-border-emerald: rgba(16, 185, 129, 0.35);
+  --metric-value-emerald: #34d399;
 
-  --metric-tint-cyan: rgba(6, 182, 212, 0.22);
-  --metric-border-cyan: rgba(6, 182, 212, 0.65);
-  --metric-value-cyan: #67e8f9;
+  --metric-tint-cyan: rgba(6, 182, 212, 0.12);
+  --metric-border-cyan: rgba(6, 182, 212, 0.35);
+  --metric-value-cyan: #22d3ee;
 
-  --metric-tint-violet: rgba(139, 92, 246, 0.22);
-  --metric-border-violet: rgba(139, 92, 246, 0.65);
-  --metric-value-violet: #c4b5fd;
+  --metric-tint-violet: rgba(139, 92, 246, 0.12);
+  --metric-border-violet: rgba(139, 92, 246, 0.35);
+  --metric-value-violet: #a78bfa;
 
-  --metric-tint-rose: rgba(244, 63, 94, 0.22);
-  --metric-border-rose: rgba(244, 63, 94, 0.65);
-  --metric-value-rose: #fda4af;
+  --metric-tint-rose: rgba(244, 63, 94, 0.12);
+  --metric-border-rose: rgba(244, 63, 94, 0.35);
+  --metric-value-rose: #fb7185;
 
   /* Status Colors */
   --color-status-online: #10b981;
@@ -327,32 +327,32 @@ html {
   /* Metric Card Tones (light) — slightly stronger fills & borders
      so the hues read clearly on a near-white surface, but the card
      body remains transparent so it doesn't look like a gray tile. */
-  --metric-tint-neutral: rgba(0, 0, 0, 0.025);
-  --metric-border-neutral: rgba(0, 0, 0, 0.12);
-  --metric-value-neutral: #0a0a0a;
+  --metric-tint-neutral: rgba(0, 0, 0, 0.02);
+  --metric-border-neutral: rgba(0, 0, 0, 0.08);
+  --metric-value-neutral: #525252;
 
-  --metric-tint-indigo: rgba(99, 102, 241, 0.10);
-  --metric-border-indigo: rgba(99, 102, 241, 0.40);
+  --metric-tint-indigo: rgba(99, 102, 241, 0.08);
+  --metric-border-indigo: rgba(99, 102, 241, 0.25);
   --metric-value-indigo: #4f46e5;
 
-  --metric-tint-amber: rgba(245, 158, 11, 0.12);
-  --metric-border-amber: rgba(245, 158, 11, 0.45);
+  --metric-tint-amber: rgba(245, 158, 11, 0.08);
+  --metric-border-amber: rgba(245, 158, 11, 0.25);
   --metric-value-amber: #b45309;
 
-  --metric-tint-emerald: rgba(16, 185, 129, 0.10);
-  --metric-border-emerald: rgba(16, 185, 129, 0.40);
+  --metric-tint-emerald: rgba(16, 185, 129, 0.08);
+  --metric-border-emerald: rgba(16, 185, 129, 0.25);
   --metric-value-emerald: #047857;
 
-  --metric-tint-cyan: rgba(6, 182, 212, 0.10);
-  --metric-border-cyan: rgba(6, 182, 212, 0.40);
+  --metric-tint-cyan: rgba(6, 182, 212, 0.08);
+  --metric-border-cyan: rgba(6, 182, 212, 0.25);
   --metric-value-cyan: #0e7490;
 
-  --metric-tint-violet: rgba(139, 92, 246, 0.10);
-  --metric-border-violet: rgba(139, 92, 246, 0.40);
+  --metric-tint-violet: rgba(139, 92, 246, 0.08);
+  --metric-border-violet: rgba(139, 92, 246, 0.25);
   --metric-value-violet: #6d28d9;
 
-  --metric-tint-rose: rgba(244, 63, 94, 0.10);
-  --metric-border-rose: rgba(244, 63, 94, 0.40);
+  --metric-tint-rose: rgba(244, 63, 94, 0.08);
+  --metric-border-rose: rgba(244, 63, 94, 0.25);
   --metric-value-rose: #be123c;
 }
 

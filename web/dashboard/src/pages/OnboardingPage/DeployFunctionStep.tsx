@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { useOnboardingStore } from "@/stores/onboardingStore";
+import { useTranslation } from "react-i18next";
 import { Rocket, Code, Check, Loader2, Terminal, Copy, ExternalLink, AlertTriangle, RefreshCw, Sparkles, Globe, CheckCircle2, XCircle } from "lucide-react";
 import Confetti from "react-confetti";
 import { Button } from "@/components/ui/button";
@@ -13,12 +14,15 @@ import { HelpTooltip } from "@/components/ui/help-tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
+import { apiClient } from "@/api/client";
+import { trackEvent } from "@/lib/analytics";
 
 const sampleFunctions = [
   {
     id: "hello-world",
     name: "Hello World",
-    description: "A simple function that returns a greeting",
+    nameKey: "onboarding.deploy.sampleFunctions.helloWorld.name",
+    description: "onboarding.deploy.sampleFunctions.helloWorld.description",
     code: `export default {
   async fetch(request) {
     return new Response("Hello from FunctionFly!", {
@@ -31,7 +35,8 @@ const sampleFunctions = [
   {
     id: "api-echo",
     name: "API Echo",
-    description: "Echoes back request information as JSON",
+    nameKey: "onboarding.deploy.sampleFunctions.apiEcho.name",
+    description: "onboarding.deploy.sampleFunctions.apiEcho.description",
     code: `export default {
   async fetch(request) {
     const data = {
@@ -41,7 +46,7 @@ const sampleFunctions = [
       headers: Object.fromEntries(request.headers),
       timestamp: new Date().toISOString(),
     };
-    
+
     return new Response(JSON.stringify(data, null, 2), {
       headers: { "content-type": "application/json" },
     });
@@ -51,8 +56,33 @@ const sampleFunctions = [
   },
 ];
 
+interface FunctionMetrics {
+  requests: number;
+  latency: number;
+  errors: number;
+  uptime: number;
+}
+
+interface DeploymentResult {
+  function_id: string;
+  deployment_id: string;
+  url: string;
+  region: string;
+  providers: string[];
+}
+
+const DEPLOY_STEPS = {
+  VALIDATING: 'onboarding.deploy.steps.validating',
+  CONNECTING: 'onboarding.deploy.steps.connecting',
+  UPLOADING: 'onboarding.deploy.steps.uploading',
+  DEPLOYING: 'onboarding.deploy.steps.deploying',
+  CONFIGURING: 'onboarding.deploy.steps.configuring',
+  COMPLETE: 'onboarding.deploy.steps.complete',
+} as const;
+
 export function DeployFunctionStep() {
-  const { updateStepData } = useOnboardingStore();
+  const { t } = useTranslation();
+  const { updateStepData, stepData } = useOnboardingStore();
   const [selectedFunction, setSelectedFunction] = useState<string | null>(null);
   const [functionName, setFunctionName] = useState("");
   const [isDeploying, setIsDeploying] = useState(false);
@@ -65,19 +95,30 @@ export function DeployFunctionStep() {
   const [deployProgress, setDeployProgress] = useState(0);
   const [deployStep, setDeployStep] = useState<string>("");
   const [showConfetti, setShowConfetti] = useState(false);
-  const [functionMetrics, setFunctionMetrics] = useState<{
-    requests: number;
-    latency: number;
-    errors: number;
-    uptime: number;
-  } | null>(null);
+  const [functionMetrics, setFunctionMetrics] = useState<FunctionMetrics | null>(null);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
+  const [deploymentResult, setDeploymentResult] = useState<DeploymentResult | null>(null);
 
   const [urlSuggestionsOpen, setUrlSuggestionsOpen] = useState(false);
   const [urlSuggestions, setUrlSuggestions] = useState<Array<{ url: string; available: boolean; reason?: string }>>([]);
   const urlInputRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const selectedFunctionData = sampleFunctions.find((f) => f.id === selectedFunction);
+
+  const validateFunctionName = (name: string): { valid: boolean; message?: string } => {
+    const cleanName = name.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    if (cleanName.length < 2) {
+      return { valid: false, message: t('onboarding.deploy.errors.nameTooShort') };
+    }
+    if (cleanName.length > 52) {
+      return { valid: false, message: t('onboarding.deploy.errors.nameTooLong') };
+    }
+    if (!/^[a-z0-9-]+$/.test(cleanName)) {
+      return { valid: false, message: t('onboarding.deploy.errors.nameInvalidChars') };
+    }
+    return { valid: true };
+  };
 
   const generateUrlSuggestions = (name: string): Array<{ url: string; available: boolean; reason?: string }> => {
     if (!name || name.length < 2) return [];
@@ -86,22 +127,22 @@ export function DeployFunctionStep() {
     const baseUrl = `${cleanName}.functionfly.app`;
 
     const suggestions = [
-      { url: baseUrl, available: true },
+      { url: baseUrl, available: true, reason: '' },
     ];
 
     if (cleanName.length > 3) {
-      suggestions.push({ url: `api-${baseUrl}`, available: Math.random() > 0.3 });
-      suggestions.push({ url: `${cleanName}-api.functionfly.app`, available: Math.random() > 0.5 });
+      suggestions.push({ url: `api-${baseUrl}`, available: true, reason: '' });
+      suggestions.push({ url: `${cleanName}-api.functionfly.app`, available: true, reason: '' });
     }
 
     if (cleanName.length > 5) {
-      suggestions.push({ url: `${cleanName}-v1.functionfly.app`, available: true, reason: 'versioned endpoint' });
-      suggestions.push({ url: `app-${baseUrl}`, available: Math.random() > 0.4 });
+      suggestions.push({ url: `${cleanName}-v1.functionfly.app`, available: true, reason: '' });
+      suggestions.push({ url: `app-${baseUrl}`, available: true, reason: '' });
     }
 
     if (cleanName.includes('-')) {
       const singleWord = cleanName.split('-')[0];
-      suggestions.push({ url: `${singleWord}.functionfly.app`, available: Math.random() > 0.6 });
+      suggestions.push({ url: `${singleWord}.functionfly.app`, available: true, reason: '' });
     }
 
     return suggestions.slice(0, 5);
@@ -122,124 +163,166 @@ export function DeployFunctionStep() {
     }, 150);
 
     return () => clearTimeout(timer);
-  }, [functionName]);
+  }, [functionName, t]);
+
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const handleDeploy = async () => {
     if (!selectedFunction && activeTab === "preset") return;
-    if (!functionName.trim()) return;
+    const nameValidation = validateFunctionName(functionName);
+    if (!nameValidation.valid) {
+      setDeployError(nameValidation.message || t('onboarding.deploy.errors.invalidName'));
+      return;
+    }
 
     setIsDeploying(true);
     setDeployError(null);
     setDeployProgress(0);
-    setDeployStep("Validating function configuration...");
+
+    abortControllerRef.current = new AbortController();
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setDeployProgress(20);
-      setDeployStep("Connecting to deployment providers...");
+      setDeployStep(t(DEPLOY_STEPS.VALIDATING));
+      setDeployProgress(10);
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setDeployProgress(40);
-      setDeployStep("Uploading function code...");
+      const connectedProvider = stepData["connect-provider"];
+      const providerId = connectedProvider?.providerConfig?.id;
 
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setDeployProgress(60);
-      setDeployStep("Deploying to primary provider...");
+      if (!providerId) {
+        throw new Error(t('onboarding.deploy.errors.noProvider'));
+      }
 
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setDeployProgress(80);
-      setDeployStep("Setting up failover configuration...");
+      setDeployStep(t(DEPLOY_STEPS.CONNECTING));
+      setDeployProgress(25);
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-      await new Promise((resolve, reject) => {
-        setTimeout(() => {
-          if (Math.random() < 0.1) {
-            reject(new Error("Deployment failed"));
-          } else {
-            resolve(true);
-          }
-        }, 500);
-      });
+      const functionCode = selectedFunctionData?.code || '';
+      const cleanName = functionName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+
+      setDeployStep(t(DEPLOY_STEPS.UPLOADING));
+      setDeployProgress(45);
+
+      const createResponse = await apiClient.post<{ function_id: string }>('/v1/functions', {
+        name: cleanName,
+        code: functionCode,
+        runtime: selectedFunctionData?.runtime || 'cloudflare',
+        providers: [providerId],
+        region: 'us-east-1',
+      }, { signal: abortControllerRef.current.signal });
+
+      const functionId = createResponse.function_id;
+
+      setDeployStep(t(DEPLOY_STEPS.DEPLOYING));
+      setDeployProgress(70);
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      const deployResponse = await apiClient.post<DeploymentResult>('/v1/functions/deploy', {
+        function_id: functionId,
+        backend_id: providerId,
+      }, { signal: abortControllerRef.current.signal });
+
+      setDeploymentResult(deployResponse);
+
+      setDeployStep(t(DEPLOY_STEPS.CONFIGURING));
+      setDeployProgress(90);
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       setDeployProgress(100);
-      setDeployStep("Deployment complete!");
+      setDeployStep(t(DEPLOY_STEPS.COMPLETE));
 
       setShowSkeleton(true);
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       setShowSkeleton(false);
-      const url = `https://${functionName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-')}.functionfly.app`;
-      setDeployedUrl(url);
+      setDeployedUrl(deployResponse.url);
       setIsDeployed(true);
       setShowConfetti(true);
 
-      loadFunctionMetrics();
+      trackEvent('onboarding_function_deployed', {
+        function_id: functionId,
+        function_name: cleanName,
+        provider: providerId,
+      });
+
+      loadFunctionMetrics(functionId);
 
       updateStepData("deploy-function", {
-        functionName,
-        deployedUrl: url,
+        functionName: cleanName,
+        functionId,
+        deployedUrl: deployResponse.url,
         selectedFunction,
         deployedAt: new Date().toISOString(),
+        deploymentId: deployResponse.deployment_id,
       });
 
       setTimeout(() => setShowConfetti(false), 3000);
 
-      toast.success(`Function "${functionName}" deployed successfully!`);
-    } catch (error) {
+      toast.success(t('onboarding.deploy.toast.success', { name: cleanName }));
+    } catch (error: any) {
       setShowSkeleton(false);
-      let errorMessage = "Deployment failed due to an unexpected error.";
 
-      const errorTypes = [
-        {
-          condition: Math.random() < 0.4,
-          message: "Provider API rate limit exceeded. Please wait a moment and try again.",
-          suggestion: "This happens when too many deployments occur in a short time. Try again in 1-2 minutes."
-        },
-        {
-          condition: Math.random() < 0.4,
-          message: "Invalid function configuration detected.",
-          suggestion: "Check that your function name contains only letters, numbers, and hyphens, and is not already in use."
-        },
-        {
-          condition: true,
-          message: "Unable to connect to deployment service.",
-          suggestion: "Check your internet connection and ensure your provider API tokens are still valid."
-        }
-      ];
-
-      const selectedError = errorTypes.find(et => et.condition);
-      if (selectedError) {
-        errorMessage = selectedError.message;
-        setDeployError(`${errorMessage} ${selectedError.suggestion}`);
-      } else {
-        setDeployError(errorMessage);
+      if (error.name === 'AbortError') {
+        setDeployError(t('onboarding.deploy.errors.cancelled'));
+        return;
       }
 
-      toast.error("Deployment failed");
+      trackEvent('onboarding_function_deploy_failed', {
+        error: error?.message || 'Unknown error',
+        function_name: functionName,
+      });
+
+      const errorMessage = error?.response?.data?.message || error?.message || t('onboarding.deploy.errors.generic');
+      setDeployError(errorMessage);
+      toast.error(t('onboarding.deploy.toast.failed'));
     } finally {
       setIsDeploying(false);
       setDeployProgress(0);
       setDeployStep("");
+      abortControllerRef.current = null;
     }
   };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard!");
+    toast.success(t('onboarding.deploy.toast.copied'));
   };
 
-  const loadFunctionMetrics = async () => {
+  const loadFunctionMetrics = async (functionId?: string) => {
     setIsLoadingMetrics(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const id = functionId || deploymentResult?.function_id;
+      if (!id) {
+        throw new Error('No function ID');
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const metricsResponse = await apiClient.get<{ requests: number; latency_ms: number; error_rate: number; uptime_percent: number }>(
+        `/v1/functions/${id}/metrics`,
+        { params: { period: '24h' } }
+      );
 
       setFunctionMetrics({
-        requests: Math.floor(Math.random() * 100) + 50,
-        latency: Math.floor(Math.random() * 50) + 20,
-        errors: Math.floor(Math.random() * 5),
-        uptime: 99.9 + (Math.random() * 0.1),
+        requests: metricsResponse.requests || 0,
+        latency: metricsResponse.latency_ms || 0,
+        errors: Math.round((metricsResponse.error_rate || 0) * (metricsResponse.requests || 0)),
+        uptime: metricsResponse.uptime_percent || 99.9,
       });
     } catch (error) {
       console.error("Failed to load metrics:", error);
+      setFunctionMetrics({
+        requests: 0,
+        latency: 0,
+        errors: 0,
+        uptime: 99.9,
+      });
     } finally {
       setIsLoadingMetrics(false);
     }
@@ -286,7 +369,7 @@ export function DeployFunctionStep() {
         ) : (
           <div>
             <div className="text-center py-4 relative">
-              <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
                 {[...Array(10)].map((_, i) => (
                   <motion.div
                     key={i}
@@ -327,7 +410,7 @@ export function DeployFunctionStep() {
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ type: "spring", bounce: 0.6, delay: 0.4 }}
                 >
-                  <Check className="w-8 h-8 text-aviation-green" />
+                  <Check className="w-8 h-8 text-aviation-green" aria-hidden="true" />
                 </motion.div>
               </motion.div>
 
@@ -337,7 +420,7 @@ export function DeployFunctionStep() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6 }}
               >
-                Function Deployed!
+                {t('onboarding.deploy.deployed.title')}
               </motion.h3>
 
               <motion.p
@@ -346,20 +429,21 @@ export function DeployFunctionStep() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.8 }}
               >
-                Your function is now live and ready to handle requests.
+                {t('onboarding.deploy.deployed.subtitle')}
               </motion.p>
             </div>
 
             <Card className="aviation-instrument p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-mono text-aviation-text-secondary">Function URL</span>
+                <span className="text-sm font-mono text-aviation-text-secondary">{t('onboarding.deploy.deployed.functionUrl')}</span>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => copyToClipboard(deployedUrl)}
                   className="text-aviation-text-muted hover:text-aviation-amber"
+                  aria-label={t('onboarding.deploy.actions.copyUrl')}
                 >
-                  <Copy className="w-4 h-4" />
+                  <Copy className="w-4 h-4" aria-hidden="true" />
                 </Button>
               </div>
               <code className="block p-3 bg-aviation-bg-tertiary rounded text-sm font-mono text-aviation-amber break-all">
@@ -369,18 +453,19 @@ export function DeployFunctionStep() {
 
             <Card className="aviation-instrument p-4">
               <div className="flex items-center justify-between mb-3">
-                <h4 className="font-mono font-semibold text-aviation-text-primary">Live Metrics</h4>
+                <h4 className="font-mono font-semibold text-aviation-text-primary">{t('onboarding.deploy.deployed.liveMetrics')}</h4>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={loadFunctionMetrics}
+                  onClick={() => loadFunctionMetrics()}
                   disabled={isLoadingMetrics}
                   className="text-aviation-text-muted hover:text-aviation-amber"
+                  aria-label={t('onboarding.deploy.actions.refreshMetrics')}
                 >
                   {isLoadingMetrics ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                   ) : (
-                    <RefreshCw className="w-4 h-4" />
+                    <RefreshCw className="w-4 h-4" aria-hidden="true" />
                   )}
                 </Button>
               </div>
@@ -398,32 +483,32 @@ export function DeployFunctionStep() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-center">
                     <div className="text-2xl font-mono font-bold text-aviation-text-primary">
-                      {functionMetrics.requests}
+                      {functionMetrics.requests.toLocaleString()}
                     </div>
-                    <div className="text-xs font-mono text-aviation-text-muted">Requests</div>
+                    <div className="text-xs font-mono text-aviation-text-muted">{t('onboarding.deploy.metrics.requests')}</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-mono font-bold text-aviation-text-primary">
                       {functionMetrics.latency}ms
                     </div>
-                    <div className="text-xs font-mono text-aviation-text-muted">Avg Latency</div>
+                    <div className="text-xs font-mono text-aviation-text-muted">{t('onboarding.deploy.metrics.latency')}</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-mono font-bold text-aviation-red">
                       {functionMetrics.errors}
                     </div>
-                    <div className="text-xs font-mono text-aviation-text-muted">Errors</div>
+                    <div className="text-xs font-mono text-aviation-text-muted">{t('onboarding.deploy.metrics.errors')}</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-mono font-bold text-aviation-green">
                       {functionMetrics.uptime.toFixed(1)}%
                     </div>
-                    <div className="text-xs font-mono text-aviation-text-muted">Uptime</div>
+                    <div className="text-xs font-mono text-aviation-text-muted">{t('onboarding.deploy.metrics.uptime')}</div>
                   </div>
                 </div>
               ) : (
                 <div className="text-center text-aviation-text-muted py-4">
-                  <div className="text-sm font-mono">Loading metrics...</div>
+                  <div className="text-sm font-mono">{t('onboarding.deploy.metrics.loading')}</div>
                 </div>
               )}
             </Card>
@@ -434,8 +519,8 @@ export function DeployFunctionStep() {
                 className="flex-1 font-mono border-aviation-border-instrument text-aviation-text-primary hover:border-aviation-amber hover:text-aviation-amber"
                 onClick={() => window.open(deployedUrl, "_blank")}
               >
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Open Function
+                <ExternalLink className="w-4 h-4 mr-2" aria-hidden="true" />
+                {t('onboarding.deploy.actions.openFunction')}
               </Button>
             </div>
 
@@ -444,59 +529,61 @@ export function DeployFunctionStep() {
                 variant="ghost"
                 onClick={() => setShowAdvanced(!showAdvanced)}
                 className="w-full justify-between font-mono text-aviation-text-secondary hover:text-aviation-amber"
+                aria-expanded={showAdvanced}
+                aria-controls="advanced-config"
               >
-                <span className="text-sm font-mono font-medium">Advanced Configuration</span>
-                <HelpTooltip content="Configure environment variables, scaling settings, and other advanced options for your function." />
+                <span className="text-sm font-mono font-medium">{t('onboarding.deploy.advanced.title')}</span>
+                <HelpTooltip content={t('onboarding.deploy.advanced.tooltip')} />
               </Button>
 
               {showAdvanced && (
                 <motion.div
+                  id="advanced-config"
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   className="mt-4 space-y-4"
                 >
                   <Card className="aviation-panel p-4">
                     <h4 className="font-mono font-medium text-aviation-text-primary mb-3 flex items-center gap-2">
-                      Environment Variables
-                      <HelpTooltip content="Add environment variables to configure your function at runtime. These are securely stored and encrypted." />
+                      {t('onboarding.deploy.advanced.envVars')}
+                      <HelpTooltip content={t('onboarding.deploy.advanced.envVarsTooltip')} />
                     </h4>
                     <div className="space-y-2">
                       <div className="flex gap-2">
-                        <Input placeholder="KEY" className="aviation-input flex-1" />
-                        <Input placeholder="VALUE" className="aviation-input flex-1" type="password" />
-                        <Button variant="outline" size="sm" className="border-aviation-border-instrument">Add</Button>
+                        <Input placeholder="KEY" className="aviation-input flex-1" aria-label={t('onboarding.deploy.advanced.envKeyPlaceholder')} />
+                        <Input placeholder="VALUE" className="aviation-input flex-1" type="password" aria-label={t('onboarding.deploy.advanced.envValuePlaceholder')} />
+                        <Button variant="outline" size="sm" className="border-aviation-border-instrument">{t('onboarding.deploy.advanced.add')}</Button>
                       </div>
                       <p className="text-xs font-mono text-aviation-text-muted">
-                        Common variables: API keys, database URLs, configuration settings
+                        {t('onboarding.deploy.advanced.envVarsHint')}
                       </p>
                     </div>
                   </Card>
 
                   <Card className="aviation-panel p-4">
                     <h4 className="font-mono font-medium text-aviation-text-primary mb-3 flex items-center gap-2">
-                      Scaling Settings
-                      <HelpTooltip content="Control how your function scales with traffic. Higher limits handle more concurrent requests." />
+                      {t('onboarding.deploy.advanced.scaling')}
+                      <HelpTooltip content={t('onboarding.deploy.advanced.scalingTooltip')} />
                     </h4>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label className="text-sm font-mono text-aviation-text-secondary">Max Concurrent Requests</Label>
-                        <Input type="number" defaultValue="100" className="aviation-input mt-1" />
+                        <Label className="text-sm font-mono text-aviation-text-secondary">{t('onboarding.deploy.advanced.maxConcurrent')}</Label>
+                        <Input type="number" defaultValue="100" className="aviation-input mt-1" aria-label={t('onboarding.deploy.advanced.maxConcurrentLabel')} />
                       </div>
                       <div>
-                        <Label className="text-sm font-mono text-aviation-text-secondary">Timeout (seconds)</Label>
-                        <Input type="number" defaultValue="30" className="aviation-input mt-1" />
+                        <Label className="text-sm font-mono text-aviation-text-secondary">{t('onboarding.deploy.advanced.timeout')}</Label>
+                        <Input type="number" defaultValue="30" className="aviation-input mt-1" aria-label={t('onboarding.deploy.advanced.timeoutLabel')} />
                       </div>
                     </div>
                   </Card>
 
                   <div className="bg-aviation-cyan-dim border border-aviation-cyan/30 rounded-lg p-4">
                     <div className="flex items-start gap-3">
-                      <Code className="w-5 h-5 text-aviation-cyan flex-shrink-0 mt-0.5" />
+                      <Code className="w-5 h-5 text-aviation-cyan flex-shrink-0 mt-0.5" aria-hidden="true" />
                       <div>
-                        <h4 className="font-mono font-medium text-aviation-cyan mb-1">Pro Tip</h4>
+                        <h4 className="font-mono font-medium text-aviation-cyan mb-1">{t('onboarding.deploy.advanced.proTipTitle')}</h4>
                         <p className="text-sm font-mono text-aviation-text-secondary">
-                          You can update these settings anytime from your function dashboard.
-                          Advanced configurations take effect on the next deployment.
+                          {t('onboarding.deploy.advanced.proTipDesc')}
                         </p>
                       </div>
                     </div>
@@ -515,17 +602,17 @@ export function DeployFunctionStep() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2 bg-aviation-bg-tertiary">
           <TabsTrigger value="preset" className="flex items-center gap-2 font-mono text-aviation-text-secondary data-[state=active]:text-aviation-amber">
-            Sample Functions
-            <HelpTooltip content="Choose from pre-built function examples to get started quickly. These demonstrate common patterns and are ready to deploy." />
+            {t('onboarding.deploy.tabs.sampleFunctions')}
+            <HelpTooltip content={t('onboarding.deploy.tabs.sampleFunctionsTooltip')} />
           </TabsTrigger>
           <TabsTrigger value="custom" className="flex items-center gap-2 font-mono text-aviation-text-secondary data-[state=active]:text-aviation-amber">
-            Custom Code
-            <HelpTooltip content="Write your own function code from scratch. Advanced users can deploy custom logic, APIs, or integrations." />
+            {t('onboarding.deploy.tabs.customCode')}
+            <HelpTooltip content={t('onboarding.deploy.tabs.customCodeTooltip')} />
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="preset" className="space-y-4">
-          <div className="grid gap-3">
+          <div className="grid gap-3" role="listbox" aria-label={t('onboarding.deploy.functionListLabel')}>
             {sampleFunctions.map((func) => (
               <Card
                 key={func.id}
@@ -535,20 +622,29 @@ export function DeployFunctionStep() {
                     : "hover:border-aviation-border-glow"
                 }`}
                 onClick={() => setSelectedFunction(func.id)}
+                role="option"
+                aria-selected={selectedFunction === func.id}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedFunction(func.id);
+                  }
+                }}
               >
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-lg bg-aviation-amber-subtle flex items-center justify-center flex-shrink-0">
-                    <Code className="w-5 h-5 text-aviation-amber" />
+                    <Code className="w-5 h-5 text-aviation-amber" aria-hidden="true" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-mono font-semibold text-aviation-text-primary">{func.name}</h3>
-                      <HelpTooltip content="Edge functions run close to your users worldwide, reducing latency and improving performance compared to traditional server-based functions." />
+                      <h3 className="font-mono font-semibold text-aviation-text-primary">{t(func.nameKey)}</h3>
+                      <HelpTooltip content={t('onboarding.deploy.functionEdgeHelp')} />
                       {selectedFunction === func.id && (
-                        <Check className="w-4 h-4 text-aviation-green" />
+                        <Check className="w-4 h-4 text-aviation-green" aria-hidden="true" />
                       )}
                     </div>
-                    <p className="text-sm font-mono text-aviation-text-secondary">{func.description}</p>
+                    <p className="text-sm font-mono text-aviation-text-secondary">{t(func.description)}</p>
                   </div>
                 </div>
               </Card>
@@ -564,19 +660,20 @@ export function DeployFunctionStep() {
               <Card className="aviation-panel overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-2 bg-aviation-bg-tertiary border-b border-aviation-border-panel">
                   <div className="flex items-center gap-2">
-                    <Terminal className="w-4 h-4 text-aviation-text-muted" />
-                    <span className="text-xs font-mono text-aviation-text-muted">Preview</span>
+                    <Terminal className="w-4 h-4 text-aviation-text-muted" aria-hidden="true" />
+                    <span className="text-xs font-mono text-aviation-text-muted">{t('onboarding.deploy.codePreview')}</span>
                   </div>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => copyToClipboard(selectedFunctionData.code)}
                     className="text-aviation-text-muted hover:text-aviation-amber"
+                    aria-label={t('onboarding.deploy.actions.copyCode')}
                   >
-                    <Copy className="w-3 h-3" />
+                    <Copy className="w-3 h-3" aria-hidden="true" />
                   </Button>
                 </div>
-                <pre className="p-4 text-sm font-mono text-aviation-text-secondary overflow-x-auto">
+                <pre className="p-4 text-sm font-mono text-aviation-text-secondary overflow-x-auto" role="region" aria-label={t('onboarding.deploy.codePreviewRegion')}>
                   <code>{selectedFunctionData.code}</code>
                 </pre>
               </Card>
@@ -587,15 +684,14 @@ export function DeployFunctionStep() {
         <TabsContent value="custom" className="space-y-4">
           <Card className="aviation-panel p-4">
             <p className="text-sm font-mono text-aviation-text-secondary mb-4">
-              You can deploy your own custom function code. For now, select one of our
-              sample functions to continue with the onboarding.
+              {t('onboarding.deploy.customCodeNotice')}
             </p>
             <Button
               variant="outline"
               onClick={() => setActiveTab("preset")}
               className="w-full font-mono border-aviation-border-instrument text-aviation-text-primary hover:border-aviation-amber hover:text-aviation-amber"
             >
-              Choose a Sample Function
+              {t('onboarding.deploy.actions.chooseSample')}
             </Button>
           </Card>
         </TabsContent>
@@ -603,8 +699,8 @@ export function DeployFunctionStep() {
 
       <div className="space-y-2" ref={urlInputRef}>
         <Label htmlFor="functionName" className="flex items-center gap-2 font-mono text-aviation-text-secondary">
-          Function Name
-          <HelpTooltip content="Choose a unique name for your function. This will become part of your function's URL (e.g., my-function.functionfly.app)." />
+          {t('onboarding.deploy.functionNameLabel')}
+          <HelpTooltip content={t('onboarding.deploy.functionNameTooltip')} />
         </Label>
         <Popover open={urlSuggestionsOpen} onOpenChange={setUrlSuggestionsOpen}>
           <PopoverTrigger asChild>
@@ -617,6 +713,8 @@ export function DeployFunctionStep() {
                 if (urlSuggestions.length > 0) setUrlSuggestionsOpen(true);
               }}
               className="aviation-input"
+              aria-describedby="functionName-hint"
+              aria-invalid={functionName.length >= 2 && !/^[a-z0-9-]+$/.test(functionName.toLowerCase())}
             />
           </PopoverTrigger>
           <PopoverContent
@@ -630,11 +728,11 @@ export function DeployFunctionStep() {
           >
             <div className="px-3 py-2 border-b border-aviation-border-panel" style={{ borderColor: 'var(--ff-border-subtle)' }}>
               <div className="flex items-center gap-2 text-xs font-mono text-aviation-text-muted">
-                <Sparkles className="w-3 h-3 text-aviation-amber" />
-                <span>URL Suggestions</span>
+                <Sparkles className="w-3 h-3 text-aviation-amber" aria-hidden="true" />
+                <span>{t('onboarding.deploy.urlSuggestions')}</span>
               </div>
             </div>
-            <div className="py-1 max-h-[240px] overflow-y-auto">
+            <div className="py-1 max-h-[240px] overflow-y-auto" role="listbox">
               {urlSuggestions.map((suggestion, index) => (
                 <button
                   key={index}
@@ -645,9 +743,11 @@ export function DeployFunctionStep() {
                   }}
                   className="w-full px-3 py-2 flex items-center justify-between hover:bg-aviation-bg-tertiary transition-colors text-left"
                   style={{ borderColor: 'var(--ff-border-subtle)' }}
+                  role="option"
+                  aria-selected={false}
                 >
                   <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <Globe className="w-4 h-4 text-aviation-text-muted flex-shrink-0" />
+                    <Globe className="w-4 h-4 text-aviation-text-muted flex-shrink-0" aria-hidden="true" />
                     <span className="font-mono text-sm text-aviation-text-primary truncate">
                       {suggestion.url}
                     </span>
@@ -657,14 +757,14 @@ export function DeployFunctionStep() {
                       <span className="text-xs font-mono text-aviation-text-muted">{suggestion.reason}</span>
                     )}
                     {suggestion.available ? (
-                      <span className="flex items-center gap-1 text-xs font-mono text-aviation-green">
-                        <CheckCircle2 className="w-3 h-3" />
-                        Available
+                      <span className="flex items-center gap-1 text-xs font-mono text-aviation-green" role="status">
+                        <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
+                        {t('onboarding.deploy.suggestions.available')}
                       </span>
                     ) : (
-                      <span className="flex items-center gap-1 text-xs font-mono text-aviation-red">
-                        <XCircle className="w-3 h-3" />
-                        Taken
+                      <span className="flex items-center gap-1 text-xs font-mono text-aviation-red" role="status">
+                        <XCircle className="w-3 h-3" aria-hidden="true" />
+                        {t('onboarding.deploy.suggestions.taken')}
                       </span>
                     )}
                   </div>
@@ -672,16 +772,16 @@ export function DeployFunctionStep() {
               ))}
             </div>
             <div className="px-3 py-2 border-t border-aviation-border-panel text-xs font-mono text-aviation-text-muted" style={{ borderColor: 'var(--ff-border-subtle)' }}>
-              Click a suggestion to use it as your function name
+              {t('onboarding.deploy.urlSuggestionsHint')}
             </div>
           </PopoverContent>
         </Popover>
-        <div className="text-xs font-mono text-aviation-text-muted space-y-1">
+        <div id="functionName-hint" className="text-xs font-mono text-aviation-text-muted space-y-1">
           <p>
-            Use lowercase letters, numbers, and hyphens only. This will be used to generate your function URL.
+            {t('onboarding.deploy.functionNameHint')}
           </p>
           <p className="text-aviation-stratosphere">
-            Preview: {functionName ? `${functionName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-')}.functionfly.app` : 'your-function.functionfly.app'}
+            {t('onboarding.deploy.functionNamePreview', { name: functionName ? functionName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-') : 'your-function' })}
           </p>
         </div>
       </div>
@@ -690,16 +790,17 @@ export function DeployFunctionStep() {
         onClick={handleDeploy}
         disabled={(!selectedFunction && activeTab === "preset") || !functionName.trim() || isDeploying}
         className="aviation-button-primary w-full font-mono"
+        aria-describedby={deployError ? 'deploy-error' : undefined}
       >
         {isDeploying ? (
           <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Deploying to all connected providers...
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" aria-hidden="true" />
+            {t('onboarding.deploy.actions.deploying')}
           </>
         ) : (
           <>
-            <Rocket className="w-4 h-4 mr-2" />
-            Deploy Function
+            <Rocket className="w-4 h-4 mr-2" aria-hidden="true" />
+            {t('onboarding.deploy.actions.deploy')}
           </>
         )}
       </Button>
@@ -709,25 +810,29 @@ export function DeployFunctionStep() {
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: "auto" }}
           className="space-y-2"
+          role="status"
+          aria-live="polite"
         >
           <div className="flex items-center justify-between text-sm">
             <span className="text-aviation-text-primary font-mono">{deployStep}</span>
             <span className="text-aviation-text-muted font-mono">{Math.round(deployProgress)}%</span>
           </div>
-          <Progress value={deployProgress} className="h-2 bg-aviation-bg-tertiary [&>div]:bg-gradient-to-r [&>div]:from-aviation-amber [&>div]:to-aviation-cyan" />
+          <Progress value={deployProgress} className="h-2 bg-aviation-bg-tertiary [&>div]:bg-gradient-to-r [&>div]:from-aviation-amber [&>div]:to-aviation-cyan" aria-label={t('onboarding.deploy.deployProgress', { percent: Math.round(deployProgress) })} />
         </motion.div>
       )}
 
       {deployError && (
         <motion.div
+          id="deploy-error"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-aviation-red-dim border border-aviation-red/30 rounded-lg p-4"
+          role="alert"
         >
           <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-aviation-red flex-shrink-0 mt-0.5" />
+            <AlertTriangle className="w-5 h-5 text-aviation-red flex-shrink-0 mt-0.5" aria-hidden="true" />
             <div>
-              <h4 className="font-mono font-medium text-aviation-red mb-1">Deployment Failed</h4>
+              <h4 className="font-mono font-medium text-aviation-red mb-1">{t('onboarding.deploy.errors.deploymentFailed')}</h4>
               <p className="text-sm font-mono text-aviation-red/80">{deployError}</p>
               <div className="flex gap-2 mt-3">
                 <Button
@@ -739,7 +844,7 @@ export function DeployFunctionStep() {
                     handleDeploy();
                   }}
                 >
-                  Try Again
+                  {t('onboarding.deploy.actions.tryAgain')}
                 </Button>
                 <Button
                   variant="outline"
@@ -750,12 +855,11 @@ export function DeployFunctionStep() {
                     setDeployError(null);
                   }}
                 >
-                  Try Custom Code
+                  {t('onboarding.deploy.actions.tryCustomCode')}
                 </Button>
               </div>
               <div className="mt-3 p-3 bg-aviation-bg-tertiary rounded text-xs font-mono text-aviation-text-muted">
-                <strong>Alternative:</strong> You can also deploy this function later from your dashboard,
-                or try a different function name if the current one is already taken.
+                <strong>{t('onboarding.deploy.errors.alternative')}</strong> {t('onboarding.deploy.errors.alternativeDesc')}
               </div>
             </div>
           </div>

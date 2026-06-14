@@ -52,7 +52,7 @@ export function ResourcesTab({
   return (
     <div className="space-y-4">
       {/* Plan Limits */}
-      <Card className="border-theme bg-card">
+      <Card className="border-theme">
         <CardHeader>
           <CardTitle className="text-base">Your plan limits</CardTitle>
           <CardDescription>
@@ -92,7 +92,7 @@ export function ResourcesTab({
       {/* Resource Usage Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Functions & Providers */}
-        <Card className="border-theme bg-card">
+        <Card className="border-theme">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <FunctionSquare className="h-4 w-4" />
@@ -124,7 +124,7 @@ export function ResourcesTab({
         </Card>
 
         {/* State Fabric */}
-        <Card className="border-theme bg-card">
+        <Card className="border-theme">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Database className="h-4 w-4" />
@@ -163,7 +163,7 @@ export function ResourcesTab({
         </Card>
 
         {/* Agents */}
-        <Card className="border-theme bg-card">
+        <Card className="border-theme">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Bot className="h-4 w-4" />

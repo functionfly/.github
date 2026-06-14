@@ -742,7 +742,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
             'aviation-sidebar',
             isCollapsed && 'aviation-sidebar-collapsed',
             !isLg && 'aviation-sidebar-mobile-sheet',
-            'lg:relative lg:translate-x-0 lg:self-stretch lg:z-auto'
+            'lg:relative lg:translate-x-0 lg:h-full lg:z-auto'
           )}
         >
           <CollapseButton />

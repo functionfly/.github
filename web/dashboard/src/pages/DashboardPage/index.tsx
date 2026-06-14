@@ -1,4 +1,4 @@
-import '@/styles/aviation-dashboard.css';
+import '@/styles/professional-dashboard.css';
 
 import { providersApi } from '@/api';
 import { appsApi } from '@/api/apps';
@@ -298,16 +298,16 @@ export function DashboardPage() {
         id: 'header-health',
         content: (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="dashboard-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+            transition={{ duration: 0.4 }}
+            className="dashboard-header flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
           >
-            <div className="text-center lg:text-left">
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-4">
-                <span className="dashboard-title">{t('dashboard.title')}</span>
+            <div className="text-center sm:text-left">
+              <h1 className="dashboard-title text-2xl md:text-3xl font-semibold tracking-tight text-text-primary">
+                {t('dashboard.title')}
               </h1>
-              <p className="text-text-secondary text-lg">{t('dashboard.welcomeMessage')}</p>
+              <p className="mt-1 text-text-secondary">{t('dashboard.welcomeMessage')}</p>
             </div>
             <div className="flex justify-center sm:justify-end">
               <SystemHealthIndicator
@@ -810,7 +810,7 @@ export function DashboardPage() {
   ]);
 
   return (
-    <div className="aviation-dashboard relative space-y-6">
+    <div className="professional-dashboard relative space-y-6">
       {/* Resume Onboarding Banner - pinned to top, not draggable */}
       {canResume() && (
         <motion.div

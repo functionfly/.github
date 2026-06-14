@@ -1,6 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { Bot, Lock, Plus, Sparkles } from 'lucide-react';
+import { Bot, Plus, Sparkles } from 'lucide-react';
 
 export interface QuickCreateAgentCardProps {
   title?: string;
@@ -31,10 +31,7 @@ export function QuickCreateAgentCard({
     <Card
       className={cn(
         'cursor-pointer transition-all duration-200',
-        'border-dashed',
-        isLocked
-          ? 'border-amber-500/30 bg-amber-500/[0.03] hover:border-amber-500/50 hover:bg-amber-500/[0.05]'
-          : 'hover:border-[var(--color-brand-500)]/40',
+        'border border-border-subtle bg-card hover:border-border-default hover:shadow-sm',
         className
       )}
       onClick={handleClick}
@@ -54,32 +51,34 @@ export function QuickCreateAgentCard({
       <CardContent className="flex items-center gap-4 p-5">
         <div
           className={cn(
-            'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl',
-            isLocked ? 'bg-amber-500/15 text-amber-400' : 'bg-brand-500/15 text-brand-400'
+            'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border',
+            isLocked
+              ? 'bg-secondary border-border-subtle text-text-secondary'
+              : 'bg-brand-500/10 border-brand-500/20 text-brand-500'
           )}
         >
-          {isLocked ? <Lock className="h-6 w-6" /> : <Bot className="h-6 w-6" />}
+          {isLocked ? <Sparkles className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="font-semibold text-text-primary">
-            {isLocked ? 'Unlock Agent Creation' : title}
+          <h3 className="font-medium text-text-primary">
+            {isLocked ? 'Upgrade to create agents' : title}
           </h3>
           {description && (
             <p className="mt-0.5 text-sm text-text-secondary">
-              {isLocked ? 'Upgrade to Starter to create and deploy agents.' : description}
+              {isLocked ? 'Starter plans and above can create and deploy agents.' : description}
             </p>
           )}
         </div>
         <div
           className={cn(
             'flex shrink-0 items-center gap-1.5 text-sm font-medium',
-            isLocked ? 'text-amber-400' : 'text-brand-400'
+            isLocked ? 'text-text-secondary' : 'text-brand-500'
           )}
         >
           {isLocked ? (
             <>
-              <Sparkles className="h-4 w-4" />
-              <span>Upgrade</span>
+              <span>View plans</span>
+              <Plus className="h-4 w-4" />
             </>
           ) : (
             <>

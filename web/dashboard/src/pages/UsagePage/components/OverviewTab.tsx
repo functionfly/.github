@@ -50,7 +50,7 @@ export function OverviewTab({
     <div className="space-y-4">
       {/* Usage Progress */}
       {!isUnlimited && requestLimit > 0 && (
-        <Card className="border-theme bg-card card-brand-accent">
+        <Card className="border-theme card-brand-accent">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Zap className="h-4 w-4 text-text-brand" />
@@ -87,7 +87,7 @@ export function OverviewTab({
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {usageLoading ? (
-          <Card className="border-theme bg-card v-top-border-brand h-[280px] flex items-center justify-center">
+          <Card className="border-theme v-top-border-brand h-[280px] flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-text-brand" />
           </Card>
         ) : (
@@ -100,7 +100,7 @@ export function OverviewTab({
           </div>
         )}
         {executionRateLoading ? (
-          <Card className="border-theme bg-card v-top-border-brand h-[280px] flex items-center justify-center">
+          <Card className="border-theme v-top-border-brand h-[280px] flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-text-brand" />
           </Card>
         ) : (
@@ -115,7 +115,7 @@ export function OverviewTab({
       </div>
 
       {/* Cost Trend */}
-      <Card className="border-theme bg-card v-top-border-brand">
+      <Card className="border-theme v-top-border-brand">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <div className="v-icon-brand w-8 h-8">
@@ -187,7 +187,7 @@ export function OverviewTab({
       </Card>
 
       {/* Execution Velocity */}
-      <Card className="border-theme bg-card v-top-border-brand">
+      <Card className="border-theme v-top-border-brand">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <div className="v-icon-brand w-8 h-8">

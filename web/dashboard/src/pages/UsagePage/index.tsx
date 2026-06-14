@@ -219,7 +219,7 @@ export function UsagePage() {
 
       {/* Quick Stats */}
       <div className="usage-stats-grid">
-        <Card className="border-theme bg-card usage-stat-card">
+        <Card className="border-theme usage-stat-card">
           <CardHeader className="pb-2">
             <CardTitle className="usage-stat-card-label">Total Executions</CardTitle>
           </CardHeader>
@@ -232,7 +232,7 @@ export function UsagePage() {
           </CardContent>
         </Card>
 
-        <Card className="border-theme bg-card usage-stat-card">
+        <Card className="border-theme usage-stat-card">
           <CardHeader className="pb-2">
             <CardTitle className="usage-stat-card-label flex items-center gap-2">
               <TrendingUp className="usage-stat-card-icon" />
@@ -260,7 +260,7 @@ export function UsagePage() {
           </CardContent>
         </Card>
 
-        <Card className="border-theme bg-card usage-stat-card">
+        <Card className="border-theme usage-stat-card">
           <CardHeader className="pb-2">
             <CardTitle className="usage-stat-card-label flex items-center gap-2">
               <Cloud className="usage-stat-card-icon" />
@@ -277,7 +277,7 @@ export function UsagePage() {
         </Card>
 
         {!isUnlimited && (
-          <Card className="border-theme bg-card usage-stat-card">
+          <Card className="border-theme usage-stat-card">
             <CardHeader className="pb-2">
               <CardTitle className="usage-stat-card-label flex items-center gap-2">
                 <TrendingUp className="usage-stat-card-icon" />
@@ -419,7 +419,7 @@ export function UsagePage() {
       </Tabs>
 
       {/* Footer */}
-      <Card className="border-theme bg-card usage-footer">
+      <Card className="border-theme usage-footer">
         <CardHeader className="usage-footer-header">
           <CardTitle className="usage-footer-title">Billing & Documentation</CardTitle>
           <CardDescription className="usage-footer-description">

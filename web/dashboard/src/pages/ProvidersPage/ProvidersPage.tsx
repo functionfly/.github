@@ -8,9 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { PROVIDERS, PROVIDER_EXTERNAL_DASHBOARD_URL, ROUTES } from '@/lib/constants';
 import { useProvidersStore } from '@/stores/providersStore';
-import type { ConnectedProvider } from '@/types';
+import type { ConnectedProvider, ProviderMaintenanceStatus } from '@/types';
 import {
   AlertCircle,
+  AlertTriangle,
   Check,
   ExternalLink,
   History,
@@ -121,6 +122,7 @@ export function ProvidersPage() {
   const [connectionTestResults, setConnectionTestResults] = useState<
     Record<string, 'success' | 'error' | null>
   >({});
+  const [maintenanceStatus, setMaintenanceStatus] = useState<Record<string, ProviderMaintenanceStatus>>({});
 
   const {
     providers,
@@ -146,6 +148,7 @@ export function ProvidersPage() {
 
   useEffect(() => {
     fetchProviders();
+    providersApi.getProviderMaintenanceStatus().then(setMaintenanceStatus).catch(console.error);
   }, [fetchProviders]);
 
   // Start health check polling when providers are loaded
@@ -217,6 +220,12 @@ export function ProvidersPage() {
   const handleConnect = async (providerId: string, key?: string) => {
     const isFunctionFly = providerId === 'functionfly-edge';
     const providerKey = key ?? '';
+
+    const maintenance = maintenanceStatus[providerId];
+    if (maintenance?.disabled) {
+      const reason = maintenance.reason || 'This provider is currently under maintenance';
+      throw new Error(reason);
+    }
 
     try {
       const result = await connectProvider({ providerId, apiKey: providerKey });

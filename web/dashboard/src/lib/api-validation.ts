@@ -312,13 +312,22 @@ export const deployFunctionRequestSchema = z.object({
 
 export const deployFunctionResponseSchema = z
   .object({
+    function_id: idSchema.optional(),
+    functionId: idSchema.optional(),
     deployment_id: idSchema.optional(),
     deploymentId: idSchema.optional(),
+    url: z.string().optional(),
+    region: z.string().optional(),
+    providers: z.array(z.string()).optional(),
     status: z.string().min(1),
     deployments: z.array(functionDeploymentSchema),
   })
   .transform((r) => ({
-    deploymentId: (r.deploymentId ?? r.deployment_id)!,
+    functionId: (r.functionId ?? r.function_id) ?? '',
+    deploymentId: (r.deploymentId ?? r.deployment_id) ?? '',
+    url: r.url ?? '',
+    region: r.region ?? '',
+    providers: r.providers ?? [],
     status: r.status,
     deployments: r.deployments,
   }));

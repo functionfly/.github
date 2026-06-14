@@ -1,6 +1,6 @@
 import { Logo } from '@/components/common/Logo';
 import { useNewsletter } from '@/hooks/useNewsletter';
-import { BLOG_SITE_URL, DOCS_SITE_URL, getMarketingPageUrl } from '@/lib/constants';
+import { BLOG_SITE_URL, DOCS_SITE_URL, getMarketingPageUrl, STATUS_SITE_URL } from '@/lib/constants';
 import { isValidEmail } from '@/lib/url-utils';
 import {
   GitHubIcon,
@@ -202,7 +202,7 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                 </li>
                 <li>
                   <a
-                    href="https://status.functionfly.com"
+                    href={STATUS_SITE_URL}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
@@ -227,12 +227,12 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
               <ul className="space-y-3">
                 <li>
                   <a
-                    href={DOCS_SITE_URL}
+                    href={STATUS_SITE_URL}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
                   >
-                    Documentation
+                    System Status
                   </a>
                 </li>
                 <li>
@@ -310,7 +310,7 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                 </li>
                 <li>
                   <a
-                    href="https://status.functionfly.com"
+                    href={STATUS_SITE_URL}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"

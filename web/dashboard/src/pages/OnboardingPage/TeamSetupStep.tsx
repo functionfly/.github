@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { Users, Mail, Check, Loader2, Crown, User, Eye, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +18,8 @@ interface TeamInvite {
 }
 
 export function TeamSetupStep() {
-  const { updateStepData, setTeamInvites, setUserRole } = useOnboardingStore();
+  const navigate = useNavigate();
+  const { updateStepData, setTeamInvites, setUserRole, skipOnboarding } = useOnboardingStore();
   const [userRole, setLocalUserRole] = useState<TeamRole>('admin');
   const [invites, setInvites] = useState<TeamInvite[]>([]);
   const [newEmail, setNewEmail] = useState('');
@@ -137,10 +139,9 @@ export function TeamSetupStep() {
       teamCreated: false,
     });
 
-    setTimeout(() => {
-      setIsSkipping(false);
-      toast.success('Continuing with solo setup');
-    }, 1000);
+    skipOnboarding();
+    setIsSkipping(false);
+    navigate('/overview', { replace: true });
   };
 
   return (

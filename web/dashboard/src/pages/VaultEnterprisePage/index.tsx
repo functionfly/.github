@@ -1,24 +1,16 @@
 /**
  * VaultEnterprisePage
  *
- * The unified UI surface for the FunctionFly vault's enterprise
- * features (Phases 1-5 + 6). Tabs map to the plan-gated feature
- * groups:
- *
- *   Overview      — plan + quota + cache + HA + secret browser
- *   Security      — MFA, IP allowlist, expiration, break-glass, escrow
- *   Dynamic Creds — DB targets + credential templates + leases
- *   Access        — RBAC roles + my assignments
- *   Enterprise    — namespaces, shares, SSO, SIEM webhooks
- *   Activity      — audit log + export + token monitor + dep graph
- *
- * Tabs that the tenant's plan doesn't unlock render as a
- * <LockedTabPlaceholder> so the user knows the capability exists.
+ * DEPRECATED: This page has been replaced by VaultPage at /vault.
+ * This page is kept for backward compatibility with a deprecation banner.
  */
 
+import { useEffect } from "react";
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrentPlan } from "@/hooks/useCurrentPlan";
+import { AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 import { VaultOverviewTab } from "@/components/VaultEnterprise/tabs/VaultOverviewTab";
 import { SecurityTab } from "@/components/VaultEnterprise/tabs/SecurityTab";
@@ -36,12 +28,37 @@ const TABS: { value: string; label: string; plan: string[] }[] = [
   { value: "activity", label: "Activity", plan: ["pro", "team", "enterprise"] },
 ];
 
-export function VaultEnterprisePage() {
+interface VaultEnterprisePageProps {
+  deprecated?: boolean;
+}
+
+export function VaultEnterprisePage({ deprecated }: VaultEnterprisePageProps) {
   const [tab, setTab] = useState<string>("overview");
   const { plan, isLoading } = useCurrentPlan();
 
+  useEffect(() => {
+    if (deprecated) {
+      const dismissed = sessionStorage.getItem("vault-enterprise-deprecation-dismissed");
+      if (!dismissed) {
+        sessionStorage.setItem("vault-enterprise-deprecation-dismissed", "true");
+        window.location.href = "/vault";
+      }
+    }
+  }, [deprecated]);
+
   return (
     <div className="container mx-auto py-6 space-y-6">
+      {deprecated && (
+        <div className="mb-4 p-3 border border-amber-500/50 bg-amber-500/10 rounded-md flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+          <p className="text-sm flex-1">
+            This page has moved to <a href="/vault" className="underline font-medium">/vault</a>. Please update your bookmarks.
+          </p>
+          <Button size="sm" variant="outline" onClick={() => window.location.href = "/vault"}>
+            Go to Vault
+          </Button>
+        </div>
+      )}
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Secrets Vault</h1>

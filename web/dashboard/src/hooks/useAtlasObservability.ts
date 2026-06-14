@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -44,9 +44,14 @@ async function fetchJSON(url: string, options?: RequestInit) {
   const token = localStorage.getItem('token');
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...options?.headers,
   };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  if (options?.headers) {
+    const customHeaders = options.headers as Record<string, string>;
+    Object.assign(headers, customHeaders);
+  }
 
   const response = await fetch(`${API_BASE}${url}`, {
     ...options,
@@ -60,39 +65,65 @@ async function fetchJSON(url: string, options?: RequestInit) {
   return response.json();
 }
 
-export function useAtlasRuns(agentId?: string, status?: string) {
+export interface RunsFilter {
+  agentId?: string;
+  status?: string;
+  startedAfter?: string;
+  startedBefore?: string;
+}
+
+export interface RunsPagination {
+  limit: number;
+  offset: number;
+  total: number;
+}
+
+export function useAtlasRuns(filter?: RunsFilter, pagination?: { limit: number; offset: number }) {
   const [runs, setRuns] = useState<Run[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [paginationInfo, setPaginationInfo] = useState<RunsPagination>({ limit: 20, offset: 0, total: 0 });
 
   const params = new URLSearchParams();
-  if (agentId) params.set('agent_id', agentId);
-  if (status) params.set('status', status);
+  if (filter?.agentId) params.set('agent_id', filter.agentId);
+  if (filter?.status) params.set('status', filter.status);
+  if (filter?.startedAfter) params.set('started_after', filter.startedAfter);
+  if (filter?.startedBefore) params.set('started_before', filter.startedBefore);
+  params.set('limit', String(pagination?.limit || 20));
+  params.set('offset', String(pagination?.offset || 0));
+
+  const fetchRuns = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await fetchJSON(`/v1/agent-observability/runs?${params}`);
+      setRuns(data.runs || []);
+      setPaginationInfo({ limit: data.limit || 20, offset: data.offset || 0, total: data.total || 0 });
+      setError(null);
+    } catch (e) {
+      setError(e as Error);
+    } finally {
+      setLoading(false);
+    }
+  }, [filter?.agentId, filter?.status, filter?.startedAfter, filter?.startedBefore, pagination?.limit, pagination?.offset]);
 
   useEffect(() => {
-    const fetchRuns = async () => {
-      setLoading(true);
-      try {
-        const data = await fetchJSON(`/v1/agent-observability/runs?${params}`);
-        setRuns(data.runs || []);
-        setError(null);
-      } catch (e) {
-        setError(e as Error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchRuns();
-  }, [agentId, status]);
+  }, [fetchRuns]);
 
-  return { runs, loading, error };
+  return { runs, loading, error, paginationInfo, refetch: fetchRuns };
 }
 
-export function useAtlasEvents(runId: string | undefined) {
+export interface EventsPagination {
+  limit: number;
+  afterSequence: number;
+  total: number;
+}
+
+export function useAtlasEvents(runId: string | undefined, pagination?: { limit: number; afterSequence: number }) {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [paginationInfo, setPaginationInfo] = useState<EventsPagination>({ limit: 100, afterSequence: 0, total: 0 });
 
   useEffect(() => {
     if (!runId) {
@@ -103,8 +134,12 @@ export function useAtlasEvents(runId: string | undefined) {
     const fetchEvents = async () => {
       setLoading(true);
       try {
-        const data = await fetchJSON(`/v1/agent-observability/runs/${runId}/events`);
+        const params = new URLSearchParams();
+        params.set('limit', String(pagination?.limit || 100));
+        params.set('after_sequence', String(pagination?.afterSequence || 0));
+        const data = await fetchJSON(`/v1/agent-observability/runs/${runId}/events?${params}`);
         setEvents(data.events || []);
+        setPaginationInfo({ limit: data.limit || 100, afterSequence: data.after_sequence || 0, total: data.total || 0 });
         setError(null);
       } catch (e) {
         setError(e as Error);
@@ -114,14 +149,20 @@ export function useAtlasEvents(runId: string | undefined) {
     };
 
     fetchEvents();
-  }, [runId]);
+  }, [runId, pagination?.limit, pagination?.afterSequence]);
 
-  return { events, loading, error };
+  return { events, loading, error, paginationInfo };
 }
 
-export function useAtlasStream(runId: string | undefined) {
+export function useAtlasStream(runId: string | undefined, options?: { autoRefresh?: boolean; refreshInterval?: number }) {
   const [events, setEvents] = useState<Event[]>([]);
   const [connected, setConnected] = useState(false);
+  const [reconnectKey, setReconnectKey] = useState(0);
+  const wsRef = useRef<WebSocket | null>(null);
+
+  const reconnect = useCallback(() => {
+    setReconnectKey((k) => k + 1);
+  }, []);
 
   useEffect(() => {
     if (!runId) {
@@ -137,6 +178,7 @@ export function useAtlasStream(runId: string | undefined) {
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
     const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
 
     ws.onopen = () => {
       setConnected(true);
@@ -165,9 +207,21 @@ export function useAtlasStream(runId: string | undefined) {
     return () => {
       ws.close();
     };
-  }, [runId]);
+  }, [runId, reconnectKey]);
 
-  return { events, connected };
+  useEffect(() => {
+    if (!options?.autoRefresh || !runId) return;
+
+    const interval = setInterval(() => {
+      if (!connected && wsRef.current?.readyState !== WebSocket.OPEN) {
+        setReconnectKey((k) => k + 1);
+      }
+    }, options.refreshInterval || 5000);
+
+    return () => clearInterval(interval);
+  }, [options?.autoRefresh, options?.refreshInterval, runId, connected]);
+
+  return { events, connected, reconnect };
 }
 
 export function useAtlasConfig() {

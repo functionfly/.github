@@ -102,31 +102,27 @@ export function MetricCard({
     // (no bg-card, no border-theme utility overriding our tone).
     <div
       className={cn(
-        "relative overflow-hidden rounded-xl border bg-transparent",
+        "relative overflow-hidden rounded-2xl border bg-card",
         "transition-colors duration-200",
         className
       )}
-      style={{
-        borderColor: vars.border,
-        boxShadow: `inset 0 1px 0 0 ${vars.tint}`,
-      }}
+      style={{ borderColor: vars.border }}
     >
-      {/* Left accent bar — 2px, full height, color matches tone */}
+      {/* Top accent line — 2px, color matches tone */}
       <span
         aria-hidden
-        className="pointer-events-none absolute left-0 top-3 bottom-3 w-[2px] rounded-full"
+        className="pointer-events-none absolute left-4 right-4 top-0 h-[2px] rounded-full"
         style={{ backgroundColor: vars.border }}
       />
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
+            <p className="text-sm font-medium text-text-secondary">
               {title}
             </p>
-            <div className="mt-2 flex items-baseline gap-2">
+            <div className="mt-1.5 flex items-baseline gap-2">
               <span
-                className="text-2xl font-bold tabular-nums"
-                style={{ color: vars.value }}
+                className="text-2xl font-semibold tabular-nums tracking-tight text-text-primary"
               >
                 {value}
               </span>
@@ -159,7 +155,7 @@ export function MetricCard({
           </div>
           {icon && (
             <div
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border"
               style={{
                 backgroundColor: vars.tint,
                 borderColor: vars.border,

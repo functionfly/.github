@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { ChevronRight, ChevronDown } from 'lucide-react';
+import { ChevronRight, ChevronDown, Info } from 'lucide-react';
 
 interface SpanNavigatorProps {
   runId: string | null;
+  onSpanClick?: (spanId: string) => void;
 }
 
 interface Span {
@@ -13,7 +14,7 @@ interface Span {
   parent_span_id?: string;
 }
 
-export default function SpanNavigator({ runId }: SpanNavigatorProps) {
+export default function SpanNavigator({ runId, onSpanClick }: SpanNavigatorProps) {
   const [spans, setSpans] = useState<Span[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
@@ -61,9 +62,12 @@ export default function SpanNavigator({ runId }: SpanNavigatorProps) {
     return (
       <div key={span.span_id}>
         <div
-          className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 cursor-pointer"
+          className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 cursor-pointer group"
           style={{ paddingLeft: `${level * 16 + 8}px` }}
           onClick={() => hasChildren && toggleSpan(span.span_id)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === 'Enter' && hasChildren && toggleSpan(span.span_id)}
         >
           {hasChildren ? (
             isExpanded ? (
@@ -81,6 +85,18 @@ export default function SpanNavigator({ runId }: SpanNavigatorProps) {
             <span className="text-xs text-muted-foreground">
               child of {span.parent_span_id.slice(0, 8)}
             </span>
+          )}
+          {onSpanClick && (
+            <button
+              className="ml-auto opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-muted transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSpanClick(span.span_id);
+              }}
+              aria-label={`View details for span ${span.span_id.slice(0, 8)}`}
+            >
+              <Info className="h-3 w-3" />
+            </button>
           )}
         </div>
         {hasChildren && isExpanded && (

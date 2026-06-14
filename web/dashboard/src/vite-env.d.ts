@@ -13,6 +13,8 @@ interface ImportMetaEnv {
   readonly VITE_MARKETING_DEV_URL?: string;
   /** Standalone docs origin (e.g. https://docs.functionfly.com or http://localhost:4322 for web/docs). */
   readonly VITE_DOCS_SITE_URL?: string;
+  /** Standalone status page origin (e.g. https://status.functionfly.com or http://localhost:3001 for web/status). */
+  readonly VITE_STATUS_SITE_URL?: string;
   readonly VITE_AI_SERVICE_URL?: string;
   readonly VITE_SANITY_PROJECT_ID?: string;
   readonly VITE_SANITY_DATASET?: string;

@@ -15,12 +15,12 @@
   --usage-primary-border: rgba(255, 107, 53, 0.2);
   --usage-cyan: var(--ff-cyan);
 
-  /* Usage Card Styles - Aviation Panel */
-  --usage-card-bg: var(--color-aviation-bg-panel);
-  --usage-card-border: var(--color-aviation-border-panel);
+  /* Usage Card Styles - Match Agent Observability black surfaces */
+  --usage-card-bg: var(--background);
+  --usage-card-border: var(--border);
   --usage-card-hover-border: var(--color-aviation-amber-dim);
-  --usage-card-text: var(--color-aviation-text-primary);
-  --usage-card-text-secondary: var(--color-aviation-text-secondary);
+  --usage-card-text: var(--text-primary);
+  --usage-card-text-secondary: var(--text-secondary);
 
   /* Usage Status Colors */
   --usage-status-success: var(--color-aviation-green);
@@ -35,10 +35,10 @@
   --usage-chart-4: var(--color-aviation-green);
 
   /* Usage Table Styles */
-  --usage-table-bg: var(--color-aviation-bg-panel);
-  --usage-table-border: var(--color-aviation-border-panel);
-  --usage-table-header-bg: var(--color-aviation-bg-instrument);
-  --usage-table-row-hover: var(--color-aviation-bg-instrument);
+  --usage-table-bg: var(--background);
+  --usage-table-border: var(--border);
+  --usage-table-header-bg: var(--bg-secondary);
+  --usage-table-row-hover: var(--bg-hover);
 
   /* Animation Durations */
   --usage-transition-fast: 150ms ease;
@@ -53,16 +53,16 @@
 
 /* Light Mode Overrides */
 [data-theme='light'] {
-  --usage-card-bg: var(--color-aviation-bg-panel-light);
-  --usage-card-border: var(--color-aviation-border-panel-light);
+  --usage-card-bg: var(--card);
+  --usage-card-border: var(--border);
   --usage-card-hover-border: var(--color-aviation-amber-dim-light);
-  --usage-card-text: var(--color-aviation-text-primary-light);
-  --usage-card-text-secondary: var(--color-aviation-text-secondary-light);
+  --usage-card-text: var(--text-primary);
+  --usage-card-text-secondary: var(--text-secondary);
 
-  --usage-table-bg: var(--color-aviation-bg-panel-light);
-  --usage-table-border: var(--color-aviation-border-panel-light);
-  --usage-table-header-bg: var(--color-aviation-bg-instrument-light);
-  --usage-table-row-hover: var(--color-aviation-bg-instrument-light);
+  --usage-table-bg: var(--card);
+  --usage-table-border: var(--border);
+  --usage-table-header-bg: var(--bg-secondary);
+  --usage-table-row-hover: var(--bg-hover);
 
   --usage-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.06);
   --usage-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
@@ -171,8 +171,8 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    var(--color-aviation-border-panel) 30%,
-    var(--color-aviation-border-panel) 70%,
+    var(--border) 30%,
+    var(--border) 70%,
     transparent 100%
   );
 }
@@ -233,8 +233,8 @@
   align-items: center;
   gap: 0.25rem;
   padding: 0.375rem;
-  background-color: var(--color-aviation-bg-secondary);
-  border: 1px solid var(--color-aviation-border-panel);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border);
   border-radius: 12px;
   backdrop-filter: blur(8px);
 }
@@ -259,13 +259,13 @@
 
 .usage-tab-trigger:hover {
   color: var(--usage-card-text);
-  background-color: var(--color-aviation-bg-instrument);
+  background-color: var(--bg-secondary);
 }
 
 .usage-tab-trigger-active {
   color: var(--color-aviation-amber);
-  background-color: var(--color-aviation-bg-panel);
-  border-color: var(--color-aviation-border-panel);
+  background-color: var(--card);
+  border-color: var(--border);
   box-shadow: var(--usage-shadow-sm);
 }
 
@@ -309,8 +309,8 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    var(--color-aviation-border-panel) 30%,
-    var(--color-aviation-border-panel) 70%,
+    var(--border) 30%,
+    var(--border) 70%,
     transparent 100%
   );
 }
@@ -369,7 +369,7 @@
 
 .usage-progress-bar {
   height: 0.5rem;
-  background-color: var(--color-aviation-bg-instrument);
+  background-color: var(--bg-secondary);
   border-radius: 9999px;
   overflow: hidden;
   position: relative;
@@ -620,13 +620,13 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem;
-  background-color: var(--color-aviation-bg-instrument);
+  background-color: var(--bg-secondary);
   border-radius: 8px;
   transition: all var(--usage-transition-fast);
 }
 
 .usage-cost-item:hover {
-  background-color: var(--color-aviation-bg-tertiary);
+  background-color: var(--bg-tertiary);
 }
 
 .usage-cost-item-label {
@@ -807,7 +807,7 @@
 }
 
 .btn-usage-secondary:hover {
-  background-color: var(--color-aviation-bg-instrument);
+  background-color: var(--bg-secondary);
   border-color: var(--usage-card-hover-border);
   color: var(--usage-card-text);
 }

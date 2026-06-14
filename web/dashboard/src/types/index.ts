@@ -387,6 +387,13 @@ export interface ConnectedProvider {
   lastUsedAt?: string;
 }
 
+export interface ProviderMaintenanceStatus {
+  disabled: boolean;
+  reason?: string;
+  disabledAt?: string;
+  disabledBy?: string;
+}
+
 export interface ConnectProviderRequest {
   providerId: string;
   apiKey: string;
@@ -633,7 +640,11 @@ export interface DeployFunctionRequest {
 }
 
 export interface DeployFunctionResponse {
+  functionId: string;
   deploymentId: string;
+  url: string;
+  region: string;
+  providers: string[];
   status: string;
   deployments: FunctionDeployment[];
 }

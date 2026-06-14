@@ -1,0 +1,358 @@
+{
+  "onboarding": {
+    "seo": {
+      "title": "Welcome to FunctionFly - Setup",
+      "description": "Set up your FunctionFly account in minutes. Deploy serverless functions with automatic failover across multiple cloud providers."
+    },
+    "steps": {
+      "welcome": {
+        "title": "Welcome to FunctionFly",
+        "description": "Learn about multi-provider deployment and automatic failover"
+      },
+      "connectProvider": {
+        "title": "Connect Your First Provider",
+        "description": "Link a cloud provider to start deploying your functions"
+      },
+      "deployFunction": {
+        "title": "Deploy Your First Function",
+        "description": "Deploy a simple function to see FunctionFly in action"
+      },
+      "testFailover": {
+        "title": "Test Failover",
+        "description": "Verify your setup by testing automatic failover"
+      },
+      "teamSetup": {
+        "title": "Setup Your Team",
+        "description": "Invite team members and configure collaboration settings"
+      }
+    },
+    "roles": {
+      "admin": "Team Administrator",
+      "member": "Team Member",
+      "viewer": "Viewer"
+    },
+    "accessibility": {
+      "skipToMain": "Skip to main content",
+      "goHome": "Go to FunctionFly home",
+      "help": "Get help with onboarding",
+      "skip": "Skip onboarding for now",
+      "progressBar": "Onboarding progress: {{percent}}% complete",
+      "currentStep": "Step {{current}} of {{total}}: {{title}}",
+      "backButton": "Go to previous step",
+      "nextButton": "Go to next step",
+      "completeButton": "Complete onboarding setup",
+      "stepNavigation": "Onboarding steps",
+      "stepLabel": "Step {{number}}: {{title}} - {{status}}",
+      "statusCompleted": "completed",
+      "statusActive": "current",
+      "statusPending": "pending",
+      "continueOnboarding": "Continue with onboarding",
+      "skipOnboarding": "Skip onboarding"
+    },
+    "stepCounter": "Step {{current}} of {{total}}",
+    "helpTooltip": "FunctionFly deploys your functions across multiple cloud providers for high availability. Each step connects a new provider and tests failover automatically.",
+    "skip": "Skip for now",
+    "actions": {
+      "back": "Back",
+      "nextStep": "Next Step",
+      "completeSetup": "Complete Setup",
+      "completing": "Completing...",
+      "retry": "Try Again"
+    },
+    "errors": {
+      "stepLoadFailed": "Failed to load this step. Please try again."
+    },
+    "tips": {
+      "welcomeTitle": "Welcome to FunctionFly",
+      "readyToConnect": "Ready to Connect",
+      "providerConnected": "Great! Provider Connected",
+      "functionDeployed": "Function Deployed Successfully",
+      "setupComplete": "Setup Complete!",
+      "welcomeDesc": "Take a moment to learn about FunctionFly's multi-provider deployment and automatic failover features.",
+      "roleGreeting": "Welcome {{role}}!",
+      "adminPrivileges": " You can manage providers, deploy functions, and invite team members.",
+      "memberAccess": " You can deploy functions and access shared resources.",
+      "viewerAccess": " You have read-only access to team functions and metrics.",
+      "connectProviderDesc": "You're about to connect your first cloud provider. This allows FunctionFly to deploy functions across multiple providers for high availability.",
+      "deployFunctionDesc": "Excellent! Your provider is connected. Now let's deploy your first function to see FunctionFly in action.",
+      "tokenSecure": "API token securely stored and encrypted",
+      "testFailoverDesc": "Your function is live! The final step tests your failover setup to ensure high availability.",
+      "autoFailover": "FunctionFly automatically routes traffic to healthy providers if one fails",
+      "teamSetupDesc": "Great! Your failover setup is working. Now let's set up your team for collaboration.",
+      "inviteTeam": "Invite team members to collaborate on functions and share provider access",
+      "setupCompleteDesc": "Excellent! Your FunctionFly setup is complete and ready for production.",
+      "productionReady": "You're all set to start deploying functions with high availability!",
+      "allCompleteDesc": "Congratulations! Your FunctionFly setup is complete and production-ready.",
+      "multiProviderDeployed": "Your functions are now deployed across multiple providers with automatic failover"
+    },
+    "hints": {
+      "welcome": "Learn about FunctionFly's multi-provider deployment and automatic failover features.",
+      "connectProvider": "Connect a cloud provider to enable deployments.",
+      "deployFunction": "Deploy your first function to test the setup.",
+      "testFailover": "Verify automatic failover is working correctly.",
+      "teamSetup": "Invite team members to collaborate."
+    },
+    "skipDialog": {
+      "title": "Skip Onboarding?",
+      "description": "You're about to skip the remaining FunctionFly onboarding steps. Here's what that means:",
+      "continue": "Continue Onboarding",
+      "skipAnyway": "Skip Anyway",
+      "warnings": {
+        "noProvider": "You won't connect any cloud providers for deployment",
+        "noFunction": "You won't deploy your first function to test the setup",
+        "noFailoverTest": "You won't test automatic failover capabilities"
+      },
+      "hints": {
+        "inviteLater": "You can still invite team members later from your dashboard",
+        "canResume": "You can resume onboarding anytime from your dashboard settings",
+        "basicDeploy": "Basic functions can still be deployed, but without multi-provider benefits"
+      }
+    },
+    "completion": {
+      "title": "Welcome to FunctionFly!",
+      "subtitle": "Your setup is complete and production-ready"
+    },
+    "deploy": {
+      "sampleFunctions": {
+        "helloWorld": {
+          "name": "Hello World",
+          "description": "A simple function that returns a greeting"
+        },
+        "apiEcho": {
+          "name": "API Echo",
+          "description": "Echoes back request information as JSON"
+        }
+      },
+      "tabs": {
+        "sampleFunctions": "Sample Functions",
+        "sampleFunctionsTooltip": "Choose from pre-built function examples to get started quickly. These demonstrate common patterns and are ready to deploy.",
+        "customCode": "Custom Code",
+        "customCodeTooltip": "Write your own function code from scratch. Advanced users can deploy custom logic, APIs, or integrations."
+      },
+      "functionListLabel": "Select a sample function",
+      "functionEdgeHelp": "Edge functions run close to your users worldwide, reducing latency and improving performance compared to traditional server-based functions.",
+      "codePreview": "Preview",
+      "codePreviewRegion": "Function code preview",
+      "actions": {
+        "copyCode": "Copy function code",
+        "chooseSample": "Choose a Sample Function",
+        "copyUrl": "Copy function URL",
+        "refreshMetrics": "Refresh metrics",
+        "openFunction": "Open Function",
+        "deploying": "Deploying to all connected providers...",
+        "deploy": "Deploy Function",
+        "tryAgain": "Try Again",
+        "tryCustomCode": "Try Custom Code"
+      },
+      "customCodeNotice": "You can deploy your own custom function code. For now, select one of our sample functions to continue with the onboarding.",
+      "functionNameLabel": "Function Name",
+      "functionNameTooltip": "Choose a unique name for your function. This will become part of your function's URL (e.g., my-function.functionfly.app).",
+      "urlSuggestions": "URL Suggestions",
+      "urlSuggestionsHint": "Click a suggestion to use it as your function name",
+      "functionNameHint": "Use lowercase letters, numbers, and hyphens only. This will be used to generate your function URL.",
+      "functionNamePreview": "Preview: {{name}}.functionfly.app",
+      "suggestions": {
+        "recommended": "recommended",
+        "apiPrefix": "API endpoint",
+        "versioned": "versioned endpoint",
+        "available": "Available",
+        "taken": "Taken"
+      },
+      "deployed": {
+        "title": "Function Deployed!",
+        "subtitle": "Your function is now live and ready to handle requests.",
+        "functionUrl": "Function URL",
+        "liveMetrics": "Live Metrics"
+      },
+      "metrics": {
+        "requests": "Requests",
+        "latency": "Avg Latency",
+        "errors": "Errors",
+        "uptime": "Uptime",
+        "loading": "Loading metrics..."
+      },
+      "steps": {
+        "validating": "Validating function configuration...",
+        "connecting": "Connecting to deployment providers...",
+        "uploading": "Uploading function code...",
+        "deploying": "Deploying to primary provider...",
+        "configuring": "Setting up failover configuration...",
+        "complete": "Deployment complete!"
+      },
+      "deployProgress": "Deployment progress: {{percent}}%",
+      "errors": {
+        "deploymentFailed": "Deployment Failed",
+        "invalidName": "Invalid function name",
+        "nameTooShort": "Function name must be at least 2 characters",
+        "nameTooLong": "Function name must be 52 characters or less",
+        "nameInvalidChars": "Use only lowercase letters, numbers, and hyphens",
+        "noProvider": "Please connect a provider first",
+        "cancelled": "Deployment was cancelled",
+        "generic": "Deployment failed due to an unexpected error. Please try again.",
+        "alternative": "Alternative:",
+        "alternativeDesc": "You can also deploy this function later from your dashboard, or try a different function name if the current one is already taken."
+      },
+      "toast": {
+        "success": "Function \"{{name}}\" deployed successfully!",
+        "failed": "Deployment failed",
+        "copied": "Copied to clipboard!"
+      },
+      "advanced": {
+        "title": "Advanced Configuration",
+        "tooltip": "Configure environment variables, scaling settings, and other advanced options for your function.",
+        "envVars": "Environment Variables",
+        "envVarsTooltip": "Add environment variables to configure your function at runtime. These are securely stored and encrypted.",
+        "envKeyPlaceholder": "KEY",
+        "envValuePlaceholder": "VALUE",
+        "envVarsHint": "Common variables: API keys, database URLs, configuration settings",
+        "add": "Add",
+        "scaling": "Scaling Settings",
+        "scalingTooltip": "Control how your function scales with traffic. Higher limits handle more concurrent requests.",
+        "maxConcurrent": "Max Concurrent Requests",
+        "maxConcurrentLabel": "Maximum concurrent requests",
+        "timeout": "Timeout (seconds)",
+        "timeoutLabel": "Request timeout in seconds",
+        "proTipTitle": "Pro Tip",
+        "proTipDesc": "You can update these settings anytime from your function dashboard. Advanced configurations take effect on the next deployment."
+      }
+    },
+    "connectProvider": {
+      "selectProvider": "Select a cloud provider",
+      "providerConnected": "{{name}} Connected!",
+      "providerReady": "Your provider is now ready to deploy functions.",
+      "costPreview": "Cost Preview",
+      "costCalculating": "Calculating costs...",
+      "costMonthlyEstimate": "Monthly Estimate",
+      "costBreakdown": "Breakdown:",
+      "costBasedOn": "Based on 1,000 requests/day, 100ms compute time, 128MB memory",
+      "apiToken": "API Token",
+      "apiTokenTooltip": "An API token is a secure key that allows FunctionFly to deploy functions to your provider account. You can generate this in your provider's dashboard under API settings.",
+      "apiTokenPlaceholder": "Enter your {{name}} API token",
+      "apiTokenValidated": "API token validated successfully",
+      "apiTokenFind": "Find your API token in {{name}}'s dashboard under API settings.",
+      "apiTokenSecure": "Your API token is securely encrypted and stored. We never share your credentials.",
+      "shareWithTeam": "Share with Team",
+      "shareWithTeamDesc": "Allow team members to use this provider for deployments",
+      "connect": "Connect {{name}}",
+      "connecting": "Connecting to {{name}}...",
+      "sharing": "Sharing with team...",
+      "validating": "Validating token...",
+      "changeProvider": "Change",
+      "viewDocs": "View Documentation",
+      "status": {
+        "available": "Available",
+        "maintenance": "Maintenance",
+        "outage": "Outage",
+        "unavailable": "Unavailable"
+      },
+      "someUnavailable": "Some providers are currently unavailable",
+      "someUnavailableDesc_one": "{{name}} is undergoing maintenance.",
+      "someUnavailableDesc_other": "{{count}} providers are currently unavailable.",
+      "stillAvailable": "You can still get started with the {{count}} available provider",
+      "maintenanceNote": "Temporarily unavailable for scheduled maintenance",
+      "outageNote": "Service is currently experiencing issues",
+      "errors": {
+        "connectionFailed": "Failed to connect provider. Please check your API token and try again.",
+        "invalidToken": "Invalid API token",
+        "tokenSuggestion": "Please check your API token in {{name}} dashboard and ensure it has the correct permissions",
+        "networkError": "Unable to connect to {{name}} API. Check your internet connection and try again.",
+        "shareFailed": "Provider connected but could not be shared with team",
+        "noTeamFound": "Provider connected but no team found to share with yet."
+      },
+      "toast": {
+        "connected": "{{name}} connected successfully!",
+        "shareSuccess": "Provider shared with team successfully!",
+        "shareFailed": "Provider connected but could not be shared with team"
+      }
+    },
+    "testFailover": {
+      "title": "Test Failover",
+      "description": "Test your failover setup by simulating a provider failure. We'll verify that traffic automatically routes to your backup.",
+      "tooltip": "Failover ensures your functions stay online even if one provider experiences issues. FunctionFly automatically routes traffic to healthy backup providers.",
+      "runTest": "Run Failover Test",
+      "testing": "Testing Failover...",
+      "retryTest": "Retry Test",
+      "runAgain": "Run Test Again",
+      "primary": "Primary",
+      "backup": "Backup",
+      "primaryHelp": "Your primary provider handles all traffic under normal conditions. It's the first choice for serving your functions.",
+      "backupHelp": "Your backup provider automatically takes over if the primary fails. This ensures your functions stay available 24/7.",
+      "steps": {
+        "checking": "Checking primary endpoint",
+        "checkingDesc": "Testing connection to primary provider",
+        "simulating": "Simulating failure",
+        "simulatingDesc": "Temporarily disabling primary endpoint",
+        "detecting": "Detecting failover",
+        "detectingDesc": "Waiting for automatic failover to trigger",
+        "verifying": "Verifying backup",
+        "verifyingDesc": "Confirming request handled by backup provider",
+        "restoring": "Restoring primary",
+        "restoringDesc": "Bringing primary endpoint back online"
+      },
+      "results": {
+        "title": "Test Results",
+        "passed": "Failover Test Passed!",
+        "passedDesc": "Your setup is working correctly. Automatic failover is ready.",
+        "failed": "Failover Test Failed",
+        "failedDesc": "There was an issue with your failover configuration.",
+        "whatHappened": "What happened?",
+        "whatHappenedDesc": "When the primary provider (Cloudflare) was temporarily unavailable, FunctionFly automatically routed traffic to your backup provider (Vercel) with zero downtime."
+      },
+      "errors": {
+        "testFailed": "Failover test failed due to an unexpected error.",
+        "suggestion": "Please check your provider connections and try again."
+      },
+      "toast": {
+        "success": "Failover test completed successfully!",
+        "failed": "Failover test failed"
+      },
+      "latency": "Latency",
+      "latencyHelp": "Latency measures response time. Lower values mean faster performance for your users."
+    },
+    "teamSetup": {
+      "yourRole": "Your Role",
+      "roleTooltip": "Choose your role in the team. You can change this later in team settings.",
+      "roles": {
+        "admin": {
+          "label": "Admin",
+          "description": "Full access to manage team, providers, and functions"
+        },
+        "member": {
+          "label": "Member",
+          "description": "Can deploy and manage functions, view team resources"
+        },
+        "viewer": {
+          "label": "Viewer",
+          "description": "Read-only access to team functions and metrics"
+        }
+      },
+      "inviteTitle": "Invite Team Members",
+      "inviteTooltip": "Add team members to collaborate on functions and share provider configurations.",
+      "emailLabel": "Email Address",
+      "emailPlaceholder": "colleague@company.com",
+      "roleLabel": "Role",
+      "addMember": "Add Team Member",
+      "pendingInvites": "Pending Invites ({{count}})",
+      "sendInvites": "Send {{count}} Invite",
+      "sendInvites_one": "Send {{count}} Invite",
+      "sendInvites_other": "Send {{count}} Invites",
+      "continueSolo": "Continue Solo",
+      "skipForNow": "Skip for Now",
+      "skipping": "Skipping...",
+      "teamBenefits": "Team Benefits",
+      "teamBenefitsDesc": "Invite team members to collaborate on functions, share provider configurations, and manage deployments together. You can always add members later from your dashboard.",
+      "errors": {
+        "invalidEmail": "Please enter a valid email address",
+        "emailExists": "This email has already been added",
+        "sendFailed": "Failed to send team invites"
+      },
+      "toast": {
+        "added": "Team member added",
+        "invitesSent": "Team invites sent to {{count}} member",
+        "invitesSent_one": "Team invites sent to {{count}} member!",
+        "invitesSent_other": "Team invites sent to {{count}} members!",
+        "soloSetup": "Continuing with solo setup"
+      }
+    }
+  }
+}

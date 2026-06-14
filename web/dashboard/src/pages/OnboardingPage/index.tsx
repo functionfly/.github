@@ -1,13 +1,9 @@
+import '@/styles/aviation-dashboard.css';
+import '@/styles/onboarding.css';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertTriangle,
@@ -23,11 +19,14 @@ import {
   Users,
   Zap,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Confetti from 'react-confetti';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { Helmet } from 'react-helmet-async';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
-import { trackEvent } from '@/lib/analytics';
+import { trackEvent, trackPageView } from '@/lib/analytics';
+import { toast } from 'sonner';
 import { useOnboardingStore, type OnboardingStep } from '@/stores/onboardingStore';
 import { Footer } from '../LandingPage/components/Footer';
 import { ConnectProviderStep } from './ConnectProviderStep';
@@ -36,50 +35,52 @@ import { TeamSetupStep } from './TeamSetupStep';
 import { TestFailoverStep } from './TestFailoverStep';
 import { WelcomeStep } from './WelcomeStep';
 
-const baseSteps: Array<{ id: OnboardingStep; title: string; description: string; icon: typeof Zap }> = [
+const baseSteps: Array<{ id: OnboardingStep; titleKey: string; descriptionKey: string; icon: typeof Zap }> = [
   {
     id: 'welcome',
-    title: 'Welcome to FunctionFly',
-    description: 'Learn about multi-provider deployment and automatic failover',
+    titleKey: 'onboarding.steps.welcome.title',
+    descriptionKey: 'onboarding.steps.welcome.description',
     icon: Zap,
   },
   {
     id: 'connect-provider',
-    title: 'Connect Your First Provider',
-    description: 'Link a cloud provider to start deploying your functions',
+    titleKey: 'onboarding.steps.connectProvider.title',
+    descriptionKey: 'onboarding.steps.connectProvider.description',
     icon: Cloud,
   },
   {
     id: 'deploy-function',
-    title: 'Deploy Your First Function',
-    description: 'Deploy a simple function to see FunctionFly in action',
+    titleKey: 'onboarding.steps.deployFunction.title',
+    descriptionKey: 'onboarding.steps.deployFunction.description',
     icon: Rocket,
   },
   {
     id: 'test-failover',
-    title: 'Test Failover',
-    description: 'Verify your setup by testing automatic failover',
+    titleKey: 'onboarding.steps.testFailover.title',
+    descriptionKey: 'onboarding.steps.testFailover.description',
     icon: Shield,
   },
 ];
 
-const adminSteps: Array<{ id: OnboardingStep; title: string; description: string; icon: typeof Users }> = [
+const adminSteps: Array<{ id: OnboardingStep; titleKey: string; descriptionKey: string; icon: typeof Users }> = [
   {
     id: 'team-setup',
-    title: 'Setup Your Team',
-    description: 'Invite team members and configure collaboration settings',
+    titleKey: 'onboarding.steps.teamSetup.title',
+    descriptionKey: 'onboarding.steps.teamSetup.description',
     icon: Users,
   },
 ];
 
+const ONBOARDING_STEPS_ORDER: OnboardingStep[] = ['welcome', 'connect-provider', 'deploy-function', 'test-failover', 'team-setup'];
+
 export function OnboardingPage() {
   const navigate = useNavigate();
   const params = useParams();
+  const { t } = useTranslation('onboarding');
 
   const { currentStep, completedSteps, completeStep, skipOnboarding, userRole, setCurrentStep } =
     useOnboardingStore();
   const [isCompleting, setIsCompleting] = useState(false);
-  const [showSkipDialog, setShowSkipDialog] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
 
   const steps = userRole === 'admin' ? [...baseSteps, ...adminSteps] : baseSteps;
@@ -89,25 +90,30 @@ export function OnboardingPage() {
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
 
   useEffect(() => {
+    trackPageView('/onboarding');
+    trackEvent('onboarding_page_viewed', { step: currentStep });
+  }, []);
+
+  useEffect(() => {
     if (currentStepFromUrl && currentStepFromUrl !== currentStep) {
       setCurrentStep(currentStepFromUrl);
     }
   }, [currentStepFromUrl]);
 
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (isCompleting) return;
+
+    if (e.key === 'ArrowRight' && currentStepIndex < steps.length - 1) {
+      handleNext();
+    } else if (e.key === 'ArrowLeft' && currentStepIndex > 0) {
+      handleBack();
+    }
+  }, [currentStepIndex, steps.length, isCompleting]);
+
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (showSkipDialog || isCompleting) return;
-
-      if (e.key === 'ArrowRight' && currentStepIndex < steps.length - 1) {
-        handleNext();
-      } else if (e.key === 'ArrowLeft' && currentStepIndex > 0) {
-        handleBack();
-      }
-    };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentStepIndex, steps.length, showSkipDialog, isCompleting]);
+  }, [handleKeyDown]);
 
   const updateUrl = (step: OnboardingStep) => {
     const targetUrl = `/onboarding/${step}`;
@@ -120,7 +126,7 @@ export function OnboardingPage() {
 
   const handleNext = async () => {
     if (isCompleting) return;
-    trackEvent('onboarding_step_completed', { step: currentStep });
+    trackEvent('onboarding_step_completed', { step: currentStep, step_index: currentStepIndex });
     if (currentStep === 'team-setup') {
       completeStep('team-setup' as OnboardingStep);
       setIsCompleting(true);
@@ -128,7 +134,7 @@ export function OnboardingPage() {
 
       setTimeout(() => {
         setShowConfetti(false);
-        trackEvent('onboarding_completed');
+        trackEvent('onboarding_completed', { total_steps: steps.length });
         navigate('/overview');
       }, 3000);
       return;
@@ -138,6 +144,7 @@ export function OnboardingPage() {
       const nextStep = steps[currentStepIndex + 1].id;
       setCurrentStep(nextStep);
       updateUrl(nextStep);
+      trackEvent('onboarding_step_started', { step: nextStep, step_index: currentStepIndex + 1 });
     } else {
       setIsCompleting(true);
       setShowConfetti(true);
@@ -145,26 +152,25 @@ export function OnboardingPage() {
 
       setTimeout(() => {
         setShowConfetti(false);
-        trackEvent('onboarding_completed');
+        trackEvent('onboarding_completed', { total_steps: steps.length });
         navigate('/overview');
       }, 3000);
     }
   };
 
   const handleSkip = () => {
-    trackEvent('onboarding_skip_viewed');
-    setShowSkipDialog(true);
+    confirmSkip();
   };
 
   const confirmSkip = () => {
-    trackEvent('onboarding_skipped');
+    trackEvent('onboarding_skipped', { completed_steps: completedSteps.length, skipped_at: currentStep });
     skipOnboarding();
-    setShowSkipDialog(false);
-    navigate('/overview');
+    navigate('/overview', { replace: true });
+    toast.info(t('onboarding.skipDialog.hints.canResume'));
   };
 
   const handleBack = () => {
-    trackEvent('onboarding_step_back', { step: currentStep });
+    trackEvent('onboarding_step_back', { step: currentStep, step_index: currentStepIndex });
     if (currentStepIndex > 0) {
       const prevStep = steps[currentStepIndex - 1].id;
       setCurrentStep(prevStep);
@@ -180,9 +186,46 @@ export function OnboardingPage() {
     'team-setup': TeamSetupStep,
   }[currentStep];
 
+  const stepHints: Record<OnboardingStep, string> = {
+    'welcome': t('onboarding.hints.welcome'),
+    'connect-provider': t('onboarding.hints.connectProvider'),
+    'deploy-function': t('onboarding.hints.deployFunction'),
+    'test-failover': t('onboarding.hints.testFailover'),
+    'team-setup': t('onboarding.hints.teamSetup'),
+  };
+
   return (
-    <div className="min-h-screen bg-aviation-bg-primary flex flex-col">
-      <header className="border-b border-aviation-border-panel bg-aviation-bg-primary/95 backdrop-blur-sm">
+    <div className="min-h-screen mesh-gradient-bg flex flex-col relative overflow-hidden">
+      <Helmet>
+        <title>{t('onboarding.seo.title')}</title>
+        <meta name="description" content={t('onboarding.seo.description')} />
+        <meta name="robots" content="noindex, nofollow" />
+        <link rel="canonical" href="/onboarding" />
+        <meta property="og:title" content={t('onboarding.seo.title')} />
+        <meta property="og:description" content={t('onboarding.seo.description')} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="/onboarding" />
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content={t('onboarding.seo.title')} />
+        <meta name="twitter:description" content={t('onboarding.seo.description')} />
+      </Helmet>
+
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-aviation-amber focus:text-aviation-bg-primary focus:rounded-lg focus:font-mono"
+      >
+        {t('onboarding.accessibility.skipToMain')}
+      </a>
+
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-500/10 rounded-full blur-[128px] animate-float" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-[128px] animate-float-rotate" />
+        <div className="spotlight-container">
+          <div className="spotlight-bg animate-spotlight" />
+        </div>
+      </div>
+
+      <header className="relative border-b border-aviation-border-panel bg-aviation-bg-primary/80 backdrop-blur-sm z-10">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
@@ -190,7 +233,8 @@ export function OnboardingPage() {
                 navigate('/onboarding');
                 setCurrentStep('welcome');
               }}
-              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-aviation-amber focus:ring-offset-2 focus:ring-offset-aviation-bg-primary rounded-lg"
+              aria-label={t('onboarding.accessibility.goHome')}
             >
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-aviation-amber to-aviation-amber-glow flex items-center justify-center shadow-lg shadow-aviation-amber-dim">
                 <Zap className="w-5 h-5 text-aviation-bg-primary" fill="currentColor" />
@@ -201,22 +245,22 @@ export function OnboardingPage() {
             </button>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm font-mono text-aviation-text-muted">
-              Step {currentStepIndex + 1} of {steps.length}
+            <span className="text-sm font-mono text-aviation-text-muted" aria-live="polite">
+              {t('onboarding.stepCounter', { current: currentStepIndex + 1, total: steps.length })}
             </span>
-            <HelpTooltip content="Need help? FunctionFly deploys your functions across multiple cloud providers for high availability. Each step connects a new provider and tests failover automatically.">
-              <Button variant="ghost" size="sm" className="text-aviation-text-muted hover:text-aviation-amber hover:bg-aviation-bg-instrument" aria-label="Help">
+            <HelpTooltip content={t('onboarding.helpTooltip')}>
+              <Button variant="ghost" size="sm" className="text-aviation-text-muted hover:text-aviation-amber hover:bg-aviation-bg-instrument" aria-label={t('onboarding.accessibility.help')}>
                 <HelpCircle className="w-4 h-4" />
               </Button>
             </HelpTooltip>
-            <Button variant="ghost" size="sm" onClick={handleSkip} className="text-aviation-text-muted hover:text-aviation-amber font-mono text-sm">
-              Skip for now
+            <Button variant="ghost" size="sm" onClick={handleSkip} className="text-aviation-text-muted hover:text-aviation-amber font-mono text-sm" aria-label={t('onboarding.accessibility.skip')}>
+              {t('onboarding.skip')}
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="w-full h-1 bg-aviation-bg-secondary">
+      <div className="w-full h-1 bg-aviation-bg-secondary" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100} aria-label={t('onboarding.accessibility.progressBar', { percent: Math.round(progress) })}>
         <motion.div
           className="h-full bg-gradient-to-r from-aviation-amber to-aviation-cyan"
           initial={{ width: 0 }}
@@ -225,7 +269,7 @@ export function OnboardingPage() {
         />
       </div>
 
-      <main className="flex-1 flex items-center justify-center p-4">
+      <main id="main-content" className="aviation-dashboard dashboard-main-bg flex-1 flex items-center justify-center p-4 relative z-10">
         <div className="w-full max-w-2xl">
           <div
             role="status"
@@ -233,7 +277,7 @@ export function OnboardingPage() {
             aria-atomic="true"
             className="sr-only"
           >
-            {`Step ${currentStepIndex + 1} of ${steps.length}: ${steps[currentStepIndex]?.title || ''}`}
+            {t('onboarding.accessibility.currentStep', { current: currentStepIndex + 1, total: steps.length, title: t(steps[currentStepIndex]?.titleKey) })}
           </div>
 
           <AnimatePresence mode="wait">
@@ -251,7 +295,7 @@ export function OnboardingPage() {
                       const step = steps[currentStepIndex];
                       if (!step?.icon) return null;
                       const Icon = step.icon;
-                      return <Icon className="w-8 h-8 text-aviation-amber" />;
+                      return <Icon className="w-8 h-8 text-aviation-amber" aria-hidden="true" />;
                     })()}
                   </div>
                   {(() => {
@@ -259,10 +303,10 @@ export function OnboardingPage() {
                     return (
                       <>
                         <CardTitle className="text-2xl text-aviation-text-primary font-mono font-bold">
-                          {step?.title || ''}
+                          {step ? t(step.titleKey) : ''}
                         </CardTitle>
                         <CardDescription className="text-aviation-text-secondary text-base font-mono">
-                          {step?.description || ''}
+                          {step ? t(step.descriptionKey) : ''}
                         </CardDescription>
                       </>
                     );
@@ -270,7 +314,19 @@ export function OnboardingPage() {
                 </CardHeader>
 
                 <CardContent className="space-y-6">
-                  <CurrentStepComponent />
+                  <ErrorBoundary
+                    fallback={
+                      <div className="text-center py-8">
+                        <AlertTriangle className="w-12 h-12 text-aviation-red mx-auto mb-4" />
+                        <p className="text-aviation-text-primary font-mono mb-4">{t('onboarding.errors.stepLoadFailed')}</p>
+                        <Button onClick={() => window.location.reload()} variant="outline" className="font-mono">
+                          {t('onboarding.actions.retry')}
+                        </Button>
+                      </div>
+                    }
+                  >
+                    <CurrentStepComponent />
+                  </ErrorBoundary>
 
                   <div className="flex items-center justify-between pt-4 border-t border-aviation-border-panel">
                     <Button
@@ -278,30 +334,32 @@ export function OnboardingPage() {
                       onClick={handleBack}
                       disabled={currentStepIndex <= 0}
                       className="gap-2 font-mono text-aviation-text-secondary hover:text-aviation-amber hover:bg-aviation-bg-instrument"
+                      aria-label={t('onboarding.accessibility.backButton')}
                     >
-                      <ArrowLeft className="w-4 h-4" />
-                      Back
+                      <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+                      {t('onboarding.actions.back')}
                     </Button>
 
                     <Button
                       onClick={handleNext}
                       disabled={isCompleting}
                       className="aviation-button-primary gap-2 font-mono"
+                      aria-label={currentStepIndex === steps.length - 1 ? t('onboarding.accessibility.completeButton') : t('onboarding.accessibility.nextButton')}
                     >
                       {isCompleting ? (
                         <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Completing...
+                          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                          {t('onboarding.actions.completing')}
                         </>
                       ) : currentStepIndex === steps.length - 1 ? (
                         <>
-                          <CheckCircle className="w-4 h-4" />
-                          Complete Setup
+                          <CheckCircle className="w-4 h-4" aria-hidden="true" />
+                          {t('onboarding.actions.completeSetup')}
                         </>
                       ) : (
                         <>
-                          Next Step
-                          <ArrowRight className="w-4 h-4" />
+                          {t('onboarding.actions.nextStep')}
+                          <ArrowRight className="w-4 h-4" aria-hidden="true" />
                         </>
                       )}
                     </Button>
@@ -319,28 +377,25 @@ export function OnboardingPage() {
             >
               <Card className="aviation-panel-glow p-4">
                 <div className="flex items-start gap-3">
-                  <Lightbulb className="w-5 h-5 text-aviation-amber shrink-0 mt-0.5" />
+                  <Lightbulb className="w-5 h-5 text-aviation-amber shrink-0 mt-0.5" aria-hidden="true" />
                   <div className="flex-1">
                     <h4 className="font-mono font-semibold text-aviation-text-primary mb-2">
-                      {currentStepIndex === 0 && 'Welcome to FunctionFly'}
+                      {currentStepIndex === 0 && t('onboarding.tips.welcomeTitle')}
                       {completedSteps.includes('welcome') &&
                         currentStepIndex === 1 &&
-                        'Ready to Connect'}
+                        t('onboarding.tips.readyToConnect')}
                       {completedSteps.includes('connect-provider') &&
                         currentStepIndex === 2 &&
-                        'Great! Provider Connected'}
+                        t('onboarding.tips.providerConnected')}
                       {completedSteps.includes('deploy-function') &&
                         currentStepIndex === 3 &&
-                        'Function Deployed Successfully'}
-                      {completedSteps.length === 4 && 'Setup Complete!'}
+                        t('onboarding.tips.functionDeployed')}
+                      {completedSteps.length === 4 && t('onboarding.tips.setupComplete')}
                     </h4>
                     <div className="text-sm text-aviation-text-secondary space-y-2 font-mono">
                       {currentStepIndex === 0 && (
                         <div className="space-y-2">
-                          <p>
-                            Take a moment to learn about FunctionFly's multi-provider deployment and
-                            automatic failover features.
-                          </p>
+                          <p>{t('onboarding.tips.welcomeDesc')}</p>
                           {userRole && (
                             <div
                               className={`p-2 rounded text-xs font-mono ${
@@ -350,53 +405,35 @@ export function OnboardingPage() {
                                     ? 'bg-aviation-cyan-dim border border-aviation-cyan/40 text-aviation-cyan'
                                     : 'bg-aviation-green-dim border border-aviation-green/40 text-aviation-green'
                               }`}
+                              role="status"
                             >
-                              Welcome{' '}
-                              {userRole === 'admin'
-                                ? 'Team Administrator'
-                                : userRole === 'member'
-                                  ? 'Team Member'
-                                  : 'Viewer'}
-                              !
-                              {userRole === 'admin' &&
-                                ' You can manage providers, deploy functions, and invite team members.'}
-                              {userRole === 'member' &&
-                                ' You can deploy functions and access shared resources.'}
-                              {userRole === 'viewer' &&
-                                ' You have read-only access to team functions and metrics.'}
+                              {t('onboarding.tips.roleGreeting', { role: t(`onboarding.roles.${userRole}`) })}
+                              {userRole === 'admin' && t('onboarding.tips.adminPrivileges')}
+                              {userRole === 'member' && t('onboarding.tips.memberAccess')}
+                              {userRole === 'viewer' && t('onboarding.tips.viewerAccess')}
                             </div>
                           )}
                         </div>
                       )}
                       {completedSteps.includes('welcome') && currentStepIndex === 1 && (
-                        <p>
-                          You're about to connect your first cloud provider. This allows FunctionFly
-                          to deploy functions across multiple providers for high availability.
-                        </p>
+                        <p>{t('onboarding.tips.connectProviderDesc')}</p>
                       )}
                       {completedSteps.includes('connect-provider') && currentStepIndex === 2 && (
                         <div className="space-y-2">
-                          <p>
-                            Excellent! Your provider is connected. Now let's deploy your first
-                            function to see FunctionFly in action.
-                          </p>
+                          <p>{t('onboarding.tips.deployFunctionDesc')}</p>
                           <div className="bg-aviation-green-dim border border-aviation-green/30 rounded p-2">
                             <p className="text-aviation-green text-xs font-mono font-medium">
-                              API token securely stored and encrypted
+                              {t('onboarding.tips.tokenSecure')}
                             </p>
                           </div>
                         </div>
                       )}
                       {completedSteps.includes('deploy-function') && currentStepIndex === 3 && (
                         <div className="space-y-2">
-                          <p>
-                            Your function is live! The final step tests your failover setup to
-                            ensure high availability.
-                          </p>
+                          <p>{t('onboarding.tips.testFailoverDesc')}</p>
                           <div className="bg-aviation-cyan-dim border border-aviation-cyan/40 rounded p-2">
                             <p className="text-aviation-cyan text-xs font-mono font-medium">
-                              FunctionFly automatically routes traffic to healthy providers if
-                              one fails
+                              {t('onboarding.tips.autoFailover')}
                             </p>
                           </div>
                         </div>
@@ -405,14 +442,10 @@ export function OnboardingPage() {
                         userRole === 'admin' &&
                         currentStepIndex === 4 && (
                           <div className="space-y-2">
-                            <p>
-                              Great! Your failover setup is working. Now let's set up your team for
-                              collaboration.
-                            </p>
+                            <p>{t('onboarding.tips.teamSetupDesc')}</p>
                             <div className="bg-aviation-cyan-dim border border-aviation-cyan/40 rounded p-2">
                               <p className="text-aviation-cyan text-xs font-mono font-medium">
-                                Invite team members to collaborate on functions and share
-                                provider access
+                                {t('onboarding.tips.inviteTeam')}
                               </p>
                             </div>
                           </div>
@@ -421,28 +454,20 @@ export function OnboardingPage() {
                         userRole !== 'admin' &&
                         currentStepIndex === 3 && (
                           <div className="space-y-2">
-                            <p>
-                              Excellent! Your FunctionFly setup is complete and ready for
-                              production.
-                            </p>
+                            <p>{t('onboarding.tips.setupCompleteDesc')}</p>
                             <div className="bg-aviation-green-dim border border-aviation-green/40 rounded p-2">
                               <p className="text-aviation-green text-xs font-mono font-medium">
-                                You're all set to start deploying functions with high
-                                availability!
+                                {t('onboarding.tips.productionReady')}
                               </p>
                             </div>
                           </div>
                         )}
                       {completedSteps.length === steps.length && (
                         <div className="space-y-2">
-                          <p>
-                            Congratulations! Your FunctionFly setup is complete and
-                            production-ready.
-                          </p>
+                          <p>{t('onboarding.tips.allCompleteDesc')}</p>
                           <div className="bg-aviation-stratosphere/10 border border-aviation-stratosphere/20 rounded p-2">
                             <p className="text-aviation-stratosphere text-xs font-mono">
-                              Your functions are now deployed across multiple providers with
-                              automatic failover
+                              {t('onboarding.tips.multiProviderDeployed')}
                             </p>
                           </div>
                         </div>
@@ -454,8 +479,8 @@ export function OnboardingPage() {
             </motion.div>
           )}
 
-          <div className="mt-8 flex justify-center">
-            <div className="flex items-center gap-4">
+          <nav className="mt-8 flex justify-center" aria-label={t('onboarding.accessibility.stepNavigation')}>
+            <div className="flex items-center gap-4" role="list">
               {steps.map((step, index) => {
                 if (!step) return null;
                 const isActive = index === currentStepIndex;
@@ -468,6 +493,8 @@ export function OnboardingPage() {
                     <div
                       role="listitem"
                       aria-current={isActive ? 'step' : undefined}
+                      aria-label={`${t('onboarding.accessibility.stepLabel', { number: index + 1, title: t(step.titleKey), status: isCompleted ? t('onboarding.accessibility.statusCompleted') : isActive ? t('onboarding.accessibility.statusActive') : t('onboarding.accessibility.statusPending') })}`}
+                      tabIndex={0}
                       className={`flex flex-col items-center gap-2 p-4 rounded-xl transition-all duration-300 ${
                         isActive
                           ? 'bg-aviation-bg-instrument border-2 border-aviation-amber shadow-lg shadow-aviation-amber-dim'
@@ -486,9 +513,9 @@ export function OnboardingPage() {
                         }`}
                       >
                         {isCompleted ? (
-                          <CheckCircle className="w-6 h-6" />
+                          <CheckCircle className="w-6 h-6" aria-hidden="true" />
                         ) : (
-                          Icon && <Icon className="w-6 h-6" />
+                          Icon && <Icon className="w-6 h-6" aria-hidden="true" />
                         )}
                       </div>
                       <div className="flex flex-col items-center gap-1 text-center">
@@ -501,7 +528,7 @@ export function OnboardingPage() {
                                 : 'text-aviation-text-muted'
                           }`}
                         >
-                          {step.title}
+                          {t(step.titleKey)}
                         </span>
                       </div>
                     </div>
@@ -514,81 +541,16 @@ export function OnboardingPage() {
                               ? 'bg-gradient-to-r from-aviation-amber to-aviation-cyan'
                               : 'bg-aviation-border-panel'
                         }`}
+                        aria-hidden="true"
                       />
                     )}
                   </div>
                 );
               })}
             </div>
-          </div>
+          </nav>
         </div>
       </main>
-
-      <Dialog open={showSkipDialog} onOpenChange={setShowSkipDialog}>
-        <DialogContent className="aviation-panel sm:max-w-md" aria-describedby="skip-dialog-desc">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 font-mono text-aviation-text-primary">
-              <AlertTriangle className="w-5 h-5 text-aviation-amber" />
-              Skip Onboarding?
-            </DialogTitle>
-            <DialogDescription id="skip-dialog-desc" className="text-aviation-text-secondary font-mono">
-              You're about to skip the remaining FunctionFly onboarding steps. Here's what that means:
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            {currentStepIndex < 1 && (
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-aviation-amber shrink-0 mt-0.5" />
-                <span className="text-aviation-text-secondary font-mono text-sm">You won't connect any cloud providers for deployment</span>
-              </div>
-            )}
-            {currentStepIndex < 2 && (
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-aviation-amber shrink-0 mt-0.5" />
-                <span className="text-aviation-text-secondary font-mono text-sm">You won't deploy your first function to test the setup</span>
-              </div>
-            )}
-            {currentStepIndex < 3 && (
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-aviation-amber shrink-0 mt-0.5" />
-                <span className="text-aviation-text-secondary font-mono text-sm">You won't test automatic failover capabilities</span>
-              </div>
-            )}
-            {userRole === 'admin' && currentStepIndex < 4 && (
-              <div className="flex items-start gap-2">
-                <Lightbulb className="w-4 h-4 text-aviation-cyan shrink-0 mt-0.5" />
-                <span className="text-aviation-text-secondary font-mono text-sm">You can still invite team members later from your dashboard</span>
-              </div>
-            )}
-            <div className="flex items-start gap-2">
-              <Lightbulb className="w-4 h-4 text-aviation-cyan shrink-0 mt-0.5" />
-              <span className="text-aviation-text-secondary font-mono text-sm">You can resume onboarding anytime from your dashboard settings</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <CheckCircle className="w-4 h-4 text-aviation-green shrink-0 mt-0.5" />
-              <span className="text-aviation-text-secondary font-mono text-sm">
-                Basic functions can still be deployed, but without multi-provider benefits
-              </span>
-            </div>
-          </div>
-          <DialogFooter className="flex gap-3 pt-4">
-            <button
-              onClick={() => setShowSkipDialog(false)}
-              className="flex-1 px-4 py-3 font-mono font-semibold rounded-lg border border-aviation-border-instrument bg-aviation-bg-instrument text-aviation-text-primary transition-all hover:border-aviation-amber hover:text-aviation-amber"
-              aria-label="Continue onboarding"
-            >
-              Continue Onboarding
-            </button>
-            <button
-              onClick={confirmSkip}
-              className="flex-1 px-4 py-3 font-mono font-semibold rounded-lg bg-gradient-to-r from-aviation-amber to-aviation-amber-glow text-aviation-bg-primary transition-all hover:shadow-lg hover:shadow-aviation-amber-glow"
-              aria-label="Skip onboarding"
-            >
-              Skip Anyway
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {isCompleting && (
         <>
@@ -606,6 +568,9 @@ export function OnboardingPage() {
             className="fixed inset-0 bg-aviation-bg-primary/80 backdrop-blur-sm z-50 flex items-center justify-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="completion-title"
           >
             <motion.div
               className="text-center relative"
@@ -613,7 +578,7 @@ export function OnboardingPage() {
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', bounce: 0.4 }}
             >
-              <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
                 {[...Array(20)].map((_, i) => (
                   <motion.div
                     key={i}
@@ -655,16 +620,17 @@ export function OnboardingPage() {
                   scale: { duration: 1, repeat: Infinity, ease: 'easeInOut' },
                 }}
               >
-                <CheckCircle className="w-12 h-12 text-aviation-bg-primary" />
+                <CheckCircle className="w-12 h-12 text-aviation-bg-primary" aria-hidden="true" />
               </motion.div>
 
               <motion.h2
+                id="completion-title"
                 className="text-3xl font-bold text-aviation-text-primary mb-4 font-mono"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
               >
-                Welcome to FunctionFly!
+                {t('onboarding.completion.title')}
               </motion.h2>
 
               <motion.p
@@ -673,14 +639,14 @@ export function OnboardingPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
               >
-                Your setup is complete and production-ready
+                {t('onboarding.completion.subtitle')}
               </motion.p>
             </motion.div>
           </motion.div>
         </>
       )}
 
-      <Footer />
+      <Footer showScrollToTop={false} />
     </div>
   );
 }

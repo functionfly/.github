@@ -12,7 +12,7 @@ export interface SystemHealthIndicatorProps {
 
 const statusConfig: Record<
   SystemHealthStatus,
-  { label: string; dotClass: string; textClass: string; pulse?: boolean }
+  { label: string; dotClass: string; textClass: string }
 > = {
   healthy: {
     label: "Healthy",
@@ -23,13 +23,11 @@ const statusConfig: Record<
     label: "Degraded",
     dotClass: "bg-[var(--color-status-degraded)]",
     textClass: "text-[var(--color-warning)]",
-    pulse: true,
   },
   down: {
     label: "Down",
     dotClass: "bg-[var(--color-status-offline)]",
     textClass: "text-[var(--color-error)]",
-    pulse: true,
   },
   unknown: {
     label: "Unknown",
@@ -67,8 +65,7 @@ export function SystemHealthIndicator({
         className={cn(
           "shrink-0 rounded-full",
           sizeStyles.dot,
-          config.dotClass,
-          config.pulse && "animate-pulse"
+          config.dotClass
         )}
         title={config.label}
       />

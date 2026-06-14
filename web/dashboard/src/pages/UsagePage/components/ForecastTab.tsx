@@ -59,7 +59,7 @@ export function ForecastTab({
     <div className="space-y-4">
       {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-theme bg-card">
+        <Card className="border-theme">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-text-secondary">
               Projected Monthly Cost
@@ -76,7 +76,7 @@ export function ForecastTab({
           </CardContent>
         </Card>
 
-        <Card className="border-theme bg-card">
+        <Card className="border-theme">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-text-secondary">Confidence</CardTitle>
           </CardHeader>
@@ -91,7 +91,7 @@ export function ForecastTab({
           </CardContent>
         </Card>
 
-        <Card className="border-theme bg-card">
+        <Card className="border-theme">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-text-secondary">Spend Cap</CardTitle>
           </CardHeader>
@@ -106,7 +106,7 @@ export function ForecastTab({
           </CardContent>
         </Card>
 
-        <Card className="border-theme bg-card">
+        <Card className="border-theme">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-text-secondary">
               Forecast vs Cap
@@ -132,7 +132,7 @@ export function ForecastTab({
 
       {/* Budget Gauge Chart */}
       {capAmount > 0 && (
-        <Card className="border-theme bg-card">
+        <Card className="border-theme">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Activity className="h-4 w-4" />
@@ -213,7 +213,7 @@ export function ForecastTab({
       )}
 
       {/* Forecast Explanation */}
-      <Card className="border-theme bg-card">
+      <Card className="border-theme">
         <CardHeader>
           <CardTitle className="text-base">About Forecasting</CardTitle>
         </CardHeader>

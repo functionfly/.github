@@ -55,7 +55,14 @@ function isSecretIdValidForFetch(id: string): boolean {
 export function useVaultSecrets() {
   return useQuery({
     queryKey: vaultKeys.lists(),
-    queryFn: () => vaultApi.listSecrets(),
+    staleTime: 0,
+    queryFn: async () => {
+      try {
+        return await vaultApi.listSecrets();
+      } catch {
+        return { secrets: [] as SecretMetadata[], total: 0, limit: 0, offset: 0 } as unknown as { secrets: SecretMetadata[]; total: number; limit: number; offset: number };
+      }
+    },
   });
 }
 

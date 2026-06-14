@@ -321,6 +321,95 @@
 }
 
 /* ==========================================================================
+   FunctionFly Brand Wordmark - Fortune 500 Premium
+   - Space Grotesk (matches web/site --font-display)
+   - Velocity orange palette: #FFD4A8 → #FF6B35 → #C0421A
+   - Metallic embossed gradient (light top, dark bottom) for premium depth
+   - Stacked drop-shadows create refined 3D extrusion
+   - Animated shine sweeps LEFT → RIGHT across the wordmark
+   ========================================================================== */
+
+.ff-brand-3d {
+  font-family: 'Space Grotesk', 'Instrument Sans', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  position: relative;
+  display: inline-block;
+  color: transparent;
+  /* Metallic gradient: warm highlight at top → brand orange → deep at bottom */
+  background: linear-gradient(
+    180deg,
+    #FFD9B0 0%,
+    #FFB585 18%,
+    #FF8C42 40%,
+    #FF6B35 62%,
+    #D44A1F 88%,
+    #A8381A 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  /* Refined 3D extrusion via stacked drop-shadows */
+  filter:
+    drop-shadow(0 1px 0 #B23A18)
+    drop-shadow(0 2px 0 #982E14)
+    drop-shadow(0 3px 0 #7E2410)
+    drop-shadow(0 5px 12px rgba(0, 0, 0, 0.4));
+  transition: filter 0.3s ease, transform 0.3s ease;
+  cursor: default;
+}
+
+.ff-brand-3d:hover {
+  filter:
+    drop-shadow(0 1px 0 #B23A18)
+    drop-shadow(0 2px 0 #982E14)
+    drop-shadow(0 3px 0 #7E2410)
+    drop-shadow(0 5px 16px rgba(255, 107, 53, 0.45))
+    drop-shadow(0 8px 20px rgba(0, 0, 0, 0.5));
+}
+
+/* Animated shine overlay: sweeps from off-screen LEFT to off-screen RIGHT */
+.ff-brand-3d::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  color: transparent;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    transparent 38%,
+    rgba(255, 255, 255, 0.55) 46%,
+    rgba(255, 255, 255, 0.85) 50%,
+    rgba(255, 255, 255, 0.55) 54%,
+    transparent 62%,
+    transparent 100%
+  );
+  background-size: 250% 100%;
+  background-position: -150% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: ff-brand-scroll 4.5s ease-in-out infinite;
+}
+
+@keyframes ff-brand-scroll {
+  0% {
+    background-position: -150% 0;
+  }
+  100% {
+    background-position: 150% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ff-brand-3d::after {
+    animation: none;
+    background-position: 0 0;
+  }
+}
+
+/* ==========================================================================
    Shadow/Elevation System
    ========================================================================== */
 

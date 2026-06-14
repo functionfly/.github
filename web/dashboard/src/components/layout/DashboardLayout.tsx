@@ -62,7 +62,7 @@ export function DashboardLayout() {
       />
 
       <div
-        className="min-h-screen flex flex-row relative mesh-gradient-bg"
+        className="h-screen flex flex-row relative mesh-gradient-bg overflow-hidden"
         {...openGestureHandlers}
       >
         {/* Background Effects */}
@@ -74,23 +74,22 @@ export function DashboardLayout() {
           </div>
         </div>
 
-        {/* Sidebar - min-h-screen ensures it extends full height */}
+        {/* Sidebar */}
         <Sidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
 
-        {/* Main Content - No margin needed on desktop since sidebar is in flex flow */}
+        {/* Main Content */}
         <div className="flex-1 flex flex-col min-w-0 relative dashboard-main-bg transition-all duration-300 ease-in-out">
           <Navbar variant="dashboard" onMenuClick={() => setSidebarOpen(true)} />
 
-          <main className="flex-1 pt-20 lg:pt-24 p-4 lg:p-6" aria-label="Main content">
+          <main className="flex-1 min-h-0 overflow-y-auto pt-20 lg:pt-24 p-4 lg:p-6 pb-24" aria-label="Main content">
             <div className="max-w-7xl mx-auto">
               <Outlet />
+              <Footer showScrollToTop={false} />
             </div>
           </main>
-
-          <Footer showScrollToTop={false} />
 
           {/* Unified AI + support chat - bottom right */}
           <SupportBubble />

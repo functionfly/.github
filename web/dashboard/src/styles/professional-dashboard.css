@@ -1,0 +1,1076 @@
+/**
+ * Professional Dashboard Theme
+ * Clean, enterprise-grade dashboard styling inspired by modern SaaS products.
+ * Avoids neon accents, grid backgrounds, and cockpit aesthetics in favor of
+ * restrained typography, subtle borders, and generous whitespace.
+ */
+
+.professional-dashboard {
+  position: relative;
+  isolation: isolate;
+}
+
+/* ==========================================================================
+   Dashboard Header
+   ========================================================================== */
+
+.professional-dashboard .dashboard-header {
+  position: relative;
+}
+
+.professional-dashboard .dashboard-title {
+  color: var(--text-primary);
+  letter-spacing: -0.04em;
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   Metric Cards
+   ========================================================================== */
+
+.professional-dashboard .metric-card {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.professional-dashboard .metric-card:hover {
+  border-color: var(--border-default);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.professional-dashboard .metric-card-title {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--text-secondary);
+}
+
+.professional-dashboard .metric-card-value {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+}
+
+.professional-dashboard .metric-card-icon {
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.professional-dashboard .metric-card:hover .metric-card-icon {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+/* ==========================================================================
+   Enterprise Status Card
+   ========================================================================== */
+
+.professional-dashboard .enterprise-status-card {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+}
+
+/* ==========================================================================
+   System Health Indicator
+   ========================================================================== */
+
+.professional-dashboard .system-health-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.875rem;
+  border-radius: 9999px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.professional-dashboard .system-health-led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.professional-dashboard .system-health-healthy {
+  background: var(--color-status-online);
+}
+
+.professional-dashboard .system-health-degraded {
+  background: var(--color-status-degraded);
+}
+
+.professional-dashboard .system-health-down {
+  background: var(--color-status-offline);
+}
+
+/* ==========================================================================
+   Quick Create Card
+   ========================================================================== */
+
+.professional-dashboard .quick-create-card {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.professional-dashboard .quick-create-card:hover {
+  border-color: var(--border-default);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.professional-dashboard .quick-create-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.professional-dashboard .quick-create-card:hover .quick-create-icon {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.professional-dashboard .quick-create-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+/* ==========================================================================
+   Chart Cards (Usage, Execution Rate, Error Rate)
+   ========================================================================== */
+
+.professional-dashboard .usage-graph,
+.professional-dashboard .execution-rate-chart,
+.professional-dashboard .error-rate-widget {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+}
+
+.professional-dashboard .usage-graph-header,
+.professional-dashboard .execution-rate-header,
+.professional-dashboard .error-rate-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.professional-dashboard .usage-graph-title,
+.professional-dashboard .execution-rate-title,
+.professional-dashboard .error-rate-title {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--text-primary);
+}
+
+.professional-dashboard .usage-graph-content,
+.professional-dashboard .execution-rate-content {
+  padding: 1.25rem;
+}
+
+.professional-dashboard .usage-graph-bar {
+  background: var(--color-brand-500);
+  border-radius: 4px 4px 0 0;
+  transition: opacity 0.2s ease;
+}
+
+.professional-dashboard .usage-graph-bar:hover {
+  opacity: 0.85;
+}
+
+/* ==========================================================================
+   Memory Usage Gauge
+   ========================================================================== */
+
+.professional-dashboard .memory-usage-gauge {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+}
+
+.professional-dashboard .memory-gauge-ring {
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+.professional-dashboard .memory-gauge-ring svg {
+  transform: rotate(-90deg);
+}
+
+.professional-dashboard .memory-gauge-track {
+  fill: none;
+  stroke: var(--bg-tertiary);
+  stroke-width: 8;
+}
+
+.professional-dashboard .memory-gauge-fill {
+  fill: none;
+  stroke: var(--color-brand-500);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.5s ease;
+}
+
+.professional-dashboard .memory-gauge-value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-sans);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.professional-dashboard .memory-gauge-label {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   Trust Score Badge
+   ========================================================================== */
+
+.professional-dashboard .trust-score-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.professional-dashboard .trust-score-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.2s ease;
+}
+
+.professional-dashboard .trust-score-value {
+  font-family: var(--font-sans);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.professional-dashboard .trust-score-label {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   Live Indicator
+   ========================================================================== */
+
+.professional-dashboard .live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.professional-dashboard .live-indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.professional-dashboard .live-indicator-connected {
+  background: var(--color-status-online);
+}
+
+.professional-dashboard .live-indicator-connecting {
+  background: var(--color-status-degraded);
+}
+
+.professional-dashboard .live-indicator-error {
+  background: var(--color-status-offline);
+}
+
+.professional-dashboard .live-indicator-label {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* ==========================================================================
+   Quick Actions Panel
+   ========================================================================== */
+
+.professional-dashboard .quick-actions-panel {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+}
+
+.professional-dashboard .quick-actions-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.professional-dashboard .quick-actions-title {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--text-primary);
+}
+
+.professional-dashboard .quick-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  transition: all 0.15s ease;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.professional-dashboard .quick-action-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.professional-dashboard .quick-action-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--text-muted);
+  transition: color 0.15s ease;
+}
+
+.professional-dashboard .quick-action-btn:hover .quick-action-icon {
+  color: var(--text-primary);
+}
+
+.professional-dashboard .quick-action-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.professional-dashboard .quick-action-description {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Region Distribution Widget
+   ========================================================================== */
+
+.professional-dashboard .region-distribution-widget {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+}
+
+.professional-dashboard .region-widget-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.professional-dashboard .region-widget-title {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--text-primary);
+}
+
+.professional-dashboard .region-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--bg-tertiary);
+  overflow: hidden;
+}
+
+.professional-dashboard .region-bar-fill {
+  height: 100%;
+  background: var(--color-brand-500);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.professional-dashboard .region-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+}
+
+.professional-dashboard .region-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-brand-500);
+}
+
+.professional-dashboard .region-name {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.professional-dashboard .region-value {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.professional-dashboard .region-percent {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Performance Leaderboard
+   ========================================================================== */
+
+.professional-dashboard .performance-leaderboard {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+}
+
+.professional-dashboard .performance-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.professional-dashboard .performance-title {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--text-primary);
+}
+
+.professional-dashboard .performance-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  transition: background-color 0.15s ease;
+}
+
+.professional-dashboard .performance-item:hover {
+  background: var(--bg-secondary);
+}
+
+.professional-dashboard .performance-rank {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.professional-dashboard .performance-rank-top {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+}
+
+.professional-dashboard .performance-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.professional-dashboard .performance-metric {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.professional-dashboard .performance-metric svg {
+  width: 14px;
+  height: 14px;
+}
+
+.professional-dashboard .performance-latency {
+  color: var(--text-secondary);
+}
+
+.professional-dashboard .performance-success {
+  color: var(--color-success);
+}
+
+/* ==========================================================================
+   Quota Usage Widget
+   ========================================================================== */
+
+.professional-dashboard .quota-usage-widget {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+}
+
+.professional-dashboard .quota-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 10px;
+  transition: background-color 0.15s ease;
+}
+
+.professional-dashboard .quota-item:hover {
+  background: var(--bg-secondary);
+}
+
+.professional-dashboard .quota-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+.professional-dashboard .quota-icon svg {
+  width: 18px;
+  height: 18px;
+  color: var(--text-secondary);
+}
+
+.professional-dashboard .quota-progress {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-tertiary);
+  overflow: hidden;
+}
+
+.professional-dashboard .quota-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--color-brand-500);
+  transition: width 0.3s ease;
+}
+
+/* ==========================================================================
+   Agent Activity Feed
+   ========================================================================== */
+
+.professional-dashboard .agent-activity-feed {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+}
+
+.professional-dashboard .activity-feed-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.professional-dashboard .activity-feed-title {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--text-primary);
+}
+
+.professional-dashboard .activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background-color 0.15s ease;
+}
+
+.professional-dashboard .activity-item:hover {
+  background: var(--bg-secondary);
+}
+
+.professional-dashboard .activity-item:last-child {
+  border-bottom: none;
+}
+
+.professional-dashboard .activity-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+.professional-dashboard .activity-icon svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-secondary);
+}
+
+.professional-dashboard .activity-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.professional-dashboard .activity-description {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.professional-dashboard .activity-timestamp {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Draggable Grid
+   ========================================================================== */
+
+.professional-dashboard .draggable-grid {
+  position: relative;
+}
+
+.professional-dashboard .draggable-section {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  transition: border-color 0.2s ease;
+}
+
+.professional-dashboard .draggable-section:hover {
+  border-color: var(--border-default);
+}
+
+.professional-dashboard .draggable-handle {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 0.5rem;
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.professional-dashboard .draggable-section:hover .draggable-handle {
+  opacity: 1;
+}
+
+.professional-dashboard .draggable-handle:active {
+  cursor: grabbing;
+}
+
+.professional-dashboard .reset-layout-btn {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: 9999px;
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+  z-index: 40;
+}
+
+.professional-dashboard .reset-layout-btn:hover {
+  background: var(--bg-secondary);
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+
+/* ==========================================================================
+   Provider Status
+   ========================================================================== */
+
+.professional-dashboard .provider-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.professional-dashboard .provider-status-card {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 1rem;
+  transition: border-color 0.2s ease;
+}
+
+.professional-dashboard .provider-status-card:hover {
+  border-color: var(--border-default);
+}
+
+.professional-dashboard .provider-status-led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.professional-dashboard .provider-status-connected {
+  background: var(--color-status-online);
+}
+
+.professional-dashboard .provider-status-disconnected {
+  background: var(--text-muted);
+}
+
+.professional-dashboard .provider-status-connecting {
+  background: var(--color-status-degraded);
+}
+
+/* ==========================================================================
+   Recent Lists (Apps & Functions)
+   ========================================================================== */
+
+.professional-dashboard .recent-list-card {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+}
+
+.professional-dashboard .recent-list-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.professional-dashboard .recent-list-title {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--text-primary);
+}
+
+.professional-dashboard .recent-list-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.professional-dashboard .recent-list-item:hover {
+  background: var(--bg-secondary);
+}
+
+.professional-dashboard .recent-list-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+.professional-dashboard .recent-list-icon svg {
+  width: 20px;
+  height: 20px;
+  color: var(--text-secondary);
+}
+
+.professional-dashboard .recent-list-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.professional-dashboard .recent-list-status {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.professional-dashboard .recent-list-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-brand-500);
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Empty States
+   ========================================================================== */
+
+.professional-dashboard .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.professional-dashboard .empty-state-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 1rem;
+}
+
+.professional-dashboard .empty-state-icon svg {
+  width: 24px;
+  height: 24px;
+  color: var(--text-muted);
+}
+
+.professional-dashboard .empty-state-text {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.professional-dashboard .empty-state-btn {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.professional-dashboard .empty-state-btn:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+
+/* ==========================================================================
+   Onboarding Banner
+   ========================================================================== */
+
+.professional-dashboard .onboarding-banner {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+}
+
+.professional-dashboard .onboarding-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+.professional-dashboard .onboarding-icon svg {
+  width: 20px;
+  height: 20px;
+  color: var(--text-secondary);
+}
+
+.professional-dashboard .onboarding-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.professional-dashboard .onboarding-description {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   Light Mode Refinements
+   ========================================================================== */
+
+[data-theme='light'] .professional-dashboard .metric-card:hover,
+[data-theme='light'] .professional-dashboard .usage-graph:hover,
+[data-theme='light'] .professional-dashboard .execution-rate-chart:hover,
+[data-theme='light'] .professional-dashboard .error-rate-widget:hover,
+[data-theme='light'] .professional-dashboard .quick-create-card:hover,
+[data-theme='light'] .professional-dashboard .draggable-section:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* ==========================================================================
+   Vault Page Professional Overrides
+   ========================================================================== */
+
+/* Tone down neon glow backgrounds on badges and status pills */
+.professional-dashboard [class*="bg-success-glow"],
+.professional-dashboard [class*="bg-error-glow"],
+.professional-dashboard [class*="bg-warning-glow"],
+.professional-dashboard [class*="bg-info-glow"] {
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* Replace harsh neon glow backgrounds with soft semantic tints */
+.professional-dashboard .bg-success-glow,
+.professional-dashboard .bg-success-glow\/10,
+.professional-dashboard .bg-success-glow\/20,
+.professional-dashboard .bg-success-glow\/30 {
+  background-color: rgba(16, 185, 129, 0.12) !important;
+}
+
+.professional-dashboard .bg-error-glow,
+.professional-dashboard .bg-error-glow\/10,
+.professional-dashboard .bg-error-glow\/20,
+.professional-dashboard .bg-error-glow\/30 {
+  background-color: rgba(239, 68, 68, 0.12) !important;
+}
+
+.professional-dashboard .bg-warning-glow,
+.professional-dashboard .bg-warning-glow\/10,
+.professional-dashboard .bg-warning-glow\/20,
+.professional-dashboard .bg-warning-glow\/30 {
+  background-color: rgba(245, 158, 11, 0.12) !important;
+}
+
+.professional-dashboard .bg-info-glow,
+.professional-dashboard .bg-info-glow\/10,
+.professional-dashboard .bg-info-glow\/20,
+.professional-dashboard .bg-info-glow\/30 {
+  background-color: rgba(59, 130, 246, 0.12) !important;
+}
+
+/* Keep code and secret values monospace, but use a calmer weight/color */
+.professional-dashboard code,
+.professional-dashboard .font-mono {
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+/* Vault cards share the same subtle styling */
+.professional-dashboard .card {
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+}
+
+/* Vault empty states */
+.professional-dashboard .empty-state-icon {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+.professional-dashboard .empty-state-icon svg {
+  color: var(--text-muted);
+}
+
+/* Vault tab list */
+.professional-dashboard [role="tablist"] {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.professional-dashboard [role="tab"] {
+  border-radius: 8px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all 0.15s ease;
+}
+
+.professional-dashboard [role="tab"][data-state="active"] {
+  background: var(--card);
+  color: var(--text-primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.professional-dashboard [role="tab"]:hover:not([data-state="active"]) {
+  color: var(--text-primary);
+}

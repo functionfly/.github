@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { Activity } from "lucide-react";
 import {
     CartesianGrid,
     Line,
@@ -40,7 +41,7 @@ export function ExecutionRateChart({
   // Don't render chart if no data
   if (!data || data.length === 0) {
     return (
-      <Card className={cn("card bg-card", className)}>
+      <Card className={cn("card", className)}>
         {title && (
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold text-text-primary">
@@ -49,8 +50,14 @@ export function ExecutionRateChart({
           </CardHeader>
         )}
         <CardContent className={title ? "pt-0" : undefined}>
-          <div className="h-[200px] min-h-[200px] w-full min-w-0 flex items-center justify-center">
-            <p className="text-text-muted">No data available</p>
+          <div className="h-[200px] min-h-[200px] w-full min-w-0 flex flex-col items-center justify-center gap-3 text-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-bg-secondary border border-border-subtle">
+              <Activity className="h-5 w-5 text-text-muted" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-text-secondary">No executions yet</p>
+              <p className="text-xs text-text-muted mt-0.5">Execution rate will appear once functions are invoked.</p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -58,7 +65,7 @@ export function ExecutionRateChart({
   }
 
   return (
-    <Card className={cn("card bg-card", className)}>
+    <Card className={cn("card", className)}>
       {title && (
         <CardHeader className="pb-2">
           <CardTitle className="text-base font-semibold text-text-primary">

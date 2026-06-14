@@ -1,7 +1,6 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { AlertTriangle, Home, RefreshCcw } from 'lucide-react';
+import { AlertTriangle, Home, RefreshCcw, Copy, CheckCheck } from 'lucide-react';
 import React from 'react';
 
 export type ErrorReportFn = (error: Error, errorInfo: React.ErrorInfo) => void;
@@ -17,6 +16,7 @@ interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: React.ErrorInfo | null;
+  copied: boolean;
 }
 
 /** Capture error to Sentry if available */
@@ -39,11 +39,11 @@ async function captureErrorToSentry(error: Error, errorInfo: React.ErrorInfo) {
 export class ErrorBoundary extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null, errorInfo: null };
+    this.state = { hasError: false, error: null, errorInfo: null, copied: false };
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error, errorInfo: null };
+    return { hasError: true, error, errorInfo: null, copied: false };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
@@ -68,7 +68,18 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   handleRetry = () => {
-    this.setState({ hasError: false, error: null, errorInfo: null });
+    this.setState({ hasError: false, error: null, errorInfo: null, copied: false });
+  };
+
+  handleCopyError = () => {
+    if (!this.state.error) return;
+    const text = [
+      this.state.error.message,
+      this.state.errorInfo?.componentStack,
+    ].filter(Boolean).join('\n\n');
+    navigator.clipboard.writeText(text);
+    this.setState({ copied: true });
+    setTimeout(() => this.setState({ copied: false }), 2000);
   };
 
   render() {
@@ -97,9 +108,31 @@ export class ErrorBoundary extends React.Component<Props, State> {
             {/* Error Details (only in development) */}
             {import.meta.env.DEV && this.state.error && (
               <div className="rounded-lg p-4 text-left" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
-                <p className="font-mono text-sm mb-2" style={{ color: 'var(--color-error, #ef4444)' }}>{this.state.error.message}</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-mono text-sm font-medium" style={{ color: 'var(--color-error, #ef4444)' }}>
+                    {this.state.error.message}
+                  </p>
+                  <button
+                    onClick={this.handleCopyError}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-all hover:brightness-110"
+                    style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)', color: 'var(--color-error, #ef4444)' }}
+                    title="Copy error details"
+                  >
+                    {this.state.copied ? (
+                      <>
+                        <CheckCheck className="w-3.5 h-3.5" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        Copy
+                      </>
+                    )}
+                  </button>
+                </div>
                 {this.state.errorInfo && (
-                  <pre className="font-mono text-xs overflow-auto max-h-32 whitespace-pre-wrap" style={{ color: 'var(--color-error, #ef4444)', opacity: 0.7 }}>
+                  <pre className="font-mono text-xs overflow-auto max-h-48 whitespace-pre-wrap" style={{ color: 'var(--color-error, #ef4444)', opacity: 0.7 }}>
                     {this.state.errorInfo.componentStack}
                   </pre>
                 )}

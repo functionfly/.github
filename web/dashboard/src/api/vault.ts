@@ -10,6 +10,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { apiClient } from "@/api/client";
+import { VaultCrypto } from "@/utils/vault-crypto";
 import type {
   AssignRoleRequest,
   AccessToken,
@@ -511,9 +512,16 @@ export function useDeleteSIEMWebhook() {
 export function useNamespaces() {
   return useQuery({
     queryKey: vaultKeys.namespaces(),
-    queryFn: () => unwrap<{ namespaces: VaultNamespace[]; total: number }>(
-      apiClient.get("/v1/vault/namespaces"),
-    ),
+    staleTime: 0,
+    queryFn: async () => {
+      try {
+        return await unwrap<{ namespaces: VaultNamespace[]; total: number }>(
+          apiClient.get("/v1/vault/namespaces"),
+        );
+      } catch {
+        return { namespaces: [] as VaultNamespace[], total: 0 };
+      }
+    },
   });
 }
 
@@ -595,3 +603,104 @@ export function useCacheStats() {
     refetchInterval: 30_000,
   });
 }
+
+// ============================================================================
+// Vault API Client (for direct API access outside of React hooks)
+// ============================================================================
+
+export const vaultApi = {
+  listSecrets: () =>
+    unwrap<{ secrets: import("@/types/vault").SecretMetadata[]; total: number; limit: number; offset: number }>(
+      apiClient.get("/v1/vault/secrets")
+    ),
+
+  getSecret: (id: string) =>
+    unwrap<import("@/types/vault").Secret>(
+      apiClient.get(`/v1/vault/secrets/${id}`)
+    ),
+
+  getAuditLog: (limit = 100) =>
+    unwrap<{ entries: import("@/types/vault").AuditLogEntry[]; total: number; limit: number; offset: number }>(
+      apiClient.get(`/v1/vault/audit?limit=${limit}`)
+    ),
+
+  getSecretAuditLog: (secretId: string, limit = 100) =>
+    unwrap<{ entries: import("@/types/vault").AuditLogEntry[]; total: number; limit: number; offset: number }>(
+      apiClient.get(`/v1/vault/secrets/${secretId}/audit?limit=${limit}`)
+    ),
+
+  listTokens: (secretId: string) =>
+    unwrap<{ tokens: import("@/types/vault").AccessToken[]; total: number }>(
+      apiClient.get(`/v1/vault/secrets/${secretId}/tokens`)
+    ),
+
+  createSecret: (data: import("@/types/vault").CreateSecretRequest) =>
+    unwrap<import("@/types/vault").Secret>(
+      apiClient.post("/v1/vault/secrets", data)
+    ),
+
+  updateSecret: (id: string, data: import("@/types/vault").UpdateSecretRequest) =>
+    unwrap<import("@/types/vault").Secret>(
+      apiClient.patch(`/v1/vault/secrets/${id}`, data)
+    ),
+
+  deleteSecret: (id: string) =>
+    apiClient.delete(`/v1/vault/secrets/${id}`),
+
+  generateToken: (secretId: string, data: import("@/types/vault").GenerateTokenRequest) =>
+    unwrap<import("@/types/vault").GenerateTokenResponse>(
+      apiClient.post(`/v1/vault/secrets/${secretId}/tokens`, data)
+    ),
+
+  revokeToken: (tokenId: string) =>
+    apiClient.delete(`/v1/vault/tokens/${tokenId}`),
+
+  /**
+   * Client-side secret decryption (zero-knowledge).
+   * Fetches the encrypted secret and decrypts locally using the passphrase.
+   * The passphrase is NEVER sent to the server.
+   */
+  decryptSecret: async (id: string, passphrase: string) => {
+    const secret = await unwrap(apiClient.get(`/v1/vault/secrets/${id}`));
+    const encryptedData = VaultCrypto.fromPayload(secret.encrypted_data);
+    const plaintext = await VaultCrypto.decryptWithPassphrase(encryptedData, passphrase);
+    return { value: plaintext };
+  },
+
+
+  rotateSecret: (secretId: string, data: { encrypted_data: import("@/types/vault").EncryptedDataPayload; reason?: string }) =>
+    unwrap<import("@/types/vault").Secret>(
+      apiClient.post(`/v1/vault/secrets/${secretId}/rotate`, data)
+    ),
+
+  listSecretVersions: (secretId: string, limit = 50, offset = 0) =>
+    unwrap<import("@/types/vault").ListSecretVersionsResponse>(
+      apiClient.get(`/v1/vault/secrets/${secretId}/versions?limit=${limit}&offset=${offset}`)
+    ),
+
+  getSecretVersion: (secretId: string, versionNumber: number, includeEncrypted = false) =>
+    unwrap<import("@/types/vault").SecretVersion>(
+      apiClient.get(`/v1/vault/secrets/${secretId}/versions/${versionNumber}?include_encrypted=${includeEncrypted}`)
+    ),
+
+  diffSecretVersions: (secretId: string, fromVersion: number, toVersion?: number) =>
+    unwrap<import("@/types/vault").SecretVersionDiff>(
+      apiClient.get(`/v1/vault/secrets/${secretId}/versions/diff?from=${fromVersion}&to=${toVersion ?? fromVersion}`)
+    ),
+
+  rollbackSecret: (secretId: string, request: import("@/types/vault").RollbackSecretRequest) =>
+    unwrap<import("@/types/vault").RollbackSecretResponse>(
+      apiClient.post(`/v1/vault/secrets/${secretId}/rollback`, request)
+    ),
+
+  getSecretDependencies: (secretId: string) =>
+    unwrap<{ dependencies: Array<{
+      id: string;
+      name: string;
+      dependent_id: string;
+      dependent_type: string;
+      criticality: string;
+    }> }>(
+      apiClient.get(`/v1/vault/secrets/${secretId}/dependencies`)
+    ),
+};

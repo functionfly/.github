@@ -4,7 +4,7 @@ import {
   connectedProviderSchema,
   testConnectionResponseSchema,
 } from '@/lib/api-validation';
-import type { ConnectProviderRequest, ConnectProviderResponse, ConnectedProvider } from '@/types';
+import type { ConnectProviderRequest, ConnectProviderResponse, ConnectedProvider, ProviderMaintenanceStatus } from '@/types';
 import { apiClient } from './client';
 
 /** One row per provider slug (newest `connectedAt` wins). Use after fetch to hide legacy duplicate DB rows. */
@@ -101,5 +101,9 @@ export const providersApi = {
       testConnectionResponseSchema,
       `/v1/providers/${sanitizedId}/test`
     );
+  },
+
+  async getProviderMaintenanceStatus(): Promise<Record<string, ProviderMaintenanceStatus>> {
+    return apiClient.get('/v1/providers/status');
   },
 };

@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { BarChart3 } from "lucide-react";
 import {
     Area,
     AreaChart,
@@ -34,7 +35,7 @@ export function UsageGraph({
   // Don't render chart if no data
   if (!data || data.length === 0) {
     return (
-      <Card className={cn("card bg-card", className)}>
+      <Card className={cn("card", className)}>
         {title && (
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold text-text-primary">
@@ -43,8 +44,14 @@ export function UsageGraph({
           </CardHeader>
         )}
         <CardContent className={title ? "pt-0" : undefined}>
-          <div className="h-[200px] min-h-[200px] w-full min-w-0 flex items-center justify-center">
-            <p className="text-text-muted">No data available</p>
+          <div className="h-[200px] min-h-[200px] w-full min-w-0 flex flex-col items-center justify-center gap-3 text-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-bg-secondary border border-border-subtle">
+              <BarChart3 className="h-5 w-5 text-text-muted" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-text-secondary">No usage yet</p>
+              <p className="text-xs text-text-muted mt-0.5">Data will appear once your functions start receiving requests.</p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -52,7 +59,7 @@ export function UsageGraph({
   }
 
   return (
-    <Card className={cn("card bg-card", className)}>
+    <Card className={cn("card", className)}>
       {title && (
         <CardHeader className="pb-2">
           <CardTitle className="text-base font-semibold text-text-primary">

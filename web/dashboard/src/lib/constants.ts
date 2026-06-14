@@ -60,6 +60,7 @@ export const ROUTES = {
   USAGE: '/usage',
   STATE_FABRIC: '/state-fabric',
   SECRETS: '/secrets',
+  VAULT: '/vault',
   API_KEYS: '/api-keys',
   CERTIFICATION: '/certification',
   CREDENTIALS: '/credentials',
@@ -164,6 +165,23 @@ export function getBlogSiteOrigin(): string {
 export const BLOG_SITE_URL = getBlogSiteOrigin();
 
 /**
+ * Status page origin (standalone Vite app at web/status).
+ * Production: https://status.functionfly.com, local dev: http://localhost:3001.
+ * Override with VITE_STATUS_SITE_URL.
+ */
+export function getStatusSiteOrigin(): string {
+  const env = (import.meta.env.VITE_STATUS_SITE_URL ?? '').trim().replace(/\/$/, '');
+  if (env) return env;
+  if (import.meta.env.PROD) return 'https://status.functionfly.com';
+  return 'http://localhost:3001';
+}
+
+/**
+ * URL of the status site (status.functionfly.com).
+ */
+export const STATUS_SITE_URL = getStatusSiteOrigin();
+
+/**
  * Logged-out "/" and nav "Home" go to the Astro marketing site: production uses MARKETING_SITE_URL;
  * local dev defaults to http://localhost:4321 (web/site). Override with VITE_MARKETING_DEV_URL.
  */
@@ -208,6 +226,7 @@ export const MAIN_NAV_PATHS: string[] = [
   ROUTES.ANALYTICS,
   ROUTES.USAGE,
   ROUTES.SECRETS,
+  ROUTES.VAULT,
   ROUTES.API_KEYS,
   ROUTES.SETTINGS,
   // Nav path routes
@@ -430,8 +449,8 @@ export const PLANS = {
       stateFabrics: 0,
       agents: 3,
       apps: 0,
-      secrets: 3,
-      tokensPerSecret: 0,
+      secrets: 25,
+      tokensPerSecret: 5,
       apiKeyBudgets: false,
       perKeyCostAttribution: false,
       replayWindowHours: 24,
@@ -472,8 +491,8 @@ export const PLANS = {
       stateFabrics: 1,
       agents: 10,
       apps: 3,
-      secrets: 10,
-      tokensPerSecret: 5,
+      secrets: 500,
+      tokensPerSecret: 25,
       apiKeyBudgets: false,
       perKeyCostAttribution: false,
       aiCallsPerMonth: 100000,
@@ -523,8 +542,8 @@ export const PLANS = {
       stateFabrics: 5,
       agents: 100,
       apps: 10,
-      secrets: 50,
-      tokensPerSecret: 20,
+      secrets: 5000,
+      tokensPerSecret: 100,
       apiKeyBudgets: false,
       perKeyCostAttribution: true, // Can track costs per API key
       aiCallsPerMonth: 1000000,
@@ -573,8 +592,8 @@ export const PLANS = {
       stateFabrics: Infinity,
       agents: 500,
       apps: -1, // Unlimited
-      secrets: 10000,
-      tokensPerSecret: 100,
+      secrets: 1000000,
+      tokensPerSecret: 1000,
       apiKeyBudgets: true, // Full API key budget controls
       perKeyCostAttribution: true,
       highValueKeySeparation: true,

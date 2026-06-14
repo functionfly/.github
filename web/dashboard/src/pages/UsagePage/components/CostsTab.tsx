@@ -58,7 +58,7 @@ export function CostsTab({
       {/* Pie Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Cost Breakdown */}
-        <Card className="border-theme bg-card">
+        <Card className="border-theme">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <PieChartIcon className="h-4 w-4" />
@@ -102,7 +102,7 @@ export function CostsTab({
         </Card>
 
         {/* Region Breakdown */}
-        <Card className="border-theme bg-card">
+        <Card className="border-theme">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Globe className="h-4 w-4" />
@@ -147,7 +147,7 @@ export function CostsTab({
         </Card>
 
         {/* Period Comparison */}
-        <Card className="border-theme bg-card">
+        <Card className="border-theme">
           <CardHeader>
             <CardTitle className="text-base">Period Comparison</CardTitle>
           </CardHeader>
@@ -194,7 +194,7 @@ export function CostsTab({
       </div>
 
       {/* Cost Breakdown Over Time */}
-      <Card className="border-theme bg-card">
+      <Card className="border-theme">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
@@ -261,7 +261,7 @@ export function CostsTab({
       </Card>
 
       {/* Top Functions */}
-      <Card className="border-theme bg-card">
+      <Card className="border-theme">
         <CardHeader>
           <CardTitle className="text-base">Top Functions by Cost</CardTitle>
           <CardDescription>Most expensive functions in the selected period</CardDescription>

@@ -19,6 +19,7 @@ import {
 import { unreadStoreKeyFromEventCategory } from '@/lib/notification-unread-sync';
 import { isPlatformAdminRole } from '@/lib/platform-admin';
 import { AgentAnalyticsPage } from '@/pages/AgentAnalyticsPage';
+import { AgentObservabilityPage } from '@/pages/AgentObservabilityPage';
 import { AgentCreatePage } from '@/pages/AgentCreatePage';
 import { AgentDetailPage } from '@/pages/AgentDetailPage';
 import { AgentEditPage } from '@/pages/AgentEditPage';
@@ -93,6 +94,7 @@ import RegistryDeployPage from '@/pages/RegistryDeployPage';
 import { ReplayPage } from '@/pages/ReplayPage';
 import { SecretsPage } from '@/pages/SecretsPage';
 import { VaultEnterprisePage } from '@/pages/VaultEnterprisePage';
+import { VaultPage } from '@/pages/VaultPage';
 import { SecurityPage } from '@/pages/SecurityPage';
 import { ServerErrorPage } from '@/pages/ServerErrorPage';
 import { SettingsPage } from '@/pages/SettingsPage';
@@ -654,8 +656,9 @@ function AppContent() {
           {/* Same pages at /dashboard/api-keys for consistent nav links */}
           <Route path="dashboard/api-keys" element={<APIKeysPage />} />
           <Route path="dashboard/api-keys/:keyId" element={<APIKeyDetailPage />} />
-           <Route path="secrets" element={<SecretsPage />} />
-           <Route path="vault-enterprise" element={<VaultEnterprisePage />} />
+<Route path="secrets" element={<SecretsPage deprecated />} />
+          <Route path="vault-enterprise" element={<VaultEnterprisePage deprecated />} />
+          <Route path="vault" element={<VaultPage />} />
           <Route path="connectors/callback" element={<ConnectorsCallbackPage />} />
           <Route path="connectors" element={<Navigate to="/settings#integrations" replace />} />
           <Route path="brain" element={<BrainPage />} />
@@ -684,6 +687,7 @@ function AppContent() {
           <Route path="agents/:id/edit" element={<AgentEditPage />} />
           <Route path="agents/:id/wallet" element={<AgentWalletPage />} />
           <Route path="agents/:id/analytics" element={<AgentAnalyticsPage />} />
+          <Route path="agent-observability" element={<AgentObservabilityPage />} />
           <Route path="sdk-integrations" element={<AgentSDKIntegrationsPage />} />
           <Route path="marketplace" element={<AgentsMarketplacePage />} />
           <Route path="marketplace/agents" element={<AgentsMarketplacePage />} />

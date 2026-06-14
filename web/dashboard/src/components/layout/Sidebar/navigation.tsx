@@ -246,8 +246,8 @@ export const navigationSections: NavSection[] = [
         description: 'Link external accounts to feed your Brain',
       },
       {
-        path: ROUTES.SECRETS,
-        label: 'Secrets',
+        path: ROUTES.VAULT,
+        label: 'Vault',
         icon: Key,
         description: 'Secure secret storage',
       },
