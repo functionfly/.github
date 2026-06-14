@@ -33,15 +33,29 @@ const (
 	ProMaxFunctions            = 25
 	EnterpriseMaxFunctions     = -1 // Unlimited
 
-	// Secrets limits per tenant
-	StarterMaxSecrets    = 10
-	ProMaxSecrets        = 50
-	EnterpriseMaxSecrets = 10000 // Effectively unlimited
+	// Secrets limits per tenant (unified with vault plans)
+	FreeMaxSecrets     = 25
+	StarterMaxSecrets  = 500
+	ProMaxSecrets       = 5000
+	EnterpriseMaxSecrets = 1000000 // Effectively unlimited
 
 	// Token limits per secret
-	StarterMaxTokensPerSecret    = 5
-	ProMaxTokensPerSecret        = 20
-	EnterpriseMaxTokensPerSecret = 100
+	FreeMaxTokensPerSecret     = 5
+	StarterMaxTokensPerSecret  = 25
+	ProMaxTokensPerSecret      = 100
+	EnterpriseMaxTokensPerSecret = 1000
+
+	// Dynamic credentials limits per tenant (30-day rolling window)
+	FreeMaxDynamicCreds     = 100
+	StarterMaxDynamicCreds  = 5000
+	ProMaxDynamicCreds       = 50000
+	EnterpriseMaxDynamicCreds = 1000000
+
+	// Audit exports per day
+	FreeMaxAuditExports     = 1
+	StarterMaxAuditExports  = 10
+	ProMaxAuditExports      = 50
+	EnterpriseMaxAuditExports = 1000
 
 	// Custom domains per tenant (starter/pro/enterprise)
 	StarterMaxCustomDomains    = 1
@@ -605,33 +619,39 @@ func GetMaxCustomDomains(plan string) int {
 	}
 }
 
+
 // GetMaxSecrets returns the maximum number of secrets allowed for the given plan
 func GetMaxSecrets(plan string) int {
 	switch plan {
+	case PlanFree:
+		return FreeMaxSecrets
+	case PlanStarter:
+		return StarterMaxSecrets
 	case PlanPro:
 		return ProMaxSecrets
 	case PlanEnterprise:
 		return EnterpriseMaxSecrets
-	case PlanStarter:
-		fallthrough
 	default:
-		return StarterMaxSecrets
+		return FreeMaxSecrets
 	}
 }
 
 // GetMaxTokensPerSecret returns the maximum number of access tokens allowed per secret for the given plan
 func GetMaxTokensPerSecret(plan string) int {
 	switch plan {
+	case PlanFree:
+		return FreeMaxTokensPerSecret
+	case PlanStarter:
+		return StarterMaxTokensPerSecret
 	case PlanPro:
 		return ProMaxTokensPerSecret
 	case PlanEnterprise:
 		return EnterpriseMaxTokensPerSecret
-	case PlanStarter:
-		fallthrough
 	default:
-		return StarterMaxTokensPerSecret
+		return FreeMaxTokensPerSecret
 	}
 }
+
 
 // MaxRequestsPerMonth returns the maximum number of requests allowed per month for the given plan
 func MaxRequestsPerMonth(plan string) int {
@@ -1020,4 +1040,154 @@ func MaxStateFabricsPerPlan(plan string) int {
 // PlanHasStateFabricFeature returns true if the plan includes the State Fabric feature
 func PlanHasStateFabricFeature(plan string) bool {
 	return MaxStateFabricsPerPlan(plan) > 0
+}
+
+// ============================================================================
+// Vault (Secrets) Plan Features
+// ============================================================================
+// Unified vault features mapped to main platform plans:
+// - Free/Starter: Basic vault (expiration, namespaces)
+// - Professional: + MFA, IP allowlist, break-glass, audit export
+// - Enterprise: + Escrow, RBAC, shares, SIEM webhooks
+// - Agent Enterprise: + SSO, HA status
+
+// VaultFeature represents a vault-specific feature
+type VaultFeature string
+
+const (
+	VaultFeatureMFA           VaultFeature = "mfa"
+	VaultFeatureIPAllowlist    VaultFeature = "ip_allowlist"
+	VaultFeatureExpiration     VaultFeature = "expiration"
+	VaultFeatureBreakGlass     VaultFeature = "break_glass"
+	VaultFeatureEscrow         VaultFeature = "escrow"
+	VaultFeatureRBAC           VaultFeature = "rbac"
+	VaultFeatureNamespaces     VaultFeature = "namespaces"
+	VaultFeatureShares         VaultFeature = "shares"
+	VaultFeatureSSO            VaultFeature = "sso"
+	VaultFeatureSIEMWebhooks   VaultFeature = "siem_webhooks"
+	VaultFeatureAuditExport    VaultFeature = "audit_export"
+	VaultFeatureCacheStats     VaultFeature = "cache_stats"
+	VaultFeatureHAStatus       VaultFeature = "ha_status"
+	VaultFeatureDependencyGraph VaultFeature = "dependency_graph"
+	VaultFeatureTokenMonitor   VaultFeature = "token_monitor"
+)
+
+// SupportsVaultMFA returns true if the plan supports vault MFA
+func SupportsVaultMFA(plan string) bool {
+	return plan == PlanPro || plan == PlanEnterprise || plan == PlanAgentEnterprise
+}
+
+// SupportsVaultIPAllowlist returns true if the plan supports IP allowlisting for vault tokens
+func SupportsVaultIPAllowlist(plan string) bool {
+	return plan == PlanPro || plan == PlanEnterprise || plan == PlanAgentEnterprise
+}
+
+// SupportsVaultBreakGlass returns true if the plan supports break-glass emergency access
+func SupportsVaultBreakGlass(plan string) bool {
+	return plan == PlanPro || plan == PlanEnterprise || plan == PlanAgentEnterprise
+}
+
+// SupportsVaultEscrow returns true if the plan supports key escrow
+func SupportsVaultEscrow(plan string) bool {
+	return plan == PlanEnterprise || plan == PlanAgentEnterprise
+}
+
+// SupportsVaultRBAC returns true if the plan supports RBAC for vault
+func SupportsVaultRBAC(plan string) bool {
+	return plan == PlanEnterprise || plan == PlanAgentEnterprise
+}
+
+// SupportsVaultShares returns true if the plan supports cross-tenant secret sharing
+func SupportsVaultShares(plan string) bool {
+	return plan == PlanEnterprise || plan == PlanAgentEnterprise
+}
+
+// SupportsVaultSSO returns true if the plan supports SSO for vault
+func SupportsVaultSSO(plan string) bool {
+	return plan == PlanAgentEnterprise
+}
+
+// SupportsVaultSIEMWebhooks returns true if the plan supports SIEM webhooks
+func SupportsVaultSIEMWebhooks(plan string) bool {
+	return plan == PlanEnterprise || plan == PlanAgentEnterprise
+}
+
+// SupportsVaultAuditExport returns true if the plan supports audit log export
+func SupportsVaultAuditExport(plan string) bool {
+	return plan == PlanPro || plan == PlanEnterprise || plan == PlanAgentEnterprise
+}
+
+// SupportsVaultHAStatus returns true if the plan supports HA status monitoring
+func SupportsVaultHAStatus(plan string) bool {
+	return plan == PlanAgentEnterprise
+}
+
+// GetMaxDynamicCreds returns the maximum dynamic credentials for a plan (30-day rolling window)
+func GetMaxDynamicCreds(plan string) int {
+	switch plan {
+	case PlanFree:
+		return FreeMaxDynamicCreds
+	case PlanStarter:
+		return StarterMaxDynamicCreds
+	case PlanPro:
+		return ProMaxDynamicCreds
+	case PlanEnterprise:
+		return EnterpriseMaxDynamicCreds
+	default:
+		return FreeMaxDynamicCreds
+	}
+}
+
+// GetMaxAuditExportsPerDay returns the maximum audit exports per day for a plan
+func GetMaxAuditExportsPerDay(plan string) int {
+	switch plan {
+	case PlanFree:
+		return FreeMaxAuditExports
+	case PlanStarter:
+		return StarterMaxAuditExports
+	case PlanPro:
+		return ProMaxAuditExports
+	case PlanEnterprise:
+		return EnterpriseMaxAuditExports
+	default:
+		return FreeMaxAuditExports
+	}
+}
+
+// VaultLimits provides a snapshot of all vault limits for a plan
+type VaultLimits struct {
+	MaxSecrets         int  `json:"max_secrets"`
+	MaxDynamicCreds    int  `json:"max_dynamic_creds"`
+	MaxTokensPerSecret int  `json:"max_tokens_per_secret"`
+	MaxAuditExports    int  `json:"max_audit_exports_per_day"`
+	MFA                bool `json:"mfa"`
+	IPAllowlist        bool `json:"ip_allowlist"`
+	BreakGlass         bool `json:"break_glass"`
+	Escrow             bool `json:"escrow"`
+	RBAC               bool `json:"rbac"`
+	Shares             bool `json:"shares"`
+	SSO                bool `json:"sso"`
+	SIEMWebhooks       bool `json:"siem_webhooks"`
+	AuditExport        bool `json:"audit_export"`
+	HAStatus           bool `json:"ha_status"`
+}
+
+// GetVaultLimits returns all vault limits for a plan
+func GetVaultLimits(plan string) VaultLimits {
+	return VaultLimits{
+		MaxSecrets:         GetMaxSecrets(plan),
+		MaxDynamicCreds:    GetMaxDynamicCreds(plan),
+		MaxTokensPerSecret: GetMaxTokensPerSecret(plan),
+		MaxAuditExports:    GetMaxAuditExportsPerDay(plan),
+		MFA:                SupportsVaultMFA(plan),
+		IPAllowlist:        SupportsVaultIPAllowlist(plan),
+		BreakGlass:         SupportsVaultBreakGlass(plan),
+		Escrow:             SupportsVaultEscrow(plan),
+		RBAC:               SupportsVaultRBAC(plan),
+		Shares:             SupportsVaultShares(plan),
+		SSO:                SupportsVaultSSO(plan),
+		SIEMWebhooks:       SupportsVaultSIEMWebhooks(plan),
+		AuditExport:        SupportsVaultAuditExport(plan),
+		HAStatus:           SupportsVaultHAStatus(plan),
+	}
 }
