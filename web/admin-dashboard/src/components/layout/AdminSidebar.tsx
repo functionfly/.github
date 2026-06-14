@@ -188,6 +188,12 @@ const navigationSections: NavSection[] = [
         description: 'Blog management',
       },
       {
+        path: ROUTES.ADMIN_CHANGELOG,
+        label: 'Changelog',
+        icon: FileText,
+        description: 'Changelog management',
+      },
+      {
         path: ROUTES.ADMIN_CONTENT_CALENDAR,
         label: 'Calendar',
         icon: Calendar,
@@ -503,19 +509,13 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
           <div className="flex items-center gap-3">
-            <svg
+            <img
+              src="/favicon.svg"
+              alt=""
               width="28"
               height="28"
-              viewBox="0 0 32 32"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
               className="shrink-0"
-            >
-              <rect width="32" height="32" rx="6" fill="#6366F1" />
-              <path d="M16 5L27 16L16 27L5 16L16 5Z" fill="#818CF8" />
-              <path d="M16 9.5L22.5 16L16 22.5L9.5 16L16 9.5Z" fill="white" />
-              <path d="M16 12.5L19.5 16L16 19.5L12.5 16L16 12.5Z" fill="#6366F1" />
-            </svg>
+            />
             <div>
               <span className="text-sm font-bold text-white">FunctionFly</span>
               <span className="text-[10px] text-gray-400 block">Admin</span>

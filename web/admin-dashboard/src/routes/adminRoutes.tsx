@@ -123,6 +123,9 @@ const AdminWaitlistPage = lazy(() => import('@/pages/AdminWaitlistPage'));
 const AdminIPAllowlistPage = lazy(() =>
   import('@/pages/AdminIPAllowlistPage').then((m) => ({ default: m.AdminIPAllowlistPage }))
 );
+const AdminChangelogPage = lazy(() =>
+  import('@/pages/AdminChangelogPage').then((m) => ({ default: m.default }))
+);
 const AdminSIEMPage = lazy(() =>
   import('@/pages/AdminSIEMPage').then((m) => ({ default: m.AdminSIEMPage }))
 );
@@ -174,6 +177,7 @@ const ADMIN_ROUTES: AdminRouteConfig[] = [
   { path: 'signup-invites', component: AdminSignupInvitesPage, permission: 'users:write', featureName: 'Signup invites' },
   { path: 'waitlist', component: AdminWaitlistPage, permission: 'users:read', featureName: 'Waitlist' },
   { path: 'ip-allowlist', component: AdminIPAllowlistPage, permission: 'system:write', featureName: 'IP allowlist' },
+  { path: 'changelog', component: AdminChangelogPage, permission: 'system:read', featureName: 'Changelog' },
   { path: 'siem', component: AdminSIEMPage, permission: 'system:write', featureName: 'SIEM' },
 ];
 

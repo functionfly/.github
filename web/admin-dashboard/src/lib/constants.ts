@@ -46,6 +46,7 @@ export const ROUTES = {
   ADMIN_AUTH_AUDIT: '/auth-audit',
   ADMIN_SIGNUP_INVITES: '/signup-invites',
   ADMIN_WAITLIST: '/waitlist',
+  ADMIN_CHANGELOG: '/changelog',
 };
 
 export const API_ROUTES = {

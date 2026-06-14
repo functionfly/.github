@@ -336,3 +336,37 @@ class AdminAPIClient {
 export const adminApiClient = new AdminAPIClient();
 
 export default adminApiClient;
+
+// Provider Settings types and API methods
+export interface ProviderSettings {
+  provider: string;
+  disabled: boolean;
+  disabled_reason?: string;
+  disabled_at?: string;
+  disabled_by?: string;
+}
+
+export interface ProviderSettingsResponse {
+  settings: ProviderSettings[];
+}
+
+export interface UpdateProviderSettingsRequest {
+  disabled: boolean;
+  reason?: string;
+}
+
+export async function getProviderSettings(): Promise<ProviderSettings[]> {
+  const response = await adminApiClient.get<ProviderSettingsResponse>('/providers/settings');
+  return response.settings ?? [];
+}
+
+export async function updateProviderSettings(
+  provider: string,
+  data: UpdateProviderSettingsRequest
+): Promise<ProviderSettings> {
+  const response = await adminApiClient.patch<{ settings: ProviderSettings }>(
+    `/providers/settings/${provider}`,
+    data
+  );
+  return response.settings;
+}

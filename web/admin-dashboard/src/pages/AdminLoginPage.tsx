@@ -201,18 +201,12 @@ export function AdminLoginPage() {
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8" style={{ backgroundColor: 'var(--color-bg)' }}>
       {/* Logo */}
       <div className="flex items-center justify-center gap-3 mb-8">
-        <svg
+        <img
+          src="/favicon.svg"
+          alt=""
           width="40"
           height="40"
-          viewBox="0 0 32 32"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <rect width="32" height="32" rx="6" fill="#0F172A" />
-          <path d="M16 5L27 16L16 27L5 16L16 5Z" fill="#6366F1" />
-          <path d="M16 9.5L22.5 16L16 22.5L9.5 16L16 9.5Z" fill="white" />
-          <path d="M16 12.5L19.5 16L16 19.5L12.5 16L16 12.5Z" fill="#6366F1" />
-        </svg>
+        />
         <span className="text-xl font-bold text-gray-900 dark:text-white">FunctionFly™</span>
       </div>
 
