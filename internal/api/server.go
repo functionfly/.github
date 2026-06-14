@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/agent/browser"
 	"github.com/functionfly/functionfly/internal/adapters/aws"
 	"github.com/functionfly/functionfly/internal/adapters/cloudflare"
 	"github.com/functionfly/functionfly/internal/adapters/common"
@@ -20,6 +21,7 @@ import (
 	"github.com/functionfly/functionfly/internal/adapters/functionfly"
 	"github.com/functionfly/functionfly/internal/adapters/vercel"
 	"github.com/functionfly/functionfly/internal/analytics/unified"
+	dnahandler "github.com/functionfly/functionfly/internal/api/handlers/dna"
 	"github.com/functionfly/functionfly/internal/api/handlers/billing"
 	"github.com/functionfly/functionfly/internal/api/handlers/notifications"
 	regexec "github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
@@ -29,6 +31,8 @@ import (
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/config"
 	"github.com/functionfly/functionfly/internal/deployment"
+	"github.com/functionfly/functionfly/internal/dna"
+	dnaStorage "github.com/functionfly/functionfly/internal/storage/dna"
 	"github.com/functionfly/functionfly/internal/email"
 	"github.com/functionfly/functionfly/internal/health"
 	"github.com/functionfly/functionfly/internal/monitoring"
@@ -107,6 +111,7 @@ type Server struct {
 	unifiedSyncJob *unified.SyncJob
 
 	// Vault repository for token cleanup job (set in setupRoutes)
+	stateFabricRepo *statefabricrepo.Repository
 	vaultRepo *vaultstorage.Repository
 
 	// Deferred billing checker for Backend-in-a-Box founder mode
@@ -145,6 +150,14 @@ type Server struct {
 	consciousnessScheduler        *scheduler.ConsciousnessScheduler
 	consciousnessCleanupScheduler *scheduler.CleanupScheduler
 	consciousnessRetryScheduler   *scheduler.RetryScheduler
+
+	// DNA service for mutation analysis
+	dnaRepo                 *dnaStorage.Repository
+	dnaService              *dna.Service
+	dnaHandler              *dnahandler.Handler
+	dnaPartitionScheduler   *scheduler.DNAPartitionScheduler
+	dnaInsightsScheduler    *scheduler.DNAInsightsScheduler
+	browserSvc           browser.Browser
 }
 
 func NewServer(db *storage.PostgresDB) *Server {
@@ -613,10 +626,10 @@ func (s *Server) ListenAndServe(addr string) error {
 	s.oauthStateCleanup.StartCleanupRoutine(6 * time.Hour)
 
 	// Start login attempt cleanup routine (runs daily, keeps 30 days of history)
-	s.loginAttemptCleanup.StartCleanupRoutine(24*time.Hour, 30*24*time.Hour)
+	s.loginAttemptCleanup.StartCleanupRoutine(context.Background(), 24*time.Hour, 30*24*time.Hour)
 
 	// Start auth event cleanup routine (runs daily, keeps 90 days of history for security/compliance)
-	s.authEventCleanup.StartCleanupRoutine(24*time.Hour, 90*24*time.Hour)
+	s.authEventCleanup.StartCleanupRoutine(context.Background(), 24*time.Hour, 90*24*time.Hour)
 
 	// Start execution log cleanup routine (configurable retention, default daily)
 	if s.executionLogCleanup != nil {

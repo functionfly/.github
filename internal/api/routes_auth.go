@@ -57,7 +57,6 @@ func registerAuthRoutes(
 	notificationHandler *notificationHandlerPkg.Handler,
 	notificationWSHandler *notificationHandlerPkg.WebSocketHandler,
 	presenceHandler *usersHandlerPkg.PresenceHandler,
-	notificationRateLimiter *middleware.NotificationRateLimiter,
 ) {
 	// ── Auth (public) ──────────────────────────────────────────────────────
 	// Registered on both the bare router and /v1 so the CLI (fly login) works
@@ -263,6 +262,9 @@ func registerAuthRoutes(
 	// Tenant-isolated payment webhook (for tenants with isolated payments enabled)
 	api.HandleFunc("/billing/tenants/{tenant_id}/webhook", tenantWebhookHandler.HandleTenantWebhook).Methods("POST", "OPTIONS")
 
+	// Tenant plan endpoint for dashboard
+	api.HandleFunc("/tenants/plan", authMiddleware.RequireAuth(billingHandler.HandleGetTenantPlan)).Methods("GET", "OPTIONS")
+
 	// ── Backend-in-a-Box Pricing Bundles (viral pricing) ───────────────────
 	// Bundle catalog and details
 	api.HandleFunc("/billing/bundles", billingHandler.HandleGetBundles).Methods("GET", "OPTIONS")
@@ -328,12 +330,12 @@ func registerAuthRoutes(
 	api.HandleFunc("/costs/entries", authMiddleware.RequireAuth(costAllocationHandler.GetCostEntries)).Methods("GET", "OPTIONS")
 
 	// ── Notifications (protected) ───────────────────────────────────────────
-	api.HandleFunc("/notifications", authMiddleware.RequireAuth(notificationRateLimiter.LimitList(notificationHandler.HandleListNotifications))).Methods("GET", "OPTIONS")
-	api.HandleFunc("/notifications/unread-count", authMiddleware.RequireAuth(notificationRateLimiter.LimitUnreadCount(notificationHandler.HandleGetUnreadCount))).Methods("GET", "OPTIONS")
-	api.HandleFunc("/notifications/read-all", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(notificationRateLimiter.LimitMarkAllRead(notificationHandler.HandleMarkAllAsRead)))).Methods("POST", "OPTIONS")
-	api.HandleFunc("/notifications/{id}/read", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(notificationRateLimiter.LimitMarkRead(notificationHandler.HandleMarkAsRead)))).Methods("PATCH", "OPTIONS")
-	api.HandleFunc("/notifications/{id}", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(notificationRateLimiter.LimitDelete(notificationHandler.HandlePatchNotification)))).Methods("PATCH", "OPTIONS")
-	api.HandleFunc("/notifications/{id}", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(notificationRateLimiter.LimitDelete(notificationHandler.HandleDeleteNotification)))).Methods("DELETE", "OPTIONS")
+	api.HandleFunc("/notifications", authMiddleware.RequireAuth(notificationHandler.HandleListNotifications)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/notifications/unread-count", authMiddleware.RequireAuth(notificationHandler.HandleGetUnreadCount)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/notifications/read-all", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(notificationHandler.HandleMarkAllAsRead))).Methods("POST", "OPTIONS")
+	api.HandleFunc("/notifications/{id}/read", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(notificationHandler.HandleMarkAsRead))).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/notifications/{id}", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(notificationHandler.HandlePatchNotification))).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/notifications/{id}", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(notificationHandler.HandleDeleteNotification))).Methods("DELETE", "OPTIONS")
 	api.HandleFunc("/notifications/stream", authMiddleware.RequireAuth(notificationWSHandler.HandleWebSocket))
 
 	// ── Usage Exports (protected) ────────────────────────────────────────

@@ -197,6 +197,10 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/providers/{providerId}", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminProvidersHandler.HandleUpdateProvider))).Methods("PATCH", "OPTIONS")
 	adminRoutes.HandleFunc("/providers/{providerId}", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminProvidersHandler.HandleDeleteProvider))).Methods("DELETE", "OPTIONS")
 
+	// Provider settings (maintenance mode)
+	adminRoutes.HandleFunc("/providers/settings", authMiddleware.RequirePermission(auth.PermSystemRead)(adminProvidersHandler.HandleListProviderSettings)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/providers/settings/{provider}", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminProvidersHandler.HandleUpdateProviderSettings))).Methods("PATCH", "OPTIONS")
+
 	// Incident management
 	adminRoutes.HandleFunc("/incidents", authMiddleware.RequirePermission(auth.PermSystemRead)(adminHandler.HandleListIncidents)).Methods("GET")
 	adminRoutes.HandleFunc("/incidents", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleCreateIncident))).Methods("POST")

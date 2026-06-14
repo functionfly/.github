@@ -46,7 +46,7 @@ func (m *AuthMiddleware) extractUserFromToken(r *http.Request) (*auth.Claims, er
 		return nil, fmt.Errorf("invalid authorization header format")
 	}
 
-	return m.authSvc.ValidateToken(parts[1])
+	return m.authSvc.ValidateToken(ctx, parts[1])
 }
 
 // OptionalAuth parses a valid Bearer JWT when present and sets user context.
@@ -173,7 +173,7 @@ func (m *AuthMiddleware) RequireTenantContext(repo storage.Repository) func(http
 			}
 
 			// Verify the tenant exists and is not suspended
-			tenant, err := repo.GetTenantByID(*actingTenantID)
+			tenant, err := repo.GetTenantByID(ctx, *actingTenantID)
 			if err != nil {
 				logrus.WithError(err).Error("Failed to verify tenant context")
 				http.Error(w, "Failed to verify tenant context", http.StatusInternalServerError)

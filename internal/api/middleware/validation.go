@@ -176,7 +176,7 @@ func (v QueryParamValidator) Validate(values map[string]string) *apierror.APIErr
 	value, exists := values[v.Param]
 	if !exists {
 		for _, rule := range v.Rules {
-			if _, ok := rule.Check(""); ok {
+			if ok := rule.Check(""); !ok {
 				return apierror.ValidationFieldError(v.Param, rule.Message)
 			}
 		}

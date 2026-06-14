@@ -1,8 +1,6 @@
 package api
 
 import (
-	"net/http"
-
 	"github.com/functionfly/functionfly/internal/api/handlers/agent_observability"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/gorilla/mux"

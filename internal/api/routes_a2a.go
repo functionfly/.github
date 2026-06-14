@@ -173,7 +173,7 @@ func newA2ABearerAuthMiddleware(apikeyRepo *apikey.Repository, authSvc *auth.Aut
 					writeA2AError(w, http.StatusUnauthorized, "AUTH_UNAVAILABLE", "auth service unavailable")
 					return
 				}
-				claims, err := authSvc.ValidateToken(token)
+				claims, err := authSvc.ValidateToken(r.Context(), token)
 				if err != nil {
 					writeA2AError(w, http.StatusUnauthorized, "INVALID_TOKEN", "invalid or expired token")
 					return

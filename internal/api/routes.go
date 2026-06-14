@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/functionfly/functionfly/internal/agent/actuator"
 	"github.com/functionfly/functionfly/internal/agent/autonomy"
 	"github.com/functionfly/functionfly/internal/agent/categorization"
@@ -45,6 +46,7 @@ import (
 	categorizationhandler "github.com/functionfly/functionfly/internal/api/handlers/categorization"
 	"github.com/functionfly/functionfly/internal/api/handlers/certification"
 	"github.com/functionfly/functionfly/internal/api/handlers/chat"
+	dnahandler "github.com/functionfly/functionfly/internal/api/handlers/dna"
 	consciousnesshandler "github.com/functionfly/functionfly/internal/api/handlers/consciousness"
 	connectorhandler "github.com/functionfly/functionfly/internal/api/handlers/connectors"
 	"github.com/functionfly/functionfly/internal/api/handlers/content"
@@ -102,6 +104,7 @@ import (
 	paymentPkg "github.com/functionfly/functionfly/internal/payment"
 	"github.com/functionfly/functionfly/internal/privacy"
 	"github.com/functionfly/functionfly/internal/provisioning"
+	"github.com/functionfly/functionfly/internal/api/handlers/schedule"
 	"github.com/functionfly/functionfly/internal/scheduler"
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/statefabricaddons"
@@ -115,6 +118,7 @@ import (
 	dnaStorage "github.com/functionfly/functionfly/internal/storage/dna"
 	"github.com/functionfly/functionfly/internal/dna"
 	vaultstorage "github.com/functionfly/functionfly/internal/storage/vault"
+	vaultquota "github.com/functionfly/functionfly/internal/storage/vault/quota"
 	"github.com/functionfly/functionfly/internal/support"
 	"github.com/functionfly/functionfly/internal/versioning"
 	"github.com/functionfly/functionfly/internal/wallet"
@@ -176,7 +180,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	maintenanceRepo := storage.NewMaintenanceRepository(s.postgresDB.GORM)
 	maintenanceHandler := admin.NewMaintenanceHandler(maintenanceRepo, s.authSvc)
 	maintenanceMiddleware := middleware.NewMaintenanceMiddleware(maintenanceRepo)
-	contentHandler := content.NewHandler(s.repo)
+	contentRepo := storage.NewContentRepository(s.postgresDB)
+	contentHandler := content.NewHandler(s.repo, contentRepo)
 	blogRepo := blog.NewBlogRepository(s.postgresDB.DB)
 	blogHandler := blog.NewHandler(blogRepo)
 	feedbackHandler := feedbackHandlerPkg.NewHandler(s.repo, s.storageService)
@@ -193,7 +198,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	apiKeyAuthHandler := apikeys.NewAPIKeyAuthHandler(apikeyRepo, jwtSecret)
 
 	monitoringHandler := monitoring.NewHandler(s.repo, s.monitoringSvc, s.realtimeMonitor, s.authSvc)
-	mfaHandler := mfaHandlerPkg.NewMFAHandler(s.authSvc)
+	mfaRateLimiter := middleware.NewMFARateLimiter()
+	mfaHandler := mfaHandlerPkg.NewMFAHandler(s.authSvc, mfaRateLimiter)
 
 	notificationHandler := notificationHandlerPkg.NewHandler(s.notificationSvc, s.notificationRepo)
 	notificationWSHandler := notificationHandlerPkg.NewWebSocketHandler(
@@ -449,7 +455,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	tutorialsHandler := registryhandler.NewTutorialsHandler()
 
 	teamHandler := teams.NewHandler(s.repo, s.notificationSvc, nil)
-	providersHandler := providers.NewHandler(s.repo, s.notificationSvc)
+	providersHandler := providers.NewHandler(s.repo, s.notificationSvc, apikeyRepo)
 	dashboardHandler := dashboard.NewHandler(s.repo)
 	studioCollabRepo := studio.NewCollabRepository(s.postgresDB.DB)
 	studioCollabHandler := studio.NewHandler(studioCollabRepo)
@@ -527,8 +533,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	agentMemoryHandler := agentmemoryhandler.NewHandler(s.postgresDB.GORM)
 
 	agentObsAtlasClient := atlaspkg.NewClient(
-		os.Getenv("ATLAS_BASE_URL", "http://localhost:7447"),
-		os.Getenv("ATLAS_API_KEY", ""),
+		os.Getenv("ATLAS_BASE_URL"),
+		os.Getenv("ATLAS_API_KEY"),
 		uuid.Nil,
 	)
 	agentObsHandler := agentobs.NewHandler(s.postgresDB.GORM, agentObsAtlasClient)
@@ -543,7 +549,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	vaultRepo := vaultstorage.NewRepository(s.postgresDB.GORM)
 	s.vaultRepo = vaultRepo
-	vaultHandler := vault.NewHandler(vaultRepo, logrus.New())
+	vaultQuotaStore := vaultstorage.NewQuotaStore(vaultRepo)
+	vaultQuotaEnforcer := vaultquota.NewEnforcer(vaultQuotaStore)
+	vaultHandler := vault.NewHandler(vaultRepo, logrus.New(), vaultQuotaEnforcer)
 
 	// Brain + Connector handlers
 	connectorRepo := storage.NewConnectorRepository(s.postgresDB.DB)
@@ -981,7 +989,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	vaultRateLimiter := middleware.NewVaultRateLimiter()
 	providerRateLimiter := middleware.NewProviderRateLimiter()
 	walletRateLimiter := middleware.NewWalletRateLimiter()
-	mfaRateLimiter := middleware.NewMFARateLimiter()
+	publicRateLimiter := middleware.NewPublicRateLimiter(100, time.Minute)
+	reservedUsernameChecker := middleware.NewDefaultReservedUsernameChecker()
 
 	// Initialize CSRF middleware early for billing route protection
 	csrfMiddleware := middleware.NewCSRFMiddleware(s.upstashRedis, s.authSvc)
@@ -1000,7 +1009,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// ── Domain-scoped route registration ─────────────────────────────────────
 	registerAuthRoutes(
 		s.router, api,
-		authRateLimiter, walletRateLimiter, mfaRateLimiter, authMiddleware, csrfMiddleware,
+		authRateLimiter, publicRateLimiter, walletRateLimiter, mfaRateLimiter, authMiddleware, csrfMiddleware,
+		reservedUsernameChecker,
 		authHandler, tenantAuthHandler, apiKeyAuthHandler, usersHandler, favoritesHandler,
 		followHandler, apiKeysHandler, billingHandler, tenantWebhookHandler,
 		usageHandler, forecastHandler, costAllocationHandler,
@@ -1168,7 +1178,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// ── Time Machine ──────────────────────────────────────────────────────
 	tmRepo := timemachine.NewRepository(s.postgresDB.GORM)
 	tmHandler := newTimeMachineHandler(tmRepo, s.repo, s.redisClient, realtimeUsageTracker, s.notificationSvc, s.authSvc)
-	registerTimeMachineRoutes(api, tmHandler, authMiddleware)
+	registerTimeMachineRoutes(api, tmHandler, authMiddleware, featureMiddleware)
 
 	// ── Payout System (Stripe Connect) ───────────────────────────────────────
 	payoutRepo := storage.NewPayoutRepository(s.postgresDB.DB)
@@ -1195,10 +1205,6 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	consciousnessSchedulerCron := os.Getenv("CONSCIOUSNESS_SCHEDULER_CRON")
 	if consciousnessSchedulerCron == "" {
 		consciousnessSchedulerCron = "*/30 * * * *" // Default: every 30 minutes
-	}
-	consciousnessConfig := scheduler.ConsciousnessSchedulerConfig{
-		Enabled: consciousnessSchedulerEnabled,
-		Cron:    consciousnessSchedulerCron,
 	}
 	if err := s.consciousnessScheduler.Start(context.Background()); err != nil {
 		logrus.WithError(err).Error("failed to start consciousness scheduler")

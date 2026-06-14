@@ -1,6 +1,8 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/functionfly/functionfly/internal/api/handlers/consciousness"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/plans"
@@ -23,45 +25,45 @@ func registerConsciousnessRoutes(
 	c := api.PathPrefix("/consciousness").Subrouter()
 
 	// Feature-gated routes - Basic Consciousness (requires Pro+)
-	basicConsciousness := middleware.RequireFeature(plans.FeatureConsciousnessBasic)
+	basicConsciousness := featureMiddleware.RequireFeature(plans.FeatureConsciousnessBasic)
 
 	// Score endpoint - requires basic consciousness
 	c.HandleFunc("/score",
-		authMiddleware.RequireAuth(basicConsciousness(consciousnessHandler.GetAwarenessScore)),
+		authMiddleware.RequireAuth(withFeature(consciousnessHandler.GetAwarenessScore, basicConsciousness)),
 	).Methods("GET", "OPTIONS")
 
 	// List insights - requires basic consciousness
 	c.HandleFunc("/insights",
-		authMiddleware.RequireAuth(basicConsciousness(consciousnessHandler.ListInsights)),
+		authMiddleware.RequireAuth(withFeature(consciousnessHandler.ListInsights, basicConsciousness)),
 	).Methods("GET", "OPTIONS")
 
 	// Get single insight - requires basic consciousness
 	c.HandleFunc("/insights/{id}",
-		authMiddleware.RequireAuth(basicConsciousness(consciousnessHandler.GetInsight)),
+		authMiddleware.RequireAuth(withFeature(consciousnessHandler.GetInsight, basicConsciousness)),
 	).Methods("GET", "OPTIONS")
 
 	// Dismiss insight - requires basic consciousness
 	c.HandleFunc("/insights/{id}/dismiss",
-		authMiddleware.RequireAuth(basicConsciousness(consciousnessHandler.DismissInsight)),
+		authMiddleware.RequireAuth(withFeature(consciousnessHandler.DismissInsight, basicConsciousness)),
 	).Methods("POST", "OPTIONS")
 
 	// Apply action - requires basic consciousness
 	c.HandleFunc("/insights/{id}/apply",
-		authMiddleware.RequireAuth(basicConsciousness(consciousnessHandler.ApplyAction)),
+		authMiddleware.RequireAuth(withFeature(consciousnessHandler.ApplyAction, basicConsciousness)),
 	).Methods("POST", "OPTIONS")
 
 	// Preferences - requires basic consciousness
 	c.HandleFunc("/preferences",
-		authMiddleware.RequireAuth(basicConsciousness(consciousnessHandler.GetPreferences)),
+		authMiddleware.RequireAuth(withFeature(consciousnessHandler.GetPreferences, basicConsciousness)),
 	).Methods("GET", "OPTIONS")
 
 	c.HandleFunc("/preferences",
-		authMiddleware.RequireAuth(basicConsciousness(consciousnessHandler.UpdatePreferences)),
+		authMiddleware.RequireAuth(withFeature(consciousnessHandler.UpdatePreferences, basicConsciousness)),
 	).Methods("PUT", "OPTIONS")
 
 	// Run analysis - requires basic consciousness
 	c.HandleFunc("/run",
-		authMiddleware.RequireAuth(basicConsciousness(consciousnessHandler.RunAnalysis)),
+		authMiddleware.RequireAuth(withFeature(consciousnessHandler.RunAnalysis, basicConsciousness)),
 	).Methods("POST", "OPTIONS")
 
 	// GDPR routes - available to all authenticated users (data belongs to tenant)
@@ -85,41 +87,41 @@ func registerConsciousnessRoutesWithCustomConfig(
 	c := api.PathPrefix("/consciousness").Subrouter()
 
 	// Advanced feature gating - split by feature tier
-	basicFeature := middleware.RequireFeature(plans.FeatureConsciousnessBasic)
-	advancedFeature := middleware.RequireFeature(plans.FeatureConsciousnessAdvanced)
+	basicFeature := featureMiddleware.RequireFeature(plans.FeatureConsciousnessBasic)
+	advancedFeature := featureMiddleware.RequireFeature(plans.FeatureConsciousnessAdvanced)
 
 	// Basic endpoints (Pro+)
 	c.HandleFunc("/score",
-		authMiddleware.RequireAuth(basicFeature(consciousnessHandler.GetAwarenessScore)),
+		authMiddleware.RequireAuth(withFeature(consciousnessHandler.GetAwarenessScore, basicFeature)),
 	).Methods("GET", "OPTIONS")
 
 	c.HandleFunc("/insights",
-		authMiddleware.RequireAuth(basicFeature(consciousnessHandler.ListInsights)),
+		authMiddleware.RequireAuth(withFeature(consciousnessHandler.ListInsights, basicFeature)),
 	).Methods("GET", "OPTIONS")
 
 	c.HandleFunc("/insights/{id}",
-		authMiddleware.RequireAuth(basicFeature(consciousnessHandler.GetInsight)),
+		authMiddleware.RequireAuth(withFeature(consciousnessHandler.GetInsight, basicFeature)),
 	).Methods("GET", "OPTIONS")
 
 	c.HandleFunc("/preferences",
-		authMiddleware.RequireAuth(basicFeature(consciousnessHandler.GetPreferences)),
+		authMiddleware.RequireAuth(withFeature(consciousnessHandler.GetPreferences, basicFeature)),
 	).Methods("GET", "OPTIONS")
 
 	c.HandleFunc("/preferences",
-		authMiddleware.RequireAuth(basicFeature(consciousnessHandler.UpdatePreferences)),
+		authMiddleware.RequireAuth(withFeature(consciousnessHandler.UpdatePreferences, basicFeature)),
 	).Methods("PUT", "OPTIONS")
 
 	// Advanced endpoints (Enterprise+) - auto-fix, predictive alerts
 	c.HandleFunc("/insights/{id}/dismiss",
-		authMiddleware.RequireAuth(basicFeature(consciousnessHandler.DismissInsight)),
+		authMiddleware.RequireAuth(withFeature(consciousnessHandler.DismissInsight, basicFeature)),
 	).Methods("POST", "OPTIONS")
 
 	c.HandleFunc("/insights/{id}/apply",
-		authMiddleware.RequireAuth(advancedFeature(consciousnessHandler.ApplyAction)),
+		authMiddleware.RequireAuth(withFeature(consciousnessHandler.ApplyAction, advancedFeature)),
 	).Methods("POST", "OPTIONS")
 
 	c.HandleFunc("/run",
-		authMiddleware.RequireAuth(basicFeature(consciousnessHandler.RunAnalysis)),
+		authMiddleware.RequireAuth(withFeature(consciousnessHandler.RunAnalysis, basicFeature)),
 	).Methods("POST", "OPTIONS")
 
 	// GDPR - available to all authenticated users
@@ -130,4 +132,10 @@ func registerConsciousnessRoutesWithCustomConfig(
 	c.HandleFunc("/export",
 		authMiddleware.RequireAuth(consciousnessHandler.ExportData),
 	).Methods("GET", "OPTIONS")
+}
+
+func withFeature(fn http.HandlerFunc, gate func(http.Handler) http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		gate(fn).ServeHTTP(w, r)
+	}
 }

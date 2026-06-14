@@ -105,7 +105,7 @@ func (v *VerificationMiddleware) RequireVerifiedFunction(trustLevel string) func
 					return
 				}
 
-				fn, err := v.repo.GetFunctionByAuthorName(author, name)
+				fn, err := v.repo.GetFunctionByAuthorName(ctx, author, name)
 				if err != nil {
 					logrus.WithError(err).Warn("Failed to resolve function for verification middleware")
 					next.ServeHTTP(w, r)
@@ -132,7 +132,7 @@ func (v *VerificationMiddleware) RequireVerifiedFunction(trustLevel string) func
 
 			// Create default verification status rows on-the-fly if missing.
 			// This is what makes "verified by default" real for execution.
-			status, err := verificationSvc.GetVerificationStatus(functionVersionID)
+			status, err := verificationSvc.GetVerificationStatus(r.Context(), functionVersionID)
 			if err != nil {
 				logrus.WithError(err).Error("Failed to get function verification status")
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -225,7 +225,7 @@ func (v *VerificationMiddleware) RequireVerifiedFunction(trustLevel string) func
 
 			// Check trust level requirements for the request baseline.
 			if v.isTrustLevelRequired(trustLevel) {
-				status, err := verificationSvc.GetVerificationStatus(functionVersionID)
+				status, err := verificationSvc.GetVerificationStatus(r.Context(), functionVersionID)
 				if err != nil {
 					logrus.WithError(err).Error("Failed to get verification status")
 					http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -272,7 +272,7 @@ func (v *VerificationMiddleware) RequireApprovalRequired() func(http.Handler) ht
 			}
 
 			verificationSvc := verification.NewVerificationService(v.repo, v.clamAVURL, v.yaraRulesURL)
-			status, err := verificationSvc.GetVerificationStatus(functionVersionID)
+			status, err := verificationSvc.GetVerificationStatus(r.Context(), functionVersionID)
 			if err != nil {
 				logrus.WithError(err).Error("Failed to get verification status")
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -312,7 +312,7 @@ func (v *VerificationMiddleware) RequireMalwareClean() func(http.Handler) http.H
 			}
 
 			verificationSvc := verification.NewVerificationService(v.repo, v.clamAVURL, v.yaraRulesURL)
-			status, err := verificationSvc.GetVerificationStatus(functionVersionID)
+			status, err := verificationSvc.GetVerificationStatus(r.Context(), functionVersionID)
 			if err != nil {
 				logrus.WithError(err).Error("Failed to get verification status")
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -348,7 +348,7 @@ func (v *VerificationMiddleware) RequireSignatureVerified() func(http.Handler) h
 			}
 
 			verificationSvc := verification.NewVerificationService(v.repo, v.clamAVURL, v.yaraRulesURL)
-			status, err := verificationSvc.GetVerificationStatus(functionVersionID)
+			status, err := verificationSvc.GetVerificationStatus(r.Context(), functionVersionID)
 			if err != nil {
 				logrus.WithError(err).Error("Failed to get verification status")
 				http.Error(w, "Internal server error", http.StatusInternalServerError)

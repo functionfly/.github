@@ -34,7 +34,7 @@ func registerUnifiedFunctionRoutes(
 	// POST /v1/fx/{author}/{name}@{version} - Execute specific version
 	secureExecuteHandler := func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-		fn, err := registryRepo.GetFunctionByAuthorName(vars["author"], vars["name"])
+		fn, err := registryRepo.GetFunctionByAuthorName(r.Context(), vars["author"], vars["name"])
 		if err != nil {
 			http.Error(w, "Function not found", http.StatusNotFound)
 			return

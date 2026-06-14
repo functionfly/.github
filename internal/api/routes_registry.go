@@ -62,7 +62,7 @@ func registerRegistryRoutes(
 	api.HandleFunc("/app-run/{appSlug}/{functionName}/info", appPlaygroundHandler.HandleGetFunctionInfo).Methods("GET", "OPTIONS")
 	api.HandleFunc("/app-run/{appSlug}/{functionName}/execute", func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-		app, err := s.repo.GetAppBySlug(vars["appSlug"])
+		app, err := s.repo.GetAppBySlug(r.Context(), vars["appSlug"])
 		if err != nil || app == nil {
 			http.Error(w, "App not found", http.StatusNotFound)
 			return
@@ -88,7 +88,7 @@ func registerRegistryRoutes(
 	secureExecuteHandler := func(w http.ResponseWriter, r *http.Request) {
 		repo := storageregistry.NewRegistryRepository(s.postgresDB.GORM, nil)
 		vars := mux.Vars(r)
-		fn, err := repo.GetFunctionByAuthorName(vars["author"], vars["name"])
+		fn, err := repo.GetFunctionByAuthorName(r.Context(), vars["author"], vars["name"])
 		if err != nil {
 			http.Error(w, "Function not found", http.StatusNotFound)
 			return

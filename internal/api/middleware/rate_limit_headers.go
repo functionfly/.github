@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"sync"
@@ -255,7 +256,7 @@ func (g *GlobalRateLimiter) SetEnabled(enabled bool) {
 
 type RateLimitStatusWriter struct {
 	http.ResponseWriter
-	mu            sync.MWMutex
+	mu            sync.RWMutex
 	headers       *RateLimitHeaders
 	limiter       RateLimiterProvider
 	wroteStatus   bool
@@ -350,4 +351,21 @@ func (l *RateLimitLogger) LogRateLimitHit(key string, limit int) {
 		"key":   key,
 		"limit": limit,
 	}).Warn("Rate limit exceeded")
+}
+
+func GetClientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		if ips := net.ParseIP(xff); ips != nil {
+			return ips.String()
+		}
+		if ip, _, err := net.SplitHostPort(xff); err == nil {
+			if net.ParseIP(ip) != nil {
+				return ip
+			}
+		}
+	}
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return xri
+	}
+	return r.RemoteAddr
 }

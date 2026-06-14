@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"context"
+
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/sirupsen/logrus"
@@ -78,7 +80,7 @@ func (s *Server) calculateGlobalMetrics() (map[string]interface{}, error) {
 // calculateUptime calculates system uptime based on recent health checks
 func (s *Server) calculateUptime(repo storage.Repository) (float64, error) {
 	// Get all enabled backends
-	backends, err := repo.GetAllEnabledBackends()
+	backends, err := repo.GetAllEnabledBackends(context.Background())
 	if err != nil {
 		return 0, err
 	}
@@ -90,7 +92,7 @@ func (s *Server) calculateUptime(repo storage.Repository) (float64, error) {
 	healthyCount := 0
 	for _, backend := range backends {
 		// Get recent health checks (last 10)
-		checks, err := repo.GetRecentHealthChecks(backend.ID, 10)
+		checks, err := repo.GetRecentHealthChecks(context.Background(), backend.ID, 10)
 		if err != nil {
 			continue // Skip this backend if we can't get health data
 		}
@@ -114,7 +116,7 @@ func (s *Server) calculateUptime(repo storage.Repository) (float64, error) {
 
 // calculateAverageLatency calculates average response time from recent health checks
 func (s *Server) calculateAverageLatency(repo storage.Repository) (int, error) {
-	backends, err := repo.GetAllEnabledBackends()
+	backends, err := repo.GetAllEnabledBackends(context.Background())
 	if err != nil {
 		return 0, err
 	}
@@ -123,7 +125,7 @@ func (s *Server) calculateAverageLatency(repo storage.Repository) (int, error) {
 	totalChecks := 0
 
 	for _, backend := range backends {
-		checks, err := repo.GetRecentHealthChecks(backend.ID, 5) // Last 5 checks
+		checks, err := repo.GetRecentHealthChecks(context.Background(), backend.ID, 5) // Last 5 checks
 		if err != nil {
 			continue
 		}
@@ -145,7 +147,7 @@ func (s *Server) calculateAverageLatency(repo storage.Repository) (int, error) {
 
 // calculateFailoverRate calculates success rate of automatic failover based on circuit states
 func (s *Server) calculateFailoverRate(repo storage.Repository) (float64, error) {
-	backends, err := repo.GetAllEnabledBackends()
+	backends, err := repo.GetAllEnabledBackends(context.Background())
 	if err != nil {
 		return 0, err
 	}
@@ -158,7 +160,7 @@ func (s *Server) calculateFailoverRate(repo storage.Repository) (float64, error)
 	successCount := 0
 
 	for _, backend := range backends {
-		state, err := repo.GetCircuitState(backend.ID)
+		state, err := repo.GetCircuitState(context.Background(), backend.ID)
 		if err != nil {
 			continue // Skip if no circuit state
 		}

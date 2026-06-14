@@ -121,7 +121,7 @@ func (m *MFARequiredMiddleware) RequireMFA(next http.HandlerFunc) http.HandlerFu
 		}
 
 		// Check if MFA is required for this user
-		required, err := m.authSvc.IsMFARequired(claims.UserID)
+		required, err := m.authSvc.IsMFARequired(ctx, claims.UserID)
 		if err != nil {
 			m.logger.WithError(err).Error("Failed to check MFA requirement")
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -135,7 +135,7 @@ func (m *MFARequiredMiddleware) RequireMFA(next http.HandlerFunc) http.HandlerFu
 		}
 
 		// Check if user has MFA enabled
-		status, err := m.authSvc.GetMFAStatus(claims.UserID)
+		status, err := m.authSvc.GetMFAStatus(ctx, claims.UserID)
 		if err != nil {
 			m.logger.WithError(err).Error("Failed to get MFA status")
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -183,7 +183,7 @@ func (m *MFARequiredMiddleware) RequireMFAAndVerify(next http.HandlerFunc) http.
 		}
 
 		// Check if MFA is required
-		required, err := m.authSvc.IsMFARequired(claims.UserID)
+		required, err := m.authSvc.IsMFARequired(ctx, claims.UserID)
 		if err != nil {
 			m.logger.WithError(err).Error("Failed to check MFA requirement")
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -196,7 +196,7 @@ func (m *MFARequiredMiddleware) RequireMFAAndVerify(next http.HandlerFunc) http.
 		}
 
 		// Check MFA status
-		status, err := m.authSvc.GetMFAStatus(claims.UserID)
+		status, err := m.authSvc.GetMFAStatus(ctx, claims.UserID)
 		if err != nil {
 			m.logger.WithError(err).Error("Failed to get MFA status")
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -232,7 +232,7 @@ func (m *MFARequiredMiddleware) RequireMFAAndVerify(next http.HandlerFunc) http.
 			Code:   mfaCode,
 		}
 
-		verifyResp, err := m.authSvc.VerifyMFA(verifyReq)
+		verifyResp, err := m.authSvc.VerifyMFA(ctx, verifyReq)
 		if err != nil {
 			m.logger.WithError(err).Error("Failed to verify MFA")
 			http.Error(w, "Internal server error", http.StatusInternalServerError)

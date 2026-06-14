@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/dna"
 	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/sirupsen/logrus"
 )
@@ -241,7 +242,7 @@ func (s *Server) handleHealthCheck(w http.ResponseWriter, r *http.Request) {
 // checkDatabaseHealth verifies database connectivity
 func (s *Server) checkDatabaseHealth(ctx context.Context) bool {
 	// Simple query to test database connectivity
-	_, err := s.repo.ListTenants()
+	_, err := s.repo.ListTenants(ctx)
 	return err == nil
 }
 
@@ -416,7 +417,7 @@ func (s *Server) checkRecentErrorRate(ctx context.Context) map[string]interface{
 	since := now.Add(-time.Hour) // Check last hour
 
 	// Get recent routing events
-	events, err := s.repo.GetRecentRoutingEvents(1000, since)
+	events, err := s.repo.GetRecentRoutingEvents(ctx, 1000, since)
 	if err != nil {
 		return map[string]interface{}{
 			"name":        "error_rate",
@@ -473,7 +474,7 @@ func (s *Server) checkRecentErrorRate(ctx context.Context) map[string]interface{
 // checkBackendHealthSummary provides backend health summary
 func (s *Server) checkBackendHealthSummary(ctx context.Context) map[string]interface{} {
 	// Get all enabled backends for counting
-	backends, backendsErr := s.repo.GetAllEnabledBackends()
+	backends, backendsErr := s.repo.GetAllEnabledBackends(ctx)
 
 	// Get backend health summary
 	uptime, uptimeErr := s.calculateUptime(s.repo)
@@ -496,7 +497,7 @@ func (s *Server) checkBackendHealthSummary(ctx context.Context) map[string]inter
 	if backendsErr == nil {
 		for _, backend := range backends {
 			// Get recent health checks (last 10)
-			checks, err := s.repo.GetRecentHealthChecks(backend.ID, 10)
+			checks, err := s.repo.GetRecentHealthChecks(ctx, backend.ID, 10)
 			if err != nil {
 				continue // Skip this backend if we can't get health data
 			}
@@ -573,7 +574,7 @@ func (s *Server) handleDNAServiceHealth(w http.ResponseWriter, r *http.Request) 
 	if s.dnaRepo != nil {
 		queueDepth = float64(s.dnaRepo.GetQueueDepth(r.Context()))
 	}
-	SetQueueDepth(queueDepth)
+	dna.SetQueueDepth(queueDepth)
 
 	circuitBreakerState := 0
 	workerCount := 0
@@ -581,7 +582,7 @@ func (s *Server) handleDNAServiceHealth(w http.ResponseWriter, r *http.Request) 
 		circuitBreakerState = s.dnaService.GetCircuitBreakerState()
 		workerCount = s.dnaService.GetWorkerCount()
 	}
-	SetCircuitBreakerState(float64(circuitBreakerState))
+	dna.SetCircuitBreakerState(float64(circuitBreakerState))
 
 	partitionStatus := map[string]interface{}{}
 	if s.dnaPartitionScheduler != nil {

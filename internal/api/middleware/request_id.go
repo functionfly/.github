@@ -7,10 +7,10 @@ import (
 	"github.com/google/uuid"
 )
 
-type contextKey string
+type requestContextKey string
 
 const (
-	RequestIDKey contextKey = "request_id"
+	RequestIDKey requestContextKey = "request_id"
 )
 
 type RequestIDMiddleware struct {
@@ -91,7 +91,6 @@ func (m *RequestIDMiddlewareWithResponse) Handler(next http.HandlerFunc) http.Ha
 
 		w.Header().Set(m.headerName, requestID)
 
-		rw := &requestIDWriter{ResponseWriter: w, requestID: requestID}
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), RequestIDKey, requestID)))
 	}
 }

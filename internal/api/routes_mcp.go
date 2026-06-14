@@ -21,6 +21,8 @@ import (
 //
 //	GET  /v1/mcp/manifest   — public, cacheable, server identity
 //	GET  /v1/mcp/tools      — public, cacheable, tool index (SEO anchor)
+//	GET  /v1/mcp/stats      — public, registry stats for marketing page
+//	GET  /v1/mcp/categories — public, categories with counts
 //	POST /v1/mcp            — JSON-RPC 2.0 transport (streamable-HTTP)
 //
 // All three live on the /v1 subrouter. The bearer-auth middleware tries JWT
@@ -54,6 +56,10 @@ func (s *Server) registerMCPRoutes(
 	api.HandleFunc("/mcp/manifest", mcpHandler.HandleManifest).Methods("GET", "OPTIONS")
 	// /v1/mcp/tools: public, cacheable, no auth gate.
 	api.HandleFunc("/mcp/tools", mcpHandler.HandleToolsIndex).Methods("GET", "OPTIONS")
+	// /v1/mcp/stats: public, no auth gate.
+	api.HandleFunc("/mcp/stats", mcpHandler.HandleStats).Methods("GET", "OPTIONS")
+	// /v1/mcp/categories: public, no auth gate.
+	api.HandleFunc("/mcp/categories", mcpHandler.HandleCategories).Methods("GET", "OPTIONS")
 	// /v1/mcp/sitemap.xml + sitemap index: SEO crawl anchors.
 	api.HandleFunc("/mcp/sitemap.xml", mcpHandler.HandleSitemap).Methods("GET", "OPTIONS")
 	api.HandleFunc("/mcp/sitemap-index.xml", mcpHandler.HandleSitemapIndex).Methods("GET", "OPTIONS")
@@ -128,7 +134,7 @@ func (m mcpAuthJWT) ValidateToken(token string) (*auth.Claims, error) {
 	if m.svc == nil {
 		return nil, context.DeadlineExceeded
 	}
-	return m.svc.ValidateToken(token)
+	return m.svc.ValidateToken(context.Background(), token)
 }
 
 // mcpStoreAdapter adapts *registry.RegistryRepository to mcp.FunctionStore.
@@ -139,11 +145,11 @@ type mcpStoreAdapter struct {
 }
 
 func (a mcpStoreAdapter) GetFunctionByID(ctx context.Context, id uuid.UUID) (*registry.RegistryFunction, error) {
-	return a.repo.GetFunctionByID(id)
+	return a.repo.GetFunctionByID(ctx, id)
 }
 
 func (a mcpStoreAdapter) GetFunctionByAuthorName(ctx context.Context, author, name string) (*registry.RegistryFunction, error) {
-	return a.repo.GetFunctionByAuthorName(author, name)
+	return a.repo.GetFunctionByAuthorName(ctx, author, name)
 }
 
 func (a mcpStoreAdapter) GetLatestFunctionVersion(ctx context.Context, functionID uuid.UUID) (*registry.RegistryFunctionVersion, error) {
@@ -168,6 +174,14 @@ func (a mcpStoreAdapter) IncrementMCPInvocationCount(ctx context.Context, functi
 
 func (a mcpStoreAdapter) RecordMCPInvocation(ctx context.Context, rec registry.MCPInvocationRecord) error {
 	return a.repo.RecordMCPInvocation(ctx, rec)
+}
+
+func (a mcpStoreAdapter) GetMCPStats(ctx context.Context) (*registry.MCPStats, error) {
+	return a.repo.GetMCPStats(ctx)
+}
+
+func (a mcpStoreAdapter) GetMCPCategories(ctx context.Context) ([]registry.MCPCategory, error) {
+	return a.repo.GetMCPCategories(ctx)
 }
 
 // Note: mcp.Handler.Now is set to time.Now by default. We add an override

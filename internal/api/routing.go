@@ -30,7 +30,7 @@ func (s *Server) handlePublicRoute(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get app by slug
-	app, err := s.repo.GetAppBySlug(appSlug)
+	app, err := s.repo.GetAppBySlug(r.Context(), appSlug)
 	if err != nil {
 		logger.WithError(err).Error("Failed to get app by slug")
 		http.Error(w, "Failed to get app", http.StatusInternalServerError)
@@ -48,7 +48,7 @@ func (s *Server) handlePublicRoute(w http.ResponseWriter, r *http.Request) {
 	})
 
 	// Get tenant and check request limits
-	tenant, err := s.repo.GetTenantByID(app.TenantID)
+	tenant, err := s.repo.GetTenantByID(r.Context(), app.TenantID)
 	if err != nil {
 		logger.WithError(err).Error("Failed to get tenant")
 		http.Error(w, "Failed to get tenant", http.StatusInternalServerError)
@@ -65,7 +65,7 @@ func (s *Server) handlePublicRoute(w http.ResponseWriter, r *http.Request) {
 	// Check monthly request limit
 	now := time.Now().UTC()
 	startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
-	count, err := s.repo.CountRoutingEventsForTenantSince(app.TenantID, startOfMonth)
+	count, err := s.repo.CountRoutingEventsForTenantSince(r.Context(), app.TenantID, startOfMonth)
 	if err != nil {
 		logger.WithError(err).Error("Failed to count routing events")
 		http.Error(w, "Failed to check request limits", http.StatusInternalServerError)

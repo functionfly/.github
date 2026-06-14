@@ -231,6 +231,9 @@ func registerPlatformRoutes(
 	// ── Team Decisions (protected) ───────────────────────────────────────────
 	decisionsHandler.RegisterRoutes(protected)
 
+	// ── Providers (public status check) ───────────────────────────────────────
+	api.HandleFunc("/providers/status", providersHandler.HandleGetPlatformProviderStatus).Methods("GET", "OPTIONS")
+
 	// ── Providers (protected) ─────────────────────────────────────────────────
 	// Provider operations are rate-limited per tenant to prevent abuse
 	protected.HandleFunc("/providers", authMiddleware.RequireAuth(providersHandler.HandleListProviders)).Methods("GET", "OPTIONS")
@@ -437,8 +440,8 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/vault/secrets", authMiddleware.RequireAuth(vaultRateLimiter.LimitList(vaultHandler.HandleListSecrets))).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/vault/secrets", authMiddleware.RequireAuth(vaultRateLimiter.LimitCreate(vaultHandler.HandleCreateSecret))).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/vault/secrets/{id}", authMiddleware.RequireAuth(vaultRateLimiter.LimitRead(vaultHandler.HandleGetSecret))).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/vault/secrets/{id}", authMiddleware.RequireAuth(vaultHandler.HandleUpdateSecret)).Methods("PATCH", "OPTIONS")
-	protected.HandleFunc("/vault/secrets/{id}", authMiddleware.RequireAuth(vaultHandler.HandleDeleteSecret)).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/vault/secrets/{id}", authMiddleware.RequireAuth(vaultRateLimiter.LimitUpdate(vaultHandler.HandleUpdateSecret))).Methods("PATCH", "OPTIONS")
+	protected.HandleFunc("/vault/secrets/{id}", authMiddleware.RequireAuth(vaultRateLimiter.LimitDelete(vaultHandler.HandleDeleteSecret))).Methods("DELETE", "OPTIONS")
 	protected.HandleFunc("/vault/secrets/{id}/rotate", authMiddleware.RequireAuth(vaultRateLimiter.LimitCreate(vaultHandler.HandleRotateSecret))).Methods("PATCH", "OPTIONS")
 	protected.HandleFunc("/vault/secrets/{id}/tokens", authMiddleware.RequireAuth(vaultHandler.HandleListTokens)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/vault/secrets/{id}/tokens", authMiddleware.RequireAuth(vaultRateLimiter.LimitGenerateToken(vaultHandler.HandleGenerateToken))).Methods("POST", "OPTIONS")

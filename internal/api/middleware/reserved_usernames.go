@@ -144,7 +144,7 @@ func (c *DatabaseReservedUsernameChecker) IsReservedUsername(username string) bo
 
 	// Check database if available
 	if c.repo != nil {
-		isReserved, err := c.repo.IsUsernameReserved(username)
+		isReserved, err := c.repo.IsUsernameReserved(ctx, username)
 		if err == nil && isReserved {
 			return true
 		}

@@ -325,8 +325,9 @@ func BodySizeLimitMiddleware(maxBytes int64) func(http.HandlerFunc) http.Handler
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
-next.ServeHTTP(w, r)
+			next.ServeHTTP(w, r)
 	}
+}
 }
 
 // ConsciousnessRateLimiter applies per-tenant rate limits for consciousness operations.
@@ -388,7 +389,6 @@ func (c *ConsciousnessRateLimiter) limitByTenant(prefix string, limiter *RateLim
 
 		next.ServeHTTP(w, r)
 	}
-}
 }
 
 // SecurityHeaders middleware adds security headers to responses
@@ -777,6 +777,8 @@ func (m *MFARateLimiter) LimitVerify(next http.HandlerFunc) http.HandlerFunc {
 // Use after RequireAuth so tenant ID is available from context.
 type VaultRateLimiter struct {
 	createSecretLimiter  *RateLimiter // e.g. 30/hour per tenant
+	updateSecretLimiter  *RateLimiter // e.g. 60/hour per tenant
+	deleteSecretLimiter  *RateLimiter // e.g. 30/hour per tenant
 	generateTokenLimiter *RateLimiter // e.g. 60/hour per tenant
 	readSecretLimiter    *RateLimiter // e.g. 200/hour per tenant
 	listSecretsLimiter   *RateLimiter // e.g. 100/hour per tenant
@@ -786,6 +788,8 @@ type VaultRateLimiter struct {
 func NewVaultRateLimiter() *VaultRateLimiter {
 	return &VaultRateLimiter{
 		createSecretLimiter:  NewRateLimiter(time.Hour, 30),
+		updateSecretLimiter:  NewRateLimiter(time.Hour, 60),
+		deleteSecretLimiter:  NewRateLimiter(time.Hour, 30),
 		generateTokenLimiter: NewRateLimiter(time.Hour, 60),
 		readSecretLimiter:    NewRateLimiter(time.Hour, 200),
 		listSecretsLimiter:   NewRateLimiter(time.Hour, 100),
@@ -795,6 +799,16 @@ func NewVaultRateLimiter() *VaultRateLimiter {
 // LimitCreate wraps a handler with per-tenant rate limiting for creating secrets.
 func (v *VaultRateLimiter) LimitCreate(next http.HandlerFunc) http.HandlerFunc {
 	return v.limitByTenant("vault_create", v.createSecretLimiter, next)
+}
+
+// LimitUpdate wraps a handler with per-tenant rate limiting for updating secrets.
+func (v *VaultRateLimiter) LimitUpdate(next http.HandlerFunc) http.HandlerFunc {
+	return v.limitByTenant("vault_update", v.updateSecretLimiter, next)
+}
+
+// LimitDelete wraps a handler with per-tenant rate limiting for deleting secrets.
+func (v *VaultRateLimiter) LimitDelete(next http.HandlerFunc) http.HandlerFunc {
+	return v.limitByTenant("vault_delete", v.deleteSecretLimiter, next)
 }
 
 // LimitGenerateToken wraps a handler with per-tenant rate limiting for generating tokens.

@@ -242,7 +242,7 @@ func (p *BetterAuthProxy) ValidateTenant(tenantID string) (*TenantValidation, er
 // validateSessionLegacy falls back to the legacy auth service
 func (p *BetterAuthProxy) validateSessionLegacy(token string, tenantID string) (*SessionValidation, error) {
 	// Validate the JWT token
-	claims, err := p.authSvc.ValidateToken(token)
+	claims, err := p.authSvc.ValidateToken(ctx, token)
 	if err != nil {
 		return &SessionValidation{
 			Valid:    false,
@@ -252,7 +252,7 @@ func (p *BetterAuthProxy) validateSessionLegacy(token string, tenantID string) (
 	}
 
 	// Get user details from repository
-	user, err := p.authSvc.Repo().GetUserByID(claims.UserID)
+	user, err := p.authSvc.Repo().GetUserByID(ctx, claims.UserID)
 	if err != nil {
 		return &SessionValidation{
 			Valid:    false,

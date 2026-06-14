@@ -60,6 +60,10 @@ type CreateFunctionRequest struct {
 	EnvVars   []storage.EnvironmentVariable `json:"env_vars,omitempty"`
 }
 
+type CreateFunctionResponse struct {
+	FunctionID string `json:"function_id"`
+}
+
 type UpdateFunctionRequest struct {
 	Name      *string  `json:"name,omitempty" validate:"omitempty,min=1,max=100"`
 	Code      *string  `json:"code,omitempty"`
@@ -76,9 +80,13 @@ type DeployFunctionRequest struct {
 }
 
 type DeployFunctionResponse struct {
-	DeploymentId string                        `json:"deployment_id"`
-	Status       string                        `json:"status"`
-	Deployments  []*storage.FunctionDeployment `json:"deployments,omitempty"`
+	FunctionID   string                        `json:"function_id"`
+	DeploymentID string                        `json:"deployment_id"`
+	URL         string                        `json:"url"`
+	Region      string                        `json:"region"`
+	Providers   []string                      `json:"providers"`
+	Status      string                        `json:"status"`
+	Deployments []*storage.FunctionDeployment `json:"deployments,omitempty"`
 }
 
 type TestFunctionRequest struct {
@@ -91,6 +99,13 @@ type TestFunctionResponse struct {
 	Output          interface{}              `json:"output"`
 	ExecutionTimeMs int                      `json:"execution_time_ms"`
 	Logs            []*storage.FunctionLog   `json:"logs"`
+}
+
+type FunctionMetricsResponse struct {
+	Requests     int     `json:"requests"`
+	LatencyMs   int     `json:"latency_ms"`
+	ErrorRate   float64 `json:"error_rate"`
+	UptimePercent float64 `json:"uptime_percent"`
 }
 
 // Request/Response types
