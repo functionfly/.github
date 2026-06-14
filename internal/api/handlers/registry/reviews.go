@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -37,7 +38,7 @@ func (h *Handler) HandleListReviews(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil || fn == nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -92,7 +93,7 @@ func (h *Handler) HandleSubmitReview(w http.ResponseWriter, r *http.Request) {
 		req.Body = req.Body[:5000]
 	}
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil || fn == nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return

@@ -49,7 +49,7 @@ func (e *RegistryExecutor) ExecuteFunction(
 	}
 
 	// Resolve function via the public repo.
-	fn, err := e.Repo.GetFunctionByAuthorName(author, name)
+	fn, err := e.Repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil || fn == nil {
 		return http.StatusNotFound, []byte(`{"ok":false,"error":{"code":"NOT_FOUND","message":"function not found"}}`)
 	}

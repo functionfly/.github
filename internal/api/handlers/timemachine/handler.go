@@ -93,7 +93,7 @@ func (h *Handler) requireAuthOrToken(w http.ResponseWriter, r *http.Request) *au
 		return nil
 	}
 
-	parsedClaims, err := h.authSvc.ValidateToken(token)
+	parsedClaims, err := h.authSvc.ValidateToken(context.Background(), token)
 	if err != nil {
 		h.writeError(w, http.StatusUnauthorized, "INVALID_TOKEN", "Invalid or expired token")
 		return nil

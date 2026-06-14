@@ -42,7 +42,7 @@ func (h *Handler) HandleGetUserSettings(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Get user settings from database
-	settings, err := h.repo.GetUserSettings(user.ID)
+	settings, err := h.repo.GetUserSettings(r.Context(), user.ID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", user.ID).Warn("Failed to get user settings, using defaults")
 		settings = getDefaultSettings()
@@ -177,7 +177,7 @@ func (h *Handler) HandlePatchUserSettingsNotifications(w http.ResponseWriter, r 
 	}
 
 	// Get current settings
-	currentSettings, err := h.repo.GetUserSettings(claims.UserID)
+	currentSettings, err := h.repo.GetUserSettings(r.Context(), claims.UserID)
 	if err != nil {
 		currentSettings = getDefaultSettings()
 	}
@@ -203,7 +203,7 @@ func (h *Handler) HandlePatchUserSettingsNotifications(w http.ResponseWriter, r 
 		}
 	}
 
-	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
+	if err := h.repo.UpdateUserSettings(r.Context(), claims.UserID, currentSettings); err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update notification settings")
 		apierror.WriteError(w, apierror.NewInternal("Failed to update notification settings"))
 		return
@@ -227,7 +227,7 @@ func (h *Handler) HandlePatchUserSettingsPrivacy(w http.ResponseWriter, r *http.
 	}
 
 	// Get current settings
-	currentSettings, err := h.repo.GetUserSettings(claims.UserID)
+	currentSettings, err := h.repo.GetUserSettings(r.Context(), claims.UserID)
 	if err != nil {
 		currentSettings = getDefaultSettings()
 	}
@@ -246,7 +246,7 @@ func (h *Handler) HandlePatchUserSettingsPrivacy(w http.ResponseWriter, r *http.
 		}
 	}
 
-	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
+	if err := h.repo.UpdateUserSettings(r.Context(), claims.UserID, currentSettings); err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update privacy settings")
 		apierror.WriteError(w, apierror.NewInternal("Failed to update privacy settings"))
 		return
@@ -270,7 +270,7 @@ func (h *Handler) HandlePatchUserSettingsVisibility(w http.ResponseWriter, r *ht
 	}
 
 	// Get current settings
-	currentSettings, err := h.repo.GetUserSettings(claims.UserID)
+	currentSettings, err := h.repo.GetUserSettings(r.Context(), claims.UserID)
 	if err != nil {
 		currentSettings = getDefaultSettings()
 	}
@@ -291,7 +291,7 @@ func (h *Handler) HandlePatchUserSettingsVisibility(w http.ResponseWriter, r *ht
 		}
 	}
 
-	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
+	if err := h.repo.UpdateUserSettings(r.Context(), claims.UserID, currentSettings); err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update visibility settings")
 		apierror.WriteError(w, apierror.NewInternal("Failed to update visibility settings"))
 		return
@@ -308,7 +308,7 @@ func (h *Handler) HandleGetUserSettingsMe(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	user, err := h.repo.GetUserByID(claims.UserID)
+	user, err := h.repo.GetUserByID(r.Context(), claims.UserID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to get user")
 		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve user"))
@@ -343,7 +343,7 @@ func (h *Handler) HandleGetUserSettingsMe(w http.ResponseWriter, r *http.Request
 	}
 
 	// Get user settings from database
-	settings, err := h.repo.GetUserSettings(user.ID)
+	settings, err := h.repo.GetUserSettings(r.Context(), user.ID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", user.ID).Warn("Failed to get user settings, using defaults")
 		settings = getDefaultSettings()
@@ -440,7 +440,7 @@ func (h *Handler) HandlePatchUserSettingsNotificationsMe(w http.ResponseWriter, 
 	}
 
 	// Get current settings
-	currentSettings, err := h.repo.GetUserSettings(claims.UserID)
+	currentSettings, err := h.repo.GetUserSettings(r.Context(), claims.UserID)
 	if err != nil {
 		currentSettings = getDefaultSettings()
 	}
@@ -466,7 +466,7 @@ func (h *Handler) HandlePatchUserSettingsNotificationsMe(w http.ResponseWriter, 
 		}
 	}
 
-	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
+	if err := h.repo.UpdateUserSettings(r.Context(), claims.UserID, currentSettings); err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update notification settings")
 		apierror.WriteError(w, apierror.NewInternal("Failed to update notification settings"))
 		return
@@ -490,7 +490,7 @@ func (h *Handler) HandlePatchUserSettingsPrivacyMe(w http.ResponseWriter, r *htt
 	}
 
 	// Get current settings
-	currentSettings, err := h.repo.GetUserSettings(claims.UserID)
+	currentSettings, err := h.repo.GetUserSettings(r.Context(), claims.UserID)
 	if err != nil {
 		currentSettings = getDefaultSettings()
 	}
@@ -509,7 +509,7 @@ func (h *Handler) HandlePatchUserSettingsPrivacyMe(w http.ResponseWriter, r *htt
 		}
 	}
 
-	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
+	if err := h.repo.UpdateUserSettings(r.Context(), claims.UserID, currentSettings); err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update privacy settings")
 		apierror.WriteError(w, apierror.NewInternal("Failed to update privacy settings"))
 		return
@@ -533,7 +533,7 @@ func (h *Handler) HandlePatchUserSettingsVisibilityMe(w http.ResponseWriter, r *
 	}
 
 	// Get current settings
-	currentSettings, err := h.repo.GetUserSettings(claims.UserID)
+	currentSettings, err := h.repo.GetUserSettings(r.Context(), claims.UserID)
 	if err != nil {
 		currentSettings = getDefaultSettings()
 	}
@@ -554,7 +554,7 @@ func (h *Handler) HandlePatchUserSettingsVisibilityMe(w http.ResponseWriter, r *
 		}
 	}
 
-	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
+	if err := h.repo.UpdateUserSettings(r.Context(), claims.UserID, currentSettings); err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update visibility settings")
 		apierror.WriteError(w, apierror.NewInternal("Failed to update visibility settings"))
 		return
@@ -577,7 +577,7 @@ func (h *Handler) HandleGetActiveEnvironment(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Get user settings from database
-	settings, err := h.repo.GetUserSettings(claims.UserID)
+	settings, err := h.repo.GetUserSettings(r.Context(), claims.UserID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Warn("Failed to get user settings, using defaults")
 		settings = getDefaultSettings()
@@ -625,7 +625,7 @@ func (h *Handler) HandleSetActiveEnvironment(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Get current settings
-	currentSettings, err := h.repo.GetUserSettings(claims.UserID)
+	currentSettings, err := h.repo.GetUserSettings(r.Context(), claims.UserID)
 	if err != nil {
 		currentSettings = getDefaultSettings()
 	}
@@ -633,7 +633,7 @@ func (h *Handler) HandleSetActiveEnvironment(w http.ResponseWriter, r *http.Requ
 	// Update active environment
 	currentSettings["active_environment"] = req.Environment
 
-	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
+	if err := h.repo.UpdateUserSettings(r.Context(), claims.UserID, currentSettings); err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update active environment")
 		apierror.WriteError(w, apierror.NewInternal("Failed to update environment preference"))
 		return
@@ -675,7 +675,7 @@ func (h *Handler) HandlePatchUserSettingsSecurityMe(w http.ResponseWriter, r *ht
 	}
 
 	// Get current settings
-	currentSettings, err := h.repo.GetUserSettings(claims.UserID)
+	currentSettings, err := h.repo.GetUserSettings(r.Context(), claims.UserID)
 	if err != nil {
 		currentSettings = getDefaultSettings()
 	}
@@ -688,7 +688,7 @@ func (h *Handler) HandlePatchUserSettingsSecurityMe(w http.ResponseWriter, r *ht
 		currentSettings["rememberDevices"] = *req.RememberDevices
 	}
 
-	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
+	if err := h.repo.UpdateUserSettings(r.Context(), claims.UserID, currentSettings); err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update security settings")
 		apierror.WriteError(w, apierror.NewInternal("Failed to update security settings"))
 		return
@@ -734,7 +734,7 @@ func (h *Handler) HandlePatchUserSettingsStatusMe(w http.ResponseWriter, r *http
 	}
 
 	// Get current settings
-	currentSettings, err := h.repo.GetUserSettings(claims.UserID)
+	currentSettings, err := h.repo.GetUserSettings(r.Context(), claims.UserID)
 	if err != nil {
 		currentSettings = getDefaultSettings()
 	}
@@ -750,7 +750,7 @@ func (h *Handler) HandlePatchUserSettingsStatusMe(w http.ResponseWriter, r *http
 		}
 	}
 
-	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
+	if err := h.repo.UpdateUserSettings(r.Context(), claims.UserID, currentSettings); err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update custom status")
 		apierror.WriteError(w, apierror.NewInternal("Failed to update custom status"))
 		return
@@ -773,7 +773,7 @@ func (h *Handler) HandleGetUserSettingsStatusMe(w http.ResponseWriter, r *http.R
 	}
 
 	// Get current settings
-	settings, err := h.repo.GetUserSettings(claims.UserID)
+	settings, err := h.repo.GetUserSettings(r.Context(), claims.UserID)
 	if err != nil {
 		settings = getDefaultSettings()
 	}
@@ -816,7 +816,7 @@ func (h *Handler) HandlePatchUserSettingsPlatformMe(w http.ResponseWriter, r *ht
 	}
 
 	// Get current settings
-	currentSettings, err := h.repo.GetUserSettings(claims.UserID)
+	currentSettings, err := h.repo.GetUserSettings(r.Context(), claims.UserID)
 	if err != nil {
 		currentSettings = getDefaultSettings()
 	}
@@ -886,7 +886,7 @@ func (h *Handler) HandlePatchUserSettingsPlatformMe(w http.ResponseWriter, r *ht
 
 	currentSettings["platform"] = platform
 
-	if err := h.repo.UpdateUserSettings(claims.UserID, currentSettings); err != nil {
+	if err := h.repo.UpdateUserSettings(r.Context(), claims.UserID, currentSettings); err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update platform settings")
 		apierror.WriteError(w, apierror.NewInternal("Failed to update platform settings"))
 		return

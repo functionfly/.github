@@ -1,7 +1,6 @@
 package users
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strings"

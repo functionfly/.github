@@ -90,6 +90,7 @@ type Category struct {
 	Color       string    `json:"color,omitempty"`
 	Icon        string    `json:"icon,omitempty"`
 	Order       int       `json:"order"`
+	PostCount   int       `json:"postCount"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
 }

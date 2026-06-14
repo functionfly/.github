@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -146,7 +147,7 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 7. Look up function in registry
-	fn, err := h.registryRepo.GetFunctionByAuthorName(author, name)
+	fn, err := h.registryRepo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "FUNCTION_NOT_FOUND", fmt.Sprintf("function %s/%s not found", author, name))
 		return
@@ -331,7 +332,7 @@ func (h *Handler) authenticateAgent(r *http.Request) (agentID string, tenantID u
 // This uses the registry repository to get the function and then executes it via WASM.
 func (h *Handler) executeViaRegistry(r *http.Request, author, name, version string, input json.RawMessage) (json.RawMessage, error) {
 	// Get function by author and name
-	fn, err := h.registryRepo.GetFunctionByAuthorName(author, name)
+	fn, err := h.registryRepo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		return nil, fmt.Errorf("function not found: %s/%s: %w", author, name, err)
 	}

@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -24,7 +25,7 @@ func (h *Handler) HandleTriggerVerification(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Verify function exists
-	fn, err := h.repo.GetFunctionByID(functionID)
+	fn, err := h.repo.GetFunctionByID(context.Background(), functionID)
 	if err != nil {
 		h.writeError(w, http.StatusNotFound, "FUNCTION_NOT_FOUND", "Function not found")
 		return

@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -136,7 +137,7 @@ func (h *Handler) HandleDiscoverFunction(w http.ResponseWriter, r *http.Request)
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.registryRepo.GetFunctionByAuthorName(author, name)
+	fn, err := h.registryRepo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "function not found")
 		return

@@ -50,7 +50,7 @@ func (e *MarketplaceExecutor) Execute(
 		return nil, fmt.Errorf("invalid function id")
 	}
 
-	fn, err := e.registry.GetFunctionByID(fnUUID)
+	fn, err := e.registry.GetFunctionByID(context.Background(), fnUUID)
 	if err != nil {
 		return nil, fmt.Errorf("function not found")
 	}
@@ -125,7 +125,7 @@ func (e *MarketplaceExecutor) Execute(
 		record.CallerIP = sql.NullString{String: callerIP, Valid: true}
 	}
 
-	if recordErr := e.registry.RecordExecution(record); recordErr != nil {
+	if recordErr := e.registry.RecordExecution(context.Background(), record); recordErr != nil {
 		logrus.WithError(recordErr).Warn("marketplace: failed to record execution")
 	}
 

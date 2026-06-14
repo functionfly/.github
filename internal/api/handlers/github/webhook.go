@@ -292,7 +292,7 @@ func (h *Handler) runSyncPipeline(ctx context.Context, imp *storage.GitHubImport
 		return
 	}
 
-	fn, err := h.registryRepo.GetFunctionByID(*imp.FunctionID)
+	fn, err := h.registryRepo.GetFunctionByID(ctx, *imp.FunctionID)
 	if err != nil || fn == nil {
 		h.finishSyncWithError(ctx, syncLog, imp, "Function not found in registry")
 		return

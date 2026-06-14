@@ -27,10 +27,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/functionfly/functionfly/internal/api/middleware"
-	"github.com/functionfly/functionfly/internal/api/pagination"
 	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage/vault"
+	"github.com/functionfly/functionfly/internal/storage/vault/quota"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
@@ -44,10 +43,11 @@ type Handler struct {
 	SIEM           *vault.SIEMDispatcher
 	Cache          *vault.SecretCache
 	AuditKey       string
+	quotaEnforcer  *quota.Enforcer
 }
 
 // NewHandler creates a new vault handler
-func NewHandler(repo *vault.Repository, logger *logrus.Logger) *Handler {
+func NewHandler(repo *vault.Repository, logger *logrus.Logger, quotaEnforcer *quota.Enforcer) *Handler {
 	if logger == nil {
 		logger = logrus.New()
 	}
@@ -58,6 +58,7 @@ func NewHandler(repo *vault.Repository, logger *logrus.Logger) *Handler {
 		RBAC:           vault.NewRBACEngine(repo),
 		SIEM:           vault.NewSIEMDispatcher(repo),
 		Cache:          vault.NewSecretCache(nil, vault.CacheConfig{}),
+		quotaEnforcer:  quotaEnforcer,
 	}
 }
 
@@ -102,12 +103,6 @@ func (h *Handler) respondErrorCode(w http.ResponseWriter, status int, code apier
 		Code:    code,
 		Message: message,
 	})
-}
-
-// respondPaginated sends a standardized paginated response
-func (h *Handler) respondPaginated(w http.ResponseWriter, data interface{}, total int64, params pagination.Params) {
-	resp := pagination.NewResponse(data, total, params)
-	h.respondJSON(w, http.StatusOK, resp)
 }
 
 // getCurrentRequest returns the current request from context (for error handling)

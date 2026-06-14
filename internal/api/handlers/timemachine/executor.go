@@ -60,7 +60,7 @@ func (a *SandboxExecutorAdapter) executeViaBackend(fnVersion *storage.RegistryFu
 		return nil, 0, fmt.Errorf("no backend configured")
 	}
 
-	backend, err := a.repo.GetBackendByID(*fnVersion.BackendID)
+	backend, err := a.repo.GetBackendByID(context.Background(), *fnVersion.BackendID)
 	if err != nil {
 		return nil, 0, fmt.Errorf("backend lookup failed: %w", err)
 	}

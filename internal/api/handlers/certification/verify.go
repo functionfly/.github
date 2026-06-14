@@ -31,7 +31,7 @@ func (h *Handler) VerifyCredential(w http.ResponseWriter, r *http.Request) {
 
 	h.logCertVerificationAudit(r.Context(), getClientIP(r), r.UserAgent(), "verify_by_username", username)
 
-	user, err := h.userRepo.GetUserByUsername(username)
+	user, err := h.userRepo.GetUserByUsername(r.Context(), username)
 	if err != nil {
 		logrus.WithError(err).WithField("username", username).Error("Failed to get user for verification")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to verify credentials")
@@ -143,7 +143,7 @@ func (h *Handler) PublicBadges(w http.ResponseWriter, r *http.Request) {
 
 	h.logCertVerificationAudit(r.Context(), getClientIP(r), r.UserAgent(), "public_badges", username)
 
-	user, err := h.userRepo.GetUserByUsername(username)
+	user, err := h.userRepo.GetUserByUsername(r.Context(), username)
 	if err != nil || user == nil {
 		writeJSONError(w, http.StatusNotFound, "User not found")
 		return

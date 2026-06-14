@@ -1,6 +1,7 @@
 package trustapi
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -90,12 +91,12 @@ func (h *ExtendedHandler) RegisterExtendedRoutes(r *mux.Router, authMiddleware *
 }
 
 // getFunctionInfo retrieves function information from the registry
-func (h *Handler) getFunctionInfo(functionID string) (*registry.RegistryFunction, error) {
+func (h *Handler) getFunctionInfo(ctx context.Context, functionID string) (*registry.RegistryFunction, error) {
 	id, err := uuid.Parse(functionID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid function ID: %w", err)
 	}
-	return h.registryRepo.GetFunctionByID(id)
+	return h.registryRepo.GetFunctionByID(ctx, id)
 }
 
 // parseFunctionID parses and validates a function ID from URL params

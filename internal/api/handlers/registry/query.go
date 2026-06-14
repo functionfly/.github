@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -33,7 +34,7 @@ func (h *Handler) HandleGetFunction(w http.ResponseWriter, r *http.Request) {
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		errStr := err.Error()
 		if strings.Contains(errStr, "record not found") || strings.Contains(errStr, "sql: no rows in result set") {
@@ -51,7 +52,7 @@ func (h *Handler) HandleGetFunction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rating, _ := h.repo.GetRatingByFunctionID(fn.ID)
+	rating, _ := h.repo.GetRatingByFunctionID(context.Background(), fn.ID)
 	info := fn.ToInfoWithRating(fnVersion, rating)
 
 	if strings.EqualFold(fn.Author, "functionfly") {
@@ -77,7 +78,7 @@ func (h *Handler) HandleGetFunction(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			if fn.ReliabilityScore == 0 && fn.DeterministicScore == 0 {
-				_, _ = h.repo.UpdateRegistryFunction(fn.ID, map[string]interface{}{
+				_, _ = h.repo.UpdateRegistryFunction(r.Context(), fn.ID, map[string]interface{}{
 					"reliability_score":   TrustedAuthorTrustScorePct,
 					"deterministic_score": TrustedAuthorTrustScorePct,
 				})
@@ -115,9 +116,9 @@ func (h *Handler) HandleGetFunction(w http.ResponseWriter, r *http.Request) {
 	}
 	info["verified"] = verified
 
-	likeCount, _ := h.repo.CountLikesForFunction(fn.ID)
+	likeCount, _ := h.repo.CountLikesForFunction(context.Background(), fn.ID)
 	info["like_count"] = likeCount
-	remixCount, _ := h.repo.CountRemixesForFunction(fn.ID)
+	remixCount, _ := h.repo.CountRemixesForFunction(context.Background(), fn.ID)
 	info["remix_count"] = remixCount
 
 	if r.URL.Query().Get("expand") == "manifest" {
@@ -141,7 +142,7 @@ func (h *Handler) HandleGetFunctionByID(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	fn, err := h.repo.GetFunctionByID(id)
+	fn, err := h.repo.GetFunctionByID(r.Context(), id)
 	if err != nil {
 		errStr := err.Error()
 		if strings.Contains(errStr, "record not found") || strings.Contains(errStr, "sql: no rows in result set") {
@@ -159,7 +160,7 @@ func (h *Handler) HandleGetFunctionByID(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	rating, _ := h.repo.GetRatingByFunctionID(fn.ID)
+	rating, _ := h.repo.GetRatingByFunctionID(context.Background(), fn.ID)
 	info := fn.ToInfoWithRating(fnVersion, rating)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -182,8 +183,8 @@ func (h *Handler) buildRegistryFunctionInfos(functions []storageregistry.Registr
 	if err != nil {
 		return nil, err
 	}
-	likeCounts, _ := h.repo.CountLikesForFunctions(ids)
-	remixCounts, _ := h.repo.CountRemixesForFunctions(ids)
+	likeCounts, _ := h.repo.CountLikesForFunctions(context.Background(), ids)
+	remixCounts, _ := h.repo.CountRemixesForFunctions(context.Background(), ids)
 	out := make([]map[string]interface{}, len(functions))
 	for i, fn := range functions {
 		v := versions[fn.ID]
@@ -402,7 +403,7 @@ func (h *Handler) HandleListVersions(w http.ResponseWriter, r *http.Request) {
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -428,7 +429,7 @@ func (h *Handler) HandleGetFunctionSource(w http.ResponseWriter, r *http.Request
 		version = "latest"
 	}
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -462,7 +463,7 @@ func (h *Handler) HandleListVersionsAt(w http.ResponseWriter, r *http.Request) {
 		username = username[1:]
 	}
 
-	fn, err := h.repo.GetFunctionByAuthorName(username, functionName)
+	fn, err := h.repo.GetFunctionByAuthorName(r.Context(), username, functionName)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -490,7 +491,7 @@ func (h *Handler) HandleDeleteFunction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		if strings.Contains(err.Error(), "record not found") || strings.Contains(err.Error(), "failed to find function") {
 			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
@@ -506,7 +507,7 @@ func (h *Handler) HandleDeleteFunction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.repo.DeleteFunction(author, name)
+	err = h.repo.DeleteFunction(context.Background(), author, name)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to delete function")
 		if strings.Contains(err.Error(), "record not found") || strings.Contains(err.Error(), "failed to find function") {
@@ -534,7 +535,7 @@ func (h *Handler) HandleDeleteFunction(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) HandleDeleteAllFunctions(w http.ResponseWriter, r *http.Request) {
-	err := h.repo.DeleteAllFunctions()
+	err := h.repo.DeleteAllFunctions(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to delete all functions")
 		apierror.WriteError(w, apierror.NewInternal("Failed to delete all functions"))
@@ -592,7 +593,7 @@ func (h *Handler) HandleGetSimilarFunctions(w http.ResponseWriter, r *http.Reque
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return

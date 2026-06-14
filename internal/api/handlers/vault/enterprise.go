@@ -9,7 +9,6 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage/vault"
-	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
@@ -519,7 +518,7 @@ func (h *Handler) HandleCreateSIEMWebhook(w http.ResponseWriter, r *http.Request
 	if req.Format == "" {
 		req.Format = "json"
 	}
-	hmacKey, err := vault.NewSalt(32)
+	hmacKey, err := vault.GenerateSalt(32)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewInternal("Failed to generate webhook secret"))
 		return

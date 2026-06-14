@@ -2,6 +2,7 @@ package registry
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -36,7 +37,7 @@ func (h *PlaygroundHandler) HandlePlaygroundUI(w http.ResponseWriter, r *http.Re
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -49,7 +50,7 @@ func (h *PlaygroundHandler) HandlePlaygroundUI(w http.ResponseWriter, r *http.Re
 	}
 
 	// Get rating for trust information
-	rating, _ := h.repo.GetRatingByFunctionID(fn.ID)
+	rating, _ := h.repo.GetRatingByFunctionID(context.Background(), fn.ID)
 
 	html := h.generateRegistryPlaygroundHTML(fn, fnVersion, rating)
 	w.Header().Set("Content-Type", "text/html")
@@ -62,7 +63,7 @@ func (h *PlaygroundHandler) HandlePlaygroundExecute(w http.ResponseWriter, r *ht
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -202,7 +203,7 @@ func (h *PlaygroundHandler) HandlePlaygroundExecuteStream(w http.ResponseWriter,
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -398,7 +399,7 @@ func (h *PlaygroundHandler) recordPlaygroundExecution(functionID, version string
 	}
 
 	// Save to database
-	if err := h.repo.CreateExecutionPublic(exec); err != nil {
+	if err := h.repo.CreateExecutionPublic(context.Background(), exec); err != nil {
 		logrus.WithError(err).Error("Failed to create public execution")
 		return ""
 	}
@@ -774,7 +775,7 @@ func (h *PlaygroundHandler) HandleFunctionPage(w http.ResponseWriter, r *http.Re
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -787,7 +788,7 @@ func (h *PlaygroundHandler) HandleFunctionPage(w http.ResponseWriter, r *http.Re
 	}
 
 	// Get rating for trust information
-	rating, _ := h.repo.GetRatingByFunctionID(fn.ID)
+	rating, _ := h.repo.GetRatingByFunctionID(context.Background(), fn.ID)
 
 	// Generate combined function page with docs + playground
 	html := h.generateFunctionPageHTML(r, fn, fnVersion, rating)
@@ -807,7 +808,7 @@ func (h *PlaygroundHandler) HandleFunctionPageAt(w http.ResponseWriter, r *http.
 		username = username[1:]
 	}
 
-	fn, err := h.repo.GetFunctionByAuthorName(username, functionName)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), username, functionName)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -820,7 +821,7 @@ func (h *PlaygroundHandler) HandleFunctionPageAt(w http.ResponseWriter, r *http.
 	}
 
 	// Get rating for trust information
-	rating, _ := h.repo.GetRatingByFunctionID(fn.ID)
+	rating, _ := h.repo.GetRatingByFunctionID(context.Background(), fn.ID)
 
 	// Generate combined function page with docs + playground
 	html := h.generateFunctionPageHTML(r, fn, fnVersion, rating)
@@ -841,7 +842,7 @@ func (h *PlaygroundHandler) HandleFunctionPageAtVersion(w http.ResponseWriter, r
 		username = username[1:]
 	}
 
-	fn, err := h.repo.GetFunctionByAuthorName(username, functionName)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), username, functionName)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -855,7 +856,7 @@ func (h *PlaygroundHandler) HandleFunctionPageAtVersion(w http.ResponseWriter, r
 	}
 
 	// Get rating for trust information
-	rating, _ := h.repo.GetRatingByFunctionID(fn.ID)
+	rating, _ := h.repo.GetRatingByFunctionID(context.Background(), fn.ID)
 
 	// Generate combined function page with docs + playground
 	html := h.generateFunctionPageHTML(r, fn, fnVersion, rating)
@@ -875,7 +876,7 @@ func (h *PlaygroundHandler) HandleExecuteAt(w http.ResponseWriter, r *http.Reque
 		username = username[1:]
 	}
 
-	fn, err := h.repo.GetFunctionByAuthorName(username, functionName)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), username, functionName)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -948,14 +949,14 @@ func (h *PlaygroundHandler) HandleReplay(w http.ResponseWriter, r *http.Request)
 	executionID := vars["executionId"]
 
 	// Get execution by public ID
-	exec, err := h.repo.GetExecutionPublicByID(executionID)
+	exec, err := h.repo.GetExecutionPublicByID(context.Background(), executionID)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Execution not found or not shareable"))
 		return
 	}
 
 	// Get function info
-	fn, err := h.repo.GetFunctionByID(exec.FunctionID)
+	fn, err := h.repo.GetFunctionByID(context.Background(), exec.FunctionID)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -973,7 +974,7 @@ func (h *PlaygroundHandler) HandleCodeExamples(w http.ResponseWriter, r *http.Re
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -1018,7 +1019,7 @@ func (h *PlaygroundHandler) HandleAIToolSchema(w http.ResponseWriter, r *http.Re
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return

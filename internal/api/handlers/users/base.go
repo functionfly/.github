@@ -1,6 +1,7 @@
 package users
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -59,8 +60,8 @@ func boolSetting(settings map[string]interface{}, key string) bool {
 }
 
 // applyProfileVisibility overwrites profile fields (location, companyName, jobTitle) to empty when the profile owner's visibility settings hide them.
-func (h *Handler) applyProfileVisibility(profile map[string]interface{}, userID uuid.UUID) {
-	settings, err := h.repo.GetUserSettings(userID)
+func (h *Handler) applyProfileVisibility(ctx context.Context, profile map[string]interface{}, userID uuid.UUID) {
+	settings, err := h.repo.GetUserSettings(ctx, userID)
 	if err != nil || settings == nil {
 		return
 	}
@@ -99,7 +100,7 @@ func (h *Handler) requireSelfUsername(w http.ResponseWriter, r *http.Request, pa
 		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return nil, false
 	}
-	user, err := h.repo.GetUserByID(claims.UserID)
+	user, err := h.repo.GetUserByID(r.Context(), claims.UserID)
 	if err != nil || user == nil {
 		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return nil, false

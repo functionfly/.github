@@ -836,7 +836,7 @@ func (h *Handler) HandleReplayProgress(w http.ResponseWriter, r *http.Request) {
 	}
 	replayIDStr := vars["replayId"]
 
-	replay, err := h.repo.GetReplay(r.Context(), tenantID, fabricID, replayIDStr)
+	_, err := h.repo.GetReplay(r.Context(), tenantID, fabricID, replayIDStr)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("replay not found"))
 		return

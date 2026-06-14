@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -105,7 +106,7 @@ func (h *DocumentationHandler) HandleFunctionDocs(w http.ResponseWriter, r *http
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		if strings.Contains(err.Error(), "no rows") {
 			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
@@ -123,10 +124,10 @@ func (h *DocumentationHandler) HandleFunctionDocs(w http.ResponseWriter, r *http
 	}
 
 	// Get rating for trust information
-	rating, _ := h.repo.GetRatingByFunctionID(fn.ID)
+	rating, _ := h.repo.GetRatingByFunctionID(context.Background(), fn.ID)
 
 	// Get recent executions for examples
-	executions, err := h.repo.GetRecentPublicExecutions(fn.ID, 5)
+	executions, err := h.repo.GetRecentPublicExecutions(context.Background(), fn.ID, 5)
 	if err != nil {
 		logrus.WithError(err).Warn("Failed to get recent executions")
 	}
@@ -143,7 +144,7 @@ func (h *DocumentationHandler) HandleFunctionHTMLDocs(w http.ResponseWriter, r *
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		if strings.Contains(err.Error(), "no rows") {
 			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
@@ -161,10 +162,10 @@ func (h *DocumentationHandler) HandleFunctionHTMLDocs(w http.ResponseWriter, r *
 	}
 
 	// Get rating for trust information
-	rating, _ := h.repo.GetRatingByFunctionID(fn.ID)
+	rating, _ := h.repo.GetRatingByFunctionID(context.Background(), fn.ID)
 
 	// Get recent executions for examples
-	executions, err := h.repo.GetRecentPublicExecutions(fn.ID, 5)
+	executions, err := h.repo.GetRecentPublicExecutions(context.Background(), fn.ID, 5)
 	if err != nil {
 		logrus.WithError(err).Warn("Failed to get recent executions")
 	}
@@ -192,7 +193,7 @@ func (h *DocumentationHandler) HandleIndex(w http.ResponseWriter, r *http.Reques
 			continue
 		}
 
-		rating, _ := h.repo.GetRatingByFunctionID(fn.ID)
+		rating, _ := h.repo.GetRatingByFunctionID(context.Background(), fn.ID)
 
 		summary := FunctionDocSummary{
 			Author:      fn.Author,
@@ -967,7 +968,7 @@ func (h *DocumentationHandler) HandleFunctionVersions(w http.ResponseWriter, r *
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		if strings.Contains(err.Error(), "no rows") {
 			apierror.WriteError(w, apierror.NewNotFound("Function not found"))

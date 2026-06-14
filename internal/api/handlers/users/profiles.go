@@ -46,7 +46,7 @@ func extractClaimsFromRequest(r *http.Request, authSvc *auth.AuthService) (*auth
 	if len(parts) != 2 || parts[0] != "Bearer" {
 		return nil, errMissingOrInvalidAuth
 	}
-	return authSvc.ValidateToken(parts[1])
+	return authSvc.ValidateToken(r.Context(), parts[1])
 }
 
 // HandleGetPublicProfile returns a user's public profile by username.
@@ -71,7 +71,7 @@ func (h *Handler) HandleGetPublicProfile(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	user, err := h.repo.GetUserForPublicProfile(username)
+	user, err := h.repo.GetUserForPublicProfile(r.Context(), username)
 	if err != nil {
 		logrus.WithError(err).WithField("username", username).Error("Failed to get user by username")
 		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve profile"))
@@ -153,8 +153,8 @@ func (h *Handler) HandleGetPublicProfile(w http.ResponseWriter, r *http.Request)
 		"profileNumber":       getInt(user.ProfileNumber),
 		"isAdmin":             isAdmin, // Boolean only — does not expose full role string
 	}
-	h.attachProfileStats(profile, user.ID)
-	h.applyProfileVisibility(profile, user.ID)
+	h.attachProfileStats(r.Context(), profile, user.ID)
+	h.applyProfileVisibility(r.Context(), profile, user.ID)
 
 	writeJSON(w, http.StatusOK, profile)
 }
@@ -174,7 +174,7 @@ func (h *Handler) HandleGetPublicProfileByAt(w http.ResponseWriter, r *http.Requ
 		username = strings.TrimPrefix(username, "@")
 	}
 
-	user, err := h.repo.GetUserForPublicProfile(username)
+	user, err := h.repo.GetUserForPublicProfile(r.Context(), username)
 	if err != nil {
 		logrus.WithError(err).WithField("username", username).Error("Failed to get user by username")
 		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve profile"))
@@ -260,8 +260,8 @@ func (h *Handler) HandleGetPublicProfileByAt(w http.ResponseWriter, r *http.Requ
 		"profileUrl":     "/@" + usernameStr,
 		"totalFunctions": len(publishedFunctions),
 	}
-	h.attachProfileStats(profile, user.ID)
-	h.applyProfileVisibility(profile, user.ID)
+	h.attachProfileStats(r.Context(), profile, user.ID)
+	h.applyProfileVisibility(r.Context(), profile, user.ID)
 
 	// Add verification fields if available
 	if user.EmailVerified {
@@ -279,7 +279,7 @@ func (h *Handler) HandleGetMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.repo.GetUserByID(claims.UserID)
+	user, err := h.repo.GetUserByID(r.Context(), claims.UserID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to get user")
 		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve profile"))
@@ -316,7 +316,7 @@ func (h *Handler) HandleGetMe(w http.ResponseWriter, r *http.Request) {
 
 	// Load tenant plan for billing/UI (authoritative source)
 	plan := ""
-	if tenant, err := h.repo.GetTenantByID(user.TenantID); err == nil && tenant != nil && tenant.Plan != "" {
+	if tenant, err := h.repo.GetTenantByID(r.Context(), user.TenantID); err == nil && tenant != nil && tenant.Plan != "" {
 		plan = tenant.Plan
 	}
 
@@ -371,7 +371,7 @@ func (h *Handler) HandleGetMe(w http.ResponseWriter, r *http.Request) {
 		"role":          user.Role, // Platform admin role for badge display
 		"createdAt":     user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
-	h.attachProfileStats(resp, user.ID)
+	h.attachProfileStats(r.Context(), resp, user.ID)
 	writeJSON(w, http.StatusOK, resp)
 }
 
@@ -519,7 +519,7 @@ func (h *Handler) HandleUpdateMe(w http.ResponseWriter, r *http.Request) {
 	// Persist avatar URL in provider_data when client sends avatar (nil = no change, "" = clear)
 	var responseAvatar string
 	if req.Avatar != nil {
-		currentUser, err := h.repo.GetUserByID(claims.UserID)
+		currentUser, err := h.repo.GetUserByID(r.Context(), claims.UserID)
 		if err != nil || currentUser == nil {
 			// Continue without updating avatar if we can't load user
 		} else {
@@ -530,7 +530,7 @@ func (h *Handler) HandleUpdateMe(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			merged["avatar_url"] = *req.Avatar
-			if err := h.repo.UpdateUserProviderData(claims.UserID, merged); err != nil {
+			if err := h.repo.UpdateUserProviderData(r.Context(), claims.UserID, merged); err != nil {
 				logrus.WithError(err).WithField("userID", claims.UserID).Warn("Failed to update avatar in provider_data")
 			} else {
 				responseAvatar = *req.Avatar
@@ -540,7 +540,7 @@ func (h *Handler) HandleUpdateMe(w http.ResponseWriter, r *http.Request) {
 
 	// No-op: no profile fields and no avatar change — return current user (200) instead of 400
 	if len(updates) == 0 && req.Avatar == nil {
-		updatedUser, _ := h.repo.GetUserByID(claims.UserID)
+		updatedUser, _ := h.repo.GetUserByID(r.Context(), claims.UserID)
 		if updatedUser == nil {
 			apierror.WriteError(w, apierror.NewInternal("Failed to load profile"))
 			return
@@ -615,7 +615,7 @@ func (h *Handler) HandleUpdateMe(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		updatedUser, _ = h.repo.GetUserByID(claims.UserID)
+		updatedUser, _ = h.repo.GetUserByID(r.Context(), claims.UserID)
 	}
 	if updatedUser == nil {
 		apierror.WriteError(w, apierror.NewInternal("Failed to load profile"))

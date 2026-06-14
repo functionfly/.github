@@ -17,7 +17,7 @@ import (
 
 // TrustScoreRepository defines the interface for trust score operations
 type TrustScoreRepository interface {
-	UpdateSlidingWindowScores(config registry.SlidingWindowConfig) ([]registry.TrustScoreDelta, error)
+	UpdateSlidingWindowScores(ctx context.Context, config registry.SlidingWindowConfig) ([]registry.TrustScoreDelta, error)
 }
 
 // TrustScoreStreamer handles Server-Sent Events for real-time trust score updates
@@ -298,7 +298,7 @@ func (s *TrustScoreStreamer) StartSlidingWindowUpdates(ctx context.Context) {
 
 // performSlidingWindowUpdate recalculates sliding window scores and broadcasts changes
 func (s *TrustScoreStreamer) performSlidingWindowUpdate() {
-	deltas, err := s.repo.UpdateSlidingWindowScores(s.windowConfig)
+	deltas, err := s.repo.UpdateSlidingWindowScores(context.Background(), s.windowConfig)
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to update sliding window scores")
 		return

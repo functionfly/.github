@@ -39,7 +39,8 @@ func (h *Handler) HandleDeploy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app, resolveErr := apputil.ResolveAppForRequest(h.repo, user, r)
+	ctx := r.Context()
+	app, resolveErr := apputil.ResolveAppForRequest(ctx, h.repo, user, r)
 	if resolveErr != nil {
 		http.Error(w, resolveErr.Message, resolveErr.Status)
 		return
@@ -99,8 +100,9 @@ func (h *Handler) HandleListDeployments(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+	ctx := r.Context()
 
-	app, resolveErr := apputil.ResolveAppForRequest(h.repo, user, r)
+	app, resolveErr := apputil.ResolveAppForRequest(ctx, h.repo, user, r)
 	if resolveErr != nil {
 		http.Error(w, resolveErr.Message, resolveErr.Status)
 		return
@@ -136,6 +138,7 @@ func (h *Handler) HandleGetDeployment(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+	ctx := r.Context()
 
 	vars := mux.Vars(r)
 	deploymentIDStr := vars["deploymentId"]
@@ -157,7 +160,7 @@ func (h *Handler) HandleGetDeployment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Verify user has access to the app
-	app, err := h.repo.GetAppByID(deployment.AppID)
+	app, err := h.repo.GetAppByID(ctx, deployment.AppID)
 	if err != nil {
 		logrus.WithError(err).WithField("app_id", deployment.AppID).Error("Failed to get app")
 		http.Error(w, "Failed to get app", http.StatusInternalServerError)
@@ -179,6 +182,7 @@ func (h *Handler) HandleRollback(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+	ctx := r.Context()
 
 	vars := mux.Vars(r)
 	deploymentIDStr := vars["deploymentId"]
@@ -189,7 +193,7 @@ func (h *Handler) HandleRollback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get the deployment to verify access
-	deployment, err := h.repo.GetDeploymentByID(deploymentID)
+	deployment, err := h.repo.GetDeploymentByID(ctx, deploymentID)
 	if err != nil {
 		logrus.WithError(err).WithField("deployment_id", deploymentID).Error("Failed to get deployment")
 		http.Error(w, "Failed to get deployment", http.StatusInternalServerError)
@@ -201,7 +205,7 @@ func (h *Handler) HandleRollback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Verify user has access to the app
-	app, err := h.repo.GetAppByID(deployment.AppID)
+	app, err := h.repo.GetAppByID(ctx, deployment.AppID)
 	if err != nil {
 		logrus.WithError(err).WithField("app_id", deployment.AppID).Error("Failed to get app")
 		http.Error(w, "Failed to get app", http.StatusInternalServerError)

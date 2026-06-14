@@ -100,7 +100,7 @@ func (h *Handler) requireAuthOrToken(w http.ResponseWriter, r *http.Request) *au
 	// Try HttpOnly cookie first (secure SSE pattern)
 	if cookie, err := r.Cookie("sse_token"); err == nil && cookie.Value != "" {
 		if h.authSvc != nil {
-			if parsedClaims, err := h.authSvc.ValidateToken(cookie.Value); err == nil {
+			if parsedClaims, err := h.authSvc.ValidateToken(r.Context(), cookie.Value); err == nil {
 				return parsedClaims
 			}
 		}
@@ -118,7 +118,7 @@ func (h *Handler) requireAuthOrToken(w http.ResponseWriter, r *http.Request) *au
 		return nil
 	}
 
-	parsedClaims, err := h.authSvc.ValidateToken(token)
+	parsedClaims, err := h.authSvc.ValidateToken(r.Context(), token)
 	if err != nil {
 		h.respondError(w, http.StatusUnauthorized, "invalid_token", "Invalid or expired token")
 		return nil
@@ -130,7 +130,7 @@ func (h *Handler) requireAuthOrToken(w http.ResponseWriter, r *http.Request) *au
 // resolveAuthorUsername fetches the username for a user ID, required for proper registry authorship.
 // Returns the username string or an error if the user cannot be found.
 func (h *Handler) resolveAuthorUsername(ctx context.Context, userID uuid.UUID) (string, error) {
-	user, err := h.repo.GetUserByID(userID)
+	user, err := h.repo.GetUserByID(ctx, userID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get user by ID: %w", err)
 	}

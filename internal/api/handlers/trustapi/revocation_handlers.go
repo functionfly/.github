@@ -1,6 +1,7 @@
 package trustapi
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -47,7 +48,7 @@ func (h *ExtendedHandler) HandleRevokeTrust(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Validate function exists
-	fn, err := h.registryRepo.GetFunctionByID(req.FunctionID)
+	fn, err := h.registryRepo.GetFunctionByID(r.Context(), req.FunctionID)
 	if err != nil {
 		h.logger.WithError(err).WithField("function_id", req.FunctionID).Error("Function not found")
 		h.writeError(w, http.StatusNotFound, "Function not found", "function_not_found")
@@ -62,7 +63,7 @@ func (h *ExtendedHandler) HandleRevokeTrust(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Get current trust state for restoration later
-	trustState, err := h.registryRepo.GetLatestTrustHistory(req.FunctionID)
+	trustState, err := h.registryRepo.GetLatestTrustHistory(r.Context(), req.FunctionID)
 	if err != nil {
 		h.logger.WithError(err).Warn("Failed to get current trust state for revocation")
 		// Continue anyway, will use defaults
@@ -119,7 +120,7 @@ func (h *ExtendedHandler) HandleRevokeTrust(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Update function's trust score to untrusted
-	if err := h.registryRepo.UpdateFunctionTrustScore(req.FunctionID, 0, registry.TrustTierUntrusted); err != nil {
+	if err := h.registryRepo.UpdateFunctionTrustScore(r.Context(), req.FunctionID, 0, registry.TrustTierUntrusted); err != nil {
 		h.logger.WithError(err).Warn("Failed to update function trust score after revocation")
 		// Don't fail the request, but log it
 	}
@@ -225,7 +226,7 @@ func (h *ExtendedHandler) HandleUnrevokeTrust(w http.ResponseWriter, r *http.Req
 		originalTier = registry.TrustTierTrusted
 	}
 
-	if err := h.registryRepo.UpdateFunctionTrustScore(revocation.FunctionID, revocation.OriginalTrustScore, originalTier); err != nil {
+	if err := h.registryRepo.UpdateFunctionTrustScore(r.Context(), revocation.FunctionID, revocation.OriginalTrustScore, originalTier); err != nil {
 		h.logger.WithError(err).Warn("Failed to restore function trust score after lifting revocation")
 	}
 
@@ -983,14 +984,14 @@ func (h *ExtendedHandler) HandleEvaluatePolicy(w http.ResponseWriter, r *http.Re
 	}
 
 	// Get function details
-	fn, err := h.registryRepo.GetFunctionByID(req.FunctionID)
+	fn, err := h.registryRepo.GetFunctionByID(r.Context(), req.FunctionID)
 	if err != nil {
 		h.writeError(w, http.StatusNotFound, "Function not found", "function_not_found")
 		return
 	}
 
 	// Get trust score
-	trustState, err := h.registryRepo.GetLatestTrustHistory(req.FunctionID)
+	trustState, err := h.registryRepo.GetLatestTrustHistory(r.Context(), req.FunctionID)
 	if err != nil {
 		h.logger.WithError(err).Warn("Failed to get trust history for evaluation")
 		// Continue with zero trust score
@@ -1031,7 +1032,7 @@ func (h *ExtendedHandler) HandleEvaluatePolicy(w http.ResponseWriter, r *http.Re
 	reason := "Default policy action applied"
 
 	for i, rule := range rules {
-		passed, ruleDecision, ruleReason := h.evaluateRule(rule, trustState, isRevoked, revocationStatus, fn)
+		passed, ruleDecision, ruleReason := h.evaluateRule(r.Context(), rule, trustState, isRevoked, revocationStatus, fn)
 		ruleResults[i] = trustapi.PolicyRuleResult{
 			RuleID:        rule.ID,
 			Type:          rule.Type,
@@ -1157,7 +1158,7 @@ func (h *ExtendedHandler) HandleBatchEvaluatePolicy(w http.ResponseWriter, r *ht
 	errors := make([]trustapi.BatchPolicyEvaluationError, 0)
 
 	for _, functionID := range req.FunctionIDs {
-		fn, err := h.registryRepo.GetFunctionByID(functionID)
+		fn, err := h.registryRepo.GetFunctionByID(r.Context(), functionID)
 		if err != nil {
 			errors = append(errors, trustapi.BatchPolicyEvaluationError{
 				FunctionID: functionID,
@@ -1167,7 +1168,7 @@ func (h *ExtendedHandler) HandleBatchEvaluatePolicy(w http.ResponseWriter, r *ht
 		}
 
 		// Get trust state
-		trustState, _ := h.registryRepo.GetLatestTrustHistory(functionID)
+		trustState, _ := h.registryRepo.GetLatestTrustHistory(r.Context(), functionID)
 		if trustState == nil {
 			trustState = &registry.TrustHistory{
 				TrustScore: 0,
@@ -1219,6 +1220,7 @@ func (h *ExtendedHandler) HandleBatchEvaluatePolicy(w http.ResponseWriter, r *ht
 
 // evaluateRule evaluates a single policy rule
 func (h *ExtendedHandler) evaluateRule(
+	ctx context.Context,
 	rule trustapi.TrustPolicyRule,
 	trustState *registry.TrustHistory,
 	isRevoked bool,
@@ -1271,7 +1273,7 @@ func (h *ExtendedHandler) evaluateRule(
 		if !ok {
 			return false, "deny", "Invalid rule value"
 		}
-		successRate, err := h.getFunctionSuccessRate(fn.ID)
+		successRate, err := h.getFunctionSuccessRate(ctx, fn.ID)
 		if err != nil {
 			h.logger.WithError(err).WithField("function_id", fn.ID).Warn("Failed to get function success rate for rule evaluation")
 			// Fail closed: if we can't get metrics, deny the request
@@ -1304,7 +1306,7 @@ func getRuleActualValue(ruleType string, trustState *registry.TrustHistory, isRe
 }
 
 // getFunctionSuccessRate fetches the actual success rate for a function from recent metrics
-func (h *ExtendedHandler) getFunctionSuccessRate(functionID uuid.UUID) (float64, error) {
+func (h *ExtendedHandler) getFunctionSuccessRate(ctx context.Context, functionID uuid.UUID) (float64, error) {
 	totalCalls, successRate, _, _, err := h.registryRepo.GetFunctionStats(functionID, time.Now().Add(-30*24*time.Hour))
 	if err != nil {
 		return 0, err

@@ -42,7 +42,7 @@ func (h *Handler) HandleCreateBackend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app, resolveErr := apputil.ResolveAppForRequest(h.repo, user, r)
+	app, resolveErr := apputil.ResolveAppForRequest(r.Context(), h.repo, user, r)
 	if resolveErr != nil {
 		http.Error(w, resolveErr.Message, resolveErr.Status)
 		return
@@ -50,7 +50,7 @@ func (h *Handler) HandleCreateBackend(w http.ResponseWriter, r *http.Request) {
 	appID := app.ID
 
 	// Get tenant to check plan limits
-	tenant, err := h.repo.GetTenantByID(app.TenantID)
+	tenant, err := h.repo.GetTenantByID(r.Context(), app.TenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", app.TenantID).Error("Failed to get tenant")
 		http.Error(w, "Failed to get tenant", http.StatusInternalServerError)
@@ -63,7 +63,7 @@ func (h *Handler) HandleCreateBackend(w http.ResponseWriter, r *http.Request) {
 
 	// Check provider limit for the plan
 	maxProviders := plans.MaxProviders(tenant.Plan)
-	backends, err := h.repo.ListBackendsByAppID(appID)
+	backends, err := h.repo.ListBackendsByAppID(r.Context(), appID)
 	if err != nil {
 		logrus.WithError(err).WithField("app_id", appID).Error("Failed to list backends")
 		http.Error(w, "Failed to list backends", http.StatusInternalServerError)
@@ -121,7 +121,7 @@ func (h *Handler) HandleCreateBackend(w http.ResponseWriter, r *http.Request) {
 		sharedSecret = string(bytes)
 	}
 
-	backend, err := h.repo.CreateBackend(appID, req.Provider, req.Region, req.URL, sharedSecret, req.Priority)
+	backend, err := h.repo.CreateBackend(r.Context(), appID, req.Provider, req.Region, req.URL, sharedSecret, req.Priority)
 	if err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"app_id":   appID,
@@ -145,14 +145,14 @@ func (h *Handler) HandleListBackends(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app, resolveErr := apputil.ResolveAppForRequest(h.repo, user, r)
+	app, resolveErr := apputil.ResolveAppForRequest(r.Context(), h.repo, user, r)
 	if resolveErr != nil {
 		http.Error(w, resolveErr.Message, resolveErr.Status)
 		return
 	}
 	appID := app.ID
 
-	backends, err := h.repo.ListBackendsByAppID(appID)
+	backends, err := h.repo.ListBackendsByAppID(r.Context(), appID)
 	if err != nil {
 		logrus.WithError(err).WithField("app_id", appID).Error("Failed to list backends")
 		http.Error(w, "Failed to list backends", http.StatusInternalServerError)
@@ -173,7 +173,7 @@ func (h *Handler) HandleGetRoute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app, resolveErr := apputil.ResolveAppForRequest(h.repo, user, r)
+	app, resolveErr := apputil.ResolveAppForRequest(r.Context(), h.repo, user, r)
 	if resolveErr != nil {
 		http.Error(w, resolveErr.Message, resolveErr.Status)
 		return
@@ -181,7 +181,7 @@ func (h *Handler) HandleGetRoute(w http.ResponseWriter, r *http.Request) {
 	appID := app.ID
 
 	// Get tenant for plan information
-	tenant, err := h.repo.GetTenantByID(app.TenantID)
+	tenant, err := h.repo.GetTenantByID(r.Context(), app.TenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", app.TenantID).Error("Failed to get tenant")
 		http.Error(w, "Failed to get tenant", http.StatusInternalServerError)
@@ -223,7 +223,7 @@ func (h *Handler) HandleDeployBlueGreen(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	app, resolveErr := apputil.ResolveAppForRequest(h.repo, user, r)
+	app, resolveErr := apputil.ResolveAppForRequest(r.Context(), h.repo, user, r)
 	if resolveErr != nil {
 		http.Error(w, resolveErr.Message, resolveErr.Status)
 		return
@@ -292,7 +292,7 @@ func (h *Handler) HandleLinkProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app, resolveErr := apputil.ResolveAppForRequest(h.repo, user, r)
+	app, resolveErr := apputil.ResolveAppForRequest(r.Context(), h.repo, user, r)
 	if resolveErr != nil {
 		http.Error(w, resolveErr.Message, resolveErr.Status)
 		return
@@ -351,7 +351,7 @@ func (h *Handler) HandleSetSecrets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app, resolveErr := apputil.ResolveAppForRequest(h.repo, user, r)
+	app, resolveErr := apputil.ResolveAppForRequest(r.Context(), h.repo, user, r)
 	if resolveErr != nil {
 		http.Error(w, resolveErr.Message, resolveErr.Status)
 		return
@@ -410,7 +410,7 @@ func (h *Handler) HandleListSecrets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app, resolveErr := apputil.ResolveAppForRequest(h.repo, user, r)
+	app, resolveErr := apputil.ResolveAppForRequest(r.Context(), h.repo, user, r)
 	if resolveErr != nil {
 		http.Error(w, resolveErr.Message, resolveErr.Status)
 		return
@@ -468,7 +468,7 @@ func (h *Handler) HandleDeleteBackend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app, resolveErr := apputil.ResolveAppForRequest(h.repo, user, r)
+	app, resolveErr := apputil.ResolveAppForRequest(r.Context(), h.repo, user, r)
 	if resolveErr != nil {
 		http.Error(w, resolveErr.Message, resolveErr.Status)
 		return
@@ -488,7 +488,7 @@ func (h *Handler) HandleDeleteBackend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Verify backend belongs to this app
-	backend, err := h.repo.GetBackendByID(backendID)
+	backend, err := h.repo.GetBackendByID(r.Context(), backendID)
 	if err != nil {
 		http.Error(w, "Backend not found", http.StatusNotFound)
 		return
@@ -500,7 +500,7 @@ func (h *Handler) HandleDeleteBackend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Delete using GORM directly
-	if err := h.repo.DeleteBackend(backendID); err != nil {
+	if err := h.repo.DeleteBackend(r.Context(), backendID); err != nil {
 		logrus.WithError(err).WithField("backend_id", backendID).Error("Failed to delete backend")
 		http.Error(w, "Failed to delete backend", http.StatusInternalServerError)
 		return

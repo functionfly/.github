@@ -361,7 +361,7 @@ func (h *Handler) CreateGraph(w http.ResponseWriter, r *http.Request) {
 
 	// Validate all function refs exist
 	for _, node := range req.Nodes {
-		_, err := h.registryRepo.GetFunctionByAuthorName(node.Author, node.Name)
+		_, err := h.registryRepo.GetFunctionByAuthorName(context.Background(), node.Author, node.Name)
 		if err != nil {
 			respondError(w, http.StatusBadRequest, "Function not found: "+node.Author+"/"+node.Name)
 			return
@@ -1125,7 +1125,7 @@ func (h *Handler) GenerateFunction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if function already exists
-	existingFn, err := h.registryRepo.GetFunctionByAuthorName(req.Author, req.Name)
+	existingFn, err := h.registryRepo.GetFunctionByAuthorName(context.Background(), req.Author, req.Name)
 	if err == nil && existingFn != nil {
 		respondError(w, http.StatusConflict, "Function already exists")
 		return
@@ -1204,7 +1204,7 @@ func (h *Handler) GenerateFunction(w http.ResponseWriter, r *http.Request) {
 		OwnerUserID: &user.UserID,
 	}
 
-	if err := h.registryRepo.CreateFunction(fn); err != nil {
+	if err := h.registryRepo.CreateFunction(context.Background(), fn); err != nil {
 		logrus.WithError(err).Error("Failed to create function in registry")
 		respondError(w, http.StatusInternalServerError, "Failed to create function")
 		return

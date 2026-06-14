@@ -52,7 +52,7 @@ type repoUserTenantResolver struct {
 }
 
 func (r *repoUserTenantResolver) GetUserTenantID(ctx context.Context, userID uuid.UUID) (uuid.UUID, error) {
-	user, err := r.repo.GetUserByID(userID)
+	user, err := r.repo.GetUserByID(ctx, userID)
 	if err != nil || user == nil {
 		return uuid.Nil, err
 	}

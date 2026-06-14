@@ -138,7 +138,9 @@ func (h *Handler) HandleCreateFunction(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(createdFunction)
+	json.NewEncoder(w).Encode(types.CreateFunctionResponse{
+		FunctionID: createdFunction.ID.String(),
+	})
 }
 
 // HandleUpdateFunction handles PUT /v1/functions/{id}
@@ -272,7 +274,7 @@ func (h *Handler) HandleDeployFunction(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid backend ID format", http.StatusBadRequest)
 		return
 	}
-	backend, err := h.repo.GetBackendByID(backendID)
+	backend, err := h.repo.GetBackendByID(r.Context(), backendID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get backend")
 		http.Error(w, "Backend not found", http.StatusNotFound)
@@ -314,10 +316,17 @@ func (h *Handler) HandleDeployFunction(w http.ResponseWriter, r *http.Request) {
 	// Trigger actual deployment asynchronously
 	go h.deployFunctionAsync(r.Context(), function, backend, createdDeployment, user.TenantID, environment)
 
+	// Build the deployment URL
+	deploymentURL := fmt.Sprintf("https://%s.%s.functionfly.app", function.Name, backend.Region)
+
 	response := types.DeployFunctionResponse{
-		DeploymentId: createdDeployment.ID.String(),
-		Status:       "pending",
-		Deployments:  []*storage.FunctionDeployment{createdDeployment},
+		FunctionID:   function.ID.String(),
+		DeploymentID: createdDeployment.ID.String(),
+		URL:         deploymentURL,
+		Region:      backend.Region,
+		Providers:   []string{backend.Provider},
+		Status:      "pending",
+		Deployments: []*storage.FunctionDeployment{createdDeployment},
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -353,7 +362,7 @@ func (h *Handler) HandleTestFunction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get full user record for execution
-	fullUser, err := h.repo.GetUserByID(user.UserID)
+	fullUser, err := h.repo.GetUserByID(r.Context(), user.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get user")
 		http.Error(w, "User not found", http.StatusNotFound)

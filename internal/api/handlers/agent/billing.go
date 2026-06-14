@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -370,7 +371,7 @@ func (h *Handler) HandleCreateCreditsCheckout(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	user, err := h.userRepo.GetUserByID(claims.UserID)
+	user, err := h.userRepo.GetUserByID(context.Background(), claims.UserID)
 	if err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"user_id":  claims.UserID,

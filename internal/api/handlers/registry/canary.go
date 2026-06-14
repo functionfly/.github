@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -65,7 +66,7 @@ func (h *CanaryHandler) HandleCreateCanary(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Get function from repository
-	fn, err := h.functionRepo.GetFunctionByAuthorName(author, name)
+	fn, err := h.functionRepo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		logrus.WithError(err).Warn("Function not found for canary deployment")
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
@@ -151,7 +152,7 @@ func (h *CanaryHandler) HandleGetCanary(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Get function
-	fn, err := h.functionRepo.GetFunctionByAuthorName(author, name)
+	fn, err := h.functionRepo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -192,7 +193,7 @@ func (h *CanaryHandler) HandleUpdateCanary(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Get function
-	fn, err := h.functionRepo.GetFunctionByAuthorName(author, name)
+	fn, err := h.functionRepo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -270,7 +271,7 @@ func (h *CanaryHandler) HandleCancelCanary(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Get function
-	fn, err := h.functionRepo.GetFunctionByAuthorName(author, name)
+	fn, err := h.functionRepo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -321,7 +322,7 @@ func (h *CanaryHandler) HandlePromoteCanary(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Get function
-	fn, err := h.functionRepo.GetFunctionByAuthorName(author, name)
+	fn, err := h.functionRepo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -340,7 +341,7 @@ func (h *CanaryHandler) HandlePromoteCanary(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Update function's latest version to canary version
-	if err := h.functionRepo.UpdateFunctionLatestVersion(fn.ID, canary.Version); err != nil {
+	if err := h.functionRepo.UpdateFunctionLatestVersion(context.Background(), fn.ID, canary.Version); err != nil {
 		logrus.WithError(err).Error("Failed to update function version")
 		apierror.WriteError(w, apierror.NewInternal("Failed to promote canary"))
 		return
@@ -382,7 +383,7 @@ func (h *CanaryHandler) HandleRollbackCanary(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Get function
-	fn, err := h.functionRepo.GetFunctionByAuthorName(author, name)
+	fn, err := h.functionRepo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -428,7 +429,7 @@ func (h *CanaryHandler) HandleGetCanaryHistory(w http.ResponseWriter, r *http.Re
 	}
 
 	// Get function
-	fn, err := h.functionRepo.GetFunctionByAuthorName(author, name)
+	fn, err := h.functionRepo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -497,12 +498,12 @@ func (h *CanaryHandler) AutoPromoteCanary(canaryID uuid.UUID) error {
 		}
 
 		// Get function and update latest version
-		fn, err := h.functionRepo.GetFunctionByID(canary.FunctionID)
+		fn, err := h.functionRepo.GetFunctionByID(context.Background(), canary.FunctionID)
 		if err != nil {
 			return err
 		}
 
-		if err := h.functionRepo.UpdateFunctionLatestVersion(fn.ID, canary.Version); err != nil {
+		if err := h.functionRepo.UpdateFunctionLatestVersion(context.Background(), fn.ID, canary.Version); err != nil {
 			return err
 		}
 

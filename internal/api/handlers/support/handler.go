@@ -2,7 +2,6 @@ package support
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 	"strconv"

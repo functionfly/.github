@@ -106,7 +106,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if function already exists
-	existingFn, err := h.repo.GetFunctionByAuthorName(req.Author, req.Name)
+	existingFn, err := h.repo.GetFunctionByAuthorName(context.Background(), req.Author, req.Name)
 	if err != nil && !isRecordNotFound(err) {
 		logrus.WithError(err).Error("Failed to check existing function")
 		apierror.WriteError(w, apierror.NewInternal("Failed to check function: "+err.Error()))
@@ -147,7 +147,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 			fn.Category = sql.NullString{String: m.Category, Valid: true}
 		}
 
-		if err := h.repo.CreateFunction(fn); err != nil {
+		if err := h.repo.CreateFunction(context.Background(), fn); err != nil {
 			logrus.WithError(err).Error("Failed to create function")
 			apierror.WriteError(w, apierror.NewInternal("Failed to create function: "+err.Error()))
 			return
@@ -178,7 +178,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 			meta["deterministic_score"] = 90.0
 		}
 		if len(meta) > 0 {
-			if _, err := h.repo.UpdateRegistryFunction(fnID, meta); err != nil {
+			if _, err := h.repo.UpdateRegistryFunction(context.Background(), fnID, meta); err != nil {
 				logrus.WithError(err).Warn("Failed to update function metadata from manifest")
 			}
 		}
@@ -273,7 +273,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 				"platform_fee_amount_usd": feeAmountUSD,
 				"last_fee_charged_at":     now,
 			}
-			if _, err := h.repo.UpdateRegistryFunction(fnID, meta); err != nil {
+			if _, err := h.repo.UpdateRegistryFunction(context.Background(), fnID, meta); err != nil {
 				logrus.WithError(err).Warn("Failed to update function with platform fee info")
 			}
 
@@ -416,7 +416,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update latest version pointer
-	if err := h.repo.UpdateFunctionLatestVersion(fnID, req.Version); err != nil {
+	if err := h.repo.UpdateFunctionLatestVersion(context.Background(), fnID, req.Version); err != nil {
 		logrus.WithError(err).Error("Failed to update latest version")
 	}
 
@@ -500,7 +500,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		}
 		// Generate bootstrap FXCERT so History and Certificates show a cert after publish
 		go func() {
-			fn, err := h.repo.GetFunctionByID(fnID)
+			fn, err := h.repo.GetFunctionByID(context.Background(), fnID)
 			if err != nil || fn == nil {
 				return
 			}
@@ -510,6 +510,27 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 			}
 			execution.BootstrapFXCERT(h.repo, fn, fnVersion, "bootstrap", "internal", h.dreNodeKey, h.drePlatformKey)
 		}()
+	}
+
+	// Auto-create MCP settings for FunctionFly functions to ensure they appear in registry stats
+	// This is done regardless of verification status since MCP settings affect visibility
+	if strings.EqualFold(req.Author, "functionfly") {
+		enabled := true
+		exposeInputSchema := true
+		mcpSettings := storageregistry.MCPSettingsInput{
+			Enabled:           &enabled,
+			ExposeInputSchema: &exposeInputSchema,
+			Transports:        []string{"streamable-http"},
+			RateLimitPerMin:   60,
+		}
+		actorID, _ := uuid.Parse(user.ID)
+		if _, err := h.repo.UpsertMCPSettings(r.Context(), fnID, mcpSettings, &actorID); err != nil {
+			logrus.WithError(err).WithField("function_id", fnID).Warn("Failed to auto-create MCP settings for FunctionFly function")
+		} else {
+			logrus.WithFields(logrus.Fields{
+				"function": fmt.Sprintf("%s/%s", req.Author, req.Name),
+			}).Info("Auto-created MCP settings for FunctionFly function")
+		}
 	}
 
 	// NEW: Skip synchronous verification during publish - verify lazily at execute time
@@ -596,7 +617,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if inputSchema != nil && len(inputSchema) > 0 {
-		if err := h.repo.UpsertFunctionInputSchema(version.ID, inputSchema, isStrict); err != nil {
+		if err := h.repo.UpsertFunctionInputSchema(r.Context(), version.ID, inputSchema, isStrict); err != nil {
 			logrus.WithError(err).WithField("function_version_id", version.ID).Warn("Failed to save input schema")
 		} else {
 			logrus.WithField("function_version_id", version.ID).Info("Saved input schema for published function")
@@ -619,7 +640,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 	// Failures are logged but don't block the publish response.
 	if h.recommendationSvc != nil {
 		go func() {
-			fn, err := h.repo.GetFunctionByID(fnID)
+			fn, err := h.repo.GetFunctionByID(context.Background(), fnID)
 			if err != nil {
 				logrus.WithError(err).WithField("function_id", fnID).Warn("FlyEmbed: failed to get function for embedding")
 				return

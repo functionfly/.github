@@ -3,7 +3,7 @@ package users
 import (
 	"net/http"
 
-	"github.com/functionfly/functionfly/internal/api/apierror"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -16,19 +16,19 @@ func (h *Handler) HandleGetUserTrust(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	username := vars["username"]
 
-	user, err := h.repo.GetUserByUsername(username)
+	user, err := h.repo.GetUserByUsername(r.Context(), username)
 	if err != nil || user == nil {
 		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
 	}
 
-	stats, err := h.repo.GetUserProfileStats(user.ID)
+	stats, err := h.repo.GetUserProfileStats(r.Context(), user.ID)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewInternal("Failed to load user stats"))
 		return
 	}
 
-	breakdown, err := h.repo.GetUserTrustBreakdown(user.ID)
+	breakdown, err := h.repo.GetUserTrustBreakdown(r.Context(), user.ID)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewInternal("Failed to load trust breakdown"))
 		return
@@ -69,7 +69,7 @@ func (h *Handler) HandleGetMyTrust(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.repo.GetUserByID(claims.UserID)
+	user, err := h.repo.GetUserByID(r.Context(), claims.UserID)
 	if err != nil || user == nil {
 		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
@@ -80,13 +80,13 @@ func (h *Handler) HandleGetMyTrust(w http.ResponseWriter, r *http.Request) {
 		username = *user.Username
 	}
 
-	stats, err := h.repo.GetUserProfileStats(user.ID)
+	stats, err := h.repo.GetUserProfileStats(r.Context(), user.ID)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewInternal("Failed to load user stats"))
 		return
 	}
 
-	breakdown, err := h.repo.GetUserTrustBreakdown(user.ID)
+	breakdown, err := h.repo.GetUserTrustBreakdown(r.Context(), user.ID)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewInternal("Failed to load trust breakdown"))
 		return

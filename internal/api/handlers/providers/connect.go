@@ -46,8 +46,9 @@ func (h *Handler) HandleConnectProvider(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+
 	if req.ProviderID == "functionfly-edge" {
-		if existing, _ := h.repo.GetProviderByUserAndType(claims.UserID, "functionfly-edge"); existing != nil {
+		if existing, _ := h.repo.GetProviderByUserAndType(r.Context(), claims.UserID, "functionfly-edge"); existing != nil {
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"provider": providerResponse(existing),
@@ -60,12 +61,7 @@ func (h *Handler) HandleConnectProvider(w http.ResponseWriter, r *http.Request) 
 
 		if h.apikeyRepo != nil {
 			generator := apikey.NewGenerator()
-			plaintext, err := generator.Generate(apikey.KeyTypeEdge)
-			if err != nil {
-				logrus.WithError(err).Error("Failed to generate Edge API key")
-				http.Error(w, "Failed to generate API key", http.StatusInternalServerError)
-				return
-			}
+			plaintext, _ := generator.Generate(apikey.KeyTypeEdge)
 			edgeAPIKey = plaintext
 
 			hasher := apikey.NewHasher()
@@ -112,7 +108,7 @@ func (h *Handler) HandleConnectProvider(w http.ResponseWriter, r *http.Request) 
 			Token:    "managed",
 			Status:   "active",
 		}
-		if err := h.repo.CreateProvider(provider); err != nil {
+		if err := h.repo.CreateProvider(r.Context(), provider); err != nil {
 			logrus.WithError(err).Error("Failed to store functionfly-edge provider")
 			http.Error(w, "Failed to enable provider", http.StatusInternalServerError)
 			return
@@ -155,7 +151,7 @@ func (h *Handler) HandleConnectProvider(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	existing, _ := h.repo.GetProviderByUserAndType(claims.UserID, req.ProviderID)
+	existing, _ := h.repo.GetProviderByUserAndType(r.Context(), claims.UserID, req.ProviderID)
 	if existing != nil {
 		if _, err := h.repo.UpdateProvider(r.Context(), existing.ID, map[string]interface{}{
 			"token":  req.APIKey,
@@ -201,7 +197,7 @@ func (h *Handler) HandleConnectProvider(w http.ResponseWriter, r *http.Request) 
 		Token:    req.APIKey,
 		Status:   "active",
 	}
-	if err := h.repo.CreateProvider(provider); err != nil {
+	if err := h.repo.CreateProvider(r.Context(), provider); err != nil {
 		logrus.WithError(err).Error("Failed to store provider")
 		http.Error(w, "Failed to save provider", http.StatusInternalServerError)
 		return
@@ -245,7 +241,7 @@ func (h *Handler) HandleDisconnectProvider(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	provider, _ := h.repo.GetProviderByUserAndType(claims.UserID, providerID)
+	provider, _ := h.repo.GetProviderByUserAndType(r.Context(), claims.UserID, providerID)
 
 	if err := h.repo.DeleteProvider(r.Context(), providerID, claims.UserID); err != nil {
 		logrus.WithError(err).WithField("providerID", providerID).Error("Failed to delete provider")
@@ -302,7 +298,7 @@ func (h *Handler) HandleTestConnection(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	providerID := vars["providerId"]
 
-	provider, err := h.repo.GetProviderByUserAndType(claims.UserID, providerID)
+	provider, err := h.repo.GetProviderByUserAndType(r.Context(), claims.UserID, providerID)
 	if err != nil || provider == nil {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Provider not found"})
@@ -368,7 +364,7 @@ func (h *Handler) HandleRotateProvider(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	existing, err := h.repo.GetProviderByUserAndType(claims.UserID, providerID)
+	existing, err := h.repo.GetProviderByUserAndType(r.Context(), claims.UserID, providerID)
 	if err != nil || existing == nil {
 		http.Error(w, "Provider not found", http.StatusNotFound)
 		return
@@ -378,11 +374,6 @@ func (h *Handler) HandleRotateProvider(w http.ResponseWriter, r *http.Request) {
 		"token":  req.APIKey,
 		"status": "active",
 	})
-	if err != nil {
-		logrus.WithError(err).Error("Failed to rotate provider API key")
-		http.Error(w, "Failed to rotate API key", http.StatusInternalServerError)
-		return
-	}
 
 	providerUUID, _ := uuid.Parse(existing.ID)
 	utils.LogAuditEvent(ctx, h.repo, r, "provider.rotate", "provider", &providerUUID, map[string]interface{}{

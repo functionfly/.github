@@ -1,6 +1,7 @@
 package version
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -27,7 +28,7 @@ func (h *Handler) requireFunctionOwner(
 		return nil, nil, false
 	}
 
-	fn, err := h.registryRepo.GetFunctionByID(functionID)
+	fn, err := h.registryRepo.GetFunctionByID(context.Background(), functionID)
 	if err != nil {
 		if strings.Contains(err.Error(), "record not found") || strings.Contains(err.Error(), "no rows") {
 			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
@@ -57,7 +58,7 @@ func (h *Handler) requireFunctionView(
 		return nil, claims, false
 	}
 
-	fn, err := h.registryRepo.GetFunctionByID(functionID)
+	fn, err := h.registryRepo.GetFunctionByID(context.Background(), functionID)
 	if err != nil {
 		if strings.Contains(err.Error(), "record not found") || strings.Contains(err.Error(), "no rows") {
 			apierror.WriteError(w, apierror.NewNotFound("Function not found"))

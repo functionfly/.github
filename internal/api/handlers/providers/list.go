@@ -11,6 +11,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type ProviderMaintenanceStatus struct {
+	Disabled bool   `json:"disabled"`
+	Reason   string `json:"reason,omitempty"`
+}
+
 // HandleListProviders returns the current user's connected providers (no tokens).
 func (h *Handler) HandleListProviders(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
@@ -18,7 +23,7 @@ func (h *Handler) HandleListProviders(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	providers, err := h.repo.GetProvidersByUser(claims.UserID)
+	providers, err := h.repo.GetProvidersByUser(r.Context(), claims.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list providers")
 		http.Error(w, "Failed to list providers", http.StatusInternalServerError)
@@ -41,7 +46,7 @@ func (h *Handler) HandleGetProviderCredentials(w http.ResponseWriter, r *http.Re
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	providers, err := h.repo.GetProvidersByUser(claims.UserID)
+	providers, err := h.repo.GetProvidersByUser(r.Context(), claims.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list providers")
 		http.Error(w, "Failed to list providers", http.StatusInternalServerError)
@@ -82,4 +87,31 @@ func dedupeProviders(providers []*storage.Provider, mapFn func(*storage.Provider
 		out = append(out, mapFn(p))
 	}
 	return out
+}
+
+// HandleGetPlatformProviderStatus returns maintenance status for all provider types (public endpoint)
+func (h *Handler) HandleGetPlatformProviderStatus(w http.ResponseWriter, r *http.Request) {
+	settings, err := h.repo.ListProviderSettings(r.Context())
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list provider settings")
+		http.Error(w, "Failed to retrieve provider status", http.StatusInternalServerError)
+		return
+	}
+
+	status := make(map[string]ProviderMaintenanceStatus, len(settings))
+	for _, s := range settings {
+		status[s.Provider] = ProviderMaintenanceStatus{
+			Disabled: s.Disabled,
+			Reason:   "",
+		}
+		if s.DisabledReason != nil {
+			status[s.Provider] = ProviderMaintenanceStatus{
+				Disabled: s.Disabled,
+				Reason:   *s.DisabledReason,
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(status)
 }

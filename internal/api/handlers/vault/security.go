@@ -246,11 +246,17 @@ func (h *Handler) HandleSetSecretExpiration(w http.ResponseWriter, r *http.Reque
 	if updated == nil {
 		updated = secret
 	}
+	// Calculate expires_at for audit log
+	var expiresAt *time.Time
+	if updated.ExpireAfterDays != nil && updated.AutoExpire {
+		t := updated.CreatedAt.AddDate(0, 0, *updated.ExpireAfterDays)
+		expiresAt = &t
+	}
 	h.logAudit(r.Context(), claims.TenantID, secretID, claims.UserID.String(),
 		vault.AuditActionUpdate, true, "", vault.JSONMap{
 			"operation":         "set_expiration",
 			"secret_name":       updated.Name,
-			"expires_at":        updated.ExpiresAt,
+			"expires_at":        expiresAt,
 			"expire_after_days": req.ExpireAfterDays,
 		})
 	h.respondJSON(w, http.StatusOK, secretToResponse(updated))
@@ -653,7 +659,7 @@ func validateCIDRList(list []string) error {
 			return errors.New("empty entry")
 		}
 		if strings.Contains(entry, "/") {
-			if _, _, err := splitCIDR(entry); err != nil {
+			if _, err := splitCIDR(entry); err != nil {
 				return err
 			}
 			continue

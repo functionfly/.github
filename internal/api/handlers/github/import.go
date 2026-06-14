@@ -91,9 +91,9 @@ func (h *Handler) HandleImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go h.runImportPipeline(created.ID)
+	go h.runImportPipeline(r.Context(), created.ID)
 
-	h.respondJSON(w, http.StatusAccepted, h.mapImportResponse(created))
+	h.respondJSON(w, http.StatusAccepted, h.mapImportResponse(r.Context(), created))
 }
 
 // HandlePreviewImport performs a dry-run of the import (no actual creation).
@@ -532,7 +532,7 @@ func (h *Handler) HandleBulkImport(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		go h.runImportPipeline(created.ID)
+	go h.runImportPipeline(r.Context(), created.ID)
 
 		results = append(results, ImportResponse{
 			ImportID: created.ID,
@@ -581,7 +581,7 @@ func (h *Handler) HandleListImports(w http.ResponseWriter, r *http.Request) {
 
 	results := make([]*ImportDetailResponse, len(imports))
 	for i, imp := range imports {
-		results[i] = h.mapImportResponse(imp)
+		results[i] = h.mapImportResponse(r.Context(), imp)
 	}
 
 	h.respondJSON(w, http.StatusOK, ListImportsResponse{
@@ -620,7 +620,7 @@ func (h *Handler) HandleGetImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.respondJSON(w, http.StatusOK, h.mapImportResponse(imp))
+	h.respondJSON(w, http.StatusOK, h.mapImportResponse(r.Context(), imp))
 }
 
 // HandleCancelImport cancels a running import.
@@ -662,7 +662,7 @@ func (h *Handler) HandleCancelImport(w http.ResponseWriter, r *http.Request) {
 	// Re-fetch to get updated status
 	updated, _ := h.githubRepo.GetImportByID(r.Context(), importID)
 	if updated != nil {
-		h.respondJSON(w, http.StatusOK, h.mapImportResponse(updated))
+		h.respondJSON(w, http.StatusOK, h.mapImportResponse(r.Context(), updated))
 	} else {
 		h.respondJSON(w, http.StatusOK, map[string]string{"status": "cancelled"})
 	}
@@ -702,11 +702,11 @@ func (h *Handler) HandleRetryImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go h.runImportPipeline(importID)
+	go h.runImportPipeline(r.Context(), importID)
 
 	updated, _ := h.githubRepo.GetImportByID(r.Context(), importID)
 	if updated != nil {
-		h.respondJSON(w, http.StatusOK, h.mapImportResponse(updated))
+		h.respondJSON(w, http.StatusOK, h.mapImportResponse(r.Context(), updated))
 	} else {
 		h.respondJSON(w, http.StatusOK, map[string]string{"status": "pending"})
 	}
@@ -741,11 +741,11 @@ func (h *Handler) HandleResyncImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go h.runImportPipeline(importID)
+	go h.runImportPipeline(r.Context(), importID)
 
 	updated, _ := h.githubRepo.GetImportByID(r.Context(), importID)
 	if updated != nil {
-		h.respondJSON(w, http.StatusOK, h.mapImportResponse(updated))
+		h.respondJSON(w, http.StatusOK, h.mapImportResponse(r.Context(), updated))
 	} else {
 		h.respondJSON(w, http.StatusOK, map[string]string{"status": "pending"})
 	}
@@ -798,7 +798,7 @@ func (h *Handler) HandleImportProgress(w http.ResponseWriter, r *http.Request) {
 			"files_imported": imp.FilesImported,
 		}
 		if imp.FunctionID != nil && h.registryRepo != nil {
-			if fn, err := h.registryRepo.GetFunctionByID(*imp.FunctionID); err == nil && fn != nil {
+			if fn, err := h.registryRepo.GetFunctionByID(r.Context(), *imp.FunctionID); err == nil && fn != nil {
 				completeEvent["author"] = fn.Author
 			}
 		}
@@ -864,7 +864,7 @@ func (h *Handler) HandleImportProgress(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Handler) mapImportResponse(imp *storage.GitHubImport) *ImportDetailResponse {
+func (h *Handler) mapImportResponse(ctx context.Context, imp *storage.GitHubImport) *ImportDetailResponse {
 	resp := &ImportDetailResponse{
 		ID:                imp.ID,
 		RepoID:            imp.RepoID,
@@ -887,7 +887,7 @@ func (h *Handler) mapImportResponse(imp *storage.GitHubImport) *ImportDetailResp
 		CompletedAt:       imp.CompletedAt,
 	}
 	if imp.FunctionID != nil && h.registryRepo != nil {
-		if fn, err := h.registryRepo.GetFunctionByID(*imp.FunctionID); err == nil && fn != nil {
+		if fn, err := h.registryRepo.GetFunctionByID(ctx, *imp.FunctionID); err == nil && fn != nil {
 			resp.FunctionAuthor = fn.Author
 		}
 	}

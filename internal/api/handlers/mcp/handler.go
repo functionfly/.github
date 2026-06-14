@@ -45,6 +45,10 @@ type FunctionStore interface {
 	IncrementMCPInvocationCount(ctx context.Context, functionID uuid.UUID) error
 	// RecordMCPInvocation writes an observability row.
 	RecordMCPInvocation(ctx context.Context, rec registry.MCPInvocationRecord) error
+	// GetMCPStats returns aggregate MCP registry metrics.
+	GetMCPStats(ctx context.Context) (*registry.MCPStats, error)
+	// GetMCPCategories returns all MCP-enabled categories with function counts.
+	GetMCPCategories(ctx context.Context) ([]registry.MCPCategory, error)
 }
 
 // Executor is the surface used to actually run a tool call. In production
@@ -234,6 +238,68 @@ func (h *Handler) HandleToolsIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", ToolsIndexCacheMaxAge))
 	setCORSHeaders(w, r)
 	_ = json.NewEncoder(w).Encode(result)
+}
+
+// HandleStats serves GET /v1/mcp/stats. Public, no auth required.
+// Returns aggregate MCP registry metrics for the marketing page.
+func (h *Handler) HandleStats(w http.ResponseWriter, r *http.Request) {
+	if h.Disabled {
+		http.Error(w, "MCP registry is temporarily unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	if r.Method == http.MethodOptions {
+		setCORSHeaders(w, r)
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", "GET, OPTIONS")
+		writeHTTPError(w, r, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "only GET is allowed")
+		return
+	}
+
+	stats, err := h.Store.GetMCPStats(r.Context())
+	if err != nil {
+		logrus.WithError(err).Error("mcp: get stats failed")
+		writeHTTPError(w, r, http.StatusInternalServerError, "STATS_FAILED", "failed to load stats")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "public, max-age=60")
+	setCORSHeaders(w, r)
+	_ = json.NewEncoder(w).Encode(stats)
+}
+
+// HandleCategories serves GET /v1/mcp/categories. Public, no auth required.
+// Returns all MCP-enabled categories with function counts.
+func (h *Handler) HandleCategories(w http.ResponseWriter, r *http.Request) {
+	if h.Disabled {
+		http.Error(w, "MCP registry is temporarily unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	if r.Method == http.MethodOptions {
+		setCORSHeaders(w, r)
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", "GET, OPTIONS")
+		writeHTTPError(w, r, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "only GET is allowed")
+		return
+	}
+
+	categories, err := h.Store.GetMCPCategories(r.Context())
+	if err != nil {
+		logrus.WithError(err).Error("mcp: get categories failed")
+		writeHTTPError(w, r, http.StatusInternalServerError, "CATEGORIES_FAILED", "failed to load categories")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "public, max-age=300")
+	setCORSHeaders(w, r)
+	_ = json.NewEncoder(w).Encode(categories)
 }
 
 // ToolDefinition is the wire shape we return for a single MCP tool. It is

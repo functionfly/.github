@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -30,14 +31,14 @@ func (h *Handler) HandleGetTrustScore(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get the function first to verify it exists
-	fn, err := h.repo.GetFunctionByID(functionID)
+	fn, err := h.repo.GetFunctionByID(context.Background(), functionID)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	// Get the latest trust history
-	history, err := h.repo.GetLatestTrustHistory(functionID)
+	history, err := h.repo.GetLatestTrustHistory(context.Background(), functionID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get trust history")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get trust score"))
@@ -47,7 +48,7 @@ func (h *Handler) HandleGetTrustScore(w http.ResponseWriter, r *http.Request) {
 	// If no trust history exists, calculate it on-demand
 	if history == nil {
 		windowStart := time.Now().Add(-24 * time.Hour)
-		history, err = h.repo.CalculateTrustScore(functionID, windowStart, time.Now())
+		history, err = h.repo.CalculateTrustScore(context.Background(), functionID, windowStart, time.Now())
 		if err != nil {
 			logrus.WithError(err).Error("Failed to calculate trust score")
 			apierror.WriteError(w, apierror.NewInternal("Failed to calculate trust score"))
@@ -119,7 +120,7 @@ func (h *Handler) HandleGetTrustHistory(w http.ResponseWriter, r *http.Request) 
 	offset := (page - 1) * pageSize
 
 	// Get trust history
-	history, total, err := h.repo.GetTrustHistory(functionID, pageSize, offset)
+	history, total, err := h.repo.GetTrustHistory(context.Background(), functionID, pageSize, offset)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get trust history")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get trust history"))
@@ -151,24 +152,24 @@ func (h *Handler) HandleRefreshTrustScore(w http.ResponseWriter, r *http.Request
 	}
 
 	// Verify function exists
-	fn, err := h.repo.GetFunctionByID(functionID)
+	fn, err := h.repo.GetFunctionByID(context.Background(), functionID)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	// Recalculate trust score
-	if err := h.repo.RecalculateTrustScore(functionID); err != nil {
+	if err := h.repo.RecalculateTrustScore(context.Background(), functionID); err != nil {
 		logrus.WithError(err).Error("Failed to recalculate trust score")
 		apierror.WriteError(w, apierror.NewInternal("Failed to recalculate trust score"))
 		return
 	}
 
 	// Invalidate cache
-	h.repo.InvalidateTrustScoreCache(functionID)
+	h.repo.InvalidateTrustScoreCache(context.Background(), functionID)
 
 	// Get updated trust score
-	history, err := h.repo.GetLatestTrustHistory(functionID)
+	history, err := h.repo.GetLatestTrustHistory(context.Background(), functionID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get updated trust history")
 		apierror.WriteError(w, apierror.NewInternal("Trust score recalculated but failed to fetch result"))
@@ -197,7 +198,7 @@ func (h *Handler) HandleGetFunctionTrustByAuthorName(w http.ResponseWriter, r *h
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
 			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
@@ -209,7 +210,7 @@ func (h *Handler) HandleGetFunctionTrustByAuthorName(w http.ResponseWriter, r *h
 	}
 
 	// Get the latest trust history
-	history, err := h.repo.GetLatestTrustHistory(fn.ID)
+	history, err := h.repo.GetLatestTrustHistory(context.Background(), fn.ID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get trust history")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get trust score"))
@@ -219,7 +220,7 @@ func (h *Handler) HandleGetFunctionTrustByAuthorName(w http.ResponseWriter, r *h
 	// If no trust history exists, calculate it on-demand
 	if history == nil {
 		windowStart := time.Now().Add(-24 * time.Hour)
-		history, err = h.repo.CalculateTrustScore(fn.ID, windowStart, time.Now())
+		history, err = h.repo.CalculateTrustScore(context.Background(), fn.ID, windowStart, time.Now())
 		if err != nil {
 			logrus.WithError(err).Error("Failed to calculate trust score")
 			apierror.WriteError(w, apierror.NewInternal("Failed to calculate trust score"))
@@ -269,7 +270,7 @@ func (h *Handler) HandleGetFunctionTrustByAuthorName(w http.ResponseWriter, r *h
 // Note: This endpoint is protected by authMiddleware.RequirePermission(auth.PermSystemWrite) at the route level
 func (h *Handler) HandleRefreshAllTrustScores(w http.ResponseWriter, r *http.Request) {
 
-	job, err := h.repo.RefreshAllTrustScores()
+	job, err := h.repo.RefreshAllTrustScores(context.Background())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to refresh all trust scores")
 		apierror.WriteError(w, apierror.NewInternal("Failed to refresh trust scores"))
@@ -300,7 +301,7 @@ func (h *Handler) HandleCalculateSlidingWindow(w http.ResponseWriter, r *http.Re
 		config = registry.DefaultSlidingWindowConfig()
 	}
 
-	deltas, err := h.repo.UpdateSlidingWindowScores(config)
+	deltas, err := h.repo.UpdateSlidingWindowScores(context.Background(), config)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to update sliding window scores")
 		apierror.WriteError(w, apierror.NewInternal("Failed to update sliding window scores"))
@@ -342,7 +343,7 @@ func (h *Handler) HandleGetSlidingWindowState(w http.ResponseWriter, r *http.Req
 	}
 
 	// Get latest trust history as proxy for sliding window state
-	history, err := h.repo.GetLatestTrustHistory(functionID)
+	history, err := h.repo.GetLatestTrustHistory(context.Background(), functionID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get sliding window state")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get state"))
@@ -376,7 +377,7 @@ func (h *Handler) HandleGetSlidingWindowState(w http.ResponseWriter, r *http.Req
 // GetTrustScoreComponents calculates individual trust score components
 func (h *Handler) GetTrustScoreComponents(functionID uuid.UUID) (*registry.TrustScoreResponse, error) {
 	windowStart := time.Now().Add(-24 * time.Hour)
-	history, err := h.repo.CalculateTrustScore(functionID, windowStart, time.Now())
+	history, err := h.repo.CalculateTrustScore(context.Background(), functionID, windowStart, time.Now())
 	if err != nil {
 		return nil, err
 	}

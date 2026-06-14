@@ -40,7 +40,7 @@ type ConversationEventPublisher interface {
 
 // userByIDGetter resolves users for notification copy (minimal surface for tests).
 type userByIDGetter interface {
-	GetUserByID(userID uuid.UUID) (*storage.User, error)
+	GetUserByID(ctx context.Context, userID uuid.UUID) (*storage.User, error)
 }
 
 // NewHandler creates a new conversations handler. notify and users may be nil.
@@ -96,7 +96,7 @@ func (h *Handler) GetCollaborationProfile(w http.ResponseWriter, r *http.Request
 	}
 
 	// Verify target user exists
-	targetUser, err := h.users.GetUserByID(targetUserID)
+	targetUser, err := h.users.GetUserByID(r.Context(), targetUserID)
 	if err != nil {
 		http.Error(w, `{"error":"User not found"}`, http.StatusNotFound)
 		return
@@ -242,7 +242,7 @@ func (h *Handler) GetConversationContext(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	fnRecord, err := h.registryRepo.GetFunctionByAuthorName(author, name)
+	fnRecord, err := h.registryRepo.GetFunctionByAuthorName(r.Context(), author, name)
 	if err != nil {
 		h.logger.WithError(err).WithField("function", fn).Error("GetFunctionByAuthorName failed")
 		http.Error(w, `{"error":"Failed to lookup function","code":"LOOKUP_FAILED","message":"Unable to retrieve function information"}`, http.StatusInternalServerError)
@@ -255,7 +255,7 @@ func (h *Handler) GetConversationContext(w http.ResponseWriter, r *http.Request)
 
 	trustScore := 50
 	since := time.Now().AddDate(0, 0, -30)
-	if total, successRate, _, _, _, _, _, err := h.registryRepo.GetFunctionTrustStats(fnRecord.ID, since); err == nil && total > 0 {
+	if total, successRate, _, _, _, _, _, err := h.registryRepo.GetFunctionTrustStats(r.Context(), fnRecord.ID, since); err == nil && total > 0 {
 		trustScore = int(successRate)
 		if trustScore < 0 {
 			trustScore = 0
@@ -266,7 +266,7 @@ func (h *Handler) GetConversationContext(w http.ResponseWriter, r *http.Request)
 	}
 
 	lastFailures := []interface{}{}
-	if failures, err := h.registryRepo.GetRecentFailedExecutions(fnRecord.ID, 10); err == nil {
+	if failures, err := h.registryRepo.GetRecentFailedExecutions(r.Context(), fnRecord.ID, 10); err == nil {
 		for _, e := range failures {
 			entry := map[string]interface{}{
 				"id":        e.ID.String(),
@@ -608,9 +608,14 @@ func (h *Handler) CreateMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Server-side message content length validation
-	if ok, errMsg := middleware.ValidateMessageContent(req.Content); !ok {
+	if req.Content == "" {
 		w.Header().Set("Content-Type", "application/json")
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, errMsg), http.StatusBadRequest)
+		http.Error(w, `{"error":"message content is required"}`, http.StatusBadRequest)
+		return
+	}
+	if len(req.Content) > 10000 {
+		w.Header().Set("Content-Type", "application/json")
+		http.Error(w, `{"error":"message content exceeds maximum length"}`, http.StatusBadRequest)
 		return
 	}
 	m := &conversations.ConversationMessage{
@@ -1489,7 +1494,7 @@ func (h *Handler) notifyConversationMessage(ctx context.Context, conversationID,
 	var author *storage.User
 	if h.users != nil {
 		var err error
-		author, err = h.users.GetUserByID(authorID)
+		author, err = h.users.GetUserByID(ctx, authorID)
 		if err != nil {
 			h.logger.WithError(err).Debug("notifyConversationMessage: sender lookup")
 		}

@@ -606,7 +606,7 @@ func (h *Handler) HandleListForFunction(w http.ResponseWriter, r *http.Request) 
 		// Fall back to a direct lookup so we can return a clean 404
 		// for a truly unknown function while still returning [] for
 		// functions with zero shareable receipts.
-		f, lookupErr := h.RegistryRepo.GetFunctionByAuthorName(author, name)
+		f, lookupErr := h.RegistryRepo.GetFunctionByAuthorName(context.Background(), author, name)
 		if lookupErr != nil || f == nil {
 			writeJSONError(w, http.StatusNotFound, "FUNCTION_NOT_FOUND", "Function not found.")
 			return

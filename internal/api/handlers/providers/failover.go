@@ -35,7 +35,7 @@ func (h *Handler) HandleRunFailoverTest(w http.ResponseWriter, r *http.Request) 
 	startTime := time.Now()
 	results := []FailoverTestResult{}
 
-	primaryProvider, err := h.repo.GetProviderByUserAndType(claims.UserID, req.PrimaryProviderID)
+	primaryProvider, err := h.repo.GetProviderByUserAndType(r.Context(), claims.UserID, req.PrimaryProviderID)
 	if err != nil || primaryProvider == nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
@@ -58,7 +58,7 @@ func (h *Handler) HandleRunFailoverTest(w http.ResponseWriter, r *http.Request) 
 	var failoverOccurred bool
 
 	if req.BackupProviderID != "" {
-		backupProvider, err := h.repo.GetProviderByUserAndType(claims.UserID, req.BackupProviderID)
+		backupProvider, err := h.repo.GetProviderByUserAndType(r.Context(), claims.UserID, req.BackupProviderID)
 		if err == nil && backupProvider != nil {
 			backupLatency := h.measureProviderLatency(backupProvider)
 			results = append(results, FailoverTestResult{
@@ -70,7 +70,7 @@ func (h *Handler) HandleRunFailoverTest(w http.ResponseWriter, r *http.Request) 
 			failoverOccurred = backupLatency < primaryLatency
 		}
 	} else {
-		allProviders, _ := h.repo.GetProvidersByUser(claims.UserID)
+		allProviders, _ := h.repo.GetProvidersByUser(r.Context(), claims.UserID)
 		for _, p := range allProviders {
 			if p.ID != primaryProvider.ID && p.Status == "active" {
 				latency := h.measureProviderLatency(p)

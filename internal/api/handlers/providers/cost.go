@@ -21,11 +21,7 @@ func (h *Handler) HandleEstimateCost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	provider, err := h.repo.GetProviderByUserAndType(claims.UserID, req.Provider)
-	if err != nil {
-		http.Error(w, "Provider not configured", http.StatusBadRequest)
-		return
-	}
+	provider, _ := h.repo.GetProviderByUserAndType(r.Context(), claims.UserID, req.Provider)
 
 	if provider.Status != "active" {
 		http.Error(w, "Provider not active", http.StatusBadRequest)

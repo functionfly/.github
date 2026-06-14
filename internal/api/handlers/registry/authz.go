@@ -105,7 +105,7 @@ func (h *Handler) RequireRegistryFunctionOwner(
 		return nil, nil, false
 	}
 
-	fn, err := h.repo.GetFunctionByID(functionID)
+	fn, err := h.repo.GetFunctionByID(r.Context(), functionID)
 	if err != nil {
 		if strings.Contains(err.Error(), "record not found") || strings.Contains(err.Error(), "no rows") {
 			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
@@ -132,7 +132,7 @@ func (h *Handler) RequireRegistryFunctionView(
 	claims := middleware.GetUserFromContext(r)
 	// OptionalAuth on /v1 may attach claims; public routes still work without auth for public functions.
 
-	fn, err := h.repo.GetFunctionByID(functionID)
+	fn, err := h.repo.GetFunctionByID(r.Context(), functionID)
 	if err != nil {
 		if strings.Contains(err.Error(), "record not found") || strings.Contains(err.Error(), "no rows") {
 			apierror.WriteError(w, apierror.NewNotFound("Function not found"))

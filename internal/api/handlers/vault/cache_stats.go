@@ -23,7 +23,10 @@ func (h *Handler) HandleCacheStats(w http.ResponseWriter, r *http.Request) {
 		apierror.WriteError(w, apierror.NewInternal("Cache not configured"))
 		return
 	}
-	stats := h.Cache.Stats(r.Context())
+	var stats vault.CacheStats
+	if h.Cache.Enabled() {
+		stats = h.Cache.Stats(r.Context())
+	}
 	h.respondJSON(w, http.StatusOK, map[string]interface{}{
 		"enabled":  h.Cache.Enabled(),
 		"meta":     stats.MetaKeys,
@@ -33,4 +36,3 @@ func (h *Handler) HandleCacheStats(w http.ResponseWriter, r *http.Request) {
 }
 
 // _ keeps the import alive in case we later move the helper.
-var _ = vault.SecretCache(nil)

@@ -3,7 +3,6 @@ package registry
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gorilla/mux"
 )

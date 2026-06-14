@@ -671,7 +671,7 @@ func extractClaimsFromRequest(r *http.Request, authSvc *auth.AuthService) (*auth
 	if len(parts) != 2 || parts[0] != "Bearer" {
 		return nil, fmt.Errorf("invalid authorization header format")
 	}
-	return authSvc.ValidateToken(parts[1])
+	return authSvc.ValidateToken(r.Context(), parts[1])
 }
 
 func (h *Handler) getUserID(r *http.Request) (uuid.UUID, error) {

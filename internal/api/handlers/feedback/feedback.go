@@ -108,7 +108,7 @@ func (h *Handler) CreateFeedback(w http.ResponseWriter, r *http.Request) {
 	// Rate limiting check
 	if userID != nil {
 		// For authenticated users, check if they've submitted feedback recently
-		feedbacks, err := h.repo.GetFeedbackByUser(userID, nil, 1, 0)
+		feedbacks, err := h.repo.GetFeedbackByUser(r.Context(), userID, nil, 1, 0)
 		if err == nil && len(feedbacks) > 0 {
 			lastSubmission := feedbacks[0].CreatedAt
 			if time.Since(lastSubmission) < time.Hour {
@@ -151,7 +151,7 @@ func (h *Handler) CreateFeedback(w http.ResponseWriter, r *http.Request) {
 		UserAgent:    r.Header.Get("User-Agent"),
 	}
 
-	createdFeedback, err := h.repo.CreateFeedback(feedback)
+	createdFeedback, err := h.repo.CreateFeedback(r.Context(), feedback)
 	if err != nil {
 		logrus.WithError(err).WithField("feedback_type", feedbackType).Error("CreateFeedback failed")
 		// If DB rejects feedback_type (e.g. launch_waitlist not in CHECK), tell operator to run migration
@@ -223,7 +223,7 @@ func (h *Handler) CreateFeedback(w http.ResponseWriter, r *http.Request) {
 						S3Bucket:    getStorageBucketName(),
 					}
 
-					_, err = h.repo.CreateFeedbackAttachment(attachment)
+					_, err = h.repo.CreateFeedbackAttachment(r.Context(), attachment)
 					if err != nil {
 						// Log error but don't fail the entire request
 						fmt.Printf("Failed to create attachment: %v\n", err)
@@ -263,7 +263,7 @@ func (h *Handler) GetFeedbackHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get feedback history
-	feedbacks, err := h.repo.GetFeedbackByUser(&user.UserID, nil, limit, offset)
+	feedbacks, err := h.repo.GetFeedbackByUser(r.Context(), &user.UserID, nil, limit, offset)
 	if err != nil {
 		http.Error(w, `{"error":"Failed to retrieve feedback history"}`, http.StatusInternalServerError)
 		return
@@ -307,7 +307,7 @@ func (h *Handler) ListFeedback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get feedback list
-	feedbacks, err := h.repo.ListFeedback(limit, offset, statusFilter, typeFilter)
+	feedbacks, err := h.repo.ListFeedback(r.Context(), limit, offset, statusFilter, typeFilter)
 	if err != nil {
 		http.Error(w, `{"error":"Failed to retrieve feedback"}`, http.StatusInternalServerError)
 		return
@@ -384,13 +384,13 @@ func (h *Handler) DownloadAttachment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	attachment, err := h.repo.GetFeedbackAttachmentByID(attachmentID)
+	attachment, err := h.repo.GetFeedbackAttachmentByID(r.Context(), attachmentID)
 	if err != nil || attachment == nil {
 		http.Error(w, `{"error":"Attachment not found"}`, http.StatusNotFound)
 		return
 	}
 
-	feedback, err := h.repo.GetFeedbackByID(attachment.FeedbackID)
+	feedback, err := h.repo.GetFeedbackByID(r.Context(), attachment.FeedbackID)
 	if err != nil || feedback == nil {
 		http.Error(w, `{"error":"Feedback not found"}`, http.StatusNotFound)
 		return
@@ -428,7 +428,7 @@ func (h *Handler) DownloadAttachment(w http.ResponseWriter, r *http.Request) {
 
 // GetFeedbackStats handles GET /v1/admin/feedback/stats (admin only)
 func (h *Handler) GetFeedbackStats(w http.ResponseWriter, r *http.Request) {
-	stats, err := h.repo.GetFeedbackStats()
+	stats, err := h.repo.GetFeedbackStats(r.Context())
 	if err != nil {
 		http.Error(w, `{"error":"Failed to retrieve feedback stats"}`, http.StatusInternalServerError)
 		return
@@ -440,7 +440,7 @@ func (h *Handler) GetFeedbackStats(w http.ResponseWriter, r *http.Request) {
 
 // GetFeedbackAnalytics handles GET /v1/admin/feedback/analytics (admin only)
 func (h *Handler) GetFeedbackAnalytics(w http.ResponseWriter, r *http.Request) {
-	analytics, err := h.repo.GetFeedbackAnalytics()
+	analytics, err := h.repo.GetFeedbackAnalytics(r.Context())
 	if err != nil {
 		http.Error(w, `{"error":"Failed to retrieve feedback analytics"}`, http.StatusInternalServerError)
 		return
@@ -471,7 +471,7 @@ func (h *Handler) ExportFeedback(w http.ResponseWriter, r *http.Request) {
 	dateTo := r.URL.Query().Get("date_to")
 
 	// Get all feedback (admin can see all)
-	feedbacks, err := h.repo.ListFeedback(10000, 0, nil, nil) // Get up to 10k records
+	feedbacks, err := h.repo.ListFeedback(r.Context(), 10000, 0, nil, nil) // Get up to 10k records
 	if err != nil {
 		http.Error(w, `{"error":"Failed to retrieve feedback"}`, http.StatusInternalServerError)
 		return

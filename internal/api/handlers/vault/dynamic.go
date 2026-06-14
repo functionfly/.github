@@ -218,6 +218,18 @@ func (h *Handler) HandleCreateCredential(w http.ResponseWriter, r *http.Request)
 		apierror.WriteError(w, apierror.NewNotFound("Target not found"))
 		return
 	}
+
+	if h.quotaEnforcer != nil {
+		decision, err := h.quotaEnforcer.CheckDynamicCreds(r.Context(), claims.TenantID)
+		if err != nil {
+			h.logger.WithError(err).Warn("Failed to check dynamic creds quota")
+		} else if !decision.Allowed {
+			h.respondErrorCode(w, http.StatusForbidden, apierror.ErrorCode("DYNAMIC_CREDS_QUOTA_EXCEEDED"),
+				"Dynamic credentials quota exceeded. Upgrade your plan to create more credentials.")
+			return
+		}
+	}
+
 	cred := &vault.DynamicCredential{
 		TenantID:      claims.TenantID,
 		TargetID:      *targetID,

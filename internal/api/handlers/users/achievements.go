@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/functionfly/functionfly/internal/api/apierror"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -20,7 +20,7 @@ func (h *Handler) HandleGetUserAchievements(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Get user by username
-	user, err := h.repo.GetUserByUsername(username)
+	user, err := h.repo.GetUserByUsername(r.Context(), username)
 	if err != nil {
 		logrus.WithError(err).WithField("username", username).Error("Failed to get user by username")
 		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve user"))
@@ -39,7 +39,7 @@ func (h *Handler) HandleGetUserAchievements(w http.ResponseWriter, r *http.Reque
 	earnedAtISO := joinDate.Format("2006-01-02T15:04:05Z07:00")
 
 	// Get user achievements (on error still return "Joined FunctionFly" so something shows)
-	achievements, err := h.repo.GetUserAchievements(user.ID)
+	achievements, err := h.repo.GetUserAchievements(r.Context(), user.ID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", user.ID).Warn("Failed to get user achievements, returning joined achievement only")
 		joinedOnly := []map[string]interface{}{{
@@ -95,7 +95,7 @@ func (h *Handler) HandleGetUserAchievements(w http.ResponseWriter, r *http.Reque
 		}
 	}
 	if !hasJoined {
-		joinedDef, _ := h.repo.GetAchievementBySlug("joined_functionfly")
+		joinedDef, _ := h.repo.GetAchievementBySlug(r.Context(), "joined_functionfly")
 		name, desc, icon, color, category, points := "Member", "Joined FunctionFly", "UserPlus", "blue", "milestone", 0
 		if joinedDef != nil {
 			name, desc, icon, color, category, points = joinedDef.Name, joinedDef.Description, joinedDef.Icon, joinedDef.Color, joinedDef.Category, joinedDef.Points
@@ -117,7 +117,7 @@ func (h *Handler) HandleGetUserAchievements(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Get all available achievements for progress tracking
-	allAchievements, err := h.repo.ListAchievements()
+	allAchievements, err := h.repo.ListAchievements(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list all achievements")
 	}

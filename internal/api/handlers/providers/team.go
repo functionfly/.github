@@ -26,21 +26,21 @@ func (h *Handler) HandleCreateTeamInvite(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	user, err := h.repo.GetUserByID(claims.UserID)
+	user, err := h.repo.GetUserByID(r.Context(), claims.UserID)
 	if err != nil || user == nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Warn("Failed to get user for team invite")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	team, err := h.repo.GetTeamByUserID(user.ID)
+	team, err := h.repo.GetTeamByUserID(r.Context(), user.ID)
 	if err != nil {
 		team = &storage.Team{
 			Name:      fmt.Sprintf("%s's Team", user.Email),
 			TenantID:  user.TenantID,
 			CreatedBy: user.ID,
 		}
-		if err := h.repo.CreateTeam(team); err != nil {
+		if err := h.repo.CreateTeam(r.Context(), team); err != nil {
 			logrus.WithError(err).Error("Failed to create team")
 			http.Error(w, "Failed to create team", http.StatusInternalServerError)
 			return
@@ -51,7 +51,7 @@ func (h *Handler) HandleCreateTeamInvite(w http.ResponseWriter, r *http.Request)
 			UserID: user.ID,
 			Role:   "admin",
 		}
-		if err := h.repo.AddTeamMember(teamMember); err != nil {
+		if err := h.repo.AddTeamMember(r.Context(), teamMember); err != nil {
 			logrus.WithError(err).Error("Failed to add user to team")
 			http.Error(w, "Failed to setup team", http.StatusInternalServerError)
 			return
@@ -78,7 +78,7 @@ func (h *Handler) HandleCreateTeamInvite(w http.ResponseWriter, r *http.Request)
 		}
 
 		if h.notify != nil {
-			invitedUser, err := h.repo.GetUserByEmail(email)
+			invitedUser, err := h.repo.GetUserByEmail(r.Context(), email)
 			if err == nil && invitedUser != nil {
 				invitedByName := user.Email
 				if user.Username != nil && *user.Username != "" {
@@ -123,21 +123,21 @@ func (h *Handler) HandleShareProvider(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	provider, err := h.repo.GetProviderByID(providerID)
+	provider, err := h.repo.GetProviderByID(r.Context(), providerID)
 	if err != nil {
 		http.Error(w, "Provider not found", http.StatusNotFound)
 		return
 	}
 
 	if provider.UserID != claims.UserID {
-		isAdmin, err := h.repo.IsTeamAdmin(claims.UserID, req.TeamID)
+		isAdmin, err := h.repo.IsTeamAdmin(r.Context(), claims.UserID, req.TeamID)
 		if err != nil || !isAdmin {
 			http.Error(w, "Unauthorized", http.StatusForbidden)
 			return
 		}
 	}
 
-	if err := h.repo.ShareProviderWithTeam(providerID, req.TeamID); err != nil {
+	if err := h.repo.ShareProviderWithTeam(r.Context(), providerID, req.TeamID); err != nil {
 		logrus.WithError(err).Error("Failed to share provider")
 		http.Error(w, "Failed to share provider", http.StatusInternalServerError)
 		return

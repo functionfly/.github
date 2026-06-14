@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -52,7 +53,7 @@ func (h *Handler) HandleGetFunctionSettings(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -121,7 +122,7 @@ func (h *Handler) HandlePatchFunctionSettings(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -140,7 +141,7 @@ func (h *Handler) HandlePatchFunctionSettings(w http.ResponseWriter, r *http.Req
 
 	plan := middleware.GetTenantPlan(r)
 	if plan == "" && h.backendRepo != nil {
-		if sub, err := h.backendRepo.GetSubscriptionByTenantID(user.TenantID); err == nil && sub != nil && sub.PricingTier != nil {
+		if sub, err := h.backendRepo.GetSubscriptionByTenantID(context.Background(), user.TenantID); err == nil && sub != nil && sub.PricingTier != nil {
 			plan = sub.PricingTier.Name
 		}
 	}
@@ -178,7 +179,7 @@ func (h *Handler) HandlePatchFunctionSettings(w http.ResponseWriter, r *http.Req
 		}
 		settings["custom_domains"] = *req.CustomDomains
 
-		if err := h.repo.UpdateFunctionSettings(fn.ID, settings); err != nil {
+		if err := h.repo.UpdateFunctionSettings(context.Background(), fn.ID, settings); err != nil {
 			apierror.WriteError(w, apierror.NewInternal("Failed to update settings"))
 			return
 		}
@@ -214,7 +215,7 @@ func (h *Handler) HandleGetEnvVars(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -259,7 +260,7 @@ func (h *Handler) HandlePutEnvVars(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -282,7 +283,7 @@ func (h *Handler) HandlePutEnvVars(w http.ResponseWriter, r *http.Request) {
 	}
 	settings["environment_variables"] = req
 
-	if err := h.repo.UpdateFunctionSettings(fn.ID, settings); err != nil {
+	if err := h.repo.UpdateFunctionSettings(context.Background(), fn.ID, settings); err != nil {
 		apierror.WriteError(w, apierror.NewInternal("Failed to update environment variables"))
 		return
 	}
@@ -307,7 +308,7 @@ func (h *Handler) HandleDeleteEnvVar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -328,7 +329,7 @@ func (h *Handler) HandleDeleteEnvVar(w http.ResponseWriter, r *http.Request) {
 		settings["environment_variables"] = env
 	}
 
-	if err := h.repo.UpdateFunctionSettings(fn.ID, settings); err != nil {
+	if err := h.repo.UpdateFunctionSettings(context.Background(), fn.ID, settings); err != nil {
 		apierror.WriteError(w, apierror.NewInternal("Failed to delete environment variable"))
 		return
 	}
@@ -357,7 +358,7 @@ func (h *Handler) HandleGetSecrets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -402,7 +403,7 @@ func (h *Handler) HandlePutSecrets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -430,7 +431,7 @@ func (h *Handler) HandlePutSecrets(w http.ResponseWriter, r *http.Request) {
 	}
 	settings["secrets"] = secretKeys
 
-	if err := h.repo.UpdateFunctionSettings(fn.ID, settings); err != nil {
+	if err := h.repo.UpdateFunctionSettings(context.Background(), fn.ID, settings); err != nil {
 		apierror.WriteError(w, apierror.NewInternal("Failed to update secrets"))
 		return
 	}
@@ -455,7 +456,7 @@ func (h *Handler) HandleDeleteSecret(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -481,7 +482,7 @@ func (h *Handler) HandleDeleteSecret(w http.ResponseWriter, r *http.Request) {
 		settings["secrets"] = newSecrets
 	}
 
-	if err := h.repo.UpdateFunctionSettings(fn.ID, settings); err != nil {
+	if err := h.repo.UpdateFunctionSettings(context.Background(), fn.ID, settings); err != nil {
 		apierror.WriteError(w, apierror.NewInternal("Failed to delete secret"))
 		return
 	}

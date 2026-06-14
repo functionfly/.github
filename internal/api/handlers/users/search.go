@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/functionfly/functionfly/internal/api/apierror"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/sirupsen/logrus"
 )

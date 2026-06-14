@@ -181,7 +181,7 @@ func (h *Handler) HandleGetSDKCode(w http.ResponseWriter, r *http.Request) {
 	name := vars["name"]
 	sdk := r.URL.Query().Get("sdk") // javascript, python, go
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return

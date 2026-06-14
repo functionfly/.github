@@ -19,8 +19,8 @@ func RepoPlanResolver(repo storage.Repository) PlanResolver {
 	return &repoPlanResolver{repo: repo}
 }
 
-func (r *repoPlanResolver) GetTenantPlan(_ context.Context, tenantID uuid.UUID) string {
-	subscription, err := r.repo.GetSubscriptionByTenantID(tenantID)
+func (r *repoPlanResolver) GetTenantPlan(ctx context.Context, tenantID uuid.UUID) string {
+	subscription, err := r.repo.GetSubscriptionByTenantID(ctx, tenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Warn("failed to get tenant subscription for state fabric quota")
 		return plans.PlanStarter

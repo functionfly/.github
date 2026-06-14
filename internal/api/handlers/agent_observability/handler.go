@@ -3,7 +3,6 @@ package agent_observability
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -188,7 +187,13 @@ func (h *Handler) HandleCreateRun(w http.ResponseWriter, r *http.Request) {
 		SpanID:        spanID,
 		ParentSpanID:  parentSpanID,
 		Status:        "running",
-		Metadata:      storage.JSONMap(metadata),
+		Metadata:      func() storage.JSONMap {
+			m := make(storage.JSONMap, len(metadata))
+			for k, v := range metadata {
+				m[k] = v
+			}
+			return m
+		}(),
 	}
 
 	if err := h.repo.CreateRun(r.Context(), run); err != nil {

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/functionfly/functionfly/internal/api/apierror"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/payment"
@@ -197,7 +197,7 @@ func (h *Handler) HandleCreateUsernameChangeCheckout(w http.ResponseWriter, r *h
 	}
 
 	// Get user details
-	user, err := h.repo.GetUserByID(claims.UserID)
+	user, err := h.repo.GetUserByID(r.Context(), claims.UserID)
 	if err != nil || user == nil {
 		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return

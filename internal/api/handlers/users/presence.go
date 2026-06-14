@@ -285,7 +285,7 @@ func (h *PresenceHandler) HandleWebSocketPresence(w http.ResponseWriter, r *http
 	if claims == nil {
 		token := r.URL.Query().Get("token")
 		if token != "" {
-			validatedClaims, err := h.authSvc.ValidateToken(token)
+			validatedClaims, err := h.authSvc.ValidateToken(r.Context(), token)
 			if err != nil {
 				tokenPrefix := token
 				if len(token) > 50 {
@@ -304,7 +304,7 @@ func (h *PresenceHandler) HandleWebSocketPresence(w http.ResponseWriter, r *http
 		return
 	}
 
-	user, err := h.repo.GetUserByID(claims.UserID)
+	user, err := h.repo.GetUserByID(r.Context(), claims.UserID)
 	if err != nil || user == nil {
 		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
@@ -455,7 +455,7 @@ func (h *PresenceHandler) HandleGetMyPresence(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	user, err := h.repo.GetUserByID(claims.UserID)
+	user, err := h.repo.GetUserByID(r.Context(), claims.UserID)
 	if err != nil || user == nil {
 		writeJSONError(w, http.StatusNotFound, "User not found")
 		return
@@ -500,7 +500,7 @@ func (h *PresenceHandler) HandleUpdateMyPresence(w http.ResponseWriter, r *http.
 		return
 	}
 
-	user, err := h.repo.GetUserByID(claims.UserID)
+	user, err := h.repo.GetUserByID(r.Context(), claims.UserID)
 	if err != nil || user == nil {
 		writeJSONError(w, http.StatusNotFound, "User not found")
 		return
@@ -604,7 +604,7 @@ func (h *PresenceHandler) HandleListOnlineUsers(w http.ResponseWriter, r *http.R
 	result := make([]UserPresence, 0, len(onlineUsers))
 	for _, u := range onlineUsers {
 		if u.TenantID == claims.TenantID {
-			user, _ := h.repo.GetUserByID(u.UserID)
+			user, _ := h.repo.GetUserByID(r.Context(), u.UserID)
 			if user != nil {
 				username := ""
 				if user.Username != nil {

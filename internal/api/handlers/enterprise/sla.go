@@ -37,7 +37,7 @@ func (h *SLAHandler) requireEnterprisePlan(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return false
 	}
-	tenant, err := h.repo.GetTenantByID(user.TenantID)
+	tenant, err := h.repo.GetTenantByID(r.Context(), user.TenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", user.TenantID).Error("Failed to get tenant for SLA")
 		http.Error(w, "Failed to verify plan", http.StatusInternalServerError)

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/functionfly/functionfly/internal/api/apierror"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
@@ -23,7 +23,7 @@ func (h *Handler) HandleGetUserSkills(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get user by username
-	user, err := h.repo.GetUserByUsername(username)
+	user, err := h.repo.GetUserByUsername(r.Context(), username)
 	if err != nil {
 		logrus.WithError(err).WithField("username", username).Error("Failed to get user by username")
 		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve user"))
@@ -35,7 +35,7 @@ func (h *Handler) HandleGetUserSkills(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get user skills (return empty if tables not yet migrated)
-	skills, err := h.repo.GetUserSkills(user.ID)
+	skills, err := h.repo.GetUserSkills(r.Context(), user.ID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", user.ID).Warn("Failed to get user skills, returning empty")
 		writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -148,7 +148,7 @@ func (h *Handler) HandleRemoveUserSkill(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// First verify the skill belongs to this user (by checking if we can get it)
-	userSkills, err := h.repo.GetUserSkills(claims.UserID)
+	userSkills, err := h.repo.GetUserSkills(r.Context(), claims.UserID)
 	if err != nil {
 		if strings.Contains(err.Error(), "does not exist") {
 			logrus.WithError(err).WithField("userID", claims.UserID).Warn("user_skills table missing; run migrations")

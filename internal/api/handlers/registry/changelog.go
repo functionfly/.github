@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -49,7 +50,7 @@ func (h *Handler) HandleGetChangelogs(w http.ResponseWriter, r *http.Request) {
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get function")
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
@@ -84,7 +85,7 @@ func (h *Handler) HandleGetChangelogByVersion(w http.ResponseWriter, r *http.Req
 	name := vars["name"]
 	version := vars["version"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get function")
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
@@ -141,7 +142,7 @@ func (h *Handler) HandleGetChangelogByCategory(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get function")
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
@@ -175,7 +176,7 @@ func (h *Handler) HandleGetVersionHistory(w http.ResponseWriter, r *http.Request
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get function")
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))

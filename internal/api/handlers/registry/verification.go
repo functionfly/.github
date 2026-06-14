@@ -27,7 +27,7 @@ func (h *Handler) HandleGetVerificationStatus(w http.ResponseWriter, r *http.Req
 	}
 
 	verificationSvc := verification.NewVerificationService(h.repo, "", "")
-	status, err := verificationSvc.GetVerificationStatus(functionVersionID)
+	status, err := verificationSvc.GetVerificationStatus(r.Context(), functionVersionID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get verification status")
 		h.writeError(w, http.StatusInternalServerError, functionregistry.ErrCodeInternalError, "Internal error")

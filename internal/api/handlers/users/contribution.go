@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/functionfly/functionfly/internal/api/apierror"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
@@ -20,7 +20,7 @@ func (h *Handler) HandleGetUserContributions(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	user, err := h.repo.GetUserByUsername(username)
+	user, err := h.repo.GetUserByUsername(r.Context(), username)
 	if err != nil {
 		logrus.WithError(err).WithField("username", username).Error("Failed to get user by username")
 		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve user"))
@@ -35,7 +35,7 @@ func (h *Handler) HandleGetUserContributions(w http.ResponseWriter, r *http.Requ
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	start := today.AddDate(0, 0, -(contributionGraphDays - 1))
 
-	counts, err := h.repo.GetUserContributionDailyCounts(user.ID, start)
+	counts, err := h.repo.GetUserContributionDailyCounts(r.Context(), user.ID, start)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", user.ID).Warn("Failed to get contribution counts, returning empty graph")
 		writeJSON(w, http.StatusOK, emptyContributionResponse(today))

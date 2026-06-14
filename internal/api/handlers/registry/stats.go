@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -20,7 +21,7 @@ func (h *Handler) HandleGetFunctionStats(w http.ResponseWriter, r *http.Request)
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
 			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
@@ -77,7 +78,7 @@ func (h *Handler) HandleGetFunctionStatsAt(w http.ResponseWriter, r *http.Reques
 		username = username[1:]
 	}
 
-	fn, err := h.repo.GetFunctionByAuthorName(username, functionName)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), username, functionName)
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
 			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
@@ -155,7 +156,7 @@ func (h *Handler) HandleSubmitRating(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -232,7 +233,7 @@ func (h *Handler) HandleAggregateStats(w http.ResponseWriter, r *http.Request) {
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return

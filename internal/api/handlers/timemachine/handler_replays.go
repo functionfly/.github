@@ -1,6 +1,7 @@
 package timemachine
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -618,7 +619,7 @@ func (h *Handler) HandleStartReconciliation(w http.ResponseWriter, r *http.Reque
 		isDryRun = true
 	}
 
-	reconPlan, err := h.recEngine.GeneratePlan(id, isDryRun)
+	reconPlan, err := h.recEngine.GeneratePlan(context.Background(), id, isDryRun)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to generate reconciliation plan")
 		return

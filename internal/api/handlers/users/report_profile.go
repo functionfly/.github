@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/functionfly/functionfly/internal/api/apierror"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/gorilla/mux"
@@ -73,7 +73,7 @@ func (h *Handler) HandleReportProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reported, err := h.repo.GetUserForPublicProfile(username)
+	reported, err := h.repo.GetUserForPublicProfile(r.Context(), username)
 	if err != nil {
 		logrus.WithError(err).WithField("username", username).Error("GetUserForPublicProfile for report failed")
 		apierror.WriteError(w, apierror.NewInternal("Failed to load profile"))
@@ -95,7 +95,7 @@ func (h *Handler) HandleReportProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	reporterID := claims.UserID
-	recent, err := h.repo.GetFeedbackByUser(&reporterID, nil, 40, 0)
+	recent, err := h.repo.GetFeedbackByUser(r.Context(), &reporterID, nil, 40, 0)
 	if err == nil {
 		cutoff := time.Now().Add(-1 * time.Hour)
 		n := 0
@@ -139,7 +139,7 @@ func (h *Handler) HandleReportProfile(w http.ResponseWriter, r *http.Request) {
 		UserAgent:    r.Header.Get("User-Agent"),
 	}
 
-	_, err = h.repo.CreateFeedback(feedback)
+	_, err = h.repo.CreateFeedback(r.Context(), feedback)
 	if err != nil {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) && pqErr.Code == "23514" && strings.Contains(strings.ToLower(pqErr.Message), "feedback_type") {

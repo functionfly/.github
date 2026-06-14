@@ -1,6 +1,7 @@
 package team_memory
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -137,7 +138,7 @@ func (h *Handler) HandleCreateMemory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check team membership
-	if !h.isTeamMember(user.UserID, teamID) {
+	if !h.isTeamMember(r.Context(), user.UserID, teamID) {
 		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
@@ -237,7 +238,7 @@ func (h *Handler) HandleListMemories(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check team membership
-	if !h.isTeamMember(user.UserID, teamID) {
+	if !h.isTeamMember(r.Context(), user.UserID, teamID) {
 		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
@@ -301,7 +302,7 @@ func (h *Handler) HandleGetMemory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check team membership
-	if !h.isTeamMember(user.UserID, teamID) {
+	if !h.isTeamMember(r.Context(), user.UserID, teamID) {
 		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
@@ -345,7 +346,7 @@ func (h *Handler) HandleUpdateMemory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check team membership
-	if !h.isTeamMember(user.UserID, teamID) {
+	if !h.isTeamMember(r.Context(), user.UserID, teamID) {
 		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
@@ -429,7 +430,7 @@ func (h *Handler) HandleDeleteMemory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check team admin/owner for deletion
-	membership, err := h.repo.GetTeamMembership(teamID, user.UserID)
+	membership, err := h.repo.GetTeamMembership(r.Context(), teamID, user.UserID)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
@@ -468,7 +469,7 @@ func (h *Handler) HandleSearchMemories(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check team membership
-	if !h.isTeamMember(user.UserID, teamID) {
+	if !h.isTeamMember(r.Context(), user.UserID, teamID) {
 		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
@@ -529,7 +530,7 @@ func (h *Handler) HandleQueryMemories(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check team membership
-	if !h.isTeamMember(user.UserID, teamID) {
+	if !h.isTeamMember(r.Context(), user.UserID, teamID) {
 		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
@@ -601,7 +602,7 @@ func (h *Handler) HandleValidateMemory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check team admin/owner for validation
-	membership, err := h.repo.GetTeamMembership(teamID, user.UserID)
+	membership, err := h.repo.GetTeamMembership(r.Context(), teamID, user.UserID)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
@@ -656,7 +657,7 @@ func (h *Handler) HandleListExtractions(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Check team membership
-	if !h.isTeamMember(user.UserID, teamID) {
+	if !h.isTeamMember(r.Context(), user.UserID, teamID) {
 		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
@@ -705,7 +706,7 @@ func (h *Handler) HandleApproveExtraction(w http.ResponseWriter, r *http.Request
 	}
 
 	// Check team membership
-	if !h.isTeamMember(user.UserID, teamID) {
+	if !h.isTeamMember(r.Context(), user.UserID, teamID) {
 		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
@@ -742,7 +743,7 @@ func (h *Handler) HandleRejectExtraction(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Check team membership
-	if !h.isTeamMember(user.UserID, teamID) {
+	if !h.isTeamMember(r.Context(), user.UserID, teamID) {
 		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
@@ -765,8 +766,8 @@ func (h *Handler) HandleRejectExtraction(w http.ResponseWriter, r *http.Request)
 // Helper Methods
 // ============================================
 
-func (h *Handler) isTeamMember(userID, teamID uuid.UUID) bool {
-	_, err := h.repo.GetTeamMembership(teamID, userID)
+func (h *Handler) isTeamMember(ctx context.Context, userID, teamID uuid.UUID) bool {
+	_, err := h.repo.GetTeamMembership(ctx, teamID, userID)
 	return err == nil
 }
 

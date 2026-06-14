@@ -164,7 +164,7 @@ func (h *ResendWebhookHandler) processEvent(r *http.Request, event *ResendWebhoo
 
 	// Find user by email (optional - events can be stored without user association)
 	var userID *uuid.UUID
-	if user, err := h.repo.GetUserByEmail(recipientEmail); err == nil && user != nil {
+	if user, err := h.repo.GetUserByEmail(r.Context(), recipientEmail); err == nil && user != nil {
 		userID = &user.ID
 	}
 

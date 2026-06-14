@@ -393,8 +393,16 @@ func (r *BlogRepository) DeletePost(id uuid.UUID) error {
 
 func (r *BlogRepository) ListCategories() ([]Category, error) {
 	ctx := context.Background()
-	query := `SELECT id, title, slug, description, color, icon, "order", created_at, updated_at
-			  FROM blog_categories ORDER BY "order" ASC, title ASC`
+	query := `SELECT bc.id, bc.title, bc.slug, bc.description, bc.color, bc.icon, bc."order", bc.created_at, bc.updated_at,
+			  COALESCE(posts.post_count, 0) as post_count
+			  FROM blog_categories bc
+			  LEFT JOIN (
+				  SELECT category_id, COUNT(*) as post_count
+				  FROM blog_posts
+				  WHERE status = 'published' AND published_at IS NOT NULL
+				  GROUP BY category_id
+			  ) posts ON bc.id = posts.category_id
+			  ORDER BY bc."order" ASC, bc.title ASC`
 
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
@@ -406,7 +414,8 @@ func (r *BlogRepository) ListCategories() ([]Category, error) {
 	for rows.Next() {
 		var c Category
 		var desc, color, icon sql.NullString
-		err := rows.Scan(&c.ID, &c.Title, &c.Slug, &desc, &color, &icon, &c.Order, &c.CreatedAt, &c.UpdatedAt)
+		var postCount int
+		err := rows.Scan(&c.ID, &c.Title, &c.Slug, &desc, &color, &icon, &c.Order, &c.CreatedAt, &c.UpdatedAt, &postCount)
 		if err != nil {
 			return nil, err
 		}
@@ -419,6 +428,7 @@ func (r *BlogRepository) ListCategories() ([]Category, error) {
 		if icon.Valid {
 			c.Icon = icon.String
 		}
+		c.PostCount = postCount
 		categories = append(categories, c)
 	}
 	return categories, rows.Err()

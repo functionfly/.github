@@ -83,7 +83,7 @@ func (h *Handler) HandleCreateTeam(w http.ResponseWriter, r *http.Request) {
 		CreatedBy:   user.UserID,
 	}
 
-	if err := h.repo.CreateTeam(team); err != nil {
+	if err := h.repo.CreateTeam(r.Context(), team); err != nil {
 		logrus.WithError(err).Error("Failed to create team")
 		apierror.WriteError(w, apierror.NewInternal("Failed to create team"))
 		return
@@ -97,7 +97,7 @@ func (h *Handler) HandleCreateTeam(w http.ResponseWriter, r *http.Request) {
 		AddedBy: user.UserID,
 	}
 
-	if err := h.repo.AddTeamMember(membership); err != nil {
+	if err := h.repo.AddTeamMember(r.Context(), membership); err != nil {
 		logrus.WithError(err).Error("Failed to add team creator as owner")
 		// Don't fail the request, but log the error
 	}
@@ -130,7 +130,7 @@ func (h *Handler) HandleGetTeam(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	team, err := h.repo.GetTeamByID(teamID)
+	team, err := h.repo.GetTeamByID(r.Context(), teamID)
 	if err != nil {
 		logrus.WithError(err).WithField("team_id", teamID).Error("Failed to get team")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get team"))
@@ -142,7 +142,7 @@ func (h *Handler) HandleGetTeam(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if user has access to this team (must be team member or same tenant)
-	membership, err := h.repo.GetTeamMembership(teamID, user.UserID)
+	membership, err := h.repo.GetTeamMembership(r.Context(), teamID, user.UserID)
 	if err != nil && err.Error() != "record not found" {
 		logrus.WithError(err).Error("Failed to check team membership")
 		apierror.WriteError(w, apierror.NewInternal("Failed to check permissions"))
@@ -166,7 +166,7 @@ func (h *Handler) HandleListTeams(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	teams, err := h.repo.GetTeamsByTenantID(user.TenantID)
+	teams, err := h.repo.GetTeamsByTenantID(r.Context(), user.TenantID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list teams")
 		apierror.WriteError(w, apierror.NewInternal("Failed to list teams"))
@@ -195,7 +195,7 @@ func (h *Handler) HandleUpdateTeam(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	team, err := h.repo.GetTeamByID(teamID)
+	team, err := h.repo.GetTeamByID(r.Context(), teamID)
 	if err != nil {
 		logrus.WithError(err).WithField("team_id", teamID).Error("Failed to get team")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get team"))
@@ -207,14 +207,14 @@ func (h *Handler) HandleUpdateTeam(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if user is team owner or admin
-	isOwner, err := h.repo.IsUserTeamOwner(user.UserID, teamID)
+	isOwner, err := h.repo.IsUserTeamOwner(r.Context(), user.UserID, teamID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check team ownership")
 		apierror.WriteError(w, apierror.NewInternal("Failed to check permissions"))
 		return
 	}
 
-	isAdmin, err := h.repo.IsUserTeamAdmin(user.UserID, teamID)
+	isAdmin, err := h.repo.IsUserTeamAdmin(r.Context(), user.UserID, teamID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check team admin status")
 		apierror.WriteError(w, apierror.NewInternal("Failed to check permissions"))
@@ -239,7 +239,7 @@ func (h *Handler) HandleUpdateTeam(w http.ResponseWriter, r *http.Request) {
 		team.Description = *req.Description
 	}
 
-	if err := h.repo.UpdateTeam(team); err != nil {
+	if err := h.repo.UpdateTeam(r.Context(), team); err != nil {
 		logrus.WithError(err).Error("Failed to update team")
 		apierror.WriteError(w, apierror.NewInternal("Failed to update team"))
 		return
@@ -265,7 +265,7 @@ func (h *Handler) HandleDeleteTeam(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	team, err := h.repo.GetTeamByID(teamID)
+	team, err := h.repo.GetTeamByID(r.Context(), teamID)
 	if err != nil {
 		logrus.WithError(err).WithField("team_id", teamID).Error("Failed to get team")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get team"))
@@ -277,7 +277,7 @@ func (h *Handler) HandleDeleteTeam(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if user is team owner
-	isOwner, err := h.repo.IsUserTeamOwner(user.UserID, teamID)
+	isOwner, err := h.repo.IsUserTeamOwner(r.Context(), user.UserID, teamID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check team ownership")
 		apierror.WriteError(w, apierror.NewInternal("Failed to check permissions"))
@@ -301,7 +301,7 @@ func (h *Handler) HandleDeleteTeam(w http.ResponseWriter, r *http.Request) {
 		deletedByName = user.Email
 	}
 
-	if err := h.repo.DeleteTeam(teamID); err != nil {
+	if err := h.repo.DeleteTeam(r.Context(), teamID); err != nil {
 		logrus.WithError(err).Error("Failed to delete team")
 		apierror.WriteError(w, apierror.NewInternal("Failed to delete team"))
 		return
@@ -333,7 +333,7 @@ func (h *Handler) HandleAddTeamMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	team, err := h.repo.GetTeamByID(teamID)
+	team, err := h.repo.GetTeamByID(r.Context(), teamID)
 	if err != nil {
 		logrus.WithError(err).WithField("team_id", teamID).Error("Failed to get team")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get team"))
@@ -345,7 +345,7 @@ func (h *Handler) HandleAddTeamMember(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if user is team admin or owner
-	isAdmin, err := h.repo.IsUserTeamAdmin(user.UserID, teamID)
+	isAdmin, err := h.repo.IsUserTeamAdmin(r.Context(), user.UserID, teamID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check team admin status")
 		apierror.WriteError(w, apierror.NewInternal("Failed to check permissions"))
@@ -376,7 +376,7 @@ func (h *Handler) HandleAddTeamMember(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if user to add exists and is in the same tenant
-	userToAdd, err := h.repo.GetUserByID(req.UserID)
+	userToAdd, err := h.repo.GetUserByID(r.Context(), req.UserID)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
@@ -387,7 +387,7 @@ func (h *Handler) HandleAddTeamMember(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if user is already a member
-	existingMembership, err := h.repo.GetTeamMembership(teamID, req.UserID)
+	existingMembership, err := h.repo.GetTeamMembership(r.Context(), teamID, req.UserID)
 	if err != nil && err.Error() != "record not found" {
 		logrus.WithError(err).Error("Failed to check existing membership")
 		apierror.WriteError(w, apierror.NewInternal("Failed to check membership"))
@@ -406,7 +406,7 @@ func (h *Handler) HandleAddTeamMember(w http.ResponseWriter, r *http.Request) {
 		AddedBy: user.UserID,
 	}
 
-	if err := h.repo.AddTeamMember(membership); err != nil {
+	if err := h.repo.AddTeamMember(r.Context(), membership); err != nil {
 		logrus.WithError(err).Error("Failed to add team member")
 		apierror.WriteError(w, apierror.NewInternal("Failed to add team member"))
 		return
@@ -453,7 +453,7 @@ func (h *Handler) HandleUpdateTeamMember(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Check if user is team admin or owner
-	isAdmin, err := h.repo.IsUserTeamAdmin(user.UserID, teamID)
+	isAdmin, err := h.repo.IsUserTeamAdmin(r.Context(), user.UserID, teamID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check team admin status")
 		apierror.WriteError(w, apierror.NewInternal("Failed to check permissions"))
@@ -485,7 +485,7 @@ func (h *Handler) HandleUpdateTeamMember(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := h.repo.UpdateTeamMember(teamID, userID, req.Role); err != nil {
+	if err := h.repo.UpdateTeamMember(r.Context(), teamID, userID, req.Role); err != nil {
 		logrus.WithError(err).Error("Failed to update team member")
 		apierror.WriteError(w, apierror.NewInternal("Failed to update team member"))
 		return
@@ -519,7 +519,7 @@ func (h *Handler) HandleRemoveTeamMember(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Check if user is team admin or owner
-	isAdmin, err := h.repo.IsUserTeamAdmin(user.UserID, teamID)
+	isAdmin, err := h.repo.IsUserTeamAdmin(r.Context(), user.UserID, teamID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check team admin status")
 		apierror.WriteError(w, apierror.NewInternal("Failed to check permissions"))
@@ -534,7 +534,7 @@ func (h *Handler) HandleRemoveTeamMember(w http.ResponseWriter, r *http.Request)
 	// Prevent removing the last owner
 	if userID == user.UserID {
 		// Check if this user is the only owner
-		team, err := h.repo.GetTeamByID(teamID)
+		team, err := h.repo.GetTeamByID(r.Context(), teamID)
 		if err != nil {
 			logrus.WithError(err).Error("Failed to get team")
 			apierror.WriteError(w, apierror.NewInternal("Failed to get team"))
@@ -555,12 +555,12 @@ func (h *Handler) HandleRemoveTeamMember(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Get team details for notification
-	team, err := h.repo.GetTeamByID(teamID)
+	team, err := h.repo.GetTeamByID(r.Context(), teamID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get team for removal notification")
 	}
 
-	if err := h.repo.RemoveTeamMember(teamID, userID); err != nil {
+	if err := h.repo.RemoveTeamMember(r.Context(), teamID, userID); err != nil {
 		logrus.WithError(err).Error("Failed to remove team member")
 		apierror.WriteError(w, apierror.NewInternal("Failed to remove team member"))
 		return
@@ -588,7 +588,7 @@ func (h *Handler) HandleGetUserTeams(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	teams, err := h.repo.GetUserTeams(user.UserID)
+	teams, err := h.repo.GetUserTeams(r.Context(), user.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get user teams")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get user teams"))
@@ -618,7 +618,7 @@ func (h *Handler) HandleGrantTeamPermission(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Check if user is team admin or owner
-	isAdmin, err := h.repo.IsUserTeamAdmin(user.UserID, teamID)
+	isAdmin, err := h.repo.IsUserTeamAdmin(r.Context(), user.UserID, teamID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check team admin status")
 		apierror.WriteError(w, apierror.NewInternal("Failed to check permissions"))
@@ -686,7 +686,7 @@ func (h *Handler) HandleGrantTeamPermission(w http.ResponseWriter, r *http.Reque
 		GrantedBy:    user.UserID,
 	}
 
-	if err := h.repo.GrantTeamPermission(permission); err != nil {
+	if err := h.repo.GrantTeamPermission(r.Context(), permission); err != nil {
 		logrus.WithError(err).Error("Failed to grant team permission")
 		apierror.WriteError(w, apierror.NewInternal("Failed to grant permission"))
 		return
@@ -723,7 +723,7 @@ func (h *Handler) HandleRevokeTeamPermission(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Check if user is team admin or owner
-	isAdmin, err := h.repo.IsUserTeamAdmin(user.UserID, teamID)
+	isAdmin, err := h.repo.IsUserTeamAdmin(r.Context(), user.UserID, teamID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check team admin status")
 		apierror.WriteError(w, apierror.NewInternal("Failed to check permissions"))
@@ -735,7 +735,7 @@ func (h *Handler) HandleRevokeTeamPermission(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if err := h.repo.RevokeTeamPermission(teamID, resourceType, resourceID); err != nil {
+	if err := h.repo.RevokeTeamPermission(r.Context(), teamID, resourceType, resourceID); err != nil {
 		logrus.WithError(err).Error("Failed to revoke team permission")
 		apierror.WriteError(w, apierror.NewInternal("Failed to revoke permission"))
 		return
@@ -761,7 +761,7 @@ func (h *Handler) HandleGetTeamPermissions(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Check if user is team member
-	membership, err := h.repo.GetTeamMembership(teamID, user.UserID)
+	membership, err := h.repo.GetTeamMembership(r.Context(), teamID, user.UserID)
 	if err != nil && err.Error() != "record not found" {
 		logrus.WithError(err).Error("Failed to check team membership")
 		apierror.WriteError(w, apierror.NewInternal("Failed to check permissions"))
@@ -773,7 +773,7 @@ func (h *Handler) HandleGetTeamPermissions(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	permissions, err := h.repo.GetTeamPermissions(teamID)
+	permissions, err := h.repo.GetTeamPermissions(r.Context(), teamID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get team permissions")
 		apierror.WriteError(w, apierror.NewInternal("Failed to get team permissions"))
@@ -805,7 +805,7 @@ func (h *Handler) HandleCheckUserResourcePermission(w http.ResponseWriter, r *ht
 		return
 	}
 
-	hasPermission, err := h.repo.CheckUserResourcePermission(user.UserID, resourceType, resourceID, permission)
+	hasPermission, err := h.repo.CheckUserResourcePermission(r.Context(), user.UserID, resourceType, resourceID, permission)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check user resource permission")
 		apierror.WriteError(w, apierror.NewInternal("Failed to check permission"))

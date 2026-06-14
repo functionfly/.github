@@ -82,7 +82,7 @@ func (h *Handler) HandleStartOnboarding(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	user, err := h.repo.GetUserByID(claims.UserID)
+	user, err := h.repo.GetUserByID(r.Context(), claims.UserID)
 	if err != nil || user == nil {
 		logrus.WithError(err).WithField("user_id", claims.UserID).Warn("payouts: user not found")
 		writeJSONError(w, http.StatusNotFound, "User not found")

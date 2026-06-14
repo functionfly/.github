@@ -52,6 +52,8 @@ func NewHandler(repo storage.Repository, contentRepo *storage.ContentRepository)
 
 // HandleListChangelogEntries lists changelog entries
 func (h *Handler) HandleListChangelogEntries(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
 	// Parse query parameters
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
@@ -76,7 +78,7 @@ func (h *Handler) HandleListChangelogEntries(w http.ResponseWriter, r *http.Requ
 		publishedOnly = true
 	}
 
-	entries, err := h.repo.ListChangelogEntries(limit, offset, publishedOnly)
+	entries, err := h.repo.ListChangelogEntries(ctx, limit, offset, publishedOnly)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list changelog entries")
 		http.Error(w, "Failed to list changelog entries", http.StatusInternalServerError)
@@ -93,6 +95,7 @@ func (h *Handler) HandleListChangelogEntries(w http.ResponseWriter, r *http.Requ
 
 // HandleGetChangelogEntry gets a specific changelog entry
 func (h *Handler) HandleGetChangelogEntry(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	vars := mux.Vars(r)
 	entryIDStr := vars["entryId"]
 
@@ -102,7 +105,7 @@ func (h *Handler) HandleGetChangelogEntry(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	entry, err := h.repo.GetChangelogEntryByID(entryID)
+	entry, err := h.repo.GetChangelogEntryByID(ctx, entryID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get changelog entry")
 		if strings.Contains(err.Error(), "not found") {
@@ -332,6 +335,7 @@ func (h *Handler) HandleDeleteChangelogChange(w http.ResponseWriter, r *http.Req
 
 // HandleListBlogPosts lists blog posts
 func (h *Handler) HandleListBlogPosts(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	// Parse query parameters
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
@@ -366,7 +370,7 @@ func (h *Handler) HandleListBlogPosts(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	posts, err := h.repo.ListBlogPosts(limit, offset, publishedOnly, tagFilter)
+	posts, err := h.repo.ListBlogPosts(ctx, limit, offset, publishedOnly, tagFilter)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list blog posts")
 		// Return empty list instead of 500 to prevent UI crashes during auth state changes
@@ -394,6 +398,7 @@ func (h *Handler) HandleListBlogPosts(w http.ResponseWriter, r *http.Request) {
 
 // HandleGetBlogPost gets a specific blog post
 func (h *Handler) HandleGetBlogPost(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	vars := mux.Vars(r)
 	postIDStr := vars["postId"]
 
@@ -403,7 +408,7 @@ func (h *Handler) HandleGetBlogPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	post, err := h.repo.GetBlogPostByID(postID)
+	post, err := h.repo.GetBlogPostByID(ctx, postID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get blog post")
 		if strings.Contains(err.Error(), "not found") {
@@ -420,6 +425,7 @@ func (h *Handler) HandleGetBlogPost(w http.ResponseWriter, r *http.Request) {
 
 // HandleGetBlogPostBySlug gets a blog post by slug
 func (h *Handler) HandleGetBlogPostBySlug(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	vars := mux.Vars(r)
 	slug := vars["slug"]
 
@@ -428,7 +434,7 @@ func (h *Handler) HandleGetBlogPostBySlug(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	post, err := h.repo.GetBlogPostBySlug(slug)
+	post, err := h.repo.GetBlogPostBySlug(ctx, slug)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get blog post by slug")
 		if strings.Contains(err.Error(), "not found") {
@@ -550,6 +556,7 @@ func (h *Handler) HandleDeleteBlogPost(w http.ResponseWriter, r *http.Request) {
 
 // HandleGetPublishedChangelogEntries returns published changelog entries for frontend
 func (h *Handler) HandleGetPublishedChangelogEntries(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	limitStr := r.URL.Query().Get("limit")
 	limit := 10 // default for frontend
 	if limitStr != "" {
@@ -558,7 +565,7 @@ func (h *Handler) HandleGetPublishedChangelogEntries(w http.ResponseWriter, r *h
 		}
 	}
 
-	entries, err := h.repo.ListChangelogEntries(limit, 0, true)
+	entries, err := h.repo.ListChangelogEntries(ctx, limit, 0, true)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get published changelog entries")
 		http.Error(w, "Failed to get changelog entries", http.StatusInternalServerError)
@@ -578,6 +585,7 @@ func (h *Handler) HandleGetPublishedChangelogEntries(w http.ResponseWriter, r *h
 
 // HandleGetPublishedBlogPosts returns published blog posts for frontend
 func (h *Handler) HandleGetPublishedBlogPosts(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
 	tagStr := r.URL.Query().Get("tags")
@@ -605,7 +613,7 @@ func (h *Handler) HandleGetPublishedBlogPosts(w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	posts, err := h.repo.ListBlogPosts(limit, offset, true, tagFilter)
+	posts, err := h.repo.ListBlogPosts(ctx, limit, offset, true, tagFilter)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list published blog posts")
 		http.Error(w, "Failed to load blog posts", http.StatusInternalServerError)
@@ -625,6 +633,7 @@ func (h *Handler) HandleGetPublishedBlogPosts(w http.ResponseWriter, r *http.Req
 
 // HandleGetPublishedBlogPostBySlug returns a published blog post by slug for frontend
 func (h *Handler) HandleGetPublishedBlogPostBySlug(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	vars := mux.Vars(r)
 	slug := vars["slug"]
 
@@ -633,7 +642,7 @@ func (h *Handler) HandleGetPublishedBlogPostBySlug(w http.ResponseWriter, r *htt
 		return
 	}
 
-	post, err := h.repo.GetBlogPostBySlug(slug)
+	post, err := h.repo.GetBlogPostBySlug(ctx, slug)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get blog post by slug")
 		if strings.Contains(err.Error(), "not found") {

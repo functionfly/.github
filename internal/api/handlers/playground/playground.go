@@ -60,7 +60,7 @@ func (h *Handler) HandlePlaygroundUI(w http.ResponseWriter, r *http.Request) {
 	functionName := vars["functionName"]
 
 	// Get app by slug
-	app, err := h.repo.GetAppBySlug(appSlug)
+	app, err := h.repo.GetAppBySlug(r.Context(), appSlug)
 	if err != nil {
 		http.Error(w, "App not found", http.StatusNotFound)
 		return
@@ -99,7 +99,7 @@ func (h *Handler) HandleGetFunctionInfo(w http.ResponseWriter, r *http.Request) 
 	functionName := vars["functionName"]
 
 	// Get app by slug
-	app, err := h.repo.GetAppBySlug(appSlug)
+	app, err := h.repo.GetAppBySlug(r.Context(), appSlug)
 	if err != nil {
 		http.Error(w, "App not found", http.StatusNotFound)
 		return
@@ -160,7 +160,7 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 	functionName := vars["functionName"]
 
 	// Get app by slug
-	app, err := h.repo.GetAppBySlug(appSlug)
+	app, err := h.repo.GetAppBySlug(r.Context(), appSlug)
 	if err != nil {
 		http.Error(w, "App not found", http.StatusNotFound)
 		return

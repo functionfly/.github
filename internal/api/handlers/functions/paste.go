@@ -334,7 +334,7 @@ func (h *PasteHandler) HandleCreateFromCode(w http.ResponseWriter, r *http.Reque
 				function.Tags = json.RawMessage(`["` + fn.Language + `"]`)
 			}
 
-			err := h.registryRepo.CreateFunction(function)
+			err := h.registryRepo.CreateFunction(r.Context(), function)
 			if err != nil {
 				logrus.WithFields(logrus.Fields{
 					"name":      sanitizedName,

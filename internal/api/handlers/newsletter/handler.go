@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/mail"
 	"strings"
-	"time"
 
 	"github.com/functionfly/functionfly/internal/email"
 	"github.com/functionfly/functionfly/internal/storage"
@@ -70,7 +69,7 @@ func (h *Handler) Subscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	subscriber, err := h.repo.CreatePendingNewsletterSubscriber(r.Context(), emailAddr, name, source, ipAddress, userAgent, confirmationToken)
+	_, err = h.repo.CreatePendingNewsletterSubscriber(r.Context(), emailAddr, name, source, ipAddress, userAgent, confirmationToken)
 	if err != nil {
 		if err == storage.ErrSubscriberExists {
 			http.Error(w, `{"error": "Email is already subscribed"}`, http.StatusConflict)

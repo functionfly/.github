@@ -289,7 +289,7 @@ func (h *WebSocketHub) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// browsers can't set Authorization headers on the handshake.
 	if user == nil && h.authSvc != nil {
 		if token := r.URL.Query().Get("token"); token != "" {
-			claims, err := h.authSvc.ValidateToken(token)
+			claims, err := h.authSvc.ValidateToken(r.Context(), token)
 			if err == nil {
 				user = claims
 			}

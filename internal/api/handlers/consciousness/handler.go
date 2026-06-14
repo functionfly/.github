@@ -3,11 +3,14 @@ package consciousness
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/api/utils"
 	"github.com/functionfly/functionfly/internal/consciousness"
+	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/gorilla/mux"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -15,16 +18,18 @@ import (
 
 type Handler struct {
 	repo        *consciousness.Repository
+	auditRepo   storage.Repository
 	engine      *consciousness.Engine
 	logger      *logrus.Logger
 	engineOwner bool
 }
 
-func NewHandler(db *sql.DB, logger *logrus.Logger) *Handler {
+func NewHandler(db *sql.DB, auditRepo storage.Repository, logger *logrus.Logger) *Handler {
 	return &Handler{
-		repo:   consciousness.NewRepository(db, logger),
-		engine: consciousness.NewEngine(db, logger),
-		logger: logger,
+		repo:     consciousness.NewRepository(db, logger),
+		auditRepo: auditRepo,
+		engine:   consciousness.NewEngine(db, logger),
+		logger:   logger,
 	}
 }
 
@@ -35,13 +40,6 @@ func NewHandlerWithEngine(db *sql.DB, logger *logrus.Logger, engine *consciousne
 		logger:      logger,
 		engineOwner: false,
 	}
-}
-
-// NewHandler creates a new consciousness handler.
-func NewHandler(db *sql.DB, repo storage.Repository, logger *logrus.Logger) *Handler {
-	repo := consciousness.NewRepository(db, logger)
-	engine := consciousness.NewEngine(db, logger)
-	return &Handler{repo: repo, engine: engine, logger: logger, auditRepo: repo}
 }
 
 // RegisterRoutes registers consciousness API routes on the given router.
@@ -369,7 +367,6 @@ func (h *Handler) DeleteInsight(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Audit log the deletion
 	utils.LogAuditEvent(r.Context(), h.auditRepo, r, "consciousness.insight.deleted", "consciousness_insight", &id, insight, nil, true)
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})

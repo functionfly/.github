@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -28,7 +29,7 @@ func (h *Handler) HandleGetMCPSettings(w http.ResponseWriter, r *http.Request) {
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil || fn == nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -72,7 +73,7 @@ func (h *Handler) HandleUpdateMCPSettings(w http.ResponseWriter, r *http.Request
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil || fn == nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return

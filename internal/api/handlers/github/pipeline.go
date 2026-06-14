@@ -32,8 +32,7 @@ const (
 
 // runImportPipeline executes the full import pipeline for a GitHub import job.
 // Uses a saga pattern: each step is tracked, and on failure completed steps are rolled back.
-func (h *Handler) runImportPipeline(importID uuid.UUID) {
-	ctx := context.Background()
+func (h *Handler) runImportPipeline(ctx context.Context, importID uuid.UUID) {
 	log := h.logger.WithField("import_id", importID)
 
 	log.Info("Starting import pipeline")
@@ -66,8 +65,8 @@ func (h *Handler) runImportPipeline(importID uuid.UUID) {
 				}
 			case stepFunctionCreated:
 				if functionID != uuid.Nil && functionCreatedByThisImport {
-					if fn, getErr := h.registryRepo.GetFunctionByID(functionID); getErr == nil {
-						if delErr := h.registryRepo.DeleteFunction(fn.Author, fn.Name); delErr != nil {
+					if fn, getErr := h.registryRepo.GetFunctionByID(ctx, functionID); getErr == nil {
+						if delErr := h.registryRepo.DeleteFunction(ctx, fn.Author, fn.Name); delErr != nil {
 							log.WithError(delErr).WithField("function_id", functionID).Warn("Rollback: failed to delete function")
 						} else {
 							log.WithField("function_id", functionID).Info("Rollback: deleted function")
@@ -232,7 +231,7 @@ func (h *Handler) runImportPipeline(importID uuid.UUID) {
 		"author": authorUsername,
 		"name":   imp.FunctionName,
 	}).Info("Looking up existing function by author/name")
-	existingFn, err := h.registryRepo.GetFunctionByAuthorName(authorUsername, imp.FunctionName)
+	existingFn, err := h.registryRepo.GetFunctionByAuthorName(ctx, authorUsername, imp.FunctionName)
 	if err != nil {
 		log.WithError(err).Warn("Failed to check for existing function")
 	} else if existingFn != nil {
@@ -271,7 +270,7 @@ func (h *Handler) runImportPipeline(importID uuid.UUID) {
 			fn.Category = sql.NullString{String: cat, Valid: true}
 		}
 
-		if err := h.registryRepo.CreateFunction(fn); err != nil {
+		if err := h.registryRepo.CreateFunction(ctx, fn); err != nil {
 			errStr := err.Error()
 			if !strings.Contains(errStr, "duplicate key") && !strings.Contains(errStr, "23505") {
 				rollbackFn()
@@ -280,7 +279,7 @@ func (h *Handler) runImportPipeline(importID uuid.UUID) {
 			}
 
 			log.Info("Function already exists (concurrent or duplicate), fetching existing")
-			existingFn, fetchErr := h.registryRepo.GetFunctionByAuthorName(authorUsername, imp.FunctionName)
+			existingFn, fetchErr := h.registryRepo.GetFunctionByAuthorName(ctx, authorUsername, imp.FunctionName)
 			if fetchErr == nil && existingFn != nil {
 				functionID = existingFn.ID
 				functionCreatedByThisImport = false

@@ -440,8 +440,8 @@ func (h *Handler) showCallbackPage(w http.ResponseWriter, status, message, conne
 		}
 
 		function closeWindow() {
-			notifyOpener();
-			setTimeout(function() { window.close(); }, 100);
+			try { notifyOpener(); } catch(e) {}
+			try { window.close(); } catch(e) {}
 		}
 
 		// Notify parent immediately

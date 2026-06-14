@@ -160,6 +160,7 @@ type ContactInfo struct {
 
 // HandleGetSecurityMetrics returns comprehensive security metrics
 func (h *Handler) HandleGetSecurityMetrics(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	// Get service status from backends and health checks
 	services := []ServiceStatus{
 		{Name: "API Gateway", Status: "operational", Uptime: "99.98%", ResponseTime: "45ms"},
@@ -197,7 +198,7 @@ func (h *Handler) HandleGetSecurityMetrics(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Get recent security incidents from audit events
-	auditEvents, err := h.repo.ListAuditEventsFiltered(10, 0, map[string]interface{}{
+	auditEvents, err := h.repo.ListAuditEventsFiltered(ctx, 10, 0, map[string]interface{}{
 		"action": []string{"security.incident", "security.patch", "security.scan"},
 	})
 	if err != nil {
@@ -321,8 +322,9 @@ func (h *Handler) HandleGetSSLCertificates(w http.ResponseWriter, r *http.Reques
 
 // HandleGetRecentIncidents returns recent security incidents
 func (h *Handler) HandleGetRecentIncidents(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	// Get incidents from audit events
-	auditEvents, err := h.repo.ListAuditEventsFiltered(10, 0, map[string]interface{}{
+	auditEvents, err := h.repo.ListAuditEventsFiltered(ctx, 10, 0, map[string]interface{}{
 		"action": []string{"security.incident", "security.patch", "security.scan"},
 	})
 	if err != nil {

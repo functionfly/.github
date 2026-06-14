@@ -773,7 +773,7 @@ func (h *StripeWebhookHandler) handleUsernameChangeCheckout(w http.ResponseWrite
 	}
 
 	// Get the user
-	user, err := h.userRepo.GetUserByID(userID)
+	user, err := h.userRepo.GetUserByID(r.Context(), userID)
 	if err != nil || user == nil {
 		logrus.WithError(err).WithField("user_id", userIDStr).Error("user not found for username change")
 		apierror.WriteError(w, apierror.NewNotFound("User not found"))
@@ -795,7 +795,7 @@ func (h *StripeWebhookHandler) handleUsernameChangeCheckout(w http.ResponseWrite
 	}
 
 	// Check if the new username is still available (it might have been taken in the meantime)
-	existingUser, err := h.userRepo.GetUserByUsername(newUsername)
+	existingUser, err := h.userRepo.GetUserByUsername(r.Context(), newUsername)
 	if err != nil {
 		logrus.WithError(err).WithField("username", newUsername).Error("failed to check username availability")
 		apierror.WriteError(w, apierror.NewInternal("Failed to verify username availability"))
@@ -1511,7 +1511,7 @@ func (h *StripeWebhookHandler) handleMainSubscriptionDeleted(ctx context.Context
 	// Try to find bundle subscription
 	// First get tenant by Stripe customer ID
 	if stripeSub.Customer != nil && stripeSub.Customer.ID != "" {
-		tenant, err := h.userRepo.GetTenantByStripeCustomerID(stripeSub.Customer.ID)
+		tenant, err := h.userRepo.GetTenantByStripeCustomerID(ctx, stripeSub.Customer.ID)
 		if err == nil && tenant != nil {
 			bundleSub, err := h.userRepo.GetBundleSubscriptionByTenant(ctx, tenant.ID)
 			if err == nil && bundleSub != nil && bundleSub.StripeSubscriptionID == stripeSub.ID {
@@ -1694,7 +1694,7 @@ func (h *StripeWebhookHandler) handleRegistryWalletCreditCheckout(w http.Respons
 		return
 	}
 
-	user, err := h.userRepo.GetUserByID(userID)
+	user, err := h.userRepo.GetUserByID(r.Context(), userID)
 	if err != nil || user == nil {
 		logrus.WithError(err).WithField("user_id", userIDStr).Warn("registry wallet webhook: user not found")
 		apierror.WriteError(w, apierror.NewBadRequest("User not found"))
@@ -1829,7 +1829,7 @@ func (h *StripeWebhookHandler) processMembershipUpgrade(ctx context.Context, ten
 			IsPublic: true,
 		}
 
-		if err := h.userRepo.CreateUserActivity(activity); err != nil {
+		if err := h.userRepo.CreateUserActivity(ctx, activity); err != nil {
 			logrus.WithError(err).WithFields(logrus.Fields{
 				"user_id":   user.ID,
 				"tenant_id": tenantID,
@@ -1857,7 +1857,7 @@ func (h *StripeWebhookHandler) processMembershipUpgrade(ctx context.Context, ten
 
 // awardEnterpriseAchievement awards the "Enterprise Pioneer" achievement to a user.
 func (h *StripeWebhookHandler) awardEnterpriseAchievement(ctx context.Context, userID uuid.UUID) error {
-	achievement, err := h.userRepo.GetAchievementBySlug("enterprise_pioneer")
+	achievement, err := h.userRepo.GetAchievementBySlug(ctx, "enterprise_pioneer")
 	if err != nil {
 		return fmt.Errorf("failed to get enterprise pioneer achievement: %w", err)
 	}
@@ -1868,7 +1868,7 @@ func (h *StripeWebhookHandler) awardEnterpriseAchievement(ctx context.Context, u
 	}
 
 	// Check if user already has this achievement
-	existingAchievements, err := h.userRepo.GetUserAchievements(userID)
+	existingAchievements, err := h.userRepo.GetUserAchievements(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("failed to check existing achievements: %w", err)
 	}
@@ -1980,7 +1980,7 @@ func (h *StripeWebhookHandler) handleInvoicePaymentFailed(w http.ResponseWriter,
 		ctx := r.Context()
 
 		// Find tenant by Stripe customer ID
-		tenant, err := h.userRepo.GetTenantByStripeCustomerID(customerID)
+		tenant, err := h.userRepo.GetTenantByStripeCustomerID(ctx, customerID)
 		if err != nil {
 			logrus.WithError(err).WithField("customer_id", customerID).Warn("stripe webhook: failed to find tenant for dunning")
 		} else if tenant != nil {
@@ -2135,7 +2135,7 @@ func (h *StripeWebhookHandler) handleInvoicePaymentSucceeded(w http.ResponseWrit
 	}
 
 	// Find tenant by Stripe customer ID
-	tenant, err := h.userRepo.GetTenantByStripeCustomerID(invoice.Customer.ID)
+	tenant, err := h.userRepo.GetTenantByStripeCustomerID(ctx, invoice.Customer.ID)
 	if err != nil {
 		logrus.WithError(err).WithField("customer_id", invoice.Customer.ID).Error("stripe webhook: failed to find tenant for invoice payment")
 		// Don't fail the webhook - just log the error
@@ -2828,7 +2828,7 @@ func (h *StripeWebhookHandler) logStripeEvent(ctx context.Context, event *stripe
 	switch v := obj.(type) {
 	case *stripe.Subscription:
 		if v.Customer != nil && v.Customer.ID != "" {
-			tenant, err := h.userRepo.GetTenantByStripeCustomerID(v.Customer.ID)
+			tenant, err := h.userRepo.GetTenantByStripeCustomerID(ctx, v.Customer.ID)
 			if err == nil && tenant != nil {
 				syncEvent.TenantID = &tenant.ID
 			}
@@ -2866,7 +2866,7 @@ func (h *StripeWebhookHandler) handlePaymentMethodUpdated(w http.ResponseWriter,
 		return
 	}
 
-	tenant, err := h.userRepo.GetTenantByStripeCustomerID(pm.Customer.ID)
+	tenant, err := h.userRepo.GetTenantByStripeCustomerID(ctx, pm.Customer.ID)
 	if err != nil || tenant == nil {
 		logrus.WithField("customer_id", pm.Customer.ID).Warn("payment method update: tenant not found")
 		w.WriteHeader(http.StatusOK)
@@ -2988,7 +2988,7 @@ func (h *StripeWebhookHandler) handleCustomerUpdated(w http.ResponseWriter, r *h
 	h.logStripeEvent(ctx, event, &customer)
 
 	// Find tenant by customer ID
-	tenant, err := h.userRepo.GetTenantByStripeCustomerID(customer.ID)
+	tenant, err := h.userRepo.GetTenantByStripeCustomerID(ctx, customer.ID)
 	if err != nil || tenant == nil {
 		logrus.WithField("customer_id", customer.ID).Warn("customer update: tenant not found")
 		w.WriteHeader(http.StatusOK)

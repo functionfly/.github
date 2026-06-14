@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/functionfly/functionfly/internal/api/apierror"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -59,7 +59,7 @@ func (h *Handler) HandleLookupUsersByIDs(w http.ResponseWriter, r *http.Request)
 			continue
 		}
 
-		u, err := h.repo.GetUserByID(uid)
+		u, err := h.repo.GetUserByID(r.Context(), uid)
 		if err != nil {
 			logrus.WithError(err).WithField("user_id", idStr).Warn("lookup-by-ids: GetUserByID failed")
 			continue

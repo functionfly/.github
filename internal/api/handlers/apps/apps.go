@@ -1,6 +1,7 @@
 package apps
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -34,7 +35,7 @@ func (h *Handler) HandleListApps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apps, err := h.repo.ListAppsByTenant(user.TenantID)
+	apps, err := h.repo.ListAppsByTenant(context.Background(), user.TenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", user.TenantID).Error("Failed to list apps")
 		http.Error(w, "Failed to list apps", http.StatusInternalServerError)
@@ -84,7 +85,7 @@ func (h *Handler) HandleCreateApp(w http.ResponseWriter, r *http.Request) {
 	plan := middleware.GetTenantPlan(r)
 	maxApps := plans.MaxApps(plan)
 	if maxApps != -1 {
-		apps, err := h.repo.ListAppsByTenant(user.TenantID)
+		apps, err := h.repo.ListAppsByTenant(context.Background(), user.TenantID)
 		if err != nil {
 			logrus.WithError(err).WithField("tenant_id", user.TenantID).Error("Failed to list apps")
 			http.Error(w, "Failed to check app limit", http.StatusInternalServerError)
@@ -96,7 +97,7 @@ func (h *Handler) HandleCreateApp(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	app, err := h.repo.CreateApp(req.Name, req.Slug, user.TenantID)
+	app, err := h.repo.CreateApp(context.Background(), req.Name, req.Slug, user.TenantID)
 	if err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"name":      req.Name,
@@ -120,7 +121,7 @@ func (h *Handler) HandleGetApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app, resolveErr := apputil.ResolveAppForRequest(h.repo, user, r)
+	app, resolveErr := apputil.ResolveAppForRequest(context.Background(), h.repo, user, r)
 	if resolveErr != nil {
 		http.Error(w, resolveErr.Message, resolveErr.Status)
 		return
@@ -138,7 +139,7 @@ func (h *Handler) HandleGetAppStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app, resolveErr := apputil.ResolveAppForRequest(h.repo, user, r)
+	app, resolveErr := apputil.ResolveAppForRequest(context.Background(), h.repo, user, r)
 	if resolveErr != nil {
 		http.Error(w, resolveErr.Message, resolveErr.Status)
 		return
@@ -147,7 +148,7 @@ func (h *Handler) HandleGetAppStatus(w http.ResponseWriter, r *http.Request) {
 	appID := app.ID
 
 	// Get backend status data
-	backendStatuses, err := h.repo.GetBackendStatusByAppID(appID)
+	backendStatuses, err := h.repo.GetBackendStatusByAppID(context.Background(), appID)
 	if err != nil {
 		logrus.WithError(err).WithField("app_id", appID).Error("Failed to get backend status")
 		http.Error(w, "Failed to get backend status", http.StatusInternalServerError)

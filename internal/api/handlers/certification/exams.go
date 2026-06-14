@@ -92,7 +92,7 @@ func (h *Handler) StartExam(w http.ResponseWriter, r *http.Request) {
 
 	// If there's a pending_payment exam, return its checkout URL so user can retry payment
 	if err == nil && paidExam != nil && paidExam.Status == storage.CertExamStatusPendingPayment {
-		user, userErr := h.userRepo.GetUserByID(claims.UserID)
+		user, userErr := h.userRepo.GetUserByID(r.Context(), claims.UserID)
 		if userErr != nil {
 			writeJSONError(w, http.StatusInternalServerError, "Failed to get user")
 			return
@@ -146,7 +146,7 @@ func (h *Handler) StartExam(w http.ResponseWriter, r *http.Request) {
 			"price_cents": tier.PriceCents,
 		}).Info("Starting paid exam flow - creating checkout session")
 
-		user, userErr := h.userRepo.GetUserByID(claims.UserID)
+		user, userErr := h.userRepo.GetUserByID(r.Context(), claims.UserID)
 		if userErr != nil {
 			writeJSONError(w, http.StatusInternalServerError, "Failed to get user")
 			return
@@ -759,7 +759,7 @@ func (h *Handler) issueCredential(ctx context.Context, exam *storage.CertExam, t
 		return
 	}
 
-	user, userErr := h.userRepo.GetUserByID(exam.UserID)
+	user, userErr := h.userRepo.GetUserByID(ctx, exam.UserID)
 	if userErr != nil || user == nil {
 		logrus.WithError(userErr).WithField("user_id", exam.UserID).Error("Failed to fetch user for credential issuance")
 		return

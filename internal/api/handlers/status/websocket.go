@@ -367,7 +367,7 @@ func (h *Handler) HandleWebSocket(hub *StatusWebSocketHub) http.HandlerFunc {
 		// Check if user is admin (optional token in query param)
 		isAdmin := false
 		if token := r.URL.Query().Get("token"); token != "" {
-			claims, err := h.authSvc.ValidateToken(token)
+			claims, err := h.authSvc.ValidateToken(context.Background(), token)
 			if err == nil && h.isAdmin(claims) {
 				isAdmin = true
 			}

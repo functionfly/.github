@@ -250,7 +250,7 @@ func (h *StripeWebhookHandlerV2) handleRegistryWalletCreditCheckoutUnified(w htt
 
 	// Verify user exists and belongs to tenant
 	if h.userRepo != nil {
-		user, err := h.userRepo.GetUserByID(userID)
+		user, err := h.userRepo.GetUserByID(r.Context(), userID)
 		if err != nil || user == nil {
 			logrus.WithError(err).WithField("session_id", session.ID).Warn("registry wallet webhook: user not found")
 			apierror.WriteError(w, apierror.NewBadRequest("User not found"))

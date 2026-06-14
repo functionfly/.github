@@ -151,7 +151,7 @@ func (h *Handler) HandleRealtimeConnection(w http.ResponseWriter, r *http.Reques
 			"has_token":    token != "",
 		}).Info("WebSocket authentication attempt")
 		if token != "" {
-			claims, err := h.authSvc.ValidateToken(token)
+			claims, err := h.authSvc.ValidateToken(r.Context(), token)
 			if err != nil {
 				tokenPrefix := token
 				if len(token) > 50 {
@@ -376,7 +376,7 @@ func (h *Handler) HandleGetMonitoringEvents(w http.ResponseWriter, r *http.Reque
 	since := time.Now().Add(-timeRange)
 
 	// Query monitoring events from database
-	events, err := h.repo.QueryMonitoringEvents(eventType, &userClaims.TenantID, since, limit)
+	events, err := h.repo.QueryMonitoringEvents(r.Context(), eventType, &userClaims.TenantID, since, limit)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to query monitoring events")
 		http.Error(w, "Failed to query monitoring events", http.StatusInternalServerError)

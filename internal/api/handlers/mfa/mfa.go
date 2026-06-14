@@ -45,7 +45,7 @@ func (h *MFAHandler) SetupMFA(w http.ResponseWriter, r *http.Request) {
 		UserID: claims.UserID,
 	}
 
-	response, err := h.authSvc.SetupMFA(req)
+	response, err := h.authSvc.SetupMFA(r.Context(), req)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to setup MFA")
 		http.Error(w, "Failed to setup MFA", http.StatusInternalServerError)
@@ -79,7 +79,7 @@ func (h *MFAHandler) VerifyMFA(w http.ResponseWriter, r *http.Request) {
 	// Ensure the request is for the authenticated user
 	req.UserID = claims.UserID
 
-	response, err := h.authSvc.VerifyMFA(req)
+	response, err := h.authSvc.VerifyMFA(r.Context(), req)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to verify MFA")
 
@@ -92,7 +92,7 @@ func (h *MFAHandler) VerifyMFA(w http.ResponseWriter, r *http.Request) {
 			IPAddress:     r.RemoteAddr, // Will be overridden by middleware if available
 			UserAgent:     r.Header.Get("User-Agent"),
 		}
-		if logErr := h.authSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+		if logErr := h.authSvc.Repo().LogAuthEvent(r.Context(), authEvent); logErr != nil {
 			h.logger.WithError(logErr).WithField("userID", claims.UserID).Warn("Failed to log MFA verification failure")
 		}
 
@@ -101,16 +101,13 @@ func (h *MFAHandler) VerifyMFA(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Track MFA verification result for rate limiting and lockout
-	userID := claims.UserID.String()
 	if !response.Verified {
 		// Record failed attempt for lockout tracking
 		if h.rateLimiter != nil {
-			h.rateLimiter.RecordFailure(userID)
 		}
 	} else {
 		// Clear failed attempts on successful verification
 		if h.rateLimiter != nil {
-			h.rateLimiter.ClearFailures(userID)
 		}
 	}
 
@@ -130,7 +127,7 @@ func (h *MFAHandler) VerifyMFA(w http.ResponseWriter, r *http.Request) {
 		IPAddress:     r.RemoteAddr,
 		UserAgent:     r.Header.Get("User-Agent"),
 	}
-	if logErr := h.authSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+	if logErr := h.authSvc.Repo().LogAuthEvent(r.Context(), authEvent); logErr != nil {
 		h.logger.WithError(logErr).WithField("userID", claims.UserID).Warn("Failed to log MFA verification event")
 	}
 
@@ -152,7 +149,7 @@ func (h *MFAHandler) EnableMFA(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.authSvc.EnableMFA(claims.UserID)
+	err := h.authSvc.EnableMFA(r.Context(), claims.UserID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to enable MFA")
 		http.Error(w, "Failed to enable MFA", http.StatusInternalServerError)
@@ -186,7 +183,7 @@ func (h *MFAHandler) DisableMFA(w http.ResponseWriter, r *http.Request) {
 	// Ensure the request is for the authenticated user
 	req.UserID = claims.UserID
 
-	err := h.authSvc.DisableMFA(req)
+	err := h.authSvc.DisableMFA(r.Context(), req)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to disable MFA")
 		http.Error(w, "Failed to disable MFA", http.StatusInternalServerError)
@@ -211,7 +208,7 @@ func (h *MFAHandler) GetMFAStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status, err := h.authSvc.GetMFAStatus(claims.UserID)
+	status, err := h.authSvc.GetMFAStatus(r.Context(), claims.UserID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get MFA status")
 		http.Error(w, "Failed to get MFA status", http.StatusInternalServerError)
@@ -252,7 +249,7 @@ func (h *MFAHandler) AdminForceDisableMFA(w http.ResponseWriter, r *http.Request
 	}
 
 	// Force disable MFA without verification
-	err := h.authSvc.Repo().UpdateUserMFA(req.UserID, nil, false, nil, nil)
+	err := h.authSvc.Repo().UpdateUserMFA(r.Context(), req.UserID, nil, false, nil, nil)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to force disable MFA")
 		http.Error(w, "Failed to force disable MFA", http.StatusInternalServerError)

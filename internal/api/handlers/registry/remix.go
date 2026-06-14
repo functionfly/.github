@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -73,7 +74,7 @@ func (h *Handler) HandleRemix(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate source function exists and is public
-	sourceFn, err := h.repo.GetFunctionByAuthorName(req.SourceAuthor, req.SourceName)
+	sourceFn, err := h.repo.GetFunctionByAuthorName(r.Context(), req.SourceAuthor, req.SourceName)
 	if err != nil {
 		if isRecordNotFound(err) {
 			apierror.WriteError(w, apierror.NewNotFound("Source function not found"))
@@ -279,7 +280,7 @@ func (h *Handler) HandleRemix(w http.ResponseWriter, r *http.Request) {
 			OwnerUserID: &user.UserID,
 		}
 
-		if err := h.repo.CreateFunction(fn); err != nil {
+		if err := h.repo.CreateFunction(r.Context(), fn); err != nil {
 			logrus.WithError(err).Error("Failed to create remixed function")
 			apierror.WriteError(w, apierror.NewInternal("Failed to create function"))
 			return
@@ -329,20 +330,20 @@ func (h *Handler) HandleRemix(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Record the remix relationship in the remix_history table
-	if err := h.repo.RecordRemix(sourceFn.ID, newFnID, user.UserID, req.Customization, RemixCostUSD); err != nil {
+	if err := h.repo.RecordRemix(context.Background(), sourceFn.ID, newFnID, user.UserID, req.Customization, float64(RemixCostUSD)); err != nil {
 		logrus.WithError(err).Warn("Failed to record remix history")
 		// Don't fail the request, but log the error
 	}
 
 	// Get actual remix count from database
-	remixCount, err := h.repo.CountRemixesForFunction(sourceFn.ID)
+	remixCount, err := h.repo.CountRemixesForFunction(context.Background(), sourceFn.ID)
 	if err != nil {
 		logrus.WithError(err).Warn("Failed to count remixes, using popularity as fallback")
 		remixCount = int64(sourceFn.PopularityScore)
 	}
 
 	// Update source function's remix count (using popularity_score as remix_count for now)
-	if _, err := h.repo.UpdateRegistryFunction(sourceFn.ID, map[string]interface{}{
+	if _, err := h.repo.UpdateRegistryFunction(context.Background(), sourceFn.ID, map[string]interface{}{
 		"popularity_score": int(remixCount),
 	}); err != nil {
 		logrus.WithError(err).Warn("Failed to update source function remix count")
@@ -388,14 +389,14 @@ func (h *Handler) HandleGetRemixHistory(w http.ResponseWriter, r *http.Request) 
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	// Get remix history from database
-	history, err := h.repo.GetRemixHistoryForFunction(fn.ID)
+	history, err := h.repo.GetRemixHistoryForFunction(context.Background(), fn.ID)
 	if err != nil {
 		logrus.WithError(err).Warn("Failed to get remix history from database")
 		// Return empty history but don't fail the request
@@ -403,7 +404,7 @@ func (h *Handler) HandleGetRemixHistory(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Count remixes
-	remixCount, err := h.repo.CountRemixesForFunction(fn.ID)
+	remixCount, err := h.repo.CountRemixesForFunction(context.Background(), fn.ID)
 	if err != nil {
 		logrus.WithError(err).Warn("Failed to count remixes")
 		remixCount = int64(len(history))
@@ -452,7 +453,7 @@ func (h *Handler) HandleGetRemixHistory(w http.ResponseWriter, r *http.Request) 
 	// Check if this function appears as a target in remix_history
 	// This indicates it was remixed from something else
 	if !isRemix {
-		if isRemixResult, history, err := h.repo.IsFunctionRemix(fn.ID); err == nil && isRemixResult && history != nil {
+		if isRemixResult, history, err := h.repo.IsFunctionRemix(context.Background(), fn.ID); err == nil && isRemixResult && history != nil {
 			isRemix = true
 			// Get source function info
 			if history.SourceFunction != nil {
@@ -490,7 +491,7 @@ func (h *Handler) HandleGetRemixCost(w http.ResponseWriter, r *http.Request) {
 	name := vars["name"]
 
 	// Verify function exists and is public
-	sourceFn, err := h.repo.GetFunctionByAuthorName(author, name)
+	sourceFn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
@@ -576,14 +577,14 @@ func (h *Handler) HandleLikeFunction(w http.ResponseWriter, r *http.Request) {
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	// Toggle like in database
-	liked, likeCount, err := h.repo.ToggleLike(fn.ID, user.UserID)
+	liked, likeCount, err := h.repo.ToggleLike(context.Background(), fn.ID, user.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to toggle like")
 		apierror.WriteError(w, apierror.NewInternal("Failed to process like"))
@@ -591,7 +592,7 @@ func (h *Handler) HandleLikeFunction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update function's like count (store in popularity_score for quick access)
-	if _, err := h.repo.UpdateRegistryFunction(fn.ID, map[string]interface{}{
+	if _, err := h.repo.UpdateRegistryFunction(context.Background(), fn.ID, map[string]interface{}{
 		"popularity_score": int(likeCount),
 	}); err != nil {
 		logrus.WithError(err).Warn("Failed to update function like count")
@@ -615,14 +616,14 @@ func (h *Handler) HandleGetFunctionLikes(w http.ResponseWriter, r *http.Request)
 	author := vars["author"]
 	name := vars["name"]
 
-	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(context.Background(), author, name)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	// Get actual like count from database
-	likeCount, err := h.repo.CountLikesForFunction(fn.ID)
+	likeCount, err := h.repo.CountLikesForFunction(context.Background(), fn.ID)
 	if err != nil {
 		logrus.WithError(err).Warn("Failed to count likes")
 		likeCount = 0
@@ -631,7 +632,7 @@ func (h *Handler) HandleGetFunctionLikes(w http.ResponseWriter, r *http.Request)
 	// Check if current user has liked (if authenticated)
 	likedByUser := false
 	if user := middleware.GetUserFromContext(r); user != nil {
-		liked, err := h.repo.HasUserLiked(fn.ID, user.UserID)
+		liked, err := h.repo.HasUserLiked(context.Background(), fn.ID, user.UserID)
 		if err != nil {
 			logrus.WithError(err).Warn("Failed to check if user liked")
 		}

@@ -134,7 +134,7 @@ func (h *Handler) HandleUnfollowUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get target user by username
-	targetUser, err := h.repo.GetUserByUsername(username)
+	targetUser, err := h.repo.GetUserByUsername(r.Context(), username)
 	if err != nil {
 		writeJSONError(w, http.StatusNotFound, "user not found")
 		return
@@ -188,7 +188,7 @@ func (h *Handler) HandleGetUserFollowers(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Get user by username
-	user, err := h.repo.GetUserByUsername(username)
+	user, err := h.repo.GetUserByUsername(r.Context(), username)
 	if err != nil {
 		writeJSONError(w, http.StatusNotFound, "user not found")
 		return
@@ -259,7 +259,7 @@ func (h *Handler) HandleGetUserFollowing(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Get user by username
-	user, err := h.repo.GetUserByUsername(username)
+	user, err := h.repo.GetUserByUsername(r.Context(), username)
 	if err != nil {
 		writeJSONError(w, http.StatusNotFound, "user not found")
 		return
@@ -336,7 +336,7 @@ func (h *Handler) HandleCheckFollowingStatus(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Get target user by username
-	targetUser, err := h.repo.GetUserByUsername(username)
+	targetUser, err := h.repo.GetUserByUsername(r.Context(), username)
 	if err != nil {
 		writeJSONError(w, http.StatusNotFound, "user not found")
 		return

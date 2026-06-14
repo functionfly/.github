@@ -48,7 +48,7 @@ func (h *Handler) HandleValidateProvider(w http.ResponseWriter, r *http.Request)
 			Status:   "active",
 		}
 
-		if err := h.repo.CreateProvider(provider); err != nil {
+		if err := h.repo.CreateProvider(r.Context(), provider); err != nil {
 			logrus.WithError(err).Error("Failed to store provider")
 			response.IsValid = false
 			response.Message = "Failed to save provider configuration"

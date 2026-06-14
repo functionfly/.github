@@ -28,7 +28,7 @@ func (h *Handler) HandleGetTrustScore(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get trust score from registry
-	history, err := h.registryRepo.GetLatestTrustHistory(functionID)
+	history, err := h.registryRepo.GetLatestTrustHistory(r.Context(), functionID)
 	if err != nil {
 		h.logger.WithError(err).WithField("function_id", functionID).Error("Failed to get trust history")
 		h.writeError(w, http.StatusNotFound, "Trust score not found for function", "trust_not_found")
@@ -38,7 +38,7 @@ func (h *Handler) HandleGetTrustScore(w http.ResponseWriter, r *http.Request) {
 	// If no trust history exists, calculate it on-demand
 	if history == nil {
 		windowStart := time.Now().Add(-24 * time.Hour)
-		history, err = h.registryRepo.CalculateTrustScore(functionID, windowStart, time.Now())
+		history, err = h.registryRepo.CalculateTrustScore(r.Context(), functionID, windowStart, time.Now())
 		if err != nil {
 			h.logger.WithError(err).Error("Failed to calculate trust score")
 			h.writeError(w, http.StatusInternalServerError, "Failed to calculate trust score", "calculation_error")
@@ -98,7 +98,7 @@ func (h *Handler) HandleBatchTrustScore(w http.ResponseWriter, r *http.Request) 
 	errors := make([]trustapi.BatchTrustScoreError, 0)
 
 	for _, functionID := range req.FunctionIDs {
-		history, err := h.registryRepo.GetLatestTrustHistory(functionID)
+		history, err := h.registryRepo.GetLatestTrustHistory(r.Context(), functionID)
 		if err != nil {
 			errors = append(errors, trustapi.BatchTrustScoreError{
 				FunctionID: functionID,
@@ -110,7 +110,7 @@ func (h *Handler) HandleBatchTrustScore(w http.ResponseWriter, r *http.Request) 
 		// If no trust history exists, calculate it on-demand
 		if history == nil {
 			windowStart := time.Now().Add(-24 * time.Hour)
-			history, err = h.registryRepo.CalculateTrustScore(functionID, windowStart, time.Now())
+			history, err = h.registryRepo.CalculateTrustScore(r.Context(), functionID, windowStart, time.Now())
 			if err != nil {
 				errors = append(errors, trustapi.BatchTrustScoreError{
 					FunctionID: functionID,
@@ -178,7 +178,7 @@ func (h *Handler) HandleGetTrustHistory(w http.ResponseWriter, r *http.Request) 
 	offset := (page - 1) * pageSize
 
 	// Get trust history
-	history, total, err := h.registryRepo.GetTrustHistory(functionID, pageSize, offset)
+	history, total, err := h.registryRepo.GetTrustHistory(r.Context(), functionID, pageSize, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get trust history")
 		h.writeError(w, http.StatusInternalServerError, "Failed to get trust history", "internal_error")
@@ -223,7 +223,7 @@ func (h *Handler) HandleSubmitVerification(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Validate function exists
-	fn, err := h.registryRepo.GetFunctionByID(req.FunctionID)
+	fn, err := h.registryRepo.GetFunctionByID(r.Context(), req.FunctionID)
 	if err != nil {
 		h.writeError(w, http.StatusNotFound, "Function not found", "function_not_found")
 		return
@@ -319,7 +319,7 @@ func (h *Handler) HandleSubmitReport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate function exists
-	fn, err := h.registryRepo.GetFunctionByID(req.FunctionID)
+	fn, err := h.registryRepo.GetFunctionByID(r.Context(), req.FunctionID)
 	if err != nil {
 		h.writeError(w, http.StatusNotFound, "Function not found", "function_not_found")
 		return

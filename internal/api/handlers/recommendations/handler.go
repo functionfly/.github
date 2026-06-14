@@ -131,7 +131,7 @@ func (h *Handler) HandleGetRelatedFunctions(w http.ResponseWriter, r *http.Reque
 		limit = 20
 	}
 
-	fn, err := h.service.GetRegistryRepository().GetFunctionByAuthorName(author, name)
+	fn, err := h.service.GetRegistryRepository().GetFunctionByAuthorName(r.Context(), author, name)
 	if err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{"author": author, "name": name}).Warn("Function not found for related functions lookup")
 		http.Error(w, "Function not found", http.StatusNotFound)

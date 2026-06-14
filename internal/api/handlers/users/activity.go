@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/functionfly/functionfly/internal/api/apierror"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/gorilla/mux"
@@ -40,7 +40,7 @@ func (h *Handler) HandleGetUserActivity(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Get user by username
-	user, err := h.repo.GetUserByUsername(username)
+	user, err := h.repo.GetUserByUsername(r.Context(), username)
 	if err != nil {
 		logrus.WithError(err).WithField("username", username).Error("Failed to get user by username")
 		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve user"))
@@ -52,7 +52,7 @@ func (h *Handler) HandleGetUserActivity(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Get user activity (return empty if tables not yet migrated)
-	activities, err := h.repo.GetUserActivity(user.ID, limit, offset)
+	activities, err := h.repo.GetUserActivity(r.Context(), user.ID, limit, offset)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", user.ID).Warn("Failed to get user activity, returning empty")
 		writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -123,7 +123,7 @@ func (h *Handler) HandleCreateUserActivity(w http.ResponseWriter, r *http.Reques
 		IsPublic:     req.IsPublic,
 	}
 
-	if err := h.repo.CreateUserActivity(activity); err != nil {
+	if err := h.repo.CreateUserActivity(r.Context(), activity); err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to create user activity")
 		apierror.WriteError(w, apierror.NewInternal("Failed to create activity"))
 		return
