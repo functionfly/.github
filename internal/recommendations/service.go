@@ -205,12 +205,12 @@ func (s *Service) GetRelatedFunctions(ctx context.Context, functionID uuid.UUID,
 // ComputeSimilarity computes and stores similarity between two functions
 func (s *Service) ComputeSimilarity(ctx context.Context, functionIDa, functionIDb uuid.UUID) error {
 	// Get function details
-	funcA, err := s.registry.GetFunctionByID(functionIDa)
+	funcA, err := s.registry.GetFunctionByID(ctx, functionIDa)
 	if err != nil {
 		return err
 	}
 
-	funcB, err := s.registry.GetFunctionByID(functionIDb)
+	funcB, err := s.registry.GetFunctionByID(ctx, functionIDb)
 	if err != nil {
 		return err
 	}

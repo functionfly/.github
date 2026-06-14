@@ -1,6 +1,7 @@
 package routing
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"sort"
@@ -12,10 +13,10 @@ import (
 
 // RouterRepository defines the subset of Repository methods used by Router
 type RouterRepository interface {
-	ListBackendsByAppID(appID uuid.UUID) ([]*storage.Backend, error)
-	GetCircuitState(backendID uuid.UUID) (*storage.CircuitState, error)
-	GetRecentHealthChecks(backendID uuid.UUID, limit int) ([]*storage.HealthCheck, error)
-	InsertRoutingEvent(appID, backendID uuid.UUID, latencyMs int, outcome, requestID string) error
+	ListBackendsByAppID(ctx context.Context, appID uuid.UUID) ([]*storage.Backend, error)
+	GetCircuitState(ctx context.Context, backendID uuid.UUID) (*storage.CircuitState, error)
+	GetRecentHealthChecks(ctx context.Context, backendID uuid.UUID, limit int) ([]*storage.HealthCheck, error)
+	InsertRoutingEvent(ctx context.Context, appID, backendID uuid.UUID, latencyMs int, outcome, requestID string) error
 }
 
 // Router handles backend selection and routing decisions
@@ -48,7 +49,7 @@ func NewRouter(repo RouterRepository) *Router {
 // SelectBackend selects the best backend for routing based on health, circuit state, and latency
 func (r *Router) SelectBackend(appID uuid.UUID, method string, requestID string, plan string) (*RoutingDecision, error) {
 	// Get all backends for the app
-	backends, err := r.repo.ListBackendsByAppID(appID)
+	backends, err := r.repo.ListBackendsByAppID(context.Background(), appID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list backends: %w", err)
 	}
@@ -108,7 +109,7 @@ func (r *Router) scoreBackends(backends []*storage.Backend) []*BackendScore {
 		}
 
 		// Get circuit state
-		circuitState, err := r.repo.GetCircuitState(backend.ID)
+		circuitState, err := r.repo.GetCircuitState(context.Background(), backend.ID)
 		if err != nil {
 			logrus.WithError(err).WithField("backend_id", backend.ID).Error("Failed to get circuit state")
 			score.CircuitState = "unknown"
@@ -134,7 +135,7 @@ func (r *Router) scoreBackends(backends []*storage.Backend) []*BackendScore {
 // calculateEWMAScore calculates the exponentially weighted moving average latency score
 func (r *Router) calculateEWMAScore(backendID uuid.UUID) float64 {
 	// Get recent health checks (last 10)
-	checks, err := r.repo.GetRecentHealthChecks(backendID, 10)
+	checks, err := r.repo.GetRecentHealthChecks(context.Background(), backendID, 10)
 	if err != nil {
 		logrus.WithError(err).WithField("backend_id", backendID).Error("Failed to get health checks")
 		return 1000.0 // Default high latency
@@ -236,7 +237,7 @@ func (r *Router) selectBestBackend(backends []*BackendScore, method string, plan
 
 // RecordRoutingResult records the result of a routing attempt for future scoring
 func (r *Router) RecordRoutingResult(appID, backendID uuid.UUID, latencyMs int, outcome, requestID string) error {
-	return r.repo.InsertRoutingEvent(appID, backendID, latencyMs, outcome, requestID)
+	return r.repo.InsertRoutingEvent(context.Background(), appID, backendID, latencyMs, outcome, requestID)
 }
 
 // IsIdempotentMethod checks if an HTTP method is considered idempotent for fast failover

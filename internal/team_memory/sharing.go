@@ -100,7 +100,7 @@ func (m *MemorySharingManager) SetPolicy(policy *SharingPolicy) {
 // teamsInSameTenant checks if two teams belong to the same tenant
 func (m *MemorySharingManager) teamsInSameTenant(ctx context.Context, teamID1, teamID2 uuid.UUID) (bool, error) {
 	// Get both teams
-	team1, err := m.repo.GetTeamByID(teamID1)
+	team1, err := m.repo.GetTeamByID(ctx, teamID1)
 	if err != nil {
 		return false, fmt.Errorf("failed to get source team: %w", err)
 	}
@@ -108,7 +108,7 @@ func (m *MemorySharingManager) teamsInSameTenant(ctx context.Context, teamID1, t
 		return false, fmt.Errorf("source team not found")
 	}
 
-	team2, err := m.repo.GetTeamByID(teamID2)
+	team2, err := m.repo.GetTeamByID(ctx, teamID2)
 	if err != nil {
 		return false, fmt.Errorf("failed to get target team: %w", err)
 	}

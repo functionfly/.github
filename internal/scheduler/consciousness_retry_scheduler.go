@@ -87,7 +87,6 @@ type RetryScheduler struct {
 	config     *RetrySchedulerConfig
 	stopOnce   sync.Once
 	cancel     context.CancelFunc
-	httpClient *HTTPClient
 }
 
 // NewRetryScheduler creates a new consciousness retry scheduler.

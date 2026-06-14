@@ -177,7 +177,7 @@ func (s *Service) GetActiveAlerts(ctx context.Context, tenantID *uuid.UUID) ([]*
 
 // GetSystemHealthStatus returns the current system health status
 func (s *Service) GetSystemHealthStatus(ctx context.Context) (map[string]*storage.SystemHealthCheck, error) {
-	return s.queryLatestSystemHealthChecks()
+	return s.queryLatestSystemHealthChecks(ctx)
 }
 
 // ResolveAlert marks an alert as resolved
@@ -207,12 +207,12 @@ func (s *Service) ResolveAlert(ctx context.Context, alertID uuid.UUID, resolvedB
 
 // GetDashboardConfigsByTenant retrieves dashboard configurations for a tenant
 func (s *Service) GetDashboardConfigsByTenant(tenantID uuid.UUID) ([]*storage.DashboardConfig, error) {
-	return s.db.GetDashboardConfigsByTenant(tenantID)
+	return s.db.GetDashboardConfigsByTenant(context.Background(), tenantID)
 }
 
 // GetDashboardConfigsByUser retrieves dashboard configurations for a specific user
 func (s *Service) GetDashboardConfigsByUser(userID uuid.UUID) ([]*storage.DashboardConfig, error) {
-	return s.db.GetDashboardConfigsByUser(userID)
+	return s.db.GetDashboardConfigsByUser(context.Background(), userID)
 }
 
 // CreateDashboardConfig creates a new dashboard configuration

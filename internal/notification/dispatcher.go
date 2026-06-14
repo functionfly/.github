@@ -15,8 +15,8 @@ var dispatcherMetrics = GetNotificationMetrics()
 
 // userLookup is the minimal interface the Dispatcher needs to resolve full user details.
 type userLookup interface {
-	GetUserByID(userID uuid.UUID) (*storage.User, error)
-	GetUserSettings(userID uuid.UUID) (map[string]interface{}, error)
+	GetUserByID(ctx context.Context, userID uuid.UUID) (*storage.User, error)
+	GetUserSettings(ctx context.Context, userID uuid.UUID) (map[string]interface{}, error)
 }
 
 // Dispatcher handles notification delivery to channels
@@ -54,7 +54,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, n *Notification) error {
 	user := &storage.User{ID: n.UserID}
 	userLookupFailed := false
 	if d.userLookup != nil {
-		if u, err := d.userLookup.GetUserByID(n.UserID); err != nil {
+		if u, err := d.userLookup.GetUserByID(ctx, n.UserID); err != nil {
 			d.logger.WithError(err).WithField("user_id", n.UserID).Warn("failed to look up user for notification dispatch; email channel will be skipped")
 			userLookupFailed = true
 		} else if u != nil {
@@ -65,7 +65,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, n *Notification) error {
 	successCount := 0
 	failedCount := 0
 
-	settings, _ := d.userLookup.GetUserSettings(n.UserID)
+	settings, _ := d.userLookup.GetUserSettings(ctx, n.UserID)
 
 	for _, channelName := range n.Channels {
 		channelCtx := tracing.WithTraceContext(ctx, uuid.New().String(), uuid.New().String(), "")

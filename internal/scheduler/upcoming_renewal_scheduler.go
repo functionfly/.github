@@ -98,7 +98,7 @@ func (s *UpcomingRenewalScheduler) runRenewalCheck(ctx context.Context) {
 // checkRenewalsForDate finds subscriptions renewing on the target date and sends notifications
 func (s *UpcomingRenewalScheduler) checkRenewalsForDate(ctx context.Context, targetDate time.Time, daysUntil int) error {
 	// Get all active subscriptions
-	subs, err := s.repo.ListAllSubscriptions(1000, 0)
+	subs, err := s.repo.ListAllSubscriptions(ctx, 1000, 0)
 	if err != nil {
 		return fmt.Errorf("failed to list subscriptions: %w", err)
 	}
@@ -118,7 +118,7 @@ func (s *UpcomingRenewalScheduler) checkRenewalsForDate(ctx context.Context, tar
 		}
 
 		// Get tenant info for billing details
-		tenant, err := s.repo.GetTenantByID(sub.TenantID)
+		tenant, err := s.repo.GetTenantByID(ctx, sub.TenantID)
 		if err != nil {
 			s.logger.WithError(err).WithField("tenant_id", sub.TenantID).Warn("Failed to get tenant for renewal notice")
 			continue
@@ -132,7 +132,7 @@ func (s *UpcomingRenewalScheduler) checkRenewalsForDate(ctx context.Context, tar
 		}
 
 		// Calculate renewal amount
-		amountUSD := s.calculateRenewalAmount(sub, tenant)
+		amountUSD := s.calculateRenewalAmount(ctx, sub, tenant)
 
 		// Send notification to each user
 		for _, user := range users {
@@ -202,12 +202,12 @@ func (s *UpcomingRenewalScheduler) isRenewalOnDate(sub *storage.Subscription, ta
 }
 
 // calculateRenewalAmount calculates the renewal amount in USD
-func (s *UpcomingRenewalScheduler) calculateRenewalAmount(sub *storage.Subscription, tenant *storage.Tenant) float64 {
+func (s *UpcomingRenewalScheduler) calculateRenewalAmount(ctx context.Context, sub *storage.Subscription, tenant *storage.Tenant) float64 {
 	if sub.PricingTierID != uuid.Nil {
 		if sub.PricingTier != nil {
 			return float64(sub.PricingTier.PriceCents) / 100.0
 		}
-		tier, err := s.getPricingTier(sub.PricingTierID)
+		tier, err := s.getPricingTier(ctx, sub.PricingTierID)
 		if err == nil && tier != nil {
 			return float64(tier.PriceCents) / 100.0
 		}
@@ -221,11 +221,11 @@ func (s *UpcomingRenewalScheduler) calculateRenewalAmount(sub *storage.Subscript
 }
 
 // getPricingTier retrieves a pricing tier by ID
-func (s *UpcomingRenewalScheduler) getPricingTier(tierID uuid.UUID) (*storage.PricingTier, error) {
+func (s *UpcomingRenewalScheduler) getPricingTier(ctx context.Context, tierID uuid.UUID) (*storage.PricingTier, error) {
 	if tierID == uuid.Nil {
 		return nil, fmt.Errorf("tier ID is nil")
 	}
-	return s.repo.GetPricingTierByID(tierID)
+	return s.repo.GetPricingTierByID(ctx, tierID)
 }
 
 // SendImmediateRenewalNotice sends an immediate renewal notice for a specific subscription

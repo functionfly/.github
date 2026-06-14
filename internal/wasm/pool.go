@@ -294,11 +294,11 @@ func (p *InstancePool) Warmup(ctx context.Context, tenantID, runtime string) err
 	p.Put(inst)
 
 	if err != nil {
-		log.Printf("[WASM] Warmup execution warning for %s:%s: %v", tenantID, runtime, err)
+		logrus.Printf("[WASM] Warmup execution warning for %s:%s: %v", tenantID, runtime, err)
 		// Don't return error - warmup failure is not fatal
 	}
 
-	log.Printf("[WASM] Pool warmed up for %s:%s", tenantID, runtime)
+	logrus.Printf("[WASM] Pool warmed up for %s:%s", tenantID, runtime)
 	return nil
 }
 
@@ -733,7 +733,7 @@ var (
 func InitPools(factory InstanceFactory, poolSize int) {
 	GlobalPool = NewSimpleInstancePool(factory, poolSize)
 	PerTenantPools = NewInstancePool(factory, poolSize/2, poolSize)
-	log.Printf("[WASM] Instance pools initialized with size %d", poolSize)
+	logrus.Printf("[WASM] Instance pools initialized with size %d", poolSize)
 }
 
 // InitPoolsWithConfig initializes the global pools with custom configuration
@@ -743,5 +743,5 @@ func InitPoolsWithConfig(factory InstanceFactory, poolSize int, maxInstanceAge t
 	if maxInstanceAge > 0 {
 		PerTenantPools.SetMaxInstanceAge(maxInstanceAge)
 	}
-	log.Printf("[WASM] Instance pools initialized with size %d, max instance age: %v", poolSize, maxInstanceAge)
+	logrus.Printf("[WASM] Instance pools initialized with size %d, max instance age: %v", poolSize, maxInstanceAge)
 }

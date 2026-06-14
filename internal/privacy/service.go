@@ -369,7 +369,7 @@ func (s *Service) processDataExport(ctx context.Context, requestID, userID uuid.
 	s.repo.UpdateExportRequestStatus(requestID, "processing", "", "", 0, 0, "")
 
 	// Build the data package
-	dataPackage, err := s.buildGDPRDataPackage(userID, requestType)
+	dataPackage, err := s.buildGDPRDataPackage(ctx, userID, requestType)
 	if err != nil {
 		s.repo.UpdateExportRequestStatus(requestID, "failed", "", "", 0, 0, err.Error())
 		s.repo.LogPrivacyEvent(
@@ -427,7 +427,7 @@ func (s *Service) processDataExport(ctx context.Context, requestID, userID uuid.
 }
 
 // buildGDPRDataPackage builds a complete data package for export
-func (s *Service) buildGDPRDataPackage(userID uuid.UUID, requestType string) (*GDPRDataPackage, error) {
+func (s *Service) buildGDPRDataPackage(ctx context.Context, userID uuid.UUID, requestType string) (*GDPRDataPackage, error) {
 	package_ := &GDPRDataPackage{
 		ExportID:    uuid.New().String(),
 		UserID:      userID.String(),
@@ -436,7 +436,7 @@ func (s *Service) buildGDPRDataPackage(userID uuid.UUID, requestType string) (*G
 	}
 
 	// Get user profile
-	user, err := s.repo.db.GetUserByID(userID)
+	user, err := s.repo.db.GetUserByID(ctx, userID)
 	if err != nil {
 		logrus.WithError(err).Warn("Failed to get user profile for export")
 	} else {

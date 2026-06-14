@@ -308,7 +308,7 @@ func (bp *BundleProvisioner) provisionExternalAIDB(ctx context.Context, tenantID
 	}
 
 	// Check tenant plan — free tier does NOT get external DB
-	tenant, err := bp.platformRepo.GetTenantByID(tenantID)
+	tenant, err := bp.platformRepo.GetTenantByID(ctx, tenantID)
 	if err != nil || tenant == nil {
 		return state, fmt.Errorf("tenant not found: %w", err)
 	}

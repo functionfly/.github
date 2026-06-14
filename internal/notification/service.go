@@ -39,7 +39,7 @@ func NewService(repo Repository, db *storage.PostgresDB, emailSvc email.Service,
 	}
 
 	// Register channels
-	emailChannel := NewEmailChannel(emailSvc, logger)
+	emailChannel := NewEmailChannel(repo, emailSvc, logger)
 	inAppChannel := NewInAppChannel(repo, db, logger)
 	webhookChannel := NewWebhookChannel(logger)
 	webhookChannel.SetRepository(repo)
@@ -222,7 +222,7 @@ func (s *Service) SendWalletLowBalance(ctx context.Context, userID uuid.UUID, ag
 // SendBillingInvoiceGenerated sends an invoice generated notification when a new invoice is created.
 func (s *Service) SendBillingInvoiceGenerated(ctx context.Context, userEmail, period string, amountDueUSD float64, invoiceURL, invoiceID string) error {
 	// Look up the user by email to get their ID
-	user, err := s.db.GetUserByEmail(userEmail)
+	user, err := s.db.GetUserByEmail(ctx, userEmail)
 	if err != nil {
 		return fmt.Errorf("failed to find user by email: %w", err)
 	}
@@ -251,7 +251,7 @@ func (s *Service) SendBillingInvoiceGenerated(ctx context.Context, userEmail, pe
 // SendBillingPaymentSuccess sends a payment success notification for subscription payments.
 func (s *Service) SendBillingPaymentSuccess(ctx context.Context, userEmail, period string, amountPaidUSD float64, invoiceID string) error {
 	// Look up the user by email to get their ID
-	user, err := s.db.GetUserByEmail(userEmail)
+	user, err := s.db.GetUserByEmail(ctx, userEmail)
 	if err != nil {
 		return fmt.Errorf("failed to find user by email: %w", err)
 	}
@@ -320,7 +320,7 @@ func (s *Service) SendUpcomingRenewalNotice(ctx context.Context, userID uuid.UUI
 // SendBillingAlert sends a billing-related alert notification (e.g., payment failed, invoice overdue).
 func (s *Service) SendBillingAlert(ctx context.Context, userEmail string, alertType string, data map[string]interface{}) error {
 	// First, look up the user by email to get their ID
-	user, err := s.db.GetUserByEmail(userEmail)
+	user, err := s.db.GetUserByEmail(ctx, userEmail)
 	if err != nil {
 		return fmt.Errorf("failed to find user by email: %w", err)
 	}
@@ -476,7 +476,7 @@ func (s *Service) HealthCheck() map[string]interface{} {
 // SendLowBalance sends a low balance alert to a user via email
 func (s *Service) SendLowBalance(ctx context.Context, userEmail string, data map[string]interface{}) error {
 	// Look up the user by email to get their ID
-	user, err := s.db.GetUserByEmail(userEmail)
+	user, err := s.db.GetUserByEmail(ctx, userEmail)
 	if err != nil {
 		return fmt.Errorf("failed to find user by email: %w", err)
 	}

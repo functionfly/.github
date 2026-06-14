@@ -107,7 +107,7 @@ func (s *Service) SearchSimilarByEmbedding(ctx context.Context, queryEmbedding [
 	}
 	var results []RecommendationResult
 	for _, e := range withDist {
-		fn, err := s.registry.GetFunctionByID(e.FunctionID)
+		fn, err := s.registry.GetFunctionByID(ctx, e.FunctionID)
 		if err != nil {
 			continue
 		}
@@ -409,7 +409,7 @@ func (s *Service) tripleResultsToRecommendations(ctx context.Context, results []
 	}
 	var recs []RecommendationResult
 	for _, r := range results {
-		fn, err := s.registry.GetFunctionByID(r.FunctionID)
+		fn, err := s.registry.GetFunctionByID(ctx, r.FunctionID)
 		if err != nil {
 			continue
 		}

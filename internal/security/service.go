@@ -222,7 +222,7 @@ func (sas *SecurityAuditService) SaveScanResult(ctx context.Context, scan *Secur
 // GetScanResults retrieves scan results
 func (sas *SecurityAuditService) GetScanResults(ctx context.Context, limit, offset int) ([]*SecurityScan, error) {
 	// Query scan results from database
-	scans, err := sas.db.ListSecurityScans(limit, offset, nil)
+	scans, err := sas.db.ListSecurityScans(ctx, limit, offset, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get scan results: %w", err)
 	}
@@ -339,7 +339,7 @@ func (sas *SecurityAuditService) GetScanResults(ctx context.Context, limit, offs
 		}
 
 		// Load vulnerabilities for this scan
-		scanVulns, err := sas.db.GetVulnerabilities(map[string]interface{}{
+		scanVulns, err := sas.db.GetVulnerabilities(ctx, map[string]interface{}{
 			"scan_id": scan.ID,
 		})
 		if err != nil {
@@ -410,7 +410,7 @@ func (sas *SecurityAuditService) GetScanResults(ctx context.Context, limit, offs
 // GetVulnerabilities retrieves vulnerabilities with filtering
 func (sas *SecurityAuditService) GetVulnerabilities(ctx context.Context, filters map[string]interface{}) ([]*Vulnerability, error) {
 	// Query vulnerabilities from database based on filters
-	vulns, err := sas.db.GetVulnerabilities(filters)
+	vulns, err := sas.db.GetVulnerabilities(ctx, filters)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vulnerabilities: %w", err)
 	}
@@ -470,7 +470,7 @@ func (sas *SecurityAuditService) UpdateVulnerabilityStatus(ctx context.Context, 
 	}
 
 	// Get current vulnerability state for audit logging
-	currentVuln, err := sas.db.GetVulnerabilityByID(vulnUUID)
+	currentVuln, err := sas.db.GetVulnerabilityByID(ctx, vulnUUID)
 	if err != nil {
 		return fmt.Errorf("failed to get vulnerability: %w", err)
 	}
@@ -483,7 +483,7 @@ func (sas *SecurityAuditService) UpdateVulnerabilityStatus(ctx context.Context, 
 		updates["remediation"] = remediation
 	}
 
-	_, err = sas.db.UpdateVulnerability(vulnUUID, updates)
+	_, err = sas.db.UpdateVulnerability(ctx, vulnUUID, updates)
 	if err != nil {
 		return fmt.Errorf("failed to update vulnerability status: %w", err)
 	}

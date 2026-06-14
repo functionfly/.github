@@ -42,7 +42,7 @@ func (t *RegistryCanaryTriggerer) TriggerCanary(ctx context.Context, functionID 
 	}
 
 	// Verify function exists
-	_, err = t.functionRepo.GetFunctionByID(fnUUID)
+	_, err = t.functionRepo.GetFunctionByID(ctx, fnUUID)
 	if err != nil {
 		return fmt.Errorf("function not found: %w", err)
 	}

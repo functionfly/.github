@@ -1,6 +1,7 @@
 package monitoring
 
 import (
+	"context"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage"
@@ -37,15 +38,15 @@ func (s *Service) updateAlertStatus(alert *storage.Alert) error {
 // queryPerformanceMetrics retrieves performance metrics
 func (s *Service) queryPerformanceMetrics(metricType string, tenantID *uuid.UUID, since time.Time) ([]*storage.PerformanceMetric, error) {
 	const defaultLimit = 1000
-	return s.db.QueryPerformanceMetrics(metricType, tenantID, since, defaultLimit)
+	return s.db.QueryPerformanceMetrics(context.Background(), metricType, tenantID, since, defaultLimit)
 }
 
 // queryActiveAlerts retrieves active alerts
 func (s *Service) queryActiveAlerts(tenantID *uuid.UUID) ([]*storage.Alert, error) {
-	return s.db.QueryActiveAlerts(tenantID)
+	return s.db.QueryActiveAlerts(context.Background(), tenantID)
 }
 
 // queryLatestSystemHealthChecks retrieves the latest system health checks
-func (s *Service) queryLatestSystemHealthChecks() (map[string]*storage.SystemHealthCheck, error) {
-	return s.db.QueryLatestSystemHealthChecks()
+func (s *Service) queryLatestSystemHealthChecks(ctx context.Context) (map[string]*storage.SystemHealthCheck, error) {
+	return s.db.QueryLatestSystemHealthChecks(ctx)
 }

@@ -74,7 +74,7 @@ func (s *Service) Credit(ctx context.Context, agentID string, amount float64, tr
 
 	// SECURITY FIX: Use SELECT FOR UPDATE to lock the wallet row and prevent race conditions
 	var wallet identity.AgentWallet
-	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"})).
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 		Where("agent_id = ?", agentID).First(&wallet).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			// Create wallet if not exists, within transaction
@@ -155,7 +155,7 @@ func (s *Service) Debit(ctx context.Context, agentID string, amount float64, tra
 
 	// SECURITY FIX: Use SELECT FOR UPDATE to lock the wallet row and prevent race conditions
 	var wallet identity.AgentWallet
-	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"})).
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 		Where("agent_id = ?", agentID).First(&wallet).Error; err != nil {
 		return nil, fmt.Errorf("failed to get wallet for debit: %w", err)
 	}

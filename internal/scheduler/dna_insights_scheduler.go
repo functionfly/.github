@@ -113,7 +113,7 @@ func (s *DNAInsightsScheduler) Stop() error {
 // runInsightsAggregation computes and stores insights for each tenant.
 // Processes tenants in parallel (up to 5 concurrent) for faster completion.
 func (s *DNAInsightsScheduler) runInsightsAggregation(ctx context.Context) {
-	ctx, span := tracing.StartSpan(ctx, "dna.insights_aggregation")
+	_, _ = tracing.StartSpan(ctx, "dna.insights_aggregation")
 	defer tracing.Finish(ctx)
 
 	start := time.Now()

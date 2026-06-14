@@ -92,7 +92,7 @@ func (s *TrustScoreScheduler) StartSlidingWindowUpdates(ctx context.Context) {
 		for {
 			select {
 			case <-ticker.C:
-				s.performSlidingWindowUpdate()
+				s.performSlidingWindowUpdate(ctx)
 			case <-ctx.Done():
 				logrus.Info("Stopping sliding window updates")
 				return
@@ -102,14 +102,14 @@ func (s *TrustScoreScheduler) StartSlidingWindowUpdates(ctx context.Context) {
 }
 
 // performSlidingWindowUpdate recalculates all sliding window scores
-func (s *TrustScoreScheduler) performSlidingWindowUpdate() {
+func (s *TrustScoreScheduler) performSlidingWindowUpdate(ctx context.Context) {
 	s.mu.RLock()
 	config := s.slidingWindowConfig
 	onUpdate := s.onScoreUpdate
 	streamConfig := s.streamingConfig
 	s.mu.RUnlock()
 
-	deltas, err := s.repo.UpdateSlidingWindowScores(config)
+	deltas, err := s.repo.UpdateSlidingWindowScores(ctx, config)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to update sliding window scores")
 		return
@@ -272,7 +272,7 @@ func (s *TrustScoreScheduler) executeTrustScoreRecalculation(ctx context.Context
 
 	// First, aggregate hourly metrics for the past hour
 	hour := time.Now().Add(-1 * time.Hour).Truncate(time.Hour)
-	if err := s.repo.AggregateHourlyMetrics(hour); err != nil {
+	if err := s.repo.AggregateHourlyMetrics(ctx, hour); err != nil {
 		logrus.WithError(err).Error("Failed to aggregate hourly metrics")
 	}
 
@@ -281,14 +281,14 @@ func (s *TrustScoreScheduler) executeTrustScoreRecalculation(ctx context.Context
 	// Use sliding window calculations if enabled
 	if slidingWindowEnabled {
 		var err error
-		deltas, err = s.repo.UpdateSlidingWindowScores(s.slidingWindowConfig)
+		deltas, err = s.repo.UpdateSlidingWindowScores(ctx, s.slidingWindowConfig)
 		if err != nil {
 			logrus.WithError(err).Error("Failed to update sliding window scores")
 		}
 	} else {
 		// Traditional discrete window recalculation
 		// We need to track deltas manually since RefreshAllTrustScores doesn't return them
-		deltas = s.recalculateWithDeltas()
+		deltas = s.recalculateWithDeltas(ctx)
 	}
 
 	// Broadcast updates if streaming is enabled
@@ -308,7 +308,7 @@ func (s *TrustScoreScheduler) executeTrustScoreRecalculation(ctx context.Context
 	}
 
 	// Also run the full recalculation job for history tracking
-	job, err := s.repo.RefreshAllTrustScores()
+	job, err := s.repo.RefreshAllTrustScores(ctx)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to refresh trust scores")
 		return
@@ -337,9 +337,9 @@ func (s *TrustScoreScheduler) executeTrustScoreRecalculation(ctx context.Context
 
 // recalculateWithDeltas performs traditional recalculation and returns deltas
 // This is used when sliding window is disabled but streaming is enabled
-func (s *TrustScoreScheduler) recalculateWithDeltas() []registry.TrustScoreDelta {
+func (s *TrustScoreScheduler) recalculateWithDeltas(ctx context.Context) []registry.TrustScoreDelta {
 	// Query current scores before recalculation
-	functions, err := s.repo.GetAllFunctionsWithTrustScores()
+	functions, err := s.repo.GetAllFunctionsWithTrustScores(ctx)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get functions for delta tracking")
 		return []registry.TrustScoreDelta{}
@@ -361,14 +361,14 @@ func (s *TrustScoreScheduler) recalculateWithDeltas() []registry.TrustScoreDelta
 	}
 
 	// Recalculate all trust scores
-	_, err = s.repo.RefreshAllTrustScores()
+	_, err = s.repo.RefreshAllTrustScores(ctx)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to refresh trust scores for delta tracking")
 		return []registry.TrustScoreDelta{}
 	}
 
 	// Query new scores and generate deltas
-	updatedFunctions, err := s.repo.GetAllFunctionsWithTrustScores()
+	updatedFunctions, err := s.repo.GetAllFunctionsWithTrustScores(ctx)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get updated functions for delta tracking")
 		return []registry.TrustScoreDelta{}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -218,150 +219,6 @@ func (e *Engine) AnalyzeTenantWithTimeout(ctx context.Context, tenantID uuid.UUI
 	return result, nil
 }
 
-// AnalyzeTenant runs all analyzers for a single tenant and produces insights.
-func (e *Engine) AnalyzeTenant(ctx context.Context, tenantID uuid.UUID, params AnalysisParams) (*AnalysisResult, error) {
-	start := time.Now()
-	result := &AnalysisResult{
-		TenantID:       tenantID,
-		AnalyzedAt:     start,
-		AnalyzerErrors: make(map[string]error),
-	}
-
-	// Load preferences for category filtering
-	prefs, err := e.repo.GetPreferences(ctx, tenantID)
-	if err != nil {
-		e.logger.WithError(err).WithField("tenant_id", tenantID).Error("Failed to load preferences, using defaults")
-		prefs = DefaultPreferences(tenantID)
-	}
-
-	// Run analyzers concurrently
-	var (
-		mu       sync.Mutex
-		wg       sync.WaitGroup
-		allInsights []*Insight
-	)
-
-	sem := make(chan struct{}, e.maxConcurrent)
-
-	for _, a := range e.analyzers {
-		// Skip analyzers whose category is disabled in preferences
-		if !categoryEnabled(string(a.Category()), prefs.EnabledCategories) {
-			continue
-		}
-
-		wg.Add(1)
-		go func(a Analyzer) {
-			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
-
-			insights, err := a.Analyze(ctx, tenantID, params)
-			if err != nil {
-				mu.Lock()
-				result.AnalyzerErrors[a.Name()] = err
-				mu.Unlock()
-				e.logger.WithError(err).WithFields(logrus.Fields{
-					"tenant_id": tenantID,
-					"analyzer":  a.Name(),
-				}).Error("Analyzer failed")
-				return
-			}
-
-			if len(insights) > 0 {
-				mu.Lock()
-				allInsights = append(allInsights, insights...)
-				mu.Unlock()
-			}
-		}(a)
-	}
-
-	wg.Wait()
-
-	// Deduplicate insights (don't re-emit similar insights within the dedup window)
-	var deduped []*Insight
-	for _, insight := range allInsights {
-		exists, err := e.repo.HasRecentInsight(ctx, tenantID, insight.Category, insight.FunctionID, 6*time.Hour)
-		if err != nil {
-			e.logger.WithError(err).WithFields(logrus.Fields{
-				"tenant_id":    tenantID,
-				"category":     insight.Category,
-				"function_id":  insight.FunctionID,
-			}).Warn("Dedup check failed")
-		}
-		if exists {
-			continue
-		}
-
-		// Set expiry if not set
-		if insight.ExpiresAt == nil {
-			t := time.Now().Add(7 * 24 * time.Hour)
-			insight.ExpiresAt = &t
-		}
-		if insight.Status == "" {
-			insight.Status = StatusActive
-		}
-
-		// Persist
-		if err := e.repo.CreateInsight(ctx, insight); err != nil {
-			e.logger.WithError(err).WithFields(logrus.Fields{
-				"tenant_id": tenantID,
-				"category":  insight.Category,
-				"title":     insight.Title,
-			}).Error("Failed to persist insight")
-			continue
-		}
-		deduped = append(deduped, insight)
-	}
-
-	result.Insights = deduped
-
-	// Compute awareness score
-	score, err := e.scoreComputer.Compute(ctx, tenantID)
-	if err != nil {
-		e.logger.WithError(err).WithField("tenant_id", tenantID).Error("Failed to compute score")
-	} else {
-		// Get previous score for trend detection
-		previousScore, _ := e.repo.GetScore(ctx, tenantID)
-		if previousScore != nil {
-			score.PreviousScore = &previousScore.OverallScore
-			trend := computeTrend(previousScore.OverallScore, score.OverallScore)
-			score.Trend = &trend
-		}
-
-		if err := e.repo.UpsertScore(ctx, score); err != nil {
-			e.logger.WithError(err).WithField("tenant_id", tenantID).Error("Failed to persist score")
-		}
-		result.Score = score
-	}
-
-	result.DurationMs = time.Since(start).Milliseconds()
-
-	// Dispatch new insights through notification channels
-	if len(deduped) > 0 {
-		prefs, prefsErr := e.repo.GetPreferences(ctx, tenantID)
-		if prefsErr != nil {
-			e.logger.WithError(prefsErr).WithField("tenant_id", tenantID).Warn("Failed to load preferences for dispatch")
-			prefs = DefaultPreferences(tenantID)
-		}
-
-		for _, insight := range deduped {
-			channels := e.dispatcher.Dispatch(ctx, insight, prefs)
-			if len(channels) > 0 {
-				_ = e.repo.MarkChannelsSent(ctx, insight.ID, channels)
-			}
-		}
-	}
-
-	e.logger.WithFields(logrus.Fields{
-		"tenant_id":       tenantID,
-		"insights":        len(deduped),
-		"analyzer_errors": len(result.AnalyzerErrors),
-		"duration_ms":     result.DurationMs,
-	}).Info("Consciousness analysis completed")
-
-	return result, nil
-}
-
 // AnalyzeAllTenants runs analysis for all tenants with consciousness enabled.
 func (e *Engine) AnalyzeAllTenants(ctx context.Context) error {
 	// Get all tenants with consciousness feature enabled
@@ -391,7 +248,6 @@ func (e *Engine) AnalyzeAllTenants(ctx context.Context) error {
 
 			if _, err := e.AnalyzeTenant(ctx, tid, params); err != nil {
 				e.logger.WithError(err).WithField("tenant_id", tid).Error("Tenant analysis failed")
-				return err
 			}
 		}(tenantID)
 	}

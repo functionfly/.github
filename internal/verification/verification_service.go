@@ -1,6 +1,7 @@
 package verification
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -32,7 +33,7 @@ func NewVerificationService(repo *registry.RegistryRepository, clamAVURL, yaraRu
 }
 
 // VerifyFunction performs complete verification of a function version
-func (v *VerificationService) VerifyFunction(functionVersionID uuid.UUID, sourceCode string, wasmBinary []byte, trustLevel string) (*storage.RegistryFunctionVerificationStatus, error) {
+func (v *VerificationService) VerifyFunction(ctx context.Context, functionVersionID uuid.UUID, sourceCode string, wasmBinary []byte, trustLevel string) (*storage.RegistryFunctionVerificationStatus, error) {
 	status := &storage.RegistryFunctionVerificationStatus{
 		FunctionVersionID: functionVersionID,
 		OverallStatus:     "verifying",
@@ -69,7 +70,7 @@ func (v *VerificationService) VerifyFunction(functionVersionID uuid.UUID, source
 
 	// 6. Auto-request approvals if required
 	if status.ApprovalRequired && status.OverallStatus != "blocked" {
-		if err := v.requestApprovals(functionVersionID, trustLevel); err != nil {
+		if err := v.requestApprovals(ctx, functionVersionID, trustLevel); err != nil {
 			// Log error but don't fail verification
 			fmt.Printf("Failed to request approvals: %v\n", err)
 		}
@@ -140,7 +141,7 @@ func (v *VerificationService) CheckExecutionAllowed(functionVersionID uuid.UUID,
 // GetVerificationStatus gets the verification status for a function version.
 // For trusted authors (e.g. functionfly) with no status record, auto-creates and returns a verified status
 // so they are always treated as verified and can receive FXCERTs.
-func (v *VerificationService) GetVerificationStatus(functionVersionID uuid.UUID) (*storage.RegistryFunctionVerificationStatus, error) {
+func (v *VerificationService) GetVerificationStatus(ctx context.Context, functionVersionID uuid.UUID) (*storage.RegistryFunctionVerificationStatus, error) {
 	status, err := v.repo.GetVerificationStatus(functionVersionID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -148,7 +149,7 @@ func (v *VerificationService) GetVerificationStatus(functionVersionID uuid.UUID)
 			if verErr != nil {
 				return nil, err
 			}
-			fn, fnErr := v.repo.GetFunctionByID(ver.FunctionID)
+			fn, fnErr := v.repo.GetFunctionByID(ctx, ver.FunctionID)
 			if fnErr != nil {
 				return nil, err
 			}
@@ -252,14 +253,14 @@ func (v *VerificationService) calculateOverallStatus(status *storage.RegistryFun
 	return "unverified"
 }
 
-func (v *VerificationService) requestApprovals(functionVersionID uuid.UUID, trustLevel string) error {
+func (v *VerificationService) requestApprovals(ctx context.Context, functionVersionID uuid.UUID, trustLevel string) error {
 	// Get the function to find the owner
 	version, err := v.repo.GetFunctionVersion(functionVersionID, "")
 	if err != nil {
 		return err
 	}
 
-	function, err := v.repo.GetFunctionByID(version.FunctionID)
+	function, err := v.repo.GetFunctionByID(ctx, version.FunctionID)
 	if err != nil {
 		return err
 	}

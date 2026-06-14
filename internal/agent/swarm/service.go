@@ -70,7 +70,7 @@ func (s *Service) SpawnChild(ctx context.Context, req *SpawnChildRequest) (*iden
 
 	// SECURITY FIX: Lock parent row to prevent race on capacity check
 	var parent identity.AgentIdentity
-	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"})).
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 		Where("agent_id = ? AND status = ?", req.ParentAgentID, "active").
 		First(&parent).Error; err != nil {
 		tx.Rollback()

@@ -73,7 +73,7 @@ func (h *Handler) HandleProvisionBundle(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Check plan eligibility (Starter+ plans get dedicated DBs)
-	tenant, err := h.repo.GetTenantByID(claims.TenantID)
+	tenant, err := h.repo.GetTenantByID(r.Context(), claims.TenantID)
 	if err != nil || tenant == nil {
 		writeJSONError(w, http.StatusNotFound, "Tenant not found")
 		return

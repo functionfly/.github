@@ -6,14 +6,24 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/agent/identity"
 	"github.com/functionfly/functionfly/internal/agent/otel"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
+	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
+)
+
+const (
+	// asyncSendBufferSize is the buffer size for async message sending
+	// This allows handling bursts without blocking the caller
+	asyncSendBufferSize = 1000
+	// asyncWorkerCount is the number of background workers processing messages
+	asyncWorkerCount = 4
 )
 
 type MessageService struct {
@@ -21,15 +31,142 @@ type MessageService struct {
 	signingService *SigningService
 	redisClient    *redis.Client
 	propagator     *otel.Propagator
+
+	// Async message sending for burst handling
+	asyncChan   chan *identity.AgentMessage
+	asyncWg     sync.WaitGroup
+	asyncStopCh chan struct{}
 }
 
 func NewMessageService(db *gorm.DB, redisClient *redis.Client) *MessageService {
-	return &MessageService{
+	s := &MessageService{
 		db:             db,
 		signingService: NewSigningService(redisClient),
 		redisClient:    redisClient,
 		propagator:     otel.NewPropagator("agent-message"),
+		asyncChan:      make(chan *identity.AgentMessage, asyncSendBufferSize),
+		asyncStopCh:    make(chan struct{}),
 	}
+	// Start async workers
+	s.startAsyncWorkers()
+	return s
+}
+
+// startAsyncWorkers starts background workers for async message processing
+func (s *MessageService) startAsyncWorkers() {
+	for i := 0; i < asyncWorkerCount; i++ {
+		s.asyncWg.Add(1)
+		go s.asyncMessageWorker(i)
+	}
+}
+
+// asyncMessageWorker processes messages from the async channel
+func (s *MessageService) asyncMessageWorker(workerID int) {
+	defer s.asyncWg.Done()
+
+	batch := make([]*identity.AgentMessage, 0, 100)
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-s.asyncStopCh:
+			// Drain remaining messages
+			for msg := range s.asyncChan {
+				s.sendMessageSync(msg)
+			}
+			return
+		case msg := <-s.asyncChan:
+			batch = append(batch, msg)
+			// Flush when batch is full or channel is draining
+			if len(batch) >= 100 || len(s.asyncChan) == 0 {
+				s.flushBatch(batch)
+				batch = batch[:0]
+			}
+		case <-ticker.C:
+			// Periodic flush for small batches
+			if len(batch) > 0 {
+				s.flushBatch(batch)
+				batch = batch[:0]
+			}
+		}
+	}
+}
+
+// flushBatch sends a batch of messages to the database
+func (s *MessageService) flushBatch(batch []*identity.AgentMessage) {
+	if len(batch) == 0 {
+		return
+	}
+
+	start := time.Now()
+	err := s.db.CreateInBatches(batch, 100).Error
+	duration := time.Since(start)
+
+	if err != nil {
+		logrus.WithError(err).WithField("count", len(batch)).Error("Failed to flush message batch")
+		return
+	}
+
+	if duration > 50*time.Millisecond {
+		logrus.WithFields(logrus.Fields{
+			"duration_ms": duration.Milliseconds(),
+			"batch_size":   len(batch),
+		}).Warn("Slow batch message create")
+	}
+}
+
+// sendMessageSync sends a message synchronously (used internally and for async fallback)
+func (s *MessageService) sendMessageSync(msg *identity.AgentMessage) error {
+	if msg.ID == uuid.Nil {
+		msg.ID = uuid.New()
+	}
+	if msg.Payload == nil {
+		msg.Payload = map[string]any{}
+	}
+	if msg.TTLSeconds == 0 {
+		msg.TTLSeconds = 3600
+	}
+	if msg.Status == "" {
+		msg.Status = "pending"
+	}
+	if msg.CreatedAt.IsZero() {
+		msg.CreatedAt = time.Now()
+	}
+	if msg.Nonce == "" {
+		nonce, _ := generateNonce()
+		msg.Nonce = nonce
+	}
+
+	createStart := time.Now()
+	err := s.db.Create(msg).Error
+	createDuration := time.Since(createStart)
+
+	if createDuration > 50*time.Millisecond {
+		sqlDB, _ := s.db.DB()
+		var poolStats string
+		if sqlDB != nil {
+			stats := sqlDB.Stats()
+			poolStats = fmt.Sprintf("open=%d inUse=%d idle=%d waitCount=%d",
+				stats.OpenConnections, stats.InUse, stats.Idle, stats.WaitCount)
+		}
+		logrus.WithFields(logrus.Fields{
+			"duration_ms":   createDuration.Milliseconds(),
+			"from_agent_id": msg.FromAgentID,
+			"to_agent_id":   msg.ToAgentID,
+			"message_type":  msg.MessageType,
+			"table":         "agent_messages",
+			"pool_stats":    poolStats,
+		}).Warn("Slow agent message create")
+	}
+
+	return err
+}
+
+// Stop gracefully stops the async workers
+func (s *MessageService) Stop() {
+	close(s.asyncStopCh)
+	s.asyncWg.Wait()
 }
 
 func (s *MessageService) SendMessage(ctx context.Context, msg *identity.AgentMessage, signingKey string) error {
@@ -397,7 +534,9 @@ func (s *MessageService) ReceiveMessage(ctx context.Context, msg *identity.Agent
 
 // SendSystemMessage sends a message without signing (for internal system agents only)
 // This should only be used for platform controller and other internal system agents
+// Messages are sent asynchronously via a buffered channel to handle bursts
 func (s *MessageService) SendSystemMessage(ctx context.Context, msg *identity.AgentMessage) error {
+	// Prepare the message
 	if msg.ID == uuid.Nil {
 		msg.ID = uuid.New()
 	}
@@ -411,8 +550,15 @@ func (s *MessageService) SendSystemMessage(ctx context.Context, msg *identity.Ag
 		msg.Status = "pending"
 	}
 	msg.CreatedAt = time.Now()
-	// Generate nonce for replay protection even for system messages
 	nonce, _ := generateNonce()
 	msg.Nonce = nonce
-	return s.db.WithContext(ctx).Create(msg).Error
+
+	// Try to send to async channel (non-blocking)
+	select {
+	case s.asyncChan <- msg:
+		return nil
+	default:
+		// Channel full, fall back to synchronous sending
+		return s.sendMessageSync(msg)
+	}
 }

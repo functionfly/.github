@@ -241,10 +241,7 @@ func (r *PythonRuntime) ExecuteWithContext(ctx context.Context, input []byte) ([
 	go func() {
 		defer func() {
 			if rec := recover(); rec != nil {
-				logrus.WithFields(logrus.Fields{
-					"panic": rec,
-					"stack": string(debug.Stack()),
-				}).Error("WASM execution goroutine panicked")
+				log.Printf("WASM execution goroutine panicked: %v", rec)
 				errorChan <- fmt.Errorf("execution panicked: %v", rec)
 			}
 		}()

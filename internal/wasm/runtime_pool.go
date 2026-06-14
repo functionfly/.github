@@ -265,7 +265,7 @@ var (
 func InitPythonRuntimePool(factory PythonRuntimeFactory, poolSize int) {
 	pythonPoolInit.Do(func() {
 		GlobalPythonRuntimePool = NewPythonRuntimePool(factory, poolSize)
-		log.Printf("[WASM] PythonRuntimePool initialized with size %d", poolSize)
+		logrus.Printf("[WASM] PythonRuntimePool initialized with size %d", poolSize)
 	})
 }
 

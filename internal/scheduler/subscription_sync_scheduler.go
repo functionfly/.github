@@ -91,7 +91,7 @@ func (s *SubscriptionSyncScheduler) runSync(ctx context.Context) {
 	s.logger.Info("Starting subscription sync with Stripe")
 
 	// Get all active subscriptions from our database
-	subs, err := s.repo.ListAllSubscriptions(1000, 0)
+	subs, err := s.repo.ListAllSubscriptions(ctx, 1000, 0)
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to list subscriptions for sync")
 		return
@@ -248,7 +248,7 @@ func (s *SubscriptionSyncScheduler) SyncPaymentMethods(ctx context.Context) {
 	s.logger.Info("Starting payment method sync with Stripe")
 
 	// Get all tenants with Stripe customer IDs
-	tenants, err := s.repo.ListTenantsWithStripeCustomerID()
+	tenants, err := s.repo.ListTenantsWithStripeCustomerID(ctx)
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to list tenants with Stripe customer IDs")
 		return

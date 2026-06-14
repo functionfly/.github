@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"sync"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 )

@@ -78,7 +78,7 @@ func (s *ObservabilityRetentionScheduler) Start(ctx context.Context) error {
 		return fmt.Errorf("invalid observability retention cron: %w", err)
 	}
 
-	var ctxWithCancel context.CancelFunc
+	var ctxWithCancel context.Context
 	ctxWithCancel, s.cancel = context.WithCancel(ctx)
 
 	_, err := s.cron.AddFunc(s.config.Cron, func() {

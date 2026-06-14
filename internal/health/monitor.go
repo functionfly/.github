@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -125,7 +126,7 @@ func (m *Monitor) monitorLoop() {
 func (m *Monitor) probeAllBackends() {
 	// For MVP, we'll get all backends from all apps
 	// Optimized with database indexes on backends.enabled and (enabled, created_at) to avoid full table scans
-	backends, err := m.getAllBackends()
+	backends, err := m.getAllBackends(context.Background())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get backends for health check")
 		return
@@ -190,8 +191,8 @@ func (m *Monitor) probeSystemEdge(edgeURL, sharedSecret string) {
 }
 
 // getAllBackends gets all enabled backends
-func (m *Monitor) getAllBackends() ([]*storage.Backend, error) {
-	return m.repo.GetAllEnabledBackends()
+func (m *Monitor) getAllBackends(ctx context.Context) ([]*storage.Backend, error) {
+	return m.repo.GetAllEnabledBackends(ctx)
 }
 
 // probeBackend probes a single backend for health
@@ -202,22 +203,22 @@ func (m *Monitor) probeBackend(backend *storage.Backend) {
 	// Get the appropriate adapter for this backend's provider
 	adapter := m.getAdapterForProvider(backend.Provider)
 	if adapter == nil {
-		m.recordHealthCheck(backend.ID, false, 0, 0, fmt.Sprintf("Unsupported provider '%s'", backend.Provider))
-		m.handleCircuitBreaker(backend.ID, false)
+		m.recordHealthCheck(ctx, backend.ID, false, 0, 0, fmt.Sprintf("Unsupported provider '%s'", backend.Provider))
+		m.handleCircuitBreaker(ctx, backend.ID, false)
 		return
 	}
 
 	// Perform provider-specific health check
 	result, err := adapter.HealthCheck(ctx, backend)
 	if err != nil {
-		m.recordHealthCheck(backend.ID, false, 0, 0, fmt.Sprintf("Health check error: %v", err))
-		m.handleCircuitBreaker(backend.ID, false)
+		m.recordHealthCheck(ctx, backend.ID, false, 0, 0, fmt.Sprintf("Health check error: %v", err))
+		m.handleCircuitBreaker(ctx, backend.ID, false)
 		return
 	}
 
 	// Record the health check result
-	m.recordHealthCheck(backend.ID, result.OK, result.StatusCode, result.LatencyMs, result.ErrorMessage)
-	m.handleCircuitBreaker(backend.ID, result.OK)
+	m.recordHealthCheck(ctx, backend.ID, result.OK, result.StatusCode, result.LatencyMs, result.ErrorMessage)
+	m.handleCircuitBreaker(ctx, backend.ID, result.OK)
 
 	// Log additional provider-specific information
 	if result.Version != "" {
@@ -231,7 +232,7 @@ func (m *Monitor) probeBackend(backend *storage.Backend) {
 }
 
 // recordHealthCheck records the result of a health check
-func (m *Monitor) recordHealthCheck(backendID uuid.UUID, ok bool, statusCode, latencyMs int, errorMessage string) {
+func (m *Monitor) recordHealthCheck(ctx context.Context, backendID uuid.UUID, ok bool, statusCode, latencyMs int, errorMessage string) {
 	logger := logrus.WithFields(logrus.Fields{
 		"backend_id":  backendID,
 		"operation":   "health_check",
@@ -240,7 +241,7 @@ func (m *Monitor) recordHealthCheck(backendID uuid.UUID, ok bool, statusCode, la
 		"latency_ms":  latencyMs,
 	})
 
-	err := m.repo.InsertHealthCheck(backendID, ok, statusCode, latencyMs, errorMessage)
+	err := m.repo.InsertHealthCheck(ctx, backendID, ok, statusCode, latencyMs, errorMessage)
 	if err != nil {
 		logger.WithError(err).Error("Failed to record health check")
 		return
@@ -274,7 +275,7 @@ func (m *Monitor) getAdapterForProvider(provider string) common.ProviderAdapter 
 }
 
 // handleCircuitBreaker manages circuit breaker state transitions with configurable thresholds and exponential backoff
-func (m *Monitor) handleCircuitBreaker(backendID uuid.UUID, healthy bool) {
+func (m *Monitor) handleCircuitBreaker(ctx context.Context, backendID uuid.UUID, healthy bool) {
 	requestID := fmt.Sprintf("circuit-breaker-%s-%d", backendID.String(), time.Now().Unix())
 
 	logger := logrus.WithFields(logrus.Fields{
@@ -283,7 +284,7 @@ func (m *Monitor) handleCircuitBreaker(backendID uuid.UUID, healthy bool) {
 		"operation":  "circuit_breaker",
 	})
 
-	state, err := m.repo.GetCircuitState(backendID)
+	state, err := m.repo.GetCircuitState(ctx, backendID)
 	if err != nil {
 		logger.WithError(err).Error("Failed to get circuit state")
 		return
@@ -386,13 +387,13 @@ func (m *Monitor) handleCircuitBreaker(backendID uuid.UUID, healthy bool) {
 	// Update state if changed
 	if newState != state.State {
 		state.State = newState
-		err = m.repo.UpsertCircuitState(state)
+		err = m.repo.UpsertCircuitState(ctx, state)
 		if err != nil {
 			logger.WithError(err).Error("Failed to update circuit state")
 		}
 	} else {
 		// Still update the state for failure/success counts
-		err = m.repo.UpdateCircuitState(state)
+		err = m.repo.UpdateCircuitState(ctx, state)
 		if err != nil {
 			logger.WithError(err).Error("Failed to update circuit state")
 		}

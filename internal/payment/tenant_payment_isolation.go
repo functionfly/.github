@@ -294,7 +294,7 @@ type TenantPaymentProvision struct {
 // createTenantStripeCustomer creates a Stripe customer for a tenant.
 func (p *TenantPaymentIsolation) createTenantStripeCustomer(ctx context.Context, tenantID uuid.UUID) (string, error) {
 	// Get tenant info
-	tenant, err := p.repo.GetTenantByID(tenantID)
+	tenant, err := p.repo.GetTenantByID(ctx, tenantID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get tenant: %w", err)
 	}

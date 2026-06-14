@@ -94,7 +94,7 @@ func NewMutationValidator(sandbox SandboxExecutor, logger *logrus.Logger) *Mutat
 // ValidateMutation runs behavioral tests comparing original and mutated code.
 // Returns a validation report indicating whether the mutation is safe to deploy.
 func (v *MutationValidator) ValidateMutation(ctx context.Context, originalCode, mutatedCode, runtime string, testInputs []TestInput) (*ValidationReport, error) {
-	ctx, span := tracing.StartSpan(ctx, "dna.validate_mutation")
+	ctx, _ = tracing.StartSpan(ctx, "dna.validate_mutation")
 	defer tracing.Finish(ctx)
 
 	startTime := time.Now()

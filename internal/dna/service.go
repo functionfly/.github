@@ -578,7 +578,7 @@ func (s *Service) RunAnalysisWorker(ctx context.Context) {
 }
 
 func (s *Service) processNextAnalysisWithWorker(ctx context.Context, workerID int) {
-	ctx, span := tracing.StartSpan(ctx, "dna.process_next_analysis")
+	ctx, _ = tracing.StartSpan(ctx, "dna.process_next_analysis")
 	defer tracing.Finish(ctx)
 	tracing.SetAttribute(ctx, "worker_id", workerID)
 
@@ -624,7 +624,7 @@ func (s *Service) processNextAnalysisWithWorker(ctx context.Context, workerID in
 	}
 }
 func (s *Service) runAnalysis(ctx context.Context, functionID, functionType string) error {
-	ctx, span := tracing.StartSpan(ctx, "dna.run_analysis")
+	ctx, _ = tracing.StartSpan(ctx, "dna.run_analysis")
 	defer tracing.Finish(ctx)
 	tracing.SetAttribute(ctx, "function_id", functionID)
 	tracing.SetAttribute(ctx, "function_type", functionType)
@@ -878,7 +878,7 @@ type variantResponse struct {
 }
 
 func (s *Service) callAIForVariant(ctx context.Context, functionID, functionType, mutationType, reason string, metrics *dna.AggregatedMetrics) (*variantResponse, error) {
-	ctx, span := tracing.StartSpan(ctx, "dna.call_ai_service")
+	ctx, _ = tracing.StartSpan(ctx, "dna.call_ai_service")
 	defer tracing.Finish(ctx)
 	tracing.SetAttribute(ctx, "function_id", functionID)
 	tracing.SetAttribute(ctx, "mutation_type", mutationType)

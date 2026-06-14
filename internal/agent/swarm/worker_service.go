@@ -47,7 +47,6 @@ func NewWorkerService(db *gorm.DB, messageSvc *MessageService, discoverySvc *dis
 		semaphore:    make(chan struct{}, 100), // SECURITY FIX: Limit concurrent goroutines to 100
 	}
 }
-}
 
 func (ws *WorkerService) Start(ctx context.Context) error {
 	if ws.isRunning {
@@ -68,6 +67,8 @@ func (ws *WorkerService) Stop() {
 	}
 	ws.isRunning = false
 	close(ws.stopChan)
+	// Stop the message service's async workers
+	ws.messageSvc.Stop()
 	logrus.Info("Worker service stopped")
 }
 

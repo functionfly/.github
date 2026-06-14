@@ -23,7 +23,7 @@ func (e *ExecutionEngine) buildRuntime(ctx context.Context, def *GraphDefinition
 	// Resolve all functions
 	nodes := make(map[string]*RuntimeNode)
 	for _, ref := range nodeRefs {
-		fn, err := e.registryRepo.GetFunctionByAuthorName(ref.Author, ref.Name)
+		fn, err := e.registryRepo.GetFunctionByAuthorName(context.Background(), ref.Author, ref.Name)
 		if err != nil {
 			return nil, fmt.Errorf("function not found: %s/%s", ref.Author, ref.Name)
 		}

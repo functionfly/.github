@@ -132,7 +132,7 @@ func (s *DNAPartitionScheduler) Stop() error {
 
 // runPartitionMaintenance creates future partitions and drops old ones.
 func (s *DNAPartitionScheduler) runPartitionMaintenance(ctx context.Context) {
-	ctx, span := tracing.StartSpan(ctx, "dna.partition_maintenance")
+	_, _ = tracing.StartSpan(ctx, "dna.partition_maintenance")
 	defer tracing.Finish(ctx)
 
 	start := time.Now()

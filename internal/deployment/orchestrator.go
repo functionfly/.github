@@ -61,8 +61,8 @@ type DeployResult struct {
 }
 
 // getProviderConfigFromDeployment extracts provider configuration from deployment metadata
-func (o *Orchestrator) getProviderConfigFromDeployment(deploymentID uuid.UUID) (map[string]interface{}, error) {
-	deployment, err := o.repo.GetDeploymentByID(deploymentID)
+func (o *Orchestrator) getProviderConfigFromDeployment(ctx context.Context, deploymentID uuid.UUID) (map[string]interface{}, error) {
+	deployment, err := o.repo.GetDeploymentByID(ctx, deploymentID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get deployment: %w", err)
 	}
@@ -117,7 +117,7 @@ func (o *Orchestrator) Deploy(ctx context.Context, spec *DeploySpec) (*DeployRes
 	}
 
 	// Record the artifact in database
-	if _, err := o.repo.StoreDeploymentArtifact(spec.AppID, spec.Provider, artifactKey, "application/javascript", "", int64(len(spec.Artifact))); err != nil {
+	if _, err := o.repo.StoreDeploymentArtifact(ctx, spec.AppID, spec.Provider, artifactKey, "application/javascript", "", int64(len(spec.Artifact))); err != nil {
 		// Clean up stored artifact on failure
 		o.store.Delete(ctx, artifactKey)
 		return nil, fmt.Errorf("failed to record artifact: %w", err)
@@ -127,7 +127,7 @@ func (o *Orchestrator) Deploy(ctx context.Context, spec *DeploySpec) (*DeployRes
 	metadata := map[string]interface{}{
 		"provider_config": spec.ProviderConfig,
 	}
-	deployment, err := o.repo.CreateDeployment(spec.AppID, spec.Provider, spec.Region, "", artifactKey, spec.Routes)
+	deployment, err := o.repo.CreateDeployment(ctx, spec.AppID, spec.Provider, spec.Region, "", artifactKey, spec.Routes)
 	if err != nil {
 		// Clean up stored artifact on failure
 		o.store.Delete(ctx, artifactKey)
@@ -135,12 +135,12 @@ func (o *Orchestrator) Deploy(ctx context.Context, spec *DeploySpec) (*DeployRes
 	}
 
 	// Update status to deploying with metadata
-	if err := o.repo.UpdateDeploymentStatus(deployment.ID, "deploying", "Starting deployment", metadata); err != nil {
+	if err := o.repo.UpdateDeploymentStatus(ctx, deployment.ID, "deploying", "Starting deployment", metadata); err != nil {
 		return nil, fmt.Errorf("failed to update deployment status: %w", err)
 	}
 
 	// Get tenant ID for real-time broadcast
-	app, _ := o.repo.GetAppByID(spec.AppID)
+	app, _ := o.repo.GetAppByID(ctx, spec.AppID)
 	var tenantID *uuid.UUID
 	if app != nil {
 		tenantID = &app.TenantID
@@ -170,7 +170,7 @@ func (o *Orchestrator) Deploy(ctx context.Context, spec *DeploySpec) (*DeployRes
 	result, err := adapter.Deploy(ctx, deploymentSpec)
 	if err != nil {
 		// Update status to failed
-		o.repo.UpdateDeploymentStatus(deployment.ID, "failed", fmt.Sprintf("Deployment failed: %v", err), nil)
+		o.repo.UpdateDeploymentStatus(ctx, deployment.ID, "failed", fmt.Sprintf("Deployment failed: %v", err), nil)
 
 		// Broadcast deployment failed
 		o.realtimeMonitor.BroadcastDeploymentUpdate(tenantID, deployment.ID, "failed", map[string]interface{}{
@@ -194,7 +194,7 @@ func (o *Orchestrator) Deploy(ctx context.Context, spec *DeploySpec) (*DeployRes
 		resultMetadata["provider_config"] = providerConfig
 	}
 
-	if err := o.repo.UpdateDeploymentStatus(deployment.ID, string(result.Status), result.Message, resultMetadata); err != nil {
+	if err := o.repo.UpdateDeploymentStatus(ctx, deployment.ID, string(result.Status), result.Message, resultMetadata); err != nil {
 		return nil, fmt.Errorf("failed to update deployment status: %w", err)
 	}
 
@@ -214,7 +214,7 @@ func (o *Orchestrator) Deploy(ctx context.Context, spec *DeploySpec) (*DeployRes
 
 // GetDeploymentStatus returns the current status of a deployment
 func (o *Orchestrator) GetDeploymentStatus(ctx context.Context, deploymentID uuid.UUID) (*storage.Deployment, error) {
-	deployment, err := o.repo.GetDeploymentByID(deploymentID)
+	deployment, err := o.repo.GetDeploymentByID(ctx, deploymentID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get deployment: %w", err)
 	}
@@ -226,12 +226,12 @@ func (o *Orchestrator) GetDeploymentStatus(ctx context.Context, deploymentID uui
 	if deployment.Status == "deploying" || deployment.Status == "pending" {
 		adapter, ok := o.adapters[deployment.Provider]
 		if ok {
-			providerConfig, _ := o.getProviderConfigFromDeployment(deploymentID)
+			providerConfig, _ := o.getProviderConfigFromDeployment(ctx, deploymentID)
 			status, err := adapter.GetDeploymentStatus(ctx, deployment.DeploymentID, providerConfig)
 			if err == nil {
 				// Update status if it has changed
 				if string(status) != deployment.Status {
-					o.repo.UpdateDeploymentStatus(deploymentID, string(status), "Status updated from provider", nil)
+					o.repo.UpdateDeploymentStatus(ctx, deploymentID, string(status), "Status updated from provider", nil)
 					deployment.Status = string(status)
 				}
 			}
@@ -246,13 +246,13 @@ func (o *Orchestrator) ListDeployments(ctx context.Context, appID uuid.UUID, lim
 	if limit <= 0 {
 		limit = 10
 	}
-	return o.repo.ListDeploymentsByAppID(appID, limit)
+	return o.repo.ListDeploymentsByAppID(ctx, appID, limit)
 }
 
 // Rollback rolls back to a previous deployment
 func (o *Orchestrator) Rollback(ctx context.Context, appID uuid.UUID, toDeploymentID uuid.UUID) (*DeployResult, error) {
 	// Get the target deployment to rollback to
-	targetDeployment, err := o.repo.GetDeploymentByID(toDeploymentID)
+	targetDeployment, err := o.repo.GetDeploymentByID(ctx, toDeploymentID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get target deployment: %w", err)
 	}
@@ -266,7 +266,7 @@ func (o *Orchestrator) Rollback(ctx context.Context, appID uuid.UUID, toDeployme
 	}
 
 	// Get tenant ID for real-time broadcast
-	app, _ := o.repo.GetAppByID(appID)
+	app, _ := o.repo.GetAppByID(ctx, appID)
 	var tenantID *uuid.UUID
 	if app != nil {
 		tenantID = &app.TenantID
@@ -291,7 +291,7 @@ func (o *Orchestrator) Rollback(ctx context.Context, appID uuid.UUID, toDeployme
 	}
 
 	// Get provider config
-	providerConfig, _ := o.getProviderConfigFromDeployment(toDeploymentID)
+	providerConfig, _ := o.getProviderConfigFromDeployment(ctx, toDeploymentID)
 
 	// Create deployment spec for rollback
 	// Extract app name from provider config or use a default
@@ -313,9 +313,9 @@ func (o *Orchestrator) Rollback(ctx context.Context, appID uuid.UUID, toDeployme
 	result, err := adapter.Rollback(ctx, deploymentSpec)
 	if err != nil {
 		// Create a new deployment record for the rollback attempt
-		newDeployment, createErr := o.repo.CreateDeployment(appID, targetDeployment.Provider, targetDeployment.Region, "", targetDeployment.ArtifactKey, targetDeployment.Routes)
+		newDeployment, createErr := o.repo.CreateDeployment(ctx, appID, targetDeployment.Provider, targetDeployment.Region, "", targetDeployment.ArtifactKey, targetDeployment.Routes)
 		if createErr == nil {
-			o.repo.UpdateDeploymentStatus(newDeployment.ID, "failed", fmt.Sprintf("Rollback failed: %v", err), nil)
+			o.repo.UpdateDeploymentStatus(ctx, newDeployment.ID, "failed", fmt.Sprintf("Rollback failed: %v", err), nil)
 
 			// Broadcast rollback failed
 			o.realtimeMonitor.BroadcastDeploymentUpdate(tenantID, newDeployment.ID, "rollback_failed", map[string]interface{}{
@@ -328,12 +328,12 @@ func (o *Orchestrator) Rollback(ctx context.Context, appID uuid.UUID, toDeployme
 	}
 
 	// Create deployment record for successful rollback
-	newDeployment, err := o.repo.CreateDeployment(appID, targetDeployment.Provider, targetDeployment.Region, result.DeploymentID, targetDeployment.ArtifactKey, targetDeployment.Routes)
+	newDeployment, err := o.repo.CreateDeployment(ctx, appID, targetDeployment.Provider, targetDeployment.Region, result.DeploymentID, targetDeployment.ArtifactKey, targetDeployment.Routes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to record rollback deployment: %w", err)
 	}
 
-	if err := o.repo.UpdateDeploymentStatus(newDeployment.ID, string(result.Status), "Rollback completed: "+result.Message, result.Metadata); err != nil {
+	if err := o.repo.UpdateDeploymentStatus(ctx, newDeployment.ID, string(result.Status), "Rollback completed: "+result.Message, result.Metadata); err != nil {
 		return nil, fmt.Errorf("failed to update rollback status: %w", err)
 	}
 

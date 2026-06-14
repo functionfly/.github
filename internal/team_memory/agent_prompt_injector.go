@@ -189,7 +189,7 @@ func (i *AgentPromptInjector) getFirstTeamForTenant(ctx context.Context, tenantI
 		return uuid.Nil
 	}
 
-	teams, err := i.repo.GetTeamsByTenantID(tenantID)
+	teams, err := i.repo.GetTeamsByTenantID(ctx, tenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Warn("Failed to get teams for tenant")
 		return uuid.Nil

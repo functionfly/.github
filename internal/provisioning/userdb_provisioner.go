@@ -62,7 +62,7 @@ func (up *UserDBProvisioner) Provision(ctx context.Context, tenantID uuid.UUID, 
 
 	// 3. Create platform reference record in tenant DB (for cross-DB lookups)
 	// Get the platform tenant to find the creator
-	tenant, err := up.platformRepo.GetTenantByID(tenantID)
+	tenant, err := up.platformRepo.GetTenantByID(ctx, tenantID)
 	if err != nil || tenant == nil {
 		log.WithError(err).Warn("Could not get platform tenant (non-fatal)")
 	}

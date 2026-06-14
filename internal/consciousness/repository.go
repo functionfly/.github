@@ -502,9 +502,6 @@ func scanInsight(rows *sql.Rows) (*Insight, error) {
 	return insight, nil
 }
 
-// ErrInsightNotFound is returned when an insight is not found.
-var ErrInsightNotFound = fmt.Errorf("insight not found")
-
 // DeleteInsight permanently deletes an insight (GDPR Article 17).
 func (r *Repository) DeleteInsight(ctx context.Context, id, tenantID uuid.UUID) error {
 	query := `DELETE FROM consciousness_insights WHERE id = $1 AND tenant_id = $2`

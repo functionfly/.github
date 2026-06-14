@@ -46,7 +46,7 @@ func HealthHandler(collector *Service) http.HandlerFunc {
 		backendHealthy := true
 		backendError := ""
 		if collector.db != nil {
-			backends, err := collector.db.GetAllEnabledBackends()
+			backends, err := collector.db.GetAllEnabledBackends(r.Context())
 			if err != nil {
 				backendHealthy = false
 				backendError = fmt.Sprintf("failed to get backends: %v", err)
@@ -56,7 +56,7 @@ func HealthHandler(collector *Service) http.HandlerFunc {
 			} else {
 				healthyCount := 0
 				for _, backend := range backends {
-					recentChecks, err := collector.db.GetRecentHealthChecks(backend.ID, 1)
+					recentChecks, err := collector.db.GetRecentHealthChecks(r.Context(), backend.ID, 1)
 					if err == nil && len(recentChecks) > 0 && recentChecks[0].OK {
 						healthyCount++
 					}

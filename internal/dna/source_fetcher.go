@@ -1,6 +1,7 @@
 package dna
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/functionfly/functionfly/internal/storage/registry"
@@ -18,13 +19,13 @@ func NewRegistrySourceCodeFetcher(repo *registry.RegistryRepository) *RegistrySo
 }
 
 // GetFunctionSourceCode returns the source code and runtime for the latest version of a function.
-func (f *RegistrySourceCodeFetcher) GetFunctionSourceCode(functionID string) (string, string, error) {
+func (f *RegistrySourceCodeFetcher) GetFunctionSourceCode(ctx context.Context, functionID string) (string, string, error) {
 	fid, err := uuid.Parse(functionID)
 	if err != nil {
 		return "", "", fmt.Errorf("invalid function ID: %w", err)
 	}
 
-	fn, err := f.repo.GetFunctionByID(fid)
+	fn, err := f.repo.GetFunctionByID(ctx, fid)
 	if err != nil {
 		return "", "", fmt.Errorf("get function: %w", err)
 	}

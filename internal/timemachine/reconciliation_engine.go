@@ -1,6 +1,7 @@
 package timemachine
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -42,7 +43,7 @@ type ReconciliationPlan struct {
 	DryRun        bool                  `json:"dry_run"`
 }
 
-func (e *ReconciliationEngine) GeneratePlan(replayID uuid.UUID, dryRun bool) (*ReconciliationPlan, error) {
+func (e *ReconciliationEngine) GeneratePlan(ctx context.Context, replayID uuid.UUID, dryRun bool) (*ReconciliationPlan, error) {
 	changedItems, _, err := e.tmRepo.ListChangedItems(replayID, 10000, 0)
 	if err != nil {
 		return nil, fmt.Errorf("list changed items: %w", err)
@@ -101,7 +102,7 @@ func (e *ReconciliationEngine) GeneratePlan(replayID uuid.UUID, dryRun bool) (*R
 		}
 
 		if !dryRun {
-			e.applyReconciliations(reconciliations)
+			e.applyReconciliations(ctx, reconciliations)
 		}
 	}
 
@@ -143,14 +144,14 @@ func (e *ReconciliationEngine) buildAction(item tmstorage.ReplayItem, diffType s
 	return action
 }
 
-func (e *ReconciliationEngine) applyReconciliations(recs []tmstorage.Reconciliation) {
+func (e *ReconciliationEngine) applyReconciliations(ctx context.Context, recs []tmstorage.Reconciliation) {
 	for i := range recs {
 		rec := &recs[i]
 		if rec.DryRun {
 			continue
 		}
 
-		if err := e.applySingle(rec); err != nil {
+		if err := e.applySingle(ctx, rec); err != nil {
 			logrus.WithError(err).WithField("reconciliation_id", rec.ID).Error("Failed to apply reconciliation")
 			_ = e.tmRepo.UpdateReconciliationStatus(rec.ID, "failed", err.Error())
 			continue
@@ -168,10 +169,10 @@ func (e *ReconciliationEngine) applyReconciliations(recs []tmstorage.Reconciliat
 	}
 }
 
-func (e *ReconciliationEngine) applySingle(rec *tmstorage.Reconciliation) error {
+func (e *ReconciliationEngine) applySingle(ctx context.Context, rec *tmstorage.Reconciliation) error {
 	switch rec.ActionType {
 	case "update_output", "update_output_with_review":
-		return e.applyOutputUpdate(rec)
+		return e.applyOutputUpdate(ctx, rec)
 	case "flag_error":
 		logrus.WithFields(logrus.Fields{
 			"replay_item_id": rec.ReplayItemID,
@@ -185,7 +186,7 @@ func (e *ReconciliationEngine) applySingle(rec *tmstorage.Reconciliation) error 
 	}
 }
 
-func (e *ReconciliationEngine) applyOutputUpdate(rec *tmstorage.Reconciliation) error {
+func (e *ReconciliationEngine) applyOutputUpdate(ctx context.Context, rec *tmstorage.Reconciliation) error {
 	item, err := e.tmRepo.GetReplayItem(rec.ReplayItemID)
 	if err != nil {
 		return fmt.Errorf("get replay item: %w", err)
@@ -204,7 +205,7 @@ func (e *ReconciliationEngine) applyOutputUpdate(rec *tmstorage.Reconciliation) 
 	}
 
 	if e.regRepo != nil && item.NewOutput != nil && len(item.NewOutput) > 0 {
-		if updateErr := e.regRepo.UpdateExecutionPublicOutput(item.OriginalExecutionID, item.NewOutput); updateErr != nil {
+		if updateErr := e.regRepo.UpdateExecutionPublicOutput(ctx, item.OriginalExecutionID, item.NewOutput); updateErr != nil {
 			logrus.WithError(updateErr).WithField("execution_id", item.OriginalExecutionID).Warn("Failed to update registry execution output — replay item still marked reconciled")
 		}
 	}

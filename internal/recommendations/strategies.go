@@ -29,7 +29,7 @@ func (s *Service) getFunctionBasedRecommendations(ctx context.Context, functionI
 					otherID = sim.FunctionIDA
 				}
 
-				fn, err := s.registry.GetFunctionByID(otherID)
+				fn, err := s.registry.GetFunctionByID(ctx, otherID)
 				if err != nil {
 					continue
 				}
@@ -70,7 +70,7 @@ func (s *Service) getFunctionBasedRecommendations(ctx context.Context, functionI
 					otherID = co.FunctionIDA
 				}
 
-				fn, err := s.registry.GetFunctionByID(otherID)
+				fn, err := s.registry.GetFunctionByID(ctx, otherID)
 				if err != nil {
 					continue
 				}
@@ -96,7 +96,7 @@ func (s *Service) getFunctionBasedRecommendations(ctx context.Context, functionI
 
 	// Get category-based recommendations
 	if s.containsType(types, RecommendationTypeSameCategory) {
-		fn, err := s.registry.GetFunctionByID(functionID)
+		fn, err := s.registry.GetFunctionByID(ctx, functionID)
 		if err == nil && fn.Category.Valid && fn.Category.String != "" {
 			catFuncs, err := s.getFunctionsInCategory(ctx, fn.Category.String, limit)
 			if err == nil {
@@ -184,7 +184,7 @@ func (s *Service) getPersonalizedRecommendations(ctx context.Context, userID uui
 				otherID = sim.FunctionIDA
 			}
 
-			fn, err := s.registry.GetFunctionByID(otherID)
+			fn, err := s.registry.GetFunctionByID(ctx, otherID)
 			if err != nil {
 				continue
 			}
@@ -222,7 +222,7 @@ func (s *Service) getTrendingRecommendations(ctx context.Context, limit int) ([]
 
 	var results []RecommendationResult
 	for _, funcID := range trendingFuncIDs {
-		fn, err := s.registry.GetFunctionByID(funcID)
+		fn, err := s.registry.GetFunctionByID(ctx, funcID)
 		if err != nil {
 			continue
 		}
@@ -274,7 +274,7 @@ func (s *Service) getSearchBasedRecommendations(ctx context.Context, query strin
 
 // getContentBasedRelated gets related functions using content similarity
 func (s *Service) getContentBasedRelated(ctx context.Context, functionID uuid.UUID, limit int) ([]RecommendationResult, error) {
-	fn, err := s.registry.GetFunctionByID(functionID)
+	fn, err := s.registry.GetFunctionByID(ctx, functionID)
 	if err != nil {
 		return nil, err
 	}
@@ -339,7 +339,7 @@ func (s *Service) convertRecommendationsToResults(ctx context.Context, recommend
 	var results []RecommendationResult
 
 	for _, rec := range recommendations {
-		fn, err := s.registry.GetFunctionByID(rec.RecommendedFunctionID)
+		fn, err := s.registry.GetFunctionByID(ctx, rec.RecommendedFunctionID)
 		if err != nil {
 			continue
 		}

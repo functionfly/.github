@@ -48,7 +48,7 @@ func (h *StateFabricHostHandler) StateGet(path string) (string, error) {
 		return "", fmt.Errorf("fabric not found")
 	}
 
-	if fabric.Status != statefabric.FabricStatusActive && fabric.Status != statefabric.FabricStatusPending {
+	if fabric.Status != string(statefabric.FabricStatusOnline) && fabric.Status != string(statefabric.FabricStatusPending) {
 		return "", fmt.Errorf("fabric is not active")
 	}
 
@@ -84,7 +84,7 @@ func (h *StateFabricHostHandler) StateSet(path string, value string) error {
 		return fmt.Errorf("fabric not found")
 	}
 
-	if fabric.Status != statefabric.FabricStatusActive && fabric.Status != statefabric.FabricStatusPending {
+	if fabric.Status != string(statefabric.FabricStatusOnline) && fabric.Status != string(statefabric.FabricStatusPending) {
 		return fmt.Errorf("fabric is not active")
 	}
 
@@ -111,7 +111,7 @@ func (h *StateFabricHostHandler) StateDelete(path string) error {
 		return fmt.Errorf("fabric not found")
 	}
 
-	if fabric.Status != statefabric.FabricStatusActive && fabric.Status != statefabric.FabricStatusPending {
+	if fabric.Status != string(statefabric.FabricStatusOnline) && fabric.Status != string(statefabric.FabricStatusPending) {
 		return fmt.Errorf("fabric is not active")
 	}
 

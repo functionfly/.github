@@ -185,6 +185,25 @@ func (s *Service) DetectCycle(ctx context.Context, sourceNodeID uuid.UUID, targe
 	return false, nil
 }
 
+
+// GetNodes returns all nodes for a given graph
+func (s *Service) GetNodes(ctx context.Context, graphID uuid.UUID) ([]Node, error) {
+	var nodes []Node
+	if err := s.db.WithContext(ctx).Where("graph_id = ?", graphID).Find(&nodes).Error; err != nil {
+		return nil, fmt.Errorf("failed to get nodes: %w", err)
+	}
+	return nodes, nil
+}
+
+// GetEdges returns all edges for a given graph
+func (s *Service) GetEdges(ctx context.Context, graphID uuid.UUID) ([]Edge, error) {
+	var edges []Edge
+	if err := s.db.WithContext(ctx).Where("graph_id = ?", graphID).Find(&edges).Error; err != nil {
+		return nil, fmt.Errorf("failed to get edges: %w", err)
+	}
+	return edges, nil
+}
+
 // GetExecutionOrder returns nodes in topological order for execution
 func (s *Service) GetExecutionOrder(ctx context.Context, graphID uuid.UUID) ([]Node, error) {
 	var nodes []Node

@@ -252,7 +252,7 @@ func (e *ReplayEngine) scanPhase(ctx context.Context, replay *tmstorage.Replay) 
 			limit = remaining
 		}
 
-		executions, err := e.regRepo.GetPublicExecutionsInWindow(
+		executions, err := e.regRepo.GetPublicExecutionsInWindow(ctx, 
 			replay.FunctionID, cursor, replay.WindowEnd, limit,
 		)
 		if err != nil {

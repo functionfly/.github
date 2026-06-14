@@ -71,7 +71,7 @@ func (m *AgentAPIMiddleware) Wrap(next http.Handler) http.Handler {
 
 		// Validate team belongs to user's tenant if teamID provided
 		if teamID != uuid.Nil && m.repo != nil {
-			if valid := m.validateTeamTenant(teamID, user.TenantID); !valid {
+			if valid := m.validateTeamTenant(ctx, teamID, user.TenantID); !valid {
 				logrus.WithFields(logrus.Fields{
 					"team_id":   teamID,
 					"tenant_id": user.TenantID,
@@ -99,12 +99,12 @@ func (m *AgentAPIMiddleware) Wrap(next http.Handler) http.Handler {
 }
 
 // validateTeamTenant checks if a team belongs to a specific tenant
-func (m *AgentAPIMiddleware) validateTeamTenant(teamID, tenantID uuid.UUID) bool {
+func (m *AgentAPIMiddleware) validateTeamTenant(ctx context.Context, teamID, tenantID uuid.UUID) bool {
 	if m.repo == nil {
 		return true // Skip validation if no repository available
 	}
 
-	team, err := m.repo.GetTeamByID(teamID)
+	team, err := m.repo.GetTeamByID(ctx, teamID)
 	if err != nil {
 		logrus.WithError(err).WithField("team_id", teamID).Debug("Failed to get team for validation")
 		return false
@@ -182,6 +182,7 @@ func (m *GenerationMiddleware) Wrap(next http.Handler) http.Handler {
 		}
 
 		// Get team ID - validate it belongs to user's tenant
+		ctx := r.Context()
 		teamID := m.extractTeamID(r, user.TenantID, user.UserID)
 		if teamID == uuid.Nil {
 			next.ServeHTTP(w, r)
@@ -190,7 +191,7 @@ func (m *GenerationMiddleware) Wrap(next http.Handler) http.Handler {
 
 		// Validate team belongs to user's tenant
 		if m.repo != nil {
-			team, err := m.repo.GetTeamByID(teamID)
+			team, err := m.repo.GetTeamByID(ctx, teamID)
 			if err != nil || team == nil || team.TenantID != user.TenantID {
 				logrus.WithFields(logrus.Fields{
 					"team_id":   teamID,
@@ -202,7 +203,6 @@ func (m *GenerationMiddleware) Wrap(next http.Handler) http.Handler {
 		}
 
 		// Add context info to request context
-		ctx := r.Context()
 		ctx = context.WithValue(ctx, contextKeyTenantID, user.TenantID)
 		ctx = context.WithValue(ctx, contextKeyTeamID, teamID)
 		ctx = context.WithValue(ctx, contextKeyUserID, user.UserID)

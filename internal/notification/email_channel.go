@@ -23,11 +23,11 @@ type EmailChannel struct {
 }
 
 // NewEmailChannel creates a new email channel
-func NewEmailChannel(emailSvc email.Service, logger *logrus.Logger) *EmailChannel {
+func NewEmailChannel(repo Repository, emailSvc email.Service, logger *logrus.Logger) *EmailChannel {
 	return &EmailChannel{
 		emailSvc:    emailSvc,
 		logger:      logger,
-		templateEng: NewTemplateEngine(nil),
+		templateEng: NewTemplateEngine(repo),
 	}
 }
 

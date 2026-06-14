@@ -24,7 +24,7 @@ func CreateOrGetStripeCustomer(
 		return "", fmt.Errorf("STRIPE_SECRET_KEY is not set")
 	}
 
-	t, err := repo.GetTenantByID(tenantID)
+	t, err := repo.GetTenantByID(ctx, tenantID)
 	if err != nil {
 		return "", fmt.Errorf("get tenant: %w", err)
 	}

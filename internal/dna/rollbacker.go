@@ -7,6 +7,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/storage/dna"
 	"github.com/functionfly/functionfly/internal/storage/registry"
+	"github.com/functionfly/functionfly/internal/tracing"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
@@ -68,7 +69,7 @@ func (r *Rollbacker) getErrorThreshold(ctx context.Context, userID string) float
 // This cancels the active canary, marks the mutation as rolled_back, and
 // logs the rollback event for audit purposes.
 func (r *Rollbacker) RollbackMutation(ctx context.Context, mutationID, tenantID, reason string) error {
-	ctx, span := tracing.StartSpan(ctx, "dna.rollback_mutation")
+	ctx, _ = tracing.StartSpan(ctx, "dna.rollback_mutation")
 	defer tracing.Finish(ctx)
 
 	tracing.SetAttribute(ctx, "mutation_id", mutationID)
@@ -178,7 +179,7 @@ func (r *Rollbacker) checkCanariesForRollback(ctx context.Context) {
 }
 
 func (r *Rollbacker) checkSingleCanary(ctx context.Context, canary *registry.CanaryConfig) {
-	ctx, span := tracing.StartSpan(ctx, "dna.check_single_canary")
+	ctx, _ = tracing.StartSpan(ctx, "dna.check_single_canary")
 	defer tracing.Finish(ctx)
 
 	tracing.SetAttribute(ctx, "canary_id", canary.ID)
@@ -216,7 +217,7 @@ func (r *Rollbacker) checkSingleCanary(ctx context.Context, canary *registry.Can
 		}).Warn("dna: canary error rate exceeds threshold — triggering auto-rollback")
 
 		// Look up function to get tenant ID for tenant-isolated query
-		fn, err := r.functionRepo.GetFunctionByID(canary.FunctionID)
+		fn, err := r.functionRepo.GetFunctionByID(ctx, canary.FunctionID)
 		if err != nil {
 			r.logger.WithError(err).WithField("function_id", canary.FunctionID).Error("dna: failed to get function for tenant lookup")
 			tracing.RecordError(ctx, err)

@@ -2,13 +2,11 @@ package consciousness
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/lib/pq"
 )
 
 // DeliveryRetry represents a retry entry in the dead letter queue.

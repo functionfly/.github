@@ -87,13 +87,13 @@ func (s *StatsAggregator) aggregateFunction(ctx context.Context, functionID uuid
 	since := time.Now().Add(-24 * time.Hour)
 
 	// Get extended trust stats including p50, timeout_rate, error_rate
-	totalCalls, successRate, avgLatency, p50Latency, p95Latency, timeoutRate, errorRate, err := s.repo.GetFunctionTrustStats(functionID, since)
+	totalCalls, successRate, avgLatency, p50Latency, p95Latency, timeoutRate, errorRate, err := s.repo.GetFunctionTrustStats(ctx, functionID, since)
 	if err != nil {
 		return fmt.Errorf("failed to get trust stats: %w", err)
 	}
 
 	// Get consumer diversity metrics
-	uniqueIPs, uniqueTenants, uniqueUsers, err := s.repo.GetConsumerDiversity(functionID, since)
+	uniqueIPs, uniqueTenants, uniqueUsers, err := s.repo.GetConsumerDiversity(ctx, functionID, since)
 	if err != nil {
 		logrus.WithError(err).Warn("Failed to get consumer diversity, using defaults")
 		uniqueIPs = 0
@@ -138,7 +138,7 @@ func (s *StatsAggregator) aggregateFunction(ctx context.Context, functionID uuid
 	trustCalc := NewTrustScoreCalculator()
 
 	// Get function for deterministic score
-	fn, err := s.repo.GetFunctionByID(functionID)
+	fn, err := s.repo.GetFunctionByID(ctx, functionID)
 	if err != nil {
 		logrus.WithError(err).Warn("Failed to get function for trust calculation")
 	}

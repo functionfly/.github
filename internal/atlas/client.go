@@ -177,7 +177,7 @@ func (c *Client) AppendEvent(ctx context.Context, runID string, kind string, pay
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		return "", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
 	var event Event

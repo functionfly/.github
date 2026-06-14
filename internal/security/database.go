@@ -32,7 +32,7 @@ func (sas *SecurityAuditService) scanDatabaseSecurity(ctx context.Context, confi
 	}
 
 	// Check for weak passwords in database
-	if weakPasswords, err := sas.checkDatabasePasswords(); err == nil && weakPasswords {
+	if weakPasswords, err := sas.checkDatabasePasswords(ctx); err == nil && weakPasswords {
 		vulnerabilities = append(vulnerabilities, Vulnerability{
 			ID:          generateVulnID(),
 			Title:       "Weak Database Passwords Detected",
@@ -144,12 +144,12 @@ func (sas *SecurityAuditService) checkDatabaseEncryption() (bool, error) {
 	return true, nil
 }
 
-func (sas *SecurityAuditService) checkDatabasePasswords() (bool, error) {
+func (sas *SecurityAuditService) checkDatabasePasswords(ctx context.Context) (bool, error) {
 	// Check for weak passwords in database
 	// Return true if weak passwords are detected (vulnerability exists)
 
 	// Get all users from the database
-	users, err := sas.db.ListUsers()
+	users, err := sas.db.ListUsers(ctx)
 	if err != nil {
 		return false, err // Can't check if we can't access users
 	}
