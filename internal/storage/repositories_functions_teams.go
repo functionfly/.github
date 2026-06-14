@@ -90,74 +90,74 @@ func (db *PostgresDB) GetDashboardMetrics(ctx context.Context, tenantID uuid.UUI
 }
 
 // Team operations
-func (db *PostgresDB) CreateTeam(team *Team) error {
-	return db.teamRepository.CreateTeam(team)
+func (db *PostgresDB) CreateTeam(ctx context.Context, team *Team) error {
+	return db.teamRepository.CreateTeam(ctx, team)
 }
 
-func (db *PostgresDB) GetTeamByID(teamID uuid.UUID) (*Team, error) {
-	return db.teamRepository.GetTeamByID(teamID)
+func (db *PostgresDB) GetTeamByID(ctx context.Context, teamID uuid.UUID) (*Team, error) {
+	return db.teamRepository.GetTeamByID(ctx, teamID)
 }
 
-func (db *PostgresDB) GetTeamsByTenantID(tenantID uuid.UUID) ([]*Team, error) {
-	return db.teamRepository.GetTeamsByTenantID(tenantID)
+func (db *PostgresDB) GetTeamsByTenantID(ctx context.Context, tenantID uuid.UUID) ([]*Team, error) {
+	return db.teamRepository.GetTeamsByTenantID(ctx, tenantID)
 }
 
-func (db *PostgresDB) UpdateTeam(team *Team) error {
-	return db.teamRepository.UpdateTeam(team)
+func (db *PostgresDB) UpdateTeam(ctx context.Context, team *Team) error {
+	return db.teamRepository.UpdateTeam(ctx, team)
 }
 
-func (db *PostgresDB) DeleteTeam(teamID uuid.UUID) error {
-	return db.teamRepository.DeleteTeam(teamID)
+func (db *PostgresDB) DeleteTeam(ctx context.Context, teamID uuid.UUID) error {
+	return db.teamRepository.DeleteTeam(ctx, teamID)
 }
 
-func (db *PostgresDB) AddTeamMember(membership *TeamMembership) error {
-	return db.teamRepository.AddTeamMember(membership)
+func (db *PostgresDB) AddTeamMember(ctx context.Context, membership *TeamMembership) error {
+	return db.teamRepository.AddTeamMember(ctx, membership)
 }
 
-func (db *PostgresDB) UpdateTeamMember(teamID, userID uuid.UUID, role string) error {
-	return db.teamRepository.UpdateTeamMember(teamID, userID, role)
+func (db *PostgresDB) UpdateTeamMember(ctx context.Context, teamID, userID uuid.UUID, role string) error {
+	return db.teamRepository.UpdateTeamMember(ctx, teamID, userID, role)
 }
 
-func (db *PostgresDB) RemoveTeamMember(teamID, userID uuid.UUID) error {
-	return db.teamRepository.RemoveTeamMember(teamID, userID)
+func (db *PostgresDB) RemoveTeamMember(ctx context.Context, teamID, userID uuid.UUID) error {
+	return db.teamRepository.RemoveTeamMember(ctx, teamID, userID)
 }
 
-func (db *PostgresDB) GetTeamMembership(teamID, userID uuid.UUID) (*TeamMembership, error) {
-	return db.teamRepository.GetTeamMembership(teamID, userID)
+func (db *PostgresDB) GetTeamMembership(ctx context.Context, teamID, userID uuid.UUID) (*TeamMembership, error) {
+	return db.teamRepository.GetTeamMembership(ctx, teamID, userID)
 }
 
-func (db *PostgresDB) GetUserTeams(userID uuid.UUID) ([]*Team, error) {
-	return db.teamRepository.GetUserTeams(userID)
+func (db *PostgresDB) GetUserTeams(ctx context.Context, userID uuid.UUID) ([]*Team, error) {
+	return db.teamRepository.GetUserTeams(ctx, userID)
 }
 
-func (db *PostgresDB) GrantTeamPermission(permission *TeamPermission) error {
-	return db.teamRepository.GrantTeamPermission(permission)
+func (db *PostgresDB) GrantTeamPermission(ctx context.Context, permission *TeamPermission) error {
+	return db.teamRepository.GrantTeamPermission(ctx, permission)
 }
 
-func (db *PostgresDB) RevokeTeamPermission(teamID uuid.UUID, resourceType string, resourceID uuid.UUID) error {
-	return db.teamRepository.RevokeTeamPermission(teamID, resourceType, resourceID)
+func (db *PostgresDB) RevokeTeamPermission(ctx context.Context, teamID uuid.UUID, resourceType string, resourceID uuid.UUID) error {
+	return db.teamRepository.RevokeTeamPermission(ctx, teamID, resourceType, resourceID)
 }
 
-func (db *PostgresDB) GetTeamPermissions(teamID uuid.UUID) ([]*TeamPermission, error) {
-	return db.teamRepository.GetTeamPermissions(teamID)
+func (db *PostgresDB) GetTeamPermissions(ctx context.Context, teamID uuid.UUID) ([]*TeamPermission, error) {
+	return db.teamRepository.GetTeamPermissions(ctx, teamID)
 }
 
-func (db *PostgresDB) GetResourcePermissions(resourceType string, resourceID uuid.UUID) ([]*TeamPermission, error) {
-	return db.teamRepository.GetResourcePermissions(resourceType, resourceID)
+func (db *PostgresDB) GetResourcePermissions(ctx context.Context, resourceType string, resourceID uuid.UUID) ([]*TeamPermission, error) {
+	return db.teamRepository.GetResourcePermissions(ctx, resourceType, resourceID)
 }
 
-func (db *PostgresDB) CheckUserResourcePermission(userID uuid.UUID, resourceType string, resourceID uuid.UUID, requiredPerm string) (bool, error) {
-	return db.teamRepository.CheckUserResourcePermission(userID, resourceType, resourceID, requiredPerm)
+func (db *PostgresDB) CheckUserResourcePermission(ctx context.Context, userID uuid.UUID, resourceType string, resourceID uuid.UUID, requiredPerm string) (bool, error) {
+	return db.teamRepository.CheckUserResourcePermission(ctx, userID, resourceType, resourceID, requiredPerm)
 }
 
-func (db *PostgresDB) GetUserPermissions(userID uuid.UUID, resourceType string) ([]string, error) {
-	return db.teamRepository.GetUserPermissions(userID, resourceType)
+func (db *PostgresDB) GetUserPermissions(ctx context.Context, userID uuid.UUID, resourceType string) ([]string, error) {
+	return db.teamRepository.GetUserPermissions(ctx, userID, resourceType)
 }
 
-func (db *PostgresDB) IsUserTeamOwner(userID, teamID uuid.UUID) (bool, error) {
-	return db.teamRepository.IsUserTeamOwner(userID, teamID)
+func (db *PostgresDB) IsUserTeamOwner(ctx context.Context, userID, teamID uuid.UUID) (bool, error) {
+	return db.teamRepository.IsUserTeamOwner(ctx, userID, teamID)
 }
 
-func (db *PostgresDB) IsUserTeamAdmin(userID, teamID uuid.UUID) (bool, error) {
-	return db.teamRepository.IsUserTeamAdmin(userID, teamID)
+func (db *PostgresDB) IsUserTeamAdmin(ctx context.Context, userID, teamID uuid.UUID) (bool, error) {
+	return db.teamRepository.IsUserTeamAdmin(ctx, userID, teamID)
 }

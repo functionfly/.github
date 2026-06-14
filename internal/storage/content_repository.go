@@ -67,7 +67,7 @@ func (r *ContentRepository) CreateChangelogEntry(ctx context.Context, entry *Cha
 }
 
 // GetChangelogEntryByID retrieves a changelog entry by ID with its changes
-func (r *ContentRepository) GetChangelogEntryByID(id uuid.UUID) (*ChangelogEntry, error) {
+func (r *ContentRepository) GetChangelogEntryByID(ctx context.Context, id uuid.UUID) (*ChangelogEntry, error) {
 	query := `
 		SELECT id, version, date, type, title, description, release_url, github_id, is_published, created_at, updated_at
 		FROM changelog_entries
@@ -96,7 +96,7 @@ func (r *ContentRepository) GetChangelogEntryByID(id uuid.UUID) (*ChangelogEntry
 }
 
 // GetChangelogEntryByVersion retrieves a changelog entry by version
-func (r *ContentRepository) GetChangelogEntryByVersion(version string) (*ChangelogEntry, error) {
+func (r *ContentRepository) GetChangelogEntryByVersion(ctx context.Context, version string) (*ChangelogEntry, error) {
 	query := `
 		SELECT id, version, date, type, title, description, release_url, github_id, is_published, created_at, updated_at
 		FROM changelog_entries
@@ -125,7 +125,7 @@ func (r *ContentRepository) GetChangelogEntryByVersion(version string) (*Changel
 }
 
 // ListChangelogEntries lists changelog entries with pagination
-func (r *ContentRepository) ListChangelogEntries(limit, offset int, publishedOnly bool) ([]*ChangelogEntry, error) {
+func (r *ContentRepository) ListChangelogEntries(ctx context.Context, limit, offset int, publishedOnly bool) ([]*ChangelogEntry, error) {
 	query := `
 		SELECT id, version, date, type, title, description, release_url, github_id, is_published, created_at, updated_at
 		FROM changelog_entries`
@@ -185,7 +185,7 @@ func (r *ContentRepository) ListChangelogEntries(limit, offset int, publishedOnl
 // UpdateChangelogEntry updates a changelog entry
 func (r *ContentRepository) UpdateChangelogEntry(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*ChangelogEntry, error) {
 	if len(updates) == 0 {
-		return r.GetChangelogEntryByID(id)
+		return r.GetChangelogEntryByID(ctx, id)
 	}
 
 	if err := validateChangelogEntryFields(updates); err != nil {
@@ -216,7 +216,7 @@ func (r *ContentRepository) UpdateChangelogEntry(ctx context.Context, id uuid.UU
 		return nil, fmt.Errorf("failed to update changelog entry: %w", err)
 	}
 
-	return r.GetChangelogEntryByID(id)
+	return r.GetChangelogEntryByID(ctx, id)
 }
 
 // DeleteChangelogEntry deletes a changelog entry
@@ -390,7 +390,7 @@ func (r *ContentRepository) CreateBlogPost(ctx context.Context, post *BlogPost) 
 }
 
 // GetBlogPostByID retrieves a blog post by ID
-func (r *ContentRepository) GetBlogPostByID(id uuid.UUID) (*BlogPost, error) {
+func (r *ContentRepository) GetBlogPostByID(ctx context.Context, id uuid.UUID) (*BlogPost, error) {
 	query := `
 		SELECT id, title, slug, content, excerpt, author, tags, featured_image, sanity_id, is_published, published_at, created_at, updated_at
 		FROM blog_posts
@@ -415,7 +415,7 @@ func (r *ContentRepository) GetBlogPostByID(id uuid.UUID) (*BlogPost, error) {
 }
 
 // GetBlogPostBySlug retrieves a blog post by slug
-func (r *ContentRepository) GetBlogPostBySlug(slug string) (*BlogPost, error) {
+func (r *ContentRepository) GetBlogPostBySlug(ctx context.Context, slug string) (*BlogPost, error) {
 	query := `
 		SELECT id, title, slug, content, excerpt, author, tags, featured_image, sanity_id, is_published, published_at, created_at, updated_at
 		FROM blog_posts
@@ -440,7 +440,7 @@ func (r *ContentRepository) GetBlogPostBySlug(slug string) (*BlogPost, error) {
 }
 
 // ListBlogPosts lists blog posts with filtering and pagination
-func (r *ContentRepository) ListBlogPosts(limit, offset int, publishedOnly bool, tagFilter []string) ([]*BlogPost, error) {
+func (r *ContentRepository) ListBlogPosts(ctx context.Context, limit, offset int, publishedOnly bool, tagFilter []string) ([]*BlogPost, error) {
 	query := `
 		SELECT id, title, slug, content, excerpt, author, tags, featured_image, sanity_id, is_published, published_at, created_at, updated_at
 		FROM blog_posts`
@@ -506,7 +506,7 @@ func (r *ContentRepository) ListBlogPosts(limit, offset int, publishedOnly bool,
 // UpdateBlogPost updates a blog post
 func (r *ContentRepository) UpdateBlogPost(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*BlogPost, error) {
 	if len(updates) == 0 {
-		return r.GetBlogPostByID(id)
+		return r.GetBlogPostByID(ctx, id)
 	}
 
 	if err := validateBlogPostFields(updates); err != nil {
@@ -537,7 +537,7 @@ func (r *ContentRepository) UpdateBlogPost(ctx context.Context, id uuid.UUID, up
 		return nil, fmt.Errorf("failed to update blog post: %w", err)
 	}
 
-	return r.GetBlogPostByID(id)
+	return r.GetBlogPostByID(ctx, id)
 }
 
 // DeleteBlogPost deletes a blog post
@@ -552,7 +552,16 @@ func (r *ContentRepository) DeleteBlogPost(ctx context.Context, id uuid.UUID) er
 
 // ListBlogCategories returns all blog categories ordered by order, title
 func (r *ContentRepository) ListBlogCategories(ctx context.Context) ([]*BlogCategory, error) {
-	query := `SELECT id, title, slug, description, color, icon, "order", created_at, updated_at FROM blog_categories ORDER BY "order" ASC, title ASC`
+	query := `SELECT bc.id, bc.title, bc.slug, bc.description, bc.color, bc.icon, bc."order", bc.created_at, bc.updated_at,
+			  COALESCE(posts.post_count, 0) as post_count
+			  FROM blog_categories bc
+			  LEFT JOIN (
+				  SELECT category_id, COUNT(*) as post_count
+				  FROM blog_posts
+				  WHERE status = 'published' AND published_at IS NOT NULL
+				  GROUP BY category_id
+			  ) posts ON bc.id = posts.category_id
+			  ORDER BY bc."order" ASC, bc.title ASC`
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list blog categories: %w", err)
@@ -562,7 +571,7 @@ func (r *ContentRepository) ListBlogCategories(ctx context.Context) ([]*BlogCate
 	for rows.Next() {
 		c := &BlogCategory{}
 		var desc, color, icon sql.NullString
-		if err := rows.Scan(&c.ID, &c.Title, &c.Slug, &desc, &color, &icon, &c.Order, &c.CreatedAt, &c.UpdatedAt); err != nil {
+		if err := rows.Scan(&c.ID, &c.Title, &c.Slug, &desc, &color, &icon, &c.Order, &c.CreatedAt, &c.UpdatedAt, &c.PostCount); err != nil {
 			return nil, fmt.Errorf("failed to scan blog category: %w", err)
 		}
 		if desc.Valid {

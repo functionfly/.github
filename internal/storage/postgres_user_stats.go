@@ -15,9 +15,9 @@ import (
 // ============================================================================
 
 // GetUserSkills retrieves all skills for a user
-func (db *PostgresDB) GetUserSkills(userID uuid.UUID) ([]*UserSkill, error) {
+func (db *PostgresDB) GetUserSkills(ctx context.Context, userID uuid.UUID) ([]*UserSkill, error) {
 	var skills []*UserSkill
-	if err := db.GORM.Where("user_id = ?", userID).Find(&skills).Error; err != nil {
+	if err := db.GORM.WithContext(ctx).Where("user_id = ?", userID).Find(&skills).Error; err != nil {
 		return nil, fmt.Errorf("failed to get user skills: %w", err)
 	}
 	return skills, nil
@@ -40,9 +40,9 @@ func (db *PostgresDB) RemoveUserSkill(skillID uuid.UUID) error {
 }
 
 // GetUserAchievements retrieves all achievements for a user
-func (db *PostgresDB) GetUserAchievements(userID uuid.UUID) ([]*UserAchievement, error) {
+func (db *PostgresDB) GetUserAchievements(ctx context.Context, userID uuid.UUID) ([]*UserAchievement, error) {
 	var achievements []*UserAchievement
-	if err := db.GORM.Where("user_id = ?", userID).
+	if err := db.GORM.WithContext(ctx).Where("user_id = ?", userID).
 		Preload("Achievement").
 		Order("earned_at DESC").
 		Find(&achievements).Error; err != nil {
@@ -52,9 +52,9 @@ func (db *PostgresDB) GetUserAchievements(userID uuid.UUID) ([]*UserAchievement,
 }
 
 // GetAchievementBySlug retrieves an achievement by its slug
-func (db *PostgresDB) GetAchievementBySlug(slug string) (*Achievement, error) {
+func (db *PostgresDB) GetAchievementBySlug(ctx context.Context, slug string) (*Achievement, error) {
 	var achievement Achievement
-	if err := db.GORM.Where("slug = ?", slug).First(&achievement).Error; err != nil {
+	if err := db.GORM.WithContext(ctx).Where("slug = ?", slug).First(&achievement).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
@@ -64,9 +64,9 @@ func (db *PostgresDB) GetAchievementBySlug(slug string) (*Achievement, error) {
 }
 
 // ListAchievements retrieves all achievement definitions
-func (db *PostgresDB) ListAchievements() ([]*Achievement, error) {
+func (db *PostgresDB) ListAchievements(ctx context.Context) ([]*Achievement, error) {
 	var achievements []*Achievement
-	if err := db.GORM.Order("category, name").Find(&achievements).Error; err != nil {
+	if err := db.GORM.WithContext(ctx).Order("category, name").Find(&achievements).Error; err != nil {
 		return nil, fmt.Errorf("failed to list achievements: %w", err)
 	}
 	return achievements, nil
@@ -104,9 +104,9 @@ func (db *PostgresDB) UpdateAchievementProgress(userAchievementID uuid.UUID, pro
 }
 
 // GetUserActivity retrieves activity feed for a user
-func (db *PostgresDB) GetUserActivity(userID uuid.UUID, limit, offset int) ([]*UserActivity, error) {
+func (db *PostgresDB) GetUserActivity(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*UserActivity, error) {
 	var activities []*UserActivity
-	if err := db.GORM.Where("user_id = ?", userID).
+	if err := db.GORM.WithContext(ctx).Where("user_id = ?", userID).
 		Order("created_at DESC").
 		Limit(limit).
 		Offset(offset).
@@ -117,8 +117,8 @@ func (db *PostgresDB) GetUserActivity(userID uuid.UUID, limit, offset int) ([]*U
 }
 
 // CreateUserActivity creates a new activity feed item
-func (db *PostgresDB) CreateUserActivity(activity *UserActivity) error {
-	if err := db.GORM.Create(activity).Error; err != nil {
+func (db *PostgresDB) CreateUserActivity(ctx context.Context, activity *UserActivity) error {
+	if err := db.GORM.WithContext(ctx).Create(activity).Error; err != nil {
 		return fmt.Errorf("failed to create user activity: %w", err)
 	}
 	return nil
@@ -126,7 +126,7 @@ func (db *PostgresDB) CreateUserActivity(activity *UserActivity) error {
 
 // GetUserContributionDailyCounts aggregates contribution events per UTC calendar day:
 // each user_activity row and each registry function created by the user counts as one.
-func (db *PostgresDB) GetUserContributionDailyCounts(userID uuid.UUID, since time.Time) (map[string]int64, error) {
+func (db *PostgresDB) GetUserContributionDailyCounts(ctx context.Context, userID uuid.UUID, since time.Time) (map[string]int64, error) {
 	var rows []struct {
 		Day   string `gorm:"column:day"`
 		Count int64  `gorm:"column:cnt"`
@@ -140,7 +140,7 @@ WITH per_day AS (
 	WHERE owner_user_id IS NOT NULL AND owner_user_id = ? AND created_at >= ?
 )
 SELECT d::text AS day, COUNT(*)::bigint AS cnt FROM per_day GROUP BY d ORDER BY d`
-	if err := db.GORM.Raw(q, userID, since, userID, since).Scan(&rows).Error; err != nil {
+	if err := db.GORM.WithContext(ctx).Raw(q, userID, since, userID, since).Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("failed to get contribution daily counts: %w", err)
 	}
 	out := make(map[string]int64, len(rows))
@@ -151,7 +151,7 @@ SELECT d::text AS day, COUNT(*)::bigint AS cnt FROM per_day GROUP BY d ORDER BY 
 }
 
 // GetUserExecutionStats retrieves execution statistics for a user
-func (db *PostgresDB) GetUserExecutionStats(userID uuid.UUID) (map[string]interface{}, error) {
+func (db *PostgresDB) GetUserExecutionStats(ctx context.Context, userID uuid.UUID) (map[string]interface{}, error) {
 	// Get user's published functions from registry
 	var functions []struct {
 		ID             uuid.UUID
@@ -159,7 +159,7 @@ func (db *PostgresDB) GetUserExecutionStats(userID uuid.UUID) (map[string]interf
 		UniqueUsers    int64
 	}
 
-	if err := db.GORM.Raw(`
+	if err := db.GORM.WithContext(ctx).Raw(`
 		SELECT rf.id,
 			COUNT(re.id)::bigint AS execution_count,
 			COUNT(DISTINCT re.caller_ip)::bigint AS unique_users
@@ -183,7 +183,7 @@ func (db *PostgresDB) GetUserExecutionStats(userID uuid.UUID) (map[string]interf
 		Executions int64  `json:"executions"`
 	}
 
-	if err := db.GORM.Raw(`
+	if err := db.GORM.WithContext(ctx).Raw(`
 		SELECT DATE(re.timestamp) as date, COUNT(*) as executions
 		FROM registry_function_executions re
 		INNER JOIN registry_functions rf ON rf.id = re.function_id
@@ -207,9 +207,8 @@ func (db *PostgresDB) GetUserExecutionStats(userID uuid.UUID) (map[string]interf
 }
 
 // GetUserProfileStats returns aggregate stats for public profile cards (functions count, executions, trust, follows).
-func (db *PostgresDB) GetUserProfileStats(userID uuid.UUID) (map[string]interface{}, error) {
-	ctx := context.Background()
-	execStats, err := db.GetUserExecutionStats(userID)
+func (db *PostgresDB) GetUserProfileStats(ctx context.Context, userID uuid.UUID) (map[string]interface{}, error) {
+	execStats, err := db.GetUserExecutionStats(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -297,7 +296,7 @@ func (db *PostgresDB) GetUserProfileStats(userID uuid.UUID) (map[string]interfac
 }
 
 // GetUserTrustBreakdown returns per-component trust metrics aggregated across all of a user's functions.
-func (db *PostgresDB) GetUserTrustBreakdown(userID uuid.UUID) (map[string]interface{}, error) {
+func (db *PostgresDB) GetUserTrustBreakdown(ctx context.Context, userID uuid.UUID) (map[string]interface{}, error) {
 	var result struct {
 		Reliability       float64
 		Latency          float64
@@ -312,7 +311,7 @@ func (db *PostgresDB) GetUserTrustBreakdown(userID uuid.UUID) (map[string]interf
 	}
 
 	// Aggregate reliability_score, success_rate, latency, and verification across user's functions
-	if err := db.GORM.Raw(`
+	if err := db.GORM.WithContext(ctx).Raw(`
 		SELECT
 			COALESCE(AVG(rat.reliability_score), 0) AS reliability,
 			COALESCE(AVG(1 - rat.error_rate), 0) AS error_rate,
@@ -331,7 +330,7 @@ func (db *PostgresDB) GetUserTrustBreakdown(userID uuid.UUID) (map[string]interf
 		AvgP50 float64
 		AvgP95 float64
 	}{}
-	if err := db.GORM.Raw(`
+	if err := db.GORM.WithContext(ctx).Raw(`
 		SELECT
 			COALESCE(AVG(fe.duration_ms FILTER (WHERE fe.percentile = 50)), 0) AS avg_p50,
 			COALESCE(AVG(fe.duration_ms FILTER (WHERE fe.percentile = 95)), 0) AS avg_p95
@@ -344,7 +343,7 @@ func (db *PostgresDB) GetUserTrustBreakdown(userID uuid.UUID) (map[string]interf
 
 	// Verification: ratio of verified functions
 	var verifiedRatio float64
-	if err := db.GORM.Raw(`
+	if err := db.GORM.WithContext(ctx).Raw(`
 		SELECT
 			COALESCE(
 				AVG(CASE WHEN rat.trust_score >= 0.8 THEN 1.0 ELSE 0.0 END),
@@ -359,7 +358,7 @@ func (db *PostgresDB) GetUserTrustBreakdown(userID uuid.UUID) (map[string]interf
 
 	// Total calls from executions
 	var totalCalls int64
-	if err := db.GORM.Raw(`
+	if err := db.GORM.WithContext(ctx).Raw(`
 		SELECT COALESCE(SUM(fe.call_count), 0)
 		FROM registry_functions rf
 		LEFT JOIN function_execution_stats fe ON fe.function_id = rf.id
@@ -393,10 +392,10 @@ func (db *PostgresDB) GetUserTrustBreakdown(userID uuid.UUID) (map[string]interf
 }
 
 // GetUserPopularFunctions retrieves most popular functions for a user
-func (db *PostgresDB) GetUserPopularFunctions(userID uuid.UUID, limit int) ([]map[string]interface{}, error) {
+func (db *PostgresDB) GetUserPopularFunctions(ctx context.Context, userID uuid.UUID, limit int) ([]map[string]interface{}, error) {
 	var functions []map[string]interface{}
 
-	if err := db.GORM.Raw(`
+	if err := db.GORM.WithContext(ctx).Raw(`
 		SELECT
 			rf.id,
 			rf.name,
@@ -422,13 +421,13 @@ func (db *PostgresDB) GetUserPopularFunctions(userID uuid.UUID, limit int) ([]ma
 }
 
 // GetUserGeographicStats retrieves geographic distribution of executions
-func (db *PostgresDB) GetUserGeographicStats(userID uuid.UUID) (map[string]interface{}, error) {
+func (db *PostgresDB) GetUserGeographicStats(ctx context.Context, userID uuid.UUID) (map[string]interface{}, error) {
 	var regions []struct {
 		Region     string `json:"region"`
 		Executions int64  `json:"executions"`
 	}
 
-	if err := db.GORM.Raw(`
+	if err := db.GORM.WithContext(ctx).Raw(`
 		SELECT
 			COALESCE(re.geo_country, 'unknown') as region,
 			COUNT(*) as executions
@@ -450,13 +449,13 @@ func (db *PostgresDB) GetUserGeographicStats(userID uuid.UUID) (map[string]inter
 }
 
 // GetUserDeviceStats retrieves device/browser statistics
-func (db *PostgresDB) GetUserDeviceStats(userID uuid.UUID) (map[string]interface{}, error) {
+func (db *PostgresDB) GetUserDeviceStats(ctx context.Context, userID uuid.UUID) (map[string]interface{}, error) {
 	var devices []struct {
 		Device     string `json:"device"`
 		Executions int64  `json:"executions"`
 	}
 
-	if err := db.GORM.Raw(`
+	if err := db.GORM.WithContext(ctx).Raw(`
 		SELECT
 			COALESCE(re.user_agent, 'unknown') as device,
 			COUNT(*) as executions

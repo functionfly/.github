@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"context"
+	"fmt"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -23,11 +25,11 @@ func NewAuthEventCleanupService(repo Repository) *AuthEventCleanupService {
 }
 
 // CleanupOldAuthEvents removes authentication events older than the specified retention period
-func (s *AuthEventCleanupService) CleanupOldAuthEvents(retentionPeriod time.Duration) error {
+func (s *AuthEventCleanupService) CleanupOldAuthEvents(ctx context.Context, retentionPeriod time.Duration) error {
 	cutoff := time.Now().Add(-retentionPeriod)
 
 	start := time.Now()
-	deletedCount, err := s.repo.DeleteOldAuthEvents(cutoff)
+	deletedCount, err := s.repo.DeleteOldAuthEvents(ctx, cutoff)
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to cleanup old auth events")
 		return err
@@ -48,7 +50,7 @@ func (s *AuthEventCleanupService) CleanupOldAuthEvents(retentionPeriod time.Dura
 }
 
 // StartCleanupRoutine starts a periodic cleanup routine
-func (s *AuthEventCleanupService) StartCleanupRoutine(interval time.Duration, retentionPeriod time.Duration) {
+func (s *AuthEventCleanupService) StartCleanupRoutine(ctx context.Context, interval time.Duration, retentionPeriod time.Duration) {
 	if interval <= 0 {
 		interval = 24 * time.Hour // Default to daily cleanup
 	}
@@ -74,14 +76,14 @@ func (s *AuthEventCleanupService) StartCleanupRoutine(interval time.Duration, re
 		defer ticker.Stop()
 
 		// Run cleanup immediately on startup
-		if err := s.CleanupOldAuthEvents(retentionPeriod); err != nil {
+		if err := s.CleanupOldAuthEvents(ctx, retentionPeriod); err != nil {
 			s.logger.WithError(err).Error("Initial auth event cleanup failed")
 		}
 
 		for {
 			select {
 			case <-ticker.C:
-				if err := s.CleanupOldAuthEvents(retentionPeriod); err != nil {
+				if err := s.CleanupOldAuthEvents(ctx, retentionPeriod); err != nil {
 					s.logger.WithError(err).Error("Periodic auth event cleanup failed")
 				}
 			case <-s.stop:

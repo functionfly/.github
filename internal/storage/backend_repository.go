@@ -20,7 +20,7 @@ func NewBackendRepository(db *PostgresDB) *BackendRepository {
 }
 
 // CreateBackend creates a new backend
-func (r *BackendRepository) CreateBackend(appID uuid.UUID, provider, region, url, sharedSecret string, priority *int) (*Backend, error) {
+func (r *BackendRepository) CreateBackend(ctx context.Context, appID uuid.UUID, provider, region, url, sharedSecret string, priority *int) (*Backend, error) {
 	backend := &Backend{
 		ID:           uuid.New(),
 		AppID:        appID,
@@ -34,7 +34,7 @@ func (r *BackendRepository) CreateBackend(appID uuid.UUID, provider, region, url
 		UpdatedAt:    time.Now(),
 	}
 
-	_, err := r.db.Exec(`
+	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO backends (id, app_id, provider, region, url, shared_secret, enabled, priority, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 		backend.ID, backend.AppID, backend.Provider, backend.Region,
@@ -49,8 +49,8 @@ func (r *BackendRepository) CreateBackend(appID uuid.UUID, provider, region, url
 }
 
 // ListBackendsByAppID lists backends for an app
-func (r *BackendRepository) ListBackendsByAppID(appID uuid.UUID) ([]*Backend, error) {
-	rows, err := r.db.Query(`
+func (r *BackendRepository) ListBackendsByAppID(ctx context.Context, appID uuid.UUID) ([]*Backend, error) {
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, app_id, provider, region, url, shared_secret, enabled, priority, created_at, updated_at
 		FROM backends WHERE app_id = $1 ORDER BY created_at`, appID)
 	if err != nil {
@@ -74,9 +74,9 @@ func (r *BackendRepository) ListBackendsByAppID(appID uuid.UUID) ([]*Backend, er
 }
 
 // GetBackendByID retrieves a backend by ID
-func (r *BackendRepository) GetBackendByID(id uuid.UUID) (*Backend, error) {
+func (r *BackendRepository) GetBackendByID(ctx context.Context, id uuid.UUID) (*Backend, error) {
 	backend := &Backend{}
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT id, app_id, provider, region, url, shared_secret, enabled, created_at, updated_at
 		FROM backends WHERE id = $1`, id).Scan(
 		&backend.ID, &backend.AppID, &backend.Provider, &backend.Region,
@@ -94,8 +94,8 @@ func (r *BackendRepository) GetBackendByID(id uuid.UUID) (*Backend, error) {
 }
 
 // GetAllEnabledBackends gets all enabled backends
-func (r *BackendRepository) GetAllEnabledBackends() ([]*Backend, error) {
-	rows, err := r.db.Query(`
+func (r *BackendRepository) GetAllEnabledBackends(ctx context.Context) ([]*Backend, error) {
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, app_id, provider, region, url, shared_secret, enabled, priority, created_at, updated_at
 		FROM backends WHERE enabled = true ORDER BY COALESCE(priority, 999) ASC, created_at ASC`)
 	if err != nil {
@@ -119,8 +119,8 @@ func (r *BackendRepository) GetAllEnabledBackends() ([]*Backend, error) {
 }
 
 // GetBackendStatusByAppID gets backend status for an app
-func (r *BackendRepository) GetBackendStatusByAppID(appID uuid.UUID) ([]*BackendStatus, error) {
-	rows, err := r.db.Query(`
+func (r *BackendRepository) GetBackendStatusByAppID(ctx context.Context, appID uuid.UUID) ([]*BackendStatus, error) {
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT
 			-- Backend data
 			b.id, b.app_id, b.provider, b.region, b.url, b.shared_secret, b.enabled, b.created_at, b.updated_at,
@@ -210,8 +210,8 @@ func (r *BackendRepository) GetBackendStatusByAppID(appID uuid.UUID) ([]*Backend
 }
 
 // InsertHealthCheck inserts a health check result
-func (r *BackendRepository) InsertHealthCheck(backendID uuid.UUID, ok bool, statusCode, latencyMs int, errorMessage string) error {
-	_, err := r.db.Exec(`
+func (r *BackendRepository) InsertHealthCheck(ctx context.Context, backendID uuid.UUID, ok bool, statusCode, latencyMs int, errorMessage string) error {
+	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO health_checks (backend_id, ok, status_code, latency_ms, error_message)
 		VALUES ($1, $2, $3, $4, $5)`,
 		backendID, ok, statusCode, latencyMs, errorMessage)
@@ -224,8 +224,8 @@ func (r *BackendRepository) InsertHealthCheck(backendID uuid.UUID, ok bool, stat
 }
 
 // GetRecentHealthChecks gets recent health checks for a backend
-func (r *BackendRepository) GetRecentHealthChecks(backendID uuid.UUID, limit int) ([]*HealthCheck, error) {
-	rows, err := r.db.Query(`
+func (r *BackendRepository) GetRecentHealthChecks(ctx context.Context, backendID uuid.UUID, limit int) ([]*HealthCheck, error) {
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, backend_id, timestamp, ok, status_code, latency_ms, error_message
 		FROM health_checks
 		WHERE backend_id = $1
@@ -251,9 +251,9 @@ func (r *BackendRepository) GetRecentHealthChecks(backendID uuid.UUID, limit int
 }
 
 // GetCircuitState gets circuit state for a backend
-func (r *BackendRepository) GetCircuitState(backendID uuid.UUID) (*CircuitState, error) {
+func (r *BackendRepository) GetCircuitState(ctx context.Context, backendID uuid.UUID) (*CircuitState, error) {
 	state := &CircuitState{}
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT backend_id, state, since_ts, fail_count, success_count, last_failure_ts, last_success_ts
 		FROM circuit_state WHERE backend_id = $1`, backendID).Scan(
 		&state.BackendID, &state.State, &state.SinceTs,
@@ -276,8 +276,8 @@ func (r *BackendRepository) GetCircuitState(backendID uuid.UUID) (*CircuitState,
 }
 
 // UpdateCircuitState updates circuit state
-func (r *BackendRepository) UpdateCircuitState(state *CircuitState) error {
-	_, err := r.db.Exec(`
+func (r *BackendRepository) UpdateCircuitState(ctx context.Context, state *CircuitState) error {
+	_, err := r.db.ExecContext(ctx, `
 		UPDATE circuit_state SET
 			state = $2, since_ts = $3, fail_count = $4, success_count = $5,
 			last_failure_ts = $6, last_success_ts = $7
@@ -294,8 +294,8 @@ func (r *BackendRepository) UpdateCircuitState(state *CircuitState) error {
 }
 
 // UpsertCircuitState upserts circuit state
-func (r *BackendRepository) UpsertCircuitState(state *CircuitState) error {
-	_, err := r.db.Exec(`
+func (r *BackendRepository) UpsertCircuitState(ctx context.Context, state *CircuitState) error {
+	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO circuit_state (backend_id, state, since_ts, fail_count, success_count, last_failure_ts, last_success_ts)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (backend_id) DO UPDATE SET
@@ -317,8 +317,8 @@ func (r *BackendRepository) UpsertCircuitState(state *CircuitState) error {
 }
 
 // InsertRoutingEvent inserts a routing event
-func (r *BackendRepository) InsertRoutingEvent(appID, backendID uuid.UUID, latencyMs int, outcome, requestID string) error {
-	_, err := r.db.Exec(`
+func (r *BackendRepository) InsertRoutingEvent(ctx context.Context, appID, backendID uuid.UUID, latencyMs int, outcome, requestID string) error {
+	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO routing_events (app_id, backend_id, latency_ms, outcome, request_id)
 		VALUES ($1, $2, $3, $4, $5)`,
 		appID, backendID, latencyMs, outcome, requestID)
@@ -331,8 +331,8 @@ func (r *BackendRepository) InsertRoutingEvent(appID, backendID uuid.UUID, laten
 }
 
 // GetRecentRoutingEvents retrieves recent routing events for error rate calculation
-func (r *BackendRepository) GetRecentRoutingEvents(limit int, since time.Time) ([]*RoutingEvent, error) {
-	rows, err := r.db.Query(`
+func (r *BackendRepository) GetRecentRoutingEvents(ctx context.Context, limit int, since time.Time) ([]*RoutingEvent, error) {
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, app_id, backend_id, timestamp, latency_ms, outcome, request_id
 		FROM routing_events
 		WHERE timestamp >= $1

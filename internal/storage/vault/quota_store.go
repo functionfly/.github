@@ -48,7 +48,7 @@ func NewQuotaStore(repo *Repository) *QuotaStore { return &QuotaStore{repo: repo
 // GetTenantPlan reads the tenant's plan from the public.users /
 // tenants tables. The query joins tenants.plan (assumed column)
 // with tenants.id.
-func (s *QuotaStore) GetTenantPlan(ctx context.Context, tenantID uuid.UUID) (quota.Plan, error) {
+func (s *QuotaStore) GetTenantPlan(ctx context.Context, tenantID uuid.UUID) (string, error) {
 	var row struct {
 		Plan string
 	}
@@ -59,9 +59,9 @@ func (s *QuotaStore) GetTenantPlan(ctx context.Context, tenantID uuid.UUID) (quo
 		Scan(&row).Error; err != nil {
 		// If the tenants table doesn't expose a plan column (e.g.
 		// during early dev), we fall back to free.
-		return quota.PlanFree, nil
+		return "free", nil
 	}
-	return quota.Plan(row.Plan), nil
+	return row.Plan, nil
 }
 
 // GetOverride returns the admin override for a resource, or

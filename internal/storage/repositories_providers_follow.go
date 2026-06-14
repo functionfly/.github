@@ -11,10 +11,10 @@ import (
 // PostgresDB methods: LLM providers, team invites, follows.
 
 // Provider operations
-func (db *PostgresDB) CreateProvider(provider *Provider) error {
+func (db *PostgresDB) CreateProvider(ctx context.Context, provider *Provider) error {
 	// Encrypt the token before storing
 	if provider.Token != "" {
-		encryptedToken, err := db.EncryptField(provider.Token)
+		encryptedToken, err := db.EncryptField(context.Background(), provider.Token)
 		if err != nil {
 			return fmt.Errorf("failed to encrypt provider token: %w", err)
 		}
@@ -23,7 +23,7 @@ func (db *PostgresDB) CreateProvider(provider *Provider) error {
 	return db.GORM.Create(provider).Error
 }
 
-func (db *PostgresDB) GetProviderByID(providerID string) (*Provider, error) {
+func (db *PostgresDB) GetProviderByID(ctx context.Context, providerID string) (*Provider, error) {
 	var provider Provider
 	err := db.GORM.Where("id = ?", providerID).First(&provider).Error
 	if err != nil {
@@ -32,7 +32,7 @@ func (db *PostgresDB) GetProviderByID(providerID string) (*Provider, error) {
 
 	// Decrypt the token
 	if provider.Token != "" {
-		decryptedToken, err := db.DecryptField(provider.Token)
+		decryptedToken, err := db.DecryptField(context.Background(), provider.Token)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt provider token: %w", err)
 		}
@@ -42,7 +42,7 @@ func (db *PostgresDB) GetProviderByID(providerID string) (*Provider, error) {
 	return &provider, nil
 }
 
-func (db *PostgresDB) GetProviderByUserAndType(userID uuid.UUID, providerType string) (*Provider, error) {
+func (db *PostgresDB) GetProviderByUserAndType(ctx context.Context, userID uuid.UUID, providerType string) (*Provider, error) {
 	var provider Provider
 	err := db.GORM.Where("user_id = ? AND provider = ? AND status = 'active'", userID, providerType).First(&provider).Error
 	if err != nil {
@@ -51,7 +51,7 @@ func (db *PostgresDB) GetProviderByUserAndType(userID uuid.UUID, providerType st
 
 	// Decrypt the token
 	if provider.Token != "" {
-		decryptedToken, err := db.DecryptField(provider.Token)
+		decryptedToken, err := db.DecryptField(context.Background(), provider.Token)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt provider token: %w", err)
 		}
@@ -61,7 +61,7 @@ func (db *PostgresDB) GetProviderByUserAndType(userID uuid.UUID, providerType st
 	return &provider, nil
 }
 
-func (db *PostgresDB) GetProvidersByUser(userID uuid.UUID) ([]*Provider, error) {
+func (db *PostgresDB) GetProvidersByUser(ctx context.Context, userID uuid.UUID) ([]*Provider, error) {
 	var providers []*Provider
 	err := db.GORM.Where("user_id = ? AND status = 'active'", userID).Find(&providers).Error
 	if err != nil {
@@ -71,7 +71,7 @@ func (db *PostgresDB) GetProvidersByUser(userID uuid.UUID) ([]*Provider, error) 
 	// Decrypt tokens for all providers
 	for _, provider := range providers {
 		if provider.Token != "" {
-			decryptedToken, err := db.DecryptField(provider.Token)
+			decryptedToken, err := db.DecryptField(context.Background(), provider.Token)
 			if err != nil {
 				return nil, fmt.Errorf("failed to decrypt provider token for %s: %w", provider.ID, err)
 			}
@@ -82,7 +82,7 @@ func (db *PostgresDB) GetProvidersByUser(userID uuid.UUID) ([]*Provider, error) 
 	return providers, nil
 }
 
-func (db *PostgresDB) UpdateProviderStatus(providerID string, status string) error {
+func (db *PostgresDB) UpdateProviderStatus(ctx context.Context, providerID string, status string) error {
 	return db.GORM.Model(&Provider{}).Where("id = ?", providerID).Update("status", status).Error
 }
 
@@ -143,7 +143,7 @@ func (db *PostgresDB) UpdateProvider(ctx context.Context, providerID string, upd
 
 	// Encrypt token if provided
 	if token, ok := updates["token"].(string); ok && token != "" {
-		encryptedToken, err := db.EncryptField(token)
+		encryptedToken, err := db.EncryptField(context.Background(), token)
 		if err != nil {
 			return nil, fmt.Errorf("failed to encrypt provider token: %w", err)
 		}
@@ -157,7 +157,7 @@ func (db *PostgresDB) UpdateProvider(ctx context.Context, providerID string, upd
 
 	// Decrypt for return value so callers can use it
 	if provider.Token != "" {
-		decryptedToken, err := db.DecryptField(provider.Token)
+		decryptedToken, err := db.DecryptField(context.Background(), provider.Token)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt provider token: %w", err)
 		}
@@ -167,11 +167,43 @@ func (db *PostgresDB) UpdateProvider(ctx context.Context, providerID string, upd
 	return &provider, nil
 }
 
-func (db *PostgresDB) ShareProviderWithTeam(providerID string, teamID string) error {
+func (db *PostgresDB) ShareProviderWithTeam(ctx context.Context, providerID string, teamID string) error {
 	return db.GORM.Model(&Provider{}).Where("id = ?", providerID).Updates(map[string]interface{}{
 		"is_shared": true,
 		"team_id":   teamID,
 	}).Error
+}
+
+func (db *PostgresDB) ListProviderSettings(ctx context.Context) ([]*ProviderSettings, error) {
+	var settings []*ProviderSettings
+	err := db.GORM.WithContext(ctx).Find(&settings).Error
+	return settings, err
+}
+
+func (db *PostgresDB) GetProviderSettings(ctx context.Context, provider string) (*ProviderSettings, error) {
+	var settings ProviderSettings
+	err := db.GORM.WithContext(ctx).Where("provider = ?", provider).First(&settings).Error
+	if err != nil {
+		return nil, err
+	}
+	return &settings, nil
+}
+
+func (db *PostgresDB) SetProviderDisabled(ctx context.Context, provider string, disabled bool, reason, disabledBy string) error {
+	updates := map[string]interface{}{
+		"disabled": disabled,
+	}
+	if disabled {
+		now := time.Now()
+		updates["disabled_at"] = now
+		updates["disabled_reason"] = reason
+		updates["disabled_by"] = disabledBy
+	} else {
+		updates["disabled_at"] = nil
+		updates["disabled_reason"] = nil
+		updates["disabled_by"] = nil
+	}
+	return db.GORM.WithContext(ctx).Model(&ProviderSettings{}).Where("provider = ?", provider).Updates(updates).Error
 }
 
 // Team invite operations
@@ -179,19 +211,19 @@ func (db *PostgresDB) CreateTeamInvite(invite *TeamInvite) error {
 	return db.GORM.Create(invite).Error
 }
 
-func (db *PostgresDB) GetTeamInviteByToken(token string) (*TeamInvite, error) {
+func (db *PostgresDB) GetTeamInviteByToken(ctx context.Context, token string) (*TeamInvite, error) {
 	var invite TeamInvite
-	err := db.GORM.Where("token = ? AND status = 'pending' AND expires_at > ?", token, time.Now()).First(&invite).Error
+	err := db.GORM.WithContext(ctx).Where("token = ? AND status = 'pending' AND expires_at > ?", token, time.Now()).First(&invite).Error
 	return &invite, err
 }
 
-func (db *PostgresDB) GetTeamInvitesByTeam(teamID uuid.UUID) ([]*TeamInvite, error) {
+func (db *PostgresDB) GetTeamInvitesByTeam(ctx context.Context, teamID uuid.UUID) ([]*TeamInvite, error) {
 	var invites []*TeamInvite
-	err := db.GORM.Where("team_id = ?", teamID).Find(&invites).Error
+	err := db.GORM.WithContext(ctx).Where("team_id = ?", teamID).Find(&invites).Error
 	return invites, err
 }
 
-func (db *PostgresDB) UpdateTeamInviteStatus(inviteID uuid.UUID, status string) error {
+func (db *PostgresDB) UpdateTeamInviteStatus(ctx context.Context, inviteID uuid.UUID, status string) error {
 	updates := map[string]interface{}{
 		"status": status,
 	}
@@ -199,24 +231,24 @@ func (db *PostgresDB) UpdateTeamInviteStatus(inviteID uuid.UUID, status string) 
 		now := time.Now()
 		updates["accepted_at"] = now
 	}
-	return db.GORM.Model(&TeamInvite{}).Where("id = ?", inviteID).Updates(updates).Error
+	return db.GORM.WithContext(ctx).Model(&TeamInvite{}).Where("id = ?", inviteID).Updates(updates).Error
 }
 
-func (db *PostgresDB) GetTeamByUserID(userID uuid.UUID) (*Team, error) {
+func (db *PostgresDB) GetTeamByUserID(ctx context.Context, userID uuid.UUID) (*Team, error) {
 	var membership TeamMembership
-	err := db.GORM.Where("user_id = ?", userID).First(&membership).Error
+	err := db.GORM.WithContext(ctx).Where("user_id = ?", userID).First(&membership).Error
 	if err != nil {
 		return nil, err
 	}
 
 	var team Team
-	err = db.GORM.Where("id = ?", membership.TeamID).First(&team).Error
+	err = db.GORM.WithContext(ctx).Where("id = ?", membership.TeamID).First(&team).Error
 	return &team, err
 }
 
-func (db *PostgresDB) IsTeamAdmin(userID uuid.UUID, teamID string) (bool, error) {
+func (db *PostgresDB) IsTeamAdmin(ctx context.Context, userID uuid.UUID, teamID string) (bool, error) {
 	var membership TeamMembership
-	err := db.GORM.Where("user_id = ? AND team_id = ? AND role = 'admin'", userID, teamID).First(&membership).Error
+	err := db.GORM.WithContext(ctx).Where("user_id = ? AND team_id = ? AND role = 'admin'", userID, teamID).First(&membership).Error
 	return err == nil, err
 }
 

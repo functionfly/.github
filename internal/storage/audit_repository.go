@@ -45,12 +45,12 @@ func (r *AuditRepository) LogAuditEvent(ctx context.Context, event *AuditEvent) 
 }
 
 // ListAuditEvents lists audit events with pagination
-func (r *AuditRepository) ListAuditEvents(limit, offset int) ([]*AuditEvent, error) {
-	return r.ListAuditEventsFiltered(limit, offset, nil)
+func (r *AuditRepository) ListAuditEvents(ctx context.Context, limit, offset int) ([]*AuditEvent, error) {
+	return r.ListAuditEventsFiltered(ctx, limit, offset, nil)
 }
 
 // ListAuditEventsFiltered lists audit events with filters
-func (r *AuditRepository) ListAuditEventsFiltered(limit, offset int, filters map[string]interface{}) ([]*AuditEvent, error) {
+func (r *AuditRepository) ListAuditEventsFiltered(ctx context.Context, limit, offset int, filters map[string]interface{}) ([]*AuditEvent, error) {
 	baseQuery := `
 		SELECT id, actor_user_id, actor_email, tenant_id, action, resource_type, resource_id,
 			   request_id, before_state, after_state, COALESCE(ip_address::text, ''), user_agent, timestamp, success
@@ -159,7 +159,7 @@ func (r *AuditRepository) ListAuditEventsFiltered(limit, offset int, filters map
 }
 
 // GetAuditEventByID retrieves a single audit event by its ID
-func (r *AuditRepository) GetAuditEventByID(id uuid.UUID) (*AuditEvent, error) {
+func (r *AuditRepository) GetAuditEventByID(ctx context.Context, id uuid.UUID) (*AuditEvent, error) {
 	query := `
 		SELECT id, actor_user_id, actor_email, tenant_id, action, resource_type, resource_id,
 			   request_id, before_state, after_state, COALESCE(ip_address::text, ''), user_agent, timestamp, success

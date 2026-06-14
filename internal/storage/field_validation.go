@@ -2,10 +2,7 @@ package storage
 
 import (
 	"fmt"
-	"regexp"
 )
-
-var validIdentifierChars = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 
 func isValidFieldName(name string) bool {
 	return validIdentifierChars.MatchString(name) && len(name) <= 64

@@ -131,7 +131,7 @@ func (r *CommunityRepository) ListPosts(ctx context.Context, opts ListPostsOptio
 	}
 	if opts.Query != "" {
 		like := "%" + escapeLikeWildcards(strings.ToLower(opts.Query)) + "%"
-		q = q.Where("(LOWER(p.title) LIKE ? ESCAPE '\' OR LOWER(p.body) LIKE ? ESCAPE '\')", like, like)
+		q = q.Where("(LOWER(p.title) LIKE ? ESCAPE '\\' OR LOWER(p.body) LIKE ? ESCAPE '\\')", like, like)
 	}
 
 	switch opts.Sort {

@@ -11,85 +11,85 @@ import (
 // PostgresDB methods: feedback and monitoring/notifications.
 
 // Feedback operations
-func (db *PostgresDB) CreateFeedback(feedback *Feedback) (*Feedback, error) {
-	return db.feedbackRepository.CreateFeedback(feedback)
+func (db *PostgresDB) CreateFeedback(ctx context.Context, feedback *Feedback) (*Feedback, error) {
+	return db.feedbackRepository.CreateFeedback(ctx, feedback)
 }
 
-func (db *PostgresDB) GetFeedbackByID(id uuid.UUID) (*Feedback, error) {
-	return db.feedbackRepository.GetFeedbackByID(id)
+func (db *PostgresDB) GetFeedbackByID(ctx context.Context, id uuid.UUID) (*Feedback, error) {
+	return db.feedbackRepository.GetFeedbackByID(ctx, id)
 }
 
-func (db *PostgresDB) GetFeedbackByUser(userID *uuid.UUID, userEmail *string, limit, offset int) ([]Feedback, error) {
-	return db.feedbackRepository.GetFeedbackByUser(userID, userEmail, limit, offset)
+func (db *PostgresDB) GetFeedbackByUser(ctx context.Context, userID *uuid.UUID, userEmail *string, limit, offset int) ([]Feedback, error) {
+	return db.feedbackRepository.GetFeedbackByUser(ctx, userID, userEmail, limit, offset)
 }
 
-func (db *PostgresDB) ListFeedback(limit, offset int, statusFilter *string, typeFilter *string) ([]Feedback, error) {
-	return db.feedbackRepository.ListFeedback(limit, offset, statusFilter, typeFilter)
+func (db *PostgresDB) ListFeedback(ctx context.Context, limit, offset int, statusFilter *string, typeFilter *string) ([]Feedback, error) {
+	return db.feedbackRepository.ListFeedback(ctx, limit, offset, statusFilter, typeFilter)
 }
 
 func (db *PostgresDB) UpdateFeedbackStatus(id uuid.UUID, status string) error {
-	return db.feedbackRepository.UpdateFeedbackStatus(id, status)
+	return db.feedbackRepository.UpdateFeedbackStatus(context.Background(), id, status)
 }
 
-func (db *PostgresDB) CreateFeedbackAttachment(attachment *FeedbackAttachment) (*FeedbackAttachment, error) {
-	return db.feedbackRepository.CreateFeedbackAttachment(attachment)
+func (db *PostgresDB) CreateFeedbackAttachment(ctx context.Context, attachment *FeedbackAttachment) (*FeedbackAttachment, error) {
+	return db.feedbackRepository.CreateFeedbackAttachment(ctx, attachment)
 }
 
-func (db *PostgresDB) GetFeedbackAttachments(feedbackID uuid.UUID) ([]FeedbackAttachment, error) {
-	return db.feedbackRepository.GetFeedbackAttachments(feedbackID)
+func (db *PostgresDB) GetFeedbackAttachments(ctx context.Context, feedbackID uuid.UUID) ([]FeedbackAttachment, error) {
+	return db.feedbackRepository.GetFeedbackAttachments(ctx, feedbackID)
 }
 
-func (db *PostgresDB) GetFeedbackAttachmentByID(attachmentID uuid.UUID) (*FeedbackAttachment, error) {
-	return db.feedbackRepository.GetFeedbackAttachmentByID(attachmentID)
+func (db *PostgresDB) GetFeedbackAttachmentByID(ctx context.Context, attachmentID uuid.UUID) (*FeedbackAttachment, error) {
+	return db.feedbackRepository.GetFeedbackAttachmentByID(ctx, attachmentID)
 }
 
-func (db *PostgresDB) GetFeedbackStats() (map[string]interface{}, error) {
-	return db.feedbackRepository.GetFeedbackStats()
+func (db *PostgresDB) GetFeedbackStats(ctx context.Context) (map[string]interface{}, error) {
+	return db.feedbackRepository.GetFeedbackStats(ctx)
 }
 
-func (db *PostgresDB) GetFeedbackAnalytics() (map[string]interface{}, error) {
-	return db.feedbackRepository.GetFeedbackAnalytics()
+func (db *PostgresDB) GetFeedbackAnalytics(ctx context.Context) (map[string]interface{}, error) {
+	return db.feedbackRepository.GetFeedbackAnalytics(ctx)
 }
 
 // Monitoring operations
 func (db *PostgresDB) InsertPerformanceMetric(metric *PerformanceMetric) error {
-	return db.monitoringRepository.InsertPerformanceMetric(metric)
+	return db.monitoringRepository.InsertPerformanceMetric(context.Background(), metric)
 }
 
 func (db *PostgresDB) InsertAlert(alert *Alert) error {
-	return db.monitoringRepository.InsertAlert(alert)
+	return db.monitoringRepository.InsertAlert(context.Background(), alert)
 }
 
 func (db *PostgresDB) InsertSystemHealthCheck(check *SystemHealthCheck) error {
-	return db.monitoringRepository.InsertSystemHealthCheck(check)
+	return db.monitoringRepository.InsertSystemHealthCheck(context.Background(), check)
 }
 
 func (db *PostgresDB) InsertMonitoringEvent(event *MonitoringEvent) error {
-	return db.monitoringRepository.InsertMonitoringEvent(event)
+	return db.monitoringRepository.InsertMonitoringEvent(context.Background(), event)
 }
 
-func (db *PostgresDB) QueryMonitoringEvents(eventType string, tenantID *uuid.UUID, since time.Time, limit int) ([]*MonitoringEvent, error) {
-	return db.monitoringRepository.QueryMonitoringEvents(eventType, tenantID, since, limit)
+func (db *PostgresDB) QueryMonitoringEvents(ctx context.Context, eventType string, tenantID *uuid.UUID, since time.Time, limit int) ([]*MonitoringEvent, error) {
+	return db.monitoringRepository.QueryMonitoringEvents(ctx, eventType, tenantID, since, limit)
 }
 
 func (db *PostgresDB) UpdateAlertStatus(alert *Alert) error {
-	return db.monitoringRepository.UpdateAlertStatus(alert)
+	return db.monitoringRepository.UpdateAlertStatus(context.Background(), alert)
 }
 
-func (db *PostgresDB) QueryPerformanceMetrics(metricType string, tenantID *uuid.UUID, since time.Time, limit int) ([]*PerformanceMetric, error) {
-	return db.monitoringRepository.QueryPerformanceMetrics(metricType, tenantID, since, limit)
+func (db *PostgresDB) QueryPerformanceMetrics(ctx context.Context, metricType string, tenantID *uuid.UUID, since time.Time, limit int) ([]*PerformanceMetric, error) {
+	return db.monitoringRepository.QueryPerformanceMetrics(ctx, metricType, tenantID, since, limit)
 }
 
-func (db *PostgresDB) QueryActiveAlerts(tenantID *uuid.UUID) ([]*Alert, error) {
-	return db.monitoringRepository.QueryActiveAlerts(tenantID)
+func (db *PostgresDB) QueryActiveAlerts(ctx context.Context, tenantID *uuid.UUID) ([]*Alert, error) {
+	return db.monitoringRepository.QueryActiveAlerts(ctx, tenantID)
 }
 
-func (db *PostgresDB) QueryLatestSystemHealthChecks() (map[string]*SystemHealthCheck, error) {
-	return db.monitoringRepository.QueryLatestSystemHealthChecks()
+func (db *PostgresDB) QueryLatestSystemHealthChecks(ctx context.Context) (map[string]*SystemHealthCheck, error) {
+	return db.monitoringRepository.QueryLatestSystemHealthChecks(ctx)
 }
 
 func (db *PostgresDB) PgNotify(channel, payload string) error {
-	return db.monitoringRepository.PgNotify(channel, payload)
+	return db.monitoringRepository.PgNotify(context.Background(), channel, payload)
 }
 
 func (db *PostgresDB) PgListen(ctx context.Context, channel string) error {

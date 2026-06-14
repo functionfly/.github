@@ -228,6 +228,19 @@ func (Provider) TableName() string {
 	return "providers"
 }
 
+// ProviderSettings represents platform-wide provider maintenance settings
+type ProviderSettings struct {
+	Provider       string     `json:"provider" gorm:"primaryKey"`
+	Disabled       bool       `json:"disabled" gorm:"default:false"`
+	DisabledReason *string    `json:"disabled_reason,omitempty"`
+	DisabledAt     *time.Time `json:"disabled_at,omitempty"`
+	DisabledBy     *string    `json:"disabled_by,omitempty"`
+}
+
+func (ProviderSettings) TableName() string {
+	return "provider_settings"
+}
+
 // UserSkill represents a skill or expertise area for a user
 type UserSkill struct {
 	ID        uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`

@@ -59,6 +59,7 @@ type BlogCategory struct {
 	Color       string    `json:"color"`
 	Icon        string    `json:"icon"`
 	Order       int       `json:"order"`
+	PostCount   int       `json:"postCount"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
 }

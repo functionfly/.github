@@ -35,7 +35,7 @@ func (db *PostgresDB) CreateDashboardConfig(ctx context.Context, config *Dashboa
 	return config, nil
 }
 
-func (db *PostgresDB) GetDashboardConfigsByTenant(tenantID uuid.UUID) ([]*DashboardConfig, error) {
+func (db *PostgresDB) GetDashboardConfigsByTenant(ctx context.Context, tenantID uuid.UUID) ([]*DashboardConfig, error) {
 	query := `
 		SELECT id, tenant_id, user_id, config_type, name, config, is_active, created_at, updated_at
 		FROM dashboard_configs
@@ -65,7 +65,7 @@ func (db *PostgresDB) GetDashboardConfigsByTenant(tenantID uuid.UUID) ([]*Dashbo
 	return configs, nil
 }
 
-func (db *PostgresDB) GetDashboardConfigsByUser(userID uuid.UUID) ([]*DashboardConfig, error) {
+func (db *PostgresDB) GetDashboardConfigsByUser(ctx context.Context, userID uuid.UUID) ([]*DashboardConfig, error) {
 	query := `
 		SELECT id, tenant_id, user_id, config_type, name, config, is_active, created_at, updated_at
 		FROM dashboard_configs
@@ -95,7 +95,7 @@ func (db *PostgresDB) GetDashboardConfigsByUser(userID uuid.UUID) ([]*DashboardC
 	return configs, nil
 }
 
-func (db *PostgresDB) GetDashboardConfigByID(configID uuid.UUID) (*DashboardConfig, error) {
+func (db *PostgresDB) GetDashboardConfigByID(ctx context.Context, configID uuid.UUID) (*DashboardConfig, error) {
 	query := `
 		SELECT id, tenant_id, user_id, config_type, name, config, is_active, created_at, updated_at
 		FROM dashboard_configs
@@ -120,7 +120,7 @@ func (db *PostgresDB) GetDashboardConfigByID(configID uuid.UUID) (*DashboardConf
 
 func (db *PostgresDB) UpdateDashboardConfig(ctx context.Context, configID uuid.UUID, updates map[string]interface{}) (*DashboardConfig, error) {
 	// Get current config
-	config, err := db.GetDashboardConfigByID(configID)
+	config, err := db.GetDashboardConfigByID(ctx, configID)
 	if err != nil {
 		return nil, err
 	}

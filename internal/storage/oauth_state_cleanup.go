@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"context"
+	"fmt"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -23,9 +25,9 @@ func NewOAuthStateCleanupService(repo Repository) *OAuthStateCleanupService {
 }
 
 // CleanupExpiredOAuthStates removes all expired OAuth states from the database
-func (s *OAuthStateCleanupService) CleanupExpiredOAuthStates() error {
+func (s *OAuthStateCleanupService) CleanupExpiredOAuthStates(ctx context.Context) error {
 	start := time.Now()
-	deletedCount, err := s.repo.DeleteExpiredOAuthStates()
+	deletedCount, err := s.repo.DeleteExpiredOAuthStates(ctx)
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to cleanup expired OAuth states")
 		return err
@@ -65,14 +67,14 @@ func (s *OAuthStateCleanupService) StartCleanupRoutine(interval time.Duration) {
 		defer ticker.Stop()
 
 		// Run cleanup immediately on startup
-		if err := s.CleanupExpiredOAuthStates(); err != nil {
+		if err := s.CleanupExpiredOAuthStates(context.Background()); err != nil {
 			s.logger.WithError(err).Error("Initial OAuth state cleanup failed")
 		}
 
 		for {
 			select {
 			case <-ticker.C:
-				if err := s.CleanupExpiredOAuthStates(); err != nil {
+				if err := s.CleanupExpiredOAuthStates(context.Background()); err != nil {
 					s.logger.WithError(err).Error("Periodic OAuth state cleanup failed")
 				}
 			case <-s.stop:

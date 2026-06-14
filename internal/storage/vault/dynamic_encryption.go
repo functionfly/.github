@@ -33,7 +33,7 @@ func decryptAdminPassword(ctx context.Context, t *DynamicSecretTarget) (string, 
 
 // encryptAdminPasswordForTarget wraps crypto.ServerEncrypt and re-lays
 // the bytes in the layout decryptAdminPassword expects.
-func encryptAdminPasswordForTarget(plaintext []byte, tenantID uuid.UUID) (ct, nonce []byte, keyVersion int, err error) {
+func EncryptAdminPasswordForTarget(plaintext []byte, tenantID uuid.UUID) (ct, nonce []byte, keyVersion int, err error) {
 	body, iv, _, tag, err := crypto.ServerEncrypt(plaintext, tenantID)
 	if err != nil {
 		return nil, nil, 0, err

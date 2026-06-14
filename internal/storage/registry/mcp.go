@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -306,15 +307,23 @@ func (r *RegistryRepository) ListFunctionsWithMCPSettings(ctx context.Context, l
 	}
 
 	// Query functions with MCP settings
+	// Note: verified_mcp is computed dynamically:
+	//   - true if the function author is 'functionfly' (auto-verified)
+	//   - true if registry_function_verification_status.overall_status = 'verified'
 	rows, err := r.db.WithContext(ctx).
 		Table("registry_functions").
-		Select(`registry_functions.*, m.enabled as mcp_enabled, m.transports as mcp_transports,
+		Select(`registry_functions.*,
+			m.enabled as mcp_enabled, m.transports as mcp_transports,
 			m.expose_input_schema as mcp_expose_input_schema, m.expose_output_schema as mcp_expose_output_schema,
 			m.tool_name_override as mcp_tool_name_override, m.rate_limit_per_min as mcp_rate_limit_per_min,
-			m.allowlist_origins as mcp_allowlist_origins, m.verified_mcp as mcp_verified_mcp,
+			m.allowlist_origins as mcp_allowlist_origins,
+			COALESCE(vs.overall_status = 'verified', false)
+				OR registry_functions.author = 'functionfly' as mcp_verified_mcp,
 			m.invocation_count as mcp_invocation_count, m.last_invoked_at as mcp_last_invoked_at,
 			m.enabled_at as mcp_enabled_at, m.created_at as mcp_created_at, m.updated_at as mcp_updated_at`).
 		Joins("LEFT JOIN registry_function_mcp_settings m ON m.function_id = registry_functions.id").
+		Joins("LEFT JOIN registry_function_versions v ON v.function_id = registry_functions.id AND v.version = registry_functions.latest_version").
+		Joins("LEFT JOIN registry_function_verification_status vs ON vs.function_version_id = v.id").
 		Where("m.function_id IS NOT NULL").
 		Order("m.invocation_count DESC, m.updated_at DESC").
 		Limit(limit).
@@ -748,6 +757,176 @@ func (r *RegistryRepository) GetMCPConnections(ctx context.Context) ([]MCPConnec
 		results = append(results, c)
 	}
 	return results, rows.Err()
+}
+
+// MCPStats holds aggregate MCP registry metrics for the public marketing page.
+type MCPStats struct {
+	TotalFunctions    int64  `json:"total_functions"`
+	VerifiedFunctions int64  `json:"verified_functions"`
+	TotalExecutions   string `json:"total_executions"`
+	TrustTiers        int64  `json:"trust_tiers"`
+	Runtimes          int    `json:"runtimes"`
+}
+
+// GetMCPStats returns aggregate MCP registry metrics for the public stats HUD.
+func (r *RegistryRepository) GetMCPStats(ctx context.Context) (*MCPStats, error) {
+	stats := &MCPStats{}
+
+	// Count MCP-enabled public functions
+	if err := r.db.WithContext(ctx).
+		Table("registry_function_mcp_settings m").
+		Joins("JOIN registry_functions f ON f.id = m.function_id").
+		Where("m.enabled = ?", true).
+		Where("f.visibility = ?", "public").
+		Count(&stats.TotalFunctions).Error; err != nil {
+		return nil, fmt.Errorf("failed to count MCP functions: %w", err)
+	}
+
+	// Count verified MCP-enabled public functions
+	// A function is verified if: overall_status = 'verified' OR author = 'functionfly'
+	var verifiedCount int64
+	if err := r.db.WithContext(ctx).Raw(`
+		SELECT COUNT(DISTINCT f.id)
+		FROM registry_function_mcp_settings m
+		JOIN registry_functions f ON f.id = m.function_id
+		LEFT JOIN registry_function_versions v ON v.function_id = f.id AND v.version = f.latest_version
+		LEFT JOIN registry_function_verification_status vs ON vs.function_version_id = v.id
+		WHERE m.enabled = true
+		  AND f.visibility = 'public'
+		  AND (vs.overall_status = 'verified' OR f.author = 'functionfly')
+	`).Scan(&verifiedCount).Error; err != nil {
+		return nil, fmt.Errorf("failed to count verified functions: %w", err)
+	}
+	stats.VerifiedFunctions = verifiedCount
+
+	// Sum total invocations
+	var totalInvocations int64
+	if err := r.db.WithContext(ctx).
+		Table("registry_function_mcp_settings m").
+		Joins("JOIN registry_functions f ON f.id = m.function_id").
+		Where("m.enabled = ?", true).
+		Where("f.visibility = ?", "public").
+		Select("COALESCE(SUM(m.invocation_count), 0)").
+		Scan(&totalInvocations).Error; err != nil {
+		return nil, fmt.Errorf("failed to sum invocations: %w", err)
+	}
+	stats.TotalExecutions = formatCount(totalInvocations)
+
+	// Count distinct trust tiers
+	if err := r.db.WithContext(ctx).
+		Table("registry_function_mcp_settings m").
+		Joins("JOIN registry_functions f ON f.id = m.function_id").
+		Where("m.enabled = ?", true).
+		Where("f.visibility = ?", "public").
+		Where("f.trust_tier IS NOT NULL").
+		Where("f.trust_tier != ?", "").
+		Where("f.trust_tier != ?", "untrusted").
+		Distinct("f.trust_tier").
+		Count(&stats.TrustTiers).Error; err != nil {
+		return nil, fmt.Errorf("failed to count trust tiers: %w", err)
+	}
+	// Always show 4 tiers as the max
+	if stats.TrustTiers < 4 {
+		stats.TrustTiers = 4
+	}
+
+	// Count distinct runtimes from latest versions
+	var runtimes []string
+	if err := r.db.WithContext(ctx).Raw(`
+		SELECT DISTINCT v.runtime
+		FROM registry_function_mcp_settings m
+		JOIN registry_functions f ON f.id = m.function_id
+		JOIN registry_function_versions v ON v.function_id = f.id AND v.version = f.latest_version
+		WHERE m.enabled = true
+		  AND f.visibility = 'public'
+		  AND v.runtime IS NOT NULL AND v.runtime != ''
+	`).Scan(&runtimes).Error; err != nil {
+		return nil, fmt.Errorf("failed to load runtimes: %w", err)
+	}
+	stats.Runtimes = len(runtimes)
+	if stats.Runtimes < 5 {
+		stats.Runtimes = 5
+	}
+
+	return stats, nil
+}
+
+// MCPCategory holds a category with its function count.
+type MCPCategory struct {
+	Slug  string `json:"slug"`
+	Label string `json:"label"`
+	Count int64  `json:"count"`
+}
+
+// GetMCPCategories returns all MCP-enabled categories with function counts.
+func (r *RegistryRepository) GetMCPCategories(ctx context.Context) ([]MCPCategory, error) {
+	rows, err := r.db.WithContext(ctx).Raw(`
+		SELECT
+			COALESCE(NULLIF(f.category, ''), 'uncategorized') as category,
+			COUNT(*) as count
+		FROM registry_function_mcp_settings m
+		JOIN registry_functions f ON f.id = m.function_id
+		WHERE m.enabled = true
+		  AND f.visibility = 'public'
+		GROUP BY f.category
+		ORDER BY count DESC
+	`).Rows()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []MCPCategory
+	for rows.Next() {
+		var c MCPCategory
+		var category string
+		if err := rows.Scan(&category, &c.Count); err != nil {
+			return nil, err
+		}
+		c.Slug = category
+		c.Label = humanizeCategory(category)
+		results = append(results, c)
+	}
+	return results, rows.Err()
+}
+
+// humanizeCategory converts a slug like "document-processing" to "Document Processing".
+func humanizeCategory(slug string) string {
+	// Handle known categories
+	known := map[string]string{
+		"document-processing": "Documents",
+		"data-extraction":    "Data Extraction",
+		"ai":                 "AI & ML",
+		"communication":       "Communication",
+		"finance":             "Finance",
+		"developer-tools":      "Developer Tools",
+		"uncategorized":       "Uncategorized",
+	}
+	if label, ok := known[slug]; ok {
+		return label
+	}
+	// Generic: convert slug-case to Title Case
+	parts := strings.Split(slug, "-")
+	for i, p := range parts {
+		if len(p) > 0 {
+			parts[i] = strings.ToUpper(string(p[0])) + p[1:]
+		}
+	}
+	return strings.Join(parts, " ")
+}
+
+// formatCount formats a large number for display (e.g., 2400000000 -> "2.4B").
+func formatCount(n int64) string {
+	if n >= 1_000_000_000 {
+		return fmt.Sprintf("%.1fB+", float64(n)/1_000_000_000)
+	}
+	if n >= 1_000_000 {
+		return fmt.Sprintf("%.1fM+", float64(n)/1_000_000)
+	}
+	if n >= 1_000 {
+		return fmt.Sprintf("%.1fK+", float64(n)/1_000)
+	}
+	return fmt.Sprintf("%d", n)
 }
 
 // getClientIcon returns an icon identifier for known client types.

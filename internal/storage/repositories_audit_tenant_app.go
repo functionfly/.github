@@ -10,20 +10,20 @@ import (
 // PostgresDB methods: audit, tenants, apps.
 
 // Audit operations
-func (db *PostgresDB) ListAuditEvents(limit, offset int) ([]*AuditEvent, error) {
-	return db.auditRepository.ListAuditEvents(limit, offset)
+func (db *PostgresDB) ListAuditEvents(ctx context.Context, limit, offset int) ([]*AuditEvent, error) {
+	return db.auditRepository.ListAuditEvents(ctx, limit, offset)
 }
 
 func (db *PostgresDB) LogAuditEvent(ctx context.Context, event *AuditEvent) error {
 	return db.auditRepository.LogAuditEvent(ctx, event)
 }
 
-func (db *PostgresDB) ListAuditEventsFiltered(limit, offset int, filters map[string]interface{}) ([]*AuditEvent, error) {
-	return db.auditRepository.ListAuditEventsFiltered(limit, offset, filters)
+func (db *PostgresDB) ListAuditEventsFiltered(ctx context.Context, limit, offset int, filters map[string]interface{}) ([]*AuditEvent, error) {
+	return db.auditRepository.ListAuditEventsFiltered(ctx, limit, offset, filters)
 }
 
-func (db *PostgresDB) GetAuditEventByID(id uuid.UUID) (*AuditEvent, error) {
-	return db.auditRepository.GetAuditEventByID(id)
+func (db *PostgresDB) GetAuditEventByID(ctx context.Context, id uuid.UUID) (*AuditEvent, error) {
+	return db.auditRepository.GetAuditEventByID(ctx, id)
 }
 
 // Tenant operations
@@ -97,22 +97,22 @@ func (db *PostgresDB) RemoveTenantMember(ctx context.Context, userID, tenantID u
 }
 
 // App operations
-func (db *PostgresDB) CreateApp(name, slug string, tenantID uuid.UUID) (*App, error) {
-	return db.appRepository.CreateApp(name, slug, tenantID)
+func (db *PostgresDB) CreateApp(ctx context.Context, name, slug string, tenantID uuid.UUID) (*App, error) {
+	return db.appRepository.CreateApp(ctx, name, slug, tenantID)
 }
 
-func (db *PostgresDB) GetAppByID(id uuid.UUID) (*App, error) {
-	return db.appRepository.GetAppByID(id)
+func (db *PostgresDB) GetAppByID(ctx context.Context, id uuid.UUID) (*App, error) {
+	return db.appRepository.GetAppByID(ctx, id)
 }
 
-func (db *PostgresDB) GetAppBySlug(slug string) (*App, error) {
-	return db.appRepository.GetAppBySlug(slug)
+func (db *PostgresDB) GetAppBySlug(ctx context.Context, slug string) (*App, error) {
+	return db.appRepository.GetAppBySlug(ctx, slug)
 }
 
-func (db *PostgresDB) GetAppBySlugAndTenant(slug string, tenantID uuid.UUID) (*App, error) {
-	return db.appRepository.GetAppBySlugAndTenant(slug, tenantID)
+func (db *PostgresDB) GetAppBySlugAndTenant(ctx context.Context, slug string, tenantID uuid.UUID) (*App, error) {
+	return db.appRepository.GetAppBySlugAndTenant(ctx, slug, tenantID)
 }
 
-func (db *PostgresDB) ListAppsByTenant(tenantID uuid.UUID) ([]*App, error) {
-	return db.appRepository.ListAppsByTenant(tenantID)
+func (db *PostgresDB) ListAppsByTenant(ctx context.Context, tenantID uuid.UUID) ([]*App, error) {
+	return db.appRepository.ListAppsByTenant(ctx, tenantID)
 }

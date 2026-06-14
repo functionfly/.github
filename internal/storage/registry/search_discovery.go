@@ -8,6 +8,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 // CachedFunctionList represents a cached function list result

@@ -14,20 +14,20 @@ func (db *PostgresDB) CancelSubscription(ctx context.Context, id uuid.UUID) erro
 	return db.billingRepository.CancelSubscription(ctx, id)
 }
 
-func (db *PostgresDB) ListAllSubscriptions(limit, offset int) ([]*Subscription, error) {
-	return db.billingRepository.ListAllSubscriptions(limit, offset)
+func (db *PostgresDB) ListAllSubscriptions(ctx context.Context, limit, offset int) ([]*Subscription, error) {
+	return db.billingRepository.ListAllSubscriptions(ctx, limit, offset)
 }
 
 func (db *PostgresDB) CreatePricingTier(ctx context.Context, tier *PricingTier) (*PricingTier, error) {
 	return db.billingRepository.CreatePricingTier(ctx, tier)
 }
 
-func (db *PostgresDB) ListPricingTiers() ([]*PricingTier, error) {
-	return db.billingRepository.ListPricingTiers()
+func (db *PostgresDB) ListPricingTiers(ctx context.Context) ([]*PricingTier, error) {
+	return db.billingRepository.ListPricingTiers(ctx)
 }
 
-func (db *PostgresDB) GetPricingTierByID(id uuid.UUID) (*PricingTier, error) {
-	return db.billingRepository.GetPricingTierByID(id)
+func (db *PostgresDB) GetPricingTierByID(ctx context.Context, id uuid.UUID) (*PricingTier, error) {
+	return db.billingRepository.GetPricingTierByID(ctx, id)
 }
 
 func (db *PostgresDB) UpdatePricingTier(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*PricingTier, error) {
@@ -46,8 +46,8 @@ func (db *PostgresDB) GetSubscriptionByID(ctx context.Context, id uuid.UUID) (*S
 	return db.billingRepository.GetSubscriptionByID(ctx, id)
 }
 
-func (db *PostgresDB) GetSubscriptionByTenantID(tenantID uuid.UUID) (*Subscription, error) {
-	return db.billingRepository.GetSubscriptionByTenantID(tenantID)
+func (db *PostgresDB) GetSubscriptionByTenantID(ctx context.Context, tenantID uuid.UUID) (*Subscription, error) {
+	return db.billingRepository.GetSubscriptionByTenantID(ctx, tenantID)
 }
 
 func (db *PostgresDB) GetSubscriptionByStripeID(ctx context.Context, stripeSubscriptionID string) (*Subscription, error) {
@@ -66,20 +66,20 @@ func (db *PostgresDB) CreatePaidInvoiceForStripeCheckoutSession(ctx context.Cont
 	return db.billingRepository.CreatePaidInvoiceForStripeCheckoutSession(ctx, tenantID, amountCents, currency, checkoutSessionID, receiptURL)
 }
 
-func (db *PostgresDB) ListInvoicesByTenant(tenantID uuid.UUID, limit, offset int) ([]*Invoice, error) {
-	return db.billingRepository.ListInvoicesByTenant(tenantID, limit, offset)
+func (db *PostgresDB) ListInvoicesByTenant(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*Invoice, error) {
+	return db.billingRepository.ListInvoicesByTenant(ctx, tenantID, limit, offset)
 }
 
-func (db *PostgresDB) CountInvoicesByTenant(tenantID uuid.UUID) (int, error) {
-	return db.billingRepository.CountInvoicesByTenant(tenantID)
+func (db *PostgresDB) CountInvoicesByTenant(ctx context.Context, tenantID uuid.UUID) (int, error) {
+	return db.billingRepository.CountInvoicesByTenant(ctx, tenantID)
 }
 
-func (db *PostgresDB) ListAllInvoices(limit, offset int) ([]*Invoice, error) {
-	return db.billingRepository.ListAllInvoices(limit, offset)
+func (db *PostgresDB) ListAllInvoices(ctx context.Context, limit, offset int) ([]*Invoice, error) {
+	return db.billingRepository.ListAllInvoices(ctx, limit, offset)
 }
 
-func (db *PostgresDB) GetInvoiceByID(id uuid.UUID) (*Invoice, error) {
-	return db.billingRepository.GetInvoiceByID(id)
+func (db *PostgresDB) GetInvoiceByID(ctx context.Context, id uuid.UUID) (*Invoice, error) {
+	return db.billingRepository.GetInvoiceByID(ctx, id)
 }
 
 func (db *PostgresDB) UpdateInvoice(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*Invoice, error) {
@@ -90,24 +90,24 @@ func (db *PostgresDB) RecordUsageEvent(ctx context.Context, event *UsageEvent) e
 	return db.billingRepository.RecordUsageEvent(ctx, event)
 }
 
-func (db *PostgresDB) GetUsageByTenant(tenantID uuid.UUID, eventType string, start, end time.Time) ([]*UsageRollup, error) {
-	return db.billingRepository.GetUsageByTenant(tenantID, eventType, start, end)
+func (db *PostgresDB) GetUsageByTenant(ctx context.Context, tenantID uuid.UUID, eventType string, start, end time.Time) ([]*UsageRollup, error) {
+	return db.billingRepository.GetUsageByTenant(ctx, tenantID, eventType, start, end)
 }
 
-func (db *PostgresDB) GetUsageByTenantByFunction(tenantID uuid.UUID, start, end time.Time) ([]*FunctionUsageRollup, error) {
-	return db.billingRepository.GetUsageByTenantByFunction(tenantID, start, end)
+func (db *PostgresDB) GetUsageByTenantByFunction(ctx context.Context, tenantID uuid.UUID, start, end time.Time) ([]*FunctionUsageRollup, error) {
+	return db.billingRepository.GetUsageByTenantByFunction(ctx, tenantID, start, end)
 }
 
 func (db *PostgresDB) CreateCoupon(ctx context.Context, coupon *Coupon) (*Coupon, error) {
 	return db.billingRepository.CreateCoupon(ctx, coupon)
 }
 
-func (db *PostgresDB) ListCoupons() ([]*Coupon, error) {
-	return db.billingRepository.ListCoupons()
+func (db *PostgresDB) ListCoupons(ctx context.Context) ([]*Coupon, error) {
+	return db.billingRepository.ListCoupons(ctx)
 }
 
-func (db *PostgresDB) GetCouponByCode(code string) (*Coupon, error) {
-	return db.billingRepository.GetCouponByCode(code)
+func (db *PostgresDB) GetCouponByCode(ctx context.Context, code string) (*Coupon, error) {
+	return db.billingRepository.GetCouponByCode(ctx, code)
 }
 
 func (db *PostgresDB) RedeemCoupon(ctx context.Context, couponID, tenantID uuid.UUID, subscriptionID *uuid.UUID) (*CouponRedemption, error) {
@@ -119,20 +119,20 @@ func (db *PostgresDB) CreateAffiliateCode(ctx context.Context, code *AffiliateCo
 	return db.billingRepository.CreateAffiliateCode(ctx, code)
 }
 
-func (db *PostgresDB) GetAffiliateCodeByID(id uuid.UUID) (*AffiliateCode, error) {
-	return db.billingRepository.GetAffiliateCodeByID(id)
+func (db *PostgresDB) GetAffiliateCodeByID(ctx context.Context, id uuid.UUID) (*AffiliateCode, error) {
+	return db.billingRepository.GetAffiliateCodeByID(ctx, id)
 }
 
-func (db *PostgresDB) GetAffiliateCodeByCode(code string) (*AffiliateCode, error) {
-	return db.billingRepository.GetAffiliateCodeByCode(code)
+func (db *PostgresDB) GetAffiliateCodeByCode(ctx context.Context, code string) (*AffiliateCode, error) {
+	return db.billingRepository.GetAffiliateCodeByCode(ctx, code)
 }
 
-func (db *PostgresDB) ListAffiliateCodes() ([]*AffiliateCode, error) {
-	return db.billingRepository.ListAffiliateCodes()
+func (db *PostgresDB) ListAffiliateCodes(ctx context.Context) ([]*AffiliateCode, error) {
+	return db.billingRepository.ListAffiliateCodes(ctx)
 }
 
-func (db *PostgresDB) ListAffiliateCodesByPublisher(publisherID uuid.UUID) ([]*AffiliateCode, error) {
-	return db.billingRepository.ListAffiliateCodesByPublisher(publisherID)
+func (db *PostgresDB) ListAffiliateCodesByPublisher(ctx context.Context, publisherID uuid.UUID) ([]*AffiliateCode, error) {
+	return db.billingRepository.ListAffiliateCodesByPublisher(ctx, publisherID)
 }
 
 func (db *PostgresDB) UpdateAffiliateCode(ctx context.Context, code *AffiliateCode) error {
@@ -143,16 +143,16 @@ func (db *PostgresDB) CreateAffiliateReferral(ctx context.Context, referral *Aff
 	return db.billingRepository.CreateAffiliateReferral(ctx, referral)
 }
 
-func (db *PostgresDB) GetAffiliateReferralByID(id uuid.UUID) (*AffiliateReferral, error) {
-	return db.billingRepository.GetAffiliateReferralByID(id)
+func (db *PostgresDB) GetAffiliateReferralByID(ctx context.Context, id uuid.UUID) (*AffiliateReferral, error) {
+	return db.billingRepository.GetAffiliateReferralByID(ctx, id)
 }
 
-func (db *PostgresDB) GetAffiliateReferralByTenant(tenantID uuid.UUID) (*AffiliateReferral, error) {
-	return db.billingRepository.GetAffiliateReferralByTenant(tenantID)
+func (db *PostgresDB) GetAffiliateReferralByTenant(ctx context.Context, tenantID uuid.UUID) (*AffiliateReferral, error) {
+	return db.billingRepository.GetAffiliateReferralByTenant(ctx, tenantID)
 }
 
-func (db *PostgresDB) ListAffiliateReferralsByCode(codeID uuid.UUID) ([]*AffiliateReferral, error) {
-	return db.billingRepository.ListAffiliateReferralsByCode(codeID)
+func (db *PostgresDB) ListAffiliateReferralsByCode(ctx context.Context, codeID uuid.UUID) ([]*AffiliateReferral, error) {
+	return db.billingRepository.ListAffiliateReferralsByCode(ctx, codeID)
 }
 
 func (db *PostgresDB) UpdateAffiliateReferralStatus(ctx context.Context, id uuid.UUID, status string) error {
@@ -163,35 +163,35 @@ func (db *PostgresDB) CreateAffiliateCommission(ctx context.Context, commission 
 	return db.billingRepository.CreateAffiliateCommission(ctx, commission)
 }
 
-func (db *PostgresDB) GetAffiliateCommissionByID(id uuid.UUID) (*AffiliateCommission, error) {
-	return db.billingRepository.GetAffiliateCommissionByID(id)
+func (db *PostgresDB) GetAffiliateCommissionByID(ctx context.Context, id uuid.UUID) (*AffiliateCommission, error) {
+	return db.billingRepository.GetAffiliateCommissionByID(ctx, id)
 }
 
-func (db *PostgresDB) ListAffiliateCommissionsByCode(codeID uuid.UUID) ([]*AffiliateCommission, error) {
-	return db.billingRepository.ListAffiliateCommissionsByCode(codeID)
+func (db *PostgresDB) ListAffiliateCommissionsByCode(ctx context.Context, codeID uuid.UUID) ([]*AffiliateCommission, error) {
+	return db.billingRepository.ListAffiliateCommissionsByCode(ctx, codeID)
 }
 
-func (db *PostgresDB) ListAffiliateCommissionsByPublisher(publisherID uuid.UUID) ([]*AffiliateCommission, error) {
-	return db.billingRepository.ListAffiliateCommissionsByPublisher(publisherID)
+func (db *PostgresDB) ListAffiliateCommissionsByPublisher(ctx context.Context, publisherID uuid.UUID) ([]*AffiliateCommission, error) {
+	return db.billingRepository.ListAffiliateCommissionsByPublisher(ctx, publisherID)
 }
 
 func (db *PostgresDB) UpdateAffiliateCommissionStatus(ctx context.Context, id uuid.UUID, status string) error {
 	return db.billingRepository.UpdateAffiliateCommissionStatus(ctx, id, status)
 }
 
-func (db *PostgresDB) CalculateCommission(commissionType string, commissionValue, baseAmountUSD float64) (commissionCents int64, commissionUSD float64) {
-	return db.billingRepository.CalculateCommission(commissionType, commissionValue, baseAmountUSD)
+func (db *PostgresDB) CalculateCommission(ctx context.Context, commissionType string, commissionValue, baseAmountUSD float64) (commissionCents int64, commissionUSD float64) {
+	return db.billingRepository.CalculateCommission(ctx, commissionType, commissionValue, baseAmountUSD)
 }
 
 // Revenue System Phase 1 - Trust Layer Monetization
 
 // Verification Fees
-func (db *PostgresDB) GetVerificationFeeByLevel(level string) (*VerificationFee, error) {
-	return db.revenueRepository.GetVerificationFeeByLevel(level)
+func (db *PostgresDB) GetVerificationFeeByLevel(ctx context.Context, level string) (*VerificationFee, error) {
+	return db.revenueRepository.GetVerificationFeeByLevel(ctx, level)
 }
 
-func (db *PostgresDB) ListVerificationFees() ([]*VerificationFee, error) {
-	return db.revenueRepository.ListVerificationFees()
+func (db *PostgresDB) ListVerificationFees(ctx context.Context) ([]*VerificationFee, error) {
+	return db.revenueRepository.ListVerificationFees(ctx)
 }
 
 // Function Verification Payments
@@ -199,8 +199,8 @@ func (db *PostgresDB) CreateFunctionVerificationPayment(ctx context.Context, pay
 	return db.revenueRepository.CreateFunctionVerificationPayment(ctx, payment)
 }
 
-func (db *PostgresDB) GetFunctionVerificationPaymentByID(id uuid.UUID) (*FunctionVerificationPayment, error) {
-	return db.revenueRepository.GetFunctionVerificationPaymentByID(id)
+func (db *PostgresDB) GetFunctionVerificationPaymentByID(ctx context.Context, id uuid.UUID) (*FunctionVerificationPayment, error) {
+	return db.revenueRepository.GetFunctionVerificationPaymentByID(ctx, id)
 }
 
 func (db *PostgresDB) GetFunctionVerificationPaymentByCheckoutSessionID(ctx context.Context, sessionID string) (*FunctionVerificationPayment, error) {
@@ -280,12 +280,12 @@ func (db *PostgresDB) GetPlatformFeesSummary(ctx context.Context) (totalCollecte
 }
 
 // Pricing Tiers Extended
-func (db *PostgresDB) ListPricingTiersExtended() ([]*PricingTierExtended, error) {
-	return db.revenueRepository.ListPricingTiersExtended()
+func (db *PostgresDB) ListPricingTiersExtended(ctx context.Context) ([]*PricingTierExtended, error) {
+	return db.revenueRepository.ListPricingTiersExtended(ctx)
 }
 
-func (db *PostgresDB) GetPricingTierExtendedByID(id uuid.UUID) (*PricingTierExtended, error) {
-	return db.revenueRepository.GetPricingTierExtendedByID(id)
+func (db *PostgresDB) GetPricingTierExtendedByID(ctx context.Context, id uuid.UUID) (*PricingTierExtended, error) {
+	return db.revenueRepository.GetPricingTierExtendedByID(ctx, id)
 }
 
 // AggregateExecutionsForBilling aggregates function executions for billing over a time period

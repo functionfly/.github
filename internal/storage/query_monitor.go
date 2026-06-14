@@ -152,6 +152,12 @@ func (qm *QueryMonitor) afterQuery(db *gorm.DB) {
 	}
 
 	duration := time.Since(start)
+
+	// Fast path: skip all overhead if below threshold and stats collection is disabled
+	if duration < qm.slowQueryThreshold && !qm.logQueries && !qm.collectStats {
+		return
+	}
+
 	query := db.Statement.SQL.String()
 
 	// Get query args if available

@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"gorm.io/gorm"
@@ -17,23 +19,23 @@ func NewTeamRepository(db *gorm.DB) *TeamRepository {
 }
 
 // CreateTeam creates a new team
-func (r *TeamRepository) CreateTeam(team *Team) error {
-	return r.db.Create(team).Error
+func (r *TeamRepository) CreateTeam(ctx context.Context, team *Team) error {
+	return r.db.WithContext(ctx).Create(team).Error
 }
 
 // GetTeamByID gets a team by ID.
 // Uses batch queries instead of GORM's chained Preloads to avoid the N+1
 // query problem (each Preload fires a separate sequential query, compounding
 // latency with nested relations like Members → User).
-func (r *TeamRepository) GetTeamByID(teamID uuid.UUID) (*Team, error) {
+func (r *TeamRepository) GetTeamByID(ctx context.Context, teamID uuid.UUID) (*Team, error) {
 	var team Team
-	if err := r.db.Where("id = ?", teamID).First(&team).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("id = ?", teamID).First(&team).Error; err != nil {
 		return nil, err
 	}
 
 	// Batch-load all memberships for this team.
 	var memberships []TeamMembership
-	if err := r.db.Where("team_id = ?", teamID).Find(&memberships).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("team_id = ?", teamID).Find(&memberships).Error; err != nil {
 		return nil, err
 	}
 	if len(memberships) == 0 {
@@ -56,7 +58,7 @@ func (r *TeamRepository) GetTeamByID(teamID uuid.UUID) (*Team, error) {
 	users := make(map[uuid.UUID]*User, len(userIDs))
 	if len(userIDs) > 0 {
 		var userRecords []User
-		if err := r.db.Where("id IN ?", userIDs).Find(&userRecords).Error; err != nil {
+		if err := r.db.WithContext(ctx).Where("id IN ?", userIDs).Find(&userRecords).Error; err != nil {
 			return nil, err
 		}
 		for i := range userRecords {
@@ -66,7 +68,7 @@ func (r *TeamRepository) GetTeamByID(teamID uuid.UUID) (*Team, error) {
 
 	// Batch-load all permissions for this team in one query.
 	var permissions []TeamPermission
-	if err := r.db.Where("team_id = ?", teamID).Find(&permissions).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("team_id = ?", teamID).Find(&permissions).Error; err != nil {
 		return nil, err
 	}
 
@@ -89,9 +91,9 @@ func (r *TeamRepository) GetTeamByID(teamID uuid.UUID) (*Team, error) {
 // Uses batch queries instead of GORM's chained Preloads to avoid the N+1
 // query problem (each Preload fires a separate sequential query, compounding
 // latency with nested relations like Members → User).
-func (r *TeamRepository) GetTeamsByTenantID(tenantID uuid.UUID) ([]*Team, error) {
+func (r *TeamRepository) GetTeamsByTenantID(ctx context.Context, tenantID uuid.UUID) ([]*Team, error) {
 	var teams []*Team
-	if err := r.db.Where("tenant_id = ?", tenantID).Find(&teams).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("tenant_id = ?", tenantID).Find(&teams).Error; err != nil {
 		return nil, err
 	}
 	if len(teams) == 0 {
@@ -108,7 +110,7 @@ func (r *TeamRepository) GetTeamsByTenantID(tenantID uuid.UUID) ([]*Team, error)
 
 	// Batch-load all memberships for these teams in one query.
 	var memberships []TeamMembership
-	if err := r.db.Where("team_id IN ?", teamIDs).Find(&memberships).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("team_id IN ?", teamIDs).Find(&memberships).Error; err != nil {
 		return nil, err
 	}
 
@@ -126,7 +128,7 @@ func (r *TeamRepository) GetTeamsByTenantID(tenantID uuid.UUID) ([]*Team, error)
 	users := make(map[uuid.UUID]*User, len(userIDs))
 	if len(userIDs) > 0 {
 		var userRecords []User
-		if err := r.db.Where("id IN ?", userIDs).Find(&userRecords).Error; err != nil {
+		if err := r.db.WithContext(ctx).Where("id IN ?", userIDs).Find(&userRecords).Error; err != nil {
 			return nil, err
 		}
 		for i := range userRecords {
@@ -136,7 +138,7 @@ func (r *TeamRepository) GetTeamsByTenantID(tenantID uuid.UUID) ([]*Team, error)
 
 	// Batch-load all permissions for these teams in one query.
 	var permissions []TeamPermission
-	if err := r.db.Where("team_id IN ?", teamIDs).Find(&permissions).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("team_id IN ?", teamIDs).Find(&permissions).Error; err != nil {
 		return nil, err
 	}
 
@@ -167,34 +169,34 @@ func (r *TeamRepository) GetTeamsByTenantID(tenantID uuid.UUID) ([]*Team, error)
 }
 
 // UpdateTeam updates a team
-func (r *TeamRepository) UpdateTeam(team *Team) error {
-	return r.db.Save(team).Error
+func (r *TeamRepository) UpdateTeam(ctx context.Context, team *Team) error {
+	return r.db.WithContext(ctx).Save(team).Error
 }
 
 // DeleteTeam deletes a team
-func (r *TeamRepository) DeleteTeam(teamID uuid.UUID) error {
-	return r.db.Delete(&Team{}, "id = ?", teamID).Error
+func (r *TeamRepository) DeleteTeam(ctx context.Context, teamID uuid.UUID) error {
+	return r.db.WithContext(ctx).Delete(&Team{}, "id = ?", teamID).Error
 }
 
 // AddTeamMember adds a user to a team
-func (r *TeamRepository) AddTeamMember(membership *TeamMembership) error {
-	return r.db.Create(membership).Error
+func (r *TeamRepository) AddTeamMember(ctx context.Context, membership *TeamMembership) error {
+	return r.db.WithContext(ctx).Create(membership).Error
 }
 
 // UpdateTeamMember updates a team member's role
-func (r *TeamRepository) UpdateTeamMember(teamID, userID uuid.UUID, role string) error {
-	return r.db.Model(&TeamMembership{}).Where("team_id = ? AND user_id = ?", teamID, userID).Update("role", role).Error
+func (r *TeamRepository) UpdateTeamMember(ctx context.Context, teamID, userID uuid.UUID, role string) error {
+	return r.db.WithContext(ctx).Model(&TeamMembership{}).Where("team_id = ? AND user_id = ?", teamID, userID).Update("role", role).Error
 }
 
 // RemoveTeamMember removes a user from a team
-func (r *TeamRepository) RemoveTeamMember(teamID, userID uuid.UUID) error {
-	return r.db.Delete(&TeamMembership{}, "team_id = ? AND user_id = ?", teamID, userID).Error
+func (r *TeamRepository) RemoveTeamMember(ctx context.Context, teamID, userID uuid.UUID) error {
+	return r.db.WithContext(ctx).Delete(&TeamMembership{}, "team_id = ? AND user_id = ?", teamID, userID).Error
 }
 
 // GetTeamMembership gets a user's membership in a team
-func (r *TeamRepository) GetTeamMembership(teamID, userID uuid.UUID) (*TeamMembership, error) {
+func (r *TeamRepository) GetTeamMembership(ctx context.Context, teamID, userID uuid.UUID) (*TeamMembership, error) {
 	var membership TeamMembership
-	err := r.db.Where("team_id = ? AND user_id = ?", teamID, userID).First(&membership).Error
+	err := r.db.WithContext(ctx).Where("team_id = ? AND user_id = ?", teamID, userID).First(&membership).Error
 	if err != nil {
 		return nil, err
 	}
@@ -202,9 +204,9 @@ func (r *TeamRepository) GetTeamMembership(teamID, userID uuid.UUID) (*TeamMembe
 }
 
 // GetUserTeams gets all teams a user belongs to
-func (r *TeamRepository) GetUserTeams(userID uuid.UUID) ([]*Team, error) {
+func (r *TeamRepository) GetUserTeams(ctx context.Context, userID uuid.UUID) ([]*Team, error) {
 	var memberships []TeamMembership
-	err := r.db.Preload("Team").Where("user_id = ?", userID).Find(&memberships).Error
+	err := r.db.WithContext(ctx).Preload("Team").Where("user_id = ?", userID).Find(&memberships).Error
 	if err != nil {
 		return nil, err
 	}
@@ -217,33 +219,33 @@ func (r *TeamRepository) GetUserTeams(userID uuid.UUID) ([]*Team, error) {
 }
 
 // GrantTeamPermission grants permissions to a team for a resource
-func (r *TeamRepository) GrantTeamPermission(permission *TeamPermission) error {
-	return r.db.Create(permission).Error
+func (r *TeamRepository) GrantTeamPermission(ctx context.Context, permission *TeamPermission) error {
+	return r.db.WithContext(ctx).Create(permission).Error
 }
 
 // RevokeTeamPermission revokes permissions from a team for a resource
-func (r *TeamRepository) RevokeTeamPermission(teamID uuid.UUID, resourceType string, resourceID uuid.UUID) error {
-	return r.db.Delete(&TeamPermission{}, "team_id = ? AND resource_type = ? AND resource_id = ?", teamID, resourceType, resourceID).Error
+func (r *TeamRepository) RevokeTeamPermission(ctx context.Context, teamID uuid.UUID, resourceType string, resourceID uuid.UUID) error {
+	return r.db.WithContext(ctx).Delete(&TeamPermission{}, "team_id = ? AND resource_type = ? AND resource_id = ?", teamID, resourceType, resourceID).Error
 }
 
 // GetTeamPermissions gets all permissions for a team
-func (r *TeamRepository) GetTeamPermissions(teamID uuid.UUID) ([]*TeamPermission, error) {
+func (r *TeamRepository) GetTeamPermissions(ctx context.Context, teamID uuid.UUID) ([]*TeamPermission, error) {
 	var permissions []*TeamPermission
-	err := r.db.Where("team_id = ?", teamID).Find(&permissions).Error
+	err := r.db.WithContext(ctx).Where("team_id = ?", teamID).Find(&permissions).Error
 	return permissions, err
 }
 
 // GetResourcePermissions gets permissions for a specific resource across all teams
-func (r *TeamRepository) GetResourcePermissions(resourceType string, resourceID uuid.UUID) ([]*TeamPermission, error) {
+func (r *TeamRepository) GetResourcePermissions(ctx context.Context, resourceType string, resourceID uuid.UUID) ([]*TeamPermission, error) {
 	var permissions []*TeamPermission
-	err := r.db.Preload("Team").Where("resource_type = ? AND resource_id = ?", resourceType, resourceID).Find(&permissions).Error
+	err := r.db.WithContext(ctx).Preload("Team").Where("resource_type = ? AND resource_id = ?", resourceType, resourceID).Find(&permissions).Error
 	return permissions, err
 }
 
 // CheckUserResourcePermission checks if a user has permission for a resource through their teams
-func (r *TeamRepository) CheckUserResourcePermission(userID uuid.UUID, resourceType string, resourceID uuid.UUID, requiredPerm string) (bool, error) {
+func (r *TeamRepository) CheckUserResourcePermission(ctx context.Context, userID uuid.UUID, resourceType string, resourceID uuid.UUID, requiredPerm string) (bool, error) {
 	var count int64
-	err := r.db.Table("team_memberships tm").
+	err := r.db.WithContext(ctx).Table("team_memberships tm").
 		Joins("JOIN team_permissions tp ON tm.team_id = tp.team_id").
 		Where("tm.user_id = ? AND tp.resource_type = ? AND tp.resource_id = ? AND ? = ANY(string_to_array(tp.permissions, ','))",
 			userID, resourceType, resourceID, requiredPerm).
@@ -253,9 +255,9 @@ func (r *TeamRepository) CheckUserResourcePermission(userID uuid.UUID, resourceT
 }
 
 // GetUserPermissions gets all permissions a user has for a specific resource type
-func (r *TeamRepository) GetUserPermissions(userID uuid.UUID, resourceType string) ([]string, error) {
+func (r *TeamRepository) GetUserPermissions(ctx context.Context, userID uuid.UUID, resourceType string) ([]string, error) {
 	var permissions []string
-	err := r.db.Table("team_memberships tm").
+	err := r.db.WithContext(ctx).Table("team_memberships tm").
 		Joins("JOIN team_permissions tp ON tm.team_id = tp.team_id").
 		Where("tm.user_id = ? AND tp.resource_type = ?", userID, resourceType).
 		Pluck("DISTINCT unnest(string_to_array(tp.permissions, ','))", &permissions).Error
@@ -264,15 +266,15 @@ func (r *TeamRepository) GetUserPermissions(userID uuid.UUID, resourceType strin
 }
 
 // IsUserTeamOwner checks if a user is the owner of a team
-func (r *TeamRepository) IsUserTeamOwner(userID, teamID uuid.UUID) (bool, error) {
+func (r *TeamRepository) IsUserTeamOwner(ctx context.Context, userID, teamID uuid.UUID) (bool, error) {
 	var count int64
-	err := r.db.Model(&TeamMembership{}).Where("team_id = ? AND user_id = ? AND role = ?", teamID, userID, "owner").Count(&count).Error
+	err := r.db.WithContext(ctx).Model(&TeamMembership{}).Where("team_id = ? AND user_id = ? AND role = ?", teamID, userID, "owner").Count(&count).Error
 	return count > 0, err
 }
 
 // IsUserTeamAdmin checks if a user is an admin or owner of a team
-func (r *TeamRepository) IsUserTeamAdmin(userID, teamID uuid.UUID) (bool, error) {
+func (r *TeamRepository) IsUserTeamAdmin(ctx context.Context, userID, teamID uuid.UUID) (bool, error) {
 	var count int64
-	err := r.db.Model(&TeamMembership{}).Where("team_id = ? AND user_id = ? AND role IN ?", teamID, userID, pq.Array([]string{"owner", "admin"})).Count(&count).Error
+	err := r.db.WithContext(ctx).Model(&TeamMembership{}).Where("team_id = ? AND user_id = ? AND role IN ?", teamID, userID, pq.Array([]string{"owner", "admin"})).Count(&count).Error
 	return count > 0, err
 }

@@ -13,16 +13,16 @@ func (db *PostgresDB) CreateChangelogEntry(ctx context.Context, entry *Changelog
 	return db.contentRepository.CreateChangelogEntry(ctx, entry)
 }
 
-func (db *PostgresDB) GetChangelogEntryByID(id uuid.UUID) (*ChangelogEntry, error) {
-	return db.contentRepository.GetChangelogEntryByID(id)
+func (db *PostgresDB) GetChangelogEntryByID(ctx context.Context, id uuid.UUID) (*ChangelogEntry, error) {
+	return db.contentRepository.GetChangelogEntryByID(ctx, id)
 }
 
-func (db *PostgresDB) GetChangelogEntryByVersion(version string) (*ChangelogEntry, error) {
-	return db.contentRepository.GetChangelogEntryByVersion(version)
+func (db *PostgresDB) GetChangelogEntryByVersion(ctx context.Context, version string) (*ChangelogEntry, error) {
+	return db.contentRepository.GetChangelogEntryByVersion(ctx, version)
 }
 
-func (db *PostgresDB) ListChangelogEntries(limit, offset int, publishedOnly bool) ([]*ChangelogEntry, error) {
-	return db.contentRepository.ListChangelogEntries(limit, offset, publishedOnly)
+func (db *PostgresDB) ListChangelogEntries(ctx context.Context, limit, offset int, publishedOnly bool) ([]*ChangelogEntry, error) {
+	return db.contentRepository.ListChangelogEntries(ctx, limit, offset, publishedOnly)
 }
 
 func (db *PostgresDB) UpdateChangelogEntry(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*ChangelogEntry, error) {
@@ -49,16 +49,16 @@ func (db *PostgresDB) CreateBlogPost(ctx context.Context, post *BlogPost) (*Blog
 	return db.contentRepository.CreateBlogPost(ctx, post)
 }
 
-func (db *PostgresDB) GetBlogPostByID(id uuid.UUID) (*BlogPost, error) {
-	return db.contentRepository.GetBlogPostByID(id)
+func (db *PostgresDB) GetBlogPostByID(ctx context.Context, id uuid.UUID) (*BlogPost, error) {
+	return db.contentRepository.GetBlogPostByID(ctx, id)
 }
 
-func (db *PostgresDB) GetBlogPostBySlug(slug string) (*BlogPost, error) {
-	return db.contentRepository.GetBlogPostBySlug(slug)
+func (db *PostgresDB) GetBlogPostBySlug(ctx context.Context, slug string) (*BlogPost, error) {
+	return db.contentRepository.GetBlogPostBySlug(ctx, slug)
 }
 
-func (db *PostgresDB) ListBlogPosts(limit, offset int, publishedOnly bool, tagFilter []string) ([]*BlogPost, error) {
-	return db.contentRepository.ListBlogPosts(limit, offset, publishedOnly, tagFilter)
+func (db *PostgresDB) ListBlogPosts(ctx context.Context, limit, offset int, publishedOnly bool, tagFilter []string) ([]*BlogPost, error) {
+	return db.contentRepository.ListBlogPosts(ctx, limit, offset, publishedOnly, tagFilter)
 }
 
 func (db *PostgresDB) UpdateBlogPost(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*BlogPost, error) {

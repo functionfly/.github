@@ -346,11 +346,11 @@ func (db *PostgresDB) IsEncryptionEnabled() bool {
 	return db.encryptionManager.IsEncryptionEnabled()
 }
 
-func (db *PostgresDB) EncryptField(value string) (string, error) {
+func (db *PostgresDB) EncryptField(ctx context.Context, value string) (string, error) {
 	return db.encryptionManager.EncryptField(value)
 }
 
-func (db *PostgresDB) DecryptField(value string) (string, error) {
+func (db *PostgresDB) DecryptField(ctx context.Context, value string) (string, error) {
 	return db.encryptionManager.DecryptField(value)
 }
 

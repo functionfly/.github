@@ -2,8 +2,8 @@ package storage
 
 import (
 	"context"
-	"database/sql/driver"
-	"encoding/json"
+	"crypto/sha256"
+	"encoding/hex"
 	"math/rand"
 	"time"
 
@@ -12,25 +12,11 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-type JSONMap map[string]interface{}
+const atlasSaltVersion = "atlas-salt-v1"
 
-func (m JSONMap) Value() (driver.Value, error) {
-	if m == nil {
-		return nil, nil
-	}
-	return json.Marshal(m)
-}
-
-func (m *JSONMap) Scan(value interface{}) error {
-	if value == nil {
-		*m = nil
-		return nil
-	}
-	bytes, ok := value.([]byte)
-	if !ok {
-		return nil
-	}
-	return json.Unmarshal(bytes, m)
+func DeriveAtlasTenantID(tenantID uuid.UUID) string {
+	h := sha256.Sum256([]byte(tenantID.String() + atlasSaltVersion))
+	return hex.EncodeToString(h[:8])
 }
 
 type ObservabilityRun struct {

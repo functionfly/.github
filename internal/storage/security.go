@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 
@@ -8,7 +9,7 @@ import (
 )
 
 // CreateSecurityScan creates a new security scan record
-func (db *PostgresDB) CreateSecurityScan(scan *SecurityScan) (*SecurityScan, error) {
+func (db *PostgresDB) CreateSecurityScan(ctx context.Context, scan *SecurityScan) (*SecurityScan, error) {
 	configJSON, err := json.Marshal(scan.Config)
 	if err != nil {
 		return nil, err
@@ -26,7 +27,7 @@ func (db *PostgresDB) CreateSecurityScan(scan *SecurityScan) (*SecurityScan, err
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id, created_at, updated_at`
 
-	err = db.QueryRow(query,
+	err = db.QueryRowContext(ctx, query,
 		scan.TenantID,
 		scan.UserID,
 		scan.ScanType,
@@ -47,7 +48,7 @@ func (db *PostgresDB) CreateSecurityScan(scan *SecurityScan) (*SecurityScan, err
 }
 
 // UpdateSecurityScan updates an existing security scan
-func (db *PostgresDB) UpdateSecurityScan(scanID uuid.UUID, updates map[string]interface{}) (*SecurityScan, error) {
+func (db *PostgresDB) UpdateSecurityScan(ctx context.Context, scanID uuid.UUID, updates map[string]interface{}) (*SecurityScan, error) {
 	// Build dynamic update query
 	setParts := []string{}
 	args := []interface{}{}
@@ -82,7 +83,7 @@ func (db *PostgresDB) UpdateSecurityScan(scanID uuid.UUID, updates map[string]in
 	scan := &SecurityScan{}
 	var configJSON, summaryJSON []byte
 
-	err := db.QueryRow(query, args...).Scan(
+	err := db.QueryRowContext(ctx, query, args...).Scan(
 		&scan.ID,
 		&scan.TenantID,
 		&scan.UserID,
@@ -121,7 +122,7 @@ func (db *PostgresDB) UpdateSecurityScan(scanID uuid.UUID, updates map[string]in
 }
 
 // GetSecurityScan retrieves a security scan by ID
-func (db *PostgresDB) GetSecurityScan(scanID uuid.UUID) (*SecurityScan, error) {
+func (db *PostgresDB) GetSecurityScan(ctx context.Context, scanID uuid.UUID) (*SecurityScan, error) {
 	query := `
 		SELECT id, tenant_id, user_id, scan_type, status, target, config, summary,
 			   started_at, completed_at, duration_ms, created_at, updated_at
@@ -130,7 +131,7 @@ func (db *PostgresDB) GetSecurityScan(scanID uuid.UUID) (*SecurityScan, error) {
 	scan := &SecurityScan{}
 	var configJSON, summaryJSON []byte
 
-	err := db.QueryRow(query, scanID).Scan(
+	err := db.QueryRowContext(ctx, query, scanID).Scan(
 		&scan.ID,
 		&scan.TenantID,
 		&scan.UserID,
@@ -169,7 +170,7 @@ func (db *PostgresDB) GetSecurityScan(scanID uuid.UUID) (*SecurityScan, error) {
 }
 
 // ListSecurityScans retrieves a list of security scans with optional filtering
-func (db *PostgresDB) ListSecurityScans(limit, offset int, filters map[string]interface{}) ([]*SecurityScan, error) {
+func (db *PostgresDB) ListSecurityScans(ctx context.Context, limit, offset int, filters map[string]interface{}) ([]*SecurityScan, error) {
 	query := `
 		SELECT id, tenant_id, user_id, scan_type, status, target, config, summary,
 			   started_at, completed_at, duration_ms, created_at, updated_at
@@ -212,7 +213,7 @@ func (db *PostgresDB) ListSecurityScans(limit, offset int, filters map[string]in
 		" OFFSET $" + string(rune(argCount+1+'0'))
 	args = append(args, limit, offset)
 
-	rows, err := db.Query(query, args...)
+	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +265,7 @@ func (db *PostgresDB) ListSecurityScans(limit, offset int, filters map[string]in
 }
 
 // CreateVulnerability creates a new vulnerability record
-func (db *PostgresDB) CreateVulnerability(vuln *Vulnerability) (*Vulnerability, error) {
+func (db *PostgresDB) CreateVulnerability(ctx context.Context, vuln *Vulnerability) (*Vulnerability, error) {
 	referenceUrlsJSON, err := json.Marshal(vuln.ReferenceUrls)
 	if err != nil {
 		return nil, err
@@ -282,7 +283,7 @@ func (db *PostgresDB) CreateVulnerability(vuln *Vulnerability) (*Vulnerability, 
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		RETURNING id, created_at, updated_at`
 
-	err = db.QueryRow(query,
+	err = db.QueryRowContext(ctx, query,
 		vuln.ScanID,
 		vuln.Title,
 		vuln.Description,
@@ -307,7 +308,7 @@ func (db *PostgresDB) CreateVulnerability(vuln *Vulnerability) (*Vulnerability, 
 }
 
 // UpdateVulnerability updates an existing vulnerability
-func (db *PostgresDB) UpdateVulnerability(vulnID uuid.UUID, updates map[string]interface{}) (*Vulnerability, error) {
+func (db *PostgresDB) UpdateVulnerability(ctx context.Context, vulnID uuid.UUID, updates map[string]interface{}) (*Vulnerability, error) {
 	setParts := []string{}
 	args := []interface{}{}
 	argCount := 1
@@ -339,7 +340,7 @@ func (db *PostgresDB) UpdateVulnerability(vulnID uuid.UUID, updates map[string]i
 			if err != nil {
 				return nil, err
 			}
-			setParts = append(setParts, field+" = $"+string(rune(argCount+'0')))
+			setParts = append(setParts, "metadata = $"+string(rune(argCount+'0')))
 			args = append(args, jsonBytes)
 			argCount++
 		}
@@ -357,7 +358,7 @@ func (db *PostgresDB) UpdateVulnerability(vulnID uuid.UUID, updates map[string]i
 	vuln := &Vulnerability{}
 	var referenceUrlsJSON, metadataJSON []byte
 
-	err := db.QueryRow(query, args...).Scan(
+	err := db.QueryRowContext(ctx, query, args...).Scan(
 		&vuln.ID,
 		&vuln.ScanID,
 		&vuln.Title,
@@ -400,7 +401,7 @@ func (db *PostgresDB) UpdateVulnerability(vulnID uuid.UUID, updates map[string]i
 }
 
 // GetVulnerabilities retrieves vulnerabilities with optional filtering
-func (db *PostgresDB) GetVulnerabilities(filters map[string]interface{}) ([]*Vulnerability, error) {
+func (db *PostgresDB) GetVulnerabilities(ctx context.Context, filters map[string]interface{}) ([]*Vulnerability, error) {
 	query := `
 		SELECT id, scan_id, title, description, severity, cvss_score, cve, category,
 			   component, location, status, remediation, reference_urls, metadata,
@@ -448,7 +449,7 @@ func (db *PostgresDB) GetVulnerabilities(filters map[string]interface{}) ([]*Vul
 
 	query += " ORDER BY discovered_at DESC"
 
-	rows, err := db.Query(query, args...)
+	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -504,7 +505,7 @@ func (db *PostgresDB) GetVulnerabilities(filters map[string]interface{}) ([]*Vul
 }
 
 // GetVulnerabilityByID retrieves a vulnerability by its ID
-func (db *PostgresDB) GetVulnerabilityByID(vulnID uuid.UUID) (*Vulnerability, error) {
+func (db *PostgresDB) GetVulnerabilityByID(ctx context.Context, vulnID uuid.UUID) (*Vulnerability, error) {
 	query := `
 		SELECT id, scan_id, title, description, severity, cvss_score, cve, category,
 			   component, location, status, remediation, reference_urls, metadata,
@@ -514,7 +515,7 @@ func (db *PostgresDB) GetVulnerabilityByID(vulnID uuid.UUID) (*Vulnerability, er
 	vuln := &Vulnerability{}
 	var referenceUrlsJSON, metadataJSON []byte
 
-	err := db.QueryRow(query, vulnID).Scan(
+	err := db.QueryRowContext(ctx, query, vulnID).Scan(
 		&vuln.ID,
 		&vuln.ScanID,
 		&vuln.Title,

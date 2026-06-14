@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -334,13 +333,6 @@ func (r *UserReadRepository) SearchUsers(ctx context.Context, query string, limi
 		 WHERE username ILIKE $1 ESCAPE '\' OR email ILIKE $1 ESCAPE '\' OR name ILIKE $1 ESCAPE '\'
 		 LIMIT $2`,
 		"%"+escapeLikeWildcards(query)+"%", limit)
-}
-
-func escapeLikeWildcards(s string) string {
-	s = strings.ReplaceAll(s, `\`, `\\`)
-	s = strings.ReplaceAll(s, `%`, `\%`)
-	s = strings.ReplaceAll(s, `_`, `\_`)
-	return s
 }
 
 // GetUserTeams uses replica for listing (acceptable lag)

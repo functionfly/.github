@@ -109,7 +109,7 @@ func (r *RegistryRepository) IncrementPopularity(functionID uuid.UUID) error {
 }
 
 // GetRatingByFunctionID gets a rating by function ID (returns nil if not found)
-func (r *RegistryRepository) GetRatingByFunctionID(functionID uuid.UUID) (*RegistryFunctionRating, error) {
+func (r *RegistryRepository) GetRatingByFunctionID(ctx context.Context, functionID uuid.UUID) (*RegistryFunctionRating, error) {
 	// Try cache first if available
 	if r.cache != nil && r.keyGen != nil {
 		cacheKey := r.keyGen.FunctionRating(functionID.String())

@@ -127,7 +127,7 @@ type TeamRepository interface {
 	RevokeTeamPermission(teamID uuid.UUID, resourceType string, resourceID uuid.UUID) error
 	GetTeamPermissions(teamID uuid.UUID) ([]*storage.TeamPermission, error)
 	GetResourcePermissions(resourceType string, resourceID uuid.UUID) ([]*storage.TeamPermission, error)
-	CheckUserResourcePermission(userID uuid.UUID, resourceType string, resourceID uuid.UUID, requiredPerm string) (bool, error)
+	CheckUserResourcePermission(ctx context.Context, userID uuid.UUID, resourceType string, resourceID uuid.UUID, requiredPerm string) (bool, error)
 	GetUserPermissions(userID uuid.UUID, resourceType string) ([]string, error)
 	IsUserTeamOwner(userID, teamID uuid.UUID) (bool, error)
 	IsUserTeamAdmin(userID, teamID uuid.UUID) (bool, error)
@@ -244,7 +244,7 @@ type RevenueRepository interface {
 type OAuthRepository interface {
 	StoreOAuthState(ctx context.Context, state string, expiresAt time.Time, redirectURI, inviteCode, codeVerifier, loginHint, deviceFingerprint string) error
 	ValidateAndConsumeOAuthState(ctx context.Context, state string) (valid bool, redirectURI, inviteCode, codeVerifier, loginHint, deviceFingerprint string, err error)
-	DeleteExpiredOAuthStates() (int64, error)
+	DeleteExpiredOAuthStates(ctx context.Context) (int64, error)
 
 	// Signup invite codes
 	CreateSignupInvite(ctx context.Context, label string, maxUses *int, expiresAt *time.Time, createdBy *uuid.UUID) (id uuid.UUID, plainCode string, err error)

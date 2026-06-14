@@ -45,7 +45,7 @@ func (r *BillingRepository) CreateSubscription(ctx context.Context, sub *Subscri
 }
 
 // GetSubscriptionByTenantID retrieves a subscription by tenant ID
-func (r *BillingRepository) GetSubscriptionByTenantID(tenantID uuid.UUID) (*Subscription, error) {
+func (r *BillingRepository) GetSubscriptionByTenantID(ctx context.Context, tenantID uuid.UUID) (*Subscription, error) {
 	query := `
 		SELECT s.id, s.tenant_id, s.pricing_tier_id, s.status, s.current_period_start, s.current_period_end,
 			   s.trial_end, s.cancel_at_period_end, s.canceled_at, s.created_at, s.updated_at,
@@ -217,7 +217,7 @@ func (r *BillingRepository) UpdateSubscription(ctx context.Context, id uuid.UUID
 	}
 
 	// Get the updated pricing tier information
-	tier, err := r.GetPricingTierByID(updated.PricingTierID)
+	tier, err := r.GetPricingTierByID(ctx, updated.PricingTierID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pricing tier: %w", err)
 	}
@@ -285,13 +285,13 @@ func (r *BillingRepository) CancelSubscription(ctx context.Context, id uuid.UUID
 }
 
 // ListAllSubscriptions lists all subscriptions across tenants (for admin).
-func (r *BillingRepository) ListAllSubscriptions(limit, offset int) ([]*Subscription, error) {
+func (r *BillingRepository) ListAllSubscriptions(ctx context.Context, limit, offset int) ([]*Subscription, error) {
 	query := `
 		SELECT id, tenant_id, pricing_tier_id, status, stripe_subscription_id, current_period_start, current_period_end, trial_end, cancel_at_period_end, canceled_at, created_at, updated_at
 		FROM subscriptions
 		ORDER BY created_at DESC
 		LIMIT $1 OFFSET $2`
-	rows, err := r.db.Query(query, limit, offset)
+	rows, err := r.db.QueryContext(ctx, query, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list subscriptions: %w", err)
 	}

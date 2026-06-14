@@ -54,7 +54,7 @@ func (r *BillingRepository) GetUsageByTenant(ctx context.Context, tenantID uuid.
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan usage rollup: %w", err)
 		}
-		rollups = append(rollups, rollout)
+		rollups = append(rollups, rollup)
 	}
 
 	return rollups, nil
@@ -96,7 +96,7 @@ func (r *BillingRepository) GetUsageByTenantByFunction(ctx context.Context, tena
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan function usage rollup: %w", err)
 		}
-		results = append(results, rollout)
+		results = append(results, rollup)
 	}
 	return results, nil
 }

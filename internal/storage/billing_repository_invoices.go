@@ -82,7 +82,7 @@ func (r *BillingRepository) CreatePaidInvoiceForStripeCheckoutSession(ctx contex
 }
 
 // ListInvoicesByTenant lists invoices for a tenant
-func (r *BillingRepository) ListInvoicesByTenant(tenantID uuid.UUID, limit, offset int) ([]*Invoice, error) {
+func (r *BillingRepository) ListInvoicesByTenant(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*Invoice, error) {
 	query := `
 		SELECT id, tenant_id, subscription_id, status, amount_due_cents, amount_paid_cents, currency,
 			   invoice_pdf_url, hosted_invoice_url, period_start, period_end, due_date, paid_at, created_at, updated_at
@@ -91,7 +91,7 @@ func (r *BillingRepository) ListInvoicesByTenant(tenantID uuid.UUID, limit, offs
 		ORDER BY created_at DESC
 		LIMIT $2 OFFSET $3`
 
-	rows, err := r.db.Query(query, tenantID, limit, offset)
+	rows, err := r.db.QueryContext(ctx, query, tenantID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list invoices: %w", err)
 	}
@@ -114,9 +114,9 @@ func (r *BillingRepository) ListInvoicesByTenant(tenantID uuid.UUID, limit, offs
 }
 
 // CountInvoicesByTenant returns the number of invoice rows for a tenant.
-func (r *BillingRepository) CountInvoicesByTenant(tenantID uuid.UUID) (int, error) {
+func (r *BillingRepository) CountInvoicesByTenant(ctx context.Context, tenantID uuid.UUID) (int, error) {
 	var n int
-	err := r.db.QueryRow(`SELECT COUNT(*) FROM invoices WHERE tenant_id = $1`, tenantID).Scan(&n)
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM invoices WHERE tenant_id = $1`, tenantID).Scan(&n)
 	if err != nil {
 		return 0, fmt.Errorf("failed to count invoices: %w", err)
 	}
@@ -124,7 +124,7 @@ func (r *BillingRepository) CountInvoicesByTenant(tenantID uuid.UUID) (int, erro
 }
 
 // ListAllInvoices lists all invoices across tenants (for admin dashboard)
-func (r *BillingRepository) ListAllInvoices(limit, offset int) ([]*Invoice, error) {
+func (r *BillingRepository) ListAllInvoices(ctx context.Context, limit, offset int) ([]*Invoice, error) {
 	query := `
 		SELECT id, tenant_id, subscription_id, status, amount_due_cents, amount_paid_cents, currency,
 			   invoice_pdf_url, hosted_invoice_url, period_start, period_end, due_date, paid_at, created_at, updated_at
@@ -132,7 +132,7 @@ func (r *BillingRepository) ListAllInvoices(limit, offset int) ([]*Invoice, erro
 		ORDER BY created_at DESC
 		LIMIT $1 OFFSET $2`
 
-	rows, err := r.db.Query(query, limit, offset)
+	rows, err := r.db.QueryContext(ctx, query, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list invoices: %w", err)
 	}
@@ -155,14 +155,14 @@ func (r *BillingRepository) ListAllInvoices(limit, offset int) ([]*Invoice, erro
 }
 
 // GetInvoiceByID retrieves an invoice by ID
-func (r *BillingRepository) GetInvoiceByID(id uuid.UUID) (*Invoice, error) {
+func (r *BillingRepository) GetInvoiceByID(ctx context.Context, id uuid.UUID) (*Invoice, error) {
 	query := `
 		SELECT id, tenant_id, subscription_id, status, amount_due_cents, amount_paid_cents, currency,
 			   invoice_pdf_url, hosted_invoice_url, period_start, period_end, due_date, paid_at, created_at, updated_at
 		FROM invoices WHERE id = $1`
 
 	invoice := &Invoice{}
-	err := r.db.QueryRow(query, id).Scan(&invoice.ID, &invoice.TenantID, &invoice.SubscriptionID, &invoice.Status,
+	err := r.db.QueryRowContext(ctx, query, id).Scan(&invoice.ID, &invoice.TenantID, &invoice.SubscriptionID, &invoice.Status,
 		&invoice.AmountDueCents, &invoice.AmountPaidCents, &invoice.Currency,
 		&invoice.InvoicePdfURL, &invoice.HostedInvoiceURL, &invoice.PeriodStart,
 		&invoice.PeriodEnd, &invoice.DueDate, &invoice.PaidAt, &invoice.CreatedAt, &invoice.UpdatedAt)
@@ -212,7 +212,7 @@ func (r *BillingRepository) GetInvoiceByPeriod(ctx context.Context, tenantID uui
 // UpdateInvoice updates invoice fields dynamically
 func (r *BillingRepository) UpdateInvoice(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*Invoice, error) {
 	// Get current invoice
-	current, err := r.GetInvoiceByID(id)
+	current, err := r.GetInvoiceByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get current invoice: %w", err)
 	}

@@ -58,7 +58,7 @@ func (r *RegistryRepository) GetRegistryStats() (total int64, byVisibility map[s
 }
 
 // UpdateRegistryFunction updates registry function fields (visibility, price_per_call, title, description, category, tags).
-func (r *RegistryRepository) UpdateRegistryFunction(id uuid.UUID, updates map[string]interface{}) (*RegistryFunction, error) {
+func (r *RegistryRepository) UpdateRegistryFunction(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*RegistryFunction, error) {
 	allowed := make(map[string]interface{})
 	for k, v := range updates {
 		switch k {
@@ -67,12 +67,12 @@ func (r *RegistryRepository) UpdateRegistryFunction(id uuid.UUID, updates map[st
 		}
 	}
 	if len(allowed) == 0 {
-		return r.GetFunctionByID(id)
+		return r.GetFunctionByID(ctx, id)
 	}
 	if err := r.db.Model(&RegistryFunction{}).Where("id = ?", id).Updates(allowed).Error; err != nil {
 		return nil, fmt.Errorf("failed to update function: %w", err)
 	}
-	return r.GetFunctionByID(id)
+	return r.GetFunctionByID(ctx, id)
 }
 
 // AdminStatsResult holds the extended admin stats returned by GetAdminRegistryStats.
@@ -187,7 +187,7 @@ func (r *RegistryRepository) FlagFunction(ctx context.Context, functionID uuid.U
 	}
 
 	// Get latest version for the function
-	fn, err := r.GetFunctionByID(functionID)
+	fn, err := r.GetFunctionByID(ctx, functionID)
 	if err != nil {
 		return fmt.Errorf("failed to get function: %w", err)
 	}

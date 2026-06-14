@@ -43,7 +43,7 @@ func (r *BillingRepository) CreateAffiliateCode(ctx context.Context, code *Affil
 	return code, nil
 }
 
-func (r *BillingRepository) GetAffiliateCodeByID(id uuid.UUID) (*AffiliateCode, error) {
+func (r *BillingRepository) GetAffiliateCodeByID(ctx context.Context, id uuid.UUID) (*AffiliateCode, error) {
 	query := `SELECT id, code, publisher_id, tenant_id, name, description, commission_type, commission_value, max_commissions, max_referrals, total_referrals, total_commissions, pending_commissions, pending_earnings_cents, total_earnings_cents, paid_out_earnings_cents, valid_from, valid_until, is_active, utm_source, utm_campaign, created_at, updated_at
 			  FROM affiliate_codes WHERE id = $1`
 
@@ -64,7 +64,7 @@ func (r *BillingRepository) GetAffiliateCodeByID(id uuid.UUID) (*AffiliateCode, 
 	return code, nil
 }
 
-func (r *BillingRepository) GetAffiliateCodeByCode(code string) (*AffiliateCode, error) {
+func (r *BillingRepository) GetAffiliateCodeByCode(ctx context.Context, code string) (*AffiliateCode, error) {
 	query := `SELECT id, code, publisher_id, tenant_id, name, description, commission_type, commission_value, max_commissions, max_referrals, total_referrals, total_commissions, pending_commissions, pending_earnings_cents, total_earnings_cents, paid_out_earnings_cents, valid_from, valid_until, is_active, utm_source, utm_campaign, created_at, updated_at
 			  FROM affiliate_codes WHERE UPPER(code) = UPPER($1) AND is_active = true`
 
@@ -85,7 +85,7 @@ func (r *BillingRepository) GetAffiliateCodeByCode(code string) (*AffiliateCode,
 	return affiliateCode, nil
 }
 
-func (r *BillingRepository) ListAffiliateCodesByPublisher(publisherID uuid.UUID) ([]*AffiliateCode, error) {
+func (r *BillingRepository) ListAffiliateCodesByPublisher(ctx context.Context, publisherID uuid.UUID) ([]*AffiliateCode, error) {
 	query := `SELECT id, code, publisher_id, tenant_id, name, description, commission_type, commission_value, max_commissions, max_referrals, total_referrals, total_commissions, pending_commissions, pending_earnings_cents, total_earnings_cents, paid_out_earnings_cents, valid_from, valid_until, is_active, utm_source, utm_campaign, created_at, updated_at
 			  FROM affiliate_codes WHERE publisher_id = $1 ORDER BY created_at DESC`
 
@@ -112,7 +112,7 @@ func (r *BillingRepository) ListAffiliateCodesByPublisher(publisherID uuid.UUID)
 	return codes, nil
 }
 
-func (r *BillingRepository) ListAffiliateCodes() ([]*AffiliateCode, error) {
+func (r *BillingRepository) ListAffiliateCodes(ctx context.Context) ([]*AffiliateCode, error) {
 	query := `SELECT id, code, publisher_id, tenant_id, name, description, commission_type, commission_value, max_commissions, max_referrals, total_referrals, total_commissions, pending_commissions, pending_earnings_cents, total_earnings_cents, paid_out_earnings_cents, valid_from, valid_until, is_active, utm_source, utm_campaign, created_at, updated_at
 			  FROM affiliate_codes ORDER BY created_at DESC`
 
@@ -184,7 +184,7 @@ func (r *BillingRepository) CreateAffiliateReferral(ctx context.Context, referra
 	return referral, nil
 }
 
-func (r *BillingRepository) GetAffiliateReferralByID(id uuid.UUID) (*AffiliateReferral, error) {
+func (r *BillingRepository) GetAffiliateReferralByID(ctx context.Context, id uuid.UUID) (*AffiliateReferral, error) {
 	query := `SELECT id, affiliate_code_id, referred_tenant_id, subscription_id, utm_source, utm_campaign, utm_content, utm_term, ip_address, user_agent, status, referred_at, converted_at, created_at, updated_at
 			  FROM affiliate_referrals WHERE id = $1`
 
@@ -204,7 +204,7 @@ func (r *BillingRepository) GetAffiliateReferralByID(id uuid.UUID) (*AffiliateRe
 	return referral, nil
 }
 
-func (r *BillingRepository) GetAffiliateReferralByTenant(tenantID uuid.UUID) (*AffiliateReferral, error) {
+func (r *BillingRepository) GetAffiliateReferralByTenant(ctx context.Context, tenantID uuid.UUID) (*AffiliateReferral, error) {
 	query := `SELECT id, affiliate_code_id, referred_tenant_id, subscription_id, utm_source, utm_campaign, utm_content, utm_term, ip_address, user_agent, status, referred_at, converted_at, created_at, updated_at
 			  FROM affiliate_referrals WHERE referred_tenant_id = $1 ORDER BY created_at DESC LIMIT 1`
 
@@ -224,7 +224,7 @@ func (r *BillingRepository) GetAffiliateReferralByTenant(tenantID uuid.UUID) (*A
 	return referral, nil
 }
 
-func (r *BillingRepository) ListAffiliateReferralsByCode(codeID uuid.UUID) ([]*AffiliateReferral, error) {
+func (r *BillingRepository) ListAffiliateReferralsByCode(ctx context.Context, codeID uuid.UUID) ([]*AffiliateReferral, error) {
 	query := `SELECT id, affiliate_code_id, referred_tenant_id, subscription_id, utm_source, utm_campaign, utm_content, utm_term, ip_address, user_agent, status, referred_at, converted_at, created_at, updated_at
 			  FROM affiliate_referrals WHERE affiliate_code_id = $1 ORDER BY created_at DESC`
 
@@ -289,7 +289,7 @@ func (r *BillingRepository) CreateAffiliateCommission(ctx context.Context, commi
 	return commission, nil
 }
 
-func (r *BillingRepository) GetAffiliateCommissionByID(id uuid.UUID) (*AffiliateCommission, error) {
+func (r *BillingRepository) GetAffiliateCommissionByID(ctx context.Context, id uuid.UUID) (*AffiliateCommission, error) {
 	query := `SELECT id, affiliate_code_id, referral_id, commission_type, commission_value, base_amount_cents, base_amount_usd, commission_cents, commission_usd, status, paid_at, payment_batch_id, payment_batch, subscription_id, notes, created_at, updated_at
 			  FROM affiliate_commissions WHERE id = $1`
 
@@ -310,7 +310,7 @@ func (r *BillingRepository) GetAffiliateCommissionByID(id uuid.UUID) (*Affiliate
 	return commission, nil
 }
 
-func (r *BillingRepository) ListAffiliateCommissionsByCode(codeID uuid.UUID) ([]*AffiliateCommission, error) {
+func (r *BillingRepository) ListAffiliateCommissionsByCode(ctx context.Context, codeID uuid.UUID) ([]*AffiliateCommission, error) {
 	query := `SELECT id, affiliate_code_id, referral_id, commission_type, commission_value, base_amount_cents, base_amount_usd, commission_cents, commission_usd, status, paid_at, payment_batch_id, payment_batch, subscription_id, notes, created_at, updated_at
 			  FROM affiliate_commissions WHERE affiliate_code_id = $1 ORDER BY created_at DESC`
 
@@ -337,7 +337,7 @@ func (r *BillingRepository) ListAffiliateCommissionsByCode(codeID uuid.UUID) ([]
 	return commissions, nil
 }
 
-func (r *BillingRepository) ListAffiliateCommissionsByPublisher(publisherID uuid.UUID) ([]*AffiliateCommission, error) {
+func (r *BillingRepository) ListAffiliateCommissionsByPublisher(ctx context.Context, publisherID uuid.UUID) ([]*AffiliateCommission, error) {
 	query := `SELECT ac.id, ac.affiliate_code_id, ac.referral_id, ac.commission_type, ac.commission_value, ac.base_amount_cents, ac.base_amount_usd, ac.commission_cents, ac.commission_usd, ac.status, ac.paid_at, ac.payment_batch_id, ac.payment_batch, ac.subscription_id, ac.notes, ac.created_at, ac.updated_at
 			  FROM affiliate_commissions ac
 			  INNER JOIN affiliate_codes acode ON ac.affiliate_code_id = acode.id
@@ -391,7 +391,7 @@ func (r *BillingRepository) UpdateAffiliateCommissionStatus(ctx context.Context,
 	return nil
 }
 
-func (r *BillingRepository) CalculateCommission(commissionType string, commissionValue, baseAmountUSD float64) (commissionCents int64, commissionUSD float64) {
+func (r *BillingRepository) CalculateCommission(ctx context.Context, commissionType string, commissionValue, baseAmountUSD float64) (commissionCents int64, commissionUSD float64) {
 	switch commissionType {
 	case "percent":
 		commissionUSD = baseAmountUSD * (commissionValue / 100.0)

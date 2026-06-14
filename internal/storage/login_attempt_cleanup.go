@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"context"
+	"fmt"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -23,11 +25,11 @@ func NewLoginAttemptCleanupService(repo Repository) *LoginAttemptCleanupService 
 }
 
 // CleanupOldLoginAttempts removes login attempts older than the specified retention period
-func (s *LoginAttemptCleanupService) CleanupOldLoginAttempts(retentionPeriod time.Duration) error {
+func (s *LoginAttemptCleanupService) CleanupOldLoginAttempts(ctx context.Context, retentionPeriod time.Duration) error {
 	cutoff := time.Now().Add(-retentionPeriod)
 
 	start := time.Now()
-	deletedCount, err := s.repo.DeleteOldLoginAttempts(cutoff)
+	deletedCount, err := s.repo.DeleteOldLoginAttempts(ctx, cutoff)
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to cleanup old login attempts")
 		return err
@@ -48,7 +50,7 @@ func (s *LoginAttemptCleanupService) CleanupOldLoginAttempts(retentionPeriod tim
 }
 
 // StartCleanupRoutine starts a periodic cleanup routine
-func (s *LoginAttemptCleanupService) StartCleanupRoutine(interval time.Duration, retentionPeriod time.Duration) {
+func (s *LoginAttemptCleanupService) StartCleanupRoutine(ctx context.Context, interval time.Duration, retentionPeriod time.Duration) {
 	if interval <= 0 {
 		interval = 24 * time.Hour // Default to daily cleanup
 	}
@@ -74,14 +76,14 @@ func (s *LoginAttemptCleanupService) StartCleanupRoutine(interval time.Duration,
 		defer ticker.Stop()
 
 		// Run cleanup immediately on startup
-		if err := s.CleanupOldLoginAttempts(retentionPeriod); err != nil {
+		if err := s.CleanupOldLoginAttempts(ctx, retentionPeriod); err != nil {
 			s.logger.WithError(err).Error("Initial login attempt cleanup failed")
 		}
 
 		for {
 			select {
 			case <-ticker.C:
-				if err := s.CleanupOldLoginAttempts(retentionPeriod); err != nil {
+				if err := s.CleanupOldLoginAttempts(ctx, retentionPeriod); err != nil {
 					s.logger.WithError(err).Error("Periodic login attempt cleanup failed")
 				}
 			case <-s.stop:

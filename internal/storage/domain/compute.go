@@ -53,11 +53,11 @@ type BackendRepository interface {
 
 // DeploymentRepository handles deployment lifecycle
 type DeploymentRepository interface {
-	CreateDeployment(appID uuid.UUID, provider, region, deploymentID, artifactKey string, routes []string) (*storage.Deployment, error)
-	UpdateDeploymentStatus(id uuid.UUID, status, message string, metadata map[string]interface{}) error
-	GetDeploymentByID(id uuid.UUID) (*storage.Deployment, error)
-	ListDeploymentsByAppID(appID uuid.UUID, limit int) ([]*storage.Deployment, error)
-	GetLatestSuccessfulDeployment(appID uuid.UUID, provider string) (*storage.Deployment, error)
+	CreateDeployment(ctx context.Context, appID uuid.UUID, provider, region, deploymentID, artifactKey string, routes []string) (*storage.Deployment, error)
+	UpdateDeploymentStatus(ctx context.Context, id uuid.UUID, status, message string, metadata map[string]interface{}) error
+	GetDeploymentByID(ctx context.Context, id uuid.UUID) (*storage.Deployment, error)
+	ListDeploymentsByAppID(ctx context.Context, appID uuid.UUID, limit int) ([]*storage.Deployment, error)
+	GetLatestSuccessfulDeployment(ctx context.Context, appID uuid.UUID, provider string) (*storage.Deployment, error)
 }
 
 // RoutingRepository handles routing and load balancing
@@ -83,8 +83,8 @@ type HealthRepository interface {
 
 // ArtifactRepository handles deployment artifacts
 type ArtifactRepository interface {
-	StoreDeploymentArtifact(appID uuid.UUID, provider, key, contentType, checksum string, size int64) (*storage.DeploymentArtifact, error)
-	GetDeploymentArtifact(key string) (*storage.DeploymentArtifact, error)
+	StoreDeploymentArtifact(ctx context.Context, appID uuid.UUID, provider, key, contentType, checksum string, size int64) (*storage.DeploymentArtifact, error)
+	GetDeploymentArtifact(ctx context.Context, key string) (*storage.DeploymentArtifact, error)
 }
 
 // ProviderRepository handles cloud provider integrations

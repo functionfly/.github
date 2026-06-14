@@ -73,7 +73,7 @@ func (r *RegistryRepository) GetFunctionStats(functionID uuid.UUID, since time.T
 }
 
 // GetFunctionTrustStats retrieves extended stats including trust score components
-func (r *RegistryRepository) GetFunctionTrustStats(functionID uuid.UUID, since time.Time) (
+func (r *RegistryRepository) GetFunctionTrustStats(ctx context.Context, functionID uuid.UUID, since time.Time) (
 	totalCalls int, successRate float64, avgLatencyMs int, p50LatencyMs int, p95LatencyMs int,
 	timeoutRate float64, errorRate float64, err error) {
 	var result struct {
@@ -108,7 +108,7 @@ func (r *RegistryRepository) GetFunctionTrustStats(functionID uuid.UUID, since t
 }
 
 // GetConsumerDiversity returns unique caller metrics for a function
-func (r *RegistryRepository) GetConsumerDiversity(functionID uuid.UUID, since time.Time) (uniqueIPs int, uniqueTenants int, uniqueUsers int, err error) {
+func (r *RegistryRepository) GetConsumerDiversity(ctx context.Context, functionID uuid.UUID, since time.Time) (uniqueIPs int, uniqueTenants int, uniqueUsers int, err error) {
 	var result struct {
 		UniqueIPs     int `json:"unique_ips"`
 		UniqueTenants int `json:"unique_tenants"`

@@ -44,7 +44,7 @@ func (r *BillingRepository) CreatePricingTier(ctx context.Context, tier *Pricing
 }
 
 // ListPricingTiers lists all active pricing tiers
-func (r *BillingRepository) ListPricingTiers() ([]*PricingTier, error) {
+func (r *BillingRepository) ListPricingTiers(ctx context.Context) ([]*PricingTier, error) {
 	query := `SELECT id, name, description, price_cents, currency, features, is_active, created_at, updated_at
 			  FROM pricing_tiers WHERE is_active = true ORDER BY price_cents ASC`
 
@@ -75,7 +75,7 @@ func (r *BillingRepository) ListPricingTiers() ([]*PricingTier, error) {
 }
 
 // GetPricingTierByID retrieves a pricing tier by ID
-func (r *BillingRepository) GetPricingTierByID(id uuid.UUID) (*PricingTier, error) {
+func (r *BillingRepository) GetPricingTierByID(ctx context.Context, id uuid.UUID) (*PricingTier, error) {
 	query := `SELECT id, name, description, price_cents, currency, features, is_active, created_at, updated_at
 			  FROM pricing_tiers WHERE id = $1`
 
@@ -101,7 +101,7 @@ func (r *BillingRepository) GetPricingTierByID(id uuid.UUID) (*PricingTier, erro
 // UpdatePricingTier updates pricing tier fields dynamically
 func (r *BillingRepository) UpdatePricingTier(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*PricingTier, error) {
 	// Get current tier
-	current, err := r.GetPricingTierByID(id)
+	current, err := r.GetPricingTierByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get current pricing tier: %w", err)
 	}
