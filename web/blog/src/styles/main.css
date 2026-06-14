@@ -1,0 +1,259 @@
+/* Velocity Brand Design System - Matching web/site/src/styles/design-system.css */
+
+:root {
+  /* Velocity Brand Colors */
+  --ff-flame: #FF6B35;
+  --ff-flame-rgb: 255, 107, 53;
+  --ff-flame-dark: #E85A2A;
+  --ff-flame-light: #FF8C42;
+  --ff-afterburner: #FF4F5E;
+  --ff-afterburner-rgb: 255, 79, 94;
+  --ff-cyan: #00D4FF;
+  --ff-cyan-rgb: 0, 212, 255;
+  --ff-cyan-dark: #00B8E0;
+  --ff-cyan-light: #33DDFF;
+
+  /* Velocity Backgrounds */
+  --ff-tarmac: #0D1117;
+  --ff-tarmac-rgb: 13, 17, 23;
+  --ff-cockpit: #161B22;
+  --ff-cockpit-rgb: 22, 27, 34;
+  --ff-flightdeck: #21262D;
+  --ff-flightdeck-rgb: 33, 38, 45;
+  --ff-tower: #09090B;
+
+  /* Velocity Text Colors */
+  --ff-primary-text: #F0F6FC;
+  --ff-secondary-text: #8B949E;
+  --ff-muted-text: #6E7681;
+
+  /* Semantic Colors */
+  --ff-success: #00FF9D;
+  --ff-success-rgb: 0, 255, 157;
+
+  /* Semantic mappings */
+  --bg-default: var(--ff-tarmac);
+  --bg-subtle: var(--ff-cockpit);
+  --fg-default: var(--ff-primary-text);
+  --fg-subtle: var(--ff-secondary-text);
+  --fg-muted: var(--ff-muted-text);
+
+  --accent-default: var(--ff-flame);
+  --accent-hover: var(--ff-flame-light);
+  --accent-subtle: rgba(var(--ff-flame-rgb), 0.15);
+  --accent-glow: rgba(var(--ff-flame-rgb), 0.4);
+
+  --cyan-default: var(--ff-cyan);
+  --cyan-glow: rgba(var(--ff-cyan-rgb), 0.3);
+
+  /* Elevation */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-2: 0 4px 8px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+  --shadow-3: 0 8px 16px rgba(0, 0, 0, 0.35), 0 4px 8px rgba(0, 0, 0, 0.25);
+  --shadow-glow: 0 0 30px var(--accent-glow);
+  --shadow-glow-lg: 0 0 60px var(--accent-glow);
+
+  /* Glass morphism */
+  --glass-bg: rgba(var(--ff-cockpit-rgb), 0.6);
+  --glass-border: rgba(var(--ff-flame-rgb), 0.2);
+  --glass-border-hover: rgba(var(--ff-flame-rgb), 0.4);
+  --glass-blur: blur(20px);
+
+  /* Radius */
+  --radius-6: 16px;
+
+  /* Animation timing */
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+
+  /* Spacing */
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  /* Typography */
+  --font-sans: 'Instrument Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Space Grotesk', 'Instrument Sans', system-ui, sans-serif;
+  --font-mono: 'Commit Mono', 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+  /* Blog colors */
+  --color-primary: #FF6B35;
+  --color-primary-light: #FF8C42;
+  --color-primary-dark: #E85A2A;
+  --color-secondary: #00D4FF;
+  --color-secondary-light: #34D4FF;
+
+  --color-bg: var(--ff-tarmac);
+  --color-bg-light: var(--ff-cockpit);
+  --color-bg-lighter: var(--ff-flightdeck);
+
+  --color-text: var(--ff-primary-text);
+  --color-text-secondary: var(--ff-secondary-text);
+  --color-text-muted: var(--ff-muted-text);
+  --color-text-dim: var(--ff-muted-text);
+
+  --gradient-primary: linear-gradient(135deg, #FF6B35 0%, #FF8C42 50%, #FFAB5C 100%);
+  --gradient-text: linear-gradient(135deg, #f8fafc 0%, #cbd5e1 50%, #94a3b8 100%);
+}
+
+[data-theme='light'] {
+  --ff-flame: #E85A2A;
+  --ff-flame-rgb: 232, 90, 42;
+  --ff-flame-dark: #D14A1A;
+  --ff-flame-light: #FF6B35;
+  --ff-cyan: #00A8CC;
+  --ff-cyan-rgb: 0, 168, 204;
+
+  --ff-sky: #FFFFFF;
+  --ff-sky-subtle: #F6F8FA;
+  --ff-sky-elevated: #EEF1F5;
+
+  --ff-dark-text: #0D1117;
+  --ff-dark-secondary: #4B5563;
+  --ff-dark-muted: #6B7280;
+
+  --bg-default: var(--ff-sky);
+  --bg-subtle: var(--ff-sky-subtle);
+  --fg-default: var(--ff-dark-text);
+  --fg-subtle: var(--ff-dark-secondary);
+  --fg-muted: var(--ff-dark-muted);
+
+  --accent-default: var(--ff-flame);
+  --accent-hover: var(--ff-flame-light);
+  --accent-subtle: rgba(var(--ff-flame-rgb), 0.12);
+  --accent-glow: rgba(var(--ff-flame-rgb), 0.25);
+
+  --shadow-glow: 0 0 30px var(--accent-glow);
+  --shadow-glow-lg: 0 0 60px var(--accent-glow);
+
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(99, 102, 241, 0.15);
+  --glass-border-hover: rgba(99, 102, 241, 0.3);
+
+  --color-primary: #E85A2A;
+  --color-primary-light: #FF6B35;
+  --color-primary-dark: #D14A1A;
+  --color-secondary: #00A8CC;
+  --color-secondary-light: #00D4FF;
+  --color-bg: var(--ff-sky);
+  --color-bg-light: var(--ff-sky-subtle);
+  --color-bg-lighter: var(--ff-sky-elevated);
+  --color-text: var(--ff-dark-text);
+  --color-text-secondary: var(--ff-dark-secondary);
+  --color-text-muted: var(--ff-dark-muted);
+  --color-text-dim: var(--ff-dark-muted);
+
+  --gradient-primary: linear-gradient(135deg, #E85A2A 0%, #FF6B35 50%, #FF8C42 100%);
+  --gradient-text: linear-gradient(135deg, #0f172a 0%, #334155 50%, #64748b 100%);
+}
+
+/* =============================================
+   SHARED FUNCTIONFLY UTILITIES
+   (mirrors web/site design-system.css)
+   ============================================= */
+
+.ff-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.ff-container-narrow {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.ff-text-gradient {
+  background: linear-gradient(135deg, var(--ff-flame), var(--ff-cyan), var(--ff-success));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.ff-text-gradient-subtle {
+  background: linear-gradient(135deg, var(--ff-flame), var(--ff-afterburner));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Subtle dot grid pattern - Velocity Brand */
+.ff-grid-bg {
+  position: relative;
+}
+
+.ff-grid-bg::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(var(--ff-flame-rgb), 0.04) 1px, transparent 0);
+  background-size: 32px 32px;
+  pointer-events: none;
+  z-index: 0;
+  animation: grid-fade 10s ease-in-out infinite;
+}
+
+[data-theme='light'] .ff-grid-bg::before {
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(var(--ff-flame-rgb), 0.08) 1px, transparent 0);
+}
+
+/* Aurora background container */
+.ff-aurora-bg {
+  position: relative;
+  overflow: hidden;
+}
+
+.ff-aurora-bg::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background:
+    radial-gradient(ellipse 60% 40% at 30% 30%, rgba(var(--ff-flame-rgb), 0.2) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 30% at 70% 60%, rgba(var(--ff-cyan-rgb), 0.12) 0%, transparent 40%),
+    radial-gradient(ellipse 40% 25% at 40% 80%, rgba(var(--ff-success-rgb), 0.08) 0%, transparent 35%);
+  animation: aurora-shift 20s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+[data-theme='light'] .ff-aurora-bg::before {
+  background:
+    radial-gradient(ellipse 60% 40% at 30% 30%, rgba(var(--ff-flame-rgb), 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 30% at 70% 60%, rgba(var(--ff-cyan-rgb), 0.05) 0%, transparent 40%),
+    radial-gradient(ellipse 40% 25% at 40% 80%, rgba(var(--ff-success-rgb), 0.04) 0%, transparent 35%);
+}
+
+@keyframes aurora-shift {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.3;
+  }
+  25% {
+    transform: translate(5%, -5%) scale(1.1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translate(-3%, 3%) scale(1.05);
+    opacity: 0.35;
+  }
+  75% {
+    transform: translate(2%, 2%) scale(1.08);
+    opacity: 0.45;
+  }
+}
+
+@keyframes grid-fade {
+  0%, 100% { opacity: 0.02; }
+  50% { opacity: 0.06; }
+}

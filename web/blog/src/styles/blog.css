@@ -69,8 +69,19 @@
   transition: color 0.2s;
 }
 
+[data-theme='light'] .blog-content a {
+  color: #c2410c;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s;
+}
+
 .blog-content a:hover {
   color: #FFAB5C;
+}
+
+[data-theme='light'] .blog-content a:hover {
+  color: #9a3412;
 }
 
 /* Code blocks */

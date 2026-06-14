@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://blog.functionfly.com/sitemap-index.xml
+
+# Block API routes
+Disallow: /api/
+Disallow: /rss.xml

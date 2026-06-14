@@ -3,6 +3,7 @@ import react from "@astrojs/react";
 import sitemap from "@astrojs/sitemap";
 import sentry from "@sentry/astro";
 import astroMermaid from "astro-mermaid";
+import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
 
 const site = process.env.PUBLIC_BLOG_SITE_URL || "https://blog.functionfly.com";
@@ -49,6 +50,7 @@ export default defineConfig({
     ssr: {
       noExternal: ["astro-gtm", "astro-useragent", "astro-robots-txt", "@astro-community/astro-embed-youtube", "@astro-community/astro-embed-twitter", "@astro-community/astro-embed-link-preview"],
     },
+    plugins: [tailwindcss()],
     server: {
       proxy: {
         "/api/v1": {

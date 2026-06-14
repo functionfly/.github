@@ -1,0 +1,440 @@
+---
+const isDev = import.meta.env.DEV;
+const SITE_ORIGIN = import.meta.env.PUBLIC_SITE_URL || (isDev ? 'http://localhost:4321' : 'https://functionfly.com');
+const DOCS_ORIGIN = import.meta.env.PUBLIC_DOCS_URL || (isDev ? 'http://localhost:4322' : 'https://docs.functionfly.com');
+const BLOG_ORIGIN = import.meta.env.PUBLIC_BLOG_SITE_URL || (isDev ? 'http://localhost:4327' : 'https://blog.functionfly.com');
+const AUTH_URL = import.meta.env.PUBLIC_AUTH_URL || (isDev ? 'http://localhost:4324' : 'https://auth.functionfly.com');
+
+const pathname = Astro.url.pathname.replace(/\/$/, '') || '/';
+
+function navClass(href: string): string {
+  if (href.startsWith('http')) return '';
+  const h = href.replace(/\/$/, '') || '/';
+  if (h === '/') return pathname === '/' ? 'nav-active' : '';
+  return pathname === h || pathname.startsWith(`${h}/`) ? 'nav-active' : '';
+}
+---
+
+<header class="header">
+  <nav class="nav">
+    <a href="/" class="logo">
+      <img src="/favicon.svg" alt="" width="32" height="32" />
+      <span>FunctionFly</span>
+    </a>
+    <div class="nav-links" id="nav-links">
+      <a href={`${DOCS_ORIGIN}/`} class:list={[navClass('/docs')]}>Docs</a>
+      <a href={`${SITE_ORIGIN}/for-agents`} class:list={[navClass('/for-agents')]}>For AI Agents</a>
+      <a href={`${SITE_ORIGIN}/trust`} class:list={[navClass('/trust')]}>Trust</a>
+      <a href={`${SITE_ORIGIN}/pricing`} class:list={[navClass('/pricing')]}>Pricing</a>
+      <a href={BLOG_ORIGIN} class:list={[navClass('/blog')]}>Blog</a>
+      <a href={`${AUTH_URL}/signup`} class="nav-cta">Sign up</a>
+      <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+        <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"/>
+          <line x1="12" y1="1" x2="12" y2="3"/>
+          <line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/>
+          <line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+        <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+    </div>
+    <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-label="Toggle mobile menu" aria-expanded="false" aria-controls="nav-links">
+      <svg class="menu-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+      <svg class="close-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  </nav>
+</header>
+
+<script is:inline>
+  (function() {
+    var STORAGE_KEY = 'ff-user-theme';
+    var LEGACY_KEY = 'ff-theme';
+    var _cached = null;
+
+    function getSystemTheme() {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    function resolveTheme(mode) {
+      return mode === 'system' ? getSystemTheme() : mode;
+    }
+
+    function readStorage() {
+      try {
+        var stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          var parsed = JSON.parse(stored);
+          if (parsed.mode === 'light' || parsed.mode === 'dark' || parsed.mode === 'system') {
+            return parsed;
+          }
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    function migrateLegacy() {
+      try {
+        var legacy = localStorage.getItem(LEGACY_KEY);
+        if (legacy && (legacy === 'light' || legacy === 'dark')) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode: legacy }));
+          localStorage.removeItem(LEGACY_KEY);
+          return { mode: legacy };
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    function applyTheme() {
+      var migrated = migrateLegacy();
+      var preference = migrated || readStorage();
+      var mode = preference ? preference.mode : 'system';
+      var resolved = resolveTheme(mode);
+      _cached = { mode: mode, resolved: resolved };
+      document.documentElement.setAttribute('data-theme', resolved);
+    }
+
+    applyTheme();
+
+    window.addEventListener('ff-theme-change', function(e) {
+      _cached = e.detail;
+      document.documentElement.setAttribute('data-theme', e.detail.resolved);
+      updateThemeIcon();
+    });
+
+    function updateThemeIcon() {
+      var toggle = document.getElementById('theme-toggle');
+      if (toggle) {
+        var isLight = document.documentElement.getAttribute('data-theme') === 'light';
+        toggle.classList.toggle('is-light', isLight);
+      }
+    }
+
+    window.ffThemeSync = {
+      toggle: function() {
+        var current = _cached ? _cached.resolved : getSystemTheme();
+        var next = current === 'dark' ? 'light' : 'dark';
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode: next }));
+        var resolved = resolveTheme(next);
+        _cached = { mode: next, resolved: resolved };
+        document.documentElement.setAttribute('data-theme', resolved);
+        window.dispatchEvent(new CustomEvent('ff-theme-change', { detail: _cached }));
+        updateThemeIcon();
+      },
+      updateIcon: updateThemeIcon
+    };
+  })();
+</script>
+
+<script>
+  const themeToggle = document.getElementById('theme-toggle');
+  const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+  const navLinks = document.getElementById('nav-links');
+
+  function updateThemeIcon() {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    if (themeToggle) themeToggle.classList.toggle('is-light', isLight);
+  }
+
+  updateThemeIcon();
+
+  if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+      const ffThemeSync = (window as unknown as { ffThemeSync?: { toggle: () => void; updateIcon: () => void } }).ffThemeSync;
+      if (ffThemeSync && ffThemeSync.toggle) {
+        ffThemeSync.toggle();
+      }
+    });
+  }
+
+  // Mobile menu toggle
+  if (mobileMenuToggle && navLinks) {
+    mobileMenuToggle.addEventListener('click', () => {
+      const isOpen = navLinks.classList.toggle('is-open');
+      mobileMenuToggle.setAttribute('aria-expanded', String(isOpen));
+      const menuIcon = mobileMenuToggle.querySelector('.menu-icon') as HTMLElement;
+      const closeIcon = mobileMenuToggle.querySelector('.close-icon') as HTMLElement;
+      if (menuIcon && closeIcon) {
+        menuIcon.style.display = isOpen ? 'none' : 'block';
+        closeIcon.style.display = isOpen ? 'block' : 'none';
+      }
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!navLinks.contains(e.target as Node) && !mobileMenuToggle.contains(e.target as Node)) {
+        navLinks.classList.remove('is-open');
+        mobileMenuToggle.setAttribute('aria-expanded', 'false');
+        const menuIcon = mobileMenuToggle.querySelector('.menu-icon') as HTMLElement;
+        const closeIcon = mobileMenuToggle.querySelector('.close-icon') as HTMLElement;
+        if (menuIcon && closeIcon) {
+          menuIcon.style.display = 'block';
+          closeIcon.style.display = 'none';
+        }
+      }
+    });
+  }
+</script>
+
+<style is:global>
+  .header {
+    position: sticky;
+    top: 0;
+    background: rgba(var(--ff-tarmac-rgb, 13, 17, 23), 0.7);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--color-border);
+    z-index: 100;
+  }
+
+  [data-theme='light'] .header {
+    background: rgba(255, 255, 255, 0.85);
+  }
+
+  .nav {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 700;
+    font-size: 1.25rem;
+    padding: 6px 10px;
+    border-radius: 8px;
+    transition: background 0.2s;
+  }
+
+  .logo:hover {
+    background: rgba(var(--ff-tarmac-rgb, 13, 17, 23), 0.5);
+  }
+
+  [data-theme='light'] .logo:hover {
+    background: rgba(99, 102, 241, 0.08);
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+  }
+
+  .nav-links a {
+    color: var(--color-text-muted);
+    transition: color 0.2s, background 0.2s, padding 0.2s;
+    padding: 6px 12px;
+    border-radius: 6px;
+  }
+
+  .nav-links a:hover {
+    color: var(--color-text);
+    background: rgba(var(--ff-tarmac-rgb, 13, 17, 23), 0.5);
+  }
+
+  .nav-active {
+    color: var(--ff-cyan, #00D4FF) !important;
+    font-weight: 600;
+    background: rgba(0, 212, 255, 0.1);
+    padding: 6px 12px;
+    border-radius: 6px;
+  }
+
+  .nav-active:hover {
+    color: var(--ff-cyan, #00D4FF) !important;
+    background: rgba(0, 212, 255, 0.15);
+  }
+
+  [data-theme='light'] .nav-links a:hover {
+    background: rgba(99, 102, 241, 0.08);
+  }
+
+  [data-theme='light'] .nav-active {
+    color: var(--ff-cyan, #00A8CC) !important;
+    background: rgba(99, 102, 241, 0.1);
+  }
+
+  [data-theme='light'] .nav-active:hover {
+    background: rgba(99, 102, 241, 0.15);
+  }
+
+  .nav-cta {
+    background: var(--ff-flame, #FF6B35);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 500;
+    color: white !important;
+    transition: background 0.2s;
+  }
+
+  .nav-cta:hover {
+    background: var(--ff-flame-dark, #E85A2A);
+  }
+
+  .logo-bg {
+    fill: #0F172A;
+    transition: fill var(--duration-fast);
+  }
+
+  [data-theme='light'] .logo-bg {
+    fill: #1e293b;
+  }
+
+  .theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    background: rgba(var(--ff-tarmac-rgb, 13, 17, 23), 0.6);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    position: relative;
+  }
+
+  .theme-toggle:hover {
+    background: var(--ff-flame, #FF6B35);
+    border-color: var(--ff-flame, #FF6B35);
+    color: white;
+  }
+
+  [data-theme='light'] .theme-toggle {
+    background: rgba(255, 255, 255, 0.8);
+  }
+
+  [data-theme='light'] .theme-toggle:hover {
+    background: var(--ff-flame, #E85A2A);
+    border-color: var(--ff-flame, #E85A2A);
+  }
+
+  .mobile-menu-toggle {
+    display: none;
+  }
+
+  .theme-toggle .sun-icon,
+  .theme-toggle .moon-icon {
+    position: absolute;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+
+  .theme-toggle .sun-icon {
+    opacity: 0;
+    transform: rotate(90deg) scale(0.5);
+  }
+
+  .theme-toggle .moon-icon {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+
+  .theme-toggle.is-light .sun-icon {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+
+  .theme-toggle.is-light .moon-icon {
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.5);
+  }
+
+  @media (max-width: 768px) {
+    .nav {
+      padding: 1rem;
+      gap: 0.5rem;
+    }
+
+    .nav-links {
+      gap: 0.75rem;
+    }
+
+    .nav-links a:not(.nav-cta) {
+      display: none;
+    }
+
+    .nav-cta {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.875rem;
+    }
+
+    .mobile-menu-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      background: rgba(var(--ff-tarmac-rgb, 13, 17, 23), 0.6);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      color: var(--color-text);
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .mobile-menu-toggle:hover {
+      background: var(--ff-flame, #FF6B35);
+      border-color: var(--ff-flame, #FF6B35);
+    }
+
+    [data-theme='light'] .mobile-menu-toggle {
+      background: rgba(255, 255, 255, 0.8);
+    }
+
+    [data-theme='light'] .mobile-menu-toggle:hover {
+      background: var(--ff-flame, #E85A2A);
+      border-color: var(--ff-flame, #E85A2A);
+    }
+
+    .nav-links.is-open {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+      padding: 1rem;
+      background: rgba(var(--ff-tarmac-rgb, 13, 17, 23), 0.95);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--color-border);
+      z-index: 99;
+    }
+
+    [data-theme='light'] .nav-links.is-open {
+      background: rgba(255, 255, 255, 0.95);
+    }
+
+    .nav-links.is-open a:not(.nav-cta) {
+      display: flex;
+      padding: 0.75rem 1rem;
+    }
+
+    .nav-links.is-open .nav-cta {
+      display: flex;
+      justify-content: center;
+    }
+  }
+</style>

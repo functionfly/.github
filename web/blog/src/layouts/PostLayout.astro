@@ -3,7 +3,7 @@ import BlogLayout from './BlogLayout.astro';
 import { slateBodyToHtml, calculateReadingTime } from '../lib/slate-to-html';
 import { formatDate, formatDateISO } from '../lib/utils';
 import AuthorBio from '../components/AuthorBio.astro';
-import type { BlogPost } from '../types/blog';
+import type { BlogPost } from '../lib/api';
 
 interface Props {
   post: BlogPost;
@@ -25,6 +25,33 @@ const ogImageUrl = post.ogImage?.url || post.heroImage?.url;
   ogImage={ogImageUrl || undefined}
   canonical={canonicalUrl}
 >
+  {/* JSON-LD Structured Data */}
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": post.title,
+    "description": post.description,
+    "image": post.heroImage?.url,
+    "datePublished": post.publishedAt,
+    "dateModified": post.updatedAt,
+    "author": post.author ? {
+      "@type": "Person",
+      "name": post.author.name,
+      "url": `${Astro.site}author/${post.author.slug}`
+    } : undefined,
+    "publisher": {
+      "@type": "Organization",
+      "name": "FunctionFly",
+      "url": "https://functionfly.com"
+    },
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": canonicalUrl
+    },
+    "keywords": post.tags?.join(", "),
+    "wordCount": readingMinutes * 200
+  })} />
+
   <div class="post-surface">
     <article class="blog-post">
       <div class="post-container">
@@ -134,7 +161,7 @@ const ogImageUrl = post.ogImage?.url || post.heroImage?.url;
           <!-- Author Bio at bottom -->
           {post.author && (
             <div class="author-section">
-              <AuthorBio author={post.author} />
+              <AuthorBio author={post.author as any} />
             </div>
           )}
 
@@ -165,22 +192,33 @@ const ogImageUrl = post.ogImage?.url || post.heroImage?.url;
   <script is:inline>
     document.addEventListener('DOMContentLoaded', function() {
       const codeBlocks = document.querySelectorAll('.copy-code-btn');
-      
+
+      // Create aria-live region for announcements
+      const liveRegion = document.createElement('div');
+      liveRegion.setAttribute('aria-live', 'polite');
+      liveRegion.setAttribute('aria-atomic', 'true');
+      liveRegion.className = 'sr-only';
+      liveRegion.style.cssText = 'position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;';
+      document.body.appendChild(liveRegion);
+
       codeBlocks.forEach(btn => {
+        btn.setAttribute('aria-label', 'Copy code to clipboard');
         btn.addEventListener('click', async function() {
           const code = this.getAttribute('data-code');
-          
+
           try {
             await navigator.clipboard.writeText(code);
-            
+
             // Show copied state
             this.classList.add('copied');
-            
+            liveRegion.textContent = 'Code copied to clipboard';
+
             setTimeout(() => {
               this.classList.remove('copied');
             }, 2000);
           } catch (err) {
             console.error('Failed to copy:', err);
+            liveRegion.textContent = 'Failed to copy code';
           }
         });
       });

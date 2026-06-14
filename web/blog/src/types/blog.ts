@@ -35,6 +35,8 @@ export interface BlogPost {
     socialLinks?: unknown;
     role?: string;
     active: boolean;
+    createdAt?: string;
+    updatedAt?: string;
   } | null;
   category?: {
     id: string;

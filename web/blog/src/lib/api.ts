@@ -33,6 +33,10 @@ export interface BlogPost {
   author?: {
     name: string;
     slug: string;
+    email?: string;
+    photo?: { url: string } | null;
+    bio?: string;
+    role?: string;
   } | null;
   category?: {
     title: string;
@@ -63,6 +67,7 @@ export interface Category {
   color?: string;
   icon?: string;
   order: number;
+  postCount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -84,6 +89,7 @@ export interface PostsQuery {
   author?: string;
   tag?: string;
   search?: string;
+  status?: string;
 }
 
 /**
@@ -98,6 +104,7 @@ export async function getPosts(query?: PostsQuery): Promise<PaginatedResponse<Bl
   if (query?.author) params.set('author', query.author);
   if (query?.tag) params.set('tag', query.tag);
   if (query?.search) params.set('search', query.search);
+  if (query?.status) params.set('status', query.status);
 
   const url = `${BLOG_API_URL}/blog/posts?${params.toString()}`;
   
@@ -138,7 +145,7 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
  */
 export async function getCategories(): Promise<Category[]> {
   try {
-    const response = await fetch(`${BLOG_API_URL}/blog/categories`);
+    const response = await fetch(`${BLOG_API_URL}/content/categories`);
     if (!response.ok) {
       throw new Error(`Failed to fetch categories: ${response.status}`);
     }

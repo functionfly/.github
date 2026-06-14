@@ -1,12 +1,14 @@
 ---
-import type { Category } from '../types/blog';
+import type { Category } from '../lib/api';
 
 interface Props {
   categories: Category[];
   activeCategory?: string;
+  showCounts?: boolean;
+  totalPosts?: number;
 }
 
-const { categories, activeCategory } = Astro.props;
+const { categories, activeCategory, showCounts = false, totalPosts = 0 } = Astro.props;
 
 // Icon mapping for category icons - inline SVGs
 const iconSvgs: Record<string, string> = {
@@ -55,6 +57,7 @@ function getIconColor(color?: string): string {
         </svg>
       </span>
       <span class="category-filter__text">All Posts</span>
+      {showCounts && <span class="category-filter__post-count">{totalPosts}</span>}
       <span class="category-filter__arrow">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="9 18 15 12 9 6"></polyline>
@@ -77,6 +80,7 @@ function getIconColor(color?: string): string {
             <svg class="category-filter__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" set:html={iconSvg} />
           </span>
           <span class="category-filter__text">{category.title}</span>
+          {showCounts && <span class="category-filter__post-count">{category.postCount || 0}</span>}
           <span class="category-filter__arrow">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="9 18 15 12 9 6"></polyline>
@@ -239,14 +243,33 @@ function getIconColor(color?: string): string {
     transition: all 0.3s ease;
   }
 
-  .category-filter__text {
+.category-filter__text {
     flex: 1;
     font-weight: 500;
     transition: all 0.3s ease;
   }
 
-  .category-filter__link:hover .category-filter__text {
-    transform: translateX(4px);
+  .category-filter__post-count {
+    font-size: 0.7rem;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    color: var(--color-text-muted);
+    background: var(--color-bg-lighter);
+    padding: 0.2rem 0.5rem;
+    border-radius: 9999px;
+    min-width: 24px;
+    text-align: center;
+    transition: all 0.3s ease;
+  }
+
+  .category-filter__link:hover .category-filter__post-count {
+    background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+    color: var(--color-primary);
+  }
+
+  .category-filter__link--active .category-filter__post-count {
+    background: color-mix(in srgb, var(--color-primary) 20%, transparent);
+    color: var(--color-primary);
   }
 
   .category-filter__arrow {

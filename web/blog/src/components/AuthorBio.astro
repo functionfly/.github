@@ -1,17 +1,16 @@
 ---
-import { formatDate } from '../lib/utils';
-import type { Author } from '../types/blog';
+import type { Author } from '../lib/api';
 
 interface Props {
-  author: Author;
+  author: Partial<Author>;
   showSocial?: boolean;
 }
 
 const { author, showSocial = true } = Astro.props;
 
 // Parse social links if they exist
-const socialLinks = author.socialLinks && typeof author.socialLinks === 'object' 
-  ? author.socialLinks as Record<string, string>
+const socialLinks = author.socialLinks && typeof author.socialLinks === 'object'
+  ? author.socialLinks as unknown as Record<string, string>
   : {};
 ---
 
@@ -26,7 +25,7 @@ const socialLinks = author.socialLinks && typeof author.socialLinks === 'object'
       />
     ) : (
       <div class="author-avatar-fallback">
-        {author.name.charAt(0).toUpperCase()}
+        {(author.name || '?').charAt(0).toUpperCase()}
       </div>
     )}
     <div class="author-accent"></div>

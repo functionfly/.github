@@ -1,7 +1,7 @@
 ---
 import { formatDate } from '../lib/utils';
 import { calculateReadingTime } from '../lib/slate-to-html';
-import type { BlogPost } from '../types/blog';
+import type { BlogPost } from '../lib/api';
 
 interface Props {
   post: BlogPost;
@@ -33,9 +33,13 @@ const categoryColors: Record<string, string> = {
 };
 
 const categoryColor = post.category?.slug ? categoryColors[post.category.slug] || '#FF6B35' : '#FF6B35';
+const isTrending = post.tags?.includes('trending') || index < 2;
 ---
 
-<article class:list={['blog-card', `blog-card--${variant}`, { 'animate-in': true }]} style={`--category-color: ${categoryColor}; --animation-delay: ${index * 0.1}s`}>
+<article
+  class:list={['blog-card', `blog-card--${variant}`, { 'animate-in': true, 'is-trending': isTrending }]}
+  style={`--category-color: ${categoryColor}; --animation-delay: ${index * 0.1}s`}
+>
   <a href={`/${post.slug}`} class="blog-card__link">
     {showImage && imageUrl && (
       <div class="blog-card__image-wrapper">
@@ -47,9 +51,25 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
           loading={variant === 'featured' ? 'eager' : 'lazy'}
         />
         <div class="blog-card__image-glow"></div>
+        {isTrending && (
+          <div class="blog-card__trending-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+              <polyline points="17 6 23 6 23 12"/>
+            </svg>
+            Trending
+          </div>
+        )}
+        {post.publishedAt && (
+          <div class="blog-card__date-badge">
+            <time datetime={post.publishedAt}>
+              {new Date(post.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </time>
+          </div>
+        )}
       </div>
     )}
-    
+
     <div class="blog-card__content">
       {post.category && (
         <span class="blog-card__category" style={`--cat-color: ${categoryColor}`}>
@@ -57,15 +77,15 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
           {post.category.title}
         </span>
       )}
-      
+
       <h3 class="blog-card__title">
         <span class="blog-card__title-text">{post.title}</span>
       </h3>
-      
+
       {variant !== 'compact' && (
         <p class="blog-card__description">{post.description}</p>
       )}
-      
+
       <div class="blog-card__meta">
         <div class="blog-card__meta-item">
           <svg class="blog-card__meta-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -89,7 +109,19 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
           <span>{readingMinutes} min read</span>
         </div>
       </div>
-      
+
+      <div class="blog-card__share">
+        <button class="blog-card__share-btn" aria-label="Share article" data-title={post.title} data-slug={post.slug}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="18" cy="5" r="3"/>
+            <circle cx="6" cy="12" r="3"/>
+            <circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+        </button>
+      </div>
+
       <div class="blog-card__arrow">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -100,11 +132,34 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
   </a>
 </article>
 
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.blog-card__share-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const title = (btn as HTMLElement).dataset.title || '';
+        const slug = (btn as HTMLElement).dataset.slug || '';
+        const url = `${window.location.origin}/${slug}`;
+        if (navigator.share) {
+          navigator.share({ title, url });
+        } else {
+          navigator.clipboard.writeText(url);
+          const originalLabel = btn.getAttribute('aria-label') || '';
+          btn.setAttribute('aria-label', 'Link copied!');
+          setTimeout(() => btn.setAttribute('aria-label', originalLabel), 2000);
+        }
+      });
+    });
+  });
+</script>
+
 <style>
   .blog-card {
     position: relative;
-    background: color-mix(in srgb, var(--color-bg-light) 80%, transparent);
-    border: 1px solid var(--color-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
     border-radius: 16px;
     overflow: hidden;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -121,42 +176,10 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
     }
   }
 
-  .blog-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(ellipse at top, color-mix(in srgb, var(--color-primary) 10%, transparent) 0%, transparent 50%);
-    opacity: 0;
-    transition: opacity 0.4s ease;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .blog-card:hover::before {
-    opacity: 1;
-  }
-
-  .blog-card::after {
-    content: '';
-    position: absolute;
-    inset: -1px;
-    background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 40%, transparent) 0%, transparent 50%, color-mix(in srgb, var(--color-secondary) 20%, transparent) 100%);
-    border-radius: 16px;
-    z-index: -1;
-    opacity: 0;
-    transition: opacity 0.4s ease;
-  }
-
-  .blog-card:hover::after {
-    opacity: 1;
-  }
-
   .blog-card:hover {
     transform: translateY(-6px) scale(1.01);
-    border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
-    box-shadow:
-      0 20px 40px rgba(0, 0, 0, 0.4),
-      0 0 60px color-mix(in srgb, var(--color-primary) 15%, transparent);
+    border-color: var(--glass-border-hover);
+    box-shadow: var(--shadow-glow);
   }
 
   .blog-card__link {
@@ -171,13 +194,13 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
     position: relative;
     aspect-ratio: 16 / 9;
     overflow: hidden;
-    background: linear-gradient(135deg, var(--color-bg-light) 0%, var(--color-bg) 100%);
+    background: linear-gradient(135deg, var(--ff-cockpit) 0%, var(--ff-tarmac) 100%);
   }
 
   .blog-card__image-overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(to bottom, transparent 50%, color-mix(in srgb, var(--color-bg) 80%, transparent) 100%);
+    background: linear-gradient(to bottom, transparent 50%, rgba(var(--ff-tarmac-rgb), 0.8) 100%);
     z-index: 1;
     transition: opacity 0.3s ease;
   }
@@ -196,7 +219,7 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
   .blog-card__image-glow {
     position: absolute;
     inset: 0;
-    background: radial-gradient(ellipse at center, var(--category-color, #FF6B35) 0%, transparent 70%);
+    background: radial-gradient(ellipse at center, var(--category-color, var(--ff-flame)) 0%, transparent 70%);
     opacity: 0;
     transition: opacity 0.4s ease;
     z-index: 2;
@@ -206,6 +229,46 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
 
   .blog-card:hover .blog-card__image-glow {
     opacity: 0.3;
+  }
+
+  .blog-card__trending-badge {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    background: linear-gradient(135deg, var(--ff-flame) 0%, var(--ff-afterburner) 100%);
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    z-index: 3;
+    box-shadow: 0 4px 12px rgba(var(--ff-flame-rgb), 0.4);
+    animation: pulse-badge 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-badge {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+
+  .blog-card__date-badge {
+    position: absolute;
+    bottom: 0.75rem;
+    left: 0.75rem;
+    padding: 0.35rem 0.75rem;
+    background: rgba(var(--ff-tarmac-rgb), 0.85);
+    backdrop-filter: blur(8px);
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text);
+    z-index: 3;
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .blog-card__content {
@@ -222,20 +285,20 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
     align-items: center;
     gap: 0.5rem;
     padding: 0.4rem 0.85rem;
-    background: color-mix(in srgb, var(--category-color, #FF6B35) 10%, transparent);
-    border: 1px solid color-mix(in srgb, var(--category-color, #FF6B35) 20%, transparent);
+    background: rgba(var(--ff-flame-rgb), 0.1);
+    border: 1px solid rgba(var(--ff-flame-rgb), 0.2);
     border-radius: 9999px;
     font-size: 0.75rem;
     font-weight: 600;
-    color: var(--category-color, #FF6B35);
+    color: var(--ff-flame);
     margin-bottom: 0.875rem;
     width: fit-content;
     transition: all 0.3s ease;
   }
 
   .blog-card:hover .blog-card__category {
-    background: color-mix(in srgb, var(--category-color, #FF6B35) 20%, transparent);
-    border-color: color-mix(in srgb, var(--category-color, #FF6B35) 40%, transparent);
+    background: rgba(var(--ff-flame-rgb), 0.2);
+    border-color: rgba(var(--ff-flame-rgb), 0.4);
     transform: translateX(4px);
   }
 
@@ -243,8 +306,8 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--category-color, #FF6B35);
-    box-shadow: 0 0 8px var(--category-color, #FF6B35);
+    background: var(--ff-flame);
+    box-shadow: 0 0 8px var(--accent-glow);
   }
 
   .blog-card__title {
@@ -257,16 +320,12 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
   }
 
   .blog-card__title-text {
-    background: var(--gradient-text);
-    -webkit-background-clip: text;
-    background-clip: text;
-    transition: all 0.3s ease;
+    color: var(--color-text);
+    transition: color 0.3s ease;
   }
 
   .blog-card:hover .blog-card__title-text {
-    background: linear-gradient(90deg, var(--color-text) 0%, var(--color-primary-light) 50%, var(--color-primary) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
+    color: var(--ff-flame-light);
   }
 
   .blog-card__description {
@@ -310,7 +369,7 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
 
   .blog-card:hover .blog-card__meta-icon {
     opacity: 1;
-    color: var(--color-primary-light);
+    color: var(--ff-flame-light);
   }
 
   .blog-card__meta-separator {
@@ -327,12 +386,12 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-    border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+    background: rgba(var(--ff-flame-rgb), 0.1);
+    border: 1px solid rgba(var(--ff-flame-rgb), 0.2);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--color-primary-light);
+    color: var(--ff-flame-light);
     opacity: 0;
     transform: translateX(-10px);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -349,6 +408,44 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
 
   .blog-card:hover .blog-card__arrow svg {
     transform: translateX(2px);
+  }
+
+  /* Share button */
+  .blog-card__share {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 3;
+    opacity: 0;
+    transform: translateY(-5px);
+    transition: all 0.3s ease;
+  }
+
+  .blog-card:hover .blog-card__share {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .blog-card__share-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: rgba(var(--ff-tarmac-rgb), 0.8);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    color: var(--color-text);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .blog-card__share-btn:hover {
+    background: var(--ff-flame);
+    border-color: var(--ff-flame);
+    color: white;
+    transform: scale(1.1);
   }
 
   /* Featured variant */
@@ -424,7 +521,8 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
     border-top: none;
   }
 
-  .blog-card--compact .blog-card__arrow {
+  .blog-card--compact .blog-card__arrow,
+  .blog-card--compact .blog-card__share {
     display: none;
   }
 
@@ -432,7 +530,7 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
     .blog-card--featured {
       grid-column: span 1;
     }
-    
+
     .blog-card--featured .blog-card__link {
       flex-direction: column;
     }
@@ -462,6 +560,10 @@ const categoryColor = post.category?.slug ? categoryColors[post.category.slug] |
     }
 
     .blog-card__arrow {
+      display: none;
+    }
+
+    .blog-card__share {
       display: none;
     }
   }
