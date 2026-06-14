@@ -253,6 +253,26 @@ Compliance-based data retention is implemented for cost allocation entries:
 
 The Secrets Vault is **zero-knowledge**: the server never sees plaintext or the decryption passphrase. Encryption and decryption are done **client-side** (dashboard: `web/dashboard/src/utils/vault-crypto.ts`). The API stores only AES-256-GCM ciphertext + IV/salt/tag. There is **no server-side decrypt endpoint** by design. For audit retention and token cleanup, see `docs/VAULT_OPERATIONS.md`.
 
+### Vault Plan System (Separate from Main Platform Plans)
+
+The Vault uses a **separate plan system** from the main platform:
+
+| Vault Plan | Max Secrets | Max Dynamic Creds | Key Features |
+|------------|------------|-------------------|---------------|
+| **Free** | 25 | 100 | expiration, namespaces |
+| **Pro** | 500 | 5,000 | MFA, IP allowlist, breakGlass, auditExport |
+| **Team** | 5,000 | 50,000 | escrow, RBAC, shares, siemWebhooks |
+| **Enterprise** | 1,000,000 | 1,000,000 | SSO, HA status |
+
+**Main Platform Plans** (defined in `internal/plans/limits.go`):
+- Free, Starter ($24/mo), Professional ($79/mo), Enterprise ($299/mo), Agent Enterprise ($499/mo)
+
+These are **two separate billing systems**. The main platform plans control API requests, agents, and AI calls. The vault plans control secrets storage and dynamic credentials. A user can be on "Professional" platform plan but "Free" vault plan (or vice versa).
+
+Implementation locations:
+- Vault plans: `web/dashboard/src/lib/vaultPlans.ts`, `internal/storage/vault/quota/quota.go`
+- Platform plans: `web/dashboard/src/lib/constants.ts`, `internal/plans/limits.go`
+
 ---
 
 ## Common patterns

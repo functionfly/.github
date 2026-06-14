@@ -1,19 +1,5 @@
 {
   "worktrees": {
-    "wt-1774831901652-1": {
-      "branch": "rhinestone-teller",
-      "path": "/home/micro/projects/functionfly/.kilo/worktrees/rhinestone-teller",
-      "parentBranch": "master",
-      "createdAt": "2026-03-30T00:51:41.652Z",
-      "remote": "origin"
-    },
-    "wt-1781157349295-1": {
-      "branch": "sulky-anatosaurus",
-      "path": "/home/micro/projects/functionfly/.kilo/worktrees/sulky-anatosaurus",
-      "parentBranch": "develop",
-      "createdAt": "2026-06-11T05:55:49.295Z",
-      "remote": "origin"
-    },
     "wt-1781168278255-2": {
       "branch": "dune-dill",
       "path": "/home/micro/projects/functionfly/.kilo/worktrees/dune-dill",
@@ -26,13 +12,6 @@
       "path": "/home/micro/projects/functionfly/.kilo/worktrees/humorous-forgery",
       "parentBranch": "develop",
       "createdAt": "2026-06-11T09:01:47.028Z",
-      "remote": "origin"
-    },
-    "wt-1781170525739-4": {
-      "branch": "hot-factory",
-      "path": "/home/micro/projects/functionfly/.kilo/worktrees/hot-factory",
-      "parentBranch": "develop",
-      "createdAt": "2026-06-11T09:35:25.750Z",
       "remote": "origin"
     },
     "wt-1781172431312-5": {
@@ -70,66 +49,122 @@
       "createdAt": "2026-06-11T18:15:53.307Z",
       "remote": "origin"
     },
-    "wt-1781208476444-5": {
-      "branch": "muddy-thief",
-      "path": "/home/micro/projects/functionfly/.kilo/worktrees/muddy-thief",
+    "wt-1781216847426-12": {
+      "branch": "gigantic-eyebrow",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/gigantic-eyebrow",
       "parentBranch": "develop",
-      "createdAt": "2026-06-11T20:07:56.444Z",
+      "createdAt": "2026-06-11T22:27:27.426Z",
       "remote": "origin"
     },
-    "wt-1781212835044-6": {
-      "branch": "diamond-paint",
-      "path": "/home/micro/projects/functionfly/.kilo/worktrees/diamond-paint",
+    "wt-1781217350838-16": {
+      "branch": "security-audit-storage",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/security-audit-storage",
       "parentBranch": "develop",
-      "createdAt": "2026-06-11T21:20:35.044Z",
+      "createdAt": "2026-06-11T22:35:50.838Z",
+      "remote": "origin",
+      "label": "storage security audit",
+      "prNumber": 42,
+      "prUrl": "https://github.com/functionfly/functionfly/pull/42",
+      "prState": "merged"
+    },
+    "wt-1781222596834-18": {
+      "branch": "shade-fin",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/shade-fin",
+      "parentBranch": "develop",
+      "createdAt": "2026-06-12T00:03:16.834Z",
       "remote": "origin"
     },
-    "wt-1781212933980-7": {
-      "branch": "db-context-auth",
-      "path": "/home/micro/projects/functionfly/.kilo/worktrees/db-context-auth",
+    "wt-1781224019099-21": {
+      "branch": "review-email-backend",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/review-email-backend",
       "parentBranch": "develop",
-      "createdAt": "2026-06-11T21:22:13.980Z",
+      "createdAt": "2026-06-12T00:26:59.099Z",
       "remote": "origin",
-      "label": "auth repos"
+      "label": "email backend review"
     },
-    "wt-1781212940096-8": {
-      "branch": "db-context-user-tenant",
-      "path": "/home/micro/projects/functionfly/.kilo/worktrees/db-context-user-tenant",
+    "wt-1781224027112-22": {
+      "branch": "review-email-frontend",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/review-email-frontend",
       "parentBranch": "develop",
-      "createdAt": "2026-06-11T21:22:20.096Z",
+      "createdAt": "2026-06-12T00:27:07.112Z",
       "remote": "origin",
-      "label": "user tenant"
+      "label": "email frontend review",
+      "prNumber": 41,
+      "prUrl": "https://github.com/functionfly/functionfly/pull/41",
+      "prState": "merged"
     },
-    "wt-1781212947583-9": {
-      "branch": "db-context-registry",
-      "path": "/home/micro/projects/functionfly/.kilo/worktrees/db-context-registry",
+    "wt-1781230018859-1": {
+      "branch": "robust-brownie",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/robust-brownie",
       "parentBranch": "develop",
-      "createdAt": "2026-06-11T21:22:27.583Z",
-      "remote": "origin",
-      "label": "registry functions"
+      "createdAt": "2026-06-12T02:06:58.859Z",
+      "remote": "origin"
     },
-    "wt-1781212955467-10": {
-      "branch": "db-context-billing",
-      "path": "/home/micro/projects/functionfly/.kilo/worktrees/db-context-billing",
+    "wt-1781230858962-2": {
+      "branch": "enthusiastic-attention",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/enthusiastic-attention",
       "parentBranch": "develop",
-      "createdAt": "2026-06-11T21:22:35.467Z",
-      "remote": "origin",
-      "label": "billing revenue"
+      "createdAt": "2026-06-12T02:20:58.962Z",
+      "remote": "origin"
     },
-    "wt-1781212962784-11": {
-      "branch": "db-context-monitoring",
-      "path": "/home/micro/projects/functionfly/.kilo/worktrees/db-context-monitoring",
+    "wt-1781231112333-3": {
+      "branch": "deluxe-finch",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/deluxe-finch",
       "parentBranch": "develop",
-      "createdAt": "2026-06-11T21:22:42.784Z",
-      "remote": "origin",
-      "label": "monitoring other"
+      "createdAt": "2026-06-12T02:25:12.333Z",
+      "remote": "origin"
+    },
+    "wt-1781234885198-4": {
+      "branch": "acidic-cirrus",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/acidic-cirrus",
+      "parentBranch": "develop",
+      "createdAt": "2026-06-12T03:28:05.198Z",
+      "remote": "origin"
+    },
+    "wt-1781238802254-5": {
+      "branch": "sedate-pullover",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/sedate-pullover",
+      "parentBranch": "develop",
+      "createdAt": "2026-06-12T04:33:22.254Z",
+      "remote": "origin"
+    },
+    "wt-1781282180400-1": {
+      "branch": "sunrise-decade",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/sunrise-decade",
+      "parentBranch": "develop",
+      "createdAt": "2026-06-12T16:36:20.400Z",
+      "remote": "origin"
+    },
+    "wt-1781290604512-3": {
+      "branch": "absorbed-twine",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/absorbed-twine",
+      "parentBranch": "develop",
+      "createdAt": "2026-06-12T18:56:44.512Z",
+      "remote": "origin"
+    },
+    "wt-1781310819720-4": {
+      "branch": "immediate-dress",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/immediate-dress",
+      "parentBranch": "develop",
+      "createdAt": "2026-06-13T00:33:39.720Z",
+      "remote": "origin"
+    },
+    "wt-1781313117798-5": {
+      "branch": "bygone-output",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/bygone-output",
+      "parentBranch": "develop",
+      "createdAt": "2026-06-13T01:11:57.798Z",
+      "remote": "origin"
+    },
+    "wt-1781410875403-1": {
+      "branch": "clean-flat",
+      "path": "/home/micro/projects/functionfly/.kilo/worktrees/clean-flat",
+      "parentBranch": "develop",
+      "createdAt": "2026-06-14T04:21:15.403Z",
+      "remote": "origin"
     }
   },
   "sessions": {
-    "ses_2c3c65b87ffemHArCWN1o0vfZs": {
-      "worktreeId": "wt-1774831901652-1",
-      "createdAt": "2026-03-30T00:51:48.714Z"
-    },
     "ses_1e1f2e43affenKeeH7J5DdSKLD": {
       "worktreeId": null,
       "createdAt": "2026-05-12T21:17:16.204Z"
@@ -174,21 +209,9 @@
       "worktreeId": null,
       "createdAt": "2026-06-10T00:09:20.990Z"
     },
-    "ses_1502c9d96ffe7ImljRNUSc701b": {
-      "worktreeId": null,
-      "createdAt": "2026-06-10T04:38:46.701Z"
-    },
     "ses_150253bedffeHIsO4LnKjeHLBV": {
       "worktreeId": null,
       "createdAt": "2026-06-10T04:46:50.443Z"
-    },
-    "ses_14abfb3f9ffeHDUHhXVRu1A69g": {
-      "worktreeId": "wt-1781157349295-1",
-      "createdAt": "2026-06-11T05:55:50.420Z"
-    },
-    "ses_14abeb797ffeOMj6P41cxjECXS": {
-      "worktreeId": "wt-1781157349295-1",
-      "createdAt": "2026-06-11T05:56:55.032Z"
     },
     "ses_14a18f407ffeg1tdRz387FQgGu": {
       "worktreeId": "wt-1781168278255-2",
@@ -201,10 +224,6 @@
     "ses_149f8eec3ffeIx6SZ3OmUS15LS": {
       "worktreeId": "wt-1781168278255-2",
       "createdAt": "2026-06-11T09:32:57.024Z"
-    },
-    "ses_149f69de8ffed5PuaN6qRah5yX": {
-      "worktreeId": "wt-1781170525739-4",
-      "createdAt": "2026-06-11T09:35:28.794Z"
     },
     "ses_149e86bc4ffeeKbZHDuY2TPerN": {
       "worktreeId": "wt-1781168278255-2",
@@ -226,21 +245,9 @@
       "worktreeId": "wt-1781172431312-5",
       "createdAt": "2026-06-11T10:07:12.449Z"
     },
-    "ses_149c2416bffenjHfUU8MxYcj8e": {
-      "worktreeId": "wt-1781170525739-4",
-      "createdAt": "2026-06-11T10:32:40.343Z"
-    },
-    "ses_149c141a0ffev0Utvxlc0dzGJv": {
-      "worktreeId": "wt-1781170525739-4",
-      "createdAt": "2026-06-11T10:33:45.834Z"
-    },
     "ses_149d4d4aaffeWRoDCgAPvITWgZ": {
       "worktreeId": "wt-1781168507028-3",
       "createdAt": "2026-06-11T16:21:52.596Z"
-    },
-    "ses_14a85e3d0ffeu0TKKASQGcq64A": {
-      "worktreeId": "wt-1781157349295-1",
-      "createdAt": "2026-06-11T16:21:52.597Z"
     },
     "ses_1486ab662ffeArribVcl9i0zVx": {
       "worktreeId": "wt-1781196472020-1",
@@ -294,14 +301,6 @@
       "worktreeId": "wt-1781201753307-4",
       "createdAt": "2026-06-11T18:42:30.577Z"
     },
-    "ses_147b39428ffekGEHiMHdZhDJ3p": {
-      "worktreeId": "wt-1781208476444-5",
-      "createdAt": "2026-06-11T20:07:56.636Z"
-    },
-    "ses_147b307dcffei4y4t5Gf1kKDgi": {
-      "worktreeId": "wt-1781208476444-5",
-      "createdAt": "2026-06-11T20:08:32.562Z"
-    },
     "ses_147b15bbaffeNJ2oj846xULBON": {
       "worktreeId": "wt-1781197740397-2",
       "createdAt": "2026-06-11T20:10:22.155Z"
@@ -309,38 +308,6 @@
     "ses_147ad9358ffeMBNrco1GQa7jOV": {
       "worktreeId": "wt-1781197740397-2",
       "createdAt": "2026-06-11T20:14:30.070Z"
-    },
-    "ses_147869e5fffeA0clkHQKyjhCO3": {
-      "worktreeId": "wt-1781208476444-5",
-      "createdAt": "2026-06-11T20:57:03.153Z"
-    },
-    "ses_147793718ffeMybftAgCuS69mP": {
-      "worktreeId": "wt-1781208476444-5",
-      "createdAt": "2026-06-11T21:11:41.547Z"
-    },
-    "ses_147710aabffe43UB0kWp1v9JB0": {
-      "worktreeId": "wt-1781212835044-6",
-      "createdAt": "2026-06-11T21:20:37.215Z"
-    },
-    "ses_1476f8fa0ffeEiSi8y4TZsGxLQ": {
-      "worktreeId": "wt-1781212933980-7",
-      "createdAt": "2026-06-11T21:22:14.257Z"
-    },
-    "ses_1476f7819ffe65V2k6cX3qLtQx": {
-      "worktreeId": "wt-1781212940096-8",
-      "createdAt": "2026-06-11T21:22:20.298Z"
-    },
-    "ses_1476f5a06ffeKg9f8k1lOxtGOB": {
-      "worktreeId": "wt-1781212947583-9",
-      "createdAt": "2026-06-11T21:22:27.981Z"
-    },
-    "ses_1476f3a8bffe8VVahlck63NQWx": {
-      "worktreeId": "wt-1781212955467-10",
-      "createdAt": "2026-06-11T21:22:36.313Z"
-    },
-    "ses_14753dcf3ffeZcW8a37VQAsUqb": {
-      "worktreeId": "wt-1781212962784-11",
-      "createdAt": "2026-06-11T21:52:29.468Z"
     },
     "ses_14748dd12ffe25pMrAsgkqu0xR": {
       "worktreeId": "wt-1781201753307-4",
@@ -353,6 +320,302 @@
     "ses_14738a1bdffeaV51b7IDxf20Ky": {
       "worktreeId": "wt-1781201753307-4",
       "createdAt": "2026-06-11T22:22:14.277Z"
+    },
+    "ses_14732938effeSI3RvrU0E0o3XZ": {
+      "worktreeId": "wt-1781216847426-12",
+      "createdAt": "2026-06-11T22:28:51.086Z"
+    },
+    "ses_1472c2adcffezyO3CKTzFxBsZn": {
+      "worktreeId": "wt-1781217350838-16",
+      "createdAt": "2026-06-11T22:35:50.961Z"
+    },
+    "ses_146e4d2a9ffedCkxrM0MtxNiiz": {
+      "worktreeId": "wt-1781216847426-12",
+      "createdAt": "2026-06-11T23:53:46.586Z"
+    },
+    "ses_146dc1adbffe61T9oUVflJN3cV": {
+      "worktreeId": "wt-1781222596834-18",
+      "createdAt": "2026-06-12T00:03:17.928Z"
+    },
+    "ses_146d2d5cbffeIfXFIDPgk7wK1z": {
+      "worktreeId": "wt-1781222596834-18",
+      "createdAt": "2026-06-12T00:13:25.482Z"
+    },
+    "ses_146d2d50fffeZgtsAlkr7Y8Hdi": {
+      "worktreeId": "wt-1781222596834-18",
+      "createdAt": "2026-06-12T00:13:25.624Z"
+    },
+    "ses_146d2d49affe8hd7yEhDMpi2nE": {
+      "worktreeId": "wt-1781222596834-18",
+      "createdAt": "2026-06-12T00:13:25.886Z"
+    },
+    "ses_146d1fb38ffeXwnZlvBU77vziq": {
+      "worktreeId": "wt-1781222596834-18",
+      "createdAt": "2026-06-12T00:14:21.387Z"
+    },
+    "ses_146c66adcffe4ks7oPU8nMNZ2H": {
+      "worktreeId": "wt-1781224019099-21",
+      "createdAt": "2026-06-12T00:26:59.259Z"
+    },
+    "ses_146c64641ffe5gVAqB2jjiKDxc": {
+      "worktreeId": "wt-1781224027112-22",
+      "createdAt": "2026-06-12T00:27:08.622Z"
+    },
+    "ses_146b8778bffeLEPmwLJydA7LgO": {
+      "worktreeId": "wt-1781216847426-12",
+      "createdAt": "2026-06-12T00:42:13.495Z"
+    },
+    "ses_146862decffej7dYRD0xasjoY6": {
+      "worktreeId": "wt-1781216847426-12",
+      "createdAt": "2026-06-12T01:37:09.143Z"
+    },
+    "ses_1468353bdffe5EMdrBTyWlOUUG": {
+      "worktreeId": "wt-1781222596834-18",
+      "createdAt": "2026-06-12T01:40:16.070Z"
+    },
+    "ses_146821714ffeswQ22sRdgnnOQz": {
+      "worktreeId": "wt-1781224027112-22",
+      "createdAt": "2026-06-12T01:41:37.140Z"
+    },
+    "ses_146820155ffeFx0lBp3mVaJR5M": {
+      "worktreeId": "wt-1781224019099-21",
+      "createdAt": "2026-06-12T01:41:42.702Z"
+    },
+    "ses_14750ecc2ffeh0NeKjH45q01z6": {
+      "worktreeId": "wt-1781196472020-1",
+      "createdAt": "2026-06-12T01:53:12.366Z"
+    },
+    "ses_1466ade11ffeT61DQO9EYDoOxK": {
+      "worktreeId": "wt-1781230018859-1",
+      "createdAt": "2026-06-12T02:06:59.135Z"
+    },
+    "ses_14668180fffec0FeCJEGhJK6Pg": {
+      "worktreeId": "wt-1781230018859-1",
+      "createdAt": "2026-06-12T02:10:01.067Z"
+    },
+    "ses_14667c858ffetVL3nhKcbIKD45": {
+      "worktreeId": "wt-1781230018859-1",
+      "createdAt": "2026-06-12T02:10:22.481Z"
+    },
+    "ses_1465e0cc6ffe6dxSpN7PNkS4xe": {
+      "worktreeId": "wt-1781230858962-2",
+      "createdAt": "2026-06-12T02:20:59.070Z"
+    },
+    "ses_1465d6a4affe0bepLknvOQ2U5W": {
+      "worktreeId": "wt-1781230018859-1",
+      "createdAt": "2026-06-12T02:21:40.664Z"
+    },
+    "ses_1465b273bffeoiRCMaOpL6nLXl": {
+      "worktreeId": "wt-1781230018859-1",
+      "createdAt": "2026-06-12T02:24:08.906Z"
+    },
+    "ses_1465a2f0fffeyn03Zhn1Oh3koI": {
+      "worktreeId": "wt-1781231112333-3",
+      "createdAt": "2026-06-12T02:25:12.449Z"
+    },
+    "ses_14656ef18ffekMZsbE0Ff7ra8N": {
+      "worktreeId": "wt-1781230858962-2",
+      "createdAt": "2026-06-12T02:28:45.442Z"
+    },
+    "ses_1465480caffe2DCnXNrPI1AY1F": {
+      "worktreeId": "wt-1781230018859-1",
+      "createdAt": "2026-06-12T02:31:24.730Z"
+    },
+    "ses_1464922edffeN00FpzTxT6xEKP": {
+      "worktreeId": "wt-1781231112333-3",
+      "createdAt": "2026-06-12T02:43:49.760Z"
+    },
+    "ses_146209ce8ffeqpz5fzVYM8uJRn": {
+      "worktreeId": "wt-1781234885198-4",
+      "createdAt": "2026-06-12T03:28:05.404Z"
+    },
+    "ses_145f59224ffewOgbo5EQ29UGDr": {
+      "worktreeId": "wt-1781234885198-4",
+      "createdAt": "2026-06-12T04:15:06.217Z"
+    },
+    "ses_145f5113fffeR6arwnxqcIVQ2e": {
+      "worktreeId": "wt-1781234885198-4",
+      "createdAt": "2026-06-12T04:15:39.203Z"
+    },
+    "ses_145f5108effeQ3ilUBlyJwlPsK": {
+      "worktreeId": "wt-1781234885198-4",
+      "createdAt": "2026-06-12T04:15:39.429Z"
+    },
+    "ses_145f50fe4ffetEMLo5qXmPQX7Q": {
+      "worktreeId": "wt-1781234885198-4",
+      "createdAt": "2026-06-12T04:15:39.613Z"
+    },
+    "ses_145f50f1dffeLKpj6QZHvXiiVv": {
+      "worktreeId": "wt-1781234885198-4",
+      "createdAt": "2026-06-12T04:15:39.761Z"
+    },
+    "ses_145e4d7d1ffeCnp2r2BMs39FTe": {
+      "worktreeId": "wt-1781238802254-5",
+      "createdAt": "2026-06-12T04:33:22.483Z"
+    },
+    "ses_145c51b65ffe4sRKJbvOh9AEpl": {
+      "worktreeId": "wt-1781238802254-5",
+      "createdAt": "2026-06-12T05:08:02.366Z"
+    },
+    "ses_1434ef0e4ffeJvxM4fyCDjjVs6": {
+      "worktreeId": "wt-1781282180400-1",
+      "createdAt": "2026-06-12T16:36:21.036Z"
+    },
+    "ses_14342e172ffevdxgdAv22YuYlp": {
+      "worktreeId": "wt-1781282180400-1",
+      "createdAt": "2026-06-12T16:49:31.281Z"
+    },
+    "ses_1433cd8daffeo4YKyjdBiGiRqw": {
+      "worktreeId": "wt-1781230858962-2",
+      "createdAt": "2026-06-12T16:56:06.968Z"
+    },
+    "ses_142db2d50ffeT9K1PW3b9jl3yh": {
+      "worktreeId": "wt-1781230858962-2",
+      "createdAt": "2026-06-12T18:42:47.614Z"
+    },
+    "ses_142d63e56ffephFaUxPAzksGh8": {
+      "worktreeId": "wt-1781230858962-2",
+      "createdAt": "2026-06-12T18:48:10.925Z"
+    },
+    "ses_142ce6283ffe2xqkXupwTI56Av": {
+      "worktreeId": "wt-1781290604512-3",
+      "createdAt": "2026-06-12T18:56:46.069Z"
+    },
+    "ses_142b3adcfffeteSqrb8I4YFqM2": {
+      "worktreeId": "wt-1781290604512-3",
+      "createdAt": "2026-06-12T19:25:56.148Z"
+    },
+    "ses_142a0575dffeE7qHqbF1eBdXgb": {
+      "worktreeId": "wt-1781290604512-3",
+      "createdAt": "2026-06-12T19:47:03.463Z"
+    },
+    "ses_142781ed7ffeh5US2LZ5mW0rWo": {
+      "worktreeId": "wt-1781290604512-3",
+      "createdAt": "2026-06-12T20:30:59.465Z"
+    },
+    "ses_14243bf5fffe57cLZ5GJ6S9d3p": {
+      "worktreeId": "wt-1781290604512-3",
+      "createdAt": "2026-06-12T21:28:12.948Z"
+    },
+    "ses_1421154d5ffeihUkzZi0oNplQR": {
+      "worktreeId": "wt-1781290604512-3",
+      "createdAt": "2026-06-12T22:23:15.758Z"
+    },
+    "ses_14199f194ffenU2VUApm2aidjh": {
+      "worktreeId": "wt-1781310819720-4",
+      "createdAt": "2026-06-13T00:33:39.951Z"
+    },
+    "ses_1417de037ffePxvlaxB4EKlzJA": {
+      "worktreeId": "wt-1781290604512-3",
+      "createdAt": "2026-06-13T01:04:19.414Z"
+    },
+    "ses_14176e103ffe9N3RldVvt6JYbd": {
+      "worktreeId": "wt-1781313117798-5",
+      "createdAt": "2026-06-13T01:11:57.955Z"
+    },
+    "ses_1416f9877ffeVHyCO3mSrVIAvh": {
+      "worktreeId": "wt-1781313117798-5",
+      "createdAt": "2026-06-13T01:19:55.275Z"
+    },
+    "ses_14144d4deffe7zuVozaTh3JNbv": {
+      "worktreeId": "wt-1781290604512-3",
+      "createdAt": "2026-06-13T02:06:37.885Z"
+    },
+    "ses_141348870ffekCY6svMSF234l0": {
+      "worktreeId": "wt-1781290604512-3",
+      "createdAt": "2026-06-13T02:24:26.006Z"
+    },
+    "ses_1412370dcffePKRrVTf4gXZ30i": {
+      "worktreeId": "wt-1781290604512-3",
+      "createdAt": "2026-06-13T02:43:06.151Z"
+    },
+    "ses_140cbb9beffebSwMCN8oXwjVGH": {
+      "worktreeId": "wt-1781313117798-5",
+      "createdAt": "2026-06-13T04:18:54.662Z"
+    },
+    "ses_140c6bef6ffel36WI1FiGZG1gK": {
+      "worktreeId": "wt-1781313117798-5",
+      "createdAt": "2026-06-13T04:24:21.005Z"
+    },
+    "ses_140bebe2effeX6OiSX0OAn7ak7": {
+      "worktreeId": "wt-1781230018859-1",
+      "createdAt": "2026-06-13T04:33:05.493Z"
+    },
+    "ses_140b1c98effeq7QgRwhY87gy2q": {
+      "worktreeId": "wt-1781230858962-2",
+      "createdAt": "2026-06-13T04:47:14.549Z"
+    },
+    "ses_140a3c9c0ffeqNCDnoWvOH1gvK": {
+      "worktreeId": "wt-1781290604512-3",
+      "createdAt": "2026-06-13T05:02:32.003Z"
+    },
+    "ses_1409feacaffeV7BV4eg6sqhOYw": {
+      "worktreeId": "wt-1781282180400-1",
+      "createdAt": "2026-06-13T05:06:45.693Z"
+    },
+    "ses_1409f8be9ffeMuetKdkKxpuSzX": {
+      "worktreeId": "wt-1781310819720-4",
+      "createdAt": "2026-06-13T05:07:09.988Z"
+    },
+    "ses_13d4115f1ffeQO9Rat8qOcWsDw": {
+      "worktreeId": "wt-1781197740397-2",
+      "createdAt": "2026-06-13T20:49:12.210Z"
+    },
+    "ses_13c7d59d7ffe6u5uOaRotofQAR": {
+      "worktreeId": null,
+      "createdAt": "2026-06-14T00:22:59.999Z"
+    },
+    "ses_13ba32afcffe1RQfwRQR5qGW7L": {
+      "worktreeId": "wt-1781410875403-1",
+      "createdAt": "2026-06-14T04:21:19.005Z"
+    },
+    "ses_13b9d1093ffeipwO8IbPrG62hE": {
+      "worktreeId": null,
+      "createdAt": "2026-06-14T04:27:58.800Z"
+    },
+    "ses_13b848887ffepHKDEliYF7KG7E": {
+      "worktreeId": null,
+      "createdAt": "2026-06-14T04:54:46.687Z"
+    },
+    "ses_13b7121b3ffezaiuFDq4k4oErM": {
+      "worktreeId": null,
+      "createdAt": "2026-06-14T05:15:58.003Z"
+    },
+    "ses_13b6501cfffekfOCdmwh5wmcO5": {
+      "worktreeId": null,
+      "createdAt": "2026-06-14T05:29:12.589Z"
+    },
+    "ses_13b4eee9affe5WGpbRLxnTFDPH": {
+      "worktreeId": null,
+      "createdAt": "2026-06-14T05:53:19.312Z"
+    },
+    "ses_13b4e4d7dffeG2Jzx10EYNIVz2": {
+      "worktreeId": null,
+      "createdAt": "2026-06-14T05:54:00.540Z"
+    },
+    "ses_138ea2341ffeCqFuvAVLPI966n": {
+      "worktreeId": "wt-1781410875403-1",
+      "createdAt": "2026-06-14T17:02:39.317Z"
+    },
+    "ses_138ea13e3ffenFmQx0MH9t2YsU": {
+      "worktreeId": "wt-1781410875403-1",
+      "createdAt": "2026-06-14T17:02:43.252Z"
+    },
+    "ses_138ea1368ffelCalNnJ38eFk3Z": {
+      "worktreeId": "wt-1781410875403-1",
+      "createdAt": "2026-06-14T17:02:43.374Z"
+    },
+    "ses_138ea12b6ffex4f7kYGlauPM5J": {
+      "worktreeId": "wt-1781410875403-1",
+      "createdAt": "2026-06-14T17:02:45.004Z"
+    },
+    "ses_1386f65ebffeOq9nEVbdd22DzN": {
+      "worktreeId": "wt-1781410875403-1",
+      "createdAt": "2026-06-14T19:16:43.163Z"
+    },
+    "ses_13862c9edffeLqX2aLFCnDwWV7": {
+      "worktreeId": null,
+      "createdAt": "2026-06-14T19:30:29.656Z"
     }
   },
   "tabOrder": {
@@ -414,7 +677,6 @@
       "ses_15658b8fbffeIpuFKBaj6PeW3I",
       "ses_156562268ffeM40LrO6WE6tb2b",
       "ses_156574ae4ffe2YS2IspLVC3BfP",
-      "pending:46",
       "ses_15655596dffePeKZRT6rjV62q7",
       "ses_15652a5b8ffe3BNuC62g37YfEY",
       "ses_156499902ffeXb4LvEc9hM21WR",
@@ -588,11 +850,92 @@
       "ses_14a8275c6ffeig8zOQiCMC6x11",
       "ses_14a6d8e2affe3hHFQuIubWmJKb",
       "ses_14a00e812ffeF6TgO90eOpNWiE",
-      "ses_149fcf3beffeXN7d5RIcYbgY1M"
-    ],
-    "wt-1781157349295-1": [
-      "ses_14abfb3f9ffeHDUHhXVRu1A69g",
-      "ses_14abeb797ffeOMj6P41cxjECXS"
+      "ses_149fcf3beffeXN7d5RIcYbgY1M",
+      "ses_1409b95ddffepcuRu5gElKaZ7C",
+      "ses_1409a7345ffemY4SRLK25fmH5Q",
+      "ses_13e4a6782ffed7kJR2pr8hsR4o",
+      "ses_13e3e8eeeffe6DrzzEPhuIMKy9",
+      "ses_13e36b623ffeUDMa9fy8Of91er",
+      "ses_13e310a6affewIXDkxCt1LJag0",
+      "ses_13e301641ffe34VXtkmbaTc52O",
+      "ses_13e27f293ffedCGWv3DNE39G8D",
+      "ses_13e177352ffer6B6E8nqQzVXKa",
+      "ses_13e09554bffekbh0WNlE6qPUyl",
+      "ses_13dfd5175ffeTXzfFBaVM2eW51",
+      "ses_13de20b07ffeKrlE5kd2D64nyt",
+      "ses_13ddd1508ffeC0binrP7AZOKij",
+      "ses_13ddaf6feffeojL8GXaMWoLGP1",
+      "ses_13dd9c511ffebh5U3y430jm28S",
+      "ses_13dd16466ffe2pL44L0TFQ2YEK",
+      "ses_13dc601c5ffeodxENTHnG21nPH",
+      "ses_13db83f9cffe3vGXl9w0X05dvS",
+      "ses_13da7ac1bffemrelqRfY0l1c4z",
+      "ses_13d95e401ffe1X5xmlzM7rpiSz",
+      "ses_13d86a05cffedA7JD5GHAdFaUf",
+      "ses_13d8671d8ffeqqY8nYBreWOQoX",
+      "ses_13d864a01ffeWryXWJo6UCcL7Q",
+      "ses_13d7edde4ffe74VchfzrannlUN",
+      "ses_13d76dd37ffeyRQX7aDlBduwmb",
+      "ses_13d76a0b4ffeJVmeJ5m8NLXt0F",
+      "ses_13d758b44ffeOLVQheYi9TM5gz",
+      "ses_13d6ff38cffe79w3GrATtThJD2",
+      "ses_13d6e5112ffeHPmFf74FD4o0L5",
+      "ses_13d6cd426ffeihDN1qLqz25InU",
+      "ses_13d42bb69ffeu8qUUvQKu95xFm",
+      "ses_13d421893ffei1DBJyZpoNf0we",
+      "ses_13d41e0b0ffe593HLUNogPuYJM",
+      "ses_13d403646ffedoDAZWk0D8hxLl",
+      "ses_13d2e6679ffeiyV5NmDQ3WXvqu",
+      "ses_13d2d7ea5ffeKOTi1Qbh9m1zuf",
+      "ses_13d10df8dffe71pZVqRvuFfmwr",
+      "ses_13d048281ffesXqTORHvW0yMUa",
+      "ses_13d041b49ffeD4Dcp9xJgYSI9n",
+      "ses_13cfcc4aeffe3qI5FlQPO593jy",
+      "ses_13cf3e784ffesMefNuIw7E4Unw",
+      "ses_13ceb3a45ffeDvtpEwQygjIlvg",
+      "ses_13ce40f77ffexdR4UAfh05vSL7",
+      "ses_13ce039f8ffeWgyJ330gPyy6hY",
+      "ses_13cdad303ffe4rgBzBEkkZUOym",
+      "ses_13cda05d8ffeyySHjRdupRL0fj",
+      "ses_13c930be4ffefMuD0hRnRTxQEN",
+      "ses_13c928631ffewep6a4Ybuqe3tO",
+      "ses_13c8daffeffePouAy7NFhHMgYr",
+      "ses_13c86e344ffeeEmNGCeF9rPEVa",
+      "ses_13c7fd75effe2UoYDMp5cnw5vl",
+      "ses_13c7f8ee9ffe2iFEzYcwmGkG6n",
+      "ses_13c7d59d7ffe6u5uOaRotofQAR",
+      "ses_13c5eba27ffetJVH3LLv4ha7mh",
+      "ses_13c57a855ffecwtqY0Bl0TATRe",
+      "ses_13c2afc03ffeurBmtc32ElgLzN",
+      "ses_13c18b8e1ffeI0U5QIAVdp0gWw",
+      "ses_13c002c66ffexzEZN6Q6bzbz1J",
+      "ses_13bfc3e68ffel0EuHj8llign49",
+      "ses_13bfb4c70ffe39nkuUQuEkKzG6",
+      "ses_13bfaa116ffeAnQ5xMW32fw7Fn",
+      "ses_13bf96f6effeZ5BO3jlxp3ozoH",
+      "ses_13baa8e3cffe9XunkN9RmAsBHE",
+      "ses_13bc9100effekFNh8KF9n3m9ae",
+      "ses_13bc659e9ffeWPxSkQgzSTqAJK",
+      "ses_13bbef30bffe2BR1rES9dm0JO7",
+      "ses_13bc421e0ffepcbtfG0WwfrYcZ",
+      "ses_13bc3e7edffeR4dI8ZTMgqrPOU",
+      "ses_13bc3ad99ffezBqzuFWT36eys2",
+      "ses_13bc1b8a3ffeZ17ZL7WgESKazk",
+      "ses_13bae444bffeyMfDRBsYJO36L6",
+      "ses_13ba1790affe6gRfpsL6CnE9eA",
+      "ses_13ba0f7b2ffeTqK1EkgW2gnZEy",
+      "ses_13b9d1093ffeipwO8IbPrG62hE",
+      "ses_13b848887ffepHKDEliYF7KG7E",
+      "ses_13b7520d3ffeUMhDD5LM3wYdVC",
+      "ses_13b7121b3ffezaiuFDq4k4oErM",
+      "pending:77",
+      "ses_13b6501cfffekfOCdmwh5wmcO5",
+      "ses_13b4e4d7dffeG2Jzx10EYNIVz2",
+      "ses_13b4eee9affe5WGpbRLxnTFDPH",
+      "ses_138f3bb5effeyaus0Th71QrXbn",
+      "pending:3",
+      "ses_138eb8840ffeepUNUxtCvq5IEf",
+      "ses_13862c9edffeLqX2aLFCnDwWV7"
     ],
     "wt-1781168507028-3": [
       "ses_149e39c54ffeHjB0BNXQyTSDrt",
@@ -604,11 +947,6 @@
       "ses_14a149f06ffew6YJMEKr7n02Ta",
       "ses_149f8eec3ffeIx6SZ3OmUS15LS",
       "ses_149e86bc4ffeeKbZHDuY2TPerN"
-    ],
-    "wt-1781170525739-4": [
-      "ses_149f69de8ffed5PuaN6qRah5yX",
-      "ses_149c2416bffenjHfUU8MxYcj8e",
-      "ses_149c141a0ffev0Utvxlc0dzGJv"
     ],
     "wt-1781172431312-5": [
       "ses_149d991c4ffeMTNi8CnDCq5xbi",
@@ -630,7 +968,8 @@
       "ses_148331478ffeXfjLljZA4mRa6d",
       "ses_14804eb10ffe9c6LA6z7JL736n",
       "ses_147b15bbaffeNJ2oj846xULBON",
-      "ses_147ad9358ffeMBNrco1GQa7jOV"
+      "ses_147ad9358ffeMBNrco1GQa7jOV",
+      "ses_13d4115f1ffeQO9Rat8qOcWsDw"
     ],
     "wt-1781201753307-4": [
       "ses_1481a2959ffe0pW5jFU8ianlIV",
@@ -639,33 +978,120 @@
       "ses_1473a67d6ffe3PUnsvc7uBZ7KJ",
       "ses_14738a1bdffeaV51b7IDxf20Ky"
     ],
-    "wt-1781208476444-5": [
-      "ses_147b39428ffekGEHiMHdZhDJ3p",
-      "ses_147b307dcffei4y4t5Gf1kKDgi",
-      "ses_147869e5fffeA0clkHQKyjhCO3",
-      "ses_147793718ffeMybftAgCuS69mP"
+    "wt-1781216847426-12": [
+      "ses_14732938effeSI3RvrU0E0o3XZ",
+      "ses_146e4d2a9ffedCkxrM0MtxNiiz",
+      "ses_146b8778bffeLEPmwLJydA7LgO",
+      "ses_146862decffej7dYRD0xasjoY6"
     ],
-    "wt-1781212962784-11": [
-      "ses_14753dcf3ffeZcW8a37VQAsUqb"
+    "wt-1781222596834-18": [
+      "ses_146dc1adbffe61T9oUVflJN3cV",
+      "ses_146d2d5cbffeIfXFIDPgk7wK1z",
+      "ses_146d2d50fffeZgtsAlkr7Y8Hdi",
+      "ses_146d2d49affe8hd7yEhDMpi2nE",
+      "ses_146d1fb38ffeXwnZlvBU77vziq",
+      "ses_1468353bdffe5EMdrBTyWlOUUG"
+    ],
+    "wt-1781224027112-22": [
+      "ses_146c64641ffe5gVAqB2jjiKDxc",
+      "ses_146821714ffeswQ22sRdgnnOQz"
+    ],
+    "wt-1781224019099-21": [
+      "ses_146c66adcffe4ks7oPU8nMNZ2H",
+      "ses_146820155ffeFx0lBp3mVaJR5M"
+    ],
+    "wt-1781230018859-1": [
+      "ses_1466ade11ffeT61DQO9EYDoOxK",
+      "ses_14668180fffec0FeCJEGhJK6Pg",
+      "ses_14667c858ffetVL3nhKcbIKD45",
+      "ses_1465d6a4affe0bepLknvOQ2U5W",
+      "ses_1465b273bffeoiRCMaOpL6nLXl",
+      "ses_1465480caffe2DCnXNrPI1AY1F",
+      "ses_140bebe2effeX6OiSX0OAn7ak7"
+    ],
+    "wt-1781230858962-2": [
+      "ses_1465e0cc6ffe6dxSpN7PNkS4xe",
+      "ses_14656ef18ffekMZsbE0Ff7ra8N",
+      "ses_1433cd8daffeo4YKyjdBiGiRqw",
+      "ses_142db2d50ffeT9K1PW3b9jl3yh",
+      "ses_142d63e56ffephFaUxPAzksGh8",
+      "ses_140b1c98effeq7QgRwhY87gy2q"
+    ],
+    "wt-1781231112333-3": [
+      "ses_1465a2f0fffeyn03Zhn1Oh3koI",
+      "ses_1464922edffeN00FpzTxT6xEKP"
+    ],
+    "wt-1781234885198-4": [
+      "ses_146209ce8ffeqpz5fzVYM8uJRn",
+      "ses_145f59224ffewOgbo5EQ29UGDr",
+      "ses_145f5113fffeR6arwnxqcIVQ2e",
+      "ses_145f5108effeQ3ilUBlyJwlPsK",
+      "ses_145f50fe4ffetEMLo5qXmPQX7Q",
+      "ses_145f50f1dffeLKpj6QZHvXiiVv"
+    ],
+    "wt-1781238802254-5": [
+      "ses_145e4d7d1ffeCnp2r2BMs39FTe",
+      "ses_145c51b65ffe4sRKJbvOh9AEpl"
+    ],
+    "wt-1781282180400-1": [
+      "ses_1434ef0e4ffeJvxM4fyCDjjVs6",
+      "ses_14342e172ffevdxgdAv22YuYlp",
+      "ses_1409feacaffeV7BV4eg6sqhOYw"
+    ],
+    "wt-1781290604512-3": [
+      "ses_142ce6283ffe2xqkXupwTI56Av",
+      "ses_142b3adcfffeteSqrb8I4YFqM2",
+      "ses_142a0575dffeE7qHqbF1eBdXgb",
+      "ses_142781ed7ffeh5US2LZ5mW0rWo",
+      "ses_14243bf5fffe57cLZ5GJ6S9d3p",
+      "ses_1421154d5ffeihUkzZi0oNplQR",
+      "ses_1417de037ffePxvlaxB4EKlzJA",
+      "ses_14144d4deffe7zuVozaTh3JNbv",
+      "ses_141348870ffekCY6svMSF234l0",
+      "ses_1412370dcffePKRrVTf4gXZ30i",
+      "ses_140a3c9c0ffeqNCDnoWvOH1gvK"
+    ],
+    "wt-1781313117798-5": [
+      "ses_14176e103ffe9N3RldVvt6JYbd",
+      "ses_1416f9877ffeVHyCO3mSrVIAvh",
+      "ses_140cbb9beffebSwMCN8oXwjVGH",
+      "ses_140c6bef6ffel36WI1FiGZG1gK"
+    ],
+    "wt-1781310819720-4": [
+      "ses_14199f194ffenU2VUApm2aidjh",
+      "ses_1409f8be9ffeMuetKdkKxpuSzX"
+    ],
+    "wt-1781410875403-1": [
+      "ses_13ba32afcffe1RQfwRQR5qGW7L",
+      "ses_138ea2341ffeCqFuvAVLPI966n",
+      "ses_138ea13e3ffenFmQx0MH9t2YsU",
+      "ses_138ea1368ffelCalNnJ38eFk3Z",
+      "ses_138ea12b6ffex4f7kYGlauPM5J",
+      "ses_1386f65ebffeOq9nEVbdd22DzN"
     ]
   },
   "worktreeOrder": [
-    "wt-1774831901652-1",
-    "wt-1781157349295-1",
     "wt-1781168278255-2",
     "wt-1781168507028-3",
-    "wt-1781170525739-4",
     "wt-1781172431312-5",
     "wt-1781196472020-1",
     "wt-1781197740397-2",
     "wt-1781198764745-3",
     "wt-1781201753307-4",
-    "wt-1781208476444-5",
-    "wt-1781212835044-6",
-    "wt-1781212933980-7",
-    "wt-1781212940096-8",
-    "wt-1781212947583-9",
-    "wt-1781212955467-10",
-    "wt-1781212962784-11"
+    "wt-1781216847426-12",
+    "wt-1781217350838-16",
+    "wt-1781222596834-18",
+    "wt-1781224019099-21",
+    "wt-1781224027112-22",
+    "wt-1781230018859-1",
+    "wt-1781230858962-2",
+    "wt-1781231112333-3",
+    "wt-1781234885198-4",
+    "wt-1781238802254-5",
+    "wt-1781282180400-1",
+    "wt-1781290604512-3",
+    "wt-1781310819720-4",
+    "wt-1781313117798-5",
+    "wt-1781410875403-1"
   ]
 }
